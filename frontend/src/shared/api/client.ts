@@ -947,3 +947,81 @@ export function getTownDemand(
 export function getTownSynergy(projectId: string, dayType: TownDayType): Promise<SynergyRow[]> {
   return fetchJson(`/api/projects/${projectId}/town/synergy?day_type=${dayType}`);
 }
+
+// ── Layout optimization ─────────────────────────────────────────────────────
+
+export type OptimizeObjective =
+  | "revenue_per_visitor" | "total_revenue" | "conversion_rate" | "impulse_revenue" | "units_per_visitor" | "walking_distance";
+export type OptimizeScope = "planogram" | "placement" | "both";
+export type OptimizeAlgorithm = "hill_climb" | "anneal" | "genetic";
+
+export interface OptimizeSpec {
+  objective: OptimizeObjective;
+  scope: OptimizeScope;
+  algorithm: OptimizeAlgorithm;
+  budget: number;
+  eval_customers: number;
+  validation_customers?: number | null;
+  seed: number;
+  constraints: { keep_fridges_on_walls: boolean; lock_rack_ids: string[]; max_moves: number; min_improvement: number };
+}
+
+export interface OptimizationStatus {
+  job_id: string;
+  setup_id: string;
+  status: "pending" | "running" | "completed" | "failed";
+  error: string;
+  evaluations: number;
+  budget: number;
+  baseline_score: number | null;
+  best_score: number | null;
+  scenario: string;
+  spec: OptimizeSpec;
+  created_at: string;
+  finished_at: string;
+  applied_setup_id: string | null;
+}
+
+export interface OptimizeResult {
+  baseline_score: number;
+  best_score: number;
+  relative_improvement: number;
+  applied_moves: string[];
+  history: { iteration: number; score: number; accepted: boolean; move: string; best_score: number }[];
+  evaluations: number;
+  seconds: number;
+  baseline_summary: RunSummary | null;
+  best_summary: RunSummary | null;
+  validation: ComparisonReport | null;
+  validation_metric: string;
+  validation_relative_improvement: number | null;
+  validation_prob_better: number | null;
+  notes: string[];
+}
+
+export interface OptimizationView {
+  status: OptimizationStatus;
+  result: OptimizeResult | null;
+}
+
+export function startOptimization(
+  projectId: string, setupId: string, spec: OptimizeSpec, scenarioId: string | null,
+): Promise<OptimizationStatus> {
+  return fetchJson(`/api/projects/${projectId}/setups/${setupId}/optimize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ spec, scenario_id: scenarioId }),
+  });
+}
+
+export function getOptimization(projectId: string, jobId: string, signal?: AbortSignal): Promise<OptimizationView> {
+  return fetchJson(`/api/projects/${projectId}/optimizations/${jobId}`, { signal });
+}
+
+export function applyOptimization(projectId: string, jobId: string): Promise<{ id: string; name: string }> {
+  return fetchJson(`/api/projects/${projectId}/optimizations/${jobId}/apply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+}

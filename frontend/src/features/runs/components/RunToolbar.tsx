@@ -2,7 +2,7 @@
 // start another run, compare runs, export results, return to editing.
 
 import { useState } from "react";
-import { Download, GitCompareArrows, Pencil, Play } from "lucide-react";
+import { Download, GitCompareArrows, Pencil, Play, Wand2 } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import { useSimulationStore } from "@/stores/simulationStore";
 
 import { runLabel } from "../labels";
 import { CompareDialog } from "./CompareDialog";
+import { OptimizeDialog } from "./OptimizeDialog";
 import { RunLauncherDialog } from "./RunLauncherDialog";
 
 export interface RunToolbarProps {
@@ -38,6 +39,7 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
   const lastRunError = useSimulationStore((s) => s.lastRunError);
   const [launchOpen, setLaunchOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [optimizeOpen, setOptimizeOpen] = useState(false);
   const editable = setupStatus === "draft";
 
   return (
@@ -66,6 +68,9 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
         <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => setCompareOpen(true)}>
           <GitCompareArrows className="size-3" /> Compare
         </Button>
+        <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => setOptimizeOpen(true)}>
+          <Wand2 className="size-3" /> Optimize
+        </Button>
         <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" asChild>
           <a href={runExportUrl(projectId, runId)} download>
             <Download className="size-3" /> CSV
@@ -85,6 +90,7 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
         personaCount={personaCount}
         locked={!editable}
       />
+      <OptimizeDialog open={optimizeOpen} onOpenChange={setOptimizeOpen} projectId={projectId} setupId={setupId} />
       <CompareDialog
         open={compareOpen}
         onOpenChange={setCompareOpen}
