@@ -31,8 +31,8 @@ interface CreateStoreWizardProps {
 }
 
 const STEPS = [
-  { index: 1, label: "Configure new store" },
-  { index: 2, label: "Generate synthetic consumers" },
+  { index: 1, label: "The store" },
+  { index: 2, label: "Its shoppers" },
 ] as const;
 
 export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
@@ -99,9 +99,10 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   const isPending = create.isPending;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-background">
-      <div className="mx-auto w-full max-w-2xl space-y-8 p-8">
-        <WizardHeader title="Create new store" steps={STEPS} activeIndex={step} />
+    <div className="relative flex-1 overflow-y-auto">
+      <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 h-[32rem] [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden />
+      <div className="relative mx-auto my-10 w-full max-w-2xl space-y-8 rounded-3xl border bg-card p-8 shadow-float sm:p-10">
+        <WizardHeader title="New store" steps={STEPS} activeIndex={step} />
 
         {step === 1 && (
           <Step1Fields
@@ -126,18 +127,18 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
 
         <div className="flex items-center justify-between">
           {step === 2 ? (
-            <Button type="button" variant="outline" disabled={isPending} onClick={() => setStep(1)}>
+            <Button type="button" size="lg" variant="outline" className="h-10 rounded-xl px-5 text-base" disabled={isPending} onClick={() => setStep(1)}>
               Back
             </Button>
           ) : (
             <span />
           )}
           {step === 1 ? (
-            <Button type="button" disabled={!step1Ok} onClick={handleNext}>
+            <Button type="button" size="lg" className="h-10 rounded-xl px-6 text-base" disabled={!step1Ok} onClick={handleNext}>
               Next
             </Button>
           ) : (
-            <Button type="button" disabled={!step1Ok || !step2Ok || isPending} onClick={handleSubmitClick}>
+            <Button type="button" size="lg" className="h-10 rounded-xl px-6 text-base" disabled={!step1Ok || !step2Ok || isPending} onClick={handleSubmitClick}>
               {isPending ? "Creating store…" : "Create new store"}
             </Button>
           )}
