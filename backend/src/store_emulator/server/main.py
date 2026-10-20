@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from store_emulator.application.storage.generations import recover_running_generations
 from store_emulator.application.storage.seed import seed_sample_projects
 from store_emulator.application.storage.setups import recover_running_setups
-from .routes import simulate, projects, setups, util, images, providers, scenarios
+from .routes import simulate, projects, setups, util, images, providers, scenarios, town
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 # Silence noisy third-party loggers (raw request/response, completion calls, etc.).
@@ -81,6 +81,7 @@ app.include_router(util.router)
 app.include_router(images.router)
 app.include_router(providers.router)
 app.include_router(scenarios.router)
+app.include_router(town.router)
 
 
 @app.get("/api/health", tags=["system"], summary="Health check")

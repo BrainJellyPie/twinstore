@@ -75,13 +75,16 @@ def get_preset(scenario_id: str) -> Scenario | None:
     return _BY_ID.get(scenario_id)
 
 
-def prepare_inputs(config: SimulationConfig, store: Store, personas: list[Persona]) -> tuple[Store, list[Persona]]:
+def prepare_inputs(
+    config: SimulationConfig, store: Store, personas: list[Persona], *, traffic_applied: bool = False,
+) -> tuple[Store, list[Persona]]:
     """Apply the run's scenario: promotions/stock-outs to the store, day filter, traffic and
-    budgets to the visitors. Identity when the run has no scenario."""
+    budgets to the visitors. Identity when the run has no scenario. `traffic_applied` skips the
+    traffic scaling when the visitors already came from a demand model that included it."""
     scenario = config.scenario
     if scenario is None:
         return store, personas
     effects = compile_scenario(scenario)
     store, _ = apply_to_store(store, scenario)
-    personas = apply_to_personas(personas, scenario, effects, seed=config.seed)
+    personas = apply_to_personas(personas, scenario, effects, seed=config.seed, scale_traffic=not traffic_applied)
     return store, personas

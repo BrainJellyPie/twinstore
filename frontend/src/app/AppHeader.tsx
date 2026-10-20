@@ -1,4 +1,4 @@
-import { ChevronRight, Settings } from "lucide-react";
+import { ChevronRight, Map, Settings } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/queries/keys";
@@ -8,7 +8,8 @@ export function AppHeader() {
   const location = useLocation();
   const isHome = location.pathname === "/";
   const isProject = location.pathname.startsWith("/projects/") && location.pathname !== "/projects/new";
-  const match = location.pathname.match(/^\/projects\/([^/]+)/);
+  const isTown = location.pathname.startsWith("/town/");
+  const match = location.pathname.match(/^\/(?:projects|town)\/([^/]+)/);
   const pid = match?.[1];
 
   const { data: project } = useQuery({
@@ -31,11 +32,26 @@ export function AppHeader() {
       {!isHome && (
         <nav className="flex items-center gap-1 text-xs text-muted-foreground">
           <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
-          {isProject && projectName && (
+          {(isProject || isTown) && projectName && (
             <>
               <ChevronRight className="size-3" />
-              <span className="text-foreground">{projectName}</span>
+              <Link to="/projects/$pid" params={{ pid: pid! }} className="text-foreground hover:underline">{projectName}</Link>
             </>
+          )}
+          {isTown && (
+            <>
+              <ChevronRight className="size-3" />
+              <span className="text-foreground">Neighborhood</span>
+            </>
+          )}
+          {isProject && pid && (
+            <Link
+              to="/town/$pid"
+              params={{ pid }}
+              className="ml-3 flex items-center gap-1 rounded-md border px-2 py-0.5 text-foreground transition-colors hover:bg-muted"
+            >
+              <Map className="size-3" /> Neighborhood
+            </Link>
           )}
         </nav>
       )}

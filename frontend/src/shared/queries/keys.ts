@@ -22,5 +22,8 @@ export const queryKeys = {
   providers: () => ["providers"] as const,
   models: () => ["models"] as const,
   scenarios: () => ["scenarios"] as const,
+  town: (projectId: string) => ["projects", projectId, "town"] as const,
+  townDemand: (projectId: string, dayType: string, scenarioId: string | null) =>
+    ["projects", projectId, "town", "demand", dayType, scenarioId] as const,
   scenarioPreview: (scenario: unknown) => ["scenarios", "preview", scenario] as const,
 };

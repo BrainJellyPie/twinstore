@@ -1,0 +1,202 @@
+// Top-down map of the neighborhood: roads, buildings (tinted by use, opacity by population),
+// venues, our store with its 50 % / 80 % catchment rings, and the strongest origin flows.
+// Wheel to zoom, drag to pan; in "place" mode a click opens a venue at that spot.
+
+import { useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
+
+import type { Town, TownDemand, TownVenue } from "@/shared/api/client";
+
+import { BUILDING_COLORS, ROAD_WIDTH, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
+
+export type MapMode = "inspect" | "place" | "remove";
+
+export function TownMap({
+  town,
+  demand,
+  mode,
+  onPlace,
+  onRemove,
+  highlightVenueId,
+}: {
+  town: Town;
+  demand?: TownDemand;
+  mode: MapMode;
+  onPlace: (x: number, y: number) => void;
+  onRemove: (venue: TownVenue) => void;
+  highlightVenueId?: string | null;
+}) {
+  const S = town.size_m;
+  const [view, setView] = useState({ x: 0, y: 0, w: S });
+  const drag = useRef<{ px: number; py: number; vx: number; vy: number; moved: boolean } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const focal = town.venues.find((v) => v.is_focal);
+  // World (y north) → SVG (y down).
+  const fy = (y: number) => S - y;
+
+  const maxPop = useMemo(
+    () => Math.max(1, ...town.buildings.map((b) => b.residents + b.workers + b.students + b.daily_passersby / 20)),
+    [town.buildings],
+  );
+  const flows = useMemo(() => {
+    if (!demand || !focal) return [];
+    const byId = new Map(town.buildings.map((b) => [b.id, b]));
+    return [...demand.origin_shares]
+      .sort((a, b) => b.share - a.share)
+      .slice(0, 30)
+      .map((o) => ({ o, b: byId.get(o.building_id) }))
+      .filter((x): x is { o: (typeof demand.origin_shares)[number]; b: NonNullable<ReturnType<typeof byId.get>> } => !!x.b);
+  }, [demand, focal, town.buildings]);
+  const maxShare = flows.length ? Math.max(...flows.map((f) => f.o.share)) : 1;
+
+  const toWorld = (clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const r = svg.getBoundingClientRect();
+    const sx = view.x + ((clientX - r.left) / r.width) * view.w;
+    const sy = view.y + ((clientY - r.top) / r.height) * view.w;
+    return { x: sx, y: S - sy };
+  };
+
+  const onWheel = (e: WheelEvent<SVGSVGElement>) => {
+    const p = toWorld(e.clientX, e.clientY);
+    if (!p) return;
+    const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
+    const w = Math.min(S * 1.2, Math.max(S / 12, view.w * factor));
+    const sx = p.x, sy = S - p.y;
+    setView({ x: sx - ((sx - view.x) * w) / view.w, y: sy - ((sy - view.y) * w) / view.w, w });
+  };
+  const onDown = (e: PointerEvent<SVGSVGElement>) => {
+    drag.current = { px: e.clientX, py: e.clientY, vx: view.x, vy: view.y, moved: false };
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+  };
+  const onMove = (e: PointerEvent<SVGSVGElement>) => {
+    const d = drag.current;
+    const svg = svgRef.current;
+    if (!d || !svg) return;
+    const r = svg.getBoundingClientRect();
+    const dx = ((e.clientX - d.px) / r.width) * view.w;
+    const dy = ((e.clientY - d.py) / r.height) * view.w;
+    if (Math.abs(e.clientX - d.px) + Math.abs(e.clientY - d.py) > 4) d.moved = true;
+    setView((v) => ({ ...v, x: d.vx - dx, y: d.vy - dy }));
+  };
+  const onUp = (e: PointerEvent<SVGSVGElement>) => {
+    const d = drag.current;
+    drag.current = null;
+    if (d && !d.moved && mode === "place") {
+      const p = toWorld(e.clientX, e.clientY);
+      if (p) onPlace(Math.round(p.x), Math.round(p.y));
+    }
+  };
+
+  return (
+    <svg
+      ref={svgRef}
+      viewBox={`${view.x} ${view.y} ${view.w} ${view.w}`}
+      className={`h-full w-full touch-none select-none rounded-lg bg-[#eef1ec] ${mode === "place" ? "cursor-crosshair" : "cursor-grab"}`}
+      onWheel={onWheel}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      role="img"
+      aria-label={`Map of ${town.name}`}
+    >
+      {/* Roads */}
+      {town.roads.map((r) => (
+        <polyline
+          key={r.id}
+          points={r.points.map(([x, y]) => `${x},${fy(y)}`).join(" ")}
+          fill="none"
+          stroke={r.kind === "arterial" ? "#cbd5e1" : "#dfe4ea"}
+          strokeWidth={ROAD_WIDTH[r.kind] ?? 6}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+
+      {/* Buildings */}
+      {town.buildings.map((b) => {
+        const pop = b.residents + b.workers + b.students + b.daily_passersby / 20;
+        return (
+          <rect
+            key={b.id}
+            x={b.x - b.width / 2}
+            y={fy(b.y) - b.depth / 2}
+            width={b.width}
+            height={b.depth}
+            rx={1.5}
+            fill={BUILDING_COLORS[b.kind] ?? "#d4d4d8"}
+            fillOpacity={b.kind === "park" ? 0.7 : 0.35 + 0.6 * Math.min(1, pop / maxPop)}
+            stroke="#64748b"
+            strokeOpacity={0.35}
+            strokeWidth={0.8}
+          >
+            <title>
+              {`${b.name || b.kind} · ${b.floors} floors` +
+                (b.residents ? ` · ${b.residents} residents` : "") +
+                (b.workers ? ` · ${b.workers} workers` : "") +
+                (b.students ? ` · ${b.students} students` : "") +
+                (b.daily_passersby ? ` · ${b.daily_passersby.toLocaleString()} passengers/day` : "")}
+            </title>
+          </rect>
+        );
+      })}
+
+      {/* Catchment rings */}
+      {focal && demand && (
+        <>
+          <circle cx={focal.x} cy={fy(focal.y)} r={demand.catchment_radius_80_m / 1.3} fill="none" stroke="#0e7490" strokeDasharray="10 8" strokeWidth={2} opacity={0.5} />
+          <circle cx={focal.x} cy={fy(focal.y)} r={demand.catchment_radius_50_m / 1.3} fill="#0e7490" fillOpacity={0.06} stroke="#0e7490" strokeWidth={2} opacity={0.8} />
+        </>
+      )}
+
+      {/* Origin flows */}
+      {focal &&
+        flows.map(({ o, b }) => (
+          <line
+            key={o.building_id + o.segment}
+            x1={b.x}
+            y1={fy(b.y)}
+            x2={focal.x}
+            y2={fy(focal.y)}
+            stroke="#0e7490"
+            strokeOpacity={0.15 + 0.5 * (o.share / maxShare)}
+            strokeWidth={1 + 7 * (o.share / maxShare)}
+            strokeLinecap="round"
+          />
+        ))}
+
+      {/* Venues */}
+      {town.venues.map((v) => {
+        const hl = v.id === highlightVenueId;
+        return (
+          <g
+            key={v.id}
+            transform={`translate(${v.x},${fy(v.y)})`}
+            onPointerUp={(e) => {
+              if (mode === "remove" && !v.is_focal) {
+                e.stopPropagation();
+                onRemove(v);
+              }
+            }}
+            className={mode === "remove" && !v.is_focal ? "cursor-pointer" : undefined}
+          >
+            {v.is_focal ? (
+              <>
+                <circle r={17} fill="#0e7490" stroke="white" strokeWidth={4} />
+                <path d="M-8 3 L0 -8 L8 3 Z M-6 3 h12 v6 h-12 Z" fill="white" />
+              </>
+            ) : (
+              <circle
+                r={hl ? 11 : 7.5}
+                fill={VENUE_COLORS[v.category] ?? "#334155"}
+                stroke={hl ? "#111827" : "white"}
+                strokeWidth={hl ? 3 : 2}
+              />
+            )}
+            <title>{`${v.name} (${VENUE_LABELS[v.category] ?? v.category})${v.is_focal ? " — our store" : ""}`}</title>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}

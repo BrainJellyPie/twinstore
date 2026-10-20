@@ -8,7 +8,8 @@
 //   which is what makes the A/B compare view statistically sharp.
 
 import { useState, type FormEvent } from "react";
-import { Bot, Eye, FlaskConical, Zap } from "lucide-react";
+import { Bot, Eye, FlaskConical, Map as MapIcon, Zap } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -22,6 +23,8 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
 import { useSimulate } from "@/shared/mutations/useSimulate";
+import * as api from "@/shared/api/client";
+import { queryKeys } from "@/shared/queries/keys";
 import type { EngineType, RunOptions, Scenario } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 
@@ -75,6 +78,9 @@ function LauncherForm({
   const [preview, setPreview] = useState(true);
   const [modelChoice, setModelChoice] = useState<ModelChoice>({ kind: "default" });
   const [scenario, setScenario] = useState<Scenario | null>(null);
+  const town = useQuery({ queryKey: queryKeys.town(projectId), queryFn: ({ signal }) => api.getTown(projectId, signal) }).data;
+  const [useTown, setUseTown] = useState(false);
+  const [townScale, setTownScale] = useState(0.2);
 
   const isPreview = locked || preview;
   const customers = sampleMode === "all" ? personaCount : Math.max(1, Math.min(sampleSize, personaCount));
@@ -101,6 +107,8 @@ function LauncherForm({
       ensemble:
         modelChoice.kind === "ensemble" && (modelChoice.ensemble?.members.length ?? 0) > 0 ? modelChoice.ensemble : undefined,
       scenario: scenario ?? undefined,
+      use_town: town && useTown ? true : undefined,
+      town_scale: town && useTown ? townScale : undefined,
     };
     simulate.mutate({ projectId, setupId, options }, { onSuccess: () => onOpenChange(false) });
   };
@@ -169,6 +177,26 @@ function LauncherForm({
       </RadioGroup>
 
       <ScenarioEditor value={scenario} onChange={setScenario} />
+
+      {town && (
+        <div className="space-y-1.5 rounded-md border p-3 text-xs">
+          <label className="flex items-center gap-2 text-sm font-medium" htmlFor="use-town">
+            <input id="use-town" type="checkbox" className="size-4 accent-primary" checked={useTown} onChange={(e) => setUseTown(e.target.checked)} />
+            <MapIcon className="size-4" aria-hidden /> Visitors from the neighborhood
+          </label>
+          <p className="text-muted-foreground">
+            Who comes, when and from how far is predicted from {town.name}: homes, offices, schools, rival stores and
+            linked trips from nearby venues. Shoppers know where they came from.
+          </p>
+          {useTown && (
+            <label className="flex items-center gap-2">
+              <span className="text-muted-foreground">Simulate</span>
+              <input type="range" min={0.05} max={1} step={0.05} value={townScale} onChange={(e) => setTownScale(Number(e.target.value))} className="flex-1 accent-primary" />
+              <span className="w-28 text-right tabular-nums">{Math.round(townScale * 100)} % of a full week</span>
+            </label>
+          )}
+        </div>
+      )}
 
       {usesLlm && (
         <ModelPicker

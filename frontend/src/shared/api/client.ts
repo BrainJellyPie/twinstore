@@ -340,6 +340,9 @@ export interface RunOptions {
   // Situation: a preset id or a full scenario.
   scenario_id?: string;
   scenario?: Scenario;
+  // Draw visitors from the project's neighborhood model.
+  use_town?: boolean;
+  town_scale?: number;
 }
 
 export interface EnsembleMember {
@@ -799,4 +802,148 @@ export function previewScenario(scenario: Scenario, signal?: AbortSignal): Promi
     body: JSON.stringify(scenario),
     signal,
   });
+}
+
+// ── Neighborhood (town) ─────────────────────────────────────────────────────
+
+export type TownArchetype =
+  | "residential" | "university" | "business_district" | "suburban" | "station_area" | "tourist" | "mixed";
+export type VenueCategory =
+  | "convenience" | "cafe" | "bakery" | "pharmacy" | "restaurant" | "fast_food" | "supermarket" | "bar"
+  | "gym" | "bookstore" | "academy" | "laundry" | "bank" | "pc_room";
+export type TownDayType = "weekday" | "weekend" | "holiday";
+
+export interface TownBuilding {
+  id: string;
+  kind: string;
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  depth: number;
+  floors: number;
+  residents: number;
+  workers: number;
+  students: number;
+  daily_passersby: number;
+  visitors: number;
+}
+
+export interface TownVenue {
+  id: string;
+  name: string;
+  category: VenueCategory;
+  x: number;
+  y: number;
+  attractiveness: number;
+  open_hour: number;
+  close_hour: number;
+  is_focal: boolean;
+}
+
+export interface TownRoad {
+  id: string;
+  kind: "arterial" | "street" | "alley" | "footpath";
+  points: [number, number][];
+  name: string;
+}
+
+export interface Town {
+  id: string;
+  name: string;
+  archetype: TownArchetype;
+  size_m: number;
+  buildings: TownBuilding[];
+  venues: TownVenue[];
+  roads: TownRoad[];
+  source: "procedural" | "osm";
+  center_lat: number | null;
+  center_lon: number | null;
+  focal_venue_id: string;
+}
+
+export interface TownSpec {
+  archetype: TownArchetype;
+  size_m: number;
+  density: number;
+  n_competitors: number | null;
+  neighbor_categories: VenueCategory[];
+  venue_density?: number;
+  seed: number;
+  name?: string;
+}
+
+export interface TownDemand {
+  focal_venue_id: string;
+  day_type: TownDayType;
+  total_daily_visitors: number;
+  direct_visitors: number;
+  linked_visitors: number;
+  hourly_totals: number[];
+  segment_totals: Record<string, number>;
+  origin_shares: {
+    building_id: string; kind: string; name: string; segment: string; distance_m: number;
+    expected_visitors: number; share: number;
+  }[];
+  linked_trips: { from_venue_id: string; from_name: string; from_category: VenueCategory; distance_m: number; expected_visitors: number }[];
+  store_shares: { venue_id: string; name: string; category: VenueCategory; is_focal: boolean; distance_m: number; expected_visitors: number; share: number }[];
+  market_share: number;
+  catchment_radius_50_m: number;
+  catchment_radius_80_m: number;
+  avg_walk_distance_m: number;
+}
+
+export interface SynergyRow {
+  venue_id: string;
+  name: string;
+  category: VenueCategory;
+  distance_m: number;
+  effect_on_focal_visitors: number;
+  effect_on_focal_pct: number;
+  role: "competitor" | "complement" | "neutral";
+}
+
+const json = (body: unknown) => ({
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+export async function getTown(projectId: string, signal?: AbortSignal): Promise<Town | null> {
+  const res = await fetch(`${BASE}/api/projects/${projectId}/town`, { signal });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text().catch(() => "")}`);
+  return res.json() as Promise<Town>;
+}
+
+export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
+  return fetchJson(`/api/projects/${projectId}/town/generate`, { method: "POST", ...json(spec) });
+}
+
+export function importTownFromMap(
+  projectId: string,
+  req: { address?: string; lat?: number; lon?: number; radius_m: number },
+): Promise<Town> {
+  return fetchJson(`/api/projects/${projectId}/town/import-osm`, { method: "POST", ...json(req) });
+}
+
+export function addTownVenue(
+  projectId: string,
+  venue: { category: VenueCategory; x: number; y: number; name?: string },
+): Promise<Town> {
+  return fetchJson(`/api/projects/${projectId}/town/venues`, { method: "POST", ...json(venue) });
+}
+
+export function removeTownVenue(projectId: string, venueId: string): Promise<Town> {
+  return fetchJson(`/api/projects/${projectId}/town/venues/${venueId}`, { method: "DELETE" });
+}
+
+export function getTownDemand(
+  projectId: string, dayType: TownDayType, scenarioId: string | null, signal?: AbortSignal,
+): Promise<TownDemand> {
+  const qs = new URLSearchParams({ day_type: dayType, ...(scenarioId ? { scenario_id: scenarioId } : {}) });
+  return fetchJson(`/api/projects/${projectId}/town/demand?${qs}`, { signal });
+}
+
+export function getTownSynergy(projectId: string, dayType: TownDayType): Promise<SynergyRow[]> {
+  return fetchJson(`/api/projects/${projectId}/town/synergy?day_type=${dayType}`);
 }

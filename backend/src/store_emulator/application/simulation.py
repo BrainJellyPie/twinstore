@@ -24,6 +24,8 @@ from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.application.runner import build_runner
 from store_emulator.application.scenarios import get_preset, prepare_inputs
+from store_emulator.application.town import get_town, town_visitors
+from store_emulator.domain.town import TownArrival
 from store_emulator.application.storage.io import DATA_DIR, read_json, write_json, now_iso
 from store_emulator.application.storage.setups import (
     read_setup, write_setup, personas_path, metadata_path,
@@ -57,6 +59,9 @@ class RunOptions(BaseModel):
     # Situation of the run: a preset id ("heatwave_weekend") or a full scenario.
     scenario_id: str | None = None
     scenario: Scenario | None = None
+    # Draw visitors from the project's neighborhood model (distance, competitors, linked trips).
+    use_town: bool = False
+    town_scale: float = Field(default=1.0, gt=0.0, le=5.0)
 
 
 def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationConfig:
@@ -233,8 +238,13 @@ def run_simulation_background(
     options = options or RunOptions()
     try:
         config = apply_options(config, options)
+        town = get_town(pid) if options.use_town else None
+        arrivals: list[TownArrival] = []
+        if town is not None:
+            personas, arrivals = town_visitors(town, personas, seed=config.seed, scale=options.town_scale,
+                                               scenario=config.scenario)
         personas = subsample_personas(personas, options.max_customers, config.seed)
-        store, personas = prepare_inputs(config, store, personas)
+        store, personas = prepare_inputs(config, store, personas, traffic_applied=town is not None)
         write_status(
             pid, run_id, "running", total_customers=len(personas), completed_customers=0,
             failed_customers=0, engine_type=config.engine_type.value, seed=config.seed,
@@ -264,6 +274,13 @@ def run_simulation_background(
         meta = runner.get_engine_metadata()
         if meta:
             write_json(run_dir / "output" / f"{config.engine_type}_meta.json", meta)
+        if town is not None:
+            kept = {p.id for p in personas}
+            write_json(run_dir / "output" / "town_arrivals.json",
+                       {"town": town.name, "arrivals": [a.model_dump(mode="json") for a in arrivals if a.persona_id in kept]})
+            manifest_path = run_dir / "output" / "manifest.json"
+            if manifest_path.exists():
+                write_json(manifest_path, {**read_json(manifest_path), "town": town.name})
         write_status(
             pid, run_id, "completed", finished_at=now_iso(),
             completed_customers=len(personas),

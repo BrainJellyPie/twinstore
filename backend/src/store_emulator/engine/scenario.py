@@ -308,7 +308,9 @@ def apply_to_store(store: Store, scenario: Scenario) -> tuple[Store, dict[str, f
     return store.model_copy(update={"racks": racks}), lifts
 
 
-def apply_to_personas(personas: list[Persona], scenario: Scenario, effects: ScenarioEffects, *, seed: int) -> list[Persona]:
+def apply_to_personas(
+    personas: list[Persona], scenario: Scenario, effects: ScenarioEffects, *, seed: int, scale_traffic: bool = True,
+) -> list[Persona]:
     """Day filter, traffic scaling per hour (thinning / seeded clones) and budget scaling.
 
     Original personas keep their ids, so a scenario run stays paired with a baseline run on the
@@ -317,7 +319,7 @@ def apply_to_personas(personas: list[Persona], scenario: Scenario, effects: Scen
     pool = [p for p in personas if not scenario.only_days or int(p.day) in scenario.only_days]
     out: list[Persona] = []
     for p in pool:
-        m = effects.traffic(p.arrival_hour)
+        m = effects.traffic(p.arrival_hour) if scale_traffic else 1.0
         rng = random.Random(stable_seed(seed, "scenario-traffic", p.id))
         copies = math.floor(m) + (1 if rng.random() < m - math.floor(m) else 0)
         budget = {}

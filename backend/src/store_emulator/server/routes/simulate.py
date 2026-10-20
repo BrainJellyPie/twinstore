@@ -38,6 +38,8 @@ class SimulateRequest(BaseModel):
     ensemble: EnsembleConfig | None = Field(default=None, description="Several models as one consumer population (mixture or vote)")
     scenario_id: str | None = Field(default=None, description='Scenario preset id (GET /api/scenarios), e.g. "heatwave_weekend"')
     scenario: Scenario | None = Field(default=None, description="Custom scenario (overrides scenario_id)")
+    use_town: bool = Field(default=False, description="Draw visitors from the project's neighborhood model")
+    town_scale: float = Field(default=1.0, gt=0.0, le=5.0, description="Share of the predicted daily visitors to simulate")
 
 
 @engines_router.get("/engines", summary="Available simulation engines", response_model=list[EngineInfo])
@@ -100,7 +102,7 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
         engine_type=req.engine_type, seed=req.seed, replicate=req.replicate,
         exposure_model=req.exposure_model, route_ordering=req.route_ordering,
         max_customers=req.max_customers, preview=req.preview, model=req.model, ensemble=req.ensemble,
-        scenario_id=req.scenario_id, scenario=req.scenario,
+        scenario_id=req.scenario_id, scenario=req.scenario, use_town=req.use_town, town_scale=req.town_scale,
     )
     config = get_config()
     try:
