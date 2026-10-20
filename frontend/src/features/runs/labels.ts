@@ -23,6 +23,8 @@ export function runLabel(run: RunListItem): string {
   const rep = run.replicate ?? run.manifest?.replicate;
   const parts = [engine];
   if (seed !== undefined) parts.push(`seed ${seed}${rep ? `/${rep}` : ""}`);
+  const scenario = run.scenario ?? run.manifest?.scenario;
+  if (scenario) parts.push(scenario);
   parts.push(run.preview ? "preview" : "final");
   const when = shortTime(run.created_at);
   if (when) parts.push(when);

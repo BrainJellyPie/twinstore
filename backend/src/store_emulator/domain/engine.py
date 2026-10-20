@@ -22,6 +22,8 @@ class PerCustomerContext(BaseModel):
     # Per-customer seed derived from (run seed, replicate, persona id). Independent of the layout,
     # so engines that draw randomness from it give paired layout comparisons common random numbers.
     seed: int = 0
+    # Scenario situation in one or two English sentences ("" on a plain day), for LLM/VLM prompts.
+    situation: str = ""
 
 
 class EngineDecision(BaseModel):

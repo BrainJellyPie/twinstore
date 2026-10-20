@@ -121,6 +121,7 @@ class VLMGlanceEngine(RuleBasedEngine):
                 basket=self._basket_names(context, plan),
                 money_left=None if persona.budget_max <= 0 else int(plan.budget * plan.tolerance) - plan.spend,
                 currency=cfg.currency,
+                situation=context.situation,
             )
             calls += 1
             glance, model, agreement, votes, error = await self._ask(view, prompt, context, rack, face.value)

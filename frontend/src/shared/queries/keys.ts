@@ -21,4 +21,6 @@ export const queryKeys = {
   engines: () => ["engines"] as const,
   providers: () => ["providers"] as const,
   models: () => ["models"] as const,
+  scenarios: () => ["scenarios"] as const,
+  scenarioPreview: (scenario: unknown) => ["scenarios", "preview", scenario] as const,
 };

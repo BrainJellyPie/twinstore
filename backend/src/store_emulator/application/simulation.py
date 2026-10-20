@@ -15,6 +15,7 @@ from store_emulator.domain.config import EngineType, ExposureModel, RouteOrderin
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
+from store_emulator.domain.scenario import Scenario
 from store_emulator.domain.result import AggregatedResult
 from store_emulator.domain.runner import ProgressCallback, SimulationRunner
 from store_emulator.domain.store import Store
@@ -22,6 +23,7 @@ from store_emulator.domain.types import stable_seed
 from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.application.runner import build_runner
+from store_emulator.application.scenarios import get_preset, prepare_inputs
 from store_emulator.application.storage.io import DATA_DIR, read_json, write_json, now_iso
 from store_emulator.application.storage.setups import (
     read_setup, write_setup, personas_path, metadata_path,
@@ -52,6 +54,9 @@ class RunOptions(BaseModel):
     model: str | None = None
     # Several models as one consumer population (overrides `model`).
     ensemble: EnsembleConfig | None = None
+    # Situation of the run: a preset id ("heatwave_weekend") or a full scenario.
+    scenario_id: str | None = None
+    scenario: Scenario | None = None
 
 
 def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationConfig:
@@ -62,6 +67,13 @@ def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationCo
             updates[field] = value
     if options.ensemble is not None:
         updates["ensemble"] = options.ensemble
+    if options.scenario is not None:
+        updates["scenario"] = options.scenario
+    elif options.scenario_id:
+        preset = get_preset(options.scenario_id)
+        if preset is None:
+            raise ValueError(f"unknown scenario preset: {options.scenario_id}")
+        updates["scenario"] = None if preset.id == "baseline" else preset
     config = config.model_copy(update=updates)
     if options.model:
         config = with_engine_model(config, options.model)
@@ -222,10 +234,12 @@ def run_simulation_background(
     try:
         config = apply_options(config, options)
         personas = subsample_personas(personas, options.max_customers, config.seed)
+        store, personas = prepare_inputs(config, store, personas)
         write_status(
             pid, run_id, "running", total_customers=len(personas), completed_customers=0,
             failed_customers=0, engine_type=config.engine_type.value, seed=config.seed,
             replicate=config.replicate, started_at=now_iso(),
+            scenario=config.scenario.name if config.scenario else "",
         )
         last_write = 0.0
 

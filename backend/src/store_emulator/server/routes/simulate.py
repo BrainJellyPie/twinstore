@@ -13,6 +13,7 @@ from store_emulator.domain.analysis import ComparisonReport, FidelityReport
 from store_emulator.domain.config import EngineType, ExposureModel, RouteOrdering
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
+from store_emulator.domain.scenario import Scenario
 from store_emulator.server.schemas import EngineInfo, SimulationStartResponse
 from ..deps import get_config
 
@@ -35,6 +36,8 @@ class SimulateRequest(BaseModel):
     preview: bool = Field(default=False, description="Preview runs don't lock the setup and are allowed on draft or finalized setups")
     model: str | None = Field(default=None, description='Model reference for the engine, e.g. "openai:gpt-6-luna", "qwen:qwen3.7-plus"')
     ensemble: EnsembleConfig | None = Field(default=None, description="Several models as one consumer population (mixture or vote)")
+    scenario_id: str | None = Field(default=None, description='Scenario preset id (GET /api/scenarios), e.g. "heatwave_weekend"')
+    scenario: Scenario | None = Field(default=None, description="Custom scenario (overrides scenario_id)")
 
 
 @engines_router.get("/engines", summary="Available simulation engines", response_model=list[EngineInfo])
@@ -97,6 +100,7 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
         engine_type=req.engine_type, seed=req.seed, replicate=req.replicate,
         exposure_model=req.exposure_model, route_ordering=req.route_ordering,
         max_customers=req.max_customers, preview=req.preview, model=req.model, ensemble=req.ensemble,
+        scenario_id=req.scenario_id, scenario=req.scenario,
     )
     config = get_config()
     try:

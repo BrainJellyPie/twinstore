@@ -78,6 +78,8 @@ def build_manifest(store: Store, personas: list[Persona], config: SimulationConf
         persona_fingerprint=fingerprint([p.model_dump() for p in personas]),
         package_version=pkg,
         created_at=now_iso(),
+        scenario=config.scenario.name if config.scenario else "",
+        scenario_id=config.scenario.id if config.scenario else "",
     )
 
 

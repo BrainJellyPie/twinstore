@@ -98,6 +98,7 @@ def user_prompt(
     basket: list[str],
     money_left: int | None,
     currency: str,
+    situation: str = "",
 ) -> str:
     mood = ", ".join(g for g in (_gloss(cue.state), _gloss(cue.emotion), _gloss(cue.purse), _gloss(cue.company)) if g)
     who = f"A {_AGE.get(persona.age_group, persona.age_group)} {persona.gender.lower()}, {persona.identity}."
@@ -110,6 +111,8 @@ def user_prompt(
     lines.append(f"Shopping style today: {_PATTERN_GLOSS.get(pattern.id, pattern.id.replace('_', ' '))}.")
     if mood:
         lines.append(f"Right now: {mood}.")
+    if situation:
+        lines.append(f"Today: {situation}.")
     lines.append(f"Already in basket: {', '.join(basket) if basket else 'nothing yet'}.")
     if money_left is not None:
         lines.append(f"Still willing to spend: about {display_price(max(0, money_left), currency)}.")

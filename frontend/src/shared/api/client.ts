@@ -306,6 +306,7 @@ export interface RunListItem {
   replicate?: number;
   started_at?: string;
   finished_at?: string;
+  scenario?: string;
   summary?: RunSummary;
   manifest?: RunManifest;
 }
@@ -334,6 +335,9 @@ export interface RunOptions {
   // Model reference for the engine, e.g. "anthropic:claude-haiku-5-5".
   model?: string;
   ensemble?: EnsembleConfig;
+  // Situation: a preset id or a full scenario.
+  scenario_id?: string;
+  scenario?: Scenario;
 }
 
 export interface EnsembleMember {
@@ -469,6 +473,8 @@ export interface RunManifest {
   persona_fingerprint: string;
   package_version: string;
   created_at: string;
+  scenario?: string;
+  scenario_id?: string;
 }
 
 export interface RunDiagnostics {
@@ -714,4 +720,81 @@ export function testModel(model: string, vision: boolean): Promise<ConnectionTes
 
 export function getModels(signal?: AbortSignal): Promise<ModelOption[]> {
   return fetchJson("/api/models", { signal });
+}
+
+// ── Scenarios ───────────────────────────────────────────────────────────────
+
+export type Weather =
+  | "clear" | "cloudy" | "rain" | "heavy_rain" | "snow" | "heatwave" | "cold_snap" | "fine_dust" | "typhoon";
+export type DayType = "weekday" | "weekend" | "public_holiday" | "holiday_season" | "school_vacation";
+export type EventKind =
+  | "festival" | "sports_match" | "concert" | "exam_period" | "payday" | "competitor_opening"
+  | "competitor_closed" | "road_construction" | "marathon" | "conference" | "night_market";
+export type PromotionKind = "discount" | "1+1" | "2+1" | "featured";
+export type Crowding = "quiet" | "normal" | "busy" | "packed";
+
+export interface LocalEvent {
+  kind: EventKind;
+  intensity: number;
+  start_hour: number;
+  end_hour: number;
+  note?: string;
+}
+
+export interface Promotion {
+  target: string;
+  kind: PromotionKind;
+  discount_pct: number;
+  label?: string;
+}
+
+export interface Scenario {
+  id: string;
+  name: string;
+  description: string;
+  weather: Weather;
+  temperature_c: number | null;
+  season: "spring" | "summer" | "autumn" | "winter" | null;
+  day_type: DayType;
+  only_days: number[];
+  traffic_multiplier: number;
+  hourly_traffic: Record<string, number>;
+  crowding: Crowding;
+  events: LocalEvent[];
+  promotions: Promotion[];
+  stockouts: string[];
+  budget_multiplier: number;
+  music: "none" | "calm" | "upbeat";
+  lighting: "dim" | "normal" | "bright";
+  notes: string;
+}
+
+export interface ScenarioEffects {
+  situation: string;
+  traffic: number;
+  traffic_by_hour: Record<string, number>;
+  demand: Record<string, number>;
+  impulse: number;
+  dwell: number;
+  walkout: number;
+  budget: number;
+  quantity: number;
+}
+
+export interface ScenarioPreset {
+  scenario: Scenario;
+  effects: ScenarioEffects;
+}
+
+export function getScenarios(signal?: AbortSignal): Promise<ScenarioPreset[]> {
+  return fetchJson("/api/scenarios", { signal });
+}
+
+export function previewScenario(scenario: Scenario, signal?: AbortSignal): Promise<ScenarioEffects> {
+  return fetchJson("/api/scenarios/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(scenario),
+    signal,
+  });
 }

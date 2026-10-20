@@ -122,8 +122,9 @@ class PatternIntentImpulseEngine:
             context.persona, context.arrival_hour, context.store, day_of_week, context.cue,
             address=context.address, customer_profile=context.customer_profile, currency=currency,
         )
+        situation = f"\n\n## 오늘의 상황 (Situation)\n{context.situation}" if context.situation else ""
         selection = await self._llm.generate_structured_async(
-            stage1_pattern.PatternSelectionResponse, stage1_system, stage1_user, seed=stage_seed("stage1"), route=context.persona.id,
+            stage1_pattern.PatternSelectionResponse, stage1_system, stage1_user + situation, seed=stage_seed("stage1"), route=context.persona.id,
         )
         pattern = pattern_map.get(selection.pattern_id, fallback)
         grammar_override = selection.grammar_override
@@ -136,7 +137,7 @@ class PatternIntentImpulseEngine:
             pattern=pattern, grammar_override=grammar_override, currency=currency,
         )
         intent = await self._llm.generate_structured_async(
-            IntentResponse, stage2_system, stage2_user, seed=stage_seed("stage2"), route=context.persona.id,
+            IntentResponse, stage2_system, stage2_user + situation, seed=stage_seed("stage2"), route=context.persona.id,
         )
         for a in intent.actions:
             a.origin = "planned"
@@ -168,7 +169,7 @@ class PatternIntentImpulseEngine:
                 visibility=visibility, currency=currency,
             )
             impulse = await self._llm.generate_structured_async(
-                ImpulseResponse, stage3_system, stage3_user, seed=stage_seed("stage3"), route=context.persona.id,
+                ImpulseResponse, stage3_system, stage3_user + situation, seed=stage_seed("stage3"), route=context.persona.id,
             )
         else:
             impulse = ImpulseResponse()

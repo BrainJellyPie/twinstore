@@ -22,11 +22,12 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
 import { useSimulate } from "@/shared/mutations/useSimulate";
-import type { EngineType, RunOptions } from "@/shared/api/client";
+import type { EngineType, RunOptions, Scenario } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 
 import { useEngines } from "../hooks";
 import { ModelPicker, type ModelChoice } from "./ModelPicker";
+import { ScenarioEditor } from "./ScenarioEditor";
 
 export interface RunLauncherDialogProps {
   open: boolean;
@@ -73,6 +74,7 @@ function LauncherForm({
   const [replicate, setReplicate] = useState(0);
   const [preview, setPreview] = useState(true);
   const [modelChoice, setModelChoice] = useState<ModelChoice>({ kind: "default" });
+  const [scenario, setScenario] = useState<Scenario | null>(null);
 
   const isPreview = locked || preview;
   const customers = sampleMode === "all" ? personaCount : Math.max(1, Math.min(sampleSize, personaCount));
@@ -98,6 +100,7 @@ function LauncherForm({
       model: modelChoice.kind === "single" ? modelChoice.model : undefined,
       ensemble:
         modelChoice.kind === "ensemble" && (modelChoice.ensemble?.members.length ?? 0) > 0 ? modelChoice.ensemble : undefined,
+      scenario: scenario ?? undefined,
     };
     simulate.mutate({ projectId, setupId, options }, { onSuccess: () => onOpenChange(false) });
   };
@@ -164,6 +167,8 @@ function LauncherForm({
           </label>
         ))}
       </RadioGroup>
+
+      <ScenarioEditor value={scenario} onChange={setScenario} />
 
       {usesLlm && (
         <ModelPicker

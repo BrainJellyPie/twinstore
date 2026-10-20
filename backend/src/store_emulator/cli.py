@@ -19,6 +19,8 @@ from pathlib import Path
 from store_emulator.application.config import local_config
 from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
+from store_emulator.application.scenarios import PRESETS as SCENARIO_PRESETS
+from store_emulator.application.scenarios import prepare_inputs
 from store_emulator.application.simulation import (
     RunOptions,
     apply_options,
@@ -35,6 +37,7 @@ from store_emulator.domain.analysis import ComparisonReport
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig, EnsembleMember
+from store_emulator.domain.scenario import Scenario
 from store_emulator.domain.result import SimulationSummary
 from store_emulator.domain.store import Store
 from store_emulator.engine.analysis.compare import compare_runs
@@ -69,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
     fid.add_argument("run", type=Path)
     fid.add_argument("pos", type=Path, help="POS export (.csv / .xlsx)")
     fid.add_argument("--json", type=Path)
+
+    sub.add_parser("scenarios", help="list scenario presets")
 
     summ = sub.add_parser("summary", help="print the KPIs of a run directory")
     summ.add_argument("run", type=Path)
@@ -116,6 +121,9 @@ def main(argv: list[str] | None = None) -> int:
             args.json.write_text(report.model_dump_json(indent=2))
     elif args.command == "summary":
         _print_summary(SimulationSummary.model_validate(read_json(args.run / "output" / "summary.json")))
+    elif args.command == "scenarios":
+        for s in SCENARIO_PRESETS:
+            print(f"  {s.id:<20} {s.name:<34} {s.description}")
     return 0
 
 
@@ -137,6 +145,7 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--ensemble", help='comma-separated "model[=weight]" list, e.g. '
                                        '"openai:gpt-6-luna=2,anthropic:claude-haiku-5-5,qwen:qwen3.7-plus"')
     p.add_argument("--ensemble-mode", choices=["mixture", "vote"], default="mixture")
+    p.add_argument("--scenario", help="scenario preset id (see `parastore scenarios`) or path to a scenario JSON file")
     p.add_argument("--api-base", help="endpoint override for a raw LiteLLM model id (vLLM, llama.cpp server)")
     p.add_argument("--cache-dir", help="LLM response cache directory")
     p.add_argument("--currency", help="ISO 4217 code of the price unit (USD, KRW, ...)")
@@ -155,14 +164,25 @@ def _parse_ensemble(spec: str | None, mode: str) -> EnsembleConfig | None:
     return EnsembleConfig(members=members, mode="vote" if mode == "vote" else "mixture")
 
 
+def _scenario_option(spec: str | None) -> tuple[str | None, Scenario | None]:
+    if not spec:
+        return None, None
+    path = Path(spec)
+    if path.suffix == ".json" and path.exists():
+        return None, Scenario.model_validate(read_json(path))
+    return spec, None
+
+
 def _config(args: argparse.Namespace) -> SimulationConfig:
     config = local_config()
+    scenario_id, scenario = _scenario_option(args.scenario)
     if args.currency:
         config = config.model_copy(update={"currency": args.currency.upper()})
     config = apply_options(config, RunOptions(
         engine_type=EngineType(args.engine) if args.engine else None,
         seed=args.seed, exposure_model=args.exposure_model, route_ordering=args.route_ordering,
         model=args.model, ensemble=_parse_ensemble(args.ensemble, args.ensemble_mode),
+        scenario_id=scenario_id, scenario=scenario,
     ))
     llm_updates: dict[str, object] = {}
     if args.api_base:
@@ -197,6 +217,7 @@ def _simulate_replicates(
     store: Store, personas: list[Persona], config: SimulationConfig, args: argparse.Namespace, out: Path,
 ) -> None:
     personas = subsample_personas(personas, args.max_customers, config.seed)
+    store, personas = prepare_inputs(config, store, personas)
     for rep in range(args.replicates):
         cfg = config.model_copy(update={"replicate": rep})
         aggregated, customers, runner = asyncio.run(run_simulation(cfg, store, personas, max_concurrent=args.concurrency))

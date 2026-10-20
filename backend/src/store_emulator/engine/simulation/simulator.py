@@ -13,6 +13,7 @@ from store_emulator.domain.result import AggregatedResult, FailedCustomer
 from store_emulator.domain.runner import ProgressCallback
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import PathFinder, stable_seed
+from store_emulator.engine.scenario import compile_scenario
 from store_emulator.engine.validation import validate, clear_blocked_slots, log_cleared
 from .aggregator import aggregate
 from .customer_executor import execute_decision
@@ -68,6 +69,7 @@ class PerCustomerSimulationRunner:
         self.pathfinder = pathfinder
         self.cue_sampler = cue_sampler
         self.behavior_patterns = behavior_patterns
+        self._scenario = compile_scenario(config.scenario) if config.scenario is not None else None
 
     def get_engine_metadata(self) -> dict[str, object]:
         if isinstance(self.engine, EngineMetadataSource):
@@ -147,8 +149,16 @@ class PerCustomerSimulationRunner:
                             customer_profile=customer_profile,
                             # A retry must not replay the exact sampling that just failed.
                             seed=customer_seed if attempt == 0 else stable_seed(customer_seed, "retry", attempt),
+                            situation=self._scenario.situation if self._scenario else "",
                         )
                         decision = await self.engine.decide_actions(context)
+                        if self._scenario is not None and self._scenario.dwell != 1.0:
+                            # Crowding, weather, music: people linger or hurry everywhere in the store.
+                            factor = self._scenario.dwell
+                            decision.actions = [
+                                a.model_copy(update={"dwell": max(1, round(a.dwell * factor))}) if a.dwell else a
+                                for a in decision.actions
+                            ]
                         result = execute_decision(
                             store, entry.persona_id, entry.day, entry.arrival_time,
                             decision, self.pathfinder, self.config.block_move_sec,

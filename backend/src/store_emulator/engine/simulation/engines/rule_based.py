@@ -31,6 +31,7 @@ from store_emulator.domain.types import (
     TokenUsage,
     stable_seed,
 )
+from store_emulator.engine.scenario import ScenarioEffects, compile_scenario, item_categories, words_categories
 from store_emulator.engine.routing.route_builder import (
     build_journey,
     entrance_position,
@@ -115,6 +116,7 @@ class RuleBasedEngine:
     def __init__(self, pathfinder: PathFinder, config: SimulationConfig):
         self._pathfinder = pathfinder
         self._config = config
+        self._fx = compile_scenario(config.scenario) if config.scenario is not None else ScenarioEffects()
         # Tokenized catalog per store object (one store per run; a run calls us per customer).
         self._catalog: tuple[Store, list[tuple[Rack, Slot, SlotItem, set[str], set[str]]]] | None = None
 
@@ -160,12 +162,13 @@ class RuleBasedEngine:
                 action=Action.WANDER, dwell=rng.randint(20, 60), description="wanders the aisles",
             ))
 
-        walk_out = pattern.allow_no_purchase and rng.random() < params.walkout_prob
+        walk_out = pattern.allow_no_purchase and rng.random() < min(0.9, params.walkout_prob * self._fx.walkout)
         if pattern.max_products > 0 and not walk_out:
             for category in persona.preferred_categories:
                 if len(buys) >= pattern.max_products:
                     break
-                if rng.random() > params.planned_hit_prob:
+                hit_prob = params.planned_hit_prob * self._fx.demand_for(words_categories(category)) ** 0.5
+                if rng.random() > min(0.98, hit_prob):
                     continue
                 pick = self._pick_item(store, category, budget - spend, chosen, rng)
                 if pick is None:
@@ -211,7 +214,8 @@ class RuleBasedEngine:
             if item is None or (pattern.id == "deal_hunting" and not item.promo):
                 continue
             promo = params.promo_multiplier if item.promo else 1.0
-            p_buy = min(0.95, params.impulse_base * seen.visibility * promo * factor)
+            situational = self._fx.impulse * self._fx.demand_for(item_categories(seen.rack, item))
+            p_buy = min(0.95, params.impulse_base * seen.visibility * promo * factor * situational)
             p_look = min(0.98, p_buy * (1.0 + params.browse_only_ratio))
             draw = rng.random()
             if draw < p_buy and self.can_buy_more(plan, out.buys, item.price):
@@ -281,7 +285,8 @@ class RuleBasedEngine:
                 continue
             fit = 1.0 if item.price <= remaining else 0.15
             candidates.append((rack, slot, item))
-            weights.append(attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0))
+            weights.append(attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0)
+                           * self._fx.demand_for(item_categories(rack, item)))
         if not candidates:
             return None
         return rng.choices(candidates, weights=weights, k=1)[0]
@@ -304,6 +309,8 @@ class RuleBasedEngine:
         if tile is None:
             return []
         quantity = 2 if pattern.id == "routine_refill" and rng.random() < 0.4 else 1
+        if self._fx.quantity > 1.0 and rng.random() < self._fx.quantity - 1.0:
+            quantity += 1  # stocking up (typhoon, snow)
         out: list[CustomerAction] = []
         params = self._config.engines.rule_based
         if force_browse or pattern.browse_required_before_buy or rng.random() < params.browse_before_buy_prob:

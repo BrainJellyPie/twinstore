@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, SecretStr
 
 from .providers import EnsembleConfig
 from .rack import RackType
+from .scenario import Scenario
 
 
 class EngineType(StrEnum):
@@ -155,6 +156,8 @@ class SimulationConfig(BaseModel):
     currency: str = "USD"
     # Several models as one consumer population for the run's LLM/VLM engine (None = single model).
     ensemble: EnsembleConfig | None = None
+    # Situation of the simulated day(s): weather, events, promotions, stock-outs, crowding …
+    scenario: Scenario | None = None
 
     def dwell_for(self, rack_type: RackType) -> DwellRange:
         return self.dwell.get(rack_type, DwellRange(min=5, max=30))
