@@ -1025,3 +1025,39 @@ export function applyOptimization(projectId: string, jobId: string): Promise<{ i
     body: JSON.stringify({}),
   });
 }
+
+// ── Store-format templates ──────────────────────────────────────────────────
+
+export interface StoreTemplate {
+  id: string;
+  name: string;
+  description: string;
+  store_type: string;
+  grid: [number, number];
+  racks: number;
+  skus: number;
+  open_hours: [number, number];
+}
+
+export interface GenerateLayoutRequest {
+  template_id: string;
+  seed: number;
+  currency: string;
+  style?: "aisles" | "loop" | null;
+  name?: string;
+}
+
+export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]> {
+  return fetchJson("/api/store-templates", { signal });
+}
+
+export function previewStoreTemplate(
+  templateId: string, seed: number, currency: string, style: "aisles" | "loop" | null, signal?: AbortSignal,
+): Promise<Store> {
+  const q = new URLSearchParams({ seed: String(seed), currency, ...(style ? { style } : {}) });
+  return fetchJson(`/api/store-templates/${templateId}/preview?${q}`, { signal });
+}
+
+export function generateLayout(projectId: string, body: GenerateLayoutRequest): Promise<SetupSummaryShort> {
+  return fetchJson(`/api/projects/${projectId}/setups/generate`, { method: "POST", body: JSON.stringify(body) });
+}

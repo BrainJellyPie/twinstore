@@ -1,12 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createSetup, type SetupSummaryShort } from "@/shared/api/client";
+import { createSetup, generateLayout, type SetupSummaryShort } from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
 
-// "import" clones from a parent setup; "empty" creates a blank setup.
+// "import" clones from a parent setup; "empty" creates a blank setup; "template" generates a
+// complete store from a retail-format template.
 type CreateLayoutSource =
   | { kind: "import"; parentSetupId: string }
-  | { kind: "empty" };
+  | { kind: "empty" }
+  | { kind: "template"; templateId: string; seed: number; currency: string; style: "aisles" | "loop" | null };
 
 interface Params {
   projectId: string;
@@ -20,11 +22,15 @@ export function useCreateLayout() {
 
   return useMutation<SetupSummaryShort, Error, Params>({
     mutationFn: ({ projectId, name, source }) =>
-      createSetup(projectId, {
-        mode: source.kind === "import" ? "racks_and_items" : "empty",
-        source_setup_id: source.kind === "import" ? source.parentSetupId : null,
-        name,
-      }),
+      source.kind === "template"
+        ? generateLayout(projectId, {
+            template_id: source.templateId, seed: source.seed, currency: source.currency, style: source.style, name,
+          })
+        : createSetup(projectId, {
+            mode: source.kind === "import" ? "racks_and_items" : "empty",
+            source_setup_id: source.kind === "import" ? source.parentSetupId : null,
+            name,
+          }),
     onSuccess: (newSetup, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.setups(vars.projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.project(vars.projectId) });

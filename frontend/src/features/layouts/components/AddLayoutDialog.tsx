@@ -29,9 +29,10 @@ import {
 import { cn } from "@/shared/utils/cn";
 
 import { useCreateLayout } from "../hooks/useCreateLayout";
+import { TemplatePicker, type TemplateChoice } from "./TemplatePicker";
 import type { Layout } from "../hooks/useLayouts";
 
-type Approach = "import" | "empty";
+type Approach = "import" | "empty" | "template";
 
 const labelClass = "text-sm font-medium";
 
@@ -62,6 +63,7 @@ export function AddLayoutDialog({
   const [selectedParentId, setSelectedParentId] = useState<string>(() =>
     resolveDefaultParent(parentSetupId, layouts),
   );
+  const [template, setTemplate] = useState<TemplateChoice>({ templateId: "urban_cvs", seed: 0, currency: "USD", style: null });
 
   // Restore defaults on each open; also reset the prior mutation's error state.
   useEffect(() => {
@@ -78,7 +80,7 @@ export function AddLayoutDialog({
   const canSubmit =
     trimmed.length > 0 &&
     !createLayout.isPending &&
-    (approach === "empty" || selectedParentId.length > 0);
+    (approach !== "import" || selectedParentId.length > 0);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -90,7 +92,9 @@ export function AddLayoutDialog({
         source:
           approach === "import"
             ? { kind: "import", parentSetupId: selectedParentId }
-            : { kind: "empty" },
+            : approach === "template"
+              ? { kind: "template", ...template }
+              : { kind: "empty" },
       },
       {
         onSuccess: () => {
@@ -102,7 +106,7 @@ export function AddLayoutDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className={approach === "template" ? "sm:max-w-[600px]" : "sm:max-w-[420px]"}>
         <DialogHeader>
           <DialogTitle>Add layout</DialogTitle>
         </DialogHeader>
@@ -178,6 +182,18 @@ export function AddLayoutDialog({
                 />
                 Build from scratch
               </label>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm" htmlFor="add-layout-approach-template">
+                  <RadioGroupItem
+                    id="add-layout-approach-template"
+                    value="template"
+                    disabled={createLayout.isPending}
+                  />
+                  Generate a store from a template
+                </label>
+                {approach === "template" && <TemplatePicker value={template} onChange={setTemplate} />}
+              </div>
             </RadioGroup>
           </div>
 
