@@ -25,7 +25,7 @@ from store_emulator.application.simulation import (
     run_simulation,
     subsample_personas,
 )
-from store_emulator.application.storage.io import read_json
+from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.application.storage.runs import (
     load_run_results,
     load_run_store,
@@ -149,7 +149,12 @@ def _config(args: argparse.Namespace) -> SimulationConfig:
     if args.cache_dir:
         llm_updates["cache_dir"] = args.cache_dir
     if llm_updates:
-        config = config.model_copy(update={"llm": config.llm.model_copy(update=llm_updates)})
+        if args.engine == EngineType.VLM_GLANCE.value:
+            vlm = config.engines.vlm_glance
+            vlm = vlm.model_copy(update={"llm": vlm.llm.model_copy(update=llm_updates)})
+            config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
+        else:
+            config = config.model_copy(update={"llm": config.llm.model_copy(update=llm_updates)})
     updates: dict[str, object] = {}
     if args.currency:
         updates["currency"] = args.currency.upper()
@@ -178,9 +183,12 @@ def _simulate_replicates(
     personas = subsample_personas(personas, args.max_customers, config.seed)
     for rep in range(args.replicates):
         cfg = config.model_copy(update={"replicate": rep})
-        aggregated, customers, _ = asyncio.run(run_simulation(cfg, store, personas, max_concurrent=args.concurrency))
+        aggregated, customers, runner = asyncio.run(run_simulation(cfg, store, personas, max_concurrent=args.concurrency))
         target = out / f"rep_{rep}"
         save_run_dir(target, aggregated, customers, store, personas, cfg, BEHAVIOR_PATTERNS)
+        meta = runner.get_engine_metadata()
+        if meta:
+            write_json(target / "output" / f"{cfg.engine_type.value}_meta.json", meta)
         print(f"\n=== {target} (engine={cfg.engine_type.value}, seed={cfg.seed}, replicate={rep}) ===")
         _print_summary(aggregated.summary)
         d = aggregated.diagnostics

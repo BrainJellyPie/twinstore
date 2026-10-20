@@ -2,11 +2,13 @@
 //
 // - Rule-based runs finish in seconds and cost nothing — ideal while iterating on a layout.
 // - LLM runs are realistic but cost ~3 calls per customer; a sample keeps pilots cheap.
+// - Vision runs ask a (local, CPU) vision-language model about 1–3 rendered shelves per
+//   customer; seconds per call, so they default to a small sample.
 // - The same seed on two layouts makes them see the same customers in the same moods,
 //   which is what makes the A/B compare view statistically sharp.
 
 import { useState, type FormEvent } from "react";
-import { Bot, FlaskConical, Zap } from "lucide-react";
+import { Bot, Eye, FlaskConical, Zap } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -48,6 +50,7 @@ export function RunLauncherDialog(props: RunLauncherDialogProps) {
 }
 
 const SAMPLE_DEFAULT = 300;
+const VISION_SAMPLE_DEFAULT = 30;
 
 function LauncherForm({
   onOpenChange,
@@ -71,7 +74,16 @@ function LauncherForm({
 
   const isPreview = locked || preview;
   const customers = sampleMode === "all" ? personaCount : Math.max(1, Math.min(sampleSize, personaCount));
-  const usesLlm = engines?.find((e) => e.engine_type === engine)?.uses_llm ?? engine === "pattern_intent_impulse";
+  const usesLlm = engines?.find((e) => e.engine_type === engine)?.uses_llm ?? engine !== "rule_based";
+  const modelOf = (type: EngineType) => engines?.find((e) => e.engine_type === type)?.model;
+
+  const chooseEngine = (next: EngineType) => {
+    setEngine(next);
+    if (next === "vlm_glance" && personaCount > VISION_SAMPLE_DEFAULT) {
+      setSampleMode("sample");
+      setSampleSize(VISION_SAMPLE_DEFAULT);
+    }
+  };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -85,7 +97,7 @@ function LauncherForm({
     simulate.mutate({ projectId, setupId, options }, { onSuccess: () => onOpenChange(false) });
   };
 
-  const engineCards: { value: EngineType; title: string; body: string; icon: typeof Bot }[] = [
+  const engineCards: { value: EngineType; title: string; body: string; icon: typeof Bot; wide?: boolean }[] = [
     {
       value: "rule_based",
       title: "Rule-based preview",
@@ -95,10 +107,19 @@ function LauncherForm({
     {
       value: "pattern_intent_impulse",
       title: "LLM shoppers",
-      body: engines?.find((e) => e.engine_type === "pattern_intent_impulse")?.model
-        ? `Realistic decisions via ${engines.find((e) => e.engine_type === "pattern_intent_impulse")!.model}.`
+      body: modelOf("pattern_intent_impulse")
+        ? `Realistic decisions via ${modelOf("pattern_intent_impulse")}.`
         : "Realistic decisions; consumes LLM API calls.",
       icon: Bot,
+    },
+    {
+      value: "vlm_glance",
+      title: "Vision shoppers",
+      body: `A vision-language model looks at each shelf the shopper passes and picks what catches the eye${
+        modelOf("vlm_glance") ? ` (${modelOf("vlm_glance")})` : ""
+      }. Runs on a local model — keep the sample small.`,
+      icon: Eye,
+      wide: true,
     },
   ];
 
@@ -115,16 +136,17 @@ function LauncherForm({
 
       <RadioGroup
         value={engine}
-        onValueChange={(v: string) => setEngine(v as EngineType)}
+        onValueChange={(v: string) => chooseEngine(v as EngineType)}
         className="grid grid-cols-2 gap-2"
         aria-label="Simulation engine"
       >
-        {engineCards.map(({ value, title, body, icon: Icon }) => (
+        {engineCards.map(({ value, title, body, icon: Icon, wide }) => (
           <label
             key={value}
             htmlFor={`engine-${value}`}
             className={cn(
               "flex cursor-pointer flex-col gap-1.5 rounded-lg border p-3 text-xs transition-colors",
+              wide && "col-span-2",
               engine === value ? "border-primary bg-primary/5" : "hover:bg-muted/50",
             )}
           >
@@ -201,7 +223,13 @@ function LauncherForm({
       </label>
 
       <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
-        {usesLlm ? (
+        {engine === "vlm_glance" ? (
+          <>
+            ≈ <span className="font-medium tabular-nums">{customers.toLocaleString()}–{(customers * 3).toLocaleString()}</span>{" "}
+            vision-model calls for {customers.toLocaleString()} customers (1–3 shelf glances each). On a CPU-only
+            server each glance takes several seconds.
+          </>
+        ) : usesLlm ? (
           <>
             ≈ <span className="font-medium tabular-nums">{(customers * 3).toLocaleString()}</span> LLM calls
             for {customers.toLocaleString()} customers (3 per customer). Identical prompts are served from the

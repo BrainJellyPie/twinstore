@@ -190,6 +190,43 @@ uv run parastore fidelity /tmp/runs/A/rep_0 pos.csv        # Spearman, JS, NDCG 
 uv run parastore summary /tmp/runs/A/rep_0
 ```
 
+### Vision shoppers on a CPU (no GPU, no API key)
+
+The `vlm_glance` engine plans visits like the rule-based engine, then shows a
+vision-language model (VLM) an image of the shelves the shopper walks past —
+product names, shelf-edge price tags, promotion ribbons and numbered badges.
+In the persona's shoes, the model names the product most likely to catch the eye
+and rates the temptation 0–10; a seeded draw (`buy_scale` × interest × shelf-level
+weight) turns that into a purchase, a look, or nothing. The model decides *what*
+tempts a shopper, the calibratable `buy_scale` decides *how often*. Any LiteLLM
+vision model works; the defaults target a small model served locally by
+[llama.cpp](https://github.com/ggml-org/llama.cpp):
+
+```bash
+# Qwen3.5-0.8B (Q4_K_M) + its vision projector, ~1 GB RAM, 2 CPU threads
+llama-server -m Qwen3.5-0.8B-Q4_K_M.gguf --mmproj mmproj-Qwen3.5-0.8B-F16.gguf \
+    --port 8081 -c 8192 -np 1 --reasoning off --image-max-tokens 512 --cache-ram 256
+
+cd backend
+uv run parastore simulate --run sample_data/proj_67916afd/runs/run_ab0039 \
+    --engine vlm_glance --max-customers 30 --cache-dir .vlm_cache --out /tmp/runs/V
+```
+
+Every glance is logged with the model's answer, the product it resolved to and
+the outcome in `output/vlm_glance_meta.json`, and summarized in the dashboard.
+Measured on 2 vCPUs without a GPU (512 px shelf images, ~1.4 glances per
+customer with the default gating):
+
+| Model (Q4_K_M + F16 projector) | s / glance | Reads name / price of a numbered product |
+| :--- | ---: | :--- |
+| Qwen3.5-0.8B | ~9.5 | 58–63% / 50–69% |
+| Qwen3.5-2B | ~22.5 | 88–94% / 100% |
+
+So use customer samples (30 customers ≈ 5 min with 0.8B, ≈ 15 min with 2B);
+`--cache-dir` makes reruns free. Both models favor products in the top row
+of a shelf image (2B: ~70% of picks), so treat VLM picks as a model to be
+calibrated, not as ground truth.
+
 ### Configuration
 
 Defaults live in `backend/src/store_emulator/application/config.py`; these
@@ -200,10 +237,13 @@ environment variables override them without editing code:
 | `PARASTORE_LLM_MODEL`, `PARASTORE_LLM_API_BASE` | LiteLLM model id and optional OpenAI-compatible endpoint |
 | `PARASTORE_LLM_SEED`, `PARASTORE_LLM_CACHE_DIR` | per-call seed; on-disk response cache for repeatable LLM runs |
 | `PARASTORE_LLM_TEMPERATURE`, `PARASTORE_LLM_MAX_TOKENS`, `PARASTORE_LLM_TIMEOUT_SEC` | sampling and limits |
-| `PARASTORE_ENGINE` | default engine: `pattern_intent_impulse` (LLM) or `rule_based` |
+| `PARASTORE_ENGINE` | default engine: `pattern_intent_impulse` (LLM), `rule_based` or `vlm_glance` (vision) |
 | `PARASTORE_SEED`, `PARASTORE_CURRENCY` | default run seed; ISO 4217 currency of prices (e.g. `KRW`) |
 | `PARASTORE_EXPOSURE_MODEL`, `PARASTORE_ROUTE_ORDERING` | `visibility`/`adjacency`; `planned`/`nearest` |
 | `PARASTORE_BUDGET_TOLERANCE` | impulse-spend cap as a multiple of the persona budget (`none` disables) |
+| `PARASTORE_VLM_MODEL`, `PARASTORE_VLM_API_BASE` | vision model for `vlm_glance` (default `openai/local-vlm` at `http://127.0.0.1:8081/v1`) |
+| `PARASTORE_VLM_MAX_GLANCES`, `PARASTORE_VLM_GLANCE_POLICY`, `PARASTORE_VLM_LOOK_BASE` | shelves considered per customer; `gated`/`all`; look probability |
+| `PARASTORE_VLM_IMAGE_WIDTH`, `PARASTORE_VLM_CACHE_DIR`, `PARASTORE_VLM_SEED` | shelf image width (px); response cache; per-call seeds |
 
 See [`CHANGELOG.md`](./CHANGELOG.md) for what changed in v0.2 and why.
 

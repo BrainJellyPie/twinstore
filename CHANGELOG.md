@@ -66,6 +66,30 @@ buy-placement invariant violations).
   on 2 CPU cores. Use it for instant layout previews, as a research baseline,
   and for deterministic tests.
 
+- `vlm_glance` (new, vision-language shoppers): the rule-based planner decides
+  the planned visits; impulse decisions come from a VLM that is shown a rendered
+  image of each well-seen rack face along the route (`engine/perception`: names,
+  price tags, promotion ribbons, numbered badges, randomized numbering). The
+  model answers as the persona (mood, basket, money left) with a
+  schema-constrained JSON reply naming the most tempting product and an
+  interest score 0–10; answers are mapped back by printed name first and badge
+  number second. A seeded per-face draw turns the score into a buy
+  (`buy_scale` × interest/10 × shelf-level weight), a look, or nothing, so small
+  models' tendency to always say "buy" cannot set the purchase rate. Runs on a
+  CPU with a small local model served by llama.cpp
+  (`structured_output="json_schema"` turns the schema into a grammar, so even
+  sub-1B models answer validly). Every glance is saved to
+  `output/vlm_glance_meta.json` and summarized in the dashboard.
+  Measured on 2 vCPUs (same 30 customers, seed 1, 41 identical glances):
+  Qwen3.5-0.8B ≈ 9.5 s/glance, Qwen3.5-2B ≈ 22.5 s/glance, no failed or
+  hallucinated answers; the two models picked the same product in 32% of
+  glances, and the 2B model put 71% of its picks in the top shelf row (54% in
+  the left column) — a reading-order bias to calibrate or study, not a shopper
+  fact. Reading probe (name / price of a numbered product, 16 shelves):
+  0.8B 63% / 69% at 640 px, 2B 94% / 100% at 512 px. Planner and impulse step of `RuleBasedEngine`
+  are now separate methods (results unchanged) so engines can swap only the
+  impulse step.
+
 ### 4. Analytics
 
 `summary.json` keeps every v0.1 field and adds: buyers, conversion rate, units

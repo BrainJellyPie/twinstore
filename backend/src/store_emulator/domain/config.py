@@ -9,6 +9,7 @@ from .rack import RackType
 class EngineType(StrEnum):
     PATTERN_INTENT_IMPULSE = "pattern_intent_impulse"
     RULE_BASED = "rule_based"
+    VLM_GLANCE = "vlm_glance"
 
 
 # How exposure ("what the shopper saw") is computed along the walked route.
@@ -20,6 +21,18 @@ type ExposureModel = Literal["adjacency", "visibility"]
 # - planned: keep the shopper's own planned order; insert impulse visits at the cheapest detour.
 # - nearest: legacy greedy nearest-neighbor reordering from the entrance.
 type RouteOrdering = Literal["planned", "nearest"]
+
+# How structured output is requested from the model.
+# - json: ask for a JSON object (works with every LiteLLM provider).
+# - json_schema: send the JSON schema as response_format; OpenAI-compatible servers such as
+#   llama.cpp and vLLM compile it into a grammar, so even sub-1B models emit valid output.
+type StructuredOutput = Literal["json", "json_schema"]
+
+# When the VLM shopper is shown a shelf.
+# - gated: the shopper looks at a passed rack face with probability look_base × visibility ×
+#   pattern factor (calibratable rate); the VLM decides what catches the eye and whether to buy.
+# - all: the VLM sees every one of the max_glances most visible faces and decides alone.
+type GlancePolicy = Literal["gated", "all"]
 
 
 class LLMConfig(BaseModel):
@@ -33,6 +46,7 @@ class LLMConfig(BaseModel):
     timeout_sec: float = 600.0
     # Directory for the content-addressed response cache. None disables caching.
     cache_dir: str | None = None
+    structured_output: StructuredOutput = "json"
 
 
 class DwellRange(BaseModel):
@@ -80,9 +94,40 @@ class RuleBasedConfig(BaseModel):
     }
 
 
+class VLMGlanceConfig(BaseModel):
+    """Vision-language shopper: rule-based planning, impulse decisions from rendered shelf images.
+
+    The default endpoint is a local llama.cpp server (OpenAI-compatible) running a small VLM
+    on CPU, e.g. `llama-server -m Qwen3.5-0.8B-Q4_K_M.gguf --mmproj mmproj-...gguf --port 8081`.
+    """
+    llm: LLMConfig = LLMConfig(
+        model="openai/local-vlm",
+        api_base="http://127.0.0.1:8081/v1",
+        temperature=0.3,
+        max_tokens=160,
+        timeout_sec=900.0,
+        structured_output="json_schema",
+    )
+    max_glances: int = Field(default=3, ge=0, le=12)       # most visible rack faces considered per customer
+    glance_policy: GlancePolicy = "gated"
+    look_base: float = Field(default=0.6, ge=0.0, le=1.0)  # gated: P(look) at visibility 1, pattern factor 1
+    image_width: int = Field(default=512, ge=256, le=2048)  # 512 read best on ≤2B models (see CHANGELOG)
+    # Randomize the number badges per glance so a model's preference for low numbers
+    # shows up as noise instead of as a fake product preference.
+    shuffle_marks: bool = True
+    # The VLM picks the most tempting product and rates interest 0–10; then
+    #   P(buy)  = buy_scale × interest/10 × w(level),  P(look) = interest/10 × w(level)
+    # with w = perception.level_attention when weight_by_level (eye level 1.0, top 0.7, …).
+    # buy_scale is the calibration knob for the impulse-purchase rate; w(level) also offsets the
+    # strong top-row preference small VLMs show on shelf images.
+    buy_scale: float = Field(default=0.5, ge=0.0, le=1.0)
+    weight_by_level: bool = True
+
+
 class EngineConfigs(BaseModel):
     pattern_intent_impulse: PatternIntentImpulseConfig = PatternIntentImpulseConfig()
     rule_based: RuleBasedConfig = RuleBasedConfig()
+    vlm_glance: VLMGlanceConfig = VLMGlanceConfig()
 
 
 class SimulationConfig(BaseModel):
@@ -111,4 +156,6 @@ class SimulationConfig(BaseModel):
     def llm_for(self, engine_type: EngineType) -> LLMConfig:
         if engine_type == EngineType.PATTERN_INTENT_IMPULSE:
             return self.engines.pattern_intent_impulse.llm or self.llm
+        if engine_type == EngineType.VLM_GLANCE:
+            return self.engines.vlm_glance.llm
         return self.llm

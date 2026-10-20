@@ -28,6 +28,7 @@ Path calculation (A*) and timeline conversion are handled by the shared executor
 engines/
 ├── __init__.py                    ← engine registry (EngineType → module/class mapping)
 ├── rule_based.py                  ← heuristic engine, no LLM (single file)
+├── vlm_glance/                    ← vision-language shopper (rule planner + VLM impulse)
 └── pattern_intent_impulse/        ← PII engine (subpackage, uses LLM)
     ├── __init__.py                ← PatternIntentImpulseEngine export
     ├── engine.py                  ← engine body
@@ -288,6 +289,20 @@ uv run pyright src/   # type check 0 errors
 |--------|----------|----------|-----------------|
 | `pattern_intent_impulse` | `engines/pattern_intent_impulse/` | per-customer | 3-stage LLM pipeline: pattern selection → intent generation → impulse response. Exposure is computed on the planned route (`perceive_products`, visibility scores passed to stage 3). Stage 2 uses a store-level cacheable system prompt |
 | `rule_based` | `engines/rule_based.py` | per-customer | No LLM. Pattern draw, category-matched planned buys, visibility-driven impulse buys and browse-only stops. Parameters in `RuleBasedConfig`; deterministic given `context.seed` |
+| `vlm_glance` | `engines/vlm_glance/` | per-customer | `RuleBasedEngine` planner + VLM impulse step: renders each well-seen rack face (`engine/perception/shelf_render.py`) and asks a vision model what catches the persona's eye. Config in `VLMGlanceConfig`; exports every glance through `metadata()` |
+
+### Reusing the rule-based planner
+
+`RuleBasedEngine.decide_actions` is `_plan()` → `await _impulse()` → `_finish()`.
+Subclass it and override only `_impulse(context, plan)` to change how unplanned
+purchases happen; use `can_buy_more`, `add_impulse_buy` and `add_impulse_look`
+so budget, item caps and action shapes stay identical across engines.
+
+### Run-level metadata
+
+An engine that implements `metadata() -> dict[str, object]`
+(`domain.engine.EngineMetadataSource`) gets it saved as
+`output/<engine_type>_meta.json` by the server and the CLI.
 
 ### Exposure helpers
 

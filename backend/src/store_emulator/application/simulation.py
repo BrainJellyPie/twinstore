@@ -266,6 +266,31 @@ def get_run_output(pid: str, run_id: str, filename: str) -> Any:
     return read_json(path)
 
 
+def engine_meta_summary(pid: str, run_id: str, *, max_examples: int = 8) -> dict[str, object] | None:
+    """Engine-specific run metadata without its per-row records (those can be thousands of rows),
+    plus a few example rows where something happened. None when the engine saved none."""
+    try:
+        manifest: object = get_run_output(pid, run_id, "manifest.json")
+    except FileNotFoundError:
+        return None
+    engine_type = cast(dict[str, object], manifest).get("engine_type") if isinstance(manifest, dict) else None
+    if not isinstance(engine_type, str) or not engine_type:
+        return None
+    try:
+        raw: object = get_run_output(pid, run_id, f"{engine_type}_meta.json")
+    except FileNotFoundError:
+        return None
+    if not isinstance(raw, dict):
+        return None
+    meta = cast(dict[str, object], raw)
+    summary: dict[str, object] = {k: v for k, v in meta.items() if k != "records"}
+    records = meta.get("records")
+    if isinstance(records, list):
+        rows = [cast(dict[str, object], r) for r in cast(list[object], records) if isinstance(r, dict)]
+        summary["examples"] = [r for r in rows if r.get("outcome") in ("buy", "look")][:max_examples]
+    return summary
+
+
 def get_run_input(pid: str, run_id: str, filename: str) -> Any:
     path = _run_base(pid, run_id) / "input" / filename
     if not path.exists():

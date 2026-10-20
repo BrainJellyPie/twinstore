@@ -8,6 +8,7 @@ import { RunProgress } from "@/features/runs/components/RunProgress";
 import { RunKpis } from "@/features/runs/components/RunKpis";
 import { DiagnosticsSection } from "@/features/runs/components/DiagnosticsSection";
 import { FidelitySection } from "@/features/runs/components/FidelitySection";
+import { VisionGlancesSection } from "@/features/runs/components/VisionGlancesSection";
 import { PreviewRunsList } from "@/features/runs/components/PreviewRunsList";
 import { FloorConfigurationPanel } from "@/features/grid-editor/FloorConfigurationPanel";
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
@@ -72,6 +73,7 @@ function PlaybackContent({ customers, minTime, maxTime, store, summary, projectI
       {summary && <RunKpis summary={summary} />}
       <RackRanking store={store} />
       <TopItems store={store} />
+      {projectId && runId && <VisionGlancesSection projectId={projectId} runId={runId} />}
       {projectId && runId && <DiagnosticsSection projectId={projectId} runId={runId} />}
       {projectId && runId && <FidelitySection projectId={projectId} runId={runId} />}
     </div>

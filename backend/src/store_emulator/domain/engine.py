@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -42,3 +42,10 @@ class CustomerBehaviorEngine(Protocol):
 
     def reset_usage(self) -> None: ...
     def get_usage(self) -> TokenUsage: ...
+
+
+@runtime_checkable
+class EngineMetadataSource(Protocol):
+    """Optional engine capability: run-level metadata saved as output/<engine_type>_meta.json."""
+
+    def metadata(self) -> dict[str, object]: ...

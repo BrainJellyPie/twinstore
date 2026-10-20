@@ -3,6 +3,7 @@ import type { RunListItem } from "@/shared/api/client";
 export function engineLabel(engine: string | undefined): string {
   if (engine === "rule_based") return "Rule-based";
   if (engine === "pattern_intent_impulse") return "LLM";
+  if (engine === "vlm_glance") return "Vision";
   return engine ? engine : "LLM";
 }
 

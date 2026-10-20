@@ -30,6 +30,20 @@ def format_price(amount: int, currency: str) -> str:
     return f"{amount} {code}"
 
 
+def display_price(amount: int, currency: str) -> str:
+    """Price as printed on a shelf tag: $2.49, 1,500원, ¥300, 12.34 EUR."""
+    code = currency.upper()
+    if code == "USD":
+        return f"${amount / 100:,.2f}"
+    if code == "KRW":
+        return f"{amount:,}원"
+    if code == "JPY":
+        return f"¥{amount:,}"
+    if code in _ZERO_DECIMAL:
+        return f"{amount:,} {code}"
+    return f"{amount / 100:,.2f} {code}"
+
+
 def format_budget(budget_min: int, budget_max: int, currency: str) -> str:
     return f"{format_price(budget_min, currency)}~{format_price(budget_max, currency)}"
 

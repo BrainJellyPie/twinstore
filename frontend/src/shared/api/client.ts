@@ -319,7 +319,7 @@ export function getRuns(
   return fetchJson(`/api/projects/${projectId}/runs${query}`, { signal });
 }
 
-export type EngineType = "pattern_intent_impulse" | "rule_based";
+export type EngineType = "pattern_intent_impulse" | "rule_based" | "vlm_glance";
 
 // Per-run overrides; every field is optional and falls back to the server config.
 export interface RunOptions {
@@ -473,6 +473,37 @@ export interface RunDiagnostics {
     requests?: number;
     cached_requests?: number;
   };
+  // Engine-specific run summary (vision shoppers: glance statistics and examples).
+  engine_meta?: VisionGlanceSummary;
+}
+
+export interface VisionGlanceRecord {
+  persona_id: string;
+  rack: string;
+  face: string;
+  visibility: number;
+  product: string;
+  number: number;
+  interest: number;
+  reason: string;
+  resolved_sku: string | null;
+  resolved_by: string;
+  level: number | null;
+  outcome: string;
+}
+
+export interface VisionGlanceSummary {
+  model?: string;
+  glances?: number;
+  errors?: number;
+  noticed_rate?: number;
+  mean_interest?: number;
+  interest_hist?: Record<string, number>;
+  buy_scale?: number;
+  resolved_by?: Record<string, number>;
+  outcomes?: Record<string, number>;
+  picked_level?: Record<string, number>;
+  examples?: VisionGlanceRecord[];
 }
 
 export function getRunDiagnostics(

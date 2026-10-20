@@ -38,7 +38,9 @@ def _preview(client: TestClient, setup_id: str, run_id: str) -> dict[str, object
 
 def test_engines_endpoint(client):
     engines = client.get("/api/engines").json()
-    assert {e["engine_type"] for e in engines} == {"pattern_intent_impulse", "rule_based"}
+    assert {e["engine_type"] for e in engines} == {"pattern_intent_impulse", "rule_based", "vlm_glance"}
+    vision = next(e for e in engines if e["engine_type"] == "vlm_glance")
+    assert vision["uses_llm"] is True and vision["model"]
 
 
 def test_preview_runs_compare_export_and_fidelity(client):

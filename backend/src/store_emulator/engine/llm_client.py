@@ -32,8 +32,9 @@ class LiteLLMClient:
         self.seed = config.seed
         self.timeout_sec = config.timeout_sec
         self.cache_dir = Path(config.cache_dir) if config.cache_dir else None
-        self._client = instructor.from_litellm(litellm.completion, mode=instructor.Mode.JSON)  # type: ignore[reportUnknownMemberType]
-        self._async_client = instructor.from_litellm(litellm.acompletion, mode=instructor.Mode.JSON)  # type: ignore[reportUnknownMemberType]
+        mode = instructor.Mode.JSON_SCHEMA if config.structured_output == "json_schema" else instructor.Mode.JSON
+        self._client = instructor.from_litellm(litellm.completion, mode=mode)  # type: ignore[reportUnknownMemberType]
+        self._async_client = instructor.from_litellm(litellm.acompletion, mode=mode)  # type: ignore[reportUnknownMemberType]
         self._usage_lock = threading.Lock()
         self._usage = TokenUsage()
 
@@ -72,6 +73,10 @@ class LiteLLMClient:
         }
         if self.api_base:
             kwargs["api_base"] = self.api_base
+            # Local OpenAI-compatible servers (llama.cpp, vLLM) usually need no key, but the OpenAI
+            # SDK refuses to send a request without one.
+            if self.model.startswith("openai/") and not os.environ.get("OPENAI_API_KEY"):
+                kwargs["api_key"] = os.environ.get("PARASTORE_LOCAL_API_KEY", "not-needed")
         effective = self._effective_seed(seed)
         if effective is not None:
             kwargs["seed"] = effective
@@ -206,14 +211,23 @@ class LiteLLMClient:
         system_prompt: str,
         user_prompt: str,
         image_url: str,
+        *,
+        max_retries: int = 1,
+        seed: int | None = None,
     ) -> T:
         msgs, rid = self._messages_with_image(system_prompt, user_prompt, image_url)
+        cache_path = self._cache_path(response_model, msgs, seed)
+        cached = self._cache_get(cache_path, response_model)
+        if cached is not None:
+            return cached
         model, raw = self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
             response_model=response_model,
             messages=msgs,  # type: ignore[reportArgumentType]
-            **self._call_kwargs(None),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
+            max_retries=max_retries,
+            **self._call_kwargs(seed),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
         )
         self._accumulate_usage(raw, rid)
+        self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
         return model  # type: ignore[reportReturnType]
 
     async def generate_structured_with_image_async[T: BaseModel](
@@ -222,14 +236,23 @@ class LiteLLMClient:
         system_prompt: str,
         user_prompt: str,
         image_url: str,
+        *,
+        max_retries: int = 1,
+        seed: int | None = None,
     ) -> T:
         msgs, rid = self._messages_with_image(system_prompt, user_prompt, image_url)
+        cache_path = self._cache_path(response_model, msgs, seed)
+        cached = self._cache_get(cache_path, response_model)
+        if cached is not None:
+            return cached
         model, raw = await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
             response_model=response_model,
             messages=msgs,  # type: ignore[reportArgumentType]
-            **self._call_kwargs(None),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
+            max_retries=max_retries,
+            **self._call_kwargs(seed),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
         )
         self._accumulate_usage(raw, rid)
+        self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
         return model  # type: ignore[reportReturnType]
 
     async def generate_text_async(

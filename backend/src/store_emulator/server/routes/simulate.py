@@ -38,6 +38,7 @@ async def list_engines() -> list[EngineInfo]:
     """Engines selectable per run, with the server's current defaults."""
     config = get_config()
     llm = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE)
+    vlm = config.llm_for(EngineType.VLM_GLANCE)
     return [
         EngineInfo(
             engine_type=EngineType.PATTERN_INTENT_IMPULSE.value, label="LLM shoppers",
@@ -48,6 +49,12 @@ async def list_engines() -> list[EngineInfo]:
             engine_type=EngineType.RULE_BASED.value, label="Rule-based preview",
             description="Calibratable heuristic shoppers. Seconds per run, no LLM cost — for quick layout iteration.",
             uses_llm=False, model="", default=config.engine_type == EngineType.RULE_BASED,
+        ),
+        EngineInfo(
+            engine_type=EngineType.VLM_GLANCE.value, label="Vision shoppers",
+            description="Rule-based planning; impulse picks made by a vision-language model looking at rendered "
+                        "shelves. Runs on a local CPU model — use a small customer sample.",
+            uses_llm=True, model=vlm.model, default=config.engine_type == EngineType.VLM_GLANCE,
         ),
     ]
 
@@ -162,7 +169,7 @@ async def get_heatmap(pid: str, run_id: str) -> dict[str, Any]:
 async def get_diagnostics(pid: str, run_id: str) -> dict[str, Any]:
     """Data-quality and reproducibility information for a run.
 
-    **Response:** `{ diagnostics, manifest, token_usage }` — failed customers with reasons,
+    **Response:** `{ diagnostics, manifest, token_usage, engine_meta? }` — failed customers with reasons,
     dropped hallucinated / over-budget buys, buy-invariant violations, the seed/engine/fingerprints
     needed to reproduce the run, and LLM token + request counts (incl. cache hits).
     Older runs return empty objects for fields they did not record."""
@@ -174,6 +181,9 @@ async def get_diagnostics(pid: str, run_id: str) -> dict[str, Any]:
             out[key] = {}
     if not any(out.values()):
         raise HTTPException(404, "run result not found")
+    summary = sim_service.engine_meta_summary(pid, run_id)
+    if summary is not None:
+        out["engine_meta"] = summary
     return out
 
 

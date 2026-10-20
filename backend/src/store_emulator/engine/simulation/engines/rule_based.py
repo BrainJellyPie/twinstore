@@ -16,10 +16,11 @@ Behavior (all knobs live in `RuleBasedConfig` and are meant to be calibrated):
 
 import random
 import re
+from dataclasses import dataclass, field
 
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.behavior import BehaviorPattern
-from store_emulator.domain.config import EngineType, SimulationConfig
+from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.engine import EngineDecision, PerCustomerContext
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import Store
@@ -55,7 +56,7 @@ _SYNONYMS: dict[str, set[str]] = {
     "alcohol": {"beer", "wine", "soju", "alcohol", "liquor", "주류", "맥주", "소주", "와인"},
 }
 
-_PATTERN_IMPULSE_FACTOR: dict[str, float] = {
+PATTERN_IMPULSE_FACTOR: dict[str, float] = {
     "impulse_heavy": 2.5, "social_browsing": 1.6, "leisurely": 1.4, "exploratory": 1.3,
     "hungry_wandering": 1.2, "deal_hunting": 1.0, "purposeful": 0.8, "habitual": 0.6,
     "routine_refill": 0.6, "quick_snack": 0.5, "urgent": 0.25, "window_shopping": 0.0,
@@ -82,7 +83,33 @@ def _expand(category: str) -> set[str]:
     return expanded
 
 
+@dataclass
+class ShopperPlan:
+    """State shared by the planning, impulse and finishing steps of one customer."""
+    pattern: BehaviorPattern
+    rng: random.Random
+    grid: list[list[bool]]
+    budget: int
+    tolerance: float
+    spend: int
+    walk_out: bool
+    buys: list[CustomerAction]
+    chosen: set[str]
+    planned: list[CustomerAction]
+
+
+@dataclass
+class ImpulseOutcome:
+    actions: list[CustomerAction] = field(default_factory=list[CustomerAction])
+    buys: int = 0
+    looks: int = 0
+    trace: dict[str, object] = field(default_factory=dict[str, object])
+
+
 class RuleBasedEngine:
+    """Planning (steps 1–2) and the impulse step (3) are separate methods so other engines
+    can keep this planner and replace only how impulse decisions are made (see vlm_glance)."""
+
     engine_type = "rule_based"
 
     def __init__(self, pathfinder: PathFinder, config: SimulationConfig):
@@ -107,6 +134,11 @@ class RuleBasedEngine:
         return TokenUsage()
 
     async def decide_actions(self, context: PerCustomerContext) -> EngineDecision:
+        plan = self._plan(context)
+        impulse = await self._impulse(context, plan)
+        return self._finish(context, plan, impulse)
+
+    def _plan(self, context: PerCustomerContext) -> ShopperPlan:
         cfg = self._config
         params = cfg.engines.rule_based
         store, persona = context.store, context.persona
@@ -149,54 +181,85 @@ class RuleBasedEngine:
 
         planned = self._frame(store, middle, bool(buys), rng)
         planned = integrate_actions(store, planned, [], ordering=cfg.route_ordering)
+        return ShopperPlan(
+            pattern=pattern, rng=rng, grid=grid, budget=budget, tolerance=tolerance, spend=spend,
+            walk_out=walk_out, buys=buys, chosen=chosen, planned=planned,
+        )
 
-        # Impulse: what the shopper sees on the way. A noticed product is bought with
-        # probability p_buy; some further noticed products get a look without a purchase.
-        impulse: list[CustomerAction] = []
-        impulse_buys = impulse_looks = 0
-        factor = _PATTERN_IMPULSE_FACTOR.get(pattern.id, 1.0)
-        if factor > 0:
-            journey = build_journey(store, planned, self._pathfinder, cfg.block_move_sec)
-            for seen in perceive_products(store, journey, cfg.perception):
-                if seen.sku in chosen:
-                    continue
-                item = next((i for i in seen.slot.items if i.sku == seen.sku), None)
-                if item is None or (pattern.id == "deal_hunting" and not item.promo):
-                    continue
-                promo = params.promo_multiplier if item.promo else 1.0
-                p_buy = min(0.95, params.impulse_base * seen.visibility * promo * factor)
-                p_look = min(0.98, p_buy * (1.0 + params.browse_only_ratio))
-                draw = rng.random()
-                can_buy = (
-                    impulse_buys < params.max_impulse_items
-                    and len(buys) + impulse_buys < pattern.max_products
-                    and spend + item.price <= budget * tolerance
-                )
-                if draw < p_buy and can_buy:
-                    actions = self._visit(store, grid, seen.rack, seen.slot, item, "impulse", pattern, rng,
-                                          "notices it on the way", force_browse=True)
-                    if actions:
-                        impulse.extend(actions)
-                        impulse_buys += 1
-                        chosen.add(item.sku)
-                        spend += item.price * actions[-1].quantity
-                elif draw < p_look and impulse_looks < params.max_impulse_items:
-                    tile = face_access_tile(seen.rack, seen.slot.face, store.grid_size, grid)
-                    if tile is not None:
-                        impulse.append(CustomerAction(
-                            nav="path", target=tile, face=seen.slot.face, action=Action.BROWSE,
-                            dwell=rng.randint(2, 8), description=f"glances at {item.name}", origin="impulse",
-                        ))
-                        impulse_looks += 1
+    def can_buy_more(self, plan: ShopperPlan, impulse_buys: int, price: int) -> bool:
+        return (
+            impulse_buys < self._config.engines.rule_based.max_impulse_items
+            and len(plan.buys) + impulse_buys < plan.pattern.max_products
+            and plan.spend + price <= plan.budget * plan.tolerance
+        )
 
-        if impulse_buys and not buys:  # an impulse purchase still has to be paid for
-            planned = self._frame(store, [a for a in planned if a.action not in (Action.ENTER, Action.PAY) and a.nav != "leave"], True, rng)
-        merged = integrate_actions(store, planned, impulse, ordering=cfg.route_ordering)
+    async def _impulse(self, context: PerCustomerContext, plan: ShopperPlan) -> ImpulseOutcome:
+        """What the shopper sees on the way. A noticed product is bought with probability
+        p_buy; some further noticed products get a look without a purchase."""
+        cfg = self._config
+        params = cfg.engines.rule_based
+        store, pattern, rng = context.store, plan.pattern, plan.rng
+        out = ImpulseOutcome()
+        factor = PATTERN_IMPULSE_FACTOR.get(pattern.id, 1.0)
+        if factor <= 0:
+            return out
+        journey = build_journey(store, plan.planned, self._pathfinder, cfg.block_move_sec)
+        for seen in perceive_products(store, journey, cfg.perception):
+            if seen.sku in plan.chosen:
+                continue
+            item = next((i for i in seen.slot.items if i.sku == seen.sku), None)
+            if item is None or (pattern.id == "deal_hunting" and not item.promo):
+                continue
+            promo = params.promo_multiplier if item.promo else 1.0
+            p_buy = min(0.95, params.impulse_base * seen.visibility * promo * factor)
+            p_look = min(0.98, p_buy * (1.0 + params.browse_only_ratio))
+            draw = rng.random()
+            if draw < p_buy and self.can_buy_more(plan, out.buys, item.price):
+                self.add_impulse_buy(store, plan, out, seen.rack, seen.slot, item, "notices it on the way")
+            elif draw < p_look and out.looks < params.max_impulse_items:
+                self.add_impulse_look(store, plan, out, seen.rack, seen.slot, f"glances at {item.name}")
+        return out
+
+    def add_impulse_buy(
+        self, store: Store, plan: ShopperPlan, out: ImpulseOutcome,
+        rack: Rack, slot: Slot, item: SlotItem, why: str,
+    ) -> bool:
+        actions = self._visit(store, plan.grid, rack, slot, item, "impulse", plan.pattern, plan.rng,
+                              why, force_browse=True)
+        if not actions:
+            return False
+        out.actions.extend(actions)
+        out.buys += 1
+        plan.chosen.add(item.sku)
+        plan.spend += item.price * actions[-1].quantity
+        return True
+
+    def add_impulse_look(
+        self, store: Store, plan: ShopperPlan, out: ImpulseOutcome, rack: Rack, slot: Slot, why: str,
+    ) -> bool:
+        tile = face_access_tile(rack, slot.face, store.grid_size, plan.grid)
+        if tile is None:
+            return False
+        out.actions.append(CustomerAction(
+            nav="path", target=tile, face=slot.face, action=Action.BROWSE,
+            dwell=plan.rng.randint(2, 8), description=why, origin="impulse",
+        ))
+        out.looks += 1
+        return True
+
+    def _finish(self, context: PerCustomerContext, plan: ShopperPlan, impulse: ImpulseOutcome) -> EngineDecision:
+        store, planned = context.store, plan.planned
+        if impulse.buys and not plan.buys:  # an impulse purchase still has to be paid for
+            planned = self._frame(
+                store, [a for a in planned if a.action not in (Action.ENTER, Action.PAY) and a.nav != "leave"],
+                True, plan.rng,
+            )
+        merged = integrate_actions(store, planned, impulse.actions, ordering=self._config.route_ordering)
         return EngineDecision(
             actions=merged,
-            engine_type=EngineType.RULE_BASED.value,
-            trace={"pattern": pattern.id, "walk_out": walk_out, "planned_buys": len(buys),
-                   "impulse_buys": impulse_buys, "impulse_looks": impulse_looks},
+            engine_type=self.engine_type,
+            trace={"pattern": plan.pattern.id, "walk_out": plan.walk_out, "planned_buys": len(plan.buys),
+                   "impulse_buys": impulse.buys, "impulse_looks": impulse.looks, **impulse.trace},
         )
 
     def _pick_pattern(self, patterns: list[BehaviorPattern], rng: random.Random) -> BehaviorPattern:

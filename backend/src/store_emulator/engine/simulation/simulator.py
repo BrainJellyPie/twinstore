@@ -7,7 +7,7 @@ from collections.abc import Callable
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.customer import CustomerResult
-from store_emulator.domain.engine import CustomerBehaviorEngine, PerCustomerContext
+from store_emulator.domain.engine import CustomerBehaviorEngine, EngineMetadataSource, PerCustomerContext
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.result import AggregatedResult, FailedCustomer
 from store_emulator.domain.runner import ProgressCallback
@@ -70,6 +70,8 @@ class PerCustomerSimulationRunner:
         self.behavior_patterns = behavior_patterns
 
     def get_engine_metadata(self) -> dict[str, object]:
+        if isinstance(self.engine, EngineMetadataSource):
+            return self.engine.metadata()
         return {}
 
     @property
