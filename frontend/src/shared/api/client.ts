@@ -343,6 +343,8 @@ export interface RunOptions {
   // Draw visitors from the project's neighborhood model.
   use_town?: boolean;
   town_scale?: number;
+  // Vision shoppers: who decides what the shopper came for — the VLM at the door, or the rule planner.
+  plan_policy?: "vlm" | "rule" | null;
 }
 
 export interface EnsembleMember {
@@ -530,6 +532,29 @@ export interface VisionGlanceSummary {
   outcomes?: Record<string, number>;
   picked_level?: Record<string, number>;
   examples?: VisionGlanceRecord[];
+  plan_policy?: "vlm" | "rule";
+  planning?: {
+    plans: number;
+    plan_errors: number;
+    enter_rate: number;
+    mean_items_named: number;
+    mean_items_bought: number;
+    resolution_rate: number;
+    top_categories?: Record<string, number> | [string, number][];
+  };
+  plan_examples?: VisionPlanRecord[];
+}
+
+export interface VisionPlanRecord {
+  persona_id: string;
+  source: string;
+  enter: boolean;
+  mission: string;
+  reason: string;
+  items: [string, string, number][];
+  resolved: [string, string, string, string][];
+  model: string;
+  error: string;
 }
 
 export function getRunDiagnostics(
@@ -948,6 +973,95 @@ export function getTownSynergy(projectId: string, dayType: TownDayType): Promise
   return fetchJson(`/api/projects/${projectId}/town/synergy?day_type=${dayType}`);
 }
 
+export interface CategoryShift {
+  category: string;
+  spend_with: number;
+  spend_without: number;
+  units_with: number;
+  units_without: number;
+  spend_diff: number;
+}
+
+export interface SynergyExample {
+  persona_id: string;
+  context_with: string;
+  context_without: string;
+  mission_with: string;
+  mission_without: string;
+  spend_with: number;
+  spend_without: number;
+}
+
+export interface VLMSynergyResult {
+  venue_id: string;
+  venue_name: string;
+  category: string;
+  distance_m: number;
+  model: string;
+  visitors_with: number;
+  visitors_without: number;
+  delta_visitors: number;
+  linked_visitors_from_venue: number;
+  panel_customers: number;
+  affected_customers: number;
+  affected_share: number;
+  spend_per_visitor_with: number;
+  spend_per_visitor_without: number;
+  delta_spend_per_visitor: number;
+  delta_spend_ci_low: number | null;
+  delta_spend_ci_high: number | null;
+  prob_spend_higher: number | null;
+  conversion_with: number;
+  conversion_without: number;
+  delta_conversion: number;
+  category_shifts: CategoryShift[];
+  revenue_per_day_with: number;
+  revenue_per_day_without: number;
+  delta_revenue_per_day: number;
+  delta_revenue_from_visitors: number;
+  delta_revenue_from_baskets: number;
+  examples: SynergyExample[];
+  vlm_requests: number;
+  failed_customers: number;
+  seconds: number;
+  notes: string[];
+}
+
+export interface SynergyJobStatus {
+  job_id: string;
+  venue_id: string;
+  venue_name: string;
+  setup_id: string;
+  status: "pending" | "running" | "completed" | "failed" | "canceled";
+  phase: string;
+  done: number;
+  total: number;
+  error: string;
+  created_at: string;
+  finished_at: string;
+}
+
+export function startVlmSynergy(
+  projectId: string, venueId: string,
+  body: { model?: string | null; ensemble?: EnsembleConfig | null; customers: number; scenario_id?: string | null; day_type: TownDayType },
+): Promise<SynergyJobStatus> {
+  return fetchJson(`/api/projects/${projectId}/town/venues/${venueId}/synergy-vlm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function getVlmSynergyJob(
+  projectId: string, jobId: string, signal?: AbortSignal,
+): Promise<{ status: SynergyJobStatus; result: VLMSynergyResult | null }> {
+  return fetchJson(`/api/projects/${projectId}/town/synergy-jobs/${jobId}`, { signal });
+}
+
+export function listVlmSynergyJobs(projectId: string, venueId?: string, signal?: AbortSignal): Promise<SynergyJobStatus[]> {
+  return fetchJson(`/api/projects/${projectId}/town/synergy-jobs${venueId ? `?venue_id=${venueId}` : ""}`, { signal });
+}
+
 // ── Layout optimization ─────────────────────────────────────────────────────
 
 export type OptimizeObjective =
@@ -966,10 +1080,75 @@ export interface OptimizeSpec {
   constraints: { keep_fridges_on_walls: boolean; lock_rack_ids: string[]; max_moves: number; min_improvement: number };
 }
 
+export type OptimizeJudge = "rule" | "vlm";
+
+export interface JudgeSpec {
+  judge: OptimizeJudge;
+  model?: string | null;
+  ensemble?: EnsembleConfig | null;
+  vlm_customers: number;
+  top_k: number;
+  calibrate: boolean;
+}
+
+export interface ImpulseProfile {
+  impulse_rate: number;
+  impulse_revenue_share: number;
+  level_distribution: Record<string, number>;
+}
+
+export interface SurrogateCalibration {
+  pilot_customers: number;
+  surrogate_customers: number;
+  target: ImpulseProfile;
+  before: ImpulseProfile;
+  after: ImpulseProfile;
+  gap_before: number;
+  gap_after: number;
+  impulse_base_before: number;
+  impulse_base_after: number;
+  grid_points: number;
+  notes: string[];
+}
+
+export interface JudgedCandidate {
+  label: string;
+  iteration: number;
+  moves: string[];
+  surrogate_score: number;
+  surrogate_rank: number;
+  vlm_score: number | null;
+  vlm_rank: number | null;
+  delta_mean: number | null;
+  delta_ci_low: number | null;
+  delta_ci_high: number | null;
+  prob_better: number | null;
+  relative_improvement: number | null;
+  failed_customers: number;
+  plan_errors: number;
+  winner: boolean;
+}
+
+export interface VLMJudgeReport {
+  model: string;
+  customers: number;
+  metric: string;
+  candidates: JudgedCandidate[];
+  winner: string;
+  surrogate_winner: string;
+  spearman: number | null;
+  calibration: SurrogateCalibration | null;
+  vlm_requests: number;
+  seconds: number;
+  notes: string[];
+}
+
 export interface OptimizationStatus {
   job_id: string;
   setup_id: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status: "pending" | "running" | "completed" | "failed" | "canceled";
+  phase?: string;
+  judge?: JudgeSpec;
   error: string;
   evaluations: number;
   budget: number;
@@ -997,6 +1176,7 @@ export interface OptimizeResult {
   validation_relative_improvement: number | null;
   validation_prob_better: number | null;
   notes: string[];
+  judge?: VLMJudgeReport | null;
 }
 
 export interface OptimizationView {
@@ -1005,13 +1185,17 @@ export interface OptimizationView {
 }
 
 export function startOptimization(
-  projectId: string, setupId: string, spec: OptimizeSpec, scenarioId: string | null,
+  projectId: string, setupId: string, spec: OptimizeSpec, scenarioId: string | null, judge?: JudgeSpec,
 ): Promise<OptimizationStatus> {
   return fetchJson(`/api/projects/${projectId}/setups/${setupId}/optimize`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ spec, scenario_id: scenarioId }),
+    body: JSON.stringify({ spec, scenario_id: scenarioId, ...(judge ?? {}) }),
   });
+}
+
+export function cancelOptimization(projectId: string, jobId: string): Promise<OptimizationStatus> {
+  return fetchJson(`/api/projects/${projectId}/optimizations/${jobId}/cancel`, { method: "POST" });
 }
 
 export function getOptimization(projectId: string, jobId: string, signal?: AbortSignal): Promise<OptimizationView> {

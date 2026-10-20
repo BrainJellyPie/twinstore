@@ -4,9 +4,10 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Footprints, Globe2, Loader2, MapPinPlus, MousePointer2, Sparkles, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Eye, Footprints, Globe2, Loader2, MapPinPlus, MousePointer2, Sparkles, Trash2, Users } from "lucide-react";
 
 import * as api from "@/shared/api/client";
+import { VlmSynergyDialog } from "./VlmSynergyDialog";
 import type { SynergyRow, Town, TownArchetype, TownDayType, TownSpec, VenueCategory } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -25,6 +26,7 @@ export function TownPage({ projectId }: { projectId: string }) {
   const [mode, setMode] = useState<MapMode>("inspect");
   const [placeCategory, setPlaceCategory] = useState<VenueCategory>("cafe");
   const [synergy, setSynergy] = useState<SynergyRow[] | null>(null);
+  const [vlmVenue, setVlmVenue] = useState<SynergyRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const townQ = useQuery({ queryKey: queryKeys.town(projectId), queryFn: ({ signal }) => api.getTown(projectId, signal) });
@@ -115,9 +117,11 @@ export function TownPage({ projectId }: { projectId: string }) {
             <p className="text-xs text-muted-foreground">
               Removes each venue in turn and re-estimates our visitors: complements bring us customers (linked trips), competitors take them.
             </p>
-            {synergy && <SynergyTable rows={synergy} />}
+            {synergy && <SynergyTable rows={synergy} onAskShoppers={setVlmVenue} />}
           </section>
         )}
+        <VlmSynergyDialog projectId={projectId} venue={vlmVenue} dayType={dayType} scenarioId={scenarioId}
+          onOpenChange={(o) => { if (!o) setVlmVenue(null); }} />
       </aside>
     </div>
   );
@@ -324,12 +328,13 @@ function Stat({ label, value, hint, icon: Icon }: { label: string; value: string
   );
 }
 
-function SynergyTable({ rows }: { rows: SynergyRow[] }) {
-  const sorted = [...rows].sort((a, b) => Math.abs(b.effect_on_focal_visitors) - Math.abs(a.effect_on_focal_visitors)).slice(0, 15);
+function SynergyTable({ rows, onAskShoppers }: { rows: SynergyRow[]; onAskShoppers: (row: SynergyRow) => void }) {
+  const sorted = [...rows].sort((a, b) => Math.abs(b.effect_on_focal_visitors) - Math.abs(a.effect_on_focal_visitors));
   return (
+    <div className="max-h-[22rem] overflow-y-auto pr-1">
     <table className="w-full text-xs">
       <thead className="text-muted-foreground">
-        <tr><th className="text-left font-normal">Venue</th><th className="text-right font-normal">Dist.</th><th className="text-right font-normal">Effect on us</th></tr>
+        <tr><th className="text-left font-normal">Venue</th><th className="text-right font-normal">Dist.</th><th className="text-right font-normal">Effect on us</th><th /></tr>
       </thead>
       <tbody>
         {sorted.map((r) => (
@@ -341,9 +346,16 @@ function SynergyTable({ rows }: { rows: SynergyRow[] }) {
             <td className={cn("text-right tabular-nums", r.role === "complement" ? "text-positive" : r.role === "competitor" ? "text-negative" : "text-muted-foreground")}>
               {r.effect_on_focal_visitors > 0 ? "+" : ""}{Math.round(r.effect_on_focal_visitors)} ({r.effect_on_focal_pct > 0 ? "+" : ""}{r.effect_on_focal_pct.toFixed(1)} %)
             </td>
+            <td className="pl-1 text-right">
+              <button type="button" onClick={() => onAskShoppers(r)} title="Ask vision shoppers how their baskets change"
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label={`Vision shopper check for ${r.name}`}>
+                <Eye className="size-3.5" />
+              </button>
+            </td>
           </tr>
         ))}
       </tbody>
     </table>
+    </div>
   );
 }

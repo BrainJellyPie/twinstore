@@ -2,7 +2,7 @@
 // Lets a reviewer judge the model at a glance: how often it named a product, how tempted
 // it said shoppers were, whether its answers mapped to real shelf products, and its reasons.
 
-import { Eye } from "lucide-react";
+import { DoorOpen, Eye } from "lucide-react";
 
 import { formatPercent } from "@/shared/utils/money";
 
@@ -51,6 +51,31 @@ export function VisionGlancesSection({ projectId, runId }: { projectId: string; 
           </div>
         ))}
       </div>
+
+      {meta.planning && meta.plan_policy === "vlm" && (
+        <div className="mt-3 rounded-md border p-2">
+          <div className="mb-1 flex items-center gap-1.5 font-medium"><DoorOpen className="size-3.5" aria-hidden /> At the door</div>
+          <div className="grid grid-cols-3 gap-2 tabular-nums">
+            <div><div className="text-muted-foreground">Went in</div><div className="text-sm font-semibold">{formatPercent(meta.planning.enter_rate, 0)}</div></div>
+            <div><div className="text-muted-foreground">Items planned</div><div className="text-sm font-semibold">{meta.planning.mean_items_named.toFixed(1)}</div></div>
+            <div><div className="text-muted-foreground">Found on shelf</div><div className="text-sm font-semibold">{formatPercent(meta.planning.resolution_rate, 0)}</div></div>
+          </div>
+          {meta.planning.plan_errors > 0 && (
+            <div className="mt-1 text-warn">{meta.planning.plan_errors} plan{meta.planning.plan_errors === 1 ? "" : "s"} fell back to the rule model</div>
+          )}
+          {(meta.plan_examples?.length ?? 0) > 0 && (
+            <ul className="mt-2 space-y-1.5">
+              {meta.plan_examples!.filter((p) => p.mission).slice(0, 4).map((p) => (
+                <li key={p.persona_id} className="leading-snug">
+                  <span className="font-medium">“{p.mission}”</span>
+                  {p.items.length > 0 && <span className="text-muted-foreground"> — {p.items.map(([, prod, q]) => `${prod}${q > 1 ? ` ×${q}` : ""}`).join(", ")}</span>}
+                  {!p.enter && <span className="text-warn"> (turned back)</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {levelTotal > 0 && (
         <div className="mt-3">

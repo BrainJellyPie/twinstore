@@ -4,11 +4,11 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Loader2, Sparkles, TriangleAlert, Wand2 } from "lucide-react";
+import { CheckCircle2, Eye, Loader2, Sparkles, Square, TriangleAlert, Wand2, Zap } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import * as api from "@/shared/api/client";
-import type { OptimizeAlgorithm, OptimizeObjective, OptimizeScope, OptimizeSpec, OptimizationView } from "@/shared/api/client";
+import type { JudgeSpec, OptimizeAlgorithm, OptimizeObjective, OptimizeScope, OptimizeSpec, OptimizationView, VLMJudgeReport } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
@@ -16,6 +16,8 @@ import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { formatPercent } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
+
+import { ModelPicker, type ModelChoice } from "./ModelPicker";
 
 const OBJECTIVES: { value: OptimizeObjective; label: string }[] = [
   { value: "revenue_per_visitor", label: "Revenue per visitor" },
@@ -54,10 +56,16 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
   const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [judge, setJudge] = useState<JudgeSpec>({ judge: "rule", vlm_customers: 40, top_k: 3, calibrate: true });
+  const [modelChoice, setModelChoice] = useState<ModelChoice>({ kind: "default" });
   const { data: scenarios = [] } = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios(signal), staleTime: Infinity });
 
   const start = useMutation({
-    mutationFn: () => api.startOptimization(projectId, setupId, spec, scenarioId),
+    mutationFn: () => api.startOptimization(projectId, setupId, spec, scenarioId, judge.judge === "vlm" ? {
+      ...judge,
+      model: modelChoice.kind === "single" ? modelChoice.model : null,
+      ensemble: modelChoice.kind === "ensemble" && modelChoice.ensemble?.members.length ? modelChoice.ensemble : null,
+    } : undefined),
     onSuccess: (s) => { setJobId(s.job_id); setError(null); },
     onError: (e) => setError(String(e)),
   });
@@ -65,7 +73,7 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
     queryKey: ["projects", projectId, "optimizations", jobId],
     queryFn: ({ signal }) => api.getOptimization(projectId, jobId!, signal),
     enabled: !!jobId,
-    refetchInterval: (q) => (q.state.data && ["completed", "failed"].includes(q.state.data.status.status) ? false : 1000),
+    refetchInterval: (q) => (q.state.data && ["completed", "failed", "canceled"].includes(q.state.data.status.status) ? false : 1000),
   });
 
   const seconds = Math.round((spec.budget * spec.eval_customers) / 300 * 1.2);
@@ -132,7 +140,45 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
               Fridges stay on walls
             </label>
           </div>
-          <p className="text-xs text-muted-foreground">Uses the fast rule-based shoppers · about {Math.max(20, seconds)} s on this machine.</p>
+          <div>
+            <div className="mb-1 text-xs text-muted-foreground">Who picks the winner</div>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { id: "rule", icon: Zap, title: "Rule-based shoppers", hint: "Fast. Search and validation by the rule model." },
+                { id: "vlm", icon: Eye, title: "Vision shoppers decide", hint: "The rule model only proposes; VLM shoppers walk the best candidates and pick the winner." },
+              ] as const).map(({ id, icon: Icon, title, hint }) => (
+                <button key={id} type="button" onClick={() => setJudge({ ...judge, judge: id })}
+                  className={cn("rounded-lg border p-2.5 text-left text-xs", judge.judge === id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
+                  <div className="flex items-center gap-1.5 font-medium"><Icon className="size-3.5" />{title}</div>
+                  <div className="text-muted-foreground">{hint}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {judge.judge === "vlm" && (
+            <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
+              <ModelPicker engine="vlm_glance" value={modelChoice} onChange={setModelChoice} />
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <label className="flex flex-col gap-1">
+                  <span className="text-muted-foreground">Vision shoppers per layout</span>
+                  <Input type="number" min={4} max={400} value={judge.vlm_customers} onChange={(e) => setJudge({ ...judge, vlm_customers: Math.min(400, Math.max(4, Number(e.target.value) || 4)) })} className="h-8" />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-muted-foreground">Candidates judged</span>
+                  <Input type="number" min={1} max={8} value={judge.top_k} onChange={(e) => setJudge({ ...judge, top_k: Math.min(8, Math.max(1, Number(e.target.value) || 1)) })} className="h-8" />
+                </label>
+                <label className="mt-5 flex items-center gap-2">
+                  <input type="checkbox" checked={judge.calibrate} onChange={(e) => setJudge({ ...judge, calibrate: e.target.checked })} />
+                  Calibrate first
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {judge.calibrate ? "A VLM pilot on the current layout first tunes the rule model to behave like the vision shoppers. " : ""}
+                About {(judge.top_k + 1 + (judge.calibrate ? 1 : 0)) * judge.vlm_customers} shopper visits by the VLM — minutes on a cloud model, an hour or more on a small CPU model.
+              </p>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">Search with the fast rule-based shoppers · about {Math.max(20, seconds)} s{judge.judge === "vlm" ? ", then the vision judging" : ""}.</p>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -160,6 +206,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
       onClose();
     },
   });
+  const cancel = useMutation({ mutationFn: () => api.cancelOptimization(projectId, status.job_id) });
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (status.status !== "running" && status.status !== "pending") return;
@@ -167,10 +214,10 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
     return () => clearInterval(id);
   }, [status.status]);
 
-  if (status.status === "failed") {
+  if (status.status === "failed" || status.status === "canceled") {
     return (
       <div className="space-y-3 text-sm">
-        <p className="flex items-start gap-2 text-destructive"><TriangleAlert className="mt-0.5 size-4 shrink-0" /> {status.error}</p>
+        <p className="flex items-start gap-2 text-destructive"><TriangleAlert className="mt-0.5 size-4 shrink-0" /> {status.status === "canceled" ? "Stopped." : status.error}</p>
         <Button variant="outline" onClick={onRestart}>Back</Button>
       </div>
     );
@@ -178,13 +225,22 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
   if (!result) {
     const ratio = status.budget ? status.evaluations / status.budget : 0;
     const elapsed = (now - Date.parse(status.created_at)) / 1000;
+    const phase = status.phase ?? "";
+    const label = phase.startsWith("judging") ? `Vision shoppers are walking the candidates… ${phase.replace("judging", "").trim()}`
+      : phase === "calibrating" ? "Vision shoppers walk the current layout to calibrate the rule model…"
+      : `Trying layouts… ${status.evaluations} / ${status.budget}`;
     return (
       <div className="space-y-3 py-6 text-center text-sm">
-        <div className="font-medium">Trying layouts… {status.evaluations} / {status.budget}</div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary transition-[width]" style={{ width: `${ratio * 100}%` }} /></div>
+        <div className="font-medium">{label}</div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted"><div className="heat-gradient h-full transition-[width]" style={{ width: `${(phase === "calibrating" ? 0.05 : ratio) * 100}%` }} /></div>
         <div className="text-xs text-muted-foreground">
-          {Math.round(elapsed)} s{status.best_score != null ? ` · best so far ${status.best_score.toFixed(1)}` : ""}{status.scenario ? ` · ${status.scenario}` : ""}
+          {elapsed >= 120 ? `${Math.floor(elapsed / 60)} min ${Math.round(elapsed % 60)} s` : `${Math.round(elapsed)} s`}
+          {status.best_score != null ? ` · best so far ${status.best_score.toFixed(1)}` : ""}{status.scenario ? ` · ${status.scenario}` : ""}
+          {status.judge?.judge === "vlm" ? " · vision judge" : ""}
         </div>
+        <Button variant="outline" size="sm" className="gap-1.5" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
+          <Square className="size-3.5" /> Stop
+        </Button>
       </div>
     );
   }
@@ -196,6 +252,9 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
   const good = validated != null && validated > 0 && significant;
   const chart = result.history.map((h) => ({ i: h.iteration, score: h.score, best: h.best_score }));
   const pct = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)} %`;
+  if (result.judge) {
+    return <JudgeView projectId={projectId} report={result.judge} result={result} status={status} apply={apply} onRestart={onRestart} />;
+  }
   return (
     <div className="space-y-4 text-sm">
       <div className={cn("rounded-lg border p-3", good ? "tone-good" : "bg-muted/30")}>
@@ -255,6 +314,95 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
         <Button onClick={() => apply.mutate()} disabled={apply.isPending || result.applied_moves.length === 0 || !!status.applied_setup_id}>
           {apply.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
           {status.applied_setup_id ? "Saved as a layout" : "Save as new layout"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
+function JudgeView({ report, result, status, apply, onRestart }: {
+  projectId: string;
+  report: VLMJudgeReport;
+  result: api.OptimizeResult;
+  status: api.OptimizationStatus;
+  apply: { mutate: () => void; isPending: boolean };
+  onRestart: () => void;
+}) {
+  const winner = report.candidates.find((c) => c.winner);
+  const improved = winner && winner.label !== "baseline" && (winner.relative_improvement ?? 0) > 0;
+  const sure = winner?.delta_ci_low != null && winner.delta_ci_low > 0;
+  const pct = (x: number | null | undefined) => (x == null ? "—" : `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)} %`);
+  const cal = report.calibration;
+  return (
+    <div className="space-y-4 text-sm">
+      <div className={cn("rounded-xl border p-3", improved && sure ? "tone-good" : improved ? "tone-warn" : "bg-muted/30")}>
+        <div className="flex items-center gap-2 font-medium">
+          <Eye className="size-4" />
+          {improved ? `Vision shoppers prefer ${winner!.label}: ${pct(winner!.relative_improvement)}` : "Vision shoppers kept the current layout"}
+          {winner?.prob_better != null && improved && <span className="font-normal text-muted-foreground">· P(better) {formatPercent(winner.prob_better, 0)}</span>}
+        </div>
+        <div className="mt-1 text-xs text-muted-foreground">
+          {report.customers} paired vision shoppers per layout · {report.model}
+          {report.spearman != null ? ` · rule vs vision ranking agreement ρ = ${report.spearman.toFixed(2)}` : ""}
+          {` · ${report.vlm_requests} model calls in ${Math.round(report.seconds / 60)} min`}
+        </div>
+        {improved && !sure && <div className="mt-1 text-xs">The interval still includes no change — judge with more vision shoppers before relying on it.</div>}
+      </div>
+
+      <table className="w-full text-xs">
+        <thead className="text-muted-foreground">
+          <tr>
+            <th className="text-left font-normal">Layout</th>
+            <th className="text-right font-normal">Rule model</th>
+            <th className="text-right font-normal">Vision shoppers</th>
+            <th className="text-right font-normal">vs. now (95 % CI)</th>
+            <th className="text-right font-normal">P(better)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {report.candidates.map((c) => (
+            <tr key={c.label} className={cn("border-t", c.winner && "font-semibold")}>
+              <td className="py-1.5">{c.label === "baseline" ? "Current layout" : `Candidate ${c.label}`}{c.winner ? " ★" : ""}</td>
+              <td className="text-right tabular-nums">{c.surrogate_score.toFixed(1)} <span className="text-muted-foreground">#{c.surrogate_rank}</span></td>
+              <td className="text-right tabular-nums">{c.vlm_score != null ? c.vlm_score.toFixed(1) : "—"} <span className="text-muted-foreground">{c.vlm_rank != null ? `#${c.vlm_rank}` : ""}</span></td>
+              <td className="text-right tabular-nums">
+                {c.label === "baseline" || c.delta_mean == null ? "—" : `${c.delta_mean >= 0 ? "+" : ""}${c.delta_mean.toFixed(1)} (${c.delta_ci_low?.toFixed(1)} … ${c.delta_ci_high?.toFixed(1)})`}
+              </td>
+              <td className="text-right tabular-nums">{c.prob_better != null && c.label !== "baseline" ? formatPercent(c.prob_better, 0) : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {cal && (
+        <div className="rounded-xl border p-3 text-xs">
+          <div className="mb-1 font-medium">Rule model calibrated to the vision shoppers</div>
+          <div className="grid grid-cols-3 gap-2 tabular-nums">
+            <div className="text-muted-foreground">Impulse buys / visitor</div>
+            <div>vision {cal.target.impulse_rate.toFixed(2)}</div>
+            <div>rule {cal.before.impulse_rate.toFixed(2)} → {cal.after.impulse_rate.toFixed(2)}</div>
+            <div className="text-muted-foreground">Impulse revenue share</div>
+            <div>vision {formatPercent(cal.target.impulse_revenue_share, 1)}</div>
+            <div>rule {formatPercent(cal.before.impulse_revenue_share, 1)} → {formatPercent(cal.after.impulse_revenue_share, 1)}</div>
+          </div>
+          <div className="mt-1 text-muted-foreground">Mismatch {cal.gap_before.toFixed(2)} → {cal.gap_after.toFixed(2)} over {cal.grid_points} settings.</div>
+        </div>
+      )}
+
+      {winner && winner.moves.length > 0 && (
+        <div>
+          <div className="mb-1 text-xs text-muted-foreground">Changes in the winner ({winner.moves.length})</div>
+          <ol className="max-h-32 list-decimal space-y-0.5 overflow-y-auto pl-5 text-xs">{winner.moves.map((m, i) => <li key={i}>{m}</li>)}</ol>
+        </div>
+      )}
+      {report.notes.length > 0 && <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">{report.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
+
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onRestart}>Try other settings</Button>
+        <Button onClick={() => apply.mutate()} disabled={apply.isPending || !improved || result.applied_moves.length === 0 || !!status.applied_setup_id}>
+          {apply.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+          {status.applied_setup_id ? "Saved as a layout" : "Save the winner as a new layout"}
         </Button>
       </div>
     </div>

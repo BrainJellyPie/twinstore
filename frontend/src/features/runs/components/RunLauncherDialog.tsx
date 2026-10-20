@@ -81,6 +81,7 @@ function LauncherForm({
   const town = useQuery({ queryKey: queryKeys.town(projectId), queryFn: ({ signal }) => api.getTown(projectId, signal) }).data;
   const [useTown, setUseTown] = useState(false);
   const [townScale, setTownScale] = useState(0.2);
+  const [planPolicy, setPlanPolicy] = useState<"vlm" | "rule">("vlm");
 
   const isPreview = locked || preview;
   const customers = sampleMode === "all" ? personaCount : Math.max(1, Math.min(sampleSize, personaCount));
@@ -109,6 +110,7 @@ function LauncherForm({
       scenario: scenario ?? undefined,
       use_town: town && useTown ? true : undefined,
       town_scale: town && useTown ? townScale : undefined,
+      plan_policy: engine === "vlm_glance" ? planPolicy : undefined,
     };
     simulate.mutate({ projectId, setupId, options }, { onSuccess: () => onOpenChange(false) });
   };
@@ -195,6 +197,24 @@ function LauncherForm({
               <span className="w-28 text-right tabular-nums">{Math.round(townScale * 100)} % of a full week</span>
             </label>
           )}
+        </div>
+      )}
+
+      {engine === "vlm_glance" && (
+        <div className="space-y-1.5 rounded-md border p-3 text-xs">
+          <div className="text-sm font-medium">What the vision shoppers decide</div>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { id: "vlm", title: "Everything", hint: "At the door each shopper sees the store map, today's situation and where they came from, and decides whether to go in and what to buy; then picks impulse items off the shelves." },
+              { id: "rule", title: "Shelf glances only", hint: "Shopping lists come from the rule model (faster); the VLM only judges impulse picks at the shelves." },
+            ] as const).map((o) => (
+              <button key={o.id} type="button" onClick={() => setPlanPolicy(o.id)}
+                className={cn("rounded-lg border p-2 text-left", planPolicy === o.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
+                <div className="font-medium">{o.title}</div>
+                <div className="text-muted-foreground">{o.hint}</div>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
