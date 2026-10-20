@@ -17,6 +17,34 @@ logger = logging.getLogger(__name__)
 # Most providers accept 32-bit seeds; larger values are folded into this range.
 _SEED_MOD = 2**31 - 1
 
+# Optional request parameters a model refused (e.g. newer Claude models answer "`temperature` is
+# deprecated for this model"). Learned from the provider's error at run time, so a new model needs
+# no code change; the call is retried once without the parameter.
+_REJECTED: dict[str, set[str]] = {}
+_REJECTED_LOCK = threading.Lock()
+_OPTIONAL_PARAMS = ("temperature", "thinking")
+
+
+def _learn_rejected_param(model: str, error: BaseException) -> bool:
+    """True (and remembered) when the provider refused the call because of an optional parameter."""
+    text = str(error).lower()
+    if not any(w in text for w in ("deprecated", "not supported", "unsupported", "does not support", "not allowed")):
+        return False
+    for param in _OPTIONAL_PARAMS:
+        if param in text:
+            with _REJECTED_LOCK:
+                seen = _REJECTED.setdefault(model, set())
+                if param in seen:
+                    return False  # already sent without it: a different problem
+                seen.add(param)
+            logger.info(f"{model}: provider rejects `{param}`; retrying without it")
+            return True
+    return False
+
+
+def _accepts(model: str, param: str) -> bool:
+    return param not in _REJECTED.get(model, set())
+
 
 def _hash6(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()[:4]
@@ -67,11 +95,16 @@ class LiteLLMClient:
         """Provider-agnostic sampling kwargs. Unsupported params are dropped by LiteLLM."""
         kwargs: dict[str, object] = {
             "model": self.model,
-            "temperature": self.temperature,
             "max_tokens": max_tokens or self.max_tokens,
             "timeout": self.timeout_sec,
             "drop_params": True,
         }
+        if _accepts(self.model, "temperature"):
+            kwargs["temperature"] = self.temperature
+        # Claude models may think before answering (adaptive thinking), which can use up a small
+        # max_tokens budget before any JSON is written. Shopper decisions are short: answer directly.
+        if self.model.startswith("anthropic/") and _accepts(self.model, "thinking"):
+            kwargs["thinking"] = {"type": "disabled"}
         if self.api_base:
             kwargs["api_base"] = self.api_base
             # Local OpenAI-compatible servers (llama.cpp, vLLM) usually need no key, but the OpenAI
@@ -164,6 +197,38 @@ class LiteLLMClient:
         tmp.write_text(json.dumps({"result": result.model_dump(mode="json")}, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, path)
 
+    def _create(self, response_model: type[BaseModel], msgs: object, max_retries: int,
+                seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
+        for attempt in range(2):
+            try:
+                return self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
+                    response_model=response_model,
+                    messages=msgs,  # type: ignore[reportArgumentType]
+                    max_retries=max_retries,
+                    **self._call_kwargs(seed, max_tokens),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
+                )
+            except Exception as e:
+                if attempt == 0 and _learn_rejected_param(self.model, e):
+                    continue
+                raise
+        raise AssertionError("unreachable")
+
+    async def _acreate(self, response_model: type[BaseModel], msgs: object, max_retries: int,
+                       seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
+        for attempt in range(2):
+            try:
+                return await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
+                    response_model=response_model,
+                    messages=msgs,  # type: ignore[reportArgumentType]
+                    max_retries=max_retries,
+                    **self._call_kwargs(seed, max_tokens),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
+                )
+            except Exception as e:
+                if attempt == 0 and _learn_rejected_param(self.model, e):
+                    continue
+                raise
+        raise AssertionError("unreachable")
+
     def generate_structured[T: BaseModel](
         self,
         response_model: type[T],
@@ -179,12 +244,7 @@ class LiteLLMClient:
         cached = self._cache_get(cache_path, response_model)
         if cached is not None:
             return cached
-        model, raw = self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
-            response_model=response_model,
-            messages=msgs,  # type: ignore[reportArgumentType]
-            max_retries=max_retries,
-            **self._call_kwargs(seed),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
-        )
+        model, raw = self._create(response_model, msgs, max_retries, seed)
         self._accumulate_usage(raw, rid)
         self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
         return model  # type: ignore[reportReturnType]
@@ -205,12 +265,7 @@ class LiteLLMClient:
         cached = self._cache_get(cache_path, response_model)
         if cached is not None:
             return cached
-        model, raw = await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
-            response_model=response_model,
-            messages=msgs,  # type: ignore[reportArgumentType]
-            max_retries=max_retries,
-            **self._call_kwargs(seed, max_tokens),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
-        )
+        model, raw = await self._acreate(response_model, msgs, max_retries, seed, max_tokens)
         self._accumulate_usage(raw, rid)
         self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
         return model  # type: ignore[reportReturnType]
@@ -231,12 +286,7 @@ class LiteLLMClient:
         cached = self._cache_get(cache_path, response_model)
         if cached is not None:
             return cached
-        model, raw = self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
-            response_model=response_model,
-            messages=msgs,  # type: ignore[reportArgumentType]
-            max_retries=max_retries,
-            **self._call_kwargs(seed),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
-        )
+        model, raw = self._create(response_model, msgs, max_retries, seed)
         self._accumulate_usage(raw, rid)
         self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
         return model  # type: ignore[reportReturnType]
@@ -258,12 +308,7 @@ class LiteLLMClient:
         cached = self._cache_get(cache_path, response_model)
         if cached is not None:
             return cached
-        model, raw = await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
-            response_model=response_model,
-            messages=msgs,  # type: ignore[reportArgumentType]
-            max_retries=max_retries,
-            **self._call_kwargs(seed, max_tokens),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
-        )
+        model, raw = await self._acreate(response_model, msgs, max_retries, seed, max_tokens)
         self._accumulate_usage(raw, rid)
         self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
         return model  # type: ignore[reportReturnType]
@@ -284,10 +329,18 @@ class LiteLLMClient:
         Non-Gemini models may ignore it or raise BadRequest — caller must branch.
         """
         msgs, rid = self._messages(system_prompt, user_prompt)
-        kwargs: dict[str, object] = {"messages": msgs, **self._call_kwargs(None)}
-        if enable_search:
-            kwargs["tools"] = [{"google_search": {}}]
-        raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
+        raw: object = None
+        for attempt in range(2):
+            kwargs: dict[str, object] = {"messages": msgs, **self._call_kwargs(None)}
+            if enable_search:
+                kwargs["tools"] = [{"google_search": {}}]
+            try:
+                raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
+                break
+            except Exception as e:
+                if attempt == 0 and _learn_rejected_param(self.model, e):
+                    continue
+                raise
         self._accumulate_usage(raw, rid)
         choices: list[object] = list(getattr(raw, "choices", None) or [])
         if not choices:

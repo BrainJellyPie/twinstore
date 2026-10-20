@@ -43,6 +43,14 @@ class ShelfGlance(BaseModel):
     interest: int = Field(default=0, ge=0, le=10)
     reason: str = Field(default="", max_length=80)
 
+    @field_validator("product", "reason", mode="before")
+    @classmethod
+    def _clip_long_text(cls, value: object, info: ValidationInfo) -> object:
+        """A wordy answer is cut rather than discarded: the decision in it is still valid
+        (models without a JSON grammar, e.g. cloud APIs, sometimes exceed the limit)."""
+        limit = 60 if info.field_name == "product" else 80
+        return value[:limit] if isinstance(value, str) else value
+
 
 _CUE_GLOSS: dict[str, str] = {
     # state
