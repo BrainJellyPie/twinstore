@@ -122,7 +122,7 @@ class PerCustomerSimulationRunner:
             if on_progress is not None:
                 try:
                     on_progress(completed, len(failures), total)
-                except Exception as e:  # progress reporting must never break a run
+                except Exception as e:  # noqa: BLE001 — progress reporting must never break a run
                     logger.warning(f"[simulation] progress callback failed: {e}")
 
         async def simulate_one(entry: CustomerEntry, persona: Persona) -> CustomerResult | None:

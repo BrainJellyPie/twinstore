@@ -23,9 +23,19 @@ from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.engine import EngineDecision, PerCustomerContext
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action, PathFinder, Position, TokenUsage, stable_seed
+from store_emulator.domain.types import (
+    Action,
+    PathFinder,
+    Position,
+    TokenUsage,
+    stable_seed,
+)
 from store_emulator.engine.routing.route_builder import (
-    build_journey, entrance_position, face_access_tile, integrate_actions, perceive_products,
+    build_journey,
+    entrance_position,
+    face_access_tile,
+    integrate_actions,
+    perceive_products,
 )
 
 # Category word → related words found on rack labels / product names. Deliberately

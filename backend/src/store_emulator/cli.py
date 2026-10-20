@@ -19,9 +19,18 @@ from pathlib import Path
 from store_emulator.application.config import local_config
 from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
-from store_emulator.application.simulation import RunOptions, apply_options, run_simulation, subsample_personas
+from store_emulator.application.simulation import (
+    RunOptions,
+    apply_options,
+    run_simulation,
+    subsample_personas,
+)
 from store_emulator.application.storage.io import read_json
-from store_emulator.application.storage.runs import load_run_results, load_run_store, save_run_dir
+from store_emulator.application.storage.runs import (
+    load_run_results,
+    load_run_store,
+    save_run_dir,
+)
 from store_emulator.domain.analysis import ComparisonReport
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.persona import Persona

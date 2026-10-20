@@ -44,9 +44,11 @@ generation_calls = 1                                          # location analysi
                  + ceil(total_estimated_visitors / 10)        # persona batches, batch_size=10
                  + (2 if supplemental_file_uploaded else 0)   # column-pick + summary
 
-simulation_calls = N_personas × 3                             # stage1 + stage2 + stage3
+simulation_calls = N_simulated × 3                            # stage1 + stage2 + stage3
                  # stage3 (impulse) is skipped when no products lie on the persona's path,
                  # so the effective multiplier ranges from 2 to 3.
+                 # N_simulated = N_personas, or the run's `max_customers` sample.
+                 # engine_type="rule_based" → simulation_calls = 0.
 
 total = generation_calls + simulation_calls
 ```
@@ -60,9 +62,22 @@ persona on average):
 | Small run | 500 | ~65 | 1,500 | **~1,565** |
 | Typical run | 1,000 | ~110 | 3,000 | **~3,110** |
 
-Wall-clock time depends on the provider, model, and concurrency cap, and
-has not been benchmarked yet. Before recommending a large run, tell the
-user the call count and let them decide.
+Wall-clock time depends on the provider, model, and concurrency cap. Before
+recommending a large LLM run, tell the user the call count and let them
+decide. Cheaper ways to get an answer first:
+
+- **`rule_based` engine** — no LLM calls; ~2,400 customers in under 10 s on
+  2 CPU cores. Good for layout iteration and as a baseline.
+- **Preview runs on a sample** — `max_customers` (UI: *Customers to
+  simulate*) simulates a deterministic subset; `preview: true` keeps the
+  layout editable.
+- **Response cache** — `PARASTORE_LLM_CACHE_DIR` stores every LLM response
+  keyed by the full request, so re-running the same configuration costs
+  nothing. Combine with `PARASTORE_LLM_SEED` for repeatable sampling.
+- **Prefix caching** — the stage-2 prompt puts the store rules and catalog
+  (≈95% of its tokens) in a system prefix shared by all customers, so
+  providers and servers with prompt caching (Anthropic, OpenAI, vLLM,
+  llama.cpp `--cache-reuse`) only process the short per-customer part.
 
 Source: `backend/src/store_emulator/engine/generators/persona.py:99-242`,
 `backend/src/store_emulator/engine/simulation/engines/pattern_intent_impulse/engine.py:56-119`,
@@ -155,7 +170,11 @@ Run through this before triggering generation or simulation:
 - [ ] If a supplemental file is uploaded, the relevant sheets are
       non-empty and contain at least one numeric or datetime column.
 - [ ] The user has been told the expected LLM call count for the chosen
-      persona size.
+      persona size (or chose the `rule_based` engine / a customer sample).
+- [ ] For a layout comparison, both runs use the **same seed** and the same
+      engine, so the comparison is paired (the Compare dialog warns otherwise).
+- [ ] `PARASTORE_CURRENCY` matches the price unit of the catalog (prices in
+      KRW are whole won; in USD they are cents).
 
 ## Constraints worth knowing
 
@@ -173,21 +192,41 @@ Run through this before triggering generation or simulation:
   (`backend/src/store_emulator/application/generation_async.py`) but
   have no UI yet. If the user asks how to constrain persona generation
   further, these are the levers.
-- **LLM provider is fixed in code, not in `.env`.** Default model is
-  `gemini/gemini-3.1-pro-preview`, set in
-  `backend/src/store_emulator/application/config.py` (`LLMConfig.model`).
-  Filling in `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` alone has no effect —
-  the request still goes to Gemini. To switch providers, edit
-  `LLMConfig.model` to the matching LiteLLM model string *and* set the
-  matching `*_API_KEY` in `backend/.env`.
+- **Choosing the LLM provider.** Default model is
+  `gemini/gemini-3.1-pro-preview` (`LLMConfig.model` in
+  `backend/src/store_emulator/application/config.py`). Filling in
+  `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` alone has no effect — set
+  `PARASTORE_LLM_MODEL` to the matching LiteLLM model string *and* the
+  matching `*_API_KEY` in `backend/.env`. For a self-hosted
+  OpenAI-compatible server also set `PARASTORE_LLM_API_BASE`
+  (e.g. `PARASTORE_LLM_MODEL=openai/local`,
+  `PARASTORE_LLM_API_BASE=http://127.0.0.1:8080/v1`). Small local models
+  (≤4B) tend to fail the structured stage-2 output on large catalogs; use
+  `rule_based` for local-only setups.
 - **`PERSONA_DAILY_CAP` env var** (default `100`) caps the per-day slice
   used when `max_persona_count_per_day` is supplied: the requested total
   is divided across open days, then clamped to `[10, PERSONA_DAILY_CAP]`
   in multiples of 10. Raise it if a single day legitimately needs more
   than 100 personas.
 - **Stage 3 is conditional.** Impulse purchases only run when a persona's
-  movement path crosses at least one stocked product. Sparse layouts
-  cut the simulation cost noticeably.
+  walked route exposes at least one stocked product. With the default
+  `visibility` exposure model a product counts as seen only if its rack
+  face is in view (distance, 45° cone, line of sight, shelf level); the
+  legacy rule (any adjacent tile) is `PARASTORE_EXPOSURE_MODEL=adjacency`.
+- **Runs are reproducible.** Cues, arrival minutes, glances and engine seeds
+  derive from `(seed, replicate, persona id)`. Two layouts run with the same
+  seed see the same customers in the same states, which is what makes the
+  A/B comparison paired. Use different `replicate` values for independent
+  repetitions of one layout.
+- **Not every visitor buys.** Patterns that allow it may leave empty-handed,
+  and impulse purchases beyond `budget_max × PARASTORE_BUDGET_TOLERANCE`
+  (default 1.5) are dropped. Check *Run diagnostics* for dropped
+  hallucinated or over-budget items and failed customers.
+- **Validating against real sales.** *Validate against POS data* (or
+  `parastore fidelity RUN pos.csv`) accepts CSV/XLSX exports with columns
+  like `receipt_id`, `sku`/`product_name`, `qty`, `unit_price`/`sales_value`
+  and `timestamp`/`hour`; SKUs are matched to catalog ids or names. Only
+  products present in both are compared, so check the reported coverage.
 - **All run artifacts live in `backend/.data/`**, which is gitignored.
   Persona files, simulation results, and generated metadata never leave
   the local machine unless the user copies them out.

@@ -5,7 +5,14 @@ from store_emulator.domain.customer import CustomerResult, TimelineEvent
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.types import Action, Weekday
 from store_emulator.engine.analysis.compare import compare_runs, required_n
-from store_emulator.engine.analysis.fidelity import PosLine, fidelity_report, js_divergence, ndcg, spearman, wasserstein_1d
+from store_emulator.engine.analysis.fidelity import (
+    PosLine,
+    fidelity_report,
+    js_divergence,
+    ndcg,
+    spearman,
+    wasserstein_1d,
+)
 from store_emulator.engine.simulation.aggregator import aggregate
 
 

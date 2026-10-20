@@ -14,10 +14,18 @@ from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, Face, TokenUsage, Weekday
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.customer_executor import execute_decision
-from store_emulator.engine.simulation.engines.pattern_intent_impulse import PatternIntentImpulseEngine
-from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage1_pattern import PatternSelectionResponse
-from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage2_intent import IntentResponse
-from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage3_impulse import ImpulseResponse
+from store_emulator.engine.simulation.engines.pattern_intent_impulse import (
+    PatternIntentImpulseEngine,
+)
+from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage1_pattern import (
+    PatternSelectionResponse,
+)
+from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage2_intent import (
+    IntentResponse,
+)
+from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage3_impulse import (
+    ImpulseResponse,
+)
 
 
 class _ScriptedLLM:

@@ -3,7 +3,8 @@ from typing import Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .types import FACE_OFFSETS as _FACE_OFFSETS, Face, Position, Shape
+from .types import FACE_OFFSETS as _FACE_OFFSETS
+from .types import Face, Position, Shape
 
 # All slot-capable racks have exactly 4 levels; level count is fixed and empty slots are sparse.
 

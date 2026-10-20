@@ -4,7 +4,9 @@ from store_emulator.domain.rack import Rack, RackType, Slot, SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, Face
 from store_emulator.engine.routing.route_builder import (
-    JourneyStep, integrate_actions, perceive_products,
+    JourneyStep,
+    integrate_actions,
+    perceive_products,
 )
 
 

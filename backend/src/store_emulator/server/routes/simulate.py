@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
@@ -197,7 +197,11 @@ async def compare(
 
 
 @router.post("/{pid}/runs/{run_id}/fidelity", summary="Score a run against real POS data", response_model=FidelityReport)
-async def fidelity(pid: str, run_id: str, file: UploadFile = File(description="POS export (.csv or .xlsx)")) -> FidelityReport:
+async def fidelity(
+    pid: str,
+    run_id: str,
+    file: Annotated[UploadFile, File(description="POS export (.csv or .xlsx)")],
+) -> FidelityReport:
     """Compare simulated sales with an uploaded POS export of the same store.
 
     Required columns (any common alias): transaction id and SKU. Optional: quantity, unit price
