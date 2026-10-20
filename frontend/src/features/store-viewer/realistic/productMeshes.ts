@@ -1,0 +1,174 @@
+// Builds the instanced meshes for packages, price tags and shelf talkers from a
+// ProductLayout. Imperative three.js so a single InstancedMesh per package kind
+// covers every product in the store.
+
+import * as THREE from "three";
+import { cellUv } from "./atlasLayout";
+import { createAtlasMaterial, canvasTexture } from "./atlasMaterial";
+import { createLabelAtlas, createTagAtlas, createTalkerAtlas, tagKey, type Atlas } from "./canvasArt";
+import { createPackageGeometry, PACKAGE_KINDS } from "./productGeometries";
+import type { PackageKind } from "./productCatalog";
+import type { ProductLayout } from "./productLayout";
+
+const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }> = {
+  bottle: { roughness: 0.18, metalness: 0 },
+  can: { roughness: 0.28, metalness: 0.55 },
+  cup: { roughness: 0.55, metalness: 0 },
+  pint: { roughness: 0.5, metalness: 0 },
+  jar: { roughness: 0.22, metalness: 0 },
+  tube: { roughness: 0.35, metalness: 0.25 },
+  box: { roughness: 0.62, metalness: 0 },
+  bag: { roughness: 0.32, metalness: 0.15 },
+};
+
+export interface ProductMeshes {
+  group: THREE.Group;
+  atlases: Atlas[];
+  textures: THREE.CanvasTexture[];
+  // Swap package meshes between the coarse (overview) and fine (close-up) LOD.
+  setDetail: (fine: boolean) => void;
+  dispose: () => void;
+}
+
+const noRaycast = () => undefined;
+
+const _m = new THREE.Matrix4();
+const _t = new THREE.Matrix4();
+const _q = new THREE.Quaternion();
+const _p = new THREE.Vector3();
+const _s = new THREE.Vector3();
+const _e = new THREE.Euler();
+
+function instanced(geom: THREE.BufferGeometry, mat: THREE.Material, count: number): THREE.InstancedMesh {
+  const mesh = new THREE.InstancedMesh(geom, mat, count);
+  mesh.raycast = noRaycast;
+  mesh.frustumCulled = false;
+  geom.setAttribute("aCell", new THREE.InstancedBufferAttribute(new Float32Array(count * 2), 2));
+  return mesh;
+}
+
+export function buildProductMeshes(
+  layout: ProductLayout,
+  currency: string,
+  cellPx: number,
+  castShadow: boolean,
+  anisotropy: number,
+  cheap: boolean,
+): ProductMeshes {
+  const group = new THREE.Group();
+  group.name = "realistic-products";
+  const disposables: { dispose: () => void }[] = [];
+
+  // --- Packages
+  const labelAtlas = createLabelAtlas(layout.products.map((p) => p.name), cellPx);
+  const labelTex = canvasTexture(labelAtlas.canvas, { anisotropy });
+  disposables.push(labelTex);
+  const scale = cellUv(labelAtlas.grid, 0).scale;
+  const byKind = new Map<PackageKind, typeof layout.products>();
+  for (const p of layout.products) {
+    const list = byKind.get(p.kind);
+    if (list) list.push(p);
+    else byKind.set(p.kind, [p]);
+  }
+  const lods: { mesh: THREE.InstancedMesh; coarse: THREE.BufferGeometry; fine: THREE.BufferGeometry }[] = [];
+  for (const kind of PACKAGE_KINDS) {
+    const list = byKind.get(kind);
+    if (!list?.length) continue;
+    const geom = createPackageGeometry(kind, 0);
+    const fine = createPackageGeometry(kind, 1);
+    const mat = createAtlasMaterial(labelTex, scale, { ...KIND_SURFACE[kind], cheap, selfLight: cheap ? 0.22 : 0.1 });
+    const mesh = instanced(geom, mat, list.length);
+    fine.setAttribute("aCell", geom.getAttribute("aCell"));
+    lods.push({ mesh, coarse: geom, fine });
+    disposables.push(fine);
+    mesh.name = `pkg-${kind}`;
+    mesh.castShadow = castShadow;
+    mesh.receiveShadow = true;
+    const cells = geom.getAttribute("aCell") as THREE.InstancedBufferAttribute;
+    list.forEach((p, i) => {
+      _p.set(p.x, p.y, p.z);
+      _q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, p.yaw);
+      _m.compose(_p, _q, _s.set(1, 1, 1));
+      if (p.flat) {
+        // Lay face-up: front (+Z) → +Y, centred on the footprint.
+        _t.makeTranslation(0, p.sz / 2, p.sy / 2);
+        _m.multiply(_t);
+        _t.makeRotationX(-Math.PI / 2);
+        _m.multiply(_t);
+      }
+      _t.makeScale(p.sx, p.sy, p.sz);
+      _m.multiply(_t);
+      mesh.setMatrixAt(i, _m);
+      const uv = cellUv(labelAtlas.grid, labelAtlas.index.get(p.name) ?? 0);
+      cells.setXY(i, uv.offset[0], uv.offset[1]);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    cells.needsUpdate = true;
+    group.add(mesh);
+    disposables.push(geom, mat);
+  }
+
+  // --- Price tags
+  const tagAtlas = createTagAtlas(layout.tags, currency);
+  const tagTex = canvasTexture(tagAtlas.canvas, { anisotropy });
+  disposables.push(tagTex);
+  if (layout.tags.length) {
+    const geom = new THREE.PlaneGeometry(0.085, 0.04);
+    const mat = createAtlasMaterial(tagTex, cellUv(tagAtlas.grid, 0).scale, { roughness: 0.55, selfLight: 0.35, cheap });
+    const mesh = instanced(geom, mat, layout.tags.length);
+    mesh.name = "price-tags";
+    const cells = geom.getAttribute("aCell") as THREE.InstancedBufferAttribute;
+    layout.tags.forEach((t, i) => {
+      _e.set(-t.tilt, t.yaw, 0, "YXZ");
+      _q.setFromEuler(_e);
+      _m.compose(_p.set(t.x, t.y, t.z), _q, _s.set(1, 1, 1));
+      mesh.setMatrixAt(i, _m);
+      const uv = cellUv(tagAtlas.grid, tagAtlas.index.get(tagKey(t.price, t.promo)) ?? 0);
+      cells.setXY(i, uv.offset[0], uv.offset[1]);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    group.add(mesh);
+    disposables.push(geom, mat);
+  }
+
+  // --- Shelf talkers (promo cards sticking out into the aisle)
+  const talkerAtlas = createTalkerAtlas(layout.talkers.map((t) => t.promo));
+  const talkerTex = canvasTexture(talkerAtlas.canvas);
+  disposables.push(talkerTex);
+  if (layout.talkers.length) {
+    const geom = new THREE.PlaneGeometry(0.075, 0.1);
+    geom.translate(0, 0.05, 0);
+    const mat = createAtlasMaterial(talkerTex, cellUv(talkerAtlas.grid, 0).scale, {
+      roughness: 0.5,
+      side: THREE.DoubleSide,
+      selfLight: 0.25,
+      cheap,
+    });
+    const mesh = instanced(geom, mat, layout.talkers.length);
+    mesh.name = "shelf-talkers";
+    mesh.castShadow = castShadow;
+    const cells = geom.getAttribute("aCell") as THREE.InstancedBufferAttribute;
+    layout.talkers.forEach((t, i) => {
+      _q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, t.yaw + Math.PI / 2);
+      _m.compose(_p.set(t.x, t.y, t.z), _q, _s.set(1, 1, 1));
+      mesh.setMatrixAt(i, _m);
+      const uv = cellUv(talkerAtlas.grid, talkerAtlas.index.get(t.promo) ?? 0);
+      cells.setXY(i, uv.offset[0], uv.offset[1]);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    group.add(mesh);
+    disposables.push(geom, mat);
+  }
+
+  return {
+    group,
+    atlases: [labelAtlas, tagAtlas, talkerAtlas],
+    textures: [labelTex, tagTex, talkerTex],
+    setDetail: (fine) => {
+      for (const l of lods) l.mesh.geometry = fine ? l.fine : l.coarse;
+    },
+    dispose: () => {
+      for (const d of disposables) d.dispose();
+    },
+  };
+}

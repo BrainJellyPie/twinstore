@@ -1,0 +1,324 @@
+// Unit package geometries (1×1×1 bounding box, base at y = 0, front = +Z) whose
+// UVs address one cell of the label atlas: the printed label maps onto the label
+// area, everything else samples the flat body/accent colour zones.
+
+import * as THREE from "three";
+import { LABEL_U0, ZONE_ACCENT, ZONE_BODY } from "./atlasLayout";
+import type { PackageKind } from "./productCatalog";
+
+const LABEL_U1 = 0.985;
+const LABEL_V0 = 0.012;
+const LABEL_V1 = 0.988;
+
+function labelUv(u: number, v: number): [number, number] {
+  return [LABEL_U0 + (LABEL_U1 - LABEL_U0) * u, LABEL_V0 + (LABEL_V1 - LABEL_V0) * v];
+}
+
+type Zone = "body" | "accent" | "label" | "lid";
+
+interface ProfilePoint {
+  r: number;
+  y: number;
+  zone: Zone;
+  // Label v coordinate (only for zone "label").
+  lv?: number;
+}
+
+// Surface of revolution around Y with per-ring UV zones. Rings at zone boundaries
+// are duplicated by the caller so colours don't bleed across triangles.
+function revolve(profile: ProfilePoint[], segments: number): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const cols = segments + 1;
+  for (const p of profile) {
+    for (let j = 0; j <= segments; j++) {
+      const s = j / segments;
+      const theta = (s - 0.5) * Math.PI * 2;
+      const x = p.r * Math.sin(theta);
+      const z = p.r * Math.cos(theta);
+      positions.push(x, p.y, z);
+      let uv: [number, number];
+      switch (p.zone) {
+        case "label":
+          uv = labelUv(s, p.lv ?? 0.5);
+          break;
+        case "lid":
+          // Planar print on the lid: text upright when viewed from the front.
+          uv = labelUv(0.5 + x * 0.95, 0.5 - z * 0.95);
+          break;
+        case "accent":
+          uv = ZONE_ACCENT;
+          break;
+        default:
+          uv = ZONE_BODY;
+      }
+      uvs.push(uv[0], uv[1]);
+    }
+  }
+  for (let i = 0; i < profile.length - 1; i++) {
+    for (let j = 0; j < segments; j++) {
+      const a = i * cols + j;
+      const b = a + cols;
+      // Counter-clockwise seen from outside.
+      indices.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(indices);
+  g.computeVertexNormals();
+  return g;
+}
+
+// Expand [r, y, zone] with duplicated rings wherever the zone changes.
+function profile(points: [number, number, Zone][], labelY0 = 0, labelY1 = 1): ProfilePoint[] {
+  const out: ProfilePoint[] = [];
+  const lv = (y: number) => (y - labelY0) / Math.max(1e-6, labelY1 - labelY0);
+  for (let i = 0; i < points.length; i++) {
+    const [r, y, zone] = points[i]!;
+    const prev = out[out.length - 1];
+    if (prev && prev.zone !== zone && (prev.r !== r || prev.y !== y)) {
+      out.push({ r: prev.r, y: prev.y, zone, lv: zone === "label" ? lv(prev.y) : undefined });
+    }
+    out.push({ r, y, zone, lv: zone === "label" ? lv(y) : undefined });
+  }
+  return out;
+}
+
+// Level of detail: 0 = isometric overview (few triangles — software GL renders
+// thousands of instances), 1 = close-up / shopper view.
+export type Lod = 0 | 1;
+
+function bottle(lod: Lod): THREE.BufferGeometry {
+  const L0 = 0.3;
+  const L1 = 0.66;
+  const pts: [number, number, Zone][] =
+    lod === 0
+      ? [
+          [0.5, 0, "body"],
+          [0.5, L0, "body"],
+          [0.5, L0, "label"],
+          [0.5, L1, "label"],
+          [0.5, L1, "body"],
+          [0.2, 0.86, "body"],
+          [0.19, 0.88, "accent"],
+          [0.0, 1.0, "accent"],
+        ]
+      : [
+          [0, 0, "body"],
+          [0.47, 0.0, "body"],
+          [0.5, 0.04, "body"],
+          [0.5, L0, "body"],
+          [0.5, L0, "label"],
+          [0.5, L1, "label"],
+          [0.5, L1, "body"],
+          [0.47, 0.72, "body"],
+          [0.38, 0.79, "body"],
+          [0.22, 0.85, "body"],
+          [0.18, 0.87, "body"],
+          [0.19, 0.88, "accent"],
+          [0.19, 0.99, "accent"],
+          [0.0, 1.0, "accent"],
+        ];
+  return revolve(profile(pts, L0, L1), lod === 0 ? 6 : 14);
+}
+
+function can(lod: Lod): THREE.BufferGeometry {
+  const pts: [number, number, Zone][] =
+    lod === 0
+      ? [
+          [0.5, 0, "label"],
+          [0.5, 0.94, "label"],
+          [0.44, 1.0, "accent"],
+          [0.0, 1.0, "accent"],
+        ]
+      : [
+          [0, 0, "accent"],
+          [0.4, 0, "accent"],
+          [0.5, 0.05, "accent"],
+          [0.5, 0.06, "label"],
+          [0.5, 0.92, "label"],
+          [0.5, 0.93, "accent"],
+          [0.42, 0.985, "accent"],
+          [0.4, 1.0, "accent"],
+          [0.0, 0.985, "accent"],
+        ];
+  return revolve(profile(pts, lod === 0 ? 0 : 0.06, lod === 0 ? 0.94 : 0.92), lod === 0 ? 6 : 14);
+}
+
+function tube(lod: Lod): THREE.BufferGeometry {
+  const pts: [number, number, Zone][] =
+    lod === 0
+      ? [
+          [0.5, 0, "label"],
+          [0.5, 0.93, "label"],
+          [0.52, 0.93, "accent"],
+          [0.52, 1.0, "accent"],
+          [0.0, 1.0, "accent"],
+        ]
+      : [
+          [0, 0, "accent"],
+          [0.5, 0, "accent"],
+          [0.5, 0.03, "label"],
+          [0.5, 0.92, "label"],
+          [0.52, 0.93, "accent"],
+          [0.52, 1.0, "accent"],
+          [0.0, 1.0, "accent"],
+        ];
+  return revolve(profile(pts, lod === 0 ? 0 : 0.03, lod === 0 ? 0.93 : 0.92), lod === 0 ? 6 : 14);
+}
+
+function jar(lod: Lod): THREE.BufferGeometry {
+  const pts: [number, number, Zone][] =
+    lod === 0
+      ? [
+          [0.5, 0, "body"],
+          [0.5, 0.2, "body"],
+          [0.5, 0.2, "label"],
+          [0.5, 0.78, "label"],
+          [0.47, 0.82, "accent"],
+          [0.47, 1.0, "accent"],
+          [0.0, 1.0, "accent"],
+        ]
+      : [
+          [0, 0, "body"],
+          [0.46, 0, "body"],
+          [0.5, 0.05, "body"],
+          [0.5, 0.2, "body"],
+          [0.5, 0.2, "label"],
+          [0.5, 0.75, "label"],
+          [0.47, 0.8, "body"],
+          [0.44, 0.83, "body"],
+          [0.47, 0.84, "accent"],
+          [0.47, 0.99, "accent"],
+          [0.0, 1.0, "accent"],
+        ];
+  return revolve(profile(pts, 0.2, lod === 0 ? 0.78 : 0.75), lod === 0 ? 6 : 14);
+}
+
+function cup(rBottom: number, lod: Lod): THREE.BufferGeometry {
+  const pts: [number, number, Zone][] = [
+    ...(lod === 1 ? ([[0, 0, "body"], [rBottom, 0, "body"]] as [number, number, Zone][]) : []),
+    [rBottom, 0, "label"],
+    [0.48, 0.95, "label"],
+    [0.5, 0.96, "accent"],
+    [0.5, 1.0, "accent"],
+    [0.5, 1.0, "lid"],
+    [0.0, 1.0, "lid"],
+  ];
+  return revolve(profile(pts, 0, 0.95), lod === 0 ? 6 : 14);
+}
+
+function box(): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(1, 1, 1);
+  g.translate(0, 0.5, 0);
+  const uv = g.getAttribute("uv") as THREE.BufferAttribute;
+  // Face order: +x, -x, +y, -y, +z, -z (4 vertices each).
+  for (let face = 0; face < 6; face++) {
+    for (let k = 0; k < 4; k++) {
+      const i = face * 4 + k;
+      if (face === 4 || face === 5) {
+        const [u, v] = labelUv(uv.getX(i), uv.getY(i));
+        uv.setXY(i, u, v);
+      } else if (face === 2) {
+        uv.setXY(i, ZONE_ACCENT[0], ZONE_ACCENT[1]);
+      } else {
+        uv.setXY(i, ZONE_BODY[0], ZONE_BODY[1]);
+      }
+    }
+  }
+  uv.needsUpdate = true;
+  return g;
+}
+
+// Pillow bag: front and back surfaces bulge out and pinch to a seam on every
+// edge; crimped seals top and bottom.
+function bag(lod: Lod): THREE.BufferGeometry {
+  const nx = lod === 0 ? 2 : 6;
+  const ny = lod === 0 ? 2 : 6;
+  const seal = 0.05;
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const surface = (side: 1 | -1) => {
+    const base = positions.length / 3;
+    for (let j = 0; j <= ny; j++) {
+      for (let i = 0; i <= nx; i++) {
+        const s = i / nx;
+        const t = j / ny;
+        const bulge =
+          lod === 0 ? (s > 0 && s < 1 && t > 0 && t < 1 ? 1 : 0) : Math.pow(Math.sin(Math.PI * s), 0.45) * Math.pow(Math.sin(Math.PI * t), 0.55);
+        positions.push(s - 0.5, seal + t * (1 - 2 * seal), side * 0.5 * bulge);
+        if (side === 1) {
+          const [u, v] = labelUv(s, t);
+          uvs.push(u, v);
+        } else {
+          uvs.push(ZONE_BODY[0], ZONE_BODY[1]);
+        }
+      }
+    }
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        const a = base + j * (nx + 1) + i;
+        const b = a + nx + 1;
+        if (side === 1) indices.push(a, a + 1, b, a + 1, b + 1, b);
+        else indices.push(a, b, a + 1, a + 1, b, b + 1);
+      }
+    }
+  };
+  surface(1);
+  surface(-1);
+  // Crimp seals (thin double-sided strips).
+  const sealStrip = (y0: number, y1: number) => {
+    const base = positions.length / 3;
+    const q = [
+      [-0.5, y0, 0.012],
+      [0.5, y0, 0.012],
+      [0.5, y1, 0.012],
+      [-0.5, y1, 0.012],
+      [-0.5, y0, -0.012],
+      [0.5, y0, -0.012],
+      [0.5, y1, -0.012],
+      [-0.5, y1, -0.012],
+    ];
+    for (const p of q) {
+      positions.push(p[0]!, p[1]!, p[2]!);
+      uvs.push(ZONE_ACCENT[0], ZONE_ACCENT[1]);
+    }
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    indices.push(base + 4, base + 6, base + 5, base + 4, base + 7, base + 6);
+  };
+  sealStrip(0, seal);
+  sealStrip(1 - seal, 1);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(indices);
+  g.computeVertexNormals();
+  return g;
+}
+
+export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.BufferGeometry {
+  switch (kind) {
+    case "bottle":
+      return bottle(lod);
+    case "can":
+      return can(lod);
+    case "tube":
+      return tube(lod);
+    case "jar":
+      return jar(lod);
+    case "cup":
+      return cup(0.38, lod);
+    case "pint":
+      return cup(0.43, lod);
+    case "bag":
+      return bag(lod);
+    default:
+      return box();
+  }
+}
+
+export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag"];

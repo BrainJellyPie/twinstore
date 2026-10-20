@@ -1,9 +1,9 @@
-import { Play, Pause, SkipForward, RotateCcw, ChevronLeft, ChevronRight, Layers, BarChart3 } from "lucide-react";
+import { Play, Pause, SkipForward, RotateCcw, ChevronLeft, ChevronRight, Layers, BarChart3, Box, Eye } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { usePlaybackControlStore, type PlaybackSpeed } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
-import { useSimulationStore, type HeatmapMode } from "@/stores/simulationStore";
+import { useSimulationStore, type GraphicsMode, type HeatmapMode } from "@/stores/simulationStore";
 import { paletteGradient } from "@/features/store-viewer/utils/heatmapPalette";
 
 interface Props {
@@ -54,6 +54,10 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
   const setHeatmapMode = useSimulationStore((s) => s.setHeatmapMode);
   const rackOverlayOn = useSimulationStore((s) => s.rackOverlayOn);
   const toggleRackOverlay = useSimulationStore((s) => s.toggleRackOverlay);
+  const graphicsMode = useSimulationStore((s) => s.graphicsMode);
+  const setGraphicsMode = useSimulationStore((s) => s.setGraphicsMode);
+  const shopperView = useSimulationStore((s) => s.shopperView);
+  const setShopperView = useSimulationStore((s) => s.setShopperView);
 
   const disabled = maxTime <= minTime;
   const dayIdx = availableDays.indexOf(currentDay);
@@ -67,7 +71,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
   };
 
   return (
-    <div className="absolute top-4 right-4 w-[380px] rounded-lg border bg-background/95 p-4 shadow-md">
+    <div className="glass absolute top-4 right-4 z-20 w-[392px] rounded-2xl p-4 text-foreground shadow-float">
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-1">
@@ -80,7 +84,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
             >
               <ChevronLeft className="size-3" />
             </Button>
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-[0.8rem] font-medium text-muted-foreground">
               Day {dayIdx + 1} ({weekdayLabel})
             </span>
             <Button
@@ -93,7 +97,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               <ChevronRight className="size-3" />
             </Button>
           </div>
-          <div className="font-mono text-3xl font-bold tabular-nums leading-none">
+          <div className="font-display text-3xl font-semibold tabular-nums leading-none">
             {finished ? "End" : formatClock12h(currentMinute)}
           </div>
         </div>
@@ -103,7 +107,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
             <Button
               variant="outline"
               size="sm"
-              className="h-8 gap-1 text-xs"
+              className="h-8 gap-1 text-[0.8rem]"
               onClick={handleReset}
             >
               <RotateCcw className="size-3" />
@@ -114,7 +118,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-1 text-xs"
+                className="h-8 gap-1 text-[0.8rem]"
                 disabled={disabled}
                 onClick={() => seek(maxTime)}
               >
@@ -123,7 +127,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               </Button>
               <Button
                 size="sm"
-                className="h-8 gap-1 px-3 text-xs"
+                className="h-8 gap-1 px-3 text-[0.8rem]"
                 disabled={disabled}
                 onClick={togglePlay}
               >
@@ -137,7 +141,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
 
       <div className="mt-5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="text-xs text-muted-foreground">Speed</span>
+          <span className="text-[0.8rem] text-muted-foreground">Speed</span>
           <ToggleGroup
             type="single"
             value={String(speed)}
@@ -150,7 +154,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               <ToggleGroupItem
                 key={s}
                 value={String(s)}
-                className="h-7 px-2.5 text-xs"
+                className="h-7 px-2.5 text-[0.8rem]"
               >
                 {SPEED_LABEL[s]}
               </ToggleGroupItem>
@@ -160,7 +164,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
         <Button
           variant={rackOverlayOn ? "default" : "outline"}
           size="sm"
-          className="h-7 gap-1 px-2 text-xs"
+          className="h-7 gap-1 px-2 text-[0.8rem]"
           onClick={toggleRackOverlay}
           disabled={!hasRackStats}
           title={hasRackStats ? "Revenue and stop→buy rate per rack" : "Re-run to get rack KPIs"}
@@ -185,19 +189,47 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               value={l.value}
               title={l.hint}
               disabled={l.value === "dwell" && !hasDwell}
-              className="h-7 px-2 text-xs"
+              className="h-7 px-2 text-[0.8rem]"
             >
               {l.label}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
         {heatmapMode !== "off" && (
-          <div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
+          <div className="ml-auto flex items-center gap-1 text-[0.8rem] text-muted-foreground">
             low
             <span className="h-2 w-14 rounded-full" style={{ background: paletteGradient(heatmapMode) }} />
             high
           </div>
         )}
+      </div>
+      <div className="mt-3 flex items-center gap-2 border-t pt-3">
+        <Box className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+        <ToggleGroup
+          type="single"
+          value={graphicsMode}
+          onValueChange={(v) => v && setGraphicsMode(v as GraphicsMode)}
+          variant="outline"
+          size="sm"
+          aria-label="Graphics"
+        >
+          <ToggleGroupItem value="classic" className="h-7 px-2 text-[0.8rem]" title="Low-poly look">
+            Classic
+          </ToggleGroupItem>
+          <ToggleGroupItem value="realistic" className="h-7 px-2 text-[0.8rem]" title="Lit store interior with stocked shelves">
+            Realistic
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <Button
+          variant={shopperView ? "default" : "outline"}
+          size="sm"
+          className="ml-auto h-7 gap-1 px-2 text-[0.8rem]"
+          onClick={() => setShopperView(!shopperView)}
+          title="First-person view from a shopper's eyes"
+        >
+          <Eye className="size-3" />
+          Shopper view
+        </Button>
       </div>
     </div>
   );
