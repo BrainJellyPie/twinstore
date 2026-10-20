@@ -1,0 +1,295 @@
+"""VLM planning at the entrance: directory/map, item resolution, walk-outs, fallback, votes,
+and no double counting of the scenario's numeric demand — with scripted fake VLMs (no server)."""
+
+import asyncio
+import io
+import json
+from pathlib import Path
+
+import pytest
+from PIL import Image
+from pydantic import BaseModel
+
+from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS, sample_cue
+from store_emulator.domain.behavior import BehaviorCue
+from store_emulator.domain.config import EngineType, SimulationConfig
+from store_emulator.domain.engine import PerCustomerContext
+from store_emulator.domain.persona import Persona
+from store_emulator.domain.scenario import Crowding, Scenario, Weather
+from store_emulator.domain.store import Store
+from store_emulator.domain.types import Action, TokenUsage, Weekday
+from store_emulator.engine.llm_router import EnsembleLLMClient
+from store_emulator.engine.perception import (
+    directory_text,
+    render_store_map,
+    store_directory,
+)
+from store_emulator.engine.routing.pathfinder import AStarPathFinder
+from store_emulator.engine.simulation.engines.vlm_glance import VLMGlanceEngine
+from store_emulator.engine.simulation.engines.vlm_glance.planning import match_plan_item
+from store_emulator.engine.simulation.engines.vlm_glance.prompt import (
+    EntryDecision,
+    PlannedItem,
+    combine_plan_votes,
+    entry_decision_model,
+)
+from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunner
+
+SAMPLE = Path(__file__).resolve().parents[2] / "sample_data" / "proj_67916afd" / "runs" / "run_ab0039" / "input"
+
+PLAN = {"enter": True, "mission": "a cold soda and something salty",
+        "items": [{"category": "Drink", "product": "Pepsi 20oz", "qty": 2},
+                  {"category": "Snacks", "product": "", "qty": 1},
+                  {"category": "Garden", "product": "Lawn mower", "qty": 1}],
+        "reason": "thirsty"}
+
+
+def _store() -> Store:
+    return Store.model_validate(json.loads((SAMPLE / "store.json").read_text()))
+
+
+def _personas(n: int = 12) -> list[Persona]:
+    return [Persona.model_validate(p) for p in json.loads((SAMPLE / "personas.json").read_text())][:n]
+
+
+class _FakeVLM:
+    """Answers entrance plans with a fixed plan and shelf glances with "nothing"."""
+
+    def __init__(self, plan: dict[str, object] | None = None, *, fail: bool = False, name: str = "fake") -> None:
+        self.plan = PLAN if plan is None else plan
+        self.fail, self.name = fail, name
+        self.plan_calls: list[dict[str, object]] = []
+        self.glance_calls = 0
+
+    def _answer[T: BaseModel](self, response_model: type[T], system: str, prompt: str, image: str | None,
+                              seed: int | None, route: str | None, max_tokens: int | None) -> T:
+        if issubclass(response_model, EntryDecision):
+            self.plan_calls.append({"system": system, "prompt": prompt, "image": image, "seed": seed,
+                                    "route": route, "max_tokens": max_tokens, "schema": response_model})
+            if self.fail:
+                raise TimeoutError("vlm server timed out")
+            return response_model.model_validate(self.plan)  # longer item lists are trimmed by the schema
+        self.glance_calls += 1
+        return response_model.model_validate({"product": "", "number": 0, "interest": 0, "reason": ""})
+
+    async def generate_structured_async[T: BaseModel](
+        self, response_model: type[T], system_prompt: str, user_prompt: str,
+        *, max_retries: int = 1, seed: int | None = None, route: str | None = None, max_tokens: int | None = None,
+    ) -> T:
+        return self._answer(response_model, system_prompt, user_prompt, None, seed, route, max_tokens)
+
+    async def generate_structured_with_image_async[T: BaseModel](
+        self, response_model: type[T], system_prompt: str, user_prompt: str, image_url: str,
+        *, max_retries: int = 1, seed: int | None = None, route: str | None = None, max_tokens: int | None = None,
+    ) -> T:
+        assert image_url.startswith("data:image/png;base64,")
+        return self._answer(response_model, system_prompt, user_prompt, image_url, seed, route, max_tokens)
+
+    def reset_usage(self) -> None:
+        pass
+
+    def get_usage(self) -> TokenUsage:
+        return TokenUsage(requests=len(self.plan_calls) + self.glance_calls)
+
+
+def _config(**vlm: object) -> SimulationConfig:
+    cfg = SimulationConfig(engine_type=EngineType.VLM_GLANCE)
+    engine = cfg.engines.vlm_glance.model_copy(update={"max_glances": 2, "image_width": 384, **vlm})
+    return cfg.model_copy(update={"engines": cfg.engines.model_copy(update={"vlm_glance": engine})})
+
+
+def _context(store: Store, persona: Persona, seed: int, situation: str = "") -> PerCustomerContext:
+    purposeful = next(p for p in BEHAVIOR_PATTERNS if p.id == "purposeful")
+    return PerCustomerContext(
+        store=store, persona=persona.model_copy(update={"budget_max": 5000}), day=Weekday.SAT, arrival_hour=14,
+        concurrent_visitors_in_hour=3, cue=BehaviorCue(state="목마름"), behavior_patterns=[purposeful],
+        seed=seed, situation=situation,
+    )
+
+
+def _buys(decision_actions: list[object]) -> list[tuple[str, int]]:
+    return [(a.product_sku, a.quantity) for a in decision_actions if getattr(a, "action", None) == Action.BUY]  # type: ignore[attr-defined]
+
+
+def test_directory_and_map_describe_the_store():
+    store = _store()
+    directory = store_directory(store)
+    labels = [d.label for d in directory]
+    assert labels[:2] == ["Drink", "Frozen food"] and "Snacks" in labels and "Ice cream" in labels
+    drink = directory[0]
+    assert len(drink.examples) == 3 and drink.min_price <= drink.max_price and len(drink.rack_ids) == 3
+    text = directory_text(directory, "USD")
+    assert text.startswith("- Drink: ") and "$" in text
+    a, b = render_store_map(store, width=512), render_store_map(store, width=512)
+    assert a.png == b.png and a.size[0] == 512
+    # A promoted item puts a red SALE ribbon on its rack.
+    rack = store.product_racks[0]
+    promo_item = rack.slots[0].items[0].model_copy(update={"promo": "1+1"})
+    slot = rack.slots[0].model_copy(update={"items": [promo_item, *rack.slots[0].items[1:]]})
+    promoted = store.model_copy(update={"racks": [rack.model_copy(update={"slots": [slot, *rack.slots[1:]]}),
+                                                  *store.racks[1:]]})
+    reds = sum(1 for px in Image.open(io.BytesIO(render_store_map(promoted).png)).convert("RGB").get_flattened_data()
+               if px == (214, 32, 39))
+    assert reds > sum(1 for px in Image.open(io.BytesIO(a.png)).convert("RGB").get_flattened_data() if px == (214, 32, 39))
+    assert "on sale: " in directory_text(store_directory(promoted), "USD")
+
+
+def test_plan_items_resolve_by_name_words_category_and_demand_category():
+    store = _store()
+    engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    catalog = engine._catalog_for(store)  # pyright: ignore[reportPrivateUsage]
+    exact = match_plan_item(PlannedItem(category="Drink", product="pepsi 20oz"), catalog)
+    assert exact.how == "exact" and {e[2].name for e in exact.candidates} == {"Pepsi 20oz"}
+    fuzzy = match_plan_item(PlannedItem(category="Drink", product="Pepsi"), catalog)
+    assert fuzzy.how == "name" and all("Pepsi" in e[2].name for e in fuzzy.candidates)
+    words = match_plan_item(PlannedItem(category="", product="some ramen"), catalog)
+    assert words.how == "words" and all("Ramen" in e[2].name for e in words.candidates)
+    category = match_plan_item(PlannedItem(category="Snacks", product="something"), catalog)
+    assert category.how == "category" and {e[0].rack_name for e in category.candidates} == {"Snacks 1", "Snacks 2"}
+    assert match_plan_item(PlannedItem(category="Ice cream", product="popsicle"), catalog).how == "name"
+    demand = match_plan_item(PlannedItem(category="gelato"), catalog)  # no sign says gelato; ice cream does
+    assert demand.how == "demand_category" and {e[0].rack_name for e in demand.candidates} >= {"Ice cream 1"}
+    assert match_plan_item(PlannedItem(category="Garden", product="Lawn mower"), catalog).how == "unresolved"
+    assert exact.key == match_plan_item(PlannedItem(product="PEPSI 20OZ"), catalog).key
+
+
+def test_vlm_plan_becomes_planned_purchases_with_the_named_quantities():
+    store = _store()
+    vlm = _FakeVLM()
+    engine = VLMGlanceEngine(llm=vlm, pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    decision = asyncio.run(engine.decide_actions(_context(store, _personas()[0], seed=11, situation="a heatwave")))
+    actions = [a.action for a in decision.actions]
+    assert actions[0] == Action.ENTER and actions[-1] == Action.EXIT and Action.PAY in actions
+    names = {i.sku: i.name for r in store.product_racks for s in r.slots for i in s.items}
+    buys = _buys(decision.actions)
+    assert (next(sku for sku, n in names.items() if n == "Pepsi 20oz"), 2) in buys and len(buys) == 2
+    assert all(a.origin == "planned" for a in decision.actions if a.action == Action.BUY)
+    call = vlm.plan_calls[0]
+    assert call["image"] is not None and call["route"] == _personas()[0].id and call["max_tokens"] == 320
+    assert "Today: a heatwave." in str(call["prompt"]) and "- Drink: " in str(call["prompt"])
+    assert decision.trace["plan_source"] == "vlm" and decision.trace["mission"] == PLAN["mission"]
+    meta = engine.metadata()
+    planning = meta["planning"]
+    assert isinstance(planning, dict)
+    assert planning["enter_rate"] == 1.0 and planning["mean_items_named"] == 3
+    assert planning["resolved_by"] == {"exact": 1, "category": 1, "unresolved": 1}
+    assert planning["resolution_rate"] == pytest.approx(2 / 3, abs=1e-3)
+    assert sorted(c for c, _ in planning["top_categories"]) == ["Drink", "Snacks"]  # type: ignore[union-attr]
+    record = meta["plan_records"][0]  # type: ignore[index]
+    assert record["resolved"][2][2] == "unresolved"  # type: ignore[index]
+
+
+def test_same_customer_gets_the_same_plan_and_text_only_mode_skips_the_image():
+    store, persona = _store(), _personas()[3]
+    runs = []
+    for _ in range(2):
+        engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+        runs.append(_buys(asyncio.run(engine.decide_actions(_context(store, persona, seed=5))).actions))
+    assert runs[0] == runs[1]
+    vlm = _FakeVLM()
+    engine = VLMGlanceEngine(llm=vlm, pathfinder=AStarPathFinder(), config=_config(entrance_image=False, max_plan_items=1))  # type: ignore[arg-type]
+    decision = asyncio.run(engine.decide_actions(_context(store, persona, seed=5)))
+    assert vlm.plan_calls[0]["image"] is None
+    assert vlm.plan_calls[0]["schema"] is entry_decision_model(1)
+    assert len(_buys(decision.actions)) == 1  # max_plan_items caps the plan (schema-trimmed)
+    assert len(engine.metadata()["plan_records"][0]["items"]) == 1  # type: ignore[index]
+
+
+def test_enter_false_walks_out_without_buying_or_looking():
+    store = _store()
+    vlm = _FakeVLM({"enter": False, "mission": "too crowded", "items": [], "reason": "queue"})
+    config = _config(glance_policy="all")
+    pf = AStarPathFinder()
+    engine = VLMGlanceEngine(llm=vlm, pathfinder=pf, config=config)  # type: ignore[arg-type]
+    runner = PerCustomerSimulationRunner(config, engine, pf, sample_cue, BEHAVIOR_PATTERNS)
+    aggregated, results = asyncio.run(runner.run(store.model_copy(deep=True), _personas(6), max_concurrent=3))
+    assert len(results) == 6 and aggregated.summary.total_customers == 6
+    assert aggregated.summary.buyers == 0 and aggregated.summary.conversion_rate == 0.0
+    assert all(r.total_spent == 0 and r.timeline[0].action == Action.ENTER for r in results)
+    assert vlm.glance_calls == 0
+    planning = engine.metadata()["planning"]
+    assert isinstance(planning, dict) and planning["enter_rate"] == 0.0
+
+
+def test_failed_plan_falls_back_to_the_rule_plan_and_is_counted():
+    store, personas = _store(), _personas(5)
+    failing = VLMGlanceEngine(llm=_FakeVLM(fail=True), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    rule = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=_config(plan_policy="rule"))  # type: ignore[arg-type]
+    for i, persona in enumerate(personas):
+        a = asyncio.run(failing.decide_actions(_context(store, persona, seed=100 + i)))
+        b = asyncio.run(rule.decide_actions(_context(store, persona, seed=100 + i)))
+        assert _buys(a.actions) == _buys(b.actions)
+        assert a.trace["plan_source"] == "fallback" and "TimeoutError" in str(a.trace["plan_error"])
+    planning = failing.metadata()["planning"]
+    assert isinstance(planning, dict) and planning["plan_errors"] == 5 and planning["enter_rate"] is None
+    assert rule.metadata()["planning"] is None and rule.metadata()["plan_records"] == []
+
+
+def _baskets(scenario: Scenario | None, policy: str) -> list[list[tuple[str, int]]]:
+    """Planned baskets of a fixed panel, with the store left untouched by the scenario."""
+    store = _store()
+    config = _config(plan_policy=policy).model_copy(update={"scenario": scenario})
+    engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=config)  # type: ignore[arg-type]
+    out: list[list[tuple[str, int]]] = []
+    for i, persona in enumerate(_personas(40)):
+        context = PerCustomerContext(
+            store=store, persona=persona, day=Weekday.SAT, arrival_hour=persona.arrival_hour,
+            concurrent_visitors_in_hour=3, cue=BehaviorCue(), behavior_patterns=BEHAVIOR_PATTERNS, seed=500 + i,
+        )
+        decision = asyncio.run(engine.decide_actions(context))
+        out.append([(a.product_sku, a.quantity) for a in decision.actions
+                    if a.action == Action.BUY and a.origin == "planned"])
+    return out
+
+
+def test_vlm_plans_ignore_the_scenarios_numeric_demand_and_walkout_multipliers():
+    # Typhoon: hot food ×1.8, water ×1.7, stock-up quantities ×1.6; packed store: walk-outs ×2.5.
+    storm = Scenario(id="storm", weather=Weather.TYPHOON, crowding=Crowding.PACKED)
+    assert _baskets(storm, "vlm") == _baskets(None, "vlm")
+    # The rule planner does apply them, so the same scenario changes its baskets.
+    assert _baskets(storm, "rule") != _baskets(None, "rule")
+
+
+def test_plan_votes_majority_enter_and_items_named_by_half():
+    def key(item: PlannedItem) -> str:
+        return (item.product or item.category).lower()
+
+    a = EntryDecision(enter=True, mission="soda run", items=[PlannedItem(category="Drink", product="Pepsi", qty=2),
+                                                             PlannedItem(category="Snacks", product="Takis")])
+    b = EntryDecision(enter=True, mission="drinks", items=[PlannedItem(category="Drink", product="pepsi", qty=3)])
+    c = EntryDecision(enter=False, mission="nope")
+    d = EntryDecision(enter=True, items=[PlannedItem(category="Snacks", product="takis"),
+                                         PlannedItem(category="Ice cream", product="Magnum")])
+    plan, agreement = combine_plan_votes([("a", a), ("b", b), ("c", c), ("d", d)], key)
+    assert plan.enter and agreement == 0.75
+    assert [(i.product, i.qty) for i in plan.items] == [("Pepsi", 2), ("Takis", 1)]
+    assert plan.mission == "soda run"
+    out, agreement = combine_plan_votes([("a", a), ("c", c), ("c2", c)], key)
+    assert not out.enter and out.items == [] and agreement == pytest.approx(2 / 3)
+
+
+def test_vote_ensemble_plans_with_every_member():
+    store = _store()
+    yes = _FakeVLM()
+    also = _FakeVLM({**PLAN, "items": [{"category": "Drink", "product": "Pepsi 20oz", "qty": 1}]})
+    no = _FakeVLM({"enter": False, "mission": "", "items": [], "reason": ""})
+    ens = EnsembleLLMClient([("a", 1.0, yes), ("b", 1.0, also), ("c", 1.0, no)], mode="vote")  # type: ignore[list-item]
+    engine = VLMGlanceEngine(llm=ens, pathfinder=AStarPathFinder(), config=_config())
+    decision = asyncio.run(engine.decide_actions(_context(store, _personas()[0], seed=3)))
+    assert len(yes.plan_calls) == len(also.plan_calls) == len(no.plan_calls) == 1
+    names = {i.sku: i.name for r in store.product_racks for s in r.slots for i in s.items}
+    assert [names[sku] for sku, _ in _buys(decision.actions)] == ["Pepsi 20oz"]  # only Pepsi had a majority
+    record = engine.metadata()["plan_records"][0]  # type: ignore[index]
+    assert record["source"] == "vote" and record["agreement"] == pytest.approx(2 / 3)  # type: ignore[index]
+
+
+def test_run_options_and_cli_switch_the_plan_policy():
+    from store_emulator.application.simulation import RunOptions, apply_options
+    from store_emulator.cli import main
+
+    assert SimulationConfig().engines.vlm_glance.plan_policy == "vlm"
+    cfg = apply_options(SimulationConfig(), RunOptions(engine_type=EngineType.VLM_GLANCE, plan_policy="rule"))
+    assert cfg.engines.vlm_glance.plan_policy == "rule"
+    assert apply_options(SimulationConfig(), RunOptions()).engines.vlm_glance.plan_policy == "vlm"
+    with pytest.raises(SystemExit):
+        main(["simulate", "--plan-policy", "maybe", "--out", "x"])

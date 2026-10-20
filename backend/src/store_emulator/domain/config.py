@@ -36,6 +36,9 @@ type StructuredOutput = Literal["json", "json_schema"]
 # - all: the VLM sees every one of the max_glances most visible faces and decides alone.
 type GlancePolicy = Literal["gated", "all"]
 
+# Who plans the visit of a vision shopper (see VLMGlanceConfig.plan_policy).
+type PlanPolicy = Literal["vlm", "rule"]
+
 
 class LLMConfig(BaseModel):
     model: str = "gemini/gemini-3.1-pro-preview"
@@ -100,7 +103,8 @@ class RuleBasedConfig(BaseModel):
 
 
 class VLMGlanceConfig(BaseModel):
-    """Vision-language shopper: rule-based planning, impulse decisions from rendered shelf images.
+    """Vision-language shopper: the VLM plans the visit at the entrance (plan_policy "vlm") and makes
+    the impulse decisions from rendered shelf images; route style and caps stay rule-based.
 
     The default endpoint is a local llama.cpp server (OpenAI-compatible) running a small VLM
     on CPU, e.g. `llama-server -m Qwen3.5-0.8B-Q4_K_M.gguf --mmproj mmproj-...gguf --port 8081`.
@@ -127,6 +131,15 @@ class VLMGlanceConfig(BaseModel):
     # strong top-row preference small VLMs show on shelf images.
     buy_scale: float = Field(default=0.5, ge=0.0, le=1.0)
     weight_by_level: bool = True
+    # Who decides what the shopper came for (and whether they go in at all).
+    # - vlm: one call at the entrance with persona, time, situation, budget and the store directory
+    #   (plus the directory map image when entrance_image); the scenario's numeric demand and walk-out
+    #   multipliers are then not applied to the plan — the model read the situation itself.
+    # - rule: the rule-based planner (preferred categories × scenario demand multipliers).
+    plan_policy: PlanPolicy = "vlm"
+    max_plan_items: int = Field(default=3, ge=0, le=4)
+    entrance_image: bool = True
+    plan_max_tokens: int = Field(default=320, ge=64, le=4096)  # plans are longer than glance answers
 
 
 class EngineConfigs(BaseModel):

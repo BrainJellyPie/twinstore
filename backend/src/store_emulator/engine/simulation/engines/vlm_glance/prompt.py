@@ -7,11 +7,16 @@ AGENTS.md i18n policy).
 """
 
 import re
+from collections.abc import Callable
+from functools import cache
+from statistics import median
+from typing import ClassVar, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.persona import Persona
+from store_emulator.domain.types import Weekday
 from store_emulator.engine.perception import MarkedItem, ShelfView
 from store_emulator.engine.prompting import display_price
 
@@ -175,3 +180,164 @@ def combine_votes(view: ShelfView, answers: list[tuple[str, ShelfGlance]]) -> tu
     reason = next((g.reason for g in supporters if g.reason), "")
     combined = ShelfGlance(product=marked.item.name, number=marked.mark, interest=interest, reason=reason)
     return combined, len(supporters) / len(answers)
+
+
+# ── planning at the entrance ──────────────────────────────────────────────
+
+PLAN_ITEMS_LIMIT = 4  # upper bound of VLMGlanceConfig.max_plan_items
+
+PLAN_SYSTEM_PROMPT = """You role-play one shopper standing at the door of a convenience store.
+{image_line}Decide what THIS shopper came for, given who they are, the time, today's situation and their money.
+
+Reply in JSON:
+- mission: what they came for, at most 12 words
+- enter: true if they go in; false only if they would turn around (the store has nothing they need, or today's situation puts them off)
+- items: {items_rule}
+- reason: a few words"""
+
+_PLAN_IMAGE_LINE = ("The image is the store directory map by the door: racks labeled by category, "
+                    "red SALE ribbons mark promotions.\n")
+
+
+_TEXT_LIMITS: dict[str, int] = {"category": 30, "product": 48, "mission": 72, "reason": 48}
+
+
+def _clip(value: object, info: ValidationInfo) -> object:
+    """Over-long text is cut instead of failing the call (grammar-constrained servers never send it)."""
+    limit = _TEXT_LIMITS.get(info.field_name or "", 0)
+    return value[:limit] if isinstance(value, str) and limit else value
+
+
+class PlannedItem(BaseModel):
+    category: str = Field(default="", max_length=_TEXT_LIMITS["category"])
+    product: str = Field(default="", max_length=_TEXT_LIMITS["product"])
+    qty: int = Field(default=1, ge=1, le=3)
+
+    _clip_text = field_validator("category", "product", mode="before")(_clip)
+
+    @field_validator("qty", mode="before")
+    @classmethod
+    def _clamp_qty(cls, value: object) -> object:
+        return min(3, max(1, value)) if isinstance(value, int) and not isinstance(value, bool) else value
+
+
+class EntryDecision(BaseModel):
+    """What the shopper came for. Small and flat with short string bounds: on grammar-constrained
+    local servers the bounds cap the output tokens, which dominate the latency of tiny CPU models."""
+    items_limit: ClassVar[int] = PLAN_ITEMS_LIMIT
+
+    # Mission first: small models decide `enter` better once they have written down their purpose.
+    mission: str = Field(default="", max_length=_TEXT_LIMITS["mission"])
+    enter: bool = True
+    items: list[PlannedItem] = Field(default_factory=list[PlannedItem], max_length=PLAN_ITEMS_LIMIT)
+    reason: str = Field(default="", max_length=_TEXT_LIMITS["reason"])
+
+    _clip_text = field_validator("mission", "reason", mode="before")(_clip)
+
+    @field_validator("items", mode="before")
+    @classmethod
+    def _trim_items(cls, value: object) -> object:
+        if not isinstance(value, list):
+            return value
+        items = cast(list[object], value)
+        return items[:cls.items_limit]
+
+
+@cache
+def entry_decision_model(max_items: int) -> type[EntryDecision]:
+    """EntryDecision whose JSON schema allows at most `max_items` items (grammar-enforced on local
+    servers; small models otherwise fill every slot the schema allows). Longer lists are trimmed."""
+    if max_items >= PLAN_ITEMS_LIMIT:
+        return EntryDecision
+
+    class BoundedEntryDecision(EntryDecision):
+        model_config = ConfigDict(title=f"EntryDecision{max_items}")
+        items_limit: ClassVar[int] = max_items
+        items: list[PlannedItem] = Field(default_factory=list[PlannedItem], max_length=max_items)
+
+    return BoundedEntryDecision
+
+
+_WEEKDAY_NAMES: dict[Weekday, str] = {
+    Weekday.MON: "Monday", Weekday.TUE: "Tuesday", Weekday.WED: "Wednesday", Weekday.THU: "Thursday",
+    Weekday.FRI: "Friday", Weekday.SAT: "Saturday", Weekday.SUN: "Sunday",
+}
+
+
+def plan_system_prompt(*, max_items: int, image: bool) -> str:
+    items_rule = (
+        f"at most {max_items} things they plan to buy. category: one category from the store directory. "
+        "product: a product name from the directory, or a short description. qty: 1 to 3"
+        if max_items > 0 else "leave empty: today they only browse inside, no planned purchase"
+    )
+    return PLAN_SYSTEM_PROMPT.format(image_line=_PLAN_IMAGE_LINE if image else "", items_rule=items_rule)
+
+
+def plan_user_prompt(
+    persona: Persona,
+    cue: BehaviorCue,
+    pattern: BehaviorPattern,
+    *,
+    day: Weekday,
+    hour: int,
+    situation: str,
+    budget: int | None,
+    currency: str,
+    directory: str,
+) -> str:
+    mood = ", ".join(g for g in (_gloss(cue.state), _gloss(cue.emotion), _gloss(cue.purse), _gloss(cue.company)) if g)
+    who = f"A {_AGE.get(persona.age_group, persona.age_group)} {persona.gender.lower()}, {persona.identity}."
+    lines = [f"Shopper: {who} {persona.description}".strip()]
+    if persona.intent or persona.purpose:
+        lines.append(f"Usually comes for: {persona.intent or persona.purpose}")
+    if persona.preferred_categories:
+        lines.append(f"Usually buys: {', '.join(persona.preferred_categories[:5])}")
+    if persona.behavior_tendency:
+        lines.append(f"Habits: {persona.behavior_tendency}")
+    lines.append(f"Shopping style today: {_PATTERN_GLOSS.get(pattern.id, pattern.id.replace('_', ' '))}.")
+    if mood:
+        lines.append(f"Right now: {mood}.")
+    lines.append(f"Time: {_WEEKDAY_NAMES.get(day, 'a weekday')} {hour:02d}:00.")
+    lines.append(f"Today: {situation}." if situation else "Today: an ordinary day.")
+    if budget is not None:
+        lines.append(f"Money they are willing to spend: about {display_price(max(0, budget), currency)}.")
+    lines.append("Store directory:")
+    lines.append(directory)
+    lines.append("Does this shopper go in, and what do they plan to buy?")
+    return "\n".join(lines)
+
+
+def combine_plan_votes(
+    answers: list[tuple[str, EntryDecision]], item_key: Callable[[PlannedItem], str],
+) -> tuple[EntryDecision, float]:
+    """Ensemble vote on an entry plan: `enter` by majority (a tie enters), items named by at least
+    half of the members (identity = `item_key`, e.g. the resolved product or category; quantity =
+    median of the supporters'). Returns (plan, agreement = share of members on the majority side)."""
+    n = len(answers)
+    if n == 0:
+        return EntryDecision(), 0.0
+    entering = [d for _, d in answers if d.enter]
+    enter = 2 * len(entering) >= n
+    side = entering if enter else [d for _, d in answers if not d.enter]
+    agreement = len(side) / n
+    if not enter:
+        first = side[0]
+        return EntryDecision(enter=False, mission=first.mission, reason=first.reason), agreement
+    support: dict[str, list[PlannedItem]] = {}
+    for _, decision in answers:
+        seen: set[str] = set()
+        for item in decision.items:
+            key = item_key(item)
+            if key in seen:
+                continue
+            seen.add(key)
+            support.setdefault(key, []).append(item)
+    order = list(support)
+    kept = sorted((k for k in order if 2 * len(support[k]) >= n), key=lambda k: (-len(support[k]), order.index(k)))
+    items = [
+        support[k][0].model_copy(update={"qty": round(median(i.qty for i in support[k]))})
+        for k in kept[:PLAN_ITEMS_LIMIT]
+    ]
+    keyset = set(kept)
+    lead = max(side, key=lambda d: sum(1 for i in d.items if item_key(i) in keyset))
+    return EntryDecision(enter=True, mission=lead.mission, items=items, reason=lead.reason), agreement

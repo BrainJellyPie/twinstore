@@ -11,7 +11,7 @@ from typing import Any, cast
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
-from store_emulator.domain.config import EngineType, ExposureModel, RouteOrdering, SimulationConfig
+from store_emulator.domain.config import EngineType, ExposureModel, PlanPolicy, RouteOrdering, SimulationConfig
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
@@ -62,6 +62,8 @@ class RunOptions(BaseModel):
     # Draw visitors from the project's neighborhood model (distance, competitors, linked trips).
     use_town: bool = False
     town_scale: float = Field(default=1.0, gt=0.0, le=5.0)
+    # Vision shoppers: who plans the visit ("vlm": the model at the entrance; "rule": rule planner).
+    plan_policy: PlanPolicy | None = None
 
 
 def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationConfig:
@@ -82,6 +84,9 @@ def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationCo
     config = config.model_copy(update=updates)
     if options.model:
         config = with_engine_model(config, options.model)
+    if options.plan_policy is not None:
+        vlm = config.engines.vlm_glance.model_copy(update={"plan_policy": options.plan_policy})
+        config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
     return config
 
 
@@ -339,11 +344,15 @@ def engine_meta_summary(pid: str, run_id: str, *, max_examples: int = 8) -> dict
     if not isinstance(raw, dict):
         return None
     meta = cast(dict[str, object], raw)
-    summary: dict[str, object] = {k: v for k, v in meta.items() if k != "records"}
+    summary: dict[str, object] = {k: v for k, v in meta.items() if k not in ("records", "plan_records")}
     records = meta.get("records")
     if isinstance(records, list):
         rows = [cast(dict[str, object], r) for r in cast(list[object], records) if isinstance(r, dict)]
         summary["examples"] = [r for r in rows if r.get("outcome") in ("buy", "look")][:max_examples]
+    plans = meta.get("plan_records")
+    if isinstance(plans, list):
+        rows = [cast(dict[str, object], r) for r in cast(list[object], plans) if isinstance(r, dict)]
+        summary["plan_examples"] = rows[:max_examples]
     return summary
 
 

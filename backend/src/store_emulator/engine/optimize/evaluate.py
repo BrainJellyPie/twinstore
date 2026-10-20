@@ -14,10 +14,10 @@ from collections.abc import Callable
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.customer import CustomerResult
-from store_emulator.domain.engine import CustomerBehaviorEngine
+from store_emulator.domain.engine import CustomerBehaviorEngine, EngineMetadataSource
 from store_emulator.domain.optimize import OptimizeObjective
 from store_emulator.domain.persona import Persona
-from store_emulator.domain.result import SimulationSummary
+from store_emulator.domain.result import AggregatedResult, SimulationSummary
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import PathFinder, stable_seed
 from store_emulator.engine.simulation.factory import build_engine
@@ -143,3 +143,16 @@ class LayoutEvaluator:
             store.model_copy(deep=True), personas, max_concurrent=self._max_concurrent,
         )
         return customers
+
+    async def simulate(self, store: Store) -> tuple[float, AggregatedResult, list[CustomerResult]]:
+        """Objective value, aggregated result and per-customer results of `store` on the evaluator's
+        personas (not cached; for expensive shopper models whose every run is kept)."""
+        aggregated, customers = await self._runner(self.config.replicate).run(
+            store.model_copy(deep=True), self.personas, max_concurrent=self._max_concurrent,
+        )
+        self.evaluations += 1
+        return objective_value(self.objective, aggregated.summary), aggregated, customers
+
+    def engine_metadata(self) -> dict[str, object]:
+        """Run metadata of the evaluator's engine after its last run ({} when it keeps none)."""
+        return self._engine.metadata() if isinstance(self._engine, EngineMetadataSource) else {}

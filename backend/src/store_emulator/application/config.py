@@ -35,6 +35,9 @@ _VLM_ENGINE_ENV: dict[str, str] = {
     "PARASTORE_VLM_GLANCE_POLICY": "glance_policy",
     "PARASTORE_VLM_LOOK_BASE": "look_base",
     "PARASTORE_VLM_IMAGE_WIDTH": "image_width",
+    "PARASTORE_VLM_PLAN_POLICY": "plan_policy",
+    "PARASTORE_VLM_MAX_PLAN_ITEMS": "max_plan_items",
+    "PARASTORE_VLM_ENTRANCE_IMAGE": "entrance_image",
 }
 _SIM_ENV: dict[str, str] = {
     "PARASTORE_ENGINE": "engine_type",

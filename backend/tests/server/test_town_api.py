@@ -62,3 +62,36 @@ def test_run_with_town_visitors_saves_arrivals(client):
     assert manifest["town"] and manifest["scenario_id"] == "rainy_commute"
     personas = json.loads((out.parent / "input" / "personas.json").read_text())
     assert any("m (" in p["description"] for p in personas)  # walk distance annotation
+
+
+def test_vlm_synergy_job(client, monkeypatch):
+    from store_emulator.application import town_synergy
+    from tests.engine.test_vlm_synergy import CafeLoverVLM
+
+    monkeypatch.setattr(town_synergy, "build_client", lambda *args, **kwargs: CafeLoverVLM())
+    town = client.post(f"/api/projects/{PID}/town/generate",
+                       json={"archetype": "residential", "seed": 4, "size_m": 400, "n_competitors": 1,
+                             "venue_density": 0.0}).json()
+    focal = next(v for v in town["venues"] if v["is_focal"])
+    edited = client.post(f"/api/projects/{PID}/town/venues",
+                         json={"category": "cafe", "x": focal["x"] + 12, "y": focal["y"], "name": "Corner Cafe"}).json()
+    cafe = next(v["id"] for v in edited["venues"] if v["name"] == "Corner Cafe")
+    started = client.post(f"/api/projects/{PID}/town/venues/{cafe}/synergy-vlm",
+                          json={"customers": 10, "setup_id": "setup_7d6d", "scenario_id": "rainy_commute"})
+    assert started.status_code == 200, started.text
+    job = started.json()["job_id"]
+    for _ in range(900):
+        view = client.get(f"/api/projects/{PID}/town/synergy-jobs/{job}").json()
+        if view["status"]["status"] in ("completed", "failed"):
+            break
+        time.sleep(0.1)
+    assert view["status"]["status"] == "completed", view["status"]["error"]
+    result = view["result"]
+    assert result["venue_name"] == "Corner Cafe" and result["scenario"] == "Rainy commute"
+    assert result["delta_visitors"] > 0 and result["delta_spend_per_visitor"] > 0
+    assert result["delta_revenue_per_day"] > 0 and result["category_shifts"]
+    assert view["status"]["done"] == view["status"]["total"] == 10 + result["affected_customers"]
+    assert [j["job_id"] for j in client.get(f"/api/projects/{PID}/town/synergy-jobs").json()] == [job]
+    assert client.post(f"/api/projects/{PID}/town/venues/{focal['id']}/synergy-vlm", json={}).status_code == 400
+    assert client.post(f"/api/projects/{PID}/town/venues/nope/synergy-vlm", json={}).status_code == 404
+    assert client.get(f"/api/projects/{PID}/town/synergy-jobs/nope").status_code == 404

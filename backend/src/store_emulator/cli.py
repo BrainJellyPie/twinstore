@@ -5,6 +5,7 @@
     parastore compare runs/A/rep_0 runs/B/rep_0
     parastore fidelity runs/A/rep_0 pos_export.csv
     parastore summary runs/A/rep_0
+    parastore capture shelf.jpg --project proj_67916afd --model llamacpp:local
 
 Every run directory uses the same layout as server runs (input/ + output/), so
 results from the CLI and from the app are interchangeable.
@@ -15,8 +16,11 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
+from typing import cast
 
+from store_emulator.application import capture as capture_service
 from store_emulator.application.config import local_config
+from store_emulator.application.errors import AppError
 from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.application.scenarios import PRESETS as SCENARIO_PRESETS
@@ -34,14 +38,17 @@ from store_emulator.application.storage.runs import (
     save_run_dir,
 )
 from store_emulator.domain.analysis import ComparisonReport
+from store_emulator.domain.capture import CaptureOptions
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig, EnsembleMember
-from store_emulator.domain.scenario import Scenario
 from store_emulator.domain.result import SimulationSummary
+from store_emulator.domain.scenario import Scenario
 from store_emulator.domain.store import Store
 from store_emulator.engine.analysis.compare import compare_runs
 from store_emulator.engine.analysis.fidelity import fidelity_report
+from store_emulator.engine.capture import display_name, render_overlay
+from store_emulator.engine.prompting import display_price
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +84,18 @@ def main(argv: list[str] | None = None) -> int:
 
     summ = sub.add_parser("summary", help="print the KPIs of a run directory")
     summ.add_argument("run", type=Path)
+
+    cap = sub.add_parser("capture", help="shelf photo → planogram (levels, products, facings, prices, gaps)")
+    cap.add_argument("image", type=Path)
+    cap.add_argument("--project", help="also store the capture in this project, ready to apply from the app")
+    cap.add_argument("--detector", choices=["auto", "gdino", "vlm", "classic"], default="auto")
+    cap.add_argument("--model", default="", help='vision model reference ("llamacpp:local", "gemini:gemini-3.8-flash"), '
+                                                 'a raw LiteLLM id, or "none" to skip recognition; default: the app\'s VLM')
+    cap.add_argument("--api-base", help="endpoint for a raw LiteLLM model id (e.g. http://127.0.0.1:8081/v1)")
+    cap.add_argument("--currency", help="ISO 4217 code of the price tags (default: server config)")
+    cap.add_argument("--rack-type", choices=["shelf", "fridge"], default="shelf")
+    cap.add_argument("--out", type=Path, help="write result.json and overlay.png to this directory")
+    cap.add_argument("--verbose", action="store_true")
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.WARNING if not args.__dict__.get("verbose") else logging.INFO,
@@ -121,6 +140,8 @@ def main(argv: list[str] | None = None) -> int:
             args.json.write_text(report.model_dump_json(indent=2))
     elif args.command == "summary":
         _print_summary(SimulationSummary.model_validate(read_json(args.run / "output" / "summary.json")))
+    elif args.command == "capture":
+        return _capture(args)
     elif args.command == "scenarios":
         for s in SCENARIO_PRESETS:
             print(f"  {s.id:<20} {s.name:<34} {s.description}")
@@ -146,6 +167,8 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
                                        '"openai:gpt-6-luna=2,anthropic:claude-haiku-5-5,qwen:qwen3.7-plus"')
     p.add_argument("--ensemble-mode", choices=["mixture", "vote"], default="mixture")
     p.add_argument("--scenario", help="scenario preset id (see `parastore scenarios`) or path to a scenario JSON file")
+    p.add_argument("--plan-policy", choices=["vlm", "rule"],
+                   help="vlm_glance: who plans the visit (default vlm: the model at the entrance)")
     p.add_argument("--api-base", help="endpoint override for a raw LiteLLM model id (vLLM, llama.cpp server)")
     p.add_argument("--cache-dir", help="LLM response cache directory")
     p.add_argument("--currency", help="ISO 4217 code of the price unit (USD, KRW, ...)")
@@ -183,6 +206,7 @@ def _config(args: argparse.Namespace) -> SimulationConfig:
         seed=args.seed, exposure_model=args.exposure_model, route_ordering=args.route_ordering,
         model=args.model, ensemble=_parse_ensemble(args.ensemble, args.ensemble_mode),
         scenario_id=scenario_id, scenario=scenario,
+        plan_policy="vlm" if args.plan_policy == "vlm" else "rule" if args.plan_policy == "rule" else None,
     ))
     llm_updates: dict[str, object] = {}
     if args.api_base:
@@ -228,11 +252,55 @@ def _simulate_replicates(
             write_json(target / "output" / f"{cfg.engine_type.value}_meta.json", meta)
         print(f"\n=== {target} (engine={cfg.engine_type.value}, seed={cfg.seed}, replicate={rep}) ===")
         _print_summary(aggregated.summary)
+        planning = meta.get("planning")
+        if isinstance(planning, dict):
+            p = cast(dict[str, object], planning)
+            print(f"  VLM plans {p.get('plans')} (errors {p.get('plan_errors')}) | enter rate {p.get('enter_rate')}"
+                  f" | items/plan {p.get('mean_items_named')} | resolved {p.get('resolution_rate')}"
+                  f" | top categories {p.get('top_categories')}")
         d = aggregated.diagnostics
         usage = aggregated.token_usage
         print(f"  failed customers {len(d.failed_customers)} | dropped hallucinated buys {d.dropped_invalid_buys}"
               f" | over-budget {d.dropped_over_budget} | LLM requests {usage.requests} (cached {usage.cached_requests})"
               f" | tokens {usage.total_tokens:,}")
+
+
+def _capture(args: argparse.Namespace) -> int:
+    config = local_config()
+    options = CaptureOptions(
+        detector=args.detector, model=args.model, currency=(args.currency or config.currency).upper(),
+        rack_type=args.rack_type,
+    )
+    try:
+        photo = capture_service.prepare_photo(args.image.read_bytes(), args.image.name)
+        llm_config = capture_service.capture_llm_config(config, args.model)
+        if llm_config is not None and args.api_base:
+            llm_config = llm_config.model_copy(update={"api_base": args.api_base, "structured_output": "json_schema"})
+        result = capture_service.run_capture_sync(photo, options, llm_config, salt=args.image.name)
+        stored = capture_service.save_capture(args.project, photo, args.image.name, options, result) if args.project else None
+    except AppError as e:
+        print(f"error: {e.message}", file=sys.stderr)
+        return 1
+    print(f"{args.image.name}: {len(result.bands)} shelves, {len(result.items)} products, {result.facings} facings, "
+          f"{len(result.gaps)} gaps | detector {result.detector} | model {result.model or '-'} "
+          f"({result.vlm_calls} calls) | tilt {result.tilt_deg:+.1f}° | {result.timings.get('total_sec', 0):.1f}s")
+    for band in result.bands:
+        items = sorted((i for i in result.items if i.band == band.index), key=lambda i: i.order)
+        gaps = sum(1 for g in result.gaps if g.band == band.index)
+        print(f"  shelf {band.index + 1} → level {band.level}" + (f"  ({gaps} gap{'s' if gaps != 1 else ''})" if gaps else ""))
+        for item in items:
+            price = display_price(item.price, result.currency) if item.price is not None else "?"
+            mark = "~" if item.price_estimated else " "
+            print(f"    {item.facings}× {display_name(item)[:44]:<44} {mark}{price:>10}  {item.category or '-':<14} {item.sku}")
+    for note in result.notes:
+        print(f"  note: {note}")
+    if stored is not None:
+        print(f"  stored as {stored.capture_id} in {args.project} (apply it from the app or POST .../captures/{stored.capture_id}/apply)")
+    if args.out:
+        args.out.mkdir(parents=True, exist_ok=True)
+        (args.out / "result.json").write_text(result.model_dump_json(indent=2), encoding="utf-8")
+        (args.out / "overlay.png").write_bytes(render_overlay(photo, result))
+    return 0
 
 
 def _print_summary(s: SimulationSummary) -> None:

@@ -7,7 +7,11 @@ Typical use::
     visitors, arrivals = plan_arrivals(pool, demand, town, seed=7, scale=0.2)
 """
 
-from store_emulator.engine.town.arrivals import plan_arrivals, town_context_text
+from store_emulator.engine.town.arrivals import (
+    counterfactual_arrival,
+    plan_arrivals,
+    town_context_text,
+)
 from store_emulator.engine.town.demand import (
     CategoryPrior,
     DemandParams,
@@ -30,6 +34,7 @@ __all__ = [
     "CategoryPrior",
     "DemandParams",
     "auto_competitor_count",
+    "counterfactual_arrival",
     "day_type_for",
     "estimate_demand",
     "fetch_overpass",

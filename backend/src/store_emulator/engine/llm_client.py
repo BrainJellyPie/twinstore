@@ -63,12 +63,12 @@ class LiteLLMClient:
             },
         ], rid
 
-    def _call_kwargs(self, seed: int | None) -> dict[str, object]:
+    def _call_kwargs(self, seed: int | None, max_tokens: int | None = None) -> dict[str, object]:
         """Provider-agnostic sampling kwargs. Unsupported params are dropped by LiteLLM."""
         kwargs: dict[str, object] = {
             "model": self.model,
             "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
+            "max_tokens": max_tokens or self.max_tokens,
             "timeout": self.timeout_sec,
             "drop_params": True,
         }
@@ -121,14 +121,16 @@ class LiteLLMClient:
     # Content-addressed: identical (model, sampling params, seed, schema, prompts) → identical
     # response. Makes reruns free, keeps paired experiments exact, and survives crashes.
 
-    def _cache_path(self, response_model: type[BaseModel], messages: object, seed: int | None) -> Path | None:
+    def _cache_path(
+        self, response_model: type[BaseModel], messages: object, seed: int | None, max_tokens: int | None = None,
+    ) -> Path | None:
         if self.cache_dir is None:
             return None
         key_src = json.dumps(
             {
                 "model": self.model,
                 "temperature": self.temperature,
-                "max_tokens": self.max_tokens,
+                "max_tokens": max_tokens or self.max_tokens,
                 "seed": self._effective_seed(seed),
                 "schema": response_model.model_json_schema(),
                 "messages": messages,
@@ -194,9 +196,10 @@ class LiteLLMClient:
         max_retries: int = 1,
         seed: int | None = None,
         route: str | None = None,
+        max_tokens: int | None = None,
     ) -> T:
         msgs, rid = self._messages(system_prompt, user_prompt)
-        cache_path = self._cache_path(response_model, msgs, seed)
+        cache_path = self._cache_path(response_model, msgs, seed, max_tokens)
         cached = self._cache_get(cache_path, response_model)
         if cached is not None:
             return cached
@@ -204,7 +207,7 @@ class LiteLLMClient:
             response_model=response_model,
             messages=msgs,  # type: ignore[reportArgumentType]
             max_retries=max_retries,
-            **self._call_kwargs(seed),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
+            **self._call_kwargs(seed, max_tokens),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
         )
         self._accumulate_usage(raw, rid)
         self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
@@ -246,9 +249,10 @@ class LiteLLMClient:
         max_retries: int = 1,
         seed: int | None = None,
         route: str | None = None,
+        max_tokens: int | None = None,
     ) -> T:
         msgs, rid = self._messages_with_image(system_prompt, user_prompt, image_url)
-        cache_path = self._cache_path(response_model, msgs, seed)
+        cache_path = self._cache_path(response_model, msgs, seed, max_tokens)
         cached = self._cache_get(cache_path, response_model)
         if cached is not None:
             return cached
@@ -256,7 +260,7 @@ class LiteLLMClient:
             response_model=response_model,
             messages=msgs,  # type: ignore[reportArgumentType]
             max_retries=max_retries,
-            **self._call_kwargs(seed),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
+            **self._call_kwargs(seed, max_tokens),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
         )
         self._accumulate_usage(raw, rid)
         self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]

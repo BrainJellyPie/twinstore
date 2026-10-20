@@ -23,6 +23,7 @@ from store_emulator.domain.town import (
     VenueCategory,
 )
 from store_emulator.domain.types import Weekday, stable_seed
+from store_emulator.engine.town.demand import purpose_label
 
 _HOUR_TOLERANCE = 2  # hours a pool persona's own arrival hour may differ before falling back
 
@@ -218,3 +219,35 @@ def town_context_text(arrival: TownArrival, town: Town, *, detour_factor: float 
         if nearest + 20 < arrival.distance_m:
             text = f"{text[:-1]}, passing up a closer convenience store ({_meters(nearest)} from where they started)."
     return text
+
+
+def counterfactual_arrival(
+    arrival: TownArrival,
+    removed_venue_id: str,
+    demand_without: TownDemand,
+    *,
+    seed: int,
+    walk_m_per_min: float = 80.0,
+) -> TownArrival:
+    """How a visitor would have arrived had `removed_venue_id` not existed.
+
+    Visitors chained from that venue are re-annotated as direct visitors from an origin drawn
+    (seeded by visitor) from the counterfactual demand's origin shares of their age group; every
+    other visitor keeps their trip (their text may still change, e.g. a closer competitor gone).
+    """
+    if not (arrival.is_linked_trip and arrival.came_from_venue_id == removed_venue_id):
+        return arrival
+    options = list(demand_without.origin_shares)
+    if not options:
+        return arrival.model_copy(update={"is_linked_trip": False, "came_from_venue": "", "came_from_venue_id": "",
+                                          "segment": "resident", "origin_kind": "", "origin_name": ""})
+    weights = [o.by_age.get(arrival.age_group, 0.0) for o in options]
+    if sum(weights) <= 0:
+        weights = [max(o.expected_visitors, 1e-9) for o in options]
+    origin = random.Random(stable_seed(seed, "town-counterfactual", arrival.persona_id)).choices(options, weights)[0]
+    return TownArrival(
+        persona_id=arrival.persona_id, source_persona_id=arrival.source_persona_id, hour=arrival.hour,
+        segment=origin.segment, age_group=arrival.age_group, purpose=purpose_label(origin.segment, arrival.hour),
+        origin_building_id=origin.building_id, origin_kind=origin.kind.value, origin_name=origin.name,
+        distance_m=origin.distance_m, walk_min=round(origin.distance_m / walk_m_per_min, 1),
+    )

@@ -66,7 +66,9 @@ class _ScriptedVLM:
 
 def _config(policy: str = "all") -> SimulationConfig:
     cfg = SimulationConfig(engine_type=EngineType.VLM_GLANCE)
-    vlm = cfg.engines.vlm_glance.model_copy(update={"glance_policy": policy, "max_glances": 3, "image_width": 384})
+    # Glance-only behavior: the rule planner decides the planned purchases (VLM planning: test_vlm_plan.py).
+    vlm = cfg.engines.vlm_glance.model_copy(update={"glance_policy": policy, "max_glances": 3, "image_width": 384,
+                                                    "plan_policy": "rule"})
     return cfg.model_copy(update={"engines": cfg.engines.model_copy(update={"vlm_glance": vlm})})
 
 

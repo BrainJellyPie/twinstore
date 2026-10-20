@@ -66,7 +66,8 @@ PATTERN_IMPULSE_FACTOR: dict[str, float] = {
 _WANDERING_PATTERNS = {"exploratory", "leisurely", "social_browsing", "hungry_wandering", "window_shopping"}
 
 
-def _tokens(text: str) -> set[str]:
+def tokenize(text: str) -> set[str]:
+    """Lower-cased words without pure numbers, crudely singularized ("chips" → "chip")."""
     out: set[str] = set()
     for raw in re.split(r"[^\w]+", text.lower()):
         if not raw or raw.isdigit():
@@ -75,8 +76,9 @@ def _tokens(text: str) -> set[str]:
     return out
 
 
-def _expand(category: str) -> set[str]:
-    words = _tokens(category)
+def expand_category(category: str) -> set[str]:
+    """Category words plus the synonym groups they touch ("coffee" → every drink word)."""
+    words = tokenize(category)
     expanded = set(words)
     for key, group in _SYNONYMS.items():
         if words & group or key in words:
@@ -97,6 +99,9 @@ class ShopperPlan:
     buys: list[CustomerAction]
     chosen: set[str]
     planned: list[CustomerAction]
+    # False: the shopper turned around at the door (no impulse step, no purchase).
+    entered: bool = True
+    trace: dict[str, object] = field(default_factory=dict[str, object])
 
 
 @dataclass
@@ -123,7 +128,7 @@ class RuleBasedEngine:
     def _catalog_for(self, store: Store) -> list[tuple[Rack, Slot, SlotItem, set[str], set[str]]]:
         if self._catalog is None or self._catalog[0] is not store:
             entries = [
-                (rack, slot, item, _tokens(f"{rack.rack_name} {rack.rack_desc}"), _tokens(item.name))
+                (rack, slot, item, tokenize(f"{rack.rack_name} {rack.rack_desc}"), tokenize(item.name))
                 for rack in store.product_racks for slot in rack.slots for item in slot.items
             ]
             self._catalog = (store, entries)
@@ -141,53 +146,67 @@ class RuleBasedEngine:
         return self._finish(context, plan, impulse)
 
     def _plan(self, context: PerCustomerContext) -> ShopperPlan:
+        """Rule plan: walk-out draw and one planned purchase per matched preferred category, both
+        scaled by the scenario's numeric demand / walk-out multipliers."""
+        params = self._config.engines.rule_based
+        store, persona = context.store, context.persona
+        plan, middle = self._begin_plan(context)
+        pattern, rng = plan.pattern, plan.rng
+        plan.walk_out = pattern.allow_no_purchase and rng.random() < min(0.9, params.walkout_prob * self._fx.walkout)
+        if pattern.max_products > 0 and not plan.walk_out:
+            for category in persona.preferred_categories:
+                if len(plan.buys) >= pattern.max_products:
+                    break
+                hit_prob = params.planned_hit_prob * self._fx.demand_for(words_categories(category)) ** 0.5
+                if rng.random() > min(0.98, hit_prob):
+                    continue
+                pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng)
+                if pick is None:
+                    continue
+                rack, slot, item = pick
+                self.add_planned_buy(store, plan, middle, rack, slot, item, f"looks for {category}")
+        return self.close_plan(store, plan, middle)
+
+    def _begin_plan(self, context: PerCustomerContext) -> tuple[ShopperPlan, list[CustomerAction]]:
+        """Pattern draw, budget and the wandering stop: everything a plan has before its purchases.
+        Returns the plan (no route yet) and the list of in-store actions to extend."""
         cfg = self._config
-        params = cfg.engines.rule_based
         store, persona = context.store, context.persona
         rng = random.Random(stable_seed(context.seed, "rule_based"))
-        grid = store.walkable_grid()
-
         pattern = self._pick_pattern(context.behavior_patterns, rng)
-        budget = persona.budget_max if persona.budget_max > 0 else 10**9
-        tolerance = cfg.budget_tolerance or 10.0
-        spend = 0
-        buys: list[CustomerAction] = []
         middle: list[CustomerAction] = []
-        chosen: set[str] = set()
-
         if pattern.id in _WANDERING_PATTERNS:
             w, h = store.grid_size
             middle.append(CustomerAction(
                 nav="area", area=(1, 1, max(1, w - 2), max(1, h - 2)),
                 action=Action.WANDER, dwell=rng.randint(20, 60), description="wanders the aisles",
             ))
-
-        walk_out = pattern.allow_no_purchase and rng.random() < min(0.9, params.walkout_prob * self._fx.walkout)
-        if pattern.max_products > 0 and not walk_out:
-            for category in persona.preferred_categories:
-                if len(buys) >= pattern.max_products:
-                    break
-                hit_prob = params.planned_hit_prob * self._fx.demand_for(words_categories(category)) ** 0.5
-                if rng.random() > min(0.98, hit_prob):
-                    continue
-                pick = self._pick_item(store, category, budget - spend, chosen, rng)
-                if pick is None:
-                    continue
-                rack, slot, item = pick
-                actions = self._visit(store, grid, rack, slot, item, "planned", pattern, rng, f"looks for {category}")
-                if not actions:
-                    continue
-                middle.extend(actions)
-                buys.append(actions[-1])
-                chosen.add(item.sku)
-                spend += item.price * actions[-1].quantity
-
-        planned = self._frame(store, middle, bool(buys), rng)
-        planned = integrate_actions(store, planned, [], ordering=cfg.route_ordering)
-        return ShopperPlan(
-            pattern=pattern, rng=rng, grid=grid, budget=budget, tolerance=tolerance, spend=spend,
-            walk_out=walk_out, buys=buys, chosen=chosen, planned=planned,
+        plan = ShopperPlan(
+            pattern=pattern, rng=rng, grid=store.walkable_grid(),
+            budget=persona.budget_max if persona.budget_max > 0 else 10**9,
+            tolerance=cfg.budget_tolerance or 10.0, spend=0, walk_out=False, buys=[], chosen=set(), planned=[],
         )
+        return plan, middle
+
+    def add_planned_buy(
+        self, store: Store, plan: ShopperPlan, middle: list[CustomerAction],
+        rack: Rack, slot: Slot, item: SlotItem, why: str, *, quantity: int | None = None,
+    ) -> bool:
+        actions = self._visit(store, plan.grid, rack, slot, item, "planned", plan.pattern, plan.rng, why,
+                              quantity=quantity)
+        if not actions:
+            return False
+        middle.extend(actions)
+        plan.buys.append(actions[-1])
+        plan.chosen.add(item.sku)
+        plan.spend += item.price * actions[-1].quantity
+        return True
+
+    def close_plan(self, store: Store, plan: ShopperPlan, middle: list[CustomerAction]) -> ShopperPlan:
+        """Frame the in-store actions (enter … pay, exit) into the planned route."""
+        planned = self._frame(store, middle, bool(plan.buys), plan.rng)
+        plan.planned = integrate_actions(store, planned, [], ordering=self._config.route_ordering)
+        return plan
 
     def can_buy_more(self, plan: ShopperPlan, impulse_buys: int, price: int) -> bool:
         return (
@@ -263,7 +282,7 @@ class RuleBasedEngine:
             actions=merged,
             engine_type=self.engine_type,
             trace={"pattern": plan.pattern.id, "walk_out": plan.walk_out, "planned_buys": len(plan.buys),
-                   "impulse_buys": impulse.buys, "impulse_looks": impulse.looks, **impulse.trace},
+                   "impulse_buys": impulse.buys, "impulse_looks": impulse.looks, **plan.trace, **impulse.trace},
         )
 
     def _pick_pattern(self, patterns: list[BehaviorPattern], rng: random.Random) -> BehaviorPattern:
@@ -275,7 +294,7 @@ class RuleBasedEngine:
     def _pick_item(
         self, store: Store, category: str, remaining: int, chosen: set[str], rng: random.Random,
     ) -> tuple[Rack, Slot, SlotItem] | None:
-        words = _expand(category)
+        words = expand_category(category)
         attention = self._config.perception.level_attention
         promo_mult = self._config.engines.rule_based.promo_multiplier
         candidates: list[tuple[Rack, Slot, SlotItem]] = []
@@ -304,13 +323,16 @@ class RuleBasedEngine:
         why: str,
         *,
         force_browse: bool = False,
+        quantity: int | None = None,
     ) -> list[CustomerAction]:
+        """Browse (optional) + buy at the face. `quantity` None = rule draw (refills, scenario stock-up)."""
         tile = face_access_tile(rack, slot.face, store.grid_size, grid)
         if tile is None:
             return []
-        quantity = 2 if pattern.id == "routine_refill" and rng.random() < 0.4 else 1
-        if self._fx.quantity > 1.0 and rng.random() < self._fx.quantity - 1.0:
-            quantity += 1  # stocking up (typhoon, snow)
+        if quantity is None:
+            quantity = 2 if pattern.id == "routine_refill" and rng.random() < 0.4 else 1
+            if self._fx.quantity > 1.0 and rng.random() < self._fx.quantity - 1.0:
+                quantity += 1  # stocking up (typhoon, snow)
         out: list[CustomerAction] = []
         params = self._config.engines.rule_based
         if force_browse or pattern.browse_required_before_buy or rng.random() < params.browse_before_buy_prob:

@@ -19,7 +19,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from store_emulator.domain.analysis import ComparisonReport
-from store_emulator.domain.optimize import CandidateScore, OptimizeResult, OptimizeSpec
+from store_emulator.domain.optimize import (
+    CandidateScore,
+    LayoutCandidate,
+    OptimizeResult,
+    OptimizeSpec,
+)
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.result import SimulationSummary
 from store_emulator.domain.store import Store
@@ -86,6 +91,7 @@ class _Search:
         self.evaluations = 0
         self.cache_hits = 0
         self._seen: set[str] = {store_fingerprint(baseline.store)}
+        self.scored: dict[str, _Candidate] = {}  # fingerprint → first candidate with that layout
 
     @property
     def remaining(self) -> int:
@@ -108,8 +114,11 @@ class _Search:
         score, summary = await self.evaluator.evaluate(proposal.store)
         self.cache_hits += self.evaluator.cache_hits - hits
         self.evaluations += 1
-        self._seen.add(store_fingerprint(proposal.store))
-        return _Candidate(proposal.moves, proposal.descriptions, proposal.store, score, summary, self.evaluations)
+        key = store_fingerprint(proposal.store)
+        self._seen.add(key)
+        candidate = _Candidate(proposal.moves, proposal.descriptions, proposal.store, score, summary, self.evaluations)
+        self.scored.setdefault(key, candidate)
+        return candidate
 
     def record(self, candidate: _Candidate, accepted: bool, label: str) -> None:
         if self.gain(candidate.score) > self.gain(self.best.score):
@@ -292,8 +301,12 @@ async def optimize(
     *,
     validation_personas: list[Persona] | None = None,
     on_progress: ProgressCallback | None = None,
+    keep_top: int = 0,
 ) -> OptimizeResult:
     """Search for a better layout than `store` under `spec`. Never mutates `store`.
+
+    `keep_top` > 0 also returns the best distinct non-baseline layouts of the whole trajectory
+    (by score, redundant moves pruned) in `result.top_candidates`, e.g. for a VLM judge.
 
     `validation_personas` (default: the evaluator's personas) are simulated on baseline and best
     with the next replicate, i.e. fresh shopper randomness, and compared pairwise; that guards
@@ -373,6 +386,15 @@ async def optimize(
                     " before acting on it."
                 )
 
+    top: list[LayoutCandidate] = []
+    if keep_top > 0:
+        baseline_key = store_fingerprint(store)
+        ranked = sorted((c for k, c in search.scored.items() if k != baseline_key), key=search.fitter)
+        for candidate in ranked[:keep_top]:
+            _, pruned_descriptions, pruned_store = _prune(store, candidate, rules)
+            top.append(LayoutCandidate(iteration=candidate.iteration, score=candidate.score,
+                                       moves=list(pruned_descriptions), store=pruned_store.model_copy(deep=True)))
+
     seconds = round(time.perf_counter() - started, 3)
     logger.info(
         f"[optimize] done in {seconds}s: {search.evaluations} evaluations, best {best.score}"
@@ -396,4 +418,5 @@ async def optimize(
         validation_relative_improvement=validation_relative,
         validation_prob_better=validation_prob,
         notes=notes,
+        top_candidates=top,
     )

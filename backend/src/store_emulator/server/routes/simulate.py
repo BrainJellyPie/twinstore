@@ -10,7 +10,7 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.providers import ensure_resolvable
 from store_emulator.application.simulation import RunOptions
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
-from store_emulator.domain.config import EngineType, ExposureModel, RouteOrdering
+from store_emulator.domain.config import EngineType, ExposureModel, PlanPolicy, RouteOrdering
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.scenario import Scenario
@@ -40,6 +40,10 @@ class SimulateRequest(BaseModel):
     scenario: Scenario | None = Field(default=None, description="Custom scenario (overrides scenario_id)")
     use_town: bool = Field(default=False, description="Draw visitors from the project's neighborhood model")
     town_scale: float = Field(default=1.0, gt=0.0, le=5.0, description="Share of the predicted daily visitors to simulate")
+    plan_policy: PlanPolicy | None = Field(
+        default=None,
+        description='Vision shoppers only: "vlm" (the model plans the visit at the entrance) or "rule" (rule planner)',
+    )
 
 
 @engines_router.get("/engines", summary="Available simulation engines", response_model=list[EngineInfo])
@@ -61,8 +65,9 @@ async def list_engines() -> list[EngineInfo]:
         ),
         EngineInfo(
             engine_type=EngineType.VLM_GLANCE.value, label="Vision shoppers",
-            description="Rule-based planning; impulse picks made by a vision-language model looking at rendered "
-                        "shelves. Runs on a local CPU model — use a small customer sample.",
+            description="A vision-language model plans each visit at the entrance (store directory map, "
+                        "situation, budget) and makes the impulse picks looking at rendered shelves. Runs on a "
+                        "local CPU model — use a small customer sample.",
             uses_llm=True, model=vlm.model, default=config.engine_type == EngineType.VLM_GLANCE,
         ),
     ]
@@ -103,6 +108,7 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
         exposure_model=req.exposure_model, route_ordering=req.route_ordering,
         max_customers=req.max_customers, preview=req.preview, model=req.model, ensemble=req.ensemble,
         scenario_id=req.scenario_id, scenario=req.scenario, use_town=req.use_town, town_scale=req.town_scale,
+        plan_policy=req.plan_policy,
     )
     config = get_config()
     try:

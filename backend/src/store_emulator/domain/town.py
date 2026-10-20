@@ -10,6 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from .analysis import ComparisonReport
 from .persona import AgeGroup
 
 
@@ -239,3 +240,74 @@ class TownArrival(BaseModel):
     came_from_venue: str = ""  # VenueCategory value of the venue visited just before, "" if none
     came_from_venue_id: str = ""
     is_linked_trip: bool = False
+
+
+# ---------------------------------------------------------------- VLM synergy
+
+
+class CategoryShift(BaseModel):
+    """Spend and units per affected visitor in one store category, with vs without the venue."""
+    category: str
+    spend_with: float
+    spend_without: float
+    units_with: float
+    units_without: float
+    spend_diff: float  # with − without
+
+
+class SynergyExample(BaseModel):
+    persona_id: str
+    context_with: str
+    context_without: str
+    mission_with: str = ""
+    mission_without: str = ""
+    spend_with: int = 0
+    spend_without: int = 0
+
+
+class VLMSynergyResult(BaseModel):
+    """What one venue does to the focal store: visitor flow from the demand model (numeric) and
+    the basket effect from VLM shoppers simulated twice — with the venue in their trip context and
+    with it removed — on the same visitors and seeds (paired).
+
+    Per-visitor figures are population estimates: visitors whose context does not change are
+    simulated once (identical inputs, identical decisions) and weighted by their share.
+    """
+    venue_id: str
+    venue_name: str
+    category: VenueCategory
+    distance_m: float
+    day_type: DayType
+    scenario: str = ""
+    model: str = ""
+    visitors_with: float  # focal visitors per day, demand model
+    visitors_without: float
+    delta_visitors: float
+    linked_visitors_from_venue: float  # visitors per day chained from this venue
+    panel_customers: int
+    affected_customers: int  # panel visitors whose trip context changes without the venue
+    affected_share: float  # share of all focal visitors whose context changes
+    spend_per_visitor_with: float  # minor currency unit
+    spend_per_visitor_without: float
+    delta_spend_per_visitor: float
+    delta_spend_ci_low: float | None = None
+    delta_spend_ci_high: float | None = None
+    prob_spend_higher: float | None = None  # bootstrap P(Δ spend > 0)
+    conversion_with: float
+    conversion_without: float
+    delta_conversion: float
+    delta_conversion_ci_low: float | None = None
+    delta_conversion_ci_high: float | None = None
+    affected_comparison: ComparisonReport | None = None  # paired, affected visitors only (B = with venue)
+    category_shifts: list[CategoryShift] = []
+    revenue_per_day_with: float
+    revenue_per_day_without: float
+    delta_revenue_per_day: float  # = from_visitors + from_baskets
+    delta_revenue_from_visitors: float  # Δ visitors × spend per visitor without the venue
+    delta_revenue_from_baskets: float  # visitors with the venue × Δ spend per visitor
+    examples: list[SynergyExample] = []
+    vlm_requests: int = 0
+    failed_customers: int = 0
+    plan_errors: int = 0  # VLM entrance plans that failed and fell back to the rule plan
+    seconds: float = 0.0
+    notes: list[str] = []

@@ -47,7 +47,7 @@ _BOLD_FONTS = (
 
 
 @cache
-def _font(size: int, bold: bool = False) -> _Font:
+def load_font(size: int, bold: bool = False) -> _Font:
     for path in _BOLD_FONTS if bold else _REGULAR_FONTS:
         if Path(path).exists():
             try:
@@ -105,12 +105,12 @@ def _package_color(name: str) -> tuple[int, int, int]:
     return int(r * 255), int(g * 255), int(b * 255)
 
 
-def _text_color(bg: tuple[int, int, int]) -> tuple[int, int, int]:
+def text_color(bg: tuple[int, int, int]) -> tuple[int, int, int]:
     luminance = 0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2]
     return (20, 20, 20) if luminance > 150 else (255, 255, 255)
 
 
-def _wrap(draw: ImageDraw.ImageDraw, text: str, font: _Font, width: int, max_lines: int) -> list[str]:
+def wrap_text(draw: ImageDraw.ImageDraw, text: str, font: _Font, width: int, max_lines: int) -> list[str]:
     words = text.split()
     lines: list[str] = []
     line = ""
@@ -178,20 +178,20 @@ def render_face(
     body = (margin, margin + header, width - margin, height - margin)
     draw.rounded_rectangle(body, radius=8, fill=(214, 228, 240) if fridge else (226, 216, 200),
                            outline=(70, 78, 90) if fridge else (96, 74, 52), width=frame)
-    sign_font = _font(22, bold=True)
+    sign_font = load_font(22, bold=True)
     kind = "Fridge" if fridge else "Shelf"
     title = rack.rack_name or kind
     draw.rounded_rectangle((margin, margin, width - margin, margin + header - 6), radius=6, fill=(38, 50, 66))
     draw.text((margin + 14, margin + (header - 6) // 2), f"{title}", font=sign_font, fill=(255, 255, 255), anchor="lm")
-    draw.text((width - margin - 14, margin + (header - 6) // 2), kind, font=_font(16), fill=(190, 205, 220), anchor="rm")
+    draw.text((width - margin - 14, margin + (header - 6) // 2), kind, font=load_font(16), fill=(190, 205, 220), anchor="rm")
 
     name_size = max(12, min(18, cell_w // 10))
     mark_size = max(14, min(20, cell_w // 8))
     promo_size = max(11, name_size - 3)
-    name_font = _font(name_size, bold=True)
-    price_font = _font(max(13, min(20, tag_h - 8)), bold=True)
-    mark_font = _font(mark_size, bold=True)
-    promo_font = _font(promo_size, bold=True)
+    name_font = load_font(name_size, bold=True)
+    price_font = load_font(max(13, min(20, tag_h - 8)), bold=True)
+    mark_font = load_font(mark_size, bold=True)
+    promo_font = load_font(promo_size, bold=True)
 
     top = body[1] + frame
     left = body[0] + frame
@@ -210,11 +210,11 @@ def render_face(
             x1 = left + (c + 1) * cell_w - 6
             color = _package_color(item.name)
             draw.rounded_rectangle((x0, y0 + 6, x1, board_y - 2), radius=10, fill=color, outline=(40, 40, 40), width=2)
-            lines = _wrap(draw, item.name, name_font, x1 - x0 - 14, max_lines=4)
+            lines = wrap_text(draw, item.name, name_font, x1 - x0 - 14, max_lines=4)
             line_h = name_size + 3
             ty = y0 + 6 + (pkg_h - line_h * len(lines)) // 2 + 6
             for i, line in enumerate(lines):
-                draw.text(((x0 + x1) // 2, ty + i * line_h), line, font=name_font, fill=_text_color(color), anchor="mt")
+                draw.text(((x0 + x1) // 2, ty + i * line_h), line, font=name_font, fill=text_color(color), anchor="mt")
             if item.promo:
                 ribbon = item.promo.strip()[:12].upper()
                 rw = int(draw.textlength(ribbon, font=promo_font)) + 12

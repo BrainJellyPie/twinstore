@@ -11,18 +11,25 @@ from typing import Any, cast
 from pydantic import BaseModel
 
 from store_emulator.domain.config import EngineType, SimulationConfig
-from store_emulator.domain.optimize import OptimizeResult, OptimizeSpec
+from store_emulator.domain.optimize import JudgeSpec, OptimizeResult, OptimizeSpec
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
+from store_emulator.engine.optimize.judge import (
+    OptimizationCanceled,
+    judge_layout_search,
+)
 from store_emulator.engine.optimize.search import optimize
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
+from store_emulator.engine.simulation.factory import build_engine
 
 from .async_executor import executor
 from .errors import AppError
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
+from .providers import build_client, ensure_resolvable
 from .scenarios import get_preset
 from .setups import set_active_setup, setup_summary
+from .simulation import with_engine_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import new_setup_data, personas_path, read_setup, setup_path
 
@@ -31,10 +38,16 @@ logger = logging.getLogger(__name__)
 _MIN_STATUS_INTERVAL_SEC = 0.5
 
 
+_cancel_requests: set[str] = set()
+
+
 class OptimizationStatus(BaseModel):
     job_id: str
     setup_id: str
-    status: str                       # pending | running | completed | failed
+    status: str                       # pending | running | completed | failed | canceled
+    # judge "vlm": calibrating → searching → judging k/K; judge "rule": searching
+    phase: str = ""
+    judge: JudgeSpec = JudgeSpec()
     error: str = ""
     evaluations: int = 0
     budget: int = 0
@@ -103,28 +116,55 @@ def _load_store_and_personas(pid: str, setup_id: str) -> tuple[Store, list[Perso
 
 def start_optimization(
     pid: str, setup_id: str, spec: OptimizeSpec, config: SimulationConfig, *, scenario_id: str | None = None,
+    judge: JudgeSpec | None = None,
 ) -> OptimizationStatus:
+    judge = judge or JudgeSpec()
     store, personas = _load_store_and_personas(pid, setup_id)
     scenario = get_preset(scenario_id) if scenario_id else None
     if scenario_id and scenario is None:
         raise AppError(f"unknown scenario preset: {scenario_id}", 400)
-    job_id = f"opt_{uuid.uuid4().hex[:6]}"
-    status = OptimizationStatus(
-        job_id=job_id, setup_id=setup_id, status="pending", budget=spec.budget, spec=spec,
-        scenario=scenario.name if scenario else "", created_at=now_iso(),
-    )
-    _write_status(pid, status)
     run_config = config.model_copy(update={
         "engine_type": EngineType.RULE_BASED,
         "scenario": None if scenario is None or scenario.id == "baseline" else scenario,
     })
-    executor.submit(_run_job, pid, status, store, personas, run_config)
+    vlm_config: SimulationConfig | None = None
+    if judge.judge == "vlm":
+        vlm_config = vlm_judge_config(run_config, judge)
+        try:
+            ensure_resolvable(vlm_config)
+        except ValueError as e:
+            raise AppError(str(e), 400) from e
+    job_id = f"opt_{uuid.uuid4().hex[:6]}"
+    status = OptimizationStatus(
+        job_id=job_id, setup_id=setup_id, status="pending", budget=spec.budget, spec=spec, judge=judge,
+        scenario=scenario.name if scenario else "", created_at=now_iso(),
+    )
+    _write_status(pid, status)
+    executor.submit(_run_job, pid, status, store, personas, run_config, vlm_config)
     return status
 
 
-def _run_job(pid: str, status: OptimizationStatus, store: Store, personas: list[Persona], config: SimulationConfig) -> None:
-    spec = status.spec
+def vlm_judge_config(config: SimulationConfig, judge: JudgeSpec) -> SimulationConfig:
+    """The VLM shoppers' run config: same seed, scenario and settings as the search, vision engine."""
+    vlm = config.model_copy(update={"engine_type": EngineType.VLM_GLANCE, "ensemble": judge.ensemble})
+    return with_engine_model(vlm, judge.model) if judge.model else vlm
+
+
+def cancel_optimization(pid: str, job_id: str) -> OptimizationStatus:
+    """Ask a running job to stop at its next step (between surrogate phases and VLM layout runs)."""
+    status = _read_status(pid, job_id)
+    if status.status in ("pending", "running"):
+        _cancel_requests.add(job_id)
+    return status
+
+
+def _run_job(
+    pid: str, status: OptimizationStatus, store: Store, personas: list[Persona], config: SimulationConfig,
+    vlm_config: SimulationConfig | None = None,
+) -> None:
+    spec, judge = status.spec, status.judge
     status.status = "running"
+    status.phase = "searching" if vlm_config is None else ""
     _write_status(pid, status)
     last = 0.0
 
@@ -137,21 +177,46 @@ def _run_job(pid: str, status: OptimizationStatus, store: Store, personas: list[
         last = now
         _write_status(pid, status)
 
+    def on_phase(name: str) -> None:
+        status.phase = name
+        _write_status(pid, status)
+
     try:
-        evaluator = LayoutEvaluator(
-            config, select_personas(personas, spec.eval_customers, seed=spec.seed), sample_cue, BEHAVIOR_PATTERNS,
-            AStarPathFinder(), spec.objective,
-        )
-        validation = select_personas(personas, spec.validation_size, seed=spec.seed + 1)
-        result = asyncio.run(optimize(store, spec, evaluator, validation_personas=validation, on_progress=on_progress))
+        search_personas = select_personas(personas, spec.eval_customers, seed=spec.seed)
+        if vlm_config is None:
+            evaluator = LayoutEvaluator(
+                config, search_personas, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(), spec.objective,
+            )
+            validation = select_personas(personas, spec.validation_size, seed=spec.seed + 1)
+            result = asyncio.run(optimize(store, spec, evaluator, validation_personas=validation, on_progress=on_progress))
+        else:
+            pathfinder = AStarPathFinder()
+            llm = build_client(vlm_config.llm_for(EngineType.VLM_GLANCE), vlm_config.ensemble)
+            result = asyncio.run(judge_layout_search(
+                store, spec, judge,
+                surrogate_config=config, vlm_config=vlm_config,
+                vlm_engine=build_engine(vlm_config, llm=llm, pathfinder=pathfinder),
+                # The judge panel is a subset of the search panel, so calibration and search share people.
+                search_personas=search_personas,
+                vlm_personas=select_personas(search_personas, judge.vlm_customers, seed=spec.seed + 2),
+                cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, pathfinder=pathfinder,
+                model_label=judge.model or vlm_config.llm_for(EngineType.VLM_GLANCE).model,
+                on_phase=on_phase, on_progress=on_progress,
+                should_stop=lambda: status.job_id in _cancel_requests,
+            ))
         write_json(_dir(pid, status.job_id) / "result.json", json.loads(result.model_dump_json()))
         status.status = "completed"
+        status.phase = "done"
         status.baseline_score, status.best_score = result.baseline_score, result.best_score
         status.evaluations = result.evaluations
+    except OptimizationCanceled:
+        logger.info(f"[optimize] job {status.job_id} canceled")
+        status.status = "canceled"
     except Exception as e:  # noqa: BLE001 — surface any failure to the UI instead of a stuck job
         logger.exception(f"[optimize] job {status.job_id} failed")
         status.status = "failed"
         status.error = f"{type(e).__name__}: {e}"[:500]
+    _cancel_requests.discard(status.job_id)
     status.finished_at = now_iso()
     _write_status(pid, status)
 

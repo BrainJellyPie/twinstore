@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from .analysis import ComparisonReport
+from .providers import EnsembleConfig
 from .result import SimulationSummary
 from .store import Store
 
@@ -61,12 +62,95 @@ class OptimizeSpec(BaseModel):
         return 3 * self.eval_customers if self.validation_customers is None else self.validation_customers
 
 
+# Who picks the winning layout: the rule surrogate alone, or the VLM shoppers judging the
+# surrogate search's best candidates on a common panel.
+type OptimizeJudge = Literal["rule", "vlm"]
+
+
+class JudgeSpec(BaseModel):
+    judge: OptimizeJudge = "rule"
+    model: str | None = None  # model reference for the VLM shoppers (None = server default)
+    ensemble: EnsembleConfig | None = None
+    vlm_customers: int = Field(default=60, ge=4, le=400)  # one panel, simulated on every judged layout
+    top_k: int = Field(default=4, ge=1, le=8)  # distinct surrogate-best candidates judged (plus the baseline)
+    calibrate: bool = True  # fit the surrogate's impulse knobs to a VLM pilot on the baseline first
+
+
+class ImpulseProfile(BaseModel):
+    """What calibration matches between the VLM shoppers and the rule surrogate."""
+    impulse_rate: float  # impulse purchase lines per visitor
+    impulse_revenue_share: float
+    level_distribution: dict[int, float]  # share of impulse picks per shelf level (1 bottom … 4 top)
+
+
+class SurrogateCalibration(BaseModel):
+    pilot_customers: int  # VLM shoppers on the baseline (the judge panel)
+    surrogate_customers: int  # rule shoppers per grid point (the search panel)
+    target: ImpulseProfile  # VLM pilot
+    before: ImpulseProfile  # rule surrogate with the configured knobs
+    after: ImpulseProfile  # rule surrogate with the fitted knobs
+    # Distance: |Δ rate| / max(rate, 0.05) + 2 |Δ share| + total-variation distance of the levels.
+    gap_before: float
+    gap_after: float
+    impulse_base_before: float
+    impulse_base_after: float
+    level_attention_before: dict[int, float]
+    level_attention_after: dict[int, float]
+    grid_points: int
+    notes: list[str] = []
+
+
+class JudgedCandidate(BaseModel):
+    label: str  # "baseline" or "#<search iteration>"
+    iteration: int  # 0 = baseline
+    moves: list[str]
+    surrogate_score: float  # objective on the search panel (rule surrogate)
+    surrogate_rank: int  # 1 = best among the judged layouts
+    vlm_score: float | None = None  # objective on the judge panel (VLM shoppers)
+    vlm_rank: int | None = None
+    # Paired per-customer difference vs the baseline on the judge panel (candidate − baseline) in the
+    # objective's per-customer metric; prob_better is oriented so that > 0.5 means better.
+    delta_mean: float | None = None
+    delta_ci_low: float | None = None
+    delta_ci_high: float | None = None
+    prob_better: float | None = None
+    relative_improvement: float | None = None  # VLM objective vs baseline, > 0 = better
+    failed_customers: int = 0
+    plan_errors: int = 0
+    vlm_summary: SimulationSummary | None = None
+    winner: bool = False
+
+
+class VLMJudgeReport(BaseModel):
+    model: str
+    ensemble: EnsembleConfig | None = None
+    customers: int
+    metric: str  # per-customer metric of the paired deltas (e.g. "spend")
+    candidates: list[JudgedCandidate]  # baseline first, then by surrogate rank
+    winner: str  # label of the VLM winner ("baseline" when no candidate beat it)
+    surrogate_winner: str  # label of the surrogate's best among the judged layouts
+    # Rank agreement of surrogate and VLM scores over the judged layouts (None for < 3 layouts).
+    spearman: float | None = None
+    calibration: SurrogateCalibration | None = None
+    vlm_requests: int = 0
+    seconds: float = 0.0
+    notes: list[str] = []
+
+
 class CandidateScore(BaseModel):
     iteration: int  # 1-based evaluation index
     score: float  # objective value of the candidate on the search customers
     accepted: bool  # anneal/hill_climb: became the current layout; genetic: survived into the population
     move: str  # what was changed relative to the layout the candidate was derived from
     best_score: float  # best objective value found so far (baseline included)
+
+
+class LayoutCandidate(BaseModel):
+    """A distinct layout the search scored (for judging by another shopper model)."""
+    iteration: int
+    score: float
+    moves: list[str]
+    store: Store
 
 
 class OptimizeResult(BaseModel):
@@ -89,3 +173,9 @@ class OptimizeResult(BaseModel):
     validation_relative_improvement: float | None = None  # in the objective's direction
     validation_prob_better: float | None = None  # bootstrap probability that best beats baseline
     notes: list[str] = []
+    # judge "vlm": the VLM shoppers' verdict. best_store / applied_moves / scores are the VLM winner's
+    # and validation is the paired judge-panel comparison of the winner with the baseline.
+    judge: VLMJudgeReport | None = None
+    # optimize(keep_top=k): the k best distinct layouts of the search (in memory only, never saved).
+    top_candidates: list[LayoutCandidate] = Field(default=[], exclude=True)
+
