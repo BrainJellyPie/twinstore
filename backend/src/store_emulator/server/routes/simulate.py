@@ -1,22 +1,55 @@
 from typing import Any
 
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 
 from store_emulator.application import simulation as sim_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
+from store_emulator.application.simulation import RunOptions
+from store_emulator.domain.analysis import ComparisonReport, FidelityReport
+from store_emulator.domain.config import EngineType, ExposureModel, RouteOrdering
 from store_emulator.domain.persona import Persona
-from store_emulator.server.schemas import SimulationStartResponse
+from store_emulator.server.schemas import EngineInfo, SimulationStartResponse
 from ..deps import get_config
 
 router = APIRouter(prefix="/api/projects", tags=["simulate"])
+engines_router = APIRouter(prefix="/api", tags=["simulate"])
 
 
 class SimulateRequest(BaseModel):
-    """Simulation run request. Executed against the server-stored setup."""
+    """Simulation run request. Executed against the server-stored setup.
+
+    Every option is optional and overrides the server configuration for this run only."""
     setup_id: str = Field(description="Setup ID")
     run_id: str | None = Field(default=None, description="run ID (auto-generated if omitted)")
+    engine_type: EngineType | None = Field(default=None, description="`pattern_intent_impulse` (LLM) or `rule_based` (instant, no LLM cost)")
+    seed: int | None = Field(default=None, description="Run seed. Equal seeds across layouts give paired (common-random-number) comparisons")
+    replicate: int | None = Field(default=None, ge=0, description="Replicate index for repeated runs of the same layout")
+    exposure_model: ExposureModel | None = Field(default=None, description="`visibility` (default) or legacy `adjacency`")
+    route_ordering: RouteOrdering | None = Field(default=None, description="`planned` (default) or legacy `nearest`")
+    max_customers: int | None = Field(default=None, ge=1, description="Deterministic persona subsample for cheap pilots")
+    preview: bool = Field(default=False, description="Preview runs don't lock the setup and are allowed on draft or finalized setups")
+
+
+@engines_router.get("/engines", summary="Available simulation engines", response_model=list[EngineInfo])
+async def list_engines() -> list[EngineInfo]:
+    """Engines selectable per run, with the server's current defaults."""
+    config = get_config()
+    llm = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE)
+    return [
+        EngineInfo(
+            engine_type=EngineType.PATTERN_INTENT_IMPULSE.value, label="LLM shoppers",
+            description="3-stage LLM pipeline (pattern → intent → impulse). Realistic, costs LLM calls.",
+            uses_llm=True, model=llm.model, default=config.engine_type == EngineType.PATTERN_INTENT_IMPULSE,
+        ),
+        EngineInfo(
+            engine_type=EngineType.RULE_BASED.value, label="Rule-based preview",
+            description="Calibratable heuristic shoppers. Seconds per run, no LLM cost — for quick layout iteration.",
+            uses_llm=False, model="", default=config.engine_type == EngineType.RULE_BASED,
+        ),
+    ]
 
 
 @router.get("/{pid}/runs", summary="Simulation run history")
@@ -51,16 +84,21 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
     **Errors:** 400 (no layout / no personas), 404 (setup not found), 409 (locked / running / readiness not met / duplicate run_id)"""
     try:
         run_id, store, personas, address, customer_profile = sim_service.prepare_simulation(
-            pid, req.setup_id, req.run_id,
+            pid, req.setup_id, req.run_id, preview=req.preview,
         )
     except AppError as e:
         raise HTTPException(e.status_code, str(e))
 
+    options = RunOptions(
+        engine_type=req.engine_type, seed=req.seed, replicate=req.replicate,
+        exposure_model=req.exposure_model, route_ordering=req.route_ordering,
+        max_customers=req.max_customers, preview=req.preview,
+    )
     config = get_config()
     executor.submit(
         sim_service.run_simulation_background,
         pid, run_id, req.setup_id, store, personas,
-        config, address, customer_profile,
+        config, address, customer_profile, options,
     )
 
     return SimulationStartResponse(project_id=pid, run_id=run_id, setup_id=req.setup_id)
@@ -70,7 +108,7 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
 async def get_status(pid: str, run_id: str) -> dict[str, Any]:
     """Poll simulation progress.
 
-    **Common response:** `{ status, error, created_at, setup_id, total_customers }`.
+    **Common response:** `{ status, error, created_at, setup_id, total_customers, completed_customers, failed_customers }`.
     **status values:** `"pending"` → `"running"` → `"completed"` | `"failed"`.
     When `failed`, `error` carries the exception message.
     """
@@ -103,15 +141,91 @@ async def get_heatmap(pid: str, run_id: str) -> dict[str, Any]:
 
     **Response:**
     - `pathcalc_heatmap`: float[][] — per-cell movement frequency
-    - `persona_heatmap`: int[][] — per-cell unique customer count
+    - `persona_heatmap`: int[][] — per-cell timeline event count
+    - `dwell_heatmap`: float[][] — seconds spent per cell, summed over customers (empty for older runs)
     - size = grid_size [height][width]"""
     try:
-        return {
+        result: dict[str, Any] = {
             "pathcalc_heatmap": sim_service.get_run_output(pid, run_id, "pathcalc_heatmap.json"),
             "persona_heatmap": sim_service.get_run_output(pid, run_id, "persona_heatmap.json"),
         }
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
+    try:
+        result["dwell_heatmap"] = sim_service.get_run_output(pid, run_id, "dwell_heatmap.json")
+    except FileNotFoundError:
+        result["dwell_heatmap"] = []
+    return result
+
+
+@router.get("/{pid}/runs/{run_id}/diagnostics", summary="Run diagnostics, manifest and cost")
+async def get_diagnostics(pid: str, run_id: str) -> dict[str, Any]:
+    """Data-quality and reproducibility information for a run.
+
+    **Response:** `{ diagnostics, manifest, token_usage }` — failed customers with reasons,
+    dropped hallucinated / over-budget buys, buy-invariant violations, the seed/engine/fingerprints
+    needed to reproduce the run, and LLM token + request counts (incl. cache hits).
+    Older runs return empty objects for fields they did not record."""
+    out: dict[str, Any] = {}
+    for key, fname in (("diagnostics", "diagnostics.json"), ("manifest", "manifest.json"), ("token_usage", "token_usage.json")):
+        try:
+            out[key] = sim_service.get_run_output(pid, run_id, fname)
+        except FileNotFoundError:
+            out[key] = {}
+    if not any(out.values()):
+        raise HTTPException(404, "run result not found")
+    return out
+
+
+@router.get("/{pid}/compare", summary="Paired A/B comparison of two runs", response_model=ComparisonReport)
+async def compare(
+    pid: str,
+    a: str = Query(description="baseline run id"),
+    b: str = Query(description="variant run id"),
+    n_bootstrap: int = Query(default=2000, ge=200, le=20000),
+) -> ComparisonReport:
+    """Per-customer paired comparison (B − A) with bootstrap confidence intervals.
+
+    Customers are matched by persona id. Metrics: spend, units, bought (conversion), impulse_spend,
+    visit_sec, path_tiles. Each metric reports the difference, its 95% CI, the share of bootstrap
+    draws favoring B, and how many customers a 5% effect would need. Run both layouts with the same
+    seed so customers share random draws — that is what makes the paired test sharp."""
+    try:
+        return sim_service.compare_project_runs(pid, a, b, n_bootstrap=n_bootstrap)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+
+
+@router.post("/{pid}/runs/{run_id}/fidelity", summary="Score a run against real POS data", response_model=FidelityReport)
+async def fidelity(pid: str, run_id: str, file: UploadFile = File(description="POS export (.csv or .xlsx)")) -> FidelityReport:
+    """Compare simulated sales with an uploaded POS export of the same store.
+
+    Required columns (any common alias): transaction id and SKU. Optional: quantity, unit price
+    or line total (same minor currency unit as shelf prices), timestamp or hour.
+    Reports SKU/rack Spearman, JS similarity, NDCG, basket-size and basket-value distribution
+    distances, variance ratio and hourly profile similarity. The report is saved with the run."""
+    data = await file.read()
+    try:
+        return sim_service.run_fidelity(pid, run_id, data, file.filename or "pos.csv")
+    except AppError as e:
+        raise HTTPException(e.status_code, str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+
+
+@router.get("/{pid}/runs/{run_id}/export.csv", summary="Per-customer results as CSV")
+async def export_csv(pid: str, run_id: str) -> Response:
+    """One row per simulated customer (persona attributes, spend, units, conversion, impulse spend,
+    visit time, path length, products) — for Excel / BI tools."""
+    try:
+        body = sim_service.export_customers_csv(pid, run_id)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+    return Response(
+        content="\ufeff" + body,  # BOM so Excel opens UTF-8 correctly
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{pid}_{run_id}_customers.csv"'},
+    )
 
 
 @router.get("/{pid}/runs/{run_id}/timeline", summary="Per-customer timeline")

@@ -47,9 +47,10 @@ app = FastAPI(
     description=(
         "Block-grid store simulator API. "
         "Create store → place items → generate personas → run simulation → fetch results. "
-        "Customer movement is simulated via the pattern_intent_impulse engine."
+        "Customers are simulated by the pattern_intent_impulse LLM engine or the rule_based baseline. "
+        "Runs are reproducible (seeded) and comparable (paired A/B with confidence intervals)."
     ),
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/docs",
     redoc_url=None,
     openapi_tags=[
@@ -69,6 +70,7 @@ app.add_middleware(
 )
 
 app.include_router(simulate.router)
+app.include_router(simulate.engines_router)
 app.include_router(projects.router)
 app.include_router(setups.router)
 app.include_router(util.router)

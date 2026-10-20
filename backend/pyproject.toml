@@ -1,6 +1,6 @@
 [project]
 name = "store-emulator"
-version = "0.1.0"
+version = "0.2.0"
 description = "Isometric 3D store-layout simulator with LLM-driven virtual personas."
 license = "MIT"
 requires-python = ">=3.13"
@@ -18,12 +18,16 @@ dependencies = [
     "instructor>=1.15.1",
     "litellm>=1.83.4",
     "openpyxl>=3.1,<4",
+    "numpy>=2.5.4",
     "pandas>=3.0.3",
     "pathfinding>=1.0.20",
     "pillow>=12.2.0",
     "pydantic>=2.12.5",
     "python-dotenv>=1.0.1",
 ]
+
+[project.scripts]
+parastore = "store_emulator.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/intellicia-public/parastore"

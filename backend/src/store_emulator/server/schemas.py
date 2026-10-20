@@ -219,3 +219,13 @@ class StatusResponse(BaseModel):
 class DeletedResponse(BaseModel):
     status: str
     deleted: list[str]
+
+
+class EngineInfo(BaseModel):
+    """A simulation engine selectable per run."""
+    engine_type: str
+    label: str
+    description: str
+    uses_llm: bool
+    model: str = ""
+    default: bool = False

@@ -1,27 +1,70 @@
 import asyncio
+import csv
+import io
 import logging
+import time
 import traceback
 import uuid
 from pathlib import Path
 from typing import Any, cast
 
-from store_emulator.domain.config import SimulationConfig
+from pydantic import BaseModel, Field
+
+from store_emulator.domain.analysis import ComparisonReport, FidelityReport
+from store_emulator.domain.config import EngineType, ExposureModel, RouteOrdering, SimulationConfig
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.result import AggregatedResult
-from store_emulator.domain.runner import SimulationRunner
+from store_emulator.domain.runner import ProgressCallback, SimulationRunner
 from store_emulator.domain.store import Store
+from store_emulator.domain.types import stable_seed
+from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.application.runner import build_runner
 from store_emulator.application.storage.io import DATA_DIR, read_json, write_json, now_iso
 from store_emulator.application.storage.setups import (
     read_setup, write_setup, personas_path, metadata_path,
 )
-from store_emulator.application.storage.runs import save_run
+from store_emulator.application.storage.runs import load_run_results, load_run_store, save_run
+from store_emulator.engine.analysis.compare import compare_runs, customer_metrics
+from store_emulator.engine.analysis.fidelity import fidelity_report
 
 from store_emulator.application.errors import AppError
 
 logger = logging.getLogger(__name__)
+
+_PROGRESS_MIN_INTERVAL_SEC = 1.0
+
+
+class RunOptions(BaseModel):
+    """Per-run overrides of the server config (all optional)."""
+    engine_type: EngineType | None = None
+    seed: int | None = None
+    replicate: int | None = None
+    exposure_model: ExposureModel | None = None
+    route_ordering: RouteOrdering | None = None
+    # Deterministic subsample of personas, for cheap pilots of the LLM engine.
+    max_customers: int | None = Field(default=None, ge=1)
+    # Preview runs do not lock the setup and may run on draft or finalized setups.
+    preview: bool = False
+
+
+def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationConfig:
+    updates: dict[str, object] = {}
+    for field in ("engine_type", "seed", "replicate", "exposure_model", "route_ordering"):
+        value = getattr(options, field)
+        if value is not None:
+            updates[field] = value
+    return config.model_copy(update=updates)
+
+
+def subsample_personas(personas: list[Persona], max_customers: int | None, seed: int) -> list[Persona]:
+    """Same seed → same subset, so subsampled A/B runs stay paired."""
+    if max_customers is None or max_customers >= len(personas):
+        return personas
+    ranked = sorted(personas, key=lambda p: stable_seed(seed, "subsample", p.id))
+    keep = {p.id for p in ranked[:max_customers]}
+    return [p for p in personas if p.id in keep]
 
 
 async def run_simulation(
@@ -31,6 +74,7 @@ async def run_simulation(
     max_concurrent: int = 20,
     address: str = "",
     customer_profile: str = "",
+    on_progress: ProgressCallback | None = None,
 ) -> tuple[AggregatedResult, list[CustomerResult], SimulationRunner]:
     """Run a simulation and return (aggregated, per-customer results, runner).
 
@@ -42,27 +86,28 @@ async def run_simulation(
         store, personas,
         max_concurrent=max_concurrent,
         address=address, customer_profile=customer_profile,
+        on_progress=on_progress,
     )
     return aggregated, customers, runner
 
 
 def prepare_simulation(
-    pid: str, setup_id: str, run_id: str | None = None,
+    pid: str, setup_id: str, run_id: str | None = None, *, preview: bool = False,
 ) -> tuple[str, Store, list[Persona], str, str]:
     """Validate, load inputs, and transition state before running. AppError on failure.
 
     Three-phase helper pipeline: _validate → _load_inputs → _mark_running.
     Returns (run_id, store, personas, address, customer_profile).
     """
-    setup = _validate_simulation(pid, setup_id)
+    setup = _validate_simulation(pid, setup_id, preview=preview)
     rid, store, personas, address, customer_profile = _load_simulation_inputs(
         pid, setup, run_id,
     )
-    _mark_simulation_running(pid, setup_id, rid)
+    _mark_simulation_running(pid, setup_id, rid, preview=preview)
     return rid, store, personas, address, customer_profile
 
 
-def _validate_simulation(pid: str, setup_id: str) -> dict[str, Any]:
+def _validate_simulation(pid: str, setup_id: str, *, preview: bool = False) -> dict[str, Any]:
     """Single setup load + status/readiness check. Returns setup dict (with readiness)."""
     from store_emulator.application.setups import get_setup as _get_setup
     try:
@@ -70,10 +115,11 @@ def _validate_simulation(pid: str, setup_id: str) -> dict[str, Any]:
     except AppError:
         raise
 
-    if setup["status"] == "locked":
-        raise AppError("this setup is finalized. Branch it to run again.", 409)
-    if setup["status"] == "running":
-        raise AppError("this setup is already running.", 409)
+    if not preview:
+        if setup["status"] == "locked":
+            raise AppError("this setup is finalized. Branch it to run again, or start a preview run.", 409)
+        if setup["status"] == "running":
+            raise AppError("this setup is already running.", 409)
 
     readiness = cast(dict[str, Any], setup.get("readiness") or {})
     if not readiness.get("ready", True):
@@ -108,21 +154,22 @@ def _load_simulation_inputs(
     return rid, store, personas, address, customer_profile
 
 
-def _mark_simulation_running(pid: str, setup_id: str, run_id: str) -> None:
+def _mark_simulation_running(pid: str, setup_id: str, run_id: str, *, preview: bool = False) -> None:
     """setup.status=running + run status=pending. Re-checks status/run_id at mark.
 
     A minimal CAS-style safeguard against load-vs-mark races — not fully atomic.
     recover_running_setups cleans residual running setups back to draft on restart.
+    Preview runs leave the setup status untouched.
     """
-    fresh = read_setup(pid, setup_id)
-    if fresh["status"] in ("running", "locked"):
-        raise AppError("concurrent start detected: setup is already running or finalized.", 409)
     if _status_path(pid, run_id).exists():
         raise AppError(f"concurrent start detected: run ID already exists: {run_id}", 409)
-
-    fresh["status"] = "running"
-    write_setup(pid, setup_id, fresh)
-    write_status(pid, run_id, "pending", setup_id=setup_id)
+    if not preview:
+        fresh = read_setup(pid, setup_id)
+        if fresh["status"] in ("running", "locked"):
+            raise AppError("concurrent start detected: setup is already running or finalized.", 409)
+        fresh["status"] = "running"
+        write_setup(pid, setup_id, fresh)
+    write_status(pid, run_id, "pending", setup_id=setup_id, preview=preview)
 
 
 def _status_path(pid: str, run_id: str) -> Path:
@@ -144,12 +191,31 @@ def run_simulation_background(
     config: SimulationConfig,
     address: str = "",
     customer_profile: str = "",
+    options: RunOptions | None = None,
 ) -> None:
+    options = options or RunOptions()
     try:
-        write_status(pid, run_id, "running", total_customers=len(personas))
+        config = apply_options(config, options)
+        personas = subsample_personas(personas, options.max_customers, config.seed)
+        write_status(
+            pid, run_id, "running", total_customers=len(personas), completed_customers=0,
+            failed_customers=0, engine_type=config.engine_type.value, seed=config.seed,
+            replicate=config.replicate, started_at=now_iso(),
+        )
+        last_write = 0.0
+
+        def on_progress(completed: int, failed: int, total: int) -> None:
+            nonlocal last_write
+            now = time.monotonic()
+            if completed < total and now - last_write < _PROGRESS_MIN_INTERVAL_SEC:
+                return
+            last_write = now
+            write_status(pid, run_id, "running", completed_customers=completed, failed_customers=failed)
+
         aggregated, customers, runner = asyncio.run(
             run_simulation(config, store, personas,
-                           address=address, customer_profile=customer_profile),
+                           address=address, customer_profile=customer_profile,
+                           on_progress=on_progress),
         )
         run_dir = save_run(
             DATA_DIR, pid, run_id,
@@ -159,8 +225,14 @@ def run_simulation_background(
         meta = runner.get_engine_metadata()
         if meta:
             write_json(run_dir / "output" / f"{config.engine_type}_meta.json", meta)
-        write_status(pid, run_id, "completed")
+        write_status(
+            pid, run_id, "completed", finished_at=now_iso(),
+            completed_customers=len(personas),
+            failed_customers=len(aggregated.diagnostics.failed_customers),
+        )
 
+        if options.preview:
+            return
         # Setup transitions to locked + runId. The run summary is the single
         # source of truth for KPIs.
         try:
@@ -173,6 +245,8 @@ def run_simulation_background(
 
     except Exception as e:
         write_status(pid, run_id, "failed", f"{e}\n{traceback.format_exc()}")
+        if options.preview:
+            return
         try:
             setup = read_setup(pid, setup_id)
             setup["status"] = "draft"
@@ -223,6 +297,74 @@ def list_runs(pid: str, setup_id: str | None = None) -> list[dict[str, Any]]:
         summary_file = d / "output" / "summary.json"
         if summary_file.exists():
             entry["summary"] = read_json(summary_file)
+        manifest_file = d / "output" / "manifest.json"
+        if manifest_file.exists():
+            entry["manifest"] = read_json(manifest_file)
         results.append(entry)
     results.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
     return results
+
+
+def _completed_run_base(pid: str, run_id: str) -> Path:
+    base = _run_base(pid, run_id)
+    if not (base / "output" / "timeline.json").exists():
+        raise FileNotFoundError(f"run {run_id} has no results (not completed?)")
+    return base
+
+
+def compare_project_runs(
+    pid: str, run_a: str, run_b: str, *, n_bootstrap: int = 2000, seed: int = 0,
+) -> ComparisonReport:
+    """Paired comparison of two completed runs of the same project (B − A)."""
+    a = load_run_results(_completed_run_base(pid, run_a))
+    b = load_run_results(_completed_run_base(pid, run_b))
+    report = compare_runs(a, b, run_a=run_a, run_b=run_b, n_bootstrap=n_bootstrap, seed=seed)
+    ma, mb = _manifest_or_empty(pid, run_a), _manifest_or_empty(pid, run_b)
+    if ma and mb and (ma.get("seed"), ma.get("replicate")) != (mb.get("seed"), mb.get("replicate")):
+        report.notes.append(
+            "Runs used different seed/replicate, so customers do not share random draws; "
+            "intervals include run-to-run noise. Re-run with equal seeds for a sharper paired test."
+        )
+    if ma and mb and ma.get("engine_type") != mb.get("engine_type"):
+        report.notes.append("Runs used different engines; the difference mixes engine and layout effects.")
+    return report
+
+
+def _manifest_or_empty(pid: str, run_id: str) -> dict[str, Any]:
+    path = _run_base(pid, run_id) / "output" / "manifest.json"
+    return cast(dict[str, Any], read_json(path)) if path.exists() else {}
+
+
+def run_fidelity(pid: str, run_id: str, data: bytes, filename: str) -> FidelityReport:
+    """Score a completed run against an uploaded POS export and store the report with the run."""
+    base = _completed_run_base(pid, run_id)
+    try:
+        lines = parse_pos_csv(data, filename)
+    except ValueError as e:
+        raise AppError(str(e), 400)
+    report = fidelity_report(load_run_store(base), load_run_results(base), lines)
+    write_json(base / "output" / "fidelity.json", report.model_dump())
+    return report
+
+
+def export_customers_csv(pid: str, run_id: str) -> str:
+    """One row per simulated customer: persona attributes + outcomes, for spreadsheet analysis."""
+    base = _completed_run_base(pid, run_id)
+    results = load_run_results(base)
+    personas_raw = cast(dict[str, Any], read_json(base / "output" / "personas.json"))
+    out = io.StringIO()
+    persona_cols = ["identity", "age_group", "gender", "purpose", "arrival_hour", "budget_min", "budget_max"]
+    metric_cols = ["spend", "units", "bought", "impulse_spend", "visit_sec", "path_tiles"]
+    writer = csv.writer(out)
+    writer.writerow(["persona_id", "day", "arrival_time", "leave_time", *persona_cols, *metric_cols, "products"])
+    for r in results:
+        p = cast(dict[str, Any], personas_raw.get(r.persona_id, {}))
+        m = customer_metrics(r)
+        products = "; ".join(f"{e.product_name} x{e.quantity}" for e in r.purchases)
+        writer.writerow([
+            r.persona_id, int(r.day), r.arrival_time, r.leave_time,
+            *[p.get(c, "") for c in persona_cols],
+            *[int(m[c]) if float(m[c]).is_integer() else m[c] for c in metric_cols],
+            products,
+        ])
+    return out.getvalue()

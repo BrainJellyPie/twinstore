@@ -30,8 +30,8 @@ class ComparisonReport(BaseModel):
 
 class FidelityMetric(BaseModel):
     name: str
-    value: float
-    better: str  # "higher" | "lower"
+    value: float | None  # None when the metric is undefined for this data (e.g. no baskets)
+    better: str  # "higher" | "lower" | "closer to 1"
     description: str = ""
 
 
