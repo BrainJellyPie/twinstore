@@ -32,6 +32,39 @@ for your own experiments, as a reference for how to wire up an LLM-driven
 agent simulation end-to-end, or simply as something fun to play with.
 
 
+## What's new in 0.3
+
+Vision-language shoppers now make every in-store decision — whether to go in and what they came
+for (from a rendered store directory at the door), and what catches their eye on the shelves — on
+any model you connect (OpenAI, Anthropic, Gemini, Alibaba Cloud Qwen, OpenRouter, vLLM, Ollama,
+llama.cpp) or an ensemble of them. Around them: 19 situation presets and an editor (weather,
+events, promotions, stock-outs, crowding), generated or OpenStreetMap neighborhoods with distance-
+based demand and neighbor synergy, ten store formats, layout optimization judged by vision
+shoppers, shelf capture from a phone photo, a realistic 3D mode with a shopper's-eye camera, and a
+new interface with day and night themes. See [CHANGELOG.md](CHANGELOG.md) and the research
+benchmark in [research/](research/).
+
+<div align="center">
+<table>
+<tr>
+<td width="50%"><img src="./.github/assets/v03_home_day.png" alt="Home, day theme"></td>
+<td width="50%"><img src="./.github/assets/v03_home_night.png" alt="Home, night theme"></td>
+</tr>
+<tr>
+<td width="50%"><img src="./.github/assets/v03_realistic.png" alt="Realistic 3D mode with shoppers"></td>
+<td width="50%"><img src="./.github/assets/v03_shopper_view.jpg" alt="Shopper's-eye camera"></td>
+</tr>
+<tr>
+<td width="50%"><img src="./.github/assets/v03_neighborhood.png" alt="Neighborhood demand and synergy, night theme"></td>
+<td width="50%"><img src="./.github/assets/v03_vision_judge.png" alt="Layout optimization judged by vision shoppers"></td>
+</tr>
+<tr>
+<td colspan="2"><img src="./.github/assets/v03_capture.jpg" alt="Shelf capture from a store photo"><br>
+<sub>Shelf capture on a real store photo from ShelfWise "SKUs on shelves PL" (CC BY 4.0).</sub></td>
+</tr>
+</table>
+</div>
+
 ## Screenshots
 
 <div align="center">
@@ -110,6 +143,10 @@ beforehand; see [`QUICKSTART.md`](./QUICKSTART.md) (한국어 안내 포함).
 cp backend/.env.example backend/.env   # add your LLM API key — DO NOT commit real keys
 ./scripts/dev.sh
 ```
+
+Shelf capture uses the Grounding DINO detector when the optional extra is installed
+(`cd backend && uv sync --extra capture`, which pulls PyTorch); without it, capture falls back to
+shelf geometry or a vision model's own boxes.
 
 `scripts/dev.sh` runs backend (`uvicorn` on `:8000`) and frontend (`vite` on
 `:5173`) together. `Ctrl-C` stops both. Open `http://localhost:5173` in a

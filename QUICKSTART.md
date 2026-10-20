@@ -17,8 +17,11 @@
    - 끝낼 때는 검은 창(터미널)을 닫거나 `Ctrl+C`를 누릅니다.
    - 데이터는 폴더 안 `backend/.data`에만 저장되고 외부로 보내지지 않습니다.
 
-**API 키 없이도** 샘플 매장과 *Rule-based* 엔진으로 바로 시뮬레이션할 수 있습니다. LLM/VLM 쇼퍼를 쓰려면 오른쪽 위 **Models**에서
-OpenAI·Anthropic·Gemini·Qwen 키를 입력하거나, vLLM·Ollama·llama.cpp 같은 로컬 서버 주소를 넣으세요.
+**API 키 없이도** 샘플 매장과 *Rule-based* 엔진으로 바로 시뮬레이션할 수 있습니다. LLM/VLM 쇼퍼를 쓰려면 왼쪽 메뉴의 **Models**에서
+OpenAI·Anthropic·Gemini·Qwen 키를 입력하거나, vLLM·Ollama·llama.cpp 같은 로컬 서버 주소를 넣으세요. 왼쪽 맨 아래 버튼으로 주간/야간 화면을 바꿀 수 있습니다.
+
+매대 사진으로 플래노그램을 만드는 **Capture**는 기본 설치로도 동작합니다. 더 정확한 상품 검출기(Grounding DINO)를 쓰려면
+`backend` 폴더에서 `uv sync --extra capture`를 한 번 실행하세요(PyTorch를 내려받아 용량이 큽니다).
 
 문제가 생기면: 인터넷 연결(첫 실행 시 필요)을 확인하고, 검은 창의 마지막 메시지를 그대로 알려주세요.
 
@@ -39,8 +42,11 @@ OpenAI·Anthropic·Gemini·Qwen 키를 입력하거나, vLLM·Ollama·llama.cpp 
    Close the console window or press `Ctrl+C` to stop. Data stays in `backend/.data` on your machine.
 
 Without any API key you can simulate the sample store with the *Rule-based* engine right away. To use LLM/VLM
-shoppers, open **Models** (top right) and add an OpenAI, Anthropic, Gemini or Qwen key, or the address of a local
-vLLM / Ollama / llama.cpp server.
+shoppers, open **Models** in the left rail and add an OpenAI, Anthropic, Gemini or Qwen key, or the address of a local
+vLLM / Ollama / llama.cpp server. The button at the bottom of the rail switches between day and night themes.
+
+**Capture** (shelf photo → planogram) works with the default install; for the more accurate Grounding DINO detector
+run `uv sync --extra capture` once in `backend` (it downloads PyTorch, which is large).
 
 ### What the launchers do
 
