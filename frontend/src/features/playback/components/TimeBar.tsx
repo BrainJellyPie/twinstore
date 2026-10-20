@@ -1,14 +1,25 @@
-import { Play, Pause, SkipForward, RotateCcw, ChevronLeft, ChevronRight, Layers } from "lucide-react";
+import { Play, Pause, SkipForward, RotateCcw, ChevronLeft, ChevronRight, Layers, BarChart3 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { usePlaybackControlStore, type PlaybackSpeed } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
-import { useSimulationStore } from "@/stores/simulationStore";
+import { useSimulationStore, type HeatmapMode } from "@/stores/simulationStore";
+import { paletteGradient } from "@/features/store-viewer/utils/heatmapPalette";
 
 interface Props {
   minTime: number;
   maxTime: number;
+  // Runs made before v0.2 have no dwell-time layer / rack KPIs.
+  hasDwell?: boolean;
+  hasRackStats?: boolean;
 }
+
+const HEATMAP_LAYERS: { value: HeatmapMode; label: string; hint: string }[] = [
+  { value: "off", label: "Off", hint: "No heatmap" },
+  { value: "footfall", label: "Footfall", hint: "Where shoppers walked and stopped (event count per tile)" },
+  { value: "dwell", label: "Dwell", hint: "Seconds spent per tile — where attention actually went" },
+  { value: "traffic", label: "Traffic", hint: "Predicted shortest-path load between racks (layout only)" },
+];
 
 const SPEED_LABEL: Record<PlaybackSpeed, string> = {
   60: "Normal",
@@ -27,7 +38,7 @@ function formatClock12h(sec: number): string {
   return `${hh}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-export function TimeBar({ minTime, maxTime }: Props) {
+export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = false }: Props) {
   const playing = usePlaybackControlStore((s) => s.playing);
   const speed = usePlaybackControlStore((s) => s.speed);
   const togglePlay = usePlaybackControlStore((s) => s.togglePlay);
@@ -39,8 +50,10 @@ export function TimeBar({ minTime, maxTime }: Props) {
   const prevDay = usePlaybackControlStore((s) => s.prevDay);
   const currentMinute = useSimulationMetricsStore((s) => s.currentMinute);
   const finished = useSimulationMetricsStore((s) => s.finished);
-  const heatmapOn = useSimulationStore((s) => s.heatmapOn);
-  const toggleHeatmap = useSimulationStore((s) => s.toggleHeatmap);
+  const heatmapMode = useSimulationStore((s) => s.heatmapMode);
+  const setHeatmapMode = useSimulationStore((s) => s.setHeatmapMode);
+  const rackOverlayOn = useSimulationStore((s) => s.rackOverlayOn);
+  const toggleRackOverlay = useSimulationStore((s) => s.toggleRackOverlay);
 
   const disabled = maxTime <= minTime;
   const dayIdx = availableDays.indexOf(currentDay);
@@ -145,14 +158,46 @@ export function TimeBar({ minTime, maxTime }: Props) {
           </ToggleGroup>
         </div>
         <Button
-          variant={heatmapOn ? "default" : "outline"}
+          variant={rackOverlayOn ? "default" : "outline"}
           size="sm"
           className="h-7 gap-1 px-2 text-xs"
-          onClick={toggleHeatmap}
+          onClick={toggleRackOverlay}
+          disabled={!hasRackStats}
+          title={hasRackStats ? "Revenue and stop→buy rate per rack" : "Re-run to get rack KPIs"}
         >
-          <Layers className="size-3" />
-          Heatmap
+          <BarChart3 className="size-3" />
+          Rack KPIs
         </Button>
+      </div>
+      <div className="mt-3 flex items-center gap-2 border-t pt-3">
+        <Layers className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+        <ToggleGroup
+          type="single"
+          value={heatmapMode}
+          onValueChange={(v) => v && setHeatmapMode(v as HeatmapMode)}
+          variant="outline"
+          size="sm"
+          aria-label="Heatmap layer"
+        >
+          {HEATMAP_LAYERS.map((l) => (
+            <ToggleGroupItem
+              key={l.value}
+              value={l.value}
+              title={l.hint}
+              disabled={l.value === "dwell" && !hasDwell}
+              className="h-7 px-2 text-xs"
+            >
+              {l.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        {heatmapMode !== "off" && (
+          <div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
+            low
+            <span className="h-2 w-14 rounded-full" style={{ background: paletteGradient(heatmapMode) }} />
+            high
+          </div>
+        )}
       </div>
     </div>
   );

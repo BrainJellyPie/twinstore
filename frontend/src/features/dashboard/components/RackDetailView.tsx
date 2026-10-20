@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import type { Rack, Slot, Face, Store } from "@/shared/types/domain";
 import { resolveImageUrl } from "@/shared/api/images";
+import { formatMoney } from "@/shared/utils/money";
+import { useSimulationStore } from "@/stores/simulationStore";
 
 const FACE_LABELS: Record<Face, string> = { N: "North", S: "South", E: "East", W: "West" };
 const FACE_ORDER: Face[] = ["N", "E", "S", "W"];
@@ -123,6 +125,7 @@ interface Props {
 }
 
 export function RackDetailView({ store }: Props) {
+  const currency = useSimulationStore((s) => s.currency);
   const racks = useMemo(
     () => store.racks.filter((r) => !EXCLUDED_TYPES.has(r.type)),
     [store],
@@ -218,7 +221,7 @@ export function RackDetailView({ store }: Props) {
                         </div>
                       </td>
                       <td className="px-2 py-1 tabular-nums">{item.blocks.map((b) => b + 1).join(",")}</td>
-                      <td className="pl-2 pr-6 py-1 text-right tabular-nums">${(item.price / 100).toFixed(2)}</td>
+                      <td className="pl-2 pr-6 py-1 text-right tabular-nums">{formatMoney(item.price, currency)}</td>
                     </tr>,
                   );
                 });

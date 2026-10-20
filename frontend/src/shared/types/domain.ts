@@ -16,7 +16,7 @@ export interface DaySchedule {
 export interface SlotItem {
   sku: string;
   name: string;
-  price: number;   // US cents
+  price: number;   // minor currency unit (US cents for USD)
   promo: string;
   image_url?: string | null;
 }
@@ -83,7 +83,11 @@ export interface TimelineEvent {
   description: string;
   product_sku: string;
   product_name: string;
-  price: number;
+  price: number; // unit price, minor currency unit
+  // Units on a BUY line (line total = price × quantity). Missing on runs made before v0.2.
+  quantity?: number;
+  // "planned" | "impulse" on browse/buy events; missing on older runs.
+  origin?: string;
 }
 
 export interface CustomerResult {
@@ -93,6 +97,7 @@ export interface CustomerResult {
   leave_time: string;
   timeline: TimelineEvent[];
   total_spent: number;
+  engine_type?: string;
 }
 
 export type ReadinessReason =

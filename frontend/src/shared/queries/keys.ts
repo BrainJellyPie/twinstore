@@ -12,4 +12,11 @@ export const queryKeys = {
     ["projects", projectId, "runs", runId] as const,
   runStatus: (projectId: string, runId: string) =>
     ["projects", projectId, "runs", runId, "status"] as const,
+  // All runs of a project across layouts (compare dialog).
+  projectRuns: (projectId: string) => ["projects", projectId, "all-runs"] as const,
+  runDiagnostics: (projectId: string, runId: string) =>
+    ["projects", projectId, "runs", runId, "diagnostics"] as const,
+  compare: (projectId: string, runA: string, runB: string) =>
+    ["projects", projectId, "compare", runA, runB] as const,
+  engines: () => ["engines"] as const,
 };

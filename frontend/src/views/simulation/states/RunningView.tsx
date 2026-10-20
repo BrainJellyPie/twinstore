@@ -33,22 +33,28 @@ export function RunningView({
   const activeTab = useSimulationStore((s) => s.activeTab);
   const setActiveTab = useSimulationStore((s) => s.setActiveTab);
 
+  // Completion → show the new run. Failure → back to the previous view with the error
+  // surfaced inline (instead of crashing into the route error boundary).
   useEffect(() => {
-    if (status?.status === "completed") {
-      qc.invalidateQueries({ queryKey: queryKeys.runs(pid, setupId) });
+    const s = status?.status;
+    if (s !== "completed" && s !== "failed") return;
+    const store = useSimulationStore.getState();
+    if (s === "completed") {
+      store.setViewRunId(runId);
+    } else {
+      store.setLastRunError(status?.error || "Simulation failed");
     }
-  }, [status?.status, qc, pid, setupId]);
+    void qc.invalidateQueries({ queryKey: queryKeys.runs(pid, setupId) });
+    void qc.invalidateQueries({ queryKey: queryKeys.projectRuns(pid) });
+    void qc.invalidateQueries({ queryKey: queryKeys.setup(pid, setupId) });
+  }, [status?.status, status?.error, qc, pid, setupId, runId]);
 
   if (statusQuery.error) {
     throw statusQuery.error;
   }
-  if (status?.status === "failed") {
-    throw new Error(status.error ?? "Simulation failed");
-  }
 
-  // While a simulation runs the setup is locked (status="running") on the backend,
-  // so PUT /slots is rejected with 409. Hide the entry point to prevent the invalid
-  // action — to refill slots the user must create a new layout and upload to that draft.
+  // While a final run is in progress the setup is locked (status="running") on the
+  // backend, so PUT /slots is rejected with 409 — the editing entry point stays hidden.
   return (
     <ProjectShell
       layouts={layouts}
@@ -63,7 +69,7 @@ export function RunningView({
           personaNames={personaNames}
           personaGenders={personaGenders}
           customers={null}
-          heatmap={null}
+          heatmaps={null}
           mode="running"
         />
       }
@@ -80,6 +86,7 @@ export function RunningView({
           editableLayout={false}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          runStatus={status}
         />
       }
     />

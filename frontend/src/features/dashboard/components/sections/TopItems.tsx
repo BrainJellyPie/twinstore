@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import type { Store } from "@/shared/types/domain";
+import { formatMoney } from "@/shared/utils/money";
+import { useSimulationStore } from "@/stores/simulationStore";
 
 type SortKey = "revenue" | "quantity";
 const SHOW_LIMIT = 10;
@@ -13,6 +15,7 @@ interface Props {
 export function TopItems({ store }: Props) {
   const skuSales = useSimulationMetricsStore((s) => s.skuSales);
   const [sortBy, setSortBy] = useState<SortKey>("revenue");
+  const currency = useSimulationStore((s) => s.currency);
   const [showAll, setShowAll] = useState(false);
 
   const rackNames = new Map(
@@ -81,7 +84,7 @@ export function TopItems({ store }: Props) {
                     </span>
                     <span className="shrink-0 tabular-nums text-muted-foreground">
                       {sortBy === "revenue"
-                        ? `$${(s.revenue / 100).toFixed(2)}`
+                        ? formatMoney(s.revenue, currency)
                         : `${s.quantity} sold`}
                     </span>
                   </div>

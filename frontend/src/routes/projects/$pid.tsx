@@ -121,10 +121,16 @@ function SimulationPageContent({
 
   const location = project.metadata.address;
 
-  const completedRun = [...runs]
+  // Run shown in playback: the user's pick, else the latest finalized (non-preview) run.
+  // Preview runs never take over the view on their own, so a draft layout stays editable.
+  const viewRunId = useSimulationStore((s) => s.viewRunId);
+  const completedRuns = [...runs]
     .filter((r) => r.status === "completed")
-    .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-  const runningRun = runs.find((r) => r.status === "running");
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const viewedRun =
+    (viewRunId ? completedRuns.find((r) => r.run_id === viewRunId) : undefined) ??
+    completedRuns.find((r) => !r.preview);
+  const runningRun = runs.find((r) => r.status === "running" || r.status === "pending");
 
   const tabProps = {
     layouts,
@@ -194,16 +200,6 @@ function SimulationPageContent({
     store: setup.store!,
   };
 
-  if (completedRun) {
-    return (
-      <PlaybackView
-        pid={pid}
-        runId={completedRun.run_id}
-        location={location}
-        {...tabProps}
-      />
-    );
-  }
   if (runningRun) {
     return (
       <RunningView
@@ -213,6 +209,18 @@ function SimulationPageContent({
         setup={setupWithStore}
         personas={project.personas}
         location={location}
+        {...tabProps}
+      />
+    );
+  }
+  if (viewedRun) {
+    return (
+      <PlaybackView
+        pid={pid}
+        runId={viewedRun.run_id}
+        location={location}
+        setupStatus={setup.status}
+        personaCount={project.personas.length}
         {...tabProps}
       />
     );

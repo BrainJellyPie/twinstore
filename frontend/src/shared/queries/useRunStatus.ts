@@ -9,7 +9,7 @@ export function useRunStatus(projectId: string, runId: string | null) {
     enabled: !!runId,
     refetchInterval: (q) => {
       const s = q.state.data?.status;
-      return s === "completed" || s === "failed" ? false : 2000;
+      return s === "completed" || s === "failed" ? false : 1000;
     },
     staleTime: 0,
   });

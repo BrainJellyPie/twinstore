@@ -5,6 +5,8 @@ import * as THREE from "three";
 import type { TimelineEvent } from "@/shared/types/domain";
 import { characterAssetFor, ALL_CHARACTER_ASSETS } from "@/shared/utils/assetMap";
 import { useGlbModel } from "@/shared/hooks/useGlbModel";
+import { formatMoney } from "@/shared/utils/money";
+import { useSimulationStore } from "@/stores/simulationStore";
 
 ALL_CHARACTER_ASSETS.forEach((url) => useGLTF.preload(url));
 
@@ -24,7 +26,9 @@ interface SpeechBubbleProps {
 function SpeechBubble({ event }: SpeechBubbleProps) {
   const isBuy = event.action === "buy";
   const isPay = event.action === "pay";
-  const price = `$${(event.price / 100).toFixed(2)}`;
+  const currency = useSimulationStore((s) => s.currency);
+  const qty = event.quantity ?? 1;
+  const price = `${qty > 1 ? `${qty}× ` : ""}${formatMoney(event.price, currency)}`;
   const text =
     isBuy && event.product_name
       ? `💰 ${event.product_name} · ${price}`

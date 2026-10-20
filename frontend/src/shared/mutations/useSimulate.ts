@@ -1,21 +1,28 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { simulateSession } from "@/services/session";
+import { startRun, type RunOptions } from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
-import type { RunBundle } from "@/shared/queries/useRun";
+import { useSimulationStore } from "@/stores/simulationStore";
 
 interface SimulateArgs {
   projectId: string;
   setupId: string;
+  options?: RunOptions;
 }
 
+// Starts a run and returns as soon as the backend accepted it. Progress, completion
+// and failure are then tracked by RunningView through the run status endpoint, so
+// the UI can show live progress instead of a blocking spinner.
 export function useSimulate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, setupId }: SimulateArgs) =>
-      simulateSession(projectId, setupId),
-    onSuccess: (run, { projectId, setupId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.runs(projectId, setupId) });
-      qc.setQueryData<RunBundle>(queryKeys.run(projectId, run.runId), run);
+    mutationFn: ({ projectId, setupId, options }: SimulateArgs) =>
+      startRun(projectId, setupId, options ?? {}),
+    onMutate: () => {
+      useSimulationStore.getState().setLastRunError(null);
+    },
+    onSuccess: (_run, { projectId, setupId }) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.runs(projectId, setupId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.projectRuns(projectId) });
     },
   });
 }

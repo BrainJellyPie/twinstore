@@ -1,18 +1,13 @@
+import { useEffect, useState } from "react";
 import type { CustomerResult, Store } from "@/shared/types/domain";
+import type { RunStatus, RunSummary } from "@/shared/api/client";
 import type { SetupDetailWithBlocked } from "@/features/grid-editor/types";
 import { Lock } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/shared/components/ui/alert-dialog";
+import { RunProgress } from "@/features/runs/components/RunProgress";
+import { RunKpis } from "@/features/runs/components/RunKpis";
+import { DiagnosticsSection } from "@/features/runs/components/DiagnosticsSection";
+import { FidelitySection } from "@/features/runs/components/FidelitySection";
 import { FloorConfigurationPanel } from "@/features/grid-editor/FloorConfigurationPanel";
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
 import { reasonIcon, reasonLabel, type Availability } from "@/views/simulation/availability";
@@ -40,6 +35,7 @@ interface ReadyProps {
 
 interface RunningProps {
   mode: "running";
+  status?: RunStatus;
 }
 
 interface PlaybackProps {
@@ -48,6 +44,9 @@ interface PlaybackProps {
   minTime: number;
   maxTime: number;
   store: Store;
+  summary?: RunSummary | null;
+  projectId?: string;
+  runId?: string;
 }
 
 export type DashboardPanelProps = ReadyProps | RunningProps | PlaybackProps;
@@ -57,31 +56,35 @@ export function DashboardPanel(props: DashboardPanelProps) {
     return <PlaybackContent {...props} />;
   }
   if (props.mode === "running") {
-    return <RunningContent />;
+    return <RunningContent status={props.status} />;
   }
   return <ReadyContent {...props} />;
 }
 
-function PlaybackContent({ customers, minTime, maxTime, store }: PlaybackProps) {
+function PlaybackContent({ customers, minTime, maxTime, store, summary, projectId, runId }: PlaybackProps) {
   return (
     <div className="flex flex-col">
       <PlaybackStatus minTime={minTime} maxTime={maxTime} />
       <TimelineChart customers={customers} minTime={minTime} maxTime={maxTime} />
       <Summary />
       <CustomerBehavior />
+      {summary && <RunKpis summary={summary} />}
       <RackRanking store={store} />
       <TopItems store={store} />
+      {projectId && runId && <DiagnosticsSection projectId={projectId} runId={runId} />}
+      {projectId && runId && <FidelitySection projectId={projectId} runId={runId} />}
     </div>
   );
 }
 
-function RunningContent() {
-  return (
-    <div className="flex flex-col items-center gap-2 pt-12 pb-6 text-center">
-      <div className="text-sm font-medium">Running simulation…</div>
-      <div className="text-xs text-muted-foreground">Waiting for results</div>
-    </div>
-  );
+function RunningContent({ status }: { status?: RunStatus }) {
+  // Ticks once a second so elapsed / remaining time stay live between status polls.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <RunProgress status={status} now={now} />;
 }
 
 function ReadyContent({
@@ -130,28 +133,16 @@ function ReadyContent({
             setupId={sid}
           />
           <div className="mt-2 flex flex-col gap-1.5">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  size="lg"
-                  disabled={simulating || blocked || !onSimulate}
-                >
-                  {simulating ? "Running simulation…" : "Run simulation"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="data-[size=default]:sm:max-w-lg">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Run simulation?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will consume API tokens based on your daily visitor cap. Continue?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onSimulate}>Run simulation</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button
+              size="lg"
+              disabled={simulating || blocked || !onSimulate}
+              onClick={onSimulate}
+            >
+              {simulating ? "Running simulation…" : "Run simulation…"}
+            </Button>
+            <p className="text-[11px] text-muted-foreground">
+              Choose an instant rule-based preview or LLM shoppers, a customer sample and a seed.
+            </p>
             {blocked && availability && availability.reasons.length > 0 && (
               <ul className="flex flex-col gap-1">
                 {availability.reasons.map((r) => {

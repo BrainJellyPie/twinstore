@@ -5,35 +5,52 @@ import type { RunSummary } from "@/shared/api/client";
 import { queryKeys } from "./keys";
 import { normalizeHeatmap } from "@/shared/utils/heatmap";
 
+export interface RunHeatmaps {
+  footfall: number[][];
+  dwell: number[][] | null; // null for runs made before v0.2
+  traffic: number[][];
+}
+
 export interface RunBundle {
   runId: string;
   store: Store;
   personas: Persona[];
   customers: CustomerResult[];
+  // Footfall heatmap (kept for components that only know one layer).
   heatmap: number[][];
+  heatmaps: RunHeatmaps;
   summary: RunSummary;
+}
+
+export async function fetchRunBundle(
+  projectId: string,
+  runId: string,
+  signal?: AbortSignal,
+): Promise<RunBundle> {
+  const [customers, summaryData, heatmapData, serverStore] = await Promise.all([
+    api.getRunTimeline(projectId, runId, signal),
+    api.getRunSummary(projectId, runId, signal),
+    api.getRunHeatmap(projectId, runId, signal),
+    api.getRunStore(projectId, runId, signal),
+  ]);
+  const footfall = normalizeHeatmap(heatmapData.persona_heatmap);
+  const dwell = heatmapData.dwell_heatmap?.length ? normalizeHeatmap(heatmapData.dwell_heatmap) : null;
+  return {
+    runId,
+    store: serverStore,
+    personas: Object.values(summaryData.personas),
+    customers,
+    heatmap: footfall,
+    heatmaps: { footfall, dwell, traffic: heatmapData.pathcalc_heatmap },
+    summary: summaryData.summary,
+  };
 }
 
 // Run results are immutable — staleTime Infinity caches forever, gcTime drops it after 30min.
 export function useRun(projectId: string, runId: string) {
   return useSuspenseQuery({
     queryKey: queryKeys.run(projectId, runId),
-    queryFn: async ({ signal }): Promise<RunBundle> => {
-      const [customers, summaryData, heatmapData, serverStore] = await Promise.all([
-        api.getRunTimeline(projectId, runId, signal),
-        api.getRunSummary(projectId, runId, signal),
-        api.getRunHeatmap(projectId, runId, signal),
-        api.getRunStore(projectId, runId, signal),
-      ]);
-      return {
-        runId,
-        store: serverStore,
-        personas: Object.values(summaryData.personas),
-        customers,
-        heatmap: normalizeHeatmap(heatmapData.persona_heatmap),
-        summary: summaryData.summary,
-      };
-    },
+    queryFn: ({ signal }) => fetchRunBundle(projectId, runId, signal),
     staleTime: Infinity,
     gcTime: 1000 * 60 * 30,
   });

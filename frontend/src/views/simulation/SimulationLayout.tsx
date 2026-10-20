@@ -1,10 +1,12 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import { TimeBar } from "@/features/playback/components/TimeBar";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 import type { CustomerResult } from "@/shared/types/domain";
+import type { RackStats } from "@/shared/api/client";
+import type { RunHeatmaps } from "@/shared/queries/useRun";
 import type { StoreAssets } from "@/features/store-viewer/hooks/useStoreAssets";
 import { CanvasErrorBoundary } from "@/app/providers/CanvasErrorBoundary";
 import { SimulationCanvas } from "./SimulationCanvas";
@@ -54,12 +56,19 @@ interface Props {
   personaNames: Map<string, string>;
   personaGenders: Map<string, string>;
   customers: CustomerResult[] | null;
-  heatmap: number[][] | null;
+  heatmaps: RunHeatmaps | null;
+  rackStats?: RackStats[] | null;
   mode: "ready" | "running" | "playback";
+  // Extra controls floating over the canvas (e.g. the run toolbar in playback).
+  overlay?: ReactNode;
 }
 
-export function SimulationLayout({ storeId, assets, personaNames, personaGenders, customers, heatmap, mode }: Props) {
-  const heatmapOn = useSimulationStore((s) => s.heatmapOn);
+export function SimulationLayout({
+  storeId, assets, personaNames, personaGenders, customers, heatmaps, rackStats, mode, overlay,
+}: Props) {
+  const heatmapMode = useSimulationStore((s) => s.heatmapMode);
+  const rackOverlayOn = useSimulationStore((s) => s.rackOverlayOn);
+  const currency = useSimulationStore((s) => s.currency);
   const variationTexture = useVariationTexture(storeId);
 
   useEffect(() => {
@@ -74,6 +83,8 @@ export function SimulationLayout({ storeId, assets, personaNames, personaGenders
   );
 
   const showPlayback = mode === "playback";
+  const layer = showPlayback && heatmaps && heatmapMode !== "off" ? heatmapMode : null;
+  const heatmapData = layer ? heatmaps?.[layer] ?? null : null;
 
   return (
     <>
@@ -84,8 +95,10 @@ export function SimulationLayout({ storeId, assets, personaNames, personaGenders
           racks={assets.racks}
           doors={assets.doors}
           items={assets.items}
-          heatmapData={showPlayback ? heatmap : null}
-          heatmapOn={heatmapOn}
+          heatmapData={heatmapData}
+          heatmapPalette={layer}
+          rackStats={showPlayback && rackOverlayOn ? rackStats ?? null : null}
+          currency={currency}
           customers={showPlayback ? customers : null}
           personaNames={personaNames}
           personaGenders={personaGenders}
@@ -95,7 +108,15 @@ export function SimulationLayout({ storeId, assets, personaNames, personaGenders
           variationTexture={variationTexture}
         />
       </CanvasErrorBoundary>
-      {showPlayback && <TimeBar minTime={assets.minTime} maxTime={assets.maxTime} />}
+      {showPlayback && (
+        <TimeBar
+          minTime={assets.minTime}
+          maxTime={assets.maxTime}
+          hasDwell={!!heatmaps?.dwell}
+          hasRackStats={!!rackStats?.length}
+        />
+      )}
+      {overlay}
       {selectedRack && (
         <RackDetailPanel
           rack={selectedRack}

@@ -7,8 +7,11 @@ import { AssetRug } from "@/features/store-viewer/components/AssetRug";
 import { AssetWall } from "@/features/store-viewer/components/AssetWall";
 import { SolidFloor } from "@/features/store-viewer/components/SolidFloor";
 import { HeatmapOverlay } from "@/features/store-viewer/components/HeatmapOverlay";
+import type { HeatmapPalette } from "@/features/store-viewer/utils/heatmapPalette";
+import { RackPerformanceLayer } from "@/features/store-viewer/components/RackPerformanceLayer";
 import { PlaybackScene } from "@/features/playback/components/PlaybackScene";
 import type { Rack, CustomerResult } from "@/shared/types/domain";
+import type { RackStats } from "@/shared/api/client";
 
 function LoadingOverlay() {
   return (
@@ -27,7 +30,9 @@ interface StoreSceneProps {
   doors: Rack[];
   items: Rack[];
   heatmapData: number[][] | null;
-  heatmapOn: boolean;
+  heatmapPalette: HeatmapPalette | null; // null → heatmap hidden
+  rackStats: RackStats[] | null; // non-null → rack KPI overlay shown
+  currency: string;
   customers: CustomerResult[] | null;
   personaNames: Map<string, string>;
   personaGenders: Map<string, string>;
@@ -76,8 +81,8 @@ function CompassLabels({ width, depth }: { width: number; depth: number }) {
 
 function StoreScene({
   width, depth, racks, doors, items,
-  heatmapData, heatmapOn, customers, personaNames, personaGenders, minTime, maxTime, availableDays,
-  variationTexture,
+  heatmapData, heatmapPalette, rackStats, currency, customers, personaNames, personaGenders, minTime, maxTime,
+  availableDays, variationTexture,
 }: StoreSceneProps) {
   return (
     <group position={[-width / 2, 0, -depth / 2]}>
@@ -85,9 +90,10 @@ function StoreScene({
       <Suspense fallback={null}>
         <AssetWall width={width} depth={depth} racks={racks} variationTexture={variationTexture} />
       </Suspense>
-      {heatmapOn && heatmapData && (
-        <HeatmapOverlay data={heatmapData} mode="predicted" width={width} depth={depth} />
+      {heatmapPalette && heatmapData && (
+        <HeatmapOverlay data={heatmapData} palette={heatmapPalette} width={width} depth={depth} />
       )}
+      {rackStats && <RackPerformanceLayer racks={items} stats={rackStats} currency={currency} />}
       <Suspense fallback={<LoadingOverlay />}>
         <AssetRug doors={doors} />
         {items.map((f) => (

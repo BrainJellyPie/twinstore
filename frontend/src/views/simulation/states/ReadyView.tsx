@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
-import { useSimulate } from "@/shared/mutations/useSimulate";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { RunLauncherDialog } from "@/features/runs/components/RunLauncherDialog";
 import { useStoreAssets } from "@/features/store-viewer/hooks/useStoreAssets";
 import { usePersonaData } from "@/features/playback/hooks/usePersonaData";
 import type { SetupDetailWithBlocked } from "@/features/grid-editor/types";
@@ -24,7 +24,8 @@ export function ReadyView({
   onLayoutSelect,
   onAddLayout,
 }: ViewCommon & { setupId: string } & LayoutTabProps) {
-  const simulate = useSimulate();
+  const [launcherOpen, setLauncherOpen] = useState(false);
+  const lastRunError = useSimulationStore((s) => s.lastRunError);
   const availability = computeSimulationAvailability(setup.readiness);
   const assets = useStoreAssets(setup.store);
   const { personaNames, personaGenders } = usePersonaData(personas);
@@ -35,10 +36,8 @@ export function ReadyView({
   const [busy, setBusy] = useState(false);
   const onBusyChange = useCallback((b: boolean) => setBusy(b), []);
 
-  const mode = simulate.isPending ? "running" : "ready";
-  const onSimulate = availability.canSimulate
-    ? () => simulate.mutate({ projectId: pid, setupId })
-    : undefined;
+  const mode = "ready";
+  const onSimulate = availability.canSimulate ? () => setLauncherOpen(true) : undefined;
 
   // null-safe itemCount — setup.store.racks may be empty right after a Step 1 force-edit.
   const itemCount =
@@ -74,8 +73,17 @@ export function ReadyView({
           personaNames={personaNames}
           personaGenders={personaGenders}
           customers={null}
-          heatmap={null}
+          heatmaps={null}
           mode={mode}
+          overlay={
+            <RunLauncherDialog
+              open={launcherOpen}
+              onOpenChange={setLauncherOpen}
+              projectId={pid}
+              setupId={setupId}
+              personaCount={personas.length}
+            />
+          }
         />
       }
       sidePanelSlot={
@@ -89,8 +97,8 @@ export function ReadyView({
           personas={personas}
           location={location}
           onSimulate={onSimulate}
-          simulating={simulate.isPending}
-          simulateError={simulate.error}
+          simulating={false}
+          simulateError={lastRunError ? new Error(`Last run failed: ${lastRunError.split("\n")[0]}`) : null}
           availability={availability}
           projectId={pid}
           setupId={setupId}

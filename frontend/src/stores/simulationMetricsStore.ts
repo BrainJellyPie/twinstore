@@ -9,6 +9,7 @@ interface SimulationMetricsState {
   exited: number;
   inStore: number;
   revenue: number;
+  impulseRevenue: number;
   paidCount: number;
   skuSales: SkuSales[];
   rackMetrics: RackMetric[];
@@ -26,6 +27,7 @@ const INITIAL: Omit<SimulationMetricsState, "setCurrentMinute" | "setMetrics" | 
   exited: 0,
   inStore: 0,
   revenue: 0,
+  impulseRevenue: 0,
   paidCount: 0,
   skuSales: [],
   rackMetrics: [],

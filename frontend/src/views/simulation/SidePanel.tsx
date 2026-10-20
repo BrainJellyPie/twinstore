@@ -2,7 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui
 import { DashboardPanel } from "@/features/dashboard/components/DashboardPanel";
 import { SettingsPanel } from "@/features/dashboard/components/SettingsPanel";
 import type { Store, Persona, CustomerResult } from "@/shared/types/domain";
-import type { RunSummary } from "@/shared/api/client";
+import type { RunStatus, RunSummary } from "@/shared/api/client";
 import type { DashboardTab } from "@/stores/simulationStore";
 import type { SetupDetailWithBlocked } from "@/features/grid-editor/types";
 import { type Availability } from "./availability";
@@ -31,6 +31,10 @@ export interface SidePanelProps {
   setup?: SetupDetailWithBlocked;
   itemCount?: number;
   onBusyChange?: (busy: boolean) => void;
+  // playback-mode only — enables the run KPI / diagnostics / validation sections.
+  runId?: string;
+  // running-mode only — live progress.
+  runStatus?: RunStatus;
 }
 
 export function SidePanel({
@@ -54,6 +58,8 @@ export function SidePanel({
   setup,
   itemCount,
   onBusyChange,
+  runId,
+  runStatus,
 }: SidePanelProps) {
   return (
     <aside className="flex h-full w-85 shrink-0 flex-col overflow-y-auto border-l bg-sidebar">
@@ -72,9 +78,12 @@ export function SidePanel({
               minTime={minTime}
               maxTime={maxTime}
               store={store}
+              summary={summary}
+              projectId={projectId}
+              runId={runId}
             />
           ) : mode === "running" ? (
-            <DashboardPanel mode="running" />
+            <DashboardPanel mode="running" status={runStatus} />
           ) : (
             // ready mode — these props are passed by ReadyView; undefined indicates a
             // miswired caller. Explicit guard acts as a runtime safety net.
