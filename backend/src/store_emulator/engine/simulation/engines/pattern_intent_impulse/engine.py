@@ -7,7 +7,7 @@ from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.engine import PerCustomerContext, EngineDecision
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, PathFinder, TokenUsage, WEEKDAY_LABELS, stable_seed
-from store_emulator.engine.llm_client import LiteLLMClient
+from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
 from . import stage1_pattern, stage2_intent, stage3_impulse
 from .stage2_intent import IntentResponse
 from .stage3_impulse import ImpulseResponse
@@ -85,7 +85,7 @@ class PatternIntentImpulseEngine:
 
     def __init__(
         self,
-        llm: LiteLLMClient,
+        llm: SimLLM,
         pathfinder: PathFinder,
         config: SimulationConfig,
     ):
@@ -98,6 +98,9 @@ class PatternIntentImpulseEngine:
 
     def get_usage(self) -> TokenUsage:
         return self._llm.get_usage()
+
+    def metadata(self) -> dict[str, object]:
+        return {"ensemble": self._llm.metadata()} if isinstance(self._llm, EnsembleLLMClient) else {}
 
     async def decide_actions(
         self,
@@ -120,7 +123,7 @@ class PatternIntentImpulseEngine:
             address=context.address, customer_profile=context.customer_profile, currency=currency,
         )
         selection = await self._llm.generate_structured_async(
-            stage1_pattern.PatternSelectionResponse, stage1_system, stage1_user, seed=stage_seed("stage1"),
+            stage1_pattern.PatternSelectionResponse, stage1_system, stage1_user, seed=stage_seed("stage1"), route=context.persona.id,
         )
         pattern = pattern_map.get(selection.pattern_id, fallback)
         grammar_override = selection.grammar_override
@@ -133,7 +136,7 @@ class PatternIntentImpulseEngine:
             pattern=pattern, grammar_override=grammar_override, currency=currency,
         )
         intent = await self._llm.generate_structured_async(
-            IntentResponse, stage2_system, stage2_user, seed=stage_seed("stage2"),
+            IntentResponse, stage2_system, stage2_user, seed=stage_seed("stage2"), route=context.persona.id,
         )
         for a in intent.actions:
             a.origin = "planned"
@@ -165,7 +168,7 @@ class PatternIntentImpulseEngine:
                 visibility=visibility, currency=currency,
             )
             impulse = await self._llm.generate_structured_async(
-                ImpulseResponse, stage3_system, stage3_user, seed=stage_seed("stage3"),
+                ImpulseResponse, stage3_system, stage3_user, seed=stage_seed("stage3"), route=context.persona.id,
             )
         else:
             impulse = ImpulseResponse()

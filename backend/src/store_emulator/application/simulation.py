@@ -14,6 +14,7 @@ from store_emulator.domain.analysis import ComparisonReport, FidelityReport
 from store_emulator.domain.config import EngineType, ExposureModel, RouteOrdering, SimulationConfig
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.persona import Persona
+from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.result import AggregatedResult
 from store_emulator.domain.runner import ProgressCallback, SimulationRunner
 from store_emulator.domain.store import Store
@@ -47,6 +48,10 @@ class RunOptions(BaseModel):
     max_customers: int | None = Field(default=None, ge=1)
     # Preview runs do not lock the setup and may run on draft or finalized setups.
     preview: bool = False
+    # Model reference ("anthropic:claude-haiku-5-5", "qwen:qwen3.7-plus", …) for the engine's model.
+    model: str | None = None
+    # Several models as one consumer population (overrides `model`).
+    ensemble: EnsembleConfig | None = None
 
 
 def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationConfig:
@@ -55,7 +60,27 @@ def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationCo
         value = getattr(options, field)
         if value is not None:
             updates[field] = value
-    return config.model_copy(update=updates)
+    if options.ensemble is not None:
+        updates["ensemble"] = options.ensemble
+    config = config.model_copy(update=updates)
+    if options.model:
+        config = with_engine_model(config, options.model)
+    return config
+
+
+def with_engine_model(config: SimulationConfig, model: str) -> SimulationConfig:
+    """Point the run's engine (LLM or vision) at another model; sampling settings are kept."""
+    engines = config.engines
+    if config.engine_type == EngineType.VLM_GLANCE:
+        vlm = engines.vlm_glance
+        engines = engines.model_copy(update={"vlm_glance": vlm.model_copy(update={"llm": vlm.llm.model_copy(update={"model": model})})})
+    elif config.engine_type == EngineType.PATTERN_INTENT_IMPULSE:
+        pii = engines.pattern_intent_impulse
+        llm = (pii.llm or config.llm).model_copy(update={"model": model})
+        engines = engines.model_copy(update={"pattern_intent_impulse": pii.model_copy(update={"llm": llm})})
+    else:
+        return config
+    return config.model_copy(update={"engines": engines})
 
 
 def subsample_personas(personas: list[Persona], max_customers: int | None, seed: int) -> list[Persona]:

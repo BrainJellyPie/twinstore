@@ -1,8 +1,9 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
+from .providers import EnsembleConfig
 from .rack import RackType
 
 
@@ -47,6 +48,9 @@ class LLMConfig(BaseModel):
     # Directory for the content-addressed response cache. None disables caching.
     cache_dir: str | None = None
     structured_output: StructuredOutput = "json"
+    # Resolved from provider settings / environment at run time. Excluded from every dump, so it
+    # is never written to run configs, manifests or API responses.
+    api_key: SecretStr | None = Field(default=None, exclude=True, repr=False)
 
 
 class DwellRange(BaseModel):
@@ -149,6 +153,8 @@ class SimulationConfig(BaseModel):
     max_quantity_per_line: int = Field(default=6, ge=1)
     # ISO 4217 code. Prices and budgets are integers in the currency's minor unit (USD → cents, KRW → won).
     currency: str = "USD"
+    # Several models as one consumer population for the run's LLM/VLM engine (None = single model).
+    ensemble: EnsembleConfig | None = None
 
     def dwell_for(self, rack_type: RackType) -> DwellRange:
         return self.dwell.get(rack_type, DwellRange(min=5, max=30))

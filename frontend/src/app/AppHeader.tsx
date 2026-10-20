@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Settings } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/queries/keys";
@@ -39,6 +39,14 @@ export function AppHeader() {
           )}
         </nav>
       )}
+
+      <Link
+        to="/settings"
+        className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label="Settings"
+      >
+        <Settings className="size-4" /> Models
+      </Link>
     </header>
   );
 }

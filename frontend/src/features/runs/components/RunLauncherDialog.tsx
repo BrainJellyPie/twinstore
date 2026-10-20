@@ -26,6 +26,7 @@ import type { EngineType, RunOptions } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 
 import { useEngines } from "../hooks";
+import { ModelPicker, type ModelChoice } from "./ModelPicker";
 
 export interface RunLauncherDialogProps {
   open: boolean;
@@ -41,7 +42,7 @@ export interface RunLauncherDialogProps {
 export function RunLauncherDialog(props: RunLauncherDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[520px]">
         {/* Content unmounts when closed, so the form state resets on every open. */}
         <LauncherForm {...props} />
       </DialogContent>
@@ -71,6 +72,7 @@ function LauncherForm({
   const [seed, setSeed] = useState(0);
   const [replicate, setReplicate] = useState(0);
   const [preview, setPreview] = useState(true);
+  const [modelChoice, setModelChoice] = useState<ModelChoice>({ kind: "default" });
 
   const isPreview = locked || preview;
   const customers = sampleMode === "all" ? personaCount : Math.max(1, Math.min(sampleSize, personaCount));
@@ -93,6 +95,9 @@ function LauncherForm({
       replicate,
       preview: isPreview,
       max_customers: sampleMode === "sample" ? customers : undefined,
+      model: modelChoice.kind === "single" ? modelChoice.model : undefined,
+      ensemble:
+        modelChoice.kind === "ensemble" && (modelChoice.ensemble?.members.length ?? 0) > 0 ? modelChoice.ensemble : undefined,
     };
     simulate.mutate({ projectId, setupId, options }, { onSuccess: () => onOpenChange(false) });
   };
@@ -159,6 +164,15 @@ function LauncherForm({
           </label>
         ))}
       </RadioGroup>
+
+      {usesLlm && (
+        <ModelPicker
+          engine={engine}
+          defaultModel={modelOf(engine)}
+          value={modelChoice}
+          onChange={setModelChoice}
+        />
+      )}
 
       <div className="space-y-2">
         <div className="text-sm font-medium">Customers</div>

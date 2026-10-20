@@ -31,8 +31,8 @@ from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.engine import PerCustomerContext
 from store_emulator.domain.rack import Rack
 from store_emulator.domain.types import Face, PathFinder, TokenUsage, stable_seed
-from store_emulator.engine.llm_client import LiteLLMClient
-from store_emulator.engine.perception import render_face
+from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
+from store_emulator.engine.perception import ShelfView, render_face
 from store_emulator.engine.routing.route_builder import build_journey, perceive_products
 
 from ..rule_based import (
@@ -41,7 +41,7 @@ from ..rule_based import (
     RuleBasedEngine,
     ShopperPlan,
 )
-from .prompt import SYSTEM_PROMPT, ShelfGlance, resolve, user_prompt
+from .prompt import SYSTEM_PROMPT, ShelfGlance, combine_votes, resolve, user_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -60,12 +60,15 @@ class GlanceRecord:
     resolved_by: str      # none | name | number | invalid | error
     level: int | None
     outcome: str          # buy | look | skip | error
+    model: str = ""       # ensemble member that answered (mixture) or "vote"
+    agreement: float | None = None  # vote mode: share of members that named the winner
+    votes: tuple[tuple[str, str, int], ...] = ()  # vote mode: (member, product, interest)
 
 
 class VLMGlanceEngine(RuleBasedEngine):
     engine_type = "vlm_glance"
 
-    def __init__(self, llm: LiteLLMClient, pathfinder: PathFinder, config: SimulationConfig):
+    def __init__(self, llm: SimLLM, pathfinder: PathFinder, config: SimulationConfig):
         super().__init__(pathfinder, config)
         self._llm = llm
         self._log_lock = threading.Lock()
@@ -120,16 +123,12 @@ class VLMGlanceEngine(RuleBasedEngine):
                 currency=cfg.currency,
             )
             calls += 1
-            try:
-                glance = await self._llm.generate_structured_with_image_async(
-                    ShelfGlance, SYSTEM_PROMPT, prompt, view.data_url(),
-                    seed=stable_seed(context.seed, "vlm", rack.id, face.value), max_retries=1,
-                )
-            except Exception as e:  # noqa: BLE001 — one failed glance must not fail the customer
+            glance, model, agreement, votes, error = await self._ask(view, prompt, context, rack, face.value)
+            if glance is None:
                 errors += 1
-                logger.warning(f"[vlm_glance] {persona.id} {rack.rack_name}/{face.value}: {type(e).__name__}: {e}")
+                logger.warning(f"[vlm_glance] {persona.id} {rack.rack_name}/{face.value}: {error}")
                 self._record(GlanceRecord(persona.id, rack.rack_name, face.value, visibility, "", 0, 0, "",
-                                          None, "error", None, "error"))
+                                          None, "error", None, "error", model, None, votes))
                 continue
 
             hit, how = resolve(view, glance)
@@ -151,11 +150,38 @@ class VLMGlanceEngine(RuleBasedEngine):
             self._record(GlanceRecord(
                 persona.id, rack.rack_name, face.value, visibility, glance.product, glance.number, glance.interest,
                 glance.reason, hit.item.sku if hit else None, how, hit.slot.level if hit else None, outcome,
+                model, agreement, votes,
             ))
 
         out.trace = {"vlm_calls": calls, "vlm_buys": buys, "vlm_looks": looks,
                      "vlm_invalid": invalid, "vlm_errors": errors}
         return out
+
+    async def _ask(
+        self, view: ShelfView, prompt: str, context: PerCustomerContext, rack: Rack, face: str,
+    ) -> tuple[ShelfGlance | None, str, float | None, tuple[tuple[str, str, int], ...], str]:
+        """(glance, answering model, agreement, votes, error) for one shelf glance."""
+        seed = stable_seed(context.seed, "vlm", rack.id, face)
+        route = context.persona.id
+        if isinstance(self._llm, EnsembleLLMClient) and self._llm.mode == "vote":
+            answers = await self._llm.ask_all_with_image(
+                ShelfGlance, SYSTEM_PROMPT, prompt, view.data_url(), seed=seed, route=route, max_retries=1,
+            )
+            votes = tuple((a.member, a.answer.product if a.answer else "", a.answer.interest if a.answer else -1)
+                          for a in answers)
+            ok = [(a.member, a.answer) for a in answers if a.answer is not None]
+            if not ok:
+                return None, "vote", None, votes, "; ".join(a.error for a in answers)
+            combined, agreement = combine_votes(view, ok)
+            return combined, "vote", agreement, votes, ""
+        model = self._llm.member_for(route).name if isinstance(self._llm, EnsembleLLMClient) else ""
+        try:
+            glance = await self._llm.generate_structured_with_image_async(
+                ShelfGlance, SYSTEM_PROMPT, prompt, view.data_url(), seed=seed, route=route, max_retries=1,
+            )
+        except Exception as e:  # noqa: BLE001 — one failed glance must not fail the customer
+            return None, model, None, (), f"{type(e).__name__}: {e}"
+        return glance, model, None, (), ""
 
     def _basket_names(self, context: PerCustomerContext, plan: ShopperPlan) -> list[str]:
         names: list[str] = []
@@ -188,6 +214,17 @@ class VLMGlanceEngine(RuleBasedEngine):
             "resolved_by": dict(Counter(g.resolved_by for g in log)),
             "outcomes": dict(Counter(g.outcome for g in log)),
             "picked_level": {str(k): v for k, v in sorted(Counter(g.level for g in picked if g.level).items())},
+            "by_model": {
+                name: {"glances": sum(1 for g in log if g.model == name),
+                       "picks": sum(1 for g in picked if g.model == name),
+                       "mean_interest": round(sum(g.interest for g in picked if g.model == name)
+                                              / max(1, sum(1 for g in picked if g.model == name)), 2)}
+                for name in sorted({g.model for g in log if g.model})
+            },
+            "mean_agreement": round(sum(g.agreement for g in answered if g.agreement is not None)
+                                    / max(1, sum(1 for g in answered if g.agreement is not None)), 3)
+            if any(g.agreement is not None for g in answered) else None,
+            "ensemble": self._llm.metadata() if isinstance(self._llm, EnsembleLLMClient) else None,
             "records": [asdict(g) for g in log],
         }
 

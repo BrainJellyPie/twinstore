@@ -3,7 +3,7 @@ import importlib
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.engine import CustomerBehaviorEngine
 from store_emulator.domain.types import PathFinder
-from store_emulator.engine.llm_client import LiteLLMClient
+from store_emulator.engine.llm_router import SimLLM
 
 from .engines import ENGINES
 
@@ -11,7 +11,7 @@ from .engines import ENGINES
 def build_engine(
     config: SimulationConfig,
     *,
-    llm: LiteLLMClient | None = None,
+    llm: SimLLM | None = None,
     pathfinder: PathFinder,
 ) -> CustomerBehaviorEngine:
     entry = ENGINES.get(config.engine_type)

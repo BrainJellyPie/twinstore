@@ -34,6 +34,7 @@ from store_emulator.application.storage.runs import (
 from store_emulator.domain.analysis import ComparisonReport
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.persona import Persona
+from store_emulator.domain.providers import EnsembleConfig, EnsembleMember
 from store_emulator.domain.result import SimulationSummary
 from store_emulator.domain.store import Store
 from store_emulator.engine.analysis.compare import compare_runs
@@ -130,8 +131,13 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--replicates", type=int, default=1)
     p.add_argument("--max-customers", type=int)
     p.add_argument("--concurrency", type=int, default=20)
-    p.add_argument("--model", help="LiteLLM model id, e.g. anthropic/claude-sonnet-5-5 or openai/local")
-    p.add_argument("--api-base", help="OpenAI-compatible endpoint (vLLM, llama.cpp server)")
+    p.add_argument("--model", help='model reference ("openai:gpt-6-luna", "anthropic:claude-haiku-5-5", '
+                                    '"gemini:gemini-3.8-flash", "qwen:qwen3.7-plus", "vllm:<served name>", '
+                                    '"llamacpp:local") or a raw LiteLLM id')
+    p.add_argument("--ensemble", help='comma-separated "model[=weight]" list, e.g. '
+                                       '"openai:gpt-6-luna=2,anthropic:claude-haiku-5-5,qwen:qwen3.7-plus"')
+    p.add_argument("--ensemble-mode", choices=["mixture", "vote"], default="mixture")
+    p.add_argument("--api-base", help="endpoint override for a raw LiteLLM model id (vLLM, llama.cpp server)")
     p.add_argument("--cache-dir", help="LLM response cache directory")
     p.add_argument("--currency", help="ISO 4217 code of the price unit (USD, KRW, ...)")
     p.add_argument("--exposure-model", choices=["visibility", "adjacency"])
@@ -139,31 +145,41 @@ def _add_run_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--verbose", action="store_true")
 
 
+def _parse_ensemble(spec: str | None, mode: str) -> EnsembleConfig | None:
+    if not spec:
+        return None
+    members: list[EnsembleMember] = []
+    for part in (s.strip() for s in spec.split(",") if s.strip()):
+        ref, _, weight = part.partition("=")
+        members.append(EnsembleMember(model=ref.strip(), weight=float(weight) if weight else 1.0))
+    return EnsembleConfig(members=members, mode="vote" if mode == "vote" else "mixture")
+
+
 def _config(args: argparse.Namespace) -> SimulationConfig:
     config = local_config()
+    if args.currency:
+        config = config.model_copy(update={"currency": args.currency.upper()})
+    config = apply_options(config, RunOptions(
+        engine_type=EngineType(args.engine) if args.engine else None,
+        seed=args.seed, exposure_model=args.exposure_model, route_ordering=args.route_ordering,
+        model=args.model, ensemble=_parse_ensemble(args.ensemble, args.ensemble_mode),
+    ))
     llm_updates: dict[str, object] = {}
-    if args.model:
-        llm_updates["model"] = args.model
     if args.api_base:
         llm_updates["api_base"] = args.api_base
     if args.cache_dir:
         llm_updates["cache_dir"] = args.cache_dir
-    if llm_updates:
-        if args.engine == EngineType.VLM_GLANCE.value:
-            vlm = config.engines.vlm_glance
-            vlm = vlm.model_copy(update={"llm": vlm.llm.model_copy(update=llm_updates)})
-            config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
+    if llm_updates and config.engine_type != EngineType.RULE_BASED:
+        engines = config.engines
+        if config.engine_type == EngineType.VLM_GLANCE:
+            vlm = engines.vlm_glance
+            engines = engines.model_copy(update={"vlm_glance": vlm.model_copy(update={"llm": vlm.llm.model_copy(update=llm_updates)})})
         else:
-            config = config.model_copy(update={"llm": config.llm.model_copy(update=llm_updates)})
-    updates: dict[str, object] = {}
-    if args.currency:
-        updates["currency"] = args.currency.upper()
-    if updates:
-        config = config.model_copy(update=updates)
-    return apply_options(config, RunOptions(
-        engine_type=EngineType(args.engine) if args.engine else None,
-        seed=args.seed, exposure_model=args.exposure_model, route_ordering=args.route_ordering,
-    ))
+            pii = engines.pattern_intent_impulse
+            llm = (pii.llm or config.llm).model_copy(update=llm_updates)
+            engines = engines.model_copy(update={"pattern_intent_impulse": pii.model_copy(update={"llm": llm})})
+        config = config.model_copy(update={"engines": engines})
+    return config
 
 
 def _load_inputs(run: Path | None, store: Path | None, personas: Path | None) -> tuple[Store, list[Persona]]:

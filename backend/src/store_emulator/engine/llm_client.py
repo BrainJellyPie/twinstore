@@ -32,6 +32,7 @@ class LiteLLMClient:
         self.seed = config.seed
         self.timeout_sec = config.timeout_sec
         self.cache_dir = Path(config.cache_dir) if config.cache_dir else None
+        self._api_key = config.api_key.get_secret_value() if config.api_key else None
         mode = instructor.Mode.JSON_SCHEMA if config.structured_output == "json_schema" else instructor.Mode.JSON
         self._client = instructor.from_litellm(litellm.completion, mode=mode)  # type: ignore[reportUnknownMemberType]
         self._async_client = instructor.from_litellm(litellm.acompletion, mode=mode)  # type: ignore[reportUnknownMemberType]
@@ -77,6 +78,8 @@ class LiteLLMClient:
             # SDK refuses to send a request without one.
             if self.model.startswith("openai/") and not os.environ.get("OPENAI_API_KEY"):
                 kwargs["api_key"] = os.environ.get("PARASTORE_LOCAL_API_KEY", "not-needed")
+        if self._api_key:
+            kwargs["api_key"] = self._api_key
         effective = self._effective_seed(seed)
         if effective is not None:
             kwargs["seed"] = effective
@@ -165,6 +168,7 @@ class LiteLLMClient:
         *,
         max_retries: int = 1,
         seed: int | None = None,
+        route: str | None = None,
     ) -> T:
         msgs, rid = self._messages(system_prompt, user_prompt)
         cache_path = self._cache_path(response_model, msgs, seed)
@@ -189,6 +193,7 @@ class LiteLLMClient:
         *,
         max_retries: int = 1,
         seed: int | None = None,
+        route: str | None = None,
     ) -> T:
         msgs, rid = self._messages(system_prompt, user_prompt)
         cache_path = self._cache_path(response_model, msgs, seed)
@@ -214,6 +219,7 @@ class LiteLLMClient:
         *,
         max_retries: int = 1,
         seed: int | None = None,
+        route: str | None = None,
     ) -> T:
         msgs, rid = self._messages_with_image(system_prompt, user_prompt, image_url)
         cache_path = self._cache_path(response_model, msgs, seed)
@@ -239,6 +245,7 @@ class LiteLLMClient:
         *,
         max_retries: int = 1,
         seed: int | None = None,
+        route: str | None = None,
     ) -> T:
         msgs, rid = self._messages_with_image(system_prompt, user_prompt, image_url)
         cache_path = self._cache_path(response_model, msgs, seed)
@@ -261,6 +268,7 @@ class LiteLLMClient:
         user_prompt: str,
         *,
         enable_search: bool = False,
+        route: str | None = None,
     ) -> str:
         """Bypass Instructor — raw text completion. Use when the schema varies by
         category and we need ad-hoc JSON output.

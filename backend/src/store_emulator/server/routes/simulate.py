@@ -7,10 +7,12 @@ from fastapi.responses import Response
 from store_emulator.application import simulation as sim_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
+from store_emulator.application.providers import ensure_resolvable
 from store_emulator.application.simulation import RunOptions
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
 from store_emulator.domain.config import EngineType, ExposureModel, RouteOrdering
 from store_emulator.domain.persona import Persona
+from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.server.schemas import EngineInfo, SimulationStartResponse
 from ..deps import get_config
 
@@ -31,6 +33,8 @@ class SimulateRequest(BaseModel):
     route_ordering: RouteOrdering | None = Field(default=None, description="`planned` (default) or legacy `nearest`")
     max_customers: int | None = Field(default=None, ge=1, description="Deterministic persona subsample for cheap pilots")
     preview: bool = Field(default=False, description="Preview runs don't lock the setup and are allowed on draft or finalized setups")
+    model: str | None = Field(default=None, description='Model reference for the engine, e.g. "openai:gpt-6-luna", "qwen:qwen3.7-plus"')
+    ensemble: EnsembleConfig | None = Field(default=None, description="Several models as one consumer population (mixture or vote)")
 
 
 @engines_router.get("/engines", summary="Available simulation engines", response_model=list[EngineInfo])
@@ -89,6 +93,16 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
     **On failure:** the setup reverts to `draft`.
 
     **Errors:** 400 (no layout / no personas), 404 (setup not found), 409 (locked / running / readiness not met / duplicate run_id)"""
+    options = RunOptions(
+        engine_type=req.engine_type, seed=req.seed, replicate=req.replicate,
+        exposure_model=req.exposure_model, route_ordering=req.route_ordering,
+        max_customers=req.max_customers, preview=req.preview, model=req.model, ensemble=req.ensemble,
+    )
+    config = get_config()
+    try:
+        ensure_resolvable(sim_service.apply_options(config, options))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     try:
         run_id, store, personas, address, customer_profile = sim_service.prepare_simulation(
             pid, req.setup_id, req.run_id, preview=req.preview,
@@ -96,12 +110,6 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
     except AppError as e:
         raise HTTPException(e.status_code, str(e))
 
-    options = RunOptions(
-        engine_type=req.engine_type, seed=req.seed, replicate=req.replicate,
-        exposure_model=req.exposure_model, route_ordering=req.route_ordering,
-        max_customers=req.max_customers, preview=req.preview,
-    )
-    config = get_config()
     executor.submit(
         sim_service.run_simulation_background,
         pid, run_id, req.setup_id, store, personas,

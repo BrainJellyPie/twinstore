@@ -149,3 +149,26 @@ def resolve(view: ShelfView, glance: ShelfGlance) -> tuple[MarkedItem | None, st
     if by_number is not None:
         return by_number, "number"
     return None, "invalid"
+
+
+def combine_votes(view: ShelfView, answers: list[tuple[str, ShelfGlance]]) -> tuple[ShelfGlance, float]:
+    """Ensemble vote: the product named by most members wins (ties → higher summed interest).
+
+    The combined interest is the mean over all members, counting 0 for members that named
+    something else, so a lone enthusiast cannot drive a purchase. Returns (glance, agreement)
+    where agreement is the share of members that named the winner.
+    """
+    tally: dict[str, list[ShelfGlance]] = {}
+    for _, glance in answers:
+        hit, _ = resolve(view, glance)
+        tally.setdefault(hit.item.sku if hit else "", []).append(glance)
+    named = {sku: gs for sku, gs in tally.items() if sku}
+    if not named:
+        return ShelfGlance(), len(tally.get("", [])) / max(1, len(answers))
+    winner = max(named, key=lambda sku: (len(named[sku]), sum(g.interest for g in named[sku]), sku))
+    marked = next(m for m in view.items if m.item.sku == winner)
+    supporters = named[winner]
+    interest = round(sum(g.interest for g in supporters) / len(answers))
+    reason = next((g.reason for g in supporters if g.reason), "")
+    combined = ShelfGlance(product=marked.item.name, number=marked.mark, interest=interest, reason=reason)
+    return combined, len(supporters) / len(answers)

@@ -19,4 +19,6 @@ export const queryKeys = {
   compare: (projectId: string, runA: string, runB: string) =>
     ["projects", projectId, "compare", runA, runB] as const,
   engines: () => ["engines"] as const,
+  providers: () => ["providers"] as const,
+  models: () => ["models"] as const,
 };

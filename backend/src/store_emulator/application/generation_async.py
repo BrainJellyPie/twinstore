@@ -18,6 +18,7 @@ from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import DaySchedule
 from store_emulator.engine.generators import persona as gen_persona
+from store_emulator.application.providers import resolve_model
 from store_emulator.engine.llm_client import LiteLLMClient
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ async def _run_async_pipeline(
     Single LLM instance (token usage aggregated).
     Race / write failures stay isolated in effective_summary.
     """
-    llm = LiteLLMClient(config.llm)
+    llm = LiteLLMClient(resolve_model(config.llm.model, base=config.llm))
 
     # Default to metadata's existing supplemental_summary. Even when
     # supplemental_bytes is None (manual call, restart, etc.) a previously-stored

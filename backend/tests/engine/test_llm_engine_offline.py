@@ -37,7 +37,7 @@ class _ScriptedLLM:
 
     async def generate_structured_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str,
-        *, max_retries: int = 1, seed: int | None = None,
+        *, max_retries: int = 1, seed: int | None = None, route: str | None = None,
     ) -> T:
         self.calls.append((response_model.__name__, system_prompt, user_prompt, seed))
         if response_model is PatternSelectionResponse:

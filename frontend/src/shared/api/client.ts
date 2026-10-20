@@ -331,6 +331,21 @@ export interface RunOptions {
   max_customers?: number;
   // Preview runs don't lock the layout and are allowed on finalized layouts.
   preview?: boolean;
+  // Model reference for the engine, e.g. "anthropic:claude-haiku-5-5".
+  model?: string;
+  ensemble?: EnsembleConfig;
+}
+
+export interface EnsembleMember {
+  model: string;
+  weight: number;
+  label?: string;
+}
+
+export interface EnsembleConfig {
+  members: EnsembleMember[];
+  mode: "mixture" | "vote";
+  seed?: number;
 }
 
 export function startRun(
@@ -619,4 +634,84 @@ export function getRunStore(
   signal?: AbortSignal,
 ): Promise<Store> {
   return fetchJson(`/api/projects/${projectId}/runs/${runId}/store`, { signal });
+}
+
+// ── Model providers ─────────────────────────────────────────────────────────
+
+export type ProviderKind =
+  | "openai" | "anthropic" | "gemini" | "qwen" | "vllm" | "ollama" | "llamacpp" | "openrouter" | "custom";
+
+export interface ModelSuggestion {
+  id: string;
+  label: string;
+  vision: boolean;
+  note: string;
+}
+
+export interface ProviderStatus {
+  preset: {
+    kind: ProviderKind;
+    label: string;
+    default_api_base: string | null;
+    api_key_env: string | null;
+    needs_key: boolean;
+    local: boolean;
+    models: ModelSuggestion[];
+    docs_url: string;
+  };
+  enabled: boolean;
+  has_key: boolean;
+  key_source: "settings" | "env" | "none" | "not needed";
+  key_hint: string;
+  api_base: string | null;
+  default_model: string | null;
+  ready: boolean;
+}
+
+export interface ProviderUpdate {
+  enabled?: boolean;
+  api_key?: string;
+  api_base?: string;
+  default_model?: string;
+}
+
+export interface ConnectionTest {
+  ok: boolean;
+  model: string;
+  latency_ms: number;
+  reply: string;
+  error: string;
+  vision: boolean;
+}
+
+export interface ModelOption {
+  ref: string;
+  provider: string;
+  label: string;
+  vision: boolean;
+  local: boolean;
+}
+
+export function getProviders(signal?: AbortSignal): Promise<ProviderStatus[]> {
+  return fetchJson("/api/providers", { signal });
+}
+
+export function updateProvider(kind: ProviderKind, update: ProviderUpdate): Promise<ProviderStatus> {
+  return fetchJson(`/api/providers/${kind}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(update),
+  });
+}
+
+export function testModel(model: string, vision: boolean): Promise<ConnectionTest> {
+  return fetchJson("/api/providers/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, vision }),
+  });
+}
+
+export function getModels(signal?: AbortSignal): Promise<ModelOption[]> {
+  return fetchJson("/api/models", { signal });
 }

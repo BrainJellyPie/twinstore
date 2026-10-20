@@ -45,7 +45,7 @@ class _ScriptedVLM:
 
     async def generate_structured_with_image_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str, image_url: str,
-        *, max_retries: int = 1, seed: int | None = None,
+        *, max_retries: int = 1, seed: int | None = None, route: str | None = None,
     ) -> T:
         self.calls.append((user_prompt, image_url[:40], seed))
         if self.fail:
