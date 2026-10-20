@@ -1245,3 +1245,148 @@ export function previewStoreTemplate(
 export function generateLayout(projectId: string, body: GenerateLayoutRequest): Promise<SetupSummaryShort> {
   return fetchJson(`/api/projects/${projectId}/setups/generate`, { method: "POST", body: JSON.stringify(body) });
 }
+
+// ── Shelf capture (photo → planogram) ───────────────────────────────────────
+
+export type CaptureDetector = "auto" | "gdino" | "vlm" | "classic";
+
+export interface CaptureBox { x1: number; y1: number; x2: number; y2: number }
+
+export interface CaptureBand {
+  index: number;
+  level: number;
+  top: number;
+  bottom: number;
+  polygon: [number, number][];
+}
+
+export interface CaptureItem {
+  id: string;
+  band: number;
+  level: number;
+  order: number;
+  facings: number;
+  boxes: CaptureBox[];
+  sku: string;
+  name: string;
+  brand: string;
+  size: string;
+  category: string;
+  raw_category: string;
+  price: number | null;
+  price_estimated: boolean;
+  price_text: string;
+  confidence: number;
+  labeled: boolean;
+}
+
+export interface CaptureGap { band: number; level: number; box: CaptureBox; facings: number }
+
+export interface CaptureResult {
+  image_size: [number, number];
+  tilt_deg: number;
+  detector: string;
+  detection_sources: Record<string, number>;
+  model: string;
+  currency: string;
+  rack_type: "shelf" | "fridge";
+  bands: CaptureBand[];
+  items: CaptureItem[];
+  gaps: CaptureGap[];
+  dominant_category: string;
+  notes: string[];
+  timings: Record<string, number>;
+  vlm_calls: number;
+  edited: boolean;
+}
+
+export interface CaptureStatus {
+  capture_id: string;
+  status: "pending" | "running" | "completed" | "failed";
+  stage: string;
+  progress: number;
+  error: string;
+  options: { detector: CaptureDetector; model: string; currency: string; rack_type: "shelf" | "fridge"; label: string };
+  image_name: string;
+  image_size: [number, number];
+  created_at: string;
+  finished_at: string;
+  items: number;
+  facings: number;
+  gaps: number;
+  levels: number;
+  applied_setup_ids: string[];
+}
+
+export interface CaptureView { status: CaptureStatus; result: CaptureResult | null }
+
+export interface CaptureEdit {
+  id?: string;
+  name: string;
+  brand: string;
+  size: string;
+  category: string;
+  price?: number | null;
+  facings: number;
+  level?: number;
+  merged_from?: string[];
+}
+
+export interface CaptureApplyResult {
+  setup_id: string;
+  rack_ids: string[];
+  face: string;
+  placed_items: number;
+  placed_facings: number;
+  dropped: string[];
+  notes: string[];
+}
+
+export async function createCapture(
+  projectId: string, image: File,
+  opts: { detector: CaptureDetector; model: string; currency: string; rack_type: "shelf" | "fridge"; label?: string },
+): Promise<CaptureStatus> {
+  const form = new FormData();
+  form.append("image", image);
+  form.append("detector", opts.detector);
+  form.append("model", opts.model);
+  form.append("currency", opts.currency);
+  form.append("rack_type", opts.rack_type);
+  if (opts.label) form.append("label", opts.label);
+  const res = await fetch(`${BASE}/api/projects/${projectId}/captures`, { method: "POST", body: form });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    let detail = body;
+    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
+    throw new Error(detail || `Upload failed (HTTP ${res.status})`);
+  }
+  return res.json() as Promise<CaptureStatus>;
+}
+
+export function listCaptures(projectId: string, signal?: AbortSignal): Promise<CaptureStatus[]> {
+  return fetchJson(`/api/projects/${projectId}/captures`, { signal });
+}
+
+export function getCapture(projectId: string, captureId: string, signal?: AbortSignal): Promise<CaptureView> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}`, { signal });
+}
+
+export function captureImageUrl(projectId: string, captureId: string, overlay = false): string {
+  return `${BASE}/api/projects/${projectId}/captures/${captureId}/image${overlay ? "?overlay=1" : ""}`;
+}
+
+export function updateCapture(projectId: string, captureId: string, items: CaptureEdit[]): Promise<CaptureView> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}`, { method: "PUT", body: JSON.stringify({ items }) });
+}
+
+export function applyCapture(
+  projectId: string, captureId: string,
+  body: { setup_id: string; rack_id?: string; face?: string; new_rack?: boolean; name?: string },
+): Promise<CaptureApplyResult> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}/apply`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export async function deleteCapture(projectId: string, captureId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/projects/${projectId}/captures/${captureId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Delete failed (HTTP ${res.status})`);
+}

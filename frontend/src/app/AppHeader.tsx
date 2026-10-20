@@ -16,7 +16,9 @@ const PAGE_TITLES: Record<string, string> = {
 export function AppHeader() {
   const location = useLocation();
   const isTown = location.pathname.startsWith("/town/");
-  const pid = location.pathname.match(/^\/(?:projects|town)\/([^/]+)/)?.[1];
+  const isCapture = location.pathname.startsWith("/capture/");
+  const sub = isTown ? "Neighborhood" : isCapture ? "Shelf capture" : null;
+  const pid = location.pathname.match(/^\/(?:projects|town|capture)\/([^/]+)/)?.[1];
   const inProject = !!pid && pid !== "new";
 
   const { data: project } = useQuery({
@@ -35,17 +37,17 @@ export function AppHeader() {
             Stores
           </Link>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          {isTown ? (
+          {sub ? (
             <Link to="/projects/$pid" params={{ pid: pid! }} className="truncate font-display text-lg font-semibold hover:underline">
               {projectName ?? "…"}
             </Link>
           ) : (
             <span className="truncate font-display text-lg font-semibold">{projectName ?? "…"}</span>
           )}
-          {isTown && (
+          {sub && (
             <>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              <span className="font-display text-lg font-semibold">Neighborhood</span>
+              <span className="font-display text-lg font-semibold">{sub}</span>
             </>
           )}
         </nav>

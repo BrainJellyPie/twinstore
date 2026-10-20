@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TownPidRouteImport } from './routes/town.$pid'
 import { Route as ProjectsNewRouteImport } from './routes/projects/new'
 import { Route as ProjectsPidRouteImport } from './routes/projects/$pid'
+import { Route as CapturePidRouteImport } from './routes/capture.$pid'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -40,10 +41,16 @@ const ProjectsPidRoute = ProjectsPidRouteImport.update({
   path: '/projects/$pid',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CapturePidRoute = CapturePidRouteImport.update({
+  id: '/capture/$pid',
+  path: '/capture/$pid',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/capture/$pid': typeof CapturePidRoute
   '/projects/$pid': typeof ProjectsPidRoute
   '/projects/new': typeof ProjectsNewRoute
   '/town/$pid': typeof TownPidRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/capture/$pid': typeof CapturePidRoute
   '/projects/$pid': typeof ProjectsPidRoute
   '/projects/new': typeof ProjectsNewRoute
   '/town/$pid': typeof TownPidRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/capture/$pid': typeof CapturePidRoute
   '/projects/$pid': typeof ProjectsPidRoute
   '/projects/new': typeof ProjectsNewRoute
   '/town/$pid': typeof TownPidRoute
@@ -68,15 +77,23 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/settings'
+    | '/capture/$pid'
     | '/projects/$pid'
     | '/projects/new'
     | '/town/$pid'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/projects/$pid' | '/projects/new' | '/town/$pid'
+  to:
+    | '/'
+    | '/settings'
+    | '/capture/$pid'
+    | '/projects/$pid'
+    | '/projects/new'
+    | '/town/$pid'
   id:
     | '__root__'
     | '/'
     | '/settings'
+    | '/capture/$pid'
     | '/projects/$pid'
     | '/projects/new'
     | '/town/$pid'
@@ -85,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRoute: typeof SettingsRoute
+  CapturePidRoute: typeof CapturePidRoute
   ProjectsPidRoute: typeof ProjectsPidRoute
   ProjectsNewRoute: typeof ProjectsNewRoute
   TownPidRoute: typeof TownPidRoute
@@ -127,12 +145,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsPidRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/capture/$pid': {
+      id: '/capture/$pid'
+      path: '/capture/$pid'
+      fullPath: '/capture/$pid'
+      preLoaderRoute: typeof CapturePidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRoute: SettingsRoute,
+  CapturePidRoute: CapturePidRoute,
   ProjectsPidRoute: ProjectsPidRoute,
   ProjectsNewRoute: ProjectsNewRoute,
   TownPidRoute: TownPidRoute,

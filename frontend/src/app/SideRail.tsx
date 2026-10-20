@@ -2,7 +2,7 @@
 // The current place is marked by the heat-ramp bar — the app's signature color.
 
 import { Link, useLocation } from "@tanstack/react-router";
-import { KeyRound, LayoutGrid, Map, Moon, Store, Sun } from "lucide-react";
+import { Camera, KeyRound, LayoutGrid, Map, Moon, Store, Sun } from "lucide-react";
 
 import { cn } from "@/shared/utils/cn";
 
@@ -39,13 +39,14 @@ interface Item {
 export function SideRail() {
   const { pathname } = useLocation();
   const { theme, toggle } = useTheme();
-  const pid = pathname.match(/^\/(?:projects|town)\/([^/]+)/)?.[1];
+  const pid = pathname.match(/^\/(?:projects|town|capture)\/([^/]+)/)?.[1];
   const inProject = !!pid && pid !== "new";
 
   const items: Item[] = [
     { to: "/", label: "Stores", icon: LayoutGrid, active: pathname === "/" || pathname === "/projects/new" },
     { to: "/projects/$pid", params: { pid: pid ?? "" }, label: "Floor", icon: Store, active: pathname.startsWith("/projects/") && inProject, disabled: !inProject },
     { to: "/town/$pid", params: { pid: pid ?? "" }, label: "Area", icon: Map, active: pathname.startsWith("/town/"), disabled: !inProject },
+    { to: "/capture/$pid", params: { pid: pid ?? "" }, label: "Capture", icon: Camera, active: pathname.startsWith("/capture/"), disabled: !inProject },
     { to: "/settings", label: "Models", icon: KeyRound, active: pathname === "/settings" },
   ];
 
