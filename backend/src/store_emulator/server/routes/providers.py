@@ -4,7 +4,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from store_emulator.application import providers as provider_service
-from store_emulator.application.providers import ConnectionTest, ProviderStatus, ProviderUpdate
+from store_emulator.application.providers import (
+    ConnectionTest,
+    ProviderStatus,
+    ProviderUpdate,
+)
 from store_emulator.domain.providers import ProviderKind
 
 router = APIRouter(prefix="/api", tags=["providers"])

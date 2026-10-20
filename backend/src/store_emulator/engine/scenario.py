@@ -297,7 +297,7 @@ def apply_to_store(store: Store, scenario: Scenario) -> tuple[Store, dict[str, f
                 if promo is not None:
                     price = item.price
                     if promo.kind == PromotionKind.DISCOUNT:
-                        price = int(round(item.price * (1 - promo.discount_pct / 100)))
+                        price = round(item.price * (1 - promo.discount_pct / 100))
                     label = promo.label or (f"{promo.discount_pct:.0f}% OFF" if promo.kind == PromotionKind.DISCOUNT
                                             else "SALE" if promo.kind == PromotionKind.FEATURED else promo.kind.value)
                     item = item.model_copy(update={"price": price, "promo": label})
@@ -324,7 +324,7 @@ def apply_to_personas(
         copies = math.floor(m) + (1 if rng.random() < m - math.floor(m) else 0)
         budget = {}
         if effects.budget != 1.0:
-            budget = {"budget_min": int(round(p.budget_min * effects.budget)), "budget_max": int(round(p.budget_max * effects.budget))}
+            budget = {"budget_min": round(p.budget_min * effects.budget), "budget_max": round(p.budget_max * effects.budget)}
         for k in range(copies):
             out.append(p.model_copy(update={**budget, **({"id": f"{p.id}~s{k}"} if k else {})}))
     return out

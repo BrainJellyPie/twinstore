@@ -140,9 +140,9 @@ def localized(item: CatalogItem, currency: str) -> tuple[str, int]:
     """(name, price in the currency's minor unit)."""
     code = currency.upper()
     if code == "KRW":
-        return item.ko, max(100, int(round(item.usd_cents / 100 * _KRW_PER_USD / 100.0)) * 100)
+        return item.ko, max(100, round(item.usd_cents / 100 * _KRW_PER_USD / 100.0) * 100)
     if code == "JPY":
-        return item.en, max(10, int(round(item.usd_cents * 1.5 / 10.0)) * 10)
+        return item.en, max(10, round(item.usd_cents * 1.5 / 10.0) * 10)
     return item.en, item.usd_cents
 
 

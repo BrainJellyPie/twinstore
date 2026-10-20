@@ -6,7 +6,12 @@ from pathlib import Path
 
 from store_emulator.application.config import local_config
 from store_emulator.application.scenarios import PRESETS, get_preset, prepare_inputs
-from store_emulator.application.simulation import RunOptions, apply_options, run_simulation, subsample_personas
+from store_emulator.application.simulation import (
+    RunOptions,
+    apply_options,
+    run_simulation,
+    subsample_personas,
+)
 from store_emulator.domain.config import EngineType
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.scenario import (
@@ -20,7 +25,12 @@ from store_emulator.domain.scenario import (
 )
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action
-from store_emulator.engine.scenario import apply_to_personas, apply_to_store, compile_scenario, item_categories
+from store_emulator.engine.scenario import (
+    apply_to_personas,
+    apply_to_store,
+    compile_scenario,
+    item_categories,
+)
 
 SAMPLE = Path(__file__).resolve().parents[2] / "sample_data" / "proj_67916afd" / "runs" / "run_ab0039" / "input"
 

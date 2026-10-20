@@ -31,13 +31,18 @@ from store_emulator.domain.types import (
     TokenUsage,
     stable_seed,
 )
-from store_emulator.engine.scenario import ScenarioEffects, compile_scenario, item_categories, words_categories
 from store_emulator.engine.routing.route_builder import (
     build_journey,
     entrance_position,
     face_access_tile,
     integrate_actions,
     perceive_products,
+)
+from store_emulator.engine.scenario import (
+    ScenarioEffects,
+    compile_scenario,
+    item_categories,
+    words_categories,
 )
 
 # Category word → related words found on rack labels / product names. Deliberately

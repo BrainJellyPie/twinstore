@@ -18,7 +18,11 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.rack import Rack, RackType
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face
-from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas, store_fingerprint
+from store_emulator.engine.optimize.evaluate import (
+    LayoutEvaluator,
+    select_personas,
+    store_fingerprint,
+)
 from store_emulator.engine.optimize.moves import (
     Move,
     MoveRules,

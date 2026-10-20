@@ -76,7 +76,7 @@ def build_ui(force: bool = False) -> bool:
         [*npx, "--yes", PNPM, "exec", "vite", "build"],
     ]
     for cmd in steps:
-        if subprocess.run(cmd, cwd=FRONTEND, env=env).returncode != 0:
+        if subprocess.run(cmd, cwd=FRONTEND, env=env, check=False).returncode != 0:
             _say("Building the web interface failed (see above). The API still starts.")
             return (DIST / "index.html").is_file()
     _say("Web interface ready.")

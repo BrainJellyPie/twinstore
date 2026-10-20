@@ -5,7 +5,12 @@ import asyncio
 import pytest
 
 from store_emulator.application.config import local_config
-from store_emulator.application.simulation import RunOptions, apply_options, run_simulation, subsample_personas
+from store_emulator.application.simulation import (
+    RunOptions,
+    apply_options,
+    run_simulation,
+    subsample_personas,
+)
 from store_emulator.domain.config import EngineType
 from store_emulator.domain.persona import Persona
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store

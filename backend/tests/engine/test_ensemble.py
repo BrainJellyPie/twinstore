@@ -12,12 +12,20 @@ from store_emulator.application import providers
 from store_emulator.application.providers import ProviderUpdate, resolve_model
 from store_emulator.application.simulation import RunOptions, apply_options
 from store_emulator.domain.config import EngineType, LLMConfig, SimulationConfig
-from store_emulator.domain.providers import EnsembleConfig, EnsembleMember, ModelRef, ProviderKind
+from store_emulator.domain.providers import (
+    EnsembleConfig,
+    EnsembleMember,
+    ModelRef,
+    ProviderKind,
+)
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import TokenUsage
 from store_emulator.engine.llm_router import EnsembleLLMClient
 from store_emulator.engine.perception import render_face
-from store_emulator.engine.simulation.engines.vlm_glance.prompt import ShelfGlance, combine_votes
+from store_emulator.engine.simulation.engines.vlm_glance.prompt import (
+    ShelfGlance,
+    combine_votes,
+)
 
 SAMPLE = Path(__file__).resolve().parents[2] / "sample_data" / "proj_67916afd" / "runs" / "run_ab0039" / "input"
 

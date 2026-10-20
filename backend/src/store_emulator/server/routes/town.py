@@ -12,8 +12,18 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.scenarios import get_preset
 from store_emulator.application.storage.io import read_json
 from store_emulator.application.storage.setups import metadata_path
-from store_emulator.application.town_synergy import SynergyJobStatus, SynergyJobView, SynergyRequest
-from store_emulator.domain.town import SynergyRow, Town, TownDemand, TownSpec, VenueCategory
+from store_emulator.application.town_synergy import (
+    SynergyJobStatus,
+    SynergyJobView,
+    SynergyRequest,
+)
+from store_emulator.domain.town import (
+    SynergyRow,
+    Town,
+    TownDemand,
+    TownSpec,
+    VenueCategory,
+)
 
 from ..deps import get_config
 

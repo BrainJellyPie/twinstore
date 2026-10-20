@@ -5,7 +5,15 @@ from pathlib import Path
 
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.scenario import Scenario
-from store_emulator.domain.town import DayType, SynergyRow, Town, TownArrival, TownDemand, TownSpec, VenueCategory
+from store_emulator.domain.town import (
+    DayType,
+    SynergyRow,
+    Town,
+    TownArrival,
+    TownDemand,
+    TownSpec,
+    VenueCategory,
+)
 from store_emulator.domain.types import Weekday, stable_seed
 from store_emulator.engine.scenario import compile_scenario
 from store_emulator.engine.town import (

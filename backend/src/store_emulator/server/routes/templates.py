@@ -7,7 +7,11 @@ from pydantic import BaseModel, Field
 
 from store_emulator.application.setups import set_active_setup, setup_summary
 from store_emulator.application.storage.io import write_json
-from store_emulator.application.storage.setups import new_setup_data, setup_dir, setup_path
+from store_emulator.application.storage.setups import (
+    new_setup_data,
+    setup_dir,
+    setup_path,
+)
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
 
 router = APIRouter(prefix="/api", tags=["templates"])

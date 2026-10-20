@@ -14,7 +14,11 @@ from store_emulator.domain.scenario import (
     Weather,
 )
 from store_emulator.domain.store import Store
-from store_emulator.engine.scenario import apply_to_personas, apply_to_store, compile_scenario
+from store_emulator.engine.scenario import (
+    apply_to_personas,
+    apply_to_store,
+    compile_scenario,
+)
 
 PRESETS: list[Scenario] = [
     Scenario(id="baseline", name="Ordinary day", description="Mild weather, no events, normal crowding."),

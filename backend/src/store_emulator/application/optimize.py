@@ -212,7 +212,7 @@ def _run_job(
     except OptimizationCanceled:
         logger.info(f"[optimize] job {status.job_id} canceled")
         status.status = "canceled"
-    except Exception as e:  # noqa: BLE001 — surface any failure to the UI instead of a stuck job
+    except Exception as e:
         logger.exception(f"[optimize] job {status.job_id} failed")
         status.status = "failed"
         status.error = f"{type(e).__name__}: {e}"[:500]
