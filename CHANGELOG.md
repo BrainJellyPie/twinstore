@@ -1,5 +1,79 @@
 # Changelog
 
+## 0.3.0 — vision shoppers in a living neighborhood
+
+v0.2 made the simulator an experiment tool. v0.3 widens what can be simulated and
+who decides: vision-language shoppers now make every in-store decision (whether
+to go in, what they came for, what catches their eye), on any model you connect
+or an ensemble of them, in a store you can generate from ten retail formats, on a
+day you describe, in a neighborhood you generate or import — and the same
+shoppers judge layout optimizations and the value of the shop next door.
+
+### Vision shoppers decide end to end
+- **Planning at the door** (`plan_policy="vlm"`, default for vision runs): the
+  shopper sees a rendered store directory map, reads today's situation and where
+  it came from, and decides whether to enter and what to buy; items resolve to
+  SKUs by name, then category. Scenario demand multipliers are not applied on
+  top (no double counting); arrivals and budgets still come from the scenario.
+- **Impulse picks at the shelves** as before (rendered faces, interest 0–10,
+  seeded purchase draw), now with the plan in the shopper's basket context.
+- **Models**: OpenAI, Anthropic, Google Gemini, Alibaba Cloud Qwen (Model
+  Studio), OpenRouter, vLLM, Ollama, llama.cpp and any OpenAI-compatible
+  endpoint; keys entered in Settings are stored only on the machine running the
+  backend. Connection tests for text and vision.
+- **Ensembles** of models as one population: *mixture* (each shopper is one
+  model, weighted) or *vote* (every model looks at each shelf, majority wins).
+
+### Situations
+19 presets (heatwave weekend, typhoon, fine dust, payday Friday, exam week,
+local festival, competitor opening, 1+1 drinks, supply disruption, lunch rush, …)
+and an editor for weather, season, day type, events, promotions, stock-outs,
+crowding and hourly traffic. Vision shoppers read the situation; the rule model
+applies it as calibrated multipliers.
+
+### Neighborhoods
+Procedural towns (residential, university, business district, station area,
+suburban, tourist, mixed) or a real OpenStreetMap area: homes, offices, schools,
+stations, rival stores and other venues. Huff-style demand gives visitors per
+hour, catchment and walking distance; runs can draw their visitors from the
+town, each shopper knowing where it came from. Synergy: the numeric effect of
+every venue on our visitors, plus a **vision check** that simulates the affected
+visitors with and without the venue to measure the basket effect.
+
+### Layout optimization
+Hill climbing, simulated annealing or a genetic search over planograms and rack
+positions, scored on a fixed shopper panel with common random numbers and
+re-checked on fresh shoppers. **Vision judge**: the rule model proposes, VLM
+shoppers walk the top candidates on one paired panel and pick the winner, after
+an optional calibration of the rule model to a VLM pilot; the report shows rule
+vs vision ranks, paired deltas with intervals and P(better). Jobs can be stopped.
+
+### Stores and graphics
+- Ten store formats generated as complete layouts with priced products (urban
+  and compact convenience stores, campus store, station kiosk, gas station,
+  drugstore, mini-mart, café-bakery, office lobby, tourist shop), in English/$ or
+  Korean/₩, parallel aisles or racetrack loop.
+- **Realistic 3D mode**: gondolas with price channels, glass-door coolers, chest
+  freezers, counter with POS, glass storefront, instanced products with
+  generated packaging and labels, soft shadows, optional GTAO/bloom/reflections.
+- **Shopper view**: an eye-height camera that follows one shopper.
+
+### Interface
+A new interface with day and night themes, a navigation rail, a home screen with
+an animated store, glass controls over the 3D view, and larger type throughout.
+
+### Research
+`research/vlm_bench/`: a benchmark of VLM shoppers on controlled shelves —
+position bias (Latin square), merchandising levers, read-back accuracy, persona
+and situation conditioning, robustness to corruption, image-vs-text modality and
+cross-model agreement — with figures and paper tables regenerated from saved
+data. `research/README.md` lists paper directions.
+
+### Getting started
+Double-click `Parastore-Windows.bat`, `Parastore-macOS.command` or
+`Parastore-Linux.sh`: the launcher installs what it needs, builds the interface
+once and opens the app in the browser (see QUICKSTART.md).
+
 ## 0.2.0 — what changed and why
 
 v0.1 produced plausible-looking shopper animations, but its numbers could not
