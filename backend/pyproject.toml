@@ -26,6 +26,14 @@ dependencies = [
     "python-dotenv>=1.0.1",
 ]
 
+[project.optional-dependencies]
+# Shelf capture with the Grounding DINO detector. Install with: uv sync --extra capture
+capture = [
+    "torch>=2.14.1",
+    # <5.16: later releases need tokenizers>=0.23.1, but litellm pins tokenizers==0.22.2.
+    "transformers>=5.15.1,<5.16",
+]
+
 [project.scripts]
 parastore = "store_emulator.cli:main"
 parastore-app = "store_emulator.launcher:main"

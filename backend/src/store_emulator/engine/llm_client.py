@@ -129,6 +129,8 @@ class LiteLLMClient:
         key_src = json.dumps(
             {
                 "model": self.model,
+                # Two local servers often share a placeholder model id; the endpoint tells them apart.
+                "api_base": self.api_base or "",
                 "temperature": self.temperature,
                 "max_tokens": max_tokens or self.max_tokens,
                 "seed": self._effective_seed(seed),
