@@ -1,8 +1,12 @@
 import logging
+import os
+from pathlib import Path
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from store_emulator.application.storage.generations import recover_running_generations
@@ -82,3 +86,33 @@ app.include_router(scenarios.router)
 @app.get("/api/health", tags=["system"], summary="Health check")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# ── Built web UI (one-click mode) ──────────────────────────────────────────────
+# When `frontend/dist` exists (built by the launcher or shipped in a release zip), the API server
+# also serves the UI, so the whole app runs on a single port with no Node.js at run time.
+
+def _frontend_dist() -> Path | None:
+    candidates: list[Path] = []
+    if os.environ.get("PARASTORE_FRONTEND_DIST"):
+        candidates.append(Path(os.environ["PARASTORE_FRONTEND_DIST"]))
+    candidates.append(Path(__file__).resolve().parents[4] / "frontend" / "dist")
+    return next((c.resolve() for c in candidates if (c / "index.html").is_file()), None)
+
+
+_DIST = _frontend_dist()
+if _DIST is not None:
+    if (_DIST / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=_DIST / "assets"), name="ui-assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def web_ui(path: str) -> FileResponse:
+        """Static files of the UI, and index.html for client-side routes (/projects/…, /settings)."""
+        if path.startswith("api/") or path == "api":
+            raise HTTPException(404, "not found")
+        dist = _DIST
+        assert dist is not None
+        candidate = (dist / path).resolve()
+        if path and candidate.is_file() and dist in candidate.parents:
+            return FileResponse(candidate)
+        return FileResponse(dist / "index.html")

@@ -69,10 +69,12 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
   });
 
   const badge = !status.enabled
-    ? { text: "Disabled", cls: "bg-muted text-muted-foreground" }
+    ? { text: preset.local ? "Off" : "Disabled", cls: "bg-muted text-muted-foreground" }
     : status.ready
       ? { text: "Ready", cls: "bg-emerald-100 text-emerald-800" }
-      : { text: "Needs API key", cls: "bg-amber-100 text-amber-800" };
+      : preset.local
+        ? { text: "Needs endpoint", cls: "bg-amber-100 text-amber-800" }
+        : { text: "Needs API key", cls: "bg-amber-100 text-amber-800" };
   const listId = `models-${preset.kind}`;
 
   return (
@@ -87,7 +89,19 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
             {status.key_source === "not needed" && "No key needed"}
           </div>
         </div>
-        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", badge.cls)}>{badge.text}</span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", badge.cls)}>{badge.text}</span>
+          {preset.local && (
+            <Button
+              size="sm"
+              variant={status.enabled ? "outline" : "default"}
+              className="h-6 px-2 text-[11px]"
+              onClick={() => save.mutate({ enabled: !status.enabled, ...(base ? { api_base: base } : {}) })}
+            >
+              {status.enabled ? "Turn off" : "Turn on"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {preset.needs_key || preset.kind === "vllm" || preset.kind === "custom" ? (
@@ -122,7 +136,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-muted-foreground">Endpoint</span>
           <div className="flex gap-2">
-            <Input value={base} onChange={(e) => setBase(e.target.value)} className="h-8 font-mono text-xs" />
+            <Input value={base} placeholder="http://host:port/v1" onChange={(e) => setBase(e.target.value)} className="h-8 font-mono text-xs" />
             <Button
               size="sm"
               variant="outline"

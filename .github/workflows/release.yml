@@ -1,0 +1,74 @@
+# Builds the one-click download: the web UI is prebuilt once and shipped inside a zip together
+# with the double-click launchers, so end users need neither Node.js nor Python preinstalled
+# (the launchers fetch `uv`, which brings Python and the dependencies on first start).
+#
+# Runs on version tags (v*) and on demand (Actions → Release bundle → Run workflow).
+name: Release bundle
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Build web UI (same-origin API)
+        working-directory: frontend
+        env:
+          VITE_API_URL: ""
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          touch dist/.prebuilt
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Backend smoke test
+        working-directory: backend
+        run: |
+          uv sync --frozen
+          uv run python -c "from store_emulator.server.main import app; print('OK')"
+          uv run pytest -q -x
+
+      - name: Package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ "$GITHUB_REF_TYPE" = "tag" ] || VERSION="snapshot-${GITHUB_SHA::7}"
+          NAME="parastore-${VERSION}"
+          mkdir -p "out/$NAME"
+          git archive HEAD | tar -x -C "out/$NAME"
+          cp -r frontend/dist "out/$NAME/frontend/dist"
+          chmod +x "out/$NAME/Parastore-Linux.sh" "out/$NAME/Parastore-macOS.command"
+          (cd out && zip -qr "$NAME.zip" "$NAME")
+          echo "ZIP=out/$NAME.zip" >> "$GITHUB_ENV"
+          echo "NAME=$NAME" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: ${{ env.ZIP }}
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$ZIP" --title "Parastore $GITHUB_REF_NAME" \
+            --notes "Download, unzip, double-click Parastore-Windows.bat / Parastore-macOS.command / Parastore-Linux.sh. See QUICKSTART.md."

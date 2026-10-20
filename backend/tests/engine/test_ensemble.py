@@ -64,7 +64,11 @@ def test_local_and_openai_compatible_providers_resolve_without_keys(settings_dir
     providers.update_provider(ProviderKind.VLLM, ProviderUpdate(api_base="http://gpu-box:9000/v1"))
     assert resolve_model("vllm:Qwen/Qwen3.5-9B").api_base == "http://gpu-box:9000/v1"
     refs = {m["ref"] for m in providers.available_models()}
-    assert "qwen:qwen3.7-plus" in refs and "llamacpp:local" in refs and not any(r.startswith("openai:") for r in refs)
+    assert "qwen:qwen3.7-plus" in refs and not any(r.startswith("openai:") for r in refs)
+    assert "llamacpp:local" not in refs  # local servers are opt-in
+    providers.update_provider(ProviderKind.LLAMACPP, ProviderUpdate(enabled=True))
+    assert "llamacpp:local" in {m["ref"] for m in providers.available_models()}
+    assert not providers.provider_status(ProviderKind.CUSTOM).ready  # no endpoint yet
 
 
 def test_apply_options_points_the_engine_at_the_chosen_model():

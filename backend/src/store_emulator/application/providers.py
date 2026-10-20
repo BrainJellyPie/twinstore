@@ -98,8 +98,7 @@ PRESETS: dict[ProviderKind, ProviderPreset] = {
     ),
     ProviderKind.CUSTOM: ProviderPreset(
         kind=ProviderKind.CUSTOM, label="Other OpenAI-compatible", litellm_prefix="openai",
-        default_api_base="http://127.0.0.1:8000/v1", api_key_env="CUSTOM_LLM_API_KEY", needs_key=False,
-        structured_output="json_schema", models=[],
+        api_key_env="CUSTOM_LLM_API_KEY", needs_key=False, structured_output="json_schema", local=True, models=[],
     ),
 }
 
@@ -206,15 +205,20 @@ def _key_for(kind: ProviderKind, settings: dict[ProviderKind, ProviderSettings])
 def provider_status(kind: ProviderKind, settings: dict[ProviderKind, ProviderSettings] | None = None) -> ProviderStatus:
     settings = settings if settings is not None else load_settings()
     preset = PRESETS[kind]
-    s = settings.get(kind, ProviderSettings(kind=kind))
+    stored = settings.get(kind)
+    s = stored or ProviderSettings(kind=kind)
     key, source = _key_for(kind, settings)
     if not preset.needs_key and key is None:
         source = "not needed"
+    # Local servers are off until the user turns them on: a default endpoint is no proof that a
+    # server is running there, and offering it in model pickers would only produce failed runs.
+    enabled = s.enabled if stored is not None else not preset.local
+    api_base = s.api_base or preset.default_api_base
     return ProviderStatus(
-        preset=preset, enabled=s.enabled, has_key=key is not None, key_source=source,
+        preset=preset, enabled=enabled, has_key=key is not None, key_source=source,
         key_hint=f"…{key[-4:]}" if key and len(key) >= 8 else "",
-        api_base=s.api_base or preset.default_api_base, default_model=s.default_model,
-        ready=s.enabled and (key is not None or not preset.needs_key),
+        api_base=api_base, default_model=s.default_model,
+        ready=enabled and (key is not None or not preset.needs_key) and (api_base is not None or not preset.local),
     )
 
 

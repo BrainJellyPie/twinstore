@@ -17,7 +17,9 @@ import type {
 
 export type { BlockedFaceDetail, Issue } from "@/shared/types/domain";
 
-export const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+// Dev server (vite on :5173) talks to the API on :8000; a production build is served by the API
+// server itself (one-click mode), so it uses the same origin. VITE_API_URL overrides both.
+export const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {

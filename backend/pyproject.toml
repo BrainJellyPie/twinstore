@@ -28,6 +28,7 @@ dependencies = [
 
 [project.scripts]
 parastore = "store_emulator.cli:main"
+parastore-app = "store_emulator.launcher:main"
 
 [project.urls]
 Homepage = "https://github.com/intellicia-public/parastore"

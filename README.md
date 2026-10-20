@@ -100,6 +100,12 @@ To evaluate performance, this chart compares **actual sales history from a physi
 
 ## Quick start
 
+**Not a developer?** Download the release zip, unzip, and double-click `Parastore-Windows.bat`,
+`Parastore-macOS.command` or `Parastore-Linux.sh` — the browser opens by itself. Nothing to install
+beforehand; see [`QUICKSTART.md`](./QUICKSTART.md) (한국어 안내 포함).
+
+### For developers
+
 ```bash
 cp backend/.env.example backend/.env   # add your LLM API key — DO NOT commit real keys
 ./scripts/dev.sh
