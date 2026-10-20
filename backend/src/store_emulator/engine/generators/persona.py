@@ -7,7 +7,8 @@ from pydantic import BaseModel
 
 from store_emulator.domain.persona import Persona, AGE_GROUPS, GENDERS
 from store_emulator.domain.store import DaySchedule
-from store_emulator.domain.types import AsyncLLMClient, Weekday, WEEKDAY_LABELS
+from store_emulator.domain.types import AsyncLLMClient, Weekday, WEEKDAY_LABELS, stable_seed
+from store_emulator.engine.prompting import budget_example
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ DAILY_TRAFFIC_PROMPT = """당신은 상권 분석 전문가입니다.
   - {day_label}에 맞지 않는 유형은 제외 (예: 주말에 "출근길 직장인" 제외)
   - 시간대별로 적절한 유형만 선택 (예: "야식 손님"은 저녁~심야에만)"""
 
-PERSONA_PROMPT = """주어진 시간대+인물유형+지역키워드 조합으로 현실적인 고객 페르소나를 만드세요.
+PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 조합으로 현실적인 고객 페르소나를 만드세요.
 매장이 위치한 국가/도시의 문화, 언어, 소비 패턴을 반영하세요.
 
 규칙:
@@ -87,16 +88,24 @@ PERSONA_PROMPT = """주어진 시간대+인물유형+지역키워드 조합으�
 - intent: 매장에서 하고 싶은 것 1문장 (자유 서술). 구체적 상품명 대신 카테고리나 니즈로 표현. 예: "조깅 후 수분 보충할 이온음료를 사고 싶다", "간단한 간식과 음료를 고르고 싶다"
 - purpose: 반드시 아래 제공된 purpose 목록 중 하나를 그대로 사용 (통계 집계용 짧은 라벨)
 - preferred_categories: 반드시 아래 제공된 카테고리 목록 중에서만 선택. 목록에 없는 카테고리를 임의로 만들지 마세요
-- budget_min, budget_max: 예산 범위를 US cents 정수로 (예: $3.00~$8.00이면 budget_min=300, budget_max=800)
+- budget_min, budget_max: {budget_rule}
 - behavior_tendency: 이동속도/탐색성향/충동구매 한 줄
 
 ## 언어
 - 자유 서술 필드(`description`, `intent`, `behavior_tendency`)의 값은 **영어로** 작성하세요.
 - 구조적 필드(`id`, `age_group`, `gender`, `identity`, `purpose`, `preferred_categories`, `budget_min`, `budget_max`)는 프롬프트에서 제공된 라벨/값을 그대로 사용합니다.
-- 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요(예: 페르소나 설명은 1-2문장의 짧은 인물 묘사).""".format(
-    age_groups=", ".join(AGE_GROUPS),
-    genders=", ".join(GENDERS),
-)
+- 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요(예: 페르소나 설명은 1-2문장의 짧은 인물 묘사)."""
+
+
+def persona_prompt(currency: str = "USD") -> str:
+    return PERSONA_PROMPT_TEMPLATE.format(
+        age_groups=", ".join(AGE_GROUPS),
+        genders=", ".join(GENDERS),
+        budget_rule=budget_example(currency),
+    )
+
+
+PERSONA_PROMPT = persona_prompt("USD")
 
 
 async def analyze_location(
@@ -170,9 +179,12 @@ async def generate_personas_for_day(
     batch_size: int = 10,
     max_concurrent: int = 10,
     categories: list[str] | None = None,
+    currency: str = "USD",
 ) -> list[Persona]:
-    if seed is not None:
-        random.seed(seed)
+    system_prompt = persona_prompt(currency)
+    # Local stream per day: days are generated concurrently, so seeding the global
+    # `random` module would make them race and repeat the same sequence.
+    rng = random.Random(stable_seed(seed, "persona-spec", int(day))) if seed is not None else random.Random()
 
     day_label = WEEKDAY_LABELS[day]
     profiles_map = {p.hour: p for p in hourly_profiles}
@@ -184,7 +196,7 @@ async def generate_personas_for_day(
 
     async def _generate_batch(prompt: str) -> PersonaBatch:
         async with semaphore:
-            return await llm.generate_structured_async(PersonaBatch, PERSONA_PROMPT, prompt, max_retries=3)
+            return await llm.generate_structured_async(PersonaBatch, system_prompt, prompt, max_retries=3)
 
     for hour, hp in sorted(profiles_map.items()):
         if not hp.person_types or hp.visitor_count <= 0:
@@ -196,10 +208,10 @@ async def generate_personas_for_day(
             current_size = min(batch_size, hp.visitor_count - batch_start)
             spec_lines: list[str] = []
             for i in range(current_size):
-                n_types = min(random.choice([1, 1, 2]), len(hp.person_types))
-                types = random.sample(hp.person_types, n_types)
-                n_kw = min(random.randint(1, 3), len(profile.keywords))
-                kws = random.sample(profile.keywords, n_kw)
+                n_types = min(rng.choice([1, 1, 2]), len(hp.person_types))
+                types = rng.sample(hp.person_types, n_types)
+                n_kw = min(rng.randint(1, 3), len(profile.keywords))
+                kws = rng.sample(profile.keywords, n_kw)
                 spec_lines.append(f"[{i}] {hour}시, {'+'.join(types)}, 키워드: {', '.join(kws)}")
 
             category_section = ""
@@ -253,6 +265,7 @@ async def generate_batched(
     categories: list[str] | None = None,
     *,
     supplemental_summary: str = "",
+    currency: str = "USD",
 ) -> list[Persona]:
     profile = await analyze_location(
         llm, address, customer_profile, custom_instruction,
@@ -272,7 +285,7 @@ async def generate_batched(
             llm, address, profile, schedule.day, hourly,
             seed=seed, custom_instruction=custom_instruction,
             batch_size=batch_size, max_concurrent=max_concurrent,
-            categories=categories,
+            categories=categories, currency=currency,
         )
 
     day_results = await asyncio.gather(*[_process_day(s) for s in open_days])

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
+from store_emulator.engine.prompting import format_budget
 from .prompt_utils import format_cue_prompt
 
 
@@ -50,6 +51,7 @@ def build_user_prompt(
     cue: BehaviorCue,
     address: str = "",
     customer_profile: str = "",
+    currency: str = "USD",
 ) -> str:
     lines: list[str] = []
 
@@ -59,7 +61,7 @@ def build_user_prompt(
     lines.append(f"- 방문 목적: {persona.purpose}")
     lines.append(f"- 의도: {persona.intent}")
     lines.append(f"- 선호 카테고리: {', '.join(persona.preferred_categories)}")
-    lines.append(f"- 예산: {persona.budget_label}")
+    lines.append(f"- 예산: {format_budget(persona.budget_min, persona.budget_max, currency)}")
     lines.append(f"- 행동 성향: {persona.behavior_tendency}")
     lines.append("")
 

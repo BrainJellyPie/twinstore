@@ -28,4 +28,4 @@ def build_engine(
 
     if needs_llm:
         return engine_cls(llm=llm, pathfinder=pathfinder, config=config)  # type: ignore[return-value]
-    return engine_cls()  # type: ignore[return-value]
+    return engine_cls(pathfinder=pathfinder, config=config)  # type: ignore[return-value]

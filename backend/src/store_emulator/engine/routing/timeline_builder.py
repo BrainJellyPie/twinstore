@@ -2,7 +2,7 @@ import random
 
 from store_emulator.domain.customer import CustomerResult, TimelineEvent
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action, Position, Weekday
+from store_emulator.domain.types import Action, Position, Weekday, stable_seed
 
 from .route_builder import JourneyStep, entrance_position
 from .store_lookup import rack_id_at, resolve_buy_placement
@@ -15,7 +15,12 @@ def build_timeline(
     journey: list[JourneyStep],
     store: Store,
     block_move_sec: int = 3,
+    rng: random.Random | None = None,
+    max_quantity: int = 6,
 ) -> CustomerResult:
+    # Wander glances are the only randomness here; default to a stream keyed by the
+    # customer so timelines are reproducible even when callers pass no rng.
+    rng = rng or random.Random(stable_seed("timeline", persona_id, arrival_time))
     timeline: list[TimelineEvent] = []
     t = 0
 
@@ -46,8 +51,8 @@ def build_timeline(
                 budget -= block_move_sec
                 timeline.append(TimelineEvent(elapsed_sec=t, x=pos[0], y=pos[1], action=Action.MOVE))
 
-                if budget > 0 and pos in rack_tiles and random.random() < _WANDER_GLANCE_PROB:
-                    pause = min(budget, random.randint(_WANDER_GLANCE_MIN, _WANDER_GLANCE_MAX))
+                if budget > 0 and pos in rack_tiles and rng.random() < _WANDER_GLANCE_PROB:
+                    pause = min(budget, rng.randint(_WANDER_GLANCE_MIN, _WANDER_GLANCE_MAX))
                     t += pause
                     budget -= pause
                     timeline.append(TimelineEvent(
@@ -88,7 +93,10 @@ def build_timeline(
             face=face,
             description=step.action.description,
             product_sku=step.action.product_sku,
+            origin=step.action.origin if action_type in (Action.BROWSE, Action.BUY) else "",
         )
+        if action_type == Action.BUY:
+            te.quantity = max(1, min(max_quantity, step.action.quantity))
 
         if action_type == Action.BUY and step.action.product_sku:
             placement = resolve_buy_placement(
@@ -111,7 +119,7 @@ def build_timeline(
         timeline.append(te)
         t += dwell
 
-    total_spent = sum(e.price for e in timeline if e.action == Action.BUY)
+    total_spent = sum(e.price * e.quantity for e in timeline if e.action == Action.BUY)
     total_elapsed = timeline[-1].elapsed_sec if timeline else 0
 
     return CustomerResult(

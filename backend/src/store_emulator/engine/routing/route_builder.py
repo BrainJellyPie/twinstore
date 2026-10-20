@@ -1,8 +1,11 @@
+from dataclasses import dataclass
+
 from pydantic import BaseModel
 
 from store_emulator.domain.action import CustomerAction
+from store_emulator.domain.config import PerceptionConfig, RouteOrdering
 from store_emulator.domain.rack import Rack, RackType, Slot
-from store_emulator.domain.types import Action, CARDINAL_DIRECTIONS, Face, PathFinder, Position
+from store_emulator.domain.types import Action, CARDINAL_DIRECTIONS, FACE_OFFSETS, Face, PathFinder, Position
 from store_emulator.domain.store import Store
 from .store_lookup import rack_id_at, resolve_buy_placement
 
@@ -37,10 +40,18 @@ def integrate_actions(
     store: Store,
     intent_actions: list[CustomerAction],
     impulse_actions: list[CustomerAction],
+    *,
+    ordering: RouteOrdering = "nearest",
 ) -> list[CustomerAction]:
-    """Merge intent + impulse actions and order visits via greedy nearest-neighbor.
+    """Merge intent + impulse actions into one ENTER → visits → PAY → EXIT sequence.
 
-    Manhattan distance ordering. BUY is only eligible after a BROWSE on the same rack.
+    ordering="nearest" (legacy): every visit is re-ordered by greedy nearest-neighbor
+    Manhattan distance from the entrance. BUY is only eligible after a BROWSE on the
+    same rack.
+
+    ordering="planned": the shopper's own visit order is kept. Impulse visits are
+    grouped per rack and inserted where they add the least detour, which is how an
+    unplanned stop happens in practice — on the way, not as a re-plan of the trip.
     """
     enter: CustomerAction | None = None
     exit_action: CustomerAction | None = None
@@ -56,6 +67,10 @@ def integrate_actions(
             enter = a
         else:
             middle.append(a)
+
+    if ordering == "planned":
+        ordered_planned = _insert_impulses(store, middle, impulse_actions, pay)
+        return _frame(enter, ordered_planned, pay, exit_action)
 
     middle.extend(impulse_actions)
 
@@ -100,15 +115,165 @@ def integrate_actions(
             if rack_id:
                 browsed_racks.add(rack_id)
 
+    return _frame(enter, ordered, pay, exit_action)
+
+
+def _frame(
+    enter: CustomerAction | None,
+    middle: list[CustomerAction],
+    pay: CustomerAction | None,
+    exit_action: CustomerAction | None,
+) -> list[CustomerAction]:
     result: list[CustomerAction] = []
     if enter:
         result.append(enter)
-    result.extend(ordered)
+    result.extend(middle)
     if pay:
         result.append(pay)
     if exit_action:
         result.append(exit_action)
     return result
+
+
+def _insert_impulses(
+    store: Store,
+    planned: list[CustomerAction],
+    impulse: list[CustomerAction],
+    pay: CustomerAction | None,
+) -> list[CustomerAction]:
+    """Cheapest-insertion of per-rack impulse groups into the planned visit order."""
+    grid = store.walkable_grid()
+    w, h = store.grid_size
+    seq = list(planned)
+    start = entrance_position(store)
+    end = _sanitize_action(pay, grid, w, h, store).target if pay and pay.target else None
+    end = end or _exit_position(store)
+
+    for group in _group_by_rack(store, [_sanitize_action(a, grid, w, h, store) for a in impulse]):
+        first = _action_position(group[0], store)
+        last = _action_position(group[-1], store)
+        best_i, best_cost = len(seq), 10**9
+        for i in range(len(seq) + 1):
+            prev = start if i == 0 else _action_position(seq[i - 1], store)
+            nxt = end if i == len(seq) else _action_position(seq[i], store)
+            cost = _manhattan(prev, first) + _manhattan(last, nxt) - _manhattan(prev, nxt)
+            if cost < best_cost:
+                best_i, best_cost = i, cost
+        seq[best_i:best_i] = group
+    return seq
+
+
+def _group_by_rack(store: Store, actions: list[CustomerAction]) -> list[list[CustomerAction]]:
+    """Group actions by the rack they target, preserving first-seen and in-group order."""
+    groups: dict[str, list[CustomerAction]] = {}
+    for idx, a in enumerate(actions):
+        rack_id = ""
+        if a.action == Action.BUY and a.product_sku:
+            placement = resolve_buy_placement(store, target=a.target, face=a.face, sku=a.product_sku)
+            if placement is not None:
+                rack_id = placement[0].id
+        if not rack_id and a.target is not None:
+            rack_id = rack_id_at(store, a.target, a.face)
+        groups.setdefault(rack_id or f"__unanchored_{idx}", []).append(a)
+    return list(groups.values())
+
+
+@dataclass(frozen=True)
+class ExposedProduct:
+    """A product the shopper could plausibly have noticed along the walked route."""
+    rack: Rack
+    slot: Slot
+    sku: str
+    visibility: float  # 0–1, combined over every visible facing of the SKU
+    facings: int       # number of visible slots carrying the SKU
+
+
+def perceive_products(
+    store: Store,
+    journey: list[JourneyStep],
+    perception: PerceptionConfig,
+) -> list[ExposedProduct]:
+    """Visibility-based exposure.
+
+    A slot is visible from a path tile when the tile is in front of the slot's face
+    (within `view_distance` tiles, inside a 45° cone) and nothing walkable-blocking
+    sits in between. Its score is shelf-level attention × a distance falloff. A SKU
+    stocked on several visible facings is noticed with probability 1 − Π(1 − v).
+    Opposite faces of a rack the shopper never walks past are therefore not seen,
+    unlike the legacy adjacency model.
+    """
+    tiles: list[Position] = []
+    seen_tiles: set[Position] = set()
+    for step in journey:
+        for pos in step.path:
+            if pos not in seen_tiles:
+                seen_tiles.add(pos)
+                tiles.append(pos)
+    if not tiles:
+        return []
+
+    grid = store.walkable_grid()
+    miss: dict[str, float] = {}
+    facings: dict[str, int] = {}
+    anchor: dict[str, tuple[Rack, Slot, float]] = {}
+    for rack in store.product_racks:
+        cells = rack.occupied_positions
+        for slot in rack.slots:
+            if not slot.items:
+                continue
+            cell = cells[slot.block] if 0 <= slot.block < len(cells) else cells[0]
+            v = max(_slot_visibility(grid, cell, slot, t, perception) for t in tiles)
+            if v <= 0.0:
+                continue
+            for item in slot.items:
+                miss[item.sku] = miss.get(item.sku, 1.0) * (1.0 - v)
+                facings[item.sku] = facings.get(item.sku, 0) + 1
+                best = anchor.get(item.sku)
+                if best is None or v > best[2]:
+                    anchor[item.sku] = (rack, slot, v)
+
+    exposed = [
+        ExposedProduct(rack=anchor[sku][0], slot=anchor[sku][1], sku=sku,
+                       visibility=round(1.0 - m, 4), facings=facings[sku])
+        for sku, m in miss.items()
+        if 1.0 - m >= perception.min_visibility
+    ]
+    exposed.sort(key=lambda e: (-e.visibility, e.sku))
+    return exposed[:perception.max_exposed_items]
+
+
+def _slot_visibility(
+    grid: list[list[bool]],
+    cell: Position,
+    slot: Slot,
+    tile: Position,
+    perception: PerceptionConfig,
+) -> float:
+    dx, dy = FACE_OFFSETS[slot.face]
+    vx, vy = tile[0] - cell[0], tile[1] - cell[1]
+    depth = vx * dx + vy * dy
+    if depth < 1 or depth > perception.view_distance:
+        return 0.0
+    lateral = abs(vx) if dx == 0 else abs(vy)
+    if lateral > max(1, depth):
+        return 0.0
+    if not _line_of_sight(grid, cell, tile):
+        return 0.0
+    falloff = 1.0 / (1.0 + 0.5 * (depth - 1) + 0.5 * lateral)
+    return perception.level_attention.get(slot.level, 0.7) * falloff
+
+
+def _line_of_sight(grid: list[list[bool]], src: Position, dst: Position) -> bool:
+    """True when every cell strictly between `src` (the shelf) and `dst` is walkable."""
+    steps = max(abs(dst[0] - src[0]), abs(dst[1] - src[1])) * 2
+    for k in range(1, steps):
+        x = round(src[0] + (dst[0] - src[0]) * k / steps)
+        y = round(src[1] + (dst[1] - src[1]) * k / steps)
+        if (x, y) in (src, dst):
+            continue
+        if not grid[y][x]:
+            return False
+    return True
 
 
 def find_exposed_products(
@@ -213,7 +378,7 @@ def _sanitize_action(
         )
         if placement is not None:
             rack, slot = placement
-            snapped = _face_access_tile(rack, slot.face, store.grid_size, grid)
+            snapped = face_access_tile(rack, slot.face, store.grid_size, grid)
             if snapped is not None:
                 updates: dict[str, object] = {"target": snapped}
                 if action.face != slot.face:
@@ -253,7 +418,7 @@ def _calculate_path(
     return []
 
 
-def _face_access_tile(
+def face_access_tile(
     rack: Rack, face: Face, grid_size: tuple[int, int], grid: list[list[bool]],
 ) -> Position | None:
     """First walkable access tile of `rack` on `face`, or None when unavailable."""

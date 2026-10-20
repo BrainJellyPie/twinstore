@@ -3,7 +3,7 @@ import random
 from pydantic import BaseModel
 
 from store_emulator.domain.persona import Persona
-from store_emulator.domain.types import Weekday
+from store_emulator.domain.types import Weekday, stable_seed
 
 
 class CustomerEntry(BaseModel):
@@ -13,15 +13,19 @@ class CustomerEntry(BaseModel):
     hour: int
 
 
-def generate_customers(personas: list[Persona], seed: int | None = None) -> list[CustomerEntry]:
-    if seed is not None:
-        random.seed(seed)
+def generate_customers(personas: list[Persona], seed: int = 0) -> list[CustomerEntry]:
+    """Assign each persona a minute/second within its arrival hour.
 
+    Each persona draws from its own stream keyed by (seed, persona id), so the
+    arrival time of a persona does not depend on which other personas are in
+    the run or on the store layout — and never touches the global `random` state.
+    """
     entries: list[CustomerEntry] = []
     for persona in personas:
+        rng = random.Random(stable_seed(seed, "arrival", persona.id))
         hour = persona.arrival_hour
-        minute = random.randint(0, 59)
-        second = random.randint(0, 59)
+        minute = rng.randint(0, 59)
+        second = rng.randint(0, 59)
         entries.append(CustomerEntry(
             persona_id=persona.id,
             day=persona.day,

@@ -157,6 +157,7 @@ async def _run_async_pipeline(
         schedules=schedules,
         custom_instruction=custom_instruction,
         supplemental_summary=effective_summary,
+        currency=config.currency,
     )
 
 
@@ -169,6 +170,7 @@ async def _generate_personas_impl(
     custom_instruction: str = "",
     *,
     supplemental_summary: str = "",
+    currency: str = "USD",
 ) -> list[Persona]:
     """Internal impl accepting an LLM instance, with supplemental_summary support.
 
@@ -180,6 +182,7 @@ async def _generate_personas_impl(
         schedules=schedules,
         seed=seed, custom_instruction=custom_instruction,
         supplemental_summary=supplemental_summary,
+        currency=currency,
     )
     usage = llm.get_usage()
     logger.info(f"[persona generation] {len(all_personas)} personas done | {usage.total_tokens} tokens")

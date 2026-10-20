@@ -19,12 +19,17 @@ class PerCustomerContext(BaseModel):
     behavior_patterns: list[BehaviorPattern]
     address: str = ""
     customer_profile: str = ""
+    # Per-customer seed derived from (run seed, replicate, persona id). Independent of the layout,
+    # so engines that draw randomness from it give paired layout comparisons common random numbers.
+    seed: int = 0
 
 
 class EngineDecision(BaseModel):
     actions: list[CustomerAction]
     engine_type: str
     trace: dict[str, object] = {}
+    dropped_invalid_buys: int = 0
+    dropped_over_budget: int = 0
 
 
 class CustomerBehaviorEngine(Protocol):

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from store_emulator.domain.behavior import BehaviorCue
 from store_emulator.domain.rack import Rack, Slot
 from store_emulator.domain.persona import Persona
+from store_emulator.engine.prompting import format_budget, format_price, price_unit_rule
 from .prompt_utils import format_cue_prompt
 
 from store_emulator.domain.action import CustomerAction
@@ -23,10 +24,10 @@ class ImpulseResponse(BaseModel):
     actions: list[CustomerAction] = []
 
 
-SYSTEM_PROMPT = """당신은 매장 고객의 세렌디피티(우연한 발견) 시뮬레이터입니다.
+SYSTEM_PROMPT_TEMPLATE = """당신은 매장 고객의 세렌디피티(우연한 발견) 시뮬레이터입니다.
 고객이 이미 결정한 동선 위에서, 지나가다가 발견할 수 있는 상품이나 프로모션에 반응하는 추가 행동을 생성하세요.
 
-모든 가격과 예산은 US cents 단위입니다 (예: 549¢ = $5.49).
+{price_unit_rule}
 
 규칙:
 - 새로 추가할 행동(browse / buy) 만 반환. 방문 순서 배치는 엔진이 자동 처리합니다
@@ -35,13 +36,16 @@ SYSTEM_PROMPT = """당신은 매장 고객의 세렌디피티(우연한 발견) 
 - action 은 browse 또는 buy 만 사용
 - target 은 노출 상품의 접근 타일 좌표를 사용
 - **buy 시 product_sku 는 아래 "경로상 노출되는 상품" 목록의 sku 중 하나만 사용**
+- buy 시 quantity 는 구매 수량 (기본 1)
 - **browse / buy 의 description 은 노출 상품 목록의 상품만 묘사**
 - description 은 해당 행동 시점의 상황만 묘사 (이후 행동 참조 금지)
 
 ## 언어
 - 자유 서술 필드(`reasoning` 및 각 action의 `description`)의 값은 **영어로** 작성하세요.
-- 구조적 필드(`action`, `target`, `face`, `dwell`, `product_sku`, `nav`, `area`)는 한국어 prompt 에서 정의된 그대로 유지합니다.
+- 구조적 필드(`action`, `target`, `face`, `dwell`, `product_sku`, `quantity`, `nav`, `area`)는 한국어 prompt 에서 정의된 그대로 유지합니다.
 - 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요."""
+
+SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(price_unit_rule=price_unit_rule("USD"))
 
 
 def build_system_prompt(
@@ -49,6 +53,7 @@ def build_system_prompt(
     allow_no_purchase: bool,
     existing_buys: int = 0,
     browse_required_before_buy: bool = False,
+    currency: str = "USD",
 ) -> str:
     """System prompt with pattern-specific constraints applied."""
     constraints: list[str] = []
@@ -66,7 +71,7 @@ def build_system_prompt(
     if extra:
         extra = f"\n\n추가 제약:\n{extra}"
 
-    return SYSTEM_PROMPT + extra
+    return SYSTEM_PROMPT_TEMPLATE.format(price_unit_rule=price_unit_rule(currency)) + extra
 
 
 def build_user_prompt(
@@ -79,7 +84,11 @@ def build_user_prompt(
     cue: BehaviorCue | None = None,
     *,
     grid_size: tuple[int, int],
+    visibility: dict[str, float] | None = None,
+    currency: str = "USD",
 ) -> str:
+    """`visibility` (sku → 0–1) comes from the perception model. When given, it already
+    accounts for shelf level, distance and facing, so the level heuristic is not repeated."""
     lines: list[str] = []
 
     lines.append("## 기존 이벤트 시퀀스")
@@ -89,10 +98,13 @@ def build_user_prompt(
     lines.append("")
 
     lines.append("## 경로상 노출되는 상품")
-    lines.append("공통 진열 높이 기준:")
-    for guide in LEVEL_VISIBILITY_GUIDE:
-        lines.append(f"  - {guide}")
-    lines.append("상품별 level만 보고 이 공통 기준을 적용하세요.")
+    if visibility is None:
+        lines.append("공통 진열 높이 기준:")
+        for guide in LEVEL_VISIBILITY_GUIDE:
+            lines.append(f"  - {guide}")
+        lines.append("상품별 level만 보고 이 공통 기준을 적용하세요.")
+    else:
+        lines.append("시인성(0~1)은 고객이 실제 동선에서 그 상품을 봤을 가능성입니다 (진열 높이·거리·방향 반영). 높을수록 눈에 잘 띕니다.")
     for f, slot, sku in exposed_products:
         matched = next((i for i in slot.items if i.sku == sku), None)
         promo = f" [{matched.promo}]" if matched and matched.promo else ""
@@ -101,8 +113,9 @@ def build_user_prompt(
         rack_label = f.rack_name or f.id
         name = matched.name if matched else sku
         price = matched.price if matched else 0
+        seen = f" 시인성={visibility.get(sku, 0.0):.2f}" if visibility is not None else ""
         lines.append(
-            f"  - {name} ({sku}) {price}¢{promo} | {rack_label}({f.type}){overlay} level={slot.level} @ 접근타일 {access[:3]}"
+            f"  - {name} ({sku}) {format_price(price, currency)}{promo} | {rack_label}({f.type}){overlay} level={slot.level}{seen} @ 접근타일 {access[:3]}"
         )
     lines.append("")
 
@@ -112,7 +125,7 @@ def build_user_prompt(
     if persona.preferred_categories:
         lines.append(f"  선호 카테고리: {', '.join(persona.preferred_categories)}")
     if persona.budget_max > 0:
-        lines.append(f"  예산 범위: {persona.budget_label}")
+        lines.append(f"  예산 범위: {format_budget(persona.budget_min, persona.budget_max, currency)}")
     if cue:
         lines.append(f"  현재 상태: {format_cue_prompt(cue)}")
     lines.append("")
@@ -130,5 +143,3 @@ def build_user_prompt(
     lines.append("경로상 노출 상품을 보고, 이 고객이 추가로 반응할 행동을 생성하세요.")
     lines.append("방문 순서는 신경쓰지 마세요. 엔진이 최적 경로로 자동 배치합니다.")
     return "\n".join(lines)
-
-

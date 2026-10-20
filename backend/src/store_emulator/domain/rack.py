@@ -3,11 +3,7 @@ from typing import Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .types import Face, Position, Shape
-
-_FACE_OFFSETS: dict[Face, tuple[int, int]] = {
-    Face.N: (0, -1), Face.S: (0, 1), Face.W: (-1, 0), Face.E: (1, 0),
-}
+from .types import FACE_OFFSETS as _FACE_OFFSETS, Face, Position, Shape
 
 # All slot-capable racks have exactly 4 levels; level count is fixed and empty slots are sparse.
 RACK_LEVELS: Final[int] = 4
