@@ -39,7 +39,7 @@ export interface CompareDialogProps {
 export function CompareDialog(props: CompareDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="sm:max-w-[760px]">
+      <DialogContent className="w-[95vw] sm:max-w-[920px]">
         <CompareBody {...props} />
       </DialogContent>
     </Dialog>
@@ -79,16 +79,16 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
             <Select value={a ?? undefined} onValueChange={setRunA}>
-              <SelectTrigger className="w-full" aria-label="Baseline run (A)">
+              <SelectTrigger className="w-full min-w-0 text-xs" aria-label="Baseline run (A)">
                 <SelectValue placeholder="Baseline (A)" />
               </SelectTrigger>
               <SelectContent>{runs.map(option)}</SelectContent>
             </Select>
             <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
             <Select value={b ?? undefined} onValueChange={setRunB}>
-              <SelectTrigger className="w-full" aria-label="Variant run (B)">
+              <SelectTrigger className="w-full min-w-0 text-xs" aria-label="Variant run (B)">
                 <SelectValue placeholder="Variant (B)" />
               </SelectTrigger>
               <SelectContent>{runs.map(option)}</SelectContent>
@@ -111,10 +111,6 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
 
 function CompareTable({ report }: { report: ComparisonReport }) {
   const spend = report.metrics.find((m) => m.metric === "spend");
-  const span = Math.max(
-    0.05,
-    ...report.metrics.map((m) => (m.mean_a ? Math.max(Math.abs(m.ci_low), Math.abs(m.ci_high)) / Math.abs(m.mean_a) : 0)),
-  );
   return (
     <div className="space-y-3">
       {spend && <Headline m={spend} />}
@@ -124,7 +120,7 @@ function CompareTable({ report }: { report: ComparisonReport }) {
             <th className="py-1.5 text-left font-medium">Metric</th>
             <th className="text-right font-medium">A</th>
             <th className="text-right font-medium">B</th>
-            <th className="w-[150px] text-center font-medium">B vs A ({Math.round(report.confidence * 100)}% CI)</th>
+            <th className="w-[230px] text-center font-medium">B vs A ({Math.round(report.confidence * 100)}% CI)</th>
             <th className="text-right font-medium">Change</th>
             <th className="text-right font-medium" title="Share of bootstrap draws where B > A">P(B&gt;A)</th>
             <th className="text-right font-medium" title="Customers needed to detect a 5% change with 80% power">n@5%</th>
@@ -136,7 +132,7 @@ function CompareTable({ report }: { report: ComparisonReport }) {
               <td className="py-1.5">{METRIC_LABELS[m.metric] ?? m.metric}</td>
               <td className="text-right tabular-nums">{fmt(m, m.mean_a)}</td>
               <td className="text-right tabular-nums">{fmt(m, m.mean_b)}</td>
-              <td className="px-2"><ForestBar m={m} span={span} /></td>
+              <td className="px-2"><ForestBar m={m} /></td>
               <td className="text-right tabular-nums">{m.mean_a ? signed(m.rel_diff) : "—"}</td>
               <td className="text-right tabular-nums">{formatPercent(m.prob_b_greater, 0)}</td>
               <td className="text-right tabular-nums text-muted-foreground">{m.n_for_5pct_effect.toLocaleString()}</td>
@@ -180,21 +176,29 @@ function Headline({ m }: { m: MetricComparison }) {
   );
 }
 
-function ForestBar({ m, span }: { m: MetricComparison; span: number }) {
-  const W = 140;
-  const scale = (rel: number) => W / 2 + (Math.max(-span, Math.min(span, rel)) / span) * (W / 2 - 6);
+// Each row has its own symmetric scale: what matters is whether the interval
+// crosses zero, and a shared scale would flatten small effects next to large ones.
+function ForestBar({ m }: { m: MetricComparison }) {
+  const W = 110;
   const rel = m.mean_a ? m.diff / m.mean_a : 0;
   const lo = m.mean_a ? m.ci_low / m.mean_a : 0;
   const hi = m.mean_a ? m.ci_high / m.mean_a : 0;
+  const span = Math.max(0.01, Math.abs(lo), Math.abs(hi)) * 1.15;
+  const scale = (x: number) => W / 2 + (Math.max(-span, Math.min(span, x)) / span) * (W / 2 - 6);
   const decisive = lo > 0 || hi < 0;
   const goodDirection = HIGHER_IS_BETTER.has(m.metric);
   const color = !decisive ? "#94a3b8" : !goodDirection ? "#3b82f6" : lo > 0 ? "#10b981" : "#f43f5e";
   return (
-    <svg width={W} height={16} viewBox={`0 0 ${W} 16`} aria-label={`${signed(lo)} to ${signed(hi)}`}>
-      <line x1={W / 2} x2={W / 2} y1={1} y2={15} stroke="#cbd5e1" strokeDasharray="2 2" />
-      <line x1={scale(lo)} x2={scale(hi)} y1={8} y2={8} stroke={color} strokeWidth={3} strokeLinecap="round" />
-      <circle cx={scale(rel)} cy={8} r={3.5} fill="white" stroke={color} strokeWidth={2} />
-    </svg>
+    <div className="flex items-center gap-2">
+      <svg width={W} height={16} viewBox={`0 0 ${W} 16`} aria-hidden>
+        <line x1={W / 2} x2={W / 2} y1={1} y2={15} stroke="#cbd5e1" strokeDasharray="2 2" />
+        <line x1={scale(lo)} x2={scale(hi)} y1={8} y2={8} stroke={color} strokeWidth={3} strokeLinecap="round" />
+        <circle cx={scale(rel)} cy={8} r={3.5} fill="white" stroke={color} strokeWidth={2} />
+      </svg>
+      <span className="whitespace-nowrap text-[10px] tabular-nums text-muted-foreground">
+        {signed(lo)} … {signed(hi)}
+      </span>
+    </div>
   );
 }
 

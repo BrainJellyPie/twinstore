@@ -71,6 +71,8 @@ class RuleBasedConfig(BaseModel):
     walkout_prob: float = Field(default=0.04, ge=0.0, le=1.0)    # leaves without buying (no-purchase patterns)
     max_impulse_items: int = Field(default=3, ge=0)
     browse_before_buy_prob: float = Field(default=0.6, ge=0.0, le=1.0)
+    # Unplanned stops that end without a purchase, per impulse buy (noticed, looked, walked on).
+    browse_only_ratio: float = Field(default=1.0, ge=0.0)
     pattern_weights: dict[str, float] = {
         "purposeful": 3.0, "habitual": 1.5, "routine_refill": 0.8, "urgent": 1.0,
         "quick_snack": 1.5, "exploratory": 1.0, "hungry_wandering": 0.6, "leisurely": 0.5,

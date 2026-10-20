@@ -9,7 +9,10 @@ export function engineLabel(engine: string | undefined): string {
 function shortTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const today = new Date().toDateString() === d.toDateString();
+  return today
+    ? d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 // e.g. "LLM · seed 0 · final · Oct 20, 17:40"

@@ -23,7 +23,11 @@ export function RunProgress({ status, now }: { status: RunStatus | undefined; no
     <div className="flex flex-col gap-3 px-1 pt-8 pb-6">
       <div className="text-center">
         <div className="text-sm font-medium">
-          {status?.status === "pending" ? "Starting simulation…" : "Simulating shoppers…"}
+          {status?.status === "pending"
+            ? "Starting simulation…"
+            : done === 0
+              ? "Preparing store model…"
+              : "Simulating shoppers…"}
         </div>
         <div className="mt-0.5 text-xs text-muted-foreground">
           {engineLabel(status?.engine_type)} engine{status?.preview ? " · preview" : ""}

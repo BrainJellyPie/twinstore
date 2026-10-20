@@ -1,5 +1,6 @@
 // Per-rack KPI overlay: a glowing floor pad under each rack (brightness ∝ revenue
-// share) and a compact label with revenue and stop→buy conversion.
+// share) and a compact label with revenue, buyers and — when shoppers also stopped
+// without buying — the stop→buy conversion.
 
 import { useMemo } from "react";
 import { Html } from "@react-three/drei";
@@ -42,7 +43,8 @@ export function RackPerformanceLayer({ racks, stats, currency }: Props) {
               <div className="whitespace-nowrap rounded-md border bg-background/90 px-1.5 py-0.5 text-[10px] leading-tight shadow-sm">
                 <div className="font-medium">{rack.rack_name || rack.id}</div>
                 <div className="tabular-nums text-muted-foreground">
-                  {formatMoney(s.revenue, currency, { compact: true })} · {formatPercent(stopToBuy, 0)} buy
+                  {formatMoney(s.revenue, currency, { compact: true })} · {s.buyers.toLocaleString()} buyers
+                  {s.visitors > s.buyers && ` · ${formatPercent(stopToBuy, 0)} stop→buy`}
                 </div>
               </div>
             </Html>

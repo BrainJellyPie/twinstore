@@ -6,6 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from .types import FACE_OFFSETS as _FACE_OFFSETS, Face, Position, Shape
 
 # All slot-capable racks have exactly 4 levels; level count is fixed and empty slots are sparse.
+
+type _SideTileKey = tuple[object, ...]
+_SIDE_TILE_CACHE: dict[_SideTileKey, frozenset[Position]] = {}
+_SIDE_TILE_CACHE_MAX = 100_000
 RACK_LEVELS: Final[int] = 4
 
 
@@ -125,6 +129,24 @@ class Rack(BaseModel):
         return self._side_tiles(grid_size, exclude_locked=True)
 
     def _side_tiles(self, grid_size: tuple[int, int], *, exclude_locked: bool) -> set[Position]:
+        # Pure function of the rack geometry; memoized because routing asks for it
+        # tens of thousands of times per run. The key covers every input, so an edited
+        # rack (moved, rotated, re-shaped, faces locked) gets a fresh entry.
+        key = (
+            self.type, tuple(tuple(row) for row in self.shape), self.rotation, self.position,
+            tuple((bf.block, bf.face) for bf in self.locked_faces) if exclude_locked else (),
+            grid_size, exclude_locked,
+        )
+        cached = _SIDE_TILE_CACHE.get(key)
+        if cached is not None:
+            return set(cached)
+        tiles = self._compute_side_tiles(grid_size, exclude_locked=exclude_locked)
+        if len(_SIDE_TILE_CACHE) > _SIDE_TILE_CACHE_MAX:
+            _SIDE_TILE_CACHE.clear()
+        _SIDE_TILE_CACHE[key] = frozenset(tiles)
+        return tiles
+
+    def _compute_side_tiles(self, grid_size: tuple[int, int], *, exclude_locked: bool) -> set[Position]:
         w, h = grid_size
         locked: set[tuple[int, Face]] = {(bf.block, bf.face) for bf in self.locked_faces} if exclude_locked else set()
         px, py = self.position

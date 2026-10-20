@@ -78,6 +78,17 @@ class RuleBasedEngine:
     def __init__(self, pathfinder: PathFinder, config: SimulationConfig):
         self._pathfinder = pathfinder
         self._config = config
+        # Tokenized catalog per store object (one store per run; a run calls us per customer).
+        self._catalog: tuple[Store, list[tuple[Rack, Slot, SlotItem, set[str], set[str]]]] | None = None
+
+    def _catalog_for(self, store: Store) -> list[tuple[Rack, Slot, SlotItem, set[str], set[str]]]:
+        if self._catalog is None or self._catalog[0] is not store:
+            entries = [
+                (rack, slot, item, _tokens(f"{rack.rack_name} {rack.rack_desc}"), _tokens(item.name))
+                for rack in store.product_racks for slot in rack.slots for item in slot.items
+            ]
+            self._catalog = (store, entries)
+        return self._catalog[1]
 
     def reset_usage(self) -> None:
         pass
@@ -129,37 +140,53 @@ class RuleBasedEngine:
         planned = self._frame(store, middle, bool(buys), rng)
         planned = integrate_actions(store, planned, [], ordering=cfg.route_ordering)
 
-        # Impulse: what the shopper sees on the way.
+        # Impulse: what the shopper sees on the way. A noticed product is bought with
+        # probability p_buy; some further noticed products get a look without a purchase.
         impulse: list[CustomerAction] = []
+        impulse_buys = impulse_looks = 0
         factor = _PATTERN_IMPULSE_FACTOR.get(pattern.id, 1.0)
-        if factor > 0 and pattern.max_products > len(buys):
+        if factor > 0:
             journey = build_journey(store, planned, self._pathfinder, cfg.block_move_sec)
             for seen in perceive_products(store, journey, cfg.perception):
-                if seen.sku in chosen or len(impulse) // 2 >= params.max_impulse_items:
+                if seen.sku in chosen:
                     continue
-                if len(buys) + len(impulse) // 2 >= pattern.max_products:
-                    break
                 item = next((i for i in seen.slot.items if i.sku == seen.sku), None)
-                if item is None or spend + item.price > budget * tolerance:
+                if item is None or (pattern.id == "deal_hunting" and not item.promo):
                     continue
                 promo = params.promo_multiplier if item.promo else 1.0
-                if pattern.id == "deal_hunting" and not item.promo:
-                    continue
-                if rng.random() < min(0.95, params.impulse_base * seen.visibility * promo * factor):
+                p_buy = min(0.95, params.impulse_base * seen.visibility * promo * factor)
+                p_look = min(0.98, p_buy * (1.0 + params.browse_only_ratio))
+                draw = rng.random()
+                can_buy = (
+                    impulse_buys < params.max_impulse_items
+                    and len(buys) + impulse_buys < pattern.max_products
+                    and spend + item.price <= budget * tolerance
+                )
+                if draw < p_buy and can_buy:
                     actions = self._visit(store, grid, seen.rack, seen.slot, item, "impulse", pattern, rng,
                                           "notices it on the way", force_browse=True)
                     if actions:
                         impulse.extend(actions)
+                        impulse_buys += 1
                         chosen.add(item.sku)
                         spend += item.price * actions[-1].quantity
+                elif draw < p_look and impulse_looks < params.max_impulse_items:
+                    tile = face_access_tile(seen.rack, seen.slot.face, store.grid_size, grid)
+                    if tile is not None:
+                        impulse.append(CustomerAction(
+                            nav="path", target=tile, face=seen.slot.face, action=Action.BROWSE,
+                            dwell=rng.randint(2, 8), description=f"glances at {item.name}", origin="impulse",
+                        ))
+                        impulse_looks += 1
 
-        if impulse and not buys:
+        if impulse_buys and not buys:  # an impulse purchase still has to be paid for
             planned = self._frame(store, [a for a in planned if a.action not in (Action.ENTER, Action.PAY) and a.nav != "leave"], True, rng)
         merged = integrate_actions(store, planned, impulse, ordering=cfg.route_ordering)
         return EngineDecision(
             actions=merged,
             engine_type=EngineType.RULE_BASED.value,
-            trace={"pattern": pattern.id, "walk_out": walk_out, "planned_buys": len(buys), "impulse_buys": len(impulse) // 2},
+            trace={"pattern": pattern.id, "walk_out": walk_out, "planned_buys": len(buys),
+                   "impulse_buys": impulse_buys, "impulse_looks": impulse_looks},
         )
 
     def _pick_pattern(self, patterns: list[BehaviorPattern], rng: random.Random) -> BehaviorPattern:
@@ -176,15 +203,12 @@ class RuleBasedEngine:
         promo_mult = self._config.engines.rule_based.promo_multiplier
         candidates: list[tuple[Rack, Slot, SlotItem]] = []
         weights: list[float] = []
-        for rack in store.product_racks:
-            rack_hit = bool(words & _tokens(f"{rack.rack_name} {rack.rack_desc}"))
-            for slot in rack.slots:
-                for item in slot.items:
-                    if item.sku in chosen or not (rack_hit or words & _tokens(item.name)):
-                        continue
-                    fit = 1.0 if item.price <= remaining else 0.15
-                    candidates.append((rack, slot, item))
-                    weights.append(attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0))
+        for rack, slot, item, rack_words, item_words in self._catalog_for(store):
+            if item.sku in chosen or not (words & rack_words or words & item_words):
+                continue
+            fit = 1.0 if item.price <= remaining else 0.15
+            candidates.append((rack, slot, item))
+            weights.append(attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0))
         if not candidates:
             return None
         return rng.choices(candidates, weights=weights, k=1)[0]

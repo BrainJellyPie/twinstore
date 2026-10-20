@@ -8,6 +8,7 @@ import { RunProgress } from "@/features/runs/components/RunProgress";
 import { RunKpis } from "@/features/runs/components/RunKpis";
 import { DiagnosticsSection } from "@/features/runs/components/DiagnosticsSection";
 import { FidelitySection } from "@/features/runs/components/FidelitySection";
+import { PreviewRunsList } from "@/features/runs/components/PreviewRunsList";
 import { FloorConfigurationPanel } from "@/features/grid-editor/FloorConfigurationPanel";
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
 import { reasonIcon, reasonLabel, type Availability } from "@/views/simulation/availability";
@@ -169,9 +170,11 @@ function ReadyContent({
                   : "Simulation run failed"}
               </p>
             )}
-          </div>
+                    </div>
         </section>
       )}
+
+      {hasFloor && <PreviewRunsList projectId={pid} setupId={sid} />}
     </div>
   );
 }
