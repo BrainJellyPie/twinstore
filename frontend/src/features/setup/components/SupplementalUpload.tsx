@@ -17,7 +17,7 @@ export function SupplementalUpload({ file, onFileChange, error, disabled }: Supp
       <label className="text-sm font-medium">Supplemental data (Optional)</label>
       {file ? (
         <div className="flex items-center gap-2">
-          <span className="text-sm text-emerald-600">File uploaded</span>
+          <span className="text-sm text-positive">File uploaded</span>
           <Button
             type="button"
             variant="outline"

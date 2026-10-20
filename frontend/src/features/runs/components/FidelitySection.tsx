@@ -17,9 +17,9 @@ function verdict(m: FidelityMetric): "good" | "fair" | "poor" | null {
 }
 
 const VERDICT_CLASS = {
-  good: "bg-emerald-100 text-emerald-800",
-  fair: "bg-amber-100 text-amber-800",
-  poor: "bg-rose-100 text-rose-800",
+  good: "tone-good",
+  fair: "tone-warn",
+  poor: "tone-bad",
 } as const;
 
 // Validate a run against a real POS export of the same store.
@@ -31,7 +31,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
   return (
     <div className="border-t px-3 py-3">
       <div className="mb-1 flex items-center justify-between">
-        <div className="text-xs font-medium">Validate against real sales</div>
+        <div className="section-title">Validate against real sales</div>
         <Button
           variant="outline"
           size="sm"
@@ -55,7 +55,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
         />
       </div>
       {!report && !upload.isError && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           CSV/XLSX with a receipt id and SKU per line (quantity, unit price and time optional). Scores how
           closely simulated sales match the real ones.
         </p>
@@ -67,7 +67,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
       )}
       {report && (
         <div className="mt-2 space-y-1.5">
-          <div className="text-[11px] text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             {report.real_transactions.toLocaleString()} real receipts · {report.sim_customers.toLocaleString()} simulated
             customers · {report.matched_skus} SKUs
           </div>
@@ -79,14 +79,14 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
                   <span className="truncate">{m.name.replace(/_/g, " ")}</span>
                   <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
                     {m.value === null ? "n/a" : m.value.toFixed(3)}
-                    {v && <span className={`rounded px-1 text-[10px] ${VERDICT_CLASS[v]}`}>{v}</span>}
+                    {v && <span className={`rounded px-1 text-[0.72rem] ${VERDICT_CLASS[v]}`}>{v}</span>}
                   </span>
                 </li>
               );
             })}
           </ul>
           {report.notes.map((n) => (
-            <p key={n} className="text-[11px] text-muted-foreground">{n}</p>
+            <p key={n} className="text-xs text-muted-foreground">{n}</p>
           ))}
         </div>
       )}

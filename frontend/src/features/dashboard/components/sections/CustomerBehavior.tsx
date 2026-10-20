@@ -8,8 +8,8 @@ export function CustomerBehavior() {
 
   return (
     <div className="border-t px-3 py-3">
-      <div className="mb-2 text-xs font-medium">Customer behavior</div>
-      <dl className="flex flex-col gap-1.5 text-xs">
+      <div className="section-title mb-2">Customer behavior</div>
+      <dl className="flex flex-col gap-1.5 text-sm">
         <div className="flex justify-between">
           <dt className="text-muted-foreground">Total visitors</dt>
           <dd className="tabular-nums">{entered}</dd>

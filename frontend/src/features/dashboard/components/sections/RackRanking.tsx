@@ -40,7 +40,7 @@ export function RackRanking({ store }: Props) {
   return (
     <div className="border-t px-3 py-3">
       <div className="mb-2.5 flex items-center justify-between">
-        <div className="text-xs font-medium">Racks</div>
+        <div className="section-title">Racks</div>
         <ToggleGroup
           type="single"
           value={sortBy}
@@ -50,13 +50,13 @@ export function RackRanking({ store }: Props) {
         >
           <ToggleGroupItem
             value="revenue"
-            className="h-6 px-2 text-[10px] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+            className="h-6 px-2 text-[0.72rem] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
           >
             by Revenue
           </ToggleGroupItem>
           <ToggleGroupItem
             value="visitors"
-            className="h-6 px-2 text-[10px] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+            className="h-6 px-2 text-[0.72rem] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
           >
             by Visitors
           </ToggleGroupItem>
@@ -96,7 +96,7 @@ export function RackRanking({ store }: Props) {
             })}
           </ol>
           {totalCount > SHOW_LIMIT && (
-            <div className="mt-2 text-[11px] text-muted-foreground">
+            <div className="mt-2 text-xs text-muted-foreground">
               +{totalCount - SHOW_LIMIT} more
             </div>
           )}

@@ -155,7 +155,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
               <ToggleGroupItem
                 key={t.value}
                 value={t.value}
-                className="text-[11px]"
+                className="text-xs"
               >
                 {t.label}
               </ToggleGroupItem>

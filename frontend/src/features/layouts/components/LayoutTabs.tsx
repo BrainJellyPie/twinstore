@@ -5,7 +5,7 @@
 
 import { Plus } from "lucide-react";
 
-import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/utils/cn";
 
 import type { Layout } from "../hooks/useLayouts";
 
@@ -17,46 +17,38 @@ export interface LayoutTabsProps {
   disabled?: boolean;
 }
 
-export function LayoutTabs({
-  layouts,
-  selectedId,
-  onSelect,
-  onAddNew,
-  disabled = false,
-}: LayoutTabsProps) {
+export function LayoutTabs({ layouts, selectedId, onSelect, onAddNew, disabled = false }: LayoutTabsProps) {
   return (
-    <div
-      className="flex items-center gap-1.5"
-      role="tablist"
-      aria-label="Layouts"
-    >
+    <div className="glass flex items-center gap-1 rounded-xl border p-1 shadow-float" role="tablist" aria-label="Layouts">
       {layouts.map((layout) => {
         const selected = layout.id === selectedId;
         return (
-          <Button
+          <button
             key={layout.id}
             type="button"
             role="tab"
             aria-selected={selected}
-            variant={selected ? "default" : "outline"}
-            size="sm"
             disabled={disabled}
             onClick={() => onSelect(layout.id)}
+            className={cn(
+              "h-8 rounded-lg px-3 text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-50",
+              selected ? "bg-primary text-primary-foreground shadow-[0_6px_16px_-8px_var(--primary)]" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
           >
             {layout.name}
-          </Button>
+          </button>
         );
       })}
-      <Button
+      <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
+      <button
         type="button"
-        variant="outline"
-        size="sm"
         disabled={disabled}
         onClick={onAddNew}
+        className="flex h-8 items-center gap-1 rounded-lg px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
       >
-        <Plus aria-hidden />
-        Add new
-      </Button>
+        <Plus className="size-4" aria-hidden />
+        New layout
+      </button>
     </div>
   );
 }

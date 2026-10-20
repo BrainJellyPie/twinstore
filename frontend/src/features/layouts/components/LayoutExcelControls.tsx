@@ -147,23 +147,23 @@ export function LayoutExcelControls({
       )}
       {mode === "full" && uploadInfo && currentItemCount > 0 && (
         <>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             File uploaded ({uploadInfo.count} items
             {uploadInfo.clearedCount > 0 && `, ${uploadInfo.clearedCount} auto-removed`})
           </p>
           {uploadInfo.imageWarning && (
-            <p className="text-[11px] text-amber-600">{uploadInfo.imageWarning}</p>
+            <p className="text-xs text-warn">{uploadInfo.imageWarning}</p>
           )}
         </>
       )}
       {mode === "full" && uploadError && (
-        <p className="flex items-start gap-1 text-[11px] text-destructive">
+        <p className="flex items-start gap-1 text-xs text-destructive">
           <AlertCircle className="mt-0.5 size-3 shrink-0" />
           <span>{uploadError}</span>
         </p>
       )}
       {downloadError && (
-        <p className="flex items-start gap-1 text-[11px] text-destructive">
+        <p className="flex items-start gap-1 text-xs text-destructive">
           <AlertCircle className="mt-0.5 size-3 shrink-0" />
           <span>{downloadError}</span>
         </p>

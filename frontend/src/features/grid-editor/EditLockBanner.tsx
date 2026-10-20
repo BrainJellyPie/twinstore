@@ -37,7 +37,7 @@ export function EditLockBanner({
     return (
       <div
         data-testid="edit-lock-banner-items"
-        className="flex flex-col gap-2 rounded-lg border border-yellow-400/60 bg-yellow-50 p-3 text-sm text-yellow-900 sm:flex-row sm:items-center sm:justify-between dark:bg-yellow-950/30 dark:text-yellow-200"
+        className="flex flex-col gap-2 rounded-lg border tone-warn p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
       >
         <span>
           Adding items locks store editing. Unlocking will clear all items.

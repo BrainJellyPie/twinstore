@@ -92,7 +92,7 @@ export function TownMap({
     <svg
       ref={svgRef}
       viewBox={`${view.x} ${view.y} ${view.w} ${view.w}`}
-      className={`h-full w-full touch-none select-none rounded-lg bg-[#eef1ec] ${mode === "place" ? "cursor-crosshair" : "cursor-grab"}`}
+      className={`h-full w-full touch-none select-none rounded-2xl bg-[var(--map-ground)] ${mode === "place" ? "cursor-crosshair" : "cursor-grab"}`}
       onWheel={onWheel}
       onPointerDown={onDown}
       onPointerMove={onMove}
@@ -106,7 +106,7 @@ export function TownMap({
           key={r.id}
           points={r.points.map(([x, y]) => `${x},${fy(y)}`).join(" ")}
           fill="none"
-          stroke={r.kind === "arterial" ? "#cbd5e1" : "#dfe4ea"}
+          stroke={r.kind === "arterial" ? "var(--map-road)" : "var(--map-road-minor)"}
           strokeWidth={ROAD_WIDTH[r.kind] ?? 6}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -125,8 +125,8 @@ export function TownMap({
             height={b.depth}
             rx={1.5}
             fill={BUILDING_COLORS[b.kind] ?? "#d4d4d8"}
-            fillOpacity={b.kind === "park" ? 0.7 : 0.35 + 0.6 * Math.min(1, pop / maxPop)}
-            stroke="#64748b"
+            style={{ fillOpacity: `calc(var(--map-building-alpha) * ${(b.kind === "park" ? 0.7 : 0.35 + 0.6 * Math.min(1, pop / maxPop)).toFixed(3)})` }}
+            stroke="var(--map-building-stroke)"
             strokeOpacity={0.35}
             strokeWidth={0.8}
           >
@@ -144,8 +144,8 @@ export function TownMap({
       {/* Catchment rings */}
       {focal && demand && (
         <>
-          <circle cx={focal.x} cy={fy(focal.y)} r={demand.catchment_radius_80_m / 1.3} fill="none" stroke="#0e7490" strokeDasharray="10 8" strokeWidth={2} opacity={0.5} />
-          <circle cx={focal.x} cy={fy(focal.y)} r={demand.catchment_radius_50_m / 1.3} fill="#0e7490" fillOpacity={0.06} stroke="#0e7490" strokeWidth={2} opacity={0.8} />
+          <circle cx={focal.x} cy={fy(focal.y)} r={demand.catchment_radius_80_m / 1.3} fill="none" stroke="var(--map-focal)" strokeDasharray="10 8" strokeWidth={2} opacity={0.5} />
+          <circle cx={focal.x} cy={fy(focal.y)} r={demand.catchment_radius_50_m / 1.3} fill="var(--map-focal)" fillOpacity={0.08} stroke="var(--map-focal)" strokeWidth={2} opacity={0.8} />
         </>
       )}
 
@@ -158,7 +158,7 @@ export function TownMap({
             y1={fy(b.y)}
             x2={focal.x}
             y2={fy(focal.y)}
-            stroke="#0e7490"
+            stroke="var(--map-focal)"
             strokeOpacity={0.15 + 0.5 * (o.share / maxShare)}
             strokeWidth={1 + 7 * (o.share / maxShare)}
             strokeLinecap="round"
@@ -182,14 +182,14 @@ export function TownMap({
           >
             {v.is_focal ? (
               <>
-                <circle r={17} fill="#0e7490" stroke="white" strokeWidth={4} />
+                <circle r={17} fill="var(--map-focal)" stroke="var(--map-ground)" strokeWidth={4} />
                 <path d="M-8 3 L0 -8 L8 3 Z M-6 3 h12 v6 h-12 Z" fill="white" />
               </>
             ) : (
               <circle
                 r={hl ? 11 : 7.5}
                 fill={VENUE_COLORS[v.category] ?? "#334155"}
-                stroke={hl ? "#111827" : "white"}
+                stroke={hl ? "var(--foreground)" : "var(--map-ground)"}
                 strokeWidth={hl ? 3 : 2}
               />
             )}

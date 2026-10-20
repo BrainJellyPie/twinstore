@@ -29,7 +29,7 @@ export function DiagnosticsSection({ projectId, runId }: { projectId: string; ru
           {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
           Run diagnostics
         </span>
-        <span className={issues > 0 ? "text-amber-700" : "text-muted-foreground"}>
+        <span className={issues > 0 ? "text-warn" : "text-muted-foreground"}>
           {issues > 0 ? `${issues} issue${issues === 1 ? "" : "s"}` : "clean"}
         </span>
       </button>
@@ -60,7 +60,7 @@ export function DiagnosticsSection({ projectId, runId }: { projectId: string; ru
           {m.store_fingerprint && (
             <>
               <dt className="text-muted-foreground">Layout fingerprint</dt>
-              <dd className="truncate text-right font-mono text-[10px]">{m.store_fingerprint}</dd>
+              <dd className="truncate text-right font-mono text-[0.72rem]">{m.store_fingerprint}</dd>
             </>
           )}
           {failed.length > 0 && (

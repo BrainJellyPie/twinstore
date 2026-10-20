@@ -62,12 +62,12 @@ export function SidePanel({
   runStatus,
 }: SidePanelProps) {
   return (
-    <aside className="flex h-full w-85 shrink-0 flex-col overflow-y-auto border-l bg-sidebar">
+    <aside className="flex h-full w-[23rem] shrink-0 flex-col overflow-y-auto border-l bg-surface">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DashboardTab)} className="gap-0">
-        <div className="sticky top-0 z-10 bg-sidebar px-3 pt-3 pb-2">
-          <TabsList className="w-full">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="settings">Store/Layout info</TabsTrigger>
+        <div className="sticky top-0 z-10 bg-surface/90 px-3 pt-3 pb-2 backdrop-blur">
+          <TabsList className="h-10 w-full rounded-xl">
+            <TabsTrigger value="dashboard" className="rounded-lg text-sm">Results</TabsTrigger>
+            <TabsTrigger value="settings" className="rounded-lg text-sm">Store &amp; layout</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="dashboard" className="px-3">

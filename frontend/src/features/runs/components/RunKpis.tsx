@@ -7,7 +7,7 @@ import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 function Tile({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
     <div className="rounded-md border bg-background px-2.5 py-2" title={hint}>
-      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-0.5 text-base font-semibold tabular-nums">{value}</div>
     </div>
   );
@@ -25,7 +25,7 @@ export function RunKpis({ summary }: { summary: RunSummary }) {
   }
   return (
     <div className="border-t px-3 py-3">
-      <div className="mb-2 text-xs font-medium">Run results</div>
+      <div className="section-title mb-2">Run results</div>
       <div className="grid grid-cols-2 gap-2">
         <Tile label="Conversion" value={formatPercent(summary.conversion_rate)} hint="Visitors who bought at least one item" />
         <Tile label="Revenue / visitor" value={formatMoney(summary.revenue_per_visitor ?? 0, code)} />
@@ -57,10 +57,10 @@ function SegmentBreakdown({ summary }: { summary: RunSummary }) {
   return (
     <div className="mt-3">
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-[11px] font-medium text-muted-foreground">By segment</div>
+        <div className="text-xs font-medium text-muted-foreground">By segment</div>
         <ToggleGroup type="single" value={dimension} onValueChange={(v) => v && setDimension(v)} variant="outline" size="sm">
           {DIMENSIONS.map((d) => (
-            <ToggleGroupItem key={d.value} value={d.value} className="h-6 px-2 text-[11px]">
+            <ToggleGroupItem key={d.value} value={d.value} className="h-6 px-2 text-xs">
               {d.label}
             </ToggleGroupItem>
           ))}

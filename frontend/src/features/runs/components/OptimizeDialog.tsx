@@ -198,9 +198,9 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
   const pct = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)} %`;
   return (
     <div className="space-y-4 text-sm">
-      <div className={cn("rounded-lg border p-3", good ? "border-emerald-300 bg-emerald-50" : "bg-muted/30")}>
+      <div className={cn("rounded-lg border p-3", good ? "tone-good" : "bg-muted/30")}>
         <div className="flex items-center gap-2 font-medium">
-          {good ? <CheckCircle2 className="size-4 text-emerald-700" /> : <TriangleAlert className="size-4 text-amber-600" />}
+          {good ? <CheckCircle2 className="size-4 text-positive" /> : <TriangleAlert className="size-4 text-warn" />}
           Validated on fresh shoppers: {validated != null ? pct(validated) : "—"}
           {result.validation_prob_better != null && <span className="font-normal text-muted-foreground">· P(better) {formatPercent(result.validation_prob_better, 0)}</span>}
         </div>
@@ -215,12 +215,12 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
       <div className="h-40">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chart} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="i" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} domain={["auto", "auto"]} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="i" tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
+            <YAxis tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} domain={["auto", "auto"]} />
             <Tooltip contentStyle={{ fontSize: 11 }} />
-            <Line type="monotone" dataKey="score" stroke="#94a3b8" dot={false} strokeWidth={1} name="candidate" isAnimationActive={false} />
-            <Line type="stepAfter" dataKey="best" stroke="#0e7490" dot={false} strokeWidth={2} name="best" isAnimationActive={false} />
+            <Line type="monotone" dataKey="score" stroke="var(--muted-foreground)" strokeOpacity={0.6} dot={false} strokeWidth={1} name="candidate" isAnimationActive={false} />
+            <Line type="stepAfter" dataKey="best" stroke="var(--primary)" dot={false} strokeWidth={2.5} name="best" isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>

@@ -213,7 +213,7 @@ export function RackDetailView({ store }: Props) {
                               className="size-8 shrink-0 rounded border bg-muted object-contain"
                             />
                           ) : (
-                            <div className="flex size-8 shrink-0 items-center justify-center rounded border bg-muted text-[9px] text-muted-foreground">
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded border bg-muted text-[0.68rem] text-muted-foreground">
                               no img
                             </div>
                           )}

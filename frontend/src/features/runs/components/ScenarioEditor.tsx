@@ -321,7 +321,7 @@ function EffectsPreview({ effects }: { effects: api.ScenarioEffects }) {
               key={cat}
               className={cn(
                 "rounded-full px-1.5 py-0.5 tabular-nums",
-                m > 1 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800",
+                m > 1 ? "tone-good" : "tone-bad",
               )}
             >
               {m > 1 ? "▲" : "▼"} {CATEGORY_LABELS[cat] ?? cat} ×{m.toFixed(2)}

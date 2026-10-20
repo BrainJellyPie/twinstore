@@ -1,68 +1,57 @@
-import { ChevronRight, Map, Settings } from "lucide-react";
+// Top bar: where you are, with the store's name set in the display face.
+
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/shared/queries/keys";
+import { ChevronRight } from "lucide-react";
+
 import * as api from "@/shared/api/client";
+import { queryKeys } from "@/shared/queries/keys";
+
+const PAGE_TITLES: Record<string, string> = {
+  "/": "Home",
+  "/projects/new": "New store",
+  "/settings": "Settings",
+};
 
 export function AppHeader() {
   const location = useLocation();
-  const isHome = location.pathname === "/";
-  const isProject = location.pathname.startsWith("/projects/") && location.pathname !== "/projects/new";
   const isTown = location.pathname.startsWith("/town/");
-  const match = location.pathname.match(/^\/(?:projects|town)\/([^/]+)/);
-  const pid = match?.[1];
+  const pid = location.pathname.match(/^\/(?:projects|town)\/([^/]+)/)?.[1];
+  const inProject = !!pid && pid !== "new";
 
   const { data: project } = useQuery({
-    queryKey: pid ? queryKeys.project(pid) : ["project", "disabled"],
+    queryKey: inProject ? queryKeys.project(pid!) : ["project", "disabled"],
     queryFn: ({ signal }) => api.getProject(pid!, signal),
-    enabled: !!pid && pid !== "new",
+    enabled: inProject,
   });
-
   const projectName = project?.metadata.name;
+  const title = PAGE_TITLES[location.pathname];
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-4">
-      <Link to="/" className="flex items-center gap-2">
-        <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <span className="text-sm font-bold">P</span>
-        </div>
-        <span className="text-sm font-semibold tracking-tight">Parastore</span>
-      </Link>
-
-      {!isHome && (
-        <nav className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
-          {(isProject || isTown) && projectName && (
-            <>
-              <ChevronRight className="size-3" />
-              <Link to="/projects/$pid" params={{ pid: pid! }} className="text-foreground hover:underline">{projectName}</Link>
-            </>
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-surface/80 px-5 backdrop-blur">
+      {inProject ? (
+        <nav className="flex min-w-0 items-center gap-2" aria-label="Breadcrumb">
+          <Link to="/" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Stores
+          </Link>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          {isTown ? (
+            <Link to="/projects/$pid" params={{ pid: pid! }} className="truncate font-display text-lg font-semibold hover:underline">
+              {projectName ?? "…"}
+            </Link>
+          ) : (
+            <span className="truncate font-display text-lg font-semibold">{projectName ?? "…"}</span>
           )}
           {isTown && (
             <>
-              <ChevronRight className="size-3" />
-              <span className="text-foreground">Neighborhood</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="font-display text-lg font-semibold">Neighborhood</span>
             </>
           )}
-          {isProject && pid && (
-            <Link
-              to="/town/$pid"
-              params={{ pid }}
-              className="ml-3 flex items-center gap-1 rounded-md border px-2 py-0.5 text-foreground transition-colors hover:bg-muted"
-            >
-              <Map className="size-3" /> Neighborhood
-            </Link>
-          )}
         </nav>
+      ) : (
+        <h1 className="font-display text-lg font-semibold">{title ?? "Parastore"}</h1>
       )}
-
-      <Link
-        to="/settings"
-        className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        aria-label="Settings"
-      >
-        <Settings className="size-4" /> Models
-      </Link>
     </header>
   );
 }

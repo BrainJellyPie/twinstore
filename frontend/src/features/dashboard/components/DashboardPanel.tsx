@@ -143,7 +143,7 @@ function ReadyContent({
             >
               {simulating ? "Running simulation…" : "Run simulation…"}
             </Button>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Choose an instant rule-based preview or LLM shoppers, a customer sample and a seed.
             </p>
             {blocked && availability && availability.reasons.length > 0 && (

@@ -69,11 +69,11 @@ function FaceContent({ rack, face }: { rack: Rack; face: Face }) {
                         className="size-16 rounded border bg-muted object-contain"
                       />
                     ) : (
-                      <div className="flex size-16 items-center justify-center rounded border bg-muted text-[10px] text-muted-foreground">
+                      <div className="flex size-16 items-center justify-center rounded border bg-muted text-[0.72rem] text-muted-foreground">
                         No image
                       </div>
                     )}
-                    <div className="line-clamp-2 text-center text-[11px]">{item.name}</div>
+                    <div className="line-clamp-2 text-center text-xs">{item.name}</div>
                   </div>
                 ))
               )}

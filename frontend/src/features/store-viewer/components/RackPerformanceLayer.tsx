@@ -40,7 +40,7 @@ export function RackPerformanceLayer({ racks, stats, currency }: Props) {
               <meshBasicMaterial color={color} transparent opacity={0.25 + 0.55 * t} depthWrite={false} />
             </mesh>
             <Html position={[0, 1.55, 0]} center zIndexRange={[5, 0]} style={{ pointerEvents: "none" }}>
-              <div className="whitespace-nowrap rounded-md border bg-background/90 px-1.5 py-0.5 text-[10px] leading-tight shadow-sm">
+              <div className="whitespace-nowrap rounded-md border bg-background/90 px-1.5 py-0.5 text-[0.72rem] leading-tight shadow-sm">
                 <div className="font-medium">{rack.rack_name || rack.id}</div>
                 <div className="tabular-nums text-muted-foreground">
                   {formatMoney(s.revenue, currency, { compact: true })} · {s.buyers.toLocaleString()} buyers

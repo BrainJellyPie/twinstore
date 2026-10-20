@@ -59,7 +59,7 @@ export function RunProgress({ status, now }: { status: RunStatus | undefined; no
         </div>
       </dl>
       {failed > 0 && (
-        <p className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+        <p className="rounded-md border tone-warn px-2.5 py-1.5 text-sm">
           {failed} customer{failed === 1 ? "" : "s"} failed after retries — they are listed in the run diagnostics.
         </p>
       )}

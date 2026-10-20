@@ -73,7 +73,7 @@ export function TownPage({ projectId }: { projectId: string }) {
         )}
       </div>
 
-      <aside className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-l bg-background p-4 text-sm">
+      <aside className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-l bg-surface p-4 text-sm">
         <Link to="/projects/$pid" params={{ pid: projectId }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3" /> Back to store
         </Link>
@@ -132,7 +132,7 @@ function MapToolbar({
     </button>
   );
   return (
-    <div className="absolute left-6 top-6 flex items-center gap-1 rounded-lg border bg-background/95 p-1 text-xs shadow-sm">
+    <div className="absolute left-6 top-6 flex items-center gap-1 glass rounded-xl border p-1 text-sm shadow-float">
       {btn("inspect", MousePointer2, "Explore")}
       {btn("place", MapPinPlus, "Open venue")}
       {mode === "place" && (
@@ -149,9 +149,9 @@ function MapToolbar({
 function Legend() {
   const venues: VenueCategory[] = ["convenience", "cafe", "bakery", "pharmacy", "gym", "academy", "restaurant", "supermarket"];
   return (
-    <div className="absolute bottom-6 left-6 max-w-[560px] rounded-lg border bg-background/95 p-2 text-[11px] shadow-sm">
+    <div className="absolute bottom-6 left-6 max-w-[560px] glass rounded-xl border p-2.5 text-xs shadow-float">
       <div className="flex flex-wrap gap-x-3 gap-y-1">
-        <span className="flex items-center gap-1"><span className="size-3 rounded-full bg-[#0e7490] ring-2 ring-white" /> Our store</span>
+        <span className="flex items-center gap-1"><span className="size-3 rounded-full bg-[var(--map-focal)] ring-2 ring-background" /> Our store</span>
         {venues.map((c) => (
           <span key={c} className="flex items-center gap-1"><span className="size-2.5 rounded-full" style={{ background: VENUE_COLORS[c] }} />{VENUE_LABELS[c]}</span>
         ))}
@@ -287,7 +287,7 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
             <div key={h} className="flex-1 rounded-t bg-primary/70" style={{ height: `${(v / peak) * 100}%` }} title={`${h}:00 · ${Math.round(v)} visitors`} />
           ))}
         </div>
-        <div className="flex justify-between text-[10px] text-muted-foreground"><span>0</span><span>6</span><span>12</span><span>18</span><span>23</span></div>
+        <div className="flex justify-between text-[0.72rem] text-muted-foreground"><span>0</span><span>6</span><span>12</span><span>18</span><span>23</span></div>
       </div>
       <div>
         <div className="mb-1 text-muted-foreground">Who comes</div>
@@ -319,7 +319,7 @@ function Stat({ label, value, hint, icon: Icon }: { label: string; value: string
     <div className="rounded-md border px-2 py-1.5">
       <div className="flex items-center gap-1 text-muted-foreground">{Icon && <Icon className="size-3" />}{label}</div>
       <div className="text-base font-semibold tabular-nums">{value}</div>
-      <div className="truncate text-[11px] text-muted-foreground">{hint}</div>
+      <div className="truncate text-xs text-muted-foreground">{hint}</div>
     </div>
   );
 }
@@ -338,7 +338,7 @@ function SynergyTable({ rows }: { rows: SynergyRow[] }) {
               <span className="mr-1 inline-block size-2 rounded-full" style={{ background: VENUE_COLORS[r.category] }} />{r.name}
             </td>
             <td className="text-right tabular-nums text-muted-foreground">{Math.round(r.distance_m)} m</td>
-            <td className={cn("text-right tabular-nums", r.role === "complement" ? "text-emerald-700" : r.role === "competitor" ? "text-rose-700" : "text-muted-foreground")}>
+            <td className={cn("text-right tabular-nums", r.role === "complement" ? "text-positive" : r.role === "competitor" ? "text-negative" : "text-muted-foreground")}>
               {r.effect_on_focal_visitors > 0 ? "+" : ""}{Math.round(r.effect_on_focal_visitors)} ({r.effect_on_focal_pct > 0 ? "+" : ""}{r.effect_on_focal_pct.toFixed(1)} %)
             </td>
           </tr>

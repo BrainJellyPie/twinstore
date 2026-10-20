@@ -5,35 +5,22 @@ interface Props {
   maxTime: number;
 }
 
+// How far through the simulated day playback is, as a heat-colored progress line.
 export function PlaybackStatus({ minTime, maxTime }: Props) {
   const currentMinute = useSimulationMetricsStore((s) => s.currentMinute);
   const finished = useSimulationMetricsStore((s) => s.finished);
   const hasRange = maxTime > minTime;
+  const pct = !hasRange ? 0 : finished ? 100 : Math.max(0, Math.min(100, ((currentMinute - minTime) / (maxTime - minTime)) * 100));
 
-  let label: string;
-  let variant: "default" | "finished" = "default";
-  if (!hasRange) {
-    label = "No data";
-  } else if (finished) {
-    label = "end...";
-    variant = "finished";
-  } else if (currentMinute <= minTime) {
-    label = "Ready to start…";
-  } else {
-    const pct = Math.round(((currentMinute - minTime) / (maxTime - minTime)) * 100);
-    label = `Playing… (${pct}%)`;
-  }
+  const label = !hasRange ? "No data in this run" : finished ? "Day complete" : pct <= 0 ? "Press play to start the day" : `Playing — ${Math.round(pct)}% of the day`;
 
   return (
-    <div className="px-3 py-2">
-      <div
-        className={`rounded-md border px-3 py-1.5 text-center text-xs font-medium ${
-          variant === "finished"
-            ? "border-primary/30 bg-primary/10 text-primary"
-            : "bg-muted/40 text-muted-foreground"
-        }`}
-      >
-        {label}
+    <div className="px-3 pt-1 pb-3">
+      <div className="mb-1.5 flex items-center justify-between text-sm">
+        <span className={finished ? "font-medium text-primary" : "text-muted-foreground"}>{label}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
+        <div className="heat-gradient h-full rounded-full transition-[width] duration-300" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

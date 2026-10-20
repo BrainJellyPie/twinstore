@@ -71,10 +71,10 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
   const badge = !status.enabled
     ? { text: preset.local ? "Off" : "Disabled", cls: "bg-muted text-muted-foreground" }
     : status.ready
-      ? { text: "Ready", cls: "bg-emerald-100 text-emerald-800" }
+      ? { text: "Ready", cls: "tone-good" }
       : preset.local
-        ? { text: "Needs endpoint", cls: "bg-amber-100 text-amber-800" }
-        : { text: "Needs API key", cls: "bg-amber-100 text-amber-800" };
+        ? { text: "Needs endpoint", cls: "tone-warn" }
+        : { text: "Needs API key", cls: "tone-warn" };
   const listId = `models-${preset.kind}`;
 
   return (
@@ -90,12 +90,12 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", badge.cls)}>{badge.text}</span>
+          <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", badge.cls)}>{badge.text}</span>
           {preset.local && (
             <Button
               size="sm"
               variant={status.enabled ? "outline" : "default"}
-              className="h-6 px-2 text-[11px]"
+              className="h-6 px-2 text-xs"
               onClick={() => save.mutate({ enabled: !status.enabled, ...(base ? { api_base: base } : {}) })}
             >
               {status.enabled ? "Turn off" : "Turn on"}
@@ -179,7 +179,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
             type="button"
             onClick={() => setModel(m.id)}
             className={cn(
-              "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+              "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
               m.id === model ? "border-primary bg-primary/5" : "hover:bg-muted",
             )}
           >
@@ -197,7 +197,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
           <Eye className="size-3" /> Test vision
         </Button>
         {result && (
-          <span className={cn("flex min-w-0 items-center gap-1 text-xs", result.ok ? "text-emerald-700" : "text-destructive")} title={result.error}>
+          <span className={cn("flex min-w-0 items-center gap-1 text-xs", result.ok ? "text-positive" : "text-destructive")} title={result.error}>
             {result.ok ? <CheckCircle2 className="size-3.5 shrink-0" /> : <XCircle className="size-3.5 shrink-0" />}
             <span className="truncate">
               {result.ok ? `OK · ${result.latency_ms} ms${result.reply ? ` · "${result.reply}"` : ""}` : result.error || "failed"}

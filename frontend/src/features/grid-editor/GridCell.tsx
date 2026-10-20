@@ -34,7 +34,7 @@ const RACK_VISUALS: Record<RackType, RackVisual | null> = {
     icon: DoorOpen,
     label: "In",
     bgClass: "bg-emerald-100 dark:bg-emerald-950/40",
-    iconClass: "text-emerald-700 dark:text-emerald-300",
+    iconClass: "text-positive dark:text-emerald-300",
   },
   exit: {
     icon: DoorClosed,
@@ -138,7 +138,7 @@ export function GridCell({
                 />
               ) : null}
               {visual?.label ? (
-                <span className="text-[9px] leading-none font-medium">
+                <span className="text-[0.68rem] leading-none font-medium">
                   {visual.label}
                 </span>
               ) : null}
@@ -188,10 +188,10 @@ export function GridCell({
         />
       ) : null}
       {visual?.label ? (
-        <span className="text-[10px] leading-none font-medium">{visual.label}</span>
+        <span className="text-[0.72rem] leading-none font-medium">{visual.label}</span>
       ) : null}
       {rack.rack_name ? (
-        <span className="max-w-full truncate text-[9px] leading-none text-muted-foreground">
+        <span className="max-w-full truncate text-[0.68rem] leading-none text-muted-foreground">
           {rack.rack_name}
         </span>
       ) : null}

@@ -140,12 +140,12 @@ function CompareTable({ report }: { report: ComparisonReport }) {
           ))}
         </tbody>
       </table>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {report.paired_customers.toLocaleString()} paired customers · {report.n_bootstrap.toLocaleString()} bootstrap draws.
         Spend values are in the currency's minor unit.
       </p>
       {report.notes.map((n) => (
-        <p key={n} className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">{n}</p>
+        <p key={n} className="rounded-md border tone-warn px-2.5 py-1.5 text-sm">{n}</p>
       ))}
     </div>
   );
@@ -160,7 +160,7 @@ function Headline({ m }: { m: MetricComparison }) {
     <div
       className={
         "rounded-md border px-3 py-2 text-sm " +
-        (decisive ? (better ? "border-emerald-300 bg-emerald-50" : "border-rose-300 bg-rose-50") : "bg-muted/40")
+        (decisive ? (better ? "tone-good" : "tone-bad") : "bg-muted/40")
       }
     >
       <span className="font-medium">Spend per visitor: {signed(m.rel_diff)}</span>{" "}
@@ -187,15 +187,15 @@ function ForestBar({ m }: { m: MetricComparison }) {
   const scale = (x: number) => W / 2 + (Math.max(-span, Math.min(span, x)) / span) * (W / 2 - 6);
   const decisive = lo > 0 || hi < 0;
   const goodDirection = HIGHER_IS_BETTER.has(m.metric);
-  const color = !decisive ? "#94a3b8" : !goodDirection ? "#3b82f6" : lo > 0 ? "#10b981" : "#f43f5e";
+  const color = !decisive ? "var(--muted-foreground)" : !goodDirection ? "var(--chart-5)" : lo > 0 ? "var(--positive)" : "var(--negative)";
   return (
     <div className="flex items-center gap-2">
       <svg width={W} height={16} viewBox={`0 0 ${W} 16`} aria-hidden>
-        <line x1={W / 2} x2={W / 2} y1={1} y2={15} stroke="#cbd5e1" strokeDasharray="2 2" />
+        <line x1={W / 2} x2={W / 2} y1={1} y2={15} stroke="var(--border)" strokeDasharray="2 2" />
         <line x1={scale(lo)} x2={scale(hi)} y1={8} y2={8} stroke={color} strokeWidth={3} strokeLinecap="round" />
         <circle cx={scale(rel)} cy={8} r={3.5} fill="white" stroke={color} strokeWidth={2} />
       </svg>
-      <span className="whitespace-nowrap text-[10px] tabular-nums text-muted-foreground">
+      <span className="whitespace-nowrap text-[0.72rem] tabular-nums text-muted-foreground">
         {signed(lo)} … {signed(hi)}
       </span>
     </div>

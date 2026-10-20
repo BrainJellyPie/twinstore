@@ -29,7 +29,7 @@ export function PreviewRunsList({ projectId, setupId }: { projectId: string; set
               <div className="min-w-0">
                 <div className="truncate text-xs font-medium">{runLabel(r)}</div>
                 {s?.conversion_rate !== undefined && (
-                  <div className="text-[11px] tabular-nums text-muted-foreground">
+                  <div className="text-xs tabular-nums text-muted-foreground">
                     {formatPercent(s.conversion_rate, 0)} conv · {formatMoney(s.revenue_per_visitor ?? 0, code)}/visitor
                   </div>
                 )}

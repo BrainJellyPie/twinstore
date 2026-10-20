@@ -34,7 +34,7 @@ export function TopItems({ store }: Props) {
   return (
     <div className="border-t px-3 py-3">
       <div className="mb-2.5 flex items-center justify-between">
-        <div className="text-xs font-medium">Top items</div>
+        <div className="section-title">Top items</div>
         <ToggleGroup
           type="single"
           value={sortBy}
@@ -44,13 +44,13 @@ export function TopItems({ store }: Props) {
         >
           <ToggleGroupItem
             value="revenue"
-            className="h-6 px-2 text-[10px] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+            className="h-6 px-2 text-[0.72rem] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
           >
             by Revenue
           </ToggleGroupItem>
           <ToggleGroupItem
             value="quantity"
-            className="h-6 px-2 text-[10px] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+            className="h-6 px-2 text-[0.72rem] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
           >
             by Quantity
           </ToggleGroupItem>
@@ -77,7 +77,7 @@ export function TopItems({ store }: Props) {
                       </span>
                       <span className="truncate">{s.name}</span>
                       {rackName && (
-                        <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
+                        <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[0.72rem] text-muted-foreground">
                           {rackName}
                         </span>
                       )}
@@ -102,7 +102,7 @@ export function TopItems({ store }: Props) {
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
-              className="mt-2 text-[11px] text-muted-foreground hover:text-foreground"
+              className="mt-2 text-xs text-muted-foreground hover:text-foreground"
             >
               {showAll ? "Show less" : `View all (${totalCount})`}
             </button>

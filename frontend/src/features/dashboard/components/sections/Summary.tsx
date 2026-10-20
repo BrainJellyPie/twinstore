@@ -13,19 +13,19 @@ export function Summary() {
 
   return (
     <div className="border-t px-3 py-3">
-      <div className="mb-2 text-xs font-medium">Summary</div>
+      <div className="section-title mb-2">Summary</div>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <div className="text-[11px] text-muted-foreground">Total revenue</div>
-          <div className="mt-0.5 text-lg font-bold tabular-nums">{formatMoney(revenue, currency)}</div>
+          <div className="text-xs text-muted-foreground">Total revenue</div>
+          <div className="mt-0.5 font-display text-2xl font-bold tracking-tight tabular-nums">{formatMoney(revenue, currency)}</div>
         </div>
         <div>
-          <div className="text-[11px] text-muted-foreground">Avg. order value</div>
-          <div className="mt-0.5 text-lg font-bold tabular-nums">{formatMoney(aov, currency)}</div>
+          <div className="text-xs text-muted-foreground">Avg. order value</div>
+          <div className="mt-0.5 font-display text-2xl font-bold tracking-tight tabular-nums">{formatMoney(aov, currency)}</div>
         </div>
         <div>
-          <div className="text-[11px] text-muted-foreground" title="Revenue from unplanned purchases">Impulse share</div>
-          <div className="mt-0.5 text-lg font-bold tabular-nums">{formatPercent(impulseShare, 0)}</div>
+          <div className="text-xs text-muted-foreground" title="Revenue from unplanned purchases">Impulse share</div>
+          <div className="mt-0.5 font-display text-2xl font-bold tracking-tight tabular-nums">{formatPercent(impulseShare, 0)}</div>
         </div>
       </div>
     </div>

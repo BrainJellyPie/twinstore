@@ -47,7 +47,7 @@ export function VisionGlancesSection({ projectId, runId }: { projectId: string; 
           <div key={t.label} className="rounded-md border px-2 py-1.5">
             <div className="text-muted-foreground">{t.label}</div>
             <div className="text-base font-semibold tabular-nums">{t.value}</div>
-            <div className="truncate text-[11px] text-muted-foreground">{t.hint}</div>
+            <div className="truncate text-xs text-muted-foreground">{t.hint}</div>
           </div>
         ))}
       </div>
@@ -83,7 +83,7 @@ export function VisionGlancesSection({ projectId, runId }: { projectId: string; 
               <li key={`${g.persona_id}-${g.rack}-${i}`} className="rounded-md bg-muted/40 px-2 py-1.5">
                 <div className="flex justify-between gap-2">
                   <span className="truncate font-medium">{g.product || "—"}</span>
-                  <span className={g.outcome === "buy" ? "shrink-0 text-emerald-700" : "shrink-0 text-muted-foreground"}>
+                  <span className={g.outcome === "buy" ? "shrink-0 text-positive" : "shrink-0 text-muted-foreground"}>
                     {g.outcome === "buy" ? "bought" : "looked"}
                   </span>
                 </div>

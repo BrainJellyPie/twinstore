@@ -13,7 +13,7 @@ interface Props {
 }
 
 const chartConfig = {
-  visitors: { label: "Visitors", color: "var(--color-chart-2)" },
+  visitors: { label: "Visitors", color: "var(--color-chart-1)" },
 } satisfies ChartConfig;
 
 const MARGIN = { top: 4, right: 4, bottom: 0, left: 4 };
@@ -70,8 +70,8 @@ export function TimelineChart({ customers, minTime, maxTime }: Props) {
   if (data.length === 0) {
     return (
       <div className="border-t px-3 py-3">
-        <div className="mb-2 text-xs font-medium">Timeline</div>
-        <div className="flex h-20 items-center justify-center rounded-md border border-dashed text-[11px] text-muted-foreground">
+        <div className="section-title mb-2">Timeline</div>
+        <div className="flex h-20 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
           No data
         </div>
       </div>
@@ -84,9 +84,9 @@ export function TimelineChart({ customers, minTime, maxTime }: Props) {
 
   return (
     <div className="border-t px-3 py-3">
-      <div className="mb-1 text-xs font-medium">Timeline</div>
+      <div className="section-title mb-1">Timeline</div>
       <div ref={containerRef} onClick={handleChartClick} className="cursor-pointer">
-        <ChartContainer config={chartConfig} className="aspect-auto h-[80px] w-full">
+        <ChartContainer config={chartConfig} className="aspect-auto h-[96px] w-full">
           <BarChart data={data} margin={MARGIN}>
             <XAxis
               dataKey="hour"
@@ -96,7 +96,7 @@ export function TimelineChart({ customers, minTime, maxTime }: Props) {
               tickFormatter={(h) => String(h)}
               tickLine={false}
               axisLine={false}
-              tick={{ fontSize: 9 }}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               padding={PADDING}
             />
             <ChartTooltip
@@ -110,23 +110,23 @@ export function TimelineChart({ customers, minTime, maxTime }: Props) {
               <ReferenceArea
                 x1={firstHour}
                 x2={clampedHour}
-                fill="var(--color-chart-2)"
-                fillOpacity={0.1}
+                fill="var(--color-chart-1)"
+                fillOpacity={0.08}
                 ifOverflow="hidden"
               />
             )}
             {started && currentHour < lastHour && (
               <ReferenceLine
                 x={clampedHour}
-                stroke="var(--color-destructive)"
-                strokeWidth={1.5}
+                stroke="var(--heat-3)"
+                strokeWidth={2}
                 ifOverflow="hidden"
               />
             )}
             <Bar
               dataKey="visitors"
-              fill="var(--color-chart-2)"
-              radius={[2, 2, 0, 0]}
+              fill="var(--color-chart-1)"
+              radius={[4, 4, 0, 0]}
               maxBarSize={40}
             />
           </BarChart>
