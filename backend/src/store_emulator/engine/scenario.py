@@ -221,7 +221,7 @@ def compile_scenario(scenario: Scenario, priors: ScenarioPriors | None = None) -
         keys.append((f"season:{scenario.season.value}", 1.0))
     keys += [(f"event:{e.kind.value}", e.intensity) for e in scenario.events]
     for key, power in keys:
-        _mul(fx.need, p.need_ratio.get(key, {}), power=power)
+        _mul(fx.need, p.need_ratio.get(key, {}), power=power * p.need_power)
         fx.size *= p.size_ratio.get(key, 1.0) ** power
     return hour_effects(p, fx)
 
