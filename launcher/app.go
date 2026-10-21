@@ -148,16 +148,19 @@ func (a *app) launch(uv string) error {
 	a.cmd, a.stdin, a.exited, a.stopping = cmd, stdin, exited, false
 	a.mu.Unlock()
 
-	go a.readOutput(pr)
+	go a.readOutput(pr, exited)
 	go func() {
 		err := cmd.Wait()
 		pw.Close()
-		close(exited)
-		a.target.Store(nil)
 		a.mu.Lock()
-		stopping := a.stopping
-		a.mu.Unlock()
-		if stopping {
+		defer a.mu.Unlock()
+		// Publish the exit only after cleanup, before allowing another start.
+		defer close(exited)
+		if a.exited != exited {
+			return
+		}
+		a.target.Store(nil)
+		if a.stopping {
 			return
 		}
 		code := -1
@@ -177,7 +180,7 @@ func (a *app) launch(uv string) error {
 var startingOn = regexp.MustCompile(`Starting on (http://[0-9.:a-z]+)`)
 
 // readOutput follows the server's console output and moves the boot screen along.
-func (a *app) readOutput(r io.Reader) {
+func (a *app) readOutput(r io.Reader, exited <-chan struct{}) {
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64*1024), 1024*1024)
 	for sc.Scan() {
@@ -186,6 +189,11 @@ func (a *app) readOutput(r io.Reader) {
 			continue
 		}
 		a.log.Line(line)
+		a.mu.Lock()
+		if !a.backendActiveLocked(exited) {
+			a.mu.Unlock()
+			continue
+		}
 		switch {
 		case strings.Contains(line, "Preparing the web interface"):
 			a.status.done("python", "ready")
@@ -200,17 +208,31 @@ func (a *app) readOutput(r io.Reader) {
 			}
 			a.status.done("python", "ready")
 			a.status.activate("server", "Waking up the shoppers")
-			go a.waitReady(startingOn.FindStringSubmatch(line)[1])
+			go a.waitReady(startingOn.FindStringSubmatch(line)[1], exited)
 		case a.status.state("python") == "active" && !strings.HasPrefix(line, "[TwinStore]"):
 			if len(line) > 90 {
 				line = line[:87] + "…"
 			}
 			a.status.activate("python", line)
 		}
+		a.mu.Unlock()
 	}
 }
 
-func (a *app) waitReady(base string) {
+// backendActiveLocked requires a.mu, so readiness and exit publication are atomic.
+func (a *app) backendActiveLocked(exited <-chan struct{}) bool {
+	if a.exited != exited || a.stopping {
+		return false
+	}
+	select {
+	case <-exited:
+		return false
+	default:
+		return true
+	}
+}
+
+func (a *app) waitReady(base string, exited <-chan struct{}) {
 	target, err := url.Parse(base)
 	if err != nil {
 		a.status.fail("server", "Bad server address "+base)
@@ -219,12 +241,24 @@ func (a *app) waitReady(base string) {
 	client := http.Client{Timeout: 2 * time.Second}
 	deadline := time.Now().Add(3 * time.Minute)
 	for time.Now().Before(deadline) {
+		a.mu.Lock()
+		active := a.backendActiveLocked(exited)
+		a.mu.Unlock()
+		if !active {
+			return
+		}
 		resp, err := client.Get(base + "/api/health")
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
+				a.mu.Lock()
+				if !a.backendActiveLocked(exited) {
+					a.mu.Unlock()
+					return
+				}
 				a.target.Store(target)
 				a.status.finish()
+				a.mu.Unlock()
 				a.log.Printf("TwinStore is ready at %s", a.url)
 				if a.opt.smoke {
 					a.smokeCheck()
@@ -232,14 +266,16 @@ func (a *app) waitReady(base string) {
 				return
 			}
 		}
-		a.mu.Lock()
-		exited := a.exited
-		a.mu.Unlock()
 		select {
 		case <-exited:
 			return
 		case <-time.After(400 * time.Millisecond):
 		}
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if !a.backendActiveLocked(exited) {
+		return
 	}
 	a.status.fail("server", "The server did not answer within 3 minutes.")
 	a.smokeFail()
