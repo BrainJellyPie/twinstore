@@ -37,3 +37,9 @@ backend/.data/
 # at frontend/src/routeTree.gen.ts so a fresh `pnpm build` works without
 # the dev plugin running first).
 frontend/.tanstack/
+
+# Real-data validation: raw datasets, derived tables and model caches stay local (dataset terms;
+# the caches hold prompts built from the datasets). Results (metrics, simulated trips) are committed.
+research/validation/data/
+research/validation/prep/
+research/validation/results/.cache/

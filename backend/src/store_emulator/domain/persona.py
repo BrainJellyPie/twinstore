@@ -25,6 +25,9 @@ class Persona(BaseModel):
     budget_min: int = 0  # unit: US cents
     budget_max: int = 0  # unit: US cents
     behavior_tendency: str = ""
+    # Different items this trip is for (e.g. drawn from the store's own receipts). 0 = the engine
+    # decides from the behavior pattern; > 0 = engines plan this many and size the trip to it.
+    basket_size: int = 0
 
     @property
     def budget_label(self) -> str:

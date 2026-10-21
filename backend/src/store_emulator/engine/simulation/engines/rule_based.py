@@ -158,11 +158,14 @@ class RuleBasedEngine:
         plan, middle = self._begin_plan(context)
         pattern, rng = plan.pattern, plan.rng
         plan.walk_out = pattern.allow_no_purchase and rng.random() < min(0.9, params.walkout_prob * self._fx.walkout)
+        target = persona.basket_size if persona.basket_size > 0 else pattern.max_products
         if pattern.max_products > 0 and not plan.walk_out:
-            for category in persona.preferred_categories:
-                if len(plan.buys) >= pattern.max_products:
+            for position, category in enumerate(persona.preferred_categories):
+                if len(plan.buys) >= target:
                     break
-                hit_prob = params.planned_hit_prob * self._fx.demand_for(words_categories(category)) ** 0.5
+                # Lists are written in priority order: later entries are less likely to be bought.
+                hit_prob = (params.planned_hit_prob * params.plan_position_decay ** position
+                            * self._fx.demand_for(words_categories(category)) ** 0.5)
                 if rng.random() > min(0.98, hit_prob):
                     continue
                 pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng)
@@ -170,7 +173,32 @@ class RuleBasedEngine:
                     continue
                 rack, slot, item = pick
                 self.add_planned_buy(store, plan, middle, rack, slot, item, f"looks for {category}")
+                # More products from the same category (several flavours, sizes): geometric extras
+                # with mean items_per_category − 1. Drawn only when calibrated above 1.
+                extra_p = 1.0 - 1.0 / params.items_per_category
+                while (extra_p > 0 and len(plan.buys) < target and rng.random() < extra_p):
+                    more = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng)
+                    if more is None:
+                        break
+                    self.add_planned_buy(store, plan, middle, *more, f"also takes more {category}")
+            if persona.basket_size > 0:
+                self._fill_to_size(store, plan, middle, persona.preferred_categories, target)
         return self.close_plan(store, plan, middle)
+
+    def _fill_to_size(self, store: Store, plan: ShopperPlan, middle: list[CustomerAction],
+                      categories: list[str], target: int) -> None:
+        """A trip of known size: keep taking products from the list (in priority order, round after
+        round) until the basket has `target` products, the list is exhausted or money runs out."""
+        while len(plan.buys) < target:
+            progressed = False
+            for category in categories:
+                if len(plan.buys) >= target:
+                    return
+                pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, plan.rng)
+                if pick is not None and self.add_planned_buy(store, plan, middle, *pick, f"also needs {category}"):
+                    progressed = True
+            if not progressed:
+                return
 
     def _begin_plan(self, context: PerCustomerContext) -> tuple[ShopperPlan, list[CustomerAction]]:
         """Pattern draw, budget and the wandering stop: everything a plan has before its purchases.
@@ -178,7 +206,7 @@ class RuleBasedEngine:
         cfg = self._config
         store, persona = context.store, context.persona
         rng = random.Random(stable_seed(context.seed, "rule_based"))
-        pattern = self._pick_pattern(context.behavior_patterns, rng)
+        pattern = self._pick_pattern(context.behavior_patterns, rng, persona.basket_size)
         middle: list[CustomerAction] = []
         if pattern.id in _WANDERING_PATTERNS:
             w, h = store.grid_size
@@ -290,11 +318,18 @@ class RuleBasedEngine:
                    "impulse_buys": impulse.buys, "impulse_looks": impulse.looks, **plan.trace, **impulse.trace},
         )
 
-    def _pick_pattern(self, patterns: list[BehaviorPattern], rng: random.Random) -> BehaviorPattern:
+    def _pick_pattern(self, patterns: list[BehaviorPattern], rng: random.Random, basket_size: int = 0) -> BehaviorPattern:
+        """Weighted draw of the trip's behavior pattern. A trip of known size draws among the
+        buying patterns that hold it (or the roomiest), and its cap is raised to the size."""
+        if basket_size > 0:
+            buying = [p for p in patterns if p.max_products > 0] or patterns
+            fits = [p for p in buying if p.max_products >= basket_size]
+            patterns = fits or [max(buying, key=lambda p: p.max_products)]
         weights = [max(0.0, self._config.engines.rule_based.pattern_weights.get(p.id, 1.0)) for p in patterns]
-        if sum(weights) <= 0:
-            return patterns[0]
-        return rng.choices(patterns, weights=weights, k=1)[0]
+        pattern = patterns[0] if sum(weights) <= 0 else rng.choices(patterns, weights=weights, k=1)[0]
+        if basket_size > pattern.max_products:
+            pattern = pattern.model_copy(update={"max_products": basket_size})
+        return pattern
 
     def _pick_item(
         self, store: Store, category: str, remaining: int, chosen: set[str], rng: random.Random,
@@ -336,6 +371,9 @@ class RuleBasedEngine:
             return []
         if quantity is None:
             quantity = 2 if pattern.id == "routine_refill" and rng.random() < 0.4 else 1
+            multi = self._config.engines.rule_based.multi_unit_prob
+            if quantity == 1 and multi > 0 and rng.random() < multi:
+                quantity = 2 + (1 if rng.random() < multi else 0)
             if self._fx.quantity > 1.0 and rng.random() < self._fx.quantity - 1.0:
                 quantity += 1  # stocking up (typhoon, snow)
         out: list[CustomerAction] = []

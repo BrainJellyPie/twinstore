@@ -165,7 +165,8 @@ def test_vlm_plan_becomes_planned_purchases_with_the_named_quantities():
     assert (next(sku for sku, n in names.items() if n == "Pepsi 20oz"), 2) in buys and len(buys) == 2
     assert all(a.origin == "planned" for a in decision.actions if a.action == Action.BUY)
     call = vlm.plan_calls[0]
-    assert call["image"] is not None and call["route"] == _personas()[0].id and call["max_tokens"] == 320
+    # max(plan_max_tokens, 200 + 70 per allowed item): a 3-item plan gets 410 tokens.
+    assert call["image"] is not None and call["route"] == _personas()[0].id and call["max_tokens"] == 410
     assert "Today: a heatwave." in str(call["prompt"]) and "- Drink: " in str(call["prompt"])
     assert decision.trace["plan_source"] == "vlm" and decision.trace["mission"] == PLAN["mission"]
     meta = engine.metadata()
@@ -293,3 +294,23 @@ def test_run_options_and_cli_switch_the_plan_policy():
     assert apply_options(SimulationConfig(), RunOptions()).engines.vlm_glance.plan_policy == "vlm"
     with pytest.raises(SystemExit):
         main(["simulate", "--plan-policy", "maybe", "--out", "x"])
+
+
+class _CutOffOnceVLM(_FakeVLM):
+    """The first plan answer runs out of tokens, as long supermarket lists did."""
+
+    def _answer[T: BaseModel](self, response_model: type[T], system: str, prompt: str, image: str | None,
+                              seed: int | None, route: str | None, max_tokens: int | None) -> T:
+        if issubclass(response_model, EntryDecision) and not self.plan_calls:
+            self.plan_calls.append({"max_tokens": max_tokens})
+            raise RuntimeError("The output is incomplete due to a max_tokens length limit.")
+        return super()._answer(response_model, system, prompt, image, seed, route, max_tokens)
+
+
+def test_cut_off_plan_is_retried_with_twice_the_budget():
+    store = _store()
+    vlm = _CutOffOnceVLM()
+    engine = VLMGlanceEngine(llm=vlm, pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    decision = asyncio.run(engine.decide_actions(_context(store, _personas()[0], seed=11, situation="")))
+    assert [c["max_tokens"] for c in vlm.plan_calls] == [410, 820]
+    assert decision.trace["plan_source"] == "vlm"

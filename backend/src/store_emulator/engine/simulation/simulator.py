@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import math
 import random
 from collections import Counter
 from collections.abc import Callable
@@ -68,7 +69,13 @@ class PerCustomerSimulationRunner:
         self.engine = engine
         self.pathfinder = pathfinder
         self.cue_sampler = cue_sampler
-        self.behavior_patterns = behavior_patterns
+        # The pattern presets are sized for convenience stores; basket_scale stretches every
+        # pattern's product cap for larger formats (0 stays 0: browse-only patterns).
+        scale = config.basket_scale
+        self.behavior_patterns = behavior_patterns if scale == 1.0 else [
+            p.model_copy(update={"max_products": max(1, math.ceil(p.max_products * scale)) if p.max_products > 0 else 0})
+            for p in behavior_patterns
+        ]
         self._scenario = compile_scenario(config.scenario) if config.scenario is not None else None
 
     def get_engine_metadata(self) -> dict[str, object]:

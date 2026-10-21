@@ -66,10 +66,14 @@ PRESETS: dict[ProviderKind, ProviderPreset] = {
     ProviderKind.QWEN: ProviderPreset(
         kind=ProviderKind.QWEN, label="Alibaba Cloud Qwen (Model Studio)", litellm_prefix="openai",
         default_api_base="https://dashscope-intl.aliyuncs.com/compatible-mode/v1", api_key_env="DASHSCOPE_API_KEY",
+        # Other regions: Settings → API base, or DASHSCOPE_API_BASE (US: dashscope-us…; Frankfurt has only
+        # workspace endpoints, https://<workspace>.eu-central-1.maas.aliyuncs.com/compatible-mode/v1).
+        api_base_env="DASHSCOPE_API_BASE",
         docs_url="https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope",
         models=[
             ModelSuggestion(id="qwen3.7-plus", label="Qwen3.7-Plus", vision=True, note="text + image"),
             ModelSuggestion(id="qwen3-vl-plus", label="Qwen3-VL-Plus", vision=True),
+            ModelSuggestion(id="qwen3.8-flash", label="Qwen3.8-Flash", note="fast, low cost"),
             ModelSuggestion(id="qwen-flash", label="Qwen Flash", note="low cost"),
         ],
     ),
@@ -202,6 +206,12 @@ def _key_for(kind: ProviderKind, settings: dict[ProviderKind, ProviderSettings])
     return None, "none"
 
 
+def _api_base(preset: ProviderPreset, s: ProviderSettings) -> str | None:
+    """Settings first, then the preset's environment override, then the preset default."""
+    env = os.environ.get(preset.api_base_env) if preset.api_base_env else None
+    return s.api_base or env or preset.default_api_base
+
+
 def provider_status(kind: ProviderKind, settings: dict[ProviderKind, ProviderSettings] | None = None) -> ProviderStatus:
     settings = settings if settings is not None else load_settings()
     preset = PRESETS[kind]
@@ -213,7 +223,7 @@ def provider_status(kind: ProviderKind, settings: dict[ProviderKind, ProviderSet
     # Local servers are off until the user turns them on: a default endpoint is no proof that a
     # server is running there, and offering it in model pickers would only produce failed runs.
     enabled = s.enabled if stored is not None else not preset.local
-    api_base = s.api_base or preset.default_api_base
+    api_base = _api_base(preset, s)
     return ProviderStatus(
         preset=preset, enabled=enabled, has_key=key is not None, key_source=source,
         key_hint=f"…{key[-4:]}" if key and len(key) >= 8 else "",
@@ -272,7 +282,7 @@ def resolve_model(
         model_id = "local-model"
     return base.model_copy(update={
         "model": f"{preset.litellm_prefix}/{model_id}",
-        "api_base": s.api_base or preset.default_api_base,
+        "api_base": _api_base(preset, s),
         "structured_output": preset.structured_output,
         "api_key": SecretStr(key) if key else None,
     })

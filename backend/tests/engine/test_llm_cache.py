@@ -47,9 +47,13 @@ def test_rejected_optional_params_are_learned_and_dropped():
     first = client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
     assert "temperature" in first and first["thinking"] == {"type": "disabled"}
     err = RuntimeError('AnthropicException - {"message":"`temperature` is deprecated for this model."}')
-    assert lc._learn_rejected_param(model, err)  # pyright: ignore[reportPrivateUsage]
-    assert not lc._learn_rejected_param(model, err)  # pyright: ignore[reportPrivateUsage]  # second time: a real error
-    assert "temperature" not in client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
-    assert not lc._learn_rejected_param(model, RuntimeError("rate limit exceeded"))  # pyright: ignore[reportPrivateUsage]
+    assert lc._should_retry_without(model, err, first)  # pyright: ignore[reportPrivateUsage]
+    # A call that was already in flight with the parameter is retried as well …
+    assert lc._should_retry_without(model, err, first)  # pyright: ignore[reportPrivateUsage]
+    # … but not one that was sent without it (then the error is something else).
+    second = client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
+    assert "temperature" not in second
+    assert not lc._should_retry_without(model, err, second)  # pyright: ignore[reportPrivateUsage]
+    assert not lc._should_retry_without(model, RuntimeError("rate limit exceeded"), first)  # pyright: ignore[reportPrivateUsage]
     other = LiteLLMClient(LLMConfig(model="openai/local"))
     assert "temperature" in other._call_kwargs(None) and "thinking" not in other._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]

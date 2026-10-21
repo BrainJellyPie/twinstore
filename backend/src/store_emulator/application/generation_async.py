@@ -13,11 +13,12 @@ from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.application.storage.setups import (
     metadata_path, personas_path, read_setup,
 )
-from store_emulator.application.supplemental import summarize_supplemental
+from store_emulator.application.supplemental import summarize_supplemental, traffic_from_supplemental
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import DaySchedule
 from store_emulator.engine.generators import persona as gen_persona
+from store_emulator.engine.generators.traffic_profile import TrafficProfile
 from store_emulator.application.providers import resolve_model
 from store_emulator.engine.llm_client import LiteLLMClient
 
@@ -151,6 +152,19 @@ async def _run_async_pipeline(
                 )
                 effective_summary = ""
 
+    traffic = _stored_traffic(meta)
+    if supplemental_bytes is not None:
+        fitted = traffic_from_supplemental(supplemental_bytes, supplemental_filename)
+        if fitted is not None:
+            traffic = fitted
+            try:
+                latest_meta = cast(dict[str, object], read_json(metadata_path(project_id)))
+                latest_meta["traffic_profile"] = fitted.model_dump(mode="json")
+                write_json(metadata_path(project_id), latest_meta)
+            except Exception:
+                logger.warning("[supplemental] could not store the traffic profile", exc_info=True)
+            logger.info(f"[supplemental] visit times follow the uploaded data ({fitted.source})")
+
     return await _generate_personas_impl(
         llm=llm,
         address=str(meta.get("address", "")),
@@ -159,7 +173,19 @@ async def _run_async_pipeline(
         custom_instruction=custom_instruction,
         supplemental_summary=effective_summary,
         currency=config.currency,
+        traffic=traffic,
     )
+
+
+def _stored_traffic(meta: dict[str, object]) -> TrafficProfile | None:
+    raw = meta.get("traffic_profile")
+    if not raw:
+        return None
+    try:
+        return TrafficProfile.model_validate(raw)
+    except ValueError:  # pydantic's ValidationError
+        logger.warning("[supplemental] stored traffic profile is unreadable; ignoring it")
+        return None
 
 
 async def _generate_personas_impl(
@@ -172,6 +198,7 @@ async def _generate_personas_impl(
     *,
     supplemental_summary: str = "",
     currency: str = "USD",
+    traffic: TrafficProfile | None = None,
 ) -> list[Persona]:
     """Internal impl accepting an LLM instance, with supplemental_summary support.
 
@@ -184,6 +211,7 @@ async def _generate_personas_impl(
         seed=seed, custom_instruction=custom_instruction,
         supplemental_summary=supplemental_summary,
         currency=currency,
+        traffic=traffic,
     )
     usage = llm.get_usage()
     logger.info(f"[persona generation] {len(all_personas)} personas done | {usage.total_tokens} tokens")

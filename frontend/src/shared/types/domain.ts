@@ -70,6 +70,8 @@ export interface Persona {
   budget_min: number;
   budget_max: number;
   behavior_tendency: string;
+  /** Different items this trip is for; 0 or absent = the engine decides. */
+  basket_size?: number;
 }
 
 export interface TimelineEvent {

@@ -25,21 +25,26 @@ _REJECTED_LOCK = threading.Lock()
 _OPTIONAL_PARAMS = ("temperature", "thinking")
 
 
-def _learn_rejected_param(model: str, error: BaseException) -> bool:
-    """True (and remembered) when the provider refused the call because of an optional parameter."""
+def _rejected_param(error: BaseException) -> str | None:
+    """The optional parameter a provider error says it refused, if any."""
     text = str(error).lower()
     if not any(w in text for w in ("deprecated", "not supported", "unsupported", "does not support", "not allowed")):
+        return None
+    return next((p for p in _OPTIONAL_PARAMS if p in text), None)
+
+
+def _should_retry_without(model: str, error: BaseException, sent: dict[str, object]) -> bool:
+    """Remember a refused parameter and say whether the call is worth one retry without it. Calls
+    already in flight when another call learned the same thing are retried too."""
+    param = _rejected_param(error)
+    if param is None or param not in sent:
         return False
-    for param in _OPTIONAL_PARAMS:
-        if param in text:
-            with _REJECTED_LOCK:
-                seen = _REJECTED.setdefault(model, set())
-                if param in seen:
-                    return False  # already sent without it: a different problem
-                seen.add(param)
-            logger.info(f"{model}: provider rejects `{param}`; retrying without it")
-            return True
-    return False
+    with _REJECTED_LOCK:
+        new = param not in _REJECTED.setdefault(model, set())
+        _REJECTED[model].add(param)
+    if new:
+        logger.info(f"{model}: provider rejects `{param}`; retrying without it")
+    return True
 
 
 def _accepts(model: str, param: str) -> bool:
@@ -105,6 +110,10 @@ class LiteLLMClient:
         # max_tokens budget before any JSON is written. Shopper decisions are short: answer directly.
         if self.model.startswith("anthropic/") and _accepts(self.model, "thinking"):
             kwargs["thinking"] = {"type": "disabled"}
+        # Hybrid Qwen models on Model Studio think by default (billed reasoning tokens, slower);
+        # the OpenAI-compatible endpoint takes the switch as a top-level body field.
+        if self.model.startswith("openai/qwen") and "aliyuncs.com" in (self.api_base or ""):
+            kwargs["extra_body"] = {"enable_thinking": False}
         if self.api_base:
             kwargs["api_base"] = self.api_base
             # Local OpenAI-compatible servers (llama.cpp, vLLM) usually need no key, but the OpenAI
@@ -200,15 +209,16 @@ class LiteLLMClient:
     def _create(self, response_model: type[BaseModel], msgs: object, max_retries: int,
                 seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
         for attempt in range(2):
+            kwargs = self._call_kwargs(seed, max_tokens)
             try:
                 return self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=response_model,
                     messages=msgs,  # type: ignore[reportArgumentType]
                     max_retries=max_retries,
-                    **self._call_kwargs(seed, max_tokens),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
+                    **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
             except Exception as e:
-                if attempt == 0 and _learn_rejected_param(self.model, e):
+                if attempt == 0 and _should_retry_without(self.model, e, kwargs):
                     continue
                 raise
         raise AssertionError("unreachable")
@@ -216,15 +226,16 @@ class LiteLLMClient:
     async def _acreate(self, response_model: type[BaseModel], msgs: object, max_retries: int,
                        seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
         for attempt in range(2):
+            kwargs = self._call_kwargs(seed, max_tokens)
             try:
                 return await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=response_model,
                     messages=msgs,  # type: ignore[reportArgumentType]
                     max_retries=max_retries,
-                    **self._call_kwargs(seed, max_tokens),  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
+                    **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
             except Exception as e:
-                if attempt == 0 and _learn_rejected_param(self.model, e):
+                if attempt == 0 and _should_retry_without(self.model, e, kwargs):
                     continue
                 raise
         raise AssertionError("unreachable")
@@ -338,7 +349,7 @@ class LiteLLMClient:
                 raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
                 break
             except Exception as e:
-                if attempt == 0 and _learn_rejected_param(self.model, e):
+                if attempt == 0 and _should_retry_without(self.model, e, kwargs):
                     continue
                 raise
         self._accumulate_usage(raw, rid)

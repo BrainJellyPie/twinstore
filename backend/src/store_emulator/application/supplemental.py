@@ -21,12 +21,16 @@ from __future__ import annotations
 import io
 import json
 import logging
-from typing import cast
+from typing import Any, cast
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
 from pydantic import BaseModel
 
 from store_emulator.domain.types import AsyncLLMClient
+from store_emulator.engine.generators.traffic_profile import (
+    TrafficProfile,
+    fit_traffic_profile,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -497,3 +501,55 @@ async def summarize_supplemental(
             exc_info=True,
         )
         return ""
+
+
+# ── Visit times from a POS export ──────────────────────────────────────────
+
+_BASKET_COLUMN_HINTS = ("transaction", "basket", "receipt", "order", "ticket", "invoice", "거래", "영수증", "주문")
+MIN_TRAFFIC_VISITS = 200
+
+
+def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
+    """(weekday 1–7, hour) of each visit in a table with a timestamp column, one per basket when a
+    transaction/receipt column exists. Empty when no column parses as date-times with a time of day."""
+    table = cast(Any, df)
+    best: Any = None
+    best_ok = 0.0
+    for col in cast(list[object], list(table.columns)):
+        series = table[col]
+        if pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series):  # type: ignore[reportUnknownMemberType]
+            continue  # epoch numbers are not taken for timestamps
+        parsed = cast(Any, pd.to_datetime(series, errors="coerce", format="mixed"))  # type: ignore[reportUnknownMemberType]
+        ok = float(parsed.notna().mean())
+        valid = parsed.dropna()
+        has_time = ok > 0 and float(((valid.dt.hour + valid.dt.minute) > 0).mean()) > 0.5
+        if ok >= 0.8 and has_time and ok > best_ok:
+            best, best_ok = parsed, ok
+    if best is None:
+        return []
+    frame = cast(Any, pd.DataFrame({"ts": best}))
+    basket = next((c for c in cast(list[object], list(table.columns))
+                   if any(h in str(c).lower() for h in _BASKET_COLUMN_HINTS)), None)
+    if basket is not None:
+        frame["basket"] = table[basket].to_numpy()
+        frame = frame.dropna().drop_duplicates("basket")
+    ts = frame.ts.dropna()
+    days = cast(list[int], (ts.dt.dayofweek + 1).astype(int).tolist())
+    hours = cast(list[int], ts.dt.hour.astype(int).tolist())
+    return list(zip(days, hours, strict=True))
+
+
+def traffic_from_supplemental(bytes_: bytes, filename: str) -> TrafficProfile | None:
+    """A weekday × hour traffic profile fitted from a POS export (csv/xlsx with a timestamp column),
+    or None when the file has no usable timestamps or fewer than MIN_TRAFFIC_VISITS visits."""
+    ext = _ext(filename)
+    if not bytes_ or ext not in SUPPLEMENTAL_ALLOWED_EXTS:
+        return None
+    try:
+        visits = [v for df in _load_frames(bytes_, ext).values() for v in _visit_times_from_frame(_normalize_columns(df))]
+    except Exception:
+        logger.warning("[supplemental] timestamp scan failed", exc_info=True)
+        return None
+    if len(visits) < MIN_TRAFFIC_VISITS:
+        return None
+    return fit_traffic_profile(visits, source=f"{filename}: {len(visits)} visits")

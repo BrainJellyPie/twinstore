@@ -92,6 +92,13 @@ class RuleBasedConfig(BaseModel):
     promo_multiplier: float = Field(default=1.8, ge=0.0)
     walkout_prob: float = Field(default=0.04, ge=0.0, le=1.0)    # leaves without buying (no-purchase patterns)
     max_impulse_items: int = Field(default=3, ge=0)
+    # Mean products bought per planned category (≥ 1; extra products follow a geometric draw) and the
+    # chance a bought line is two or more units. Defaults keep the original one-unit, one-product rule.
+    items_per_category: float = Field(default=1.0, ge=1.0, le=6.0)
+    multi_unit_prob: float = Field(default=0.0, ge=0.0, le=0.9)
+    # planned_hit_prob × decay^k for the k-th preferred category (0-based): a shopping list is written
+    # in priority order and its tail is often skipped. 1.0 = every entry equally likely (original rule).
+    plan_position_decay: float = Field(default=1.0, gt=0.0, le=1.0)
     browse_before_buy_prob: float = Field(default=0.6, ge=0.0, le=1.0)
     # Unplanned stops that end without a purchase, per impulse buy (noticed, looked, walked on).
     browse_only_ratio: float = Field(default=1.0, ge=0.0)
@@ -137,7 +144,8 @@ class VLMGlanceConfig(BaseModel):
     #   multipliers are then not applied to the plan — the model read the situation itself.
     # - rule: the rule-based planner (preferred categories × scenario demand multipliers).
     plan_policy: PlanPolicy = "vlm"
-    max_plan_items: int = Field(default=3, ge=0, le=4)
+    # 3 suits a convenience-store visit; supermarket trips need more (calibrate from POS lines per trip).
+    max_plan_items: int = Field(default=3, ge=0, le=30)
     entrance_image: bool = True
     plan_max_tokens: int = Field(default=320, ge=64, le=4096)  # plans are longer than glance answers
 
@@ -164,6 +172,9 @@ class SimulationConfig(BaseModel):
     perception: PerceptionConfig = PerceptionConfig()
     # Impulse buys are dropped (latest first) once spend exceeds budget_max × tolerance. None disables.
     budget_tolerance: float | None = 1.5
+    # Scales every behavior pattern's product cap (max_products). The presets are sized for convenience
+    # stores; supermarket trips are larger. Calibrated from POS lines per trip (see engine.calibration).
+    basket_scale: float = Field(default=1.0, ge=0.1, le=10.0)
     max_quantity_per_line: int = Field(default=6, ge=1)
     # ISO 4217 code. Prices and budgets are integers in the currency's minor unit (USD → cents, KRW → won).
     currency: str = "USD"

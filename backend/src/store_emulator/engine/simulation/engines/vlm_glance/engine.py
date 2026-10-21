@@ -58,13 +58,14 @@ from ..rule_based import (
 )
 from .planning import PlanMatch, PlanRecord, match_plan_item, pick_candidate
 from .prompt import (
-    SYSTEM_PROMPT,
+    PLAN_ITEMS_LIMIT,
     EntryDecision,
     PlannedItem,
     ShelfGlance,
     combine_plan_votes,
     combine_votes,
     entry_decision_model,
+    glance_system_prompt,
     plan_system_prompt,
     plan_user_prompt,
     resolve,
@@ -136,8 +137,10 @@ class VLMGlanceEngine(RuleBasedEngine):
         store, persona = context.store, context.persona
         plan, middle = self._begin_plan(context)
         directory, image = self._entrance_view(store)
-        max_items = min(vcfg.max_plan_items, plan.pattern.max_products)
-        system = plan_system_prompt(max_items=max_items, image=bool(image))
+        # A trip of known size plans that many (up to the schema limit), whatever the default cap.
+        max_items = (min(PLAN_ITEMS_LIMIT, persona.basket_size) if persona.basket_size > 0
+                     else min(vcfg.max_plan_items, plan.pattern.max_products))
+        system = plan_system_prompt(max_items=max_items, image=bool(image), store_type=store.type)
         prompt = plan_user_prompt(
             persona, context.cue, plan.pattern, day=context.day, hour=context.arrival_hour,
             situation=context.situation, budget=persona.budget_max if persona.budget_max > 0 else None,
@@ -203,7 +206,10 @@ class VLMGlanceEngine(RuleBasedEngine):
         """(decision, answering model, agreement, error) for one entrance plan."""
         seed = stable_seed(context.seed, "vlm-plan")
         route = context.persona.id
-        max_tokens = self._config.engines.vlm_glance.plan_max_tokens
+        # A long shopping list must fit. Measured on Claude Haiku and Qwen Flash: ~60 tokens per item
+        # (category, full product name, qty, JSON punctuation) plus ~150 for mission and reason; at
+        # 36/item a third of supermarket plans were cut off and silently fell back to the rule plan.
+        max_tokens = max(self._config.engines.vlm_glance.plan_max_tokens, 200 + 70 * schema.items_limit)
         if isinstance(self._llm, EnsembleLLMClient) and self._llm.mode == "vote":
             answers = await self._llm.ask_all_with_image(
                 schema, system, prompt, image, seed=seed, route=route, max_retries=1, max_tokens=max_tokens,
@@ -220,18 +226,24 @@ class VLMGlanceEngine(RuleBasedEngine):
             combined, agreement = combine_plan_votes(list(ok), key)
             return combined, "vote", agreement, ""
         model = self._llm.member_for(route).name if isinstance(self._llm, EnsembleLLMClient) else ""
-        try:
-            if image is None:
-                decision = await self._llm.generate_structured_async(
-                    schema, system, prompt, seed=seed, route=route, max_retries=1, max_tokens=max_tokens,
-                )
-            else:
-                decision = await self._llm.generate_structured_with_image_async(
-                    schema, system, prompt, image, seed=seed, route=route, max_retries=1, max_tokens=max_tokens,
-                )
-        except Exception as e:  # noqa: BLE001 — a failed plan falls back to the rule plan
-            return None, model, None, f"{type(e).__name__}: {e}"
-        return decision, model, None, ""
+        error = ""
+        for budget in (max_tokens, 2 * max_tokens):  # a cut-off answer gets one retry with twice the room
+            try:
+                if image is None:
+                    decision = await self._llm.generate_structured_async(
+                        schema, system, prompt, seed=seed, route=route, max_retries=1, max_tokens=budget,
+                    )
+                else:
+                    decision = await self._llm.generate_structured_with_image_async(
+                        schema, system, prompt, image, seed=seed, route=route, max_retries=1, max_tokens=budget,
+                    )
+            except Exception as e:  # noqa: BLE001 — a failed plan falls back to the rule plan
+                error = f"{type(e).__name__}: {e}"
+                if "max_tokens" in error or "length limit" in error:
+                    continue
+                return None, model, None, error
+            return decision, model, None, ""
+        return None, model, None, error
 
     def _record_plan(self, record: PlanRecord) -> None:
         with self._log_lock:
@@ -326,7 +338,7 @@ class VLMGlanceEngine(RuleBasedEngine):
         route = context.persona.id
         if isinstance(self._llm, EnsembleLLMClient) and self._llm.mode == "vote":
             answers = await self._llm.ask_all_with_image(
-                ShelfGlance, SYSTEM_PROMPT, prompt, view.data_url(), seed=seed, route=route, max_retries=1,
+                ShelfGlance, glance_system_prompt(context.store.type), prompt, view.data_url(), seed=seed, route=route, max_retries=1,
             )
             votes = tuple((a.member, a.answer.product if a.answer else "", a.answer.interest if a.answer else -1)
                           for a in answers)
@@ -338,7 +350,7 @@ class VLMGlanceEngine(RuleBasedEngine):
         model = self._llm.member_for(route).name if isinstance(self._llm, EnsembleLLMClient) else ""
         try:
             glance = await self._llm.generate_structured_with_image_async(
-                ShelfGlance, SYSTEM_PROMPT, prompt, view.data_url(), seed=seed, route=route, max_retries=1,
+                ShelfGlance, glance_system_prompt(context.store.type), prompt, view.data_url(), seed=seed, route=route, max_retries=1,
             )
         except Exception as e:  # noqa: BLE001 — one failed glance must not fail the customer
             return None, model, None, (), f"{type(e).__name__}: {e}"

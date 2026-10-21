@@ -69,6 +69,25 @@ and situation conditioning, robustness to corruption, image-vs-text modality and
 cross-model agreement — with figures and paper tables regenerated from saved
 data. `research/README.md` lists paper directions.
 
+### Calibrated against real purchases
+`research/validation/` runs the engines on households of dunnhumby's *The
+Complete Journey* (and X5 RetailHero for demographic gradients), compares
+simulated trips with held-out real trips (weeks and households never used for
+calibration) and feeds what is wrong back into the simulator:
+- **Visit times from data**: a weekday × hour traffic profile fitted from
+  transaction times (`engine/generators/traffic_profile.py`). A POS export with a
+  timestamp column uploaded as supplemental data now sets when personas arrive;
+  asked directly, models put most visits on a few stereotyped hours.
+- **Supermarket-sized trips**: store-kind-aware prompts, plans of up to 30 items,
+  `basket_scale`, products per category, multi-unit purchases, priority-ordered
+  shopping lists, and `Persona.basket_size` (a trip of known size) honored by
+  both planners.
+- **Long plans no longer fall back silently**: plan token budgets scale with the
+  list length, with one retry on a cut-off answer.
+- **Model Studio regions**: `DASHSCOPE_API_BASE` (or Settings) selects the
+  region or workspace endpoint; Qwen's reasoning mode is switched off for shopper
+  decisions.
+
 ### Getting started
 Double-click `Parastore-Windows.bat`, `Parastore-macOS.command` or
 `Parastore-Linux.sh`: the launcher installs what it needs, builds the interface

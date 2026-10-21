@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from store_emulator.domain.persona import Persona, AGE_GROUPS, GENDERS
 from store_emulator.domain.store import DaySchedule
 from store_emulator.domain.types import AsyncLLMClient, Weekday, WEEKDAY_LABELS, stable_seed
+from store_emulator.engine.generators.traffic_profile import TrafficProfile, reshape_hourly_counts
 from store_emulator.engine.prompting import budget_example
 
 logger = logging.getLogger(__name__)
@@ -266,7 +267,11 @@ async def generate_batched(
     *,
     supplemental_summary: str = "",
     currency: str = "USD",
+    traffic: TrafficProfile | None = None,
 ) -> list[Persona]:
+    """Personas for every open day. With `traffic` (fitted from the store's own transaction times),
+    the model's hourly estimate keeps deciding who comes, but how many come each hour follows the
+    data — asked for times, models collapse onto a few stereotyped peaks."""
     profile = await analyze_location(
         llm, address, customer_profile, custom_instruction,
         supplemental_summary=supplemental_summary,
@@ -280,6 +285,8 @@ async def generate_batched(
             llm, address, customer_profile, profile,
             schedule.day, schedule.open_hour, schedule.close_hour,
         )
+        if traffic is not None:
+            hourly = _apply_traffic(hourly, traffic, schedule)
         hourly = _scale_hourly(hourly, daily_cap)
         return await generate_personas_for_day(
             llm, address, profile, schedule.day, hourly,
@@ -293,6 +300,23 @@ async def generate_batched(
 
     logger.info(f"[persona] generated {len(all_personas)} personas total across {len(open_days)} days")
     return all_personas
+
+
+def _apply_traffic(hourly: list[HourlyProfile], traffic: TrafficProfile, schedule: DaySchedule) -> list[HourlyProfile]:
+    """Visitor counts per open hour from the fitted profile; person types from the model's estimate
+    (an hour the model left empty borrows the nearest hour's types)."""
+    by_hour = {p.hour: p for p in hourly}
+    slots = range(schedule.open_hour, schedule.close_hour)
+    counts = reshape_hourly_counts({h: by_hour[h].visitor_count if h in by_hour else 0 for h in slots},
+                                   traffic, int(schedule.day))
+    typed = [p for p in hourly if p.person_types]
+
+    def types_for(h: int) -> list[str]:
+        if h in by_hour and by_hour[h].person_types:
+            return by_hour[h].person_types
+        return min(typed, key=lambda p: abs(p.hour - h)).person_types if typed else []
+
+    return [HourlyProfile(hour=h, visitor_count=n, person_types=types_for(h)) for h, n in counts.items() if n > 0]
 
 
 def _persona_daily_cap_ceiling() -> int:

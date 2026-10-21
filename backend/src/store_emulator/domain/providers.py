@@ -42,6 +42,9 @@ class ProviderPreset(BaseModel):
     litellm_prefix: str
     default_api_base: str | None = None
     api_key_env: str | None = None
+    # Environment variable that overrides default_api_base when Settings has none (e.g. a region- or
+    # workspace-specific endpoint such as Model Studio Frankfurt's <workspace>.eu-central-1.maas.aliyuncs.com).
+    api_base_env: str | None = None
     needs_key: bool = True
     # Structured output mode that works best with this provider (see LLMConfig.structured_output).
     structured_output: Literal["json", "json_schema"] = "json"

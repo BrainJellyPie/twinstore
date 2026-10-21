@@ -34,6 +34,23 @@ Reply in JSON:
 - reason: a few words"""
 
 
+_STORE_KINDS: dict[str, str] = {
+    "convenience": "a convenience store", "supermarket": "a supermarket", "grocery": "a grocery store",
+    "drugstore": "a drugstore", "pharmacy": "a pharmacy", "cafe": "a café", "bakery": "a bakery",
+    "mini_mart": "a mini-mart", "hypermarket": "a hypermarket",
+}
+
+
+def store_kind(store_type: str) -> str:
+    """How the prompts name the store ("a supermarket"); convenience stores keep the original text."""
+    key = (store_type or "convenience").strip().lower().replace("-", "_").replace(" ", "_")
+    return _STORE_KINDS.get(key, f"a {store_type.strip().lower()} store" if store_type.strip() else "a store")
+
+
+def glance_system_prompt(store_type: str = "convenience") -> str:
+    return SYSTEM_PROMPT.replace("a convenience store", store_kind(store_type), 1)
+
+
 class ShelfGlance(BaseModel):
     """The model names the most eye-catching product and how tempting it is. Whether the
     shopper actually buys is a seeded draw from that interest (see VLMGlanceConfig), so
@@ -192,9 +209,9 @@ def combine_votes(view: ShelfView, answers: list[tuple[str, ShelfGlance]]) -> tu
 
 # ── planning at the entrance ──────────────────────────────────────────────
 
-PLAN_ITEMS_LIMIT = 4  # upper bound of VLMGlanceConfig.max_plan_items
+PLAN_ITEMS_LIMIT = 30  # upper bound of VLMGlanceConfig.max_plan_items (a supermarket stock-up trip)
 
-PLAN_SYSTEM_PROMPT = """You role-play one shopper standing at the door of a convenience store.
+PLAN_SYSTEM_PROMPT = """You role-play one shopper standing at the door of {store_kind}.
 {image_line}Decide what THIS shopper came for, given who they are, the time, today's situation and their money.
 
 Reply in JSON:
@@ -272,13 +289,21 @@ _WEEKDAY_NAMES: dict[Weekday, str] = {
 }
 
 
-def plan_system_prompt(*, max_items: int, image: bool) -> str:
+# A convenience-store regular names a handful of categories; a supermarket household's usual list
+# is longer, and cutting it at five hid most of it from the planner.
+_USUAL_CATEGORIES = 12
+
+
+def plan_system_prompt(*, max_items: int, image: bool, store_type: str = "convenience") -> str:
+    size_hint = (" Plan as many as this particular trip needs: a quick stop is 1-3 items, a bigger shop for the "
+                 "household can be many more." if max_items > 4 else "")
     items_rule = (
         f"at most {max_items} things they plan to buy. category: one category from the store directory. "
-        "product: a product name from the directory, or a short description. qty: 1 to 3"
+        f"product: a product name from the directory, or a short description. qty: 1 to 3.{size_hint}"
         if max_items > 0 else "leave empty: today they only browse inside, no planned purchase"
     )
-    return PLAN_SYSTEM_PROMPT.format(image_line=_PLAN_IMAGE_LINE if image else "", items_rule=items_rule)
+    return PLAN_SYSTEM_PROMPT.format(image_line=_PLAN_IMAGE_LINE if image else "", items_rule=items_rule,
+                                     store_kind=store_kind(store_type))
 
 
 def plan_user_prompt(
@@ -299,13 +324,16 @@ def plan_user_prompt(
     if persona.intent or persona.purpose:
         lines.append(f"Usually comes for: {persona.intent or persona.purpose}")
     if persona.preferred_categories:
-        lines.append(f"Usually buys: {', '.join(persona.preferred_categories[:5])}")
+        lines.append(f"Usually buys: {', '.join(persona.preferred_categories[:_USUAL_CATEGORIES])}")
     if persona.behavior_tendency:
         lines.append(f"Habits: {persona.behavior_tendency}")
     lines.append(f"Shopping style today: {_PATTERN_GLOSS.get(pattern.id, pattern.id.replace('_', ' '))}.")
     if mood:
         lines.append(f"Right now: {mood}.")
     lines.append(f"Time: {_WEEKDAY_NAMES.get(day, 'a weekday')} {hour:02d}:00.")
+    if persona.basket_size > 0:
+        lines.append(f"This trip they come for about {persona.basket_size} different item"
+                     f"{'s' if persona.basket_size != 1 else ''}.")
     lines.append(f"Today: {situation}." if situation else "Today: an ordinary day.")
     if budget is not None:
         lines.append(f"Money they are willing to spend: about {display_price(max(0, budget), currency)}.")
