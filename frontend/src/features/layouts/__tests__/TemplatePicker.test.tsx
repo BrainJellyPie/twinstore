@@ -401,6 +401,49 @@ it("excludes chosen categories, keeps a stocked category and restores the assort
   expect((screen.getByRole("checkbox", { name: "Beer & Alcohol" }) as HTMLInputElement).checked).toBe(true);
 });
 
+it("sets directional table gaps independently, keeps floor directions when rotating and restores shared spacing", async () => {
+  mount(); fireEvent.click(await screen.findByRole("radio", { name: /^Family restaurant/ }));
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "3" } });
+  fireEvent.change(screen.getByLabelText("Left–right table gap"), { target: { value: "4" } });
+  fireEvent.change(screen.getByLabelText("Back–front table gap"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText("Table rotation"), { target: { value: "90" } });
+  fireEvent.change(screen.getByLabelText("Space around dining tables"), { target: { value: "2" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    table_clearance: 2, table_clearance_x: 4, table_clearance_y: 1, table_rotation: 90, dining_tables: 3,
+  }), expect.any(AbortSignal)));
+  fireEvent.change(screen.getByLabelText("Left–right table gap"), { target: { value: "" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    table_clearance: 2, table_clearance_x: null, table_clearance_y: 1,
+  }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("button", { name: "Use shared table gaps" }));
+  expect((screen.getByLabelText("Back–front table gap") as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText("Space around dining tables") as HTMLSelectElement).value).toBe("2");
+  fireEvent.change(screen.getByLabelText("Left–right table gap"), { target: { value: "4" } });
+  fireEvent.click(screen.getByText("Apply a layout priority"));
+  fireEvent.change(screen.getByLabelText("Layout priority"), { target: { value: "family_dining" } });
+  fireEvent.click(screen.getByRole("button", { name: "Apply priority" }));
+  expect((screen.getByLabelText("Left–right table gap") as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText("Back–front table gap") as HTMLSelectElement).value).toBe("");
+});
+
+it("retains directional gaps with zero tables and clears them with the layout reset", async () => {
+  mount(); fireEvent.click(await screen.findByRole("radio", { name: /^Family restaurant/ }));
+  fireEvent.change(screen.getByLabelText("Left–right table gap"), { target: { value: "4" } });
+  fireEvent.change(screen.getByLabelText("Back–front table gap"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "0" } });
+  for (const [label, expected] of [["Left–right table gap", "4"], ["Back–front table gap", "1"]]) {
+    const select = screen.getByLabelText(label!) as HTMLSelectElement;
+    expect(select.disabled).toBe(true); expect(select.value).toBe(expected);
+  }
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "2" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    dining_tables: 2, table_clearance_x: 4, table_clearance_y: 1,
+  }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Left–right table gap") as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText("Back–front table gap") as HTMLSelectElement).value).toBe("");
+});
+
 it("overrides individual category limits, retains excluded limits and restores shared defaults", async () => {
   mount(); await screen.findByRole("img", { name: "Floor plan preview" });
   fireEvent.click(screen.getByText("Product categories · 3 of 3 included"));

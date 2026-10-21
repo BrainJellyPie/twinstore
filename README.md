@@ -197,7 +197,7 @@ currently remain in English.
 </tr>
 <tr>
 <td><img src="./.github/assets/twinstore/screens/wizard-light.jpg" alt="New store wizard with a starting layout"><br>
-<b>New store in two steps.</b> Store details, address, hours and one of 78 furnished starting layouts — or a floor-plan image.</td>
+<b>New store in two steps.</b> Store details, address, hours and one of 82 furnished starting layouts — or a floor-plan image.</td>
 <td><img src="./.github/assets/twinstore/screens/home-dark.jpg" alt="Home, night theme"><br>
 <b>Day and night.</b> A command bar, <kbd>⌘K</kbd> palette for everything, quick links on every store, light and dark themes.</td>
 </tr>
@@ -251,11 +251,11 @@ field (f/1.4–5.6) in the shopper's view; save it as PNG.
 
 ### Store formats and templates
 
-Start from **78 furnished formats** — convenience stores, supermarkets, hypermarkets and warehouse clubs, pharmacies,
+Start from **82 furnished formats** — convenience stores, supermarkets, hypermarkets and warehouse clubs, pharmacies,
 cafés, bakeries, pizzerias, sushi, ramen, Korean, burger, salad and ice-cream shops, fashion, footwear, eyewear,
 jewelry, music, bookstores, electronics, pet, garden and craft stores, airport retail, hospital convenience, museum gifts,
-weekend markets, station food shops, cinema snacks, office cafeterias, central-plaza halls, compact and 24-hour pharmacies, Mediterranean delis, Mexican cantinas, art-supply warehouses, beauty outlets, Indian curry houses and Vietnamese cafés — each with its own assortment, palette, seating
-and checkouts, or from **23 multi-floor buildings** (department store, dining house, campus hub and more). Choose which
+weekend markets, station food shops, cinema snacks, office cafeterias, central-plaza halls, compact and 24-hour pharmacies, Mediterranean delis, Mexican cantinas, art-supply warehouses, beauty outlets, Indian curry houses, Vietnamese cafés, pet superstores, camping outlets, Thai kitchens and Turkish cafés — each with its own assortment, palette, seating
+and checkouts, or from **25 multi-floor buildings** (department store, dining house, campus hub and more). Choose which
 product categories to stock, where the entrance, exit and checkouts go, how many dining tables, aisle widths, shelf
 direction and areas to keep clear, set different opening hours for each weekday; customize wall, floor, accent and counter colors, compare against the format default and download the plan as SVG. Every option and
 the floor editor (up to 40×40 cells) are documented in [`STORE_TEMPLATES.md`](./STORE_TEMPLATES.md).
@@ -341,6 +341,11 @@ For brand managers, category teams, store operators and research agencies (**Mar
 Any finished A/B, shelf, concept or conjoint test can be **duplicated and edited** into the next one. Concept, shelf and
 conjoint tests have print-ready reports too. Synthetic respondents are for screening and direction; calibrate against
 a real panel before deciding.
+
+**Combine shelf photos.** In Capture, choose **Combine reviewed shelf photos**, select completed photos,
+preview their racks together, then save and open one new draft. Original layouts and photos stay intact;
+missing products block saving and reduced facing counts need confirmation. This reuses existing recognition
+and grid placement, with no extra model calls. See [the workflow and limits](./USAGE.md#combine-reviewed-shelf-photos-into-one-layout).
 
 ## How it works
 
@@ -616,7 +621,8 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
   plastic housings and coated grilles use a nonmetallic finish. Cashier, customer and card-reader displays
   have distinct idle artwork in one shared 512 × 256 texture, retained in Photo mode. These decorative
   screens do not show simulation orders or payment totals. Cans in High separate printed labels from
-  reflective metal ends and rims, with the same finishes in Photo mode. Authors, source URLs and checksums are in
+  reflective metal ends and rims, with the same finishes in Photo mode. Round packages keep continuous
+  shading across their label wraps without changing the printed UVs or silhouette. Authors, source URLs and checksums are in
   [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 - **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
   ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;

@@ -50,7 +50,7 @@ export function resolveOperatingHours(value: Pick<LayoutOptions, "open_hour" | "
 export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   templateId: "urban_cvs", seed: 0, currency: "USD", style: null,
   density: "balanced", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null,
-  checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1, dining_seats: 4, table_rotation: 0,
+  checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1, table_clearance_x: null, table_clearance_y: null, dining_seats: 4, table_rotation: 0,
   aisle_width: null, max_shelf_run: null, excluded_categories: [], products_per_category: null, category_product_limits: {},
   open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, table_mix: null,
 };
@@ -86,6 +86,7 @@ export const LAYOUT_PRIORITIES: LayoutPriority[] = [
 
 export function applyLayoutPriority(value: TemplateChoice, priority: LayoutPriority): TemplateChoice {
   return { ...value, ...priority.options,
+    ...(priority.options.table_clearance != null ? { table_clearance_x: null, table_clearance_y: null } : {}),
     ...(priority.options.table_mix ? { table_mix: { ...priority.options.table_mix } } : {}),
     ...(priority.options.dining_tables === 0 && value.table_mix ? { table_mix: { two_seat: 0, four_seat: 0, six_seat: 0 } } : {}),
     ...(priority.checkoutAtEntrance ? { checkout_wall: value.gate_wall ?? "front" } : {}),
@@ -130,6 +131,7 @@ export function validTemplateChoice(value: TemplateChoice): boolean {
     (value.dining_seats === undefined || [2, 4, 6].includes(value.dining_seats)) &&
     (value.table_rotation === undefined || [0, 90].includes(value.table_rotation)) &&
     (value.table_clearance == null || (Number.isInteger(value.table_clearance) && value.table_clearance >= 1 && value.table_clearance <= 3)) &&
+    [value.table_clearance_x, value.table_clearance_y].every((gap) => gap == null || (Number.isInteger(gap) && gap >= 1 && gap <= 4)) &&
     (value.reserved_areas?.length ?? 0) <= 8 && (value.reserved_areas ?? []).every((area) =>
       area.label.trim().length > 0 && area.label.length <= 80 &&
       [area.x, area.y, area.width, area.height].every((n) => Number.isInteger(n) && n >= 1 && n <= 38));
@@ -143,6 +145,7 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
     max_shelf_run: value.max_shelf_run,
     checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme, design_colors: value.design_colors,
     dining_tables: value.dining_tables, dining_seats: value.dining_seats, table_mix: value.table_mix, table_rotation: value.table_rotation, seating_zone: value.seating_zone, table_clearance: value.table_clearance,
+    table_clearance_x: value.table_clearance_x, table_clearance_y: value.table_clearance_y,
     checkout_placement: value.checkout_placement, checkout_wall: value.checkout_wall, checkout_clearance: value.checkout_clearance, reserved_areas: value.reserved_areas, requirements: value.requirements,
     excluded_categories: value.excluded_categories,
     products_per_category: value.products_per_category,
@@ -202,6 +205,8 @@ export const BUILDING_PRESETS = [
   { id: "world_dining", name: "Mediterranean & Mexican dining", floors: [["Ground · Mediterranean deli", "mediterranean_deli"], ["Level 2 · Mexican cantina", "mexican_cantina"]] },
   { id: "creative_beauty", name: "Creative & beauty center", floors: [["Ground · Art supplies", "art_supply_warehouse"], ["Level 2 · Beauty outlet", "beauty_outlet"]] },
   { id: "curry_pho", name: "Curry, pho & coffee", floors: [["Ground · Indian dining", "indian_curry_house"], ["Level 2 · Vietnamese café", "vietnamese_cafe"]] },
+  { id: "active_living", name: "Pets & outdoor living", floors: [["Ground · Pet supplies", "pet_superstore"], ["Level 2 · Sports & camping", "sports_outlet"]] },
+  { id: "thai_turkish", name: "Thai dining & Turkish café", floors: [["Ground · Thai dining", "thai_kitchen"], ["Level 2 · Turkish café", "turkish_cafe"]] },
 ] as const;
 
 export function buildingPreset(id: string, currency = "USD"): BuildingFloorChoice[] {

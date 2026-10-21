@@ -8,7 +8,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from store_emulator.application import capture as capture_service
+from store_emulator.application import capture as capture_service, capture_batch
+from store_emulator.domain.capture_batch import CaptureBatchPreview, CaptureBatchRequest, CaptureBatchSave, CaptureBatchSaved
 from store_emulator.application.capture import ApplyResult, CaptureUpdate, CaptureView
 from store_emulator.application.errors import AppError
 from store_emulator.domain.capture import (
@@ -74,6 +75,16 @@ def apply_many(pid: str, req: ApplyCapturesRequest) -> ApplyResult:
     return _call(lambda: capture_service.apply_captures(
         pid, req.capture_ids, req.setup_id, new_rack=True, name=req.name, default_currency=get_config().currency,
     ))
+
+
+@router.post("/{pid}/captures/batch-preview", response_model=CaptureBatchPreview)
+def preview_batch(pid: str, req: CaptureBatchRequest) -> CaptureBatchPreview:
+    return _call(lambda: capture_batch.preview(pid, req, default_currency=get_config().currency))
+
+
+@router.post("/{pid}/captures/batch-save", response_model=CaptureBatchSaved)
+def save_batch(pid: str, req: CaptureBatchSave) -> CaptureBatchSaved:
+    return _call(lambda: capture_batch.save(pid, req, default_currency=get_config().currency))
 
 
 @router.get("/{pid}/captures/{cid}", summary="Capture status and planogram", response_model=CaptureView)

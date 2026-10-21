@@ -70,6 +70,18 @@ function revolve(profile: ProfilePoint[], segments: number): THREE.BufferGeometr
   g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   g.setIndex(indices);
   g.computeVertexNormals();
+  // UVs need separate vertices at the label wrap, but light must see one
+  // continuous surface. Keep different profile rings (caps/rims) independent.
+  const normals = g.getAttribute("normal");
+  const first = new THREE.Vector3(), last = new THREE.Vector3();
+  for (let row = 0; row < profile.length; row++) {
+    const a = row * cols, b = a + segments;
+    first.fromBufferAttribute(normals, a);
+    last.fromBufferAttribute(normals, b);
+    first.add(last).normalize();
+    normals.setXYZ(a, first.x, first.y, first.z);
+    normals.setXYZ(b, first.x, first.y, first.z);
+  }
   return g;
 }
 

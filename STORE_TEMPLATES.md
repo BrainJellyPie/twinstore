@@ -1,6 +1,6 @@
 # Store layout templates
 
-Everything about generating a furnished starting layout: the 78 store formats, product categories, entrances and
+Everything about generating a furnished starting layout: the 82 store formats, product categories, entrances and
 exits, seating, checkouts, reserved areas, multi-floor buildings and the floor editor. The [README](./README.md#store-formats-and-templates)
 has the short version.
 
@@ -9,10 +9,26 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 78
+In a project, choose **New layout → Generate a store from a template**. Search 82
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+
+**Pet supplies superstore** uses a 36×28 industrial floor with pet-food, care,
+walking, grooming, carrier and bedding displays along parallel aisles. It has
+five checkouts and opens 09:00–21:00 daily. **Sports & camping outlet** uses a
+34×26 Nordic loop for fitness products, camping gear, apparel and footwear,
+with four checkouts and daily 10:00–21:00 hours. Twelve new pet accessories and
+twelve outdoor products accompany these formats. **Pets & outdoor living**
+combines them as two independent retail floors.
+
+**Thai kitchen & tea** offers twelve noodle, curry, rice, side and drink choices
+on a 24×20 botanical floor with eight four-seat tables and three counters. It
+opens 11:00–22:00 except Wednesdays. **Turkish café & bakery** offers twelve
+doner, flatbread, soup, sweet and drink choices on a 22×20 terracotta showroom
+floor with six four-seat tables and two counters, open 08:00–22:00 daily.
+**Thai dining & Turkish café** combines them in a two-floor building. These
+formats model counter purchases; kitchen preparation and table service are not simulated.
 
 **Art supply warehouse** uses a 36×28 industrial floor with art materials,
 stationery, books, hobby kits and tools along parallel aisles, five checkouts
@@ -309,6 +325,16 @@ Reserved areas remain clear even when they overlap the plaza. The pattern is sav
 and reused in layout and building options files.
 The perimeter pattern keeps its wall-based arrangement. Shelf direction is saved
 with the other options and can differ between floors or layout alternatives.
+
+**Left–right table gap** and **Back–front table gap** override the shared
+**Space around dining tables** setting independently. Choose 1–4 cells in either
+direction, or **Shared** to use the existing 1–3-cell setting. Directions follow
+the floor columns and rows, even after a table rotates. The gaps separate
+dining groups and keep nearby interior displays clear; reserved areas remain
+walkable. Larger gaps reduce seating capacity. Default seating adapts; explicit
+table counts that cannot fit return an adjustment message. **Use shared table
+gaps** clears both overrides. Layout priorities that set table spacing also
+restore the shared gaps. Options are saved independently for each floor.
 
 Use **Keep areas clear → Add reserved area** to leave up to eight named rectangles
 open for consultation, pickup, events or later customization. Set their starting
