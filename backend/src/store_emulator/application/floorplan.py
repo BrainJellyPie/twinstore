@@ -56,7 +56,7 @@ def load_plan_image(data: bytes, filename: str) -> Image.Image:
             raise AppError("reading PDF plans needs `uv pip install pypdfium2`; or upload the page as PNG/JPEG", 400) from None
         try:
             with closing(pypdfium2.PdfDocument(data)) as pdf:  # type: ignore[reportUnknownMemberType]  # optional native binding
-                if len(pdf) == 0:
+                if len(pdf) == 0:  # type: ignore[reportUnknownArgumentType]  # optional native binding
                     raise AppError("the PDF has no pages", 400)
                 with closing(pdf[0]) as page:  # type: ignore[reportUnknownVariableType]
                     with closing(page.render(scale=2)) as bitmap:  # type: ignore[reportUnknownMemberType]
