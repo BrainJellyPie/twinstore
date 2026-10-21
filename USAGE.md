@@ -1024,3 +1024,44 @@ API: `GET /api/projects/{pid}/setups/{sid}/product-edits` reads the catalog and 
 `POST .../preview` accepts `source_sha256`, `currency`, and unique-SKU `edits` with optional `name`, `price`
 and `promo`. `POST .../save` also requires a stable 32-character lowercase hexadecimal `request_id`.
 Keep this request unchanged for retries. Product IDs and layouts are never silently merged by name.
+
+## Fill existing empty shelves with starter products
+
+In a draft's preparation dashboard, open **Step 2: Item placement → Fill empty shelves**. This uses the
+same generic catalog as store templates while keeping your existing floor, rack positions, signs and
+stocked racks. It makes no model call and needs no spreadsheet.
+
+1. Search shelves by name or ID. Select individual empty shelves/fridges or **Select shown empty racks**.
+   Only racks with no product items anywhere are eligible; a partly stocked rack stays unchanged. Tables
+   and checkout counters are excluded. Add an entrance in Step 1 so accessible product faces can be checked.
+2. Choose a category per rack, or choose **Category to apply → Apply category to selected racks**. Exact
+   catalog keys already stored in rack descriptions provide suggestions; unknown names are not guessed.
+   **Reference products** expands the chosen category's examples. Set 1–4 products per shelf section.
+3. **Preview starter products** lists each rack, the actual products/prices, new/reused SKU counts and
+   added placement counts. All accessible, unlocked faces get four levels; internal/blocked faces stay
+   empty. The catalog cycles deterministically through each category, with no duplicate SKU in one section.
+4. **Save stocked layout → Open stocked layout** creates and opens a child draft. The original remains
+   in Layouts for undo. Use **Edit products together** to correct scenario names, prices and promotions.
+
+Reference products are not actual stock, and reference prices are not observed shelf prices or live FX.
+Supported reference currencies are USD, KRW and JPY, using the existing template catalog's illustrative
+conversion rules. Other currencies are rejected rather than relabelled. An exact existing catalog SKU
+reuses its current name, price, promotion and image link. Conflicting values for the same SKU require
+review in the product editor first. Matching names with different SKUs are never silently merged.
+
+Search shows at most 100 racks at once; selections remain across filters. Preview/save accepts at most
+100 racks and the resulting layout may have at most 50,000 product placements. Geometry checks allow
+up to 65,536 floor cells, 1,000 racks, 10,000 occupied rack cells and 50,000 shape cells. Invalid or
+overlapping geometry must be repaired in Step 1. Existing source limits also apply (5,000 SKUs and
+50,000 placements). Filling a building floor retains that floor's building metadata.
+
+Changing a selected category or density invalidates the preview. A changed source, currency or bundled
+catalog requires **Discard choices and reload** and another review. Unsaved choices live only in the open
+dialog. An accepted save may finish after closing. **Retry saving starter draft** reuses the same request
+after an uncertain response; check Layouts before starting a new request. A deleted draft or interrupted
+write reservation is never silently recreated; intentionally start a new preview after checking Layouts.
+
+API: `GET /api/projects/{pid}/setups/{sid}/starter-fill`, `POST .../preview`, `POST .../save`.
+Preview takes `source_sha256`, `currency`, unique `assignments` of `rack_id`/`category`, and integer
+`products_per_slot` (1–4). Save also takes a stable 32-character lowercase hex `request_id`. Reuse the
+identical save body on retry. The snapshot includes the bundled catalog contents as well as the layout.

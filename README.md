@@ -37,6 +37,10 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 
 ## Why TwinStore
 
+Have an existing floor with empty shelves? **Step 2 → Fill empty shelves** places reviewed starter
+products on those racks and saves a separate stocked layout, preserving existing products and geometry.
+Reference products/prices are examples, not actual stock. See [the guide](USAGE.md#fill-existing-empty-shelves-with-starter-products).
+
 Already stocked a layout? **Step 2 → Edit products together** changes selected product names, prices and
 promotion text in the app, with a before/after preview and a separate saved layout. See
 [the product editing guide](./USAGE.md#edit-placed-products-together-without-a-spreadsheet).

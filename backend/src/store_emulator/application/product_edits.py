@@ -1,63 +1,27 @@
 """Read a snapshot and save edited products as a separate, replay-safe child layout."""
-import hashlib
-import json
-import re
 from pathlib import Path
 from filelock import FileLock, Timeout
 
-from store_emulator.application.currencies import project_currency
 from store_emulator.application.errors import AppError
-from store_emulator.application.storage.generations import find_active_generation
+from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
-from store_emulator.application.storage.setups import metadata_path, new_setup_data, read_setup, setup_path
+from store_emulator.application.storage.setups import new_setup_data, setup_path
 from store_emulator.domain.product_edits import (
-    MAX_PRICE, ProductCatalog, ProductEditsPreview, ProductEditsRecord,
+    ProductCatalog, ProductEditsPreview, ProductEditsRecord,
     ProductEditsRequest, ProductEditsSave, ProductEditsSaved, ProductEditsReceipt,
 )
 from store_emulator.domain.store import Store
 from store_emulator.engine.product_edits import apply_product_edits, product_rows
 
 
-def _project(pid: str, sid: str) -> None:
-    if any(not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", value) for value in (pid, sid)):
-        raise AppError("Invalid project or layout identifier", 422)
-    if not metadata_path(pid).exists():
-        raise AppError("Project not found", 404)
-
-
-def _source(pid: str, sid: str) -> tuple[Store, str]:
-    _project(pid, sid)
-    try:
-        source = read_setup(pid, sid)
-    except FileNotFoundError as exc:
-        raise AppError("Source layout no longer exists", 404) from exc
-    except (ValueError, AttributeError) as exc:
-        raise AppError("Stored layout data is unreadable. Restore a valid copy before editing", 409) from exc
-    if find_active_generation(pid, sid, "layout"):
-        raise AppError("Layout generation is in progress; reload when it finishes", 409)
-    if not source.get("store"):
-        raise AppError("Create and stock a layout before editing products", 409)
-    try:
-        store = Store.model_validate(source["store"])
-        store.currency = store.currency or project_currency(pid, "USD")
-        payload = json.dumps(store.model_dump(mode="json"), sort_keys=True, ensure_ascii=False, allow_nan=False)
-    except ValueError as exc:
-        raise AppError("The stored layout is invalid; repair it before editing products", 409) from exc
-    items = [item for rack in store.racks for slot in rack.slots for item in slot.items]
-    if len(items) > 50_000 or len({item.sku for item in items}) > 5_000:
-        raise AppError("Edit layouts with at most 5,000 SKUs and 50,000 placements", 413)
-    if any(item.price > MAX_PRICE for item in items):
-        raise AppError("A stored price exceeds the safe integer limit; correct it first", 409)
-    return store, hashlib.sha256(payload.encode()).hexdigest()
-
 
 def catalog(pid: str, sid: str) -> ProductCatalog:
-    store, digest = _source(pid, sid)
+    store, digest = read_product_source(pid, sid)
     return ProductCatalog(source_sha256=digest, currency=store.currency or "USD", products=product_rows(store))
 
 
 def _prepare(pid: str, sid: str, req: ProductEditsRequest) -> tuple[Store, ProductEditsPreview]:
-    store, digest = _source(pid, sid)
+    store, digest = read_product_source(pid, sid)
     if req.source_sha256 != digest or req.currency != store.currency:
         raise AppError("The source layout or currency changed. Reload products and review your edits again", 409)
     try:
@@ -80,7 +44,7 @@ def _existing(path: Path, req: ProductEditsSave) -> ProductEditsSaved | None:
 
 
 def save(pid: str, sid: str, req: ProductEditsSave) -> ProductEditsSaved:
-    _project(pid, sid)
+    check_product_layout(pid, sid)
     path = setup_path(pid, f"setup_products_{req.request_id}")
     path.parent.mkdir(parents=True, exist_ok=True)
     # The source ID is also part of replay identity, including when the source was later removed.

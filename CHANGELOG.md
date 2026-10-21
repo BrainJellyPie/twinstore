@@ -6,6 +6,12 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Fill existing empty shelves
+- Step 2 can select empty shelves/fridges, apply built-in categories, preview starter products and save
+  a stocked child layout. Existing products and geometry remain unchanged; inaccessible faces are skipped.
+- The template catalog's SKU identities are reused, preserving existing SKU values and image links.
+  Reference prices are explicitly labelled, and changed source/catalog snapshots reject stale saves.
+
 ### Edit placed products together
 - Step 2 now opens a searchable SKU editor for names, prices and promotion text. Select rows for bulk changes,
   undo local edits, inspect mixed prior values and save a separate child layout with all placements preserved.

@@ -4,7 +4,10 @@ Prices are USD cents; Korean stores convert at ~1,350 KRW/USD and round to 100 w
 lands on typical Korean convenience-store price points.
 """
 
+import hashlib
+import json
 from dataclasses import dataclass
+from store_emulator.domain.rack import SlotItem
 
 
 @dataclass(frozen=True)
@@ -342,3 +345,10 @@ def localized(item: CatalogItem, currency: str) -> tuple[str, int]:
 def category_label(category: str, currency: str) -> str:
     en, ko = CATEGORY_LABELS.get(category, (category, category))
     return ko if currency.upper() == "KRW" else en
+
+
+def catalog_slot_item(item: CatalogItem, currency: str) -> SlotItem:
+    """Use the same product identity on templates and existing racks."""
+    identity = json.dumps([item.en, item.ko, item.usd_cents], ensure_ascii=False, separators=(",", ":"))
+    name, price = localized(item, currency)
+    return SlotItem(sku=f"g_{hashlib.sha256(identity.encode('utf-8')).hexdigest()[:32]}", name=name, price=price)
