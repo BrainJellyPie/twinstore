@@ -10,9 +10,14 @@ the pinned source revision and SHA-256 records in `sources.json`.
 - `male-14.glb`: Male_Adult_14, shirt and trousers.
 - `female-11.glb`: Female_Adult_11, dress and boots, 8,896 triangles.
 - `male-12.glb`: Male_Adult_12, denim jacket and jeans.
-- Each includes captured `idle`, `walk`, and `browse` clips. Browsing shoppers
+- Each includes captured `idle`, `wait`, `walk`, and `browse` clips. Browsing shoppers
   turn their head and shoulders to look around the shelf. Independent skeletons
   and motion phases animate each shopper. Authored metric heights are preserved.
+- Standing shoppers deterministically choose either breathing or a longer neutral
+  posture variation from `f_idle_neutral_02` / `m_idle_neutral_02` (11.27 / 15.53 s).
+  Small head turns and weight shifts vary the crowd's resting poses. Both clips
+  loop continuously, cross-fade into walking or browsing, and freeze with playback.
+  This visual variation does not change simulated actions or attention.
 - The facial FBX's authored `AU_45_Blink` shape is retained as `blink`.
   Eyelids close and reopen over 0.23 seconds, with
   deterministic per-shopper intervals of 3.2–6 seconds. This cosmetic motion

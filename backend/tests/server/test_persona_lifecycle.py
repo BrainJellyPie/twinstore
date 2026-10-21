@@ -19,6 +19,7 @@ def project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     root = tmp_path / ".data" / "proj_test"
     root.mkdir(parents=True)
+    (root / "metadata.json").write_text(json.dumps({"name": "Test", "currency": "USD"}))
     persona = Persona(id="p_test", identity="Student", age_group="20s", gender="Female",
                       description="Shops after class", intent="snack", purpose="snack").model_dump(mode="json")
     (root / "personas.json").write_text(json.dumps([persona]))
