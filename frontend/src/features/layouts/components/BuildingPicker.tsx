@@ -66,7 +66,10 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
             onChange={(e) => onChange(floors.map((f, i) => i === index ? { ...f, label: e.target.value } : f))} />
         </div>
         <button type="button" disabled={floors.length <= 2} className="rounded border px-2 py-1.5 text-xs disabled:opacity-40"
-          onClick={() => { onChange(floors.filter((_, i) => i !== index)); setActive(Math.max(0, index - 1)); }}>Remove floor</button>
+          onClick={() => {
+            onChange(floors.filter((_, i) => i !== index)); setActive(Math.max(0, index - 1));
+            setPickerVersion((version) => version + 1);
+          }}>Remove floor</button>
       </div>
       <div className="flex flex-wrap gap-1.5">
         <button type="button" disabled={index === 0} onClick={() => moveFloor(-1)}
@@ -81,8 +84,11 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         <select id={`${fieldId}-source`} className="w-full rounded border bg-background px-2 py-1.5" value={floor.choice.sourceSetupId}
           onChange={(event) => {
             const source = sourceLayouts.find((layout) => layout.id === event.target.value);
-            if (source?.generation) onChange(floors.map((f, i) => i === index
-              ? { ...f, choice: choiceFromGeneration(source.generation!, source.id) } : f));
+            if (source?.generation) {
+              onChange(floors.map((f, i) => i === index
+                ? { ...f, choice: choiceFromGeneration(source.generation!, source.id) } : f));
+              setPickerVersion((version) => version + 1);
+            }
           }}>
           {sourceLayouts.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
         </select>
