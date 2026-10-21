@@ -292,6 +292,18 @@ TEMPLATES: list[StoreTemplate] = [
         gondolas=["travel_gear", "travel_gear", "electronics"], near_counter=["travel_gear", "health_beauty"],
         open_hours=(6, 23), checkouts=2, checkout_placement="near_entrance", design_theme="industrial",
     ),
+    StoreTemplate(
+        id="garden_center", name="Garden & outdoor center", description="Plants, growing supplies and garden tools on a large botanical floor with clear central cross aisles and four checkout counters.",
+        store_type="garden", grid=(32, 26), fridges=[], wall_shelves=["garden_supplies", "flowers", "home_design"] * 4,
+        gondolas=["garden_supplies", "garden_supplies", "flowers", "home_design"], near_counter=["garden_supplies", "flowers"],
+        style="cross", open_hours=(8, 20), checkouts=4, design_theme="botanical",
+    ),
+    StoreTemplate(
+        id="art_craft_store", name="Art & craft supply store", description="Painting, drawing and craft materials around intersecting central aisles, with stationery and books along warm wood walls.",
+        store_type="crafts", grid=(22, 18), fridges=[], wall_shelves=["art_craft", "stationery", "books"] * 3,
+        gondolas=["art_craft", "art_craft", "stationery"], near_counter=["art_craft"],
+        style="cross", open_hours=(10, 21), checkouts=2, design_theme="warm",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
@@ -378,6 +390,13 @@ def generate_store(
     b = _Builder(t, currency, rng, options)
     w, h = b.w, b.h
     layout_style = style or options.style or t.style
+    aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]
+    aisle = options.aisle_width or aisle
+    cross_aisles: set[tuple[int, int]] = set()
+    if layout_style == "cross":
+        cross_x, cross_y = (w - aisle) // 2, (h - aisle) // 2
+        cross_aisles = {(x, y) for x in range(1, w - 1) for y in range(1, h - 1)
+                        if cross_x <= x < cross_x + aisle or cross_y <= y < cross_y + aisle}
     checkout_placement = t.checkout_placement if options.checkout_placement == "auto" else options.checkout_placement
     seating_zone = t.seating_zone if options.seating_zone == "auto" else options.seating_zone
 
@@ -418,7 +437,8 @@ def generate_store(
     table_positions = [(x, y) for y in range(clearance + 1, h - clearance - 2, clearance + 2)
                        for x in range(clearance + 1, w - clearance - 2, clearance + 2)]
     table_positions = [(x, y) for x, y in table_positions
-                       if all(b.free(cx, cy) for cx in (x, x + 1) for cy in (y, y + 1))]
+                       if all(b.free(cx, cy) and (cx, cy) not in cross_aisles
+                              for cx in (x, x + 1) for cy in (y, y + 1))]
     # Rank safe seating positions without changing the table footprint or clearance.
     # As the count grows, seating extends into neighboring parts of the floor.
     if seating_zone == "front":
@@ -433,7 +453,7 @@ def generate_store(
         table_positions.sort(key=lambda p: (p[0] + 0.5 - (w - 1) / 2) ** 2 + (p[1] + 0.5 - (h - 1) / 2) ** 2)
     table_count = min(t.dining_tables, len(table_positions)) if options.dining_tables is None else options.dining_tables
     if table_count > len(table_positions):
-        raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with {clearance}-cell circulation space and the requested reserved areas. Reduce the table count or clearance, adjust reserved areas or increase the grid size.")
+        raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with {clearance}-cell circulation space, the selected aisle pattern and requested reserved areas. Reduce the table count or clearance, adjust the layout or increase the grid size.")
     dining_clearance: set[tuple[int, int]] = set()
     for i, (x, y) in enumerate(table_positions[:table_count]):
         table = Rack(id=f"r_table_{i + 1}", type=RackType.TABLE, shape=[[1, 1], [1, 1]],
@@ -445,8 +465,6 @@ def generate_store(
 
     # Every populated face opens onto a continuous aisle. Cross-aisles split
     # long shelf runs, and the front two rows stay clear for checkout circulation.
-    aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]
-    aisle = options.aisle_width or aisle
     vertical = options.shelf_direction == "vertical" and layout_style != "perimeter"
     pattern_width, pattern_height = (h, w) if vertical else (w, h)
     row_ys = list(range(2, pattern_height - 2, aisle + 1))
@@ -478,7 +496,7 @@ def generate_store(
             b.counts[category] = rng.randrange(len(CATALOG[category]))
         for i, (x, y, faces) in enumerate(tiles):
             cat = categories[min(len(categories) - 1, i * len(categories) // len(tiles))]
-            if b.free(x, y) and (x, y) not in dining_clearance:
+            if b.free(x, y) and (x, y) not in dining_clearance and (x, y) not in cross_aisles:
                 b.add(RackType.SHELF, x, y, category=cat, faces=faces,
                       rotation=90 if layout_style == "perimeter" or vertical else 0,
                       variant="b" if (y // 3) % 2 else "a")
