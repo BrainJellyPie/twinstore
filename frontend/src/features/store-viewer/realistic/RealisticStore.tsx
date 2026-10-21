@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { INTERIOR_DESIGNS } from "./designThemes";
-import type { Rack, StoreDesign } from "@/shared/types/domain";
+import { resolveInteriorPalette } from "./designThemes";
+import type { Rack, StoreDesign, InteriorColors } from "@/shared/types/domain";
 import { CEILING_HEIGHT, M, QUALITY_PRESETS, type GraphicsQuality } from "./constants";
 import { buildStore } from "./buildStore";
 import { createShellMaterials, disposeMaterials, NO_CAST, NO_RECEIVE } from "./materials";
@@ -26,12 +26,13 @@ interface Props {
   currency: string;
   quality: GraphicsQuality;
   designTheme?: StoreDesign;
+  designColors?: InteriorColors | null;
 }
 
 const noRaycast = () => undefined;
 
-function Surfaces({ width, depth, quality, designTheme }: { width: number; depth: number; quality: GraphicsQuality; designTheme: StoreDesign }) {
-  const palette = INTERIOR_DESIGNS[designTheme];
+function Surfaces({ width, depth, quality, designTheme, designColors }: { width: number; depth: number; quality: GraphicsQuality; designTheme: StoreDesign; designColors?: InteriorColors | null }) {
+  const palette = resolveInteriorPalette(designTheme, designColors);
   const high = quality === "high";
   // Poly Haven's scan covers 1.5 metres, independently of the store grid size.
   const scanned = useScannedMaterial("floor_tiles_08", width / (1.5 * M), depth / (1.5 * M), quality);
@@ -93,7 +94,7 @@ function Surfaces({ width, depth, quality, designTheme }: { width: number; depth
   );
 }
 
-export function RealisticStore({ width, depth, racks, currency, quality, designTheme = "classic" }: Props) {
+export function RealisticStore({ width, depth, racks, currency, quality, designTheme = "classic", designColors = null }: Props) {
   const preset = QUALITY_PRESETS[quality];
   const fontsReady = useFontsReady();
 
@@ -117,7 +118,7 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   const pavementMaps = useScannedMaterial(quality === "high" && built.storefront ? "pavement_02" : null, 1 / (2.12 * M), 1 / (2.12 * M), quality);
   // The source has no measured coverage; author the stone at one repeat/metre.
   const counterMaps = useScannedMaterial(quality === "high" && built.geometries.has("counterTop") ? "marble_012" : null, 1 / M, 1 / M, quality);
-  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps]);
+  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps, designColors), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps, designColors]);
   const layout = useMemo(() => layoutProducts(built.plans, { maxRows: preset.maxRows }), [built, preset.maxRows]);
   const products = useMemo(
     () => buildProductMeshes(layout, currency, quality === "high" ? 160 : 128, quality === "high", quality === "high" ? 4 : 1, quality !== "high"),
@@ -214,7 +215,7 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
 
   return (
     <group ref={groupRef}>
-      <Surfaces width={width} depth={depth} quality={quality} designTheme={designTheme} />
+      <Surfaces width={width} depth={depth} quality={quality} designTheme={designTheme} designColors={designColors} />
       {meshes.map(([key, geom]) => (
         <mesh
           key={key}

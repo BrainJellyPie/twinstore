@@ -16,6 +16,7 @@ import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
 import { CompareFloorPlans } from "./CompareFloorPlans";
+import { InteriorColorControls } from "./InteriorColorControls";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -25,7 +26,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
   budgetCurrency?: string;
-  onApplyDesignToAll?: (design: NonNullable<TemplateChoice["design_theme"]>) => void;
+  onApplyDesignToAll?: (design: NonNullable<TemplateChoice["design_theme"]>, colors: TemplateChoice["design_colors"]) => void;
   onApplyCurrencyToAll?: (currency: string) => void;
   onApplyHoursToAll?: (hours: OperatingHours) => void;
   onApplySizeToAll?: (size: FloorSize) => void;
@@ -325,11 +326,12 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               </select></Field>
               <p className="col-span-2 text-[10px] text-muted-foreground">Leave 0–3 cells beside each counter along its wall. These cells stay clear of stock; other wall displays use the remaining space. Format-default counter counts adapt to fit; explicit counts must fit.</p>
               <div className="col-span-2 space-y-1 sm:col-span-1"><Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
-                <option value="">Format default{selected ? ` (${INTERIOR_DESIGNS[selected.default_design]?.label ?? "Classic retail"})` : ""}</option>
+                <option value="">Format default</option>
                 {Object.entries(INTERIOR_DESIGNS).map(([id, palette]) => <option key={id} value={id}>{palette.label}</option>)}
               </select></Field>
+                {!value.design_theme && selected && <p className="text-[11px] text-muted-foreground">Default design: {INTERIOR_DESIGNS[selected.default_design].label}</p>}
                 {onApplyDesignToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={!activeDesign || sharedDesign === activeDesign}
-                  onClick={() => { if (activeDesign) onApplyDesignToAll(activeDesign); }}>{activeDesign && sharedDesign === activeDesign ? "Design used on all floors" : "Apply design to all floors"}</button>}
+                  onClick={() => { if (activeDesign) onApplyDesignToAll(activeDesign, value.design_colors ?? null); }}>{activeDesign && sharedDesign === activeDesign ? "Design used on all floors" : "Apply design to all floors"}</button>}
               </div>
               <Field label="Shelf design"><select className={controlClass} value={value.fixture_design ?? "mixed"} onChange={(e) => update({ fixture_design: e.target.value as TemplateChoice["fixture_design"] })}>
                 <option value="mixed">Mixed displays</option><option value="a">Open rack A</option><option value="b">Open rack B</option><option value="c">Wall-end rack C</option>
@@ -362,6 +364,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value={1}>1 cell · Standard</option><option value={2}>2 cells · More room</option><option value={3}>3 cells · Open seating</option>
               </select></Field></div>
             </div>
+            <InteriorColorControls design={activeDesign} colors={value.design_colors} onChange={(design_colors) => update({ design_colors })} />
             <details className="space-y-2 rounded border p-2 text-xs">
               <summary className="cursor-pointer">Mixed table sizes{tableMix ? ` · ${tableCount} tables` : ""}</summary>
               <label className="flex items-center gap-2"><input type="checkbox" checked={!!tableMix}
@@ -378,7 +381,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </details>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
             </div>
             </div>
           </div>

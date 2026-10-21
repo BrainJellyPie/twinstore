@@ -3,6 +3,7 @@ import type { Store, Rack } from "@/shared/types/domain";
 
 export interface StoreAssets {
   designTheme: Store["design_theme"];
+  designColors?: Store["design_colors"];
   currency: Store["currency"];
   width: number;
   depth: number;
@@ -35,6 +36,7 @@ export function useStoreAssets(store: Store): StoreAssets {
 
     return {
       designTheme: store.design_theme,
+      designColors: store.design_colors,
       currency: store.currency,
       width,
       depth,

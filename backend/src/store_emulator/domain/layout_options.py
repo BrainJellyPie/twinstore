@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from store_emulator.domain.types import ResourceId
 
@@ -19,6 +19,21 @@ type FixtureDesign = Literal["mixed", "a", "b", "c"]
 type ShelfDirection = Literal["horizontal", "vertical"]
 type TemplateCategoryId = Annotated[str, Field(min_length=1, max_length=80)]
 type TemplateWeekday = Annotated[int, Field(strict=True, ge=1, le=7)]
+type InteriorColor = Annotated[str, Field(strict=True, min_length=7, max_length=7, pattern=r"^#[0-9a-fA-F]{6}$")]
+
+
+class InteriorColors(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    wall: InteriorColor | None = None
+    floor: InteriorColor | None = None
+    accent: InteriorColor | None = None
+    counter: InteriorColor | None = None
+
+    @field_validator("wall", "floor", "accent", "counter")
+    @classmethod
+    def _lowercase(cls, value: str | None) -> str | None:
+        return value.lower() if value is not None else None
 
 
 class ReservedArea(BaseModel):
@@ -69,6 +84,7 @@ class LayoutOptions(BaseModel):
     checkout_wall: CheckoutWall = "front"
     fixture_design: FixtureDesign = "mixed"
     design_theme: StoreDesign | None = None
+    design_colors: InteriorColors | None = None
     dining_tables: int | None = Field(default=None, ge=0, le=48)
     dining_seats: int = Field(default=4, strict=True, ge=2, le=6, multiple_of=2)
     table_mix: DiningTableMix | None = None

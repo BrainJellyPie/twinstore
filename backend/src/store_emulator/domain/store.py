@@ -2,7 +2,7 @@ from typing import Final
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .layout_options import StoreDesign
+from .layout_options import InteriorColors, StoreDesign
 from .rack import Rack, RackType, PASSTHROUGH_TYPES, Slot
 from .types import Position, Weekday
 
@@ -34,6 +34,7 @@ class Store(BaseModel):
     name: str
     type: str
     design_theme: StoreDesign = "classic"
+    design_colors: InteriorColors | None = None
     # Legacy stores inherit the server/run currency until explicitly recorded.
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
     grid_size: Position  # (width, height)

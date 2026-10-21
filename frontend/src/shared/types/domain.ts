@@ -51,11 +51,19 @@ export interface Rack {
 
 export type StoreDesign = "classic" | "warm" | "minimal" | "industrial" | "botanical" | "luxury" | "coastal" | "terracotta" | "nordic" | "retro";
 
+export interface InteriorColors {
+  wall?: string | null;
+  floor?: string | null;
+  accent?: string | null;
+  counter?: string | null;
+}
+
 export interface Store {
   id: string;
   name: string;
   type: string;
   design_theme?: StoreDesign;
+  design_colors?: InteriorColors | null;
   currency?: string | null;
   grid_size: Position;
   weekly_schedule: DaySchedule[];

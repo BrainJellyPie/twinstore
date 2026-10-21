@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
+import { resolveInteriorPalette } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import type { Store } from "@/shared/types/domain";
@@ -37,7 +37,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
     { label: "Dining tables / seats", value: (plan) => { const tables = plan.store.racks.filter((rack) => rack.type === "table").length; return `${tables} / ${plan.store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0)}`; } },
     { label: "Checkout counters", value: (plan) => plan.store.racks.filter((rack) => rack.type === "counter").length },
     { label: "Reserved areas", value: (plan) => plan.areas.length },
-    { label: "Interior design", value: (plan) => INTERIOR_DESIGNS[plan.store.design_theme ?? "classic"].label },
+    { label: "Interior design", value: (plan) => resolveInteriorPalette(plan.store.design_theme, plan.store.design_colors).label },
     { label: "Operating hours", value: (plan) => formatWeeklyHours(plan.store.weekly_schedule) },
   ];
   return <Dialog open={open} onOpenChange={setOpen}>
