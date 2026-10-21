@@ -128,3 +128,14 @@ export const interviewKeys = {
   suggestions: (pid: string, runId: string, sid: string, after: number, model: string) =>
     ["projects", pid, "runs", runId, "shoppers", sid, "interview", "suggestions", after, model] as const,
 };
+
+// Questions about a finished run, answered from its own numbers. Mirrors domain/interview.py AnalystThread.
+export interface AnalystMessage { role: "user" | "analyst"; text: string; figures: string[]; follow_ups: string[]; created_at: string }
+export interface AnalystThread { run_id: string; model: string; messages: AnalystMessage[] }
+export const analystKey = (pid: string, runId: string) => ["projects", pid, "runs", runId, "analyst"] as const;
+export const getAnalyst = (pid: string, runId: string, signal?: AbortSignal) =>
+  fetchJson<AnalystThread>(`/api/projects/${pid}/runs/${runId}/analyst`, { signal });
+export const askAnalyst = (pid: string, runId: string, question: string, model = "") =>
+  fetchJson<AnalystThread>(`/api/projects/${pid}/runs/${runId}/analyst`, { method: "POST", body: JSON.stringify({ question, model }) });
+export const clearAnalyst = (pid: string, runId: string) =>
+  fetchJson<void>(`/api/projects/${pid}/runs/${runId}/analyst`, { method: "DELETE" });

@@ -6,6 +6,13 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Ask about this run
+- A new **Ask about this run** box in a run's results answers questions such as "which shelf converts worst, and
+  why might that be?" from the run's own fact sheet (totals, arrival hours, shelves with stops, buys and buy rate,
+  products, age and gender groups). Every answer lists the figures it rests on (only lines that are in the sheet are
+  kept), says plainly when the run cannot answer, and offers follow-up questions; the thread is kept with the run.
+  API: `GET/POST/DELETE /api/projects/{pid}/runs/{run_id}/analyst`, `GET .../analyst/facts`.
+
 ### Model-written shopper thoughts
 - Vision shoppers now say what they came for: the model's own mission and reason become the first step of each
   journey and the speech bubble at the door ("a cold soda and something salty (thirsty)"); a shopper who turns
