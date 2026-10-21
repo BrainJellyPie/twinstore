@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from store_emulator.application.storage.generations import recover_running_generations
+from store_emulator.application.storage.runs import recover_running_runs
 from store_emulator.application.storage.seed import seed_sample_projects
 from store_emulator.application.storage.setups import recover_running_setups
 from store_emulator.application.marketing import recover_running_jobs
@@ -43,6 +44,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     recovered_setups = recover_running_setups()
     if recovered_setups > 0:
         logger.info(f"server start: recovered {recovered_setups} running setups to draft")
+    recovered_runs = recover_running_runs()
+    if recovered_runs > 0:
+        logger.info(f"server start: marked {recovered_runs} interrupted simulation runs as failed")
     recovered_gens = recover_running_generations()
     if recovered_gens > 0:
         logger.info(f"server start: marked {recovered_gens} in-progress generations as failed")

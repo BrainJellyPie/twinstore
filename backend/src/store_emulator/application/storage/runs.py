@@ -1,7 +1,9 @@
 import hashlib
 import json
+import logging
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from typing import cast
 
 from store_emulator.domain.behavior import BehaviorPattern
 from store_emulator.domain.config import SimulationConfig
@@ -10,7 +12,29 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.result import AggregatedResult, RunManifest
 from store_emulator.domain.store import Store
 
-from store_emulator.application.storage.io import now_iso, read_json, write_json
+from store_emulator.application.storage.io import DATA_DIR, now_iso, read_json, write_json
+
+logger = logging.getLogger(__name__)
+
+
+def recover_running_runs() -> int:
+    """Mark simulations interrupted by a server restart as failed, keeping partial outputs."""
+    recovered = 0
+    for path in Path(DATA_DIR).glob("*/runs/*/status.json"):
+        try:
+            raw: object = read_json(path)
+            if not isinstance(raw, dict):
+                raise ValueError("run status must be an object")
+            data = cast(dict[str, object], raw)
+            if data.get("status") not in ("pending", "running"):
+                continue
+            data.update({"status": "failed", "error": "interrupted by server restart; start a new run to retry",
+                         "finished_at": now_iso()})
+            write_json(path, data)
+            recovered += 1
+        except (OSError, ValueError) as exc:
+            logger.warning("Could not recover run %s: %s", path, exc)
+    return recovered
 
 
 def save_run(
