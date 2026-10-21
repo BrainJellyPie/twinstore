@@ -85,12 +85,12 @@ it("places gates on other walls and keeps existing pickup areas when the wall ch
   await screen.findByRole("img", { name: "Floor plan preview" });
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
   fireEvent.change(screen.getByLabelText("Depth (6–40 cells)"), { target: { value: "18" } });
-  fireEvent.change(screen.getByLabelText("Entrance & exit wall"), { target: { value: "left" } });
+  fireEvent.change(screen.getByLabelText("Entrance wall"), { target: { value: "left" } });
   expect(within(screen.getByLabelText("Entrance position")).getByRole("option", { name: "Near back" })).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Entrance position"), { target: { value: "center" } });
   fireEvent.change(screen.getByLabelText("Area starting point"), { target: { value: "pickup" } });
   fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
-  fireEvent.change(screen.getByLabelText("Entrance & exit wall"), { target: { value: "back" } });
+  fireEvent.change(screen.getByLabelText("Entrance wall"), { target: { value: "back" } });
   fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
     gate_wall: "back", entrance: "center", reserved_areas: [
@@ -100,7 +100,33 @@ it("places gates on other walls and keeps existing pickup areas when the wall ch
   }), expect.any(AbortSignal)));
   expect(within(screen.getByLabelText("Entrance position")).getByRole("option", { name: "Left" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
-  expect((screen.getByLabelText("Entrance & exit wall") as HTMLSelectElement).value).toBe("front");
+  expect((screen.getByLabelText("Entrance wall") as HTMLSelectElement).value).toBe("front");
+});
+
+it("places the exit independently, labels its wall positions and restores shared-gate defaults", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  expect((screen.getByLabelText("Exit wall") as HTMLSelectElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("Exit position"), { target: { value: "right" } });
+  fireEvent.change(screen.getByLabelText("Exit wall"), { target: { value: "left" } });
+  expect(within(screen.getByLabelText("Exit position")).getByRole("option", { name: "Near front" })).toBeTruthy();
+  expect(within(screen.getByLabelText("Entrance position")).getByRole("option", { name: "Right" })).toBeTruthy();
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    gate_wall: "front", exit_position: "right", exit_wall: "left",
+  }), expect.any(AbortSignal)));
+  fireEvent.change(screen.getByLabelText("Entrance wall"), { target: { value: "back" } });
+  expect((screen.getByLabelText("Exit wall") as HTMLSelectElement).value).toBe("left");
+  fireEvent.change(screen.getByLabelText("Exit position"), { target: { value: "shared" } });
+  expect((screen.getByLabelText("Exit wall") as HTMLSelectElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Exit wall") as HTMLSelectElement).value).toBe("");
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    gate_wall: "back", exit_position: "shared", exit_wall: null,
+  }), expect.any(AbortSignal)));
+  fireEvent.change(screen.getByLabelText("Exit position"), { target: { value: "center" } });
+  fireEvent.change(screen.getByLabelText("Exit wall"), { target: { value: "right" } });
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Exit wall") as HTMLSelectElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Exit wall") as HTMLSelectElement).value).toBe("");
 });
 
 it("limits products per category, validates whole counts and restores the full assortment", async () => {

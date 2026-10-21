@@ -43,6 +43,7 @@ class LayoutOptions(BaseModel):
     entrance: EntrancePosition = "left"
     gate_wall: GateWall = "front"
     exit_position: ExitPosition = "shared"
+    exit_wall: GateWall | None = None
     checkouts: int | None = Field(default=None, ge=1, le=12)
     checkout_placement: CheckoutPlacement = "auto"
     checkout_wall: CheckoutWall = "front"

@@ -52,6 +52,17 @@ describe("productCatalog", () => {
     ["Banana Chips", "bag"],
     ["Banana Milk", "bottle"],
     ["Banana Ice Cream", "pint"],
+    ["Avocado", "avocado"],
+    ["Fresh Avocados", "avocado"],
+    ["Organic Hass Avocado Each", "avocado"],
+    ["Ripe Avocados 1kg", "avocado"],
+    ["Avocado Oil", "bottle"],
+    ["Avocado Spread", "jar"],
+    ["Avocado Chips", "bag"],
+    ["Avocado Smoothie", "bottle"],
+    ["Avocados 2pk", "box"],
+    ["Avocado Halves", "box"],
+    ["Green Avocado", "box"],
     ["Apples", "apple"],
     ["Organic Gala Apples 1kg", "apple"],
     ["Fuji Apple Each", "apple"],
@@ -221,6 +232,7 @@ describe("fixture planning and product layout", () => {
   it.each([
     ["Terracotta Pot 20cm", "pot", 0.2, 0.2 * (0.5314331 / 0.4662051), 0.2],
     ["Watering Can 5L", "wateringCan", 0.45233607, 0.19681853, 0.19101861],
+    ["Avocado", "avocado", 0.09518591, 0.14323448, 0.09456679],
     ["Croissant", "croissant", 0.2, 0.06199567, 0.07551152],
     ["Bananas", "banana", 0.134, 0.179, 0.223],
     ["Apples", "apple", 0.09756, 0.08539, 0.09590],
@@ -238,7 +250,7 @@ describe("fixture planning and product layout", () => {
     }
   });
 
-  it.each(["Terracotta Pot 20cm", "Croissant", "Watering Can 5L"])("keeps %s in a single layer on display tables", (name) => {
+  it.each(["Terracotta Pot 20cm", "Croissant", "Watering Can 5L", "Avocado"])("keeps %s in a single layer on display tables", (name) => {
     const table = rack({ id: "pots", type: "table", position: [3, 3], slots: slots("S", [[name]]) });
     const out = layoutProducts([planFixture(table, 8, 6)], { maxRows: 3 });
     expect(out.products.length).toBeGreaterThan(0);
