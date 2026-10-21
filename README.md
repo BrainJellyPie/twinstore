@@ -144,7 +144,9 @@ The **Floor** page is the store's day. Press **Run simulation** and choose:
   for example one model from each provider. The dialog estimates the number of model calls before you start.
 - **What kind of day.** One of **19 situations** — weather, temperature, weekday or holiday, crowding, local events,
   promotions, sold-out items and notes for the model shoppers — or your own. Customer sample, seed and
-  preview-or-final run are set in the same place.
+  preview-or-final run are set in the same place. The dialog opens with the engine and customer sample; expand
+  **Advanced settings** for situations, models, neighborhood visitors, seed, replicate and finalization. Vision
+  runs start with at most 30 customers, and language-model runs with at most 300; the call estimate stays visible.
 
 **Results** fill in as the day plays: revenue, conversion, basket, footfall and dwell heatmaps, revenue by rack, what
 caught the vision shoppers' eye and at which shelf level, who walked in at the door, and run diagnostics (failed
