@@ -5,7 +5,7 @@
 <title>TwinStore — Shelf Lab</title>
 <link rel="stylesheet" href="kit.css">
 <style>
-  .row1 { display: grid; grid-template-columns: 290px 250px 1fr 310px; gap: 48px; align-items: center; }
+  .row1 { display: grid; grid-template-columns: 330px 240px 1fr 340px; gap: 44px; align-items: center; }
   .photo { position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 50px -28px rgb(16 20 36 / 0.45); background: #fff; }
   .photo img { display: block; width: 100%; }
   .photo .cap { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; }
@@ -38,6 +38,14 @@
   .loss .big { font: 400 34px/1 var(--serif); }
   .loss .big em { font-style: italic; color: #d6ff5c; }
   .loss small { color: #a4a9bb; font-size: 12px; line-height: 1.4; }
+  .flist { display: grid; gap: 6px; margin-top: 8px; }
+  .flist div { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; border: 1px solid var(--line); background: #fff; font-size: 12.5px; }
+  .flist .chip { justify-self: start; }
+  .flist i { font: 11px var(--mono); color: var(--muted); font-style: normal; }
+  .trip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .trip figure { margin: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+  .trip img { display: block; width: 100%; height: 84px; object-fit: cover; object-position: 45% 45%; }
+  .trip figcaption { padding: 4px 7px; font: 600 10.5px var(--mono); color: var(--ink-2); border-top: 1px solid var(--line); }
 </style>
 </head>
 <body data-wires="
@@ -61,8 +69,8 @@
 
   <div class="row1">
     <div class="photo" id="photo">
-      <img src="../twinstore/media/lab-before.jpg" alt="">
-      <div class="cap"><span class="chip c1"><i class="dot"></i>shelf photo</span></div>
+      <img src="../twinstore/media/shelf-photo.jpg" alt="">
+      <div class="cap"><span class="chip c1"><i class="dot"></i>shelf photo</span><span class="chip">photoreal render</span></div>
     </div>
 
     <div>
@@ -87,31 +95,41 @@
     </div>
 
     <div class="photo" id="edited">
-      <img src="../twinstore/media/lab-after.jpg" alt="">
+      <img src="../twinstore/media/shelf-photo-edited.jpg" alt="">
       <div class="cap"><span class="chip c3"><i class="dot"></i>edited</span><span class="chip">+ mask</span></div>
-      <div class="box sw" style="left:4%; top:14.6%; width:20%; height:15.5%"></div>
-      <div class="box sw" style="left:71%; top:31%; width:21%; height:15%"></div>
-      <div class="box rm" style="left:21.5%; top:49%; width:20%; height:15%"></div>
-      <div class="box nw" style="left:4%; top:67%; width:58%; height:15.5%"></div>
-      <div class="box pr" style="left:73%; top:86.5%; width:17%; height:4.5%"></div>
+      <div class="box sw" style="left:27.6%; top:50.3%; width:15.3%; height:13.2%"></div>
+      <div class="box sw" style="left:54.1%; top:50.5%; width:17%; height:13.1%"></div>
+      <div class="box rm" style="left:40.7%; top:70.3%; width:10.8%; height:10.5%"></div>
+      <div class="box nw" style="left:53.5%; top:35%; width:16.6%; height:10.6%"></div>
+      <div class="box pr" style="left:31.8%; top:93.1%; width:10.6%; height:6.6%"></div>
+      <div class="box pr" style="left:45.3%; top:10.6%; width:3.9%; height:4.8%; border-color:#86c400; background: rgb(134 196 0 / 0.16)"></div>
     </div>
   </div>
 
   <div class="row2">
     <div class="zone solid" id="s2r"><div class="tag">Sim2real <i>same panel, three domains</i></div>
       <div class="tri">
-        <figure><img src="../twinstore/media/shelf-render.jpg" alt=""><figcaption>render</figcaption></figure>
-        <figure><img src="../twinstore/media/shelf-tagged.jpg" alt=""><figcaption>photo + tags</figcaption></figure>
-        <figure class="raw"><img src="../twinstore/media/lab-before.jpg" alt=""><figcaption>raw photo</figcaption></figure>
+        <figure><img src="../twinstore/media/shelf-render.jpg" alt=""><figcaption>twin render</figcaption></figure>
+        <figure><img src="../twinstore/media/shelf-photo-tagged.jpg" alt=""><figcaption>photo + tags</figcaption></figure>
+        <figure class="raw"><img src="../twinstore/media/shelf-photo.jpg" alt="" style="object-position: 30% 40%"><figcaption>raw photo</figcaption></figure>
       </div>
       <div class="metric"><b>Decision agreement</b><code>same_pick · 95% CI</code><span>share of personas who pick the same product (or nothing) on the photo as on the render</span></div>
       <div class="metric"><b>Attention shift</b><code>level_share · Spearman ρ</code><span>which shelf level wins, and whether interest ranks agree</span></div>
+      <div class="metric"><b>Answer quality per domain</b><code>none_rate · errors · mean interest</code><span>how often the model picks nothing or misreads, on each view of the same shelf</span></div>
+      <div class="metric"><b>Sim2real gap as a number</b><code>1 − same_pick</code><span>tracked per model, so a new VLM can be checked before it shops a whole store</span></div>
     </div>
 
     <div class="zone solid" id="audit"><div class="tag">Compliance audit <i>priced</i></div>
       <div class="hd" style="display:flex;gap:10px;align-items:center"><span class="label">findings</span></div>
       <div class="find"><span class="chip c3">missing</span><span class="chip c3">gap</span><span class="chip a">misplaced</span><span class="chip a">facings</span><span class="chip c2">price</span><span class="chip">unexpected</span></div>
       <div class="metric"><b>Compliance</b><code>matched / expected facings</code><span>per level and for the whole face</span></div>
+      <div class="label" style="margin-top:12px">findings on the edited shelf <span style="color:var(--muted)">· by construction</span></div>
+      <div class="flist">
+        <div><span class="chip c3">gap</span><b>Purple Grape Soda can</b><i>L2 · 4 facings</i></div>
+        <div><span class="chip a">misplaced</span><b>Fizzo Zero ↔ Spritz Lemon-Lime</b><i>L3</i></div>
+        <div><span class="chip">unexpected</span><b>Volt Lime Cola (new)</b><i>L4 · 6 facings</i></div>
+        <div><span class="chip c2">price</span><b>Fizzo Cola 2 Liter</b><i>$2.79 → $1.99</i></div>
+      </div>
       <div class="loss"><div class="big"><em>loss</em>/day</div><small>each stock-out simulated against the reference with common random numbers → revenue per day with a CI</small></div>
     </div>
 
@@ -119,7 +137,14 @@
       <div class="node" style="margin-top:4px"><div class="hd"><span class="ic v" data-icon="database"></span><div><h3>Bench generator</h3><div class="sub">rendered or real captures</div></div></div>
         <div class="chips"><span class="chip v">index.jsonl</span><span class="chip">image</span><span class="chip">mask</span><span class="chip">edits</span></div>
       </div>
+      <div class="trip">
+        <figure><img src="../twinstore/media/shelf-photo.jpg" alt=""><figcaption>image</figcaption></figure>
+        <figure><img src="../twinstore/media/shelf-photo-edited.jpg" alt=""><figcaption>edited</figcaption></figure>
+        <figure><img src="../twinstore/media/shelf-photo-mask.png" alt="" style="background:#000"><figcaption>mask</figcaption></figure>
+      </div>
       <p style="font-size:12.5px;color:var(--muted);margin:12px 2px 0">Detection, change localisation and decision-preserving reconstruction — evaluated against masks that are exact by construction.</p>
+      <div class="node" style="margin-top:14px"><div class="hd"><span class="ic c3" data-icon="users"></span><div><h3>Lever experiments</h3><div class="sub">lab_cli levers</div></div></div>
+        <p>One persona panel on each original and its counterfactual: Δ choice share per lever — swap, stock-out, new pack, price, promo.</p></div>
     </div>
   </div>
 

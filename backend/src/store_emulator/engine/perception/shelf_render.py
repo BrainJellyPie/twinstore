@@ -140,6 +140,19 @@ def wrap_text(draw: ImageDraw.ImageDraw, text: str, font: _Font, width: int, max
     return lines
 
 
+@cache
+def _package_image(url: str) -> Image.Image | None:
+    """A package image a slot item points to with a file:// URI (marketing tests of new packaging)."""
+    if not url.startswith("file://"):
+        return None
+    path = Path(url.removeprefix("file://"))
+    if not path.is_file():
+        return None
+    img = Image.open(path)
+    img.load()
+    return img.convert("RGBA")
+
+
 def render_face(
     rack: Rack,
     face: Face,
@@ -209,12 +222,21 @@ def render_face(
             x0 = left + c * cell_w + 6
             x1 = left + (c + 1) * cell_w - 6
             color = _package_color(item.name)
-            draw.rounded_rectangle((x0, y0 + 6, x1, board_y - 2), radius=10, fill=color, outline=(40, 40, 40), width=2)
-            lines = wrap_text(draw, item.name, name_font, x1 - x0 - 14, max_lines=4)
-            line_h = name_size + 3
-            ty = y0 + 6 + (pkg_h - line_h * len(lines)) // 2 + 6
-            for i, line in enumerate(lines):
-                draw.text(((x0 + x1) // 2, ty + i * line_h), line, font=name_font, fill=text_color(color), anchor="mt")
+            package = _package_image(item.image_url) if item.image_url else None
+            if package is not None:
+                # The product's own package art, standing on the shelf; its name stays readable underneath.
+                art = package.copy()
+                art.thumbnail((x1 - x0 - 8, pkg_h - name_size - 14))
+                img.paste(art, ((x0 + x1) // 2 - art.width // 2, board_y - name_size - 8 - art.height), art)
+                name = wrap_text(draw, item.name, name_font, x1 - x0 - 8, max_lines=1)[0]
+                draw.text(((x0 + x1) // 2, board_y - name_size - 5), name, font=name_font, fill=(30, 30, 34), anchor="mt")
+            else:
+                draw.rounded_rectangle((x0, y0 + 6, x1, board_y - 2), radius=10, fill=color, outline=(40, 40, 40), width=2)
+                lines = wrap_text(draw, item.name, name_font, x1 - x0 - 14, max_lines=4)
+                line_h = name_size + 3
+                ty = y0 + 6 + (pkg_h - line_h * len(lines)) // 2 + 6
+                for i, line in enumerate(lines):
+                    draw.text(((x0 + x1) // 2, ty + i * line_h), line, font=name_font, fill=text_color(color), anchor="mt")
             if item.promo:
                 ribbon = item.promo.strip()[:12].upper()
                 rw = int(draw.textlength(ribbon, font=promo_font)) + 12

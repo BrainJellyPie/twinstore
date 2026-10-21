@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -14,6 +14,7 @@ from store_emulator.application.shelf_lab import (
     AuditRequest,
     LabJobView,
     PackageAsset,
+    PackageUpdate,
     RivalReport,
     RivalRequest,
     Sim2RealRequest,
@@ -36,10 +37,30 @@ def _call[T](fn: Callable[[], T]) -> T:
         raise HTTPException(e.status_code, e.message) from e
 
 
-@router.post("/{pid}/lab/packages", summary="Upload a package image for replace edits", response_model=PackageAsset)
-async def upload_package(pid: str, image: Annotated[UploadFile, File(description="PNG with transparency, or any photo on a plain background")]) -> PackageAsset:
+@router.post("/{pid}/lab/packages", summary="Upload a product image", response_model=PackageAsset)
+async def upload_package(
+    pid: str,
+    image: Annotated[UploadFile, File(description="PNG with transparency, or any photo on a plain background")],
+    name: Annotated[str, Form()] = "",
+    brand: Annotated[str, Form()] = "",
+    sku: Annotated[str, Form(description="the store product this image shows")] = "",
+    remove_background: Annotated[bool, Form()] = True,
+) -> PackageAsset:
+    """Product images serve Shelf Lab's "new package" edits, packaging A/B tests and survey stimuli."""
     data = await image.read()
-    return await run_in_threadpool(_call, lambda: lab.upload_package(pid, data, image.filename or "package"))
+    return await run_in_threadpool(_call, lambda: lab.upload_package(
+        pid, data, image.filename or "package", name=name, brand=brand, sku=sku, remove_background=remove_background,
+    ))
+
+
+@router.patch("/{pid}/lab/packages/{aid}", summary="Rename or link a product image", response_model=PackageAsset)
+def update_package(pid: str, aid: str, upd: PackageUpdate) -> PackageAsset:
+    return _call(lambda: lab.update_package(pid, aid, upd))
+
+
+@router.delete("/{pid}/lab/packages/{aid}", summary="Delete a product image", status_code=204)
+def delete_package(pid: str, aid: str) -> None:
+    _call(lambda: lab.delete_package(pid, aid))
 
 
 @router.get("/{pid}/lab/packages", summary="Uploaded package images", response_model=list[PackageAsset])

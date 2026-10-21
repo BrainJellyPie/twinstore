@@ -43,3 +43,24 @@ product with a bootstrap interval, and how many shoppers changed their pick at a
 
 Code: `backend/src/store_emulator/engine/shelf_lab/` (edits, sim2real, audit, bench, levers),
 `application/shelf_lab.py`, `server/routes/shelf_lab.py`, `frontend/src/features/capture/ShelfLab.tsx`.
+
+## Photoreal shelf studio
+
+`frontend/studio.html` (dev server only) renders one gondola bay up close with Realistic mode's own
+packages, labels and price tags — ambient occlusion, soft shadows and a phone-photo finish — and
+exposes the exact box of every facing column, every shelf band and every empty stretch as
+`window.studioResult`, shaped like a `CaptureResult`. It stands in for a phone photo with perfect
+ground truth: Shelf Lab edits it like any capture, and the sim2real panel can compare the twin's
+schematic render, the studio "photo" with tags and the untagged one.
+
+```bash
+# with ./scripts/dev.sh running
+open "http://localhost:5173/studio.html?preset=drinks&w=1600&h=1200&ss=1.5&seed=3"   # or preset=snacks
+open "http://localhost:5173/studio.html?solo=Volt%20Lime%20Cola%2020oz&w=360&h=960"  # one package, transparent
+# edit it with the engine and write the tagged view (see the script header)
+uv run --project backend python .github/assets/src/shelf_photo_edits.py shelf.png shelf.json volt.png out/
+```
+
+The README's Shelf Lab figure and film use these renders. Light matching in the edit engine reads the
+bright end of the ring around a box (shelf edges, tags, white print), so neighbouring products no longer
+tint pasted pixels.

@@ -131,7 +131,8 @@ the purchase rate, and paired layouts share every random number.
 **Fig. 3 — Shelf Lab.** Swap products, empty a run, inpaint a new package, reprint a price tag or hang a promotion on a
 real shelf photo. Only pixels inside the changed boxes move, so every edit has an exact mask. The same shoppers judge
 the render, the tagged photo and the raw photo (sim2real agreement with CIs), and compliance gaps against the reference
-layout are priced in revenue per day by paired simulation. Details: [`SHELF_LAB.md`](./SHELF_LAB.md).
+layout are priced in revenue per day by paired simulation. The shelf here is a photoreal render from the built-in
+shelf studio, which supplies exact boxes; phone photos are edited the same way. Details: [`SHELF_LAB.md`](./SHELF_LAB.md).
 
 ### Photos in, twin out
 

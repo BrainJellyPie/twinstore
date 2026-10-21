@@ -3,6 +3,7 @@
 //   a > b    solid gradient arrow          a >> b   thick gradient arrow (main flow)
 //   a ~> b   dashed magenta arrow (feedback)   a -> b   volt arrow (control)
 //   sides are picked from the boxes' positions; force them with a.r > b.l (t, r, b, l).
+//   a.b ~> b.b @40   bend the curve only 40 px out from the boxes (default: 45 % of the distance, ≤ 150)
 // Sets window.figureReady when done, which render.mjs waits for.
 
 (function () {
@@ -51,9 +52,9 @@
     const spec = (document.body.dataset.wires || "").split(";").map((s) => s.trim()).filter(Boolean);
     for (const line of spec) {
       const [pair, label] = line.split(":").map((s) => s?.trim());
-      const m = pair.match(/^([\w.-]+)\s*(>>|~>|->|>)\s*([\w.-]+)$/);
+      const m = pair.match(/^([\w.-]+)\s*(>>|~>|->|>)\s*([\w.-]+)(?:\s*@(\d+))?$/);
       if (!m) { console.warn("bad wire", line); continue; }
-      const [, from, kind, to] = m;
+      const [, from, kind, to, depth] = m;
       const [aid, as] = from.split("."), [bid, bs] = to.split(".");
       const A = document.getElementById(aid), B = document.getElementById(bid);
       if (!A || !B) { console.warn("missing", aid, bid); continue; }
@@ -64,7 +65,7 @@
       const off = { t: [0, -gap], b: [0, gap], l: [-gap, 0], r: [gap, 0] };
       p0[0] += off[sa][0]; p0[1] += off[sa][1]; p1[0] += off[sb][0] * 1.6; p1[1] += off[sb][1] * 1.6;
       const dist = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
-      const k = Math.max(28, Math.min(150, dist * 0.45));
+      const k = depth ? Number(depth) : Math.max(28, Math.min(150, dist * 0.45));
       const dir = { t: [0, -1], b: [0, 1], l: [-1, 0], r: [1, 0] };
       const c0 = [p0[0] + dir[sa][0] * k, p0[1] + dir[sa][1] * k];
       const c1 = [p1[0] + dir[sb][0] * k, p1[1] + dir[sb][1] * k];

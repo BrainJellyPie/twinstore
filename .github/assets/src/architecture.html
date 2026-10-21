@@ -20,7 +20,7 @@
   .core .seed b { color: #fff; }
   .twin-art { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
   .twin-art img { width: 58px; height: 58px; border-radius: 15px; box-shadow: 0 10px 24px -10px rgb(165 134 255 / 0.8); }
-  .stack { margin-top: 128px; display: grid; grid-template-columns: 1.55fr 1fr 0.95fr; gap: 22px; }
+  .stack { margin-top: 64px; display: grid; grid-template-columns: 1.55fr 1fr 0.95fr; gap: 22px; }
   .layers { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
   .layer { padding: 7px 10px; border-radius: 12px; border: 1px solid var(--line); background: #fff; font: 600 12px var(--mono); box-shadow: 0 6px 16px -12px rgb(16 20 36 / 0.3); }
   .layer small { display: block; font: 500 10.5px var(--mono); color: var(--muted); margin-top: 2px; }
@@ -33,13 +33,13 @@
   b-capture.r > core.l ; b-plan.r > core.l ; b-receipt.r > core.l ; b-appeal.r > core.l ; b-rival.r > core.l ; b-gen.r > core.l ;
   core.r >> e-rule.l ; core.r >> e-llm.l ; core.r >> e-vlm.l ; core.r >> e-ens.l ;
   e-rule.r > results.l ; e-llm.r > results.l ; e-vlm.r > results.l ; e-ens.r > results.l ;
-  r-fid.b ~> core.b : calibrate on real POS
+  r-fid.b ~> core.b @34 : calibrate on real POS
 ">
 <div class="canvas">
   <div class="title">
     <div>
       <div class="eyebrow">Fig. 1 — System</div>
-      <h1 style="max-width:1080px">One store, its <em>digital twin</em>, and a crowd of synthetic shoppers</h1>
+      <h1>A store, its <em>digital twin</em>, and a synthetic crowd</h1>
       <div class="lede">Photos, plans and sales data become a living twin of the store. Rule-based, language-model and
         vision-language shoppers walk it on identical, seeded days, so every layout change is a controlled experiment.</div>
     </div>
@@ -119,10 +119,10 @@
       </div>
     </div>
     <div class="zone solid"><div class="tag">Frontend <i>React 19 · TS strict</i></div>
-      <div class="chips" style="margin-top:12px"><span class="chip c2">R3F / Three.js</span><span class="chip c2">PMREM store env</span><span class="chip">TanStack Router + Query</span><span class="chip">Zustand</span><span class="chip">Tailwind v4</span><span class="chip">⌘K palette</span></div>
+      <div class="chips" style="margin-top:12px"><span class="chip c2">R3F / Three.js</span><span class="chip c2">PMREM store env</span><span class="chip">TanStack Router + Query</span><span class="chip">Zustand</span><span class="chip">Tailwind v4</span><span class="chip">⌘K palette</span><span class="chip">shadcn/ui</span><span class="chip">Recharts</span><span class="chip c2">shelf studio</span><span class="chip c2">shopper's-eye camera</span></div>
     </div>
     <div class="zone solid"><div class="tag">Launcher <i>Go · uv</i></div>
-      <div class="chips" style="margin-top:12px"><span class="chip k">TwinStore.exe</span><span class="chip k">TwinStore.app</span><span class="chip k">twinstore</span><span class="chip v">boot screen</span><span class="chip">127.0.0.1 only</span></div>
+      <div class="chips" style="margin-top:12px"><span class="chip k">TwinStore.exe</span><span class="chip k">TwinStore.app</span><span class="chip k">twinstore</span><span class="chip v">boot screen</span><span class="chip">127.0.0.1 only</span><span class="chip">uv · Python 3.13</span><span class="chip">one archive per OS</span><span class="chip">smoke-tested in CI</span></div>
     </div>
   </div>
 

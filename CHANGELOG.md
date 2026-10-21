@@ -44,6 +44,10 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Compliance audit against the layout's reference face; stock-outs priced in revenue per day by
   paired simulation. Benchmark generator (`lab_cli bench`) and lever experiments.
 - Rival shelf comparison: price index, assortment overlap, the rival's price-adjusted pull.
+- Photoreal shelf studio (`frontend/studio.html`): a gondola bay rendered with Realistic mode's
+  packages and a phone-photo finish, with exact facing boxes, so Shelf Lab can be shown and
+  benchmarked on photo-like shelves. Edits now match light by the bright end of the surrounding ring
+  (shelf edges, tags), so neighbouring products no longer tint swapped or refilled pixels.
 
 ### Photos in, twin out
 - Floor-plan images (sketch, scan, PDF page) → walls, racks and doors on the grid, or read by a
