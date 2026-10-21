@@ -79,3 +79,12 @@ it("recognizes a decisive reduction in walking distance for the vision winner", 
   expect(screen.getByText(/Vision shoppers prefer #1/)).toBeTruthy();
   expect(screen.queryByText(/The interval still includes no change/)).toBeNull();
 });
+
+it.each(["rule", "vlm"] as const)("explains a failed save and permits retry for %s", async (kind) => {
+  await show(kind, 100);
+  vi.mocked(api.applyOptimization).mockRejectedValueOnce(new Error("The source layout no longer exists."));
+  const save = screen.getByRole("button", { name: kind === "vlm" ? "Save the winner as a new layout" : "Save as new layout" });
+  fireEvent.click(save);
+  expect((await screen.findByRole("alert")).textContent).toContain("The source layout no longer exists.");
+  expect((save as HTMLButtonElement).disabled).toBe(false);
+});
