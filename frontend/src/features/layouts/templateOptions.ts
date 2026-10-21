@@ -76,6 +76,7 @@ export const BUILDING_PRESETS = [
   { id: "family", name: "Family shopping center", floors: [["Ground · Toys & hobbies", "toy_hobby_store"], ["Level 2 · Books", "bookstore"], ["Level 3 · Home", "design_showroom"], ["Level 4 · Restaurant", "family_restaurant"]] },
   { id: "tea_vintage", name: "Vintage shop & tea lounge", floors: [["Ground · Vintage", "vintage_boutique"], ["Level 2 · Tea lounge", "tea_lounge"]] },
   { id: "campus", name: "Campus hub", floors: [["Ground · Campus store", "campus_cvs"], ["Level 2 · Bookstore", "bookstore"], ["Level 3 · Dining hall", "campus_dining_hall"]] },
+  { id: "family_essentials", name: "Family essentials center", floors: [["Ground · Baby & family", "baby_family_store"], ["Level 2 · Footwear", "shoe_boutique"], ["Level 3 · Family dining", "family_restaurant"]] },
 ] as const;
 
 export function buildingPreset(id: string, currency = "USD"): BuildingFloorChoice[] {

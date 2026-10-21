@@ -212,3 +212,24 @@ def test_new_format_defaults_apply_actual_positions_and_specialty_products():
     assert any(rack.rack_desc == "toys_hobbies" for rack in generate_store("toy_hobby_store").product_racks)
     assert generate_store("vintage_boutique").design_theme != generate_store("fashion_boutique").design_theme
     assert generate_store("takeaway_coffee").counters[0].position[0] == 1
+
+
+@pytest.mark.parametrize("template_id,category,theme", [
+    ("shoe_boutique", "footwear", "luxury"),
+    ("baby_family_store", "baby_supplies", "warm"),
+    ("travel_essentials", "travel_gear", "industrial"),
+])
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_family_and_travel_formats_have_their_own_assortments_and_editable_defaults(template_id, category, theme, currency):
+    store = generate_store(template_id, currency=currency)
+    specialty = [item for rack in store.product_racks if rack.rack_desc == category
+                 for slot in rack.slots for item in slot.items]
+    assert len({item.name for item in specialty}) == 12
+    assert store.design_theme == theme and len(store.counters) == 2
+    assert store.currency == currency and validate(store) == []
+    custom = generate_store(template_id, currency=currency, options=LayoutOptions(
+        style="perimeter", checkouts=1, design_theme="botanical", dining_tables=1, table_clearance=2,
+        entrance="center", exit_position="right"))
+    assert custom.design_theme == "botanical" and len(custom.counters) == 1
+    assert sum(r.type == "table" for r in custom.racks) == 1
+    assert validate(custom) == []

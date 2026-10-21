@@ -130,7 +130,7 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 37
+In a project, choose **New layout → Generate a store from a template**. Search 40
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
@@ -146,6 +146,12 @@ The campus dining hall starts with 24 four-seat tables (96 seats), four checkout
 counters and perimeter meal displays on a 32×24 floor, with weekday opening
 hours. The **Campus hub** building preset combines a campus store, bookstore and
 dining hall as three independently editable floors.
+
+Footwear boutiques, baby/family stores and travel essentials shops add dedicated
+shoe, baby-supply and travel-gear assortments. Their starting layouts use showroom
+groups, a central spine and compact aisles, with distinct interior palettes and
+checkout placement. **Family essentials center** combines baby supplies, footwear
+and a family restaurant in a three-floor building.
 
 USD, KRW and JPY prices keep their currency with the saved layout and simulation
 results. New-project shopper budgets use the chosen currency, and additional
