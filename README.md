@@ -174,8 +174,9 @@ for a simulation, or start a separate project for that market.
 Combine seven patterns (parallel aisles, racetrack, central spine, central cross aisles, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
 three display densities, left/center/right entry, one to twelve checkouts and shelf
-variants. Six saved interior palettes—classic retail, warm wood, minimal white,
-industrial graphite, botanical sage and charcoal/brass—change walls, shelving,
+variants. Eight saved interior palettes—classic retail, warm wood, minimal white,
+industrial graphite, botanical sage, charcoal/brass, coastal blue and terracotta
+clay—change walls, shelving,
 counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
 default palette; each building floor can use a different one. The preview uses the same options as the saved layout. Shuffle changes
 the assortment reproducibly; reset restores the format's layout defaults.
