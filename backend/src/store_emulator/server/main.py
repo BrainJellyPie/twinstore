@@ -4,7 +4,7 @@ from pathlib import Path
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +15,7 @@ from store_emulator.application.storage.setups import recover_running_setups
 from store_emulator.application.marketing import recover_running_jobs
 from store_emulator.application.local_vlm import manager as local_vlm
 from store_emulator.application.providers import cloud_providers_with_key
+from .deps import validate_project_path
 from .routes import simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -59,6 +60,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     lifespan=lifespan,
+    dependencies=[Depends(validate_project_path)],
     title="Store Emulator API",
     description=(
         "Block-grid store simulator API. "
