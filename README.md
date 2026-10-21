@@ -216,6 +216,11 @@ For brand managers, category teams and research agencies (**Market** in the comm
   gender quotas): purchase intent, pack appeal, value, stand-out (1–5), a Van Westendorp price range, preference and
   one open answer. Results show distributions, means with CIs, top-2-box, Wilson intervals for preference, the price
   curves with the acceptable range, segment tables and verbatims; respondent-level CSV export.
+- **Staff scripts** — compare two exact greetings, recommendations or objection-handling lines on the same
+  synthetic shoppers, with independent exposures and balanced request order. Hold the product, price and encounter
+  context fixed; compare purchase intent, trust and pressure (1–5), paired bootstrap intervals, exploratory segments
+  and customer replies. Save the stimuli and persona sample and export paired answers, including failures. Results
+  screen wording for a field pilot; they do not estimate real conversion or sales. Needs a configured text model.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their

@@ -98,7 +98,7 @@ export interface ExperimentReport {
 
 export interface JobStatus {
   job_id: string;
-  kind: "experiment" | "survey";
+  kind: "experiment" | "survey" | "pitch";
   name: string;
   status: JobState;
   stage: string;
@@ -223,5 +223,43 @@ export const marketingKeys = {
   experiment: (pid: string, eid: string) => ["projects", pid, "experiments", eid] as const,
   surveys: (pid: string) => ["projects", pid, "surveys"] as const,
   survey: (pid: string, sid: string) => ["projects", pid, "surveys", sid] as const,
+  pitches: (pid: string) => ["projects", pid, "staff-pitches"] as const,
+  pitch: (pid: string, id: string) => ["projects", pid, "staff-pitches", id] as const,
   packages: (pid: string) => ["projects", pid, "lab-packages"] as const,
 };
+
+export interface PitchVariant { name: string; script: string }
+export interface PitchRequest {
+  setup_id: string;
+  sku: string;
+  name: string;
+  variants: [PitchVariant, PitchVariant];
+  context: string;
+  product_facts: string;
+  panel: number;
+  seed: number;
+  model: string;
+}
+export interface PitchRating { purchase_intent: number; trust: number; pressure: number; reply: string; reason: string }
+export interface PitchAnswer {
+  respondent: string; age_group: string; gender: string; first_arm: "A" | "B";
+  a: PitchRating | null; b: PitchRating | null; error_a: string; error_b: string;
+}
+export interface PitchComparison {
+  metric: "purchase_intent" | "trust" | "pressure";
+  a_mean: number; b_mean: number; diff: number; ci_low: number | null; ci_high: number | null;
+}
+export interface PitchReport {
+  pitch_id: string; name: string; model: string; request: PitchRequest;
+  product: { sku: string; name: string; price: number; currency: string; promo: string };
+  attempted: number; pairs: number; excluded: number; comparisons: PitchComparison[];
+  segments: { segment: string; pairs: number; intent_diff: number }[];
+  screening_leader: "A" | "B" | null; recommendation: string; answers: PitchAnswer[]; notes: string[]; seconds: number;
+}
+export interface PitchView extends JobStatus { report: PitchReport | null }
+export const startPitch = (pid: string, req: PitchRequest) =>
+  fetchJson<JobStatus>(`${root(pid)}/staff-pitches`, { method: "POST", body: JSON.stringify(req) });
+export const listPitches = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/staff-pitches`, { signal });
+export const getPitch = (pid: string, id: string, signal?: AbortSignal) => fetchJson<PitchView>(`${root(pid)}/staff-pitches/${id}`, { signal });
+export const deletePitch = (pid: string, id: string) => fetchJson<void>(`${root(pid)}/staff-pitches/${id}`, { method: "DELETE" });
+export const pitchCsvUrl = (pid: string, id: string) => `${BASE}${root(pid)}/staff-pitches/${id}/export.csv`;

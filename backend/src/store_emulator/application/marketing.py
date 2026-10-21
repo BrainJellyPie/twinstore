@@ -15,7 +15,7 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 from PIL import Image
 from pydantic import BaseModel
@@ -69,12 +69,12 @@ from .storage.setups import read_setup
 
 logger = logging.getLogger(__name__)
 
-Kind = Literal["experiment", "survey"]
+Kind = Literal["experiment", "survey", "pitch"]
 
 
 def _root(pid: str, kind: Kind) -> Path:
     _check_id(pid, "project id")
-    return Path(DATA_DIR) / pid / "marketing" / f"{kind}s"
+    return Path(DATA_DIR) / pid / "marketing" / ("pitches" if kind == "pitch" else f"{kind}s")
 
 
 def _job_dir(pid: str, kind: Kind, jid: str) -> Path:
@@ -86,17 +86,18 @@ def _write_status(pid: str, status: JobStatus) -> None:
     write_json(_job_dir(pid, status.kind, status.job_id) / "status.json", status.model_dump(mode="json"))
 
 
-def _new_job(pid: str, kind: Kind, name: str, request: object) -> JobStatus:
-    jid = f"{'exp' if kind == 'experiment' else 'srv'}_{uuid.uuid4().hex[:6]}"
+def _new_job(pid: str, kind: Kind, name: str, request: BaseModel) -> JobStatus:
+    prefix = {"experiment": "exp", "survey": "srv", "pitch": "pit"}[kind]
+    jid = f"{prefix}_{uuid.uuid4().hex[:12]}"
     status = JobStatus(job_id=jid, kind=kind, name=name, status="pending", stage="queued", created_at=now_iso())
     folder = _job_dir(pid, kind, jid)
     folder.mkdir(parents=True, exist_ok=True)
-    write_json(folder / "request.json", json.loads(cast(Any, request).model_dump_json()))
+    write_json(folder / "request.json", request.model_dump(mode="json"))
     _write_status(pid, status)
     return status
 
 
-def _finish(pid: str, status: JobStatus, report: ExperimentReport | SurveyReport | None, error: str = "") -> None:
+def _finish(pid: str, status: JobStatus, report: BaseModel | None, error: str = "") -> None:
     if report is not None:
         write_json(_job_dir(pid, status.kind, status.job_id) / "report.json", json.loads(report.model_dump_json()))
         status.status, status.stage, status.progress = "completed", "done", 1.0
@@ -134,8 +135,8 @@ def delete_job(pid: str, kind: Kind, jid: str) -> None:
 def recover_running_jobs() -> int:
     """Mark jobs left in flight by a previous server process as failed."""
     recovered = 0
-    for kind in ("experiment", "survey"):
-        for path in Path(DATA_DIR).glob(f"*/marketing/{kind}s/*/status.json"):
+    for folder in ("experiments", "surveys", "pitches"):
+        for path in Path(DATA_DIR).glob(f"*/marketing/{folder}/*/status.json"):
             try:
                 status = JobStatus.model_validate(read_json(path))
             except (OSError, ValueError) as e:
