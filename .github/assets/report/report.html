@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TwinStore Technical Report</title>
+<style>
+  @font-face { font-family: "Inter"; src: url("file:///usr/share/fonts/opentype/inter/Inter-Regular.otf"); font-weight: 400; }
+  @font-face { font-family: "Inter"; src: url("file:///usr/share/fonts/opentype/inter/Inter-SemiBold.otf"); font-weight: 600; }
+  @font-face { font-family: "Inter"; src: url("file:///usr/share/fonts/opentype/inter/Inter-Bold.otf"); font-weight: 700; }
+  @font-face { font-family: "Inter"; src: url("file:///usr/share/fonts/opentype/inter/Inter-Italic.otf"); font-style: italic; }
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root { --ink: #12141a; --muted: #5b6070; --line: #e4e6ec; --accent: #6b4dff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 10.4pt/1.55 "Inter", system-ui, sans-serif; color: var(--ink); }
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; page-break-after: always; }
+  .cover .kicker { font: 600 10pt "Inter"; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+  .cover h1 { font: 700 34pt/1.08 "Inter"; letter-spacing: -.02em; margin: 14px 0 10px; }
+  .cover .sub { font-size: 14pt; color: var(--muted); max-width: 150mm; }
+  .cover .meta { margin-top: 28px; font-size: 10pt; color: var(--muted); }
+  .cover img { width: 100%; margin-top: 26px; border-radius: 8px; }
+  h2 { font: 700 17pt/1.2 "Inter"; margin: 0 0 10px; padding-top: 4px; letter-spacing: -.01em; page-break-after: avoid; }
+  h2.section { page-break-before: always; }
+  h3 { font: 700 12.5pt/1.3 "Inter"; margin: 22px 0 6px; page-break-after: avoid; }
+  h4 { font: 600 10.6pt/1.3 "Inter"; margin: 14px 0 4px; page-break-after: avoid; }
+  p { margin: 0 0 8px; }
+  ul, ol { margin: 0 0 10px; padding-left: 18px; }
+  li { margin: 2px 0; }
+  .lead { font-size: 11pt; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9.4pt; page-break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; background: #f6f7fa; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  figure { margin: 10px 0 14px; page-break-inside: avoid; }
+  figure img { width: 100%; display: block; }
+  figure.narrow img { width: 72%; margin: 0 auto; }
+  figure.phone img { width: 34%; margin: 0 auto; }
+  figcaption { font-size: 9pt; color: var(--muted); margin-top: 4px; font-style: italic; }
+  .note { color: var(--muted); font-size: 9.4pt; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="kicker">Technical report · October 21, 2026</div>
+  <h1>TwinStore<br>What changed from Parastore</h1>
+  <div class="sub">A store digital twin with synthetic shoppers who can see — for store owners, brand marketers and research teams.</div>
+  <img src="figs/f13_floor.jpg" alt="">
+  <div class="meta">TwinStore is built on Parastore by intellicia, released under the MIT License.</div>
+</section>
+
+<h2>I. Overview</h2>
+<p class="lead">TwinStore builds on Parastore, the open-source project released by intellicia, and extends it into a <b>store digital twin</b> that store owners and marketers can put to work right away. It recreates the store on screen and lets virtual shoppers do their shopping there, so the effect of a display, a price or a promotion is visible before anything changes in the real store.</p>
+
+<h4>The main changes at a glance</h4>
+<table>
+  <tr><th>Area</th><th>Parastore</th><th>TwinStore</th></tr>
+  <tr><td>Getting started</td><td>Install developer tools and start it from the command line</td><td>Double-click one icon</td></tr>
+  <tr><td>Building a store</td><td>Place every shelf on an empty floor by hand</td><td>Start from 54 ready-made store formats, or recreate a store from a floor plan or shelf photos</td></tr>
+  <tr><td>How shoppers decide</td><td>They read a written description of the store</td><td>They look at the shelf and read price tags and promotion signs before choosing</td></tr>
+  <tr><td>The store on screen</td><td>A toy-like 3D store with block characters</td><td>A realistic 3D store, lifelike shoppers, and a photo mode for still images</td></tr>
+  <tr><td>Conditions of the day</td><td>One ordinary day</td><td>19 situations: weather, weekday, holidays, local events and more</td></tr>
+  <tr><td>Reading results</td><td>Totals for revenue and visitors</td><td>Side-by-side comparison, automatic layout optimization, one shopper's full trip and an interview afterwards</td></tr>
+  <tr><td>Marketing research</td><td>None</td><td>A marketing studio with seven tools: A/B tests, shelf tests, concept tests, conjoint analysis and more</td></tr>
+  <tr><td>Trade area</td><td>None</td><td>Neighborhood map, competing stores, and how nearby shops lift each other</td></tr>
+  <tr><td>Real store data</td><td>None</td><td>Build the store from shelf photos, receipts and sales records, and check results against them</td></tr>
+</table>
+
+<h2 class="section">II. What is a synthetic shopper?</h2>
+<p class="lead">A synthetic shopper is a virtual customer played by AI instead of a real person. Each one is a specific individual — an age, a gender, a job, a budget, shopping habits and a reason for coming in today — and the AI decides where that person would walk and what they would buy.</p>
+<h4>1. What a synthetic shopper looks like</h4>
+<ul>
+  <li>A concrete person, for example: "office worker in their thirties, stopping by at lunch, about $8 to spend, cutting back on sugary drinks"</li>
+  <li>Hundreds to thousands of them are created automatically for each hour of the day, based on the store's address, opening hours and neighborhood</li>
+  <li>Each shopper walks in, follows the aisles, stops at shelves, decides whether to buy and pays at the checkout</li>
+</ul>
+<h4>2. What you can do with them</h4>
+<ul>
+  <li><b>Test a store change before making it</b>: send the same shoppers through a store with moved shelves, products or checkouts and compare the results</li>
+  <li><b>Test prices and promotions in advance</b>: see what a discount, a 1+1 offer, a new price tag or eye-level placement does before it reaches the shelf</li>
+  <li><b>Run consumer research fast</b>: put packaging, price points and preference questions to a panel of virtual respondents within minutes</li>
+  <li><b>Ask why</b>: ask a virtual shopper the question real customers rarely answer — "why didn't you buy it?"</li>
+</ul>
+<h4>3. Advantages over field tests</h4>
+<ul>
+  <li><b>Time</b>: field tests and surveys that took weeks finish in minutes to hours</li>
+  <li><b>Cost</b>: test many options at once, without moving fixtures or recruiting panels</li>
+  <li><b>Fair comparison</b>: two options are compared on the same shoppers and the same day, so weather and chance don't swing the result</li>
+  <li><b>Iteration</b>: try again as often as needed, and take only the best option to the real store and to real customers</li>
+</ul>
+
+<h2 class="section">III. How Parastore worked</h2>
+<p class="lead">Parastore was intellicia's prototype for taking the synthetic consumers it used in surveys into a physical store. It drew one store on screen and showed, in 3D, AI-generated shoppers moving through it over a day.</p>
+<h4>1. Workflow</h4>
+<ol>
+  <li><b>Register the store</b>: name, address, store type, opening days and hours</li>
+  <li><b>Create the shoppers</b>: AI built shopper types (lunchtime office workers, nearby students, and so on) and hourly visitors from the address and store type; an optional data file could shape the mix</li>
+  <li><b>Lay out the store</b>: place shelves, fridges and checkouts one by one on an empty grid, and upload the products and prices for each shelf as an Excel file</li>
+  <li><b>Run the simulation</b>: compute a day of shoppers visiting the store</li>
+  <li><b>View results</b>: replay the shoppers in a block-style 3D store, and see total revenue, visitors, conversion, and revenue rankings by shelf and product</li>
+</ol>
+<h4>2. How its shoppers decided</h4>
+<ul>
+  <li>Shoppers received the store layout and the product list as text</li>
+  <li>They decided in three steps: choose a shopping pattern for the visit, pick the items to buy, then add whatever caught their eye on the way</li>
+  <li>What the shelf actually looked like — the packaging, the price tags, the promotion signs — played no part in their decision</li>
+</ul>
+<h4>3. What TwinStore set out to improve</h4>
+<ul>
+  <li>Drawing every store by hand from an empty floor took a long time</li>
+  <li>Shoppers could not see the shelf, so packaging, price tags and promotion signs could not be tested</li>
+  <li>Comparing two layouts meant running each one and checking the numbers by eye</li>
+  <li>The day's conditions — weather, weekday, events — could not be changed</li>
+  <li>There was no way to look into an individual shopper's path and reasons</li>
+  <li>There were no tools for marketing research, trade-area analysis, or real store data such as shelf photos and receipts</li>
+  <li>Installing and running it required developer tools and the command line</li>
+</ul>
+
+<h2 class="section">IV. What TwinStore changes and adds</h2>
+<p class="lead">TwinStore redesigns every step, from building the store to reading the results, and adds marketing research and trade-area analysis as new areas of work. In the comparison figures, Parastore is on the left and TwinStore on the right, both captured from the running programs.</p>
+
+<h3>1. Installation: one icon to start</h3>
+<p>TwinStore runs as soon as you unpack the download and double-click the icon. Parastore needed developer tools and typed commands, which kept it out of reach without IT support.</p>
+<ul>
+  <li>One icon of the same design starts it on Windows, macOS and Linux</li>
+  <li>On first launch it fetches everything it needs by itself and shows each step on a start screen</li>
+  <li>From the second launch on, it opens in seconds</li>
+  <li>The built-in sample store works right away, with no AI service account required</li>
+</ul>
+<figure class="narrow"><img src="figs/f01_boot.jpg" alt=""><figcaption>Figure 1. TwinStore start screen: each preparation step and its progress on one screen</figcaption></figure>
+<p>The home screen is new as well. Parastore showed a list of stores; TwinStore shows at a glance what it can do and gives every store one-click shortcuts to its floor, marketing, shelf capture and trade-area screens.</p>
+<figure><img src="figs/f02_home.jpg" alt=""><figcaption>Figure 2. Home screen (left: Parastore, right: TwinStore)</figcaption></figure>
+<ul>
+  <li>A command window opened with one shortcut finds and opens any store or feature</li>
+  <li>Day and night color themes</li>
+  <li>The store list on the home screen filters by name, format or description as you type; when nothing matches, one button clears the search</li>
+</ul>
+
+<h3>2. New stores: start from 54 ready-made formats</h3>
+<p>The moment a store is registered, TwinStore builds a complete store for its format — shelves, products, checkouts and seating included. Parastore took the store details only, and the layout had to be drawn from an empty floor.</p>
+<figure><img src="figs/f03_new1.jpg" alt=""><figcaption>Figure 3. Registering a new store: TwinStore adds "Start with a furnished store template"</figcaption></figure>
+<ul>
+  <li>54 formats: convenience stores, supermarkets, hypermarkets, warehouse clubs, pharmacies, cafés, bakeries, pizza, sushi, ramen, Korean, burger, salad and ice-cream shops, fashion, footwear, eyewear, jewelry, music, bookstores, electronics, pet, garden and art-supply stores, and more</li>
+  <li>Each format comes with its own product range, interior look (wall and fixture colors and finishes), seating and number of checkouts</li>
+  <li>12 multi-floor buildings — such as a department store, a campus hub and a dining hall — are created in one step</li>
+  <li>Everything stays adjustable after choosing:
+    <ul>
+      <li>which product categories to stock (for example, no alcohol in a convenience store)</li>
+      <li>the walls for the entrance, exit and checkouts, aisle width and shelf direction</li>
+      <li>the number of tables and the space around them</li>
+      <li>areas to keep clear for consultation, pickup or events</li>
+      <li>opening hours and open weekdays, set floor by floor; 0 to 24 makes an all-day store, and one click returns to the format's own hours and regular days off</li>
+    </ul>
+  </li>
+  <li>Compare your layout with the format's default side by side, and download the floor plan as an image file</li>
+</ul>
+<figure class="narrow"><img src="figs/f05_templates.jpg" alt=""><figcaption>Figure 4. Choosing a format (top) and setting opening hours and weekdays for a floor (bottom): the format list, a floor-plan preview and detailed settings on one screen</figcaption></figure>
+<p>A store can still hold several layout alternatives in tabs, but there are more ways to start a new one. Parastore offered two — copy an existing layout or start from an empty floor. TwinStore adds format templates, multi-floor buildings and floor-plan images.</p>
+<figure><img src="figs/f06_newlayout.jpg" alt=""><figcaption>Figure 5. The new-layout window: from two ways to start to five</figcaption></figure>
+<ul>
+  <li><b>Start from a floor plan</b>: upload a hand sketch, a CAD drawing or a PDF, and the walls, shelves and doors are read and drawn onto the store floor</li>
+  <li><b>Multi-floor buildings</b>: choose a format and layout for each floor, create them together, and test each floor separately</li>
+  <li><b>Find a layout</b>: search alternatives by name, floor or format, however many there are</li>
+</ul>
+<figure><img src="figs/f07_template.jpg" alt=""><figcaption>Figure 6. Where a new layout starts: Parastore from an empty floor, TwinStore from a complete store for the chosen format</figcaption></figure>
+<figure class="narrow"><img src="figs/f08_plan.jpg" alt=""><figcaption>Figure 7. Starting from a floor plan: upload a sketch, a drawing or a PDF and the store floor is drawn for you</figcaption></figure>
+
+<h3>3. A realistic 3D store with lifelike shoppers</h3>
+<p>TwinStore rebuilds the store on screen to look like a real one. Parastore showed the path through toy-like shelves and characters; TwinStore shows the flooring, walls, ceiling tiles, lighting, glass doors, fridges, product packaging and price tags as they look in a store.</p>
+<figure><img src="figs/f13_floor.jpg" alt=""><figcaption>Figure 8. The 3D store: the same sample store in the middle of the day</figcaption></figure>
+<ul>
+  <li><b>Lifelike shoppers</b>: eight realistic 3D people walk, browse shelves, turn their heads and blink</li>
+  <li><b>What shoppers are thinking</b>: a short line above each shopper shows the thought of the moment, such as "comparing the nutrition labels"</li>
+  <li><b>Move freely through the day</b>: drag the time bar to any moment, change the playback speed, follow a shopper</li>
+  <li><b>Two looks</b>: a light, fast standard view or the realistic view</li>
+  <li><b>Ceilings and shadows</b>: acoustic ceiling tiles as used in real stores, with the ceiling lights centered in the panels; shelves and shoppers cast shadows that match exactly what is on screen</li>
+  <li><b>Shopper's-eye view</b>: walk the store through one shopper's eyes (Figure 10, left)</li>
+  <li><b>Photo mode</b>: turn the current view into a photo-like still with real reflections and shadows, ready for a remodeling proposal or a presentation</li>
+</ul>
+<figure><img src="figs/f14_close.jpg" alt=""><figcaption>Figure 9. A closer look: in TwinStore, shoppers' movements and thoughts are visible together</figcaption></figure>
+
+<h3>4. Shoppers who look at the shelf, and stores built from photos</h3>
+<p>When a TwinStore shopper stands in front of a shelf, they look at it. They read the numbers on the price tags, the 1+1 signs, the was-price of a discount, and the colors and lettering of a new pack, then choose what appeals most. Parastore's shoppers only read a text list, so packaging and promotion signs had no effect.</p>
+<ul>
+  <li>Shoppers see the shelf from eye level and record the product that caught their eye, how strongly, and why</li>
+  <li>The same shopper makes the same choice under the same conditions, so two stores that differ only in layout or price are compared fairly</li>
+  <li>Shoppers can be shown real shelf photos from the store, not only the shelves on screen</li>
+</ul>
+<figure><img src="figs/f11_seen.jpg" alt=""><figcaption>Figure 10. The shopper's-eye view (left) and the numbered shelf photo a shopper looks at when choosing (right)</figcaption></figure>
+<p>The way shelf data is created changed too. In Parastore, products and prices were typed into a table or an Excel file, without product images. TwinStore reads the shelves, facings, product names and price tags from a phone photo of the shelf and turns them into shelf data.</p>
+<ul>
+  <li>One photo registers the products and prices of a whole shelf face</li>
+  <li>Recognized products are corrected right in the list, with empty slots and facing counts shown</li>
+  <li>Product photos also appear on the packages in the 3D store, so the store on screen looks like the real one</li>
+</ul>
+<figure><img src="figs/f10_rack.jpg" alt=""><figcaption>Figure 11. Shelf data: a table of products (left) and shelf data read from a shelf photo (right)</figcaption></figure>
+
+<h3>5. Running a day under different conditions</h3>
+<p>Before a run, TwinStore asks which shoppers will shop and on what kind of day. Parastore ran one ordinary day in a fixed way with a single button.</p>
+<p>The run window is laid out so that a first-time user can start straight away. The first view asks only how shoppers decide and how many to send; the day's situation, neighborhood shoppers, the AI model and repeat-run settings sit folded under Advanced settings. A single line at the bottom sums up the choices made and the expected AI usage.</p>
+<ul>
+  <li><b>How shoppers decide</b>
+    <ul>
+      <li>Fast shoppers: results in seconds without AI — ideal for screening many options</li>
+      <li>Conversational AI shoppers: plan their trip and make impulse buys</li>
+      <li>Seeing AI shoppers: look at the shelf and choose</li>
+    </ul>
+  </li>
+  <li><b>Choice of AI model</b>: use one model, or mix models from several companies so different shoppers are played by different models; the expected AI usage is shown before the run</li>
+  <li><b>19 situations</b>: an ordinary day, a rainy commute, a heatwave weekend, a snowy evening, a cold-snap morning, a typhoon warning, a fine-dust alert, payday Friday night, exam week near campus, a big match night, a local festival, the Chuseok or Lunar New Year holidays, summer vacation, a competitor opening next door, a 1+1 drink promotion, a weekend snack sale, a supply disruption, a packed lunch rush and a night market</li>
+  <li><b>Your own situation</b>: combine weather, temperature, weekday, crowding, local events, promotions, sold-out items and notes for the shoppers into a day of your own</li>
+  <li><b>Shoppers from the neighborhood</b>: use the residents and passers-by from the trade-area analysis as the day's shoppers</li>
+  <li><b>Number of shoppers</b>: sample a few for a quick preview, or run everyone for the final result. Each way of deciding comes with a sensible sample already filled in, so no run takes more time or money than it should</li>
+</ul>
+<figure class="narrow"><img src="figs/f12_run.jpg" alt=""><figcaption>Figure 12. The run window: the first view asks only how shoppers decide and how many to send (left); the advanced settings hold the day's situation, neighborhood shoppers and the AI model (right)</figcaption></figure>
+
+<h3>6. Results, side-by-side comparison and automatic layout optimization</h3>
+<p>TwinStore does not stop at showing results: it tells you which option is better, and finds better layouts itself.</p>
+<h4>Results</h4>
+<ul>
+  <li>Revenue, average basket, conversion, the share of impulse buys and the number of shoppers in the store at every moment</li>
+  <li>Floor colors show where shoppers walked most, where they lingered and where crowding is expected; Parastore showed only where they walked</li>
+  <li>Revenue and visitor rankings by shelf, the shelf heights shoppers picked from, and what caught their eye</li>
+  <li>Checks on the run itself, such as shoppers who could not be processed or purchases over budget</li>
+  <li>Download per-shopper results to Excel, and check them against real sales records or receipts</li>
+</ul>
+<figure><img src="figs/f15_heat.jpg" alt=""><figcaption>Figure 13. Footfall map: the floor turns red where shoppers walked most</figcaption></figure>
+<figure><img src="figs/f16_store.jpg" alt=""><figcaption>Figure 14. Store information: store details, shopper mix and a layout summary on one screen</figcaption></figure>
+<h4>Comparing two options</h4>
+<ul>
+  <li>Pick two results and TwinStore pairs up the same shoppers, calculates the differences and tells you whether each difference is real or chance</li>
+  <li>The conclusion comes in one line, such as "Option B clearly earns more per visitor"</li>
+  <li>In Parastore, comparing meant switching between two result screens and checking the numbers by hand</li>
+</ul>
+<figure class="narrow"><img src="figs/f17_compare.jpg" alt=""><figcaption>Figure 15. Comparing two results: the difference in every measure and the conclusion on one screen</figcaption></figure>
+<h4>Automatic layout optimization</h4>
+<ul>
+  <li>Pick a goal — revenue per visitor, conversion, units sold, impulse revenue or shorter walks — and thousands of virtual shoppers test many candidate layouts to find the best one</li>
+  <li>Decide whether only product positions may change, or shelf positions as well</li>
+  <li>The final candidates are checked again by shoppers who look at the shelves</li>
+  <li>The original layout stays untouched; the winner is saved as a new layout</li>
+</ul>
+<figure class="narrow"><img src="figs/f18_optimize.jpg" alt=""><figcaption>Figure 16. Automatic layout optimization: goal, what may change, how to search and who picks the winner</figcaption></figure>
+
+<h3>7. Following one shopper, and the interview afterwards</h3>
+<p>TwinStore does not reduce thousands of shoppers to totals. It lets you follow one shopper's trip from start to finish, then call that shopper back and ask why they did what they did. Parastore showed totals and rankings only.</p>
+<h4>Shopper list and trip</h4>
+<ul>
+  <li>Sort the day's shoppers by top spenders, those who left empty-handed, impulse buyers or the longest visits, and search them</li>
+  <li>Open one to see their path and stops numbered on the floor plan, and at every stop the shelf they saw and what they were thinking, in time order</li>
+  <li>"Follow in 3D" jumps to the moment they walked in and keeps the view on them</li>
+</ul>
+<figure><img src="figs/f19_journey.jpg" alt=""><figcaption>Figure 17. Reading results: totals and rankings (left), one shopper's path and thoughts (right)</figcaption></figure>
+<h4>Interview afterwards</h4>
+<ul>
+  <li>Type a question — "Why didn't you buy anything at the snack shelf?" — and the shopper answers in their own words, from their personality and that day's trip</li>
+  <li>Each answer points to the steps of the trip it is based on, highlighted on screen</li>
+  <li>Questions worth asking are suggested from the trip</li>
+  <li><b>Group interview</b>: put one question to 4–40 shoppers — everyone who left empty-handed, impulse buyers, top spenders — and see the answers grouped into themes, with how many gave each reason</li>
+</ul>
+<figure class="narrow"><img src="figs/f20_interview.jpg" alt=""><figcaption>Figure 18. The interview screen: the shopper's profile, their path and suggested questions</figcaption></figure>
+
+<h3>8. Shelf checks and virtual shelf experiments (Shelf Lab)</h3>
+<p>Shelf Lab turns a real shelf photo from the store into experiment material. Without moving a single product or taking a new photo, you create "what if we changed this?" on the photo itself and see how virtual shoppers respond. Parastore had nothing like it.</p>
+<h4>Change the shelf on the photo</h4>
+<ul>
+  <li>Swap two products, empty a run (a stock-out), put on a new pack, change a price tag or hang a 1+1 sign — all on the photo</li>
+  <li>Nothing outside the changed area moves, so any difference between the original and the edited photo comes from that change alone</li>
+</ul>
+<figure><img src="figs/f22_edit.jpg" alt=""><figcaption>Figure 19. A shelf photo (left) and the same photo with a swap, a stock-out, a new pack, a new price tag and a promotion sign applied (right)</figcaption></figure>
+<h4>Photo versus on-screen store</h4>
+<ul>
+  <li>The same shoppers look at the on-screen shelf, the numbered real photo and the original photo, and their choices are compared side by side</li>
+  <li>The products they picked are marked on the photo</li>
+</ul>
+<h4>Planogram checks and restocking</h4>
+<ul>
+  <li>Match the head-office planogram against the real photo to find missing and misplaced products, and calculate how much revenue they cost per day</li>
+  <li>Missing products are ranked by contribution so you know what to refill first, with their place on the shelf located for you</li>
+  <li>Enter stockroom counts, the units each shelf needs, supplier pack sizes and costs, and get a restocking plan in whole packs within budget</li>
+</ul>
+<figure class="narrow"><img src="figs/f21_shelflab.jpg" alt=""><figcaption>Figure 20. Shelf Lab: editing tools on the photo and the comparison settings</figcaption></figure>
+
+<h3>9. Trade-area analysis: the neighborhood and competing stores</h3>
+<p>TwinStore places the store in its neighborhood. It works out what is around it, where shoppers come from and how much a competing store takes away. Parastore had nothing like it.</p>
+<ul>
+  <li>Generate a neighborhood — residential, university, station, suburban, tourist or mixed, at a chosen density — or load streets and shops from a real map (OpenStreetMap)</li>
+  <li>A trade-area model splits shoppers between stores by distance and appeal, showing daily visitors, market share, catchment, average walking distance, visitors by hour and who comes</li>
+  <li>Open or close nearby shops and watch your store's shoppers change</li>
+  <li>Upload a storefront photo and its sign, entrance, window and upkeep are rated and fed into how strongly the store draws people in</li>
+  <li>Upload a competitor's shelf photo to compare price levels and product overlap</li>
+  <li>See whether a neighboring shop brings you shoppers who visit both</li>
+  <li>Use the neighborhood's shoppers directly as the day's shoppers in a simulation</li>
+</ul>
+<figure class="narrow"><img src="figs/f23_town.jpg" alt=""><figcaption>Figure 21. Trade-area analysis: the neighborhood map, your store's catchment and a visitor summary</figcaption></figure>
+
+<h3>10. The marketing studio</h3>
+<p>The marketing studio is a new workspace for brand marketers, product managers and research agencies. Prices, promotions, placement, packaging and staff scripts are checked with virtual shoppers before they reach the real store and real customers. It has seven tabs, and any finished test can be duplicated and rerun with new conditions.</p>
+<h4>① A/B tests</h4>
+<ul>
+  <li>Build a test option by bundling changes to a saved store layout: a new price, a discount that shows the was-price, a promotion sign (1+1, SALE, −30%), a move to eye level or another shelf, a new pack, or a price change across a whole category</li>
+  <li>Ready-made recipes for common tests: discount ladder, discount versus sign, eye level versus bottom shelf, price steps, a price increase, a new pack</li>
+  <li>Every option runs on the same shoppers and the same day as the baseline, so differences come only from what changed</li>
+  <li>Revenue, conversion, units per visitor and the units, revenue and buyers of selected products are compared by age group and gender, and a winner is named only when the difference goes beyond chance</li>
+  <li>Every test produces a report — summary and recommendation, design, charts and method — to save as a PDF or share, with optional AI-written commentary</li>
+  <li><b>Price steps</b>: one product at five prices on the same shoppers shows the sales curve, price sensitivity and the price that earns the most</li>
+</ul>
+<figure class="narrow"><img src="figs/f24_ab.jpg" alt=""><figcaption>Figure 22. A/B test results: each option's results and the automatic report</figcaption></figure>
+<figure class="narrow"><img src="figs/f25_sweep.jpg" alt=""><figcaption>Figure 23. Price steps: how sales change with price, and the price that earns the most</figcaption></figure>
+<h4>② Shelf tests</h4>
+<ul>
+  <li>The same respondents look at today's shelf and at the shelf with a new pack, price or sign, and say what they would take and what caught their eye first</li>
+  <li>The changed shelf is previewed on screen before the test</li>
+  <li>Pick share and stand-out are compared respondent by respondent</li>
+</ul>
+<figure class="narrow"><img src="figs/f26_shelftest.jpg" alt=""><figcaption>Figure 24. Designing a shelf test: today's shelf (left) and the changed shelf (right)</figcaption></figure>
+<h4>③ Concept tests</h4>
+<ul>
+  <li>Up to four pack images side by side; virtual respondents drawn to age and gender quotas rate purchase intent, pack appeal, value for money and stand-out (on a 5-point scale), name an acceptable price range and a favorite, and add a comment</li>
+  <li>See the answer distribution, averages, top-two-box shares, preference shares, the acceptable price curves, tables by age and gender and the comments themselves, and download every respondent's answers as a file that opens straight in Excel, with every comment kept exactly as written</li>
+</ul>
+<figure class="narrow"><img src="figs/f27_concept.jpg" alt=""><figcaption>Figure 25. Designing a concept test: pack images, questions and respondent quotas</figcaption></figure>
+<h4>④ Conjoint analysis</h4>
+<ul>
+  <li>Define a product's attributes (size, sugar, brand, a claim and so on) and price levels; each respondent gets their own choice tasks — two to four versions plus "none" — and picks one</li>
+  <li>See how much each attribute matters, how much each level is liked, and how much more shoppers would pay for it</li>
+  <li>The example choice task on the design screen always shows genuinely different products, exactly as a respondent will see them</li>
+  <li>In the market simulator, change the product line-up and prices and watch predicted shares — and the share-versus-price curve — update instantly</li>
+</ul>
+<figure class="narrow"><img src="figs/f28_conjoint.jpg" alt=""><figcaption>Figure 26. Designing a conjoint study: attributes and levels, prices and an example of the choice tasks respondents see</figcaption></figure>
+<h4>⑤ Staff scripts</h4>
+<ul>
+  <li>Play two greetings, recommendations or replies to an objection to the same virtual shoppers separately, and compare purchase intent, trust and pressure</li>
+  <li>Take the better script on to a field pilot</li>
+</ul>
+<figure class="narrow"><img src="figs/f29_staff.jpg" alt=""><figcaption>Figure 27. Testing staff scripts</figcaption></figure>
+<h4>⑥ Field pilots</h4>
+<ul>
+  <li>Turn a staff-script test into a field schedule balanced across real shifts, with the sample size and duration worked out in advance</li>
+  <li>Bring in real encounter records, purchase records and checkout transactions, and keep track of missing records and corrections</li>
+  <li>Once the planned sample is complete, the difference in real conversion is judged</li>
+</ul>
+<h4>⑦ Products</h4>
+<ul>
+  <li>Upload packshots or phone photos of packs; the background is removed, and each product gets a name and brand and is linked to the product on the shelf</li>
+  <li>The same images are used in A/B tests, shelf tests, concept tests and Shelf Lab</li>
+</ul>
+<figure><img src="figs/f30_products.jpg" alt=""><figcaption>Figure 28. Product images: packs with the background removed, linked to shelf products</figcaption></figure>
+
+<h3>11. AI model settings and convenience</h3>
+<p>In Parastore, changing the AI model meant editing a settings file. In TwinStore, models are connected and chosen on screen.</p>
+<ul>
+  <li>Register OpenAI, Anthropic, Google, Qwen, OpenRouter or your company's own server, test the connection with one button and set a default model for each</li>
+  <li>Access keys are stored only on the computer you use</li>
+  <li>Without a key, TwinStore checks your computer, downloads a model of the right size and runs it on the computer itself — a larger one when there is a graphics card</li>
+</ul>
+<figure class="narrow"><img src="figs/f31_settings.jpg" alt=""><figcaption>Figure 29. AI model settings: the built-in model and each provider's connection</figcaption></figure>
+<ul>
+  <li>Every screen has a top bar for stores, floor, trade area, shelf capture, marketing and models, and a command window opened with one shortcut finds any feature</li>
+  <li>Day and night color themes</li>
+  <li>On phones and tablets, the store and the results stack vertically, so the whole store stays visible on a small screen, and the time bar and the run, compare and optimize buttons stay within reach</li>
+</ul>
+<figure class="narrow"><img src="figs/f32_dark.jpg" alt=""><figcaption>Figure 30. The home screen in the night theme</figcaption></figure>
+<figure class="phone"><img src="figs/f33_mobile.jpg" alt=""><figcaption>Figure 31. The store on a phone: the time bar and the run buttons fit in one hand</figcaption></figure>
+
+<h2 class="section">V. Use cases</h2>
+<p class="lead">With TwinStore, the people who run stores and the people who sell products answer their own questions with the same tool.</p>
+<h4>1. Store owners and store managers</h4>
+<ul>
+  <li><b>Before a remodel</b>: bring the current store in from shelf photos and a floor plan, test two or three options with different checkout positions or shelf directions on the same shoppers, and build only the best one</li>
+  <li><b>Promotion planning</b>: see the effect of a 1+1 offer or a discount on a rainy day, on payday or during a local festival, and time the promotion accordingly</li>
+  <li><b>Shelf management</b>: find missing products from shelf photos, refill them in order of lost revenue, and plan restocking within budget</li>
+  <li><b>New sites</b>: load the neighborhood map and competing stores for a candidate site and compare expected visitors and market share</li>
+</ul>
+<h4>2. Brand marketers and product managers</h4>
+<ul>
+  <li><b>New packaging</b>: narrow three or four pack designs with a concept test, then place the finalists on a real shelf photo and check stand-out with a shelf test</li>
+  <li><b>Product configuration and price</b>: set size, flavor and price with conjoint analysis, and learn how much more shoppers would pay for each feature</li>
+  <li><b>Retailer negotiations</b>: show how placement (eye level, by the checkout) and discount depth change sales with an A/B test, and bring the automatic report to the meeting</li>
+</ul>
+<h4>3. Research agencies and consultancies</h4>
+<ul>
+  <li><b>Study design</b>: try out questionnaires and stimuli on a virtual respondent panel before the main study</li>
+  <li><b>Hypotheses</b>: collect the "why I didn't buy" that real respondents rarely give, through shopper interviews and group interviews</li>
+  <li><b>Field validation</b>: carry the best staff script into a field pilot and confirm it with store results</li>
+</ul>
+
+<h2 class="section">VI. Expected benefits and closing</h2>
+<p class="lead">TwinStore makes decisions about stores and products faster, cheaper and more certain.</p>
+<h4>1. Expected benefits</h4>
+<ul>
+  <li><b>Faster decisions</b>: field tests and surveys that took weeks finish in hours, and only the strongest options go ahead</li>
+  <li><b>Lower cost</b>: weak options are filtered out before fixtures move, prototypes are made or panels are recruited</li>
+  <li><b>Evidence that stays</b>: every test runs on the same shoppers and the same day and ends in an automatic report, ready for internal reviews and retailer meetings</li>
+  <li><b>Connected to the store</b>: the store is built from shelf photos, receipts and sales records and results are checked against them, so the store on screen moves with the real one</li>
+  <li><b>Anyone can use it</b>: install with one icon, and start the first test right away from a ready-made store and a recipe</li>
+</ul>
+<h4>2. Closing</h4>
+<p>TwinStore takes the idea Parastore demonstrated — testing a store with virtual shoppers — and turns it into an everyday tool for the people who run stores and sell products. Before you change the store, before you set the price, before you print the new pack: check it in TwinStore first.</p>
+
+</body>
+</html>

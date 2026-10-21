@@ -37,7 +37,7 @@ def test_every_weekday_and_hour_respects_opening_boundaries(weekday, opening, cl
     runner, _ = _runner()
     _, entries, counts = runner._validate_and_prepare(store, people)
     assert {entry.persona_id for entry, _ in entries} == {f'd{weekday}-h{hour}' for hour in range(opening, closing)}
-    assert counts == Counter({hour: 1 for hour in range(opening, closing)})
+    assert counts == Counter({(Weekday(weekday), hour): 1 for hour in range(opening, closing)})
     original = {entry.persona_id: entry.arrival_time for entry in generate_customers(people, seed=runner.run_seed)}
     assert all(entry.arrival_time == original[entry.persona_id] for entry, _ in entries)
 

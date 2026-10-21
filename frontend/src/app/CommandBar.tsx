@@ -9,14 +9,18 @@ import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 
+import { useI18n } from "@/shared/i18n/i18n";
+import { LanguagePicker } from "@/shared/i18n/LanguagePicker";
+import type { MessageKey } from "@/shared/i18n/messages";
+
 import { BrandMark } from "./BrandMark";
 import { MOD_KEY, useCommandPalette } from "./commandPalette";
 import { projectIdFromPath } from "./paths";
 import { useTheme } from "./theme";
 
-const PAGE_TITLES: Record<string, string> = {
-  "/projects/new": "New store",
-  "/settings": "Model providers",
+const PAGE_TITLES: Record<string, MessageKey> = {
+  "/projects/new": "newStore",
+  "/settings": "modelProviders",
 };
 
 interface NavItem {
@@ -29,8 +33,9 @@ interface NavItem {
 }
 
 function NavSegment({ items }: { items: NavItem[] }) {
+  const { t } = useI18n();
   return (
-    <nav aria-label="Main" className="glass col-span-2 row-start-2 flex items-center justify-self-center gap-0.5 rounded-2xl p-1 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+    <nav aria-label={t("main")} className="glass col-span-2 row-start-2 flex items-center justify-self-center gap-0.5 rounded-2xl p-1 sm:col-span-1 sm:col-start-2 sm:row-start-1">
       {items.map(({ to, params, label, icon: Icon, active, disabled }) =>
         disabled ? (
           <span
@@ -39,7 +44,7 @@ function NavSegment({ items }: { items: NavItem[] }) {
             role="link"
             aria-label={label}
             aria-disabled="true"
-            title="Open a store first"
+            title={t("openStoreFirst")}
           >
             <Icon className="size-[1.05rem]" aria-hidden />
             <span className="hidden lg:inline">{label}</span>
@@ -69,17 +74,18 @@ function NavSegment({ items }: { items: NavItem[] }) {
 }
 
 function BackendStatus() {
+  const { t } = useI18n();
   const { isError, isSuccess } = useQuery({
     queryKey: queryKeys.health(),
     queryFn: ({ signal }) => api.getHealth(signal),
     refetchInterval: 15_000,
     retry: false,
   });
-  const label = isError ? "Offline" : isSuccess ? "Live" : "…";
+  const label = isError ? t("offline") : isSuccess ? t("live") : "…";
   return (
     <span
       className="hidden h-9 items-center gap-2 rounded-xl px-2.5 text-xs font-medium text-muted-foreground md:flex"
-      title={isError ? "The backend is not reachable" : "Backend connected"}
+      title={isError ? t("backendOffline") : t("backendOnline")}
     >
       <span
         className={cn(
@@ -94,6 +100,7 @@ function BackendStatus() {
 }
 
 function ThemeSwitch() {
+  const { t } = useI18n();
   const { theme, toggle } = useTheme();
   const dark = theme === "dark";
   return (
@@ -101,8 +108,8 @@ function ThemeSwitch() {
       type="button"
       onClick={toggle}
       className="glass relative flex h-9 w-[4.2rem] shrink-0 items-center rounded-full p-1"
-      aria-label={dark ? "Switch to day theme" : "Switch to night theme"}
-      title={dark ? "Day theme" : "Night theme"}
+      aria-label={dark ? t("switchDay") : t("switchNight")}
+      title={dark ? t("dayTheme") : t("nightTheme")}
     >
       <Sun className="absolute left-2.5 size-3.5 text-muted-foreground" aria-hidden />
       <Moon className="absolute right-2.5 size-3.5 text-muted-foreground" aria-hidden />
@@ -120,6 +127,7 @@ function ThemeSwitch() {
 }
 
 export function CommandBar() {
+  const { t } = useI18n();
   const { pathname } = useLocation();
   const pid = projectIdFromPath(pathname);
   const openPalette = useCommandPalette((s) => s.setOpen);
@@ -130,29 +138,30 @@ export function CommandBar() {
     enabled: !!pid,
   });
 
-  const sub = pathname.startsWith("/town/") ? "Neighborhood" : pathname.startsWith("/capture/") ? "Shelf capture" : pathname.startsWith("/marketing/") ? "Marketing studio" : null;
-  const pageTitle = PAGE_TITLES[pathname];
+  const sub = pathname.startsWith("/town/") ? t("neighborhood") : pathname.startsWith("/capture/") ? t("shelfCapture") : pathname.startsWith("/marketing/") ? t("marketingStudio") : null;
+  const pageKey = PAGE_TITLES[pathname];
+  const pageTitle = pageKey ? t(pageKey) : undefined;
 
   const items: NavItem[] = [
-    { to: "/", label: "Stores", icon: LayoutGrid, active: pathname === "/" || pathname === "/projects/new" },
-    { to: "/projects/$pid", params: { pid: pid ?? "" }, label: "Floor", icon: Store, active: pathname.startsWith("/projects/") && !!pid, disabled: !pid },
-    { to: "/town/$pid", params: { pid: pid ?? "" }, label: "Area", icon: Map, active: pathname.startsWith("/town/"), disabled: !pid },
-    { to: "/capture/$pid", params: { pid: pid ?? "" }, label: "Capture", icon: Camera, active: pathname.startsWith("/capture/"), disabled: !pid },
-    { to: "/marketing/$pid", params: { pid: pid ?? "" }, label: "Market", icon: Megaphone, active: pathname.startsWith("/marketing/"), disabled: !pid },
-    { to: "/settings", label: "Models", icon: KeyRound, active: pathname === "/settings" },
+    { to: "/", label: t("stores"), icon: LayoutGrid, active: pathname === "/" || pathname === "/projects/new" },
+    { to: "/projects/$pid", params: { pid: pid ?? "" }, label: t("floor"), icon: Store, active: pathname.startsWith("/projects/") && !!pid, disabled: !pid },
+    { to: "/town/$pid", params: { pid: pid ?? "" }, label: t("area"), icon: Map, active: pathname.startsWith("/town/"), disabled: !pid },
+    { to: "/capture/$pid", params: { pid: pid ?? "" }, label: t("capture"), icon: Camera, active: pathname.startsWith("/capture/"), disabled: !pid },
+    { to: "/marketing/$pid", params: { pid: pid ?? "" }, label: t("market"), icon: Megaphone, active: pathname.startsWith("/marketing/"), disabled: !pid },
+    { to: "/settings", label: t("models"), icon: KeyRound, active: pathname === "/settings" },
   ];
 
   return (
     <header className="relative z-30 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2 sm:h-[4.25rem] sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-4 sm:px-4 sm:py-0 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent,var(--border)_20%,var(--border)_80%,transparent)]">
       <div className="flex min-w-0 items-center gap-3">
-        <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-xl" aria-label="TwinStore home">
+        <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-xl" aria-label={t("home")}>
           <BrandMark />
           <span className="hidden font-display text-[1.08rem] tracking-[-0.045em] xl:block">
             <span className="aurora-text">twin</span>store
           </span>
         </Link>
         {(pid || pageTitle) && (
-          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
+          <nav aria-label={t("breadcrumb")} className="flex min-w-0 items-center gap-2 text-sm">
             <span className="h-5 w-px rotate-[18deg] bg-foreground/15" aria-hidden />
             {pid ? (
               <>
@@ -184,15 +193,16 @@ export function CommandBar() {
           type="button"
           onClick={() => openPalette(true)}
           className="glass group flex h-9 min-w-0 items-center gap-2.5 rounded-xl pr-1.5 pl-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          aria-label="Search and jump (command palette)"
+          aria-label={t("searchCommands")}
         >
           <Search className="size-4 shrink-0" aria-hidden />
-          <span className="hidden truncate xl:inline">Jump to…</span>
+          <span className="hidden truncate xl:inline">{t("jumpTo")}</span>
           <kbd className="num hidden rounded-md border bg-foreground/[0.04] px-1.5 py-0.5 text-[0.7rem] text-muted-foreground sm:inline">
             {MOD_KEY} K
           </kbd>
         </button>
         <BackendStatus />
+        <LanguagePicker />
         <ThemeSwitch />
       </div>
     </header>
