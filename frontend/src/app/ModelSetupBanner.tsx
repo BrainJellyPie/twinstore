@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, Cpu, KeyRound, Loader2, Sparkles, TriangleAlert, X } from "lucide-react";
 
+import { useI18n } from "@/shared/i18n/i18n";
 import { isPreparing, useLocalModelControl, useModelSetup } from "@/features/settings/useModelSetup";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
@@ -19,6 +20,7 @@ function readDismissed(): string | null {
 }
 
 export function ModelSetupBanner() {
+  const { t } = useI18n();
   const { data } = useModelSetup();
   const { start } = useLocalModelControl();
   const [dismissed, setDismissed] = useState<string | null>(readDismissed);
@@ -50,14 +52,14 @@ export function ModelSetupBanner() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-medium leading-snug">
-            {busy ? "Preparing vision shoppers…" : ready ? "Local vision model ready" : failed ? "Vision model needs attention" : "Explore without an API key"}
+            {busy ? t("preparingVision") : ready ? t("localReady") : failed ? t("modelAttention") : t("exploreFree")}
           </p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            {ready ? "Vision shoppers can run on this computer." : busy ? "Rule-based previews work while the model gets ready." : "Rule-based previews are available. Add a model for vision shoppers."}
+            {ready ? t("localReadyHint") : busy ? t("preparingHint") : t("freePreviewHint")}
           </p>
           {busy && (
             <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <div role="progressbar" aria-label="Local model download" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress ?? undefined}
+              <div role="progressbar" aria-label={t("modelDownload")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress ?? undefined}
                 className="h-1.5 w-32 max-w-full overflow-hidden rounded-full bg-foreground/10">
                 <div className={cn("h-full rounded-full bg-primary transition-[width] duration-500", progress === null && "w-1/3 animate-pulse")}
                   style={progress !== null ? { width: `${progress}%` } : undefined} />
@@ -71,7 +73,7 @@ export function ModelSetupBanner() {
           )}
           <details className="group mt-1.5">
             <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm text-xs font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring">
-              {busy || ready ? "Model details" : "Set up vision shoppers"}
+              {busy || ready ? t("modelDetails") : t("setupVision")}
               <ChevronDown className="size-3 transition-transform group-open:rotate-180" aria-hidden />
             </summary>
             <div className="mt-2 space-y-2 border-t border-glass-border pt-2">
@@ -79,18 +81,18 @@ export function ModelSetupBanner() {
               <div className="flex flex-wrap items-center gap-2">
                 {(state === "off" || failed) && (
                   <Button size="sm" variant="outline" onClick={() => start.mutate()} disabled={start.isPending}>
-                    <Cpu className="size-3.5" aria-hidden /> {start.isPending ? "Starting…" : failed ? "Retry local model" : "Start local model"}
+                    <Cpu className="size-3.5" aria-hidden /> {start.isPending ? t("starting") : failed ? t("retryLocal") : t("startLocal")}
                   </Button>
                 )}
                 <Button size="sm" variant="outline" asChild>
-                  <Link to="/settings"><KeyRound className="size-3.5" aria-hidden /> Model settings</Link>
+                  <Link to="/settings"><KeyRound className="size-3.5" aria-hidden /> {t("modelSettings")}</Link>
                 </Button>
               </div>
-              {start.isError && <p role="alert" className="break-words text-xs text-destructive">{start.error instanceof Error ? start.error.message : "Could not start the local model. Try again or open Model settings."}</p>}
+              {start.isError && <p role="alert" className="break-words text-xs text-destructive">{start.error instanceof Error ? start.error.message : t("startLocalError")}</p>}
             </div>
           </details>
         </div>
-        <button type="button" onClick={dismiss} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" aria-label="Hide this notice">
+        <button type="button" onClick={dismiss} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" aria-label={t("hideNotice")}>
           <X className="size-4" aria-hidden />
         </button>
       </div>
