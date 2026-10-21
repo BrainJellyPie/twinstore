@@ -196,7 +196,8 @@ For brand managers, category teams and research agencies (**Market** in the comm
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
-  persona and trip only and point at the steps they mean.
+  persona and trip only and point at the steps they mean. A **group interview** asks a whole segment (say, everyone
+  who left empty-handed) one question and codes the answers into themes.
 
 Synthetic respondents are for screening and direction; calibrate against a real panel before deciding.
 
