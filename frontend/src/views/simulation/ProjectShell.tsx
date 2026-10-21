@@ -26,7 +26,7 @@ export function ProjectShell({
     <>
       <div className="relative m-3 mr-0 flex-1 overflow-hidden rounded-[1.6rem] border border-glass-border shadow-[var(--shadow-lift)]">
         {layouts.length > 0 && (
-          <div className="pointer-events-auto absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] lg:max-w-[calc(100%-27rem)]">
+          <div className="pointer-events-auto absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] xl:max-w-[calc(100%-27rem)]">
             <LayoutTabs
               layouts={layouts}
               selectedId={selectedLayoutId ?? undefined}
