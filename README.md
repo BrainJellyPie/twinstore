@@ -478,6 +478,8 @@ High also uses [ambientCG Plaster 001](https://ambientcg.com/a/Plaster001), lice
 with consistent texture scale across wall lengths, corners and rotated sections.
 Exposed metal supports and frames use CC0 [ambientCG Metal 032](https://ambientcg.com/a/Metal032)
 in High, with color, roughness and normal maps at a consistent authored scale.
+The storefront pavement uses Poly Haven's CC0 Pavement 02 scan in High, with
+world-space texture coordinates preserving its 2.12 m coverage across store sizes.
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: six appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,

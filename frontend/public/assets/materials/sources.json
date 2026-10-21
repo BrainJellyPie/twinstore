@@ -91,6 +91,24 @@
       "sha256": "8537c1015de5cc33d20231e5b6aa27309edcb983e1c37e608d08bb00f733747d",
       "bytes": 341948,
       "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "pavement_02_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pavement_02/pavement_02_diff_1k.jpg",
+      "sha256": "791d39aadbd48b483468d2ed68d21efce5be197c1d91cf7f3fad7e561c8e7675",
+      "bytes": 1178347
+    },
+    {
+      "file": "pavement_02_rough_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pavement_02/pavement_02_rough_1k.jpg",
+      "sha256": "128302c7d47c1273c8e1e1891d11556ebef8aa317f9b5bb111b49aba0dedc7d2",
+      "bytes": 574371
+    },
+    {
+      "file": "pavement_02_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pavement_02/pavement_02_nor_gl_1k.jpg",
+      "sha256": "a7c962384c155498d1878cda1dca7a4ad738cb15fdb06e3c3ec11238be355b37",
+      "bytes": 738746
     }
   ]
 }

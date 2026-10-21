@@ -62,4 +62,23 @@ describe("manufactured fixture edges", () => {
     expect(right.u - left.u).toBeCloseTo(right.x - left.x);
     geometry.dispose();
   });
+
+  it("keeps paving stones at the same scale on long and rotated storefronts", () => {
+    for (const yaw of [0, Math.PI / 2]) {
+      const builder = new StaticBuilder();
+      builder.setFrame(3, -2, yaw).box("pavement", 8, 0.04, 1.7, 0, 0, 0);
+      const geometry = builder.build().get("pavement")!;
+      const positions = geometry.getAttribute("position");
+      const normals = geometry.getAttribute("normal");
+      const uv = geometry.getAttribute("uv");
+      const top = Array.from({ length: positions.count }, (_, i) => i).filter((i) => normals.getY(i) > 0.9);
+      const first = top[0]!;
+      for (const i of top.slice(1)) {
+        const metresInWorld = Math.hypot(positions.getX(i) - positions.getX(first), positions.getZ(i) - positions.getZ(first));
+        const uvDistance = Math.hypot(uv.getX(i) - uv.getX(first), uv.getY(i) - uv.getY(first));
+        expect(uvDistance).toBeCloseTo(metresInWorld, 5);
+      }
+      geometry.dispose();
+    }
+  });
 });
