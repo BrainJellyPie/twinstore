@@ -1,0 +1,57 @@
+{
+  "asset": "food_ginger_01",
+  "source": "https://polyhaven.com/a/food_ginger_01",
+  "author": "Oliver Harries",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_ginger.py; long axis laid across the display, uniform 0.35 display scale; 300/1400 triangle LODs, bottom-centred unit bounds and inverse-transpose normals; original 1K JPEG color, OpenGL normal and roughness maps retained. Display size is an artistic retail choice, not a physical measurement.",
+  "display_dimensions_metres": {
+    "width": 0.2011064887046814,
+    "height": 0.05158130079507828,
+    "depth": 0.08397770673036575
+  },
+  "files": [
+    {
+      "file": "food_ginger_01_1k.gltf",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/food_ginger_01/food_ginger_01_1k.gltf",
+      "bytes": 2715,
+      "md5": "fcd801cc9d49fe6e757d44b037fd92a8",
+      "sha256": "d08d23765047a58ba29dcebd72a4aa481690cc7774179e42a4af5cb66b2c9ffb"
+    },
+    {
+      "file": "textures/food_ginger_01_diff_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_ginger_01/food_ginger_01_diff_1k.jpg",
+      "bytes": 201419,
+      "md5": "a52194196f9ed0e196ad81edcbccfe24",
+      "sha256": "3f2117a9f5718a797bcbb22557cad1599ffb6eec50232b71ee4be3c7cf304890"
+    },
+    {
+      "file": "food_ginger_01.bin",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/food_ginger_01/food_ginger_01.bin",
+      "bytes": 175232,
+      "md5": "527a57b696cb4d40c8b3f286b587006a",
+      "sha256": "b1967c29b2f38dbc63ca2374486c9eb1d90870795b40bc1c2728ffcc760ebcd4"
+    },
+    {
+      "file": "textures/food_ginger_01_rough_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_ginger_01/food_ginger_01_rough_1k.jpg",
+      "bytes": 55655,
+      "md5": "9a794479505c0c5745271476e16921b9",
+      "sha256": "19eba8b9048838849a4cb033d83b43efcaaf45bff14364285fa19b0c9aa12951"
+    },
+    {
+      "file": "textures/food_ginger_01_nor_gl_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_ginger_01/food_ginger_01_nor_gl_1k.jpg",
+      "bytes": 151771,
+      "md5": "2bd05ffea56c8e0d140e7af7ccaf9e57",
+      "sha256": "0bcef5efbb8c14fe758278a42713dfd6a5cc25c5eaaaffa9ff594fcaee0a5910"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "ginger.glb",
+      "bytes": 467632,
+      "sha256": "5470079d1c0b8db3d576604d96ee4eab73f7e164f5cd12e335476d32de2b9250"
+    }
+  ]
+}
