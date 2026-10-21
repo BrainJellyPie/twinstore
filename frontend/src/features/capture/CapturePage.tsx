@@ -94,7 +94,7 @@ function UploadCard({ projectId, onStarted, large = false }: { projectId: string
         </span>
         <span className="font-display text-[2rem] leading-tight">Photograph a shelf, <span className="font-accent aurora-text">get its planogram</span></span>
         <span className="max-w-lg text-muted-foreground">
-          Drop a photo of one shelf section, taken straight on. Parastore finds the shelves and every facing, reads each
+          Drop a photo of one shelf section, taken straight on. TwinStore finds the shelves and every facing, reads each
           product and its price tag, and turns it into a rack you can put into a layout and simulate.
         </span>
         <span className="mt-1 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground">

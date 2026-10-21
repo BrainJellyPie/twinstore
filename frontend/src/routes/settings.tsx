@@ -24,7 +24,7 @@ function SettingsPage() {
         </div>
         <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
           Connect the language and vision models that drive synthetic shoppers. Keys are stored only on the machine
-          running the Parastore backend (<code className="text-xs">.data/settings/providers.json</code>), never in run
+          running the TwinStore backend (<code className="text-xs">.data/settings/providers.json</code>), never in run
           results, and are never sent back to the browser. Models of every ready provider appear in the run launcher,
           where several can be combined into an ensemble of consumers.
         </p>

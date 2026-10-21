@@ -12,6 +12,7 @@ import {
   Map,
   Moon,
   Plus,
+  Power,
   Search,
   Store,
   Sun,
@@ -22,6 +23,7 @@ import { useProjects } from "@/shared/queries/useProjects";
 import { cn } from "@/shared/utils/cn";
 
 import { useCommandPalette } from "./commandPalette";
+import { quitLauncher, useLauncher } from "./launcher";
 import { projectIdFromPath } from "./paths";
 import { useTheme } from "./theme";
 
@@ -55,6 +57,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   const pid = projectIdFromPath(pathname);
   const { data: projects } = useProjects();
   const { theme, setTheme } = useTheme();
+  const launched = useLauncher();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const itemRefs = useRef(new globalThis.Map<number, HTMLButtonElement>());
@@ -89,8 +92,11 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         ? { id: "theme", group: "Appearance", label: "Switch to day theme", hint: "light", icon: Sun, run: () => setTheme("light") }
         : { id: "theme", group: "Appearance", label: "Switch to night theme", hint: "dark", icon: Moon, run: () => setTheme("dark") },
     );
+    if (launched) {
+      list.push({ id: "quit", group: "App", label: "Quit TwinStore", hint: "stop the local server", icon: Power, run: () => void quitLauncher() });
+    }
     return list;
-  }, [navigate, pid, projects, theme, setTheme]);
+  }, [navigate, pid, projects, theme, setTheme, launched]);
 
   const visible = useMemo(() => commands.filter((c) => matches(c, query)), [commands, query]);
   const current = Math.min(active, Math.max(visible.length - 1, 0));
@@ -199,7 +205,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         <span className="flex items-center gap-1.5">
           <kbd className="num rounded border px-1">↵</kbd> open
         </span>
-        <span className="ml-auto aurora-text font-medium">parastore</span>
+        <span className="ml-auto aurora-text font-medium">twinstore</span>
       </div>
     </div>
   );

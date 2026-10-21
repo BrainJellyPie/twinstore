@@ -1,19 +1,22 @@
 """One-click launcher: prepare the web UI if needed, start the server, open the browser.
 
-Started by the double-click scripts at the repository root (Parastore-Windows.bat,
-Parastore-macOS.command, Parastore-Linux.sh) through `uv`, which fetches Python and every
-dependency on first run. Nothing else needs to be installed:
+Started by the TwinStore app launcher (`launcher/`, one icon per OS) or the fallback scripts in
+`launcher/scripts/` through `uv`, which fetches Python and every dependency on first run. Nothing
+else needs to be installed:
 
 - If `frontend/dist` is missing (a git checkout rather than a release zip), the UI is built once
   with Node.js — the system one if present, otherwise the `nodejs-wheel-binaries` package that the
   launch scripts add to the environment.
 - The server listens on 127.0.0.1 only, on the first free port from 8000.
+- Projects live in `backend/.data`, or in `$PARASTORE_DATA_HOME/.data` when the app files are
+  read-only (the macOS app bundle).
 """
 
 import argparse
 import importlib.util
 import os
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -31,7 +34,7 @@ PNPM = "pnpm@10.33.0"
 
 
 def _say(msg: str) -> None:
-    print(f"[Parastore] {msg}", flush=True)
+    print(f"[TwinStore] {msg}", flush=True)
 
 
 def _node_command() -> list[str] | None:
@@ -103,20 +106,35 @@ def _open_when_ready(url: str, open_browser: bool) -> None:
                     break
         except OSError:
             time.sleep(0.5)
-    _say(f"Parastore is running at {url}  (close this window or press Ctrl+C to stop)")
+    _say(f"TwinStore is running at {url}  (close this window or press Ctrl+C to stop)")
     if open_browser:
         webbrowser.open(url)
 
 
+def _exit_when_stdin_closes() -> None:
+    """The app launcher keeps a pipe open to our stdin; end of input means it is gone or asked us to stop."""
+    while sys.stdin.buffer.read(1024):
+        pass
+    _say("Launcher closed — stopping.")
+    signal.raise_signal(signal.SIGINT)
+    time.sleep(8)
+    os._exit(0)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="parastore-app", description="Start Parastore and open it in the browser.")
+    parser = argparse.ArgumentParser(prog="twinstore-app", description="Start TwinStore and open it in the browser.")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PARASTORE_PORT", "8000")))
     parser.add_argument("--host", default=os.environ.get("PARASTORE_HOST", "127.0.0.1"))
     parser.add_argument("--no-browser", action="store_true", help="do not open a browser tab")
     parser.add_argument("--rebuild-ui", action="store_true", help="rebuild the web interface")
+    parser.add_argument("--exit-with-stdin", action="store_true", help="stop when standard input closes (used by the app launcher)")
     args = parser.parse_args(argv)
 
-    os.chdir(BACKEND)  # data lives in backend/.data, next to the sample projects
+    if args.exit_with_stdin:
+        threading.Thread(target=_exit_when_stdin_closes, daemon=True).start()
+    home = Path(os.environ.get("PARASTORE_DATA_HOME") or BACKEND)  # `.data` lives here
+    home.mkdir(parents=True, exist_ok=True)
+    os.chdir(home)
     build_ui(force=args.rebuild_ui)
     port = free_port(args.port, args.host)
     url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '::') else args.host}:{port}"

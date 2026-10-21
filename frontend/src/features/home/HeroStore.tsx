@@ -1,5 +1,5 @@
 // The home hero: an isometric convenience store with shoppers walking its aisles and leaving
-// foot-traffic heat behind them — what Parastore simulates, shown instead of told.
+// foot-traffic heat behind them — what TwinStore simulates, shown instead of told.
 
 import { useEffect, useState } from "react";
 

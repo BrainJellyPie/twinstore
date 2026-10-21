@@ -1,6 +1,11 @@
-# Builds the one-click download: the web UI is prebuilt once and shipped inside a zip together
-# with the double-click launchers, so end users need neither Node.js nor Python preinstalled
-# (the launchers fetch `uv`, which brings Python and the dependencies on first start).
+# Builds the one-click downloads: one archive per OS, each with a single TwinStore icon to
+# double-click. The web UI is prebuilt and shipped inside, so end users need neither Node.js nor
+# Python preinstalled (the launcher fetches uv, which brings Python and the dependencies).
+#
+#   TwinStore-<v>-windows-x64.zip    TwinStore/TwinStore.exe + TwinStore/app/
+#   TwinStore-<v>-macos.zip          TwinStore.app (universal; app files inside the bundle)
+#   TwinStore-<v>-linux-x64.tar.gz   TwinStore/twinstore + TwinStore/app/
+#   TwinStore-<v>-linux-arm64.tar.gz
 #
 # Runs on version tags (v*) and on demand (Actions → Release bundle → Run workflow).
 name: Release bundle
@@ -47,28 +52,67 @@ jobs:
           uv run python -c "from store_emulator.server.main import app; print('OK')"
           uv run pytest -q -x
 
-      - name: Package
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: launcher/go.mod
+
+      - name: Build launchers
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          [ "$GITHUB_REF_TYPE" = "tag" ] || VERSION="snapshot-${GITHUB_SHA::7}"
-          NAME="parastore-${VERSION}"
-          mkdir -p "out/$NAME"
-          git archive HEAD | tar -x -C "out/$NAME"
-          cp -r frontend/dist "out/$NAME/frontend/dist"
-          chmod +x "out/$NAME/Parastore-Linux.sh" "out/$NAME/Parastore-macOS.command"
-          (cd out && zip -qr "$NAME.zip" "$NAME")
-          echo "ZIP=out/$NAME.zip" >> "$GITHUB_ENV"
-          echo "NAME=$NAME" >> "$GITHUB_ENV"
+          [ "$GITHUB_REF_TYPE" = "tag" ] || VERSION="0.0.0-snapshot.${GITHUB_SHA::7}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          VERSION="$VERSION" launcher/build.sh
+
+      - name: Package
+        run: |
+          set -e
+          mkdir -p out payload
+          # app files: backend, the prebuilt UI and the docs (no sources the app does not need)
+          git archive HEAD backend LICENSE README.md QUICKSTART.md USAGE.md SHELF_LAB.md | tar -x -C payload
+          mkdir -p payload/frontend && cp -r frontend/dist payload/frontend/dist
+
+          launcher_smoke() {  # the packaged launcher must find its app files and start them
+            "$1" --smoke --no-browser --port 8765
+          }
+
+          # Windows
+          mkdir -p win/TwinStore && cp launcher/dist/TwinStore.exe win/TwinStore/ && cp -r payload win/TwinStore/app
+          (cd win && zip -qr "../out/TwinStore-$VERSION-windows-x64.zip" TwinStore)
+
+          # macOS: everything inside the bundle, so the download is a single icon
+          cp -r launcher/dist/TwinStore.app mac.app
+          mkdir -p mac && mv mac.app mac/TwinStore.app && cp -r payload mac/TwinStore.app/Contents/Resources/app
+          (cd mac && zip -qry "../out/TwinStore-$VERSION-macos.zip" TwinStore.app)
+
+          # Linux
+          for arch in x64 arm64; do
+            rm -rf lin && mkdir -p lin/TwinStore
+            cp "launcher/dist/twinstore-linux-$arch" lin/TwinStore/twinstore && chmod +x lin/TwinStore/twinstore
+            cp -r payload lin/TwinStore/app
+            tar -C lin -czf "out/TwinStore-$VERSION-linux-$arch.tar.gz" TwinStore
+            if [ "$arch" = x64 ]; then launcher_smoke lin/TwinStore/twinstore; fi  # after packing: it creates .venv and .data
+          done
+          ls -lh out
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.NAME }}
-          path: ${{ env.ZIP }}
+          name: TwinStore-${{ env.VERSION }}
+          path: out/*
 
       - name: Publish release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "$ZIP" --title "Parastore $GITHUB_REF_NAME" \
-            --notes "Download, unzip, double-click Parastore-Windows.bat / Parastore-macOS.command / Parastore-Linux.sh. See QUICKSTART.md."
+          gh release create "$GITHUB_REF_NAME" out/* --title "TwinStore $GITHUB_REF_NAME" --notes-file - <<'NOTES'
+          Download the file for your computer, unpack it, and double-click **TwinStore**.
+
+          | Computer | Download | Double-click |
+          | --- | --- | --- |
+          | Windows 10/11 | `TwinStore-…-windows-x64.zip` | `TwinStore.exe` |
+          | macOS 11+ (Apple silicon or Intel) | `TwinStore-…-macos.zip` | `TwinStore.app` |
+          | Linux x64 / arm64 | `TwinStore-…-linux-*.tar.gz` | `twinstore` (afterwards also in the app menu) |
+
+          The first start downloads Python and the packages (a few minutes, once). See QUICKSTART.md.
+          NOTES

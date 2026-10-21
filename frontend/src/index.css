@@ -103,7 +103,7 @@ body {
 }
 
 /*
-  Parastore "Aurora" palette.
+  TwinStore "Aurora" palette.
   Night (dark) is the signature: obsidian surfaces, one electric action colour — volt — and an
   aurora ramp (cyan → violet → magenta) for light, data and the foot-traffic heat.
   Day (light) keeps the same structure on porcelain: ink for actions, volt for highlights.
@@ -237,7 +237,7 @@ body {
   }
 }
 
-/* ── Parastore utilities ──────────────────────────────────────────────────── */
+/* ── TwinStore utilities ──────────────────────────────────────────────────── */
 
 /* Frosted surface floating over the scene or the backdrop. */
 @utility glass {

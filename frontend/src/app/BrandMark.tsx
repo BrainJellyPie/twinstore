@@ -1,8 +1,12 @@
-// The Parastore mark: an isometric shelf block inside a slowly turning aurora ring.
+// The TwinStore mark: a solid shelf block (the store) and its glowing wireframe double (the
+// digital twin) inside a slowly turning aurora ring — the same drawing as the app icon.
+
+import { useId } from "react";
 
 import { cn } from "@/shared/utils/cn";
 
 export function BrandMark({ className }: { className?: string }) {
+  const twin = useId();
   return (
     <span
       className={cn(
@@ -13,10 +17,23 @@ export function BrandMark({ className }: { className?: string }) {
     >
       <span className="absolute -inset-3 animate-spin-slow bg-[conic-gradient(from_0deg,var(--heat-1),var(--heat-2),var(--heat-3),var(--volt),var(--heat-1))] blur-[5px]" />
       <span className="absolute inset-[2px] rounded-[0.68rem] bg-[#0b0c10]/85" />
-      <svg viewBox="0 0 24 24" className="relative size-[58%]">
-        <path d="M12 3.5 19.5 7.8v8.4L12 20.5 4.5 16.2V7.8Z" fill="none" stroke="white" strokeWidth="1.7" strokeLinejoin="round" />
-        <path d="M4.5 7.8 12 12.1l7.5-4.3M12 12.1v8.4" fill="none" stroke="white" strokeWidth="1.7" strokeLinejoin="round" opacity="0.7" />
-        <circle cx="19.2" cy="19.2" r="2.6" fill="var(--volt)" />
+      <svg viewBox="3.5 3 17.5 17" className="relative size-[74%]">
+        <defs>
+          <linearGradient id={twin} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#3fdfff" />
+            <stop offset="0.55" stopColor="#a586ff" />
+            <stop offset="1" stopColor="#ff5fc6" />
+          </linearGradient>
+        </defs>
+        <g fill="none" stroke={`url(#${twin})`} strokeWidth="1.3" strokeLinejoin="round">
+          <path d="M15.2 4.4 19.7 7v5.2l-4.5 2.6-4.5-2.6V7Z" />
+          <path d="M10.7 7 15.2 9.6 19.7 7M15.2 9.6v5.2" />
+        </g>
+        <path d="M9 8 13.5 10.6 9 13.2 4.5 10.6Z" fill="#f2f4f8" />
+        <path d="M4.5 10.6 9 13.2v5.2l-4.5-2.6Z" fill="#b4bacb" />
+        <path d="M13.5 10.6 9 13.2v5.2l4.5-2.6Z" fill="#6b7186" />
+        <path d="M9 8 13.5 10.6v5.2L9 18.4l-4.5-2.6v-5.2Z" fill="none" stroke="white" strokeWidth="0.9" strokeLinejoin="round" />
+        <circle cx="15.2" cy="4.4" r="1.3" fill="var(--volt)" />
       </svg>
     </span>
   );
