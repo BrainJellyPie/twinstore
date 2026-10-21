@@ -128,6 +128,17 @@ The limit keeps display positions and seating unchanged, with repeated facings
 of the selected products. **Shuffle assortment** picks a reproducible mix;
 the same seed and category keep their selection across floor sizes and currencies.
 
+Set a number beside an individual category to override that shared limit. For
+example, use 3 for drinks and 12 for menu items while other categories follow the
+shared setting. Clear an individual number to inherit the shared limit; **Use
+shared limit for all categories** removes every override. Limits are 1–16 distinct
+products, capped by the available catalog; uncheck a category to exclude it.
+Excluded categories retain their numbers for later. Known categories absent from
+the selected format also retain their limits without changing its products.
+These settings persist independently for each floor and through options files
+and saved-layout reuse. The POST preview accepts them as `category_product_limits`,
+a map of category IDs to integer limits (at most 64 entries).
+
 **Entrance wall** places the entrance on the front, back, left or right wall.
 For a separate exit position, **Exit wall** can follow the entrance wall or use
 another wall, such as a front entrance with a back exit. **Share entrance** keeps
