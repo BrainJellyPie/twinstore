@@ -31,7 +31,7 @@ export function resolveOperatingHours(value: Pick<LayoutOptions, "open_hour" | "
 export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   templateId: "urban_cvs", seed: 0, currency: "USD", style: null,
   density: "balanced", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, fixture_design: "mixed", design_theme: null, dining_tables: null,
-  checkout_placement: "auto", checkout_wall: "front", seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1, dining_seats: 4, table_rotation: 0,
+  checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1, dining_seats: 4, table_rotation: 0,
   aisle_width: null, max_shelf_run: null, excluded_categories: [], products_per_category: null,
   open_hour: null, close_hour: null, closed_days: null, table_mix: null,
 };
@@ -75,6 +75,7 @@ export function validTemplateChoice(value: TemplateChoice): boolean {
     (value.aisle_width == null || (Number.isInteger(value.aisle_width) && value.aisle_width >= 1 && value.aisle_width <= 4)) &&
     (value.max_shelf_run == null || (Number.isInteger(value.max_shelf_run) && value.max_shelf_run >= 1 && value.max_shelf_run <= 8)) &&
     (value.checkouts == null || (Number.isInteger(value.checkouts) && value.checkouts >= 1 && value.checkouts <= 12)) &&
+    (value.checkout_clearance === undefined || (Number.isInteger(value.checkout_clearance) && value.checkout_clearance >= 0 && value.checkout_clearance <= 3)) &&
     (value.dining_tables == null || (Number.isInteger(value.dining_tables) && value.dining_tables >= 0 && value.dining_tables <= 48)) &&
     (value.dining_seats === undefined || [2, 4, 6].includes(value.dining_seats)) &&
     (value.table_rotation === undefined || [0, 90].includes(value.table_rotation)) &&
@@ -92,7 +93,7 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
     max_shelf_run: value.max_shelf_run,
     checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme,
     dining_tables: value.dining_tables, dining_seats: value.dining_seats, table_mix: value.table_mix, table_rotation: value.table_rotation, seating_zone: value.seating_zone, table_clearance: value.table_clearance,
-    checkout_placement: value.checkout_placement, checkout_wall: value.checkout_wall, reserved_areas: value.reserved_areas, requirements: value.requirements,
+    checkout_placement: value.checkout_placement, checkout_wall: value.checkout_wall, checkout_clearance: value.checkout_clearance, reserved_areas: value.reserved_areas, requirements: value.requirements,
     excluded_categories: value.excluded_categories,
     products_per_category: value.products_per_category,
     gate_wall: value.gate_wall,

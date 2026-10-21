@@ -81,6 +81,7 @@ def preview(
     table_clearance: int = Query(default=1, ge=1, le=3),
     seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
     checkout_wall: CheckoutWall = "front",
+    checkout_clearance: int = Query(default=0, ge=0, le=3),
     excluded_categories: list[TemplateCategoryId] | None = Query(default=None, max_length=64),
     products_per_category: int | None = Query(default=None, ge=1, le=16),
     open_hour: int | None = Query(default=None, ge=0, le=23),
@@ -92,7 +93,7 @@ def preview(
                             shelf_direction=shelf_direction,
                             entrance=entrance, exit_position=exit_position, gate_wall=gate_wall, exit_wall=exit_wall, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables, dining_seats=dining_seats, table_rotation=table_rotation, table_clearance=table_clearance,
-                            seating_zone=seating_zone, checkout_placement=checkout_placement, checkout_wall=checkout_wall,
+                            seating_zone=seating_zone, checkout_placement=checkout_placement, checkout_wall=checkout_wall, checkout_clearance=checkout_clearance,
                             excluded_categories=excluded_categories or [], products_per_category=products_per_category,
                             open_hour=open_hour, close_hour=close_hour,
                             closed_days=None if closed_days is None else [int(day) for day in closed_days.split(",") if day])

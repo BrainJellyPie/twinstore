@@ -231,24 +231,28 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               </select></Field>
               <Field label="Exit wall"><select className={controlClass} value={sharedExit ? "" : value.exit_wall ?? ""} disabled={sharedExit}
                 onChange={(e) => update({ exit_wall: e.target.value === "" ? null : e.target.value as TemplateChoice["exit_wall"] })}>
-                <option value="">Same as entrance wall</option><option value="front">Front wall</option><option value="back">Back wall</option><option value="left">Left wall</option><option value="right">Right wall</option>
+                <option value="">Entrance wall</option><option value="front">Front wall</option><option value="back">Back wall</option><option value="left">Left wall</option><option value="right">Right wall</option>
               </select></Field>
               <p className="col-span-2 text-[10px] text-muted-foreground">Choose a separate exit position to place it on another wall. Shared gates follow the entrance. Back and side gates stay one cell away from corners; center uses the wall midpoint.</p>
-              <Field label="Checkout counters"><select className={controlClass} value={value.checkouts ?? ""} onChange={(e) => update({ checkouts: e.target.value === "" ? null : Number(e.target.value) })}>
+              <div className="col-span-2 sm:col-span-1"><Field label="Checkout counters"><select className={controlClass} value={value.checkouts ?? ""} onChange={(e) => update({ checkouts: e.target.value === "" ? null : Number(e.target.value) })}>
                 <option value="">Format default ({selected?.default_checkouts ?? 1}, sized to fit)</option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
-              </select></Field>
+              </select></Field></div>
               <Field label="Checkout wall"><select className={controlClass} value={value.checkout_wall ?? "front"}
                 onChange={(e) => update({ checkout_wall: e.target.value as TemplateChoice["checkout_wall"] })}>
                 <option value="front">Front wall</option><option value="back">Back wall</option>
                 <option value="left">Left wall</option><option value="right">Right wall</option>
               </select></Field>
-              <Field label="Checkout placement"><select className={controlClass} value={value.checkout_placement ?? "auto"}
+              <div className="col-span-2 sm:col-span-1"><Field label="Checkout placement"><select className={controlClass} value={value.checkout_placement ?? "auto"}
                 onChange={(e) => update({ checkout_placement: e.target.value as TemplateChoice["checkout_placement"] })}>
                 <option value="auto">Format default{selected?.default_checkout_placement === "near_entrance" ? " (near entrance)" : selected?.default_checkout_placement === "away_from_entrance" ? " (away from entrance)" : " (wall order)"}</option><option value="near_entrance">Near the entrance</option>
                 <option value="away_from_entrance">Away from the entrance</option>
+              </select></Field></div>
+              <Field label="Space beside counters"><select className={controlClass} value={value.checkout_clearance ?? 0}
+                onChange={(event) => update({ checkout_clearance: Number(event.target.value) })}>
+                <option value={0}>0 · Adjacent</option><option value={1}>1 cell</option><option value={2}>2 cells</option><option value={3}>3 cells</option>
               </select></Field>
-              <p className="col-span-2 text-[10px] text-muted-foreground">Counters and small checkout displays share this wall. Other wall stock uses the remaining space.</p>
+              <p className="col-span-2 text-[10px] text-muted-foreground">Leave 0–3 cells beside each counter along its wall. These cells stay clear of stock; other wall displays use the remaining space. Format-default counter counts adapt to fit; explicit counts must fit.</p>
               <div className="col-span-2 space-y-1 sm:col-span-1"><Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
                 <option value="">Format default{selected ? ` (${INTERIOR_DESIGNS[selected.default_design]?.label ?? "Classic retail"})` : ""}</option>
                 {Object.entries(INTERIOR_DESIGNS).map(([id, palette]) => <option key={id} value={id}>{palette.label}</option>)}
@@ -303,7 +307,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </details>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
             </div>
             </div>
           </div>

@@ -29,6 +29,24 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
+it("keeps checkout spacing across walls, priorities and count changes and resets it explicitly", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  for (const [wall, spacing] of [["front", "0"], ["back", "1"], ["left", "2"], ["right", "3"]]) {
+    fireEvent.change(screen.getByLabelText("Checkout wall"), { target: { value: wall } });
+    fireEvent.change(screen.getByLabelText("Space beside counters"), { target: { value: spacing } });
+    await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ checkout_wall: wall, checkout_clearance: Number(spacing) }), expect.any(AbortSignal)));
+  }
+  fireEvent.change(screen.getByLabelText("Checkout counters"), { target: { value: "3" } });
+  fireEvent.click(screen.getByText("Apply a layout priority"));
+  fireEvent.change(screen.getByLabelText("Layout priority"), { target: { value: "wide" } });
+  fireEvent.click(screen.getByRole("button", { name: "Apply priority" }));
+  expect((screen.getByLabelText("Space beside counters") as HTMLSelectElement).value).toBe("3");
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ checkout_clearance: 3, checkouts: 3, style: "cross" }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Space beside counters") as HTMLSelectElement).value).toBe("0");
+});
+
 it("sets operating hours, protects the last open day and restores only the schedule", async () => {
   mount();
   fireEvent.click(await screen.findByText("Operating hours · 7 open days"));

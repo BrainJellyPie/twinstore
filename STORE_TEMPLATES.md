@@ -244,6 +244,14 @@ remain independent. You can customize an individual floor again afterward.
 These controls update the building being prepared; existing shopper budgets are
 not converted.
 
+**Space beside counters** reserves 0–3 empty cells along the checkout wall on either
+side of each counter, clipped at the wall ends. Counters respect the selected spacing;
+wall shelves and cold displays cannot fill those gaps. Gate cells remain usable.
+Zero preserves the existing adjacent-counter layout. Format-default counts adapt to
+the available space; explicit counts that cannot fit produce an error with ways to
+adjust the floor. Spacing works on all four walls with near/away placement, is saved
+per floor and survives reuse and options-file import/export (`checkout_clearance`).
+
 Add up to 48 dining tables to any format. Choose **Seats per table**: two, four
 (the default) or six, for up to 288 seats when the floor has enough space. Enter any
 whole count from 0–48, or leave the field blank for the format default. Café and restaurant
