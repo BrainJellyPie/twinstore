@@ -1,12 +1,12 @@
 // Conjoint builder: the product, its attributes and levels, price levels, the choice-task design, and the
 // respondents. A sample task shows what one respondent will be asked.
 
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dices, Grid3x3, Loader2, Plus, Sparkles, X } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { designConjoint, marketingKeys, startConjoint, type ConjointRequest, type JobStatus } from "@/shared/api/marketing";
+import { designConjoint, marketingKeys, startConjoint, type ConjointDesign, type ConjointRequest, type JobStatus } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
@@ -78,7 +78,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
   const [ages, setAges] = useState<string[]>(initial?.age_groups ?? []);
   const [genders, setGenders] = useState<string[]>(initial?.genders ?? []);
   const [model, setModel] = useState(initial?.model ?? "");
-  const [name, setName] = useState(initial?.name ? `${initial.name} (copy)`.slice(0, 80) : "");
+  const [name, setName] = useState(initial?.name ? Array.from(`${initial.name} (copy)`).slice(0, 80).join("") : "");
   const [roll, setRoll] = useState(1);
 
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
@@ -146,9 +146,21 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
 
   // Draft the whole design from the question the study should answer.
   const [question, setQuestion] = useState("");
+  const questionLength = Array.from(question.trim()).length;
+  const [accepted, setAccepted] = useState<{
+    design: ConjointDesign; question: string; projectId: string; setupId?: string; currency: string;
+  } | null>(null);
   const draft = useMutation({
     mutationFn: () => designConjoint(projectId, { question: question.trim(), setup_id: setupId, currency }),
+  });
+  const resetDraft = draft.reset;
+  // A reply belongs to the question and editable design from which it was requested.
+  useLayoutEffect(() => {
+    resetDraft();
+  }, [question, projectId, setupId, currency, product, context, attrs, priceText, name, resetDraft]);
+  const requestDraft = () => draft.mutate(undefined, {
     onSuccess: (d) => {
+      setAccepted({ design: d, question, projectId, setupId, currency });
       setProduct(d.product);
       setContext(d.context);
       setAttrs(d.attributes.map((a) => ({ name: a.name, levels: a.levels.join(", ") })));
@@ -156,6 +168,8 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
       if (!name.trim()) setName(d.name);
     },
   });
+  const designed = accepted?.question === question && accepted.projectId === projectId
+    && accepted.setupId === setupId && accepted.currency === currency ? accepted.design : null;
 
   return (
     <div className="space-y-4">
@@ -171,17 +185,17 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
         </div>
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2">
           <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
-          <Input value={question} onChange={(e) => setQuestion(e.target.value.slice(0, 500))}
-            onKeyDown={(e) => { if (e.key === "Enter" && question.trim().length >= 5 && !draft.isPending) { e.preventDefault(); draft.mutate(); } }}
+          <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); requestDraft(); } }}
             placeholder="What should the study answer? e.g. Would shoppers pay more for zero-sugar tea in a bigger bottle?"
             aria-label="Question for the study" className="h-9 min-w-[14rem] flex-1 bg-card" />
-          <Button type="button" size="sm" variant="outline" disabled={question.trim().length < 5 || draft.isPending} onClick={() => draft.mutate()}>
+          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={requestDraft}>
             {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the study
           </Button>
-          {draft.data && (
+          {designed && (
             <p className="basis-full px-1 text-xs text-muted-foreground">
-              {draft.data.rationale}
-              {draft.data.comparable.length > 0 && <> Prices set against {draft.data.comparable.join(", ")}.</>}
+              {designed.rationale}
+              {designed.comparable.length > 0 && <> Prices set against {designed.comparable.join(", ")}.</>}
               {" "}Check and edit everything below before starting.
             </p>
           )}
@@ -190,11 +204,11 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
         <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr]">
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">Respondents are choosing…</span>
-            <Input value={product} onChange={(e) => setProduct(e.target.value.slice(0, 160))} placeholder="a bottle of iced tea" className="h-9" />
+            <Input value={product} onChange={(e) => setProduct(Array.from(e.target.value).slice(0, 160).join(""))} placeholder="a bottle of iced tea" className="h-9" />
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">Anything else they are told (optional)</span>
-            <Input value={context} onChange={(e) => setContext(e.target.value.slice(0, 300))} placeholder="Sold in the drinks fridge next to the sodas." className="h-9" />
+            <Input value={context} onChange={(e) => setContext(Array.from(e.target.value).slice(0, 300).join(""))} placeholder="Sold in the drinks fridge next to the sodas." className="h-9" />
           </label>
         </div>
         <div className="space-y-2">
@@ -202,7 +216,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
             const levels = splitLevels(a.levels);
             return (
               <div key={i} className="grid items-center gap-2 sm:grid-cols-[11rem_1fr_auto]">
-                <Input value={a.name} onChange={(e) => setAttrs((xs) => xs.map((x, j) => (j === i ? { ...x, name: e.target.value.slice(0, 40) } : x)))}
+                <Input value={a.name} onChange={(e) => setAttrs((xs) => xs.map((x, j) => (j === i ? { ...x, name: Array.from(e.target.value).slice(0, 40).join("") } : x)))}
                   placeholder={`Attribute ${i + 1}`} aria-label={`Attribute ${i + 1} name`} className="h-9 font-medium" />
                 <div className="relative">
                   <Input value={a.levels} onChange={(e) => setAttrs((xs) => xs.map((x, j) => (j === i ? { ...x, levels: e.target.value } : x)))}

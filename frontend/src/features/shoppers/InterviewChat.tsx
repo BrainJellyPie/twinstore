@@ -126,7 +126,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
       <form className="flex items-end gap-1.5" onSubmit={(e) => { e.preventDefault(); send(text); }}>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value.slice(0, 600))}
+          onChange={(e) => setText(Array.from(e.target.value).slice(0, 600).join(""))}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
               e.preventDefault(); send(text);
