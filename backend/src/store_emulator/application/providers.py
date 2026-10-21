@@ -316,9 +316,8 @@ def text_model_fallback(model: str, settings: dict[ProviderKind, ProviderSetting
     """A model reference to use instead of `model` when its provider has no API key: the first fast model of the
     first cloud provider that has one. None when `model` can be used as it is, or nothing else can."""
     settings = settings if settings is not None else load_settings()
-    parsed = ModelRef.parse(model)
-    kind = parsed.provider if parsed is not None else _PLAIN_PREFIX.get(model.partition("/")[0])
-    if kind is None or not PRESETS[kind].needs_key or _key_for(kind, settings)[0] is not None:
+    kind = missing_key(model, settings)
+    if kind is None:
         return None
     for other in _FALLBACK_ORDER:
         preset = PRESETS[other]
@@ -366,9 +365,33 @@ def ensure_resolvable(config: SimulationConfig) -> None:
     base = config.llm_for(config.engine_type)
     refs = [m.model for m in config.ensemble.members] if config.ensemble is not None else [base.model]
     for ref in refs:
+        if base.api_base is None and base.api_key is None:
+            _ensure_plain_key(ref, settings)
         resolved = resolve_model(ref, base=base, settings=settings)
         if resolved.api_base:
             _ensure_local_ready(resolved.api_base)
+
+
+def missing_key(ref: str, settings: dict[ProviderKind, ProviderSettings] | None = None) -> ProviderKind | None:
+    """The cloud provider of `ref` when it needs an API key and has none (plain LiteLLM strings and references)."""
+    settings = settings if settings is not None else load_settings()
+    parsed = ModelRef.parse(ref)
+    kind = parsed.provider if parsed is not None else _PLAIN_PREFIX.get(ref.partition("/")[0])
+    if kind is None or not PRESETS[kind].needs_key or _key_for(kind, settings)[0] is not None:
+        return None
+    return kind
+
+
+def _ensure_plain_key(ref: str, settings: dict[ProviderKind, ProviderSettings]) -> None:
+    """A plain LiteLLM model ("gemini/…") of a cloud provider without a key would fail on every shopper; say so before
+    the run starts, and name a model that would work."""
+    kind = missing_key(ref, settings) if ModelRef.parse(ref) is None else None
+    if kind is None:
+        return
+    alternative = text_model_fallback(ref, settings)
+    hint = (f"Pick another model for this run ({alternative} has a key)" if alternative
+            else "Use rule-based shoppers")
+    raise ValueError(f"No API key for {PRESETS[kind].label} ({ref}). {hint}, or add a key in Settings → Model providers.")
 
 
 def _ensure_local_ready(api_base: str) -> None:

@@ -118,3 +118,22 @@ def test_receipt_matching_keeps_ambiguous_products_for_manual_review(client, mon
     assert body["products"] == products
     if not expected:
         assert len(body["csv"].splitlines()) == 1
+
+
+def test_a_failed_vision_model_leaves_the_venue_unchanged(client, monkeypatch):
+    from store_emulator.application import vision_inputs
+
+    class _Broken:
+        model = "anthropic/claude-haiku-5-5"
+
+        async def generate_structured_with_image_async(self, *a, **k):
+            raise RuntimeError("RateLimitError: too many requests")
+
+    town = client.post(f"/api/projects/{PID}/town/generate", json={"archetype": "residential", "seed": 1}).json()
+    focal = town["focal_venue_id"]
+    before = next(v for v in town["venues"] if v["id"] == focal)["attractiveness"]
+    monkeypatch.setattr(vision_inputs, "_client", lambda *a, **k: _Broken())
+    res = client.post(f"/api/projects/{PID}/town/venues/{focal}/storefront", files={"photo": ("front.png", _png(True), "image/png")})
+    assert res.status_code == 502 and "limiting requests" in res.json()["detail"]
+    after = client.get(f"/api/projects/{PID}/town").json()
+    assert next(v for v in after["venues"] if v["id"] == focal)["attractiveness"] == before

@@ -200,3 +200,23 @@ it("keeps form edits and selection intact when switching language mid-dialog", a
   await submit();
   expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ engine_type: "vlm_glance", max_customers: 17, seed: 21, replicate: 3 }));
 });
+
+it("runs on a model that has a key when the server default has none", async () => {
+  vi.mocked(api.getEngines).mockResolvedValue(engines.map((e) => e.engine_type === "pattern_intent_impulse"
+    ? { ...e, model: "gemini/gemini-3.1-pro-preview", model_ready: false, suggested_model: "anthropic:claude-haiku-5-5" } : e));
+  vi.mocked(api.getModels).mockResolvedValue([{ ref: "anthropic:claude-haiku-5-5", label: "Claude Haiku 5.5", vision: true } as api.ModelOption]);
+  show({ defaultEngine: "pattern_intent_impulse" });
+  expand();
+  expect(await screen.findByText(/has no API key, so this run uses anthropic:claude-haiku-5-5/)).toBeTruthy();
+  await submit();
+  await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ model: "anthropic:claude-haiku-5-5" })));
+});
+
+it("refuses to start on a default model without a key when nothing else has one", async () => {
+  vi.mocked(api.getEngines).mockResolvedValue(engines.map((e) => e.engine_type === "pattern_intent_impulse"
+    ? { ...e, model: "gemini/gemini-3.1-pro-preview", model_ready: false, suggested_model: "" } : e));
+  show({ defaultEngine: "pattern_intent_impulse" });
+  expect(await screen.findByText(/has no API key. Add one in Settings/)).toBeTruthy();
+  await submit();
+  expect(api.startRun).not.toHaveBeenCalled();
+});

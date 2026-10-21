@@ -417,6 +417,9 @@ export interface EngineInfo {
   uses_llm: boolean;
   model: string;
   default: boolean;
+  /** False when `model` is a cloud model without an API key; `suggested_model` then has a key ("" if none does). */
+  model_ready?: boolean;
+  suggested_model?: string;
 }
 
 export function getEngines(signal?: AbortSignal): Promise<EngineInfo[]> {

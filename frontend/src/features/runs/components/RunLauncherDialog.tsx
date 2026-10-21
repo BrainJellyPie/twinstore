@@ -80,7 +80,7 @@ function LauncherForm({
   const [seed, setSeed] = useState("0");
   const [replicate, setReplicate] = useState("0");
   const [preview, setPreview] = useState(true);
-  const [modelChoice, setModelChoice] = useState<ModelChoice>({ kind: "default" });
+  const [pickedModel, setPickedModel] = useState<ModelChoice>({ kind: "default" });
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const town = useQuery({ queryKey: queryKeys.town(projectId), queryFn: ({ signal }) => api.getTown(projectId, signal) }).data;
   const [useTown, setUseTown] = useState(false);
@@ -96,7 +96,15 @@ function LauncherForm({
   const modelOf = (type: EngineType) => engines?.find((e) => e.engine_type === type)?.model;
   const models = useAvailableModels(usesLlm);
   const available = models.data?.filter((model) => engine !== "vlm_glance" || model.vision);
+  // The server default has no API key: start from a model that has one (the user can still pick another).
+  const engineInfo = engines?.find((e) => e.engine_type === engine);
+  const noKey = usesLlm && engineInfo?.model_ready === false;
+  const suggested = noKey && engineInfo?.suggested_model && available?.some((m) => m.ref === engineInfo.suggested_model)
+    ? engineInfo.suggested_model : null;
+  const modelChoice: ModelChoice = pickedModel.kind === "default" && suggested ? { kind: "single", model: suggested } : pickedModel;
+  const setModelChoice = setPickedModel;
   let modelError: string | null = null;
+  if (usesLlm && noKey && modelChoice.kind === "default" && available) modelError = t("defaultModelNoKeyNoAlternative", { model: engineInfo?.model ?? "" });
   if (usesLlm && modelChoice.kind !== "default") {
     if (!available) modelError = models.isError ? t("modelListError") : t("loadingModels");
     else if (modelChoice.kind === "single") {
@@ -292,6 +300,9 @@ function LauncherForm({
                 value={modelChoice}
                 onChange={setModelChoice}
               />
+            )}
+            {suggested && pickedModel.kind === "default" && (
+              <p className="text-xs text-muted-foreground">{t("defaultModelNoKey", { model: engineInfo?.model ?? "", suggested })}</p>
             )}
 
             <div className="grid grid-cols-2 gap-3">

@@ -437,6 +437,13 @@ export interface ConjointReport {
 }
 export interface ConjointView extends JobStatus { report: ConjointReport | null; request?: ConjointRequest | null }
 
+/** A conjoint study drafted by the text model from a question; prices in minor units of `currency`. */
+export interface ConjointDesign {
+  name: string; product: string; context: string; attributes: ConjointAttribute[]; prices: number[]; currency: string;
+  rationale: string; comparable: string[];
+}
+export const designConjoint = (pid: string, req: { question: string; setup_id?: string; currency: string; model?: string }) =>
+  fetchJson<ConjointDesign>(`${root(pid)}/conjoints/design`, { method: "POST", body: JSON.stringify(req) });
 export const startConjoint = (pid: string, req: ConjointRequest) =>
   fetchJson<JobStatus>(`${root(pid)}/conjoints`, { method: "POST", body: JSON.stringify(req) });
 export const listConjoints = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/conjoints`, { signal });
