@@ -62,6 +62,17 @@ it("starts a campus hub with three distinct store, book and dining floors", () =
   expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
 });
 
+it("starts a family essentials center with baby supplies, footwear and dining", () => {
+  render(<Building currency="KRW" />);
+  fireEvent.click(screen.getByRole("button", { name: "Family essentials center" }));
+  expect(screen.getByText("baby_family_store / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /2F · Level 2 · Footwear/ }));
+  expect(screen.getByText("shoe_boutique / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /3F · Level 3 · Family dining/ }));
+  expect(screen.getByText("family_restaurant / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
+});
+
 it("moves and duplicates a customized floor without losing its settings", () => {
   render(<Building />);
   fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));

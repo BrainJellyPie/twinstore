@@ -25,6 +25,10 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     assert templates["food_hall"]["default_checkouts"] == 4
     assert templates["campus_dining_hall"]["default_dining_tables"] == 24
     assert templates["campus_dining_hall"]["grid"] == [32, 24]
+    assert {"shoe_boutique", "baby_family_store", "travel_essentials"} <= templates.keys()
+    assert templates["shoe_boutique"]["default_style"] == "showroom"
+    assert templates["baby_family_store"]["default_design"] == "warm"
+    assert templates["travel_essentials"]["default_checkout_placement"] == "near_entrance"
     assert {"family_restaurant", "neighborhood_bistro", "takeaway_coffee", "tea_lounge", "artisan_bakery",
             "vintage_boutique", "hardware_store", "toy_hobby_store"} <= templates.keys()
     assert templates["family_restaurant"]["default_seating_zone"] == "center"
@@ -75,6 +79,22 @@ def test_invalid_options_rejected_for_preview_and_save(client, patch):
 def test_unknown_templates_do_not_create_layouts(client):
     assert client.get("/api/store-templates/not-a-format/preview").status_code == 404
     assert client.post(f"/api/projects/{PID}/setups/generate", json={"template_id": "not-a-format"}).status_code == 404
+
+
+@pytest.mark.parametrize("template_id,store_type", [
+    ("shoe_boutique", "fashion"), ("baby_family_store", "baby"), ("travel_essentials", "travel"),
+])
+def test_family_and_travel_formats_preview_and_save_with_custom_space(client, template_id, store_type):
+    options = {"template_id": template_id, "width": 18, "height": 14, "shelf_direction": "vertical",
+               "reserved_areas": [{"label": "Customer assistance", "x": 4, "y": 4, "width": 3, "height": 3}]}
+    preview = client.post("/api/store-templates/preview", json=options)
+    assert preview.status_code == 200, preview.text
+    generated = client.post(f"/api/projects/{PID}/setups/generate", json=options)
+    assert generated.status_code == 200, generated.text
+    saved = client.get(f"/api/projects/{PID}/setups/{generated.json()['id']}").json()
+    assert saved["store"]["type"] == store_type
+    assert saved["store"]["racks"] == preview.json()["racks"]
+    assert saved["generation"]["reserved_areas"] == options["reserved_areas"]
 
 
 def test_reserved_area_preview_save_and_reuse_keep_identical_geometry(client):
