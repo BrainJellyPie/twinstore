@@ -12,7 +12,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
 from store_emulator.domain.config import SimulationConfig
@@ -65,6 +65,9 @@ def _photo(data: bytes) -> Image.Image:
     try:
         img = Image.open(io.BytesIO(data))
         img.load()
+        img = ImageOps.exif_transpose(img)
+    except Image.DecompressionBombError as e:
+        raise AppError("Photo dimensions are too large; reduce the resolution and try again.", 413) from e
     except (UnidentifiedImageError, OSError) as e:
         raise AppError("not an image the server can read (use PNG, JPEG or WebP)", 400) from e
     return img.convert("RGB")
