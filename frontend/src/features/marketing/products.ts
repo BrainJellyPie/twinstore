@@ -46,6 +46,11 @@ export function storeCategories(store: Store | null | undefined): string[] {
 export function toMinor(text: string, divisor: number): number | null {
   const amount = text.trim().replace(/^[$€£¥₩]\s*|\s*[$€£¥₩]$/g, "");
   if (!/^(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d*)?|\.\d+)$/.test(amount)) return null;
-  const minor = Math.round(Number(amount.replace(/,/g, "")) * divisor);
+  if (!Number.isSafeInteger(divisor) || divisor <= 0) return null;
+  const [whole = "", fraction = ""] = amount.replace(/,/g, "").split(".");
+  const scale = 10n ** BigInt(fraction.length);
+  // Round the decimal price before converting to binary floating point (1.005 USD = 101 cents).
+  const scaled = BigInt(whole + fraction) * BigInt(divisor);
+  const minor = Number((scaled + scale / 2n) / scale);
   return Number.isSafeInteger(minor) && minor >= 0 ? minor : null;
 }
