@@ -145,6 +145,10 @@ accent and full-width variants, and template IDs; format names and descriptions 
 The command palette also searches original and translated command names. Use the arrow keys
 to select, Enter to open, or Escape and the close button to dismiss it. Text composition with
 an input method finishes before command keys take effect.
+Layout tabs and the layout finder use these languages too. Use Left/Right, Home or End
+to focus a tab, then Enter or Space to open it. The finder searches names, building floors,
+saved design briefs and IDs, accepting accent, full-width and separator variants.
+Clear the search alone or reset both search and group filters; neither changes your current layout.
 Model selection is localized too. Detailed layout and situation editors, other feature editors and technical server messages
 currently remain in English.
 

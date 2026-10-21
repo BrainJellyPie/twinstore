@@ -119,7 +119,7 @@ that has all the imports I need?" and put it there.
 Frontend display text can be localized through `frontend/src/shared/i18n/`. The language
 picker supports English, Korean, Chinese, Japanese, Spanish and French; currently the home,
 main navigation, command palette, store gallery, model notice, simulation launcher, new-store forms,
-preparation/recovery screens and template
+preparation/recovery screens, layout navigation/finder and template
 search/filter controls use it. Store-category labels are shared between the gallery and template picker.
 Add translations in all six columns
 when extending these surfaces. Use the selected locale for dates and numbers.
