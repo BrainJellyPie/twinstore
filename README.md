@@ -477,6 +477,7 @@ Exposed metal supports and frames use CC0 [ambientCG Metal 032](https://ambientc
 in High, with color, roughness and normal maps at a consistent authored scale.
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: six appearances with textured faces and clothing, normal maps,
+varying surface roughness adapted from the original specular textures,
 alpha-tested hair, and retargeted idle/walking/browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
 [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
