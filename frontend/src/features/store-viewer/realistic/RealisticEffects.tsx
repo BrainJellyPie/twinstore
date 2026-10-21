@@ -7,6 +7,7 @@ import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { frameGate } from "./frameGate";
+import { StoreGBufferPass } from "./StoreGBufferPass";
 
 // High-quality post stack: ground-truth AO + gentle bloom on the LED strips and
 // ceiling panels. Plugs into the GatedRenderer while mounted.
@@ -25,7 +26,10 @@ export function RealisticEffects() {
     c.setPixelRatio(dpr);
     c.setSize(size.width, size.height);
     c.addPass(new RenderPass(scene, camera));
+    const surfaces = new StoreGBufferPass(scene, camera, w, h);
+    c.addPass(surfaces);
     const ao = new GTAOPass(scene, camera, w, h);
+    ao.setGBuffer(surfaces.target.depthTexture!, surfaces.target.texture);
     ao.output = GTAOPass.OUTPUT.Default;
     ao.blendIntensity = 0.85;
     ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 12 });
@@ -44,8 +48,8 @@ export function RealisticEffects() {
       // bloom and output buffers. Release those on quality changes and resize.
       for (const pass of composer.passes) {
         pass.dispose();
-        // Three r183 leaves these two shader materials out of pass.dispose().
-        if (pass instanceof GTAOPass) pass.gtaoMaterial.dispose();
+        // Three r183 leaves these shader materials out of pass.dispose().
+        if (pass instanceof GTAOPass) { pass.gtaoMaterial.dispose(); pass.blendMaterial.dispose(); }
         if (pass instanceof UnrealBloomPass) pass.materialHighPassFilter.dispose();
       }
       composer.dispose();
