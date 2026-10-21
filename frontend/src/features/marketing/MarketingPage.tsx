@@ -60,7 +60,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   });
   const products = useMemo(() => storeProducts(setup.data?.store), [setup.data?.store]);
   const info = useQuery({ queryKey: marketingKeys.info(projectId), queryFn: ({ signal }) => getMarketingInfo(projectId, signal), staleTime: 60_000 });
-  const currency = setup.data?.store?.currency ?? project.data?.metadata.currency ?? info.data?.currency ?? "USD";
+  const budgetCurrency = project.data?.metadata.currency ?? info.data?.currency ?? "USD";
+  const currency = setup.data?.store?.currency ?? budgetCurrency;
   const packages = usePackages(projectId).data ?? [];
 
   const experiments = useQuery({
@@ -146,7 +147,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
                 onStarted={(j) => { setAbDraft(null); select(j.job_id); }} />
             ) : <Loading />)}
             {tab === "survey" && (current ? <SurveyJob projectId={projectId} id={current} onDuplicate={duplicateSurvey} /> : (
-              <SurveyBuilder key={surveyDraft?.key ?? 0} projectId={projectId} personaCount={project.data?.personas.length ?? 0} initial={surveyDraft?.req}
+              <SurveyBuilder key={`${surveyDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
+                defaultCurrency={budgetCurrency} initial={surveyDraft?.req}
                 onStarted={(j) => { setSurveyDraft(null); select(j.job_id); }} />
             ))}
             {tab === "pitch" && (current ? <PitchJob projectId={projectId} id={current} /> : setup.data?.store ? (

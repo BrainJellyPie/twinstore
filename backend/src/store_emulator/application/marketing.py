@@ -59,7 +59,7 @@ from store_emulator.engine.simulation.factory import build_engine
 from .async_executor import executor
 from .capture import capture_llm_config
 from .errors import AppError
-from .currencies import simulation_currency
+from .currencies import project_currency, simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client
 from .shelf_lab import (
@@ -314,6 +314,11 @@ def _quota(personas: list[Persona], req: SurveyRequest | ShelfTestRequest) -> li
 
 
 def start_survey(pid: str, req: SurveyRequest, config: SimulationConfig) -> JobStatus:
+    _check_id(pid, "project id")
+    currency = project_currency(pid, config.currency)
+    if req.currency.upper() != currency:
+        raise AppError(f"Survey currency must match project shopper budgets ({currency}); budgets are not converted automatically.", 422)
+    req = req.model_copy(update={"currency": currency})
     images: list[Image.Image] = []
     for aid in req.stimuli:
         img = Image.open(package_path(pid, aid))

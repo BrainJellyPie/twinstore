@@ -2,6 +2,7 @@ import type { GenerateLayoutRequest, LayoutOptions } from "@/shared/api/client";
 
 export interface TemplateChoice extends LayoutOptions {
   templateId: string;
+  sourceSetupId?: string;
   seed: number;
   currency: string;
   requirements?: string;
@@ -27,11 +28,16 @@ export function validTemplateChoice(value: TemplateChoice): boolean {
 export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
   // Explicit fields also keep the source union's `kind` out of the API request.
   return {
-    template_id: value.templateId, seed: value.seed, currency: value.currency, style: value.style,
+    template_id: value.templateId, source_setup_id: value.sourceSetupId, seed: value.seed, currency: value.currency, style: value.style,
     width: value.width, height: value.height, density: value.density, entrance: value.entrance,
     checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme,
     dining_tables: value.dining_tables, requirements: value.requirements,
   };
+}
+
+export function choiceFromGeneration(request: GenerateLayoutRequest, sourceSetupId: string): TemplateChoice {
+  const { template_id, name: _name, source_setup_id: _source, ...options } = request;
+  return { ...DEFAULT_TEMPLATE_CHOICE, ...options, templateId: template_id, sourceSetupId };
 }
 
 export interface BuildingFloorChoice {
