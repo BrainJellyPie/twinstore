@@ -25,6 +25,8 @@ the pinned source revision and SHA-256 records in `sources.json`.
   posture variation from `f_idle_neutral_02` / `m_idle_neutral_02` (11.27 / 15.53 s).
   Small head turns and weight shifts vary the crowd's resting poses. Both clips
   loop continuously, cross-fade into walking or browsing, and freeze with playback.
+  Pausing retains an unfinished blend; seeking to a different action while paused
+  applies that pose immediately without retaining earlier motion contributions.
   This visual variation does not change simulated actions or attention.
 - The facial FBX's authored `AU_45_Blink` shape is retained as `blink`.
   Eyelids close and reopen over 0.23 seconds. Each shopper uses 3.2–6 second
