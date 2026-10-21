@@ -37,3 +37,13 @@ https://polyhaven.com/a/pavement_02
 Photography: Charlotte Baglioni. Processing: Dario Barresi.
 Real-world coverage: approximately 2.12 x 2.12 metres (source dimensions in mm).
 Unmodified 1K JPEG diffuse, roughness and OpenGL normal maps, used in High.
+
+Office Ceiling 001 — ambientCG (Lennart Demes), CC0 1.0
+https://ambientcg.com/a/OfficeCeiling001
+https://docs.ambientcg.com/license/
+Source: OfficeCeiling001_1K-JPG.zip, Color / Roughness / NormalGL files.
+Original JPEG bytes are preserved. The API identifies this as PBRProcedural;
+it is not a photographic scan. Source coverage is 3.85 x 3.85 metres with six
+tiles per side. The viewer fits those tiles to its existing 0.625-metre ceiling
+module (3.75-metre repeat), with a half-tile offset to centre the ceiling lights.
+Only High loads these maps. Medium keeps the procedural ceiling at the same phase.
