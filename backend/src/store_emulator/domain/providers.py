@@ -71,7 +71,7 @@ class ModelRef(BaseModel):
 
 class EnsembleMember(BaseModel):
     model: str                      # model reference
-    weight: float = Field(default=1.0, gt=0.0)
+    weight: float = Field(default=1.0, gt=0.0, allow_inf_nan=False)
     label: str = ""                 # display name; defaults to the model reference
 
     @property
