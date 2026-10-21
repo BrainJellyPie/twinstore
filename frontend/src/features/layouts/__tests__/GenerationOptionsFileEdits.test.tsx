@@ -5,13 +5,13 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import * as api from "@/shared/api/client";
 import { BuildingPicker } from "../components/BuildingPicker";
-import { LayoutOptionsFile } from "../components/LayoutOptionsFile";
+import { GenerationOptionsFile } from "../components/GenerationOptionsFile";
 import { buildingPreset, type TemplateChoice } from "../templateOptions";
 
 vi.mock("@/shared/api/client", () => ({ validateLayoutPreset: vi.fn() }));
 vi.mock("../components/TemplatePicker", () => ({
   TemplatePicker: ({ value, onChange }: { value: TemplateChoice; onChange: (choice: TemplateChoice) => void }) =>
-    <LayoutOptionsFile value={value} onChange={onChange} canExport />,
+    <GenerationOptionsFile kind="layout" value={value} onChange={onChange} canExport />,
 }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
