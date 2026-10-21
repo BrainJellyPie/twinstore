@@ -95,7 +95,7 @@ export class MetricsAccumulator {
       this.inStore++;
     }
 
-    if (ev.action === "buy" && ev.event.product_sku && ev.event.price > 0) {
+    if (ev.action === "buy" && ev.event.product_sku && ev.event.price >= 0) {
       const cart = this.carts.get(ev.customerId) ?? [];
       cart.push({
         sku: ev.event.product_sku,
@@ -153,7 +153,7 @@ export class MetricsAccumulator {
       revenue: this.revenue,
       impulseRevenue: this.impulseRevenue,
       paidCount: this.paidCount,
-      skuSales: [...this.skuMap.values()].sort((a, b) => b.revenue - a.revenue),
+      skuSales: [...this.skuMap.values()].map(s => ({ ...s })).sort((a, b) => b.revenue - a.revenue),
       rackMetrics: [...allRackIds].map((rackId) => {
         const visitors = this.rackVisitors.get(rackId);
         return {
