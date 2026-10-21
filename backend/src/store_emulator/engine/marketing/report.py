@@ -214,7 +214,7 @@ def _forest(rows: list[tuple[str, str, float, float, float]], fmt: str, currency
         return left + (v / span + 1) / 2 * plot
 
     def label(v: float) -> str:
-        return money(v, currency, signed=True) if fmt == "money" else f"{v:+.1f}"
+        return escape(money(v, currency, signed=True) if fmt == "money" else f"{v:+.1f}")
 
     parts = [f'<svg viewBox="0 0 {w} {h}" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">',
              f'<line x1="{x(0):.1f}" y1="6" x2="{x(0):.1f}" y2="{h - 26}" stroke="#9aa0a6" stroke-width="1"/>']
@@ -287,7 +287,7 @@ def report_html(r: ExperimentReport, layout: str = "", narrative: ReportNarrativ
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     engine = f"Vision shoppers{f' ({r.model})' if r.model else ''}" if r.engine == "vlm" else "Rule shoppers"
     kpis = "".join([
-        f"<div class='kpi'><span>Control revenue / visitor</span><b>{money(r.control.revenue_per_visitor, cur)}</b></div>",
+        f"<div class='kpi'><span>Control revenue / visitor</span><b>{e(money(r.control.revenue_per_visitor, cur))}</b></div>",
         f"<div class='kpi'><span>Highest revenue / visitor{'' if best and best.name == r.winner else ' (within noise)'}</span>"
         f"<b>{e(best.name) if best else '–'}</b></div>",
         f"<div class='kpi'><span>Shoppers per arm</span><b>{r.panel_size:,}</b></div>",
