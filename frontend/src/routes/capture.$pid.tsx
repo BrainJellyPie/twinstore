@@ -8,5 +8,5 @@ export const Route = createFileRoute("/capture/$pid")({
 
 function CaptureRoute() {
   const { pid } = Route.useParams();
-  return <CapturePage projectId={pid} />;
+  return <CapturePage key={pid} projectId={pid} />;
 }
