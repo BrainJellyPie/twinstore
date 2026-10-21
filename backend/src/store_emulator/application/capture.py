@@ -53,6 +53,7 @@ from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.validation import validate
 
 from .async_executor import executor
+from .currencies import project_currency
 from .errors import AppError
 from .providers import PRESETS, resolve_model
 from .setups import set_active_setup, setup_summary
@@ -226,7 +227,7 @@ def create_capture(
         raise AppError("the gdino detector needs the optional dependencies: uv sync --extra capture", 400)
     if options.detector == "vlm" and llm_config is None:
         raise AppError("the vlm detector needs a vision model (model must not be 'none')", 400)
-    options = options.model_copy(update={"currency": (options.currency or config.currency).upper()})
+    options = options.model_copy(update={"currency": (options.currency or project_currency(pid, config.currency)).upper()})
     cid = f"cap_{uuid.uuid4().hex[:8]}"
     folder = _dir(pid, cid)
     folder.mkdir(parents=True, exist_ok=True)
@@ -461,7 +462,7 @@ def _save_sku_images(pid: str, cid: str, result: CaptureResult) -> None:
 
 def apply_captures(
     pid: str, capture_ids: list[str], setup_id: str, *, rack_id: str | None = None, face: str | None = None,
-    new_rack: bool = False, name: str | None = None,
+    new_rack: bool = False, name: str | None = None, default_currency: str = "USD",
 ) -> ApplyResult:
     """Save a new draft layout (child of `setup_id`) with the captured shelves; the source stays untouched.
 
@@ -486,6 +487,10 @@ def apply_captures(
     if not source.get("store"):
         raise AppError("this layout has no store yet", 400)
     store = Store.model_validate(source["store"])
+    currency = store.currency or project_currency(pid, default_currency)
+    if any(result.currency != currency for result in results):
+        raise AppError(f"Every capture must use the layout's price currency ({currency}); prices are not converted automatically.", 422)
+    store = store.model_copy(update={"currency": currency})
     try:
         if rack_id and not new_rack:
             if len(results) != 1:

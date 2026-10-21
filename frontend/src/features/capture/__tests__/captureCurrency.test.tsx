@@ -1,0 +1,57 @@
+// @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+import * as api from "@/shared/api/client";
+import type { CaptureStatus, CaptureView } from "@/shared/api/client";
+import { CapturePage } from "../CapturePage";
+
+vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("@/shared/api/client", async (original) => ({
+  ...await original<typeof import("@/shared/api/client")>(),
+  listCaptures: vi.fn(), getCapture: vi.fn(), updateCapture: vi.fn(), getModels: vi.fn().mockResolvedValue([]),
+  getSetups: vi.fn().mockResolvedValue([]), createCapture: vi.fn(),
+}));
+vi.mock("../ShelfLab", () => ({ BeforeAfter: () => null, ShelfLabPanel: () => null }));
+vi.mock("../RivalCard", () => ({ RivalCard: () => null }));
+beforeEach(() => vi.mocked(api.listCaptures).mockResolvedValue([]));
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
+
+const status: CaptureStatus = {
+  capture_id: "cap_test", status: "completed", stage: "done", progress: 1, error: "",
+  options: { detector: "classic", model: "none", currency: "JPY", rack_type: "shelf", label: "Tea" },
+  image_name: "shelf.png", image_size: [100, 100], created_at: "", finished_at: "",
+  items: 1, facings: 1, gaps: 0, levels: 1, applied_setup_ids: [],
+};
+
+function show(currency: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  client.setQueryData(["projects", "project"], { metadata: { currency } });
+  return render(<QueryClientProvider client={client}><CapturePage projectId="project" /></QueryClientProvider>);
+}
+
+it.each(["KRW", "JPY"])("defaults new captures to the project's %s prices", async (currency) => {
+  show(currency);
+  await waitFor(() => expect((screen.getByRole("combobox", { name: "Prices in" }) as HTMLSelectElement).value).toBe(currency));
+});
+
+it.each([
+  ["JPY", "2500", "2600", 2600], ["KRW", "2500", "2600", 2600], ["USD", "25.00", "1.005", 101],
+])("edits %s shelf prices in their currency unit with exact decimal rounding", async (currency, displayed, entered, expected) => {
+  const view: CaptureView = { status, result: {
+    image_size: [100, 100], tilt_deg: 0, detector: "classic", detection_sources: {}, model: "none", currency,
+    rack_type: "shelf", bands: [], gaps: [], dominant_category: "", notes: [], timings: {}, vlm_calls: 0, edited: false,
+    items: [{ id: "i1", band: 0, level: 1, order: 0, facings: 1, boxes: [], sku: "tea", name: "Tea", brand: "",
+      size: "", category: "", raw_category: "", price: 2500, price_estimated: false, price_text: "", confidence: 10, labeled: true }],
+  } };
+  vi.mocked(api.listCaptures).mockResolvedValue([status]);
+  vi.mocked(api.getCapture).mockResolvedValue(view);
+  vi.mocked(api.updateCapture).mockResolvedValue(view);
+  show(currency);
+  const price = await screen.findByPlaceholderText("price") as HTMLInputElement;
+  expect(price.value).toBe(displayed);
+  fireEvent.change(price, { target: { value: entered } });
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(api.updateCapture).toHaveBeenCalledWith("project", "cap_test", [expect.objectContaining({ price: expected })]));
+});
