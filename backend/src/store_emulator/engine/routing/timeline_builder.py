@@ -87,9 +87,14 @@ def build_timeline(
             ))
             break
 
-        dwell = _resolve_dwell(step, store)
         target = step.action.target
         face = step.action.face
+        # Taking the product after looking at the same shelf continues that stop: the rack's minimum
+        # applies to the stop, not again to the pick.
+        last = timeline[-1]
+        continues = (action_type == Action.BUY and last.action == Action.BROWSE and len(step.path) <= 1
+                     and (last.x, last.y) == current_pos)
+        dwell = _resolve_dwell(step, store, floor=not continues)
         te = TimelineEvent(
             elapsed_sec=round(t), x=current_pos[0], y=current_pos[1],
             action=action_type, duration=dwell,
@@ -160,7 +165,7 @@ _WANDER_GLANCE_MIN = 2  # Min rack-front pause (seconds).
 _WANDER_GLANCE_MAX = 4  # Max rack-front pause (seconds).
 
 
-def _resolve_dwell(step: JourneyStep, store: Store) -> int:
+def _resolve_dwell(step: JourneyStep, store: Store, *, floor: bool = True) -> int:
     dwell = step.action.dwell
     target = step.action.target
     if target is None:
@@ -172,7 +177,7 @@ def _resolve_dwell(step: JourneyStep, store: Store) -> int:
                 rack = f
                 break
     if rack:
-        dwell = max(rack.dwell_min, min(rack.dwell_max, dwell))
+        dwell = max(rack.dwell_min if floor else 1, min(rack.dwell_max, dwell))
     else:
         dwell = min(_GLOBAL_MAX_DWELL, dwell)
     return max(1, dwell)
