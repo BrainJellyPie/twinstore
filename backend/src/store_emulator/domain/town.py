@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .analysis import ComparisonReport
 from .persona import AgeGroup
+from .types import ResourceId
 
 
 class BuildingKind(StrEnum):
@@ -101,7 +102,7 @@ class Venue(BaseModel):
     open_hour: int = Field(default=0, ge=0, le=23)
     close_hour: int = Field(default=24, ge=0, le=24)  # < open_hour means it closes after midnight
     is_focal: bool = False  # the store being simulated
-    setup_id: str | None = None  # store setup this venue maps to, if any
+    setup_id: ResourceId | None = None  # store setup this venue maps to, if any
     building_id: str | None = None
 
     def is_open(self, hour: int) -> bool:
