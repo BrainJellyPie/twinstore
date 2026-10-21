@@ -140,7 +140,8 @@ function CharacterMesh({ url, animName, realistic, personaId, walkSpeed }: Chara
   const gazePhase = characterAnimationPhase(`${personaId}:gaze`);
   useFrame((_, delta) => {
     if (!realistic || !usePlaybackControlStore.getState().playing) return;
-    facialTime.current += Math.min(delta, 0.1);
+    // A delta cap would stretch blinks and fixations on slow frames.
+    facialTime.current += delta;
     const blink = shopperBlinkWeight(facialTime.current, blinkPhase);
     // Gaze shapes include eyelid movement. Fade them under a blink so the
     // independent authored deformations cannot pull a closed eyelid open.
