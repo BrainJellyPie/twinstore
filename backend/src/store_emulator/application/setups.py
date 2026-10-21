@@ -46,11 +46,12 @@ def _lock_path(project_id: str, setup_id: str) -> Path:
 
 def get_setups(project_id: str) -> list[dict[str, Any]]:
     """Setup summaries (store excluded) with readiness attached."""
-    setups = list_setups(project_id)
+    setups = list_setups(project_id, include_store=True)
     persona_count = _count_personas(project_id)
     gens = _running_generations(project_id)
     for s in setups:
         s["readiness"] = _compute_readiness(s, persona_count, gens)
+        s.pop("store", None)
     return setups
 
 

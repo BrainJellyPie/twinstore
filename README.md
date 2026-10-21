@@ -187,6 +187,10 @@ different saved floor version, move floors higher or lower, duplicate a floor,
 and change its options before saving a separate building. Each new floor records
 its source layout; the original building stays unchanged.
 
+Use **Find layout** beside the layout tabs to search saved alternatives by name,
+building, floor, store format or design brief. Filter single floors or building
+floors and switch directly to a result; the current layout appears first.
+
 Grid cells are not measured square meters. Pharmacy templates cover retail OTC
 care and wellness, not prescription dispensing. Café/restaurant templates model
 counter purchases; tables reserve floor space but table service, dining time and

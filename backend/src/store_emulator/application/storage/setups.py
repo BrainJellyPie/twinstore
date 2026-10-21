@@ -77,18 +77,17 @@ def write_setup(project_id: str, setup_id: str, data: dict[str, Any]) -> None:
     write_json(setup_path(project_id, setup_id), data)
 
 
-def list_setups(project_id: str) -> list[dict[str, Any]]:
-    """Return setup summaries (store excluded), sorted by updated_at descending."""
+def list_setups(project_id: str, *, include_store: bool = False) -> list[dict[str, Any]]:
+    """Return setups sorted by updated_at, omitting stores unless requested for readiness."""
     d = setup_dir(project_id)
     if not d.exists():
         return []
-    exclude = {"store"}
     results: list[dict[str, Any]] = []
     for f in d.iterdir():
         if not f.suffix == ".json":
             continue
         data = read_json(f)
-        summary = {k: v for k, v in data.items() if k not in exclude}
+        summary = {k: v for k, v in data.items() if include_store or k != "store"}
         results.append(summary)
     results.sort(key=lambda s: str(s.get("updated_at", "")), reverse=True)
     return results
