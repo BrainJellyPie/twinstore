@@ -58,7 +58,7 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         if not tx or not sku:
             continue
         qty = _num(row.get(cols.get("quantity", ""), ""), 1.0)
-        if "unit_price" in cols:
+        if "unit_price" in cols and row.get(cols["unit_price"], "").strip():
             price = _num(row.get(cols["unit_price"], ""), 0.0)
         elif "line_total" in cols:
             price = _num(row.get(cols["line_total"], ""), 0.0) / qty if qty else 0.0
