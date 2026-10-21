@@ -1651,3 +1651,28 @@ export function readReceipts(projectId: string, photos: File[], target: { setupI
   form.append("model", model);
   return postForm(`/api/projects/${projectId}/receipts`, form);
 }
+
+export interface RivalComparison {
+  matched: number;
+  rival_products: number;
+  our_products_in_categories: number;
+  price_index: number | null;
+  overlap: number;
+  only_rival: string[];
+  only_ours: string[];
+  prices: { name: string; rival_price: number; our_price: number; ratio: number }[];
+  suggested_pull_factor: number | null;
+}
+
+export interface RivalReport {
+  comparison: RivalComparison;
+  venue_id: string;
+  previous_attractiveness: number | null;
+  attractiveness: number | null;
+}
+
+export function compareRival(
+  projectId: string, captureId: string, body: { setup_id: string; venue_id?: string; apply?: boolean },
+): Promise<RivalReport> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}/rival`, { method: "POST", body: JSON.stringify(body) });
+}

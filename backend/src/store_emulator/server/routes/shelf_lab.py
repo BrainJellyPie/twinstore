@@ -14,6 +14,8 @@ from store_emulator.application.shelf_lab import (
     AuditRequest,
     LabJobView,
     PackageAsset,
+    RivalReport,
+    RivalRequest,
     Sim2RealRequest,
 )
 from store_emulator.domain.shelf_lab import EditedShelf, LabJobStatus, PhotoEdit
@@ -98,3 +100,10 @@ def list_jobs(pid: str, cid: str) -> list[LabJobStatus]:
 @router.get("/{pid}/captures/{cid}/lab/jobs/{jid}", summary="Job status and report", response_model=LabJobView)
 def get_job(pid: str, cid: str, jid: str) -> LabJobView:
     return _call(lambda: lab.get_job(pid, cid, jid))
+
+
+@router.post("/{pid}/captures/{cid}/rival", summary="Compare a rival's shelf with ours", response_model=RivalReport)
+def rival(pid: str, cid: str, req: RivalRequest) -> RivalReport:
+    """Price index and assortment overlap of a rival's captured shelf against our layout; optionally scales the rival
+    venue's pull in the neighborhood by the price-adjusted factor."""
+    return _call(lambda: lab.compare_rival_capture(pid, cid, req))

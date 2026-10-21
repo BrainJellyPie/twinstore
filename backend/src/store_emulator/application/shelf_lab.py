@@ -47,6 +47,7 @@ from store_emulator.engine.shelf_lab import (
     summarize,
 )
 from store_emulator.engine.shelf_lab.audit import diff_face, match_field, price_findings
+from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival
 
 from .async_executor import executor
 from .capture import capture_image_path, capture_llm_config, get_capture
@@ -54,6 +55,7 @@ from .errors import AppError
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import metadata_path, personas_path, read_setup
+from .town import get_town, save_town
 
 logger = logging.getLogger(__name__)
 
@@ -430,3 +432,40 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
 
     executor.submit(run)
     return status
+
+
+# ── rival shelf ─────────────────────────────────────────────────────────────────
+
+class RivalRequest(BaseModel):
+    setup_id: str = Field(description="our layout, whose products and prices the rival's shelf is compared with")
+    venue_id: str = Field(default="", description="the rival's venue in the neighborhood (optional)")
+    apply: bool = Field(default=False, description="scale the venue's pull by the price-adjusted factor")
+    elasticity: float = Field(default=1.0, ge=0.0, le=3.0)
+
+
+class RivalReport(BaseModel):
+    comparison: RivalComparison
+    venue_id: str = ""
+    previous_attractiveness: float | None = None
+    attractiveness: float | None = None
+
+
+def compare_rival_capture(pid: str, cid: str, req: RivalRequest) -> RivalReport:
+    _, result = _capture(pid, cid)
+    if not any(i.labeled for i in result.items):
+        raise AppError("the rival's products have not been read (run the capture with a vision model or name them)", 409)
+    comparison = compare_rival(_load_store(pid, req.setup_id), result, elasticity=req.elasticity)
+    report = RivalReport(comparison=comparison, venue_id=req.venue_id)
+    if req.venue_id:
+        town = get_town(pid)
+        venue = town.get_venue(req.venue_id) if town else None
+        if town is None or venue is None:
+            raise AppError(f"venue not found: {req.venue_id}", 404)
+        report.previous_attractiveness = venue.attractiveness
+        report.attractiveness = venue.attractiveness
+        if req.apply and comparison.suggested_pull_factor is not None:
+            new = round(min(3.0, max(0.2, venue.attractiveness * comparison.suggested_pull_factor)), 3)
+            save_town(pid, town.model_copy(update={"venues": [
+                v.model_copy(update={"attractiveness": new}) if v.id == venue.id else v for v in town.venues]}))
+            report.attractiveness = new
+    return report

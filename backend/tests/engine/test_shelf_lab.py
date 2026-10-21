@@ -285,3 +285,22 @@ def test_levers_measure_the_pick_shift(tmp_path: Path, personas: list[Persona]) 
     assert by_kind["remove"].picked_before == 1.0 and by_kind["remove"].picked_after == 0.0  # the product is gone
     summary = {s.kind: s for s in summarize_levers(outcomes)}
     assert summary["remove"].delta_picked == -1.0 and summary["price"].delta_picked == 0.0
+
+
+# ── rival shelf ────────────────────────────────────────────────────────────────
+
+def test_rival_shelf_price_index_and_overlap(store: Store) -> None:
+    from store_emulator.engine.shelf_lab.rival import compare_rival
+
+    rack = next(r for r in store.racks if r.id == DRINK_1)
+    scene = make_scene(rack, Face.S, currency="USD", seed=21, severity="clean", gap_rate=0.0)
+    reference = _reference_store(store, scene)
+    rival = _gt_capture(scene)
+    cheaper = rival.model_copy(update={"items": [i.model_copy(update={"price": round((i.price or 0) * 0.9)}) for i in rival.items]})
+    report = compare_rival(reference, cheaper)
+    assert report.matched == len({i.name for i in rival.items}) and report.only_rival == []
+    assert report.price_index == pytest.approx(0.9, abs=0.01)
+    assert report.suggested_pull_factor == pytest.approx(1 / 0.9, abs=0.02)
+    assert 0 < report.overlap <= 1
+    newcomer = cheaper.model_copy(update={"items": [*cheaper.items, cheaper.items[0].model_copy(update={"id": "x1", "name": "Rival Own Brand Cola", "sku": "x"})]})
+    assert compare_rival(reference, newcomer).only_rival == ["Rival Own Brand Cola"]

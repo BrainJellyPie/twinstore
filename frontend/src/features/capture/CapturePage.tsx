@@ -17,6 +17,7 @@ import { cn } from "@/shared/utils/cn";
 
 import { CAPTURE_CATEGORIES, categoryColor, categoryLabel } from "./categories";
 import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
+import { RivalCard } from "./RivalCard";
 import { BeforeAfter, ShelfLabPanel } from "./ShelfLab";
 
 const capturesKey = (pid: string) => ["projects", pid, "captures"] as const;
@@ -254,6 +255,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
           {status.status === "failed" && <p className="rounded-xl border tone-bad p-3 text-sm">{status.error}</p>}
           {result && tab === "planogram" && <ItemsEditor projectId={projectId} captureId={captureId} result={result} hover={hover} onHover={setHover} />}
           {result && tab === "planogram" && <ApplyPanel projectId={projectId} captureId={captureId} result={result} />}
+          {result && tab === "planogram" && <RivalCard projectId={projectId} captureId={captureId} result={result} />}
           {result && tab === "lab" && (
             <ShelfLabPanel projectId={projectId} captureId={captureId} result={result} draft={draft} setDraft={setDraft}
               editId={editId} onSelectEdit={setEditId} onFocus={setFocus} onAttention={setAttention} />
