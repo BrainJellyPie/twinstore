@@ -12,6 +12,7 @@ export interface TemplateChoice extends LayoutOptions {
 export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   templateId: "urban_cvs", seed: 0, currency: "USD", style: null,
   density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed", design_theme: null, dining_tables: null,
+  checkout_placement: "auto", seating_zone: "auto",
 };
 
 export const LAYOUT_STYLES = [
@@ -32,7 +33,8 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
     template_id: value.templateId, source_setup_id: value.sourceSetupId, seed: value.seed, currency: value.currency, style: value.style,
     width: value.width, height: value.height, density: value.density, entrance: value.entrance,
     checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme,
-    dining_tables: value.dining_tables, requirements: value.requirements,
+    dining_tables: value.dining_tables, seating_zone: value.seating_zone,
+    checkout_placement: value.checkout_placement, requirements: value.requirements,
   };
 }
 

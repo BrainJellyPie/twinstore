@@ -294,7 +294,12 @@ def generate_store(
     entrance_x = {"left": 0, "center": w // 2, "right": w - 1}[options.entrance]
     b.add(RackType.ENTRANCE, entrance_x, h - 1)
     b.racks.append(Rack(id="r_exit", type=RackType.EXIT, shape=[[1]], position=(entrance_x, h - 1)))
-    counter_xs = [x for x in range(2, w - 1) if x != entrance_x][:options.checkouts]
+    counter_xs = [x for x in range(2 if options.checkout_placement == "auto" else 1, w - 1) if x != entrance_x]
+    if options.checkout_placement == "near_entrance":
+        counter_xs.sort(key=lambda x: abs(x - entrance_x))
+    elif options.checkout_placement == "away_from_entrance":
+        counter_xs.sort(key=lambda x: -abs(x - entrance_x))
+    counter_xs = counter_xs[:options.checkouts]
     for i, x in enumerate(counter_xs):
         b.add(RackType.COUNTER, x, h - 1, name=f"Counter {i + 1}", variant="b")
     front_xs = [x for x in range(1, w - 1) if b.free(x, h - 1)]
@@ -314,6 +319,18 @@ def generate_store(
     # A dining group occupies 2×2 cells, including its four chairs. Reserve a
     # continuous one-cell circulation ring and keep it clear of retail displays.
     table_positions = [(x, y) for y in range(2, h - 3, 3) for x in range(2, w - 3, 3)]
+    # Rank safe seating positions without changing the table footprint or clearance.
+    # As the count grows, seating extends into neighboring parts of the floor.
+    if options.seating_zone == "front":
+        table_positions.sort(key=lambda p: (-p[1], abs(p[0] + 0.5 - entrance_x)))
+    elif options.seating_zone == "back":
+        table_positions.sort(key=lambda p: (p[1], abs(p[0] + 0.5 - (w - 1) / 2)))
+    elif options.seating_zone == "left":
+        table_positions.sort(key=lambda p: (p[0], p[1]))
+    elif options.seating_zone == "right":
+        table_positions.sort(key=lambda p: (-p[0], p[1]))
+    elif options.seating_zone == "center":
+        table_positions.sort(key=lambda p: (p[0] + 0.5 - (w - 1) / 2) ** 2 + (p[1] + 0.5 - (h - 1) / 2) ** 2)
     table_count = min(t.dining_tables, len(table_positions)) if options.dining_tables is None else options.dining_tables
     if table_count > len(table_positions):
         raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with clear aisles. Reduce the table count or increase the grid size.")
