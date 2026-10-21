@@ -360,5 +360,15 @@
   "1+1": 1.9,
   "2+1": 1.6,
   "featured": 1.35
+ },
+ "size_ratio": {
+  "day:weekend": 1.104,
+  "day:holiday_season": 1.038,
+  "season:summer": 0.983,
+  "season:winter": 1.029,
+  "event:sports_match": 0.903,
+  "event:payday": 1.008,
+  "hour:evening": 1.058,
+  "hour:morning": 0.945
  }
 }
