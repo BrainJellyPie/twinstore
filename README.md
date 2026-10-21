@@ -342,6 +342,11 @@ Any finished A/B, shelf, concept or conjoint test can be **duplicated and edited
 conjoint tests have print-ready reports too. Synthetic respondents are for screening and direction; calibrate against
 a real panel before deciding.
 
+**Combine shelf photos.** In Capture, choose **Combine reviewed shelf photos**, select completed photos,
+preview their racks together, then save and open one new draft. Original layouts and photos stay intact;
+missing products block saving and reduced facing counts need confirmation. This reuses existing recognition
+and grid placement, with no extra model calls. See [the workflow and limits](./USAGE.md#combine-reviewed-shelf-photos-into-one-layout).
+
 ## How it works
 
 <img src="./.github/assets/twinstore/architecture.png" alt="Fig. 1 — TwinStore system: real-world inputs, twin builders, the twin, shopper engines, answers">

@@ -145,9 +145,10 @@ def _reachable_face(store: Store, rack: Rack) -> Face | None:
     return None
 
 
-def match_store_skus(store: Store, result: CaptureResult, report: PlacementReport) -> CaptureResult:
+def match_store_skus(store: Store, result: CaptureResult, report: PlacementReport, *, exact: bool = False) -> CaptureResult:
     """Products the store already sells keep their SKU and name, so sales of one product roll up
     across racks (and POS data still matches). Matching is by name (+ size), exact or ≥ 0.92 similar.
+    With exact=True, only the complete display name (including brand/size) is matched.
     The price read off the tag wins over the stored one unless it was only estimated."""
     known: dict[str, SlotItem] = {}
     for _, slot in store.all_slots:
@@ -163,8 +164,8 @@ def match_store_skus(store: Store, result: CaptureResult, report: PlacementRepor
             items.append(item)
             continue
         key = normalize_text(display_name(item))
-        hit = known.get(key) or known.get(normalize_text(item.name))
-        if hit is None:
+        hit = known.get(key) if exact else known.get(key) or known.get(normalize_text(item.name))
+        if hit is None and not exact:
             close = difflib.get_close_matches(key, names, n=1, cutoff=0.92)
             hit = known[close[0]] if close else None
         if hit is None:
@@ -267,7 +268,7 @@ def _new_rack_id(store: Store) -> str:
 
 
 def add_capture_racks(
-    store: Store, results: list[CaptureResult], *, max_racks_per_photo: int = 4,
+    store: Store, results: list[CaptureResult], *, max_racks_per_photo: int = 4, exact_sku_match: bool = False,
 ) -> tuple[Store, PlacementReport]:
     """Copy of `store` with each captured shelf added as new rack(s) on free floor.
 
@@ -277,7 +278,7 @@ def add_capture_racks(
     new = store.model_copy(deep=True)
     report = PlacementReport()
     for result in results:
-        result = match_store_skus(new, result, report)
+        result = match_store_skus(new, result, report, exact=exact_sku_match)
         rows = level_rows(result)
         widest = max((sum(i.facings for i in items) for items in rows.values()), default=0)
         k = max(1, min(max_racks_per_photo, math.ceil(widest / SLOT_CAPACITY)))
