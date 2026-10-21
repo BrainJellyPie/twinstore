@@ -60,6 +60,13 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   One self-contained, print-ready HTML page (print to PDF) and Markdown; a model can add a labelled
   commentary written from the report's numbers. API: `GET .../experiments/{eid}/report.html|.md`,
   `POST/DELETE .../experiments/{eid}/narrative`.
+- **Shelf tests** (virtual shelf impact test): pick a shelf and a product, give it a new pack, price
+  or sign, and preview both shelves live. The same respondents see the control and the test shelf
+  through a vision model (badge numbers shuffled per respondent), pick the one product they would take
+  and name what caught their eye first. Results: the product's pick share, noticed in the top three
+  and noticed first, control vs test with paired 95 % intervals; what everyone took; why. API:
+  `POST/GET .../shelf-tests`, `POST .../shelf-tests/preview`, `GET/DELETE .../shelf-tests/{id}`,
+  `GET .../shelf-tests/{id}/{control|test}.png`.
 - **Concept tests**: personas (with age / gender quotas) answer purchase intent, appeal, value,
   stand-out, Van Westendorp price and preference questions about up to four images through a vision
   model; Likert summaries, Wilson shares, price-sensitivity curves, segments, verbatims, CSV export,
