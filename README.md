@@ -130,7 +130,7 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 46
+In a project, choose **New layout → Generate a store from a template**. Search 50
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
@@ -153,6 +153,14 @@ hardware stores and toy/hobby shops add distinct assortments and interior defaul
 Formats can supply their own seating zone, checkout placement and palette; every
 default can be adjusted before saving. Multi-floor starting points also include a
 family shopping center and a vintage shop with an upstairs tea lounge.
+
+**Neighborhood pizzeria**, **Sushi & roll shop**, **Noodle & ramen bar** and
+**Juice & smoothie bar** each have a dedicated twelve-item menu. Their defaults
+range from a compact botanical juice bar with two tables to a terracotta pizza
+restaurant with eight tables, with different seating positions and checkout
+counts. **Dining house** combines all four as independently configurable floors.
+These formats model menu purchases at counters; cooking and table service are
+not simulated.
 
 The campus dining hall starts with 24 four-seat tables (96 seats), four checkout
 counters and perimeter meal displays on a 32×24 floor, with weekday opening
