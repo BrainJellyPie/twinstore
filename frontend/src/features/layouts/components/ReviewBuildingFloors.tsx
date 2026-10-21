@@ -61,7 +61,7 @@ function FloorReviews({ floors, onEdit }: Props) {
             <h3 id={`${id}-floor-${index}`} className="min-w-0 break-words text-sm font-medium">{index + 1}F · {floor.label.trim() || "Unnamed floor"}</h3>
             <button type="button" className="shrink-0 rounded border px-2 py-1 text-xs hover:bg-muted" onClick={() => onEdit(index)}>Edit floor {index + 1}</button>
           </div>
-          {!valid ? <p role="alert" className="text-xs text-destructive">Enter valid grid dimensions, table counts and reserved-area values for this floor.</p>
+          {!valid ? <p role="alert" className="text-xs text-destructive">Enter valid grid dimensions, product and table counts, and reserved-area values for this floor.</p>
             : preview?.isError ? <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>Retry floor {index + 1}</button></p>
               : !preview || preview.isPending ? <p role="status" className="text-xs">Loading floor {index + 1}…</p>
                 : store && <>

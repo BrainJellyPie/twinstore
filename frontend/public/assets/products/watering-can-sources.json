@@ -1,0 +1,50 @@
+{
+  "asset": "Poly Haven Watering Can Metal 01",
+  "asset_url": "https://polyhaven.com/a/watering_can_metal_01",
+  "author": "Charles Nderitu",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_watering_can.py; 11837 to 499/2500 triangle LODs; spout rotated along the shelf width; bottom-centred unit bounds; original 1K JPEG color, OpenGL normal and packed metallic/roughness maps retained.",
+  "display_dimensions_metres": {
+    "width": 0.45233607292175293,
+    "height": 0.1968185305595398,
+    "depth": 0.19101861119270325
+  },
+  "files": [
+    {
+      "file": "textures/watering_can_metal_01_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/watering_can_metal_01/watering_can_metal_01_nor_gl_1k.jpg",
+      "bytes": 725001,
+      "sha256": "13aaedd908aba518ab28d3401881529c9d2ee656459a110f5619b9aad2e86be7"
+    },
+    {
+      "file": "watering_can_metal_01.bin",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/watering_can_metal_01/watering_can_metal_01.bin",
+      "bytes": 318736,
+      "sha256": "8d8db62f70b3a0a8887dbc31f6507bd2dfb93b2878527cc06362dca766493a32"
+    },
+    {
+      "file": "textures/watering_can_metal_01_arm_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/watering_can_metal_01/watering_can_metal_01_arm_1k.jpg",
+      "bytes": 944654,
+      "sha256": "966f78fca72dd7ae358c3199f6f7734830a7b09c782673e3e4bdfd0ce2d16689"
+    },
+    {
+      "file": "textures/watering_can_metal_01_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/watering_can_metal_01/watering_can_metal_01_diff_1k.jpg",
+      "bytes": 619613,
+      "sha256": "e684096ed02bf20dbe46875185aeef02bbc50d31730badfe5853a36ccc5ee2fe"
+    },
+    {
+      "file": "watering_can_metal_01.gltf",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/watering_can_metal_01/watering_can_metal_01_1k.gltf",
+      "bytes": 3183,
+      "sha256": "aaf3cdf52d64d1081fc7a9113a1ee91a0f8c9bcf569b5ac9927c713b65bbbd2e"
+    }
+  ],
+  "output": {
+    "file": "watering-can.glb",
+    "bytes": 2407608,
+    "sha256": "2f0f9626d00ef7f0ba1eb37187be5db14efbc531a2e35bb30000acbfa3bd77cc"
+  }
+}

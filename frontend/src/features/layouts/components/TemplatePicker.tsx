@@ -129,7 +129,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "counter").length} checkout counters</p>
               <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green: entry / exit · Slate: checkout · Purple: seating</p>
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
-              {!validTemplateChoice(value) ? "Enter a valid grid size, table count and reserved-area values." : preview.isError ? "Preview unavailable." : "Updating preview…"}
+              {!validTemplateChoice(value) ? "Enter valid grid dimensions, product and table counts, and reserved-area values." : preview.isError ? "Preview unavailable." : "Updating preview…"}
             </div>}
             {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>Retry</button></p>}
           </div>
@@ -223,13 +223,17 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", exit_position: "shared", checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", exit_position: "shared", checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>
         {categories.length > 0 && <details className="space-y-2 rounded border p-2 text-xs">
           <summary className="cursor-pointer">Product categories · {includedCount} of {categories.length} included</summary>
           <p className="text-muted-foreground">Choose which categories this format should stock. Excluded categories remove their generated displays. Keep at least one category.</p>
+          <Field label="Products per category"><input type="number" min={1} max={16} step={1} className={controlClass}
+            placeholder="Full assortment" value={value.products_per_category ?? ""}
+            onChange={(event) => update({ products_per_category: event.target.value === "" ? null : Number(event.target.value) })} /></Field>
+          <p className="text-muted-foreground">Set a maximum of 1–16 distinct products per included category, or leave blank for the full assortment. Displays stay in place and may repeat products. Shuffle selects another reproducible mix.</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {categories.map((category) => <label key={category.id} className="flex items-center gap-2">
               <input type="checkbox" checked={!excluded.has(category.id)} disabled={!excluded.has(category.id) && includedCount === 1}

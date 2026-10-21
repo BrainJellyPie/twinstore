@@ -54,6 +54,8 @@ it("keeps the selected LOD and restores borrowed fallback resources on cleanup",
 
 it("uses a lighter medium material while retaining ownership of unused source maps", async () => {
   const target = fallback(), model = scan();
+  model.material.metalness = 1;
+  model.material.metalnessMap = model.map;
   mocks.load.mockResolvedValue({ scene: model.scene });
   const disposeMap = vi.spyOn(model.map, "dispose");
   const stop = loadScannedProducts("/assets/produce/bananas.glb", [{ lod: target, name: "bananas", roughness: 0.85 }], true);
@@ -64,6 +66,10 @@ it("uses a lighter medium material while retaining ownership of unused source ma
   expect(medium.normalMap).toBeNull();
   expect(medium.roughnessMap).toBeNull();
   expect(medium.roughness).toBe(0.85);
+  expect(medium.metalness).toBe(0);
+  expect(medium.metalnessMap).toBeNull();
+  expect(model.material.metalness).toBe(1);
+  expect(model.material.metalnessMap).toBe(model.map);
   expect(model.material.normalMap).toBe(model.map);
   const disposeMedium = vi.spyOn(medium, "dispose");
   stop();

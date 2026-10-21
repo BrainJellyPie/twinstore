@@ -40,6 +40,8 @@ export function loadScannedProducts(url: string, targets: ScannedProductTarget[]
           // The owning glTF retains unused source maps for cleanup.
           medium.normalMap = medium.roughnessMap = medium.metalnessMap = null;
           medium.roughness = roughness;
+          // Medium has no scene environment; use diffuse color for metal scans.
+          medium.metalness = 0;
           mediumMaterials.set(material, medium);
         }
         material = medium;

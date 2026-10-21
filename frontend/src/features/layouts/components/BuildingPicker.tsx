@@ -102,6 +102,6 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         sharedDesign={floors.every((f) => f.choice.design_theme === floor.choice.design_theme) ? floor.choice.design_theme ?? undefined : undefined}
         sharedCurrency={floors.every((f) => f.choice.currency === floor.choice.currency) ? floor.choice.currency : undefined} />
     </>}
-    {!validBuildingFloors(floors) && <p role="alert" className="text-xs text-destructive">Each floor needs a unique label and valid grid dimensions.</p>}
+    {!validBuildingFloors(floors) && <p role="alert" className="text-xs text-destructive">Each floor needs a unique label and valid layout values.</p>}
   </div>;
 }
