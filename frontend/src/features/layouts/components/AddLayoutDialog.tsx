@@ -29,10 +29,12 @@ import {
 import { cn } from "@/shared/utils/cn";
 
 import { useCreateLayout } from "../hooks/useCreateLayout";
-import { TemplatePicker, type TemplateChoice } from "./TemplatePicker";
+import { BuildingPicker } from "./BuildingPicker";
+import { TemplatePicker } from "./TemplatePicker";
+import { DEFAULT_TEMPLATE_CHOICE, buildingPreset, validBuildingFloors, validTemplateChoice, type TemplateChoice } from "../templateOptions";
 import type { Layout } from "../hooks/useLayouts";
 
-type Approach = "import" | "empty" | "template" | "plan";
+type Approach = "import" | "empty" | "template" | "plan" | "building";
 
 const labelClass = "text-sm font-medium";
 
@@ -63,7 +65,8 @@ export function AddLayoutDialog({
   const [selectedParentId, setSelectedParentId] = useState<string>(() =>
     resolveDefaultParent(parentSetupId, layouts),
   );
-  const [template, setTemplate] = useState<TemplateChoice>({ templateId: "urban_cvs", seed: 0, currency: "USD", style: null });
+  const [template, setTemplate] = useState<TemplateChoice>(DEFAULT_TEMPLATE_CHOICE);
+  const [floors, setFloors] = useState(() => buildingPreset("department"));
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [planReader, setPlanReader] = useState<"auto" | "classic">("auto");
 
@@ -84,7 +87,9 @@ export function AddLayoutDialog({
     trimmed.length > 0 &&
     !createLayout.isPending &&
     (approach !== "import" || selectedParentId.length > 0) &&
-    (approach !== "plan" || planFile !== null);
+    (approach !== "plan" || planFile !== null) &&
+    (approach !== "template" || validTemplateChoice(template)) &&
+    (approach !== "building" || (trimmed.length <= 160 && validBuildingFloors(floors)));
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -94,7 +99,9 @@ export function AddLayoutDialog({
         projectId,
         name: trimmed,
         source:
-          approach === "import"
+          approach === "building"
+            ? { kind: "building", floors }
+            : approach === "import"
             ? { kind: "import", parentSetupId: selectedParentId }
             : approach === "template"
               ? { kind: "template", ...template }
@@ -112,7 +119,7 @@ export function AddLayoutDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={approach === "template" ? "sm:max-w-[600px]" : "sm:max-w-[420px]"}>
+      <DialogContent className={cn("max-h-[90dvh] overflow-y-auto", (approach === "template" || approach === "building") ? "sm:max-w-[760px]" : "sm:max-w-[420px]")}>
         <DialogHeader>
           <DialogTitle>Add layout</DialogTitle>
         </DialogHeader>
@@ -120,7 +127,7 @@ export function AddLayoutDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className={labelClass} htmlFor="add-layout-name">
-              Layout name
+              {approach === "building" ? "Building name" : "Layout name"}
             </label>
             <Input
               id="add-layout-name"
@@ -201,6 +208,13 @@ export function AddLayoutDialog({
                 {approach === "template" && <TemplatePicker value={template} onChange={setTemplate} />}
               </div>
               <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm" htmlFor="add-layout-approach-building">
+                  <RadioGroupItem id="add-layout-approach-building" value="building" disabled={createLayout.isPending} />
+                  Multi-floor store
+                </label>
+                {approach === "building" && <BuildingPicker floors={floors} onChange={setFloors} />}
+              </div>
+              <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm" htmlFor="add-layout-approach-plan">
                   <RadioGroupItem id="add-layout-approach-plan" value="plan" disabled={createLayout.isPending} />
                   From a floor plan — sketch, CAD export or PDF
@@ -251,7 +265,7 @@ export function AddLayoutDialog({
               disabled={!canSubmit}
               className={cn(createLayout.isPending && "opacity-80")}
             >
-              {createLayout.isPending ? "Adding..." : "Add layout"}
+              {createLayout.isPending ? "Adding..." : approach === "building" ? `Add ${floors.length} floors` : "Add layout"}
             </Button>
           </DialogFooter>
         </form>

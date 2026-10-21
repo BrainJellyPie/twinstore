@@ -101,7 +101,7 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 <td><img src="./.github/assets/twinstore/screens/town-light.jpg" alt="Neighborhood demand"><br>
 <b>The neighborhood.</b> Huff demand, rival stores, synergy with the shop next door, storefront appeal.</td>
 <td><img src="./.github/assets/twinstore/screens/wizard-light.jpg" alt="New store wizard"><br>
-<b>New store in two steps.</b> Ten retail formats, an address, opening hours — or start from a floor-plan image.</td>
+<b>New store in two steps.</b> Store details, an address, opening hours — or start from a floor-plan image.</td>
 </tr>
 <tr>
 <td><img src="./.github/assets/twinstore/screens/market-ab-light.jpg" alt="Marketing studio: A/B test result"><br>
@@ -116,6 +116,30 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 <b>Any model.</b> Cloud APIs or local servers, text and vision, single models or ensembles.</td>
 </tr>
 </table>
+
+### Generate a store layout
+
+In a project, choose **New layout → Generate a store from a template**. Search 28
+formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
+fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
+Each format includes its own generic product assortment.
+
+Combine six patterns (parallel aisles, racetrack, central spine, free-flow islands,
+open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
+three display densities, left/center/right entry, one to four checkouts and shelf
+variants. The preview uses the same options as the saved layout. Shuffle changes
+the assortment reproducibly; reset restores the format's layout defaults.
+Additional design briefs are saved as editable notes, not interpreted as commands.
+
+Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
+with a department store, shop with upstairs café, pharmacy/wellness building or
+restaurant/café, then select each floor to change its format and options. Floor
+labels appear in the layout tabs. Each floor has its own simulation; cross-floor
+travel, stairs, lifts and a combined building simulation are not modeled.
+
+Grid cells are not measured square meters. Pharmacy templates cover retail OTC
+care and wellness, not prescription dispensing. Café/restaurant templates model
+counter purchases, not seating, table service or kitchen operations.
 
 ## How it works
 
