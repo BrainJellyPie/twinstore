@@ -47,6 +47,7 @@ from store_emulator.engine.shelf_lab import (
     summarize,
 )
 from store_emulator.engine.shelf_lab.audit import diff_face, match_field, price_findings
+from store_emulator.engine.shelf_lab.edits import cut_out
 from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival
 
 from .async_executor import executor
@@ -83,10 +84,21 @@ class AuditRequest(BaseModel):
 
 
 class PackageAsset(BaseModel):
+    """A product image: a package for Shelf Lab's "new package" edit, a marketing test or a survey."""
     asset_id: str
     name: str
     width: int
     height: int
+    brand: str = ""
+    sku: str = ""                     # the store product it shows, if any
+    cut_out: bool = False             # the background was removed on upload
+    created_at: str = ""
+
+
+class PackageUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=80)
+    brand: str | None = Field(default=None, max_length=40)
+    sku: str | None = Field(default=None, max_length=80)
 
 
 def _check_id(value: str, what: str) -> None:
@@ -116,7 +128,20 @@ def _capture(pid: str, cid: str) -> tuple[Image.Image, CaptureResult]:
 
 # ── package images ──────────────────────────────────────────────────────────────
 
-def upload_package(pid: str, data: bytes, filename: str) -> PackageAsset:
+def _asset(png: Path) -> PackageAsset:
+    meta = cast(dict[str, Any], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
+    with Image.open(png) as im:
+        return PackageAsset(
+            asset_id=png.stem, name=str(meta.get("name", png.stem)), width=im.width, height=im.height,
+            brand=str(meta.get("brand", "")), sku=str(meta.get("sku", "")), cut_out=bool(meta.get("cut_out", False)),
+            created_at=str(meta.get("created_at", "")),
+        )
+
+
+def upload_package(
+    pid: str, data: bytes, filename: str, *, name: str = "", brand: str = "", sku: str = "", remove_background: bool = True,
+) -> PackageAsset:
+    """Store a product image. Photos on a plain background get it removed (a transparent PNG is kept as is)."""
     if not metadata_path(pid).exists():
         raise AppError(f"project not found: {pid}", 404)
     if len(data) > MAX_PACKAGE_BYTES:
@@ -130,20 +155,36 @@ def upload_package(pid: str, data: bytes, filename: str) -> PackageAsset:
     aid = f"pkg_{uuid.uuid4().hex[:8]}"
     folder = _assets_dir(pid)
     folder.mkdir(parents=True, exist_ok=True)
-    keep_alpha = img.mode in ("RGBA", "LA", "P")
-    img.convert("RGBA" if keep_alpha else "RGB").save(folder / f"{aid}.png", format="PNG")
-    write_json(folder / f"{aid}.json", {"name": Path(filename).stem[:80] or aid})
-    return PackageAsset(asset_id=aid, name=Path(filename).stem[:80] or aid, width=img.width, height=img.height)
+    rgba = img.convert("RGBA")
+    transparent = img.mode in ("RGBA", "LA", "P") and cast(tuple[int, int], rgba.getchannel("A").getextrema())[0] < 250
+    cut = remove_background and not transparent
+    out = cut_out(img.convert("RGB")) if cut else (rgba if transparent else img.convert("RGB"))
+    out.save(folder / f"{aid}.png", format="PNG")
+    meta = {"name": (name.strip() or Path(filename).stem)[:80] or aid, "brand": brand.strip()[:40], "sku": sku.strip()[:80],
+            "cut_out": cut, "created_at": now_iso()}
+    write_json(folder / f"{aid}.json", meta)
+    return _asset(folder / f"{aid}.png")
 
 
 def list_packages(pid: str) -> list[PackageAsset]:
     folder = _assets_dir(pid)
-    out: list[PackageAsset] = []
-    for png in sorted(folder.glob("pkg_*.png")) if folder.exists() else []:
-        meta = cast(dict[str, Any], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
-        with Image.open(png) as im:
-            out.append(PackageAsset(asset_id=png.stem, name=str(meta.get("name", png.stem)), width=im.width, height=im.height))
-    return out
+    assets = [_asset(png) for png in folder.glob("pkg_*.png")] if folder.exists() else []
+    return sorted(assets, key=lambda a: a.created_at, reverse=True)
+
+
+def update_package(pid: str, aid: str, upd: PackageUpdate) -> PackageAsset:
+    png = package_path(pid, aid)
+    meta = cast(dict[str, Any], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
+    for key, value in upd.model_dump(exclude_none=True).items():
+        meta[key] = str(value).strip()
+    write_json(png.with_suffix(".json"), meta)
+    return _asset(png)
+
+
+def delete_package(pid: str, aid: str) -> None:
+    png = package_path(pid, aid)
+    png.unlink()
+    png.with_suffix(".json").unlink(missing_ok=True)
 
 
 def package_path(pid: str, aid: str) -> Path:
