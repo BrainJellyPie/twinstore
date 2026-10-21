@@ -264,6 +264,18 @@ it("previews named clear areas, converts display coordinates and removes them on
   expect(screen.queryByTestId("reserved-area-preview-0")).toBeNull();
 });
 
+it("sizes area starting points from the current dimensions rather than an old preview", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "8" } });
+  fireEvent.change(screen.getByLabelText("Depth (6–40 cells)"), { target: { value: "6" } });
+  fireEvent.change(screen.getByLabelText("Area starting point"), { target: { value: "event" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    width: 8, height: 6, reserved_areas: [{ label: "Event space", x: 1, y: 1, width: 6, height: 4 }],
+  }), expect.any(AbortSignal)));
+});
+
 it("holds preview for incomplete area values and supports removing a reservation", async () => {
   mount();
   await screen.findByRole("img", { name: "Floor plan preview" });
