@@ -17,6 +17,7 @@ import {
 
 export interface ProductInstance {
   name: string;
+  imageUrl?: string | null;
   kind: PackageKind;
   // Bottom-centre of the package (store-local world coordinates).
   x: number;
@@ -125,6 +126,7 @@ function placeOnShelf(
           const [x, z] = frameToWorld(bank, u, v);
           out.products.push({
             name: item.name,
+            imageUrl: item.image_url,
             kind: spec.kind,
             x,
             y: shelfY + s * (ph + 0.003),
@@ -205,6 +207,7 @@ function layoutBin(out: Emit, plan: FixturePlan, frame: Frame, floorY: number, h
             const [x, z] = frameToWorld(frame, u, v);
             out.products.push({
               name: item.name,
+              imageUrl: item.image_url,
               kind: spec.kind,
               x,
               y: floorY + l * (fh * fit + 0.003),
