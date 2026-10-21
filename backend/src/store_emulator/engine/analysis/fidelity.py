@@ -52,6 +52,11 @@ def fidelity_report(
     skus = sorted(store_skus)
     s_vec = np.array([sim_units.get(k, 0) for k in skus], dtype=float)
     r_vec = np.array([real_units.get(k, 0) for k in skus], dtype=float)
+    if (r_vec < 0).any():
+        notes.append(
+            "Some products have negative net POS units (returns exceed sales). SKU share similarity "
+            "and NDCG are undefined; rack share similarity is also undefined where rack net units are negative."
+        )
 
     racks = sorted(set(sku_rack.values()))
     s_rack = np.array([sum(sim_units.get(k, 0) for k in skus if sku_rack[k] == g) for g in racks], dtype=float)
@@ -116,7 +121,9 @@ def fidelity_report(
 
 
 def js_divergence(p: np.ndarray, q: np.ndarray) -> float:
-    """Jensen–Shannon divergence in bits (0 = identical, 1 = disjoint)."""
+    """Jensen–Shannon divergence in bits (0 = identical, 1 = disjoint); undefined for negative counts."""
+    if (p < 0).any() or (q < 0).any():
+        return math.nan
     if p.sum() == 0 or q.sum() == 0:
         return 1.0
     p = p / p.sum()
@@ -140,7 +147,9 @@ def spearman(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def ndcg(predicted: np.ndarray, relevance: np.ndarray, k: int) -> float:
-    """NDCG@k of the ranking induced by `predicted`, graded by `relevance`."""
+    """NDCG@k of the ranking induced by `predicted`, graded by nonnegative `relevance`."""
+    if (relevance < 0).any():
+        return math.nan
     if relevance.sum() == 0 or k <= 0:
         return 0.0
     order = np.argsort(-predicted, kind="stable")[:k]
