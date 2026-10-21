@@ -756,6 +756,77 @@ export function getModels(signal?: AbortSignal): Promise<ModelOption[]> {
   return fetchJson("/api/models", { signal });
 }
 
+// ── Who runs the shoppers: cloud keys, this computer, the local model ──────
+
+export interface GPUInfo {
+  vendor: "nvidia" | "amd" | "intel" | "apple" | "other";
+  name: string;
+  vram_gb: number;
+  cuda: string;
+}
+
+export interface HardwareProfile {
+  os: "windows" | "macos" | "linux" | "other";
+  arch: "x64" | "arm64" | "other";
+  cpu: string;
+  cores: number;
+  threads: number;
+  ram_gb: number;
+  ram_free_gb: number;
+  gpus: GPUInfo[];
+}
+
+export interface LocalModelChoice {
+  key: string;
+  label: string;
+  repo: string;
+  download_gb: number;
+  memory_gb: number;
+}
+
+export interface LocalVLMPlan {
+  backend: "cuda" | "metal" | "vulkan" | "cpu";
+  model: LocalModelChoice;
+  device: string;
+  gpu_layers: number;
+  threads: number;
+  parallel: number;
+  context: number;
+  reason: string;
+}
+
+export interface LocalVLMStatus {
+  state: "off" | "disabled" | "preparing" | "downloading" | "starting" | "ready" | "error";
+  message: string;
+  progress: number | null;
+  downloaded_mb: number;
+  total_mb: number;
+  api_base: string | null;
+  model_ref: string;
+  managed: boolean;
+  runtime: string;
+}
+
+export interface ModelSetup {
+  cloud_providers: string[];
+  warning: string | null;
+  local: LocalVLMStatus;
+  hardware: HardwareProfile;
+  plan: LocalVLMPlan;
+}
+
+export function getModelSetup(signal?: AbortSignal): Promise<ModelSetup> {
+  return fetchJson("/api/system/models", { signal });
+}
+
+export function startLocalModel(): Promise<LocalVLMStatus> {
+  return fetchJson("/api/system/local-model/start", { method: "POST" });
+}
+
+export function stopLocalModel(): Promise<LocalVLMStatus> {
+  return fetchJson("/api/system/local-model/stop", { method: "POST" });
+}
+
 // ── Scenarios ───────────────────────────────────────────────────────────────
 
 export type Weather =

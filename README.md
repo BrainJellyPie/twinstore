@@ -237,11 +237,27 @@ The former command name `parastore` still works.
 </details>
 
 <details>
-<summary><b>Vision shoppers on a CPU (no GPU, no API key)</b></summary>
+<summary><b>Vision shoppers without an API key (CPU or GPU, chosen automatically)</b></summary>
 
-The `vlm_glance` engine shows a vision-language model the shelves a shopper walks past — product names, shelf-edge
-price tags, promotion ribbons and numbered badges. Any LiteLLM vision model works; the defaults target a small model
-served locally by [llama.cpp](https://github.com/ggml-org/llama.cpp):
+With no API key set, TwinStore says so in a notice under the command bar and runs its vision shoppers on a small open
+model on your computer. It reads the hardware and picks the model:
+- a GPU gets Qwen3.5-9B, 4B or 2B (CUDA on NVIDIA, Metal on Apple silicon, Vulkan on AMD/Intel);
+- a CPU gets Qwen3.5-2B, 0.8B or LFM2.5-VL-450M, by cores and free memory.
+
+It then downloads the matching [llama.cpp](https://github.com/ggml-org/llama.cpp) build and the model into
+`.data/local_vlm/` and serves it on 127.0.0.1. Opened from the app icon this happens by itself; otherwise press
+**Start local model** in the notice or on the Models page.
+
+| Variable | Effect |
+| :--- | :--- |
+| `TWINSTORE_LOCAL_VLM=off` | turns it off |
+| `TWINSTORE_LLAMA_SERVER=/path/to/llama-server` | uses your own build |
+| `TWINSTORE_LOCAL_VLM_MODEL` | forces a model: `qwen3.5-0.8b`, `qwen3.5-2b`, … |
+
+A llama.cpp server already running on port 8081 is used as it is. A cloud key gives faster and far more accurate
+shoppers; the validation in [`research/validation`](./research/validation) uses cloud models.
+
+To run the model by hand instead:
 
 ```bash
 # Qwen3.5-0.8B (Q4_K_M) + its vision projector, ~1 GB RAM, 2 CPU threads

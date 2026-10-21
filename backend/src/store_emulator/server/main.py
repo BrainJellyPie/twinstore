@@ -12,7 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from store_emulator.application.storage.generations import recover_running_generations
 from store_emulator.application.storage.seed import seed_sample_projects
 from store_emulator.application.storage.setups import recover_running_setups
-from .routes import simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs
+from store_emulator.application.local_vlm import manager as local_vlm
+from store_emulator.application.providers import cloud_providers_with_key
+from .routes import simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 # Silence noisy third-party loggers (raw request/response, completion calls, etc.).
@@ -42,7 +44,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     recovered_gens = recover_running_generations()
     if recovered_gens > 0:
         logger.info(f"server start: marked {recovered_gens} in-progress generations as failed")
+    if not cloud_providers_with_key():
+        # Launched from an app icon: give vision shoppers a model that runs on this computer.
+        if os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1":
+            local_vlm().start()
+        logger.warning("server start: no model API key set — vision shoppers use a local model (see /api/system/models)")
     yield
+    local_vlm().stop()
 
 
 app = FastAPI(
@@ -88,6 +96,7 @@ app.include_router(capture.router)
 app.include_router(shelf_lab.router)
 app.include_router(floorplan.router)
 app.include_router(vision_inputs.router)
+app.include_router(system.router)
 
 
 @app.get("/api/health", tags=["system"], summary="Health check")

@@ -232,6 +232,23 @@ def provider_status(kind: ProviderKind, settings: dict[ProviderKind, ProviderSet
     )
 
 
+def cloud_providers_with_key(settings: dict[ProviderKind, ProviderSettings] | None = None) -> list[str]:
+    """Labels of the cloud providers that have a key (settings or environment)."""
+    settings = settings if settings is not None else load_settings()
+    return [preset.label for kind, preset in PRESETS.items()
+            if preset.needs_key and not preset.local and _key_for(kind, settings)[0] is not None]
+
+
+def use_local_server(api_base: str) -> ProviderStatus:
+    """Point the llama.cpp provider at a server on this computer and turn it on (the local model)."""
+    settings = load_settings()
+    current = settings.get(ProviderKind.LLAMACPP, ProviderSettings(kind=ProviderKind.LLAMACPP))
+    settings[ProviderKind.LLAMACPP] = current.model_copy(update={
+        "enabled": True, "api_base": api_base, "default_model": current.default_model or "local"})
+    _save_settings(settings)
+    return provider_status(ProviderKind.LLAMACPP, settings)
+
+
 def list_providers() -> list[ProviderStatus]:
     settings = load_settings()
     return [provider_status(kind, settings) for kind in PRESETS]
@@ -307,11 +324,22 @@ def ensure_resolvable(config: SimulationConfig) -> None:
     if config.engine_type == EngineType.RULE_BASED:
         return
     settings = load_settings()
-    if config.ensemble is not None:
-        for member in config.ensemble.members:
-            resolve_model(member.model, settings=settings)
-    else:
-        resolve_model(config.llm_for(config.engine_type).model, settings=settings)
+    refs = [m.model for m in config.ensemble.members] if config.ensemble is not None else [config.llm_for(config.engine_type).model]
+    for ref in refs:
+        resolved = resolve_model(ref, settings=settings)
+        if "127.0.0.1" in (resolved.api_base or "") or ref.startswith("llamacpp:"):
+            _ensure_local_ready()
+
+
+def _ensure_local_ready() -> None:
+    """A run on the local model while TwinStore is still fetching or starting it would only fail."""
+    from .local_vlm import manager  # late import: local_vlm imports this module
+
+    status = manager().status()
+    if status.state in ("preparing", "downloading", "starting"):
+        done = f" ({status.progress:.0%})" if status.progress is not None else ""
+        raise ValueError(f"The local vision model is not ready yet: {status.message}{done}. "
+                         "Try again in a moment, or add an API key in Settings → Model providers.")
 
 
 class _Pong(BaseModel):

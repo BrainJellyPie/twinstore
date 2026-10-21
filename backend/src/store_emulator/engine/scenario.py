@@ -38,8 +38,10 @@ CATEGORY_WORDS: dict[str, frozenset[str]] = {
     "water": frozenset({"water", "생수", "물"}),
     "hot_food": frozenset({"ramen", "noodle", "noodles", "soup", "cup", "bowl", "instant", "hot", "coffee", "latte",
                            "tea", "dumpling", "oden", "라면", "컵라면", "국", "커피", "호빵", "어묵"}),
-    "ice_cream": frozenset({"ice", "cream", "popsicle", "frozen", "gelato", "sorbet", "bar", "아이스", "아이스크림",
-                            "빙과", "냉동"}),
+    # Not "frozen", "cream" or "bar": those put frozen pizza, cream cheese and candy bars in the ice
+    # cream aisle (frozen pizza sold 1.9× in a simulated summer; real: 0.94×, research/validation).
+    "ice_cream": frozenset({"ice", "icecream", "popsicle", "popsicles", "gelato", "sorbet", "sherbet", "sherbets", "cone",
+                            "sherbts", "아이스", "아이스크림", "빙과"}),
     "snacks": frozenset({"snack", "chip", "chips", "crisps", "cookie", "cookies", "candy", "chocolate", "cracker",
                          "jerky", "nut", "nuts", "popcorn", "gum", "과자", "스낵", "초콜릿", "사탕", "젤리"}),
     "meals": frozenset({"sandwich", "lunch", "rice", "kimbap", "bento", "burger", "wrap", "salad", "pizza", "meal",
