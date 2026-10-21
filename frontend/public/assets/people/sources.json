@@ -168,32 +168,44 @@
       "file": "Assets/Animations/all_animations_max_motextr_static/f_idle_breathe_01.max.fbx",
       "sha256": "e470ba984484149c8269772b7640b754bd996ba83b23ae75535128412997aa45",
       "bytes": 1379504
+    },
+    {
+      "file": "Assets/Animations/all_animations_max_motextr_static/f_idle_look_around_01.max.fbx",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Animations/all_animations_max_motextr_static/f_idle_look_around_01.max.fbx",
+      "sha256": "61a70b35f08d5308c01fd1bce75ecbdb2cd320193ee900bbef26ad0e9d52261e",
+      "bytes": 1617760
+    },
+    {
+      "file": "Assets/Animations/all_animations_max_motextr_static/m_idle_look_around_01.max.fbx",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Animations/all_animations_max_motextr_static/m_idle_look_around_01.max.fbx",
+      "sha256": "018b19ad26695c5ebbd4131e0506da69dc76f4001a8100a9e38fcdb9a202b7a4",
+      "bytes": 1651456
     }
   ],
   "project": "Microsoft Rocketbox Avatar Library",
   "license": "MIT",
   "repository": "https://github.com/microsoft/Microsoft-Rocketbox",
-  "conversion": "Blender 4.3.2; scripts/convert_rocketbox.py; 1K JPEG color / PNG normal and alpha, skeletal idle + walk, root travel removed, hair alpha-tested.",
+  "conversion": "Blender 4.3.2; scripts/convert_rocketbox.py; 1K JPEG color / PNG normal and alpha, skeletal idle + walk + browse, root travel removed, hair alpha-tested.",
   "outputs": [
     {
       "file": "female-01.glb",
-      "bytes": 5185708,
-      "sha256": "f67c97398252090100303b9b39b7d5ac460e75bacc687047d325dde9f7ff0ce4"
+      "bytes": 5375364,
+      "sha256": "326095c463d2dba69c1006bbfb37e8ecf49fba0f4321a8fa1455becbdb1cfa70"
     },
     {
       "file": "female-14.glb",
-      "bytes": 5790808,
-      "sha256": "49a1b76fcc841b0cc4db531a8cd08fe4d7b48789feaa6084df32fa392e93b7e8"
+      "bytes": 5980464,
+      "sha256": "c485c8dabe5ebd6951c2dc1bcc561ae531762350a20df050ae028db97cfdf43f"
     },
     {
       "file": "male-01.glb",
-      "bytes": 4795092,
-      "sha256": "a671ffe73b267ac92473f84b905a8ad568c819f532bc4414499db57fcec8e817"
+      "bytes": 4985232,
+      "sha256": "0c2d556737ec10b87f5c7289b37c38b2f75de8f0d2013965cf4a0bc215ce4646"
     },
     {
       "file": "male-14.glb",
-      "bytes": 3567240,
-      "sha256": "c1ab8d30e1695579002a439a6c906885cc3c948a947e933fd99c8b6265127ed0"
+      "bytes": 3757380,
+      "sha256": "24bc18b0a2f6df5aee2b57757f8fd21288c5ebfa63686039228c586666ef35de"
     }
   ]
 }
