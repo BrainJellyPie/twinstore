@@ -392,6 +392,7 @@ def generate_store(
     layout_style = style or options.style or t.style
     aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]
     aisle = options.aisle_width or aisle
+    run_length = options.max_shelf_run or run_length
     cross_aisles: set[tuple[int, int]] = set()
     if layout_style == "cross":
         cross_x, cross_y = (w - aisle) // 2, (h - aisle) // 2

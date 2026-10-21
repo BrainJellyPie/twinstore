@@ -196,11 +196,14 @@ Interior shelf rows can run left to right or front to back. This rotates the
 interior pattern and its product-facing sides while keeping the entrance,
 checkouts, wall fixtures, seating and reserved areas in their chosen locations.
 **Interior aisle gap** overrides the density preset with 1–4 empty cells between
-interior rows and shelf runs. Density still controls the length of each shelf run.
+interior rows and shelf runs. **Maximum shelf run** separately limits adjacent
+display cells to 1–8 before leaving a cross aisle. It follows the density preset
+when unset (3 spacious, 4 balanced or 6 dense); patterns and reserved areas can
+shorten runs further. Both options apply in either shelf direction.
 A small racetrack layout drops its second row when both rows cannot fit the
-requested gap. The perimeter pattern has no interior rows, so this option is
+requested gap. The perimeter pattern has no interior rows, so both options are
 disabled there. Wall spacing and dining-table clearance remain separate; grid
-cells do not specify a physical distance. The chosen gap is saved and reused with
+cells do not specify a physical distance. The gap and run limit are saved and reused with
 the other layout options.
 
 **Central cross aisles** keeps intersecting horizontal and vertical paths clear
