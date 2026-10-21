@@ -33,6 +33,12 @@ export function lookYawForFace(face: Face): number {
   return LOOK_AT_FACE[face];
 }
 
+export function facingForEvent(heading: number, moving: boolean, event: Pick<TimelineEvent, "action" | "face">): number {
+  return !moving && (event.action === "browse" || event.action === "buy") && event.face
+    ? LOOK_AT_FACE[event.face]
+    : heading;
+}
+
 export function shopperPoseAt(customer: CustomerResult, timeSec: number): ShopperPose | null {
   const tl = customer.timeline;
   if (!tl.length) return null;
@@ -81,7 +87,7 @@ export function shopperPoseAt(customer: CustomerResult, timeSec: number): Shoppe
   }
 
   const browsing = !moving && (prev.action === "browse" || prev.action === "buy") && !!prev.face;
-  const lookYaw = browsing ? LOOK_AT_FACE[prev.face!] : heading;
+  const lookYaw = facingForEvent(heading, moving, prev);
   return {
     personaId: customer.persona_id,
     x: x + 0.5,

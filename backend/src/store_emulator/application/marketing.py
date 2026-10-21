@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from PIL import Image
+from pydantic import BaseModel
 
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.marketing import (
@@ -38,10 +39,12 @@ from store_emulator.engine.marketing import (
     apply_changes,
     likert_summary,
     preference_shares,
+    price_response,
     run_experiment,
     survey_panel,
     van_westendorp,
 )
+from store_emulator.engine.marketing.report import ReportNarrative, report_html, report_markdown, survey_report_html, write_narrative
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.prompting import display_price
@@ -61,6 +64,7 @@ from .shelf_lab import (
 )
 from .simulation import with_engine_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
+from .storage.setups import read_setup
 
 logger = logging.getLogger(__name__)
 
@@ -206,12 +210,16 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
             notes: list[str] = []
             if len(panel) < 100:
                 notes.append("Fewer than 100 shoppers per variant: differences under ~5 % are hard to tell from noise.")
+            if req.engine == "rule" and any(c.kind == "price" and not c.keep_reference for v in req.variants for c in v.changes):
+                notes.append("Rule shoppers react to a price relative to the usual one (and to their budget); a new everyday price "
+                             "resets that reference. Keep the current price as the reference, or use vision shoppers, to measure price response.")
             if req.engine == "rule" and any(c.kind == "promo" for v in req.variants for c in v.changes):
                 notes.append("The rule-based shoppers read promotion signs as a generic impulse boost; vision shoppers see the sign itself.")
             report = ExperimentReport(
                 experiment_id=status.job_id, name=name, setup_id=req.setup_id, engine=req.engine, model=model,
                 panel_size=len(panel), currency=currency, visitors_per_day=round(len(personas) / days, 1),
                 focus_skus=req.focus_skus, control=control_result, variants=results, winner=winner, notes=notes,
+                price_response=price_response(control_result, results),
                 seconds=round(time.perf_counter() - t0, 1),
             )
             _finish(pid, status, report)
@@ -225,13 +233,66 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
 
 class ExperimentView(JobStatus):
     report: ExperimentReport | None = None
+    request: ExperimentRequest | None = None   # what was asked, for "duplicate and edit"
+
+
+def _request[T: BaseModel](pid: str, kind: Kind, jid: str, model: type[T]) -> T | None:
+    path = _job_dir(pid, kind, jid) / "request.json"
+    try:
+        return model.model_validate(read_json(path)) if path.exists() else None
+    except ValueError:
+        return None  # written by an older version with a different schema
 
 
 def get_experiment(pid: str, eid: str) -> ExperimentView:
     status = _status(pid, "experiment", eid)
     path = _job_dir(pid, "experiment", eid) / "report.json"
     report = ExperimentReport.model_validate(read_json(path)) if path.exists() else None
-    return ExperimentView(**status.model_dump(), report=report)
+    return ExperimentView(**status.model_dump(), report=report, request=_request(pid, "experiment", eid, ExperimentRequest))
+
+
+# ── experiment report ───────────────────────────────────────────────────────────
+
+def _report_inputs(pid: str, eid: str) -> tuple[ExperimentReport, str, ReportNarrative | None]:
+    view = get_experiment(pid, eid)
+    if view.report is None:
+        raise AppError("the A/B test has no results yet", 409)
+    try:
+        layout = str(read_setup(pid, view.report.setup_id).get("name") or "")
+    except FileNotFoundError:
+        layout = ""
+    path = _job_dir(pid, "experiment", eid) / "narrative.json"
+    narrative = ReportNarrative.model_validate(read_json(path)) if path.exists() else None
+    return view.report, layout, narrative
+
+
+def experiment_report_html(pid: str, eid: str) -> str:
+    return report_html(*_report_inputs(pid, eid))
+
+
+def experiment_report_markdown(pid: str, eid: str) -> str:
+    return report_markdown(*_report_inputs(pid, eid))
+
+
+def write_experiment_narrative(pid: str, eid: str, model: str, config: SimulationConfig) -> ReportNarrative:
+    """A model's commentary on the report, kept with the experiment and added to the write-up."""
+    report, layout, _ = _report_inputs(pid, eid)
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 1500})
+    try:
+        llm = build_client(llm_config, None, model_ref=model.strip() or None)
+        narrative = asyncio.run(write_narrative(llm, report, layout))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    except Exception as e:  # provider errors reach the user as a message
+        logger.warning(f"[marketing] narrative for {eid} failed: {type(e).__name__}: {e}")
+        raise AppError(f"the commentary could not be written ({type(e).__name__}): {str(e)[:200]}", 502) from e
+    narrative.model = model.strip() or llm_config.model
+    write_json(_job_dir(pid, "experiment", eid) / "narrative.json", narrative.model_dump(mode="json"))
+    return narrative
+
+
+def delete_experiment_narrative(pid: str, eid: str) -> None:
+    (_job_dir(pid, "experiment", eid) / "narrative.json").unlink(missing_ok=True)
 
 
 # ── surveys ─────────────────────────────────────────────────────────────────────
@@ -331,13 +392,22 @@ def summarize_survey(
 
 class SurveyView(JobStatus):
     report: SurveyReport | None = None
+    request: SurveyRequest | None = None
 
 
 def get_survey(pid: str, sid: str) -> SurveyView:
     status = _status(pid, "survey", sid)
     path = _job_dir(pid, "survey", sid) / "report.json"
     report = SurveyReport.model_validate(read_json(path)) if path.exists() else None
-    return SurveyView(**status.model_dump(), report=report)
+    return SurveyView(**status.model_dump(), report=report, request=_request(pid, "survey", sid, SurveyRequest))
+
+
+def survey_report(pid: str, sid: str) -> str:
+    view = get_survey(pid, sid)
+    if view.report is None:
+        raise AppError("the concept test has no answers yet", 409)
+    board = _job_dir(pid, "survey", sid) / "board.jpg"
+    return survey_report_html(view.report, board.read_bytes() if board.exists() else None)
 
 
 def survey_board_path(pid: str, sid: str) -> Path:
@@ -374,7 +444,7 @@ def survey_csv(pid: str, sid: str) -> str:
                 vals = cast(list[int], getattr(a, q))
                 row += [vals[i] if i < len(vals) else "" for i in range(k)]
         if "price_vw" in r.questions:
-            row += [a.too_cheap or "", a.cheap or "", a.expensive or "", a.too_expensive or ""]
+            row += [value if value is not None else "" for value in (a.too_cheap, a.cheap, a.expensive, a.too_expensive)]
         if "preference" in r.questions:
             row.append(LETTERS[a.preferred] if a.preferred is not None else "")
         if "open" in r.questions:

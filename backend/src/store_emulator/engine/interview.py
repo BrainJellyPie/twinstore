@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.interview import InterviewMessage, Journey, JourneyStep, ShelfItem
@@ -89,7 +89,9 @@ Rules:
 
 
 class ShopperReply(BaseModel):
-    answer: str = Field(max_length=900)
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    answer: str = Field(min_length=1, max_length=900)
     steps: list[int] = Field(default_factory=list[int], max_length=12)
 
 
@@ -136,3 +138,44 @@ async def ask_shopper(
     )
     valid = {s.index for s in journey.steps}
     return reply.model_copy(update={"answer": reply.answer.strip(), "steps": [s for s in reply.steps if s in valid]})
+
+
+THEMES_PROMPT = """You code open-ended answers from shopper interviews into themes, as a qualitative researcher would.
+Group answers that give the same reason; keep themes distinct and concrete (e.g. "Too expensive for a snack", not
+"Price"). Return two to six short theme labels and, for every answer in the order given, the number of its theme
+(starting at 0). Write in English."""
+
+
+class ThemeCoding(BaseModel):
+    themes: list[str] = Field(min_length=1, max_length=6)
+    assignments: list[int]
+
+
+async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str]) -> tuple[list[str], list[int]]:
+    """Theme labels and one theme index per answer; answers the model leaves out or misnumbers go to "Other"."""
+    listed = "\n".join(f"{i}. {a}" for i, a in enumerate(answers))
+    coding = await llm.generate_structured_async(
+        ThemeCoding, THEMES_PROMPT, f"Question: {question}\n\nAnswers:\n{listed}", max_retries=1, seed=0,
+    )
+    themes: list[str] = []
+    indices: dict[int, int] = {}
+    for original, label in enumerate(coding.themes):
+        label = label.strip()
+        if label:
+            if label not in themes:
+                themes.append(label)
+            indices[original] = themes.index(label)
+    if not themes:
+        themes = ["Other"]
+    out: list[int] = []
+    other = themes.index("Other") if "Other" in themes else -1
+    for i in range(len(answers)):
+        original = coding.assignments[i] if i < len(coding.assignments) else -1
+        k = indices.get(original, -1)
+        if k < 0:
+            if other < 0:
+                themes.append("Other")
+                other = len(themes) - 1
+            k = other
+        out.append(k)
+    return themes, out

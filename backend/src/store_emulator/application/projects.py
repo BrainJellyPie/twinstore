@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import Any, cast
 
 from store_emulator.domain.config import SimulationConfig
-from store_emulator.domain.store import DaySchedule
+from store_emulator.domain.store import DaySchedule, Store
+from store_emulator.domain.layout_options import TemplateLayoutRequest
+from store_emulator.application.template_layouts import prepare_template_layout
 from store_emulator.application.errors import AppError
 from store_emulator.application.generation_async import start_persona_generation
 from store_emulator.application.storage.generations import find_active_generation
@@ -12,7 +14,7 @@ from store_emulator.application.storage.io import DATA_DIR, write_json, read_jso
 from store_emulator.application.storage.setups import (
     metadata_path, personas_path,
     read_setup, list_setups, create_initial_setup,
-    read_state, write_state,
+    read_state, write_state, setup_path,
 )
 
 
@@ -126,7 +128,8 @@ def delete_project(project_id: str) -> None:
     if not project_dir.exists():
         raise FileNotFoundError(f"Project not found: {project_id}")
     for pattern in ("runs/*/status.json", "generations/*/status.json", "optimizations/*/status.json",
-                    "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json"):
+                    "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json",
+                    "synergy/*/status.json"):
         for status_path in project_dir.glob(pattern):
             try:
                 raw: object = read_json(status_path)
@@ -149,8 +152,9 @@ def create_project_without_layout(
     weekly_schedule: list[DaySchedule],
     supplemental_bytes: bytes | None,
     supplemental_filename: str = "",
+    layout: TemplateLayoutRequest | None = None,
 ) -> dict[str, Any]:
-    """Project + empty setup + persona kick-off. No image, no layout generation.
+    """Project + optional template layout + persona kick-off. No image or LLM layout call.
 
     spec §4.2 / §4.5 — supplemental bytes/filename are forwarded to the
     background summarize_supplemental call. At the time of the immediate
@@ -171,16 +175,30 @@ def create_project_without_layout(
         "created_at": now,
         "updated_at": now,
     }
+    initial: dict[str, object] | None = None
+    if layout is not None:
+        # Validate and build before any project files are created.
+        initial = prepare_template_layout(pid, layout)
+        initial["name"] = name
+        store = Store.model_validate(initial["store"])
+        store.name = name
+        store.weekly_schedule = weekly_schedule
+        store.type = store_type
+        initial["store"] = store.model_dump(mode="json")
+        meta["grid_size"] = list(store.grid_size)
     project_dir = _data / pid
     project_dir.mkdir(parents=True, exist_ok=True)
     write_json(metadata_path(pid), meta)
     write_json(personas_path(pid), [])
 
-    initial = create_initial_setup(pid, store=None)
+    if initial is None:
+        initial = create_initial_setup(pid, store=None)
+    else:
+        write_json(setup_path(pid, str(initial["id"])), initial)
     write_state(pid, {"activeSetupId": initial["id"]})
 
     persona_gen_id = start_persona_generation(
-        config=config, project_id=pid, setup_id=initial["id"],
+        config=config, project_id=pid, setup_id=str(initial["id"]),
         supplemental_bytes=supplemental_bytes,
         supplemental_filename=supplemental_filename,
     )

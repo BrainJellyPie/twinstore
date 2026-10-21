@@ -30,6 +30,8 @@ export interface VariantChange {
   asset_id?: string;
   category?: string;
   charm?: boolean;
+  /** price: shoppers keep the current price as the usual one (reference price). */
+  keep_reference?: boolean;
 }
 
 export interface Variant { name: string; changes: VariantChange[] }
@@ -70,7 +72,11 @@ export interface VariantResult {
   vs_control: MetricComparison[];
   focus: FocusOutcome[];
   top_skus: SkuSales[];
+  prices?: Record<string, number>;
 }
+
+export interface PricePoint { arm: string; price: number; units: number; units_low: number; units_high: number; revenue: number }
+export interface PriceResponse { sku: string; name: string; points: PricePoint[]; elasticity: number | null; best_price: number | null }
 
 export interface ExperimentReport {
   experiment_id: string;
@@ -85,6 +91,7 @@ export interface ExperimentReport {
   control: VariantResult;
   variants: VariantResult[];
   winner: string;
+  price_response?: PriceResponse | null;
   notes: string[];
   seconds: number;
 }
@@ -101,7 +108,7 @@ export interface JobStatus {
   finished_at: string;
 }
 
-export interface ExperimentView extends JobStatus { report: ExperimentReport | null }
+export interface ExperimentView extends JobStatus { report: ExperimentReport | null; request?: ExperimentRequest | null }
 
 export type QuestionKind = "purchase_intent" | "appeal" | "value" | "uniqueness" | "price_vw" | "preference" | "open";
 export type ScaleKind = "purchase_intent" | "appeal" | "value" | "uniqueness";
@@ -182,7 +189,7 @@ export interface SurveyReport {
   seconds: number;
 }
 
-export interface SurveyView extends JobStatus { report: SurveyReport | null }
+export interface SurveyView extends JobStatus { report: SurveyReport | null; request?: SurveyRequest | null }
 
 const root = (pid: string) => `/api/projects/${pid}`;
 
@@ -195,12 +202,19 @@ export const getExperiment = (pid: string, eid: string, signal?: AbortSignal) =>
   fetchJson<ExperimentView>(`${root(pid)}/experiments/${eid}`, { signal });
 export const deleteExperiment = (pid: string, eid: string) => fetchJson<void>(`${root(pid)}/experiments/${eid}`, { method: "DELETE" });
 
+export interface ReportNarrative { summary: string; interpretation: string; next_steps: string; model: string }
+export const experimentReportUrl = (pid: string, eid: string) => `${BASE}${root(pid)}/experiments/${eid}/report.html`;
+export const experimentMarkdownUrl = (pid: string, eid: string) => `${BASE}${root(pid)}/experiments/${eid}/report.md`;
+export const writeNarrative = (pid: string, eid: string, model: string) =>
+  fetchJson<ReportNarrative>(`${root(pid)}/experiments/${eid}/narrative`, { method: "POST", body: JSON.stringify({ model }) });
+
 export const startSurvey = (pid: string, req: SurveyRequest) =>
   fetchJson<JobStatus>(`${root(pid)}/surveys`, { method: "POST", body: JSON.stringify(req) });
 export const listSurveys = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/surveys`, { signal });
 export const getSurvey = (pid: string, sid: string, signal?: AbortSignal) => fetchJson<SurveyView>(`${root(pid)}/surveys/${sid}`, { signal });
 export const deleteSurvey = (pid: string, sid: string) => fetchJson<void>(`${root(pid)}/surveys/${sid}`, { method: "DELETE" });
 export const surveyBoardUrl = (pid: string, sid: string) => `${BASE}${root(pid)}/surveys/${sid}/board.jpg`;
+export const surveyReportUrl = (pid: string, sid: string) => `${BASE}${root(pid)}/surveys/${sid}/report.html`;
 export const surveyCsvUrl = (pid: string, sid: string) => `${BASE}${root(pid)}/surveys/${sid}/export.csv`;
 
 export const marketingKeys = {

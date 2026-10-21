@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 _STATUS_PATTERNS = (
     "*/runs/*/status.json",
     "*/optimizations/*/status.json",
+    "*/synergy/*/status.json",
     "*/captures/*/status.json",
     "*/captures/*/lab/jobs/*/status.json",
 )

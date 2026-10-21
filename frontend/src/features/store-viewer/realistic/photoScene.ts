@@ -238,11 +238,13 @@ export function buildPhotoScene(
     scene.add(new THREE.Mesh(merged, mat));
   }
 
-  scene.add(ceilingLights(opts.width, opts.depth, 9));
+  // The panels are 0.46 m squares on every other tile, so each needs a high luminance to light the floor.
+  scene.add(ceilingLights(opts.width, opts.depth, 60));
   // The photographic interior HDR when it loaded (equirect, as the path tracer needs), else a sky.
   const env = opts.environment ?? daylight();
   scene.environment = env;
-  scene.environmentIntensity = opts.environment ? 1.4 : 1;
+  // The interior HDR is warm; kept low it adds bounce and reflections without tinting the store.
+  scene.environmentIntensity = opts.environment ? 0.55 : 1;
   scene.background = opts.background;
 
   return {

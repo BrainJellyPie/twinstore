@@ -16,11 +16,13 @@ from store_emulator.domain.types import Position
 from store_emulator.engine.analysis.fidelity import js_divergence
 
 
-def aggregate_tracks(points: list[TrackPoint], grid_size: Position, *, max_gap_seconds: float | None) -> MovementSummary:
+def aggregate_tracks(points: list[TrackPoint], grid_size: Position, *, max_gap_seconds: float | None,
+                     allow_same_time_moves: bool = False) -> MovementSummary:
     width, height = grid_size
     visitors = [[0] * width for _ in range(height)]
     occupancy = [[0.0] * width for _ in range(height)]
     tracks: dict[str, dict[float, TrackPoint]] = defaultdict(dict)
+    visited: dict[str, set[Position]] = defaultdict(set)
     duplicates = 0
     for point in points:
         if not (0 <= point.x < width and 0 <= point.y < height):
@@ -28,15 +30,18 @@ def aggregate_tracks(points: list[TrackPoint], grid_size: Position, *, max_gap_s
         previous = tracks[point.track_id].get(point.timestamp_sec)
         if previous is not None:
             if (previous.x, previous.y) != (point.x, point.y):
-                raise ValueError("A track has different positions at the same timestamp; correct the source data.")
-            duplicates += 1
+                if not allow_same_time_moves:
+                    raise ValueError("A track has different positions at the same timestamp; correct the source data.")
+            else:
+                duplicates += 1
         tracks[point.track_id][point.timestamp_sec] = point
+        visited[point.track_id].add((point.x, point.y))
     gaps, excluded, singles = 0, 0.0, 0
-    for by_time in tracks.values():
+    for track_id, by_time in tracks.items():
         ordered = sorted(by_time.values(), key=lambda p: p.timestamp_sec)
         if len(ordered) == 1:
             singles += 1
-        for x, y in {(p.x, p.y) for p in ordered}:
+        for x, y in visited[track_id]:
             visitors[y][x] += 1
         for first, second in zip(ordered, ordered[1:]):
             duration = second.timestamp_sec - first.timestamp_sec
@@ -59,12 +64,11 @@ def movement_report(points: list[TrackPoint], results: list[CustomerResult], gri
     observed = aggregate_tracks(points, grid_size, max_gap_seconds=max_gap_seconds)
     simulated_points: list[TrackPoint] = []
     for index, customer in enumerate(results):
-        # Timeline times are rounded to seconds. Use the final position at a shared
-        # timestamp; zero-duration intermediate events have no occupancy interval.
-        by_time = {e.elapsed_sec: e for e in customer.timeline}
-        for event in by_time.values():
+        for event in customer.timeline:
             simulated_points.append(TrackPoint(track_id=str(index), x=event.x, y=event.y, timestamp_sec=event.elapsed_sec))
-    simulated = aggregate_tracks(simulated_points, grid_size, max_gap_seconds=None)
+    # Rounded timeline times can share a timestamp. Count every visited cell,
+    # while the final position at that time supplies the next occupancy interval.
+    simulated = aggregate_tracks(simulated_points, grid_size, max_gap_seconds=None, allow_same_time_moves=True)
 
     def similarity(a: list[list[int]] | list[list[float]], b: list[list[int]] | list[list[float]]) -> float | None:
         av, bv = np.asarray(a, dtype=float).ravel(), np.asarray(b, dtype=float).ravel()

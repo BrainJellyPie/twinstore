@@ -171,3 +171,67 @@ def test_invalid_price_response_does_not_discard_other_respondents(personas: lis
     assert answers[0].too_cheap is None and answers[0].too_expensive is None
     assert answers[1].respondent == panel[1].id and not answers[1].error
     assert answers[1].too_cheap == 100 and answers[1].too_expensive == 400
+
+
+def _arm(name: str, rpv: float, diff: float | None = None, lo: float = 0.0, hi: float = 0.0, units: tuple[float, float, float] | None = None):
+    from store_emulator.domain.analysis import MetricComparison
+    from store_emulator.domain.marketing import FocusOutcome, VariantResult
+    vs = [] if diff is None else [MetricComparison(metric="spend", mean_a=700, mean_b=700 + diff, diff=diff, rel_diff=diff / 700,
+                                                     ci_low=lo, ci_high=hi, prob_b_greater=0.9, sd_paired_diff=50, n_for_5pct_effect=1200)]
+    focus = [] if units is None else [FocusOutcome(sku="A1", name="Cola", metric="units", control=0.1, variant=0.1 + units[0],
+                                                   diff=units[0], rel_diff=units[0] / 0.1, ci_low=units[1], ci_high=units[2], prob_better=0.99)]
+    return VariantResult(name=name, revenue_per_visitor=rpv, vs_control=vs, focus=focus)
+
+
+def _report(variants, winner: str = ""):
+    from store_emulator.domain.marketing import ExperimentReport
+    return ExperimentReport(experiment_id="exp_1", name="Cola test", setup_id="s1", engine="rule", panel_size=300, currency="USD",
+                            visitors_per_day=500, focus_skus=["A1"], control=_arm("Control", 700), variants=variants, winner=winner)
+
+
+def test_report_recommends_the_winner_and_flags_losers() -> None:
+    from store_emulator.engine.marketing.report import findings, money, report_html, report_markdown
+    r = _report([_arm("Sign", 720, 20, 5, 35), _arm("Bottom shelf", 680, -20, -35, -6)], winner="Sign")
+    f = findings(r)
+    assert "Sign earns +$0.20 per visitor" in f.headline
+    assert any("Roll out Sign" in x and "+$100.00 a day" in x for x in f.recommendation)
+    assert any(x.startswith("Avoid Bottom shelf") for x in f.recommendation)
+    html = report_html(r, "Layout 1")
+    assert "Layout 1" in html and html.count("<svg") == 1 and "clearly down" in html
+    assert "| A · Control |" in report_markdown(r)
+    assert money(-1234, "USD", signed=True) == "−$12.34" and money(1500, "KRW") == "₩1,500"
+
+
+def test_report_without_a_winner_explains_product_only_lifts_and_sample_size() -> None:
+    from store_emulator.engine.marketing.report import findings
+    f = findings(_report([_arm("-20 %", 702, 2, -8, 12, units=(0.05, 0.02, 0.08))]))
+    assert f.headline.startswith("No variant changes revenue")
+    assert any("sells more of the tracked product" in x for x in f.recommendation)
+    assert any("about 1,200 shoppers per arm" in x for x in f.recommendation)
+
+
+def test_price_sweep_gives_a_demand_curve(store: Store, personas: list[Persona]) -> None:
+    from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS, sample_cue
+    from store_emulator.engine.marketing import price_response
+    from store_emulator.engine.marketing.report import report_html
+
+    panel = select_personas(personas, 200, seed=4)
+    evaluator = LayoutEvaluator(SimulationConfig(seed=4), panel, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(),
+                                OptimizeObjective.REVENUE_PER_VISITOR)
+    arms = []
+    for name, price in (("Cheaper", 89), ("Dearer", 189), ("Much dearer", 259)):
+        v, applied, warnings = apply_changes(store, [VariantChange(kind="price", sku="A0017", price=price, keep_reference=True)])
+        arms.append((name, v, applied, warnings))
+    control, results, _ = asyncio.run(run_experiment(evaluator, store, arms, panel, ["A0017"]))
+    assert control.prices == {"A0017": 129} and [r.prices["A0017"] for r in results] == [89, 189, 259]
+    pr = price_response(control, results)
+    assert pr is not None and [p.price for p in pr.points] == [89, 129, 189, 259]
+    assert all(p.units_low <= p.units <= p.units_high for p in pr.points)
+    assert pr.best_price in {89, 129, 189, 259}
+    assert pr.elasticity is not None and pr.elasticity < 0        # dearer -> fewer units against the remembered price
+    cut = next(i for r in v.racks for sl in r.slots for i in sl.items if i.sku == "A0017")
+    assert cut.price == 259 and cut.regular_price == 129
+    from store_emulator.domain.marketing import ExperimentReport
+    rep = ExperimentReport(experiment_id="e", name="Sweep", setup_id="s", engine="rule", panel_size=200, currency="USD",
+                           visitors_per_day=400, focus_skus=["A0017"], control=control, variants=results, price_response=pr)
+    assert "Price response" in report_html(rep)

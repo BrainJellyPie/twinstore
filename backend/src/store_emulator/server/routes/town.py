@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.application import town as town_service
 from store_emulator.application import town_synergy as synergy_service
@@ -39,6 +39,8 @@ class OsmImportRequest(BaseModel):
 
 
 class VenueRequest(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     category: VenueCategory
     x: float
     y: float

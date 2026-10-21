@@ -49,10 +49,13 @@ export interface Rack {
   design_variant?: "a" | "b" | "c";
 }
 
+export type StoreDesign = "classic" | "warm" | "minimal" | "industrial" | "botanical" | "luxury";
+
 export interface Store {
   id: string;
   name: string;
   type: string;
+  design_theme?: StoreDesign;
   grid_size: Position;
   weekly_schedule: DaySchedule[];
   racks: Rack[];

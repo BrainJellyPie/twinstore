@@ -1,8 +1,12 @@
 """Shopper journeys and interviews on the sample run, with a fake language model (no network)."""
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
+
+from store_emulator.application.storage.io import read_json, write_json
 
 PID = "proj_67916afd"
 RUN = "run_efd57c"
@@ -70,6 +74,30 @@ def test_unknown_shopper_and_bad_ids(client):
     assert client.get(f"/api/projects/{PID}/runs/run_missing/shoppers/M1/journey").status_code == 404
 
 
+def test_town_shopper_can_view_journey_and_complete_interview(client, monkeypatch):
+    source_id = _shopper(client)
+    shopper_id = f"{source_id}~t1"
+    output = Path(".data") / PID / "runs" / RUN / "output"
+    customers = read_json(output / "timeline.json")
+    customer = next(c for c in customers if c["persona_id"] == source_id)
+    customer["persona_id"] = shopper_id
+    write_json(output / "timeline.json", [customer])
+    persona = read_json(output / "personas.json")[source_id]
+    persona["id"] = shopper_id
+    write_json(output / "personas.json", {shopper_id: persona})
+    from store_emulator.application import interview
+    monkeypatch.setattr(interview, "build_client", lambda *a, **k: _Fake())
+    url = f"/api/projects/{PID}/runs/{RUN}/shoppers/{shopper_id}"
+
+    journey = client.get(f"{url}/journey")
+    assert journey.status_code == 200, journey.text
+    assert journey.json()["persona"]["id"] == shopper_id
+    reply = client.post(f"{url}/interview", json={"question": "Why did you visit?"})
+    assert reply.status_code == 200, reply.text
+    assert len(client.get(f"{url}/interview").json()["messages"]) == 2
+    assert client.delete(f"{url}/interview").status_code == 204
+
+
 def test_model_errors_are_reported(client, monkeypatch):
     sid = _shopper(client)
 
@@ -82,3 +110,37 @@ def test_model_errors_are_reported(client, monkeypatch):
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview", json={"question": "Hello?"})
     assert r.status_code == 502 and "TimeoutError" in r.json()["detail"]
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview").json()["messages"] == []
+
+
+class _Group:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def generate_structured_async[T: BaseModel](
+        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+    ) -> T:
+        self.calls += 1
+        if "themes" in response_model.model_fields:
+            n = user_prompt.count("\n") - 2
+            return response_model.model_validate({"themes": ["Nothing I needed", "Too expensive"], "assignments": [i % 2 for i in range(n - 1)] + [7]})
+        return response_model.model_validate({"answer": "Nothing caught my eye.", "steps": [1]})
+
+
+def test_group_interview_codes_themes(client, monkeypatch):
+    from store_emulator.application import interview
+    fake = _Group()
+    monkeypatch.setattr(interview, "build_client", lambda *a, **k: fake)
+    empty = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews",
+                        json={"question": "Why did you leave without buying?", "segment": "empty_handed", "size": 6}).json()
+    assert empty["answers"] and all(a["units"] == 0 for a in empty["answers"])
+    r = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews", json={"question": "What did you think of the store?", "size": 6})
+    assert r.status_code == 200, r.text
+    g = r.json()
+    assert len(g["answers"]) == 6 and g["errors"] == 0
+    labels = [t["label"] for t in g["themes"]]
+    assert labels[:2] == ["Nothing I needed", "Too expensive"] and labels[-1] == "Other"   # the misnumbered answer
+    assert sum(t["count"] for t in g["themes"]) == 6 and all(0 <= a["theme"] < len(labels) for a in g["answers"])
+    assert {x["group_id"] for x in client.get(f"/api/projects/{PID}/runs/{RUN}/group-interviews").json()} == {g["group_id"], empty["group_id"]}
+    picked = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews", json={"question": "Hi?", "persona_ids": ["NOBODY"]})
+    assert picked.status_code == 404
+    assert client.delete(f"/api/projects/{PID}/runs/{RUN}/group-interviews/{g['group_id']}").status_code == 204

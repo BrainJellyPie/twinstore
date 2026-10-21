@@ -16,7 +16,7 @@ The result always passes `engine.validation.validate` without errors (checked by
 import random
 from dataclasses import dataclass, field
 
-from store_emulator.domain.layout_options import LayoutOptions, LayoutStyle
+from store_emulator.domain.layout_options import LayoutOptions, LayoutStyle, StoreDesign
 from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Face, Weekday, stable_seed
@@ -343,9 +343,15 @@ def generate_store(
                       rotation=90 if layout_style == "perimeter" else 0,
                       variant="b" if (y // 3) % 2 else "a")
 
+    format_design: dict[str, StoreDesign] = {
+        "pharmacy": "minimal", "cafe": "warm", "bakery": "warm", "restaurant": "warm",
+        "fashion": "luxury", "home": "minimal", "beauty": "luxury", "books": "warm",
+        "electronics": "industrial", "sports": "industrial", "flowers": "botanical",
+    }
     days = [DaySchedule(day=Weekday(d), is_open=d not in t.closed_days,
                         open_hour=t.open_hours[0], close_hour=t.open_hours[1]) for d in range(1, 8)]
     return Store(
         id=store_id or f"store_{template_id}_{seed}", name=name or t.name, type=t.store_type,
         grid_size=(w, h), weekly_schedule=days, racks=b.racks,
+        design_theme=options.design_theme or format_design.get(t.store_type, "classic"),
     )

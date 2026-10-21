@@ -2,6 +2,7 @@ from typing import Final
 
 from pydantic import BaseModel, Field, model_validator
 
+from .layout_options import StoreDesign
 from .rack import Rack, RackType, PASSTHROUGH_TYPES, Slot
 from .types import Position, Weekday
 
@@ -32,6 +33,7 @@ class Store(BaseModel):
     id: str
     name: str
     type: str
+    design_theme: StoreDesign = "classic"
     grid_size: Position  # (width, height)
     weekly_schedule: list[DaySchedule] = []
     racks: list[Rack] = []

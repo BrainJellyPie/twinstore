@@ -8,10 +8,12 @@ use the same paired percentile bootstrap over shoppers.
 
 from collections.abc import Callable
 
+import math
+
 import numpy as np
 
 from store_emulator.domain.customer import CustomerResult
-from store_emulator.domain.marketing import FocusOutcome, SkuSales, VariantResult
+from store_emulator.domain.marketing import FocusOutcome, PricePoint, PriceResponse, SkuSales, VariantResult
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.engine.analysis.compare import compare_runs
@@ -88,6 +90,51 @@ def sku_sales(results: list[CustomerResult], *, keep: list[str] | None = None, t
             for s in ranked]
 
 
+def _prices(store: Store, skus: list[str]) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for rack in store.racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                if item.sku in skus:
+                    out[item.sku] = min(out.get(item.sku, item.price), item.price)
+    return out
+
+
+def price_response(control: VariantResult, variants: list[VariantResult]) -> PriceResponse | None:
+    """Demand curve of the first tracked product whose price takes three or more values across the arms."""
+    for sku in control.prices:
+        prices = {control.prices[sku], *(v.prices.get(sku, control.prices[sku]) for v in variants)}
+        if len(prices) < 3:
+            continue
+        units = [f for v in variants for f in v.focus if f.sku == sku and f.metric == "units"]
+        spend = [f for v in variants for f in v.focus if f.sku == sku and f.metric == "spend"]
+        if not units:
+            continue
+        base_units, base_spend = units[0].control, (spend[0].control if spend else 0.0)
+        points = [PricePoint(arm=control.name, price=control.prices[sku], units=base_units, units_low=base_units,
+                             units_high=base_units, revenue=base_spend)]
+        for v in variants:
+            u = next((f for f in v.focus if f.sku == sku and f.metric == "units"), None)
+            m = next((f for f in v.focus if f.sku == sku and f.metric == "spend"), None)
+            if u is None:
+                continue
+            points.append(PricePoint(arm=v.name, price=v.prices.get(sku, control.prices[sku]), units=u.variant,
+                                     units_low=max(0.0, base_units + u.ci_low), units_high=base_units + u.ci_high,
+                                     revenue=m.variant if m else 0.0))
+        points.sort(key=lambda p: p.price)
+        logs = [(math.log(p.price), math.log(p.units)) for p in points if p.price > 0 and p.units > 0]
+        elasticity = None
+        if len({x for x, _ in logs}) >= 3:
+            mx = sum(x for x, _ in logs) / len(logs)
+            my = sum(y for _, y in logs) / len(logs)
+            sxx = sum((x - mx) ** 2 for x, _ in logs)
+            elasticity = round(sum((x - mx) * (y - my) for x, y in logs) / sxx, 3) if sxx else None
+        best = max(points, key=lambda p: p.revenue)
+        name = units[0].name
+        return PriceResponse(sku=sku, name=name, points=points, elasticity=elasticity, best_price=best.price if best.revenue > 0 else None)
+    return None
+
+
 def _summary(name: str, results: list[CustomerResult]) -> VariantResult:
     n = max(1, len(results))
     return VariantResult(
@@ -121,6 +168,7 @@ async def run_experiment(
                 names.setdefault(item.sku, item.name)
     control_result = _summary("Control", base)
     control_result.top_skus = sku_sales(base, keep=focus_skus)
+    control_result.prices = _prices(control, focus_skus)
     results: list[VariantResult] = []
     for k, (name, store, applied, warnings) in enumerate(variants, start=1):
         if on_progress:
@@ -128,6 +176,7 @@ async def run_experiment(
         res = await evaluator.evaluate_customers(store, panel)
         out = _summary(name, res)
         out.applied, out.warnings = applied, warnings
+        out.prices = _prices(store, focus_skus)
         out.vs_control = compare_runs(base, res, run_a="Control", run_b=name, seed=seed).metrics
         out.focus = focus_outcomes(base, res, focus_skus, names, seed=seed)
         out.top_skus = sku_sales(res, keep=focus_skus)

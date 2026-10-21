@@ -119,6 +119,11 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 
 ### Generate a store layout
 
+The **New store** wizard can start with a furnished template or an empty layout.
+The initial layout uses your store name, type and opening hours, and is ready to
+edit as soon as the project is created. Persona generation follows the existing
+wizard flow; choosing a template does not make an LLM layout-generation call.
+
 In a project, choose **New layout → Generate a store from a template**. Search 28
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
@@ -127,7 +132,10 @@ Each format includes its own generic product assortment.
 Combine six patterns (parallel aisles, racetrack, central spine, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
 three display densities, left/center/right entry, one to four checkouts and shelf
-variants. The preview uses the same options as the saved layout. Shuffle changes
+variants. Six saved interior palettes—classic retail, warm wood, minimal white,
+industrial graphite, botanical sage and charcoal/brass—change walls, shelving,
+counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
+default palette; each building floor can use a different one. The preview uses the same options as the saved layout. Shuffle changes
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
@@ -183,15 +191,22 @@ For brand managers, category teams and research agencies (**Market** in the comm
   and link each to the shelf product it replaces. Shelf Lab and the vision shoppers use the same images.
 - **A/B tests** — a variant is a list of changes to a saved layout: a new price, a discount with the was-price on the
   tag, a promotion sign (1+1, SALE, −30 %), a move to eye level or another fixture, a new pack, or a category re-price
-  with .99 endings. One-click recipes: discount ladder, discount vs sign, eye level vs bottom shelf, price up, new pack.
+  with .99 endings. One-click recipes: discount ladder, discount vs sign, eye level vs bottom shelf, **price sweep**
+  (a demand curve with the product's elasticity and revenue-maximising price), price up, new pack.
   Every arm runs on the **same shoppers with the same random numbers** as the control, so the result reports paired
   differences with bootstrap 95 % intervals — revenue, conversion and units per visitor, and units, spend and buyers of
   each tracked product — and names a winner only when its interval clears zero. Rule shoppers answer in seconds;
-  vision shoppers also see packs and signs.
+  vision shoppers also see packs and signs. Every finished test comes with a **report** — summary and
+  recommendation, design, charts, tracked products, method — as a print-ready page (PDF) or Markdown.
 - **Concept tests** — up to four images side by side; a vision model answers as each sampled persona (with age and
   gender quotas): purchase intent, pack appeal, value, stand-out (1–5), a Van Westendorp price range, preference and
   one open answer. Results show distributions, means with CIs, top-2-box, Wilson intervals for preference, the price
   curves with the acceptable range, segment tables and verbatims; respondent-level CSV export.
+
+- **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
+  then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
+  persona and trip only and point at the steps they mean. A **group interview** asks a whole segment (say, everyone
+  who left empty-handed) one question and codes the answers into themes.
 
 Synthetic respondents are for screening and direction; calibrate against a real panel before deciding.
 
@@ -391,6 +406,11 @@ with procedural fallbacks. Authors, source URLs and checksums are in
 [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 High also uses [ambientCG Plaster 001](https://ambientcg.com/a/Plaster001), licensed CC0,
 with consistent texture scale across wall lengths, corners and rotated sections.
+Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
+avatars under MIT: textured faces and clothing, normal maps, alpha-tested hair, and
+retargeted idle/walking animations. They pause with playback and keep adult proportions
+when highlighted. Sources and conversion instructions are in
+[`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
 for photographic indoor lighting and reflections; attribution and file provenance are in
 [`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).

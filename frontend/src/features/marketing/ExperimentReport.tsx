@@ -1,14 +1,20 @@
 // A/B test result: per-arm KPIs, paired lifts with 95 % CIs (same shoppers in every arm), the tracked products and
 // what each variant changed. Everything can be downloaded as CSV for a deck or a client report.
 
-import { Download, Info, Trophy, TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Download, FileText, Info, Loader2, Sparkles, Trophy, TriangleAlert } from "lucide-react";
+
+import * as api from "@/shared/api/client";
+import { experimentMarkdownUrl, experimentReportUrl, writeNarrative } from "@/shared/api/marketing";
+import { queryKeys } from "@/shared/queries/keys";
 
 import type { ExperimentReport as Report, FocusOutcome, VariantResult } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
 
-import { LiftChart, type LiftRow } from "./charts";
+import { DemandChart, LiftChart, type LiftRow } from "./charts";
 
 const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(digits)} %`;
 const pp = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)} pt`;
@@ -25,7 +31,7 @@ function download(name: string, rows: (string | number)[][]) {
   URL.revokeObjectURL(url);
 }
 
-export function ExperimentReportView({ report: r, layoutName }: { report: Report; layoutName?: string }) {
+export function ExperimentReportView({ projectId, report: r, layoutName }: { projectId: string; report: Report; layoutName?: string }) {
   const money = (v: number) => formatMoney(v, r.currency);
   const signedMoney = (v: number) => `${v >= 0 ? "+" : "−"}${formatMoney(Math.abs(v), r.currency)}`;
   const arms = [r.control, ...r.variants];
@@ -74,8 +80,9 @@ export function ExperimentReportView({ report: r, layoutName }: { report: Report
         </div>
         <Button variant="outline" size="sm" onClick={exportCsv}><Download className="size-4" /> CSV</Button>
       </div>
+      <ReportBar projectId={projectId} experimentId={r.experiment_id} />
 
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(arms.length, 4)}, minmax(0, 1fr))` }}>
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${arms.length <= 5 ? arms.length : Math.ceil(arms.length / 2)}, minmax(0, 1fr))` }}>
         {arms.map((a, i) => {
           const spend = metric(a, "spend");
           const bought = metric(a, "bought");
@@ -101,6 +108,29 @@ export function ExperimentReportView({ report: r, layoutName }: { report: Report
         <p className="mb-3 text-xs text-muted-foreground">Same {r.panel_size} shoppers in every arm; dot = paired difference, bar = 95 % bootstrap interval. A bar that crosses 0 is within noise.</p>
         <LiftChart rows={spendRows} format={signedMoney} axisLabel="per visitor" />
       </section>
+
+      {r.price_response && (
+        <section className="rounded-2xl border bg-card p-4">
+          <h3 className="text-sm font-semibold">Price response · {r.price_response.name}</h3>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Units per 100 visitors at each tested price (bars: 95 % intervals; orange = most product revenue)
+            {r.price_response.elasticity != null && <> · elasticity across the arms ≈ <b className="num text-foreground">{r.price_response.elasticity.toFixed(2)}</b></>}
+          </p>
+          <DemandChart response={r.price_response} currency={r.currency} />
+          <table className="mt-2 w-full text-xs">
+            <thead className="text-left text-muted-foreground"><tr><th className="py-1">Arm</th><th className="text-right">Price</th><th className="text-right">Units / 100 visitors</th><th className="text-right">Product revenue / 100 visitors</th></tr></thead>
+            <tbody className="num">
+              {r.price_response.points.map((p) => (
+                <tr key={p.arm} className="border-t border-foreground/[0.06]">
+                  <td className="py-1">{p.arm}</td><td className="text-right">{money(p.price)}</td>
+                  <td className="text-right">{(p.units * 100).toFixed(1)} <span className="text-muted-foreground">[{(p.units_low * 100).toFixed(1)}, {(p.units_high * 100).toFixed(1)}]</span></td>
+                  <td className="text-right">{money(p.revenue * 100)}{p.price === r.price_response!.best_price ? " ★" : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {focusSkus.length > 0 && (
         <section className="rounded-2xl border bg-card p-4">
@@ -132,6 +162,32 @@ export function ExperimentReportView({ report: r, layoutName }: { report: Report
         <p>{layoutName ? `Control: ${layoutName} · ` : ""}{r.engine === "vlm" ? `Vision shoppers${r.model ? ` (${r.model})` : ""}` : "Rule shoppers"} · {r.panel_size} shoppers per arm · ≈{Math.round(r.visitors_per_day)} visitors a day in this store · {r.seconds}s</p>
         {r.notes.map((n) => <p key={n}>{n}</p>)}
       </footer>
+    </div>
+  );
+}
+
+/** The written report: open (print to PDF), Markdown, and an optional model-written commentary. */
+function ReportBar({ projectId, experimentId }: { projectId: string; experimentId: string }) {
+  const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
+  const [model, setModel] = useState("");
+  const write = useMutation({
+    mutationFn: () => writeNarrative(projectId, experimentId, model),
+    onSuccess: () => window.open(experimentReportUrl(projectId, experimentId), "_blank", "noopener"),
+  });
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card px-3 py-2">
+      <FileText className="size-4 text-primary" />
+      <span className="mr-auto text-sm"><b>Report</b> <span className="text-muted-foreground">· summary, recommendation, charts, method — ready to share or print to PDF</span></span>
+      <Button asChild size="sm"><a href={experimentReportUrl(projectId, experimentId)} target="_blank" rel="noopener">Open report</a></Button>
+      <Button asChild variant="outline" size="sm"><a href={experimentMarkdownUrl(projectId, experimentId)} download>Markdown</a></Button>
+      <select value={model} onChange={(e) => setModel(e.target.value)} className="h-8 max-w-[11rem] rounded-lg border bg-card/60 px-1.5 text-xs" aria-label="Model for the commentary">
+        <option value="">App's text model</option>
+        {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
+      </select>
+      <Button variant="outline" size="sm" disabled={write.isPending} onClick={() => write.mutate()} title="A language model writes a commentary from the report's numbers; it is added to the report, labelled">
+        {write.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Add commentary
+      </Button>
+      {write.error && <p className="basis-full text-xs text-destructive">{write.error.message}</p>}
     </div>
   );
 }

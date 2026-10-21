@@ -2,10 +2,10 @@
 // Van Westendorp price curves. Marks use the --viz-* tokens; every value is also in a label, tooltip or table.
 
 import { useState } from "react";
-import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, XAxis, YAxis } from "recharts";
+import { CartesianGrid, ErrorBar, Line, LineChart, ReferenceArea, ReferenceLine, XAxis, YAxis } from "recharts";
 
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/shared/components/ui/chart";
-import type { PriceRange } from "@/shared/api/marketing";
+import type { PriceRange, PriceResponse } from "@/shared/api/marketing";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
 
@@ -200,6 +200,46 @@ export function VanWestendorpChart({ price, currency }: { price: PriceRange; cur
         {(Object.keys(VW_CONFIG) as (keyof typeof VW_CONFIG)[]).map((k) => (
           <Line key={k} dataKey={k} type="monotone" stroke={`var(--color-${k})`} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--card)" }} />
         ))}
+      </LineChart>
+    </ChartContainer>
+  );
+}
+
+// ── Demand curve (price sweep) ────────────────────────────────────────────
+
+const DEMAND_CONFIG = { units: { label: "Units / 100 visitors", color: "var(--viz-1)" } } satisfies ChartConfig;
+
+/** Units of one product per 100 visitors at each tested price, with the arms' 95 % intervals. */
+export function DemandChart({ response, currency }: { response: PriceResponse; currency: string }) {
+  const data = response.points.map((p) => ({
+    price: p.price, units: p.units * 100, err: [(p.units - p.units_low) * 100, (p.units_high - p.units) * 100] as [number, number], arm: p.arm,
+  }));
+  const money = (v: number) => formatMoney(v, currency);
+  return (
+    <ChartContainer config={DEMAND_CONFIG} className="aspect-auto h-[220px] w-full">
+      <LineChart data={data} margin={{ top: 12, right: 16, bottom: 0, left: 0 }}>
+        <CartesianGrid vertical={false} stroke="var(--viz-grid)" />
+        {response.best_price != null && <ReferenceLine x={response.best_price} stroke="var(--foreground)" strokeOpacity={0.25} />}
+        <XAxis dataKey="price" type="number" domain={["dataMin", "dataMax"]} ticks={data.map((d) => d.price)} tickFormatter={money}
+          tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+        <YAxis domain={[0, "auto"]} tickCount={5} allowDecimals tickLine={false} axisLine={false} width={36} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
+        <ChartTooltip cursor={{ stroke: "var(--foreground)", strokeOpacity: 0.25 }}
+          content={<ChartTooltipContent indicator="line" labelFormatter={(_v, payload) => {
+            const d = payload?.[0]?.payload as { price?: number; arm?: string } | undefined;
+            return d?.price != null ? `${d.arm} · ${money(d.price)}` : "";
+          }} formatter={(value) => (
+            <div className="flex w-full items-center justify-between gap-3">
+              <span className="text-muted-foreground">Units / 100 visitors</span>
+              <span className="num font-semibold">{Number(value).toFixed(1)}</span>
+            </div>
+          )} />} />
+        <Line dataKey="units" type="monotone" stroke="var(--color-units)" strokeWidth={2}
+          dot={(props: { cx?: number; cy?: number; index?: number; payload?: { price: number } }) => (
+            <circle key={props.index} cx={props.cx} cy={props.cy} r={props.payload?.price === response.best_price ? 6 : 4} strokeWidth={2} stroke="var(--card)"
+              fill={props.payload?.price === response.best_price ? "var(--viz-2)" : "var(--color-units)"} />
+          )}>
+          <ErrorBar dataKey="err" width={6} strokeWidth={2} stroke="var(--color-units)" opacity={0.45} direction="y" />
+        </Line>
       </LineChart>
     </ChartContainer>
   );

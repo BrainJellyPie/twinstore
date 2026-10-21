@@ -3,7 +3,7 @@ afterwards ("why didn't you buy it?"), answered in character from the trip itsel
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.types import Action
@@ -66,5 +66,54 @@ class Interview(BaseModel):
 
 
 class InterviewQuestion(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     question: str = Field(min_length=1, max_length=600)
     model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+# ── group interviews ────────────────────────────────────────────────────────────
+
+type GroupSegment = Literal["all", "empty_handed", "buyers", "impulse", "top_spenders"]
+
+
+class GroupInterviewRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    question: str = Field(min_length=1, max_length=600)
+    segment: GroupSegment = "all"
+    persona_ids: list[str] = Field(default_factory=list[str], max_length=40, description="ask exactly these shoppers instead")
+    size: int = Field(default=12, ge=2, le=40)
+    model: str = Field(default="", description='model reference; "" = the app text model')
+    seed: int = 0
+
+
+class GroupAnswer(BaseModel):
+    persona_id: str
+    identity: str
+    age_group: str
+    gender: str
+    spent: int
+    units: int
+    answer: str = ""
+    steps: list[int] = []
+    theme: int = -1                   # index into GroupInterview.themes, -1 = not coded
+    error: str = ""
+
+
+class Theme(BaseModel):
+    label: str
+    count: int
+    share: float
+
+
+class GroupInterview(BaseModel):
+    group_id: str
+    run_id: str
+    question: str
+    segment: GroupSegment
+    model: str = ""
+    created_at: str = ""
+    answers: list[GroupAnswer] = []
+    themes: list[Theme] = []
+    errors: int = 0
