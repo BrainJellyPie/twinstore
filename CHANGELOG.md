@@ -50,6 +50,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   nothing. API: `POST /api/projects/{pid}/experiments/design`.
 - Drafting prompts list the products a question names first and share the rest across shelves, so a long catalogue
   is no longer cut off at whichever shelves come last.
+- **Write an alternative** for staff script B: the text model drafts another script for the same product and offer,
+  using only the verified facts given and an optional direction ("lead with value"), and says what it changes.
+  API: `POST /api/projects/{pid}/staff-pitches/draft-script`.
 - **Draft the study** in the conjoint builder: write the question the study should answer and the text model drafts
   the product, attributes, levels and price levels in the study's currency, bracketing comparable products of the
   active layout (cited when the model used them), with a short rationale; everything stays editable before fielding.

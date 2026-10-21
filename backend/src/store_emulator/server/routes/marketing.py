@@ -29,6 +29,7 @@ from store_emulator.domain.factorial import FactorialReport, FactorialRequest, F
 from store_emulator.engine.marketing.conjoint_design import ConjointDesign
 from store_emulator.engine.marketing.experiment_design import ExperimentDesign
 from store_emulator.engine.marketing.reading import StudyReading
+from store_emulator.engine.marketing.script_writer import ScriptDraft
 from store_emulator.engine.marketing.report import ReportNarrative
 
 from ..deps import get_config
@@ -186,6 +187,13 @@ def delete_experiment(pid: str, eid: str) -> None:
 @router.delete("/{pid}/surveys/{sid}", summary="Delete a concept test", status_code=204)
 def delete_survey(pid: str, sid: str) -> None:
     _call(lambda: mk.delete_job(pid, "survey", sid))
+
+
+@router.post("/{pid}/staff-pitches/draft-script", summary="Draft an alternative staff script", response_model=ScriptDraft)
+async def draft_pitch_script(pid: str, req: staff_pitch.ScriptDraftRequest) -> ScriptDraft:
+    """The text model writes another script for the same product and offer, using only the verified facts given.
+    Nothing runs; the draft fills script B."""
+    return await run_in_threadpool(_call, lambda: staff_pitch.draft_pitch_script(pid, req, get_config()))
 
 
 @router.post("/{pid}/staff-pitches", summary="Start a paired staff script screening test", response_model=JobStatus)

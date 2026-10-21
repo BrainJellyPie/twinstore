@@ -251,6 +251,12 @@ export interface ExperimentDesign {
 export const designExperiment = (pid: string, req: { question: string; setup_id: string; model?: string }) =>
   fetchJson<ExperimentDesign>(`${root(pid)}/experiments/design`, { method: "POST", body: JSON.stringify(req) });
 
+/** An alternative staff script for the same product and offer, written by the text model. */
+export interface ScriptDraft { name: string; script: string; differs_by: string }
+export const draftPitchScript = (pid: string, req: {
+  setup_id: string; sku: string; context: string; product_facts: string; current: string; direction?: string; model?: string;
+}) => fetchJson<ScriptDraft>(`${root(pid)}/staff-pitches/draft-script`, { method: "POST", body: JSON.stringify(req) });
+
 export const startSurvey = (pid: string, req: SurveyRequest) =>
   fetchJson<JobStatus>(`${root(pid)}/surveys`, { method: "POST", body: JSON.stringify(req) });
 export const listSurveys = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/surveys`, { signal });
