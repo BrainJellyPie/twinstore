@@ -19,11 +19,12 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
 ### Ask TwinStore from the command palette
 - Inside a store, a sentence typed in the command palette (Ctrl K) that names no command can be handed to TwinStore:
-  the text model decides whether it is an A/B test ("would a 1+1 sign on cola sell more than a 20 % cut?"), a
-  shelf test, a conjoint study, a concept test, a staff script, the neighborhood, or a question about the last run, opens that page and drafts
-  from the same words (the A/B variants, the shelf test, the study, the concept test, script B for the product the sentence names, the area settings,
-  or the analyst's answer). Nothing runs on its own; a request that fits none of these says what can be set up.
-  A request that is not picked up within two minutes is dropped. API: `POST /api/assist/route`.
+  the text model decides whether it is an A/B test ("would a 1+1 sign on cola sell more than a 20 % cut?"), a shelf
+  test, a conjoint study, a concept test, a staff script, the neighborhood, or a question about the last run, opens
+  that page and drafts from the same words (the A/B variants, the shelf test, the study, the concept test, script B
+  for the product the sentence names, the area settings, or the analyst's answer). Nothing runs on its own; a
+  request that fits none of these says what can be set up. A request that is not picked up within two minutes is
+  dropped. API: `POST /api/assist/route`.
 
 ### Ask about this run
 - A new **Ask about this run** box in a run's results answers questions such as "which shelf converts worst, and
