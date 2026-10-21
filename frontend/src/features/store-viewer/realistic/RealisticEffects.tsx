@@ -31,7 +31,7 @@ export function RealisticEffects() {
     ao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 12 });
     c.addPass(ao);
     // HDR threshold well above lit white surfaces: only LED strips / panels bloom.
-    c.addPass(new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.35, 0.3, 3.6));
+    c.addPass(new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.16, 0.22, 4.0));
     c.addPass(new OutputPass());
     return c;
   }, [gl, scene, camera, size.width, size.height, dpr]);
@@ -40,6 +40,14 @@ export function RealisticEffects() {
     frameGate.renderer = (delta) => composer.render(delta);
     return () => {
       frameGate.renderer = null;
+      // EffectComposer owns its ping-pong targets, but each pass owns the AO,
+      // bloom and output buffers. Release those on quality changes and resize.
+      for (const pass of composer.passes) {
+        pass.dispose();
+        // Three r183 leaves these two shader materials out of pass.dispose().
+        if (pass instanceof GTAOPass) pass.gtaoMaterial.dispose();
+        if (pass instanceof UnrealBloomPass) pass.materialHighPassFilter.dispose();
+      }
       composer.dispose();
     };
   }, [composer]);
