@@ -100,19 +100,19 @@ class RuleBasedConfig(BaseModel):
     # in priority order and its tail is often skipped. 1.0 = every entry equally likely (original rule).
     plan_position_decay: float = Field(default=1.0, gt=0.0, le=1.0)
     # Chance that, in a category holding one of the persona's usual products, the planner takes a usual
-    # product instead of drawing by shelf attention. Calibrated on The Complete Journey (research/validation):
+    # product instead of drawing by shelf attention. Calibrated on The Complete Journey:
     # 0.9 brings the repeat share of a trip's products to 0.59 (real 0.66; 0.12 without usual products).
     habit_prob: float = Field(default=0.9, ge=0.0, le=1.0)
     # Response to a product's price against its regular price (SlotItem.regular_price): choice weights and
     # impulse odds are multiplied by (price / regular) ** price_elasticity. Real own-price elasticity of
     # grocery items is about −0.7 at item level (M5 food sales, Walmart) and −1.8 to −2.6 at brand level
     # (meta-analyses); −1.8 here gives a measured own-price elasticity of −0.78 when half a store's
-    # products move ±20 % (research/validation/price_check.py).
+    # products move ±20 %.
     price_elasticity: float = Field(default=-1.8, ge=-5.0, le=0.0)
     browse_before_buy_prob: float = Field(default=0.6, ge=0.0, le=1.0)
     # Time at the shelf when the shopper looks before taking a product (look + pick, seconds): lognormal
     # with this median and log-sd. Fitted to 88 unplanned purchases filmed with mobile eye trackers in a
-    # supermarket (median 8.2 s, quartiles 4.5–15 s; research/validation/eyetrack_check.py). 0 keeps
+    # supermarket (median 8.2 s, quartiles 4.5–15 s). 0 keeps
     # the original uniform 3–12 s look + 2–5 s pick.
     shelf_time_median_sec: float = Field(default=8.2, ge=0.0, le=120.0)
     shelf_time_log_sd: float = Field(default=0.75, ge=0.0, le=2.0)
@@ -164,8 +164,8 @@ class VLMGlanceConfig(BaseModel):
     max_plan_items: int = Field(default=3, ge=0, le=30)
     entrance_image: bool = True
     # Products named per category in the text directory, and whether each shopper sees its own random
-    # draw of them (in random order) rather than the same top-of-shelf list. Validated on real baskets
-    # (research/validation): with 3 fixed examples 87 % of planned products were those three (54 %
+    # draw of them (in random order) rather than the same top-of-shelf list. Validated on real baskets:
+    # with 3 fixed examples 87 % of planned products were those three (54 %
     # real); with 8 in random order the product-choice JSD against real sales ranks fell 0.11 → 0.02.
     directory_examples: int = Field(default=8, ge=1, le=50)
     directory_shuffle: bool = True
@@ -181,7 +181,7 @@ class EngineConfigs(BaseModel):
 
 class SimulationConfig(BaseModel):
     # Seconds to walk one tile. Movement validated on 13,159 pedestrian tracks from a shopping center
-    # (ATC, research/validation): with a tile of 1.25 m, 1.04 s/tile gives a median per-shopper walking
+    # (ATC pedestrian tracks): with a tile of 1.25 m, 1.04 s/tile gives a median per-shopper walking
     # speed of 1.12 m/s against 1.13 m/s real (1.0 s/tile: 1.25 m/s). Diagonal steps take the straight
     # line instead of a staircase (detour index 1.27 → 1.19; real 1.06 in open corridors), and pace
     # varies between shoppers (sd of log pace 0.3; real p90 1.46 m/s, simulated 1.53).

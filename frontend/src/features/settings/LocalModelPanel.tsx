@@ -44,7 +44,7 @@ export function LocalModelPanel() {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Without a key, shoppers run on a small open model on this computer, chosen for its hardware. It is free and
-            private but slower and less accurate than a cloud model; the validation in <code className="text-xs">research/validation</code> uses cloud models.
+            private but slower and less accurate than a cloud model; the published validation uses cloud models.
           </p>
         </div>
         <div className="flex items-center gap-2">

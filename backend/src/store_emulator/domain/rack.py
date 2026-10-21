@@ -63,7 +63,7 @@ class Rack(BaseModel):
     rotation: Literal[0, 90, 180, 270] = 0
     levels: int = RACK_LEVELS  # domain only uses RACK_LEVELS, but kept for frontend round-trip fidelity
     # Bounds on one stop at the rack (seconds). Shoppers filmed with eye trackers in a supermarket spent
-    # 2–29 s at the shelf per purchase, a quarter of them under 4.5 s (research/validation/eyetrack_check.py).
+    # 2–29 s at the shelf per purchase, a quarter of them under 4.5 s.
     dwell_min: int = 2
     dwell_max: int = 30
     rack_name: str = ""

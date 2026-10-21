@@ -138,36 +138,20 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   `TWINSTORE_LOCAL_VLM_MODEL` override it. API: `GET /api/system/models`,
   `POST /api/system/local-model/start|stop`.
 
-### Situations measured on real data
-- `research/validation/real_effects.py` measures what seasons, weekends, the holiday season, a
-  big match, paydays, the weather and the time of day do to real baskets and traffic (The Complete
-  Journey, Favorita, M5, Rossmann, Walmart, Breakfast at the Frat, Instacart), and
-  `situation_check.py` puts the same situations to the simulated shoppers.
-- Supermarkets, grocers and drugstores now use a **grocery profile** fitted to those effects
-  (`engine/grocery_priors.json`, `priors_for(store.type)`); convenience stores keep the old priors.
-  Held out, the simulated situation effects correlate 0.90 (rule engine) and 0.79–0.82 (Haiku,
-  Qwen, Luna) with the real ones; the convenience priors gave 0.27–0.65.
+### Situations
+- Supermarkets, grocers and drugstores now use a **grocery profile** fitted to measured situation
+  effects (`engine/grocery_priors.json`, `priors_for(store.type)`); convenience stores keep the old priors.
 - Shoppers whose needs come from their history draw them scaled by the measured ratio of the
   situation (`ScenarioPriors.need_ratio`): more beer and snacks on a match day, more water in summer.
 - **Time of day**: per-shopper part-of-day demand and needs by arrival hour
-  (`ScenarioPriors.hour_demand`, `need_ratio["hour:evening"]`), from the same households' evening
-  vs morning trips (beer 2.1×, ice cream 1.9×); no scenario needed.
-- The scenario layer no longer files frozen pizza, cream cheese and candy bars under ice cream
-  (in a simulated summer, frozen pizza sold 1.9×; on real receipts, 0.94×).
+  (`ScenarioPriors.hour_demand`, `need_ratio["hour:evening"]`); no scenario needed.
+- The scenario layer no longer files frozen pizza, cream cheese and candy bars under ice cream.
 
-### Shoppers checked against more real data
-- Time at the shelf follows a supermarket eye-tracking study (median 8.2 s per unplanned
-  purchase; `RuleBasedConfig.shelf_time_median_sec`), on its own random stream so baskets do not
+### Shopper behaviour
+- Time at the shelf is lognormal (`RuleBasedConfig.shelf_time_median_sec`), on its own random stream so baskets do not
   change; a pick right after a look is no longer floored again by the rack minimum, and new racks
   start at a 2 s minimum.
-- Demographic differences (income, kids, household size, marital status) in what simulated
-  households buy correlate with the real ones (r 0.27 over two held-out panels for shoppers who
-  never see their own history, p 0.006; one real past receipt 0.30; rule engine 0.08, n.s.) —
-  `research/validation/demographic_effects.py`, `demographic_pooled.py`.
-- Each needed category names the household's usual products there: repeat purchases on varied
-  trips 0.44–0.53 → 0.56–0.65 for the models (real 0.73).
-- The three-model mixture ensemble (each shopper one model at random) was checked on the held-out
-  panel: between the best and the middle single model on most checks, best on product choice.
+- Each needed category names the household's usual products there, which raises repeat purchases.
 
 ### Shelf Lab — real photos as experiments
 - Budgeted restocking quantities: verified stockroom counts, whole supplier packs, explicit priority,
@@ -265,20 +249,8 @@ vs vision ranks, paired deltas with intervals and P(better). Jobs can be stopped
 A new interface with day and night themes, a navigation rail, a home screen with
 an animated store, glass controls over the 3D view, and larger type throughout.
 
-### Research
-`research/vlm_bench/`: a benchmark of VLM shoppers on controlled shelves —
-position bias (Latin square), merchandising levers, read-back accuracy, persona
-and situation conditioning, robustness to corruption, image-vs-text modality and
-cross-model agreement — with figures and paper tables regenerated from saved
-data. `research/README.md` lists paper directions.
-
 ### Calibrated against real purchases
-`research/validation/` runs the engines on households of dunnhumby's *The
-Complete Journey* (plus X5 RetailHero, Ta-Feng, Instacart, Favorita, M5 and the
-ATC pedestrian tracks), compares simulated trips with held-out real trips
-(weeks and households never used for calibration) with Claude Haiku 5.5, Qwen
-3.8 Flash and GPT-6 Luna as decision models, and feeds what is wrong back into
-the simulator:
+What a comparison with real trips exposed was fixed in the simulator:
 - **Visit times from data**: a weekday × hour traffic profile fitted from
   transaction times (`engine/generators/traffic_profile.py`). A POS export with a
   timestamp column uploaded as supplemental data now sets when personas arrive;
@@ -292,29 +264,22 @@ the simulator:
 - **Model Studio regions**: `DASHSCOPE_API_BASE` (or Settings) selects the
   region or workspace endpoint; Qwen's reasoning mode is switched off for shopper
   decisions.
-- **Walking from pedestrian tracks** (ATC shopping center, 13,159 tracks): 1.04 s
-  per tile (median per-shopper speed 1.12 m/s vs 1.13 real), diagonal steps
-  without corner cutting (detour index 1.27 → 1.19), per-shopper pace
+- **Walking**: 1.04 s per tile, diagonal steps without corner cutting, per-shopper pace
   (lognormal, sd 0.3); time runs in fractional seconds.
 - **Prices shoppers can react to**: `SlotItem.regular_price` (a sale shows as
   "$2.39 (was $2.99)" on the shelf tag), every product's price in the vision
   planner's store directory (`directory_prices`), and a constant-elasticity
   price factor in the rule planner (`price_elasticity`, default −1.8). Before,
-  neither engine responded to a 20 % price change (elasticity ≈ 0); now the rule
-  engine gives −0.78 and Haiku, Qwen and GPT-6 Luna −1.4 to −1.6, between the
-  item-level elasticity of M5 food sales (−0.70) and brand-level meta-analyses
-  (−1.76, −2.62).
+  neither engine responded to a 20 % price change.
 - **Trips that vary like real ones**: `Persona.category_rates` (share of past
   trips with each category; on each trip a seeded draw decides which of them the
   household has run out of, and the vision planner is told) and
   `Persona.basket_kinds` (categories on the same past receipt; the planner keeps
   the model's first K categories and fills the trip within them). Asked for one
-  trip, models otherwise bought every staple every time (milk on 73 % of trips
-  against 43 % on receipts) and spread six items over six categories; a
-  classifier told such baskets from real ones (`research/validation/c2st.py`).
+  trip, models otherwise bought every staple every time and spread six items over
+  six categories.
 - **Product choice**: the store directory lists every product of a category in a
-  random order per shopper (with three fixed examples, 87 % of planned products
-  were those three); `Persona.usual_products` and `habit_prob` for repeat
+  random order per shopper; `Persona.usual_products` and `habit_prob` for repeat
   purchases, shown to vision planners and used by the rule planner.
 - **Newer OpenAI models** (GPT-6): `max_tokens` is renamed to
   `max_completion_tokens` and unsupported sampling values are dropped, learned

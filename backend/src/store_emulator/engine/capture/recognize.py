@@ -141,7 +141,7 @@ def label_image(photo: Image.Image, frame: WorkFrame, band: Band, group: FacingG
 
 
 # No concrete size examples in the prompt: sub-1B models copied them ("500ml") into a third of the
-# answers whose package showed no size (see research/capture, prompt ablation).
+# answers whose package showed no size (prompt ablation).
 LABEL_SYSTEM_PROMPT = "You read products on store shelves. Answer with JSON only."
 LABEL_PROMPT = (
     "Top: one product package on a store shelf. Bottom: the shelf edge under it with its price tag.\n"
