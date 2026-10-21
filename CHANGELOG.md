@@ -6,6 +6,12 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Edit placed products together
+- Step 2 now opens a searchable SKU editor for names, prices and promotion text. Select rows for bulk changes,
+  undo local edits, inspect mixed prior values and save a separate child layout with all placements preserved.
+- Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
+  No model call or new spreadsheet is required. See the product editor section in USAGE.md.
+
 ### Model-written shopper thoughts
 - Vision shoppers now say what they came for: the model's own mission and reason become the first step of each
   journey and the speech bubble at the door ("a cold soda and something salty (thirsty)"); a shopper who turns

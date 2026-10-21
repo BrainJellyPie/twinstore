@@ -989,3 +989,37 @@ The existing `POST /api/projects/{pid}/captures` endpoint accepts an optional mu
 options returns the accepted capture; a changed payload returns 409. Receipts are retained outside removable
 capture folders. Failed/interrupted jobs are never automatically re-submitted by replaying an ID. Legacy
 uploads without request IDs retain their original behavior.
+
+## Edit placed products together without a spreadsheet
+
+Open a stocked layout, then **Step 2: Item placement → Edit products together**. Search by product name,
+SKU or rack, select individual SKUs or **Select shown**, and set a shared price or promotion. Names can be
+edited in their rows. An empty promotion clears it; an empty price is invalid. All placements of an exact
+SKU are in scope, including those hidden by your search. Mixed original names/prices remain mixed unless
+you change that specific field. SKU identities, shelf positions, images and regular prices stay unchanged.
+The current product model has no per-product category field; this editor does not rename rack categories.
+
+1. Make edits in the currency shown. Prices round half up to the currency minor unit (1.005 USD → 1.01 USD;
+   1500.5 KRW → 1501 KRW). Zero is allowed only as an explicit input; it is not an inferred missing price.
+2. Use **Undo last edit** (last 20 local edit operations) or **Reset unsaved edits** as needed.
+3. **Preview product changes** shows actual before/after variants and changed placement counts. Long variant
+   lists show the first five and their total count. No-op edits do not create a layout.
+4. **Save as new product draft**, then **Open edited layout**. The original is preserved. Return to it from
+   Layouts to undo the saved variant; this does not delete either layout.
+
+The catalog accepts up to 5,000 SKUs / 50,000 placements; each save changes at most 500 SKUs. Search displays
+up to 100 matching rows at once; narrow your search to reach others. Selected counts include hidden rows.
+Prices use nonnegative safe integers in minor units; no FX conversion or model call is made. Template and
+user-entered prices are scenario inputs, not verified shelf prices, inventory, margins or sales effects.
+
+A changed source layout or currency rejects preview/save: **Discard edits and reload products**, then review
+again. Background catalog refresh does not replace current edits. Closing discards unsaved local inputs;
+a save already accepted by the server can finish after you leave. On a connection failure, **Retry saving
+product draft** reuses the same request. Check Layouts after leaving before starting another save. An ID
+reserved before a failed disk write, or belonging to a removed draft, is not replayed into a replacement;
+check Layouts and intentionally start a new preview. Saved request receipts are retained on disk.
+
+API: `GET /api/projects/{pid}/setups/{sid}/product-edits` reads the catalog and snapshot hash.
+`POST .../preview` accepts `source_sha256`, `currency`, and unique-SKU `edits` with optional `name`, `price`
+and `promo`. `POST .../save` also requires a stable 32-character lowercase hexadecimal `request_id`.
+Keep this request unchanged for retries. Product IDs and layouts are never silently merged by name.

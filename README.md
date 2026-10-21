@@ -37,6 +37,10 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 
 ## Why TwinStore
 
+Already stocked a layout? **Step 2 → Edit products together** changes selected product names, prices and
+promotion text in the app, with a before/after preview and a separate saved layout. See
+[the product editing guide](./USAGE.md#edit-placed-products-together-without-a-spreadsheet).
+
 - **A twin, not a mock-up.** Shelf photos become planograms, floor-plan sketches become the store grid, receipts and
   POS exports score the simulation, storefront photos set how many people walk in.
 - **Shoppers that look.** Vision-language models see the shelf the shopper would see — a photoreal render or the real
