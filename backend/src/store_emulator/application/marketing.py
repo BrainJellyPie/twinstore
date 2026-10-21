@@ -29,9 +29,10 @@ from store_emulator.domain.marketing import (
     SurveyReport,
     SurveyRequest,
 )
-from store_emulator.domain.persona import Persona
 from store_emulator.domain.optimize import OptimizeObjective
+from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
+from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.marketing import (
     apply_changes,
     likert_summary,
@@ -42,17 +43,21 @@ from store_emulator.engine.marketing import (
 )
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
+from store_emulator.engine.prompting import display_price
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
-from store_emulator.engine.llm_client import LiteLLMClient
-from store_emulator.engine.prompting import display_price
 
 from .async_executor import executor
 from .capture import capture_llm_config
 from .errors import AppError
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
-from .shelf_lab import _check_id, _load_store, _personas, package_path  # pyright: ignore[reportPrivateUsage]
 from .providers import build_client
+from .shelf_lab import (  # pyright: ignore[reportPrivateUsage]
+    _check_id,
+    _load_store,
+    _personas,
+    package_path,
+)
 from .simulation import with_engine_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 

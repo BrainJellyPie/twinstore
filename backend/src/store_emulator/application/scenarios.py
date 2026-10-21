@@ -18,6 +18,7 @@ from store_emulator.engine.scenario import (
     apply_to_personas,
     apply_to_store,
     compile_scenario,
+    priors_for,
 )
 
 PRESETS: list[Scenario] = [
@@ -88,7 +89,7 @@ def prepare_inputs(
     scenario = config.scenario
     if scenario is None:
         return store, personas
-    effects = compile_scenario(scenario)
+    effects = compile_scenario(scenario, priors_for(store.type, config.scenario_priors))
     store, _ = apply_to_store(store, scenario)
     personas = apply_to_personas(personas, scenario, effects, seed=config.seed, scale_traffic=not traffic_applied)
     return store, personas

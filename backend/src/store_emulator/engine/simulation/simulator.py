@@ -14,7 +14,7 @@ from store_emulator.domain.result import AggregatedResult, FailedCustomer
 from store_emulator.domain.runner import ProgressCallback
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import PathFinder, stable_seed
-from store_emulator.engine.scenario import compile_scenario
+from store_emulator.engine.scenario import compile_scenario, priors_for
 from store_emulator.engine.validation import validate, clear_blocked_slots, log_cleared
 from .aggregator import aggregate
 from .customer_executor import execute_decision
@@ -127,6 +127,11 @@ class PerCustomerSimulationRunner:
         on_progress: ProgressCallback | None = None,
     ) -> tuple[AggregatedResult, list[CustomerResult]]:
         pathcalc_heatmap, entries, hourly_counts = self._validate_and_prepare(store, personas)
+        if self.config.scenario is not None:   # situation effects follow the store's format
+            self._scenario = compile_scenario(self.config.scenario, priors_for(store.type, self.config.scenario_priors))
+        prepare = getattr(self.engine, "prepare", None)
+        if callable(prepare):
+            prepare(store)
 
         self.engine.reset_usage()
 

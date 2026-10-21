@@ -11,8 +11,6 @@ import random
 import re
 from dataclasses import dataclass, field
 
-from pydantic import BaseModel
-
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.scenario import (
@@ -23,6 +21,7 @@ from store_emulator.domain.scenario import (
     Promotion,
     PromotionKind,
     Scenario,
+    ScenarioPriors,
     Season,
     Weather,
 )
@@ -45,6 +44,7 @@ CATEGORY_WORDS: dict[str, frozenset[str]] = {
     "snacks": frozenset({"snack", "chip", "chips", "crisps", "cookie", "cookies", "candy", "chocolate", "cracker",
                          "jerky", "nut", "nuts", "popcorn", "gum", "과자", "스낵", "초콜릿", "사탕", "젤리"}),
     "meals": frozenset({"sandwich", "lunch", "rice", "kimbap", "bento", "burger", "wrap", "salad", "pizza", "meal",
+                        "dinner", "entree",
                         "도시락", "김밥", "샌드위치", "삼각김밥", "햄버거"}),
     "alcohol": frozenset({"beer", "soju", "wine", "makgeolli", "highball", "alcohol", "liquor", "맥주", "소주", "와인",
                           "막걸리", "주류"}),
@@ -57,7 +57,9 @@ CATEGORY_WORDS: dict[str, frozenset[str]] = {
 
 
 def _tokens(text: str) -> set[str]:
-    return {t for t in re.split(r"[^\w]+", text.lower()) if t}
+    """Words of a label, plus their singular ("Soft Drinks" must match "drink", "Snacks" "snack")."""
+    words = {t for t in re.split(r"[^\w]+", text.lower()) if t}
+    return words | {w[:-1] for w in words if len(w) > 3 and w.endswith("s") and not w.endswith("ss")}
 
 
 def item_categories(rack: Rack, item: SlotItem) -> set[str]:
@@ -68,67 +70,6 @@ def item_categories(rack: Rack, item: SlotItem) -> set[str]:
 def words_categories(text: str) -> set[str]:
     words = _tokens(text)
     return {cat for cat, vocab in CATEGORY_WORDS.items() if words & vocab}
-
-
-class ScenarioPriors(BaseModel):
-    """Every effect size used below, so calibration can override any of them."""
-    weather_traffic: dict[str, float] = {
-        "clear": 1.0, "cloudy": 0.97, "rain": 0.85, "heavy_rain": 0.65, "snow": 0.7, "heatwave": 0.92,
-        "cold_snap": 0.82, "fine_dust": 0.87, "typhoon": 0.4,
-    }
-    weather_demand: dict[str, dict[str, float]] = {
-        "rain": {"hot_food": 1.2, "cold_drinks": 0.9, "health": 1.8},
-        "heavy_rain": {"hot_food": 1.3, "cold_drinks": 0.85, "health": 2.5},
-        "snow": {"hot_food": 1.4, "ice_cream": 0.5, "cold_drinks": 0.8},
-        "heatwave": {"cold_drinks": 1.6, "water": 1.8, "ice_cream": 2.0, "hot_food": 0.7},
-        "cold_snap": {"hot_food": 1.5, "ice_cream": 0.4, "cold_drinks": 0.75},
-        "fine_dust": {"health": 2.0, "water": 1.2},
-        "typhoon": {"hot_food": 1.8, "water": 1.7, "snacks": 1.3, "meals": 1.3},
-    }
-    weather_dwell: dict[str, float] = {"rain": 1.1, "heavy_rain": 1.15, "snow": 1.1, "heatwave": 1.1, "typhoon": 0.9}
-    # Typhoon / snow: people stock up.
-    weather_quantity: dict[str, float] = {"typhoon": 1.6, "snow": 1.2}
-    season_demand: dict[str, dict[str, float]] = {
-        "summer": {"cold_drinks": 1.15, "ice_cream": 1.3, "hot_food": 0.85},
-        "winter": {"hot_food": 1.2, "ice_cream": 0.7},
-        "spring": {}, "autumn": {},
-    }
-    day_traffic: dict[str, float] = {
-        "weekday": 1.0, "weekend": 0.95, "public_holiday": 0.9, "holiday_season": 0.8, "school_vacation": 0.92,
-    }
-    day_demand: dict[str, dict[str, float]] = {
-        "weekend": {"snacks": 1.2, "alcohol": 1.25, "meals": 0.9},
-        "public_holiday": {"snacks": 1.2, "alcohol": 1.3},
-        "holiday_season": {"alcohol": 1.4, "desserts": 1.3, "snacks": 1.15},
-        "school_vacation": {"ice_cream": 1.15, "snacks": 1.1, "meals": 0.9},
-    }
-    day_budget: dict[str, float] = {"holiday_season": 1.2, "weekend": 1.05}
-    # Per unit intensity: traffic multiplier = 1 + intensity × value (inside the event hours).
-    event_traffic: dict[str, float] = {
-        "festival": 0.9, "sports_match": 0.5, "concert": 0.6, "exam_period": 0.15, "payday": 0.1,
-        "competitor_opening": -0.3, "competitor_closed": 0.25, "road_construction": -0.2, "marathon": 0.4,
-        "conference": 0.3, "night_market": 0.7,
-    }
-    event_demand: dict[str, dict[str, float]] = {
-        "festival": {"cold_drinks": 1.4, "snacks": 1.3, "alcohol": 1.4},
-        "sports_match": {"alcohol": 1.8, "snacks": 1.6},
-        "concert": {"cold_drinks": 1.4, "snacks": 1.2, "water": 1.4},
-        "exam_period": {"caffeine": 1.7, "snacks": 1.25, "desserts": 1.15},
-        "payday": {"alcohol": 1.25, "desserts": 1.2, "meals": 1.1},
-        "marathon": {"water": 2.0, "cold_drinks": 1.5},
-        "conference": {"caffeine": 1.4, "meals": 1.2},
-        "night_market": {"alcohol": 1.3, "cold_drinks": 1.2},
-    }
-    event_budget: dict[str, float] = {"payday": 1.3}
-    event_impulse: dict[str, float] = {"festival": 1.2, "payday": 1.15, "night_market": 1.15, "sports_match": 1.1}
-    crowding_dwell: dict[str, float] = {"quiet": 1.1, "normal": 1.0, "busy": 0.88, "packed": 0.75}
-    crowding_impulse: dict[str, float] = {"quiet": 1.05, "normal": 1.0, "busy": 0.92, "packed": 0.8}
-    crowding_walkout: dict[str, float] = {"quiet": 0.8, "normal": 1.0, "busy": 1.4, "packed": 2.5}
-    music_dwell: dict[str, float] = {"none": 1.0, "calm": 1.08, "upbeat": 0.95}
-    music_impulse: dict[str, float] = {"none": 1.0, "calm": 1.03, "upbeat": 1.02}
-    lighting_impulse: dict[str, float] = {"dim": 0.95, "normal": 1.0, "bright": 1.04}
-    # Promotion lift on the promoted item's pick probability (before the price effect).
-    promo_lift: dict[str, float] = {"discount": 1.3, "1+1": 1.9, "2+1": 1.6, "featured": 1.35}
 
 
 @dataclass
@@ -163,15 +104,29 @@ def _clip(v: float, lo: float, hi: float) -> float:
     return min(hi, max(lo, v))
 
 
-def _temperature_demand(t: float) -> dict[str, float]:
-    """Continuous temperature response (°C), centered on a mild 18–20 °C day."""
-    clip = _clip
-    return {
-        "cold_drinks": clip(1 + 0.03 * (t - 20), 0.6, 1.8),
-        "water": clip(1 + 0.035 * (t - 20), 0.7, 1.9),
-        "ice_cream": clip(1 + 0.06 * (t - 20), 0.3, 2.4),
-        "hot_food": clip(1 - 0.02 * (t - 15), 0.6, 1.6),
-    }
+def _temperature_demand(t: float, p: ScenarioPriors) -> dict[str, float]:
+    """Continuous temperature response (°C), centered on a mild day (`ScenarioPriors.temperature_*`)."""
+    out: dict[str, float] = {}
+    for cat, slope in p.temperature_slope.items():
+        lo, hi = p.temperature_clip.get(cat, (0.3, 3.0))
+        out[cat] = _clip(1 + slope * (t - p.temperature_pivot.get(cat, 20.0)), lo, hi)
+    return out
+
+
+# Store types whose shoppers behave like the supermarket, drugstore and grocery data the grocery
+# profile was fitted on (research/validation: The Complete Journey, Favorita, M5, Rossmann, Frat).
+GROCERY_FORMATS: frozenset[str] = frozenset({"supermarket", "hypermarket", "grocery", "pharmacy", "drugstore",
+                                             "mini_mart", "minimart"})
+GROCERY_PRIORS = ScenarioPriors()   # replaced below by the fitted profile
+
+
+def priors_for(store_type: str, override: ScenarioPriors | None = None) -> ScenarioPriors:
+    """The effect sizes for a store: an explicit override, else the grocery profile for grocery
+    formats, else the convenience-store priors."""
+    if override is not None:
+        return override
+    key = (store_type or "").strip().lower().replace("-", "_").replace(" ", "_")
+    return GROCERY_PRIORS if key in GROCERY_FORMATS else ScenarioPriors()
 
 
 def compile_scenario(scenario: Scenario, priors: ScenarioPriors | None = None) -> ScenarioEffects:
@@ -182,7 +137,7 @@ def compile_scenario(scenario: Scenario, priors: ScenarioPriors | None = None) -
     _mul(fx.demand, p.weather_demand.get(w, {}))
     if scenario.temperature_c is not None:
         # The temperature curve replaces the categorical heat/cold demand for the same categories.
-        for cat, v in _temperature_demand(scenario.temperature_c).items():
+        for cat, v in _temperature_demand(scenario.temperature_c, p).items():
             fx.demand[cat] = v * (p.weather_demand.get(w, {}).get(cat, 1.0) ** 0.3)
     if scenario.season is not None:
         _mul(fx.demand, p.season_demand.get(scenario.season.value, {}))

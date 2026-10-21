@@ -13,7 +13,13 @@ from typing import Any, Literal, Protocol
 from PIL import Image, ImageDraw, ImageOps
 from pydantic import BaseModel, Field, create_model
 
-from store_emulator.domain.marketing import PreferenceShare, PriceRange, QuestionKind, ScaleSummary, SurveyAnswer
+from store_emulator.domain.marketing import (
+    PreferenceShare,
+    PriceRange,
+    QuestionKind,
+    ScaleSummary,
+    SurveyAnswer,
+)
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.types import stable_seed
 from store_emulator.engine.capture.detect import image_data_url
@@ -136,7 +142,7 @@ async def survey_panel(
                 r = await llm.generate_structured_with_image_async(
                     model, SURVEY_PROMPT, user, url, max_retries=1, seed=stable_seed("survey", seed, p.id),
                 )
-            except Exception as e:  # one respondent failing must not sink the panel
+            except Exception as e:  # noqa: BLE001 — one respondent failing must not sink the panel
                 return base.model_copy(update={"error": f"{type(e).__name__}: {str(e)[:160]}"})
         data = r.model_dump()
         upd: dict[str, Any] = {}
