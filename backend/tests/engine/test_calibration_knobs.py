@@ -163,3 +163,31 @@ def test_plan_prompt_states_basket_size() -> None:
     plain = plan_user_prompt(_persona("p"), cue, patterns[0], day=Weekday.MON, hour=9,
                              situation="", budget=None, currency="USD", directory="Milk: ...")
     assert "different item" not in plain
+
+
+def test_plan_prompt_lists_usual_products() -> None:
+    from store_emulator.application.presets.behavior import (
+        BEHAVIOR_PATTERNS as patterns,
+    )
+    from store_emulator.engine.simulation.engines.vlm_glance.prompt import (
+        plan_user_prompt,
+    )
+
+    text = plan_user_prompt(_persona("p", usual_products=["Bag of Organic Bananas", "Sour Cream"]), sample_cue(random.Random(0)),
+                            patterns[0], day=Weekday.MON, hour=9, situation="", budget=None, currency="USD",
+                            directory="Milk: ...")
+    assert "Products they usually buy: Bag of Organic Bananas, Sour Cream" in text
+
+
+def test_rule_planner_prefers_usual_products() -> None:
+    config = SimulationConfig(engine_type=EngineType.RULE_BASED, seed=5)
+    config.engines.rule_based = config.engines.rule_based.model_copy(update={"walkout_prob": 0.0, "habit_prob": 1.0})
+    store = _store()
+    pf = AStarPathFinder()
+    engine = build_engine(config, llm=None, pathfinder=pf)
+    runner = PerCustomerSimulationRunner(config, engine, pf, sample_cue, BEHAVIOR_PATTERNS)
+    personas = [_persona(f"u{i}", day=Weekday.SAT, arrival_hour=15, budget_max=50000, basket_size=1,
+                         preferred_categories=["Milk"], usual_products=["Milk 4"]) for i in range(10)]
+    _, customers = asyncio.run(runner.run(store, personas, max_concurrent=4))
+    planned = [e.product_name for c in customers for e in c.timeline if e.action == Action.BUY and e.origin == "planned"]
+    assert planned == ["Milk 4"] * 10

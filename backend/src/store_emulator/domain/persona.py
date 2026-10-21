@@ -28,6 +28,9 @@ class Persona(BaseModel):
     # Different items this trip is for (e.g. drawn from the store's own receipts). 0 = the engine
     # decides from the behavior pattern; > 0 = engines plan this many and size the trip to it.
     basket_size: int = 0
+    # Products this shopper habitually buys (names as on the shelf), e.g. from their purchase history.
+    # The VLM planner sees them; the rule planner picks one of them first with probability habit_prob.
+    usual_products: list[str] = []
 
     @property
     def budget_label(self) -> str:

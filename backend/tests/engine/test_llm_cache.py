@@ -57,3 +57,17 @@ def test_rejected_optional_params_are_learned_and_dropped():
     assert not lc._should_retry_without(model, RuntimeError("rate limit exceeded"), first)  # pyright: ignore[reportPrivateUsage]
     other = LiteLLMClient(LLMConfig(model="openai/local"))
     assert "temperature" in other._call_kwargs(None) and "thinking" not in other._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
+
+
+def test_max_tokens_is_renamed_when_the_model_wants_max_completion_tokens() -> None:
+    from store_emulator.domain.config import LLMConfig
+    from store_emulator.engine import llm_client as lc
+
+    client = lc.LiteLLMClient(LLMConfig(model="openai/test-renamed-max-tokens", api_base="http://127.0.0.1:9/v1"))
+    sent = client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
+    assert "max_tokens" in sent
+    err = RuntimeError("Unsupported parameter: 'max_tokens' is not supported with this model. "
+                       "Use 'max_completion_tokens' instead.")
+    assert lc._should_retry_without(client.model, err, sent)  # pyright: ignore[reportPrivateUsage]
+    again = client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
+    assert "max_tokens" not in again and again["max_completion_tokens"] == sent["max_tokens"]

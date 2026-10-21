@@ -99,6 +99,10 @@ class RuleBasedConfig(BaseModel):
     # planned_hit_prob × decay^k for the k-th preferred category (0-based): a shopping list is written
     # in priority order and its tail is often skipped. 1.0 = every entry equally likely (original rule).
     plan_position_decay: float = Field(default=1.0, gt=0.0, le=1.0)
+    # Chance that, in a category holding one of the persona's usual products, the planner takes a usual
+    # product instead of drawing by shelf attention. Calibrated on The Complete Journey (research/validation):
+    # 0.9 brings the repeat share of a trip's products to 0.59 (real 0.66; 0.12 without usual products).
+    habit_prob: float = Field(default=0.9, ge=0.0, le=1.0)
     browse_before_buy_prob: float = Field(default=0.6, ge=0.0, le=1.0)
     # Unplanned stops that end without a purchase, per impulse buy (noticed, looked, walked on).
     browse_only_ratio: float = Field(default=1.0, ge=0.0)
@@ -147,6 +151,12 @@ class VLMGlanceConfig(BaseModel):
     # 3 suits a convenience-store visit; supermarket trips need more (calibrate from POS lines per trip).
     max_plan_items: int = Field(default=3, ge=0, le=30)
     entrance_image: bool = True
+    # Products named per category in the text directory, and whether each shopper sees its own random
+    # draw of them (in random order) rather than the same top-of-shelf list. Validated on real baskets
+    # (research/validation): with 3 fixed examples 87 % of planned products were those three (54 %
+    # real); with 8 in random order the product-choice JSD against real sales ranks fell 0.11 → 0.02.
+    directory_examples: int = Field(default=8, ge=1, le=50)
+    directory_shuffle: bool = True
     plan_max_tokens: int = Field(default=320, ge=64, le=4096)  # plans are longer than glance answers
 
 
@@ -157,7 +167,13 @@ class EngineConfigs(BaseModel):
 
 
 class SimulationConfig(BaseModel):
-    block_move_sec: int = 1
+    # Seconds to walk one tile. Movement validated on pedestrian tracks from a shopping center (ATC,
+    # research/validation): with a tile of 1.25 m, 1.0 s/tile is 1.25 m/s against a real median of
+    # 1.08 m/s; diagonal steps take the straight line instead of a staircase (detour index 1.27 → ~1.06
+    # vs 1.06 real); pace varies between shoppers (per-person median speeds: CV ≈ 0.3).
+    block_move_sec: float = Field(default=1.16, gt=0.0, le=10.0)
+    diagonal_moves: bool = True
+    walk_pace_sd: float = Field(default=0.3, ge=0.0, le=1.0)   # sd of log pace across shoppers; 0 = everyone alike
     max_grid_size: int = 30
     dwell: dict[RackType, DwellRange] = dict(_DWELL_DEFAULTS)
     engine_type: EngineType = EngineType.PATTERN_INTENT_IMPULSE

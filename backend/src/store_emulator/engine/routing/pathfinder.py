@@ -21,9 +21,12 @@ class AStarPathFinder:
     can never hit a stale entry. Returned lists are copies.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, diagonal: bool = False) -> None:
+        # diagonal: 8-connected steps that never cut a corner (both side tiles must be walkable),
+        # so walks between stops are close to straight lines instead of staircases.
+        self.diagonal = diagonal
         self._finder = AStarFinder(  # type: ignore[reportUnknownMemberType]
-            diagonal_movement=DiagonalMovement.never,
+            diagonal_movement=DiagonalMovement.only_when_no_obstacle if diagonal else DiagonalMovement.never,
         )
         self._cache: OrderedDict[tuple[_GridKey, Position, Position], tuple[Position, ...]] = OrderedDict()
         self._lock = threading.Lock()

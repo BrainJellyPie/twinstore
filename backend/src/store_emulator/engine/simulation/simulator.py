@@ -78,6 +78,14 @@ class PerCustomerSimulationRunner:
         ]
         self._scenario = compile_scenario(config.scenario) if config.scenario is not None else None
 
+    def _seconds_per_tile(self, customer_seed: int) -> float:
+        """This shopper's walking time per tile: the configured pace times a seeded lognormal factor."""
+        sd = self.config.walk_pace_sd
+        if sd <= 0:
+            return self.config.block_move_sec
+        z = random.Random(stable_seed(customer_seed, "pace")).gauss(0.0, 1.0)
+        return self.config.block_move_sec * math.exp(sd * z)
+
     def get_engine_metadata(self) -> dict[str, object]:
         if isinstance(self.engine, EngineMetadataSource):
             return self.engine.metadata()
@@ -168,7 +176,7 @@ class PerCustomerSimulationRunner:
                             ]
                         result = execute_decision(
                             store, entry.persona_id, entry.day, entry.arrival_time,
-                            decision, self.pathfinder, self.config.block_move_sec,
+                            decision, self.pathfinder, self._seconds_per_tile(customer_seed),
                             rng=random.Random(stable_seed(customer_seed, "timeline")),
                             max_quantity=self.config.max_quantity_per_line,
                         )

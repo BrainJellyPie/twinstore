@@ -40,7 +40,12 @@ from store_emulator.domain.types import Face
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
-from store_emulator.engine.shelf_lab import apply_edits, build_views, glance_panel, summarize
+from store_emulator.engine.shelf_lab import (
+    apply_edits,
+    build_views,
+    glance_panel,
+    summarize,
+)
 from store_emulator.engine.shelf_lab.audit import diff_face, match_field, price_findings
 
 from .async_executor import executor

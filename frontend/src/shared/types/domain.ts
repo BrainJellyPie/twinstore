@@ -72,6 +72,8 @@ export interface Persona {
   behavior_tendency: string;
   /** Different items this trip is for; 0 or absent = the engine decides. */
   basket_size?: number;
+  /** Products the shopper habitually buys (shelf names). */
+  usual_products?: string[];
 }
 
 export interface TimelineEvent {

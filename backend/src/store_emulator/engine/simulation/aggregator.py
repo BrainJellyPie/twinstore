@@ -24,7 +24,7 @@ def aggregate(
     personas: list[Persona],
     pathcalc_heatmap: list[list[float]],
     *,
-    block_move_sec: int = 1,
+    block_move_sec: float = 1,
     currency: str = "USD",
 ) -> AggregatedResult:
     persona_map = {p.id: p for p in personas}

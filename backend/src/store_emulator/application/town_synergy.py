@@ -166,7 +166,7 @@ def _run_job(
         _write_status(pid, status)
 
     try:
-        pathfinder = AStarPathFinder()
+        pathfinder = AStarPathFinder(diagonal=config.diagonal_moves)
         llm = build_client(config.llm_for(EngineType.VLM_GLANCE), config.ensemble)
         request = status.request
         result = asyncio.run(vlm_basket_synergy(

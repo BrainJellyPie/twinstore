@@ -87,6 +87,16 @@ calibration) and feeds what is wrong back into the simulator:
 - **Model Studio regions**: `DASHSCOPE_API_BASE` (or Settings) selects the
   region or workspace endpoint; Qwen's reasoning mode is switched off for shopper
   decisions.
+- **Walking from pedestrian tracks** (ATC shopping center): 1.16 s per tile
+  (1.08 m/s), diagonal steps without corner cutting, per-shopper pace (lognormal,
+  sd 0.3); time runs in fractional seconds.
+- **Product choice**: the store directory lists every product of a category in a
+  random order per shopper (with three fixed examples, 87 % of planned products
+  were those three); `Persona.usual_products` and `habit_prob` for repeat
+  purchases, shown to vision planners and used by the rule planner.
+- **Newer OpenAI models** (GPT-6): `max_tokens` is renamed to
+  `max_completion_tokens` and unsupported sampling values are dropped, learned
+  from the provider's error and retried.
 
 ### Getting started
 Double-click `Parastore-Windows.bat`, `Parastore-macOS.command` or
