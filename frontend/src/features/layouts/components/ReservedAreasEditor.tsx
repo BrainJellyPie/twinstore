@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import type { LayoutOptions, ReservedArea } from "@/shared/api/client";
+import { AREA_POSITIONS, moveReservedArea, swapReservedAreaDimensions } from "../reservedAreaPlacement";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 const STARTING_POINTS = [
@@ -83,6 +84,24 @@ export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", 
             value={Number.isFinite(area[key]) ? area[key] + offset : ""}
             onChange={(e) => update(index, { [key]: e.target.value === "" ? NaN : Number(e.target.value) - offset })} />
         </div>)}
+      </div>
+      <div className="space-y-1 text-xs">
+        <p>Move area to</p>
+        <div className="flex flex-wrap gap-1.5">
+          {AREA_POSITIONS.map(([position, label]) => {
+            const moved = moveReservedArea(area, grid, position);
+            return <button key={position} type="button" aria-label={`Move area ${index + 1} to ${label.toLowerCase()}`}
+              className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-40" disabled={!moved}
+              onClick={() => { if (moved) update(index, moved); }}>{label}</button>;
+          })}
+          <button type="button" aria-label={`Swap area ${index + 1} width and depth`}
+            className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-40"
+            disabled={!swapReservedAreaDimensions(area, grid)} onClick={() => {
+              const swapped = swapReservedAreaDimensions(area, grid);
+              if (swapped) update(index, swapped);
+            }}>Swap width and depth</button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">Moves keep the size and leave the outer wall cells clear. Swapping keeps the start column and row; both dimensions must fit there. Later floor resizing does not move the area.</p>
       </div>
     </fieldset>)}
     {areas.length > 0 && <p className="text-[11px] text-muted-foreground">Dashed outlines mark these areas in the preview. They stay walkable; walls, rooms and service behavior are not added. Manual floor edits can use this space later.</p>}

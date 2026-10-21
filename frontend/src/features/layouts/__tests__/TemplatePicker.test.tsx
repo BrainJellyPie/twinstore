@@ -401,6 +401,36 @@ it("excludes chosen categories, keeps a stocked category and restores the assort
   expect((screen.getByRole("checkbox", { name: "Beer & Alcohol" }) as HTMLInputElement).checked).toBe(true);
 });
 
+it("previews moved and swapped areas without losing floor requirements", async () => {
+  mount(); await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
+  fireEvent.change(screen.getByLabelText("Depth (6–40 cells)"), { target: { value: "18" } });
+  fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "Keep quiet consultation" } });
+  fireEvent.change(screen.getByLabelText("Area starting point"), { target: { value: "consultation" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to back left" }));
+  fireEvent.click(screen.getByRole("button", { name: "Swap area 1 width and depth" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    width: 24, height: 18, reserved_areas: [
+      { label: "Consultation", x: 1, y: 1, width: 3, height: 4 },
+      { label: "Consultation 2", x: 18, y: 2, width: 4, height: 3 },
+    ],
+  }), expect.any(AbortSignal)));
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "8" } });
+  fireEvent.change(screen.getByLabelText("Depth (6–40 cells)"), { target: { value: "6" } });
+  // Resizing keeps coordinates until the user explicitly moves the second area.
+  expect((screen.getByLabelText("Area 2 start column") as HTMLInputElement).value).toBe("19");
+  fireEvent.click(screen.getByRole("button", { name: "Move area 2 to front right" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    width: 8, height: 6, reserved_areas: [
+      { label: "Consultation", x: 1, y: 1, width: 3, height: 4 },
+      { label: "Consultation 2", x: 3, y: 2, width: 4, height: 3 },
+    ],
+  }), expect.any(AbortSignal)));
+  expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Keep quiet consultation");
+});
+
 it("places gates on other walls and keeps existing pickup areas when the wall changes", async () => {
   mount();
   await screen.findByRole("img", { name: "Floor plan preview" });
