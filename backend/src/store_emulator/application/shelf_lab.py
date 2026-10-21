@@ -17,10 +17,13 @@ import re
 import shutil
 import time
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Literal, cast
 
 from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
+from filelock import FileLock, Timeout
 from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.domain.capture import CaptureResult
@@ -189,10 +192,16 @@ class PackageRead(BaseModel):
 def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", config: SimulationConfig) -> PackageRead:
     """A vision model reads the pack: name, brand and size replace the file-name guess, and an exact product of the
     layout is linked when the image was not linked yet. The reading is kept with the image."""
-    png = package_path(pid, aid)
+    with _package_edit(pid, aid) as png:
+        before = cast(dict[str, object], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
     store = _load_store(pid, setup_id) if setup_id else None
     products = [i.name for r in store.product_racks for sl in r.slots for i in sl.items] if store else []
-    names = {i.name: i.sku for r in store.product_racks for sl in r.slots for i in sl.items} if store else {}
+    names: dict[str, set[str]] = {}
+    if store:
+        for rack in store.product_racks:
+            for slot in rack.slots:
+                for item in slot.items:
+                    names.setdefault(item.name.casefold(), set()).add(item.sku)
     chosen = assistive_vision_model(model, config.engines.vlm_glance.llm)
     llm_config = capture_llm_config(config, chosen)
     if llm_config is None:
@@ -207,17 +216,21 @@ def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", con
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[shelf_lab] reading {aid} failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The pack could not be read"), 502) from e
-    meta = cast(dict[str, Any], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
-    if reading.name:
-        meta["name"] = reading.name[:80]
-    if reading.brand:
-        meta["brand"] = reading.brand[:40]
-    linked = bool(reading.shelf_product and not meta.get("sku"))
-    if linked:
-        meta["sku"] = names[reading.shelf_product]
-    meta["reading"] = {**reading.model_dump(), "model": llm_config.model, "read_at": now_iso()}
-    write_json(png.with_suffix(".json"), meta)
-    return PackageRead(asset=_asset(png), reading=reading, model=llm_config.model, linked=linked)
+    with _package_edit(pid, aid) as png:
+        meta = cast(dict[str, object], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
+        if meta != before:
+            raise AppError("The product image changed while the pack was being read. Review it before trying again.", 409)
+        if reading.name:
+            meta["name"] = reading.name[:80]
+        if reading.brand:
+            meta["brand"] = reading.brand[:40]
+        candidates = names.get(reading.shelf_product.casefold(), set())
+        linked = len(candidates) == 1 and not meta.get("sku")
+        if linked:
+            meta["sku"] = next(iter(candidates))
+        meta["reading"] = {**reading.model_dump(), "model": llm_config.model, "read_at": now_iso()}
+        write_json(png.with_suffix(".json"), meta)
+        return PackageRead(asset=_asset(png), reading=reading, model=llm_config.model, linked=bool(linked))
 
 
 def list_packages(pid: str) -> list[PackageAsset]:
@@ -227,18 +240,18 @@ def list_packages(pid: str) -> list[PackageAsset]:
 
 
 def update_package(pid: str, aid: str, upd: PackageUpdate) -> PackageAsset:
-    png = package_path(pid, aid)
-    meta = cast(dict[str, Any], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
-    for key, value in upd.model_dump(exclude_none=True).items():
-        meta[key] = str(value).strip()
-    write_json(png.with_suffix(".json"), meta)
-    return _asset(png)
+    with _package_edit(pid, aid) as png:
+        meta = cast(dict[str, object], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
+        for key, value in upd.model_dump(exclude_none=True).items():
+            meta[key] = str(value).strip()
+        write_json(png.with_suffix(".json"), meta)
+        return _asset(png)
 
 
 def delete_package(pid: str, aid: str) -> None:
-    png = package_path(pid, aid)
-    png.unlink()
-    png.with_suffix(".json").unlink(missing_ok=True)
+    with _package_edit(pid, aid) as png:
+        png.unlink()
+        png.with_suffix(".json").unlink(missing_ok=True)
 
 
 def package_path(pid: str, aid: str) -> Path:
@@ -247,6 +260,16 @@ def package_path(pid: str, aid: str) -> Path:
     if not path.exists():
         raise AppError(f"package image not found: {aid}", 404)
     return path
+
+
+@contextmanager
+def _package_edit(pid: str, aid: str) -> Iterator[Path]:
+    png = package_path(pid, aid)
+    try:
+        with FileLock(png.with_suffix(".lock"), timeout=0):
+            yield package_path(pid, aid)
+    except Timeout as exc:
+        raise AppError("The product image is being changed by another request. Try again.", 409) from exc
 
 
 # ── counterfactual edits ────────────────────────────────────────────────────────
