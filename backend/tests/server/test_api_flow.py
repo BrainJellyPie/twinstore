@@ -1,5 +1,6 @@
 """End-to-end API flow on the bundled sample project, using the LLM-free engine."""
 
+import json
 import time
 
 import pytest
@@ -43,7 +44,7 @@ def test_engines_endpoint(client):
     assert vision["uses_llm"] is True and vision["model"]
 
 
-def test_preview_runs_compare_export_and_fidelity(client):
+def test_preview_runs_compare_export_and_fidelity(client, tmp_path):
     # Both sample setups are already finalized; preview runs are allowed on them and do not touch them.
     status_a = _preview(client, "setup_7d6d", "prev_a")
     _preview(client, "setup_eaf5", "prev_b")
@@ -80,6 +81,17 @@ def test_preview_runs_compare_export_and_fidelity(client):
                       files={"file": ("pos.csv", "\n".join(rows).encode(), "text/csv")}).json()
     values = {m["name"]: m["value"] for m in fid["metrics"]}
     assert values["sku_js_similarity"] == 1.0 and values["hourly_js_similarity"] == 1.0
+
+    sku = next(e["product_sku"] for c in timeline for e in c["timeline"] if e["action"] == "buy")
+    returns = f"receipt_id,sku,qty,unit_price,hour\nrefund,{sku},-1,100,12\n".encode()
+    response = client.post(f"/api/projects/{PID}/runs/prev_a/fidelity", files={"file": ("returns.csv", returns, "text/csv")})
+    assert response.status_code == 200, response.text
+    report = response.json()
+    scores = {metric["name"]: metric["value"] for metric in report["metrics"]}
+    assert scores["sku_js_similarity"] is None and scores["sku_ndcg@10"] is None
+    assert any("negative net POS units" in note for note in report["notes"])
+    saved = json.loads((tmp_path / ".data" / PID / "runs" / "prev_a" / "output" / "fidelity.json").read_text())
+    assert saved == report
 
 
 def test_locked_setup_rejects_non_preview_runs(client):
