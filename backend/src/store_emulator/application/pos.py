@@ -36,6 +36,9 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         except UnicodeDecodeError:
             buf.seek(0)
             df = pd.read_csv(buf, dtype=str, encoding="cp949", keep_default_na=False)  # type: ignore[reportUnknownMemberType]
+    # Surplus CSV fields can make pandas infer an index and shift every named column.
+    if not isinstance(df.index, pd.RangeIndex):  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]  # pandas stubs
+        raise ValueError("POS CSV rows have more fields than the header; quote values containing commas.")
     columns: list[str] = [str(c) for c in df.columns]  # type: ignore[reportUnknownVariableType, reportUnknownArgumentType]  # pandas stubs
     lower = {c.strip().lower(): c for c in columns}
     cols: dict[str, str] = {}
