@@ -17,7 +17,7 @@ interface Model {
   textures: { source?: number; extensions?: { EXT_texture_webp?: { source: number } } }[];
   extensionsRequired: string[];
   images: { bufferView: number; mimeType: string }[];
-  meshes: { extras: { targetNames: string[] }; primitives: { material: number; targets: { POSITION: number; NORMAL: number }[] }[] }[];
+  meshes: { extras: { targetNames: string[] }; primitives: { material: number; attributes: { POSITION: number; JOINTS_0: number; WEIGHTS_0: number }; targets: { POSITION: number; NORMAL: number }[] }[] }[];
   nodes: { name?: string }[];
   skins: { joints: number[] }[];
 }
@@ -45,6 +45,36 @@ describe("bundled shopper models", () => {
       }
 
       const binaryStart = 20 + jsonLength + 8;
+      // Broken joint indices or unnormalised weights can pass a static preview
+      // and tear the face/clothing only after the first animation transition.
+      for (const primitive of model.meshes.flatMap(mesh => mesh.primitives)) {
+        const positions = model.accessors[primitive.attributes.POSITION]!;
+        const joints = model.accessors[primitive.attributes.JOINTS_0]!;
+        const weights = model.accessors[primitive.attributes.WEIGHTS_0]!;
+        expect(joints.componentType).toBe(5121);
+        expect(weights.componentType).toBe(5126);
+        expect(joints.count).toBe(positions.count);
+        expect(weights.count).toBe(positions.count);
+        const jointView = model.bufferViews[joints.bufferView]!, weightView = model.bufferViews[weights.bufferView]!;
+        const jointStart = binaryStart + jointView.byteOffset + (joints.byteOffset ?? 0);
+        const weightStart = binaryStart + weightView.byteOffset + (weights.byteOffset ?? 0);
+        let maxJoint = 0, minWeight = 1, maxWeight = 0, maxError = 0;
+        for (let i = 0; i < weights.count; i++) {
+          let total = 0;
+          for (let axis = 0; axis < 4; axis++) {
+            const weight = data.readFloatLE(weightStart + i * (weightView.byteStride ?? 16) + axis * 4);
+            total += weight;
+            minWeight = Math.min(minWeight, weight);
+            maxWeight = Math.max(maxWeight, weight);
+            maxJoint = Math.max(maxJoint, data.readUInt8(jointStart + i * (jointView.byteStride ?? 4) + axis));
+          }
+          maxError = Math.max(maxError, Math.abs(total - 1));
+        }
+        expect(maxJoint).toBeLessThan(model.skins[0]!.joints.length);
+        expect(minWeight).toBeGreaterThanOrEqual(0);
+        expect(maxWeight).toBeLessThanOrEqual(1);
+        expect(maxError).toBeLessThan(0.0001);
+      }
       expect(model.extensionsRequired).toContain("EXT_texture_webp");
       for (const material of model.materials.filter((m) => m.normalTexture)) {
         expect(material.normalTexture!.scale).toBeCloseTo(material.name.includes("head") ? 0.4 : 0.65, 5);
