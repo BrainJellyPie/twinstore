@@ -38,7 +38,13 @@ from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.engine import EngineDecision, PerCustomerContext
 from store_emulator.domain.rack import Rack
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Face, PathFinder, TokenUsage, stable_seed
+from store_emulator.domain.types import (
+    Action,
+    Face,
+    PathFinder,
+    TokenUsage,
+    stable_seed,
+)
 from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
 from store_emulator.engine.perception import (
     ShelfView,
@@ -76,6 +82,25 @@ from .prompt import (
 logger = logging.getLogger(__name__)
 
 _STOCKED_SHOWN = 8  # categories named as "still stocked at home" in the entrance prompt
+
+
+def narrate_entry(plan: ShopperPlan, mission: str, reason: str, *, entered: bool) -> ShopperPlan:
+    """The model's own words at the door: its mission (and why) becomes the thought of the ENTER step, so
+    journeys, speech bubbles and interviews show what this shopper came for, not a blank step."""
+    mission, reason = mission.strip(), reason.strip()
+    if not mission and not reason:
+        return plan
+    if not entered:
+        text = f"turns away: {reason or mission}"
+    elif reason and mission and reason.casefold() not in mission.casefold():
+        text = f"{mission} ({reason})"
+    else:
+        text = mission or reason
+    for action in plan.planned:
+        if action.action == Action.ENTER:
+            action.description = text[:240]
+            break
+    return plan
 
 
 @dataclass(frozen=True)
@@ -173,7 +198,7 @@ class VLMGlanceEngine(RuleBasedEngine):
             plan.trace = {"plan_source": source, "entered": False, "mission": decision.mission}
             self._record_plan(PlanRecord(persona.id, plan.pattern.id, source, False, decision.mission,
                                          decision.reason, named, model=model, agreement=agreement))
-            return self.close_plan(store, plan, [])
+            return narrate_entry(self.close_plan(store, plan, []), decision.mission, decision.reason, entered=False)
 
         catalog = self._catalog_for(store)
         limit = int(plan.budget * plan.tolerance) if plan.budget is not None and plan.tolerance is not None else None
@@ -243,7 +268,7 @@ class VLMGlanceEngine(RuleBasedEngine):
         plan.trace = {"plan_source": source, "entered": True, "mission": decision.mission}
         self._record_plan(PlanRecord(persona.id, plan.pattern.id, source, True, decision.mission, decision.reason,
                                      named, tuple(resolved), model=model, agreement=agreement))
-        return self.close_plan(store, plan, middle)
+        return narrate_entry(self.close_plan(store, plan, middle), decision.mission, decision.reason, entered=True)
 
     def _needs(self, context: PerCustomerContext) -> tuple[list[str], list[str]] | None:
         """Which usual categories the household has run out of this trip: one seeded draw per category
