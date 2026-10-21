@@ -110,7 +110,7 @@ export interface ExperimentReport {
 
 export interface JobStatus {
   job_id: string;
-  kind: "experiment" | "survey" | "pitch" | "shelf";
+  kind: "experiment" | "survey" | "pitch" | "shelf" | "conjoint";
   name: string;
   status: JobState;
   stage: string;
@@ -237,6 +237,8 @@ export const marketingKeys = {
   survey: (pid: string, sid: string) => ["projects", pid, "surveys", sid] as const,
   pitches: (pid: string) => ["projects", pid, "staff-pitches"] as const,
   shelfTests: (pid: string) => ["projects", pid, "shelf-tests"] as const,
+  conjoints: (pid: string) => ["projects", pid, "conjoints"] as const,
+  conjoint: (pid: string, id: string) => ["projects", pid, "conjoints", id] as const,
   shelfTest: (pid: string, id: string) => ["projects", pid, "shelf-tests", id] as const,
   pitch: (pid: string, id: string) => ["projects", pid, "staff-pitches", id] as const,
   packages: (pid: string) => ["projects", pid, "lab-packages"] as const,
@@ -354,3 +356,68 @@ export const shelfTestImageUrl = (pid: string, id: string, arm: "control" | "tes
 export interface ShelfPreview { face: string; control: string; test: string; applied: string[]; warnings: string[] }
 export const previewShelf = (pid: string, body: { setup_id: string; rack_id: string; target_sku: string; changes: VariantChange[] }, signal?: AbortSignal) =>
   fetchJson<ShelfPreview>(`${root(pid)}/shelf-tests/preview`, { method: "POST", body: JSON.stringify(body), signal });
+
+// ── conjoint ──────────────────────────────────────────────────────────────
+
+export interface ConjointAttribute { name: string; levels: string[] }
+export interface ConjointRequest {
+  name?: string;
+  product: string;
+  context?: string;
+  attributes: ConjointAttribute[];
+  /** Price levels in minor units; empty = no price attribute. */
+  prices: number[];
+  currency: string;
+  tasks: number;
+  options: number;
+  none_option: boolean;
+  panel: number;
+  age_groups: string[];
+  genders: string[];
+  model: string;
+  seed?: number;
+}
+export interface ConjointTask { profiles: number[][]; choice: number | null }
+export interface ConjointRespondent { respondent: string; age_group: string; gender: string; tasks: ConjointTask[]; why: string; error: string }
+export interface PartWorth {
+  attribute: string; level: string; utility: number; ci_low: number; ci_high: number;
+  wtp: number | null; wtp_low: number | null; wtp_high: number | null;
+}
+export interface AttributeImportance { attribute: string; importance: number; ci_low: number; ci_high: number }
+export interface ConjointFit { choices: number; log_likelihood: number; null_log_likelihood: number; mcfadden_r2: number; hit_rate: number; chance_rate: number }
+export interface ConjointSegment { segment: string; n: number; importances: Record<string, number>; none_share: number }
+export interface ConjointReport {
+  conjoint_id: string;
+  name: string;
+  model: string;
+  product: string;
+  currency: string;
+  attributes: ConjointAttribute[];
+  prices: number[];
+  options: number;
+  none_option: boolean;
+  respondents: number;
+  errors: number;
+  none_share: number;
+  part_worths: PartWorth[];
+  importances: AttributeImportance[];
+  /** Utility per minor unit of price. */
+  price_slope: number | null;
+  price_mean: number;
+  none_utility: number | null;
+  fit: ConjointFit | null;
+  segments: ConjointSegment[];
+  answers: ConjointRespondent[];
+  verbatims: string[];
+  notes: string[];
+  seconds: number;
+}
+export interface ConjointView extends JobStatus { report: ConjointReport | null; request?: ConjointRequest | null }
+
+export const startConjoint = (pid: string, req: ConjointRequest) =>
+  fetchJson<JobStatus>(`${root(pid)}/conjoints`, { method: "POST", body: JSON.stringify(req) });
+export const listConjoints = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/conjoints`, { signal });
+export const getConjoint = (pid: string, id: string, signal?: AbortSignal) => fetchJson<ConjointView>(`${root(pid)}/conjoints/${id}`, { signal });
+export const deleteConjoint = (pid: string, id: string) => fetchJson<void>(`${root(pid)}/conjoints/${id}`, { method: "DELETE" });
+export const conjointReportUrl = (pid: string, id: string) => `${BASE}${root(pid)}/conjoints/${id}/report.html`;
+export const conjointCsvUrl = (pid: string, id: string) => `${BASE}${root(pid)}/conjoints/${id}/export.csv`;

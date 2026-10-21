@@ -3,24 +3,28 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, Copy, FlaskConical, Images, Loader2, MessagesSquare, Plus, Rows3, Trash2, TriangleAlert } from "lucide-react";
+import { ClipboardList, Copy, FlaskConical, Grid3x3, Images, Loader2, MessagesSquare, Plus, Rows3, Trash2, TriangleAlert } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import {
+  deleteConjoint,
   deleteExperiment,
   deleteSurvey,
   deletePitch,
   getPitch,
   listPitches,
+  getConjoint,
   getExperiment,
   getMarketingInfo,
   getShelfTest,
   listShelfTests,
   deleteShelfTest,
   getSurvey,
+  listConjoints,
   listExperiments,
   listSurveys,
   marketingKeys,
+  type ConjointRequest,
   type ExperimentRequest,
   type JobStatus,
   type ShelfTestRequest,
@@ -29,6 +33,8 @@ import {
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 
+import { ConjointBuilder } from "./ConjointBuilder";
+import { ConjointReportView } from "./ConjointReport";
 import { ExperimentBuilder } from "./ExperimentBuilder";
 import { ExperimentReportView } from "./ExperimentReport";
 import { usePackages } from "./hooks";
@@ -41,12 +47,14 @@ import { FieldPilots } from "./FieldPilots";
 import { StaffPitchBuilder } from "./StaffPitchBuilder";
 import { StaffPitchReportView } from "./StaffPitchReport";
 
-type Tab = "ab" | "shelf" | "survey" | "pitch" | "pilot" | "products";
+type Tab = "ab" | "shelf" | "survey" | "conjoint" | "pitch" | "pilot" | "products";
+type JobTab = "ab" | "shelf" | "survey" | "conjoint" | "pitch";
 
 const TABS: { id: Tab; label: string; icon: typeof FlaskConical; blurb: string }[] = [
   { id: "ab", label: "A/B tests", icon: FlaskConical, blurb: "Price, discount, promotion, placement and packaging on the same shoppers" },
   { id: "shelf", label: "Shelf tests", icon: Rows3, blurb: "A new pack, price or sign on the shelf: pick share and stand-out on the same respondents" },
   { id: "survey", label: "Concept tests", icon: ClipboardList, blurb: "Synthetic respondents rate packs, prices and preference" },
+  { id: "conjoint", label: "Conjoint", icon: Grid3x3, blurb: "Which features and prices win the choice: part-worths, willingness to pay and a market simulator" },
   { id: "pitch", label: "Staff scripts", icon: MessagesSquare, blurb: "Compare wording with paired intent, trust and pressure ratings" },
   { id: "pilot", label: "Field pilots", icon: ClipboardList, blurb: "Preassigned staff/shift experiments and observed purchase conversion" },
   { id: "products", label: "Products", icon: Images, blurb: "Package images, brands and the shelf products they show" },
@@ -56,7 +64,7 @@ const busy = (s: JobStatus["status"]) => s === "pending" || s === "running";
 
 export function MarketingPage({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<Tab>("ab");
-  const [selected, setSelected] = useState<Record<"ab" | "shelf" | "survey" | "pitch", string | null>>({ ab: null, shelf: null, survey: null, pitch: null });
+  const [selected, setSelected] = useState<Record<JobTab, string | null>>({ ab: null, shelf: null, survey: null, conjoint: null, pitch: null });
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const setups = project.data?.setups ?? [];
   const [setupId, setSetupId] = useState("");
@@ -92,8 +100,14 @@ export function MarketingPage({ projectId }: { projectId: string }) {
     queryFn: ({ signal }) => listShelfTests(projectId, signal),
     refetchInterval: (q) => (q.state.data?.some((j) => busy(j.status)) ? 1500 : false),
   });
+  const conjoints = useQuery({
+    queryKey: marketingKeys.conjoints(projectId),
+    queryFn: ({ signal }) => listConjoints(projectId, signal),
+    refetchInterval: (q) => (q.state.data?.some((j) => busy(j.status)) ? 1500 : false),
+  });
   const jobs = useMemo(() => (tab === "ab" ? experiments.data ?? [] : tab === "shelf" ? shelfTests.data ?? [] : tab === "survey" ? surveys.data ?? []
-    : tab === "pitch" ? pitches.data ?? [] : []), [tab, experiments.data, shelfTests.data, surveys.data, pitches.data]);
+    : tab === "conjoint" ? conjoints.data ?? [] : tab === "pitch" ? pitches.data ?? [] : []),
+  [tab, experiments.data, shelfTests.data, surveys.data, conjoints.data, pitches.data]);
   const current = (tab === "products" || tab === "pilot") ? null : selected[tab];
   const select = (id: string | null) => tab !== "products" && tab !== "pilot" && setSelected((s) => ({ ...s, [tab]: id }));
   // "Duplicate and edit": the builder opens pre-filled with a finished test's request.
@@ -108,6 +122,11 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   const duplicateShelf = (req: ShelfTestRequest) => {
     if (setups.some((s) => s.id === req.setup_id)) setSetupId(req.setup_id);
     setShelfDraft({ key: Date.now(), req });
+    select("");
+  };
+  const [conjointDraft, setConjointDraft] = useState<{ key: number; req: ConjointRequest } | null>(null);
+  const duplicateConjoint = (req: ConjointRequest) => {
+    setConjointDraft({ key: Date.now(), req });
     select("");
   };
   const duplicateSurvey = (req: SurveyRequest) => {
@@ -156,7 +175,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             <button type="button" onClick={() => select("")}
               className={cn("flex items-center gap-2 rounded-2xl border-2 border-dashed px-3 py-3 text-sm transition-colors",
                 current === "" ? "border-primary text-foreground" : "border-foreground/15 text-muted-foreground hover:border-primary/60 hover:text-foreground")}>
-              <Plus className="size-4" /> New {tab === "ab" ? "A/B test" : tab === "shelf" ? "shelf test" : tab === "pitch" ? "staff script test" : "concept test"}
+              <Plus className="size-4" /> New {tab === "ab" ? "A/B test" : tab === "shelf" ? "shelf test" : tab === "pitch" ? "staff script test" : tab === "conjoint" ? "conjoint study" : "concept test"}
             </button>
             {jobs.map((j) => <JobItem key={j.job_id} projectId={projectId} job={j} active={current === j.job_id} onSelect={() => select(j.job_id)} onDeleted={() => select("")} />)}
           </aside>
@@ -174,6 +193,11 @@ export function MarketingPage({ projectId }: { projectId: string }) {
               <SurveyBuilder key={`${surveyDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
                 defaultCurrency={budgetCurrency} initial={surveyDraft?.req}
                 onStarted={(j) => { setSurveyDraft(null); select(j.job_id); }} />
+            ))}
+            {tab === "conjoint" && (current ? <ConjointJob projectId={projectId} id={current} onDuplicate={duplicateConjoint} /> : (
+              <ConjointBuilder key={`${conjointDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
+                defaultCurrency={budgetCurrency} initial={conjointDraft?.req}
+                onStarted={(j) => { setConjointDraft(null); select(j.job_id); }} />
             ))}
             {tab === "pitch" && (current ? <PitchJob projectId={projectId} id={current} /> : setup.data?.store ? (
               <StaffPitchBuilder key={activeSetup} projectId={projectId} setupId={activeSetup} products={products} currency={currency}
@@ -194,10 +218,12 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
   const qc = useQueryClient();
   const del = useMutation({
     mutationFn: () => (job.kind === "experiment" ? deleteExperiment(projectId, job.job_id) : job.kind === "pitch" ? deletePitch(projectId, job.job_id)
-      : job.kind === "shelf" ? deleteShelfTest(projectId, job.job_id) : deleteSurvey(projectId, job.job_id)),
+      : job.kind === "shelf" ? deleteShelfTest(projectId, job.job_id) : job.kind === "conjoint" ? deleteConjoint(projectId, job.job_id)
+        : deleteSurvey(projectId, job.job_id)),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: job.kind === "experiment" ? marketingKeys.experiments(projectId) : job.kind === "pitch" ? marketingKeys.pitches(projectId)
-        : job.kind === "shelf" ? marketingKeys.shelfTests(projectId) : marketingKeys.surveys(projectId) });
+        : job.kind === "shelf" ? marketingKeys.shelfTests(projectId) : job.kind === "conjoint" ? marketingKeys.conjoints(projectId)
+          : marketingKeys.surveys(projectId) });
       if (active) onDeleted();
     },
   });
@@ -292,6 +318,22 @@ function ShelfJob({ projectId, id, onDuplicate }: { projectId: string; id: strin
     <>
       {request && <DuplicateBar label="Duplicate and edit" onClick={() => onDuplicate(request)} />}
       {view.data.report ? <ShelfTestReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />}
+    </>
+  );
+}
+
+function ConjointJob({ projectId, id, onDuplicate }: { projectId: string; id: string; onDuplicate: (req: ConjointRequest) => void }) {
+  const view = useQuery({
+    queryKey: marketingKeys.conjoint(projectId, id),
+    queryFn: ({ signal }) => getConjoint(projectId, id, signal),
+    refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
+  });
+  if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
+  const request = view.data.request;
+  return (
+    <>
+      {request && <DuplicateBar label="Duplicate and edit" onClick={() => onDuplicate(request)} />}
+      {view.data.report ? <ConjointReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />}
     </>
   );
 }
