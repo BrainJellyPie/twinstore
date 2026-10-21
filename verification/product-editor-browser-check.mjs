@@ -19,8 +19,10 @@ try {
  await page.route(`**/setups/${sid}/product-edits`,route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Offline reload check'})}),{times:1});
  await page.getByRole('button',{name:'Discard edits and reload products',exact:true}).click();
  await page.getByRole('button',{name:'Discard edits and retry products',exact:true}).click();
- await page.waitForFunction(({sku,name})=>Array.from(document.querySelectorAll('input')).some(input=>input.getAttribute('aria-label')===`Name for ${sku}` && input.value===name),{sku,name});
+ await page.getByText(/0 SKUs edited\./).waitFor();
+ // Reload also resets search; this SKU can be outside the first 100 catalog rows.
  await page.getByLabel('Search products or racks',{exact:true}).fill(sku);
+ await page.waitForFunction(({sku,name})=>Array.from(document.querySelectorAll('input')).some(input=>input.getAttribute('aria-label')===`Name for ${sku}` && input.value===name),{sku,name});
  await page.getByLabel(`Select ${sku}`,{exact:true}).check();
  await page.getByLabel(`Name for ${sku}`,{exact:true}).fill('Offline edited tea');
  await page.getByLabel('Selected product price',{exact:true}).fill('1.005');

@@ -992,7 +992,8 @@ uploads without request IDs retain their original behavior.
 
 ## Edit placed products together without a spreadsheet
 
-Open a stocked layout, then **Step 2: Item placement → Edit products together**. Search by product name,
+Open a stocked draft layout in the preparation dashboard, then **Step 2: Item placement → Edit products together**.
+The editor is available while preparing a layout, not on the run playback screen. Search by product name,
 SKU or rack, select individual SKUs or **Select shown**, and set a shared price or promotion. Names can be
 edited in their rows. An empty promotion clears it; an empty price is invalid. All placements of an exact
 SKU are in scope, including those hidden by your search. Mixed original names/prices remain mixed unless

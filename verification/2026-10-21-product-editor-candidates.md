@@ -27,3 +27,6 @@ the first. Save as a new child draft; keep the original available. No time-savin
 
 Starting operator `24fea6d9`; integrated main/edge-case `113ab237` and AI UX `877ac758` at `93235d52`.
 Main contains further photo queue viewport recovery; preserve it. New editor UI stays English under AGENTS.
+Before the full verification pass, integrated AI UX `a556a035` at `a71bacc9`: product image naming,
+neighborhood description, run model-key choice and storefront failure recovery. The new product image
+naming flow overlaps the packshot candidate above and is preserved rather than implemented again.
