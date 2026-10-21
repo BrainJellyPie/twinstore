@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
-import { LAYOUT_PRIORITIES, LAYOUT_STYLES, templateRequest, validTemplateChoice, type TemplateChoice } from "../templateOptions";
+import { LAYOUT_PRIORITIES, LAYOUT_STYLES, resolveOperatingHours, templateRequest, validTemplateChoice, type OperatingHours, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
@@ -14,15 +14,17 @@ import { CompareFloorPlans } from "./CompareFloorPlans";
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, sharedDesign, sharedCurrency, showOperatingHours = true }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, sharedDesign, sharedCurrency, sharedHours = false, showOperatingHours = true }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
   budgetCurrency?: string;
   onApplyDesignToAll?: (design: NonNullable<TemplateChoice["design_theme"]>) => void;
   onApplyCurrencyToAll?: (currency: string) => void;
+  onApplyHoursToAll?: (hours: OperatingHours) => void;
   sharedDesign?: NonNullable<TemplateChoice["design_theme"]>;
   sharedCurrency?: string;
+  sharedHours?: boolean;
   showOperatingHours?: boolean;
 }) {
   const [search, setSearch] = useState("");
@@ -47,6 +49,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const tableCount = tableMix ? tableMix.two_seat + tableMix.four_seat + tableMix.six_seat : value.dining_tables ?? selected?.default_dining_tables ?? 0;
   const mixStartingCount = value.dining_tables ?? (preview.isSuccess ? preview.data.racks.filter((rack) => rack.type === "table").length : tableCount);
   const closedDays = value.closed_days ?? selected?.closed_days ?? [];
+  const operatingHours = resolveOperatingHours(value, selected);
   const activeDesign = value.design_theme ?? selected?.default_design;
   const categories = selected?.categories ?? [];
   const excluded = new Set(value.excluded_categories ?? []);
@@ -311,6 +314,15 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           </fieldset>
           <p className="text-muted-foreground">Keep at least one open weekday. These hours apply to every open day of this floor.</p>
           <button type="button" className="underline" onClick={() => update({ open_hour: null, close_hour: null, closed_days: null })}>Use format operating hours</button>
+          {onApplyHoursToAll && <div className="space-y-1 border-t pt-2">
+            <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50"
+              disabled={!operatingHours || sharedHours} onClick={() => { if (operatingHours) onApplyHoursToAll(operatingHours); }}>
+              {operatingHours && sharedHours ? "Operating hours used on all floors" : "Apply operating hours to all floors"}
+            </button>
+            <p className="text-muted-foreground">{operatingHours
+              ? `Applies ${String(operatingHours.open_hour).padStart(2, "0")}:00–${String(operatingHours.close_hour).padStart(2, "0")}:00 and ${7 - operatingHours.closed_days.length} open days to every floor. Each floor can be changed afterward.`
+              : "Choose valid hours with at least one open weekday before applying them to every floor."}</p>
+          </div>}
         </details>}
         {categories.length > 0 && <details className="space-y-2 rounded border p-2 text-xs">
           <summary className="cursor-pointer">Product categories · {includedCount} of {categories.length} included</summary>
