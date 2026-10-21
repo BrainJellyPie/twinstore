@@ -345,6 +345,28 @@ def assistive_model(requested: str, config: LLMConfig) -> str:
     return config.model
 
 
+def assistive_vision_model(requested: str, vision: LLMConfig) -> str:
+    """The vision model an assistive feature (reading a pack) uses: the one asked for; else the app's vision model,
+    unless that is the local model and it is not running while a cloud provider with a key is set up, in which case
+    that provider's fast vision model. "" = the app's vision model."""
+    if requested.strip():
+        return requested.strip()
+    if not vision.api_base or urlsplit(vision.api_base).hostname not in {"127.0.0.1", "localhost", "::1"}:
+        return ""
+    from .local_vlm import manager  # late import: local_vlm imports this module
+
+    if manager().status().state == "ready":
+        return ""
+    settings = load_settings()
+    for kind in _FALLBACK_ORDER:
+        preset = PRESETS[kind]
+        seeing = [m for m in preset.models if m.vision]
+        if seeing and _key_for(kind, settings)[0] is not None:
+            fast = next((m for m in seeing if "fast" in m.note), seeing[0])
+            return f"{kind.value}:{fast.id}"
+    return ""
+
+
 def build_client(
     config: LLMConfig, ensemble: EnsembleConfig | None = None, *, model_ref: str | None = None,
 ) -> SimLLM:

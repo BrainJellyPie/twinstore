@@ -3,10 +3,10 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Trash2, UsersRound } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, Trash2, UsersRound } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { askGroup, deleteGroup, interviewKeys, listGroups, type GroupInterview, type GroupSegment } from "@/shared/api/interview";
+import { askGroup, deleteGroup, interviewKeys, listGroups, suggestGroupQuestions, type GroupInterview, type GroupSegment } from "@/shared/api/interview";
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
@@ -38,6 +38,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, onOpen, onBack
       await qc.invalidateQueries({ queryKey: interviewKeys.groups(projectId, runId) });
     },
   });
+  const ideas = useMutation({ mutationFn: () => suggestGroupQuestions(projectId, runId, model) });
   const del = useMutation({
     mutationFn: (gid: string) => deleteGroup(projectId, runId, gid),
     onSuccess: () => qc.invalidateQueries({ queryKey: interviewKeys.groups(projectId, runId) }),
@@ -58,7 +59,23 @@ export function GroupInterviewPanel({ projectId, runId, currency, onOpen, onBack
             </button>
           ))}
         </div>
-        <textarea value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 600).join(""))} rows={3}
+        <div className="space-y-1">
+          <button type="button" onClick={() => ideas.mutate()} disabled={ideas.isPending}
+            className="inline-flex items-center gap-1 text-[0.72rem] text-primary hover:underline disabled:opacity-60">
+            {ideas.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+            {ideas.isPending ? "Reading the run…" : "Suggest questions from this run"}
+          </button>
+          {ideas.data?.map((q) => (
+            <button key={q.question} type="button" onClick={() => { setSegment(q.segment); setQuestion(q.question); }}
+              className={cn("block w-full rounded-xl border px-2.5 py-1.5 text-left text-[0.74rem] transition-colors hover:border-primary/60",
+                question === q.question && "border-primary bg-primary/[0.05]")}>
+              <span className="block">{q.question}</span>
+              <span className="block text-[0.66rem] text-muted-foreground">{SEGMENTS.find((s) => s.id === q.segment)?.label}{q.why ? ` · ${q.why}` : ""}</span>
+            </button>
+          ))}
+          {ideas.error && <p role="alert" className="text-[0.72rem] text-destructive">{ideas.error.message}</p>}
+        </div>
+        <textarea value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 600).join(""))} rows={3} aria-label="Question"
           className="w-full resize-none rounded-xl border bg-card/60 px-3 py-2 text-[0.8rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
         <div className="flex items-center gap-2 text-[0.72rem] text-muted-foreground">
           <span>Shoppers</span>

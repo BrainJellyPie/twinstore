@@ -55,6 +55,18 @@ async def upload_package(
     ))
 
 
+class PackageReadRequest(BaseModel):
+    setup_id: str = Field(default="", description="a layout whose products the pack may be linked to")
+    model: str = Field(default="", description='vision model reference; "" = the app vision model (or a cloud one when it is off)')
+
+
+@router.post("/{pid}/lab/packages/{aid}/read", summary="Read a product image with a vision model", response_model=lab.PackageRead)
+async def read_package(pid: str, aid: str, req: PackageReadRequest) -> lab.PackageRead:
+    """Name, brand and size as printed on the pack replace the file-name guess; an exact product of the layout is
+    linked when the image is not linked yet."""
+    return await run_in_threadpool(_call, lambda: lab.read_package(pid, aid, setup_id=req.setup_id, model=req.model, config=get_config()))
+
+
 @router.patch("/{pid}/lab/packages/{aid}", summary="Rename or link a product image", response_model=PackageAsset)
 def update_package(pid: str, aid: str, upd: PackageUpdate) -> PackageAsset:
     return _call(lambda: lab.update_package(pid, aid, upd))

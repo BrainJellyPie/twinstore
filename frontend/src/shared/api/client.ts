@@ -37,6 +37,12 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** The active layout as rectangles: [x, y, width, depth, fixture type] in grid cells. */
+export interface LayoutFootprint {
+  grid: [number, number];
+  racks: [number, number, number, number, "shelf" | "fridge" | "counter" | "table"][];
+}
+
 export interface ProjectListItem {
   project_id: string;
   name: string;
@@ -47,6 +53,7 @@ export interface ProjectListItem {
   created_at: string;
   updated_at: string;
   status: string;
+  footprint?: LayoutFootprint | null;
 }
 
 export interface ProjectMetadata {
@@ -1057,6 +1064,11 @@ export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
   return fetchJson(`/api/projects/${projectId}/town/generate`, { method: "POST", ...json(spec) });
 }
 
+/** The text model turns a description of the area into a generator spec; nothing is generated. */
+export function describeTown(projectId: string, req: { text: string; seed: number; model?: string }): Promise<{ spec: TownSpec; rationale: string }> {
+  return fetchJson(`/api/projects/${projectId}/town/describe`, { method: "POST", ...json(req) });
+}
+
 export function importTownFromMap(
   projectId: string,
   req: { address?: string; lat?: number; lon?: number; radius_m: number },
@@ -1743,6 +1755,13 @@ export async function uploadPackage(
 
 export function listPackages(projectId: string, signal?: AbortSignal): Promise<PackageAsset[]> {
   return fetchJson(`/api/projects/${projectId}/lab/packages`, { signal });
+}
+
+export interface PackReading { name: string; brand: string; size: string; category: string; shelf_product: string; confidence: number }
+
+/** A vision model reads the pack: printed name and brand replace the file-name guess; an exact layout product is linked. */
+export function readPackage(projectId: string, assetId: string, req: { setup_id?: string; model?: string } = {}): Promise<{ asset: PackageAsset; reading: PackReading; model: string; linked: boolean }> {
+  return fetchJson(`/api/projects/${projectId}/lab/packages/${assetId}/read`, { method: "POST", body: JSON.stringify(req) });
 }
 
 export function updatePackage(projectId: string, assetId: string, update: { name?: string; brand?: string; sku?: string }): Promise<PackageAsset> {

@@ -2,9 +2,9 @@
 // tag the brand and link each to a product of the layout. Linked images become "new package" variants in A/B
 // tests and stimuli in concept tests; Shelf Lab uses the same library.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, ImagePlus, Link2, Loader2, Scissors, Trash2 } from "lucide-react";
+import { Check, ImagePlus, Link2, Loader2, Scissors, Sparkles, Trash2 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import type { PackageAsset } from "@/shared/api/client";
@@ -15,17 +15,30 @@ import { cn } from "@/shared/utils/cn";
 import { usePackages } from "./hooks";
 import type { Product } from "./products";
 
-export function ProductDrop({ projectId, compact = false, onUploaded }: { projectId: string; compact?: boolean; onUploaded?: (a: PackageAsset[]) => void }) {
+export function ProductDrop({ projectId, compact = false, onUploaded, setupId }: {
+  projectId: string; compact?: boolean; onUploaded?: (a: PackageAsset[]) => void;
+  /** Layout whose products a read pack may be linked to. */
+  setupId?: string;
+}) {
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [cutOut, setCutOut] = useState(true);
+  const [readPacks, setReadPacks] = useState(true);
+  const [unread, setUnread] = useState(0);
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
       const out: PackageAsset[] = [];
+      let failed = 0;
       for (const f of files) {
-        out.push(await api.uploadPackage(projectId, f, { name: f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "), remove_background: cutOut }));
+        let asset = await api.uploadPackage(projectId, f, { name: f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "), remove_background: cutOut });
+        if (readPacks) {
+          // The printed name beats the file name; a pack the model cannot read keeps the file name.
+          try { asset = (await api.readPackage(projectId, asset.asset_id, { setup_id: setupId })).asset; } catch { failed += 1; }
+        }
+        out.push(asset);
       }
+      setUnread(failed);
       return out;
     },
     onSuccess: async (assets) => {
@@ -55,26 +68,35 @@ export function ProductDrop({ projectId, compact = false, onUploaded }: { projec
           {upload.isPending ? <Loader2 className="size-5 animate-spin" /> : <ImagePlus className="size-5" />}
         </span>
         <span className="min-w-0">
-          <span className="block text-sm font-semibold">{upload.isPending ? "Uploading…" : "Drop product images"}</span>
+          <span className="block text-sm font-semibold">{upload.isPending ? (readPacks ? "Uploading and reading the packs…" : "Uploading…") : "Drop product images"}</span>
           <span className="block text-xs text-muted-foreground">PNG, JPEG or WebP · several at once · packshots or phone photos</span>
         </span>
         <input ref={input} type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
       </button>
-      <label className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-        <input type="checkbox" checked={cutOut} onChange={(e) => setCutOut(e.target.checked)} />
-        Remove a plain background
-      </label>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-muted-foreground">
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={cutOut} onChange={(e) => setCutOut(e.target.checked)} />
+          Remove a plain background
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={readPacks} onChange={(e) => setReadPacks(e.target.checked)} />
+          Name packs from what they say
+        </label>
+      </div>
       {upload.error && <p className="text-xs text-destructive">{upload.error.message}</p>}
+      {unread > 0 && !upload.isPending && (
+        <p className="text-xs text-muted-foreground">{unread} pack{unread > 1 ? "s" : ""} could not be read and kept the file name; use “Read the pack” on the card to try again.</p>
+      )}
     </div>
   );
 }
 
-export function ProductLibrary({ projectId, products }: { projectId: string; products: Product[] }) {
+export function ProductLibrary({ projectId, products, setupId }: { projectId: string; products: Product[]; setupId?: string }) {
   const packages = usePackages(projectId);
   const list = packages.data ?? [];
   return (
     <div className="space-y-4">
-      <ProductDrop projectId={projectId} />
+      <ProductDrop projectId={projectId} setupId={setupId} />
       {list.length === 0 ? (
         <p className="px-1 text-sm text-muted-foreground">
           No product images yet. Add the packs you want to test — current packs, redesigns, competitor packs — then link each one to
@@ -82,17 +104,23 @@ export function ProductLibrary({ projectId, products }: { projectId: string; pro
         </p>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))] gap-3">
-          {list.map((p) => <ProductCard key={p.asset_id} projectId={projectId} asset={p} products={products} />)}
+          {list.map((p) => <ProductCard key={p.asset_id} projectId={projectId} asset={p} products={products} setupId={setupId} />)}
         </div>
       )}
     </div>
   );
 }
 
-function ProductCard({ projectId, asset, products }: { projectId: string; asset: PackageAsset; products: Product[] }) {
+function ProductCard({ projectId, asset, products, setupId }: { projectId: string; asset: PackageAsset; products: Product[]; setupId?: string }) {
   const qc = useQueryClient();
   const [name, setName] = useState(asset.name);
   const [brand, setBrand] = useState(asset.brand ?? "");
+  // A read (here or after upload) changes the saved name and brand; show them unless the user is mid-edit.
+  useEffect(() => { setName(asset.name); setBrand(asset.brand ?? ""); }, [asset.name, asset.brand]);
+  const read = useMutation({
+    mutationFn: () => api.readPackage(projectId, asset.asset_id, { setup_id: setupId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: marketingKeys.packages(projectId) }),
+  });
   const [confirm, setConfirm] = useState(false);
   const save = useMutation({
     mutationFn: (update: { name?: string; brand?: string; sku?: string }) => api.updatePackage(projectId, asset.asset_id, update),
@@ -142,7 +170,21 @@ function ProductCard({ projectId, asset, products }: { projectId: string; asset:
           </select>
           {save.isSuccess && !save.isPending && <Check className="size-3.5 text-positive" aria-label="Saved" />}
         </label>
-        <div className="num text-[0.68rem] text-muted-foreground">{asset.width}×{asset.height}px{asset.brand ? ` · ${asset.brand}` : ""}</div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="num text-[0.68rem] text-muted-foreground">{asset.width}×{asset.height}px{asset.brand ? ` · ${asset.brand}` : ""}</span>
+          <button type="button" onClick={() => read.mutate()} disabled={read.isPending}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.7rem] text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground disabled:opacity-50"
+            title="A vision model reads the name, brand and size printed on the pack">
+            {read.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Read the pack
+          </button>
+        </div>
+        {read.data && (
+          <p className="text-[0.68rem] text-muted-foreground">
+            {read.data.reading.size && `${read.data.reading.size} · `}{read.data.reading.category}
+            {read.data.linked ? " · linked to the shelf product" : ""}
+          </p>
+        )}
+        {read.error && <p role="alert" className="text-[0.68rem] text-destructive">{read.error.message}</p>}
       </div>
     </div>
   );
