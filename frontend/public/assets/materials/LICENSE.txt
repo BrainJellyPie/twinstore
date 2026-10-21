@@ -47,3 +47,12 @@ it is not a photographic scan. Source coverage is 3.85 x 3.85 metres with six
 tiles per side. The viewer fits those tiles to its existing 0.625-metre ceiling
 module (3.75-metre repeat), with a half-tile offset to centre the ceiling lights.
 Only High loads these maps. Medium keeps the procedural ceiling at the same phase.
+
+Marble 012 — ambientCG (Lennart Demes), CC0 1.0
+https://ambientcg.com/a/Marble012
+https://docs.ambientcg.com/license/
+Source: Marble012_1K-JPG.zip, Color / Roughness / NormalGL files.
+Original JPEG bytes are preserved. The API creationMethod is PBRProcedural;
+no measured coverage is supplied. The viewer authors one repeat per metre on
+checkout tops, tinted by the store's interior palette. Only High loads these
+maps, and only when a checkout top is present. Medium uses its solid finish.

@@ -576,7 +576,9 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
   Pavement 02 scan for the storefront pavement in High (world-space coordinates keep its 2.12 m coverage). Assets load
   locally with procedural fallbacks. High also uses ambientCG’s CC0 Office Ceiling 001 material for
   acoustic tiles, with matching color, roughness and normal maps; its tile grid and the Medium
-  fallback align with ceiling lights at a consistent physical scale. Authors, source URLs and checksums are in
+  fallback align with ceiling lights at a consistent physical scale. Checkout tops in High use ambientCG's CC0
+  Marble 012 color, roughness and normal maps, with consistent pattern scale across counter sizes and rotations.
+  These maps load only when a checkout is present. Authors, source URLs and checksums are in
   [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 - **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
   ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;
