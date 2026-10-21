@@ -135,7 +135,8 @@ Short real recordings of single features. Each preview loops; click it for the f
 The language control next to the theme switch supports **English, 한국어, 中文, 日本語,
 Español and Français**. It follows your browser language on first use and remembers your
 selection. Home, navigation, the command palette, store cards, search, the model notice, simulation launcher and
-new-store forms are localized, including validation, file selection and the generation review.
+new-store forms and preparation screens are localized, including validation, file selection,
+generation review and failure recovery.
 Template search and filters use the same languages. Search also accepts translated categories,
 accent and full-width variants, and template IDs; format names and descriptions remain in English.
 The command palette also searches original and translated command names. Use the arrow keys
@@ -255,6 +256,9 @@ ends, Enter or Space selects, and Tab continues to the next control. Filtering p
 the selected layout until you make another choice.
 Next, describe your customers and optionally select a CSV or XLSX file up to 10 MB. Review
 the store details before **Generate** starts persona creation with the configured model.
+If preparation fails, return to your stores or switch to another saved layout. **Delete store
+and start over** asks you to review the store name and deletion scope first. If deletion fails,
+you can try again from the same screen.
 
 ### The neighborhood
 
@@ -582,7 +586,7 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
 ## Credits
 
 - **Shoppers.** Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
-  avatars under MIT: twelve appearances with textured faces and clothing, normal maps, varying surface roughness adapted
+  avatars under MIT: fourteen appearances with textured faces and clothing, normal maps, varying surface roughness adapted
   from the original specular textures, separate face/body normal-map strengths for soft skin and clearer fabric
   detail, alpha-tested hair, authored eyelid blinks with varied timing and small gaze shifts, and retargeted breathing, varied standing,
   walking and browsing animations. They pause with playback and keep adult proportions when highlighted. Sources and
