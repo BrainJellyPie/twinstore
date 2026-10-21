@@ -22,7 +22,7 @@ from store_emulator.application.storage.io import DATA_DIR, write_json, read_jso
 from store_emulator.application.storage.generations import find_active_generation, list_generations
 from store_emulator.application.storage.setups import (
     read_setup, write_setup, list_setups, new_setup_data,
-    delete_setup, find_descendants, personas_path, setup_path,
+    delete_setup, find_descendants, metadata_path, personas_path, setup_path,
     read_state, write_state,
 )
 
@@ -601,6 +601,8 @@ def create_setup_from_source(
     - "empty": create setup with store=None. source_setup_id optional —
       when provided, used as parentId (inherits block meta); otherwise parentId=None.
     """
+    if not metadata_path(project_id).is_file():
+        raise AppError(f"project not found: {project_id}", 404)
     if mode not in ("racks_and_items", "racks", "empty"):
         raise AppError(f"unknown mode: {mode}", 400)
 

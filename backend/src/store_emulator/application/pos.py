@@ -29,13 +29,13 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         raise ValueError(f"POS file too large ({len(data) // (1024 * 1024)} MB > 50 MB)")
     buf = io.BytesIO(data)
     if filename.lower().endswith((".xlsx", ".xls")):
-        df = pd.read_excel(buf, dtype=str)  # type: ignore[reportUnknownMemberType]
+        df = pd.read_excel(buf, dtype=str, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
     else:
         try:
-            df = pd.read_csv(buf, dtype=str, encoding="utf-8-sig")  # type: ignore[reportUnknownMemberType]
+            df = pd.read_csv(buf, dtype=str, encoding="utf-8-sig", keep_default_na=False)  # type: ignore[reportUnknownMemberType]
         except UnicodeDecodeError:
             buf.seek(0)
-            df = pd.read_csv(buf, dtype=str, encoding="cp949")  # type: ignore[reportUnknownMemberType]
+            df = pd.read_csv(buf, dtype=str, encoding="cp949", keep_default_na=False)  # type: ignore[reportUnknownMemberType]
     columns: list[str] = [str(c) for c in df.columns]  # type: ignore[reportUnknownVariableType, reportUnknownArgumentType]  # pandas stubs
     lower = {c.strip().lower(): c for c in columns}
     cols: dict[str, str] = {}
@@ -53,8 +53,8 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
 
     lines: list[PosLine] = []
     for raw in df.to_dict(orient="records"):  # type: ignore[reportUnknownMemberType]
-        row: dict[str, str] = {str(k): str(v) for k, v in raw.items() if v is not None and str(v) != "nan"}  # type: ignore[reportUnknownVariableType]
-        tx, sku = row.get(cols["transaction_id"], ""), row.get(cols["sku"], "")
+        row: dict[str, str] = {str(k): str(v) for k, v in raw.items() if v is not None}  # type: ignore[reportUnknownVariableType]
+        tx, sku = row.get(cols["transaction_id"], "").strip(), row.get(cols["sku"], "").strip()
         if not tx or not sku:
             continue
         qty = _num(row.get(cols.get("quantity", ""), ""), 1.0)
@@ -64,7 +64,7 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
             price = _num(row.get(cols["line_total"], ""), 0.0) / qty if qty else 0.0
         else:
             price = 0.0
-        lines.append(PosLine(transaction_id=tx, sku=sku.strip(), quantity=qty, unit_price=price, hour=_hour(row, cols)))
+        lines.append(PosLine(transaction_id=tx, sku=sku, quantity=qty, unit_price=price, hour=_hour(row, cols)))
     if not lines:
         raise ValueError("POS file contains no usable rows")
     return lines
@@ -84,7 +84,8 @@ def _hour(row: dict[str, str], cols: dict[str, str]) -> int | None:
     if "timestamp" in cols and row.get(cols["timestamp"]):
         text = row[cols["timestamp"]].strip()
         if text.isdigit() and len(text) in (3, 4):  # HHMM, e.g. dunnhumby TRANS_TIME
-            return int(text) // 100 % 24
+            hour, minute = divmod(int(text), 100)
+            return hour if hour < 24 and minute < 60 else None
         ts = pd.to_datetime(text, errors="coerce")  # type: ignore[reportUnknownMemberType]
         if not pd.isna(ts):  # type: ignore[reportUnknownMemberType]
             return int(ts.hour)  # type: ignore[reportUnknownMemberType]

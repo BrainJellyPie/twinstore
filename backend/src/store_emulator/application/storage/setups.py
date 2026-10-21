@@ -45,9 +45,13 @@ def find_descendants(project_id: str, setup_id: str) -> list[str]:
             children_map.setdefault(pid, []).append(s["id"])
 
     result: list[str] = []
+    seen = {setup_id}
     queue = list(children_map.get(setup_id, []))
     while queue:
         sid = queue.pop(0)
+        if sid in seen:
+            continue
+        seen.add(sid)
         result.append(sid)
         queue.extend(children_map.get(sid, []))
     return result

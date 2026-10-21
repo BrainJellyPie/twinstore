@@ -16,6 +16,26 @@ function pendingLoads() {
 afterEach(() => vi.restoreAllMocks());
 
 describe("scanned material lifecycle", () => {
+  it("does not reuse disposed maps when switching back to an earlier quality", async () => {
+    const loads = pendingLoads();
+    const hook = renderHook(({ quality }: { quality: GraphicsQuality }) =>
+      useScannedMaterial("floor_tiles_08", 1, 1, quality), { initialProps: { quality: "high" } });
+    const first = loads.map(() => new THREE.Texture<HTMLImageElement>());
+    const disposed = first.map((texture) => vi.spyOn(texture, "dispose"));
+    await act(async () => { loads.forEach((load, i) => load.resolve(first[i]!)); });
+    expect(hook.result.current?.map).toBe(first[0]);
+
+    hook.rerender({ quality: "medium" });
+    hook.rerender({ quality: "high" });
+    disposed.forEach((spy) => expect(spy).toHaveBeenCalledOnce());
+    expect(hook.result.current).toBeNull();
+
+    const replacement = loads.slice(5).map(() => new THREE.Texture<HTMLImageElement>());
+    await act(async () => { loads.slice(5).forEach((load, i) => load.resolve(replacement[i]!)); });
+    expect(hook.result.current?.map).toBe(replacement[0]);
+    hook.unmount();
+  });
+
   it("publishes a complete set with linear data maps and real-world repeats", async () => {
     const loads = pendingLoads();
     const hook = renderHook(() => useScannedMaterial("floor_tiles_08", 4, 5, "high"));

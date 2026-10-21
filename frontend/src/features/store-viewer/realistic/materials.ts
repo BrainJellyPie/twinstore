@@ -76,7 +76,8 @@ export function createShellMaterials(
     trim: std("#d9dcdf", 0.5, 0.1),
     cut: std(SHELL_COLORS.cut, 0.9),
     plinth: std(SHELL_COLORS.plinth, 0.95),
-    metalWhite: std("#eceef0", 0.42, 0.25),
+    // Powder coating is a dielectric even when the substrate is steel.
+    metalWhite: std("#eceef0", 0.42, 0),
     metalGrey: std("#9ea6ae", 0.35, 0.6),
     backPanel: std("#e1e4e7", 0.6, 0.15),
     kick: std("#5c636b", 0.55, 0.35),
@@ -107,7 +108,9 @@ export function createShellMaterials(
       normalMap: woodMaps?.normalMap?.clone() ?? null,
       normalScale: new THREE.Vector2(0.3, 0.3),
     }),
-    counterTop: std("#e9e6df", 0.28, 0.02),
+    counterTop: quality === "high"
+      ? new THREE.MeshPhysicalMaterial({ color: "#e9e6df", roughness: 0.32, clearcoat: 0.28, clearcoatRoughness: 0.2 })
+      : std("#e9e6df", 0.32),
     black: std("#17191c", 0.45, 0.2),
     screen: emissive("#4f8fe8", 0.9),
     mat: std("#2f3337", 0.98),
