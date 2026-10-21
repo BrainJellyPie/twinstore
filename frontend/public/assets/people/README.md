@@ -18,7 +18,7 @@ the pinned source revision and SHA-256 records in `sources.json`.
   deterministic per-shopper intervals of 3.2–6 seconds. This cosmetic motion
   pauses with playback and stays at a natural rate during accelerated simulation.
 - Color, normal and hair-alpha textures are resized to 1024 px: JPEG for opaque
-  color, PNG for normal maps and hair alpha. Face and body materials also carry
+  color, lossless WebP for normal maps, and PNG for hair alpha. Face and body materials also carry
   512 px roughness maps derived from the original specular textures, so eyes,
   skin, hair, fabric and shoes do not all reflect light with a uniform gloss.
 - This is an artistic conversion of legacy specular data, not measured PBR
@@ -26,6 +26,9 @@ the pinned source revision and SHA-256 records in `sources.json`.
   `0.64 - 0.44 * sqrt(s)` and the body uses `0.90 - 0.65 * sqrt(s)`.
   These bounded curves retain matte skin and clothing while preserving the
   original map's locations of stronger highlights. Materials remain nonmetallic.
+- Normal maps use `EXT_texture_webp`, supported natively by Three's glTF loader.
+  The converter verifies identical decoded RGBA pixels before replacing the PNG
+  buffers; geometry, rig, animations and other image buffers are left intact.
 - The original FBX skeletons use different rest poses for each motion. Bone
   orientations are baked into the avatar's own rest skeleton. Forward root
   travel is removed; the simulation owns shopper position.
@@ -51,5 +54,6 @@ blender --background --python scripts/convert_rocketbox.py -- \
 Repeat the same command with `Female_Adult_14`, `Male_Adult_14`, `Female_Adult_11`,
 and `Male_Adult_12` for the other variants.
 
-The conversion was built with Blender 4.3.2. Refresh the output file sizes and
+The conversion was built with Blender 4.3.2 and Pillow 11.1 with WebP support.
+Refresh the output file sizes and
 checksums in `sources.json` after conversion.

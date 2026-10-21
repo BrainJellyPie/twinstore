@@ -323,37 +323,37 @@
   "project": "Microsoft Rocketbox Avatar Library",
   "license": "MIT",
   "repository": "https://github.com/microsoft/Microsoft-Rocketbox",
-  "conversion": "Blender 4.3.2; scripts/convert_rocketbox.py; facial FBX with only AU_45_Blink retained as blink; 1K JPEG color / PNG normal and alpha, 512px roughness derived artistically from original specular maps; skeletal idle + walk + browse, root travel removed, hair alpha-tested.",
+  "conversion": "Blender 4.3.2 + Pillow 11.1; scripts/convert_rocketbox.py; facial FBX with only AU_45_Blink retained as blink; 1K JPEG color / lossless WebP normals / PNG alpha, 512px roughness derived artistically from original specular maps; skeletal idle + walk + browse, root travel removed, hair alpha-tested.",
   "outputs": [
     {
       "file": "female-01.glb",
-      "bytes": 5714004,
-      "sha256": "5f8eaabb22941dcaa7dd5a4eb7df6feccd0b046bf92fbfa3e5dd7f70708fc15a"
+      "bytes": 4755584,
+      "sha256": "d1a0a93574ebcc3a4ee8b00728c13d2efef003a3f49500af9cba4ffabe8f543f"
     },
     {
       "file": "female-11.glb",
-      "bytes": 5841012,
-      "sha256": "7cde5578c68c42d8459e5cf5adf38262712c3092d7476e38f36b6d54847e3a48"
+      "bytes": 4825640,
+      "sha256": "0b34ce181ca16401eb4a94be78ee5aa99cfd484e4931ddb6ac9169f8dc3db381"
     },
     {
       "file": "female-14.glb",
-      "bytes": 6324020,
-      "sha256": "725542c5be4ce07823242b3152e5fcdbe11f260e7a120ce1a5c3b962c7699e74"
+      "bytes": 5347820,
+      "sha256": "6e980604405ea5436d9007a4fc6af4d101e25a8460175e37dd1cd23b9178abcc"
     },
     {
       "file": "male-01.glb",
-      "bytes": 5286836,
-      "sha256": "fd98643e5be7fa314ce6adf28add30ebc73659910ec78c5b9c805712aaca7532"
+      "bytes": 4416312,
+      "sha256": "5575291b24689c2ec192285e536e90dac0fcc5c4b8954469d21ba3fbe4fc38b7"
     },
     {
       "file": "male-12.glb",
-      "bytes": 4040864,
-      "sha256": "6fc228bdb43dc2d2fb54bcbe78b1dbb2b8ffd0542ff57bdbf8e4514ddc781267"
+      "bytes": 3154384,
+      "sha256": "83096b78fcd2a929a692881b3f70180c45034aee33e3a6074cc6bb1b6b92839e"
     },
     {
       "file": "male-14.glb",
-      "bytes": 4099548,
-      "sha256": "c09f36878b50d9eee706314ca050fa33c5810d8b777581248560abe93fbdbbb1"
+      "bytes": 3263368,
+      "sha256": "429fea2786c30a0c6f3d6f60d3071bd75ef090be78a8e4c58f9340d573666556"
     }
   ]
 }

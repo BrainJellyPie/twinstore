@@ -1,10 +1,12 @@
 import argparse
+import io
 import json
 import struct
 import sys
 
 import bpy
 import numpy as np
+from PIL import Image
 from pathlib import Path
 from mathutils import Vector
 
@@ -210,7 +212,7 @@ bpy.ops.export_scene.gltf(
     # Runtime blinking must not be overwritten by zero-weight body-animation keys.
     export_morph_animation=False,
 )
-print("OUTPUT", slug, (out / (slug + ".glb")).stat().st_size, flush=True)
+print("EXPORTED", slug, (out / (slug + ".glb")).stat().st_size, flush=True)
 
 # Alpha-tested hair avoids transparent-triangle sorting artifacts in a crowd.
 p = out / (slug + ".glb")
@@ -220,12 +222,58 @@ gltf = json.loads(data[20 : 20 + json_size])
 for material in gltf["materials"]:
     if "opacity" in material.get("name", ""):
         material.update(alphaMode="MASK", alphaCutoff=0.1, doubleSided=True)
+
+# Lossless WebP reduces the photographic normal maps without changing a single
+# decoded texel. Three's glTF loader supports EXT_texture_webp natively.
+binary = data[28 + json_size :]
+normal_images = {
+    gltf["textures"][material["normalTexture"]["index"]]["source"]
+    for material in gltf["materials"]
+    if "normalTexture" in material
+}
+replacements = {}
+for index in normal_images:
+    image = gltf["images"][index]
+    view = gltf["bufferViews"][image["bufferView"]]
+    start = view.get("byteOffset", 0)
+    raw = binary[start : start + view["byteLength"]]
+    # Pillow's RGB decoder would truncate a 16-bit PNG; reject that input rather
+    # than silently losing normal-map precision if export settings ever change.
+    assert raw.startswith(b"\x89PNG\r\n\x1a\n") and raw[24] == 8
+    original = Image.open(io.BytesIO(raw)).convert("RGBA")
+    packed = io.BytesIO()
+    original.save(packed, format="WEBP", lossless=True, exact=True, method=6)
+    encoded = packed.getvalue()
+    assert Image.open(io.BytesIO(encoded)).convert("RGBA").tobytes() == original.tobytes()
+    replacements[image["bufferView"]] = encoded
+    image["mimeType"] = "image/webp"
+for texture in gltf["textures"]:
+    if texture.get("source") in normal_images:
+        texture.setdefault("extensions", {})["EXT_texture_webp"] = {"source": texture.pop("source")}
+for key in ["extensionsUsed", "extensionsRequired"]:
+    if "EXT_texture_webp" not in gltf.setdefault(key, []):
+        gltf[key].append("EXT_texture_webp")
+
+# Repack views while retaining their indices, accessor offsets and bytes for
+# geometry, skeletons, animations, morphs and every other image.
+packed_binary = bytearray()
+for index, view in enumerate(gltf["bufferViews"]):
+    assert view["buffer"] == 0
+    start = view.get("byteOffset", 0)
+    chunk = replacements.get(index, binary[start : start + view["byteLength"]])
+    packed_binary.extend(b"\0" * ((-len(packed_binary)) % 4))
+    view["byteOffset"] = len(packed_binary)
+    view["byteLength"] = len(chunk)
+    packed_binary.extend(chunk)
+packed_binary.extend(b"\0" * ((-len(packed_binary)) % 4))
+gltf["buffers"][0]["byteLength"] = len(packed_binary)
 payload = json.dumps(gltf, separators=(",", ":")).encode()
 payload += b" " * ((-len(payload)) % 4)
-tail = data[20 + json_size :]
+tail = struct.pack("<II", len(packed_binary), 0x004E4942) + packed_binary
 p.write_bytes(
     struct.pack("<III", 0x46546C67, 2, 20 + len(payload) + len(tail))
     + struct.pack("<II", len(payload), 0x4E4F534A)
     + payload
     + tail
 )
+print("OUTPUT", slug, p.stat().st_size, flush=True)
