@@ -1,3 +1,4 @@
+import { useI18n } from "@/shared/i18n/i18n";
 import { cn } from "@/shared/utils/cn";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -33,27 +34,30 @@ export function StoreInfoFields({
   errors,
   disabled,
 }: StoreInfoFieldsProps) {
+  const { t } = useI18n();
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
         <label className={labelClass} htmlFor="setup-store-name">
-          Store name
+          {t("storeName")}
         </label>
         <Input
           id="setup-store-name"
           className={cn(errors?.name && errorBorderClass)}
           value={name}
-          placeholder="e.g., Downtown Convenience Store"
+          placeholder={t("storeNamePlaceholder")}
           disabled={disabled}
+          aria-required="true"
+          aria-describedby={errors?.name ? "setup-store-name-error" : undefined}
           aria-invalid={errors?.name ? true : undefined}
           onChange={(e) => onNameChange(e.target.value)}
         />
-        {errors?.name && <p className={errorTextClass}>{errors.name}</p>}
+        {errors?.name && <p id="setup-store-name-error" role="alert" className={errorTextClass}>{errors.name}</p>}
       </div>
 
       <div className="space-y-1.5">
         <label className={labelClass} htmlFor="setup-store-description">
-          Description (optional)
+          {t("descriptionOptional")}
         </label>
         <Textarea
           id="setup-store-description"
@@ -66,37 +70,41 @@ export function StoreInfoFields({
 
       <div className="space-y-1.5">
         <label className={labelClass} htmlFor="setup-store-address">
-          Address
+          {t("address")}
         </label>
         <Input
           id="setup-store-address"
           className={cn(errors?.address && errorBorderClass)}
           value={address}
-          placeholder="e.g., 123 Main St, Seoul"
+          placeholder={t("addressPlaceholder")}
           disabled={disabled}
+          aria-required="true"
+          aria-describedby={errors?.address ? "setup-store-address-error" : undefined}
           aria-invalid={errors?.address ? true : undefined}
           onChange={(e) => onAddressChange(e.target.value)}
         />
         <p className="text-xs text-muted-foreground">
-          Synthetic customers are automatically generated based on the demographics of your store's location.
+          {t("addressHint")}
         </p>
-        {errors?.address && <p className={errorTextClass}>{errors.address}</p>}
+        {errors?.address && <p id="setup-store-address-error" role="alert" className={errorTextClass}>{errors.address}</p>}
       </div>
 
       <div className="space-y-1.5">
         <label className={labelClass} htmlFor="setup-store-type">
-          Store type
+          {t("storeType")}
         </label>
         <Input
           id="setup-store-type"
           className={cn(errors?.storeType && errorBorderClass)}
           value={storeType}
-          placeholder="e.g., Convenience store"
+          placeholder={t("storeTypePlaceholder")}
           disabled={disabled}
+          aria-required="true"
+          aria-describedby={errors?.storeType ? "setup-store-type-error" : undefined}
           aria-invalid={errors?.storeType ? true : undefined}
           onChange={(e) => onStoreTypeChange(e.target.value)}
         />
-        {errors?.storeType && <p className={errorTextClass}>{errors.storeType}</p>}
+        {errors?.storeType && <p id="setup-store-type-error" role="alert" className={errorTextClass}>{errors.storeType}</p>}
       </div>
     </div>
   );

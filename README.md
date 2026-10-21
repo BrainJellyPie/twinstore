@@ -134,8 +134,9 @@ Short real recordings of single features. Each preview loops; click it for the f
 
 The language control next to the theme switch supports **English, 한국어, 中文, 日本語,
 Español and Français**. It follows your browser language on first use and remembers your
-selection. Home, navigation, store cards, search, the model notice and the simulation launcher are localized.
-Model selection is localized too. The detailed situation editor, other feature editors and technical server messages
+selection. Home, navigation, store cards, search, the model notice, simulation launcher and
+new-store forms are localized, including validation, file selection and the generation review.
+Model selection is localized too. Detailed layout and situation editors, other feature editors and technical server messages
 currently remain in English.
 
 ## What you can do
@@ -243,6 +244,8 @@ the floor editor (up to 40×40 cells) are documented in [`STORE_TEMPLATES.md`](.
 
 In the new-store wizard, choose a format, size and currency first. **Customize layout** opens
 shelf, entrance, seating and reserved-area settings; folding them keeps your edits.
+Next, describe your customers and optionally select a CSV or XLSX file up to 10 MB. Review
+the store details before **Generate** starts persona creation with the configured model.
 
 ### The neighborhood
 

@@ -1,5 +1,8 @@
 // Pure-TS validators for the CreateStoreWizard. No React imports — keeps unit tests trivial.
 
+import { translate } from "@/shared/i18n/translate";
+import type { Locale } from "@/shared/i18n/messages";
+
 export type WorkingDayPreset = "7" | "weekday" | "weekend";
 
 export const DAY_PRESETS: readonly {
@@ -55,7 +58,6 @@ export const DEFAULT_VALUES: WizardValues = {
 
 const SUPPLEMENTAL_ALLOWED_EXTS: ReadonlySet<string> = new Set(["csv", "xlsx"]);
 const SUPPLEMENTAL_MAX_BYTES = 10 * 1024 * 1024;
-const HOURS_RANGE_MSG = "Opening hours must satisfy 0 ≤ open < close ≤ 24";
 
 export type Step1Result = { ok: true } | { ok: false; errors: Step1Errors };
 export type Step2Result = { ok: true } | { ok: false; errors: Step2Errors };
@@ -64,37 +66,37 @@ function isValidHour(v: number): boolean {
   return Number.isInteger(v) && v >= 0 && v <= 24;
 }
 
-export function validateStep1(values: WizardValues): Step1Result {
+export function validateStep1(values: WizardValues, locale: Locale = "en"): Step1Result {
   const errors: Step1Errors = {};
 
-  if (values.name.trim().length < 1) errors.name = "Store name is required";
-  if (values.address.trim().length < 1) errors.address = "Address is required";
-  if (values.storeType.trim().length < 1) errors.storeType = "Store type is required";
+  if (values.name.trim().length < 1) errors.name = translate(locale, "nameRequired");
+  if (values.address.trim().length < 1) errors.address = translate(locale, "addressRequired");
+  if (values.storeType.trim().length < 1) errors.storeType = translate(locale, "storeTypeRequired");
 
   const openOk = isValidHour(values.openHour);
   const closeOk = isValidHour(values.closeHour);
   if (!openOk || !closeOk || values.openHour >= values.closeHour) {
-    if (!openOk) errors.openHour = HOURS_RANGE_MSG;
-    if (!closeOk || values.openHour >= values.closeHour) errors.closeHour = HOURS_RANGE_MSG;
+    if (!openOk) errors.openHour = translate(locale, "hoursRangeError");
+    if (!closeOk || values.openHour >= values.closeHour) errors.closeHour = translate(locale, "hoursRangeError");
   }
 
   return Object.keys(errors).length === 0 ? { ok: true } : { ok: false, errors };
 }
 
-export function validateStep2(values: WizardValues): Step2Result {
+export function validateStep2(values: WizardValues, locale: Locale = "en"): Step2Result {
   const errors: Step2Errors = {};
 
   if (values.customerProfile.trim().length < 1) {
-    errors.customerProfile = "Tell us about your customers";
+    errors.customerProfile = translate(locale, "profileRequired");
   }
 
   if (values.supplementalFile) {
     const f = values.supplementalFile;
     const ext = f.name.includes(".") ? f.name.split(".").pop()!.toLowerCase() : "";
     if (!SUPPLEMENTAL_ALLOWED_EXTS.has(ext)) {
-      errors.supplementalFile = "Unsupported format. Use .csv or .xlsx";
+      errors.supplementalFile = translate(locale, "supplementalFormatError");
     } else if (f.size > SUPPLEMENTAL_MAX_BYTES) {
-      errors.supplementalFile = "File is too large (max 10MB)";
+      errors.supplementalFile = translate(locale, "supplementalSizeError");
     }
   }
 
