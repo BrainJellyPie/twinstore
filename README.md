@@ -137,6 +137,9 @@ Español and Français**. It follows your browser language on first use and reme
 selection. Home, navigation, the command palette, store cards, search, the model notice, simulation launcher and
 new-store forms and preparation screens are localized, including validation, file selection,
 generation review and failure recovery.
+If preparation progress cannot be loaded, **Reload progress** checks the existing task
+without starting another generation. Generation is available after the initial progress check,
+and a failed customer task can be restarted explicitly.
 Template search and filters use the same languages. Search also accepts translated categories,
 accent and full-width variants, and template IDs; format names and descriptions remain in English.
 The command palette also searches original and translated command names. Use the arrow keys
