@@ -18,6 +18,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Print-ready HTML report and a long-format CSV (one row per option shown) for re-estimation elsewhere.
   API: `POST/GET /api/projects/{pid}/conjoints`, `GET .../conjoints/{id}`, `.../report.html`, `.../export.csv`.
 
+### Observed competitor unit prices
+- New **Market → Unit prices** worksheet normalizes recorded pack prices to kg, l or item, comparing eligible focal and competitor minima within an asserted comparable group and currency.
+- Stale/future observations, conditional offers and unavailable stock remain visible with exclusion reasons. Exact arithmetic preserves ties and small gaps; missing sides and zero percent denominators remain unavailable.
+- Source-hash-checked audit CSV includes inputs, scope, exact rates and comparisons. No models, price changes or sales-effect claims.
+
 ### Paired price × sign analysis
 - Completed A/B reports can review a supported 2×2 price/discount × promotion-sign design without extra
   simulation/model calls. New runs retain minimal shopper outcomes before intersection; legacy aggregate
