@@ -106,6 +106,8 @@ class LayoutOptions(BaseModel):
     table_mix: DiningTableMix | None = None
     table_rotation: int = Field(default=0, strict=True, ge=0, le=90, multiple_of=90)
     table_clearance: int = Field(default=1, ge=1, le=3)
+    table_clearance_x: int | None = Field(default=None, strict=True, ge=1, le=4)
+    table_clearance_y: int | None = Field(default=None, strict=True, ge=1, le=4)
     seating_zone: SeatingZone = "auto"
     reserved_areas: list[ReservedArea] = Field(default_factory=list[ReservedArea], max_length=8)
     excluded_categories: list[TemplateCategoryId] = Field(default_factory=list[str], max_length=64)

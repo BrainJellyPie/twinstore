@@ -310,6 +310,16 @@ and reused in layout and building options files.
 The perimeter pattern keeps its wall-based arrangement. Shelf direction is saved
 with the other options and can differ between floors or layout alternatives.
 
+**Left–right table gap** and **Back–front table gap** override the shared
+**Space around dining tables** setting independently. Choose 1–4 cells in either
+direction, or **Shared** to use the existing 1–3-cell setting. Directions follow
+the floor columns and rows, even after a table rotates. The gaps separate
+dining groups and keep nearby interior displays clear; reserved areas remain
+walkable. Larger gaps reduce seating capacity. Default seating adapts; explicit
+table counts that cannot fit return an adjustment message. **Use shared table
+gaps** clears both overrides. Layout priorities that set table spacing also
+restore the shared gaps. Options are saved independently for each floor.
+
 Use **Keep areas clear → Add reserved area** to leave up to eight named rectangles
 open for consultation, pickup, events or later customization. Set their starting
 column and row (counting from 1 at the back-left corner), width and depth. Areas

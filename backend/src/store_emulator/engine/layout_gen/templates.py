@@ -761,7 +761,9 @@ def generate_store(
         b.add(RackType.SHELF, w - 1, y, category=cat, faces=[Face.W], rotation=270)
 
     # Place larger mixed groups first; every footprint includes its chairs.
-    clearance = options.table_clearance
+    clearance_x = options.table_clearance if options.table_clearance_x is None else options.table_clearance_x
+    clearance_y = options.table_clearance if options.table_clearance_y is None else options.table_clearance_y
+    clearance_label = f"{clearance_x}-cell" if clearance_x == clearance_y else f"{clearance_x}-cell left-right and {clearance_y}-cell back-front"
     mix = options.table_mix
     groups: list[tuple[int, int | None]] = [(options.dining_seats, options.dining_tables)] if mix is None else [
         (6, mix.six_seat), (4, mix.four_seat), (2, mix.two_seat),
@@ -773,9 +775,9 @@ def generate_store(
         if target == 0:
             continue
         table_width, table_depth = (2, seats // 2) if options.table_rotation == 90 else (seats // 2, 2)
-        step_x, step_y = (clearance + table_width, clearance + table_depth) if mix is None else (1, 1)
-        table_positions = [(x, y) for y in range(clearance + 1, h - clearance - table_depth, step_y)
-                           for x in range(clearance + 1, w - clearance - table_width, step_x)]
+        step_x, step_y = (clearance_x + table_width, clearance_y + table_depth) if mix is None else (1, 1)
+        table_positions = [(x, y) for y in range(clearance_y + 1, h - clearance_y - table_depth, step_y)
+                           for x in range(clearance_x + 1, w - clearance_x - table_width, step_x)]
         table_positions = [(x, y) for x, y in table_positions
                            if all(b.free(cx, cy) and (cx, cy) not in clear_center
                                   for cx in range(x, x + table_width) for cy in range(y, y + table_depth))]
@@ -803,13 +805,13 @@ def generate_store(
                          rack_name=f"Dining table {table_index}", rack_desc=f"{seat_label} seats; furniture only")
             b.racks.append(table)
             b.taken.update(table.occupied_positions)
-            dining_clearance.update((cx, cy) for cx in range(x - clearance, x + table_width + clearance)
-                                    for cy in range(y - clearance, y + table_depth + clearance))
+            dining_clearance.update((cx, cy) for cx in range(x - clearance_x, x + table_width + clearance_x)
+                                    for cy in range(y - clearance_y, y + table_depth + clearance_y))
             placed += 1
         if requested is not None and placed < requested:
             if mix is not None:
-                raise ValueError(f"This mixed dining arrangement can place {placed} of the requested {requested} {seats}-seat tables after larger tables, with {clearance}-cell circulation space. Reduce the mix or clearance, change the seating zone or rotation, or enlarge the floor.")
-            raise ValueError(f"This {w}×{h} grid fits at most {placed} dining tables with {clearance}-cell circulation space, the selected aisle pattern and requested reserved areas. Reduce the table count or clearance, adjust the layout or increase the grid size.")
+                raise ValueError(f"This mixed dining arrangement can place {placed} of the requested {requested} {seats}-seat tables after larger tables, with {clearance_label} circulation space. Reduce the mix or clearance, change the seating zone or rotation, or enlarge the floor.")
+            raise ValueError(f"This {w}×{h} grid fits at most {placed} dining tables with {clearance_label} circulation space, the selected aisle pattern and requested reserved areas. Reduce the table count or clearance, adjust the layout or increase the grid size.")
 
     # Every populated face opens onto a continuous aisle. Cross-aisles split
     # long shelf runs, and the front two rows stay clear for checkout circulation.
