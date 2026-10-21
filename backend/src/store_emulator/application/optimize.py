@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 _MIN_STATUS_INTERVAL_SEC = 0.5
 
 
-_cancel_requests: set[str] = set()
+_cancel_requests: set[tuple[str, str]] = set()
 
 
 class OptimizationStatus(BaseModel):
@@ -156,7 +156,7 @@ def cancel_optimization(pid: str, job_id: str) -> OptimizationStatus:
     """Ask a running job to stop at its next step (between surrogate phases and VLM layout runs)."""
     status = _read_status(pid, job_id)
     if status.status in ("pending", "running"):
-        _cancel_requests.add(job_id)
+        _cancel_requests.add((pid, job_id))
     return status
 
 
@@ -191,7 +191,8 @@ def _run_job(
                 spec.objective,
             )
             validation = select_personas(personas, spec.validation_size, seed=spec.seed + 1)
-            result = asyncio.run(optimize(store, spec, evaluator, validation_personas=validation, on_progress=on_progress))
+            result = asyncio.run(optimize(store, spec, evaluator, validation_personas=validation, on_progress=on_progress,
+                                          should_stop=lambda: (pid, status.job_id) in _cancel_requests))
         else:
             pathfinder = AStarPathFinder(diagonal=vlm_config.diagonal_moves)
             llm = build_client(vlm_config.llm_for(EngineType.VLM_GLANCE), vlm_config.ensemble)
@@ -205,8 +206,10 @@ def _run_job(
                 cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, pathfinder=pathfinder,
                 model_label=judge.model or vlm_config.llm_for(EngineType.VLM_GLANCE).model,
                 on_phase=on_phase, on_progress=on_progress,
-                should_stop=lambda: status.job_id in _cancel_requests,
+                should_stop=lambda: (pid, status.job_id) in _cancel_requests,
             ))
+        if (pid, status.job_id) in _cancel_requests:
+            raise OptimizationCanceled("optimization canceled before publishing its result")
         write_json(_dir(pid, status.job_id) / "result.json", json.loads(result.model_dump_json()))
         status.status = "completed"
         status.phase = "done"
@@ -219,7 +222,7 @@ def _run_job(
         logger.exception(f"[optimize] job {status.job_id} failed")
         status.status = "failed"
         status.error = f"{type(e).__name__}: {e}"[:500]
-    _cancel_requests.discard(status.job_id)
+    _cancel_requests.discard((pid, status.job_id))
     status.finished_at = now_iso()
     _write_status(pid, status)
 
