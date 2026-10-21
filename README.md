@@ -184,6 +184,9 @@ save reports fixtures outside the new bounds so you can adjust the floor first.
 Select a shelf, counter, dining group or gate and use the move arrows to shift it
 one cell at a time. The full footprint must fit in clear space; paired entrances
 and exits move together. Names, designs and rotation stay with the fixture.
+For longer moves, choose **Move to a cell** and click the new top-left position
+on the grid. Occupied or out-of-bounds targets leave the fixture in place so you
+can pick another location; **Cancel placement** or Escape cancels the move.
 
 Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
 with a department store, shop with upstairs café, pharmacy/wellness building or

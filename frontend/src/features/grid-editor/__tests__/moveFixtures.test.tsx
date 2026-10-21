@@ -73,3 +73,40 @@ it("keeps selection on a moved dining group and saves its name and new position"
     racks: [{ ...table, rack_name: "Window table", position: [1, 2] }, shelf],
   } });
 });
+
+it("places a multi-cell fixture at the clicked top-left cell even when selected from another footprint cell", async () => {
+  const initialSetup = setup([table, shelf]);
+  const onSaved = vi.fn();
+  render(<GridEditorDialog open pid="p" sid="s" initialSetup={initialSetup} onClose={vi.fn()} onSaved={onSaved} />);
+  fireEvent.click(screen.getByTestId("grid-cell-3-3"));
+  fireEvent.click(screen.getByRole("button", { name: "Move to a cell" }));
+  expect((screen.getByTestId("grid-save-button") as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByTestId("grid-cell-7-7"));
+  expect(screen.getByRole("alert").textContent).toContain("inside the floor");
+  expect(screen.getByRole("button", { name: "Cancel placement" })).toBeTruthy();
+  fireEvent.click(screen.getByTestId("grid-cell-4-3"));
+  expect(screen.getByRole("alert").textContent).toContain("overlaps");
+  fireEvent.click(screen.getByTestId("grid-cell-6-6"));
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByTestId("grid-cell-6-6").getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByTestId("grid-cell-7-7").getAttribute("data-rack-id")).toBe(table.id);
+  fireEvent.click(screen.getByTestId("grid-save-button"));
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+  expect(save).toHaveBeenCalledWith("p", "s", { store: { ...initialSetup.store,
+    racks: [{ ...table, position: [6, 6] }, shelf],
+  } });
+});
+
+it("cancels placement with Escape without closing the editor or moving the fixture", async () => {
+  const initialSetup = setup([table, shelf]);
+  const onClose = vi.fn();
+  render(<GridEditorDialog open pid="p" sid="s" initialSetup={initialSetup} onClose={onClose} onSaved={vi.fn()} />);
+  fireEvent.click(screen.getByTestId("grid-cell-3-3"));
+  fireEvent.click(screen.getByRole("button", { name: "Move to a cell" }));
+  fireEvent.keyDown(screen.getByTestId("grid-editor-dialog"), { key: "Escape" });
+  expect(onClose).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: "Cancel placement" })).toBeNull();
+  expect((screen.getByTestId("grid-save-button") as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByTestId("grid-save-button"));
+  await waitFor(() => expect(save).toHaveBeenCalledWith("p", "s", { store: initialSetup.store }));
+});
