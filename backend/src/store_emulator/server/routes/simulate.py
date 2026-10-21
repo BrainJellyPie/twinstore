@@ -14,6 +14,7 @@ from store_emulator.domain.config import EngineType, ExposureModel, PlanPolicy, 
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.scenario import Scenario
+from store_emulator.domain.types import RESOURCE_ID_PATTERN, ResourceId
 from store_emulator.server.schemas import EngineInfo, SimulationStartResponse
 from ..deps import get_config
 
@@ -25,8 +26,8 @@ class SimulateRequest(BaseModel):
     """Simulation run request. Executed against the server-stored setup.
 
     Every option is optional and overrides the server configuration for this run only."""
-    setup_id: str = Field(description="Setup ID")
-    run_id: str | None = Field(default=None, description="run ID (auto-generated if omitted)")
+    setup_id: ResourceId = Field(description="Setup ID")
+    run_id: ResourceId | None = Field(default=None, description="run ID (auto-generated if omitted)")
     engine_type: EngineType | None = Field(default=None, description="`pattern_intent_impulse` (LLM) or `rule_based` (instant, no LLM cost)")
     seed: int | None = Field(default=None, description="Run seed. Equal seeds across layouts give paired (common-random-number) comparisons")
     replicate: int | None = Field(default=None, ge=0, description="Replicate index for repeated runs of the same layout")
@@ -210,8 +211,8 @@ async def get_diagnostics(pid: str, run_id: str) -> dict[str, Any]:
 @router.get("/{pid}/compare", summary="Paired A/B comparison of two runs", response_model=ComparisonReport)
 async def compare(
     pid: str,
-    a: str = Query(description="baseline run id"),
-    b: str = Query(description="variant run id"),
+    a: str = Query(pattern=RESOURCE_ID_PATTERN, description="baseline run id"),
+    b: str = Query(pattern=RESOURCE_ID_PATTERN, description="variant run id"),
     n_bootstrap: int = Query(default=2000, ge=200, le=20000),
 ) -> ComparisonReport:
     """Per-customer paired comparison (B − A) with bootstrap confidence intervals.

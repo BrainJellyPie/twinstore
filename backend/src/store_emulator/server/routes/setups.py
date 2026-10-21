@@ -8,6 +8,7 @@ from store_emulator.application import setups as setup_service
 from store_emulator.application import generation_async
 from store_emulator.application.errors import AppError
 from store_emulator.application.storage.generations import read_status
+from store_emulator.domain.types import ResourceId
 from store_emulator.server.deps import get_config
 from store_emulator.server.schemas import (
     ClearedSlotInfo,
@@ -63,7 +64,7 @@ class CreateSetupRequest(BaseModel):
     - empty: `source_setup_id` optional (used as parentId if given; otherwise root setup).
     """
     mode: Literal["racks_and_items", "racks", "empty"] = Field(description="generation mode")
-    source_setup_id: str | None = Field(
+    source_setup_id: ResourceId | None = Field(
         default=None,
         description="source setup id to copy from. Optional when mode=empty.",
     )
