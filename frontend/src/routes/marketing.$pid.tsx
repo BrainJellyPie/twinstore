@@ -8,5 +8,5 @@ export const Route = createFileRoute("/marketing/$pid")({
 
 function MarketingRoute() {
   const { pid } = Route.useParams();
-  return <MarketingPage projectId={pid} />;
+  return <MarketingPage key={pid} projectId={pid} />;
 }
