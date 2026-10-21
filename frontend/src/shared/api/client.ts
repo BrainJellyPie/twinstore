@@ -1083,6 +1083,7 @@ export interface SynergyExample {
 }
 
 export interface VLMSynergyResult {
+  currency?: string | null;
   venue_id: string;
   venue_name: string;
   category: string;

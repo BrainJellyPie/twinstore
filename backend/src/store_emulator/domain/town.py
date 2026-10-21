@@ -289,6 +289,7 @@ class VLMSynergyResult(BaseModel):
     day_type: DayType
     scenario: str = ""
     model: str = ""
+    currency: str | None = None
     visitors_with: float  # focal visitors per day, demand model
     visitors_without: float
     delta_visitors: float

@@ -150,3 +150,22 @@ def test_vlm_basket_synergy_pairs_the_same_visitors_with_and_without_the_venue(t
     # Unaffected visitors are simulated once: 12 with the venue + the affected ones again.
     assert phases[-1][1] == phases[-1][2] == 12 + result.affected_customers
     assert result.vlm_requests == llm.calls and result.plan_errors == 0
+
+
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY", "EUR"])
+@pytest.mark.parametrize("legacy_store", [False, True])
+def test_synergy_results_record_the_simulation_currency_and_keep_legacy_results_unknown(town, currency, legacy_store):
+    from store_emulator.domain.town import VLMSynergyResult
+    store = Store.model_validate_json((SAMPLE / "store.json").read_text())
+    store.currency = None if legacy_store else currency
+    store.weekly_schedule = [DaySchedule(day=Weekday.WED, is_open=True, open_hour=9, close_hour=10)]
+    pool = [Persona.model_validate(p) for p in json.loads((SAMPLE / "personas.json").read_text())][:300]
+    result = asyncio.run(vlm_basket_synergy(
+        town, "cafe-next-door", store, pool, config=SimulationConfig(currency=currency, seed=5), engine=_RecordingEngine(),
+        pathfinder=AStarPathFinder(), cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, customers=4,
+    ))
+    saved = json.loads(result.model_dump_json())
+    assert saved["currency"] == currency
+    assert VLMSynergyResult.model_validate(saved).model_dump()["currency"] == currency
+    del saved["currency"]
+    assert VLMSynergyResult.model_validate(saved).model_dump()["currency"] is None

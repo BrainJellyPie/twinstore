@@ -257,7 +257,7 @@ async def vlm_basket_synergy(
     return VLMSynergyResult(
         venue_id=venue.id, venue_name=venue.name, category=venue.category,
         distance_m=round(math.hypot(venue.x - focal.x, venue.y - focal.y), 1), day_type=day_type,
-        scenario=scenario.name if scenario is not None else "", model=model_label,
+        scenario=scenario.name if scenario is not None else "", model=model_label, currency=config.currency,
         visitors_with=round(visitors_with, 3), visitors_without=round(visitors_without, 3),
         delta_visitors=round(visitors_with - visitors_without, 3), linked_visitors_from_venue=round(linked, 3),
         panel_customers=len(panel_with), affected_customers=len(affected), affected_share=round(share, 4),

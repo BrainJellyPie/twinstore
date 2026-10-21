@@ -12,8 +12,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { ModelPicker, type ModelChoice } from "@/features/runs/components/ModelPicker";
-import { useSimulationStore } from "@/stores/simulationStore";
-import { formatMoney, formatPercent } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
 
 export function VlmSynergyDialog({
@@ -114,8 +113,8 @@ function Body({ projectId, venue, dayType, scenarioId }: { projectId: string; ve
 }
 
 function ResultView({ r }: { r: VLMSynergyResult }) {
-  const currency = useSimulationStore((s) => s.currency);
-  const money = (x: number) => formatMoney(x, currency);
+  const currency = r.currency ? currencyCode(r.currency) : null;
+  const money = (x: number) => currency ? formatMoney(x, currency) : `${x.toLocaleString()} minor units`;
   const signed = (x: number, f: (v: number) => string) => `${x >= 0 ? "+" : "−"}${f(Math.abs(x))}`;
   const ci = r.delta_spend_ci_low != null && r.delta_spend_ci_high != null
     ? `95 % CI ${signed(r.delta_spend_ci_low, money)} … ${signed(r.delta_spend_ci_high, money)}` : "";
@@ -123,6 +122,7 @@ function ResultView({ r }: { r: VLMSynergyResult }) {
   const maxShift = Math.max(1, ...shifts.map((s) => Math.abs(s.spend_diff)));
   return (
     <div className="space-y-4">
+      {!currency && <p className="text-xs text-muted-foreground">Currency was not recorded for this saved result. Amounts are shown in minor units.</p>}
       <div className={cn("rounded-xl border p-3", r.delta_revenue_per_day >= 0 ? "tone-good" : "tone-bad")}>
         <div className="font-display text-2xl font-bold tabular-nums">{signed(r.delta_revenue_per_day, money)} / day</div>
         <div className="text-xs">
