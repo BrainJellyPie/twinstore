@@ -15,8 +15,8 @@ export const WALL_THICKNESS = 0.12;
 export const CEILING_HEIGHT = 2.28;
 export const FLOOR_SLAB = 0.22;
 
-// CharacterMesh normalizes GLBs to 0.6 units. Realistic mode scales that to
-// 1.41 world units (~1.76 m), with the camera below the crown of the head.
+// Scale the persona group and its labels for adult proportions. Photographic
+// bodies compensate for this parent scale and keep their authored metric height.
 export const PERSONA_SCALE = 2.35;
 
 // Eye height of the shopper-view camera, per graphics mode (classic personas are small).

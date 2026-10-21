@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { realisticCharacterAssetFor } from "@/shared/utils/assetMap";
+import { ALL_REALISTIC_CHARACTER_ASSETS, characterAnimationPhase } from "@/shared/utils/assetMap";
 
 interface Model {
   animations: { name: string; channels: { target: { node: number; path: string }; sampler: number }[]; samplers: { output: number }[] }[];
@@ -15,9 +15,8 @@ interface Model {
 }
 
 describe("bundled shopper models", () => {
-  for (const gender of ["Female", "Male"]) {
-    it(`ships a rigged ${gender} model with a stationary walking loop`, () => {
-      const url = realisticCharacterAssetFor("shopper-1", gender);
+  for (const url of ALL_REALISTIC_CHARACTER_ASSETS) {
+    it(`ships ${url} with a stationary walking loop`, () => {
       const data = readFileSync(resolve("public", url.slice(1)));
       expect(data.readUInt32LE(0)).toBe(0x46546c67);
       const jsonLength = data.readUInt32LE(12);
@@ -26,8 +25,10 @@ describe("bundled shopper models", () => {
       expect(model.skins[0]!.joints.length).toBeGreaterThan(50);
       expect(model.materials.filter((m) => m.normalTexture)).toHaveLength(2);
       const hair = model.materials.find((m) => m.name.includes("opacity"));
-      expect(hair?.alphaMode).toBe("MASK");
-      expect(hair?.alphaCutoff).toBeGreaterThan(0);
+      if (hair) {
+        expect(hair.alphaMode).toBe("MASK");
+        expect(hair.alphaCutoff).toBeGreaterThan(0);
+      }
 
       const walk = model.animations.find((a) => a.name === "walk")!;
       const binaryStart = 20 + jsonLength + 8;
@@ -46,4 +47,11 @@ describe("bundled shopper models", () => {
       }
     });
   }
+
+  it("gives sequential shopper IDs repeatable, distinct motion phases", () => {
+    const phases = Array.from({ length: 20 }, (_, i) => characterAnimationPhase(`shopper-${i}`));
+    expect(new Set(phases).size).toBe(20);
+    expect(Math.max(...phases) - Math.min(...phases)).toBeGreaterThan(0.8);
+    expect(characterAnimationPhase("shopper-7")).toBe(phases[7]);
+  });
 });

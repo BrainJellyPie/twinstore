@@ -5,15 +5,17 @@ See `LICENSE.txt` for the full license. Models and motion clips are adapted from
 the pinned source revision and SHA-256 records in `sources.json`.
 
 - `female-01.glb`: Female_Adult_01, 8,732 triangles.
-- `male-01.glb`: Male_Adult_01.
-- Each includes `idle` and `walk` clips. Independent skeletons animate each shopper.
+- `male-01.glb`: Male_Adult_01, 7,440 triangles.
+- `female-14.glb`: Female_Adult_14, cardigan and boots.
+- `male-14.glb`: Male_Adult_14, shirt and trousers.
+- Each includes `idle` and `walk` clips. Independent skeletons and motion phases animate each shopper. Authored metric heights are preserved.
 - Textures are resized to 1024 px: JPEG for opaque color, PNG for normal maps
   and hair alpha. Skin and cloth retain different roughness values.
 - The original FBX skeletons use different rest poses for each motion. Bone
   orientations are baked into the avatar's own rest skeleton. Forward root
   travel is removed; the simulation owns shopper position.
 - Hair uses alpha testing to avoid transparency sorting problems in crowds.
-- This first set contains two visual variants. Avatars are representative
+- This set contains four visual variants, selected deterministically by shopper ID. Avatars are representative
   figures, not reconstructions of individual simulated consumers.
 
 The application loads these GLBs locally and makes no requests to Microsoft.
@@ -30,6 +32,8 @@ blender --background --python scripts/convert_rocketbox.py -- \
   --source-dir /path/to/rocketbox --output-dir frontend/public/assets/people \
   --model Male_Adult_01
 ```
+
+Repeat the same command with `Female_Adult_14` and `Male_Adult_14` for the other variants.
 
 The conversion was built with Blender 4.3.2. Refresh the output file sizes and
 checksums in `sources.json` after conversion.

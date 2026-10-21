@@ -3,11 +3,12 @@ import { useFrame } from "@react-three/fiber";
 import { Html, useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import type { TimelineEvent } from "@/shared/types/domain";
-import { characterAssetFor, realisticCharacterAssetFor, ALL_CHARACTER_ASSETS } from "@/shared/utils/assetMap";
+import { characterAssetFor, characterAnimationPhase, realisticCharacterAssetFor, ALL_CHARACTER_ASSETS } from "@/shared/utils/assetMap";
 import { useGlbModel } from "@/shared/hooks/useGlbModel";
 import { formatMoney } from "@/shared/utils/money";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
+import { M, PERSONA_SCALE } from "../realistic/constants";
 
 ALL_CHARACTER_ASSETS.forEach((url) => useGLTF.preload(url));
 
@@ -74,16 +75,19 @@ interface CharacterMeshProps {
   url: string;
   animName: string;
   realistic: boolean;
+  personaId: string;
 }
 
-function CharacterMesh({ url, animName, realistic }: CharacterMeshProps) {
+function CharacterMesh({ url, animName, realistic, personaId }: CharacterMeshProps) {
   const { clone, bbox, offset, animations } = useGlbModel(url, {
     skinned: true,
     castShadow: true,
     receiveShadow: realistic,
   });
   const rawH = bbox.size.y > 0.001 ? bbox.size.y : 1;
-  const scale = CHARACTER_TARGET_HEIGHT / rawH;
+  // Rocketbox is authored in metres. Preserve each avatar's actual height;
+  // PersonaRig applies the parent scale to labels and the whole shopper group.
+  const scale = realistic ? M / PERSONA_SCALE : CHARACTER_TARGET_HEIGHT / rawH;
 
   const { actions, mixer } = useAnimations(animations, clone);
   const previousAction = useRef<THREE.AnimationAction | null>(null);
@@ -110,6 +114,7 @@ function CharacterMesh({ url, animName, realistic }: CharacterMeshProps) {
     if (!action) return;
     const previous = previousAction.current;
     action.reset().stopFading().setEffectiveWeight(1).play();
+    if (realistic) action.time = action.getClip().duration * characterAnimationPhase(personaId);
     if (previous && previous !== action) {
       if (!realistic || usePlaybackControlStore.getState().playing) action.crossFadeFrom(previous, 0.15, false);
       else previous.stop();
@@ -118,7 +123,7 @@ function CharacterMesh({ url, animName, realistic }: CharacterMeshProps) {
     // pose immediately so newly loaded shoppers never remain in their bind pose.
     mixer.update(0);
     previousAction.current = action;
-  }, [animName, actions, mixer, realistic]);
+  }, [animName, actions, mixer, realistic, personaId]);
 
   return (
     <group scale={scale}>
@@ -160,7 +165,7 @@ export function AssetPersona({
       <group ref={bounceRef}>
       <group rotation={[0, facing, 0]}>
         <Suspense fallback={null}>
-          <CharacterMesh key={url} url={url} animName={animName} realistic={realistic} />
+          <CharacterMesh key={url} url={url} animName={animName} realistic={realistic} personaId={personaId} />
         </Suspense>
       </group>
       {highlighted && (
