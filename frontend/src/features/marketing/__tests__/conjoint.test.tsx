@@ -58,6 +58,28 @@ it("shows importance, part-worths and a live simulator", () => {
   expect(screen.getByLabelText("Price of product C")).toBeTruthy();
 });
 
+it.each([1, 3])("resets the simulator when switching to a study with %s attributes", (count) => {
+  const view = render(<ConjointReportView projectId="p" report={REPORT} />);
+  fireEvent.change(screen.getByLabelText("Price of product A"), { target: { value: "249" } });
+  fireEvent.click(screen.getByRole("button", { name: /Add product/ }));
+  const attributes = [...REPORT.attributes, { name: "Brand", levels: ["Store", "Known"] }].slice(0, count);
+  const next: ConjointReport = { ...REPORT, conjoint_id: "cjt_other", attributes, prices: [1000, 2000], price_mean: 1500,
+    part_worths: attributes.flatMap((a) => a.levels.map((level, i) => pw(a.name, level, i ? 0.5 : -0.5))), segments: [] };
+  view.rerender(<ConjointReportView projectId="p" report={next} />);
+  expect(screen.queryByLabelText("Price of product C")).toBeNull();
+  expect((screen.getByLabelText("Price of product A") as HTMLInputElement).value).toBe("2000");
+  expect((screen.getByLabelText("Price of product B") as HTMLInputElement).value).toBe("1000");
+  const choices = screen.getAllByRole("combobox") as HTMLSelectElement[];
+  expect(choices).toHaveLength(count * 2);
+  expect(choices.slice(0, count).map((choice) => choice.value)).toEqual(Array(count).fill("1"));
+  fireEvent.change(choices[count - 1]!, { target: { value: "0" } });
+  expect(choices[count - 1]!.value).toBe("0");
+  // Refreshing the same completed study should preserve the user's current comparison.
+  fireEvent.change(screen.getByLabelText("Price of product A"), { target: { value: "1750" } });
+  view.rerender(<ConjointReportView projectId="p" report={{ ...next }} />);
+  expect((screen.getByLabelText("Price of product A") as HTMLInputElement).value).toBe("1750");
+});
+
 it("sends attributes, price levels in minor units and the design", async () => {
   vi.mocked(startConjoint).mockResolvedValue({ job_id: "cjt_test", kind: "conjoint", name: "Test", status: "pending",
     stage: "queued", progress: 0, error: "", created_at: "", finished_at: "" });
