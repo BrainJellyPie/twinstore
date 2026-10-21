@@ -108,11 +108,17 @@ def best_catalog_item(name: str, categories: list[str] | None = None) -> tuple[s
     query = normalize_text(name)
     if not query:
         return None
+    query_without_size = " ".join(tokens(name))
     best: tuple[str, CatalogItem, float] | None = None
     for cat in categories or list(CATALOG):
         for item in CATALOG.get(cat, []):
             for text in (item.en, item.ko):
                 ratio = difflib.SequenceMatcher(None, query, normalize_text(text)).ratio()
+                # A missing pack size must not let unrelated categories outweigh an exact product name.
+                if query == query_without_size and query == " ".join(tokens(text)):
+                    ratio = 1.0
+                if ratio == 1.0:
+                    return cat, item, ratio
                 if best is None or ratio > best[2]:
                     best = (cat, item, ratio)
     return best

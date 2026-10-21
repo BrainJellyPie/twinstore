@@ -35,6 +35,11 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     assert templates["fashion_outlet"]["grid"] == [32, 24]
     assert templates["fashion_outlet"]["default_checkouts"] == 4
     assert templates["music_store"]["default_style"] == "free_flow"
+    assert {"pizzeria", "sushi_shop", "noodle_bar", "juice_bar"} <= templates.keys()
+    assert templates["pizzeria"]["default_dining_tables"] == 8
+    assert templates["sushi_shop"]["default_style"] == "showroom"
+    assert templates["noodle_bar"]["default_seating_zone"] == "left"
+    assert templates["juice_bar"]["default_checkout_placement"] == "near_entrance"
     assert {"family_restaurant", "neighborhood_bistro", "takeaway_coffee", "tea_lounge", "artisan_bakery",
             "vintage_boutique", "hardware_store", "toy_hobby_store"} <= templates.keys()
     assert templates["family_restaurant"]["default_seating_zone"] == "center"
@@ -99,6 +104,7 @@ def test_unknown_templates_do_not_create_layouts(client):
     ("shoe_boutique", "fashion"), ("baby_family_store", "baby"), ("travel_essentials", "travel"),
     ("garden_center", "garden"), ("art_craft_store", "crafts"),
     ("optical_shop", "eyewear"), ("jewelry_boutique", "jewelry"), ("music_store", "music"), ("fashion_outlet", "fashion"),
+    ("pizzeria", "restaurant"), ("sushi_shop", "restaurant"), ("noodle_bar", "restaurant"), ("juice_bar", "cafe"),
 ])
 def test_specialty_formats_preview_and_save_with_custom_space(client, template_id, store_type):
     options = {"template_id": template_id, "width": 18, "height": 14, "shelf_direction": "vertical",
