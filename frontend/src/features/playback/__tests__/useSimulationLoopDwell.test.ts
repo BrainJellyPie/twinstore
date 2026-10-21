@@ -66,3 +66,61 @@ it("rebuilds a dwell after backward seeking without duplicating purchases", () =
   seek(20);
   expect(hook.result.current.personaFramesRef.current).toHaveLength(0);
 });
+
+it.each([1 / 120, 1 / 60, 0.1, 0.25, 1])("advances one simulation second per wall second at real time (delta=%s)", delta => {
+  const hook = renderHook(() => useSimulationLoop(options));
+  seek(11.5);
+  usePlaybackControlStore.getState().setSpeed(1);
+  usePlaybackControlStore.getState().play();
+  for (let i = 0; i < Math.round(1 / delta); i++) tick(delta);
+  expect(hook.result.current.playbackTimeRef.current).toBeCloseTo(28812.5, 6);
+  expect(hook.result.current.personaFramesRef.current[0]!.x).toBeCloseTo(1 + 0.5 / 3, 6);
+  usePlaybackControlStore.getState().pause();
+  tick(5);
+  expect(hook.result.current.playbackTimeRef.current).toBeCloseTo(28812.5, 6);
+});
+
+it("changes between real time and accelerated playback without restarting the stop", () => {
+  const hook = renderHook(() => useSimulationLoop(options));
+  seek(2);
+  usePlaybackControlStore.getState().setSpeed(1);
+  usePlaybackControlStore.getState().play();
+  tick(3);
+  usePlaybackControlStore.getState().setSpeed(60);
+  tick(0.1);
+  expect(hook.result.current.playbackTimeRef.current).toBe(28811);
+  expect(hook.result.current.personaFramesRef.current[0]!.isMoving).toBe(false);
+  usePlaybackControlStore.getState().setSpeed(1);
+  tick(1);
+  expect(hook.result.current.personaFramesRef.current[0]!).toMatchObject({ x: 1, isMoving: true });
+});
+
+it("ends at closing time and pauses real-time playback", () => {
+  const hook = renderHook(() => useSimulationLoop(options));
+  seek(29.5);
+  usePlaybackControlStore.getState().setSpeed(1);
+  usePlaybackControlStore.getState().play();
+  tick(1);
+  expect(hook.result.current.playbackTimeRef.current).toBe(28830);
+  expect(usePlaybackControlStore.getState()).toMatchObject({ speed: 1, playing: false });
+  expect(useSimulationMetricsStore.getState().finished).toBe(true);
+  expect(hook.result.current.personaFramesRef.current).toHaveLength(0);
+  tick(10);
+  expect(hook.result.current.playbackTimeRef.current).toBe(28830);
+});
+
+it("continues at real time when a sparse schedule advances to its next open day", () => {
+  const days = [2, 5];
+  usePlaybackControlStore.getState().setAvailableDays(days);
+  const multi = { ...options, availableDays: days, customers: days.map(day => ({ ...shopper, day })) };
+  const hook = renderHook(() => useSimulationLoop(multi));
+  seek(29.5);
+  usePlaybackControlStore.getState().setSpeed(1);
+  usePlaybackControlStore.getState().play();
+  tick(1);
+  expect(usePlaybackControlStore.getState()).toMatchObject({ currentDay: 5, speed: 1, playing: true });
+  expect(hook.result.current.playbackTimeRef.current).toBe(28800);
+  tick(0.5);
+  expect(hook.result.current.playbackTimeRef.current).toBe(28800.5);
+  expect(useSimulationMetricsStore.getState().finished).toBe(false);
+});
