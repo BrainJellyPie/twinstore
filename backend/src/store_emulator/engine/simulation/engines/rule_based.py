@@ -42,6 +42,7 @@ from store_emulator.engine.routing.route_builder import (
 from store_emulator.engine.scenario import (
     ScenarioEffects,
     compile_scenario,
+    hour_effects,
     item_categories,
     priors_for,
     words_categories,
@@ -108,6 +109,7 @@ class ShopperPlan:
     planned: list[CustomerAction]
     # False: the shopper turned around at the door (no impulse step, no purchase).
     entered: bool = True
+    hour: int = 12   # arrival hour: part-of-day demand (ScenarioEffects.hour_for)
     trace: dict[str, object] = field(default_factory=dict[str, object])
 
 
@@ -148,9 +150,16 @@ class RuleBasedEngine:
         return TokenUsage()
 
     def prepare(self, store: Store) -> None:
-        """Called once per run with the store: situation effects follow the store's format."""
+        """Called once per run with the store: situation and part-of-day effects follow the store's format."""
+        priors = priors_for(store.type, self._config.scenario_priors)
         if self._config.scenario is not None:
-            self._fx = compile_scenario(self._config.scenario, priors_for(store.type, self._config.scenario_priors))
+            self._fx = compile_scenario(self._config.scenario, priors)
+        else:
+            self._fx = hour_effects(priors)
+
+    def _demand(self, categories: set[str], hour: int) -> float:
+        """Situation × part-of-day demand multiplier, clipped to [0.2, 3]."""
+        return min(3.0, max(0.2, self._fx.demand_for(categories) * self._fx.hour_for(hour, categories)))
 
     async def decide_actions(self, context: PerCustomerContext) -> EngineDecision:
         plan = self._plan(context)
@@ -175,7 +184,7 @@ class RuleBasedEngine:
                     break
                 # Lists are written in priority order: later entries are less likely to be bought.
                 hit_prob = (params.planned_hit_prob * params.plan_position_decay ** position
-                            * self._fx.demand_for(words_categories(category)) ** 0.5)
+                            * self._demand(words_categories(category), plan.hour) ** 0.5)
                 if rng.random() > min(0.98, hit_prob):
                     continue
                 pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng, usual)
@@ -236,6 +245,7 @@ class RuleBasedEngine:
             pattern=pattern, rng=rng, grid=store.walkable_grid(),
             budget=persona.budget_max if persona.budget_max > 0 else 10**9,
             tolerance=cfg.budget_tolerance or 10.0, spend=0, walk_out=False, buys=[], chosen=set(), planned=[],
+            hour=context.arrival_hour,
         )
         return plan, middle
 
@@ -284,7 +294,7 @@ class RuleBasedEngine:
             if item is None or (pattern.id == "deal_hunting" and not item.promo):
                 continue
             promo = (params.promo_multiplier if item.promo else 1.0) * self._price_factor(item)
-            situational = self._fx.impulse * self._fx.demand_for(item_categories(seen.rack, item))
+            situational = self._fx.impulse * self._demand(item_categories(seen.rack, item), plan.hour)
             p_buy = min(0.95, params.impulse_base * seen.visibility * promo * factor * situational)
             p_look = min(0.98, p_buy * (1.0 + params.browse_only_ratio))
             draw = rng.random()

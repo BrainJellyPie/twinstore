@@ -136,3 +136,25 @@ def test_grocery_formats_use_the_profile_fitted_to_real_data():
     # priors assume −15 %.
     assert compile_scenario(rain, priors_for("supermarket")).base_traffic > 0.98
     assert compile_scenario(rain, priors_for("convenience")).base_traffic < 0.9
+
+
+def test_part_of_day_demand_follows_the_shoppers_arrival_hour():
+    from store_emulator.domain.config import SimulationConfig
+    from store_emulator.engine.scenario import ScenarioPriors, compile_scenario, hour_effects, part_of_day
+    from store_emulator.engine.simulation.engines.rule_based import RuleBasedEngine
+    from store_emulator.engine.routing.pathfinder import AStarPathFinder
+
+    assert [part_of_day(h) for h in (8, 11, 12, 16, 17, 22)] == ["morning", "morning", "midday", "midday",
+                                                                  "evening", "evening"]
+    priors = ScenarioPriors(hour_demand={"evening": {"alcohol": 2.0}, "morning": {"alcohol": 0.5}},
+                            need_ratio={"hour:evening": {"alcohol": 1.8}})
+    fx = hour_effects(priors)
+    assert fx.hour_for(19, {"alcohol"}) == 2.0 and fx.hour_for(9, {"alcohol"}) == 0.5
+    assert fx.hour_for(14, {"alcohol"}) == 1.0 and fx.hour_for(19, {"snacks"}) == 1.0
+    assert fx.hour_need_for(19, {"alcohol"}) == 1.8 and fx.hour_need_for(9, {"alcohol"}) == 1.0
+    # A scenario keeps the part-of-day tables of its priors.
+    assert compile_scenario(Scenario(), priors).hour_for(20, {"alcohol"}) == 2.0
+    # With no scenario the rule engine still takes them from the store format's profile.
+    engine = RuleBasedEngine(AStarPathFinder(), SimulationConfig(scenario_priors=priors))
+    engine.prepare(_store())
+    assert engine._demand({"alcohol"}, 19) == 2.0 and engine._demand({"alcohol"}, 15) == 1.0  # pyright: ignore[reportPrivateUsage]
