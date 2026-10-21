@@ -29,6 +29,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     enabled: validTemplateChoice(value), staleTime: Infinity,
   });
   const selected = templates.find((t) => t.id === value.templateId);
+  const densityGap = { spacious: 3, balanced: 2, dense: 1 }[value.density ?? "balanced"];
   const filtered = templates.filter((t) => (!storeType || t.store_type === storeType) &&
     `${t.name} ${t.description}`.toLowerCase().includes(search.trim().toLowerCase()));
   const update = (patch: Partial<TemplateChoice>) => onChange({ ...value, ...patch });
@@ -84,11 +85,17 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <Field label="Display density"><select className={controlClass} value={value.density ?? "balanced"} onChange={(e) => update({ density: e.target.value as TemplateChoice["density"] })}>
                 <option value="spacious">Spacious aisles</option><option value="balanced">Balanced</option><option value="dense">High capacity</option>
               </select></Field>
-              <div className="col-span-2"><Field label="Interior shelf direction"><select className={controlClass} value={value.shelf_direction ?? "horizontal"}
+              <Field label="Interior shelf direction"><select className={controlClass} value={value.shelf_direction ?? "horizontal"}
                 disabled={(value.style ?? selected?.default_style) === "perimeter"}
                 onChange={(e) => update({ shelf_direction: e.target.value as TemplateChoice["shelf_direction"] })}>
                 <option value="horizontal">Left to right</option><option value="vertical">Front to back</option>
-              </select></Field></div>
+              </select></Field>
+              <Field label="Interior aisle gap"><select className={controlClass} value={value.aisle_width ?? ""}
+                disabled={(value.style ?? selected?.default_style) === "perimeter"}
+                onChange={(e) => update({ aisle_width: e.target.value === "" ? null : Number(e.target.value) })}>
+                <option value="">Density default ({densityGap} {densityGap === 1 ? "cell" : "cells"})</option>
+                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} {n === 1 ? "cell" : "cells"}</option>)}
+              </select></Field>
               <Field label="Width (8–40 cells)"><input type="number" className={controlClass} min={8} max={40} step={1} placeholder={String(selected?.grid[0] ?? 12)} value={value.width ?? ""} onChange={(e) => update({ width: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               <Field label="Depth (6–40 cells)"><input type="number" className={controlClass} min={6} max={40} step={1} placeholder={String(selected?.grid[1] ?? 10)} value={value.height ?? ""} onChange={(e) => update({ height: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               <Field label="Front entrance"><select className={controlClass} value={value.entrance ?? "left"} onChange={(e) => update({ entrance: e.target.value as TemplateChoice["entrance"] })}>
@@ -136,14 +143,14 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", shelf_direction: "horizontal", entrance: "left", exit_position: "shared", checkouts: null, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, shelf_direction: "horizontal", entrance: "left", exit_position: "shared", checkouts: null, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>
         <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })} />
         <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: use warm task lighting in the consultation corner or seasonal signs near the entrance." /></Field>
         {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
-        <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction applies to interior rows; perimeter fixtures stay on the walls. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>
+        <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction and aisle gap apply to interior rows and cross-aisles; wall spacing and seating clearance are separate. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>
       </>}
     </div>
   );
