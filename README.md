@@ -136,6 +136,8 @@ The language control next to the theme switch supports **English, 한국어, 中
 Español and Français**. It follows your browser language on first use and remembers your
 selection. Home, navigation, store cards, search, the model notice, simulation launcher and
 new-store forms are localized, including validation, file selection and the generation review.
+Template search and filters use the same languages. Search also accepts translated categories,
+accent and full-width variants, and template IDs; format names and descriptions remain in English.
 Model selection is localized too. Detailed layout and situation editors, other feature editors and technical server messages
 currently remain in English.
 

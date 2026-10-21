@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { TemplatePicker } from "../components/TemplatePicker";
 import { DEFAULT_TEMPLATE_CHOICE } from "../templateOptions";
+import { translate, useLocale } from "@/shared/i18n/i18n";
+import { LOCALES } from "@/shared/i18n/messages";
 
 vi.mock("@/shared/api/client", () => ({ getStoreTemplates: vi.fn(), previewStoreTemplate: vi.fn(), validateLayoutPreset: vi.fn() }));
 
@@ -27,7 +29,93 @@ beforeEach(() => {
   ]);
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Preview", type: "convenience", grid_size: [12, 10], weekly_schedule: [], racks: [] });
 });
-afterEach(() => { cleanup(); vi.resetAllMocks(); });
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); });
+
+it.each(LOCALES)("finds translated store categories and clears search with focus in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code); mountCompact();
+  await screen.findByRole("button", { name: /^Community pharmacy/ });
+  const search = screen.getByLabelText(translate(code, "findStoreFormat"));
+  expect((screen.getByRole("combobox", { name: translate(code, "storeCategory") }) as HTMLSelectElement).value).toBe("");
+  fireEvent.change(search, { target: { value: translate(code, "pharmacy") } });
+  const results = within(screen.getByLabelText(translate(code, "storeFormats")));
+  expect(results.getAllByRole("button")).toHaveLength(1);
+  expect(results.getByRole("button", { name: /^Community pharmacy/ })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "clearFormatSearch") }));
+  expect(document.activeElement).toBe(search);
+  expect(results.getAllByRole("button")).toHaveLength(7);
+});
+
+it.each(["ＣＡＦＥ", "community_pharmacy", "COMMUNITY-PHARMACY", "  specialty  CAFE  "])("finds formats by normalized input %s", async (query) => {
+  mountCompact(); await screen.findByRole("button", { name: /^Community pharmacy/ });
+  fireEvent.change(screen.getByLabelText("Find a store format"), { target: { value: query } });
+  expect(within(screen.getByLabelText("Store formats")).getAllByRole("button")).toHaveLength(1);
+});
+
+it("clears only the search on Escape and preserves filters, selection and dimensions", async () => {
+  mountCompact(); fireEvent.click(await screen.findByRole("button", { name: /^Community pharmacy/ }));
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
+  fireEvent.change(screen.getByLabelText("Store category"), { target: { value: "pharmacy" } });
+  fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "medium" } });
+  const search = screen.getByLabelText("Find a store format"); search.focus();
+  fireEvent.change(search, { target: { value: "no-such-format" } });
+  expect(screen.getByText(/No matching formats/)).toBeTruthy();
+  fireEvent.keyDown(search, { key: "Escape" });
+  expect(document.activeElement).toBe(search);
+  expect((search as HTMLInputElement).value).toBe("");
+  expect((screen.getByLabelText("Store category") as HTMLSelectElement).value).toBe("pharmacy");
+  expect((screen.getByLabelText("Default floor size") as HTMLSelectElement).value).toBe("medium");
+  expect(screen.getByRole("button", { name: /^Community pharmacy/ }).getAttribute("aria-pressed")).toBe("true");
+  expect((screen.getByLabelText("Width (8–40 cells)") as HTMLInputElement).value).toBe("24");
+  fireEvent.click(screen.getByRole("button", { name: "Clear format filters" }));
+  expect(document.activeElement).toBe(search);
+  expect((screen.getByLabelText("Store category") as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText("Width (8–40 cells)") as HTMLInputElement).value).toBe("24");
+});
+
+it("keeps a translated search and raw category filter working after a language switch", async () => {
+  useLocale.getState().setLocale("ko"); mountCompact(); await screen.findByRole("button", { name: /^Community pharmacy/ });
+  fireEvent.change(screen.getByLabelText(translate("ko", "findStoreFormat")), { target: { value: "약국" } });
+  fireEvent.change(screen.getByLabelText(translate("ko", "storeCategory")), { target: { value: "pharmacy" } });
+  act(() => useLocale.getState().setLocale("fr"));
+  expect((screen.getByLabelText(translate("fr", "findStoreFormat")) as HTMLInputElement).value).toBe("약국");
+  expect((screen.getByLabelText(translate("fr", "storeCategory")) as HTMLSelectElement).value).toBe("pharmacy");
+  expect(within(screen.getByRole("group", { name: translate("fr", "storeFormats") })).getAllByRole("button")).toHaveLength(1);
+  expect(screen.getByRole("option", { name: translate("fr", "pharmacy") }).getAttribute("value")).toBe("pharmacy");
+});
+
+it.each(LOCALES)("searches less common translated categories in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code); mountCompact(); await screen.findByRole("button", { name: /^Garden/ });
+  fireEvent.change(screen.getByLabelText(translate(code, "findStoreFormat")), { target: { value: translate(code, "gardenShop") } });
+  const results = within(screen.getByRole("group", { name: translate(code, "storeFormats") }));
+  expect(results.getAllByRole("button")).toHaveLength(1);
+  expect(results.getByRole("button", { name: /^Garden/ })).toBeTruthy();
+});
+
+it.each(LOCALES)("retries a failed catalog without clearing the search in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code); vi.mocked(api.getStoreTemplates).mockRejectedValueOnce(new Error("Catalog unavailable"));
+  mountCompact(); await screen.findByText(translate(code, "loadFormatsError"), { exact: false });
+  fireEvent.change(screen.getByLabelText(translate(code, "findStoreFormat")), { target: { value: translate(code, "pharmacy") } });
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "tryAgain") }));
+  const results = within(screen.getByRole("group", { name: translate(code, "storeFormats") }));
+  await waitFor(() => expect(results.getAllByRole("button")).toHaveLength(1));
+  expect(results.getByRole("button", { name: /^Community pharmacy/ })).toBeTruthy();
+  expect(api.getStoreTemplates).toHaveBeenCalledTimes(2);
+});
+
+it("distinguishes loading and an empty catalog from no search matches, then recovers", async () => {
+  let resolve!: (formats: api.StoreTemplate[]) => void;
+  vi.mocked(api.getStoreTemplates).mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  mountCompact(); expect(screen.getByText("Loading store formats…")).toBeTruthy();
+  expect(screen.queryByText(/No matching formats/)).toBeNull();
+  expect(screen.queryByText("Selected format:")).toBeNull();
+  await act(async () => resolve([]));
+  expect(await screen.findByText(translate("en", "emptyFormats"), { exact: false })).toBeTruthy();
+  expect(screen.queryByText(/No matching formats/)).toBeNull();
+  expect(screen.queryByText("Selected format:")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await screen.findByRole("button", { name: /^City store/ });
+  expect(screen.getByText("7 of 7 formats")).toBeTruthy();
+});
 
 it("keeps checkout spacing across walls, priorities and count changes and resets it explicitly", async () => {
   mount();
