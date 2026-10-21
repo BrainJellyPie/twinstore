@@ -74,6 +74,7 @@ def test_rule_ab_test(client):
     assert all(v["applied"] and v["vs_control"] and v["focus"] for v in report["variants"])
     assert any("100 shoppers" in n for n in report["notes"])
     assert [j["job_id"] for j in client.get(f"/api/projects/{PID}/experiments").json()] == [eid]
+    assert client.get(f"/api/projects/{PID}/marketing").json()["currency"] == report["currency"]
 
     nothing = {"setup_id": SETUP, "variants": [{"name": "Ghost", "changes": [{"kind": "promo", "sku": "NOPE"}]}]}
     assert client.post(f"/api/projects/{PID}/experiments", json=nothing).status_code == 400
@@ -122,5 +123,5 @@ def test_concept_test_with_fake_vision_model(client, monkeypatch):
     assert client.get(f"/api/projects/{PID}/surveys/{sid}/board.jpg").content[:2] == b"\xff\xd8"
     csv = client.get(f"/api/projects/{PID}/surveys/{sid}/export.csv").text.splitlines()
     assert csv[0].startswith("respondent,age_group,gender,purchase_intent_A") and len(csv) == 13
-    quota = {**body, "age_groups": ["90대"]}
+    quota = {**body, "age_groups": ["70s"]}
     assert client.post(f"/api/projects/{PID}/surveys", json=quota).status_code == 400

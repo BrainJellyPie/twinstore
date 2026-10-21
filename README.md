@@ -104,6 +104,12 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 <b>New store in two steps.</b> Ten retail formats, an address, opening hours — or start from a floor-plan image.</td>
 </tr>
 <tr>
+<td><img src="./.github/assets/twinstore/screens/market-ab-light.jpg" alt="Marketing studio: A/B test result"><br>
+<b>A/B tests for marketers.</b> Price, discount, promotion sign, placement or a new pack, on the same shoppers; lifts with 95 % CIs.</td>
+<td><img src="./.github/assets/twinstore/screens/market-concept-light.jpg" alt="Marketing studio: concept test builder"><br>
+<b>Concept tests.</b> Drop pack images; personas rate intent, appeal, value, price range and preference.</td>
+</tr>
+<tr>
 <td><img src="./.github/assets/twinstore/screens/home-dark.jpg" alt="Home, night theme"><br>
 <b>Day and night.</b> A command bar, <kbd>⌘K</kbd> palette for everything, light and dark themes.</td>
 <td><img src="./.github/assets/twinstore/screens/settings-dark.jpg" alt="Model providers"><br>
@@ -143,6 +149,26 @@ shelf studio, which supplies exact boxes; phone photos are edited the same way. 
 | Storefront photo | a vision model rates sign, entrance, window and upkeep → the venue's pull in the neighborhood model |
 | Receipt photos | transcribed by a vision model, matched to the store's products → a POS export that scores a run |
 | Rival's shelf photo | price index and assortment overlap against your layout → the rival's price-adjusted pull |
+
+### Marketing studio
+
+For brand managers, category teams and research agencies (**Market** in the command bar):
+
+- **Product library** — drop packshots or phone photos of packs (the background is cut out), name them, tag the brand
+  and link each to the shelf product it replaces. Shelf Lab and the vision shoppers use the same images.
+- **A/B tests** — a variant is a list of changes to a saved layout: a new price, a discount with the was-price on the
+  tag, a promotion sign (1+1, SALE, −30 %), a move to eye level or another fixture, a new pack, or a category re-price
+  with .99 endings. One-click recipes: discount ladder, discount vs sign, eye level vs bottom shelf, price up, new pack.
+  Every arm runs on the **same shoppers with the same random numbers** as the control, so the result reports paired
+  differences with bootstrap 95 % intervals — revenue, conversion and units per visitor, and units, spend and buyers of
+  each tracked product — and names a winner only when its interval clears zero. Rule shoppers answer in seconds;
+  vision shoppers also see packs and signs.
+- **Concept tests** — up to four images side by side; a vision model answers as each sampled persona (with age and
+  gender quotas): purchase intent, pack appeal, value, stand-out (1–5), a Van Westendorp price range, preference and
+  one open answer. Results show distributions, means with CIs, top-2-box, Wilson intervals for preference, the price
+  curves with the acceptable range, segment tables and verbatims; respondent-level CSV export.
+
+Synthetic respondents are for screening and direction; calibrate against a real panel before deciding.
 
 ## Validated on real baskets
 

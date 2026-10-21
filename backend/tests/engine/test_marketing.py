@@ -154,6 +154,6 @@ def test_survey_answers_and_aggregates(personas: list[Persona]) -> None:
 
 
 def test_van_westendorp_needs_consistent_answers() -> None:
-    bad = [SurveyAnswer(respondent=str(i), age_group="20대", gender="남", too_cheap=300, cheap=100, expensive=50, too_expensive=10)
+    bad = [SurveyAnswer(respondent=str(i), age_group="20s", gender="Male", too_cheap=300, cheap=100, expensive=50, too_expensive=10)
            for i in range(10)]
     assert van_westendorp(bad) is None

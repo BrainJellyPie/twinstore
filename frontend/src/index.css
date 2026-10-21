@@ -616,3 +616,30 @@ select {
 .dark .realistic-lens {
   opacity: 0.95;
 }
+
+/* Marketing charts: validated categorical slots (blue, orange, aqua, yellow) and a blue↔red diverging
+   scale with a gray midpoint for 1–5 answers. Text never wears these. */
+:root {
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-pos-2: #2a78d6;
+  --viz-pos-1: #86b6ef;
+  --viz-mid: #e3e2de;
+  --viz-neg-1: #f0a09f;
+  --viz-neg-2: #e34948;
+  --viz-grid: color-mix(in oklab, var(--foreground) 9%, transparent);
+}
+.dark {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-pos-2: #3987e5;
+  --viz-pos-1: #1c5cab;
+  --viz-mid: #3a3a38;
+  --viz-neg-1: #9c3433;
+  --viz-neg-2: #e66767;
+  --viz-grid: color-mix(in oklab, var(--foreground) 11%, transparent);
+}

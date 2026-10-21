@@ -105,7 +105,7 @@ that has all the imports I need?" and put it there.
 - State: Zustand stores in `src/stores/` (one store per concern — playback,
   simulation metrics, simulation lifecycle).
 - Feature folders under `src/features/` are self-contained
-  (`{dashboard,grid-editor,layouts,playback,setup,store-viewer}`); shared
+  (`{capture,dashboard,grid-editor,layouts,marketing,playback,setup,store-viewer,town,…}`); shared
   primitives go in `src/shared/`.
 - 3D rendering uses React Three Fiber (`@react-three/fiber` + `drei`) with
   isometric camera; GLB assets live under `public/assets/{market,characters,ghost}/`
