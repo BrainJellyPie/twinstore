@@ -60,6 +60,14 @@ def save_town(pid: str, town: Town, *, expected: Town | None = None) -> Town:
     path = _town_path(pid)
     if not path.parent.is_dir():
         raise AppError(f"project not found: {pid}", 404)
+    if town.size_m <= 0:
+        raise AppError("Neighborhood size must be positive", 422)
+    for label, items in [("venue", town.venues), ("building", town.buildings), ("road", town.roads)]:
+        ids = [item.id for item in items]
+        if any(not identifier.strip() for identifier in ids) or len(set(ids)) != len(ids):
+            raise AppError(f"Neighborhood {label} IDs must be nonempty and unique", 422)
+    if town.get_venue(town.focal_venue_id) is None:
+        raise AppError("The neighborhood must contain its focal venue", 422)
     try:
         with FileLock(path.with_suffix(".lock"), timeout=0):
             if expected is not None and get_town(pid) != expected:
