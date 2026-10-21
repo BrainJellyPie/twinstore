@@ -81,6 +81,19 @@ decide. Cheaper ways to get an answer first:
   providers and servers with prompt caching (Anthropic, OpenAI, vLLM,
   llama.cpp `--cache-reuse`) only process the short per-customer part.
 
+Marketing studio (`/marketing/<project>`):
+
+```
+ab_test_calls (rule shoppers)   = 0
+ab_test_calls (vision shoppers) ≈ panel × (variants + 1) × 1–1.5    # 0..max_glances per shopper
+concept_test_calls              = panel                             # one structured answer per respondent
+```
+
+A concept test with the default 60 respondents is 60 vision calls (cached, so re-running it costs
+nothing); an A/B test with three variants on 300 vision shoppers is roughly 1,200–1,800. Run the
+rule shoppers first for price and placement questions, and keep vision shoppers for packaging and
+signs, which only they can see.
+
 Source: `backend/src/store_emulator/engine/generators/persona.py:99-242`,
 `backend/src/store_emulator/engine/simulation/engines/pattern_intent_impulse/engine.py:56-119`,
 `backend/src/store_emulator/application/supplemental.py:214-499`.

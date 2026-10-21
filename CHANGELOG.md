@@ -6,6 +6,21 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Marketing studio
+- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with three tabs.
+- **Products**: a product image library (multi-file drop, background cut-out, name, brand, linked shelf
+  SKU, rename, delete), shared with Shelf Lab. The vision shoppers' shelf renderer draws a linked
+  image instead of the plain package.
+- **A/B tests**: variants of a saved layout — price, discount with a was-price tag, promotion sign,
+  move to a fixture / shelf level, new pack, category price with .99 endings — plus one-click recipes.
+  All arms run on the same persona panel and seed (common random numbers); store and focus-product
+  outcomes come with paired bootstrap 95 % intervals, a winner only when the interval clears zero,
+  and CSV export. API: `POST/GET /api/projects/{pid}/experiments`, `GET/DELETE .../{eid}`.
+- **Concept tests**: personas (with age / gender quotas) answer purchase intent, appeal, value,
+  stand-out, Van Westendorp price and preference questions about up to four images through a vision
+  model; Likert summaries, Wilson shares, price-sensitivity curves, segments, verbatims, CSV export.
+  API: `POST/GET /api/projects/{pid}/surveys`, `GET/DELETE .../{sid}`, `.../board.jpg`, `.../export.csv`.
+
 ### One icon, every OS
 - `launcher/`: one Go source → `TwinStore.exe` (Windows, icon embedded, no console window),
   `TwinStore.app` (macOS universal, app files inside the bundle) and `twinstore` (Linux, adds

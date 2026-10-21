@@ -1496,7 +1496,18 @@ export interface EditedShelf {
   created_at: string;
 }
 
-export interface PackageAsset { asset_id: string; name: string; width: number; height: number }
+export interface PackageAsset {
+  asset_id: string;
+  name: string;
+  width: number;
+  height: number;
+  brand?: string;
+  /** The store product this image shows, if linked. */
+  sku?: string;
+  /** The background was removed on upload. */
+  cut_out?: boolean;
+  created_at?: string;
+}
 
 export interface LabJobStatus {
   job_id: string;
@@ -1591,9 +1602,12 @@ export interface AuditReport {
 
 export interface LabJobView { status: LabJobStatus; sim2real: Sim2RealReport | null; audit: AuditReport | null }
 
-export async function uploadPackage(projectId: string, file: File): Promise<PackageAsset> {
+export async function uploadPackage(
+  projectId: string, file: File, meta: { name?: string; brand?: string; sku?: string; remove_background?: boolean } = {},
+): Promise<PackageAsset> {
   const form = new FormData();
   form.append("image", file);
+  for (const [k, v] of Object.entries(meta)) if (v !== undefined && v !== "") form.append(k, String(v));
   const res = await fetch(`${BASE}/api/projects/${projectId}/lab/packages`, { method: "POST", body: form });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text().catch(() => "")}`);
   return res.json() as Promise<PackageAsset>;
@@ -1601,6 +1615,15 @@ export async function uploadPackage(projectId: string, file: File): Promise<Pack
 
 export function listPackages(projectId: string, signal?: AbortSignal): Promise<PackageAsset[]> {
   return fetchJson(`/api/projects/${projectId}/lab/packages`, { signal });
+}
+
+export function updatePackage(projectId: string, assetId: string, update: { name?: string; brand?: string; sku?: string }): Promise<PackageAsset> {
+  return fetchJson(`/api/projects/${projectId}/lab/packages/${assetId}`, { method: "PATCH", body: JSON.stringify(update) });
+}
+
+export async function deletePackage(projectId: string, assetId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/projects/${projectId}/lab/packages/${assetId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 }
 
 export function packageUrl(projectId: string, assetId: string): string {
