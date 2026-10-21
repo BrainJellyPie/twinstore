@@ -58,6 +58,7 @@
 | pydantic-extra-types      | 2.11.2      | MIT                                                                            |
 | pydantic-settings         | 2.13.1      | MIT                                                                            |
 | pydantic_core             | 2.41.5      | MIT                                                                            |
+| pypdfium2                 | 5.14.0      | BSD-3-Clause / Apache-2.0; bundled PDFium and dependency notices shipped in wheel |
 | pyright                   | 1.1.408     | MIT                                                                            |
 | pytest                    | 9.0.3       | MIT                                                                            |
 | python-dateutil           | 2.9.0.post0 | Apache Software License; BSD License                                           |

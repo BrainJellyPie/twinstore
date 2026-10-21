@@ -15,6 +15,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   answers in the first person from the persona, the trip and the shelves they stopped at only, says
   so when they did not notice something, and cites the steps it means (hover to highlight them).
   Suggested questions come from the trip. Transcripts are kept per run.
+- **Group interview**: one question to many shoppers at once — everyone who left empty-handed,
+  impulse buyers, top spenders, buyers or a random sample (4–40). Each answers from their own trip;
+  the answers are then coded into two to six themes, with counts computed from per-answer
+  assignments (misnumbered answers go to "Other"). Click an answer to open that shopper.
+  API: `POST/GET .../runs/{run}/group-interviews`, `DELETE .../group-interviews/{id}`.
   API: `GET .../runs/{run}/shoppers/{id}/journey`, `GET/POST/DELETE .../shoppers/{id}/interview`.
 
 ### Photo mode (path-traced stills)
@@ -35,6 +40,13 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   All arms run on the same persona panel and seed (common random numbers); store and focus-product
   outcomes come with paired bootstrap 95 % intervals, a winner only when the interval clears zero,
   and CSV export. API: `POST/GET /api/projects/{pid}/experiments`, `GET/DELETE .../{eid}`.
+- **Automatic report** for every finished A/B test: a summary with a rule-based recommendation
+  (roll out the winner with its daily and monthly revenue range, flag variants that lose, call out
+  product-only lifts, the panel size needed to see a 5 % change), the test design, results with
+  paired 95 % intervals and charts, tracked products, best sellers per arm, method and caveats.
+  One self-contained, print-ready HTML page (print to PDF) and Markdown; a model can add a labelled
+  commentary written from the report's numbers. API: `GET .../experiments/{eid}/report.html|.md`,
+  `POST/DELETE .../experiments/{eid}/narrative`.
 - **Concept tests**: personas (with age / gender quotas) answer purchase intent, appeal, value,
   stand-out, Van Westendorp price and preference questions about up to four images through a vision
   model; Likert summaries, Wilson shares, price-sensitivity curves, segments, verbatims, CSV export.

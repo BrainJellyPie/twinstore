@@ -42,6 +42,7 @@ import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
+import { RestockPlanner } from "./RestockPlanner";
 
 import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
 
@@ -624,8 +625,8 @@ function AuditView({ report, onFocus }: { report: AuditReport; onFocus: (box: Ca
                   <span className="block truncate text-muted-foreground">expected {f.expected} · found {f.found}</span>
                 </span>
                 {f.loss_per_day != null && (
-                  <span className="num shrink-0 text-right text-negative" title={f.loss_ci ? `95% CI ${formatMoney(f.loss_ci[0], report.currency)} … ${formatMoney(f.loss_ci[1], report.currency)}` : undefined}>
-                    −{formatMoney(Math.max(0, f.loss_per_day), report.currency)}<span className="text-muted-foreground">/day</span>
+                  <span className={cn("num shrink-0 text-right", f.loss_per_day > 0 ? "text-negative" : "text-positive")} title={f.loss_ci ? `Stockout revenue loss; 95% CI ${formatMoney(f.loss_ci[0], report.currency)} … ${formatMoney(f.loss_ci[1], report.currency)}` : "Stockout revenue loss"}>
+                    {formatMoney(f.loss_per_day, report.currency)}<span className="block text-muted-foreground">loss/day</span>
                   </span>
                 )}
               </button>
@@ -638,6 +639,7 @@ function AuditView({ report, onFocus }: { report: AuditReport; onFocus: (box: Ca
         Rack {report.rack_id} face {report.face} · {report.panel_size} shoppers per paired run · {report.visitors_per_day} visitors/day · {report.seconds}s
         {report.notes.length ? ` · ${report.notes.join("; ")}` : ""}
       </p>
+      <RestockPlanner key={report.job_id} report={report} onFocus={onFocus} />
     </div>
   );
 }

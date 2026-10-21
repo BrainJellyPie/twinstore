@@ -42,6 +42,7 @@ from store_emulator.engine.marketing import (
     survey_panel,
     van_westendorp,
 )
+from store_emulator.engine.marketing.report import ReportNarrative, report_html, report_markdown, write_narrative
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.prompting import display_price
@@ -61,6 +62,7 @@ from .shelf_lab import (
 )
 from .simulation import with_engine_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
+from .storage.setups import read_setup
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +234,50 @@ def get_experiment(pid: str, eid: str) -> ExperimentView:
     path = _job_dir(pid, "experiment", eid) / "report.json"
     report = ExperimentReport.model_validate(read_json(path)) if path.exists() else None
     return ExperimentView(**status.model_dump(), report=report)
+
+
+# ── experiment report ───────────────────────────────────────────────────────────
+
+def _report_inputs(pid: str, eid: str) -> tuple[ExperimentReport, str, ReportNarrative | None]:
+    view = get_experiment(pid, eid)
+    if view.report is None:
+        raise AppError("the A/B test has no results yet", 409)
+    try:
+        layout = str(read_setup(pid, view.report.setup_id).get("name") or "")
+    except FileNotFoundError:
+        layout = ""
+    path = _job_dir(pid, "experiment", eid) / "narrative.json"
+    narrative = ReportNarrative.model_validate(read_json(path)) if path.exists() else None
+    return view.report, layout, narrative
+
+
+def experiment_report_html(pid: str, eid: str) -> str:
+    return report_html(*_report_inputs(pid, eid))
+
+
+def experiment_report_markdown(pid: str, eid: str) -> str:
+    return report_markdown(*_report_inputs(pid, eid))
+
+
+def write_experiment_narrative(pid: str, eid: str, model: str, config: SimulationConfig) -> ReportNarrative:
+    """A model's commentary on the report, kept with the experiment and added to the write-up."""
+    report, layout, _ = _report_inputs(pid, eid)
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 1500})
+    try:
+        llm = build_client(llm_config, None, model_ref=model.strip() or None)
+        narrative = asyncio.run(write_narrative(llm, report, layout))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    except Exception as e:  # provider errors reach the user as a message
+        logger.warning(f"[marketing] narrative for {eid} failed: {type(e).__name__}: {e}")
+        raise AppError(f"the commentary could not be written ({type(e).__name__}): {str(e)[:200]}", 502) from e
+    narrative.model = model.strip() or llm_config.model
+    write_json(_job_dir(pid, "experiment", eid) / "narrative.json", narrative.model_dump(mode="json"))
+    return narrative
+
+
+def delete_experiment_narrative(pid: str, eid: str) -> None:
+    (_job_dir(pid, "experiment", eid) / "narrative.json").unlink(missing_ok=True)
 
 
 # ── surveys ─────────────────────────────────────────────────────────────────────

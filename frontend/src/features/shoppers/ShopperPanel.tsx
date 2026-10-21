@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Crosshair, Loader2, MessagesSquare, Route, Search } from "lucide-react";
+import { ArrowLeft, Crosshair, Loader2, MessagesSquare, Route, Search, UsersRound } from "lucide-react";
 
 import { getJourney, interviewKeys } from "@/shared/api/interview";
 import { Button } from "@/shared/components/ui/button";
@@ -15,6 +15,7 @@ import { parseTimeToSeconds } from "@/features/playback/utils/playback";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 
+import { GroupInterviewPanel } from "./GroupInterview";
 import { InterviewChat } from "./InterviewChat";
 import { JourneyMap, JourneySteps } from "./JourneyView";
 import { shopperRows, sortShoppers, type ShopperSort } from "./shopperStats";
@@ -37,13 +38,26 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
   const rows = useMemo(() => shopperRows(customers, personas), [customers, personas]);
   const list = useMemo(() => sortShoppers(rows, sort, query), [rows, sort, query]);
   const setHighlight = useSimulationStore((s) => s.setHighlightId);
+  const [group, setGroup] = useState(false);
 
   if (selected) {
     return <ShopperDetail projectId={projectId} runId={runId} store={store} sid={selected} customers={customers}
-      onBack={() => { setSelected(null); setHighlight(null); }} />;
+      backLabel={group ? "Group interview" : "All shoppers"} onBack={() => { setSelected(null); setHighlight(null); }} />;
+  }
+  if (group) {
+    return <GroupInterviewPanel projectId={projectId} runId={runId} currency={currency}
+      onOpen={(sid) => { setSelected(sid); setHighlight(sid); }} onBack={() => setGroup(false)} />;
   }
   return (
     <div className="space-y-2.5 py-3">
+      <button type="button" onClick={() => setGroup(true)}
+        className="flex w-full items-center gap-2.5 rounded-2xl border border-dashed border-primary/40 bg-primary/[0.04] px-3 py-2.5 text-left transition-colors hover:border-primary">
+        <UsersRound className="size-4 shrink-0 text-primary" />
+        <span className="min-w-0">
+          <span className="block text-[0.8rem] font-semibold">Group interview</span>
+          <span className="block text-[0.7rem] text-muted-foreground">Ask many shoppers one question — e.g. everyone who left empty-handed — and see the themes</span>
+        </span>
+      </button>
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${rows.length.toLocaleString()} shoppers`} className="h-9 pl-8 text-sm" />
@@ -81,8 +95,8 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
   );
 }
 
-function ShopperDetail({ projectId, runId, store, sid, customers, onBack }: {
-  projectId: string; runId: string; store: Store; sid: string; customers: CustomerResult[]; onBack: () => void;
+function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onBack }: {
+  projectId: string; runId: string; store: Store; sid: string; customers: CustomerResult[]; backLabel: string; onBack: () => void;
 }) {
   const journey = useQuery({ queryKey: interviewKeys.journey(projectId, runId, sid), queryFn: ({ signal }) => getJourney(projectId, runId, sid, signal) });
   const [tab, setTab] = useState<"journey" | "interview">("journey");
@@ -105,7 +119,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, onBack }: {
   if (!journey.data) {
     return (
       <div className="py-3">
-        <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="size-4" /> All shoppers</Button>
+        <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
         <div className="grid h-40 place-items-center">{journey.error ? <p className="text-sm text-destructive">{journey.error.message}</p> : <Loader2 className="size-5 animate-spin" />}</div>
       </div>
     );
@@ -115,7 +129,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, onBack }: {
   return (
     <div className="space-y-3 py-3">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> All shoppers</Button>
+        <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
         <Button variant="outline" size="sm" onClick={follow} title="Jump to this shopper's arrival and highlight them in the store"><Crosshair className="size-4" /> Follow in 3D</Button>
       </div>
       <div className="rounded-2xl border bg-card p-3">

@@ -101,6 +101,7 @@ export interface SetupSummaryShort {
   name: string;
   status: "draft" | "running" | "locked";
   parentId: string | null;
+  building?: BuildingFloorInfo | null;
   runId: string | null;
   memo: string;
   readiness: Readiness | null;
@@ -145,11 +146,16 @@ export async function createStore(
   return res.json() as Promise<CreateStoreResponse>;
 }
 
+export interface BuildingFloorInfo {
+  id: string; name: string; level: number; label: string; floor_count: number;
+}
+
 export interface SetupSummary {
   id: string;
   name: string;
   status: string;
   parentId: string | null;
+  building?: BuildingFloorInfo | null;
   runId: string | null;
   memo: string;
   readiness: Readiness | null;
@@ -159,6 +165,7 @@ export interface SetupSummary {
 
 export interface SetupDetail extends SetupSummary {
   store: Store | null;
+  generation?: GenerateLayoutRequest | null;
   blocked_faces?: BlockedFaceDetail[];
 }
 
@@ -1296,29 +1303,51 @@ export interface StoreTemplate {
   racks: number;
   skus: number;
   open_hours: [number, number];
+  default_style: NonNullable<LayoutOptions["style"]>;
 }
 
-export interface GenerateLayoutRequest {
+export interface LayoutOptions {
+  style?: "aisles" | "loop" | "spine" | "free_flow" | "perimeter" | "showroom" | null;
+  width?: number | null;
+  height?: number | null;
+  density?: "spacious" | "balanced" | "dense";
+  entrance?: "left" | "center" | "right";
+  checkouts?: number;
+  fixture_design?: "mixed" | "a" | "b" | "c";
+}
+
+export interface GenerateLayoutRequest extends LayoutOptions {
   template_id: string;
   seed: number;
   currency: string;
-  style?: "aisles" | "loop" | null;
   name?: string;
+  requirements?: string;
 }
 
 export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]> {
   return fetchJson("/api/store-templates", { signal });
 }
 
-export function previewStoreTemplate(
-  templateId: string, seed: number, currency: string, style: "aisles" | "loop" | null, signal?: AbortSignal,
-): Promise<Store> {
-  const q = new URLSearchParams({ seed: String(seed), currency, ...(style ? { style } : {}) });
-  return fetchJson(`/api/store-templates/${templateId}/preview?${q}`, { signal });
+export function previewStoreTemplate(request: GenerateLayoutRequest, signal?: AbortSignal): Promise<Store> {
+  const { template_id, name: _name, requirements: _requirements, ...options } = request;
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== null && value !== undefined) q.set(key, String(value));
+  }
+  return fetchJson(`/api/store-templates/${encodeURIComponent(template_id)}/preview?${q}`, { signal });
 }
 
 export function generateLayout(projectId: string, body: GenerateLayoutRequest): Promise<SetupSummaryShort> {
   return fetchJson(`/api/projects/${projectId}/setups/generate`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export interface GenerateBuildingRequest {
+  name: string;
+  floors: { label: string; layout: GenerateLayoutRequest }[];
+}
+
+export function generateBuilding(projectId: string, body: GenerateBuildingRequest): Promise<{ setups: SetupSummaryShort[]; active_setup_id: string }> {
+  return fetchJson(`/api/projects/${projectId}/setups/generate-building`, { method: "POST", body: JSON.stringify(body) });
 }
 
 // ── Shelf capture (photo → planogram) ───────────────────────────────────────
@@ -1679,16 +1708,46 @@ export interface FloorPlanImport {
   racks: number;
   notes: string[];
   warnings: string[];
+  source_page: number;
+  source_pages: number;
+  source_rotation: number;
+}
+
+export interface FloorPlanPreview {
+  page_number: number;
+  page_count: number;
+  rotation: number;
+  width: number;
+  height: number;
+  image: string;
+}
+
+export async function previewFloorPlan(
+  projectId: string, file: File, opts: { pageNumber: number; rotation: number; signal?: AbortSignal },
+): Promise<FloorPlanPreview> {
+  const form = new FormData();
+  form.append("plan", file);
+  form.append("page_number", String(opts.pageNumber));
+  form.append("rotation", String(opts.rotation));
+  const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan/preview`, { method: "POST", body: form, signal: opts.signal });
+  if (!res.ok) {
+    const body: unknown = await res.json().catch(() => null);
+    const detail = body && typeof body === "object" && "detail" in body ? body.detail : null;
+    throw new Error(typeof detail === "string" ? detail : `Preview failed (HTTP ${res.status})`);
+  }
+  return res.json() as Promise<FloorPlanPreview>;
 }
 
 export async function importFloorPlan(
-  projectId: string, file: File, opts: { reader: "auto" | "classic" | "vlm"; model?: string; name?: string },
+  projectId: string, file: File, opts: { reader: "auto" | "classic" | "vlm"; model?: string; name?: string; pageNumber?: number; rotation?: number },
 ): Promise<FloorPlanImport> {
   const form = new FormData();
   form.append("plan", file);
   form.append("reader", opts.reader);
   form.append("model", opts.model ?? "");
   form.append("name", opts.name ?? "");
+  form.append("page_number", String(opts.pageNumber ?? 1));
+  form.append("rotation", String(opts.rotation ?? 0));
   const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");

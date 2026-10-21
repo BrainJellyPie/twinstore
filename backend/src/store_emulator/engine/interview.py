@@ -136,3 +136,34 @@ async def ask_shopper(
     )
     valid = {s.index for s in journey.steps}
     return reply.model_copy(update={"answer": reply.answer.strip(), "steps": [s for s in reply.steps if s in valid]})
+
+
+THEMES_PROMPT = """You code open-ended answers from shopper interviews into themes, as a qualitative researcher would.
+Group answers that give the same reason; keep themes distinct and concrete (e.g. "Too expensive for a snack", not
+"Price"). Return two to six short theme labels and, for every answer in the order given, the number of its theme
+(starting at 0). Write in English."""
+
+
+class ThemeCoding(BaseModel):
+    themes: list[str] = Field(min_length=1, max_length=6)
+    assignments: list[int]
+
+
+async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str]) -> tuple[list[str], list[int]]:
+    """Theme labels and one theme index per answer; answers the model leaves out or misnumbers go to "Other"."""
+    listed = "\n".join(f"{i}. {a}" for i, a in enumerate(answers))
+    coding = await llm.generate_structured_async(
+        ThemeCoding, THEMES_PROMPT, f"Question: {question}\n\nAnswers:\n{listed}", max_retries=1, seed=0,
+    )
+    themes = [t.strip() for t in coding.themes if t.strip()][:6] or ["Other"]
+    out: list[int] = []
+    other = -1
+    for i in range(len(answers)):
+        k = coding.assignments[i] if i < len(coding.assignments) else -1
+        if not 0 <= k < len(themes):
+            if other < 0:
+                themes.append("Other")
+                other = len(themes) - 1
+            k = other
+        out.append(k)
+    return themes, out
