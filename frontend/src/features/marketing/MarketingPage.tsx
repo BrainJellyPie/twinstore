@@ -74,7 +74,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const setups = project.data?.setups ?? [];
   const [setupId, setSetupId] = useState("");
-  const activeSetup = setupId || project.data?.state.activeSetupId || setups[0]?.id || "";
+  const activeSetup = [setupId, project.data?.state.activeSetupId]
+    .find((id) => setups.some((candidate) => candidate.id === id)) ?? setups[0]?.id ?? "";
   const setup = useQuery({
     queryKey: queryKeys.setup(projectId, activeSetup),
     queryFn: ({ signal }) => api.getSetup(projectId, activeSetup, signal),

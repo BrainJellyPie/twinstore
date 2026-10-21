@@ -5,7 +5,7 @@ import { produceVariation } from "../produceVariation";
 it("keeps produce variation deterministic, subtle and restricted to fresh produce", () => {
   for (const kind of PACKAGE_KINDS) {
     const values = Array.from({ length: 64 }, (_, i) => produceVariation(kind, `${kind}|${i}|0|0`));
-    if (!["apple", "applePair", "banana", "avocado", "lemon", "onion", "kiwi", "sweetPotato"].includes(kind)) {
+    if (!["apple", "applePair", "banana", "avocado", "lemon", "onion", "kiwi", "sweetPotato", "asianPear"].includes(kind)) {
       expect(values.every((value) => value === null)).toBe(true);
       continue;
     }

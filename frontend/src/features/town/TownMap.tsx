@@ -2,7 +2,7 @@
 // venues, our store with its 50 % / 80 % catchment rings, and the strongest origin flows.
 // Wheel to zoom, drag to pan; in "place" mode a click opens a venue at that spot.
 
-import { useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
 
 import type { Town, TownDemand, TownVenue } from "@/shared/api/client";
 
@@ -29,6 +29,16 @@ export function TownMap({
   const [view, setView] = useState({ x: 0, y: 0, w: S });
   const drag = useRef<{ px: number; py: number; vx: number; vy: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    // React's passive wheel listener cannot keep the surrounding workspace still.
+    const preventScroll = (event: globalThis.WheelEvent) => {
+      if (event.deltaY !== 0) event.preventDefault();
+    };
+    svg.addEventListener("wheel", preventScroll, { passive: false });
+    return () => svg.removeEventListener("wheel", preventScroll);
+  }, []);
   const focal = town.venues.find((v) => v.is_focal);
   // World (y north) → SVG (y down).
   const fy = (y: number) => S - y;
@@ -60,6 +70,7 @@ export function TownMap({
   };
 
   const onWheel = (e: WheelEvent<SVGSVGElement>) => {
+    if (e.deltaY === 0) return;
     const p = toWorld(e.clientX, e.clientY);
     if (!p) return;
     const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;

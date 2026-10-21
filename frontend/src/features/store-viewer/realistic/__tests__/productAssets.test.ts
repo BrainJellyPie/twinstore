@@ -17,6 +17,7 @@ it.each([
   ["produce/avocado", [["avocado-coarse", 200], ["avocado-fine", 1000]]],
   ["produce/lemon", [["lemon-coarse", 200], ["lemon-fine", 1000]]],
   ["produce/onion", [["onion-coarse", 250], ["onion-fine", 1400]]],
+  ["produce/asian-pear", [["asian-pear-coarse", 300], ["asian-pear-fine", 1400]]],
   ["produce/kiwi", [["kiwi-coarse", 240], ["kiwi-fine", 1200]]],
   ["produce/sweet-potato", [["sweet-potato-coarse", 240], ["sweet-potato-fine", 1200]]],
   ["produce/apples", [["apple-coarse", 200], ["apple-fine", 1000], ["apple-pair-coarse", 400], ["apple-pair-fine", 2000]]],
@@ -36,8 +37,8 @@ it.each([
     position.min!.forEach((value, axis) => expect(value).toBeCloseTo([-0.5, 0, -0.5][axis]!, 5));
     position.max!.forEach((value, axis) => expect(value).toBeCloseTo([0.5, 1, 0.5][axis]!, 5));
     if (asset.startsWith("produce/")) {
-      const kind = name.startsWith("sweet-potato") ? "sweetPotato" : name.startsWith("kiwi") ? "kiwi" : name.startsWith("onion") ? "onion" : name.startsWith("lemon") ? "lemon" : name.startsWith("avocado") ? "avocado" : name.startsWith("bananas") ? "banana" : name.startsWith("apple-pair") ? "applePair" : "apple";
-      const spec = classifyProduct(kind === "sweetPotato" ? "Sweet Potato" : kind === "kiwi" ? "Kiwi" : kind === "onion" ? "Yellow Onions" : kind === "lemon" ? "Lemons" : kind === "avocado" ? "Avocados" : kind === "banana" ? "Bananas" : kind === "applePair" ? "Apples 2pk" : "Apples");
+      const kind = name.startsWith("asian-pear") ? "asianPear" : name.startsWith("sweet-potato") ? "sweetPotato" : name.startsWith("kiwi") ? "kiwi" : name.startsWith("onion") ? "onion" : name.startsWith("lemon") ? "lemon" : name.startsWith("avocado") ? "avocado" : name.startsWith("bananas") ? "banana" : name.startsWith("apple-pair") ? "applePair" : "apple";
+      const spec = classifyProduct(kind === "asianPear" ? "Asian Pear" : kind === "sweetPotato" ? "Sweet Potato" : kind === "kiwi" ? "Kiwi" : kind === "onion" ? "Yellow Onions" : kind === "lemon" ? "Lemons" : kind === "avocado" ? "Avocados" : kind === "banana" ? "Bananas" : kind === "applePair" ? "Apples 2pk" : "Apples");
       const view = model.bufferViews[position.bufferView]!;
       const offset = 28 + length + view.byteOffset + (position.byteOffset ?? 0);
       let maxX = 0, maxZ = 0;
@@ -74,7 +75,7 @@ it.each([
   }
 });
 
-it.each(["onion", "kiwi", "sweet-potato"])("retains the %s scan's original JPEG bytes and recorded output hash", kind => {
+it.each(["onion", "kiwi", "sweet-potato", "asian-pear"])("retains the %s scan's original JPEG bytes and recorded output hash", kind => {
   const data = readFileSync(`public/assets/produce/${kind}.glb`);
   const manifest = JSON.parse(readFileSync(`public/assets/produce/${kind}-sources.json`, "utf8")) as {
     files: { file: string; bytes: number; sha256: string }[]; outputs: { bytes: number; sha256: string }[];

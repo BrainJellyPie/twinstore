@@ -161,3 +161,28 @@ Rebuild with Blender 4.3.2 after downloading and verifying the manifest files:
 blender --background --python scripts/convert_sweet_potato.py -- \
   --source-dir /path/to/sweet-potatoes --output frontend/public/assets/produce/sweet-potato.glb
 ```
+
+`asian-pear.glb` uses the upright **E** fruit from **Pears Asian 01** by
+**Amal Kumar**, published by [Poly Haven](https://polyhaven.com/a/food_pears_asian_01)
+under [CC0](https://polyhaven.com/license). The adjacent `asian-pear-sources.json`
+records all five verified sources and output hashes. The source arrangement
+contains five fruits; only one intact fruit is instanced in the store. Its
+source dimensions, including the stem, are approximately 43.4 × 67.0 × 43.4 mm
+before the common product readability scale.
+
+The 299/1,400-triangle LODs retain the original 1K JPEG color, OpenGL normal and
+packed roughness/metalness maps byte for byte. The authored metallic factor
+remains zero. Whole Asian/Nashi pear names use the yellow-green scan; generic
+pears, other named cultivars, processed foods, plants and multipacks retain
+existing package rules. Shelf and table displays use one layer with stable
+half-turn, size and brightness variation. Medium uses photographic color and
+matte shading; High adds normal and roughness maps. A round, stemmed fallback
+stays visible during loading or failure. Absent Asian pears cause no request
+for the asset.
+
+Rebuild with Blender 4.3.2 after downloading and verifying the manifest files:
+
+```sh
+blender --background --python scripts/convert_asian_pear.py -- \
+  --source-dir /path/to/asian-pears --output frontend/public/assets/produce/asian-pear.glb
+```
