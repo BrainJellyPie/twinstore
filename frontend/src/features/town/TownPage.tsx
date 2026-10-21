@@ -55,7 +55,7 @@ export function TownPage({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex min-h-0 flex-1">
-      <div className="relative min-w-0 flex-1 p-3">
+      <div className="relative m-3 mr-0 min-w-0 flex-1 overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--map-ground)] shadow-[var(--shadow-lift)]">
         {town ? (
           <>
             <TownMap
@@ -69,13 +69,30 @@ export function TownPage({ projectId }: { projectId: string }) {
             <Legend />
           </>
         ) : (
-          <div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
-            {townQ.isLoading ? "Loading…" : "No neighborhood yet — generate one or import a real map on the right."}
+          <div className="dot-grid relative flex h-full flex-col items-center justify-center gap-5 text-center">
+            <svg viewBox="0 0 220 140" className="w-72 opacity-90" aria-hidden>
+              <defs>
+                <linearGradient id="town-aurora" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="var(--heat-1)" /><stop offset="0.5" stopColor="var(--heat-2)" /><stop offset="1" stopColor="var(--heat-3)" />
+                </linearGradient>
+              </defs>
+              <path d="M0 95 L220 60 M30 0 L80 140 M140 0 L170 140" stroke="var(--map-road)" strokeWidth="9" fill="none" strokeLinecap="round" />
+              {[[20, 30], [100, 20], [180, 25], [40, 110], [120, 100], [195, 100]].map(([x, y], i) => (
+                <rect key={i} x={x} y={y} width="22" height="16" rx="3" fill="var(--map-road-minor)" stroke="var(--map-building-stroke)" strokeOpacity="0.4" />
+              ))}
+              <circle cx="110" cy="72" r="40" fill="url(#town-aurora)" opacity="0.18" />
+              <circle cx="110" cy="72" r="22" fill="url(#town-aurora)" opacity="0.3" />
+              <rect x="101" y="63" width="18" height="18" rx="4" fill="var(--map-focal)" />
+            </svg>
+            <div>
+              <div className="font-display text-2xl">{townQ.isLoading ? "Loading…" : "Place the store in its neighborhood"}</div>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">Generate a town or import a real OpenStreetMap area — homes, offices, schools, stations and rivals — to see who walks in, from where and when.</p>
+            </div>
           </div>
         )}
       </div>
 
-      <aside className="flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto border-l bg-surface p-4 text-sm">
+      <aside className="panel m-3 flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto rounded-[1.6rem] p-4 text-sm">
         <Link to="/projects/$pid" params={{ pid: projectId }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3" /> Back to store
         </Link>

@@ -31,8 +31,8 @@ interface CreateStoreWizardProps {
 }
 
 const STEPS = [
-  { index: 1, label: "The store" },
-  { index: 2, label: "Its shoppers" },
+  { index: 1, label: "The store", hint: "Name, address and opening hours. The address grounds the trade-area analysis." },
+  { index: 2, label: "Its shoppers", hint: "Synthetic personas for every open hour, generated from the neighborhood's demographics." },
 ] as const;
 
 export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
@@ -101,8 +101,11 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   return (
     <div className="relative flex-1 overflow-y-auto">
       <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 h-[32rem] [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden />
-      <div className="relative mx-auto my-10 w-full max-w-2xl space-y-8 rounded-3xl border bg-card p-8 shadow-float sm:p-10">
-        <WizardHeader title="New store" steps={STEPS} activeIndex={step} />
+      <div className="relative mx-auto grid w-full max-w-6xl gap-10 px-6 py-10 lg:grid-cols-[22rem_1fr] lg:py-14">
+        <aside className="lg:sticky lg:top-10 lg:self-start">
+          <WizardHeader title="New store" steps={STEPS} activeIndex={step} />
+        </aside>
+        <div className="panel animate-rise space-y-8 rounded-[2rem] p-8 sm:p-10">
 
         {step === 1 && (
           <Step1Fields
@@ -142,6 +145,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
               {isPending ? "Creating store…" : "Create new store"}
             </Button>
           )}
+        </div>
         </div>
       </div>
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
