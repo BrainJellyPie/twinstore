@@ -88,6 +88,9 @@ class Rack(BaseModel):
             raise ValueError("slot block must refer to an occupied rack cell")
         if any(face.block >= count for face in self.locked_faces):
             raise ValueError("locked face block must refer to an occupied rack cell")
+        locations = {(slot.block, slot.face, slot.level) for slot in self.slots}
+        if len(locations) != len(self.slots):
+            raise ValueError("rack slots must have unique block, face and level combinations")
         return self
 
     @property

@@ -306,7 +306,7 @@ class ShelfTestReport(BaseModel):
     target_name: str
     model: str
     currency: str
-    respondents: int
+    respondents: int = Field(description="Respondents with a successful answer in both arms; all metrics use this paired panel")
     errors: int
     applied: list[str] = []
     warnings: list[str] = []

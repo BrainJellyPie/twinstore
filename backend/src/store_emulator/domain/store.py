@@ -1,6 +1,6 @@
 from typing import Final
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .layout_options import StoreDesign
 from .rack import Rack, RackType, PASSTHROUGH_TYPES, Slot
@@ -39,6 +39,13 @@ class Store(BaseModel):
     grid_size: Position  # (width, height)
     weekly_schedule: list[DaySchedule] = []
     racks: list[Rack] = []
+
+    @field_validator("racks")
+    @classmethod
+    def _unique_rack_ids(cls, racks: list[Rack]) -> list[Rack]:
+        if len({rack.id for rack in racks}) != len(racks):
+            raise ValueError("rack IDs must be unique within a store")
+        return racks
 
     def schedule_for(self, day: Weekday) -> DaySchedule | None:
         for s in self.weekly_schedule:
