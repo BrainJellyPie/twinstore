@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Html, useGLTF, useAnimations } from "@react-three/drei";
+import { Html, useAnimations } from "@react-three/drei";
 import * as THREE from "three";
 import type { Rack } from "@/shared/types/domain";
 import { rackWorldCenter } from "@/shared/utils/grid";
-import { marketAssetFor, ALL_MARKET_ASSETS } from "@/shared/utils/assetMap";
+import { marketAssetFor } from "@/shared/utils/assetMap";
 import { useGlbModel } from "@/shared/hooks/useGlbModel";
 import { uniformScaleToTile } from "@/shared/utils/glbHelpers";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
@@ -12,9 +12,6 @@ import { DiningTable } from "./DiningTable";
 
 const GHOST_URL = "/assets/ghost/character-ghost.glb";
 const GHOST_HEIGHT = 0.55;
-
-ALL_MARKET_ASSETS.forEach((url) => useGLTF.preload(url));
-useGLTF.preload(GHOST_URL);
 
 interface AssetInstanceProps {
   url: string;

@@ -1,9 +1,9 @@
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html, useAnimations, useGLTF } from "@react-three/drei";
+import { Html, useAnimations } from "@react-three/drei";
 import * as THREE from "three";
 import type { TimelineEvent } from "@/shared/types/domain";
-import { characterAssetFor, characterAnimationPhase, realisticCharacterAssetFor, ALL_CHARACTER_ASSETS } from "@/shared/utils/assetMap";
+import { characterAssetFor, characterAnimationPhase, realisticCharacterAssetFor } from "@/shared/utils/assetMap";
 import { useGlbModel } from "@/shared/hooks/useGlbModel";
 import { formatMoney } from "@/shared/utils/money";
 import { useSimulationStore } from "@/stores/simulationStore";
@@ -12,8 +12,6 @@ import { M, PERSONA_SCALE } from "../realistic/constants";
 import { angleDelta } from "../realistic/shopperPose";
 import { shopperBlinkWeight } from "../realistic/shopperBlink";
 import { shopperGazeOffset } from "../realistic/shopperGaze";
-
-ALL_CHARACTER_ASSETS.forEach((url) => useGLTF.preload(url));
 
 const CHARACTER_TARGET_HEIGHT = 0.6;
 
