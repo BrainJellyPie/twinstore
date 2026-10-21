@@ -141,6 +141,12 @@ or seat count. **Clear format filters** restores the catalog without changing
 the selected format or your layout settings. Size and seating filters describe
 defaults; the selected layout can still be customized.
 
+**Compare with default** shows your current layout beside the selected format's
+original starting layout at the same cell scale. Compare floor size, displays,
+products, seating, checkouts, reserved areas and interior design before saving.
+Each plan can be expanded and downloaded as SVG. Opening or closing the comparison
+keeps your settings unchanged and does not create a layout.
+
 Restaurant and café starting points include a family restaurant, neighborhood
 bistro, takeaway coffee kiosk, tea lounge and artisan bakery. Vintage boutiques,
 hardware stores and toy/hobby shops add distinct assortments and interior defaults.

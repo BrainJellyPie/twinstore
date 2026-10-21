@@ -8,6 +8,7 @@ import { LAYOUT_STYLES, templateRequest, validTemplateChoice, type TemplateChoic
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
+import { CompareFloorPlans } from "./CompareFloorPlans";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
@@ -122,6 +123,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           <div className="space-y-1.5">
             {preview.isSuccess && validTemplateChoice(value) ? <>
               <FloorPlanPreview store={preview.data} areas={value.reserved_areas ?? []} />
+              <CompareFloorPlans store={preview.data} areas={value.reserved_areas ?? []} templateId={value.templateId} currency={value.currency} />
               <p className="text-xs text-muted-foreground">{preview.data.grid_size.join("×")} cells · {preview.data.racks.filter((r) => r.slots.length).length} displays · {new Set(preview.data.racks.flatMap((r) => r.slots.flatMap((s) => s.items.map((i) => i.sku)))).size} products</p>
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "table").length} dining tables · {preview.data.racks.filter((r) => r.type === "table").length * 4} seats</p>
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "counter").length} checkout counters</p>

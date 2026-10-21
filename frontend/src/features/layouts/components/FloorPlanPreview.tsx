@@ -9,7 +9,7 @@ const RACK_COLORS: Record<string, string> = {
   fridge: "#38bdf8", shelf: "#f59e0b", counter: "#475569", entrance: "#22c55e", exit: "#22c55e", table: "#a78bfa",
 };
 
-export function FloorPlanPreview({ store, areas }: { store: Store; areas: ReservedArea[] }) {
+export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store; areas: ReservedArea[]; previewFrame?: [number, number] }) {
   const [zoom, setZoom] = useState(1);
   const detailedPlan = useRef<SVGSVGElement>(null);
   const tables = store.racks.filter((rack) => rack.type === "table").length;
@@ -37,7 +37,7 @@ export function FloorPlanPreview({ store, areas }: { store: Store; areas: Reserv
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }
   return <div className="space-y-1.5">
-    <FloorPlan store={store} areas={areas} />
+    <FloorPlan store={store} areas={areas} previewFrame={previewFrame} />
     <Dialog onOpenChange={(open) => { if (!open) setZoom(1); }}>
       <DialogTrigger asChild><button type="button" className="w-full rounded-md border px-2 py-1 text-xs hover:bg-muted">Expand floor plan</button></DialogTrigger>
       <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-[min(92vw,1000px)]" data-testid="expanded-floor-plan-dialog">
@@ -68,11 +68,12 @@ export function FloorPlanPreview({ store, areas }: { store: Store; areas: Reserv
   </div>;
 }
 
-function FloorPlan({ store, areas, detailed = false, zoom = 1, ref }: { store: Store; areas: ReservedArea[]; detailed?: boolean; zoom?: number; ref?: Ref<SVGSVGElement> }) {
+function FloorPlan({ store, areas, detailed = false, zoom = 1, ref, previewFrame }: { store: Store; areas: ReservedArea[]; detailed?: boolean; zoom?: number; ref?: Ref<SVGSVGElement>; previewFrame?: [number, number] }) {
   const gridId = useId();
   const [w, h] = store.grid_size;
+  const [frameWidth, frameHeight] = previewFrame ?? store.grid_size;
   const palette = INTERIOR_DESIGNS[store.design_theme ?? "classic"];
-  return <svg ref={ref} viewBox={detailed ? `-1.2 -1.2 ${w + 1.4} ${h + 1.4}` : `-0.2 -0.2 ${w + 0.4} ${h + 0.4}`}
+  return <svg ref={ref} viewBox={detailed ? `-1.2 -1.2 ${w + 1.4} ${h + 1.4}` : `-0.2 -0.2 ${frameWidth + 0.4} ${frameHeight + 0.4}`}
     className={detailed ? "h-full w-full" : "max-h-48 w-full rounded border"}
     style={{ backgroundColor: palette.floor, transform: zoom === 1 ? undefined : `scale(${zoom})`, transformOrigin: "top left" }} role="img" aria-label={detailed ? "Detailed floor plan" : "Floor plan preview"}>
     {detailed && <>
