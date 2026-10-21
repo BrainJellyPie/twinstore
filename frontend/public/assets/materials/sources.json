@@ -136,6 +136,33 @@
       "sha256": "d9d337c9bf76b844c8e5f7839cac1dcc2b2f6eccec4cc1efe36d43f9e239b70c",
       "bytes": 1847149,
       "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "marble_012_diff_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Marble012_1K-JPG.zip",
+      "archive_member": "Marble012_1K-JPG_Color.jpg",
+      "archive_sha256": "b04384c6d49ce73baeb70db7ea4abfe9948fc9b74b9fd92c3766970662bf2c43",
+      "sha256": "a34b55c889c6b3819d2c351b6409bfd0baf0a0a55b073441850627dfebcdcd1e",
+      "bytes": 1220876,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "marble_012_rough_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Marble012_1K-JPG.zip",
+      "archive_member": "Marble012_1K-JPG_Roughness.jpg",
+      "archive_sha256": "b04384c6d49ce73baeb70db7ea4abfe9948fc9b74b9fd92c3766970662bf2c43",
+      "sha256": "f7afd636d6cca0b470549959c514976186df58ac1013016b6c3919910a6d3a04",
+      "bytes": 535814,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "marble_012_nor_gl_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Marble012_1K-JPG.zip",
+      "archive_member": "Marble012_1K-JPG_NormalGL.jpg",
+      "archive_sha256": "b04384c6d49ce73baeb70db7ea4abfe9948fc9b74b9fd92c3766970662bf2c43",
+      "sha256": "2e9a56525ffbb7e80854b19985a5c921f91192698ea337f4834192479ba0063b",
+      "bytes": 342955,
+      "license_url": "https://docs.ambientcg.com/license/"
     }
   ]
 }

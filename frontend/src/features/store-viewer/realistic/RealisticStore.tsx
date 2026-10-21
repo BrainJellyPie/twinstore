@@ -115,7 +115,9 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   const metalMaps = useScannedMaterial(quality === "high" ? "metal_032" : null, 2 / M, 2 / M, quality);
   // Poly Haven's paving scan covers 2.12 m. Stores without an exterior door have no pavement.
   const pavementMaps = useScannedMaterial(quality === "high" && built.storefront ? "pavement_02" : null, 1 / (2.12 * M), 1 / (2.12 * M), quality);
-  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps]);
+  // The source has no measured coverage; author the stone at one repeat/metre.
+  const counterMaps = useScannedMaterial(quality === "high" && built.geometries.has("counterTop") ? "marble_012" : null, 1 / M, 1 / M, quality);
+  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps]);
   const layout = useMemo(() => layoutProducts(built.plans, { maxRows: preset.maxRows }), [built, preset.maxRows]);
   const products = useMemo(
     () => buildProductMeshes(layout, currency, quality === "high" ? 160 : 128, quality === "high", quality === "high" ? 4 : 1, quality !== "high"),
