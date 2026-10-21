@@ -39,6 +39,7 @@ it("filters formats and sends selected requirements to the preview", async () =>
   fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
   fireEvent.change(screen.getByLabelText("Layout pattern"), { target: { value: "showroom" } });
   fireEvent.change(screen.getByLabelText("Interior shelf direction"), { target: { value: "vertical" } });
+  fireEvent.change(screen.getByLabelText("Interior aisle gap"), { target: { value: "4" } });
   fireEvent.change(screen.getByLabelText("Exit position"), { target: { value: "right" } });
   fireEvent.change(screen.getByLabelText("Checkout counters"), { target: { value: "3" } });
   fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "away_from_entrance" } });
@@ -47,7 +48,7 @@ it("filters formats and sends selected requirements to the preview", async () =>
   fireEvent.change(screen.getByLabelText("Seating starts near"), { target: { value: "right" } });
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "28" } });
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
-    expect.objectContaining({ template_id: "community_pharmacy", style: "showroom", checkouts: 3, width: 28,
+    expect.objectContaining({ template_id: "community_pharmacy", style: "showroom", checkouts: 3, width: 28, aisle_width: 4,
       checkout_placement: "away_from_entrance", dining_tables: 4, table_clearance: 2, seating_zone: "right", shelf_direction: "vertical", exit_position: "right" }), expect.any(AbortSignal),
   ));
 });
@@ -61,6 +62,7 @@ it("does not request an invalid size and resets options without losing the brief
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
   fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "Quiet corner" } });
   fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "near_entrance" } });
+  fireEvent.change(screen.getByLabelText("Interior aisle gap"), { target: { value: "4" } });
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Quiet corner");
   expect((screen.getByLabelText("Checkout placement") as HTMLSelectElement).value).toBe("auto");
@@ -68,6 +70,7 @@ it("does not request an invalid size and resets options without losing the brief
   expect((screen.getByLabelText("Space around dining tables") as HTMLSelectElement).disabled).toBe(true);
   expect((screen.getByLabelText("Space around dining tables") as HTMLSelectElement).value).toBe("1");
   expect((screen.getByLabelText("Interior shelf direction") as HTMLSelectElement).value).toBe("horizontal");
+  expect((screen.getByLabelText("Interior aisle gap") as HTMLSelectElement).value).toBe("");
   expect((screen.getByLabelText("Exit position") as HTMLSelectElement).value).toBe("shared");
   await screen.findByRole("img", { name: "Floor plan preview" });
 });
@@ -99,6 +102,7 @@ it("shows each format's seating and checkout defaults without replacing explicit
   await screen.findByRole("button", { name: /Family restaurant/ });
   fireEvent.click(screen.getByRole("button", { name: /Family restaurant/ }));
   expect((screen.getByLabelText("Interior shelf direction") as HTMLSelectElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Interior aisle gap") as HTMLSelectElement).disabled).toBe(true);
   expect(screen.getByRole("option", { name: "Format default (center)" })).toBeTruthy();
   expect(screen.getByRole("option", { name: "Format default (near entrance)" })).toBeTruthy();
   expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).disabled).toBe(false);
@@ -107,6 +111,7 @@ it("shows each format's seating and checkout defaults without replacing explicit
   fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "away_from_entrance" } });
   fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
   expect((screen.getByLabelText("Interior shelf direction") as HTMLSelectElement).disabled).toBe(false);
+  expect((screen.getByLabelText("Interior aisle gap") as HTMLSelectElement).disabled).toBe(false);
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
     template_id: "community_pharmacy", seating_zone: "front", checkout_placement: "away_from_entrance",
   }), expect.any(AbortSignal)));
@@ -153,6 +158,22 @@ it("offers large checkout counts and resets to the selected format's default", a
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ checkouts: 12 }), expect.any(AbortSignal)));
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ checkouts: null }), expect.any(AbortSignal)));
+});
+
+it("keeps an explicit aisle gap when density changes and supports returning to density defaults", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Interior aisle gap"), { target: { value: "4" } });
+  fireEvent.change(screen.getByLabelText("Display density"), { target: { value: "dense" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ density: "dense", aisle_width: 4 }), expect.any(AbortSignal),
+  ));
+  expect((screen.getByLabelText("Interior aisle gap") as HTMLSelectElement).value).toBe("4");
+  expect(screen.getByRole("option", { name: "Density default (1 cell)" })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Interior aisle gap"), { target: { value: "" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ density: "dense", aisle_width: null }), expect.any(AbortSignal),
+  ));
 });
 
 it("accepts any whole dining count through 48, rejects invalid counts, and restores automatic seating when cleared", async () => {

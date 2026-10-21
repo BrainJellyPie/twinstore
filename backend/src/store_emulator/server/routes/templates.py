@@ -57,6 +57,7 @@ def preview(
     width: int | None = Query(default=None, ge=8, le=40),
     height: int | None = Query(default=None, ge=6, le=40),
     density: LayoutDensity = "balanced", entrance: EntrancePosition = "left",
+    aisle_width: int | None = Query(default=None, ge=1, le=4),
     exit_position: ExitPosition = "shared",
     shelf_direction: ShelfDirection = "horizontal",
     checkouts: int | None = Query(default=None, ge=1, le=12), fixture_design: FixtureDesign = "mixed",
@@ -65,7 +66,7 @@ def preview(
     table_clearance: int = Query(default=1, ge=1, le=3),
     seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
 ) -> Store:
-    options = LayoutOptions(style=style, width=width, height=height, density=density,
+    options = LayoutOptions(style=style, width=width, height=height, density=density, aisle_width=aisle_width,
                             shelf_direction=shelf_direction,
                             entrance=entrance, exit_position=exit_position, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables, table_clearance=table_clearance,

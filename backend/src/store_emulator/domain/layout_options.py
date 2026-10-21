@@ -32,6 +32,7 @@ class LayoutOptions(BaseModel):
     width: int | None = Field(default=None, ge=8, le=40)
     height: int | None = Field(default=None, ge=6, le=40)
     density: LayoutDensity = "balanced"
+    aisle_width: int | None = Field(default=None, ge=1, le=4)
     shelf_direction: ShelfDirection = "horizontal"
     entrance: EntrancePosition = "left"
     exit_position: ExitPosition = "shared"
