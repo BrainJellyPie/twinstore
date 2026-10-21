@@ -104,6 +104,22 @@ it("starts garden, crafts and cafe floors with the project's currency", () => {
   expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
 });
 
+it("combines eyewear, jewelry, music and coffee as independently configurable floors", () => {
+  render(<Building currency="JPY" />);
+  fireEvent.click(screen.getByRole("button", { name: "Style, sound & café" }));
+  expect(screen.getByText("optical_shop / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
+  fireEvent.click(screen.getByRole("button", { name: /2F · Level 2 · Jewelry/ }));
+  expect(screen.getByText("jewelry_boutique / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /3F · Level 3 · Music/ }));
+  expect(screen.getByText("music_store / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /4F · Level 4 · Café/ }));
+  expect(screen.getByText("specialty_cafe / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+  fireEvent.click(screen.getByRole("button", { name: /1F · Ground · Eyewear/ }));
+  expect(screen.getByText("optical_shop / width 30")).toBeTruthy();
+});
+
 it("moves and duplicates a customized floor without losing its settings", () => {
   render(<Building />);
   fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));

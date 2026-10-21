@@ -304,6 +304,30 @@ TEMPLATES: list[StoreTemplate] = [
         gondolas=["art_craft", "art_craft", "stationery"], near_counter=["art_craft"],
         style="cross", open_hours=(10, 21), checkouts=2, design_theme="warm",
     ),
+    StoreTemplate(
+        id="optical_shop", name="Optical & eyewear shop", description="Frames, sunglasses and eyewear accessories in minimal showroom groups with two service counters. Models retail purchases; eye exams and lens fitting are not simulated.",
+        store_type="eyewear", grid=(20, 16), fridges=[], wall_shelves=["eyewear"] * 6,
+        gondolas=["eyewear", "eyewear", "travel_gear"], near_counter=["eyewear"],
+        style="showroom", open_hours=(10, 21), checkouts=2, checkout_placement="away_from_entrance", design_theme="minimal",
+    ),
+    StoreTemplate(
+        id="jewelry_boutique", name="Jewelry & accessories boutique", description="A compact luxury showroom for jewelry, watches and gift accessories, with two checkout counters away from the entrance.",
+        store_type="jewelry", grid=(16, 12), fridges=[], wall_shelves=["jewelry"] * 5,
+        gondolas=["jewelry", "jewelry", "souvenirs"], near_counter=["jewelry"],
+        style="showroom", open_hours=(10, 20), checkouts=2, checkout_placement="away_from_entrance", design_theme="luxury",
+    ),
+    StoreTemplate(
+        id="music_store", name="Music & instrument store", description="Instruments, practice gear and audio accessories on free-flow display islands with industrial finishes and two checkout counters.",
+        store_type="music", grid=(24, 18), fridges=[], wall_shelves=["music_gear", "electronics", "music_gear"] * 3,
+        gondolas=["music_gear", "music_gear", "electronics"], near_counter=["music_gear"],
+        style="free_flow", open_hours=(10, 21), checkouts=2, design_theme="industrial",
+    ),
+    StoreTemplate(
+        id="fashion_outlet", name="Large fashion outlet", description="A 32×24 apparel, footwear and bag store with a racetrack layout, coastal finishes and four checkout counters.",
+        store_type="fashion", grid=(32, 24), fridges=[], wall_shelves=["apparel", "footwear", "travel_gear"] * 4,
+        gondolas=["apparel", "apparel", "footwear", "travel_gear"], near_counter=["apparel", "footwear"],
+        style="loop", open_hours=(10, 22), checkouts=4, design_theme="coastal",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}

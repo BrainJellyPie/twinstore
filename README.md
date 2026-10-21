@@ -130,7 +130,7 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 42
+In a project, choose **New layout → Generate a store from a template**. Search 46
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
@@ -164,6 +164,13 @@ botanical finishes and garden tools, growing supplies, plants and homeware. The
 22×18 **Art & craft supply store** combines painting and craft materials with
 stationery and books. Both use central cross aisles. **Garden, crafts & café**
 combines these stores with an upstairs café as three separate floors.
+
+**Optical & eyewear shop**, **Jewelry & accessories boutique** and **Music &
+instrument store** have dedicated eyewear, jewelry and instrument assortments.
+Their defaults use minimal or luxury showroom groups and industrial free-flow
+islands. **Large fashion outlet** adds a 32×24 racetrack floor with apparel,
+footwear, bags, coastal finishes and four checkouts. **Style, sound & café**
+combines eyewear, jewelry, music and coffee as four independently editable floors.
 
 USD, KRW and JPY prices keep their currency with the saved layout and simulation
 results. New-project shopper budgets use the chosen currency, and additional

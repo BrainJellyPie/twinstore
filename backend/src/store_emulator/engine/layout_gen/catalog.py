@@ -169,6 +169,24 @@ _SPECIALTY: dict[str, list[tuple[str, int]]] = {
         ("Luggage Strap", 999), ("Refillable Travel Bottles 4pk", 1299), ("Compact Travel Umbrella", 1699),
         ("Travel Eye Mask", 899), ("Foldable Day Bag", 1999), ("Compact Toiletry Pouch", 1499),
     ],
+    "eyewear": [
+        ("Classic Round Frame", 7999), ("Rectangular Frame", 8999), ("Lightweight Frame", 9999),
+        ("Polarized Sunglasses", 6999), ("Clip-On Sunglasses", 2499), ("Sports Eyewear", 5999),
+        ("Hard Glasses Case", 1299), ("Eyeglass Cord", 799), ("Lens Cleaning Spray 60ml", 599),
+        ("Microfiber Cloth Set", 499), ("Lens Cleaning Wipes 30pk", 699), ("Eyewear Travel Pouch", 999),
+    ],
+    "jewelry": [
+        ("Sterling Silver Ring", 4999), ("Gold-Plated Stud Earrings", 3999), ("Beaded Bracelet", 1999),
+        ("Pendant Necklace", 5999), ("Chain Necklace", 4499), ("Pearl-Style Earrings", 2999),
+        ("Jewelry Travel Case", 2499), ("Watch Strap", 1999), ("Minimalist Watch", 8999),
+        ("Floral Brooch", 2499), ("Jewelry Cleaning Cloth", 599), ("Gift Presentation Box", 799),
+    ],
+    "music_gear": [
+        ("Acoustic Guitar", 19999), ("Soprano Ukulele", 5999), ("Portable Keyboard", 14999),
+        ("Practice Drum Pad", 2999), ("Guitar Strings Set", 999), ("Instrument Cable 3m", 1499),
+        ("Clip-On Tuner", 1999), ("Guitar Picks 12pk", 599), ("Folding Music Stand", 2499),
+        ("Guitar Strap", 1999), ("Keyboard Sustain Pedal", 2499), ("Instrument Cleaning Kit", 1299),
+    ],
     "garden_supplies": [
         ("Potting Mix 10L", 899), ("Vegetable Seed Pack", 299), ("Wildflower Seed Pack", 349),
         ("Seedling Tray", 599), ("Terracotta Pot 20cm", 1299), ("Watering Can 5L", 1999),
