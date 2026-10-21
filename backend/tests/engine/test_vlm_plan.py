@@ -314,3 +314,40 @@ def test_cut_off_plan_is_retried_with_twice_the_budget():
     decision = asyncio.run(engine.decide_actions(_context(store, _personas()[0], seed=11, situation="")))
     assert [c["max_tokens"] for c in vlm.plan_calls] == [410, 820]
     assert decision.trace["plan_source"] == "vlm"
+
+
+def test_trip_breadth_keeps_the_first_planned_categories_and_fills_within_them():
+    store = _store()
+    plan = {"enter": True, "mission": "stock up", "reason": "weekly",
+            "items": [{"category": "Drink", "product": "Pepsi 20oz", "qty": 1},
+                      {"category": "Snacks", "product": "", "qty": 1},
+                      {"category": "Ice cream", "product": "", "qty": 1},
+                      {"category": "Frozen food", "product": "", "qty": 1}]}
+    engine = VLMGlanceEngine(llm=_FakeVLM(plan), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    persona = _personas()[0].model_copy(update={"basket_size": 4, "basket_kinds": 2})
+    decision = asyncio.run(engine.decide_actions(_context(store, persona, seed=3)))
+    rack_of = {i.sku: r.rack_name.rsplit(" ", 1)[0] for r in store.product_racks for s in r.slots for i in s.items}
+    buys = _buys(decision.actions)
+    assert len({sku for sku, _ in buys}) == 4
+    assert {rack_of[sku] for sku, _ in buys} == {"Drink", "Snacks"}       # the model's first two categories
+    record = engine.metadata()["plan_records"][0]  # type: ignore[index]
+    hows = [r[2] for r in record["resolved"]]  # type: ignore[index]
+    assert hows.count("breadth") == 2 and hows.count("breadth_fill") == 2
+
+
+def test_needs_are_a_seeded_draw_at_each_category_rate():
+    from store_emulator.engine.simulation.engines.vlm_glance.prompt import (
+        plan_user_prompt,
+    )
+
+    store = _store()
+    persona = _personas()[0].model_copy(update={"category_rates": {"Drink": 0.9, "Snacks": 0.5, "Ice cream": 0.1}})
+    draws = [VLMGlanceEngine._needs(_context(store, persona, seed=s)) for s in range(400)]  # pyright: ignore[reportPrivateUsage]
+    assert all(d is not None for d in draws)
+    share = {c: sum(c in d[0] for d in draws if d) / len(draws) for c in ("Drink", "Snacks", "Ice cream")}
+    assert abs(share["Drink"] - 0.9) < 0.05 and abs(share["Snacks"] - 0.5) < 0.07 and abs(share["Ice cream"] - 0.1) < 0.05
+    assert draws[3] == VLMGlanceEngine._needs(_context(store, persona, seed=3))  # pyright: ignore[reportPrivateUsage]
+    assert VLMGlanceEngine._needs(_context(store, _personas()[0], seed=1)) is None  # pyright: ignore[reportPrivateUsage]
+    text = plan_user_prompt(persona, BehaviorCue(state=""), BEHAVIOR_PATTERNS[0], day=Weekday.MON, hour=9, situation="",
+                            budget=None, currency="USD", directory="", needs=(["Drink"], ["Snacks", "Ice cream"]))
+    assert "needed this trip: Drink." in text and "Still stocked at home (bought recently): Snacks, Ice cream." in text

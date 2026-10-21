@@ -74,6 +74,8 @@ from .prompt import (
 
 logger = logging.getLogger(__name__)
 
+_STOCKED_SHOWN = 8  # categories named as "still stocked at home" in the entrance prompt
+
 
 @dataclass(frozen=True)
 class GlanceRecord:
@@ -137,11 +139,11 @@ class VLMGlanceEngine(RuleBasedEngine):
         store, persona = context.store, context.persona
         plan, middle = self._begin_plan(context)
         directory, image = self._entrance_view(store)
-        if vcfg.directory_shuffle or vcfg.directory_examples != 3:  # else the cached fixed directory
+        if vcfg.directory_shuffle or vcfg.directory_examples != 3 or vcfg.directory_prices:  # else the cached one
             directory = directory_text(store_directory(
                 store, examples=vcfg.directory_examples,
                 rng=random.Random(stable_seed(context.seed, "directory")) if vcfg.directory_shuffle else None,
-            ), cfg.currency)
+            ), cfg.currency, item_prices=vcfg.directory_prices)
         # A trip of known size plans that many (up to the schema limit), whatever the default cap.
         max_items = (min(PLAN_ITEMS_LIMIT, persona.basket_size) if persona.basket_size > 0
                      else min(vcfg.max_plan_items, plan.pattern.max_products))
@@ -149,7 +151,7 @@ class VLMGlanceEngine(RuleBasedEngine):
         prompt = plan_user_prompt(
             persona, context.cue, plan.pattern, day=context.day, hour=context.arrival_hour,
             situation=context.situation, budget=persona.budget_max if persona.budget_max > 0 else None,
-            currency=cfg.currency, directory=directory,
+            currency=cfg.currency, directory=directory, needs=self._needs(context),
         )
         decision, model, agreement, error = await self._ask_plan(
             entry_decision_model(max_items), system, prompt, image or None, context,
@@ -174,6 +176,11 @@ class VLMGlanceEngine(RuleBasedEngine):
         catalog = self._catalog_for(store)
         limit = int(plan.budget * plan.tolerance)
         resolved: list[tuple[str, str, str, str]] = []
+        # A trip of known breadth (Persona.basket_kinds, e.g. from a past receipt) keeps the model's
+        # first categories in its priority order; asked for n items, models otherwise spread them over
+        # n categories (1.04 products per category against 1.43 on real receipts).
+        kinds = persona.basket_kinds if persona.basket_size > 0 else 0
+        kept: list[str] = []
         for i, item in enumerate(decision.items):
             label = item.product or item.category
             if i >= max_items:
@@ -192,6 +199,9 @@ class VLMGlanceEngine(RuleBasedEngine):
                 resolved.append((label, "", how, ""))
                 continue
             rack, slot, sku_item, _, _ = entry
+            if kinds and category_label(rack) not in kept and len(kept) >= kinds:
+                resolved.append((label, sku_item.sku, "breadth", category_label(rack)))
+                continue
             quantity = min(item.qty, cfg.max_quantity_per_line, max(0, (limit - plan.spend) // max(1, sku_item.price)))
             if quantity < 1:
                 resolved.append((label, sku_item.sku, "over_budget", category_label(rack)))
@@ -200,10 +210,34 @@ class VLMGlanceEngine(RuleBasedEngine):
                 resolved.append((label, sku_item.sku, "unreachable", category_label(rack)))
                 continue
             resolved.append((label, sku_item.sku, match.how, category_label(rack)))
+            if category_label(rack) not in kept:
+                kept.append(category_label(rack))
+        if kinds and kept:
+            # Fill the trip to its size with more products of the kept categories, drawn as the rule
+            # planner draws them (shelf attention, price, the shopper's usual products).
+            usual = frozenset(p.lower() for p in persona.usual_products)
+            before = len(plan.buys)
+            self._fill_to_size(store, plan, middle, kept, min(max_items, persona.basket_size), usual, kinds, kept)
+            resolved.extend(("(same category)", b.product_sku, "breadth_fill", "") for b in plan.buys[before:])
         plan.trace = {"plan_source": source, "entered": True, "mission": decision.mission}
         self._record_plan(PlanRecord(persona.id, plan.pattern.id, source, True, decision.mission, decision.reason,
                                      named, tuple(resolved), model=model, agreement=agreement))
         return self.close_plan(store, plan, middle)
+
+    @staticmethod
+    def _needs(context: PerCustomerContext) -> tuple[list[str], list[str]] | None:
+        """Which usual categories the household has run out of this trip: one seeded draw per category
+        at its rate (Persona.category_rates), most frequent first. The model then plans the trip; the
+        draw only sets what is missing at home, as a seeded draw sets impulse purchases."""
+        rates = context.persona.category_rates
+        if not rates:
+            return None
+        rng = random.Random(stable_seed(context.seed, "needs"))
+        out: list[str] = []
+        stocked: list[str] = []
+        for category, rate in sorted(rates.items(), key=lambda kv: (-kv[1], kv[0])):
+            (out if rng.random() < rate else stocked).append(category)
+        return out, stocked[:_STOCKED_SHOWN]
 
     async def _ask_plan(
         self, schema: type[EntryDecision], system: str, prompt: str, image: str | None, context: PerCustomerContext,
@@ -353,13 +387,23 @@ class VLMGlanceEngine(RuleBasedEngine):
             combined, agreement = combine_votes(view, ok)
             return combined, "vote", agreement, votes, ""
         model = self._llm.member_for(route).name if isinstance(self._llm, EnsembleLLMClient) else ""
-        try:
-            glance = await self._llm.generate_structured_with_image_async(
-                ShelfGlance, glance_system_prompt(context.store.type), prompt, view.data_url(), seed=seed, route=route, max_retries=1,
-            )
-        except Exception as e:  # noqa: BLE001 — one failed glance must not fail the customer
-            return None, model, None, (), f"{type(e).__name__}: {e}"
-        return glance, model, None, (), ""
+        budget = self._config.engines.vlm_glance.llm.max_tokens
+        error = ""
+        # A cut-off answer (e.g. the model first echoes the schema's description) gets one retry with
+        # twice the room, as plans do; anything else is a failed glance.
+        for max_tokens in (None, 2 * budget):
+            try:
+                glance = await self._llm.generate_structured_with_image_async(
+                    ShelfGlance, glance_system_prompt(context.store.type), prompt, view.data_url(), seed=seed, route=route,
+                    max_retries=1, **({} if max_tokens is None else {"max_tokens": max_tokens}),
+                )
+            except Exception as e:  # noqa: BLE001 — one failed glance must not fail the customer
+                error = f"{type(e).__name__}: {e}"
+                if "max_tokens" in error or "length limit" in error:
+                    continue
+                return None, model, None, (), error
+            return glance, model, None, (), ""
+        return None, model, None, (), error
 
     def _basket_names(self, context: PerCustomerContext, plan: ShopperPlan) -> list[str]:
         names: list[str] = []

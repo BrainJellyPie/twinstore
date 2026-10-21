@@ -301,7 +301,9 @@ def plan_system_prompt(*, max_items: int, image: bool, store_type: str = "conven
                  "household can be many more." if max_items > 4 else "")
     items_rule = (
         f"at most {max_items} things they plan to buy. category: one category from the store directory. "
-        f"product: a product name from the directory, or a short description. qty: 1 to 3.{size_hint}"
+        f"product: a product name from the directory, or a short description. qty: 1 to 3. Different products "
+        f"of one category are separate items (two kinds of yogurt are two items); real trips often take "
+        f"several from the same category.{size_hint}"
         if max_items > 0 else "leave empty: today they only browse inside, no planned purchase"
     )
     return PLAN_SYSTEM_PROMPT.format(image_line=_PLAN_IMAGE_LINE if image else "", items_rule=items_rule,
@@ -319,7 +321,9 @@ def plan_user_prompt(
     budget: int | None,
     currency: str,
     directory: str,
+    needs: tuple[list[str], list[str]] | None = None,
 ) -> str:
+    """`needs`: (categories the household has run out of, categories still stocked at home)."""
     mood = ", ".join(g for g in (_gloss(cue.state), _gloss(cue.emotion), _gloss(cue.purse), _gloss(cue.company)) if g)
     who = f"A {_AGE.get(persona.age_group, persona.age_group)} {persona.gender.lower()}, {persona.identity}."
     lines = [f"Shopper: {who} {persona.description}".strip()]
@@ -335,9 +339,17 @@ def plan_user_prompt(
     if mood:
         lines.append(f"Right now: {mood}.")
     lines.append(f"Time: {_WEEKDAY_NAMES.get(day, 'a weekday')} {hour:02d}:00.")
+    if needs is not None:
+        out, stocked = needs
+        if out:
+            lines.append(f"Run out of at home, so needed this trip: {', '.join(out)}.")
+        if stocked:
+            lines.append(f"Still stocked at home (bought recently): {', '.join(stocked)}.")
     if persona.basket_size > 0:
-        lines.append(f"This trip they come for about {persona.basket_size} different item"
-                     f"{'s' if persona.basket_size != 1 else ''}.")
+        n, k = persona.basket_size, persona.basket_kinds
+        kinds = (f", from about {k} categor{'y' if k == 1 else 'ies'} (several products of one kind count separately)"
+                 if 0 < k < n else "")
+        lines.append(f"This trip they come for about {n} different item{'s' if n != 1 else ''}{kinds}.")
     lines.append(f"Today: {situation}." if situation else "Today: an ordinary day.")
     if budget is not None:
         lines.append(f"Money they are willing to spend: about {display_price(max(0, budget), currency)}.")

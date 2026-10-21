@@ -28,6 +28,15 @@ class Persona(BaseModel):
     # Different items this trip is for (e.g. drawn from the store's own receipts). 0 = the engine
     # decides from the behavior pattern; > 0 = engines plan this many and size the trip to it.
     basket_size: int = 0
+    # Product categories those items come from (e.g. from the same receipt). Real trips often take
+    # several products of one kind; asked for 6 items, models otherwise pick 6 categories.
+    # 0 = unconstrained.
+    basket_kinds: int = 0
+    # Share of this shopper's past trips that included each category (e.g. from loyalty data). Vision
+    # planners are told which of them the household has run out of this trip: a seeded draw per
+    # category at its rate. A model asked for one trip otherwise buys every staple every time (milk on
+    # 73 % of trips against 43 % on real receipts). Empty = no such draw.
+    category_rates: dict[str, float] = {}
     # Products this shopper habitually buys (names as on the shelf), e.g. from their purchase history.
     # The VLM planner sees them; the rule planner picks one of them first with probability habit_prob.
     usual_products: list[str] = []

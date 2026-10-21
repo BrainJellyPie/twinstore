@@ -87,16 +87,37 @@ calibration) and feeds what is wrong back into the simulator:
 - **Model Studio regions**: `DASHSCOPE_API_BASE` (or Settings) selects the
   region or workspace endpoint; Qwen's reasoning mode is switched off for shopper
   decisions.
-- **Walking from pedestrian tracks** (ATC shopping center): 1.16 s per tile
-  (1.08 m/s), diagonal steps without corner cutting, per-shopper pace (lognormal,
-  sd 0.3); time runs in fractional seconds.
+- **Walking from pedestrian tracks** (ATC shopping center, 13,159 tracks): 1.04 s
+  per tile (median per-shopper speed 1.12 m/s vs 1.13 real), diagonal steps
+  without corner cutting (detour index 1.27 → 1.19), per-shopper pace
+  (lognormal, sd 0.3); time runs in fractional seconds.
+- **Prices shoppers can react to**: `SlotItem.regular_price` (a sale shows as
+  "$2.39 (was $2.99)" on the shelf tag), every product's price in the vision
+  planner's store directory (`directory_prices`), and a constant-elasticity
+  price factor in the rule planner (`price_elasticity`, default −1.8). Before,
+  neither engine responded to a 20 % price change (elasticity ≈ 0); now the rule
+  engine gives −0.78 and Haiku, Qwen and GPT-6 Luna −1.4 to −1.6, between the
+  item-level elasticity of M5 food sales (−0.70) and brand-level meta-analyses
+  (−1.76, −2.62).
+- **Trips that vary like real ones**: `Persona.category_rates` (share of past
+  trips with each category; on each trip a seeded draw decides which of them the
+  household has run out of, and the vision planner is told) and
+  `Persona.basket_kinds` (categories on the same past receipt; the planner keeps
+  the model's first K categories and fills the trip within them). Asked for one
+  trip, models otherwise bought every staple every time (milk on 73 % of trips
+  against 43 % on receipts) and spread six items over six categories; a
+  classifier told such baskets from real ones (`research/validation/c2st.py`).
 - **Product choice**: the store directory lists every product of a category in a
   random order per shopper (with three fixed examples, 87 % of planned products
   were those three); `Persona.usual_products` and `habit_prob` for repeat
   purchases, shown to vision planners and used by the rule planner.
 - **Newer OpenAI models** (GPT-6): `max_tokens` is renamed to
   `max_completion_tokens` and unsupported sampling values are dropped, learned
-  from the provider's error and retried.
+  from the provider's error and retried. Reasoning is switched off for shopper
+  decisions (`reasoning_effort: none`): with it on, reasoning tokens used up the
+  glance budget and 90 % of GPT-6 Luna's shelf glances failed. A cut-off glance
+  is retried once with twice the budget, and validation runs report glance
+  errors next to plan fallbacks.
 
 ### Getting started
 Double-click `Parastore-Windows.bat`, `Parastore-macOS.command` or
