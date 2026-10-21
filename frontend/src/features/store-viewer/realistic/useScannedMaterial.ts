@@ -8,7 +8,7 @@ export interface ScannedMaterialMaps {
   normalMap: THREE.Texture | null;
 }
 
-type Surface = "floor_tiles_08" | "wood_table_001" | "plaster_001" | "metal_032";
+type Surface = "floor_tiles_08" | "wood_table_001" | "plaster_001" | "metal_032" | "pavement_02";
 
 // Bundled CC0 PBR maps: no CDN dependency at runtime. Keep the procedural surface
 // visible until the entire set is ready, including when a download fails.
