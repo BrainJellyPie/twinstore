@@ -5,19 +5,23 @@ import csv
 import io
 import time
 
-from store_emulator.application.errors import AppError
+from pydantic import BaseModel, ConfigDict, Field
+
+from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.currencies import simulation_currency
 from store_emulator.application.async_executor import executor
 from store_emulator.application.marketing import (
     _finish, _job_dir, _new_job, _status, _write_status,  # pyright: ignore[reportPrivateUsage]
 )
-from store_emulator.application.providers import build_client
+from store_emulator.application.providers import assistive_model, build_client
 from store_emulator.application.shelf_lab import _check_id, _load_store, _personas  # pyright: ignore[reportPrivateUsage]
 from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.marketing import JobStatus
 from store_emulator.domain.staff_pitch import PitchProduct, PitchReport, PitchRequest, PitchView
+from store_emulator.engine.marketing.script_writer import ScriptDraft, draft_script
 from store_emulator.engine.marketing.staff_pitch import summarize_pitch, test_pitch_panel
+from store_emulator.engine.prompting import display_price
 from store_emulator.engine.optimize.evaluate import select_personas
 
 
@@ -110,3 +114,37 @@ def pitch_csv(pid: str, pitch_id: str) -> str:
             writer.writerow(["'" + cell if isinstance(cell, str) and cell.lstrip().startswith(("=", "+", "-", "@"))
                              else cell for cell in row])
     return buf.getvalue()
+
+
+class ScriptDraftRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    setup_id: str = Field(min_length=1)
+    sku: str = Field(min_length=1)
+    context: str = Field(default="", max_length=1200)
+    product_facts: str = Field(default="", max_length=1600)
+    current: str = Field(default="", max_length=1200, description="the script to write an alternative to")
+    direction: str = Field(default="", max_length=200, description='optional, e.g. "lead with value"')
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+def draft_pitch_script(pid: str, req: ScriptDraftRequest, config: SimulationConfig) -> ScriptDraft:
+    """An alternative staff script for the same product and offer, written by the text model (nothing runs)."""
+    _check_id(pid, "project id")
+    _check_id(req.setup_id, "setup id")
+    store = _load_store(pid, req.setup_id)
+    currency = simulation_currency(pid, store, config.currency)
+    item = next((p for rack in store.racks for slot in rack.slots for p in slot.items if p.sku == req.sku), None)
+    if item is None:
+        raise AppError("Choose a product present in this layout", 400)
+    offer = display_price(item.price, currency) + (f", promotion '{item.promo}'" if item.promo else "")
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+    except ValueError as exc:
+        raise AppError(str(exc), 400) from exc
+    try:
+        return asyncio.run(draft_script(llm, product=item.name, offer=offer, context=req.context, facts=req.product_facts,
+                                        current=req.current, direction=req.direction))
+    except Exception as exc:  # provider errors reach the user as advice
+        raise AppError(model_failure(exc, "The script could not be drafted"), 502) from exc

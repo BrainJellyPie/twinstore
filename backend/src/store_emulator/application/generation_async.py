@@ -19,7 +19,8 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import DaySchedule
 from store_emulator.engine.generators import persona as gen_persona
 from store_emulator.engine.generators.traffic_profile import TrafficProfile
-from store_emulator.application.providers import resolve_model
+from store_emulator.application.providers import assistive_model, resolve_model
+from store_emulator.application.town import neighborhood_text
 from store_emulator.engine.llm_client import LiteLLMClient
 
 logger = logging.getLogger(__name__)
@@ -131,7 +132,8 @@ async def _run_async_pipeline(
     Single LLM instance (token usage aggregated).
     Race / write failures stay isolated in effective_summary.
     """
-    llm = LiteLLMClient(resolve_model(config.llm.model, base=config.llm))
+    # A default text model without an API key would fail every batch; use one that has a key.
+    llm = LiteLLMClient(resolve_model(assistive_model("", config.llm), base=config.llm))
 
     # Default to metadata's existing supplemental_summary. Even when
     # supplemental_bytes is None (manual call, restart, etc.) a previously-stored
@@ -173,6 +175,15 @@ async def _run_async_pipeline(
             except Exception:
                 logger.warning("[supplemental] could not store the traffic profile", exc_info=True)
             logger.info(f"[supplemental] visit times follow the uploaded data ({fitted.source})")
+
+    # Ground the personas in the project's neighborhood model when there is one.
+    try:
+        neighborhood = neighborhood_text(project_id)
+    except Exception:
+        logger.warning("[persona generation] neighborhood model unreadable; generating without it", exc_info=True)
+        neighborhood = ""
+    if neighborhood:
+        effective_summary = f"{effective_summary}\n{neighborhood}".strip()
 
     return await _generate_personas_impl(
         llm=llm,

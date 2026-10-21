@@ -7,6 +7,8 @@ Fragments are Korean because they are spliced into Korean prompt bodies
 (see AGENTS.md, i18n policy).
 """
 
+import re
+
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 
 
@@ -58,3 +60,29 @@ def budget_example(currency: str) -> str:
     if code in _ZERO_DECIMAL:
         return f"예산 범위를 {code} 정수로 (소수점 없음)"
     return f"예산 범위를 {code}의 최소 화폐 단위(1/100) 정수로"
+
+
+def relevant_first[T](entries: list[tuple[str, str, T]], query: str, limit: int) -> list[T]:
+    """Up to `limit` entries for a prompt, those whose text shares a word with `query` first, then the rest taken in
+    turn from each group (a shelf), so a long catalog is never cut off at whichever shelf happens to come last.
+
+    `entries` are (group, text, payload)."""
+    asked = _words(query)
+    hits = [e for e in entries if asked & _words(f"{e[0]} {e[1]}")]
+    taken = {id(e) for e in hits}
+    rest: dict[str, list[tuple[str, str, T]]] = {}
+    for e in entries:
+        if id(e) not in taken:
+            rest.setdefault(e[0], []).append(e)
+    ordered: list[tuple[str, str, T]] = list(hits)
+    queues: list[list[tuple[str, str, T]]] = [q for q in rest.values() if q]
+    while queues and len(ordered) < limit:
+        for q in queues:
+            ordered.append(q.pop(0))
+        queues = [q for q in queues if q]
+    return [payload for _, _, payload in ordered[:limit]]
+
+
+def _words(text: str) -> set[str]:
+    out = {w for w in re.split(r"[^\w]+", text.casefold()) if len(w) > 2}
+    return out | {w[:-1] for w in out if w.endswith("s") and len(w) > 3}

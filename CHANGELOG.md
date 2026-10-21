@@ -6,6 +6,18 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Ask about this run
+- A new **Ask about this run** box in a run's results answers questions such as "which shelf converts worst, and
+  why might that be?" from the run's own fact sheet (totals, arrival hours, shelves with stops, buys and buy rate,
+  products, age and gender groups). Every answer lists the figures it rests on (only lines that are in the sheet are
+  kept), says plainly when the run cannot answer, and offers follow-up questions; the thread is kept with the run.
+  API: `GET/POST/DELETE /api/projects/{pid}/runs/{run_id}/analyst`, `GET .../analyst/facts`.
+
+- **Explain the difference** in Compare runs: the model reads the paired comparison (in money, points, seconds and
+  metres) and both runs' fact sheets, and says what changed, which shelves, products, hours or groups it came from,
+  and what is within noise, with the figures it used. API: `POST /api/projects/{pid}/compare/explain?a=…&b=…`.
+- A model reply cut off by its length limit now says so ("the model's reply was cut off before it finished").
+
 ### Model-written shopper thoughts
 - Vision shoppers now say what they came for: the model's own mission and reason become the first step of each
   journey and the speech bubble at the door ("a cold soda and something salty (thirsty)"); a shopper who turns
@@ -30,6 +42,17 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the details opened for checking. Promotions and stock-outs are matched against the layout's products: targets that
   match nothing are left out and listed, and a target that reaches several products says how many.
   API: `POST /api/scenarios/describe`.
+- **Draft the test** in the A/B builder: write the question ("would eye level or a 2+1 sign sell more ice cream?")
+  and the text model drafts variants from the builder's own changes (price, discount, sign, move, new package,
+  category price) on the layout's products, shelves and product images, with the products to track, the engine and a
+  rationale. When the layout has a final run, each product is listed with its units sold there, so "the best seller"
+  is found rather than assumed. Changes that point at nothing are left out and listed, as are changes that would do
+  nothing. API: `POST /api/projects/{pid}/experiments/design`.
+- Drafting prompts list the products a question names first and share the rest across shelves, so a long catalogue
+  is no longer cut off at whichever shelves come last.
+- **Write an alternative** for staff script B: the text model drafts another script for the same product and offer,
+  using only the verified facts given and an optional direction ("lead with value"), and says what it changes.
+  API: `POST /api/projects/{pid}/staff-pitches/draft-script`.
 - **Draft the study** in the conjoint builder: write the question the study should answer and the text model drafts
   the product, attributes, levels and price levels in the study's currency, bracketing comparable products of the
   active layout (cited when the model used them), with a short rationale; everything stays editable before fielding.
@@ -44,6 +67,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   card, a vision model reads the name, brand and size printed on the pack instead of using the file name, and links
   the image to the layout's product when it is an exact match and the image was not linked yet. With the local
   vision model off, a cloud vision model that has a key is used. API: `POST .../lab/packages/{id}/read`.
+- The create-store form can **write the customer profile from the store details** (name, type, description,
+  address, opening hours) in the form's language: who shops there, when and why. API: `POST /api/assist/customer-profile`.
+- Persona generation is grounded in the project's neighborhood model when there is one: the prompt carries who
+  comes on a weekday and at the weekend (students, office workers, residents, commuters, linked trips), the busiest
+  hours and how far people walk. It also uses a model that has an API key when the app's text model has none.
 - **Describe the area** in the neighborhood generator: "a busy campus street, two rival stores nearby, a café next
   door" sets the archetype, size, density, rivals and neighbors; generating stays a separate step.
   API: `POST /api/projects/{pid}/town/describe`.

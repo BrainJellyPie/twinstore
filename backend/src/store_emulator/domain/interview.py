@@ -128,3 +128,25 @@ class GroupInterview(BaseModel):
     answers: list[GroupAnswer] = []
     themes: list[Theme] = []
     errors: int = 0
+
+
+class AnalystMessage(BaseModel):
+    role: Literal["user", "analyst"]
+    text: str
+    figures: list[str] = []           # fact-sheet lines the answer rests on
+    follow_ups: list[str] = []
+    created_at: str = ""
+
+
+class AnalystThread(BaseModel):
+    """Questions about a run and the answers, read off the run's own numbers."""
+    run_id: str
+    model: str = ""
+    messages: list[AnalystMessage] = []
+
+
+class AnalystQuestion(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    question: str = Field(min_length=2, max_length=600)
+    model: str = Field(default="", description='model reference; "" = the app text model')

@@ -22,6 +22,7 @@ class InstructorRetryException(Exception):
     (RateLimitError("429"), "limiting requests"),
     (TimeoutError("read timed out"), "took too long"),
     (InstructorRetryException("1 validation error for ShopperReply"), "not in the expected form"),
+    (InstructorRetryException("The output is incomplete due to a max_tokens length limit."), "cut off before it finished"),
 ])
 def test_known_failures_become_advice(error, expected):
     message = model_failure(error, "The shopper could not answer")

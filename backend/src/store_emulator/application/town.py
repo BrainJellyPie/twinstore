@@ -155,3 +155,29 @@ def town_visitors(
             arrivals.append(note)
     logger.info(f"[town] {len(visitors)} visitors over {len(days)} day(s) from '{town.name}' (scale {scale})")
     return visitors, arrivals
+
+
+_SEGMENT_WORDS = {"resident": "residents", "worker": "office workers", "student": "students", "commuter": "commuters",
+                  "visitor": "visitors from outside", "linked": "people coming from a nearby venue"}
+
+
+def neighborhood_text(pid: str) -> str:
+    """The neighborhood model in a few sentences for the persona prompt ("" without a town): who comes on a weekday
+    and at the weekend, when, and from how far."""
+    town = get_town(pid)
+    if town is None:
+        return ""
+    parts: list[str] = []
+    days: tuple[tuple[DayType, str], ...] = (("weekday", "a weekday"), ("weekend", "a weekend day"))
+    for day_type, label in days:
+        d = estimate_demand(town, day_type=day_type)
+        total = sum(d.segment_totals.values()) or 1.0
+        mix = ", ".join(f"{_SEGMENT_WORDS.get(k, k)} {v / total:.0%}"
+                        for k, v in sorted(d.segment_totals.items(), key=lambda kv: -kv[1]) if v / total >= 0.03)
+        peaks = sorted(range(24), key=lambda h: -d.hourly_totals[h])[:3]
+        parts.append(f"On {label} about {d.total_daily_visitors:.0f} visitors: {mix}; busiest hours "
+                     f"{', '.join(f'{h:02d}h' for h in sorted(peaks))}.")
+    walk = estimate_demand(town, day_type="weekday")
+    return (f"Neighborhood model ({town.archetype.value.replace('_', ' ')} area, {town.name}): " + " ".join(parts)
+            + f" Half of the visitors walk less than {walk.catchment_radius_50_m:.0f} m. "
+            "Make the personas' identities, ages, purposes and visit hours match this mix.")

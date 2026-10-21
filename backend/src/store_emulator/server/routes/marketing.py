@@ -27,7 +27,9 @@ from store_emulator.domain.marketing import (
 from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.domain.factorial import FactorialReport, FactorialRequest, FactorialSource
 from store_emulator.engine.marketing.conjoint_design import ConjointDesign
+from store_emulator.engine.marketing.experiment_design import ExperimentDesign
 from store_emulator.engine.marketing.reading import StudyReading
+from store_emulator.engine.marketing.script_writer import ScriptDraft
 from store_emulator.engine.marketing.report import ReportNarrative
 
 from ..deps import get_config
@@ -45,6 +47,13 @@ def _call[T](fn: Callable[[], T]) -> T:
 @router.get("/{pid}/marketing", summary="Marketing studio settings", response_model=MarketingInfo)
 def marketing_info(pid: str) -> MarketingInfo:
     return MarketingInfo(currency=get_config().currency)
+
+
+@router.post("/{pid}/experiments/design", summary="Draft an A/B test from a question", response_model=ExperimentDesign)
+async def design_experiment(pid: str, req: study_design.ExperimentDesignRequest) -> ExperimentDesign:
+    """The text model drafts variants (price, discount, sign, move, package, category price) on the layout's own
+    products and shelves. Nothing runs; the draft fills the builder."""
+    return await run_in_threadpool(_call, lambda: study_design.design_ab(pid, req, get_config()))
 
 
 @router.post("/{pid}/experiments", summary="Start an A/B test", response_model=JobStatus)
@@ -178,6 +187,13 @@ def delete_experiment(pid: str, eid: str) -> None:
 @router.delete("/{pid}/surveys/{sid}", summary="Delete a concept test", status_code=204)
 def delete_survey(pid: str, sid: str) -> None:
     _call(lambda: mk.delete_job(pid, "survey", sid))
+
+
+@router.post("/{pid}/staff-pitches/draft-script", summary="Draft an alternative staff script", response_model=ScriptDraft)
+async def draft_pitch_script(pid: str, req: staff_pitch.ScriptDraftRequest) -> ScriptDraft:
+    """The text model writes another script for the same product and offer, using only the verified facts given.
+    Nothing runs; the draft fills script B."""
+    return await run_in_threadpool(_call, lambda: staff_pitch.draft_pitch_script(pid, req, get_config()))
 
 
 @router.post("/{pid}/staff-pitches", summary="Start a paired staff script screening test", response_model=JobStatus)
