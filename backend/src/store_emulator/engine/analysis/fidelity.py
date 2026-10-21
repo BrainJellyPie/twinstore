@@ -10,7 +10,7 @@ import math
 from collections import Counter
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from store_emulator.domain.analysis import FidelityMetric, FidelityReport
 from store_emulator.domain.customer import CustomerResult
@@ -21,8 +21,8 @@ class PosLine(BaseModel):
     """One line of a real receipt."""
     transaction_id: str
     sku: str
-    quantity: float = 1.0
-    unit_price: float = 0.0  # minor currency unit, same as the store's prices
+    quantity: float = Field(default=1.0, allow_inf_nan=False)
+    unit_price: float = Field(default=0.0, allow_inf_nan=False)  # minor currency unit, same as the store's prices
     hour: int | None = None  # 0–23 when the POS export carries a timestamp
 
 
