@@ -75,8 +75,8 @@ class PromotionKind(StrEnum):
 
 
 class Promotion(BaseModel):
-    # Matched case-insensitively against SKU, product name and rack name/description, so it can
-    # target one product ("Pepsi 20oz"), a word ("energy"), or a whole rack ("Drink 1").
+    # Exact SKU, product and rack labels take precedence over keyword matching (case-insensitive):
+    # one product ("Pepsi 20oz"), a word ("energy"), or a whole rack ("Drink 1").
     target: str = Field(min_length=1)
     kind: PromotionKind = PromotionKind.DISCOUNT
     discount_pct: float = Field(default=20.0, ge=0.0, le=90.0)
