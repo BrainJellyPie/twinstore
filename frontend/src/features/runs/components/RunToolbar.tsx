@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { Download, GitCompareArrows, Pencil, Play, Wand2 } from "lucide-react";
 
+import { useI18n } from "@/shared/i18n/i18n";
 import { Button } from "@/shared/components/ui/button";
 import {
   Select,
@@ -32,6 +33,7 @@ export interface RunToolbarProps {
 }
 
 export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCount, layouts }: RunToolbarProps) {
+  const { t } = useI18n();
   const runs = useRuns(projectId, setupId).data
     .filter((r) => r.status === "completed")
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -63,7 +65,7 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
           </SelectContent>
         </Select>
         <Button size="sm" variant="ghost" className="h-9 gap-1.5 rounded-xl px-3 text-sm" onClick={() => setLaunchOpen(true)}>
-          <Play className="size-4" /> Run again
+          <Play className="size-4" /> {t("runAgain")}
         </Button>
         <Button size="sm" variant="ghost" className="h-9 gap-1.5 rounded-xl px-3 text-sm" onClick={() => setCompareOpen(true)}>
           <GitCompareArrows className="size-4" /> Compare
