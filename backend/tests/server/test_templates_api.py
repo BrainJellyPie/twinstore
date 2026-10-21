@@ -21,6 +21,12 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     assert {"hypermarket", "community_pharmacy", "specialty_cafe", "quick_service", "design_showroom"} <= templates.keys()
     assert templates["hypermarket"]["grid"] == [32, 26]
     assert templates["hypermarket"]["default_checkouts"] == 6
+    assert {"refill_market", "care_supply_store", "fragrance_boutique", "bubble_tea_cafe"} <= templates.keys()
+    assert templates["refill_market"]["grid"] == [28, 22]
+    assert templates["refill_market"]["default_style"] == "cross"
+    assert templates["care_supply_store"]["default_checkouts"] == 3
+    assert templates["fragrance_boutique"]["default_design"] == "luxury"
+    assert templates["bubble_tea_cafe"]["default_dining_tables"] == 4
     assert templates["warehouse_club"]["default_checkouts"] == 8
     assert templates["food_hall"]["default_checkouts"] == 4
     assert templates["campus_dining_hall"]["default_dining_tables"] == 24
@@ -111,6 +117,7 @@ def test_unknown_templates_do_not_create_layouts(client):
 
 
 @pytest.mark.parametrize("template_id,store_type", [
+    ("refill_market", "supermarket"), ("care_supply_store", "pharmacy"), ("fragrance_boutique", "beauty"), ("bubble_tea_cafe", "cafe"),
     ("shoe_boutique", "fashion"), ("baby_family_store", "baby"), ("travel_essentials", "travel"),
     ("garden_center", "garden"), ("art_craft_store", "crafts"),
     ("optical_shop", "eyewear"), ("jewelry_boutique", "jewelry"), ("music_store", "music"), ("fashion_outlet", "fashion"),

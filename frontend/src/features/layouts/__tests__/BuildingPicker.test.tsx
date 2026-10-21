@@ -170,6 +170,20 @@ it("starts a neighborhood dining center with independently editable specialty fl
   expect(screen.getByText("ice_cream_parlor / width 30")).toBeTruthy();
 });
 
+it("starts daily essentials floors with independent settings and the project currency", () => {
+  render(<Building currency="KRW" />);
+  fireEvent.click(screen.getByRole("button", { name: "Daily essentials center" }));
+  expect(screen.getByText("refill_market / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
+  for (const [label, templateId] of [["2F · Level 2 · Care supplies", "care_supply_store"], ["3F · Level 3 · Fragrances", "fragrance_boutique"], ["4F · Level 4 · Bubble tea", "bubble_tea_cafe"]]) {
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    expect(screen.getByText(`${templateId} / width default`)).toBeTruthy();
+    expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
+  }
+  fireEvent.click(screen.getByRole("button", { name: "1F · Ground · Refill grocery" }));
+  expect(screen.getByText("refill_market / width 30")).toBeTruthy();
+});
+
 it("moves and duplicates a customized floor without losing its settings", () => {
   render(<Building />);
   fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
