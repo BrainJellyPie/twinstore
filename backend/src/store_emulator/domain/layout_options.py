@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from store_emulator.domain.types import ResourceId
+
 type LayoutStyle = Literal["aisles", "loop", "spine", "cross", "free_flow", "perimeter", "showroom"]
 type LayoutDensity = Literal["spacious", "balanced", "dense"]
 type EntrancePosition = Literal["left", "center", "right"]
@@ -33,6 +35,7 @@ class LayoutOptions(BaseModel):
     height: int | None = Field(default=None, ge=6, le=40)
     density: LayoutDensity = "balanced"
     aisle_width: int | None = Field(default=None, ge=1, le=4)
+    max_shelf_run: int | None = Field(default=None, ge=1, le=8)
     shelf_direction: ShelfDirection = "horizontal"
     entrance: EntrancePosition = "left"
     exit_position: ExitPosition = "shared"
@@ -48,7 +51,7 @@ class LayoutOptions(BaseModel):
 
 class TemplateLayoutRequest(LayoutOptions):
     template_id: str
-    source_setup_id: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-z0-9_]+$")
+    source_setup_id: ResourceId | None = Field(default=None, max_length=100)
     seed: int = 0
     currency: Literal["USD", "KRW", "JPY"] = "USD"
     name: str | None = Field(default=None, max_length=300)
