@@ -3,19 +3,21 @@
 // looks at each shelf and the majority wins).
 
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Eye, Users } from "lucide-react";
 
-import * as api from "@/shared/api/client";
 import type { EngineType, EnsembleConfig } from "@/shared/api/client";
 import { Input } from "@/shared/components/ui/input";
-import { queryKeys } from "@/shared/queries/keys";
+import { useI18n } from "@/shared/i18n/i18n";
+import { Button } from "@/shared/components/ui/button";
+import { useAvailableModels } from "../hooks";
 import { cn } from "@/shared/utils/cn";
 
 export interface ModelChoice {
   kind: "default" | "single" | "ensemble";
   model?: string;
   ensemble?: EnsembleConfig;
+  // Keep partially typed weights editable; only validated ensemble numbers reach the API.
+  weightInputs?: Record<string, string>;
 }
 
 export function ModelPicker({
@@ -29,83 +31,94 @@ export function ModelPicker({
   value: ModelChoice;
   onChange: (next: ModelChoice) => void;
 }) {
-  const { data: models = [] } = useQuery({
-    queryKey: queryKeys.models(),
-    queryFn: ({ signal }) => api.getModels(signal),
-    staleTime: 60_000,
-  });
+  const { t } = useI18n();
+  const query = useAvailableModels();
+  const models = query.data ?? [];
   const usable = engine === "vlm_glance" ? models.filter((m) => m.vision) : models;
   const members = value.ensemble?.members ?? [];
+  const unavailableMembers = query.data ? members.filter((member) => !usable.some((model) => model.ref === member.model)) : [];
   const weightOf = (ref: string) => members.find((m) => m.model === ref)?.weight;
 
   const toggleMember = (ref: string) => {
     const next = weightOf(ref) !== undefined ? members.filter((m) => m.model !== ref) : [...members, { model: ref, weight: 1 }];
-    onChange({ kind: "ensemble", ensemble: { members: next, mode: value.ensemble?.mode ?? "mixture" } });
+    const weightInputs = { ...value.weightInputs };
+    delete weightInputs[ref];
+    onChange({ kind: "ensemble", ensemble: { members: next, mode: value.ensemble?.mode ?? "mixture" }, weightInputs });
   };
-  const setWeight = (ref: string, weight: number) =>
+  const setWeight = (ref: string, raw: string) =>
     onChange({
       kind: "ensemble",
       ensemble: {
-        members: members.map((m) => (m.model === ref ? { ...m, weight: Math.max(0.1, weight) } : m)),
+        members: members.map((m) => (m.model === ref ? { ...m, weight: raw.trim() === "" ? NaN : Number(raw) } : m)),
         mode: value.ensemble?.mode ?? "mixture",
       },
+      weightInputs: { ...value.weightInputs, [ref]: raw },
     });
 
   const tabs: { id: ModelChoice["kind"]; label: string }[] = [
-    { id: "default", label: "Server default" },
-    { id: "single", label: "One model" },
-    { id: "ensemble", label: "Ensemble" },
+    { id: "default", label: t("serverDefault") },
+    { id: "single", label: t("oneModel") },
+    { id: "ensemble", label: t("ensemble") },
   ];
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-medium">Model</div>
+        <div className="text-sm font-medium">{t("model")}</div>
         <Link to="/settings" className="text-xs text-primary hover:underline">
-          Connect providers
+          {t("connectProviders")}
         </Link>
       </div>
-      <div className="flex max-w-full flex-wrap rounded-md border p-0.5 text-xs" role="tablist" aria-label="Model choice">
-        {tabs.map((t) => (
+      <div className="flex max-w-full flex-wrap rounded-md border p-0.5 text-xs" role="group" aria-label={t("modelChoice")}>
+        {tabs.map((option) => (
           <button
-            key={t.id}
+            key={option.id}
             type="button"
-            role="tab"
-            aria-selected={value.kind === t.id}
-            onClick={() =>
+            aria-pressed={value.kind === option.id}
+            onClick={() => {
+              if (value.kind === option.id) return;
               onChange(
-                t.id === "default"
+                option.id === "default"
                   ? { kind: "default" }
-                  : t.id === "single"
+                  : option.id === "single"
                     ? { kind: "single", model: value.model ?? usable[0]?.ref }
                     : { kind: "ensemble", ensemble: value.ensemble ?? { members: [], mode: "mixture" } },
-              )
-            }
-            className={cn("rounded px-2.5 py-1", value.kind === t.id ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+              );
+            }}
+            className={cn("rounded px-2.5 py-1", value.kind === option.id ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
           >
-            {t.label}
+            {option.label}
           </button>
         ))}
       </div>
 
       {value.kind === "default" && (
-        <p className="text-xs text-muted-foreground">{defaultModel ? `Uses ${defaultModel}.` : "Uses the server's configured model."}</p>
+        <p className="text-xs text-muted-foreground">{defaultModel ? t("usesModel", { model: defaultModel }) : t("usesServerModel")}</p>
       )}
 
-      {value.kind !== "default" && usable.length === 0 && (
-        <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-          No {engine === "vlm_glance" ? "vision " : ""}models connected yet — add an API key or a local server in{" "}
-          <Link to="/settings" className="text-primary hover:underline">Model providers</Link>.
-        </p>
+      {query.isError && (
+        <div className="space-y-2 rounded-md border border-destructive/30 p-2 text-xs">
+          <p role="alert" className="break-words">{query.error instanceof Error ? query.error.message : t("modelListError")}</p>
+          <Button type="button" size="sm" variant="outline" onClick={() => { void query.refetch(); }} disabled={query.isFetching}>{t("retryModels")}</Button>
+        </div>
+      )}
+      {value.kind !== "default" && query.isPending && <p role="status" className="text-xs text-muted-foreground">{t("loadingModels")}</p>}
+      {value.kind !== "default" && query.data !== undefined && usable.length === 0 && (
+        <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">{t(engine === "vlm_glance" ? "noVisionModels" : "noModels")}</p>
       )}
 
-      {value.kind === "single" && usable.length > 0 && (
+      {value.kind === "single" && (
         <select
           className="h-8 w-full rounded-md border bg-background px-2 text-sm"
           value={value.model ?? ""}
           onChange={(e) => onChange({ kind: "single", model: e.target.value })}
-          aria-label="Model"
+          aria-label={t("model")}
+          aria-invalid={!value.model || !usable.some((model) => model.ref === value.model)}
+          aria-describedby="run-model-error"
+          disabled={query.isPending || usable.length === 0}
         >
+          <option value="" disabled>{t("chooseModel")}</option>
+          {value.model && !usable.some((model) => model.ref === value.model) && <option value={value.model} disabled>{t("unavailableModel", { model: value.model })}</option>}
           {usable.map((m) => (
             <option key={m.ref} value={m.ref}>
               {m.provider} · {m.label}
@@ -113,6 +126,13 @@ export function ModelPicker({
           ))}
         </select>
       )}
+
+      {value.kind === "ensemble" && unavailableMembers.map((member) => (
+        <div key={member.model} className="flex items-start gap-2 rounded-md border border-destructive/30 p-2 text-xs">
+          <span className="min-w-0 flex-1 break-all">{t("unavailableModel", { model: member.model })}</span>
+          <Button type="button" size="sm" variant="outline" aria-label={t("removeModel", { model: member.model })} onClick={() => toggleMember(member.model)}>{t("remove")}</Button>
+        </div>
+      ))}
 
       {value.kind === "ensemble" && usable.length > 0 && (
         <div className="space-y-2">
@@ -129,7 +149,7 @@ export function ModelPicker({
               });
             }}
           >
-            Mix one model from each provider
+            {t("mixProviders")}
           </button>
           <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-1.5">
             {usable.map((m) => {
@@ -144,18 +164,20 @@ export function ModelPicker({
                     onChange={() => toggleMember(m.ref)}
                   />
                   <label htmlFor={`ens-${m.ref}`} className="flex min-w-0 flex-1 items-center gap-1 truncate">
-                    {m.vision && <Eye className="size-3 shrink-0 text-muted-foreground" aria-label="vision" />}
+                    {m.vision && <Eye className="size-3 shrink-0 text-muted-foreground" aria-label={t("visionShoppers")} />}
                     <span className="truncate">{m.provider} · {m.label}</span>
                   </label>
                   {w !== undefined && (
                     <Input
                       type="number"
-                      step={0.5}
-                      min={0.1}
-                      value={w}
-                      onChange={(e) => setWeight(m.ref, Number(e.target.value) || 1)}
+                      step="any"
+                      min={0}
+                      value={value.weightInputs?.[m.ref] ?? String(w)}
+                      onChange={(e) => setWeight(m.ref, e.target.value)}
+                      aria-invalid={!Number.isFinite(w) || w <= 0}
+                      aria-describedby="run-model-error"
                       className="h-6 w-16 text-xs"
-                      aria-label={`Weight of ${m.label}`}
+                      aria-label={t("modelWeight", { model: m.label })}
                     />
                   )}
                 </li>
@@ -169,9 +191,9 @@ export function ModelPicker({
                 type="radio"
                 name="ensemble-mode"
                 checked={(value.ensemble?.mode ?? "mixture") === "mixture"}
-                onChange={() => onChange({ kind: "ensemble", ensemble: { members, mode: "mixture" } })}
+                onChange={() => onChange({ kind: "ensemble", ensemble: { members, mode: "mixture" }, weightInputs: value.weightInputs })}
               />
-              Mixture — each shopper is one model (weights = population share)
+              {t("mixtureHint")}
             </label>
           </div>
           {engine === "vlm_glance" && (
@@ -180,9 +202,9 @@ export function ModelPicker({
                 type="radio"
                 name="ensemble-mode"
                 checked={value.ensemble?.mode === "vote"}
-                onChange={() => onChange({ kind: "ensemble", ensemble: { members, mode: "vote" } })}
+                onChange={() => onChange({ kind: "ensemble", ensemble: { members, mode: "vote" }, weightInputs: value.weightInputs })}
               />
-              Vote — every model looks at each shelf; majority decides
+              {t("voteHint")}
             </label>
           )}
         </div>
