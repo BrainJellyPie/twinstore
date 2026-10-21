@@ -349,6 +349,17 @@ function pot(lod: Lod): THREE.BufferGeometry {
   return revolve(profile(points), lod ? 24 : 12);
 }
 
+function croissant(lod: Lod): THREE.BufferGeometry {
+  const points: [number, number, Zone][] = [
+    [0, 0, "body"], [0.14, 0.04, "body"], [0.29, 0.18, "body"],
+    [0.25, 0.23, "body"], [0.42, 0.34, "body"], [0.5, 0.5, "body"],
+    [0.42, 0.66, "body"], [0.25, 0.77, "body"], [0.29, 0.82, "body"],
+    [0.14, 0.96, "body"], [0, 1, "body"],
+  ];
+  // The scanned pastry lies on its side, with tapered tips along the shelf.
+  return revolve(profile(points), lod ? 24 : 12).rotateZ(-Math.PI / 2).translate(-0.5, 0.5, 0);
+}
+
 export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.BufferGeometry {
   switch (kind) {
     case "bottle":
@@ -365,6 +376,8 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
       return cup(0.43, lod);
     case "bag":
       return bag(lod);
+    case "croissant":
+      return croissant(lod);
     case "pot":
       return pot(lod);
     case "banana":
@@ -377,4 +390,4 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
   }
 }
 
-export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "pot"];
+export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "pot", "croissant"];
