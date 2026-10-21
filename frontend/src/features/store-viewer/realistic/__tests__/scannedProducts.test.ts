@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as THREE from "three";
-import { loadScannedProduce } from "../scannedProduce";
+import { loadScannedProducts } from "../scannedProducts";
 import type { ProductLod } from "../productMeshes";
 
 const mocks = vi.hoisted(() => ({ load: vi.fn() }));
@@ -34,7 +34,7 @@ it("keeps the selected LOD and restores borrowed fallback resources on cleanup",
   const fallbackDispose = vi.spyOn(original.fine, "dispose");
   const ready = vi.fn();
   mocks.load.mockResolvedValue({ scene: model.scene });
-  const stop = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false, ready);
+  const stop = loadScannedProducts("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false, ready);
   await Promise.resolve();
   expect(target.mesh.geometry).not.toBe(model.fine);
   expect(Array.from(target.mesh.geometry.attributes.position!.array, (v) => v || 0)).toEqual(Array.from(model.fine.attributes.position!.array, (v) => v || 0));
@@ -46,7 +46,7 @@ it("keeps the selected LOD and restores borrowed fallback resources on cleanup",
   stop(); stop();
   expect(target.mesh.geometry).toBe(original.coarse);
   expect(target.mesh.material).toBe(original.material);
-  expect(target.mesh.userData.scannedProduce).toBeUndefined();
+  expect(target.mesh.userData.scannedProducts).toBeUndefined();
   [...disposed, ...disposeBaked].forEach((dispose) => expect(dispose).toHaveBeenCalledOnce());
   expect(bitmapClose).toHaveBeenCalledOnce();
   expect(fallbackDispose).not.toHaveBeenCalled();
@@ -56,13 +56,14 @@ it("uses a lighter medium material while retaining ownership of unused source ma
   const target = fallback(), model = scan();
   mocks.load.mockResolvedValue({ scene: model.scene });
   const disposeMap = vi.spyOn(model.map, "dispose");
-  const stop = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], true);
+  const stop = loadScannedProducts("/assets/produce/bananas.glb", [{ lod: target, name: "bananas", roughness: 0.85 }], true);
   await Promise.resolve();
   const medium = target.mesh.material as THREE.MeshStandardMaterial;
   expect(medium).not.toBe(model.material);
   expect(medium.map).toBe(model.map);
   expect(medium.normalMap).toBeNull();
   expect(medium.roughnessMap).toBeNull();
+  expect(medium.roughness).toBe(0.85);
   expect(model.material.normalMap).toBe(model.map);
   const disposeMedium = vi.spyOn(medium, "dispose");
   stop();
@@ -75,9 +76,9 @@ it("discards late requests without replacing a newer scan", async () => {
   mocks.load.mockImplementation(() => new Promise((resolve) => pending.push(resolve)));
   const target = fallback(), stale = scan(), current = scan();
   const staleDispose = vi.spyOn(stale.map, "dispose");
-  const stopOld = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false);
+  const stopOld = loadScannedProducts("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false);
   stopOld();
-  const stopCurrent = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false);
+  const stopCurrent = loadScannedProducts("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false);
   pending[1]!({ scene: current.scene }); await Promise.resolve();
   pending[0]!({ scene: stale.scene }); await Promise.resolve();
   expect(target.mesh.material).toBe(current.material);
@@ -90,10 +91,10 @@ it("discards late requests without replacing a newer scan", async () => {
 it("keeps the curved fallback on a failed asset load", async () => {
   const target = fallback(), material = target.mesh.material;
   mocks.load.mockRejectedValue(new Error("missing asset"));
-  const stop = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false);
+  const stop = loadScannedProducts("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false);
   await Promise.resolve(); await Promise.resolve();
   expect(target.mesh.material).toBe(material);
-  expect(target.mesh.userData.scannedProduce).toBeUndefined();
+  expect(target.mesh.userData.scannedProducts).toBeUndefined();
   stop();
 });
 
@@ -111,7 +112,7 @@ it("bakes shared buffers independently and releases a shared medium material onc
   }
   const disposeSource = vi.spyOn(model.fine, "dispose"), disposeMap = vi.spyOn(model.map, "dispose");
   mocks.load.mockResolvedValue({ scene: model.scene });
-  const stop = loadScannedProduce("/assets/produce/test.glb", [{ lod: first, name: "bananas" }, { lod: second, name: "pair" }], true);
+  const stop = loadScannedProducts("/assets/produce/test.glb", [{ lod: first, name: "bananas" }, { lod: second, name: "pair" }], true);
   await Promise.resolve();
   expect(mocks.load).toHaveBeenCalledOnce();
   expect(first.mesh.material).toBe(second.mesh.material);

@@ -2,7 +2,7 @@
 // size, colours and label text. No three.js / DOM dependencies so they can be
 // unit-tested and reused by an offline renderer.
 
-export type PackageKind = "bottle" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair";
+export type PackageKind = "bottle" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "pot";
 
 export type ProductCategory =
   | "drink"
@@ -177,6 +177,11 @@ const RULES: Rule[] = [
     () => spec("applePair", 0.20112, 0.08539, 0.09590, "produce")],
   [/^(?:(?:fresh|organic|red|gala|fuji|braeburn|pink lady|red delicious)\s+)*apples?(?:\s+(?:loose|each|\d+(?:\.\d+)?\s*(?:kg|g|lb|lbs)))?$/,
     () => spec("apple", 0.09756, 0.08539, 0.09590, "produce")],
+  [/^(?:terracotta|terra cotta|clay) (?:plant )?(?:pot|planter)(?:\s+[1-9]\d?(?:\.\d+)?\s*cm)?$/,
+    (n) => {
+      const diameter = Number(n.match(/([1-9]\d?(?:\.\d+)?)\s*cm$/)?.[1] ?? 20) / 100;
+      return spec("pot", diameter, diameter * (0.5314331 / 0.4662051), diameter, "other");
+    }],
 ];
 
 const DEFAULT_SPEC: PackageSpec = spec("box", 0.12, 0.18, 0.05, "other");
@@ -200,6 +205,7 @@ const PALETTE = [
 ];
 
 const KEYWORD_COLORS: [RegExp, string][] = [
+  [/^(?:terracotta|terra cotta|clay) (?:plant )?(?:pot|planter)\b/, "#b26e4e"],
   [/\bapples?\b/, "#a8342a"],
   [/water|smartwater|aquafina|dasani|evian|fiji|essentia|pure life/, "#8fc3ea"],
   [/diet|zero|sugarfree|sugar free/, "#c3c9d0"],
