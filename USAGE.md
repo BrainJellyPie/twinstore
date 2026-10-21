@@ -428,9 +428,11 @@ Run through this before triggering generation or simulation:
   `exploratory`, `hungry_wandering`, `leisurely`, `social_browsing`,
   `impulse_heavy`. The wizard does not let users add or edit them; doing
   so requires a code change.
-- **Layout is a separate step.** Finishing the wizard creates a project
-  with no store layout. Simulation cannot run until the user builds a
-  grid in the layout editor (`/features/grid-editor/`).
+- **Starting layout is optional.** With **Start with a furnished store
+  template** checked, the wizard creates the project with one of the 54
+  generated layouts (no LLM call). Unchecked, the project has no store
+  layout, and simulation cannot run until the user builds a grid in the
+  layout editor (`/features/grid-editor/`) or imports a floor plan.
 - **Hidden inputs not exposed in the wizard**: `custom_instruction` and
   `max_persona_count_per_day` are accepted by the regenerate API
   (`backend/src/store_emulator/application/generation_async.py`) but

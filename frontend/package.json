@@ -33,12 +33,12 @@
   "license": "SEE LICENSE IN ../LICENSE",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BrainJellyPie/parastore.git"
+    "url": "git+https://github.com/BrainJellyPie/twinstore.git"
   },
   "bugs": {
-    "url": "https://github.com/BrainJellyPie/parastore/issues"
+    "url": "https://github.com/BrainJellyPie/twinstore/issues"
   },
-  "homepage": "https://github.com/BrainJellyPie/parastore#readme",
+  "homepage": "https://github.com/BrainJellyPie/twinstore#readme",
   "packageManager": "pnpm@10.33.0",
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",

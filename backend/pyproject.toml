@@ -42,9 +42,9 @@ parastore = "store_emulator.cli:main"           # former names, kept for scripts
 parastore-app = "store_emulator.launcher:main"
 
 [project.urls]
-Homepage = "https://github.com/BrainJellyPie/parastore"
-Repository = "https://github.com/BrainJellyPie/parastore"
-Issues = "https://github.com/BrainJellyPie/parastore/issues"
+Homepage = "https://github.com/BrainJellyPie/twinstore"
+Repository = "https://github.com/BrainJellyPie/twinstore"
+Issues = "https://github.com/BrainJellyPie/twinstore/issues"
 
 [build-system]
 requires = ["hatchling"]

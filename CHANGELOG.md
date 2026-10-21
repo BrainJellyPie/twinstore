@@ -6,6 +6,22 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Conjoint studies
+- New **Conjoint** tab in the Market page: a choice-based conjoint on the project's personas. Define a product's
+  attributes and levels plus price levels; each respondent gets their own level-balanced random choice tasks
+  (2–4 versions, optionally "none") and answers them in one model call.
+- A pooled multinomial logit (level dummies, one price slope, a constant for none, a weak ridge prior) gives
+  centred **part-worths**, **attribute importance** and **willingness to pay**; intervals resample respondents.
+  Importance by age group and gender, fit (hit rate vs chance, McFadden R²), verbatims and caveats.
+- **Market simulator**: build a line-up of up to four products from the tested levels, move prices within the
+  tested range and see logit shares of preference (and "none") and the first product's share-versus-price curve.
+- Print-ready HTML report and a long-format CSV (one row per option shown) for re-estimation elsewhere.
+  API: `POST/GET /api/projects/{pid}/conjoints`, `GET .../conjoints/{id}`, `.../report.html`, `.../export.csv`.
+
+### Fixes
+- Realistic shoppers no longer crash the 3D view when React remounts them (development StrictMode): the
+  per-shopper animation mixer is no longer uncached while its actions are still reused.
+
 ### Shopper journeys and interviews
 - Playback has a **Shoppers** tab: rank the run's shoppers (top spenders, left empty-handed, impulse
   buys, longest visits) or search, open one, and see their trip step by step — wall-clock time,
@@ -55,7 +71,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   immutable stimulus snapshots, intention-to-treat purchase counts, missingness bounds, versioned atomic updates,
   and locked closure. Complete targets receive a conservative fixed-sample conversion interval; unfinished targets
   stay descriptive. The independent Field pilots tab retains results after deletion of a source screening job.
-- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with five tabs.
+- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with seven tabs: A/B tests,
+  shelf tests, concept tests, conjoint, staff scripts, field pilots and products.
 - **Staff scripts**: independent A/B exposures on the same synthetic personas, with purchase intent,
   trust and pressure ratings, complete-pair bootstrap intervals, exploratory segments and customer replies.
   Saved product/persona snapshots and exact-script CSV support review; missing responses, restart recovery
