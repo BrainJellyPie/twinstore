@@ -38,6 +38,7 @@ from store_emulator.domain.shelf_lab import (
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face, RESOURCE_ID_PATTERN, ResourceId
 from store_emulator.engine.llm_client import LiteLLMClient
+from store_emulator.engine.package_reader import PackReading, read_pack
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.shelf_lab import (
@@ -53,7 +54,8 @@ from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival
 from .async_executor import executor
 from .capture import capture_image_path, capture_llm_config, get_capture
 from .currencies import project_currency, simulation_currency
-from .errors import AppError
+from .errors import AppError, model_failure
+from .providers import assistive_vision_model
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import metadata_path, personas_path, read_setup
@@ -175,6 +177,47 @@ def upload_package(
             "cut_out": cut, "created_at": now_iso()}
     write_json(folder / f"{aid}.json", meta)
     return _asset(folder / f"{aid}.png")
+
+
+class PackageRead(BaseModel):
+    asset: PackageAsset
+    reading: PackReading
+    model: str
+    linked: bool = False              # the reading linked the image to a product of the layout
+
+
+def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", config: SimulationConfig) -> PackageRead:
+    """A vision model reads the pack: name, brand and size replace the file-name guess, and an exact product of the
+    layout is linked when the image was not linked yet. The reading is kept with the image."""
+    png = package_path(pid, aid)
+    store = _load_store(pid, setup_id) if setup_id else None
+    products = [i.name for r in store.product_racks for sl in r.slots for i in sl.items] if store else []
+    names = {i.name: i.sku for r in store.product_racks for sl in r.slots for i in sl.items} if store else {}
+    chosen = assistive_vision_model(model, config.engines.vlm_glance.llm)
+    llm_config = capture_llm_config(config, chosen)
+    if llm_config is None:
+        raise AppError("reading a pack needs a vision model", 400)
+    llm = LiteLLMClient(llm_config.model_copy(update={"max_tokens": 400}))
+    try:
+        with Image.open(png) as im:
+            image = im.convert("RGBA")
+        flat = Image.new("RGB", image.size, (255, 255, 255))
+        flat.paste(image, mask=image.getchannel("A"))
+        reading = asyncio.run(read_pack(llm, flat, products))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[shelf_lab] reading {aid} failed: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "The pack could not be read"), 502) from e
+    meta = cast(dict[str, Any], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
+    if reading.name:
+        meta["name"] = reading.name[:80]
+    if reading.brand:
+        meta["brand"] = reading.brand[:40]
+    linked = bool(reading.shelf_product and not meta.get("sku"))
+    if linked:
+        meta["sku"] = names[reading.shelf_product]
+    meta["reading"] = {**reading.model_dump(), "model": llm_config.model, "read_at": now_iso()}
+    write_json(png.with_suffix(".json"), meta)
+    return PackageRead(asset=_asset(png), reading=reading, model=llm_config.model, linked=linked)
 
 
 def list_packages(pid: str) -> list[PackageAsset]:

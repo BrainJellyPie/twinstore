@@ -1748,6 +1748,13 @@ export function listPackages(projectId: string, signal?: AbortSignal): Promise<P
   return fetchJson(`/api/projects/${projectId}/lab/packages`, { signal });
 }
 
+export interface PackReading { name: string; brand: string; size: string; category: string; shelf_product: string; confidence: number }
+
+/** A vision model reads the pack: printed name and brand replace the file-name guess; an exact layout product is linked. */
+export function readPackage(projectId: string, assetId: string, req: { setup_id?: string; model?: string } = {}): Promise<{ asset: PackageAsset; reading: PackReading; model: string; linked: boolean }> {
+  return fetchJson(`/api/projects/${projectId}/lab/packages/${assetId}/read`, { method: "POST", body: JSON.stringify(req) });
+}
+
 export function updatePackage(projectId: string, assetId: string, update: { name?: string; brand?: string; sku?: string }): Promise<PackageAsset> {
   return fetchJson(`/api/projects/${projectId}/lab/packages/${assetId}`, { method: "PATCH", body: JSON.stringify(update) });
 }
