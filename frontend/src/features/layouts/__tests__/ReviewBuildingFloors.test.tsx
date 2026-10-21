@@ -33,6 +33,19 @@ function mount(value = floors) {
   return { edit, submit };
 }
 
+it("totals the actual two- and six-seat furniture on independent floors", async () => {
+  vi.mocked(api.previewStoreTemplate).mockImplementation(async (request) => ({
+    ...small, racks: [{ ...rack, type: "table", position: [3, 3],
+      shape: request.template_id === "juice_bar" ? [[1], [1]] : [[1, 1, 1], [1, 1, 1]] }],
+  }));
+  mount();
+  fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
+  await screen.findByText("2 of 2 floor previews ready");
+  expect(screen.getByText("240 total floor cells · 2 dining tables · 8 seats · 0 checkout counters")).toBeTruthy();
+  expect(within(screen.getByRole("region", { name: "1F · Juice" })).getByText(/1 dining tables · 2 seats/)).toBeTruthy();
+  expect(within(screen.getByRole("region", { name: "2F · Pizza" })).getByText(/1 dining tables · 6 seats/)).toBeTruthy();
+});
+
 it("loads all floors on demand at the same scale, totals actual capacity and keeps settings", async () => {
   const { edit, submit } = mount();
   expect(api.previewStoreTemplate).not.toHaveBeenCalled();

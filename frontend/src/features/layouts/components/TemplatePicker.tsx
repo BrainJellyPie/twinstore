@@ -1,3 +1,4 @@
+import { rackDiningSeats } from "@/shared/utils/dining";
 import { cloneElement, useId, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -134,7 +135,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <FloorPlanPreview store={preview.data} areas={value.reserved_areas ?? []} />
               <CompareFloorPlans store={preview.data} areas={value.reserved_areas ?? []} templateId={value.templateId} currency={value.currency} />
               <p className="text-xs text-muted-foreground">{preview.data.grid_size.join("×")} cells · {preview.data.racks.filter((r) => r.slots.length).length} displays · {new Set(preview.data.racks.flatMap((r) => r.slots.flatMap((s) => s.items.map((i) => i.sku)))).size} products</p>
-              <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "table").length} dining tables · {preview.data.racks.filter((r) => r.type === "table").length * 4} seats</p>
+              <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "table").length} dining tables · {preview.data.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0)} seats</p>
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "counter").length} checkout counters</p>
               <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green IN: entrance · Rose OUT: exit · Split IN/OUT: shared gate · Slate: checkout · Purple: seating</p>
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
@@ -230,11 +231,16 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 {onApplyCurrencyToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={sharedCurrency === value.currency}
                   onClick={() => onApplyCurrencyToAll(value.currency)}>{sharedCurrency === value.currency ? "Currency used on all floors" : "Apply currency to all floors"}</button>}
               </div>
-              <div className="space-y-1"><Field label="Dining tables (4 seats each)"><input type="number" min={0} max={48} step={1} className={controlClass}
+              <div className="space-y-1"><Field label={`Dining tables (${value.dining_seats ?? 4} seats each)`}><input type="number" min={0} max={48} step={1} className={controlClass}
                 placeholder={`Format default (${selected?.default_dining_tables ?? 0})`} value={value.dining_tables ?? ""}
                 onChange={(e) => update({ dining_tables: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
                 <p className="text-[10px] text-muted-foreground">0–48 tables; blank uses the format default, sized to fit.</p>
               </div>
+              <div className="space-y-1"><Field label="Seats per table"><select className={controlClass} value={value.dining_seats ?? 4}
+                disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
+                onChange={(e) => update({ dining_seats: Number(e.target.value) as 2 | 4 | 6 })}>
+                <option value={2}>2 seats</option><option value={4}>4 seats</option><option value={6}>6 seats</option>
+              </select></Field><p className="text-[10px] text-muted-foreground">{(value.dining_seats ?? 4) / 2}×2 cells, including chairs.</p></div>
               <Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
                 disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
                 onChange={(e) => update({ seating_zone: e.target.value as TemplateChoice["seating_zone"] })}>
@@ -250,7 +256,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, dining_seats: 4, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>

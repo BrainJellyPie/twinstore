@@ -75,7 +75,8 @@ it("downloads the full floor at any zoom and safely preserves custom names", asy
   const revokeObjectURL = vi.fn();
   vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
   const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-  render(<FloorPlanPreview store={{ ...store, name: "Tea & <Books>", racks: [...store.racks, ...gates] }} areas={[{ label: "A & <B>", x: 2, y: 3, width: 4, height: 5 }]} />);
+  render(<FloorPlanPreview store={{ ...store, name: "Tea & <Books>", racks: [...store.racks,
+    { ...store.racks[0]!, id: "table-six", position: [15, 15], shape: [[1, 1, 1], [1, 1, 1]] }, ...gates] }} areas={[{ label: "A & <B>", x: 2, y: 3, width: 4, height: 5 }]} />);
   fireEvent.click(screen.getByRole("button", { name: "Expand floor plan" }));
   fireEvent.click(screen.getByRole("button", { name: "Zoom in floor plan" }));
   fireEvent.click(screen.getByRole("button", { name: "Download SVG" }));
@@ -98,6 +99,7 @@ it("downloads the full floor at any zoom and safely preserves custom names", asy
   expect(root.getAttribute("height")).toBe("1600");
   expect(root.getAttribute("style")).toBeNull();
   expect(root.querySelector("title")?.textContent).toBe("Tea & <Books> — 40×40 cells");
+  expect(root.querySelector("desc")?.textContent).toContain("2 dining tables, 10 seats");
   expect(root.querySelector("desc")?.textContent).toContain("Area 1: A & <B>, 4×5 cells at column 3, row 4.");
   expect(root.querySelector("desc")?.textContent).toContain("Split IN/OUT: shared gate");
   const shared = root.querySelector('[data-gate-kind="shared"]')!;

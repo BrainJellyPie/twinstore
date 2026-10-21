@@ -1,3 +1,4 @@
+import { rackDiningSeats } from "@/shared/utils/dining";
 import { useId, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
@@ -43,11 +44,12 @@ function FloorReviews({ floors, onEdit }: Props) {
   const stores = previews.flatMap((preview) => preview?.isSuccess ? [preview.data] : []);
   const frame: [number, number] = [Math.max(1, ...stores.map((store) => store.grid_size[0])), Math.max(1, ...stores.map((store) => store.grid_size[1]))];
   const tables = stores.reduce((sum, store) => sum + store.racks.filter((rack) => rack.type === "table").length, 0);
+  const seats = stores.reduce((sum, store) => sum + store.racks.reduce((total, rack) => total + rackDiningSeats(rack), 0), 0);
   const checkouts = stores.reduce((sum, store) => sum + store.racks.filter((rack) => rack.type === "counter").length, 0);
   return <>
     <div className="space-y-1 text-xs" aria-live="polite">
       <p>{ready} of {floors.length} floor previews ready</p>
-      {ready === floors.length && <p>{stores.reduce((sum, store) => sum + store.grid_size[0] * store.grid_size[1], 0)} total floor cells · {tables} dining tables · {tables * 4} seats · {checkouts} checkout counters</p>}
+      {ready === floors.length && <p>{stores.reduce((sum, store) => sum + store.grid_size[0] * store.grid_size[1], 0)} total floor cells · {tables} dining tables · {seats} seats · {checkouts} checkout counters</p>}
       {!validBuildingFloors(floors) && <p role="alert" className="text-destructive">Each floor needs a unique label and valid layout values before creating the building.</p>}
     </div>
     <div className="grid min-h-0 gap-4 overflow-y-auto sm:grid-cols-2">
@@ -67,7 +69,7 @@ function FloorReviews({ floors, onEdit }: Props) {
                 : store && <>
                   <p className="text-xs text-muted-foreground">{store.name} · {store.grid_size.join("×")} cells · {store.currency ?? floor.choice.currency}</p>
                   <FloorPlanPreview store={store} areas={floor.choice.reserved_areas ?? []} previewFrame={frame} />
-                  <p className="text-xs">{store.racks.filter((rack) => rack.slots.length).length} displays · {tableCount} dining tables · {tableCount * 4} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
+                  <p className="text-xs">{store.racks.filter((rack) => rack.slots.length).length} displays · {tableCount} dining tables · {store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0)} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
                   <p className="text-xs text-muted-foreground">{INTERIOR_DESIGNS[store.design_theme ?? "classic"].label} · {floor.choice.reserved_areas?.length ?? 0} reserved areas</p>
                 </>}
         </section>;

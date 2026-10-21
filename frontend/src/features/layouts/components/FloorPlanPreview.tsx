@@ -1,3 +1,4 @@
+import { rackDiningSeats } from "@/shared/utils/dining";
 import { useId, useRef, useState, type Ref } from "react";
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
 import type { ReservedArea } from "@/shared/api/client";
@@ -14,6 +15,7 @@ export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store;
   const [zoom, setZoom] = useState(1);
   const detailedPlan = useRef<SVGSVGElement>(null);
   const tables = store.racks.filter((rack) => rack.type === "table").length;
+  const seats = store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0);
   function downloadPlan() {
     if (!detailedPlan.current) return;
     const exported = detailedPlan.current.cloneNode(true) as SVGSVGElement;
@@ -28,7 +30,7 @@ export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store;
     const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
     title.textContent = `${store.name} — ${store.grid_size.join("×")} cells`;
     const description = document.createElementNS("http://www.w3.org/2000/svg", "desc");
-    description.textContent = `${tables} dining tables, ${tables * 4} seats, ${store.racks.filter((rack) => rack.type === "counter").length} checkout counters. ${FLOOR_LEGEND}. ${areas.map((area, index) => `Area ${index + 1}: ${area.label}, ${area.width}×${area.height} cells at column ${area.x + 1}, row ${area.y + 1}.`).join(" ")}`;
+    description.textContent = `${tables} dining tables, ${seats} seats, ${store.racks.filter((rack) => rack.type === "counter").length} checkout counters. ${FLOOR_LEGEND}. ${areas.map((area, index) => `Area ${index + 1}: ${area.label}, ${area.width}×${area.height} cells at column ${area.x + 1}, row ${area.y + 1}.`).join(" ")}`;
     exported.prepend(title, description);
     const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(exported)], { type: "image/svg+xml;charset=utf-8" }));
     const link = document.createElement("a");
@@ -58,7 +60,7 @@ export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store;
           <FloorPlan store={store} areas={areas} detailed zoom={zoom} ref={detailedPlan} />
         </div>
         <div className="space-y-1.5 text-xs">
-          <p>{store.racks.filter((rack) => rack.slots.length).length} displays · {tables} dining tables · {tables * 4} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
+          <p>{store.racks.filter((rack) => rack.slots.length).length} displays · {tables} dining tables · {seats} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
           <p className="text-muted-foreground">{FLOOR_LEGEND}</p>
           {!!areas.length && <ol className="max-h-24 list-decimal space-y-1 overflow-y-auto pl-5" aria-label="Reserved areas in this floor plan">
             {areas.map((area, index) => <li key={index}>{area.label} · {area.width}×{area.height} cells · column {area.x + 1}, row {area.y + 1}</li>)}
