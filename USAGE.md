@@ -224,6 +224,60 @@ checklist without purchase counts or treatment effects. **Observations and resul
 sheet, import review, history and result report. This separation helps monitor collection without reading outcomes;
 it is not enforced blinding or a substitute for a fixed stopping rule.
 
+For observed POS evidence, open **Observations and results → Reconcile POS purchases**. Prepare a UTF-8 CSV with
+the following columns (each exactly once, any column order):
+
+```csv
+pilot_id,assignment_id,transaction_id,sku,net_quantity
+```
+
+Use the saved pilot ID on every row and the immutable assignment IDs from its observation sheet. Link encounters
+to anonymous transaction tokens using your local source records; TwinStore does not infer these links from names,
+times or receipt totals. Tokens must start with an ASCII letter/digit and contain only letters, digits, underscore,
+hyphen, period or colon, at most 120 characters. Use tokens unique across stores and dates. Leave `assignment_id`
+blank to expose unlinked transactions, and omit personal/payment data. Unknown nonempty assignment IDs are listed
+for review; a different pilot ID rejects the upload.
+
+Each row is one **transaction/SKU aggregate**, net of returns, for finalized sales inside the saved outcome window.
+Combine duplicate item lines before upload. `net_quantity` accepts nonnegative decimals up to 1,000,000 with at most
+six decimal places; negative returns, exponents and nonfinite numbers are rejected. Resolve returns against their
+original transaction before preparing the extract. SKU matching is exact and case-sensitive, preserving leading
+zeroes. Input is limited to 2 MB and 10,000 item rows. Duplicate transaction/SKU rows and a transaction linked to
+multiple assignments (including a linked/unlinked mixture) reject the entire preview.
+
+| Match status | Candidate observation change |
+| --- | --- |
+| Positive target units, enrolled, purchase unknown | Proposes `purchased=1` |
+| Positive target units, purchase already yes | Keeps the known value |
+| Positive target units, purchase recorded no | Flags a conflict; keeps no until separately verified |
+| Positive target units, enrollment unknown or unused | Flags enrollment; never enrolls an encounter automatically |
+| No matching target SKU or zero net units | Keeps the saved purchase value, including unknown |
+| Unknown assignment or blank link | Lists the source tokens; does not change any assignment |
+
+Several receipts for one encounter produce at most one proposed conversion. Enrollment, delivery (including
+refusals), staff, shift, arm and all other outcomes remain unchanged. The “without positive evidence” count measures
+coverage of this file among enrolled encounters; it includes recorded buyers absent from the extract and is neither
+a missing-outcome count nor a nonbuyer count. Partial POS coverage must never be treated as evidence of nonpurchase.
+
+Filter and page through the matches, verify assignment links, finalized net sales and the outcome window, then choose
+**Review proposed purchase changes**. Screen filters do not change the candidate. This opens the existing full-sheet
+diff; inspect it and enter/confirm a reason before applying. The default editable reason includes the source CSV
+SHA-256. Both preview and apply check the visible pilot revision, and closed pilots reject reconciliation. Discarding
+either preview saves nothing. After application, existing history records the purchase changes and reason, and the
+collection checklist refreshes. No direct save bypasses the normal review token, concurrency lock or closure rules.
+
+No raw POS file, transaction registry or match report is retained. Duplicate checks are **within this CSV only**;
+reused transactions across separate uploads or pilots cannot be detected. Maintain a complete reconciled local
+extract and check reuse in your source system. Source hashes identify bytes, not verified sales or authenticated
+reviewers. Time windows, finalized status, returns and customer identity are operator-verified assumptions. The
+module does not correct repeated shoppers, uneven capture, staff/shift confounding or optional stopping, and does
+not estimate revenue or script effects. Use the same outcome-capture procedure for both arms.
+
+API: `POST .../staff-pilots/{id}/pos/preview` with multipart `file` and `revision` returns matches, source metadata
+and `candidate_csv` without writing. To apply a candidate, use the normal `observations/preview` and `observations`
+endpoints with the returned revision; never silently substitute a newer revision after a conflict. Existing pilots
+need no migration. This assignment-level input is separate from the aggregate POS simulation-validation upload.
+
 The checklist distinguishes four cases:
 
 | Check | Meaning | Follow-up |
