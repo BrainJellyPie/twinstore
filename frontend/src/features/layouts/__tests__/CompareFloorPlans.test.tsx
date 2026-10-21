@@ -23,6 +23,20 @@ const current: Store = { ...baseline, id: "current", grid_size: [24, 18], design
 const areas = [{ label: "Pickup", x: 2, y: 14, width: 3, height: 2 }];
 beforeEach(() => { vi.mocked(api.previewStoreTemplate).mockResolvedValue(baseline); });
 
+it("compares resolved default hours against the current floor's weekday schedule", async () => {
+  vi.mocked(api.previewStoreTemplate).mockResolvedValue({ ...baseline,
+    weekly_schedule: Array.from({ length: 7 }, (_, index) => ({ day: index + 1, is_open: true, open_hour: 7, close_hour: 22 })),
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><CompareFloorPlans store={{ ...current,
+    weekly_schedule: Array.from({ length: 7 }, (_, index) => ({ day: index + 1, is_open: index < 5, open_hour: 6, close_hour: 15 })),
+  }} areas={[]} templateId="specialty_cafe" currency="USD" /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Compare with default" }));
+  const table = await screen.findByRole("table", { name: "Floor plan comparison" });
+  expect(within(table).getByRole("cell", { name: "Every day: 07:00–22:00" })).toBeTruthy();
+  expect(within(table).getByRole("cell", { name: "Mon–Fri: 06:00–15:00; Sat–Sun: Closed" })).toBeTruthy();
+});
+
 it.each([2, 6])("compares actual %s-seat furniture with the format default", async (seats) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><CompareFloorPlans

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import type { Store } from "@/shared/types/domain";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { FloorPlanPreview } from "./FloorPlanPreview";
+import { formatWeeklyHours } from "../weeklyHours";
 
 export function CompareFloorPlans({ store, areas, templateId, currency }: {
   store: Store;
@@ -37,6 +38,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
     { label: "Checkout counters", value: (plan) => plan.store.racks.filter((rack) => rack.type === "counter").length },
     { label: "Reserved areas", value: (plan) => plan.areas.length },
     { label: "Interior design", value: (plan) => INTERIOR_DESIGNS[plan.store.design_theme ?? "classic"].label },
+    { label: "Operating hours", value: (plan) => formatWeeklyHours(plan.store.weekly_schedule) },
   ];
   return <Dialog open={open} onOpenChange={setOpen}>
     <DialogTrigger asChild><button type="button" className="w-full rounded-md border px-2 py-1 text-xs hover:bg-muted">Compare with default</button></DialogTrigger>
@@ -60,7 +62,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
             <thead><tr><th scope="col" className="w-[36%] p-2">Layout details</th>{plans.map((plan) => <th scope="col" key={plan.label} className="p-2">{plan.label}</th>)}</tr></thead>
             <tbody>{metrics.map((metric) => <tr key={metric.label} className="border-t">
               <th scope="row" className="p-2 font-normal">{metric.label}</th>
-              {plans.map((plan) => <td key={plan.label} className="p-2">{metric.value(plan)}</td>)}
+              {plans.map((plan) => <td key={plan.label} className="break-words p-2 align-top">{metric.value(plan)}</td>)}
             </tr>)}</tbody>
           </table>
           <p className="text-xs text-muted-foreground">The format default uses its original size, assortment and seed 0. This comparison does not change your settings or save a layout.</p>
