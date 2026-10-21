@@ -156,6 +156,20 @@ it("starts a dining house with independent juice, noodle, sushi and pizza floors
   expect(screen.getByText("juice_bar / width 30")).toBeTruthy();
 });
 
+it("starts a neighborhood dining center with independently editable specialty floors", () => {
+  render(<Building currency="JPY" />);
+  fireEvent.click(screen.getByRole("button", { name: "Neighborhood dining center" }));
+  expect(screen.getByText("ice_cream_parlor / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
+  for (const [label, templateId] of [["2F · Level 2 · Salads", "salad_cafe"], ["3F · Level 3 · Burgers", "burger_shop"], ["4F · Level 4 · Korean dining", "korean_restaurant"]]) {
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    expect(screen.getByText(`${templateId} / width default`)).toBeTruthy();
+    expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+  }
+  fireEvent.click(screen.getByRole("button", { name: "1F · Ground · Ice cream" }));
+  expect(screen.getByText("ice_cream_parlor / width 30")).toBeTruthy();
+});
+
 it("moves and duplicates a customized floor without losing its settings", () => {
   render(<Building />);
   fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));

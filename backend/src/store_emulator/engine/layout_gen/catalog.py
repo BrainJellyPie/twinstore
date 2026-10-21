@@ -135,6 +135,30 @@ CATEGORY_LABELS: dict[str, tuple[str, str]] = {
 # Specialty assortments use generic English labels in both price modes.
 # Pharmacy entries are OTC retail goods; no prescription or dispensing simulation.
 _SPECIALTY: dict[str, list[tuple[str, int]]] = {
+    "korean_menu": [
+        ("Vegetable Bibimbap", 1099), ("Beef Bulgogi Rice Bowl", 1499), ("Spicy Pork Rice Bowl", 1299),
+        ("Kimchi Fried Rice", 1049), ("Tofu Kimchi Stew", 1199), ("Soybean Paste Stew", 1099),
+        ("Cold Buckwheat Noodles", 1249), ("Vegetable Gimbap", 849), ("Spicy Rice Cakes", 799),
+        ("Kimchi Pancake", 949), ("Steamed Mandu 6pc", 699), ("Seasonal Banchan Set", 499),
+    ],
+    "burger_menu": [
+        ("Classic Beef Burger", 899), ("Cheddar Cheeseburger", 999), ("Double Beef Burger", 1299),
+        ("Grilled Chicken Burger", 1049), ("Spicy Chicken Burger", 999), ("Plant-Based Burger", 1099),
+        ("Mushroom Swiss Burger", 1149), ("Mini Burger", 649), ("Skin-On Fries", 349),
+        ("Sweet Potato Fries", 449), ("Crispy Onion Rings", 499), ("Burger Fries & Drink Meal", 1499),
+    ],
+    "salad_menu": [
+        ("Grilled Chicken Caesar Salad", 1199), ("Roasted Vegetable Grain Bowl", 1099), ("Chickpea Quinoa Salad", 1049),
+        ("Salmon Avocado Grain Bowl", 1499), ("Tofu Sesame Grain Bowl", 1149), ("Mediterranean Lentil Bowl", 1099),
+        ("Beet & Feta Salad", 1049), ("Crunchy Cabbage Slaw", 449), ("Tomato Lentil Soup", 649),
+        ("Roasted Sweet Potato Side", 499), ("Whole Grain Bread Roll", 249), ("Salad & Soup Lunch Set", 1449),
+    ],
+    "scoop_menu": [
+        ("Vanilla Ice Cream Cone", 349), ("Chocolate Ice Cream Cone", 349), ("Strawberry Ice Cream Cup", 399),
+        ("Matcha Gelato Cup", 449), ("Pistachio Gelato Cup", 499), ("Mango Sorbet Cup", 449),
+        ("Lemon Sorbet Cup", 399), ("Chocolate Brownie Sundae", 749), ("Banana Split", 899),
+        ("Vanilla Milkshake", 599), ("Chocolate Milkshake", 649), ("Mini Scoop Tasting Flight", 799),
+    ],
     "pizza_menu": [
         ("Margherita Pizza", 1299), ("Pepperoni Pizza", 1499), ("Roasted Vegetable Pizza", 1399),
         ("Four Cheese Pizza", 1599), ("Mushroom Pizza", 1399), ("Chicken Pesto Pizza", 1699),
