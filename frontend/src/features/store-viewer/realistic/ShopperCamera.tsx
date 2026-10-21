@@ -6,9 +6,9 @@ import type { CustomerResult, Rack } from "@/shared/types/domain";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { useSimulationStore } from "@/stores/simulationStore";
-import { activeShoppers, angleDelta, type ShopperPose } from "./shopperPose";
-import { createClock, stepClock } from "./playbackClock";
-import { nearestPersona, personaRegistry } from "./personaRegistry";
+import { activeShoppers, angleDelta, shopperPoseAt, type ShopperPose } from "./shopperPose";
+import { createClock, livePlaybackClock, stepClock } from "./playbackClock";
+import { personaRegistry } from "./personaRegistry";
 import { useRealisticSettings, sameIds } from "./graphicsSettings";
 
 interface Props {
@@ -43,6 +43,10 @@ export function ShopperCamera({ active, customers, racks, width, depth, minTime,
   const smooth = useRef<Smooth>({ init: false, x: 0, z: 0, yaw: 0, pitch: 0, id: null });
   const frameCount = useRef(0);
   const posesRef = useRef<ShopperPose[]>([]);
+  const poseDay = useRef(-1);
+  const customersById = useMemo(() => new Map(
+    (customers ?? []).map(customer => [`${customer.day ?? 1}:${customer.persona_id}`, customer]),
+  ), [customers]);
 
   // Inside-the-entrance fallback pose (store-local).
   const fallback = useMemo(() => {
@@ -63,38 +67,51 @@ export function ShopperCamera({ active, customers, racks, width, depth, minTime,
     const delta = Math.min(rawDelta, 0.1);
     const ctrl = usePlaybackControlStore.getState();
     const metrics = useSimulationMetricsStore.getState();
-    const t = stepClock(clock.current, delta, {
-      playing: ctrl.playing,
-      speed: ctrl.speed,
-      day: ctrl.currentDay,
-      currentMinute: metrics.currentMinute,
-      finished: metrics.finished,
-      minTime,
-      maxTime,
-    });
+    const source = livePlaybackClock.current;
+    const t = source && source.day.current === ctrl.currentDay && Number.isFinite(source.time.current)
+      ? source.time.current
+      : stepClock(clock.current, rawDelta, {
+        playing: ctrl.playing,
+        speed: ctrl.speed,
+        day: ctrl.currentDay,
+        currentMinute: metrics.currentMinute,
+        finished: metrics.finished,
+        minTime,
+        maxTime,
+      });
     if (!active || !cam.current) return;
 
-    // Pose list refresh (every 4th frame is plenty for selection).
+    // Refresh the selector list less often, but evaluate the followed person's
+    // pose at the exact current time on every frame.
     frameCount.current = (frameCount.current + 1) % 4;
-    if (frameCount.current === 0 || !posesRef.current.length) {
+    const refreshPoses = () => {
       posesRef.current = customers?.length ? activeShoppers(customers, ctrl.currentDay, t) : [];
+      poseDay.current = ctrl.currentDay;
       const ids = posesRef.current.map((p) => p.personaId);
       const settings = useRealisticSettings.getState();
       if (!sameIds(ids, settings.activeShopperIds)) settings.setActiveShopperIds(ids);
-    }
+    };
+    if (frameCount.current === 0 || !posesRef.current.length || poseDay.current !== ctrl.currentDay) refreshPoses();
     const followId = useSimulationStore.getState().followPersonaId;
-    const poses = posesRef.current;
-    const pose = poses.find((p) => p.personaId === followId) ?? poses[0] ?? null;
+    const selected = followId === null ? undefined : customersById.get(`${ctrl.currentDay}:${followId}`);
+    let pose = selected ? shopperPoseAt(selected, t) : null;
+    if (!pose) {
+      const firstId = posesRef.current[0]?.personaId;
+      const first = firstId === undefined ? undefined : customersById.get(`${ctrl.currentDay}:${firstId}`);
+      pose = first ? shopperPoseAt(first, t) : null;
+      if (!pose && posesRef.current.length) {
+        refreshPoses();
+        pose = posesRef.current[0] ?? null;
+      }
+    }
 
     let tx = fallback.x;
     let tz = fallback.z;
     let tyaw = fallback.yaw;
     let tpitch = 0.08;
     if (pose) {
-      // Snap to the rendered persona when one is close (exact playback time).
-      const i = nearestPersona(pose.x, pose.z, 1.2);
-      tx = i >= 0 ? personaRegistry.xs[i]! : pose.x;
-      tz = i >= 0 ? personaRegistry.zs[i]! : pose.z;
+      tx = pose.x;
+      tz = pose.z;
       tyaw = pose.lookYaw;
       tpitch = pose.pitch;
       personaRegistry.hideNear = { x: tx, z: tz };
