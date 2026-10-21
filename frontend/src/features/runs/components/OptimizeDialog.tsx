@@ -94,7 +94,7 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
 
   const seconds = Math.round((spec.budget * spec.eval_customers) / 300 * 1.2);
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2"><Wand2 className="size-5" /> Optimize this layout</DialogTitle>
         <DialogDescription>
@@ -175,7 +175,7 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
             <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
               <ModelPicker engine="vlm_glance" value={modelChoice} onChange={setModelChoice} />
               {modelError && <p id="run-model-error" role="alert" className="text-xs text-destructive">{modelError}</p>}
-              <div className="grid grid-cols-3 gap-3 text-xs">
+              <div className="grid grid-cols-1 gap-3 text-xs min-[400px]:grid-cols-2 sm:grid-cols-3">
                 <label className="flex flex-col gap-1">
                   <span className="text-muted-foreground">Vision shoppers per layout</span>
                   <Input type="number" min={4} max={400} value={judge.vlm_customers} onChange={(e) => setJudge({ ...judge, vlm_customers: Math.min(400, Math.max(4, Number(e.target.value) || 4)) })} className="h-8" />
@@ -184,7 +184,7 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
                   <span className="text-muted-foreground">Candidates judged</span>
                   <Input type="number" min={1} max={8} value={judge.top_k} onChange={(e) => setJudge({ ...judge, top_k: Math.min(8, Math.max(1, Number(e.target.value) || 1)) })} className="h-8" />
                 </label>
-                <label className="mt-5 flex items-center gap-2">
+                <label className="flex items-center gap-2 sm:mt-5">
                   <input type="checkbox" checked={judge.calibrate} onChange={(e) => setJudge({ ...judge, calibrate: e.target.checked })} />
                   Calibrate first
                 </label>
