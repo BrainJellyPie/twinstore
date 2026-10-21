@@ -199,7 +199,8 @@ For brand managers, category teams and research agencies (**Market** in the comm
   and link each to the shelf product it replaces. Shelf Lab and the vision shoppers use the same images.
 - **A/B tests** — a variant is a list of changes to a saved layout: a new price, a discount with the was-price on the
   tag, a promotion sign (1+1, SALE, −30 %), a move to eye level or another fixture, a new pack, or a category re-price
-  with .99 endings. One-click recipes: discount ladder, discount vs sign, eye level vs bottom shelf, price up, new pack.
+  with .99 endings. One-click recipes: discount ladder, discount vs sign, eye level vs bottom shelf, **price sweep**
+  (a demand curve with the product's elasticity and revenue-maximising price), price up, new pack.
   Every arm runs on the **same shoppers with the same random numbers** as the control, so the result reports paired
   differences with bootstrap 95 % intervals — revenue, conversion and units per visitor, and units, spend and buyers of
   each tracked product — and names a winner only when its interval clears zero. Rule shoppers answer in seconds;

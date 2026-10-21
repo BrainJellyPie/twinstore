@@ -40,6 +40,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   All arms run on the same persona panel and seed (common random numbers); store and focus-product
   outcomes come with paired bootstrap 95 % intervals, a winner only when the interval clears zero,
   and CSV export. API: `POST/GET /api/projects/{pid}/experiments`, `GET/DELETE .../{eid}`.
+- **Price sweep**: a one-click recipe tests a product at −30 %, −15 %, +15 % and +30 % with the current
+  price kept as the shoppers' reference (`keep_reference`), and the result shows its demand curve —
+  units per 100 visitors with 95 % intervals at each price, product revenue, the elasticity across the
+  arms and the revenue-maximising tested price (in the app and the report). Rule shoppers react to
+  price relative to the usual price, so a new everyday price without a reference gets a note.
 - **Automatic report** for every finished A/B test: a summary with a rule-based recommendation
   (roll out the winner with its daily and monthly revenue range, flag variants that lose, call out
   product-only lifts, the panel size needed to see a 5 % change), the test design, results with
