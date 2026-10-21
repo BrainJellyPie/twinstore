@@ -142,13 +142,14 @@ export function AddLayoutDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-h-[90dvh] overflow-y-auto", (approach === "template" || approach === "building") ? "sm:max-w-[760px]" : "sm:max-w-[420px]")}>
+      <DialogContent className={cn("flex max-h-[90dvh] flex-col overflow-hidden", (approach === "template" || approach === "building") ? "sm:max-w-[760px]" : "sm:max-w-[420px]")}>
         <DialogHeader>
           <DialogTitle>Add layout</DialogTitle>
           <DialogDescription className="sr-only">Create a layout from an existing store, a template, an image or a PDF floor plan.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
+          <div className="-mx-1 min-h-0 flex-1 space-y-4 overflow-y-auto px-1" data-testid="add-layout-scroll-area">
           <div className="space-y-1.5">
             <label className={labelClass} htmlFor="add-layout-name">
               {approach === "building" ? "Building name" : "Layout name"}
@@ -313,9 +314,10 @@ export function AddLayoutDialog({
               </div>
             </RadioGroup>
           </div>
+          </div>
 
           {createLayout.isError && (
-            <p className="text-xs text-destructive">
+            <p role="alert" className="max-h-20 overflow-y-auto text-xs text-destructive">
               {createLayout.error instanceof Error
                 ? createLayout.error.message
                 : "Failed to create layout."}
