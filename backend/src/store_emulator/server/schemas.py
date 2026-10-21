@@ -147,12 +147,12 @@ class SetupSummary(BaseModel):
     updated_at: str
     readiness: Readiness | None = None
     building: BuildingFloorInfo | None = None
+    generation: dict[str, object] | None = None
 
 
 class SetupDetail(SetupSummary):
     """Response for GET /setups/{sid} — includes store and blocked_faces (spec rev 4 §4.1)."""
     store: dict[str, object] | None = None
-    generation: dict[str, object] | None = None
     blocked_faces: list[BlockedFaceDetail] = Field(
         default_factory=lambda: list[BlockedFaceDetail](),
     )

@@ -34,7 +34,7 @@ import { cn } from "@/shared/utils/cn";
 import { useCreateLayout } from "../hooks/useCreateLayout";
 import { BuildingPicker } from "./BuildingPicker";
 import { TemplatePicker } from "./TemplatePicker";
-import { DEFAULT_TEMPLATE_CHOICE, buildingPreset, validBuildingFloors, validTemplateChoice, type TemplateChoice } from "../templateOptions";
+import { DEFAULT_TEMPLATE_CHOICE, buildingPreset, choiceFromGeneration, validBuildingFloors, validTemplateChoice, type TemplateChoice } from "../templateOptions";
 import type { Layout } from "../hooks/useLayouts";
 
 type Approach = "import" | "empty" | "template" | "plan" | "building";
@@ -94,7 +94,7 @@ export function AddLayoutDialog({
       setPlanPage(1);
       setPlanRotation(0);
       setSelectedParentId(resolveDefaultParent(parentSetupId, layouts));
-      setTemplate((current) => ({ ...current, currency: defaultCurrency }));
+      setTemplate((current) => ({ ...current, currency: defaultCurrency, sourceSetupId: undefined }));
       setFloors((current) => current.map((floor) => ({ ...floor, choice: { ...floor.choice, currency: defaultCurrency } })));
       createLayout.reset();
     }
@@ -102,6 +102,7 @@ export function AddLayoutDialog({
   }, [open]);
 
   const trimmed = name.trim();
+  const sourceLayout = layouts.find((layout) => layout.id === parentSetupId);
   const canSubmit =
     trimmed.length > 0 &&
     !createLayout.isPending &&
@@ -226,7 +227,16 @@ export function AddLayoutDialog({
                   />
                   Generate a store from a template
                 </label>
-                {approach === "template" && <TemplatePicker value={template} budgetCurrency={defaultCurrency} onChange={setTemplate} />}
+                {approach === "template" && <>
+                  {sourceLayout?.generation && <div className="space-y-1 rounded-md border p-3 text-xs">
+                    <button type="button" className="font-medium text-primary underline" onClick={() => setTemplate(choiceFromGeneration(sourceLayout.generation!, sourceLayout.id))}>
+                      Reuse options from {sourceLayout.name}
+                    </button>
+                    <p className="text-muted-foreground">Bring back the saved template settings and design brief, then change them to create an alternative. Manual fixture edits and uploaded products are kept by the import option.</p>
+                    {template.sourceSetupId === sourceLayout.id && <p role="status">The new layout will be linked to {sourceLayout.name}. The source layout stays unchanged.</p>}
+                  </div>}
+                  <TemplatePicker value={template} budgetCurrency={defaultCurrency} onChange={setTemplate} />
+                </>}
               </div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm" htmlFor="add-layout-approach-building">

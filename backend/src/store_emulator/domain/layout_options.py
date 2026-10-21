@@ -27,6 +27,7 @@ class LayoutOptions(BaseModel):
 
 class TemplateLayoutRequest(LayoutOptions):
     template_id: str
+    source_setup_id: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-z0-9_]+$")
     seed: int = 0
     currency: Literal["USD", "KRW", "JPY"] = "USD"
     name: str | None = Field(default=None, max_length=300)

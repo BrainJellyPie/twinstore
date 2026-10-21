@@ -181,3 +181,45 @@ def test_dining_tables_can_be_edited_and_saved_without_product_faces(client):
     assert response.json()["issues"] == []
     saved = client.get(url).json()["store"]
     assert next(r for r in saved["racks"] if r["id"] == table["id"])["rack_name"] == "Window table"
+
+
+def test_reused_generation_creates_a_linked_alternative_without_changing_source(client):
+    original = client.post(f"/api/projects/{PID}/setups/generate", json={
+        "template_id": "book_cafe", "width": 18, "height": 14, "design_theme": "warm", "dining_tables": 3,
+        "requirements": "Quiet reading corner", "seed": 7,
+    }).json()
+    source_url = f"/api/projects/{PID}/setups/{original['id']}"
+    before = client.get(source_url).json()
+    summaries = client.get(f"/api/projects/{PID}/setups").json()
+    settings = next(s for s in summaries if s["id"] == original["id"])["generation"]
+    assert settings == before["generation"]
+    result = client.post(f"/api/projects/{PID}/setups/generate", json={
+        **settings, "source_setup_id": original["id"], "name": "More seating", "dining_tables": 5,
+    })
+    assert result.status_code == 200, result.text
+    assert result.json()["parentId"] == original["id"]
+    assert client.get(source_url).json() == before
+    alternative = client.get(f"/api/projects/{PID}/setups/{result.json()['id']}").json()
+    assert alternative["generation"]["requirements"] == "Quiet reading corner"
+    assert alternative["store"]["design_theme"] == "warm"
+    assert sum(r["type"] == "table" for r in alternative["store"]["racks"]) == 5
+
+
+def test_generated_floor_alternative_keeps_building_identity(client):
+    source = client.post(f"/api/projects/{PID}/setups/generate-building", json=_building()).json()["setups"][1]
+    result = client.post(f"/api/projects/{PID}/setups/generate", json={
+        **source["generation"], "source_setup_id": source["id"], "name": "More open upstairs", "density": "spacious",
+    })
+    assert result.status_code == 200, result.text
+    assert result.json()["parentId"] == source["id"]
+    assert result.json()["building"] == source["building"]
+
+
+@pytest.mark.parametrize("source,status", [("setup_missing", 404), ("../outside", 422), ("", 422)])
+def test_invalid_generation_source_writes_nothing(client, source, status):
+    before = client.get(f"/api/projects/{PID}").json()
+    result = client.post(f"/api/projects/{PID}/setups/generate", json={
+        "template_id": "specialty_cafe", "source_setup_id": source,
+    })
+    assert result.status_code == status
+    assert client.get(f"/api/projects/{PID}").json() == before

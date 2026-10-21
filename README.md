@@ -145,6 +145,12 @@ default palette; each building floor can use a different one. The preview uses t
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
+To iterate on a generated layout, open **New layout → Generate a store from a
+template → Reuse options from …**. This restores its format, dimensions, style,
+seating, currency, seed and design brief. Save a changed version as a linked
+alternative while preserving the source; floor alternatives keep their building
+identity. Use the import option to copy manual fixture edits or uploaded products.
+
 Add up to 12 dining tables (four chairs each) to any format. Café and restaurant
 defaults include seating; small grids reduce the default count to fit. An explicit
 count that cannot fit returns a capacity message. Each group occupies 2×2 cells
