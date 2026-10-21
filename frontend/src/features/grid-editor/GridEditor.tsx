@@ -10,6 +10,7 @@ import { Card } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { GridCell } from "./GridCell";
 import { rackCells } from "@/shared/utils/grid";
+import { cn } from "@/shared/utils/cn";
 
 interface GridEditorProps {
   racks: Rack[];
@@ -17,6 +18,7 @@ interface GridEditorProps {
   blockedFaces: BlockedFaceDetail[];
   onCellClick: (position: Position) => void;
   selectedCell?: Position | null;
+  placing?: boolean;
 }
 
 export function GridEditor({
@@ -25,6 +27,7 @@ export function GridEditor({
   blockedFaces,
   onCellClick,
   selectedCell,
+  placing = false,
 }: GridEditorProps) {
   const [width, height] = gridSize;
   const [cellSize, setCellSize] = useState(64);
@@ -98,7 +101,7 @@ export function GridEditor({
         aria-label="Floor grid"
         tabIndex={0}
         data-testid="grid-scroll-area"
-        className="max-h-[55vh] min-h-40 overflow-auto rounded-md border p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn("max-h-[55vh] min-h-40 overflow-auto rounded-md border p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", placing && "[&_button]:cursor-crosshair")}
       >
         <div className="grid w-max gap-1" data-testid="grid-canvas"
           style={{ gridTemplateColumns: `repeat(${width}, ${cellSize}px)`, gridAutoRows: `${cellSize}px` }}>
