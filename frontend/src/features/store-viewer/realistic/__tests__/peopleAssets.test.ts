@@ -10,10 +10,11 @@ interface Model {
   accessors: { bufferView: number; byteOffset?: number; count: number; componentType: number; type: string; min?: number[]; max?: number[] }[];
   bufferViews: { byteOffset: number; byteStride?: number }[];
   materials: {
-    name: string; alphaMode?: string; alphaCutoff?: number; normalTexture?: object;
+    name: string; alphaMode?: string; alphaCutoff?: number; normalTexture?: { index: number };
     pbrMetallicRoughness: { metallicFactor?: number; roughnessFactor?: number; metallicRoughnessTexture?: { index: number } };
   }[];
-  textures: { source: number }[];
+  textures: { source?: number; extensions?: { EXT_texture_webp?: { source: number } } }[];
+  extensionsRequired: string[];
   images: { bufferView: number; mimeType: string }[];
   meshes: { extras: { targetNames: string[] }; primitives: { material: number; targets: { POSITION: number; NORMAL: number }[] }[] }[];
   nodes: { name?: string }[];
@@ -37,6 +38,17 @@ describe("bundled shopper models", () => {
       }
 
       const binaryStart = 20 + jsonLength + 8;
+      expect(model.extensionsRequired).toContain("EXT_texture_webp");
+      for (const material of model.materials.filter((m) => m.normalTexture)) {
+        const texture = model.textures[material.normalTexture!.index]!;
+        expect(texture.source).toBeUndefined();
+        const image = model.images[texture.extensions!.EXT_texture_webp!.source]!;
+        expect(image.mimeType).toBe("image/webp");
+        const imageStart = binaryStart + model.bufferViews[image.bufferView]!.byteOffset;
+        expect(data.subarray(imageStart, imageStart + 4).toString()).toBe("RIFF");
+        expect(data.subarray(imageStart + 8, imageStart + 12).toString()).toBe("WEBP");
+        expect(data.subarray(imageStart + 12, imageStart + 16).toString()).toBe("VP8L"); // lossless codec
+      }
       for (const mesh of model.meshes) expect(mesh.extras.targetNames).toEqual(["blink"]);
       const headPrimitive = model.meshes.flatMap((mesh) => mesh.primitives).find((p) => model.materials[p.material]!.name.includes("head"))!;
       expect(headPrimitive.targets).toHaveLength(1);
@@ -55,7 +67,7 @@ describe("bundled shopper models", () => {
         expect(pbr.metallicFactor).toBe(0);
         expect(pbr.roughnessFactor ?? 1).toBe(1);
         const texture = model.textures[pbr.metallicRoughnessTexture!.index]!;
-        const image = model.images[texture.source]!;
+        const image = model.images[texture.source!]!;
         expect(image.mimeType).toBe("image/png");
         const imageStart = binaryStart + model.bufferViews[image.bufferView]!.byteOffset;
         expect(data.subarray(imageStart + 1, imageStart + 4).toString()).toBe("PNG");
