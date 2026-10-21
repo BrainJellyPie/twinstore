@@ -96,7 +96,7 @@ def compare_shelves(choices: Sequence[ShelfChoice], target: str, *, n_bootstrap:
     pairs = [(v["control"], v["test"]) for v in by.values() if "control" in v and "test" in v]
     if not pairs:
         return []
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(abs(seed))
     out: list[ShareComparison] = []
     tests: dict[Literal["pick", "noticed", "noticed_first"], Callable[[ShelfChoice], bool]] = {
         "pick": lambda c: c.pick_sku == target,
