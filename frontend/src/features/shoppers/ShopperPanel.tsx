@@ -152,7 +152,7 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
         ))}
       </div>
       {tab === "journey"
-        ? <JourneySteps journey={j} active={active} onHover={setHover} />
+        ? <JourneySteps projectId={projectId} journey={j} active={active} onHover={setHover} />
         : <InterviewChat projectId={projectId} runId={runId} journey={j} onCite={setCited} />}
     </div>
   );

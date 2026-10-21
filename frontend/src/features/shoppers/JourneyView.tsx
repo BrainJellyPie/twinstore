@@ -1,9 +1,11 @@
 // One shopper's trip: a mini floor map with the walked path and numbered stops, and the steps with the
 // thought recorded at each one. Steps cited by an interview answer are highlighted.
 
-import { DoorClosed, DoorOpen, Footprints, Eye, ShoppingBasket, CreditCard, Shuffle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { DoorClosed, DoorOpen, Footprints, Eye, ShoppingBasket, CreditCard, Shuffle, X } from "lucide-react";
 
-import type { Journey, JourneyAction, JourneyStep } from "@/shared/api/interview";
+import { shelfFaceUrl, type Journey, type JourneyAction, type JourneyStep } from "@/shared/api/interview";
 import type { Store } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
 import { rackBounds } from "@/shared/utils/grid";
@@ -57,15 +59,58 @@ export function JourneyMap({ journey, store, active, onHover }: { journey: Journ
   );
 }
 
-export function JourneySteps({ journey, active, onHover }: { journey: Journey; active: Set<number>; onHover: (i: number | null) => void }) {
+export function JourneySteps({ projectId, journey, active, onHover }: {
+  projectId: string; journey: Journey; active: Set<number>; onHover: (i: number | null) => void;
+}) {
+  const [zoom, setZoom] = useState<{ url: string; title: string } | null>(null);
+  // The first browse/buy step at each shelf face shows what the shopper saw there.
+  const firstAtFace = new Set<number>();
+  const seen = new Set<string>();
+  for (const s of journey.steps) {
+    const key = `${s.rack_id}:${s.face}`;
+    if ((s.action === "browse" || s.action === "buy") && s.rack_id && s.face && s.sees_products && !seen.has(key)) {
+      seen.add(key);
+      firstAtFace.add(s.index);
+    }
+  }
   return (
-    <ol className="relative space-y-1 before:absolute before:top-2 before:bottom-2 before:left-[0.95rem] before:w-px before:bg-foreground/10">
-      {journey.steps.map((s) => <Step key={s.index} step={s} currency={journey.currency} active={active.has(s.index)} onHover={onHover} />)}
-    </ol>
+    <>
+      <ol className="relative space-y-1 before:absolute before:top-2 before:bottom-2 before:left-[0.95rem] before:w-px before:bg-foreground/10">
+        {journey.steps.map((s) => (
+          <Step key={s.index} step={s} currency={journey.currency} active={active.has(s.index)} onHover={onHover}
+            shelf={firstAtFace.has(s.index) ? shelfFaceUrl(projectId, journey.run_id, s.rack_id, s.face) : null}
+            onZoom={(url) => setZoom({ url, title: `${s.rack} · ${s.face} side, as the shopper saw it at ${s.time}` })} />
+        ))}
+      </ol>
+      {zoom && <Lightbox {...zoom} onClose={() => setZoom(null)} />}
+    </>
   );
 }
 
-function Step({ step: s, currency, active, onHover }: { step: JourneyStep; currency: string; active: boolean; onHover: (i: number | null) => void }) {
+function Lightbox({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [onClose]);
+  // Portal: the side panel's backdrop filter would otherwise contain the fixed overlay.
+  return createPortal(
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6 backdrop-blur-sm" onClick={onClose} role="dialog" aria-label={title}>
+      <figure className="max-w-4xl overflow-hidden rounded-2xl bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <img src={url} alt={title} className="max-h-[75vh] w-full object-contain" />
+        <figcaption className="flex items-center gap-2 px-4 py-2.5 text-sm">
+          <span className="flex-1 text-muted-foreground">{title}</span>
+          <button type="button" onClick={onClose} className="rounded-md p-1 hover:bg-foreground/[0.06]" aria-label="Close"><X className="size-4" /></button>
+        </figcaption>
+      </figure>
+    </div>,
+    document.body,
+  );
+}
+
+function Step({ step: s, currency, active, onHover, shelf, onZoom }: {
+  step: JourneyStep; currency: string; active: boolean; onHover: (i: number | null) => void; shelf: string | null; onZoom: (url: string) => void;
+}) {
   const Icon = ICON[s.action] ?? Footprints;
   const buy = s.action === "buy";
   return (
@@ -91,6 +136,11 @@ function Step({ step: s, currency, active, onHover }: { step: JourneyStep; curre
           </div>
         )}
         {s.thought && <p className="mt-0.5 text-[0.76rem] leading-snug text-muted-foreground italic">“{s.thought}”</p>}
+        {shelf && (
+          <button type="button" onClick={() => onZoom(shelf)} className="mt-1 block overflow-hidden rounded-lg border transition-shadow hover:shadow-md" title="What the shopper saw here — click to enlarge">
+            <img src={shelf} alt={`${s.rack} as seen by the shopper`} loading="lazy" className="h-16 w-auto" />
+          </button>
+        )}
       </div>
     </li>
   );
