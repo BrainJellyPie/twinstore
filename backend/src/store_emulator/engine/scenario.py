@@ -39,7 +39,7 @@ CATEGORY_WORDS: dict[str, frozenset[str]] = {
     "hot_food": frozenset({"ramen", "noodle", "noodles", "soup", "cup", "bowl", "instant", "hot", "coffee", "latte",
                            "tea", "dumpling", "oden", "라면", "컵라면", "국", "커피", "호빵", "어묵"}),
     # Not "frozen", "cream" or "bar": those put frozen pizza, cream cheese and candy bars in the ice
-    # cream aisle (frozen pizza sold 1.9× in a simulated summer; real: 0.94×, research/validation).
+    # cream aisle (frozen pizza sold 1.9× in a simulated summer; real: 0.94×).
     "ice_cream": frozenset({"ice", "icecream", "popsicle", "popsicles", "gelato", "sorbet", "sherbet", "sherbets", "cone",
                             "sherbts", "아이스", "아이스크림", "빙과"}),
     "snacks": frozenset({"snack", "chip", "chips", "crisps", "cookie", "cookies", "candy", "chocolate", "cracker",
@@ -179,10 +179,10 @@ def _temperature_demand(t: float, p: ScenarioPriors) -> dict[str, float]:
 
 
 # Store types whose shoppers behave like the supermarket, drugstore and grocery data the grocery
-# profile was fitted on (research/validation: The Complete Journey, Favorita, M5, Rossmann, Frat).
+# profile was fitted on (The Complete Journey, Favorita, M5, Rossmann, Frat).
 GROCERY_FORMATS: frozenset[str] = frozenset({"supermarket", "hypermarket", "grocery", "pharmacy", "drugstore",
                                              "mini_mart", "minimart"})
-# Fitted to real data by research/validation/calibrate_situations.py (traffic: Rossmann weather, CJ and
+# Fitted to real data (traffic: Rossmann weather, CJ and
 # Favorita weekends and holidays, Rossmann/Favorita paydays; demand: The Complete Journey's
 # per-trip category shares by season, weekend, holiday season and Super Bowl Sunday).
 GROCERY_PRIORS = ScenarioPriors.model_validate_json((Path(__file__).with_name("grocery_priors.json")).read_text())

@@ -13,7 +13,7 @@ trades reading accuracy against speed and memory:
 | Qwen3.5-9B | 6.6 GB | ~8 GB |
 
 On 2 CPU cores the two smallest take 7–18 s per decision and read product names and prices poorly;
-Qwen3.5-2B reads them reliably but takes ~22.5 s per glance (`research/vlm_bench`, README). So a CPU
+Qwen3.5-2B reads them reliably but takes ~22.5 s per glance (README). So a CPU
 gets the 2B model only with enough cores, and the 4B and 9B models only run on a GPU.
 
 Detection never raises: anything that cannot be read is left at a conservative default, and every
