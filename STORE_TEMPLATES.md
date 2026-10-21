@@ -1,6 +1,6 @@
 # Store layout templates
 
-Everything about generating a furnished starting layout: the 70 store formats, product categories, entrances and
+Everything about generating a furnished starting layout: the 74 store formats, product categories, entrances and
 exits, seating, checkouts, reserved areas, multi-floor buildings and the floor editor. The [README](./README.md#store-formats-and-templates)
 has the short version.
 
@@ -9,10 +9,24 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 70
+In a project, choose **New layout → Generate a store from a template**. Search 74
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+
+**Compact neighborhood pharmacy** is an 8×8 care shop with one counter and a
+central spine, open 09:00–19:00 with Sundays closed. **24-hour care pharmacy**
+uses a 24×18 floor, cross aisles and four counters; it stays open 00:00–24:00
+all week. Both model retail care purchases without prescription dispensing.
+**Neighborhood care center** pairs the compact pharmacy with an upstairs care-supply shop.
+
+**Mediterranean deli** offers twelve pita, mezze, salad and rice dishes on a
+20×18 coastal floor with six four-seat tables and two ordering counters. It opens
+10:00–22:00 and closes Mondays. **Mexican cantina** offers twelve burrito, taco,
+quesadilla and side dishes around a central plaza on a 24×20 terracotta floor,
+with eight four-seat tables and three counters, open 11:00–24:00 daily.
+**Mediterranean & Mexican dining** joins them as two independent dining floors.
+These formats model counter purchases; kitchen preparation and table service are not simulated.
 
 **Community market hall** starts with a 32×28 botanical floor, a central plaza,
 four four-seat tables toward the back and four checkout counters. Produce, meals,

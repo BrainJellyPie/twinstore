@@ -271,6 +271,18 @@ _SPECIALTY: dict[str, list[tuple[str, int]]] = {
         ("Air-Dry Clay 1kg", 1199), ("Embroidery Starter Kit", 1799), ("Cotton Yarn Ball", 599),
         ("Craft Cutting Mat", 1999), ("Paper Craft Pack", 799), ("Washable Craft Glue", 499),
     ],
+    "mediterranean_menu": [
+        ("Falafel Pita Wrap", 1099), ("Grilled Chicken Pita", 1299), ("Roasted Vegetable Pita", 1099),
+        ("Hummus & Pita Plate", 899), ("Baba Ganoush & Pita Plate", 949), ("Greek Salad Bowl", 1199),
+        ("Tabbouleh Salad Bowl", 1099), ("Lentil & Herb Bowl", 1199), ("Chicken Rice Plate", 1499),
+        ("Stuffed Vine Leaves 6pc", 799), ("Olive & Feta Side", 599), ("Baklava 2pc", 549),
+    ],
+    "mexican_menu": [
+        ("Chicken Burrito", 1199), ("Bean & Rice Burrito", 999), ("Beef Burrito Bowl", 1399),
+        ("Grilled Vegetable Bowl", 1099), ("Chicken Tacos 3pc", 1199), ("Mushroom Tacos 3pc", 1099),
+        ("Cheese Quesadilla", 899), ("Chicken Quesadilla", 1199), ("Loaded Nachos", 1099),
+        ("Guacamole & Tortilla Chips", 749), ("Corn & Lime Side", 499), ("Cinnamon Churros 3pc", 549),
+    ],
 }
 for _category, _products in _SPECIALTY.items():
     CATALOG[_category] = [CatalogItem(name, name, price) for name, price in _products]
