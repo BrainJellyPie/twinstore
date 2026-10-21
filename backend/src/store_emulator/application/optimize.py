@@ -184,6 +184,8 @@ def _run_job(
         _write_status(pid, status)
 
     try:
+        if (pid, status.job_id) in _cancel_requests:
+            raise OptimizationCanceled("optimization canceled before starting")
         search_personas = select_personas(personas, spec.eval_customers, seed=spec.seed)
         if vlm_config is None:
             evaluator = LayoutEvaluator(
@@ -232,7 +234,10 @@ def apply_optimization(pid: str, job_id: str, name: str | None = None) -> dict[s
     view = get_optimization(pid, job_id)
     if view.result is None:
         raise AppError("optimization has no result yet", 409)
-    source = read_setup(pid, view.status.setup_id)
+    try:
+        source = read_setup(pid, view.status.setup_id)
+    except FileNotFoundError:
+        raise AppError("The source layout no longer exists; this optimization cannot be saved.", 404) from None
     label = f"{view.result.validation_relative_improvement:+.1%}" if view.result.validation_relative_improvement is not None else ""
     final_name = name or f"{source.get('name') or 'layout'} (optimized{' ' + label if label else ''})"
     memo = "; ".join(view.result.applied_moves[:12])
