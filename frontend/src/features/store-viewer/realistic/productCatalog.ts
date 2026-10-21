@@ -2,7 +2,7 @@
 // size, colours and label text. No three.js / DOM dependencies so they can be
 // unit-tested and reused by an offline renderer.
 
-export type PackageKind = "bottle" | "perfumeBottle" | "teaCup" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "lemon" | "onion" | "kiwi" | "sweetPotato" | "asianPear" | "pot" | "croissant" | "wateringCan";
+export type PackageKind = "bottle" | "perfumeBottle" | "teaCup" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "lemon" | "onion" | "kiwi" | "sweetPotato" | "asianPear" | "ginger" | "pot" | "croissant" | "wateringCan";
 
 export type ProductCategory =
   | "drink"
@@ -99,6 +99,9 @@ const RULES: Rule[] = [
   [/^mini milk tea tasting set$/, () => spec("box", 0.18, 0.12, 0.1, "drink")],
   [/^(?:classic pearl milk tea|brown sugar pearl milk|taro milk tea|matcha pearl latte|thai milk tea|jasmine milk tea|mango fruit tea|passion fruit green tea|peach oolong tea|lychee coconut jelly tea|oat milk pearl tea)(?:\s+\d+(?:\.\d+)?\s*(?:ml|oz))?$/,
     () => spec("teaCup", 0.095, 0.23, 0.095, "drink")],
+  [/^(?:mango lassi|vietnamese iced coffee|lemongrass iced tea|iced mocha)$/,
+    () => spec("teaCup", 0.095, 0.23, 0.095, "drink")],
+  [/^masala chai cup$/, () => spec("cup", 0.085, 0.11, 0.085, "drink")],
   // Garden tools must precede beverage-can and water-bottle rules.
   [/^(?:(?:metal|galvanized)\s+)?watering can(?:\s+5\s*l)?$/,
     () => spec("wateringCan", 0.45233607, 0.19681853, 0.19101861, "other")],
@@ -193,6 +196,8 @@ const RULES: Rule[] = [
   [/sugar|flour/, () => spec("bag", 0.12, 0.18, 0.06, "pantry")],
   [/pasta\b|penne|spaghetti|macaroni|mac & cheese|\brice\b/, () => spec("box", 0.14, 0.23, 0.05, "pantry")],
   // Whole fresh produce only: flavored foods and packaged formats keep their rules.
+  [/^(?:(?:fresh|organic|whole|raw)\s+)*ginger(?:\s+roots?)?(?:\s+(?:loose|each|(?:[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)\s*(?:kg|g|lb|lbs)))?$/,
+    () => spec("ginger", 0.20110649, 0.05158130, 0.08397771, "produce")],
   [/^(?:(?:fresh|organic|ripe|whole|raw)\s+)*(?:asian|nashi)(?:\s+|-)pears?(?:\s+(?:loose|each|(?:[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)\s*(?:kg|g|lb|lbs)))?$/,
     () => spec("asianPear", 0.04344488, 0.06696554, 0.04342672, "produce")],
   [/^(?:(?:fresh|organic|raw|whole)\s+)*sweet(?:\s+|-)potato(?:es)?(?:\s+(?:loose|each|(?:[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)\s*(?:kg|g|lb|lbs)))?$/,
@@ -313,6 +318,7 @@ export function productPalette(name: string): ProductPalette {
   else if (kind === "kiwi") base = "#8d633b";
   else if (kind === "sweetPotato") base = "#8b594b";
   else if (kind === "asianPear") base = "#acb56a";
+  else if (kind === "ginger") base = "#b49a72";
   // Per-product jitter so same-keyword products are distinguishable.
   base = shade(base, (hash01(n, 7) - 0.5) * 0.24);
   let accent = PALETTE[(h >>> 8) % PALETTE.length]!;

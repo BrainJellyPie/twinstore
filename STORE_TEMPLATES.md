@@ -1,6 +1,6 @@
 # Store layout templates
 
-Everything about generating a furnished starting layout: the 74 store formats, product categories, entrances and
+Everything about generating a furnished starting layout: the 78 store formats, product categories, entrances and
 exits, seating, checkouts, reserved areas, multi-floor buildings and the floor editor. The [README](./README.md#store-formats-and-templates)
 has the short version.
 
@@ -9,10 +9,25 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 74
+In a project, choose **New layout → Generate a store from a template**. Search 78
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+
+**Art supply warehouse** uses a 36×28 industrial floor with art materials,
+stationery, books, hobby kits and tools along parallel aisles, five checkouts
+and daily 09:00–20:00 hours. **Beauty & fragrance outlet** uses a 32×24 minimal
+floor with cross aisles, personal care, fragrance and wellness products, four
+checkouts and daily 10:00–22:00 hours. **Creative & beauty center** combines
+these two large retail floors.
+
+**Indian curry house** offers twelve curry, biryani, bread, side and drink choices
+on a 24×20 warm floor with eight four-seat tables and three counters. It opens
+11:00–22:00 and closes Tuesdays. **Vietnamese café & pho** offers twelve pho,
+banh mi, roll, coffee, tea and dessert choices on a 22×18 botanical loop with
+six four-seat tables and two counters, open 09:00–21:00 except Mondays.
+**Curry, pho & coffee** combines them as independent floors. These formats
+model counter purchases; kitchen preparation and table service are not simulated.
 
 **Compact neighborhood pharmacy** is an 8×8 care shop with one counter and a
 central spine, open 09:00–19:00 with Sundays closed. **24-hour care pharmacy**
