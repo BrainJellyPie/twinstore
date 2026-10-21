@@ -491,13 +491,13 @@ def _shelf_arms(pid: str, req: ShelfTestRequest | ShelfPreviewRequest, config: S
     rack = next((r for r in control.racks if r.id == req.rack_id), None)
     if rack is None:
         raise AppError(f"rack not in this layout: {req.rack_id}", 404)
-    currency = control.currency or config.currency
+    currency = simulation_currency(pid, control, config.currency)
     uris = {c.asset_id: "file://" + str(package_path(pid, c.asset_id).resolve()) for c in req.changes if c.kind == "package" and c.asset_id}
     test_store, applied, warnings = apply_changes(control, req.changes, package_uris=uris, minor_per_major=_minor_per_major(currency))
     test_rack = next(r for r in test_store.racks if r.id == req.rack_id)
     faces = {s.face for r in (rack, test_rack) for s in r.slots for i in s.items if not req.target_sku or i.sku == req.target_sku}
     face = Face(req.face) if req.face else (sorted(faces, key=lambda f: f.value)[0] if faces else None)
-    if face is None:
+    if face is None or (req.target_sku and face not in faces):
         raise AppError("the target product is on neither shelf: move it there or pick another rack", 400)
     return rack, test_rack, face, applied, warnings, currency
 
@@ -532,16 +532,25 @@ def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) 
         status.status, status.stage = "running", "asking"
         _write_status(pid, status)
         try:
+            for arm, arm_rack in (("control", rack), ("test", test_rack)):
+                png = render_face(arm_rack, face, currency=currency, width=900, number_on_tag=False).png
+                (_job_dir(pid, "shelf", status.job_id) / f"{arm}.png").write_bytes(png)
             choices = asyncio.run(shelf_panel(LiteLLMClient(llm_config), respondents, rack, test_rack, face, currency=currency, seed=req.seed))
             ok = [c for c in choices if not c.error]
+            paired_ids = {c.respondent for c in ok if c.arm == "control"} & {c.respondent for c in ok if c.arm == "test"}
+            if not paired_ids:
+                raise ValueError("The vision model returned no complete response pairs; no shelf comparison is available.")
+            paired = [c for c in ok if c.respondent in paired_ids]
             notes = ["Synthetic respondents looking at a rendered shelf: use for screening packs, prices and signs, then confirm in the field."]
-            if len(respondents) < 40:
+            if len(paired_ids) < len(respondents):
+                notes.append(f"{len(respondents) - len(paired_ids)} respondent(s) had incomplete responses and were excluded from all comparisons and pick shares.")
+            if len(paired_ids) < 40:
                 notes.append("Fewer than 40 respondents: only large differences in pick share are distinguishable from noise.")
             report = ShelfTestReport(
                 test_id=status.job_id, name=name, setup_id=req.setup_id, rack_id=rack.id, rack_name=rack.rack_name or rack.id,
                 face=face.value, target_sku=req.target_sku, target_name=target_name, model=llm_config.model, currency=currency,
-                respondents=len({c.respondent for c in ok}), errors=len(choices) - len(ok), applied=applied, warnings=warnings,
-                comparisons=compare_shelves(choices, req.target_sku, seed=req.seed), picks=pick_shares(choices, names),
+                respondents=len(paired_ids), errors=len(choices) - len(ok), applied=applied, warnings=warnings,
+                comparisons=compare_shelves(paired, req.target_sku, seed=req.seed), picks=pick_shares(paired, names),
                 choices=choices, notes=notes, seconds=round(time.perf_counter() - t0, 1),
             )
             _finish(pid, status, report)
@@ -563,17 +572,12 @@ def get_shelf_test(pid: str, tid: str) -> ShelfTestView:
 def shelf_test_image(pid: str, tid: str, arm: Literal["control", "test"]) -> bytes:
     """The shelf face respondents saw in one arm (without badges)."""
     view = get_shelf_test(pid, tid)
-    req = view.request
-    if req is None or view.report is None:
+    if view.report is None:
         raise AppError("the shelf test has no results yet", 409)
-    control = _load_store(pid, req.setup_id)
-    uris = {c.asset_id: "file://" + str(package_path(pid, c.asset_id).resolve()) for c in req.changes if c.kind == "package" and c.asset_id}
-    store = control if arm == "control" else apply_changes(control, req.changes, package_uris=uris,
-                                                           minor_per_major=_minor_per_major(view.report.currency))[0]
-    rack = next((r for r in store.racks if r.id == req.rack_id), None)
-    if rack is None:
-        raise AppError("the rack is no longer in this layout", 404)
-    return render_face(rack, Face(view.report.face), currency=view.report.currency, width=900, number_on_tag=False).png
+    path = _job_dir(pid, "shelf", tid) / f"{arm}.png"
+    if not path.exists():
+        raise AppError("This shelf test has no saved image; tests created before image snapshots cannot reproduce the original shelf.", 404)
+    return path.read_bytes()
 
 
 def shelf_test_report(pid: str, tid: str) -> str:

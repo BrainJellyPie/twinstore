@@ -41,7 +41,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 import { RestockPlanner } from "./RestockPlanner";
 
 import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
@@ -59,12 +59,6 @@ const PROMOS = ["1+1", "2+1", "SALE", "-30%", "NEW"];
 
 const editsKey = (pid: string, cid: string) => ["projects", pid, "captures", cid, "edits"] as const;
 const jobsKey = (pid: string, cid: string) => ["projects", pid, "captures", cid, "lab-jobs"] as const;
-
-function toMinor(text: string, currency: string): number | null {
-  const v = Number(text.replace(/[^0-9.]/g, ""));
-  if (!text.trim() || Number.isNaN(v)) return null;
-  return currency === "KRW" || currency === "JPY" ? Math.round(v) : Math.round(v * 100);
-}
 
 function describe(edit: PhotoEdit, names: Map<string, string>): string {
   const t = names.get(edit.item_id) ?? edit.item_id;
@@ -169,6 +163,8 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
   const [price, setPrice] = useState("");
   const [promo, setPromo] = useState("1+1");
   const [assetId, setAssetId] = useState("");
+  const parsedPrice = toMinor(price, minorUnitDivisor(result.currency));
+  const invalidPrice = (draft.kind === "replace" || draft.kind === "price") && price.trim() !== "" && parsedPrice === null;
   const fileRef = useRef<HTMLInputElement>(null);
   const packages = useQuery({ queryKey: ["projects", projectId, "lab-packages"], queryFn: ({ signal }) => api.listPackages(projectId, signal) });
   const upload = useMutation({
@@ -181,7 +177,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
   });
 
   const current: PhotoEdit | null = (() => {
-    if (!draft.target) return null;
+    if (!draft.target || invalidPrice) return null;
     if (needsOther(draft.kind) && (!draft.other || draft.other === draft.target)) return null;
     const base: PhotoEdit = { kind: draft.kind, item_id: draft.target };
     switch (draft.kind) {
@@ -189,9 +185,9 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
       case "duplicate":
         return { ...base, other_id: draft.other ?? "" };
       case "replace":
-        return { ...base, name: name.trim() || "New product", price: toMinor(price, result.currency), asset_id: assetId };
+        return { ...base, name: name.trim() || "New product", price: parsedPrice, asset_id: assetId };
       case "price": {
-        const p = toMinor(price, result.currency);
+        const p = parsedPrice;
         return p == null ? null : { ...base, price: p };
       }
       case "promo":
@@ -310,11 +306,12 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
         </ol>
       )}
       {render.error && <p className="text-xs text-destructive">{render.error instanceof Error ? render.error.message : String(render.error)}</p>}
+      {invalidPrice && <p role="alert" className="text-xs text-destructive">Enter a valid nonnegative price.</p>}
       <div className="flex gap-2">
         <Button variant="outline" className="gap-1.5" disabled={!current} onClick={() => { if (current) { setQueue([...queue, current]); setDraft({ ...EMPTY_DRAFT, kind: draft.kind }); } }}>
           <Plus className="size-4" /> Add step
         </Button>
-        <Button className="flex-1 gap-2" disabled={recipe.length === 0 || render.isPending} onClick={() => render.mutate(recipe)}>
+        <Button className="flex-1 gap-2" disabled={invalidPrice || recipe.length === 0 || render.isPending} onClick={() => render.mutate(recipe)}>
           {render.isPending ? <Loader2 className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}
           Render counterfactual{recipe.length > 1 ? ` (${recipe.length} steps)` : ""}
         </Button>

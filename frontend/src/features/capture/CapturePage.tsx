@@ -12,7 +12,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
 
 import { CAPTURE_CATEGORIES, categoryColor, categoryLabel } from "./categories";
@@ -58,7 +58,9 @@ function UploadCard({ projectId, onStarted, large = false }: { projectId: string
   const [drag, setDrag] = useState(false);
   const [detector, setDetector] = useState<CaptureDetector>("auto");
   const [model, setModel] = useState("");
-  const [currency, setCurrency] = useState("USD");
+  const [chosenCurrency, setCurrency] = useState<string | null>(null);
+  const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
+  const currency = chosenCurrency ?? project.data?.metadata.currency ?? "USD";
   const [rackType, setRackType] = useState<"shelf" | "fridge">("shelf");
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
   const upload = useMutation({
@@ -126,6 +128,9 @@ function UploadCard({ projectId, onStarted, large = false }: { projectId: string
           <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={currency} onChange={(e) => setCurrency(e.target.value)}>
             <option value="USD">US dollars</option>
             <option value="KRW">Korean won</option>
+            <option value="JPY">Japanese yen</option>
+            <option value="EUR">Euros</option>
+            <option value="GBP">British pounds</option>
           </select>
         </label>
         <label className="flex flex-col gap-1">
@@ -335,7 +340,7 @@ interface Draft { id: string; name: string; brand: string; size: string; categor
 
 const toDraft = (it: CaptureItem, currency: string): Draft => ({
   id: it.id, name: it.name, brand: it.brand, size: it.size, category: it.category,
-  price: it.price == null ? "" : currency === "KRW" ? String(it.price) : (it.price / 100).toFixed(2),
+  price: it.price == null ? "" : minorUnitDivisor(currency) === 1 ? String(it.price) : (it.price / minorUnitDivisor(currency)).toFixed(2),
   facings: it.facings, level: it.level, estimated: it.price_estimated, confidence: it.confidence,
 });
 
@@ -347,10 +352,11 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
   const [drafts, setDrafts] = useState<Draft[]>(initial);
   useEffect(() => setDrafts(initial), [initial]);
   const dirty = JSON.stringify(drafts) !== JSON.stringify(initial);
+  const invalidPrice = drafts.some((d) => d.price.trim() !== "" && toMinor(d.price, minorUnitDivisor(result.currency)) === null);
   const save = useMutation({
     mutationFn: () => api.updateCapture(projectId, captureId, drafts.map((d): CaptureEdit => ({
       id: d.id, name: d.name, brand: d.brand, size: d.size, category: d.category, facings: d.facings, level: d.level,
-      price: d.price.trim() === "" ? null : result.currency === "KRW" ? Math.round(Number(d.price)) : Math.round(Number(d.price) * 100),
+      price: toMinor(d.price, minorUnitDivisor(result.currency)),
     }))),
     onSuccess: (v) => qc.setQueryData([...capturesKey(projectId), captureId], v),
   });
@@ -362,11 +368,13 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
     <section className="rounded-2xl border bg-card p-3">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="section-title">Products on this shelf</h3>
-        <Button size="sm" disabled={!dirty || save.isPending} onClick={() => save.mutate()} className="gap-1.5">
+        <Button size="sm" disabled={!dirty || invalidPrice || save.isPending} onClick={() => save.mutate()} className="gap-1.5">
           {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : save.isSuccess && !dirty ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
           {dirty ? "Save changes" : "Saved"}
         </Button>
       </div>
+      {invalidPrice && <p role="alert" className="mb-2 text-sm text-destructive">Enter a valid nonnegative price, or leave it blank to keep the existing price.</p>}
+      {save.error && <p role="alert" className="mb-2 text-sm text-destructive">{save.error instanceof Error ? save.error.message : String(save.error)}</p>}
       <div className="space-y-3">
         {levels.map((lv) => (
           <div key={lv}>

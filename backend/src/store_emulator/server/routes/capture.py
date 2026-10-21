@@ -71,7 +71,9 @@ def list_all(pid: str) -> list[CaptureStatus]:
 
 @router.post("/{pid}/captures/apply", summary="Add several captured shelves as new racks", response_model=ApplyResult)
 def apply_many(pid: str, req: ApplyCapturesRequest) -> ApplyResult:
-    return _call(lambda: capture_service.apply_captures(pid, req.capture_ids, req.setup_id, new_rack=True, name=req.name))
+    return _call(lambda: capture_service.apply_captures(
+        pid, req.capture_ids, req.setup_id, new_rack=True, name=req.name, default_currency=get_config().currency,
+    ))
 
 
 @router.get("/{pid}/captures/{cid}", summary="Capture status and planogram", response_model=CaptureView)
@@ -96,6 +98,7 @@ def update(pid: str, cid: str, req: CaptureUpdate) -> CaptureView:
 def apply(pid: str, cid: str, req: ApplyCaptureRequest) -> ApplyResult:
     return _call(lambda: capture_service.apply_captures(
         pid, [cid], req.setup_id, rack_id=req.rack_id, face=req.face, new_rack=req.new_rack, name=req.name,
+        default_currency=get_config().currency,
     ))
 
 
