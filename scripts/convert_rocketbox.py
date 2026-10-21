@@ -21,9 +21,21 @@ base = root / "Assets/Avatars/Adults" / name
 out = args.output_dir
 out.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.fbx(filepath=str(base / "Export" / (name + ".fbx")))
+bpy.ops.import_scene.fbx(filepath=str(base / "Export" / (name + "_facial.fbx")))
 rig = next(o for o in bpy.data.objects if o.type == "ARMATURE")
 meshes = [o for o in bpy.data.objects if o.type == "MESH"]
+for mesh in meshes:
+    keys = mesh.data.shape_keys
+    if not keys or "AU_45_Blink" not in keys.key_blocks:
+        raise ValueError(f"Missing authored blink shape in {mesh.name}")
+    keys.animation_data_clear()
+    # Keep the original eyelid deformation without shipping the entire facial
+    # performance library (visemes and expressions are not used by the viewer).
+    for key in list(keys.key_blocks):
+        if key.name not in {"Basis", "AU_45_Blink"}:
+            mesh.shape_key_remove(key)
+    keys.key_blocks["AU_45_Blink"].name = "blink"
+    keys.key_blocks["blink"].value = 0
 rig.animation_data_clear()
 for o in list(bpy.data.objects):
     if o != rig and o not in meshes:
@@ -193,6 +205,10 @@ bpy.ops.export_scene.gltf(
     export_anim_single_armature=True,
     export_image_format="AUTO",
     export_optimize_animation_size=True,
+    export_morph=True,
+    export_morph_normal=True,
+    # Runtime blinking must not be overwritten by zero-weight body-animation keys.
+    export_morph_animation=False,
 )
 print("OUTPUT", slug, (out / (slug + ".glb")).stat().st_size, flush=True)
 

@@ -13,6 +13,10 @@ the pinned source revision and SHA-256 records in `sources.json`.
 - Each includes captured `idle`, `walk`, and `browse` clips. Browsing shoppers
   turn their head and shoulders to look around the shelf. Independent skeletons
   and motion phases animate each shopper. Authored metric heights are preserved.
+- The facial FBX's authored `AU_45_Blink` shape is retained as `blink`; other
+  facial shapes are omitted. Eyelids close and reopen over 0.23 seconds, with
+  deterministic per-shopper intervals of 3.2–6 seconds. This cosmetic motion
+  pauses with playback and stays at a natural rate during accelerated simulation.
 - Color, normal and hair-alpha textures are resized to 1024 px: JPEG for opaque
   color, PNG for normal maps and hair alpha. Face and body materials also carry
   512 px roughness maps derived from the original specular textures, so eyes,
