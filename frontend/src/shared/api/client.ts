@@ -104,6 +104,7 @@ export interface SetupSummaryShort {
   status: "draft" | "running" | "locked";
   parentId: string | null;
   building?: BuildingFloorInfo | null;
+  generation?: GenerateLayoutRequest | null;
   runId: string | null;
   memo: string;
   readiness: Readiness | null;
@@ -159,6 +160,7 @@ export interface SetupSummary {
   status: string;
   parentId: string | null;
   building?: BuildingFloorInfo | null;
+  generation?: GenerateLayoutRequest | null;
   runId: string | null;
   memo: string;
   readiness: Readiness | null;
@@ -168,7 +170,6 @@ export interface SetupSummary {
 
 export interface SetupDetail extends SetupSummary {
   store: Store | null;
-  generation?: GenerateLayoutRequest | null;
   blocked_faces?: BlockedFaceDetail[];
 }
 
@@ -1325,6 +1326,7 @@ export interface LayoutOptions {
 
 export interface GenerateLayoutRequest extends LayoutOptions {
   template_id: string;
+  source_setup_id?: string | null;
   seed: number;
   currency: string;
   name?: string;
@@ -1336,7 +1338,7 @@ export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]
 }
 
 export function previewStoreTemplate(request: GenerateLayoutRequest, signal?: AbortSignal): Promise<Store> {
-  const { template_id, name: _name, requirements: _requirements, ...options } = request;
+  const { template_id, name: _name, source_setup_id: _source, requirements: _requirements, ...options } = request;
   const q = new URLSearchParams();
   for (const [key, value] of Object.entries(options)) {
     if (value !== null && value !== undefined) q.set(key, String(value));
