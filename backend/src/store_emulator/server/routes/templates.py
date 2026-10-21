@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
-    BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutPreset, LayoutStyle,
+    BuildingFloorRequest, BuildingLayoutRequest, BuildingPreset, CheckoutPlacement, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutPreset, LayoutStyle,
     SeatingZone, ShelfDirection, StoreDesign, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
@@ -85,6 +85,22 @@ def validate_preset(req: LayoutPreset) -> LayoutPreset:
     layout = req.layout.model_copy(update={"source_setup_id": None, "name": None})
     _preview_store(layout.template_id, layout.seed, layout.currency, layout)
     return req.model_copy(update={"layout": layout})
+
+
+@router.post("/store-templates/building-preset/validate", summary="Validate reusable building options without saving floors", response_model_exclude_none=True)
+def validate_building_preset(req: BuildingPreset) -> BuildingPreset:
+    labels = [floor.label.casefold() for floor in req.floors]
+    if len(set(labels)) != len(labels):
+        raise HTTPException(422, "Floor labels must be unique within the building.")
+    floors: list[BuildingFloorRequest] = []
+    for level, floor in enumerate(req.floors, start=1):
+        layout = floor.layout.model_copy(update={"source_setup_id": None, "name": None})
+        try:
+            _preview_store(layout.template_id, layout.seed, layout.currency, layout)
+        except HTTPException as exc:
+            raise HTTPException(exc.status_code, f"Floor {level} ({floor.label}): {exc.detail}") from exc
+        floors.append(floor.model_copy(update={"layout": layout}))
+    return req.model_copy(update={"floors": floors})
 
 
 def _preview_store(template_id: str, seed: int, currency: str, options: LayoutOptions) -> Store:

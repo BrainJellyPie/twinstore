@@ -7,7 +7,7 @@ import * as api from "@/shared/api/client";
 import { TemplatePicker } from "../components/TemplatePicker";
 import { DEFAULT_TEMPLATE_CHOICE } from "../templateOptions";
 
-vi.mock("@/shared/api/client", () => ({ getStoreTemplates: vi.fn(), previewStoreTemplate: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getStoreTemplates: vi.fn(), previewStoreTemplate: vi.fn(), validateLayoutPreset: vi.fn() }));
 
 function Picker() {
   const [value, onChange] = useState(DEFAULT_TEMPLATE_CHOICE);
@@ -32,6 +32,22 @@ function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><Picker /></QueryClientProvider>);
 }
+
+it("reveals the imported format even when previous catalog filters would hide it", async () => {
+  mount();
+  await screen.findByRole("button", { name: /Community pharmacy/ });
+  fireEvent.change(screen.getByLabelText("Find a store format"), { target: { value: "pharmacy" } });
+  fireEvent.change(screen.getByLabelText("Store category"), { target: { value: "pharmacy" } });
+  fireEvent.change(screen.getByLabelText("Default seating"), { target: { value: "without" } });
+  vi.mocked(api.validateLayoutPreset).mockResolvedValue({ format: "twinstore-layout-options", version: 1,
+    layout: { template_id: "specialty_cafe", seed: 2, currency: "JPY", requirements: "Quiet seating" } });
+  const file = Object.assign(new File(["{}"], "options.json"), { text: async () => "{}" });
+  fireEvent.change(screen.getByLabelText("Import layout options file"), { target: { files: [file] } });
+  const imported = await screen.findByRole("button", { name: /Specialty café/ });
+  expect(imported.getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("7 of 7 formats")).toBeTruthy();
+  expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Quiet seating");
+});
 
 it("filters formats and sends selected requirements to the preview", async () => {
   mount();

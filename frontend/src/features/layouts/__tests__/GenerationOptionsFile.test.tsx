@@ -2,10 +2,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
-import { LayoutOptionsFile } from "../components/LayoutOptionsFile";
-import { DEFAULT_TEMPLATE_CHOICE, type TemplateChoice } from "../templateOptions";
+import { GenerationOptionsFile } from "../components/GenerationOptionsFile";
+import { DEFAULT_TEMPLATE_CHOICE, type BuildingFloorChoice, type TemplateChoice } from "../templateOptions";
 
-vi.mock("@/shared/api/client", () => ({ validateLayoutPreset: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ validateLayoutPreset: vi.fn(), validateBuildingPreset: vi.fn() }));
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -24,7 +24,7 @@ it("exports portable settings and brief without source links or submitting the f
   vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
   const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   const submit = vi.fn();
-  render(<form onSubmit={submit}><LayoutOptionsFile value={value} onChange={vi.fn()} canExport /></form>);
+  render(<form onSubmit={submit}><GenerationOptionsFile kind="layout" value={value} onChange={vi.fn()} canExport /></form>);
   fireEvent.click(screen.getByRole("button", { name: "Export options" }));
   expect(submit).not.toHaveBeenCalled();
   expect((click.mock.instances[0] as HTMLAnchorElement).download).toBe("twinstore-community_pharmacy-options.json");
@@ -50,7 +50,7 @@ it("applies server-normalized options and clears values inherited from the previ
   const onChange = vi.fn();
   vi.mocked(api.validateLayoutPreset).mockResolvedValue({ format: "twinstore-layout-options", version: 1,
     layout: { template_id: "specialty_cafe", seed: 3, currency: "KRW", width: 18 } });
-  render(<LayoutOptionsFile value={value} onChange={onChange} canExport />);
+  render(<GenerationOptionsFile kind="layout" value={value} onChange={onChange} canExport />);
   upload('\uFEFF{"format":"twinstore-layout-options","version":1,"layout":{"template_id":"specialty_cafe","width":"18"}}');
   await waitFor(() => expect(onChange).toHaveBeenCalledOnce());
   expect(api.validateLayoutPreset).toHaveBeenCalledWith(expect.objectContaining({ layout: { template_id: "specialty_cafe", width: "18" } }), expect.any(AbortSignal));
@@ -63,7 +63,7 @@ it("applies server-normalized options and clears values inherited from the previ
 
 it("preserves current options on invalid JSON, oversized files and server validation failures", async () => {
   const onChange = vi.fn();
-  render(<LayoutOptionsFile value={value} onChange={onChange} canExport />);
+  render(<GenerationOptionsFile kind="layout" value={value} onChange={onChange} canExport />);
   upload("not JSON");
   await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("not valid JSON"));
   upload(" ".repeat(64 * 1024 + 1));
@@ -79,7 +79,7 @@ it("ignores a late validation response after switching away from the floor", asy
   let resolve: ((preset: api.LayoutPreset) => void) | undefined;
   vi.mocked(api.validateLayoutPreset).mockImplementation(() => new Promise((done) => { resolve = done; }));
   const onChange = vi.fn();
-  const { unmount } = render(<LayoutOptionsFile value={value} onChange={onChange} canExport />);
+  const { unmount } = render(<GenerationOptionsFile kind="layout" value={value} onChange={onChange} canExport />);
   upload("{}");
   await waitFor(() => expect(api.validateLayoutPreset).toHaveBeenCalledOnce());
   const signal = vi.mocked(api.validateLayoutPreset).mock.calls[0]?.[1];
@@ -88,4 +88,50 @@ it("ignores a late validation response after switching away from the floor", asy
   resolve?.({ format: "twinstore-layout-options", version: 1, layout: { template_id: "urban_cvs", seed: 0, currency: "USD" } });
   await Promise.resolve();
   expect(onChange).not.toHaveBeenCalled();
+});
+
+it("exports all floors in order with independent settings and no old source IDs", async () => {
+  const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:building-options");
+  vi.stubGlobal("URL", { createObjectURL, revokeObjectURL: vi.fn() });
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  const floors: BuildingFloorChoice[] = [{ label: "Ground pharmacy", choice: value },
+    { label: "Upstairs café", choice: { ...DEFAULT_TEMPLATE_CHOICE, templateId: "specialty_cafe", currency: "KRW", seed: 12, sourceSetupId: "old_cafe", dining_tables: 4 } }];
+  render(<GenerationOptionsFile kind="building" value={floors} onChange={vi.fn()} canExport />);
+  fireEvent.click(screen.getByRole("button", { name: "Export building options" }));
+  expect((click.mock.instances[0] as HTMLAnchorElement).download).toBe("twinstore-building-options.json");
+  const blob = createObjectURL.mock.calls[0]?.[0];
+  if (!blob) throw new Error("Missing building download");
+  const source = await new Promise<string>((resolve) => {
+    const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.readAsText(blob);
+  });
+  const exported = JSON.parse(source) as api.BuildingPreset;
+  expect(exported.format).toBe("twinstore-building-options");
+  expect(exported.floors.map((floor) => floor.label)).toEqual(["Ground pharmacy", "Upstairs café"]);
+  expect(exported.floors[0]?.layout).toMatchObject({ width: 24, currency: "JPY", reserved_areas: value.reserved_areas, requirements: value.requirements });
+  expect(exported.floors[1]?.layout).toMatchObject({ template_id: "specialty_cafe", currency: "KRW", seed: 12, dining_tables: 4 });
+  for (const floor of exported.floors) expect(floor.layout).not.toHaveProperty("source_setup_id");
+});
+
+it("replaces the complete floor list only after every imported floor passes validation", async () => {
+  const onChange = vi.fn();
+  const floors: BuildingFloorChoice[] = [{ label: "Existing ground", choice: value }, { label: "Existing upper", choice: value }];
+  const normalized: api.BuildingPreset = { format: "twinstore-building-options", version: 1, floors: [
+    { label: "Books", layout: { template_id: "bookstore", seed: 0, currency: "USD" } },
+    { label: "Tea", layout: { template_id: "tea_lounge", seed: 4, currency: "JPY", dining_tables: 3 } },
+  ] };
+  vi.mocked(api.validateBuildingPreset).mockRejectedValueOnce(new Error("Floor 2 (Tea): not enough room"));
+  render(<GenerationOptionsFile kind="building" value={floors} onChange={onChange} canExport />);
+  const file = Object.assign(new File(["{}"], "building.json"), { text: async () => "{}" });
+  fireEvent.change(screen.getByLabelText("Import building options file"), { target: { files: [file] } });
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Floor 2 (Tea)"));
+  expect(onChange).not.toHaveBeenCalled();
+  vi.mocked(api.validateBuildingPreset).mockResolvedValueOnce(normalized);
+  fireEvent.change(screen.getByLabelText("Import building options file"), { target: { files: [file] } });
+  await waitFor(() => expect(onChange).toHaveBeenCalledOnce());
+  const imported = onChange.mock.calls[0]?.[0] as BuildingFloorChoice[];
+  expect(imported.map((floor) => floor.label)).toEqual(["Books", "Tea"]);
+  expect(imported[1]?.choice).toMatchObject({ templateId: "tea_lounge", currency: "JPY", dining_tables: 3, reserved_areas: [] });
+  expect(imported[0]?.choice.sourceSetupId).toBeUndefined();
+  expect(imported[0]?.choice.width).toBeUndefined();
+  expect(api.validateLayoutPreset).not.toHaveBeenCalled();
 });
