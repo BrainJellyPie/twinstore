@@ -38,6 +38,7 @@ class LayoutOptions(BaseModel):
     fixture_design: FixtureDesign = "mixed"
     design_theme: StoreDesign | None = None
     dining_tables: int | None = Field(default=None, ge=0, le=12)
+    table_clearance: int = Field(default=1, ge=1, le=3)
     seating_zone: SeatingZone = "auto"
     reserved_areas: list[ReservedArea] = Field(default_factory=list[ReservedArea], max_length=8)
 
