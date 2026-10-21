@@ -186,8 +186,10 @@ async def vlm_basket_synergy(
     results_without = await simulate("without", panel_without)
 
     with_by_id = {r.persona_id: r for r in results_with}
-    aff_with = [with_by_id[pid] for pid in affected if pid in with_by_id]
-    aff_without = [r for r in results_without if r.persona_id in with_by_id]
+    without_by_id = {r.persona_id: r for r in results_without}
+    paired = [pid for pid in affected if pid in with_by_id and pid in without_by_id]
+    aff_with = [with_by_id[pid] for pid in paired]
+    aff_without = [without_by_id[pid] for pid in paired]
     rest = [with_by_id[pid] for pid in unaffected if pid in with_by_id]
     spend_aw, conv_aw = _stratum(aff_with)
     spend_ao, conv_ao = _stratum(aff_without)
@@ -216,8 +218,14 @@ async def vlm_basket_synergy(
                       " construction; the effect is the visitor flow alone.")
     if plan_errors:
         notes.append(f"{plan_errors} VLM entrance plans failed and fell back to the rule plan.")
+    if failed:
+        notes.append(f"{failed} customer simulations failed. Basket comparisons and examples exclude visitors"
+                     f" missing either result; {len(paired)} complete affected pairs remain.")
+    if affected_all and not paired:
+        notes.append("No complete affected pairs are available to estimate a basket effect; reported zero"
+                     " differences do not establish no effect.")
     if affected_all and len(aff_with) < 30:
-        notes.append(f"Only {len(aff_with)} affected visitors were simulated: the basket interval is wide.")
+        notes.append(f"Only {len(aff_with)} affected visitors completed both simulations: basket intervals are unreliable.")
 
     categories_with = _category_spend(store, aff_with)
     categories_without = _category_spend(store, aff_without)
@@ -233,15 +241,14 @@ async def vlm_basket_synergy(
         ))
     shifts.sort(key=lambda c: -abs(c.spend_diff))
 
-    without_by_id = {r.persona_id: r for r in results_without}
     examples = [
         SynergyExample(
             persona_id=pid, context_with=contexts[pid][0], context_without=contexts[pid][1],
             mission_with=missions["with"].get(pid, ""), mission_without=missions["without"].get(pid, ""),
-            spend_with=with_by_id[pid].total_spent if pid in with_by_id else 0,
-            spend_without=without_by_id[pid].total_spent if pid in without_by_id else 0,
+            spend_with=with_by_id[pid].total_spent,
+            spend_without=without_by_id[pid].total_spent,
         )
-        for pid in affected[:6]
+        for pid in paired[:6]
     ]
 
     visitors_with, visitors_without = demand_with.total_daily_visitors, demand_without.total_daily_visitors
