@@ -32,7 +32,7 @@ from store_emulator.domain.capture import (
 from store_emulator.domain.config import LLMConfig, SimulationConfig
 from store_emulator.domain.providers import ModelRef
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Face
+from store_emulator.domain.types import Face, RESOURCE_ID_PATTERN
 from store_emulator.engine.capture import (
     ClassicDetector,
     FacingDetector,
@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 STORED_MAX_SIDE = 3000
-_SAFE_ID = re.compile(r"[a-z0-9_]+")
+_SAFE_ID = re.compile(RESOURCE_ID_PATTERN)
 _MIN_STATUS_INTERVAL_SEC = 0.5
 # Grounding DINO holds ~1 GB while loaded: one capture at a time uses it.
 _GDINO_LOCK = threading.Lock()

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 from store_emulator.domain.rack import RACK_LEVELS, Face, Slot, SlotItem
 from store_emulator.domain.store import Store
+from store_emulator.domain.types import RESOURCE_ID_PATTERN
 from store_emulator.engine.validation import (
     BlockedFaceDetail, ClearedSlot, Issue, clear_blocked_slots,
     list_blocked_faces, validate,
@@ -28,7 +29,7 @@ from store_emulator.application.storage.setups import (
 )
 
 
-_SAFE_ID = re.compile(r"[a-z0-9_]+")
+_SAFE_ID = re.compile(RESOURCE_ID_PATTERN)
 
 
 def _lock_path(project_id: str, setup_id: str) -> Path:
@@ -39,9 +40,9 @@ def _lock_path(project_id: str, setup_id: str) -> Path:
     """
     if not _SAFE_ID.fullmatch(project_id) or not _SAFE_ID.fullmatch(setup_id):
         raise ValueError(f"unsafe pid/sid: {project_id}/{setup_id}")
-    lock_dir = Path(DATA_DIR) / "locks"
+    lock_dir = Path(DATA_DIR) / "locks" / project_id
     lock_dir.mkdir(parents=True, exist_ok=True)
-    return lock_dir / f"setup_{project_id}_{setup_id}.lock"
+    return lock_dir / f"setup_{setup_id}.lock"
 
 
 def get_setups(project_id: str) -> list[dict[str, Any]]:

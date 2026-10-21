@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as THREE from "three";
-import { loadScannedBananas } from "../scannedBananas";
+import { loadScannedProduce } from "../scannedProduce";
 import type { ProductLod } from "../productMeshes";
 
 const mocks = vi.hoisted(() => ({ load: vi.fn() }));
@@ -34,9 +34,11 @@ it("keeps the selected LOD and restores borrowed fallback resources on cleanup",
   const fallbackDispose = vi.spyOn(original.fine, "dispose");
   const ready = vi.fn();
   mocks.load.mockResolvedValue({ scene: model.scene });
-  const stop = loadScannedBananas(target, false, ready);
+  const stop = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false, ready);
   await Promise.resolve();
-  expect(target.mesh.geometry).toBe(model.fine);
+  expect(target.mesh.geometry).not.toBe(model.fine);
+  expect(Array.from(target.mesh.geometry.attributes.position!.array, (v) => v || 0)).toEqual(Array.from(model.fine.attributes.position!.array, (v) => v || 0));
+  const disposeBaked = [target.coarse, target.fine].map((geometry) => vi.spyOn(geometry, "dispose"));
   expect(target.mesh.material).toBe(model.material);
   expect(target.mesh.count).toBe(12);
   expect(ready).toHaveBeenCalledOnce();
@@ -45,7 +47,7 @@ it("keeps the selected LOD and restores borrowed fallback resources on cleanup",
   expect(target.mesh.geometry).toBe(original.coarse);
   expect(target.mesh.material).toBe(original.material);
   expect(target.mesh.userData.scannedProduce).toBeUndefined();
-  disposed.forEach((dispose) => expect(dispose).toHaveBeenCalledOnce());
+  [...disposed, ...disposeBaked].forEach((dispose) => expect(dispose).toHaveBeenCalledOnce());
   expect(bitmapClose).toHaveBeenCalledOnce();
   expect(fallbackDispose).not.toHaveBeenCalled();
 });
@@ -54,7 +56,7 @@ it("uses a lighter medium material while retaining ownership of unused source ma
   const target = fallback(), model = scan();
   mocks.load.mockResolvedValue({ scene: model.scene });
   const disposeMap = vi.spyOn(model.map, "dispose");
-  const stop = loadScannedBananas(target, true);
+  const stop = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], true);
   await Promise.resolve();
   const medium = target.mesh.material as THREE.MeshStandardMaterial;
   expect(medium).not.toBe(model.material);
@@ -73,9 +75,9 @@ it("discards late requests without replacing a newer scan", async () => {
   mocks.load.mockImplementation(() => new Promise((resolve) => pending.push(resolve)));
   const target = fallback(), stale = scan(), current = scan();
   const staleDispose = vi.spyOn(stale.map, "dispose");
-  const stopOld = loadScannedBananas(target, false);
+  const stopOld = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false);
   stopOld();
-  const stopCurrent = loadScannedBananas(target, false);
+  const stopCurrent = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false);
   pending[1]!({ scene: current.scene }); await Promise.resolve();
   pending[0]!({ scene: stale.scene }); await Promise.resolve();
   expect(target.mesh.material).toBe(current.material);
@@ -88,9 +90,36 @@ it("discards late requests without replacing a newer scan", async () => {
 it("keeps the curved fallback on a failed asset load", async () => {
   const target = fallback(), material = target.mesh.material;
   mocks.load.mockRejectedValue(new Error("missing asset"));
-  const stop = loadScannedBananas(target, false);
+  const stop = loadScannedProduce("/assets/produce/bananas.glb", [{ lod: target, name: "bananas" }], false);
   await Promise.resolve(); await Promise.resolve();
   expect(target.mesh.material).toBe(material);
   expect(target.mesh.userData.scannedProduce).toBeUndefined();
   stop();
+});
+
+it("bakes shared buffers independently and releases a shared medium material once", async () => {
+  const first = fallback(), second = fallback(), model = scan();
+  const originals = [first.mesh.material, second.mesh.material];
+  const sourcePositions = Array.from(model.fine.attributes.position!.array);
+  for (const detail of ["coarse", "fine"]) {
+    const source = model.scene.getObjectByName(`bananas-${detail}`) as THREE.Mesh;
+    const other = source.clone();
+    other.name = `pair-${detail}`;
+    source.position.x = 2;
+    other.position.x = -3;
+    model.scene.add(other);
+  }
+  const disposeSource = vi.spyOn(model.fine, "dispose"), disposeMap = vi.spyOn(model.map, "dispose");
+  mocks.load.mockResolvedValue({ scene: model.scene });
+  const stop = loadScannedProduce("/assets/produce/test.glb", [{ lod: first, name: "bananas" }, { lod: second, name: "pair" }], true);
+  await Promise.resolve();
+  expect(mocks.load).toHaveBeenCalledOnce();
+  expect(first.mesh.material).toBe(second.mesh.material);
+  expect(first.fine.attributes.position!.getX(0)).toBeCloseTo(sourcePositions[0]! + 2);
+  expect(second.fine.attributes.position!.getX(0)).toBeCloseTo(sourcePositions[0]! - 3);
+  expect(Array.from(model.fine.attributes.position!.array)).toEqual(sourcePositions);
+  const disposeMedium = vi.spyOn(first.mesh.material as THREE.Material, "dispose");
+  stop();
+  expect([first.mesh.material, second.mesh.material]).toEqual(originals);
+  [disposeSource, disposeMap, disposeMedium].forEach((dispose) => expect(dispose).toHaveBeenCalledOnce());
 });

@@ -19,6 +19,7 @@ def project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     root = tmp_path / ".data" / "proj_test"
     root.mkdir(parents=True)
+    (root / "metadata.json").write_text(json.dumps({"name": "Test", "currency": "USD"}))
     persona = Persona(id="p_test", identity="Student", age_group="20s", gender="Female",
                       description="Shops after class", intent="snack", purpose="snack").model_dump(mode="json")
     (root / "personas.json").write_text(json.dumps([persona]))
@@ -41,8 +42,9 @@ def test_persona_generation_on_another_layout_respects_project_job_state(project
 
 
 def test_independent_projects_can_generate_personas_at_the_same_time(project):
-    client, _, executor, _ = project
+    client, root, executor, _ = project
     write_setup("proj_other", "setup_other", {"id": "setup_other", "status": "draft", "runId": None})
+    (root.parent / "proj_other" / "metadata.json").write_text(json.dumps({"name": "Other", "currency": "USD"}))
     assert client.post("/api/projects/proj_test/setups/setup_a/regenerate-persona").status_code == 200
     assert client.post("/api/projects/proj_other/setups/setup_other/regenerate-persona").status_code == 200
     assert executor.submit.call_count == 2

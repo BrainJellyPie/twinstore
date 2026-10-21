@@ -7,6 +7,7 @@ import { cn } from "@/shared/utils/cn";
 import { LAYOUT_STYLES, templateRequest, validTemplateChoice, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
+import { GenerationOptionsFile } from "./GenerationOptionsFile";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
@@ -32,6 +33,9 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     enabled: validTemplateChoice(value), staleTime: Infinity,
   });
   const selected = templates.find((t) => t.id === value.templateId);
+  const categories = selected?.categories ?? [];
+  const excluded = new Set(value.excluded_categories ?? []);
+  const includedCount = categories.filter((category) => !excluded.has(category.id)).length;
   const densityGap = { spacious: 3, balanced: 2, dense: 1 }[value.density ?? "balanced"];
   const densityRun = { spacious: 3, balanced: 4, dense: 6 }[value.density ?? "balanced"];
   const terms = search.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim().split(/\s+/).filter(Boolean);
@@ -56,6 +60,12 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
 
   return (
     <div className="space-y-3">
+      <GenerationOptionsFile kind="layout" value={value} canExport={validTemplateChoice(value) && preview.isSuccess} onChange={(choice) => {
+        onChange(choice);
+        setSearch(""); setStoreType(""); setSize("all"); setSeating("all"); setSort("default");
+        const imported = templates.find((template) => template.id === choice.templateId);
+        if (imported) onTemplateSelected?.(imported);
+      }} />
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1 text-xs">Find a store format
           <input className={controlClass} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pharmacy, café, large store…" />
@@ -194,10 +204,23 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", exit_position: "shared", checkouts: null, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", exit_position: "shared", checkouts: null, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>
+        {categories.length > 0 && <details className="space-y-2 rounded border p-2 text-xs">
+          <summary className="cursor-pointer">Product categories · {includedCount} of {categories.length} included</summary>
+          <p className="text-muted-foreground">Choose which categories this format should stock. Excluded categories remove their generated displays. Keep at least one category.</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {categories.map((category) => <label key={category.id} className="flex items-center gap-2">
+              <input type="checkbox" checked={!excluded.has(category.id)} disabled={!excluded.has(category.id) && includedCount === 1}
+                onChange={(event) => update({ excluded_categories: event.target.checked
+                  ? (value.excluded_categories ?? []).filter((id) => id !== category.id)
+                  : [...(value.excluded_categories ?? []), category.id] })} />{category.label}
+            </label>)}
+          </div>
+          {(value.excluded_categories?.length ?? 0) > 0 && <button type="button" className="underline" onClick={() => update({ excluded_categories: [] })}>Restore all product categories</button>}
+        </details>}
         <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })} />
         <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: use warm task lighting in the consultation corner or seasonal signs near the entrance." /></Field>
         {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}

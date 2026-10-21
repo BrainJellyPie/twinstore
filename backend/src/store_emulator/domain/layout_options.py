@@ -1,6 +1,6 @@
 """Bounded, reproducible requirements for procedural store layouts."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -15,6 +15,7 @@ type SeatingZone = Literal["auto", "front", "back", "left", "right", "center"]
 type StoreDesign = Literal["classic", "warm", "minimal", "industrial", "botanical", "luxury", "coastal", "terracotta"]
 type FixtureDesign = Literal["mixed", "a", "b", "c"]
 type ShelfDirection = Literal["horizontal", "vertical"]
+type TemplateCategoryId = Annotated[str, Field(min_length=1, max_length=80)]
 
 
 class ReservedArea(BaseModel):
@@ -47,6 +48,7 @@ class LayoutOptions(BaseModel):
     table_clearance: int = Field(default=1, ge=1, le=3)
     seating_zone: SeatingZone = "auto"
     reserved_areas: list[ReservedArea] = Field(default_factory=list[ReservedArea], max_length=8)
+    excluded_categories: list[TemplateCategoryId] = Field(default_factory=list[str], max_length=64)
 
 
 class TemplateLayoutRequest(LayoutOptions):
@@ -56,6 +58,14 @@ class TemplateLayoutRequest(LayoutOptions):
     currency: Literal["USD", "KRW", "JPY"] = "USD"
     name: str | None = Field(default=None, max_length=300)
     requirements: str = Field(default="", max_length=2000)
+
+
+class LayoutPreset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    format: Literal["twinstore-layout-options"]
+    version: Literal[1]
+    layout: TemplateLayoutRequest
 
 
 class BuildingFloorRequest(BaseModel):
@@ -69,6 +79,14 @@ class BuildingLayoutRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=160)
+    floors: list[BuildingFloorRequest] = Field(min_length=2, max_length=6)
+
+
+class BuildingPreset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    format: Literal["twinstore-building-options"]
+    version: Literal[1]
     floors: list[BuildingFloorRequest] = Field(min_length=2, max_length=6)
 
 

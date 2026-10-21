@@ -130,6 +130,7 @@ describe("observed field results", () => {
 describe("observation review and history", () => {
   it("applies the reviewed file and updates the visible pilot cache only after confirmation", async () => {
     const view = result(); qc.setQueryData(pilotKeys.detail("p", "pilot_test"), view);
+    qc.setQueryData(pilotKeys.collection("p", "pilot_test"), { revision: 3 });
     vi.mocked(previewPilotImport).mockResolvedValue(observationPreview());
     const saved = result(); saved.pilot.revision = 4;
     vi.mocked(importPilot).mockResolvedValue(saved);
@@ -145,6 +146,7 @@ describe("observation review and history", () => {
     await waitFor(() => expect(qc.getQueryData(pilotKeys.detail("p", "pilot_test"))).toEqual(saved));
     expect(importPilot).toHaveBeenCalledWith("p", "pilot_test", file, 3, observationPreview().review_token, "Corrected source transcription");
     await waitFor(() => expect(screen.queryByText(/Proposed changes/)).toBeNull());
+    expect(qc.getQueryState(pilotKeys.collection("p", "pilot_test"))?.isInvalidated).toBe(true);
   });
 
   it("requires a reason and review, blocks closing a pending preview, and can discard without saving", async () => {

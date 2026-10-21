@@ -14,7 +14,7 @@ The result always passes `engine.validation.validate` without errors (checked by
 """
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from store_emulator.domain.layout_options import CheckoutPlacement, LayoutOptions, LayoutStyle, SeatingZone, StoreDesign
 from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotItem
@@ -304,6 +304,30 @@ TEMPLATES: list[StoreTemplate] = [
         gondolas=["art_craft", "art_craft", "stationery"], near_counter=["art_craft"],
         style="cross", open_hours=(10, 21), checkouts=2, design_theme="warm",
     ),
+    StoreTemplate(
+        id="optical_shop", name="Optical & eyewear shop", description="Frames, sunglasses and eyewear accessories in minimal showroom groups with two service counters. Models retail purchases; eye exams and lens fitting are not simulated.",
+        store_type="eyewear", grid=(20, 16), fridges=[], wall_shelves=["eyewear"] * 6,
+        gondolas=["eyewear", "eyewear", "travel_gear"], near_counter=["eyewear"],
+        style="showroom", open_hours=(10, 21), checkouts=2, checkout_placement="away_from_entrance", design_theme="minimal",
+    ),
+    StoreTemplate(
+        id="jewelry_boutique", name="Jewelry & accessories boutique", description="A compact luxury showroom for jewelry, watches and gift accessories, with two checkout counters away from the entrance.",
+        store_type="jewelry", grid=(16, 12), fridges=[], wall_shelves=["jewelry"] * 5,
+        gondolas=["jewelry", "jewelry", "souvenirs"], near_counter=["jewelry"],
+        style="showroom", open_hours=(10, 20), checkouts=2, checkout_placement="away_from_entrance", design_theme="luxury",
+    ),
+    StoreTemplate(
+        id="music_store", name="Music & instrument store", description="Instruments, practice gear and audio accessories on free-flow display islands with industrial finishes and two checkout counters.",
+        store_type="music", grid=(24, 18), fridges=[], wall_shelves=["music_gear", "electronics", "music_gear"] * 3,
+        gondolas=["music_gear", "music_gear", "electronics"], near_counter=["music_gear"],
+        style="free_flow", open_hours=(10, 21), checkouts=2, design_theme="industrial",
+    ),
+    StoreTemplate(
+        id="fashion_outlet", name="Large fashion outlet", description="A 32×24 apparel, footwear and bag store with a racetrack layout, coastal finishes and four checkout counters.",
+        store_type="fashion", grid=(32, 24), fridges=[], wall_shelves=["apparel", "footwear", "travel_gear"] * 4,
+        gondolas=["apparel", "apparel", "footwear", "travel_gear"], near_counter=["apparel", "footwear"],
+        style="loop", open_hours=(10, 22), checkouts=4, design_theme="coastal",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
@@ -387,6 +411,18 @@ def generate_store(
         raise ValueError(f"unknown store template: {template_id}")
     rng = random.Random(stable_seed("layout-template", template_id, seed))
     options = options or LayoutOptions()
+    if options.excluded_categories:
+        excluded = set(options.excluded_categories)
+        unknown = excluded - CATALOG.keys()
+        if unknown:
+            raise ValueError(f"Unknown product categories: {', '.join(sorted(unknown))}")
+        t = replace(t, fridges=[c for c in t.fridges if c not in excluded],
+                    freezers=[c for c in t.freezers if c not in excluded],
+                    wall_shelves=[c for c in t.wall_shelves if c not in excluded],
+                    gondolas=[c for c in t.gondolas if c not in excluded],
+                    near_counter=[c for c in t.near_counter if c not in excluded])
+        if not (t.fridges or t.freezers or t.wall_shelves or t.gondolas or t.near_counter):
+            raise ValueError("Keep at least one product category for this store format.")
     b = _Builder(t, currency, rng, options)
     w, h = b.w, b.h
     layout_style = style or options.style or t.style
@@ -501,6 +537,12 @@ def generate_store(
                 b.add(RackType.SHELF, x, y, category=cat, faces=faces,
                       rotation=90 if layout_style == "perimeter" or vertical else 0,
                       variant="b" if (y // 3) % 2 else "a")
+
+    if not any(slot.items for rack in b.racks for slot in rack.slots):
+        raise ValueError(
+            "No products from the included categories fit this layout. Increase the grid size, "
+            "reduce aisle width, choose another layout pattern, or include more categories."
+        )
 
     format_design: dict[str, StoreDesign] = {
         "pharmacy": "minimal", "cafe": "warm", "bakery": "warm", "restaurant": "warm",

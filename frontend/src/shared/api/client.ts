@@ -1316,6 +1316,7 @@ export interface StoreTemplate {
   default_checkouts?: number;
   default_seating_zone?: LayoutOptions["seating_zone"];
   default_checkout_placement?: LayoutOptions["checkout_placement"];
+  categories?: { id: string; label: string }[];
 }
 
 export interface ReservedArea {
@@ -1344,6 +1345,7 @@ export interface LayoutOptions {
   table_clearance?: number;
   seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
   reserved_areas?: ReservedArea[];
+  excluded_categories?: string[];
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {
@@ -1353,6 +1355,16 @@ export interface GenerateLayoutRequest extends LayoutOptions {
   currency: string;
   name?: string;
   requirements?: string;
+}
+
+export interface LayoutPreset {
+  format: "twinstore-layout-options";
+  version: 1;
+  layout: GenerateLayoutRequest;
+}
+
+export function validateLayoutPreset(value: unknown, signal?: AbortSignal): Promise<LayoutPreset> {
+  return fetchJson("/api/store-templates/preset/validate", { method: "POST", body: JSON.stringify(value), signal });
 }
 
 export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]> {
@@ -1373,6 +1385,16 @@ export function generateLayout(projectId: string, body: GenerateLayoutRequest): 
 export interface GenerateBuildingRequest {
   name: string;
   floors: { label: string; layout: GenerateLayoutRequest }[];
+}
+
+export interface BuildingPreset {
+  format: "twinstore-building-options";
+  version: 1;
+  floors: GenerateBuildingRequest["floors"];
+}
+
+export function validateBuildingPreset(value: unknown, signal?: AbortSignal): Promise<BuildingPreset> {
+  return fetchJson("/api/store-templates/building-preset/validate", { method: "POST", body: JSON.stringify(value), signal });
 }
 
 export function generateBuilding(projectId: string, body: GenerateBuildingRequest): Promise<{ setups: SetupSummaryShort[]; active_setup_id: string }> {
@@ -1828,6 +1850,7 @@ export function rateStorefront(projectId: string, venueId: string, photo: File, 
 }
 
 export function readReceipts(projectId: string, photos: File[], target: { setupId?: string; runId?: string }, model = ""): Promise<ReceiptsResult> {
+  if (photos.length > 100) return Promise.reject(new Error("Choose at most 100 receipt photos per batch."));
   const form = new FormData();
   for (const p of photos) form.append("photos", p);
   form.append("setup_id", target.setupId ?? "");

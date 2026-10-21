@@ -13,7 +13,7 @@ export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   templateId: "urban_cvs", seed: 0, currency: "USD", style: null,
   density: "balanced", entrance: "left", exit_position: "shared", checkouts: null, fixture_design: "mixed", design_theme: null, dining_tables: null,
   checkout_placement: "auto", seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1,
-  aisle_width: null, max_shelf_run: null,
+  aisle_width: null, max_shelf_run: null, excluded_categories: [],
 };
 
 export const LAYOUT_STYLES = [
@@ -24,6 +24,7 @@ export const LAYOUT_STYLES = [
 
 export function validTemplateChoice(value: TemplateChoice): boolean {
   return !!value.templateId && Number.isSafeInteger(value.seed) &&
+    (value.excluded_categories?.length ?? 0) <= 64 && (value.excluded_categories ?? []).every((category) => category.length > 0 && category.length <= 80) &&
     (value.width == null || (Number.isInteger(value.width) && value.width >= 8 && value.width <= 40)) &&
     (value.height == null || (Number.isInteger(value.height) && value.height >= 6 && value.height <= 40)) &&
     (value.aisle_width == null || (Number.isInteger(value.aisle_width) && value.aisle_width >= 1 && value.aisle_width <= 4)) &&
@@ -45,6 +46,7 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
     checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme,
     dining_tables: value.dining_tables, seating_zone: value.seating_zone, table_clearance: value.table_clearance,
     checkout_placement: value.checkout_placement, reserved_areas: value.reserved_areas, requirements: value.requirements,
+    excluded_categories: value.excluded_categories,
   };
 }
 
@@ -83,6 +85,7 @@ export const BUILDING_PRESETS = [
   { id: "campus", name: "Campus hub", floors: [["Ground · Campus store", "campus_cvs"], ["Level 2 · Bookstore", "bookstore"], ["Level 3 · Dining hall", "campus_dining_hall"]] },
   { id: "family_essentials", name: "Family essentials center", floors: [["Ground · Baby & family", "baby_family_store"], ["Level 2 · Footwear", "shoe_boutique"], ["Level 3 · Family dining", "family_restaurant"]] },
   { id: "creative_living", name: "Garden, crafts & café", floors: [["Ground · Garden", "garden_center"], ["Level 2 · Arts & crafts", "art_craft_store"], ["Level 3 · Café", "specialty_cafe"]] },
+  { id: "style_sound", name: "Style, sound & café", floors: [["Ground · Eyewear", "optical_shop"], ["Level 2 · Jewelry", "jewelry_boutique"], ["Level 3 · Music", "music_store"], ["Level 4 · Café", "specialty_cafe"]] },
 ] as const;
 
 export function buildingPreset(id: string, currency = "USD"): BuildingFloorChoice[] {

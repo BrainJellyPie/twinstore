@@ -10,6 +10,7 @@ from store_emulator.application.template_layouts import prepare_template_layout
 from store_emulator.application.errors import AppError
 from store_emulator.application.generation_async import start_persona_generation
 from store_emulator.application.storage.generations import find_active_generation
+from store_emulator.application.storage.images import delete_project_images
 from store_emulator.application.storage.io import DATA_DIR, write_json, read_json, now_iso
 from store_emulator.application.storage.setups import (
     metadata_path, personas_path,
@@ -80,8 +81,7 @@ def save_project_personas(
     personas: list[object],
 ) -> None:
     """Save personas unless a generation, running simulation, or history locks them."""
-    project_dir = _data / project_id
-    if not project_dir.exists():
+    if not metadata_path(project_id).is_file():
         raise FileNotFoundError(f"Project not found: {project_id}")
 
     setups = list_setups(project_id)
@@ -125,7 +125,7 @@ def update_project_metadata(
 
 def delete_project(project_id: str) -> None:
     project_dir = _data / project_id
-    if not project_dir.exists():
+    if not metadata_path(project_id).is_file():
         raise FileNotFoundError(f"Project not found: {project_id}")
     for pattern in ("runs/*/status.json", "generations/*/status.json", "optimizations/*/status.json",
                     "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json",
@@ -140,6 +140,7 @@ def delete_project(project_id: str) -> None:
                 if state in ("pending", "running"):
                     raise AppError(f"cannot delete project while job '{status_path.parent.name}' is {state}. Wait until it finishes.", 409)
     shutil.rmtree(project_dir)
+    delete_project_images(project_id)
 
 
 def create_project_without_layout(

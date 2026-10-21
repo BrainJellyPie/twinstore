@@ -130,7 +130,7 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 42
+In a project, choose **New layout → Generate a store from a template**. Search 46
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
@@ -165,6 +165,13 @@ botanical finishes and garden tools, growing supplies, plants and homeware. The
 stationery and books. Both use central cross aisles. **Garden, crafts & café**
 combines these stores with an upstairs café as three separate floors.
 
+**Optical & eyewear shop**, **Jewelry & accessories boutique** and **Music &
+instrument store** have dedicated eyewear, jewelry and instrument assortments.
+Their defaults use minimal or luxury showroom groups and industrial free-flow
+islands. **Large fashion outlet** adds a 32×24 racetrack floor with apparel,
+footwear, bags, coastal finishes and four checkouts. **Style, sound & café**
+combines eyewear, jewelry, music and coffee as four independently editable floors.
+
 USD, KRW and JPY prices keep their currency with the saved layout and simulation
 results. New-project shopper budgets use the chosen currency, and additional
 layouts default to that project currency. Existing shopper budgets are not
@@ -180,6 +187,15 @@ clay—change walls, shelving,
 counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
 default palette; each building floor can use a different one. The preview uses the same options as the saved layout. Shuffle changes
 the assortment reproducibly; reset restores the format's layout defaults.
+
+Open **Product categories** to choose which parts of a format's assortment to
+stock. For example, exclude the beer/alcohol category from a convenience store
+or household goods from a pharmacy. Excluded categories remove their generated
+displays across cold walls, shelves and checkout areas. Keep at least one
+category; **Restore all product categories** brings back the format's full mix.
+These choices persist in saved alternatives, individual building floors and
+exported options files. They control catalog categories, not ingredients or
+dietary suitability; manually uploaded products use the existing product editor.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
 Choose **Expand floor plan** to inspect the current preview at a larger size,
@@ -232,6 +248,22 @@ template → Reuse options from …**. This restores its format, dimensions, sty
 seating, currency, seed and design brief. Save a changed version as a linked
 alternative while preserving the source; floor alternatives keep their building
 identity. Use the import option to copy manual fixture edits or uploaded products.
+
+Use **Export options** to download a JSON file of the selected floor's generation
+settings, including currency, assortment seed, reserved areas and design brief.
+**Import options** validates the file and checks that the layout fits before
+replacing the current generation settings. You can use it in another project,
+in the new-store wizard or on an individual building floor. Import does not create
+a layout until you save the form, and does not carry over the source layout's
+name or parent link. Manual fixture edits and product uploads are not part of
+this file; use the existing layout-copy or workbook tools for those.
+
+In **Multi-floor store**, **Export building options** saves the complete list of
+2–6 floors in one JSON file, with their order, labels and individual settings.
+**Import building options** checks every floor before replacing the current
+list; an invalid floor leaves your configuration intact. The new building keeps
+the name entered in the form and receives new floor identities when saved.
+Single-floor and whole-building files have separate import controls.
 
 Add up to 48 dining tables (192 seats, four chairs each) to any format. Enter any
 whole count from 0–48, or leave the field blank for the format default. Café and restaurant
@@ -371,6 +403,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   assumptions with the fixed plan, without using virtual shoppers as a conversion baseline.
   Observation imports show changes before applying them, flag cleared values and reversed purchase outcomes,
   and retain correction reasons and before/after records with a CSV history export.
+  Pilots open on **Collection checks**: staff/shift completeness, recording gaps and a follow-up checklist with
+  CSV export. Unrecorded tail slots are kept distinct from enrolled encounters needing outcome follow-up;
+  purchase counts and treatment effects remain in the separate observations/results view.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
@@ -589,15 +624,19 @@ world-space texture coordinates preserving its 2.12 m coverage across store size
 High also replaces the entrance's simple planters with a reduced Poly Haven
 Potted Plant 01 model by Rico Cilliers (CC0), with textured leaves and terracotta.
 Sources and rebuild instructions are in [`frontend/public/assets/props/`](./frontend/public/assets/props/README.md).
-Fresh bananas use Alexander Shulha's CC0 Poly Haven scan, with shared instancing,
+Fresh bananas use Alexander Shulha's CC0 Poly Haven scan; single and paired apples
+use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: six appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
-alpha-tested hair, authored eyelid blinks and small gaze shifts, and retargeted idle/walking/browsing animations. They pause with playback and keep adult proportions
+alpha-tested hair, authored eyelid blinks and small gaze shifts, and retargeted breathing, varied standing, walking and browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
 [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
+High-quality ambient occlusion preserves hair and leaf alpha masks and excludes
+transparent glass from its occluders. Normal/depth rendering restores live
+materials after each pass and shares their textures without taking ownership.
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
 for photographic indoor lighting and reflections; attribution and file provenance are in
 [`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).

@@ -8,13 +8,19 @@ from pydantic import BaseModel
 from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
-    BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
-    SeatingZone, ShelfDirection, StoreDesign, TemplateLayoutRequest,
+    BuildingFloorRequest, BuildingLayoutRequest, BuildingPreset, CheckoutPlacement, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutPreset, LayoutStyle,
+    SeatingZone, ShelfDirection, StoreDesign, TemplateCategoryId, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
+from store_emulator.engine.layout_gen.catalog import category_label
 from store_emulator.domain.store import Store
 
 router = APIRouter(prefix="/api", tags=["templates"])
+
+
+class TemplateCategory(BaseModel):
+    id: str
+    label: str
 
 
 class TemplateInfo(BaseModel):
@@ -32,6 +38,7 @@ class TemplateInfo(BaseModel):
     default_checkouts: int
     default_seating_zone: SeatingZone
     default_checkout_placement: CheckoutPlacement
+    categories: list[TemplateCategory]
 
 
 @router.get("/store-templates", summary="Store formats that can be generated", response_model=list[TemplateInfo])
@@ -46,6 +53,8 @@ def list_templates() -> list[TemplateInfo]:
             default_dining_tables=t.dining_tables, default_seating_zone=t.seating_zone,
             default_checkouts=t.checkouts,
             default_checkout_placement=t.checkout_placement,
+            categories=[TemplateCategory(id=category, label=category_label(category, "USD"))
+                        for category in sorted(set(t.fridges + t.freezers + t.wall_shelves + t.gondolas + t.near_counter))],
         ))
     return out
 
@@ -66,18 +75,43 @@ def preview(
     dining_tables: int | None = Query(default=None, ge=0, le=48),
     table_clearance: int = Query(default=1, ge=1, le=3),
     seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
+    excluded_categories: list[TemplateCategoryId] | None = Query(default=None, max_length=64),
 ) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density, aisle_width=aisle_width, max_shelf_run=max_shelf_run,
                             shelf_direction=shelf_direction,
                             entrance=entrance, exit_position=exit_position, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables, table_clearance=table_clearance,
-                            seating_zone=seating_zone, checkout_placement=checkout_placement)
+                            seating_zone=seating_zone, checkout_placement=checkout_placement,
+                            excluded_categories=excluded_categories or [])
     return _preview_store(template_id, seed, currency, options)
 
 
 @router.post("/store-templates/preview", summary="Preview a generated store with reserved areas (not saved)")
 def preview_options(req: TemplateLayoutRequest) -> Store:
     return _preview_store(req.template_id, req.seed, req.currency, req)
+
+
+@router.post("/store-templates/preset/validate", summary="Validate reusable layout options without saving a store", response_model_exclude_none=True)
+def validate_preset(req: LayoutPreset) -> LayoutPreset:
+    layout = req.layout.model_copy(update={"source_setup_id": None, "name": None})
+    _preview_store(layout.template_id, layout.seed, layout.currency, layout)
+    return req.model_copy(update={"layout": layout})
+
+
+@router.post("/store-templates/building-preset/validate", summary="Validate reusable building options without saving floors", response_model_exclude_none=True)
+def validate_building_preset(req: BuildingPreset) -> BuildingPreset:
+    labels = [floor.label.casefold() for floor in req.floors]
+    if len(set(labels)) != len(labels):
+        raise HTTPException(422, "Floor labels must be unique within the building.")
+    floors: list[BuildingFloorRequest] = []
+    for level, floor in enumerate(req.floors, start=1):
+        layout = floor.layout.model_copy(update={"source_setup_id": None, "name": None})
+        try:
+            _preview_store(layout.template_id, layout.seed, layout.currency, layout)
+        except HTTPException as exc:
+            raise HTTPException(exc.status_code, f"Floor {level} ({floor.label}): {exc.detail}") from exc
+        floors.append(floor.model_copy(update={"layout": layout}))
+    return req.model_copy(update={"floors": floors})
 
 
 def _preview_store(template_id: str, seed: int, currency: str, options: LayoutOptions) -> Store:

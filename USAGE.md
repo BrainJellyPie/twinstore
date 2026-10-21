@@ -219,7 +219,43 @@ The existing `PUT .../{id}/observations` now also requires the returned `review_
 and the full change export at `GET .../{id}/imports.csv`. The token binds content; it is not authentication or proof
 that a person inspected the preview. No raw CSV file is retained and no model call is made.
 
-During collection, the dashboard shows recorded rates and worst/best missing-outcome bounds over enrolled
+Opening a saved pilot now starts at **Collection checks**. It shows staff/shift record completeness and a follow-up
+checklist without purchase counts or treatment effects. **Observations and results** opens the existing observation
+sheet, import review, history and result report. This separation helps monitor collection without reading outcomes;
+it is not enforced blinding or a substitute for a fixed stopping rule.
+
+The checklist distinguishes four cases:
+
+| Check | Meaning | Follow-up |
+| --- | --- | --- |
+| Purchase outcome unknown | An enrolled encounter has no recorded purchase outcome | Verify after the saved outcome window; do not turn an unknown into a nonbuyer |
+| Script delivery unknown | An enrolled encounter has no recorded delivery status | Verify delivery; a refusal remains enrolled with delivery recorded as no |
+| Enrollment record gap | A blank enrollment status precedes a later recorded status in the same staff/shift | Check the original records; the gap does not prove an assignment was skipped |
+| Unused slot before later enrollment | A slot marked unused precedes an enrolled encounter in the same staff/shift | Review sequence use; correct only a verified recording error |
+
+**Unrecorded tail slots** follow the last recorded enrollment status in each staff/shift. They may be future slots
+or unentered records; they are not known missing customers and do not create follow-up tasks automatically. An empty
+checklist therefore does not mean the sample is complete. The separate readiness message retains the existing rules:
+every slot must be recorded and all enrolled purchase/delivery outcomes known before closure; any unused slot leaves
+the study below its full planned target. Sequence-review flags remain visible after closure but do not independently
+block it or certify protocol compliance.
+
+Expand a staff/shift to inspect A/B denominators. Purchase missingness is unknown purchases divided by enrolled
+encounters. Non-delivery is recorded non-delivery divided by enrolled encounters with known delivery status; it
+includes refusals and does not remove customers from their assigned arm. Zero denominators display **Unknown**.
+The B-minus-A missingness gap describes record completeness only, without a hypothesis test or a claim of staff
+performance, treatment effect, or confounding correction. No timestamps are available to classify tasks as overdue.
+
+Filter the screen by staff/shift and check type; the checklist paginates at 50 assignments. **Download all follow-up
+checks CSV** always exports all checks at the latest saved revision, with one row per issue (an assignment can have
+two), revision/time metadata and suggested actions. An empty checklist exports column headers only. It is a checklist,
+not an importable observation sheet. Resolve
+verified corrections through the existing full-sheet review so revision checks, reasons and history remain intact.
+Reload collection checks after external changes; in-app imports and closure invalidate the cached checklist.
+The read-only endpoints are `GET .../staff-pilots/{id}/collection-checks` and `GET .../{id}/follow-up.csv`.
+They work for older pilots and closed pilots without adding new saved fields or making model calls.
+
+Under **Observations and results**, the dashboard shows recorded rates and worst/best missing-outcome bounds over enrolled
 encounters. These bounds are **not confidence intervals**. Unknown purchases do not become nonbuyers. Staff/shift
 rows expose uneven enrollment; non-delivery counts remain visible. No treatment-effect interval is shown while open.
 

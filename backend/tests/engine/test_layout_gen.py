@@ -218,9 +218,12 @@ def test_new_format_defaults_apply_actual_positions_and_specialty_products():
     ("shoe_boutique", "footwear", "luxury"),
     ("baby_family_store", "baby_supplies", "warm"),
     ("travel_essentials", "travel_gear", "industrial"),
+    ("optical_shop", "eyewear", "minimal"),
+    ("jewelry_boutique", "jewelry", "luxury"),
+    ("music_store", "music_gear", "industrial"),
 ])
 @pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
-def test_family_and_travel_formats_have_their_own_assortments_and_editable_defaults(template_id, category, theme, currency):
+def test_specialty_formats_have_their_own_assortments_and_editable_defaults(template_id, category, theme, currency):
     store = generate_store(template_id, currency=currency)
     specialty = [item for rack in store.product_racks if rack.rack_desc == category
                  for slot in rack.slots for item in slot.items]
@@ -233,3 +236,15 @@ def test_family_and_travel_formats_have_their_own_assortments_and_editable_defau
     assert custom.design_theme == "botanical" and len(custom.counters) == 1
     assert sum(r.type == "table" for r in custom.racks) == 1
     assert validate(custom) == []
+
+
+def test_large_fashion_outlet_has_four_checkouts_and_combines_apparel_shoes_and_bags():
+    store = generate_store("fashion_outlet")
+    assert store.grid_size == (32, 24)
+    assert len(store.counters) == 4
+    assert store.design_theme == "coastal"
+    assert {rack.rack_desc for rack in store.product_racks} == {"apparel", "footwear", "travel_gear"}
+    assert validate(store) == []
+    restricted = generate_store("fashion_outlet", options=LayoutOptions(excluded_categories=["footwear"]))
+    assert {rack.rack_desc for rack in restricted.product_racks} == {"apparel", "travel_gear"}
+    assert validate(restricted) == []

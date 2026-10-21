@@ -3,6 +3,7 @@ import { cn } from "@/shared/utils/cn";
 import { BUILDING_PRESETS, DEFAULT_TEMPLATE_CHOICE, buildingPreset, choiceFromGeneration, validBuildingFloors, type BuildingFloorChoice } from "../templateOptions";
 import type { Layout } from "../hooks/useLayouts";
 import { TemplatePicker } from "./TemplatePicker";
+import { GenerationOptionsFile } from "./GenerationOptionsFile";
 
 export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sourceLayouts = [] }: {
   floors: BuildingFloorChoice[];
@@ -11,6 +12,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
   sourceLayouts?: Layout[];
 }) {
   const [active, setActive] = useState(0);
+  const [pickerVersion, setPickerVersion] = useState(0);
   const fieldId = useId();
   const index = Math.min(active, floors.length - 1);
   const floor = floors[index];
@@ -43,9 +45,12 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
 
   return <div className="space-y-3 rounded-lg border p-3">
     <p className="text-xs text-muted-foreground">Create 2–6 linked floor layouts. Each floor is edited and simulated independently; shoppers do not travel between floors.</p>
+    <GenerationOptionsFile kind="building" value={floors} canExport={validBuildingFloors(floors)} onChange={(next) => {
+      onChange(next); setActive(0); setPickerVersion((version) => version + 1);
+    }} />
     <div className="flex flex-wrap gap-1.5" aria-label="Building starting points">
       {BUILDING_PRESETS.map((p) => <button key={p.id} type="button" className="rounded border px-2 py-1 text-xs hover:bg-muted"
-        onClick={() => { onChange(buildingPreset(p.id, defaultCurrency)); setActive(0); }}>{p.name}</button>)}
+        onClick={() => { onChange(buildingPreset(p.id, defaultCurrency)); setActive(0); setPickerVersion((version) => version + 1); }}>{p.name}</button>)}
     </div>
     <div className="flex flex-wrap gap-1.5" aria-label="Building floors">
       {floors.map((f, i) => <button key={i} type="button" aria-pressed={i === index}
@@ -82,7 +87,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
           {sourceLayouts.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
         </select>
       </div>}
-      <TemplatePicker key={index} value={floor.choice} budgetCurrency={defaultCurrency} onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))} />
+      <TemplatePicker key={`${index}-${pickerVersion}`} value={floor.choice} budgetCurrency={defaultCurrency} onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))} />
     </>}
     {!validBuildingFloors(floors) && <p role="alert" className="text-xs text-destructive">Each floor needs a unique label and valid grid dimensions.</p>}
   </div>;

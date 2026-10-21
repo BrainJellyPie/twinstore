@@ -26,7 +26,7 @@ async function uploadOne(
   form.append("file", blob, `${sku}.${extension}`);
 
   const res = await fetch(
-    `${BASE}/api/projects/${encodeURIComponent(projectId)}/sku-images/${encodeURIComponent(sku)}`,
+    `${BASE}/api/projects/${encodeURIComponent(projectId)}/sku-images?sku=${encodeURIComponent(sku)}`,
     { method: "POST", body: form },
   );
   if (!res.ok) {
@@ -38,7 +38,7 @@ async function uploadOne(
 }
 
 // Backend serializes `image_url` as an origin-less path (e.g.
-// "/api/projects/p1/images/sku?v=abc"). In dev the frontend (5173) and backend
+// "/api/projects/p1/images?sku=tea&v=abc"). In dev the frontend (5173) and backend
 // (8000) origins differ, so we must prefix BASE; in prod BASE is "" and this is
 // a no-op.
 export function resolveImageUrl(url: string | null | undefined): string | undefined {

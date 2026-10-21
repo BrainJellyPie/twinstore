@@ -5,17 +5,37 @@ import { afterEach, expect, it, vi } from "vitest";
 import { BuildingPicker } from "../components/BuildingPicker";
 import { buildingPreset, savedBuildingFloors, type TemplateChoice } from "../templateOptions";
 import type { Layout } from "../hooks/useLayouts";
+import * as api from "@/shared/api/client";
+
+vi.mock("@/shared/api/client", () => ({ validateBuildingPreset: vi.fn() }));
 
 vi.mock("../components/TemplatePicker", () => ({
   TemplatePicker: ({ value, onChange }: { value: TemplateChoice; onChange: (v: TemplateChoice) => void }) =>
     <div><span>{value.templateId} / width {value.width ?? "default"}</span><span data-testid="floor-currency">{value.currency}</span><button type="button" onClick={() => onChange({ ...value, width: 30 })}>Set floor width</button></div>,
 }));
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
 function Building({ currency = "USD" }: { currency?: string }) {
   const [floors, setFloors] = useState(() => buildingPreset("wellness", currency));
   return <BuildingPicker floors={floors} onChange={setFloors} defaultCurrency={currency} />;
 }
+
+it("switches to the first imported floor and replaces all previous floor labels", async () => {
+  render(<Building />);
+  fireEvent.click(screen.getByRole("button", { name: /2F/ }));
+  vi.mocked(api.validateBuildingPreset).mockResolvedValue({ format: "twinstore-building-options", version: 1, floors: [
+    { label: "Books", layout: { template_id: "bookstore", seed: 2, currency: "JPY" } },
+    { label: "Coffee", layout: { template_id: "specialty_cafe", seed: 3, currency: "JPY" } },
+    { label: "Dining", layout: { template_id: "family_restaurant", seed: 4, currency: "JPY" } },
+  ] });
+  const file = Object.assign(new File(["{}"], "building.json"), { text: async () => "{}" });
+  fireEvent.change(screen.getByLabelText("Import building options file"), { target: { files: [file] } });
+  expect((await screen.findByRole("button", { name: "1F · Books" })).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.queryByRole("button", { name: /Ground · Pharmacy/ })).toBeNull();
+  expect(screen.getByRole("button", { name: "3F · Dining" })).toBeTruthy();
+  expect(screen.getByText("bookstore / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+});
 
 it("keeps each floor's options when switching and editing", () => {
   render(<Building />);
@@ -82,6 +102,22 @@ it("starts garden, crafts and cafe floors with the project's currency", () => {
   fireEvent.click(screen.getByRole("button", { name: /3F · Level 3 · Café/ }));
   expect(screen.getByText("specialty_cafe / width default")).toBeTruthy();
   expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+});
+
+it("combines eyewear, jewelry, music and coffee as independently configurable floors", () => {
+  render(<Building currency="JPY" />);
+  fireEvent.click(screen.getByRole("button", { name: "Style, sound & café" }));
+  expect(screen.getByText("optical_shop / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
+  fireEvent.click(screen.getByRole("button", { name: /2F · Level 2 · Jewelry/ }));
+  expect(screen.getByText("jewelry_boutique / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /3F · Level 3 · Music/ }));
+  expect(screen.getByText("music_store / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /4F · Level 4 · Café/ }));
+  expect(screen.getByText("specialty_cafe / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+  fireEvent.click(screen.getByRole("button", { name: /1F · Ground · Eyewear/ }));
+  expect(screen.getByText("optical_shop / width 30")).toBeTruthy();
 });
 
 it("moves and duplicates a customized floor without losing its settings", () => {
