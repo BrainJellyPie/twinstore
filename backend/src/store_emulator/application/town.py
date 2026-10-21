@@ -62,6 +62,9 @@ def save_town(pid: str, town: Town, *, expected: Town | None = None) -> Town:
         raise AppError(f"project not found: {pid}", 404)
     if town.size_m <= 0:
         raise AppError("Neighborhood size must be positive", 422)
+    for label, coordinate, limit in [("latitude", town.center_lat, 90), ("longitude", town.center_lon, 180)]:
+        if coordinate is not None and not -limit <= coordinate <= limit:
+            raise AppError(f"Neighborhood center {label} must be between {-limit} and {limit}", 422)
     for label, items in [("venue", town.venues), ("building", town.buildings), ("road", town.roads)]:
         ids = [item.id for item in items]
         if any(not identifier.strip() for identifier in ids) or len(set(ids)) != len(ids):
