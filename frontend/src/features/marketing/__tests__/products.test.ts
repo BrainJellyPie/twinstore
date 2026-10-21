@@ -50,4 +50,12 @@ describe("marketing products", () => {
       expect(toMinor(String(text), 100)).toBe(expected);
     },
   );
+
+  it.each([
+    ["1.005", 100, 101], ["1.015", 100, 102], ["4.015", 100, 402],
+    ["0.0049", 100, 0], ["0.005", 100, 1], ["1,500.5", 1, 1501],
+    ["90071992547409.91", 100, Number.MAX_SAFE_INTEGER],
+  ] as const)("rounds decimal price %s exactly in minor units", (text, divisor, expected) => {
+    expect(toMinor(text, divisor)).toBe(expected);
+  });
 });
