@@ -181,6 +181,9 @@ The floor editor supports up to 40×40 cells, with zoom controls and a scrollabl
 grid that keeps fixtures readable on large floors and smaller screens. Width and
 depth can be typed directly. Reducing the grid never deletes fixtures silently;
 save reports fixtures outside the new bounds so you can adjust the floor first.
+Select a shelf, counter, dining group or gate and use the move arrows to shift it
+one cell at a time. The full footprint must fit in clear space; paired entrances
+and exits move together. Names, designs and rotation stay with the fixture.
 
 Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
 with a department store, shop with upstairs café, pharmacy/wellness building or
