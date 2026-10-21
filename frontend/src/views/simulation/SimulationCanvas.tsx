@@ -1,6 +1,6 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { AssetFixture } from "@/features/store-viewer/components/AssetFixture";
 import { AssetRug } from "@/features/store-viewer/components/AssetRug";
@@ -13,6 +13,7 @@ import { PlaybackScene } from "@/features/playback/components/PlaybackScene";
 import type { Rack, StoreDesign, CustomerResult } from "@/shared/types/domain";
 import type { RackStats } from "@/shared/api/client";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { ALL_CLASSIC_ASSETS } from "@/shared/utils/assetMap";
 import { RealisticStore } from "@/features/store-viewer/realistic/RealisticStore";
 import { RealisticLighting } from "@/features/store-viewer/realistic/RealisticLighting";
 import { RealisticEffects } from "@/features/store-viewer/realistic/RealisticEffects";
@@ -151,6 +152,11 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
   const shopperViewOn = useSimulationStore((s) => s.shopperView);
   const quality = useRealisticSettings((s) => s.quality);
   const realistic = graphicsMode === "realistic";
+  useEffect(() => {
+    // Warm Classic assets when that mode is used; importing the viewer should
+    // leave bandwidth and image decoding available for photographic assets.
+    if (!realistic) ALL_CLASSIC_ASSETS.forEach((url) => useGLTF.preload(url));
+  }, [realistic]);
   // Shopper view needs playback data; outside playback the iso camera stays.
   const shopperView = shopperViewOn && props.customers !== null;
   const colors = useSceneColors();
