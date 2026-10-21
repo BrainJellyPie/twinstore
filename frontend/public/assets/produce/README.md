@@ -94,3 +94,25 @@ Download and verify the manifest files, preserving their paths, then run:
 blender --background --python scripts/convert_lemon.py -- \
   --source-dir /path/to/lemons --output frontend/public/assets/produce/lemon.glb
 ```
+
+`onion.glb` uses **Yellow Onion** by **Kuutti Siitonen**, published by
+[Poly Haven](https://polyhaven.com/a/yellow_onion) under CC0. `onion-sources.json`
+records the five verified sources and output checksum. The source becomes
+249/1,399-triangle LODs; all three original 1K JPEG maps are retained byte for
+byte. Instances restore the upright 7.25 × 8.64 × 6.86 cm proportions before the
+common 10% product readability scale.
+
+Whole yellow/brown onion names use the scan. Red, white, sweet, green, spring and
+pearl varieties, peeled or processed onions, planting sets and multipacks retain
+their existing packaging. Shelf and table displays use one layer. Stable
+half-turn, size and brightness variation stays inside each display footprint.
+High uses the photographic normal and roughness maps; Medium uses color with
+flat roughness. A warm brown bulb with a tapered neck remains visible while
+loading or after failure. Layouts without whole onions do not request the asset.
+
+Download and verify the manifest sources, preserving their paths, then run:
+
+```sh
+blender --background --python scripts/convert_onion.py -- \
+  --source-dir /path/to/onions --output frontend/public/assets/produce/onion.glb
+```
