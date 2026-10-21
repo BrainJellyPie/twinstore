@@ -1,7 +1,7 @@
 // Neighborhood workspace: generate a synthetic town or import a real map, try what-ifs (open a
 // café next door, a rival store across the street), and see where our customers come from.
 
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Eye, Footprints, Globe2, Loader2, MapPinPlus, MousePointer2, Sparkles, Trash2, Users } from "lucide-react";
@@ -14,6 +14,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
+import { useAssistStore } from "@/stores/assistStore";
 
 import { TownMap, type MapMode } from "./TownMap";
 import { ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
@@ -268,9 +270,28 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
   };
   const rationale = described?.text === area && described.projectId === projectId
     && described.spec === spec ? described.rationale : "";
+  // Route through the same ownership-aware request path as manual descriptions.
+  const panel = useRef<HTMLDetailsElement>(null);
+  const pendingAsk = useAssistStore((s) => s.pending);
+  const takeAsk = useAssistStore((s) => s.take);
+  const queueDescribe = useQueuedStart<string>((text) => {
+    if (text === area) requestDescription();
+  });
+  useEffect(() => {
+    if (!pendingAsk) return;
+    const routed = takeAsk(projectId, ["area"]);
+    if (!routed) return;
+    const text = Array.from(routed.text).slice(0, 800).join("");
+    setArea(text);
+    if (panel.current) {
+      panel.current.open = true;
+      panel.current.scrollIntoView?.({ block: "nearest" });
+    }
+    queueDescribe(text);
+  }, [pendingAsk, projectId, takeAsk, queueDescribe]);
   const neighborChoices = [...new Set([...NEIGHBOR_CHOICES, ...spec.neighbor_categories])];
   return (
-    <details className="rounded-lg border p-3" open={!hasTown}>
+    <details ref={panel} className="rounded-lg border p-3" open={!hasTown}>
       <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Sparkles className="size-4" /> Generate a neighborhood</summary>
       <div className="mt-3 space-y-2 text-xs">
         <div className="flex items-start gap-1.5">

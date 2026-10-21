@@ -6,7 +6,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, MessageSquareText, RotateCcw, Send } from "lucide-react";
 
 import { analystKey, askAnalyst, clearAnalyst, getAnalyst } from "@/shared/api/interview";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { cn } from "@/shared/utils/cn";
+import { useAssistStore } from "@/stores/assistStore";
 
 const STARTERS = ["Which shelf converts worst, and why might that be?", "When is the store busiest, and does spend follow?",
   "Which shoppers spend the most per visit?"];
@@ -36,6 +38,18 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
       ask.reset();
     },
   });
+  // A question typed in the command palette and routed here is asked as soon as the run is open.
+  const pendingAsk = useAssistStore((s) => s.pending);
+  const takeAsk = useAssistStore((s) => s.take);
+  const section = useRef<HTMLElement>(null);
+  const queueAsk = useQueuedStart(ask.mutate);
+  useEffect(() => {
+    if (!pendingAsk) return;
+    const routed = takeAsk(projectId, ["run_question"]);
+    if (!routed) return;
+    section.current?.scrollIntoView?.({ block: "start" });
+    queueAsk(routed.text);
+  }, [pendingAsk, projectId, takeAsk, queueAsk]);
   const messages = thread.data?.messages ?? [];
   const last = [...messages].reverse().find((m) => m.role === "analyst");
   const suggestions = last ? last.follow_ups : messages.length === 0 ? STARTERS : [];
@@ -44,7 +58,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
   useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [messages.length, pending]);
 
   return (
-    <section className="border-t px-3 py-3" aria-label="Ask about this run">
+    <section ref={section} className="border-t px-3 py-3" aria-label="Ask about this run">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="flex items-center gap-1.5 text-xs font-medium"><MessageSquareText className="size-3.5 text-primary" aria-hidden /> Ask about this run</h3>
         {messages.length > 0 && (

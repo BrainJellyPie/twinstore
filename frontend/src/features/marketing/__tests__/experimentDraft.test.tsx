@@ -48,3 +48,19 @@ it("drafts the variants from a question and runs them as drafted", async () => {
   expect(req.variants.map((v) => v.name)).toEqual(["1+1 sign", "20 % off"]);
   expect(req.variants[0]!.changes[0]).toEqual({ kind: "promo", sku: "A1", promo: "1+1" });
 });
+
+it("drafts from a request routed by the command palette, once per request", async () => {
+  vi.mocked(designExperiment).mockResolvedValue({ name: "Sign", engine: "rule", rationale: "One sign.", focus_skus: ["A1"], warnings: [],
+    variants: [{ name: "1+1 sign", changes: [{ kind: "promo", sku: "A1", promo: "1+1" }] }] });
+  const props = { projectId: "p", setupId: "s1", products, store, currency: "USD", onStarted: vi.fn() };
+  const client = new QueryClient();
+  const view = render(<QueryClientProvider client={client}>
+    <ExperimentBuilder {...props} prefill={{ id: 7, text: "Would a 1+1 sign sell more cola?" }} />
+  </QueryClientProvider>);
+  expect(await screen.findByDisplayValue("1+1 sign")).toBeTruthy();
+  expect((screen.getByLabelText("Question for the test") as HTMLTextAreaElement).value).toBe("Would a 1+1 sign sell more cola?");
+  view.rerender(<QueryClientProvider client={client}>
+    <ExperimentBuilder {...props} prefill={{ id: 7, text: "Would a 1+1 sign sell more cola?" }} />
+  </QueryClientProvider>);
+  expect(designExperiment).toHaveBeenCalledTimes(1);
+});

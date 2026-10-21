@@ -14,12 +14,15 @@ import {
   Moon,
   Plus,
   Power,
+  Loader2,
   Search,
+  Sparkles,
   Store,
   Sun,
   X,
 } from "lucide-react";
 
+import * as api from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/components/ui/dialog";
 import { translate, useI18n } from "@/shared/i18n/i18n";
 import { LOCALES, type MessageKey } from "@/shared/i18n/messages";
@@ -27,6 +30,8 @@ import { storeTypeLabel } from "@/shared/i18n/storeLabels";
 import { useProjects } from "@/shared/queries/useProjects";
 import { cn } from "@/shared/utils/cn";
 import { searchText } from "@/shared/utils/searchText";
+import { useAssistStore } from "@/stores/assistStore";
+import { useSimulationStore } from "@/stores/simulationStore";
 
 import { useCommandPalette } from "./commandPalette";
 import { quitLauncher, useLauncher } from "./launcher";
@@ -120,7 +125,45 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
     return list;
   }, [navigate, pid, projects, theme, setTheme, launched, locale]);
 
-  const visible = useMemo(() => commands.filter((c) => matches(c, query)), [commands, query]);
+  // A sentence typed in a store's palette can be handed to the right tool, which drafts from the same words.
+  const [asking, setAsking] = useState(false);
+  const [askNote, setAskNote] = useState<string | null>(null);
+  const sendAsk = useAssistStore((s) => s.send);
+  const setActiveTab = useSimulationStore((s) => s.setActiveTab);
+  const text = query.trim();
+  const canAsk = !!pid && text.split(/\s+/).filter(Boolean).length >= 3;
+  const ask = async () => {
+    if (!pid || asking) return;
+    setAsking(true);
+    setAskNote(null);
+    try {
+      const hasRun = projects?.find((p) => p.project_id === pid)?.status === "Simulated";
+      const route = await api.routeAssist({ text, has_run: hasRun });
+      if (route.destination === "none") {
+        setAskNote(t("commandAskNone"));
+        return;
+      }
+      sendAsk({ projectId: pid, destination: route.destination, text });
+      if (route.destination === "run_question") setActiveTab("dashboard");
+      onDone();
+      const to = route.destination === "area" ? "/town/$pid" : route.destination === "run_question" ? "/projects/$pid" : "/marketing/$pid";
+      void navigate({ to, params: { pid } });
+    } catch (e) {
+      setAskNote(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAsking(false);
+    }
+  };
+  const visible = useMemo(() => {
+    const found = commands.filter((c) => matches(c, query));
+    // A sentence that names no command can be asked; command words keep their commands.
+    if (!canAsk || found.length > 0) return found;
+    // Running it is handled in `run` (the palette stays open while the request is routed).
+    const askCommand: Command = {
+      id: "ask", group: t("commandAsk"), label: `“${text}”`, hint: t("commandAskHint"), icon: Sparkles, run: () => {},
+    };
+    return [askCommand];
+  }, [commands, query, canAsk, text, t]);
   const current = Math.min(active, Math.max(visible.length - 1, 0));
 
   useEffect(() => {
@@ -129,6 +172,10 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
 
   const run = (command: Command | undefined) => {
     if (!command) return;
+    if (command.id === "ask") {
+      void ask();
+      return;
+    }
     onDone();
     command.run();
   };
@@ -178,6 +225,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         {visible.length === 0 && (
           <p role="status" className="break-words px-3 py-10 text-center text-sm text-muted-foreground">{t("commandNoMatches", { query })}</p>
         )}
+        {askNote && <p role="status" className="mx-3 mb-1 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">{askNote}</p>}
         {visible.map((c, i) => {
           const header = c.group !== lastGroup ? c.group : null;
           lastGroup = c.group;
@@ -210,11 +258,11 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
                     isActive ? "border-transparent bg-primary text-primary-foreground" : "bg-foreground/[0.03] text-muted-foreground",
                   )}
                 >
-                  <Icon className="size-4" aria-hidden />
+                  {c.id === "ask" && asking ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Icon className="size-4" aria-hidden />}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span title={c.label} className="block truncate text-[0.95rem] font-medium">{c.label}</span>
-                  {c.hint && <span className="block truncate text-xs text-muted-foreground">{c.hint}</span>}
+                  {c.hint && <span className="block truncate text-xs text-muted-foreground">{c.id === "ask" && asking ? t("commandAsking") : c.hint}</span>}
                 </span>
                 {isActive ? (
                   <CornerDownLeft className="size-4 text-muted-foreground" aria-hidden />

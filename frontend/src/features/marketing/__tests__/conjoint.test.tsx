@@ -161,3 +161,20 @@ it.each([["JPY", "150, 180, 200, 230"], ["KRW", "1490, 1790, 1990, 2290"], ["VND
     expect((screen.getByLabelText("Price levels") as HTMLInputElement).value).toBe(expected);
   },
 );
+
+it("drafts the study from a request routed by the command palette and keeps the reply", async () => {
+  vi.mocked(designConjoint).mockResolvedValue({
+    name: "Oat milk", product: "a carton of oat milk", context: "In the dairy fridge.",
+    attributes: [{ name: "Brand", levels: ["Store", "Oatly"] }], prices: [1500, 1800], currency: "KRW", rationale: "Brand is the question.",
+    comparable: [],
+  });
+  render(<QueryClientProvider client={new QueryClient()}>
+    <ConjointBuilder projectId="project" personaCount={60} defaultCurrency="KRW" setupId="setup_1" onStarted={vi.fn()}
+      prefill={{ id: 3, text: "Would people pay more for a branded oat milk?" }} />
+  </QueryClientProvider>);
+  await screen.findByText(/Brand is the question\./);
+  expect(designConjoint).toHaveBeenCalledTimes(1);
+  expect(designConjoint).toHaveBeenCalledWith("project", { question: "Would people pay more for a branded oat milk?", setup_id: "setup_1", currency: "KRW" });
+  expect((screen.getByLabelText("Question for the study") as HTMLTextAreaElement).value).toBe("Would people pay more for a branded oat milk?");
+  expect((screen.getByLabelText("Price levels") as HTMLInputElement).value).toBe("1500, 1800");
+});
