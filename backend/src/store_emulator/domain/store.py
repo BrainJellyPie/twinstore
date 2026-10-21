@@ -40,6 +40,13 @@ class Store(BaseModel):
     weekly_schedule: list[DaySchedule] = []
     racks: list[Rack] = []
 
+    @field_validator("grid_size")
+    @classmethod
+    def _positive_grid_size(cls, size: Position) -> Position:
+        if any(side <= 0 for side in size):
+            raise ValueError("store grid dimensions must be positive")
+        return size
+
     @field_validator("racks")
     @classmethod
     def _unique_rack_ids(cls, racks: list[Rack]) -> list[Rack]:

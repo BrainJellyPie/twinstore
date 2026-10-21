@@ -1,4 +1,4 @@
-"""Malformed fixture geometry must be rejected before modifying a saved layout."""
+"""Malformed layout geometry must be rejected before modifying a saved layout."""
 
 from copy import deepcopy
 
@@ -91,3 +91,22 @@ def test_one_sku_on_distinct_levels_is_valid(layout):
     response = client.put(url, json={"setup": {"store": store}})
     assert response.status_code == 200, response.text
     assert len(client.get(url).json()["store"]["racks"][2]["slots"]) == 2
+
+
+@pytest.mark.parametrize("size", [(0, 6), (8, 0), (-1, 6), (8, -1), (0, 0)])
+def test_empty_layout_rejects_nonpositive_grid_without_writing(layout, size):
+    client, url, store, path = layout
+    before = read_json(path)
+    store.update(grid_size=size, racks=[])
+    response = client.put(url, json={"setup": {"store": store}})
+    assert response.status_code == 422, response.text
+    assert read_json(path) == before
+
+
+@pytest.mark.parametrize("size", [(1, 1), (40, 40)])
+def test_positive_empty_grid_can_be_saved(layout, size):
+    client, url, store, _ = layout
+    store.update(grid_size=size, racks=[])
+    response = client.put(url, json={"setup": {"store": store}})
+    assert response.status_code == 200, response.text
+    assert client.get(url).json()["store"]["grid_size"] == list(size)
