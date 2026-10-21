@@ -123,6 +123,22 @@ function CharacterMesh({ url, animName, realistic, personaId, walkSpeed }: Chara
 
   const { actions, mixer } = useAnimations(animations, clone);
   const previousAction = useRef<THREE.AnimationAction | null>(null);
+  const motionBlend = useRef<{
+    elapsed: number;
+    entries: { action: THREE.AnimationAction; from: number; to: number }[];
+  } | null>(null);
+  // Set weights before useAnimations advances the mixer at the default priority.
+  useFrame((_, delta) => {
+    const blend = motionBlend.current;
+    if (!blend || !usePlaybackControlStore.getState().playing) return;
+    blend.elapsed += delta;
+    const progress = Math.min(blend.elapsed / 0.15, 1);
+    for (const { action, from, to } of blend.entries) action.setEffectiveWeight(from + (to - from) * progress);
+    if (progress === 1) {
+      for (const { action, to } of blend.entries) if (to === 0) action.stop();
+      motionBlend.current = null;
+    }
+  }, -1);
   const playing = usePlaybackControlStore((s) => s.playing);
   const playbackSpeed = usePlaybackControlStore((s) => s.speed);
   const facialTargets = useMemo(() => {
@@ -171,6 +187,7 @@ function CharacterMesh({ url, animName, realistic, personaId, walkSpeed }: Chara
     // remount (StrictMode), and three.js cannot rebind an uncached action's
     // bindings. The mixer is per shopper and is collected with it.
     previousAction.current = null;
+    motionBlend.current = null;
     const skeletons = new Set<THREE.Skeleton>();
     clone.traverse((object) => {
       if (object instanceof THREE.SkinnedMesh) skeletons.add(object.skeleton);
@@ -185,12 +202,30 @@ function CharacterMesh({ url, animName, realistic, personaId, walkSpeed }: Chara
     if (!action) return;
     const previous = previousAction.current;
     const paused = realistic && !usePlaybackControlStore.getState().playing;
-    // A previous cross-fade can still contain older actions. A paused seek
-    // must remove every contributor before applying the newly selected pose.
-    if (paused) mixer.stopAllAction();
-    action.reset().stopFading().setEffectiveWeight(1).play();
-    if (realistic) action.time = action.getClip().duration * characterAnimationPhase(personaId);
-    if (previous && previous !== action && !paused) action.crossFadeFrom(previous, 0.15, false);
+    motionBlend.current = null;
+    if (realistic && previous && previous !== action && !paused) {
+      // Capture every visible contribution before changing the target. Starting
+      // a new crossFadeFrom(previous) would reset that action's weight to one.
+      const entries = Object.values(actions).flatMap(other => {
+        if (!other) return [];
+        const from = other.enabled && other.isScheduled() ? other.getEffectiveWeight() : 0;
+        if (from === 0 && other !== action) { other.stop(); return []; }
+        return [{ action: other, from, to: other === action ? 1 : 0 }];
+      });
+      if (!action.enabled || !action.isScheduled()) {
+        action.reset();
+        action.time = action.getClip().duration * characterAnimationPhase(personaId);
+      }
+      action.play();
+      for (const entry of entries) entry.action.stopFading().setEffectiveWeight(entry.from);
+      motionBlend.current = { elapsed: 0, entries };
+    } else {
+      // Initial poses and paused seeks must not retain earlier contributors.
+      if (realistic) mixer.stopAllAction();
+      action.reset().stopFading().setEffectiveWeight(1).play();
+      if (realistic) action.time = action.getClip().duration * characterAnimationPhase(personaId);
+      else if (previous && previous !== action) action.crossFadeFrom(previous, 0.15, false);
+    }
     // A paused mixer cannot advance a fade from zero weight. Apply the first
     // pose immediately so newly loaded shoppers never remain in their bind pose.
     mixer.update(0);
