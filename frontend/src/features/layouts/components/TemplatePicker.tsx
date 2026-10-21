@@ -240,7 +240,12 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
                 onChange={(e) => update({ dining_seats: Number(e.target.value) as 2 | 4 | 6 })}>
                 <option value={2}>2 seats</option><option value={4}>4 seats</option><option value={6}>6 seats</option>
-              </select></Field><p className="text-[10px] text-muted-foreground">{(value.dining_seats ?? 4) / 2}×2 cells, including chairs.</p></div>
+              </select></Field><p className="text-[10px] text-muted-foreground">{value.table_rotation === 90 ? `2×${(value.dining_seats ?? 4) / 2}` : `${(value.dining_seats ?? 4) / 2}×2`} cells, including chairs.</p></div>
+              <Field label="Table rotation"><select className={controlClass} value={value.table_rotation ?? 0}
+                disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
+                onChange={(e) => update({ table_rotation: Number(e.target.value) as 0 | 90 })}>
+                <option value={0}>0°</option><option value={90}>90°</option>
+              </select></Field>
               <Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
                 disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
                 onChange={(e) => update({ seating_zone: e.target.value as TemplateChoice["seating_zone"] })}>
@@ -256,7 +261,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, dining_seats: 4, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, dining_seats: 4, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>

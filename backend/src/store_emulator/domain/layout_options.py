@@ -52,6 +52,7 @@ class LayoutOptions(BaseModel):
     design_theme: StoreDesign | None = None
     dining_tables: int | None = Field(default=None, ge=0, le=48)
     dining_seats: int = Field(default=4, strict=True, ge=2, le=6, multiple_of=2)
+    table_rotation: int = Field(default=0, strict=True, ge=0, le=90, multiple_of=90)
     table_clearance: int = Field(default=1, ge=1, le=3)
     seating_zone: SeatingZone = "auto"
     reserved_areas: list[ReservedArea] = Field(default_factory=list[ReservedArea], max_length=8)

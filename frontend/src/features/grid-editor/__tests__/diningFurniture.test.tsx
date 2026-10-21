@@ -50,6 +50,14 @@ it("counts furniture as an obstacle without offering it product faces", () => {
   expect(rackCells({ ...table, shape: [[1, 1]], rotation: 90 })).toEqual([[2, 2], [2, 3]]);
 });
 
+it.each([[2, 0, "1×2"], [2, 90, "2×1"], [6, 0, "3×2"], [6, 90, "2×3"]] as const)(
+  "describes the actual floor footprint of %s seats rotated %s degrees", (seats, rotation, footprint) => {
+    const rotated = { ...table, rotation, shape: Array.from({ length: 2 }, () => Array<number>(seats / 2).fill(1)) };
+    render(<RackEditPanel selectedCell={[2, 2]} selectedCellRacks={[rotated]} selectedRack={rotated}
+      onChange={vi.fn()} onGateConfigChange={vi.fn()} />);
+    expect(screen.getByText(`${footprint} cells, including ${seats} chairs. Furniture only; table service is not simulated.`)).toBeTruthy();
+  });
+
 it("keeps table and chairs inside their blocked floor area in both renderers", () => {
   for (const [w, d] of [[2, 2], [1, 1], [1.94, 2]]) {
     const parts = diningTableParts(w!, d!);

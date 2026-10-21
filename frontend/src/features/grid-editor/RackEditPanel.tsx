@@ -26,6 +26,7 @@ import {
 } from "@/shared/components/ui/select";
 import type { Position, RackType } from "@/shared/types/domain";
 import { rackDiningSeats } from "@/shared/utils/dining";
+import { rackBounds } from "@/shared/utils/grid";
 import type { EditorRack } from "./types";
 import { RackPreview } from "./RackPreview";
 
@@ -379,7 +380,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                 />
               </div>
 
-              {kind === "table" && selectedRack ? <p className="text-xs text-muted-foreground">{Math.max(0, ...selectedRack.shape.map((row) => row.length))}×{selectedRack.shape.length} cells, including {rackDiningSeats(selectedRack)} chairs. Furniture only; table service is not simulated.</p> : <div className="flex flex-col gap-1.5">
+              {kind === "table" && selectedRack ? <p className="text-xs text-muted-foreground">{rackBounds(selectedRack).w}×{rackBounds(selectedRack).d} cells, including {rackDiningSeats(selectedRack)} chairs. Furniture only; table service is not simulated.</p> : <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-muted-foreground">Design</span>
                 {kind === "rack" ? (
                   <Select
