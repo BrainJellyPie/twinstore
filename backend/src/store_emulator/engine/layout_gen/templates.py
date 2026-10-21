@@ -364,9 +364,17 @@ def get_template(template_id: str) -> StoreTemplate | None:
 
 
 class _Builder:
-    def __init__(self, t: StoreTemplate, currency: str, rng: random.Random, options: LayoutOptions):
+    def __init__(self, t: StoreTemplate, currency: str, rng: random.Random, options: LayoutOptions, seed: int):
         self.t, self.currency, self.rng = t, currency, rng
         self.options = options
+        self.assortments: dict[str, list[CatalogItem]] = {}
+        for category in set(t.fridges + t.freezers + t.wall_shelves + t.gondolas + t.near_counter):
+            pool = CATALOG[category]
+            limit = options.products_per_category
+            self.assortments[category] = (
+                random.Random(stable_seed("layout-assortment", seed, category)).sample(pool, limit)
+                if limit is not None and limit < len(pool) else pool
+            )
         self.w, self.h = options.width or t.grid[0], options.height or t.grid[1]
         self.racks: list[Rack] = []
         self.taken: set[tuple[int, int]] = set()
@@ -383,7 +391,7 @@ class _Builder:
         return 0 <= x < self.w and 0 <= y < self.h and (x, y) not in self.taken and (x, y) not in self.reserved
 
     def _items_for(self, category: str) -> list[SlotItem]:
-        pool = CATALOG[category]
+        pool = self.assortments[category]
         start = self.counts.get(category, 0)
         self.counts[category] = start + 1
         # Rotate through the assortment so two racks of one category carry different products.
@@ -449,7 +457,7 @@ def generate_store(
                     near_counter=[c for c in t.near_counter if c not in excluded])
         if not (t.fridges or t.freezers or t.wall_shelves or t.gondolas or t.near_counter):
             raise ValueError("Keep at least one product category for this store format.")
-    b = _Builder(t, currency, rng, options)
+    b = _Builder(t, currency, rng, options, seed)
     w, h = b.w, b.h
     layout_style = style or options.style or t.style
     aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]

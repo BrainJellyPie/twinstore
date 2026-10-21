@@ -77,13 +77,14 @@ def preview(
     seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
     checkout_wall: CheckoutWall = "front",
     excluded_categories: list[TemplateCategoryId] | None = Query(default=None, max_length=64),
+    products_per_category: int | None = Query(default=None, ge=1, le=16),
 ) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density, aisle_width=aisle_width, max_shelf_run=max_shelf_run,
                             shelf_direction=shelf_direction,
                             entrance=entrance, exit_position=exit_position, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables, table_clearance=table_clearance,
                             seating_zone=seating_zone, checkout_placement=checkout_placement, checkout_wall=checkout_wall,
-                            excluded_categories=excluded_categories or [])
+                            excluded_categories=excluded_categories or [], products_per_category=products_per_category)
     return _preview_store(template_id, seed, currency, options)
 
 
