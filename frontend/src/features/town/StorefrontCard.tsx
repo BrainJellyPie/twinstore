@@ -1,13 +1,14 @@
 // Storefront appeal: a photo of a shop front, rated like a passer-by would (sign, entrance, window,
 // upkeep), sets that venue's pull in the demand model — ours or a rival's.
 
-import { useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Camera, Loader2, Store } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import type { StorefrontResult, Town } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
+import { queryKeys } from "@/shared/queries/keys";
 
 import { VENUE_LABELS } from "./townStyle";
 
@@ -19,23 +20,47 @@ const SCORES = [
 ] as const;
 
 export function StorefrontCard({ projectId, town, onTown }: { projectId: string; town: Town; onTown: (t: Town) => void }) {
+  const [selected, setSelected] = useState(town.focal_venue_id);
+  const eligible = town.venues.filter((v) => v.id === town.focal_venue_id || (!v.is_focal && (v.category === "convenience" || v.category === "supermarket")));
+  const venueId = eligible.some((v) => v.id === selected) ? selected : eligible[0]?.id ?? "";
+  return <StorefrontRating key={JSON.stringify([projectId, town.id, venueId])} projectId={projectId} town={town}
+    venueId={venueId} onVenueChange={setSelected} onTown={onTown} />;
+}
+
+function StorefrontRating({ projectId, town, venueId, onVenueChange, onTown }: {
+  projectId: string; town: Town; venueId: string; onVenueChange: (id: string) => void; onTown: (t: Town) => void;
+}) {
+  const qc = useQueryClient();
   const focal = town.venues.find((v) => v.id === town.focal_venue_id);
   const rivals = town.venues.filter((v) => !v.is_focal && (v.category === "convenience" || v.category === "supermarket"));
-  const [venueId, setVenueId] = useState(town.focal_venue_id);
   const [preview, setPreview] = useState<string | null>(null);
   const [result, setResult] = useState<StorefrontResult | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const mounted = useRef(false);
+  const currentTown = useRef(town);
+  const pending = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { currentTown.current = town; }, [town]);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
   const rate = useMutation({
-    mutationFn: (file: File) => api.rateStorefront(projectId, venueId, file),
-    onSuccess: (r) => {
+    mutationFn: ({ file }: { file: File; snapshot: Town }) => api.rateStorefront(projectId, venueId, file),
+    onSuccess: (r, { snapshot }) => {
+      if (!mounted.current) return;
+      if (currentTown.current !== snapshot) {
+        void qc.invalidateQueries({ queryKey: queryKeys.town(projectId) });
+        return;
+      }
       setResult(r);
       onTown(r.town);
     },
+    onSettled: () => { pending.current = false; },
   });
   const pick = (file: File | undefined) => {
-    if (!file) return;
+    if (!file || !venueId || pending.current) return;
+    pending.current = true;
+    setResult(null);
     setPreview(URL.createObjectURL(file));
-    rate.mutate(file);
+    rate.mutate({ file, snapshot: town });
   };
   const appeal = result?.venue_id === venueId ? result.appeal : null;
   const delta = appeal && result ? appeal.attractiveness / result.previous_attractiveness - 1 : 0;
@@ -47,11 +72,11 @@ export function StorefrontCard({ projectId, town, onTown }: { projectId: string;
         <h3 className="font-medium">Storefront appeal</h3>
       </div>
       <p className="text-xs text-muted-foreground">A street photo of a shop front sets how strongly it pulls passers-by in the demand model.</p>
-      <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-xs" value={venueId} onChange={(e) => { setVenueId(e.target.value); setResult(null); setPreview(null); }}>
+      <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-xs" aria-label="Storefront venue" value={venueId} disabled={rate.isPending || !venueId} onChange={(e) => onVenueChange(e.target.value)}>
         {focal && <option value={focal.id}>Our store · {focal.name}</option>}
         {rivals.map((v) => <option key={v.id} value={v.id}>Rival · {v.name} ({VENUE_LABELS[v.category]})</option>)}
       </select>
-      <button type="button" onClick={() => input.current?.click()}
+      <button type="button" disabled={rate.isPending || !venueId} onClick={() => input.current?.click()}
         className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-foreground/15 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
         {preview ? <img src={preview} alt="Storefront" className="absolute inset-0 h-full w-full object-cover" /> : null}
         <span className={cn("relative flex items-center gap-1.5 rounded-full px-3 py-1.5", preview && "glass text-foreground")}>
@@ -59,7 +84,7 @@ export function StorefrontCard({ projectId, town, onTown }: { projectId: string;
           {rate.isPending ? "Rating…" : preview ? "Another photo" : "Upload a storefront photo"}
         </span>
       </button>
-      <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+      <input ref={input} type="file" disabled={rate.isPending || !venueId} accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
       {rate.error && <p className="text-xs text-destructive">{rate.error instanceof Error ? rate.error.message : String(rate.error)}</p>}
       {appeal && (
         <div className="space-y-2 rounded-2xl border border-glass-border bg-foreground/[0.02] p-3">
