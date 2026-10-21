@@ -73,7 +73,11 @@ def create_building_layouts(pid: str, req: BuildingLayoutRequest) -> list[dict[s
     # Prepare every floor before writing: an invalid upper floor cannot leave half a building.
     for level, floor in enumerate(req.floors, start=1):
         layout = TemplateLayoutRequest.model_validate({**floor.layout.model_dump(), "name": f"{req.name} · {floor.label}"})
-        setup = prepare_template_layout(pid, layout)
+        try:
+            setup = prepare_template_layout(pid, layout)
+        except AppError as exc:
+            raise AppError(exc.status_code, exc.code, exc.reason,
+                           f"Floor {level} ({floor.label}): {exc}", exc.details) from exc
         setup["building"] = BuildingFloorInfo(id=building_id, name=req.name, level=level,
                                               label=floor.label, floor_count=len(req.floors)).model_dump()
         setup["memo"] = f"{setup['memo']}\nBuilding floor {level}/{len(req.floors)}. Simulated independently; no travel between floors."

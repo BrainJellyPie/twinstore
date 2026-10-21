@@ -24,6 +24,11 @@ for each layout or building floor. Blank hours and **Use format operating hours*
 format defaults, including its regular days off. Set 0–24 for all-day opening, keep at least
 one weekday open, and use a closing hour later than opening; overnight schedules are not supported.
 These settings are saved, reused and included in exported layout and building options files.
+In a building, **Apply operating hours to all floors** copies the current floor's effective
+opening, closing and closed weekdays to every floor, including resolved format defaults.
+The preview beside the button shows the hours and number of open days before applying.
+Hours that do not resolve to a valid schedule cannot be shared. Each floor can then be adjusted independently;
+**Use format operating hours** restores only the current floor's own defaults.
 
 **Apply a layout priority** combines common requirements: **Wide circulation** uses cross aisles,
 3-cell gaps, short shelf runs and more room around tables; **More display space** uses dense parallel
@@ -253,6 +258,17 @@ four-seat groups keep their 2×2 footprint with the chairs facing the other way.
 The preview and capacity check use the rotated footprint and keep the requested
 clear space on every side. Each floor saves its own rotation; zero tables retain
 the choice for when seating is added again.
+
+Open **Mixed table sizes** and enable **Use mixed table sizes** to combine
+two-, four- and six-seat groups on one floor. Set a count for each size, up to
+48 tables in total; the total table count updates automatically. Larger groups
+are placed first, then smaller groups use the remaining space. Every group keeps
+the selected rotation, seating area and circulation clearance. An arrangement
+that cannot fit reports which size needs adjustment; counts are never silently
+reduced. Turn mixing off to use the same total with the selected uniform size.
+The mix is saved with each floor and in reusable options files. Priorities that
+remove seating set all mixed counts to zero. The structured preview API accepts
+the same `table_mix` object as saved layout requests.
 
 Set **Space around dining tables** to one, two or three cells. The generator keeps
 that space free of other fixtures on every side of each dining group, including
