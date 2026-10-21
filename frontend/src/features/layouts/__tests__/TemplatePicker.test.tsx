@@ -11,7 +11,7 @@ vi.mock("@/shared/api/client", () => ({ getStoreTemplates: vi.fn(), previewStore
 
 function Picker() {
   const [value, onChange] = useState(DEFAULT_TEMPLATE_CHOICE);
-  return <TemplatePicker value={value} onChange={onChange} />;
+  return <TemplatePicker value={value} onChange={onChange} budgetCurrency="USD" />;
 }
 
 beforeEach(() => {
@@ -63,4 +63,16 @@ it("shows preview errors instead of a stale successful plan", async () => {
   await screen.findByRole("alert");
   expect(screen.queryByRole("img", { name: "Floor plan preview" })).toBeNull();
   expect(screen.getByRole("alert").textContent).toContain("Preview failed");
+});
+
+it("makes a different budget currency explicit while still allowing a price preview", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Price currency"), { target: { value: "JPY" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ currency: "JPY" }), expect.any(AbortSignal),
+  ));
+  expect(screen.getByText(/This project uses USD shopper budgets/)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Price currency"), { target: { value: "USD" } });
+  expect(screen.queryByText(/Existing budgets are not converted/)).toBeNull();
 });

@@ -3,7 +3,7 @@ import { cn } from "@/shared/utils/cn";
 import { BUILDING_PRESETS, DEFAULT_TEMPLATE_CHOICE, buildingPreset, validBuildingFloors, type BuildingFloorChoice } from "../templateOptions";
 import { TemplatePicker } from "./TemplatePicker";
 
-export function BuildingPicker({ floors, onChange }: { floors: BuildingFloorChoice[]; onChange: (floors: BuildingFloorChoice[]) => void }) {
+export function BuildingPicker({ floors, onChange, defaultCurrency = "USD" }: { floors: BuildingFloorChoice[]; onChange: (floors: BuildingFloorChoice[]) => void; defaultCurrency?: string }) {
   const [active, setActive] = useState(0);
   const fieldId = useId();
   const index = Math.min(active, floors.length - 1);
@@ -12,7 +12,7 @@ export function BuildingPicker({ floors, onChange }: { floors: BuildingFloorChoi
   const addFloor = () => {
     let n = floors.length + 1;
     while (floors.some((f) => f.label === `Level ${n}`)) n++;
-    onChange([...floors, { label: `Level ${n}`, choice: { ...DEFAULT_TEMPLATE_CHOICE, templateId: "design_showroom" } }]);
+    onChange([...floors, { label: `Level ${n}`, choice: { ...DEFAULT_TEMPLATE_CHOICE, templateId: "design_showroom", currency: defaultCurrency } }]);
     setActive(floors.length);
   };
 
@@ -20,7 +20,7 @@ export function BuildingPicker({ floors, onChange }: { floors: BuildingFloorChoi
     <p className="text-xs text-muted-foreground">Create 2–6 linked floor layouts. Each floor is edited and simulated independently; shoppers do not travel between floors.</p>
     <div className="flex flex-wrap gap-1.5" aria-label="Building starting points">
       {BUILDING_PRESETS.map((p) => <button key={p.id} type="button" className="rounded border px-2 py-1 text-xs hover:bg-muted"
-        onClick={() => { onChange(buildingPreset(p.id)); setActive(0); }}>{p.name}</button>)}
+        onClick={() => { onChange(buildingPreset(p.id, defaultCurrency)); setActive(0); }}>{p.name}</button>)}
     </div>
     <div className="flex flex-wrap gap-1.5" aria-label="Building floors">
       {floors.map((f, i) => <button key={i} type="button" aria-pressed={i === index}
@@ -38,7 +38,7 @@ export function BuildingPicker({ floors, onChange }: { floors: BuildingFloorChoi
         <button type="button" disabled={floors.length <= 2} className="rounded border px-2 py-1.5 text-xs disabled:opacity-40"
           onClick={() => { onChange(floors.filter((_, i) => i !== index)); setActive(Math.max(0, index - 1)); }}>Remove floor</button>
       </div>
-      <TemplatePicker key={index} value={floor.choice} onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))} />
+      <TemplatePicker key={index} value={floor.choice} budgetCurrency={defaultCurrency} onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))} />
     </>}
     {!validBuildingFloors(floors) && <p role="alert" className="text-xs text-destructive">Each floor needs a unique label and valid grid dimensions.</p>}
   </div>;

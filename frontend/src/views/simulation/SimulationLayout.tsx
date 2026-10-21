@@ -11,6 +11,7 @@ import type { StoreAssets } from "@/features/store-viewer/hooks/useStoreAssets";
 import { CanvasErrorBoundary } from "@/app/providers/CanvasErrorBoundary";
 import { SimulationCanvas } from "./SimulationCanvas";
 import { RackDetailPanel } from "@/features/dashboard/components/RackDetailPanel";
+import { currencyCode } from "@/shared/utils/money";
 
 const VARIATIONS = [
   "/assets/market/Textures/colormap.png",
@@ -68,8 +69,13 @@ export function SimulationLayout({
 }: Props) {
   const heatmapMode = useSimulationStore((s) => s.heatmapMode);
   const rackOverlayOn = useSimulationStore((s) => s.rackOverlayOn);
-  const currency = useSimulationStore((s) => s.currency);
+  const runCurrency = useSimulationStore((s) => s.currency);
+  const currency = mode === "playback" ? runCurrency : currencyCode(assets.currency ?? undefined);
   const variationTexture = useVariationTexture(storeId);
+
+  useEffect(() => {
+    if (mode !== "playback") useSimulationStore.getState().setCurrency(currency);
+  }, [mode, currency]);
 
   useEffect(() => {
     usePlaybackControlStore.getState().setAvailableDays(assets.availableDays);

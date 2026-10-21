@@ -13,10 +13,11 @@ const RACK_COLORS: Record<string, string> = {
 };
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
-export function TemplatePicker({ value, onChange, onTemplateSelected }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
+  budgetCurrency?: string;
 }) {
   const [search, setSearch] = useState("");
   const [storeType, setStoreType] = useState("");
@@ -115,6 +116,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected }: {
           </div>
         </div>
         <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: reserve a quiet consultation corner or keep seasonal gifts near the entrance." /></Field>
+        {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
         <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>
       </>}
     </div>

@@ -152,7 +152,8 @@ def plan_to_store(
                 slots=stocker.slots(category, free),
             ))
 
-    store = Store(id=store_id, name=name, type=store_type, grid_size=(w, h), weekly_schedule=schedule or [], racks=racks)
+    store = Store(id=store_id, name=name, type=store_type, grid_size=(w, h), weekly_schedule=schedule or [], racks=racks,
+                  currency=currency.upper())
     dropped = 0
     for _ in range(40):
         errors = [i for i in validate(store) if i.severity == "error"]

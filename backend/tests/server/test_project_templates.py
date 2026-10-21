@@ -24,10 +24,11 @@ def _meta():
             "weekly_schedule": [{"day": 1, "is_open": True, "open_hour": 9, "close_hour": 19}]}
 
 
-def test_initial_layout_respects_wizard_name_hours_and_options(client):
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_initial_layout_respects_wizard_name_hours_and_options(client, currency):
     api, generation = client
     meta = {**_meta(), "layout": {"template_id": "community_pharmacy", "width": 22, "height": 18,
-                                 "style": "spine", "design_theme": "botanical", "checkouts": 2}}
+                                 "style": "spine", "design_theme": "botanical", "checkouts": 2, "currency": currency}}
     response = api.post("/api/projects/create-store", data={"meta": json.dumps(meta)})
     assert response.status_code == 200, response.text
     result = response.json()
@@ -39,11 +40,13 @@ def test_initial_layout_respects_wizard_name_hours_and_options(client):
     assert store["weekly_schedule"] == meta["weekly_schedule"]
     assert store["grid_size"] == result["metadata"]["grid_size"] == [22, 18]
     assert store["design_theme"] == "botanical"
+    assert store["currency"] == result["metadata"]["currency"] == currency
     assert sum(r["type"] == "counter" for r in store["racks"]) == 2
     assert setup["generation"]["template_id"] == "community_pharmacy"
     assert len(api.get(f"/api/projects/{pid}/setups").json()) == 1
     generation.assert_called_once()
     assert generation.call_args.kwargs["setup_id"] == sid
+    assert generation.call_args.kwargs["config"].currency == currency
 
 
 def test_legacy_wizard_can_still_start_with_an_empty_layout(client):

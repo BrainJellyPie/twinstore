@@ -179,7 +179,7 @@ async def _run_async_pipeline(
         schedules=schedules,
         custom_instruction=custom_instruction,
         supplemental_summary=effective_summary,
-        currency=config.currency,
+        currency=str(meta.get("currency") or config.currency),
         traffic=traffic,
     )
 

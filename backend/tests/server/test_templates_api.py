@@ -36,6 +36,7 @@ def test_preview_matches_saved_custom_store(client):
     assert saved["store"]["racks"] == preview.json()["racks"]
     assert saved["store"]["grid_size"] == [28, 24]
     assert saved["store"]["name"] == "Lunch hall"
+    assert saved["store"]["currency"] == preview.json()["currency"] == "JPY"
     assert saved["store"]["design_theme"] == preview.json()["design_theme"] == "botanical"
     assert "Reserve a quiet corner" in saved["memo"]
     assert saved["generation"]["checkouts"] == 3
