@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { startConjoint, type ConjointReport } from "@/shared/api/marketing";
+import { designConjoint, startConjoint, type ConjointReport } from "@/shared/api/marketing";
 import { ConjointBuilder } from "../ConjointBuilder";
 import { ConjointReportView } from "../ConjointReport";
 import { defaultLineup, shareCurve, shares, utility } from "../conjoint";
@@ -12,7 +12,7 @@ vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), getModels: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("@/shared/api/marketing", async (original) => ({
-  ...await original<typeof import("@/shared/api/marketing")>(), startConjoint: vi.fn(), getStudyReading: vi.fn().mockResolvedValue(null),
+  ...await original<typeof import("@/shared/api/marketing")>(), startConjoint: vi.fn(), designConjoint: vi.fn(), getStudyReading: vi.fn().mockResolvedValue(null),
 }));
 const withQueries = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>;
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
@@ -131,3 +131,33 @@ it.each(["", "Regular"])("keeps incomplete drafts editable with insufficient dis
   fireEvent.click(screen.getByRole("button", { name: "Another" }));
   expect((screen.getByRole("button", { name: "Field the study" }) as HTMLButtonElement).disabled).toBe(true);
 });
+
+it("drafts the study from a question, in the study's currency, and keeps it editable", async () => {
+  vi.mocked(designConjoint).mockResolvedValue({
+    name: "Zero-sugar tea", product: "a bottle of iced tea", context: "In the drinks fridge.",
+    attributes: [{ name: "Sugar", levels: ["Regular", "Zero sugar"] }, { name: "Size", levels: ["500 ml", "1 L"] }],
+    prices: [1500, 1800, 2100], currency: "KRW", rationale: "Sugar and size are what the question is about.",
+    comparable: ["Green tea 500ml 1,600원"],
+  });
+  render(<QueryClientProvider client={new QueryClient()}>
+    <ConjointBuilder projectId="project" personaCount={60} defaultCurrency="KRW" setupId="setup_1" onStarted={vi.fn()} />
+  </QueryClientProvider>);
+  fireEvent.change(screen.getByLabelText("Question for the study"), { target: { value: "Would people pay more for zero-sugar tea?" } });
+  fireEvent.click(screen.getByRole("button", { name: "Draft the study" }));
+  await screen.findByText(/Sugar and size are what the question is about\./);
+  expect(designConjoint).toHaveBeenCalledWith("project", { question: "Would people pay more for zero-sugar tea?", setup_id: "setup_1", currency: "KRW" });
+  expect(screen.getByText(/Prices set against Green tea 500ml 1,600원\./)).toBeTruthy();
+  expect((screen.getByLabelText("Price levels") as HTMLInputElement).value).toBe("1500, 1800, 2100");
+  expect((screen.getByLabelText("Levels of Size") as HTMLInputElement).value).toBe("500 ml, 1 L");
+  expect((screen.getByPlaceholderText("a bottle of iced tea") as HTMLInputElement).value).toBe("a bottle of iced tea");
+});
+
+it.each([["JPY", "150, 180, 200, 230"], ["KRW", "1490, 1790, 1990, 2290"], ["VND", ""]])(
+  "gives example prices in the study's currency (%s)", (currency, expected) => {
+    render(<QueryClientProvider client={new QueryClient()}>
+      <ConjointBuilder projectId="project" personaCount={60} defaultCurrency={currency} onStarted={vi.fn()} />
+    </QueryClientProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Iced tea" }));
+    expect((screen.getByLabelText("Price levels") as HTMLInputElement).value).toBe(expected);
+  },
+);

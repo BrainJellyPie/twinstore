@@ -10,7 +10,7 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import marketing as mk
 from store_emulator.application import staff_pitch
-from store_emulator.application import study_reading
+from store_emulator.application import study_design, study_reading
 from store_emulator.application import factorial
 from store_emulator.application.errors import AppError
 from store_emulator.application.marketing import ExperimentView, SurveyView
@@ -26,6 +26,7 @@ from store_emulator.domain.marketing import (
 )
 from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.domain.factorial import FactorialReport, FactorialRequest, FactorialSource
+from store_emulator.engine.marketing.conjoint_design import ConjointDesign
 from store_emulator.engine.marketing.reading import StudyReading
 from store_emulator.engine.marketing.report import ReportNarrative
 
@@ -242,6 +243,13 @@ async def shelf_test_image(pid: str, tid: str, arm: Literal["control", "test"]) 
 @router.delete("/{pid}/shelf-tests/{tid}", summary="Delete a shelf test", status_code=204)
 def delete_shelf_test(pid: str, tid: str) -> None:
     _call(lambda: mk.delete_job(pid, "shelf", tid))
+
+
+@router.post("/{pid}/conjoints/design", summary="Draft a conjoint study from a question", response_model=ConjointDesign)
+async def design_conjoint(pid: str, req: study_design.ConjointDesignRequest) -> ConjointDesign:
+    """The text model drafts the product, attributes, levels and price levels (in the request's currency, bracketing
+    comparable products of the layout) for the question. Nothing runs; the draft fills the builder."""
+    return await run_in_threadpool(_call, lambda: study_design.design(pid, req, get_config()))
 
 
 @router.post("/{pid}/conjoints", summary="Start a choice-based conjoint study", response_model=JobStatus)

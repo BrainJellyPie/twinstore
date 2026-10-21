@@ -1,0 +1,46 @@
+"""Study drafts written by the text model from the question the user wants answered (assistive; nothing runs)."""
+
+import asyncio
+import logging
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from store_emulator.domain.config import EngineType, SimulationConfig
+from store_emulator.engine.marketing.conjoint_design import (
+    ConjointDesign,
+    design_conjoint,
+)
+
+from .currencies import project_currency
+from .errors import AppError, model_failure
+from .providers import assistive_model, build_client
+from .scenarios import _store_for  # pyright: ignore[reportPrivateUsage]
+
+logger = logging.getLogger(__name__)
+
+
+class ConjointDesignRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    question: str = Field(min_length=5, max_length=500, description="what the study should answer")
+    setup_id: str = Field(default="", description="a layout whose products the price levels should bracket")
+    currency: str = Field(default="USD", min_length=3, max_length=3)
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+def design(pid: str, req: ConjointDesignRequest, config: SimulationConfig) -> ConjointDesign:
+    store = _store_for(pid, req.setup_id) if req.setup_id else None
+    store_currency = (store.currency or project_currency(pid, "USD")).upper() if store is not None else req.currency.upper()
+    if store_currency != req.currency.upper():
+        raise AppError(f"this layout prices in {store_currency}, not {req.currency.upper()}", 422)
+    products = [(i.name, i.price) for r in store.product_racks for s in r.slots for i in s.items] if store else []
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1200})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        return asyncio.run(design_conjoint(llm, req.question, req.currency, products))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[design] conjoint draft failed: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "The study could not be drafted"), 502) from e

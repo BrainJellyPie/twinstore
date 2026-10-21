@@ -3,10 +3,10 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Dices, Grid3x3, Loader2, Plus, X } from "lucide-react";
+import { Dices, Grid3x3, Loader2, Plus, Sparkles, X } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { marketingKeys, startConjoint, type ConjointRequest, type JobStatus } from "@/shared/api/marketing";
+import { designConjoint, marketingKeys, startConjoint, type ConjointRequest, type JobStatus } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
@@ -38,6 +38,10 @@ const EXAMPLES: { label: string; product: string; attributes: Draft[]; prices: s
   },
 ];
 
+// Rough size of one US dollar in currencies whose prices have no minor unit, for the example price levels; other
+// zero-decimal currencies get no example prices rather than wrong ones.
+const DOLLAR_IN: Record<string, number> = { KRW: 1000, JPY: 100 };
+
 const splitLevels = (text: string) => text.split(",").map((l) => l.trim()).filter(Boolean);
 
 /** Levels for one sample task, like the real design: shuffled, and no level twice while others are unused. */
@@ -52,8 +56,11 @@ function sampleColumn(n: number, options: number, seed: number): number[] {
   return Array.from({ length: options }, (_, o) => order[o % n]!);
 }
 
-export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, onStarted }: {
-  projectId: string; personaCount: number; defaultCurrency?: string; initial?: ConjointRequest | null; onStarted: (job: JobStatus) => void;
+export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, setupId, onStarted }: {
+  projectId: string; personaCount: number; defaultCurrency?: string; initial?: ConjointRequest | null;
+  /** A layout in the study's currency: drafted price levels bracket its comparable products. */
+  setupId?: string;
+  onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
@@ -133,8 +140,22 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
   const applyExample = (e: (typeof EXAMPLES)[number]) => {
     setProduct(e.product);
     setAttrs(e.attributes);
-    setPriceText(divisor === 1 ? splitLevels(e.prices).map((p) => String(Math.round(Number(p) * 1000))).join(", ") : e.prices);
+    const factor = divisor === 1 ? DOLLAR_IN[currency.toUpperCase()] : 1;
+    setPriceText(!factor ? "" : factor === 1 ? e.prices : splitLevels(e.prices).map((p) => String(Math.round((Number(p) * factor) / 10) * 10)).join(", "));
   };
+
+  // Draft the whole design from the question the study should answer.
+  const [question, setQuestion] = useState("");
+  const draft = useMutation({
+    mutationFn: () => designConjoint(projectId, { question: question.trim(), setup_id: setupId, currency }),
+    onSuccess: (d) => {
+      setProduct(d.product);
+      setContext(d.context);
+      setAttrs(d.attributes.map((a) => ({ name: a.name, levels: a.levels.join(", ") })));
+      setPriceText(d.prices.map((p) => String(p / divisor)).join(", "));
+      if (!name.trim()) setName(d.name);
+    },
+  });
 
   return (
     <div className="space-y-4">
@@ -147,6 +168,24 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
               <button key={e.label} type="button" onClick={() => applyExample(e)} className="rounded-full border px-2.5 py-0.5 text-xs text-foreground hover:border-foreground/30">{e.label}</button>
             ))}
           </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2">
+          <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
+          <Input value={question} onChange={(e) => setQuestion(e.target.value.slice(0, 500))}
+            onKeyDown={(e) => { if (e.key === "Enter" && question.trim().length >= 5 && !draft.isPending) { e.preventDefault(); draft.mutate(); } }}
+            placeholder="What should the study answer? e.g. Would shoppers pay more for zero-sugar tea in a bigger bottle?"
+            aria-label="Question for the study" className="h-9 min-w-[14rem] flex-1 bg-card" />
+          <Button type="button" size="sm" variant="outline" disabled={question.trim().length < 5 || draft.isPending} onClick={() => draft.mutate()}>
+            {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the study
+          </Button>
+          {draft.data && (
+            <p className="basis-full px-1 text-xs text-muted-foreground">
+              {draft.data.rationale}
+              {draft.data.comparable.length > 0 && <> Prices set against {draft.data.comparable.join(", ")}.</>}
+              {" "}Check and edit everything below before starting.
+            </p>
+          )}
+          {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
         </div>
         <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr]">
           <label className="flex flex-col gap-1">

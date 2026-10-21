@@ -27,6 +27,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the details opened for checking. Promotions and stock-outs are matched against the layout's products: targets that
   match nothing are left out and listed, and a target that reaches several products says how many.
   API: `POST /api/scenarios/describe`.
+- **Draft the study** in the conjoint builder: write the question the study should answer and the text model drafts
+  the product, attributes, levels and price levels in the study's currency, bracketing comparable products of the
+  active layout (cited when the model used them), with a short rationale; everything stays editable before fielding.
+  API: `POST /api/projects/{pid}/conjoints/design`. The example studies now give KRW and JPY price levels of a
+  plausible size and leave prices empty in other zero-decimal currencies instead of multiplying dollars by 1,000.
 - Interviews, report commentary and the set-up helpers no longer fail when the app's text model has no API key:
   they use a fast model of a provider that has one (the model actually used is recorded). Simulation runs and studies
   keep their configured model.
