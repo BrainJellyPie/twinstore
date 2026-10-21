@@ -18,6 +18,17 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Print-ready HTML report and a long-format CSV (one row per option shown) for re-estimation elsewhere.
   API: `POST/GET /api/projects/{pid}/conjoints`, `GET .../conjoints/{id}`, `.../report.html`, `.../export.csv`.
 
+### Paired price × sign analysis
+- Completed A/B reports can review a supported 2×2 price/discount × promotion-sign design without extra
+  simulation/model calls. New runs retain minimal shopper outcomes before intersection; legacy aggregate
+  reports explicitly remain unavailable. Only exact same-SKU single factors and their combination qualify.
+- Main effects and difference-in-differences share one four-cell cohort. Missing outcomes remain unknown;
+  intervals require complete coverage and at least 30 shoppers. Three-contrast Bonferroni percentile intervals
+  are exploratory synthetic-panel summaries, with no winner, p-value or real-sales claim.
+- Source-hash-bound CSV includes exact changes, metadata, selected shopper cells and exclusion indicators.
+  Boundary tests found that contradictory purchase/units/spend records were accepted; these now reject the
+  snapshot while genuine zero-price purchases remain valid. Unsupported capture does not fail the existing A/B run.
+
 ### Inventory performance review
 - New **Market → Inventory** worksheet reconciles observed SKU movements, then calculates explicitly defined
   period net unit sell-through, turnover and GMROI from operator-supplied cost records. Missing/duplicate inputs

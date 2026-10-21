@@ -24,6 +24,7 @@ from PIL import Image
 from pydantic import BaseModel
 
 from store_emulator.domain.config import EngineType, SimulationConfig
+from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.marketing import (
     ConjointReport,
     ConjointRequest,
@@ -57,6 +58,7 @@ from store_emulator.engine.marketing import (
     van_westendorp,
 )
 from store_emulator.engine.marketing.conjoint import conjoint_panel, estimate, none_share
+from store_emulator.engine.marketing.factorial import capture_paired_outcomes
 from store_emulator.engine.marketing.report import (
     ReportNarrative,
     conjoint_report_html,
@@ -228,8 +230,17 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 status.progress, status.stage = round(p, 3), stage
                 _write_status(pid, status)
 
+            def retain_outcomes(base: list[CustomerResult], runs: list[list[CustomerResult]]) -> None:
+                try:
+                    snapshot = capture_paired_outcomes(status.job_id, currency, req, [p.id for p in panel],
+                        [("Control", control, []), *[(name, store, warnings) for name, store, _, warnings in built]], [base, *runs])
+                except ValueError:
+                    logger.warning("Paired outcomes not retained for %s: invalid identities, inconsistent purchases or unsupported numeric limits", status.job_id)
+                    return
+                write_json(_job_dir(pid, "experiment", status.job_id) / "paired-outcomes.json", snapshot.model_dump(mode="json"))
+
             control_result, results, winner = asyncio.run(run_experiment(
-                evaluator, control, built, panel, req.focus_skus, on_progress=progress, seed=req.seed,
+                evaluator, control, built, panel, req.focus_skus, on_progress=progress, on_outcomes=retain_outcomes, seed=req.seed,
             ))
             days = max(1, len({p.day for p in personas}))
             panel_size = control_result.customers if control_result.customers is not None else len(panel)

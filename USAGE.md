@@ -103,6 +103,69 @@ Source: `backend/src/store_emulator/engine/generators/persona.py:99-242`,
 `backend/src/store_emulator/engine/simulation/engines/pattern_intent_impulse/engine.py:56-119`,
 `backend/src/store_emulator/application/supplemental.py:214-499`.
 
+### Price × sign interaction analysis
+
+For a new **Market → A/B tests** study, create three variants of the same saved layout:
+
+1. **Price-only:** exactly one `price` or `discount` change on a SKU.
+2. **Sign-only:** exactly one `promo` change on the same SKU.
+3. **Combined:** exactly those same two changes, in either order.
+
+Control supplies the fourth cell. The app's ordinary runner evaluates the same sampled shoppers in each arm.
+No extra simulation runs or model calls are added for analysis. Effective layouts must all differ and the
+selected arms must have no change-application warnings; no-op factors and additional manipulations are rejected.
+Other experiment arms are allowed but are not part of this four-cell analysis. Price/discount factors include
+their reference-price/was-price behavior; this is not automatically a pure monetary-price effect.
+
+In the completed report, **Open price × sign analysis**, select the three arms and one whole-basket outcome:
+spend in currency minor units, units, or any purchase (0/1). Free purchases count as purchases. Effects are not
+SKU-specific sales, daily revenue or realized store results. Rule shoppers treat sign text as a generic impulse
+cue; only vision shoppers see it. This does not establish a real POP design's visual effectiveness.
+
+Each new run saves `marketing/experiments/<id>/paired-outcomes.json`, with the request, actual sampled IDs,
+effective layout hashes, application warnings and minimal numeric outcomes **before** cohort intersection.
+It adds no shopper narrative or new personal data fields. Old aggregate-only runs cannot reconstruct pairs:
+the UI explains their unavailability. Invalid identities, contradictory purchase records or outcomes outside
+the supported bounds skip optional capture with an English log warning; the existing A/B report can still
+complete. Supported values are integer spend 0–1,000,000,000,000, units 0–1,000,000,000 and a Boolean purchase
+indicator, for at most 3,000 sampled shoppers / seven arms. Source reads reject files over 8 MB.
+
+With cells 00 (Control), 10 (price), 01 (sign), 11 (both), each complete shopper contributes:
+
+| Contrast | Formula |
+| --- | --- |
+| Price main effect | `((10−00)+(11−01))/2` |
+| Sign main effect | `((01−00)+(11−10))/2` |
+| Price × sign interaction | `11−10−01+00` |
+
+The interaction is the difference between the two conditional price effects, not half that difference.
+Every cell mean and contrast uses the **same complete four-cell cohort**. Coverage shows both requested and
+actually sampled counts and availability in each cell. Missing shoppers/cells are never replaced with zero;
+complete-case estimates may be biased. The cohort can differ from the old headline report, which intersects
+all experiment arms. With no complete shopper, estimates are unavailable.
+
+Intervals require all actually sampled shoppers in all four selected cells and at least 30 complete shoppers
+(an operational guard, not a general statistical guarantee). The engine resamples whole shoppers 4,000 times,
+in bounded batches with fixed seed 0. Percentile tails are `0.05/(2×3)` and `1−0.05/(2×3)`: approximately
+98.333% per contrast for nominal approximate 95% family coverage of these three contrasts under bootstrap
+assumptions. Percentile/Monte Carlo approximations and correlated personas can limit coverage. A point interval
+from constant differences does not mean the model or real-world effect is known without uncertainty.
+
+This is **exploratory**, since arms and outcomes are selected after execution. The adjustment does not cover
+repeated outcome/arm selection or searches across studies; it does not fix model bias or turn a virtual panel
+into a randomized human experiment. No additional p-values or winner are reported. Predeclare analyses and
+validate hypotheses independently before drawing confirmatory or real-sales conclusions.
+
+**Export factorial audit CSV** includes method, source SHA-256, simulation and bootstrap seeds, requested
+engine/model selection, exact factor changes, counts, formulas, intervals and every sampled shopper's selected
+four cells, including incomplete rows with blanks. An empty requested model denotes the app default, not a
+pinned model version. The source hash detects source changes; it is not a signature or proof of valid inputs.
+Preview/export are read-only. Selections are not persisted; keep the audit. Changing inputs clears the review;
+changed/deleted sources reject export. **Reload paired source** retrieves the current hash before a new review.
+
+API: `GET /api/projects/{pid}/experiments/{eid}/factorial/source`, JSON `POST .../preview` and
+`POST .../export.csv`; body: `source_sha256`, `price_arm`, `sign_arm`, `combined_arm`, `metric`.
+
 ### Inventory performance review
 
 Open **Market → Inventory** in a project. This worksheet uses supplied records without a simulation, model

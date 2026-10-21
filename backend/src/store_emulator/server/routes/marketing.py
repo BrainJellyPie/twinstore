@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import marketing as mk
 from store_emulator.application import staff_pitch
+from store_emulator.application import factorial
 from store_emulator.application.errors import AppError
 from store_emulator.application.marketing import ExperimentView, SurveyView
 from store_emulator.domain.marketing import (
@@ -23,6 +24,7 @@ from store_emulator.domain.marketing import (
     SurveyRequest,
 )
 from store_emulator.domain.staff_pitch import PitchRequest, PitchView
+from store_emulator.domain.factorial import FactorialReport, FactorialRequest, FactorialSource
 from store_emulator.engine.marketing.report import ReportNarrative
 
 from ..deps import get_config
@@ -66,6 +68,24 @@ def experiment_report_html(pid: str, eid: str, download: bool = False) -> HTMLRe
     html = _call(lambda: mk.experiment_report_html(pid, eid))
     headers = {"Content-Disposition": f'attachment; filename="{eid}-report.html"'} if download else None
     return HTMLResponse(html, headers=headers)
+
+
+@router.get("/{pid}/experiments/{eid}/factorial/source", response_model=FactorialSource,
+            summary="Check retained paired outcomes for exploratory price by sign analysis")
+def factorial_source(pid: str, eid: str) -> FactorialSource:
+    return _call(lambda: factorial.source(pid, eid))
+
+
+@router.post("/{pid}/experiments/{eid}/factorial/preview", response_model=FactorialReport,
+             summary="Calculate paired price by sign contrasts without new model calls")
+async def factorial_preview(pid: str, eid: str, req: FactorialRequest) -> FactorialReport:
+    return await run_in_threadpool(_call, lambda: factorial.preview(pid, eid, req))
+
+
+@router.post("/{pid}/experiments/{eid}/factorial/export.csv", summary="Export source-bound factorial audit and selected shopper cells")
+async def factorial_export(pid: str, eid: str, req: FactorialRequest) -> PlainTextResponse:
+    text = await run_in_threadpool(_call, lambda: factorial.export(pid, eid, req))
+    return PlainTextResponse(text, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{eid}-factorial.csv"'})
 
 
 @router.get("/{pid}/experiments/{eid}/report.md", summary="A/B test report (Markdown)")
