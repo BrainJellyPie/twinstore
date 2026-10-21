@@ -417,6 +417,9 @@ export interface EngineInfo {
   uses_llm: boolean;
   model: string;
   default: boolean;
+  /** False when `model` is a cloud model without an API key; `suggested_model` then has a key ("" if none does). */
+  model_ready?: boolean;
+  suggested_model?: string;
 }
 
 export function getEngines(signal?: AbortSignal): Promise<EngineInfo[]> {
@@ -1052,6 +1055,11 @@ export async function getTown(projectId: string, signal?: AbortSignal): Promise<
 
 export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
   return fetchJson(`/api/projects/${projectId}/town/generate`, { method: "POST", ...json(spec) });
+}
+
+/** The text model turns a description of the area into a generator spec; nothing is generated. */
+export function describeTown(projectId: string, req: { text: string; seed: number; model?: string }): Promise<{ spec: TownSpec; rationale: string }> {
+  return fetchJson(`/api/projects/${projectId}/town/describe`, { method: "POST", ...json(req) });
 }
 
 export function importTownFromMap(
@@ -1740,6 +1748,13 @@ export async function uploadPackage(
 
 export function listPackages(projectId: string, signal?: AbortSignal): Promise<PackageAsset[]> {
   return fetchJson(`/api/projects/${projectId}/lab/packages`, { signal });
+}
+
+export interface PackReading { name: string; brand: string; size: string; category: string; shelf_product: string; confidence: number }
+
+/** A vision model reads the pack: printed name and brand replace the file-name guess; an exact layout product is linked. */
+export function readPackage(projectId: string, assetId: string, req: { setup_id?: string; model?: string } = {}): Promise<{ asset: PackageAsset; reading: PackReading; model: string; linked: boolean }> {
+  return fetchJson(`/api/projects/${projectId}/lab/packages/${assetId}/read`, { method: "POST", body: JSON.stringify(req) });
 }
 
 export function updatePackage(projectId: string, assetId: string, update: { name?: string; brand?: string; sku?: string }): Promise<PackageAsset> {

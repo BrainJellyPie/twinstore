@@ -4,9 +4,11 @@ from collections.abc import Callable
 from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.application import town as town_service
+from store_emulator.application import town_assist
 from store_emulator.application import town_synergy as synergy_service
 from store_emulator.application.errors import AppError
 from store_emulator.application.scenarios import get_preset
@@ -24,6 +26,8 @@ from store_emulator.domain.town import (
     TownSpec,
     VenueCategory,
 )
+
+from store_emulator.engine.town_writer import DescribedTown
 
 from ..deps import get_config
 
@@ -80,6 +84,14 @@ def generate_town(pid: str, spec: TownSpec) -> Town:
     """Archetypes: residential, university, business_district, suburban, station_area, tourist, mixed.
     Deterministic for a given seed. Replaces the project's current neighborhood."""
     return _call(lambda: town_service.generate(pid, spec, store_name=_project_name(pid)))
+
+
+@router.post("/{pid}/town/describe", summary="Set up the generator from a description of the area",
+             response_model=DescribedTown)
+async def describe_town(pid: str, req: town_assist.TownDescribeRequest) -> DescribedTown:
+    """The text model turns a plain description of the area into a generator spec (archetype, size, density, rivals,
+    neighbors). Nothing is generated; the spec fills the form."""
+    return await run_in_threadpool(_call, lambda: town_assist.describe(req, get_config()))
 
 
 @router.post("/{pid}/town/import-osm", summary="Build the neighborhood from OpenStreetMap", response_model=Town)

@@ -41,6 +41,18 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Interviews, report commentary and the set-up helpers no longer fail when the app's text model has no API key:
   they use a fast model of a provider that has one (the model actually used is recorded). Simulation runs and studies
   keep their configured model.
+- Product images are **named from what the pack says**: on upload (on by default) and with "Read the pack" on each
+  card, a vision model reads the name, brand and size printed on the pack instead of using the file name, and links
+  the image to the layout's product when it is an exact match and the image was not linked yet. With the local
+  vision model off, a cloud vision model that has a key is used. API: `POST .../lab/packages/{id}/read`.
+- **Describe the area** in the neighborhood generator: "a busy campus street, two rival stores nearby, a café next
+  door" sets the archetype, size, density, rivals and neighbors; generating stays a separate step.
+  API: `POST /api/projects/{pid}/town/describe`.
+- Runs no longer start on a cloud model whose provider has no API key (every shopper would fail): the run dialog
+  starts from a fast model of a provider that has one and says so, or explains how to add a key; the server refuses
+  such a run with the same advice. `GET /api/engines` reports `model_ready` and `suggested_model`.
+- A storefront photo whose vision call fails leaves the venue's pull unchanged and says why, instead of saving an
+  image-statistics guess into the demand model.
 - Theme coding no longer fails when a model returns more than six themes: the smallest fold into "Other". This also
   fixes group interviews that lost their themes this way.
 

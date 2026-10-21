@@ -9,10 +9,10 @@ from store_emulator.application import simulation as sim_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
 from store_emulator.application.movement import MAX_TRACK_BYTES
-from store_emulator.application.providers import ensure_resolvable
+from store_emulator.application.providers import ensure_resolvable, load_settings, missing_key, text_model_fallback
 from store_emulator.application.simulation import RunOptions
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
-from store_emulator.domain.config import EngineType, ExposureModel, PlanPolicy, RouteOrdering
+from store_emulator.domain.config import EngineType, ExposureModel, LLMConfig, PlanPolicy, RouteOrdering
 from store_emulator.domain.movement import MovementReport
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
@@ -57,11 +57,20 @@ async def list_engines() -> list[EngineInfo]:
     config = get_config()
     llm = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE)
     vlm = config.llm_for(EngineType.VLM_GLANCE)
+    settings = load_settings()
+
+    def ready(model: LLMConfig) -> bool:
+        return model.api_base is not None or model.api_key is not None or missing_key(model.model, settings) is None
+
+    def suggested(model: LLMConfig) -> str:
+        return "" if ready(model) else text_model_fallback(model.model, settings) or ""
+
     return [
         EngineInfo(
             engine_type=EngineType.PATTERN_INTENT_IMPULSE.value, label="LLM shoppers",
             description="3-stage LLM pipeline (pattern → intent → impulse). Realistic, costs LLM calls.",
             uses_llm=True, model=llm.model, default=config.engine_type == EngineType.PATTERN_INTENT_IMPULSE,
+            model_ready=ready(llm), suggested_model=suggested(llm),
         ),
         EngineInfo(
             engine_type=EngineType.RULE_BASED.value, label="Rule-based preview",
@@ -74,6 +83,7 @@ async def list_engines() -> list[EngineInfo]:
                         "situation, budget) and makes the impulse picks looking at rendered shelves. Runs on a "
                         "local CPU model — use a small customer sample.",
             uses_llm=True, model=vlm.model, default=config.engine_type == EngineType.VLM_GLANCE,
+            model_ready=ready(vlm), suggested_model=suggested(vlm),
         ),
     ]
 

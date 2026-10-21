@@ -245,10 +245,28 @@ function TownSummary({ town }: { town: Town }) {
 function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: string; onDone: (t: Town) => void; onError: (e: unknown) => void; hasTown: boolean }) {
   const [spec, setSpec] = useState<TownSpec>({ archetype: "residential", size_m: 800, density: 0.5, n_competitors: null, neighbor_categories: ["cafe"], seed: 1 });
   const gen = useMutation({ mutationFn: () => api.generateTown(projectId, spec), onSuccess: onDone, onError });
+  // "Describe the area": the text model fills the form below; generating stays a separate, explicit step.
+  const [area, setArea] = useState("");
+  const describe = useMutation({
+    mutationFn: () => api.describeTown(projectId, { text: area.trim(), seed: spec.seed }),
+    onSuccess: (r) => setSpec(r.spec),
+  });
+  const neighborChoices = [...new Set([...NEIGHBOR_CHOICES, ...spec.neighbor_categories])];
   return (
     <details className="rounded-lg border p-3" open={!hasTown}>
       <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Sparkles className="size-4" /> Generate a neighborhood</summary>
       <div className="mt-3 space-y-2 text-xs">
+        <div className="flex items-start gap-1.5">
+          <textarea value={area} onChange={(e) => setArea(e.target.value.slice(0, 800))} rows={2} aria-label="Describe the area"
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (area.trim().length >= 5 && !describe.isPending) describe.mutate(); } }}
+            placeholder="Describe the area: a busy campus street, two rival stores nearby, a café next door…"
+            className="min-h-[2.4rem] flex-1 resize-none rounded-md border bg-background px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
+          <Button type="button" size="sm" variant="outline" className="h-[2.4rem] shrink-0" disabled={area.trim().length < 5 || describe.isPending} onClick={() => describe.mutate()}>
+            {describe.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Set up
+          </Button>
+        </div>
+        {describe.data?.rationale && <p className="text-muted-foreground">{describe.data.rationale} Check the settings, then generate.</p>}
+        {describe.error && <p role="alert" className="text-destructive">{describe.error.message}</p>}
         <select className="h-8 w-full rounded-md border bg-background px-2" value={spec.archetype} onChange={(e) => setSpec({ ...spec, archetype: e.target.value as TownArchetype })} aria-label="Archetype">
           {Object.entries(ARCHETYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -271,7 +289,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         <div>
           <div className="mb-1 text-muted-foreground">Right next to our store</div>
           <div className="flex flex-wrap gap-1">
-            {NEIGHBOR_CHOICES.map((c) => {
+            {neighborChoices.map((c) => {
               const on = spec.neighbor_categories.includes(c);
               return (
                 <button key={c} type="button" onClick={() => setSpec({ ...spec, neighbor_categories: on ? spec.neighbor_categories.filter((x) => x !== c) : [...spec.neighbor_categories, c] })}
