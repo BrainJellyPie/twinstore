@@ -167,6 +167,20 @@ describe("fixture planning and product layout", () => {
     expect(out.talkers).toHaveLength(1);
     expect(out.talkers[0]!.promo).toBe("2 for $5");
   });
+
+  it("carries SKU photos into every shelf facing and freezer stack", () => {
+    const photographed = structuredClone([gondola, chest]);
+    for (const fixture of photographed) {
+      for (const slot of fixture.slots) {
+        for (const product of slot.items) product.image_url = `/api/images/${encodeURIComponent(product.sku)}?v=photo`;
+      }
+    }
+    const out = layoutProducts(photographed.map((fixture) => planFixture(fixture, 8, 6)), { maxRows: 3 });
+    expect(out.products.length).toBeGreaterThan(2);
+    for (const product of out.products) {
+      expect(product.imageUrl).toBe(`/api/images/${encodeURIComponent(product.name)}?v=photo`);
+    }
+  });
 });
 
 describe("shopper pose and playback clock", () => {

@@ -33,6 +33,7 @@ from store_emulator.application.storage.setups import (
     read_setup, write_setup, personas_path, metadata_path,
 )
 from store_emulator.application.storage.runs import load_run_results, load_run_store, save_run
+from store_emulator.application.storage import images as image_storage
 from store_emulator.engine.analysis.compare import compare_runs, customer_metrics
 from store_emulator.engine.analysis.fidelity import fidelity_report
 
@@ -356,6 +357,19 @@ def engine_meta_summary(pid: str, run_id: str, *, max_examples: int = 8) -> dict
         rows = [cast(dict[str, object], r) for r in cast(list[object], plans) if isinstance(r, dict)]
         summary["plan_examples"] = rows[:max_examples]
     return summary
+
+
+def get_run_store_view(pid: str, run_id: str) -> Store:
+    """Enrich playback with current SKU photos without changing the run snapshot."""
+    store = load_run_store(_run_base(pid, run_id))
+    manifest = image_storage.load_manifest(pid)
+    if manifest:
+        for rack in store.racks:
+            for slot in rack.slots:
+                for item in slot.items:
+                    if not item.image_url:
+                        item.image_url = image_storage.image_url_for(pid, item.sku, manifest)
+    return store
 
 
 def get_run_input(pid: str, run_id: str, filename: str) -> Any:
