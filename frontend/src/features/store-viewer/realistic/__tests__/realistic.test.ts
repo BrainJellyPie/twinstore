@@ -267,6 +267,7 @@ describe("fixture planning and product layout", () => {
     ["Ginger Root", "ginger", 0.20110649, 0.05158130, 0.08397771],
     ["Asian Pear", "asianPear", 0.04344488, 0.06696554, 0.04342672],
     ["Sweet Potato", "sweetPotato", 0.10046297, 0.05812428, 0.06098930],
+    ["Hamburger Bun", "burgerBun", 0.11082269, 0.05778436, 0.10592587],
     ["Croissant", "croissant", 0.2, 0.06199567, 0.07551152],
     ["Bananas", "banana", 0.134, 0.179, 0.223],
     ["Apples", "apple", 0.09756, 0.08539, 0.09590],
@@ -284,7 +285,7 @@ describe("fixture planning and product layout", () => {
     }
   });
 
-  it.each(["Terracotta Pot 20cm", "Croissant", "Watering Can 5L", "Avocado", "Lemon", "Yellow Onion", "Kiwi", "Sweet Potato", "Asian Pear", "Ginger Root"])("keeps %s in a single layer on display tables", (name) => {
+  it.each(["Terracotta Pot 20cm", "Croissant", "Watering Can 5L", "Avocado", "Lemon", "Yellow Onion", "Kiwi", "Sweet Potato", "Asian Pear", "Ginger Root", "Hamburger Bun"])("keeps %s in a single layer on display tables", (name) => {
     const table = rack({ id: "pots", type: "table", position: [3, 3], slots: slots("S", [[name]]) });
     const out = layoutProducts([planFixture(table, 8, 6)], { maxRows: 3 });
     expect(out.products.length).toBeGreaterThan(0);

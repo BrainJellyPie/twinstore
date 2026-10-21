@@ -1,0 +1,57 @@
+{
+  "asset": "hamburger_buns",
+  "source": "https://polyhaven.com/a/hamburger_buns",
+  "author": "Alexander Shulha",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_burger_bun.py; middle hamburger_buns_02 selected from the three-roll arrangement; 200/3950 triangle LODs; original fine surface retained to avoid decimation shading boundaries, bottom-centred unit bounds and inverse-transpose normals; original 1K JPEG color, OpenGL normal and packed roughness/metalness maps retained.",
+  "authored_dimensions_metres": {
+    "width": 0.11082269251346588,
+    "height": 0.05778436362743378,
+    "depth": 0.10592587292194366
+  },
+  "files": [
+    {
+      "file": "hamburger_buns_1k.gltf",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/hamburger_buns/hamburger_buns_1k.gltf",
+      "bytes": 5815,
+      "md5": "d4564495c0c9dd9e1b73843aa7a08c56",
+      "sha256": "2936b4d34ffc31b688e181a5067c407297b22c052e4086a1f8fbcb7d9f227ca9"
+    },
+    {
+      "file": "textures/hamburger_buns_nor_gl_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/hamburger_buns/hamburger_buns_nor_gl_1k.jpg",
+      "bytes": 684295,
+      "md5": "89a6e1ad646005c5cfd34662b7ee7cd2",
+      "sha256": "68b38b45a76c40a08dc363d423c0200fc1415d8bb1ec9bdebbacddb0632ab9d1"
+    },
+    {
+      "file": "textures/hamburger_buns_diff_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/hamburger_buns/hamburger_buns_diff_1k.jpg",
+      "bytes": 639484,
+      "md5": "18c4c9acde99062c803e746bff409824",
+      "sha256": "fa8cf2d812c7e33b34b7ab72d661301c9b2f36d61758216e49f06aa02cf464c0"
+    },
+    {
+      "file": "textures/hamburger_buns_arm_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/hamburger_buns/hamburger_buns_arm_1k.jpg",
+      "bytes": 720509,
+      "md5": "752299b55a4facea78153d5eb6e68258",
+      "sha256": "2db00bb8308c2f679e8e8b5d8a51bfe95b08c547d05de68002dc1553e3f9bdfd"
+    },
+    {
+      "file": "hamburger_buns.bin",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/hamburger_buns/hamburger_buns.bin",
+      "bytes": 262744,
+      "md5": "cedac3719d1d401d48bec2315e88f072",
+      "sha256": "68b7bf0aad373d4a8588120919bbc3d0e20391f330513b884a4df4298cc044db"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "burger-bun.glb",
+      "bytes": 2140696,
+      "sha256": "f53e70488bd5dd11e056209ed0deaf3765353da83c6954d0735bc1dab2d68af2"
+    }
+  ]
+}
