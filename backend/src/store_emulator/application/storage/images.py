@@ -85,25 +85,33 @@ def _sku_hash(sku: str) -> str:
     return hashlib.sha256(sku.encode("utf-8")).hexdigest()[:16]
 
 
-def load_manifest(project_id: str) -> dict[str, dict[str, str]]:
+def load_manifest(project_id: str, *, strict: bool = False) -> dict[str, dict[str, str]]:
     p = _manifest_path(project_id)
     if not p.exists():
         return {}
     # read_json -> Any (JSON parsing boundary); coerce defensively.
     try:
         data = read_json(p)  # type: ignore[reportAny]
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        if strict:
+            raise ImageStorageError("Stored image metadata is invalid; repair it before uploading photos.") from e
         return {}
     if not isinstance(data, dict):
+        if strict:
+            raise ImageStorageError("Stored image metadata must be an object; repair it before uploading photos.")
         return {}
     result: dict[str, dict[str, str]] = {}
     for k, v in data.items():  # type: ignore[reportUnknownVariableType]
         if not isinstance(k, str) or not isinstance(v, dict):
+            if strict:
+                raise ImageStorageError("Stored image metadata contains an invalid entry; repair it before uploading photos.")
             continue
         entry: dict[str, str] = {}
         for ek, ev in v.items():  # type: ignore[reportUnknownVariableType]
             if isinstance(ek, str) and isinstance(ev, str):
                 entry[ek] = ev
+            elif strict:
+                raise ImageStorageError("Stored image metadata contains an invalid field; repair it before uploading photos.")
         result[k] = entry
     return result
 
@@ -142,6 +150,7 @@ def save_image(
         pdir = _project_dir(project_id)
         if not metadata_path(project_id).is_file():
             raise FileNotFoundError(f"Project not found: {project_id}")
+        manifest = load_manifest(project_id, strict=True)
         pdir.mkdir(parents=True, exist_ok=True)
         fname = f"{_sku_hash(sku)}.{ext}"
         target = pdir / fname
@@ -158,7 +167,6 @@ def save_image(
             tmp.write_bytes(data)
             tmp.replace(target)
 
-            manifest = load_manifest(project_id)
             manifest[sku] = {"path": str(target), "mime": mime, "ext": ext, "version": version}
             _save_manifest(project_id, manifest)
             committed = True
