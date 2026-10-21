@@ -30,6 +30,7 @@ const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }
   banana: { roughness: 0.55, metalness: 0 },
   avocado: { roughness: 0.74, metalness: 0 },
   lemon: { roughness: 0.65, metalness: 0 },
+  onion: { roughness: 0.72, metalness: 0 },
   apple: { roughness: 0.38, metalness: 0 },
   applePair: { roughness: 0.38, metalness: 0 },
 };
@@ -41,6 +42,7 @@ const SCANNED_PRODUCTS: Partial<Record<PackageKind, { url: string; name: string 
   banana: { url: "/assets/produce/bananas.glb", name: "bananas" },
   avocado: { url: "/assets/produce/avocado.glb", name: "avocado" },
   lemon: { url: "/assets/produce/lemon.glb", name: "lemon" },
+  onion: { url: "/assets/produce/onion.glb", name: "onion" },
   apple: { url: "/assets/produce/apples.glb", name: "apple" },
   applePair: { url: "/assets/produce/apples.glb", name: "apple-pair" },
 };

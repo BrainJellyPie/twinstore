@@ -54,3 +54,18 @@ it("labels absolute conversion gains in percentage points", () => {
   show({ metric: "bought", mean_b: 0.5, diff: 0.5, ci_low: 0.2, ci_high: 0.8 });
   expect(screen.getByText("+20.0 pp … +80.0 pp")).toBeTruthy();
 });
+
+it.each(["spend", "units", "bought", "impulse_spend", "visit_sec", "path_tiles"].flatMap(metric =>
+  [0, 10].map(mean_b => ({ metric, mean_b })),
+))("withholds undefined relative sample sizes for $metric with B=$mean_b", ({ metric, mean_b }) => {
+  show({ metric, mean_a: 0, mean_b, diff: mean_b, n_for_5pct_effect: 0 });
+  const cell = screen.getByRole("table").querySelector("tbody tr")!.lastElementChild!;
+  expect(cell.textContent).toBe("—");
+  expect(cell.getAttribute("title")).toMatch(/zero baseline/i);
+});
+
+it.each([1, 100, 12345])("preserves an available relative sample size of %s", count => {
+  show({ mean_a: 100, mean_b: 110, diff: 10, rel_diff: 0.1, n_for_5pct_effect: count });
+  const cell = screen.getByRole("table").querySelector("tbody tr")!.lastElementChild!;
+  expect(cell.textContent).toBe(count.toLocaleString());
+});

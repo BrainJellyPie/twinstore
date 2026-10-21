@@ -1,5 +1,7 @@
 """Model proportions must be valid and remain usable at extreme finite scales."""
 
+import math
+import sys
 from typing import cast
 
 import pytest
@@ -30,3 +32,16 @@ def test_large_finite_weights_keep_their_relative_proportions():
     picked = [large.member_for(f"shopper-{i}").name for i in range(500)]
     assert picked == expected
     assert 0.65 < picked.count("A") / len(picked) < 0.85
+
+
+@pytest.mark.parametrize("scale", [math.ulp(0.0), 2 * math.ulp(0.0), 1e-320, sys.float_info.min / 4,
+                                   sys.float_info.min, 1.0, 1e307])
+@pytest.mark.parametrize("ratios", [(1, 1), (1, 3), (3, 1), (1, 2, 3)])
+@pytest.mark.parametrize("seed", [0, 7, -11])
+def test_weight_scale_preserves_seeded_model_proportions(scale, ratios, seed):
+    client = cast(SimLLM, object())
+    ordinary = EnsembleLLMClient([(str(i), float(ratio), client) for i, ratio in enumerate(ratios)], seed=seed)
+    scaled = EnsembleLLMClient([(str(i), ratio * scale, client) for i, ratio in enumerate(ratios)], seed=seed)
+    expected = [ordinary.member_for(f"shopper-{i}").name for i in range(256)]
+    picked = [scaled.member_for(f"shopper-{i}").name for i in range(256)]
+    assert picked == expected

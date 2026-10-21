@@ -135,7 +135,9 @@ function CompareTable({ report }: { report: ComparisonReport }) {
               <td className="px-2"><ForestBar m={m} /></td>
               <td className="text-right tabular-nums">{m.mean_a ? signed(m.rel_diff) : "—"}</td>
               <td className="text-right tabular-nums">{formatPercent(m.prob_b_greater, 0)}</td>
-              <td className="text-right tabular-nums text-muted-foreground">{m.n_for_5pct_effect.toLocaleString()}</td>
+              <td className="text-right tabular-nums text-muted-foreground" title={m.mean_a === 0 ? "A 5% relative change is undefined for a zero baseline." : undefined}>
+                {m.mean_a === 0 ? "—" : m.n_for_5pct_effect.toLocaleString()}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -144,6 +146,7 @@ function CompareTable({ report }: { report: ComparisonReport }) {
         {report.paired_customers.toLocaleString()} paired customers · {report.n_bootstrap.toLocaleString()} bootstrap draws.
         Spend values are in the currency's minor unit.
         With a zero baseline, intervals show absolute changes (conversion in percentage points).
+        Relative sample size estimates are unavailable for a zero baseline.
       </p>
       {report.notes.map((n) => (
         <p key={n} className="rounded-md border tone-warn px-2.5 py-1.5 text-sm">{n}</p>

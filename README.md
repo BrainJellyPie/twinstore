@@ -135,7 +135,7 @@ Short real recordings of single features. Each preview loops; click it for the f
 The language control next to the theme switch supports **English, 한국어, 中文, 日本語,
 Español and Français**. It follows your browser language on first use and remembers your
 selection. Home, navigation, store cards, search, the model notice and the simulation launcher are localized.
-The detailed situation and model editors, other feature editors and technical server messages
+Model selection is localized too. The detailed situation editor, other feature editors and technical server messages
 currently remain in English.
 
 ## What you can do
@@ -581,7 +581,7 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
   [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 - **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
   ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;
-  single and paired apples and whole avocados use Oliver Harries' CC0 food scans; lemons use Kuutti Siitonen's CC0 scan, with shared instancing, two detail
+  single and paired apples and whole avocados use Oliver Harries' CC0 food scans; lemons and yellow onions use Kuutti Siitonen's CC0 scans, with shared instancing, two detail
   levels, photographic PBR maps and stable per-instance variation that is kept in Photo mode
   ([`produce/`](./frontend/public/assets/produce/README.md)). Garden-center terracotta pots use the hollow pot from Rico
   Cilliers' CC0 scan; plain croissants use Dario Barresi and Greg Zaal's CC0 Poly Haven scan; metal watering cans use
