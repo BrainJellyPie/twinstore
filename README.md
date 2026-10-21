@@ -164,6 +164,11 @@ with clear circulation around it, appears in Classic and Realistic views, and ca
 be selected from any of its four cells in the floor editor. As with other fixtures,
 the existing floor-edit unlock step clears product placements before editing.
 
+The floor editor supports up to 40×40 cells, with zoom controls and a scrollable
+grid that keeps fixtures readable on large floors and smaller screens. Width and
+depth can be typed directly. Reducing the grid never deletes fixtures silently;
+save reports fixtures outside the new bounds so you can adjust the floor first.
+
 Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
 with a department store, shop with upstairs café, pharmacy/wellness building or
 restaurant/café, then select each floor to change its format and options. Floor
