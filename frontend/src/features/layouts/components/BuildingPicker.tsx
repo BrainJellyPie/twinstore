@@ -4,6 +4,7 @@ import { BUILDING_PRESETS, DEFAULT_TEMPLATE_CHOICE, buildingPreset, choiceFromGe
 import type { Layout } from "../hooks/useLayouts";
 import { TemplatePicker } from "./TemplatePicker";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
+import { ReviewBuildingFloors } from "./ReviewBuildingFloors";
 
 export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sourceLayouts = [] }: {
   floors: BuildingFloorChoice[];
@@ -58,6 +59,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         onClick={() => setActive(i)}>{i + 1}F · {f.label || "Unnamed floor"}</button>)}
       <button type="button" disabled={floors.length >= 6} onClick={addFloor} className="rounded border px-2 py-1 text-xs disabled:opacity-40">Add floor</button>
     </div>
+    <ReviewBuildingFloors floors={floors} onEdit={setActive} />
     {floor && <>
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex-1 space-y-1">
