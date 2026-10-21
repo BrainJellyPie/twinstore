@@ -1,5 +1,7 @@
 """File-backed field pilot plans; versioned imports and irreversible closure."""
 
+import hashlib
+import hmac
 import uuid
 from pathlib import Path
 
@@ -12,6 +14,8 @@ from store_emulator.application.storage.io import DATA_DIR, now_iso, read_json, 
 from store_emulator.application.storage.setups import metadata_path
 from store_emulator.domain.field_pilot import FieldPilot, PilotRequest, PilotSummary, PilotView
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
+from store_emulator.domain.field_observations import ObservationImportAudit, ObservationImportRecord, ObservationPreview
+from store_emulator.engine.marketing.field_observations import import_history_csv, preview_observations
 from store_emulator.engine.marketing.field_pilot import allocate_pilot, analyze_pilot, observations_csv, parse_observations
 from store_emulator.engine.marketing.field_planning import plan_pilot
 
@@ -41,7 +45,7 @@ def create_pilot(pid: str, pitch_id: str, req: PilotRequest) -> PilotView:
     pilot = FieldPilot(pilot_id=pilot_id, pitch_id=pitch_id, created_at=now, updated_at=now, design=req,
                        product=source.product.model_copy(deep=True), variants=source.request.variants,
                        context=source.request.context, product_facts=source.request.product_facts,
-                       assignments=allocate_pilot(pilot_id, req),
+                       assignments=allocate_pilot(pilot_id, req), history_start_revision=0,
                        planning=plan_pilot(PilotPlanningRequest(assumptions=req.planning,
                                            block_counts=[b.encounters for b in req.blocks])) if req.planning else None)
     write_json(root / pilot_id / "pilot.json", pilot.model_dump(mode="json"))
@@ -72,7 +76,41 @@ def export_observations(pid: str, pilot_id: str) -> str:
     return observations_csv(get_pilot(pid, pilot_id).pilot)
 
 
-def import_observations(pid: str, pilot_id: str, data: bytes, revision: int) -> PilotView:
+def review_observations(pid: str, pilot_id: str, data: bytes, revision: int) -> ObservationPreview:
+    pilot = get_pilot(pid, pilot_id).pilot
+    if pilot.finalized_at or pilot.revision != revision:
+        raise AppError("The pilot changed or is closed. Reload it before reviewing observations", 409)
+    try:
+        return preview_observations(pilot, parse_observations(data, pilot), data)
+    except ValueError as exc:
+        raise AppError(str(exc), 400) from exc
+
+
+def get_import_audit(pid: str, pilot_id: str, revision: int) -> ObservationImportAudit:
+    pilot = get_pilot(pid, pilot_id).pilot
+    record = next((r for r in pilot.import_history if r.revision == revision), None)
+    if record is None:
+        raise AppError("No recorded import for this revision", 404)
+    return _read_import_audit(_path(pid, pilot_id).parent, record)
+
+
+def _read_import_audit(root: Path, record: ObservationImportRecord) -> ObservationImportAudit:
+    path = root / "imports" / f"{record.revision}.json"
+    if not path.exists():
+        raise AppError("Recorded import details are missing; restore them from a backup", 409)
+    audit = ObservationImportAudit.model_validate(read_json(path))
+    if audit.record != record:
+        raise AppError("Import details do not match the committed history", 409)
+    return audit
+
+
+def export_import_history(pid: str, pilot_id: str) -> str:
+    pilot = get_pilot(pid, pilot_id).pilot
+    root = _path(pid, pilot_id).parent
+    return import_history_csv([_read_import_audit(root, r) for r in pilot.import_history])
+
+
+def import_observations(pid: str, pilot_id: str, data: bytes, revision: int, review_token: str, reason: str) -> PilotView:
     path = _path(pid, pilot_id)
     try:
         with FileLock(path.with_suffix(".lock"), timeout=0):
@@ -85,9 +123,26 @@ def import_observations(pid: str, pilot_id: str, data: bytes, revision: int) -> 
                 assignments = parse_observations(data, pilot)
             except ValueError as exc:
                 raise AppError(str(exc), 400) from exc
+            preview = preview_observations(pilot, assignments, data)
+            if not hmac.compare_digest(preview.review_token, review_token):
+                raise AppError("The file or saved observations differ from the review. Preview this file again", 409)
+            reason = reason.strip()
+            if not reason or len(reason) > 300:
+                raise AppError("Enter an import reason of 1 to 300 characters without personal details", 400)
+            if not preview.changes:
+                return PilotView(pilot=pilot, analysis=analyze_pilot(pilot))
+            if pilot.history_start_revision is None:
+                pilot.history_start_revision = pilot.revision
             pilot.assignments = assignments
             pilot.revision += 1
             pilot.updated_at = now_iso()
+            record = ObservationImportRecord(revision=pilot.revision, imported_at=pilot.updated_at, reason=reason,
+                                             source_sha256=hashlib.sha256(data).hexdigest(), summary=preview.summary)
+            audit = ObservationImportAudit(record=record, changes=preview.changes)
+            # Write immutable details before publishing the reference in the atomic pilot replacement.
+            # An interrupted attempt can leave an unreferenced file; it is never exposed as a committed import.
+            write_json(path.parent / "imports" / f"{pilot.revision}.json", audit.model_dump(mode="json"))
+            pilot.import_history.append(record)
             write_json(path, pilot.model_dump(mode="json"))
     except Timeout as exc:
         raise AppError("Another field pilot update is in progress; reload and retry", 409) from exc

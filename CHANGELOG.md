@@ -35,6 +35,10 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the contact-shadow decal dropped, the BVH built in a worker.
 
 ### Marketing studio
+- **Observation import review and history**: full-sheet change previews, explicit reasons and confirmation,
+  file/revision-bound application, and retained before/after records with CSV export. Known-value clearing,
+  enrollment removal and purchase reversals are flagged. Unchanged sheets do not create revisions; older pilots
+  disclose missing historical coverage. API imports now require a preview token and reason.
 - **Field pilot sample planning**: conservative power bounds aligned with the final 95% Hoeffding interval,
   required encounters and operating days, explicit capacity shortfalls, and optional even allocation across
   existing staff/shift blocks. Assumptions and a server-calculated assessment are saved with each new plan;

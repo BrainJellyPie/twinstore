@@ -3,11 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { closePilot, createPilot, importPilot, pilotKeys, previewPilotPlan, type PilotPlanningResult, type PilotView } from "@/shared/api/fieldPilot";
+import { closePilot, createPilot, getPilotImport, importPilot, pilotKeys, previewPilotImport, previewPilotPlan, type ObservationPreview, type PilotPlanningResult, type PilotView } from "@/shared/api/fieldPilot";
 import type { PitchReport } from "@/shared/api/marketing";
 import { PilotBuilder, PilotResults } from "../FieldPilots";
 
-vi.mock("@/shared/api/fieldPilot", async (original) => ({ ...await original<typeof import("@/shared/api/fieldPilot")>(), createPilot: vi.fn(), importPilot: vi.fn(), closePilot: vi.fn(), previewPilotPlan: vi.fn() }));
+vi.mock("@/shared/api/fieldPilot", async (original) => ({ ...await original<typeof import("@/shared/api/fieldPilot")>(), createPilot: vi.fn(), importPilot: vi.fn(), closePilot: vi.fn(), previewPilotPlan: vi.fn(), previewPilotImport: vi.fn(), getPilotImport: vi.fn() }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const source: PitchReport = {
@@ -28,6 +28,13 @@ function result(): PilotView {
 let qc: QueryClient;
 beforeEach(() => { qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); });
 function wrapper({ children }: { children: React.ReactNode }) { return <QueryClientProvider client={qc}>{children}</QueryClientProvider>; }
+
+function observationPreview(): ObservationPreview {
+  return { pilot_id: "pilot_test", revision: 3, review_token: "a".repeat(64),
+    summary: { changed_assignments: 1, changed_fields: 2, new_values: 0, corrected_values: 1, cleared_values: 1, removed_enrollments: 0, purchase_reversals: 1 },
+    changes: [{ assignment_id: "slot_1", staff_id: "s1", shift_id: "am", sequence: 1, arm: "A", field: "delivered", before: true, after: null },
+      { assignment_id: "slot_1", staff_id: "s1", shift_id: "am", sequence: 1, arm: "A", field: "purchased", before: false, after: true }] };
+}
 
 function planningResult(counts = [100]): PilotPlanningResult {
   const total = counts.reduce((a, b) => a + b, 0);
@@ -86,12 +93,18 @@ describe("observed field results", () => {
 
   it("uploads with the visible revision and preserves cached data on stale-write rejection", async () => {
     const view = result(); qc.setQueryData(pilotKeys.detail("p", "pilot_test"), view);
+    vi.mocked(previewPilotImport).mockResolvedValue(observationPreview());
     vi.mocked(importPilot).mockRejectedValue(new Error("The pilot changed in another session. Reload it before importing"));
     render(<PilotResults projectId="p" view={view} />, { wrapper });
     const file = new File(["records"], "observations.csv", { type: "text/csv" });
-    fireEvent.change(screen.getByLabelText("Import full observation sheet"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Review full observation sheet"), { target: { files: [file] } });
+    await screen.findByText(/Proposed changes/);
+    expect(importPilot).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Import reason"), { target: { value: "Verified correction" } });
+    fireEvent.click(screen.getByLabelText("I reviewed the changes, including corrections and cleared values."));
+    fireEvent.click(screen.getByRole("button", { name: "Apply reviewed observations" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Reload it");
-    expect(importPilot).toHaveBeenCalledWith("p", "pilot_test", file, 3);
+    expect(importPilot).toHaveBeenCalledWith("p", "pilot_test", file, 3, observationPreview().review_token, "Verified correction");
     expect(qc.getQueryData(pilotKeys.detail("p", "pilot_test"))).toEqual(view);
   });
 
@@ -109,8 +122,90 @@ describe("observed field results", () => {
     screenView.rerender(<PilotResults projectId="p" view={closed} />);
     expect(screen.getByText(/Closed and locked/)).toBeTruthy();
     expect(screen.getByText(/conservative 95% interval/)).toBeTruthy();
-    expect(screen.queryByLabelText("Import full observation sheet")).toBeNull();
+    expect(screen.queryByLabelText("Review full observation sheet")).toBeNull();
     expect(screen.queryByRole("button", { name: "Close and lock pilot" })).toBeNull();
+  });
+});
+
+describe("observation review and history", () => {
+  it("applies the reviewed file and updates the visible pilot cache only after confirmation", async () => {
+    const view = result(); qc.setQueryData(pilotKeys.detail("p", "pilot_test"), view);
+    vi.mocked(previewPilotImport).mockResolvedValue(observationPreview());
+    const saved = result(); saved.pilot.revision = 4;
+    vi.mocked(importPilot).mockResolvedValue(saved);
+    render(<PilotResults projectId="p" view={view} />, { wrapper });
+    const file = new File(["records"], "records.csv");
+    fireEvent.change(screen.getByLabelText("Review full observation sheet"), { target: { files: [file] } });
+    await screen.findByText(/Proposed changes/);
+    expect(previewPilotImport).toHaveBeenCalledWith("p", "pilot_test", file, 3);
+    expect(qc.getQueryData(pilotKeys.detail("p", "pilot_test"))).toEqual(view);
+    fireEvent.change(screen.getByLabelText("Import reason"), { target: { value: "  Corrected source transcription  " } });
+    fireEvent.click(screen.getByLabelText("I reviewed the changes, including corrections and cleared values."));
+    fireEvent.click(screen.getByRole("button", { name: "Apply reviewed observations" }));
+    await waitFor(() => expect(qc.getQueryData(pilotKeys.detail("p", "pilot_test"))).toEqual(saved));
+    expect(importPilot).toHaveBeenCalledWith("p", "pilot_test", file, 3, observationPreview().review_token, "Corrected source transcription");
+    await waitFor(() => expect(screen.queryByText(/Proposed changes/)).toBeNull());
+  });
+
+  it("requires a reason and review, blocks closing a pending preview, and can discard without saving", async () => {
+    vi.mocked(previewPilotImport).mockResolvedValue(observationPreview());
+    const view = result(); view.analysis.can_finalize = true;
+    render(<PilotResults projectId="p" view={view} />, { wrapper });
+    fireEvent.click(screen.getByLabelText("I am ending collection and locking these observations."));
+    const close = screen.getByRole("button", { name: "Close and lock pilot" }) as HTMLButtonElement;
+    expect(close.disabled).toBe(false);
+    const file = new File(["data"], "observations.csv");
+    fireEvent.change(screen.getByLabelText("Review full observation sheet"), { target: { files: [file] } });
+    expect(await screen.findByText(/1 known values cleared/)).toBeTruthy();
+    expect(close.disabled).toBe(true);
+    const apply = screen.getByRole("button", { name: "Apply reviewed observations" }) as HTMLButtonElement;
+    fireEvent.click(screen.getByLabelText("I reviewed the changes, including corrections and cleared values."));
+    expect(apply.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Import reason"), { target: { value: "Initial capture review" } });
+    expect(apply.disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Discard preview" }));
+    expect(screen.queryByText(/Proposed changes/)).toBeNull();
+    expect(close.disabled).toBe(false);
+    expect(importPilot).not.toHaveBeenCalled();
+  });
+
+  it("does not offer to save a no-op sheet and resets confirmation when selecting another file", async () => {
+    vi.mocked(previewPilotImport).mockResolvedValueOnce(observationPreview()).mockResolvedValueOnce({ ...observationPreview(),
+      changes: [], summary: { changed_assignments: 0, changed_fields: 0, new_values: 0, corrected_values: 0, cleared_values: 0, removed_enrollments: 0, purchase_reversals: 0 } });
+    render(<PilotResults projectId="p" view={result()} />, { wrapper });
+    const input = screen.getByLabelText("Review full observation sheet");
+    fireEvent.change(input, { target: { files: [new File(["changed"], "changed.csv")] } });
+    await screen.findByText(/Proposed changes/);
+    fireEvent.click(screen.getByLabelText("I reviewed the changes, including corrections and cleared values."));
+    fireEvent.change(input, { target: { files: [new File(["same"], "same.csv")] } });
+    expect(await screen.findByText(/No observation values changed/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Apply reviewed observations" })).toBeNull();
+    expect(importPilot).not.toHaveBeenCalled();
+  });
+
+  it("leaves observations untouched when preview fails", async () => {
+    vi.mocked(previewPilotImport).mockRejectedValue(new Error("Row 2: assigned pilot, staff, shift, sequence and arm cannot be changed"));
+    const view = result(); qc.setQueryData(pilotKeys.detail("p", "pilot_test"), view);
+    render(<PilotResults projectId="p" view={view} />, { wrapper });
+    fireEvent.change(screen.getByLabelText("Review full observation sheet"), { target: { files: [new File(["bad"], "bad.csv")] } });
+    expect((await screen.findByRole("alert")).textContent).toContain("cannot be changed");
+    expect(importPilot).not.toHaveBeenCalled();
+    expect(qc.getQueryData(pilotKeys.detail("p", "pilot_test"))).toEqual(view);
+  });
+
+  it("shows saved changes and export after closure and identifies the legacy history boundary", async () => {
+    const view = result(); view.pilot.finalized_at = "closed"; view.pilot.history_start_revision = 2;
+    const record = { revision: 3, imported_at: "2026-10-21T00:00:00Z", reason: "Corrected from source records", source_sha256: "a".repeat(64), summary: observationPreview().summary };
+    view.pilot.import_history = [record];
+    vi.mocked(getPilotImport).mockResolvedValue({ record, changes: observationPreview().changes });
+    render(<PilotResults projectId="p" view={view} />, { wrapper });
+    expect(screen.getByText(/Import history starts after revision 2/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Export import history CSV", hidden: true }).getAttribute("href")).toContain("pilot_test/imports.csv");
+    fireEvent.click(screen.getByText("Observation import history (1)"));
+    fireEvent.click(screen.getByRole("button", { name: "Review revision 3" }));
+    expect(await screen.findByText(/Uploaded CSV SHA-256/)).toBeTruthy();
+    expect(screen.getByText("Changes 1–2 of 2")).toBeTruthy();
+    expect(screen.queryByLabelText("Review full observation sheet")).toBeNull();
   });
 });
 

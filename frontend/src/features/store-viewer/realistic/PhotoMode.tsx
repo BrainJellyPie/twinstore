@@ -69,6 +69,22 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
         const denoise = new DenoiseMaterial({
           map: pt.target.texture, blending: THREE.NoBlending, premultipliedAlpha: gl.getContextAttributes()?.premultipliedAlpha ?? true,
         });
+        denoise.onBeforeCompile = (shader) => {
+          // Compare edges in the displayed colour space. In linear HDR, noise on
+          // bright walls can exceed the threshold and be mistaken for detail.
+          // Keep the weighted average in linear light to preserve its energy.
+          shader.fragmentShader = shader.fragmentShader.replace("vec4 dC = walkPx - centrPx;", `
+            vec3 centerColor = centrPx.rgb;
+            vec3 neighborColor = walkPx.rgb;
+            #ifdef TONE_MAPPING
+              centerColor = toneMapping(centerColor);
+              neighborColor = toneMapping(neighborColor);
+            #endif
+            centerColor = linearToOutputTexel(vec4(centerColor, 1.0)).rgb;
+            neighborColor = linearToOutputTexel(vec4(neighborColor, 1.0)).rgb;
+            vec4 dC = vec4(neighborColor - centerColor, walkPx.a - centrPx.a);
+          `);
+        };
         disposeDenoise = () => denoise.dispose();
         pt.renderToCanvasCallback = (target, renderer, quad) => {
           const autoClear = renderer.autoClear;
@@ -78,9 +94,8 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
             const { denoise: on } = usePhotoMode.getState();
             if (on && pt.samples >= 1) {
               denoise.map = target.texture;
-              // Few samples: noise exceeds a small edge threshold and would be kept as detail.
-              denoise.sigma = pt.samples < 32 ? 5 : pt.samples < 128 ? 4 : 2.5;
-              denoise.threshold = pt.samples < 32 ? 0.18 : pt.samples < 128 ? 0.1 : 0.05;
+              denoise.sigma = pt.samples < 32 ? 4 : pt.samples < 128 ? 3 : 2;
+              denoise.threshold = THREE.MathUtils.clamp(1.44 / Math.sqrt(pt.samples), 0.03, 0.3);
               quad.material = denoise;
             }
             quad.render(renderer);
