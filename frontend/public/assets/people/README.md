@@ -65,7 +65,7 @@ the pinned source revision and SHA-256 records in `sources.json`.
   `gait-sources.json` records the measurements and pinned source hashes. Rebuild it
   with `blender --background --python scripts/measure_rocketbox_gait.py -- --source-dir /path/to/rocketbox --output frontend/public/assets/people/gait-sources.json`.
 - Hair uses alpha testing to avoid transparency sorting problems in crowds.
-- This set contains twelve visual variants, selected deterministically by shopper ID. Avatars are representative
+- This set contains fourteen visual variants, selected deterministically by shopper ID. Avatars are representative
   figures, not reconstructions of individual simulated consumers.
 
 The application loads these GLBs locally and makes no requests to Microsoft.

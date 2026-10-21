@@ -134,3 +134,43 @@ it.each(LOCALES)("shows native progress, idle and retry states without starting 
   expect((screen.getByRole("button", { name: translate(code, "tryingAgain") }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: translate(code, "tryingAgain") })); expect(retry).toHaveBeenCalledOnce();
 });
+
+it.each(LOCALES)("offers a progress reload without generation or deletion for status errors in $code", ({ code }) => {
+  useLocale.getState().setLocale(code); const retry = vi.fn(); show({ ...failedLayout, errorSource: "status", retry });
+  expect(screen.getByRole("heading", { name: translate(code, "generationStatusUnavailable") })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: translate(code, "deleteStoreAndStartOver") })).toBeNull();
+  expect(screen.queryByRole("button", { name: translate(code, "tryAgain") })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "reloadGenerationStatus") })); expect(retry).toHaveBeenCalledOnce();
+});
+
+it.each(LOCALES)("checks history before offering generation and leaves a safe exit available in $code", ({ code }) => {
+  useLocale.getState().setLocale(code);
+  const { props, rerender } = show({ ...failedLayout, phase: "idle", kind: null, error: null, loadingStatus: true });
+  rerender(<PreparingView {...props} contextKind="persona" />);
+  expect(screen.getByRole("heading", { name: translate(code, "checkingGenerationStatus") })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: translate(code, "generate") })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "backToStores") })); expect(props.onBackToStores).toHaveBeenCalledOnce();
+});
+
+it("disables progress reload while it is pending and closes a stale delete decision", async () => {
+  const { props, rerender } = show(); fireEvent.click(screen.getByRole("button", { name: "Delete store and start over" }));
+  rerender(<PreparingView {...props} generation={{ ...failedLayout, errorSource: "status", loadingStatus: true, retrying: true }} />);
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  const button = screen.getByRole("button", { name: "Checking progress…" }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true); fireEvent.click(button); expect(props.generation.retry).not.toHaveBeenCalled();
+});
+
+it("keeps keyboard focus in recovery when a progress reload discovers a real generation failure", () => {
+  const { props, rerender } = show({ ...failedLayout, errorSource: "status" });
+  const reload = screen.getByRole("button", { name: "Reload progress" }); reload.focus(); fireEvent.click(reload);
+  rerender(<PreparingView {...props} generation={{ ...failedLayout, kind: "persona", errorSource: "generation" }} />);
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Customer generation failed" }));
+});
+
+it("does not steal focus if the user moves elsewhere during a progress reload", () => {
+  const { props, rerender } = show({ ...failedLayout, errorSource: "status" });
+  const reload = screen.getByRole("button", { name: "Reload progress" }); reload.focus(); fireEvent.click(reload);
+  const back = screen.getByRole("button", { name: "Back to stores" }); back.focus();
+  rerender(<PreparingView {...props} generation={{ ...failedLayout, kind: "persona", errorSource: "generation" }} />);
+  expect(document.activeElement).toBe(back);
+});

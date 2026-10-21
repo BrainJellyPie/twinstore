@@ -137,6 +137,9 @@ Español and Français**. It follows your browser language on first use and reme
 selection. Home, navigation, the command palette, store cards, search, the model notice, simulation launcher and
 new-store forms and preparation screens are localized, including validation, file selection,
 generation review and failure recovery.
+If preparation progress cannot be loaded, **Reload progress** checks the existing task
+without starting another generation. Generation is available after the initial progress check,
+and a failed customer task can be restarted explicitly.
 Template search and filters use the same languages. Search also accepts translated categories,
 accent and full-width variants, and template IDs; format names and descriptions remain in English.
 The command palette also searches original and translated command names. Use the arrow keys
@@ -603,7 +606,8 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
   These maps load only when a checkout is present. High also rounds the edges of checkout hardware;
   plastic housings and coated grilles use a nonmetallic finish. Cashier, customer and card-reader displays
   have distinct idle artwork in one shared 512 × 256 texture, retained in Photo mode. These decorative
-  screens do not show simulation orders or payment totals. Authors, source URLs and checksums are in
+  screens do not show simulation orders or payment totals. Cans in High separate printed labels from
+  reflective metal ends and rims, with the same finishes in Photo mode. Authors, source URLs and checksums are in
   [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 - **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
   ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;
