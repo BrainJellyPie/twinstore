@@ -43,3 +43,5 @@ multilingual search helper rather than restoring an unused superseded local help
 old parastore checkout are preserved.
 
 Next different-domain candidate: dated inventory-cost snapshots or a manually verified shelf-label audit.
+
+Before full validation, integrated main/edge `1c908e9e` and scenarios `ac90b1d3` into `a1eb7e1b`. This preserves operator feature commit `4ac56925` and includes the latest fetched plaza formats, capture lifecycle and shopper-motion updates.

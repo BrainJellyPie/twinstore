@@ -30,7 +30,8 @@ market validation or real-store dataset was used. Existing operator functionalit
    cache; only the still-mounted submitting editor requests a refresh. Abandoned requests refresh the list
    without replacing another editor's saved view or draft. Regression checks preserve both revision 3 and
    its unsaved title when a revision-2 response arrives late.
-3. UI hardening requires a deliberate data-stage selection for a new record instead of defaulting to
+3. The first full frontend build caught use of `Array.at()` and `String.replaceAll()`, which are not available in the repository's configured TypeScript target. Replaced them with bounded index access and a global replacement regex in the component and fixtures; the repository target was preserved. Focused UI tests and all frontend required checks are rerun.
+4. UI hardening requires a deliberate data-stage selection for a new record instead of defaulting to
    unseen/uncollected outcomes. This is a declaration, never independent evidence of prospective timing.
 
 The first boundary command was accidentally launched from the repository root (no root pytest environment);
@@ -47,7 +48,35 @@ corrupt record isolation, UI pending controls, uncertain save retry, explicit co
 responses/navigation, export cleanup and failures. No unsaved draft is included in exported history.
 
 Post-fix focused validation: **38 backend tests passed**, 7.33 s (`boundary-green.log`);
-**12 UI tests passed**, 4.52 s (`ui-final-focused.log`). Full required checks will be recorded before publication.
+**12 UI tests passed**, 4.52 s (`ui-final-focused.log`).
+
+## Full required verification
+
+Feature commit: `4ac56925`; integration snapshot: `a1eb7e1b3bb501ccfb3b0e8c559d24c950d935fa`; final code snapshot after ES2020 fixes: `c8af5ffece7192cd321bdecfaa75dc72922acf44`.
+The final compatibility commit changes frontend files only; the backend tree is identical to the full-test snapshot.
+Fetched main/edge `1c908e9e` and scenarios `ac90b1d3` were merged before these checks; prior operator work
+and photographic assets remain ancestors. The second merge was conflict-free. Backend contains the new
+plaza formats; frontend includes capture lifecycle and shopper motion fixes.
+
+| Command | Result |
+|---|---|
+| backend `uv run pyright src/` | 0 errors, 0 warnings |
+| backend `uv run python -c "from store_emulator.server.main import app; print('OK')"` | OK |
+| backend `uv run pytest --basetemp=/workspace/.verification/twinstore-protocols/pytest-full` | 10,571 passed, 1 skipped, 432.95 s |
+| frontend pnpm 10.33.0 `build` | Passed after ES2020 compatibility fixes; Vite 28.91 s |
+| frontend pnpm 10.33.0 `lint` | 0 errors, 19 pre-existing warnings; none in new module files |
+| frontend pnpm 10.33.0 `test` | 1,642 passed / 114 files, 113.71 s |
+
+Frontend uses `npm exec --yes --package=pnpm@10.33.0 -- pnpm ...`, matching the repository pin. Logs live
+under `/workspace/.verification/twinstore-protocols/`: `pyright.log`, `boot.log`, `pytest-full.log`, `final-build.log`,
+`final-lint.log`, `final-frontend.log`, plus the focused red/green logs named above. `git diff --check` passes.
+Original build failures are retained in `build.log`; the focused UI compatibility run passed 12 tests in
+4.23 s (`ui-compatible.log`) before the final whole-suite run. Existing build chunk-size and plugin-timing
+notices remain. The optional GroundingDINO model test requires explicit opt-in, capture extras and about
+700 MB of downloads; no live model run was added for this module.
+
+The old `/workspace/parastore` checkout is clean and was not modified. Destination `origin/feat/operator-modules` was re-fetched and remains `bc6e941a`, an ancestor of the
+validated result. Publication uses a normal fast-forward push; no force push or deletion.
 
 ## Limitations
 
