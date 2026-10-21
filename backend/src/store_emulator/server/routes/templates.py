@@ -1,6 +1,6 @@
 """Store-format templates: generate a complete, valid layout with a generic assortment."""
 
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -12,6 +12,7 @@ from store_emulator.domain.layout_options import (
     SeatingZone, StoreDesign, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
+from store_emulator.domain.store import Store
 
 router = APIRouter(prefix="/api", tags=["templates"])
 
@@ -58,15 +59,24 @@ def preview(
     design_theme: StoreDesign | None = None,
     dining_tables: int | None = Query(default=None, ge=0, le=12),
     seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
-) -> dict[str, Any]:
-    if get_template(template_id) is None:
-        raise HTTPException(404, f"unknown template: {template_id}")
+) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density,
                             entrance=entrance, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables,
                             seating_zone=seating_zone, checkout_placement=checkout_placement)
+    return _preview_store(template_id, seed, currency, options)
+
+
+@router.post("/store-templates/preview", summary="Preview a generated store with reserved areas (not saved)")
+def preview_options(req: TemplateLayoutRequest) -> Store:
+    return _preview_store(req.template_id, req.seed, req.currency, req)
+
+
+def _preview_store(template_id: str, seed: int, currency: str, options: LayoutOptions) -> Store:
+    if get_template(template_id) is None:
+        raise HTTPException(404, f"unknown template: {template_id}")
     try:
-        return generate_store(template_id, seed=seed, currency=currency, options=options).model_dump(mode="json")
+        return generate_store(template_id, seed=seed, currency=currency, options=options)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 

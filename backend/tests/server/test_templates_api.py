@@ -69,6 +69,52 @@ def test_unknown_templates_do_not_create_layouts(client):
     assert client.post(f"/api/projects/{PID}/setups/generate", json={"template_id": "not-a-format"}).status_code == 404
 
 
+def test_reserved_area_preview_save_and_reuse_keep_identical_geometry(client):
+    options = {"template_id": "community_pharmacy", "width": 20, "height": 16, "seed": 3,
+               "reserved_areas": [{"label": "Consultation", "x": 2, "y": 2, "width": 4, "height": 3}]}
+    before = client.get(f"/api/projects/{PID}").json()
+    preview = client.post("/api/store-templates/preview", json=options)
+    assert preview.status_code == 200, preview.text
+    assert client.get(f"/api/projects/{PID}").json() == before  # Preview does not create a layout.
+    generated = client.post(f"/api/projects/{PID}/setups/generate", json=options)
+    assert generated.status_code == 200, generated.text
+    saved = client.get(f"/api/projects/{PID}/setups/{generated.json()['id']}").json()
+    assert saved["store"]["racks"] == preview.json()["racks"]
+    assert saved["generation"]["reserved_areas"] == options["reserved_areas"]
+    reused = client.post(f"/api/projects/{PID}/setups/generate", json={
+        **saved["generation"], "source_setup_id": saved["id"], "name": "Alternative",
+    })
+    assert reused.status_code == 200, reused.text
+    alternative = client.get(f"/api/projects/{PID}/setups/{reused.json()['id']}").json()
+    assert alternative["store"]["racks"] == saved["store"]["racks"]
+    assert alternative["generation"]["reserved_areas"] == options["reserved_areas"]
+    assert client.get(f"/api/projects/{PID}/setups/{saved['id']}").json() == saved
+
+
+@pytest.mark.parametrize("patch", [
+    {"x": 0}, {"y": -1}, {"width": 0}, {"height": 39}, {"label": " "},
+    {"label": "A" * 81}, {"x": 30}, {"y": 30},
+])
+def test_invalid_reservations_reject_preview_and_leave_no_partial_building(client, patch):
+    area = {"label": "Pickup", "x": 2, "y": 2, "width": 3, "height": 3, **patch}
+    layout = {"template_id": "community_pharmacy", "reserved_areas": [area]}
+    assert client.post("/api/store-templates/preview", json=layout).status_code == 422
+    before = client.get(f"/api/projects/{PID}").json()
+    body = _building()
+    body["floors"][1]["layout"] = layout
+    assert client.post(f"/api/projects/{PID}/setups/generate-building", json=body).status_code == 422
+    assert client.get(f"/api/projects/{PID}").json() == before
+
+
+def test_reservation_count_is_bounded_and_post_preview_requires_a_known_template(client):
+    options = {"template_id": "community_pharmacy", "reserved_areas": [
+        {"label": "Pickup", "x": 2, "y": 2, "width": 1, "height": 1},
+    ] * 9}
+    assert client.post("/api/store-templates/preview", json=options).status_code == 422
+    assert client.post(f"/api/projects/{PID}/setups/generate", json=options).status_code == 422
+    assert client.post("/api/store-templates/preview", json={"template_id": "missing"}).status_code == 404
+
+
 def _building():
     return {"name": "Market house", "floors": [
         {"label": "Ground shop", "layout": {"template_id": "fashion_boutique", "style": "free_flow"}},
