@@ -1,3 +1,5 @@
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -5,10 +7,10 @@ import {
 
 import type { WorkingDayPreset } from "../validate";
 
-const OPTIONS: readonly { value: WorkingDayPreset; label: string }[] = [
-  { value: "7",       label: "7 Days" },
-  { value: "weekday", label: "Weekday (Mon-Fri)" },
-  { value: "weekend", label: "Weekend (Sat-Sun)" },
+const OPTIONS: readonly { value: WorkingDayPreset; label: MessageKey }[] = [
+  { value: "7",       label: "sevenDays" },
+  { value: "weekday", label: "weekdays" },
+  { value: "weekend", label: "weekends" },
 ];
 
 export interface WeeklyScheduleFieldProps {
@@ -22,9 +24,10 @@ export function WeeklyScheduleField({
   onChange,
   disabled,
 }: WeeklyScheduleFieldProps) {
+  const { t } = useI18n();
   return (
     <div className="space-y-1.5">
-      <span className="text-sm font-medium">Working day</span>
+      <span className="text-sm font-medium">{t("workingDay")}</span>
       <ToggleGroup
         type="single"
         variant="outline"
@@ -36,16 +39,16 @@ export function WeeklyScheduleField({
           if (v) onChange(v as WorkingDayPreset);
         }}
         disabled={disabled}
-        aria-label="Working day"
+        aria-label={t("workingDay")}
       >
         {OPTIONS.map((opt) => (
           <ToggleGroupItem
             key={opt.value}
             value={opt.value}
-            aria-label={opt.label}
+            aria-label={t(opt.label)}
             className="text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary data-[state=on]:hover:text-primary-foreground"
           >
-            {opt.label}
+            {t(opt.label)}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>

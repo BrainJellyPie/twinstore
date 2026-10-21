@@ -14,6 +14,8 @@ the pinned source revision and SHA-256 records in `sources.json`.
 - `male-07.glb`: Male_Adult_07, short hair, jacket and jeans, 7,588 triangles.
 - `female-17.glb`: Female_Adult_17, green T-shirt, jeans and flats, 8,516 triangles.
 - `male-10.glb`: Male_Adult_10, track jacket, trousers and sneakers, 6,732 triangles.
+- `female-15.glb`: Female_Adult_15, blue blouse, skirt and boots, 9,832 triangles.
+- `male-05.glb`: Male_Adult_05, beard, utility vest and trousers, 7,836 triangles.
 - Each includes captured `idle`, `wait`, `walk`, and `browse` clips. Browsing shoppers
   turn their head and shoulders to look around the shelf. Independent skeletons
   and motion phases animate each shopper. Authored metric heights are preserved.
@@ -59,7 +61,7 @@ the pinned source revision and SHA-256 records in `sources.json`.
   `gait-sources.json` records the measurements and pinned source hashes. Rebuild it
   with `blender --background --python scripts/measure_rocketbox_gait.py -- --source-dir /path/to/rocketbox --output frontend/public/assets/people/gait-sources.json`.
 - Hair uses alpha testing to avoid transparency sorting problems in crowds.
-- This set contains ten visual variants, selected deterministically by shopper ID. Avatars are representative
+- This set contains twelve visual variants, selected deterministically by shopper ID. Avatars are representative
   figures, not reconstructions of individual simulated consumers.
 
 The application loads these GLBs locally and makes no requests to Microsoft.
@@ -83,8 +85,8 @@ blender --background --python scripts/convert_rocketbox.py -- \
 ```
 
 Repeat the same command with `Female_Adult_14`, `Male_Adult_14`, `Female_Adult_11`,
-`Male_Adult_12`, `Female_Adult_09`, `Male_Adult_07`, `Female_Adult_17`, and
-`Male_Adult_10` for the other variants.
+`Male_Adult_12`, `Female_Adult_09`, `Male_Adult_07`, `Female_Adult_17`,
+`Male_Adult_10`, `Female_Adult_15`, and `Male_Adult_05` for the other variants.
 
 The conversion was built with Blender 4.3.2 and Pillow 11.1 with WebP support.
 Refresh the output file sizes and

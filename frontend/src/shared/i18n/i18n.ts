@@ -1,5 +1,8 @@
 import { create } from "zustand";
-import { LOCALES, messages, type Locale, type MessageKey } from "./messages";
+import { LOCALES, type Locale, type MessageKey } from "./messages";
+
+import { translate } from "./translate";
+export { translate } from "./translate";
 
 const STORAGE_KEY = "twinstore.locale";
 
@@ -37,15 +40,6 @@ export const useLocale = create<{ locale: Locale; setLocale: (locale: Locale) =>
     set({ locale });
   },
 }));
-
-export function translate(locale: Locale, key: MessageKey, values: Record<string, string | number> = {}): string {
-  const index = LOCALES.findIndex((item) => item.code === locale);
-  const template = messages[key][index] ?? messages[key][0];
-  return template.replace(/\{(\w+)\}/g, (placeholder: string, name: string) => {
-    const value = values[name];
-    return value === undefined ? placeholder : typeof value === "number" ? new Intl.NumberFormat(locale).format(value) : value;
-  });
-}
 
 export function useI18n() {
   const locale = useLocale((state) => state.locale);
