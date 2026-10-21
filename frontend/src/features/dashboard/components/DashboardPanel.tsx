@@ -1,3 +1,4 @@
+import { useI18n } from "@/shared/i18n/i18n";
 import { useEffect, useState } from "react";
 import type { CustomerResult, Store } from "@/shared/types/domain";
 import type { RunStatus, RunSummary } from "@/shared/api/client";
@@ -103,6 +104,7 @@ function ReadyContent({
   simulateError,
   availability,
 }: ReadyProps) {
+  const { t } = useI18n();
   const hasFloor = setup.store != null;
   const blocked = availability !== undefined && !availability.canSimulate;
 
@@ -143,7 +145,7 @@ function ReadyContent({
               disabled={simulating || blocked || !onSimulate}
               onClick={onSimulate}
             >
-              {simulating ? "Running simulation…" : "Run simulation…"}
+              {simulating ? t("runningSimulation") : `${t("runSimulation")}…`}
             </Button>
             <p className="text-xs text-muted-foreground">
               Choose an instant rule-based preview or LLM shoppers, a customer sample and a seed.

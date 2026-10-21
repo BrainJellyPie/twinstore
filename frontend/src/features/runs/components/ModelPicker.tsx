@@ -65,7 +65,7 @@ export function ModelPicker({
           Connect providers
         </Link>
       </div>
-      <div className="inline-flex rounded-md border p-0.5 text-xs" role="tablist" aria-label="Model choice">
+      <div className="flex max-w-full flex-wrap rounded-md border p-0.5 text-xs" role="tablist" aria-label="Model choice">
         {tabs.map((t) => (
           <button
             key={t.id}

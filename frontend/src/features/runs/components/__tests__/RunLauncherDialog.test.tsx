@@ -3,6 +3,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
+import { useLocale, translate } from "@/shared/i18n/i18n";
+import { LOCALES } from "@/shared/i18n/messages";
 import { RunLauncherDialog, type RunLauncherDialogProps } from "../RunLauncherDialog";
 
 vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), startRun: vi.fn() }));
@@ -21,7 +23,7 @@ beforeEach(() => {
   vi.mocked(api.getTown).mockResolvedValue(null);
   vi.mocked(api.startRun).mockResolvedValue({ project_id: "p", run_id: "r", setup_id: "s" });
 });
-afterEach(() => { cleanup(); vi.resetAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); vi.unstubAllGlobals(); });
 
 function show(props: Partial<RunLauncherDialogProps> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -151,4 +153,49 @@ it("prevents duplicate submission and disables edits while starting", async () =
   await submit();
   expect(api.startRun).toHaveBeenCalledOnce();
   await act(async () => resolve({ project_id: "p", setup_id: "s", run_id: "r" }));
+});
+
+it.each(LOCALES)("sends stable engine identifiers from the $code launcher", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  show({ defaultEngine: "vlm_glance", personaCount: 31 });
+  expect(screen.getByRole("dialog").getAttribute("aria-labelledby")).toBeTruthy();
+  expect(screen.getByRole("button", { name: translate(code, "runPreview") })).toBeTruthy();
+  expect((screen.getByLabelText(translate(code, "sampleSize")) as HTMLInputElement).value).toBe("30");
+  await submit();
+  expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ engine_type: "vlm_glance", plan_policy: "vlm", preview: true, max_customers: 30 }));
+});
+
+it.each(LOCALES)("blocks an empty sample and explains it in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  show({ defaultEngine: "vlm_glance" });
+  fireEvent.change(screen.getByLabelText(translate(code, "sampleSize")), { target: { value: "" } });
+  expect(screen.getByRole("alert").textContent).toBe(translate(code, "sampleError", { max: 1000 }));
+  await submit(); expect(api.startRun).not.toHaveBeenCalled();
+});
+
+it.each(LOCALES)("preserves the finalized-layout preview restriction in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  show({ locked: true, defaultEngine: "rule_based" }); expand();
+  expect((screen.getByLabelText(new RegExp(translate(code, "previewRun"))) as HTMLInputElement).disabled).toBe(true);
+  await submit();
+  expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ preview: true, engine_type: "rule_based" }));
+});
+
+it.each(LOCALES)("explains a zero-persona store in $code without sending a request", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  show({ personaCount: 0, defaultEngine: "rule_based" });
+  expect(screen.getByRole("status").textContent).toBe(translate(code, "addPersonasHint"));
+  await submit(); expect(api.startRun).not.toHaveBeenCalled();
+});
+
+it("keeps form edits and selection intact when switching language mid-dialog", async () => {
+  show({ defaultEngine: "vlm_glance" }); expand();
+  fireEvent.change(screen.getByLabelText("Sample size"), { target: { value: "17" } });
+  fireEvent.change(screen.getByLabelText("Seed"), { target: { value: "21" } });
+  fireEvent.change(screen.getByLabelText("Replicate"), { target: { value: "3" } });
+  act(() => useLocale.getState().setLocale("ko"));
+  expect((screen.getByLabelText("표본 고객 수") as HTMLInputElement).value).toBe("17");
+  expect(api.startRun).not.toHaveBeenCalled();
+  await submit();
+  expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ engine_type: "vlm_glance", max_customers: 17, seed: 21, replicate: 3 }));
 });
