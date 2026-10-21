@@ -18,8 +18,9 @@ export function Step2Fields({ values, errors, disabled, onChange }: Step2FieldsP
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium">Customer profile &amp; behavior</label>
+        <label className="text-sm font-medium" htmlFor="setup-customer-profile">Customer profile &amp; behavior</label>
         <Textarea
+          id="setup-customer-profile"
           value={values.customerProfile}
           disabled={disabled}
           rows={3}

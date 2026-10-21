@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from store_emulator.domain.store import DaySchedule
-from store_emulator.domain.layout_options import BuildingFloorInfo
+from store_emulator.domain.layout_options import BuildingFloorInfo, TemplateLayoutRequest
 from store_emulator.domain.types import Face
 from store_emulator.engine.validation import BlockedFaceDetail, ClearedSlot, Issue
 
@@ -16,6 +16,7 @@ class CreateStoreRequest(BaseModel):
     store_type: str
     customer_profile: str
     weekly_schedule: list[DaySchedule]
+    layout: TemplateLayoutRequest | None = None
 
     @field_validator("name", "address", "store_type", "customer_profile")
     @classmethod

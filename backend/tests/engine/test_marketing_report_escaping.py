@@ -1,8 +1,8 @@
 """Report text must stay text in every HTML output context."""
 
 from store_emulator.domain.analysis import MetricComparison
-from store_emulator.domain.marketing import ExperimentReport, VariantResult
-from store_emulator.engine.marketing.report import report_html
+from store_emulator.domain.marketing import ExperimentReport, PriceRange, SurveyReport, VariantResult
+from store_emulator.engine.marketing.report import report_html, survey_report_html
 
 
 def test_report_currency_is_text_in_kpis_and_svg_labels():
@@ -17,6 +17,21 @@ def test_report_currency_is_text_in_kpis_and_svg_labels():
     )
 
     html = report_html(report)
+
+    assert "<CURRENCY-MARKER>" not in html
+    assert "&lt;CURRENCY-MARKER&gt;" in html
+
+
+def test_survey_currency_is_text_in_price_table_and_svg_labels():
+    report = SurveyReport(
+        survey_id="survey_test", name="Test", model="fake", stimuli=["product"], stimulus_names=["Product"],
+        questions=["price_vw"], currency="<currency-marker>", respondents=5, errors=0,
+        price=PriceRange(n=5, point_of_marginal_cheapness=100, optimal_price_point=200,
+                         indifference_price_point=250, point_of_marginal_expensiveness=300,
+                         curve=[(100, 1, 1, 0, 0), (300, 0, 0, 1, 1)]),
+    )
+
+    html = survey_report_html(report)
 
     assert "<CURRENCY-MARKER>" not in html
     assert "&lt;CURRENCY-MARKER&gt;" in html
