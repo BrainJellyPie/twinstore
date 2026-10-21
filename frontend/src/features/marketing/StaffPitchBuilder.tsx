@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, MessagesSquare, Sparkles } from "lucide-react";
 
@@ -7,13 +7,17 @@ import { draftPitchScript, marketingKeys, startPitch, type JobStatus } from "@/s
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { formatMoney } from "@/shared/utils/money";
 
+import { productNamedIn } from "./productMatch";
 import type { Product } from "./products";
 
-export function StaffPitchBuilder({ projectId, setupId, products, currency, personaCount, onStarted }: {
+export function StaffPitchBuilder({ projectId, setupId, products, currency, personaCount, prefill, onStarted }: {
   projectId: string; setupId: string; products: Product[]; currency: string; personaCount: number; onStarted: (job: JobStatus) => void;
+  /** A request routed here from the command palette: used as the direction for script B, which is drafted at once. */
+  prefill?: { text: string; id: number };
 }) {
   const qc = useQueryClient();
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
@@ -47,9 +51,24 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
   // Script B drafted from script A: same product and offer, only the verified facts, a different approach.
   const [direction, setDirection] = useState("");
   const draft = useMutation({
-    mutationFn: () => draftPitchScript(projectId, { setup_id: setupId, sku, context, product_facts: facts, current: a, direction }),
+    mutationFn: ({ dir, product }: { dir: string; product: string }) =>
+      draftPitchScript(projectId, { setup_id: setupId, sku: product, context, product_facts: facts, current: a, direction: dir }),
     onSuccess: (d) => { setB(d.script); setBName(d.name); },
   });
+  // A request routed from the command palette ("a friendlier pitch for the cold brew") picks the product it names.
+  const prefillId = prefill?.id;
+  const prefillText = prefill?.text;
+  const queueDraft = useQueuedStart(draft.mutate);
+  const [handled, setHandled] = useState<number | null>(null);
+  useEffect(() => {
+    if (prefillId === undefined || !prefillText || handled === prefillId) return;
+    setHandled(prefillId);  // only a new routed request drafts; later product or catalog changes do not
+    const dir = prefillText.slice(0, 200);
+    const named = productNamedIn(prefillText, products);
+    if (named) setSku(named);
+    setDirection(dir);
+    queueDraft({ dir, product: named ?? sku });
+  }, [prefillId, prefillText, queueDraft, handled, products, sku]);
   return <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (ready) run.mutate(); }}>
     <section className="space-y-3 rounded-2xl border bg-card p-4">
       <h2 className="font-semibold">Staff script A/B test</h2>
@@ -80,7 +99,7 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
               <div className="flex flex-wrap items-center gap-1.5">
                 <Input aria-label="Direction for script B" value={direction} onChange={(e) => setDirection(e.target.value.slice(0, 200))}
                   placeholder="Optional direction, e.g. lead with value, shorter, more personal" className="h-8 min-w-[12rem] flex-1 text-xs" />
-                <Button type="button" size="sm" variant="outline" disabled={!sku || draft.isPending} onClick={() => draft.mutate()}>
+                <Button type="button" size="sm" variant="outline" disabled={!sku || draft.isPending} onClick={() => draft.mutate({ dir: direction, product: sku })}>
                   {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Write an alternative
                 </Button>
               </div>

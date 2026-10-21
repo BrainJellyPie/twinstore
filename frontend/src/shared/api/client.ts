@@ -1073,6 +1073,14 @@ export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
   return fetchJson(`/api/projects/${projectId}/town/generate`, { method: "POST", ...json(spec) });
 }
 
+/** Where a plain-words request belongs: an A/B test, a conjoint study, a staff script, the neighborhood, a question
+ * about the last run, or none of these. */
+export function routeAssist(req: { text: string; has_run: boolean }): Promise<{
+  destination: "ab_test" | "conjoint" | "staff_script" | "area" | "run_question" | "none"; reason: string;
+}> {
+  return fetchJson(`/api/assist/route`, { method: "POST", ...json(req) });
+}
+
 /** A customer profile drafted by the text model from the create-store form; nothing is saved. */
 export function draftCustomerProfile(req: {
   name: string; description: string; address: string; store_type: string; hours: string; locale: string;

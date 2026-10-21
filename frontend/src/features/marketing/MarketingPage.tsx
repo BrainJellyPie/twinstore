@@ -32,6 +32,7 @@ import {
 } from "@/shared/api/marketing";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { useAssistStore } from "@/stores/assistStore";
 
 import { ConjointBuilder } from "./ConjointBuilder";
 import { ConjointReportView } from "./ConjointReport";
@@ -73,6 +74,19 @@ const busy = (s: JobStatus["status"]) => s === "pending" || s === "running";
 export function MarketingPage({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<Tab>("ab");
   const [selected, setSelected] = useState<Record<JobTab, string | null>>({ ab: null, shelf: null, survey: null, conjoint: null, pitch: null });
+  // A request routed here from the command palette opens the right builder and drafts from the same words.
+  const pendingAsk = useAssistStore((s) => s.pending);
+  const takeAsk = useAssistStore((s) => s.take);
+  const [prefill, setPrefill] = useState<{ tab: "ab" | "conjoint" | "pitch"; text: string; id: number } | null>(null);
+  useEffect(() => {
+    if (!pendingAsk) return;
+    const ask = takeAsk(projectId, ["ab_test", "conjoint", "staff_script"]);
+    if (!ask) return;
+    const target = ask.destination === "ab_test" ? "ab" : ask.destination === "conjoint" ? "conjoint" : "pitch";
+    setTab(target);
+    setSelected((s) => ({ ...s, [target]: "" }));
+    setPrefill({ tab: target, text: ask.text, id: ask.id });
+  }, [pendingAsk, projectId, takeAsk]);
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const setups = project.data?.setups ?? [];
   const [setupId, setSetupId] = useState("");
@@ -191,7 +205,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
           <main className="min-h-0 overflow-y-auto pr-1">
             {tab === "ab" && (current ? <ExperimentJob projectId={projectId} id={current} setups={setups} onDuplicate={duplicateExperiment} /> : setup.data?.store ? (
               <ExperimentBuilder key={`${activeSetup}:${abDraft?.key ?? 0}`} projectId={projectId} setupId={activeSetup} products={products}
-                store={setup.data.store} currency={currency} initial={abDraft?.req}
+                store={setup.data.store} currency={currency} initial={abDraft?.req} prefill={prefill?.tab === "ab" ? prefill : undefined}
                 onStarted={(j) => { setAbDraft(null); select(j.job_id); }} />
             ) : <Loading />)}
             {tab === "shelf" && (current ? <ShelfJob projectId={projectId} id={current} onDuplicate={duplicateShelf} /> : setup.data?.store ? (
@@ -206,10 +220,12 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             {tab === "conjoint" && (current ? <ConjointJob projectId={projectId} id={current} onDuplicate={duplicateConjoint} /> : (
               <ConjointBuilder key={`${conjointDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
                 defaultCurrency={budgetCurrency} initial={conjointDraft?.req} setupId={currency === budgetCurrency ? activeSetup : undefined}
+                prefill={prefill?.tab === "conjoint" ? prefill : undefined}
                 onStarted={(j) => { setConjointDraft(null); select(j.job_id); }} />
             ))}
             {tab === "pitch" && (current ? <PitchJob projectId={projectId} id={current} /> : setup.data?.store ? (
               <StaffPitchBuilder key={activeSetup} projectId={projectId} setupId={activeSetup} products={products} currency={currency}
+                prefill={prefill?.tab === "pitch" ? prefill : undefined}
                 personaCount={project.data?.personas.length ?? 0} onStarted={(j) => select(j.job_id)} />
             ) : <Loading />)}
           </main>

@@ -1,7 +1,7 @@
 // Conjoint builder: the product, its attributes and levels, price levels, the choice-task design, and the
 // respondents. A sample task shows what one respondent will be asked.
 
-import { useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dices, Grid3x3, Loader2, Plus, Sparkles, X } from "lucide-react";
 
@@ -56,10 +56,12 @@ function sampleColumn(n: number, options: number, seed: number): number[] {
   return Array.from({ length: options }, (_, o) => order[o % n]!);
 }
 
-export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, setupId, onStarted }: {
+export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, setupId, prefill, onStarted }: {
   projectId: string; personaCount: number; defaultCurrency?: string; initial?: ConjointRequest | null;
   /** A layout in the study's currency: drafted price levels bracket its comparable products. */
   setupId?: string;
+  /** A question routed here from the command palette: filled in and drafted at once. */
+  prefill?: { text: string; id: number };
   onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
@@ -151,23 +153,41 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
     design: ConjointDesign; question: string; projectId: string; setupId?: string; currency: string;
   } | null>(null);
   const draft = useMutation({
-    mutationFn: () => designConjoint(projectId, { question: question.trim(), setup_id: setupId, currency }),
+    mutationFn: (q: string) => designConjoint(projectId, { question: q.trim(), setup_id: setupId, currency }),
   });
   const resetDraft = draft.reset;
   // A reply belongs to the question and editable design from which it was requested.
   useLayoutEffect(() => {
     resetDraft();
   }, [question, projectId, setupId, currency, product, context, attrs, priceText, name, resetDraft]);
-  const requestDraft = () => draft.mutate(undefined, {
+  const { mutate: mutateDraft } = draft;
+  const requestDraft = useCallback((asked: string) => mutateDraft(asked, {
     onSuccess: (d) => {
-      setAccepted({ design: d, question, projectId, setupId, currency });
+      setAccepted({ design: d, question: asked, projectId, setupId, currency });
       setProduct(d.product);
       setContext(d.context);
       setAttrs(d.attributes.map((a) => ({ name: a.name, levels: a.levels.join(", ") })));
       setPriceText(d.prices.map((p) => String(p / divisor)).join(", "));
       if (!name.trim()) setName(d.name);
     },
-  });
+  }), [mutateDraft, projectId, setupId, currency, divisor, name]);
+  // A routed request fills the question first; the draft is requested once the question shows it, so the reset
+  // above (on any question change) cannot discard the reply.
+  const [queued, setQueued] = useState<string | null>(null);
+  const prefillId = prefill?.id;
+  const prefillText = prefill?.text;
+  useEffect(() => {
+    if (prefillId === undefined || !prefillText) return;
+    const text = Array.from(prefillText).slice(0, 500).join("");
+    setQuestion(text);
+    setQueued(text);
+  }, [prefillId, prefillText]);
+  useEffect(() => {
+    if (queued !== null && queued === question) {
+      setQueued(null);
+      requestDraft(queued);
+    }
+  }, [queued, question, requestDraft]);
   const designed = accepted?.question === question && accepted.projectId === projectId
     && accepted.setupId === setupId && accepted.currency === currency ? accepted.design : null;
 
@@ -186,10 +206,10 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2">
           <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
           <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); requestDraft(); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); requestDraft(question); } }}
             placeholder="What should the study answer? e.g. Would shoppers pay more for zero-sugar tea in a bigger bottle?"
             aria-label="Question for the study" className="h-9 min-w-[14rem] flex-1 bg-card" />
-          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={requestDraft}>
+          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => requestDraft(question)}>
             {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the study
           </Button>
           {designed && (
