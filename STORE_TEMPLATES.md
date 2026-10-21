@@ -256,6 +256,15 @@ remain independent. You can customize an individual floor again afterward.
 These controls update the building being prepared; existing shopper budgets are
 not converted.
 
+**Apply size to all floors** copies the current floor's width and depth to every
+floor, resolving blank dimensions against its selected format. The floor review
+opens immediately so you can inspect each resized plan. Each floor retains its
+own format, product choices, seating and checkout settings, reserved areas, design, schedule and brief.
+If an explicit seating count or reserved area cannot fit, edit that floor or enlarge
+the shared size before saving; invalid floors cannot leave a partially saved building.
+You can resize one floor independently afterward. Sizes are grid cells, with widths
+8–40 and depths 6–40.
+
 **Space beside counters** reserves 0–3 empty cells along the checkout wall on either
 side of each counter, clipped at the wall ends. Counters respect the selected spacing;
 wall shelves and cold displays cannot fill those gaps. Gate cells remain usable.

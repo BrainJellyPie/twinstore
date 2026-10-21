@@ -10,10 +10,14 @@ import { FloorPlanPreview } from "./FloorPlanPreview";
 interface Props {
   floors: BuildingFloorChoice[];
   onEdit: (index: number) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function ReviewBuildingFloors({ floors, onEdit }: Props) {
-  const [open, setOpen] = useState(false);
+export function ReviewBuildingFloors({ floors, onEdit, open: controlledOpen, onOpenChange }: Props) {
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = controlledOpen ?? localOpen;
+  const setOpen = (next: boolean) => { setLocalOpen(next); onOpenChange?.(next); };
   return <Dialog open={open} onOpenChange={setOpen}>
     <DialogTrigger asChild><button type="button" className="rounded border px-2 py-1 text-xs hover:bg-muted">Review all floors</button></DialogTrigger>
     <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-[min(92vw,1000px)]">
