@@ -75,6 +75,7 @@ function expandInstanced(mesh: THREE.InstancedMesh, cellScale: THREE.Vector2 | n
   const P = new Float32Array(n * count * 3);
   const N = new Float32Array(n * count * 3);
   const U = new Float32Array(n * count * 2);
+  const C = mesh.instanceColor ? new Float32Array(n * count * 3) : null;
   for (let i = 0; i < count; i++) {
     mesh.getMatrixAt(i, _inst);
     _world.multiplyMatrices(mesh.matrixWorld, _inst);
@@ -85,6 +86,11 @@ function expandInstanced(mesh: THREE.InstancedMesh, cellScale: THREE.Vector2 | n
       const o = (i * n + k) * 3;
       _v.fromBufferAttribute(pos, k).applyMatrix4(_world);
       P[o] = _v.x; P[o + 1] = _v.y; P[o + 2] = _v.z;
+      if (C && mesh.instanceColor) {
+        C[o] = mesh.instanceColor.getX(i);
+        C[o + 1] = mesh.instanceColor.getY(i);
+        C[o + 2] = mesh.instanceColor.getZ(i);
+      }
       if (nrm) {
         _v.fromBufferAttribute(nrm, k).applyMatrix3(_normal).normalize();
         N[o] = _v.x; N[o + 1] = _v.y; N[o + 2] = _v.z;
@@ -102,6 +108,7 @@ function expandInstanced(mesh: THREE.InstancedMesh, cellScale: THREE.Vector2 | n
   if (nrm) g.setAttribute("normal", new THREE.BufferAttribute(N, 3));
   else g.computeVertexNormals();
   g.setAttribute("uv", new THREE.BufferAttribute(U, 2));
+  if (C) g.setAttribute("color", new THREE.BufferAttribute(C, 3));
   return g;
 }
 
@@ -191,6 +198,7 @@ export function buildPhotoScene(
       const mat = converted[0];
       if (!mat || (mesh as THREE.InstancedMesh).count === 0) return;
       const scale = (src.userData.atlasCellScale as THREE.Vector2 | undefined) ?? null;
+      if ((mesh as THREE.InstancedMesh).instanceColor) mat.vertexColors = true;
       add(mat, expandInstanced(mesh as THREE.InstancedMesh, scale));
       return;
     }
@@ -229,7 +237,11 @@ export function buildPhotoScene(
     for (const g of ok) {
       if (!g.getAttribute("normal")) g.computeVertexNormals();
       if (!g.getAttribute("uv")) g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(g.getAttribute("position").count * 2), 2));
-      for (const name of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(name)) g.deleteAttribute(name);
+      // A material bucket can contain both tinted instances and ordinary meshes.
+      if (mat.vertexColors && !g.getAttribute("color")) {
+        g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(g.getAttribute("position").count * 3).fill(1), 3));
+      }
+      for (const name of Object.keys(g.attributes)) if (!["position", "normal", "uv", "color"].includes(name)) g.deleteAttribute(name);
     }
     const merged = ok.length === 1 ? ok[0]! : mergeGeometries(ok, false);
     if (!merged) continue;
