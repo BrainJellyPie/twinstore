@@ -160,7 +160,7 @@ def import_floor_plan(
     meta = cast(dict[str, Any], read_json(metadata_path(pid)))
     schedule = [DaySchedule.model_validate(d) for d in cast(list[dict[str, Any]], meta.get("weekly_schedule") or [])]
     layout_name = name or f"floor plan ({Path(filename).stem[:40] or 'plan'})"
-    store, notes = plan_to_store(reading, currency=config.currency, name=str(meta.get("name") or layout_name),
+    store, notes = plan_to_store(reading, currency=str(meta.get("currency") or config.currency), name=str(meta.get("name") or layout_name),
                                  store_type=str(meta.get("store_type") or "convenience"), schedule=schedule)
     issues = validate(store)
     errors = [i for i in issues if i.severity == "error"]

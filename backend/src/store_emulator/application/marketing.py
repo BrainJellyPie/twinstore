@@ -54,6 +54,7 @@ from store_emulator.engine.simulation.factory import build_engine
 from .async_executor import executor
 from .capture import capture_llm_config
 from .errors import AppError
+from .currencies import simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client
 from .shelf_lab import (
@@ -163,7 +164,8 @@ def _minor_per_major(currency: str) -> int:
 def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig) -> JobStatus:
     control = _load_store(pid, req.setup_id)
     personas = _personas(pid)
-    currency = config.currency
+    currency = simulation_currency(pid, control, config.currency)
+    config = config.model_copy(update={"currency": currency})
     uris: dict[str, str] = {}
     for v in req.variants:
         for c in v.changes:

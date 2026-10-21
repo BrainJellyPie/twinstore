@@ -56,6 +56,7 @@ export interface Store {
   name: string;
   type: string;
   design_theme?: StoreDesign;
+  currency?: string | null;
   grid_size: Position;
   weekly_schedule: DaySchedule[];
   racks: Rack[];

@@ -176,6 +176,8 @@ def create_project_without_layout(
         "updated_at": now,
     }
     initial: dict[str, object] | None = None
+    currency = layout.currency if layout is not None else config.currency.upper()
+    meta["currency"] = currency
     if layout is not None:
         # Validate and build before any project files are created.
         initial = prepare_template_layout(pid, layout)
@@ -198,7 +200,7 @@ def create_project_without_layout(
     write_state(pid, {"activeSetupId": initial["id"]})
 
     persona_gen_id = start_persona_generation(
-        config=config, project_id=pid, setup_id=str(initial["id"]),
+        config=config.model_copy(update={"currency": currency}), project_id=pid, setup_id=str(initial["id"]),
         supplemental_bytes=supplemental_bytes,
         supplemental_filename=supplemental_filename,
     )

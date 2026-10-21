@@ -122,7 +122,7 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
         raise HTTPException(400, str(e))
     try:
         run_id, store, personas, address, customer_profile = sim_service.prepare_simulation(
-            pid, req.setup_id, req.run_id, preview=req.preview,
+            pid, req.setup_id, req.run_id, preview=req.preview, default_currency=config.currency,
         )
     except AppError as e:
         raise HTTPException(e.status_code, str(e))

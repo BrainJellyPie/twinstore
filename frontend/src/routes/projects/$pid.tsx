@@ -90,6 +90,7 @@ function SimulationPageInner({ pid }: { pid: string }) {
         projectId={pid}
         parentSetupId={effectiveSetupId}
         layouts={layouts}
+        defaultCurrency={project.metadata.currency ?? "USD"}
       />
     </>
   );
@@ -197,7 +198,7 @@ function SimulationPageContent({
   }
   const setupWithStore: SetupDetail & { store: Store } = {
     ...setup,
-    store: setup.store!,
+    store: { ...setup.store!, currency: setup.store!.currency ?? project.metadata.currency },
   };
 
   if (runningRun) {

@@ -210,6 +210,7 @@ export function GridEditorDialog({
         id: `store_${crypto.randomUUID().slice(0, 8)}`,
         name: project.metadata.name,
         type: project.metadata.store_type,
+        currency: project.metadata.currency,
         grid_size: editor.gridSize,
         weekly_schedule: [...project.metadata.weekly_schedule],
         racks: [],

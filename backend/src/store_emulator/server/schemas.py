@@ -195,6 +195,7 @@ class ProjectMetadata(BaseModel):
     name: str
     description: str = ""
     store_type: str
+    currency: str | None = None
     grid_size: list[int] | None = None
     weekly_schedule: list[dict[str, object]] = Field(default_factory=lambda: list[dict[str, object]]())
     address: str = ""
