@@ -37,6 +37,12 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** The active layout as rectangles: [x, y, width, depth, fixture type] in grid cells. */
+export interface LayoutFootprint {
+  grid: [number, number];
+  racks: [number, number, number, number, "shelf" | "fridge" | "counter" | "table"][];
+}
+
 export interface ProjectListItem {
   project_id: string;
   name: string;
@@ -47,6 +53,7 @@ export interface ProjectListItem {
   created_at: string;
   updated_at: string;
   status: string;
+  footprint?: LayoutFootprint | null;
 }
 
 export interface ProjectMetadata {

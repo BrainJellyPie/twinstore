@@ -22,6 +22,31 @@ from store_emulator.application.storage.setups import (
 _data = Path(DATA_DIR)
 
 
+_DRAWN = {"shelf", "fridge", "counter", "table"}
+MAX_FOOTPRINT_RACKS = 160
+
+
+def _footprint(store: dict[str, Any]) -> dict[str, Any] | None:
+    """The active layout as rectangles for the gallery tile: grid size and [x, y, w, h, type] per fixture."""
+    raw = store.get("grid_size")
+    if not isinstance(raw, list | tuple):
+        return None
+    grid = cast(list[Any], raw)
+    if len(grid) != 2:
+        return None
+    racks: list[list[Any]] = []
+    for rack in cast(list[dict[str, Any]], store.get("racks") or [])[:MAX_FOOTPRINT_RACKS]:
+        kind = rack.get("type")
+        shape = cast(list[list[Any]], rack.get("shape") or [])
+        pos = cast(list[Any], rack.get("position") or [0, 0])
+        if kind not in _DRAWN or not shape or not shape[0] or len(pos) != 2:
+            continue
+        rows, cols = len(shape), len(shape[0])
+        w, h = (rows, cols) if rack.get("rotation", 0) in (90, 270) else (cols, rows)
+        racks.append([int(pos[0]), int(pos[1]), w, h, kind])
+    return {"grid": [int(grid[0]), int(grid[1])], "racks": racks}
+
+
 def list_projects() -> list[dict[str, Any]]:
     """Project list with computed status badge."""
     projects: list[dict[str, Any]] = []
@@ -44,6 +69,8 @@ def list_projects() -> list[dict[str, Any]]:
             try:
                 active = read_setup(pid, active_sid)
                 has_store = active.get("store") is not None
+                if has_store:
+                    meta["footprint"] = _footprint(cast(dict[str, Any], active["store"]))
             except FileNotFoundError:
                 pass
         if has_run:

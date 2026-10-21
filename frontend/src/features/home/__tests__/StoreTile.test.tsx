@@ -32,3 +32,15 @@ it.each([
     expect(screen.getByRole("link", { name }).getAttribute("href")).toBe(href);
   }
 });
+
+it("draws the store's own fixtures when the layout is known, and a generic store otherwise", () => {
+  const { container, rerender } = render(<StoreTile project={{ ...project, footprint: { grid: [8, 6], racks: [
+    [0, 0, 3, 1, "fridge"], [2, 2, 1, 3, "shelf"], [6, 5, 2, 1, "counter"],
+  ] } }} onOpen={vi.fn()} />);
+  const glow = () => container.querySelectorAll('polygon[fill="var(--hero-fridge-glow)"]').length;
+  expect(glow()).toBe(1);
+  expect(container.querySelectorAll('polygon[fill="var(--hero-counter-top)"]').length).toBe(1);
+  rerender(<StoreTile project={{ ...project, footprint: null }} onOpen={vi.fn()} />);
+  expect(glow()).toBe(0);
+  expect(container.querySelector('line[stroke="var(--hero-fridge-glow)"]')).toBeTruthy();
+});
