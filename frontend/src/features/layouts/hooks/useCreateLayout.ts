@@ -9,7 +9,7 @@ type CreateLayoutSource =
   | { kind: "import"; parentSetupId: string }
   | { kind: "empty" }
   | { kind: "template"; templateId: string; seed: number; currency: string; style: "aisles" | "loop" | null }
-  | { kind: "plan"; file: File; reader: "auto" | "classic" };
+  | { kind: "plan"; file: File; reader: "auto" | "classic"; pageNumber: number; rotation: number };
 
 interface Params {
   projectId: string;
@@ -24,7 +24,7 @@ export function useCreateLayout() {
   return useMutation<SetupSummaryShort, Error, Params>({
     mutationFn: ({ projectId, name, source }) =>
       source.kind === "plan"
-        ? importFloorPlan(projectId, source.file, { reader: source.reader, name }).then((r) => r.setup)
+        ? importFloorPlan(projectId, source.file, { reader: source.reader, name, pageNumber: source.pageNumber, rotation: source.rotation }).then((r) => r.setup)
         : source.kind === "template"
         ? generateLayout(projectId, {
             template_id: source.templateId, seed: source.seed, currency: source.currency, style: source.style, name,

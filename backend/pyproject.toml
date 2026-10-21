@@ -24,6 +24,7 @@ dependencies = [
     "pillow>=12.2.0",
     "pydantic>=2.12.5",
     "python-dotenv>=1.0.1",
+    "pypdfium2>=5.14.0",
 ]
 
 [project.optional-dependencies]

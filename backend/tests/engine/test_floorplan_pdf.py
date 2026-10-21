@@ -17,6 +17,7 @@ def pdf_handles(monkeypatch):
     document = MagicMock()
     document.__len__.return_value = 1
     page = document.__getitem__.return_value
+    page.get_size.return_value = (200, 100)
     bitmap = page.render.return_value
     bitmap.to_pil.return_value = Image.new("RGB", (8, 8), "white")
     monkeypatch.setitem(sys.modules, "pypdfium2", SimpleNamespace(PdfDocument=Mock(return_value=document)))
@@ -75,3 +76,25 @@ def test_real_pdf_first_page_is_decoded_when_parser_is_available():
     image = load_plan_image(buffer.getvalue(), "plan.pdf")
     assert image.mode == "RGB" and image.size == (144, 72)
     assert image.getpixel((0, 0)) == (255, 255, 255)
+
+
+def test_large_pdf_page_is_rendered_with_bounded_resolution(pdf_handles):
+    _, page, _ = pdf_handles
+    page.get_size.return_value = (10_000, 5000)
+    load_plan_image(b"%PDF-test", "plan.pdf")
+    assert page.render.call_args.kwargs["scale"] == 0.24
+
+
+def test_concurrent_pdf_reads_return_detached_images():
+    from concurrent.futures import ThreadPoolExecutor
+
+    pdfium = pytest.importorskip("pypdfium2")
+    buffer = io.BytesIO()
+    with pdfium.PdfDocument.new() as document:
+        page = document.new_page(72, 36)
+        page.close()
+        document.save(buffer)
+    data = buffer.getvalue()
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        images = list(executor.map(lambda _: load_plan_image(data, "plan.pdf"), range(8)))
+    assert all(image.size == (144, 72) and image.getpixel((0, 0)) == (255, 255, 255) for image in images)
