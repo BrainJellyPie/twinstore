@@ -1,7 +1,9 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { useI18n } from "@/shared/i18n/i18n";
+import { LOCALES } from "@/shared/i18n/messages";
+import { storeTypeLabel } from "@/shared/i18n/storeLabels";
 import { rackDiningSeats } from "@/shared/utils/dining";
-import { cloneElement, useId, useState, type ReactElement } from "react";
+import { cloneElement, useId, useRef, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
@@ -15,6 +17,10 @@ import { CompareFloorPlans } from "./CompareFloorPlans";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+function normalizeSearch(text: string) {
+  return text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[_\s-]+/g, " ").trim();
+}
 
 export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, onApplySizeToAll, onApplyPriorityToAll, sharedDesign, sharedCurrency, sharedHours = false, sharedSize = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
   value: TemplateChoice;
@@ -33,10 +39,11 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   showOperatingHours?: boolean;
   defaultCustomizationOpen?: boolean;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const customizationId = useId();
   const [customizationOpen, setCustomizationOpen] = useState(defaultCustomizationOpen);
   const [search, setSearch] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
   const [storeType, setStoreType] = useState("");
   const [size, setSize] = useState("all");
   const [seating, setSeating] = useState("all");
@@ -70,25 +77,30 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const sharedExit = (value.exit_position ?? "shared") === "shared";
   const exitWall = sharedExit ? value.gate_wall : value.exit_wall ?? value.gate_wall;
   const sideExit = exitWall === "left" || exitWall === "right";
-  const terms = search.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim().split(/\s+/).filter(Boolean);
-  const filtered = templates.filter((t) => {
-    if (storeType && t.store_type !== storeType) return false;
-    const cells = t.grid[0] * t.grid[1];
+  const terms = normalizeSearch(search).split(" ").filter(Boolean);
+  const filtered = templates.filter((format) => {
+    if (storeType && format.store_type !== storeType) return false;
+    const cells = format.grid[0] * format.grid[1];
     if (size === "compact" && cells > 144) return false;
     if (size === "medium" && (cells <= 144 || cells > 480)) return false;
     if (size === "large" && cells <= 480) return false;
-    if (seating === "with" && t.default_dining_tables === 0) return false;
-    if (seating === "without" && t.default_dining_tables > 0) return false;
-    const text = `${t.name} ${t.description} ${t.store_type} ${t.id.replace(/_/g, " ")}`.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+    if (seating === "with" && format.default_dining_tables === 0) return false;
+    if (seating === "without" && format.default_dining_tables > 0) return false;
+    const labels = LOCALES.map(({ code }) => storeTypeLabel(format.store_type, code)).join(" ");
+    const text = normalizeSearch(`${format.name} ${format.description} ${format.store_type} ${format.id} ${labels}`);
     return terms.every((term) => text.includes(term));
   }).sort((a, b) => {
-    if (sort === "name") return a.name.localeCompare(b.name);
-    if (sort === "smallest") return a.grid[0] * a.grid[1] - b.grid[0] * b.grid[1] || a.name.localeCompare(b.name);
-    if (sort === "largest") return b.grid[0] * b.grid[1] - a.grid[0] * a.grid[1] || a.name.localeCompare(b.name);
-    if (sort === "seats") return b.default_dining_tables - a.default_dining_tables || a.name.localeCompare(b.name);
+    if (sort === "name") return a.name.localeCompare(b.name, locale);
+    if (sort === "smallest") return a.grid[0] * a.grid[1] - b.grid[0] * b.grid[1] || a.name.localeCompare(b.name, locale);
+    if (sort === "largest") return b.grid[0] * b.grid[1] - a.grid[0] * a.grid[1] || a.name.localeCompare(b.name, locale);
+    if (sort === "seats") return b.default_dining_tables - a.default_dining_tables || a.name.localeCompare(b.name, locale);
     return 0;
   });
   const update = (patch: Partial<TemplateChoice>) => onChange({ ...value, ...patch });
+  const clearFilters = () => {
+    setSearch(""); setStoreType(""); setSize("all"); setSeating("all"); setSort("default");
+    searchInput.current?.focus();
+  };
   function updateTableMix(patch: Partial<api.DiningTableMix>) {
     const mix = { two_seat: 0, four_seat: 0, six_seat: 0, ...tableMix, ...patch };
     update({ table_mix: mix, dining_tables: mix.two_seat + mix.four_seat + mix.six_seat });
@@ -97,51 +109,66 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-        <label className="space-y-1 text-xs">Find a store format
-          <input className={controlClass} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pharmacy, café, large store…" />
-        </label>
-        <label className="space-y-1 text-xs">Store category
-          <select className={controlClass} value={storeType} onChange={(e) => setStoreType(e.target.value)}>
-            <option value="">All categories</option>
-            {[...new Set(templates.map((t) => t.store_type))].sort().map((type) => <option key={type} value={type}>{type}</option>)}
+        <div className="space-y-1 text-xs">
+          <label htmlFor={`${customizationId}-search`}>{t("findStoreFormat")}</label>
+          <div className="relative">
+            <input id={`${customizationId}-search`} ref={searchInput} className={cn(controlClass, "pr-8")} value={search}
+              onChange={(e) => setSearch(e.target.value)} placeholder={t("formatSearchPlaceholder")}
+              onKeyDown={(event) => { if (event.key === "Escape" && search) { event.preventDefault(); event.stopPropagation(); setSearch(""); } }} />
+            {search && <button type="button" aria-label={t("clearFormatSearch")} className="absolute inset-y-0 right-0 grid w-8 place-items-center rounded hover:bg-muted"
+              onClick={() => { setSearch(""); searchInput.current?.focus(); }}><X className="size-3.5" aria-hidden /></button>}
+          </div>
+        </div>
+        <label className="space-y-1 text-xs">{t("storeCategory")}
+          <select aria-label={t("storeCategory")} className={controlClass} value={storeType} onChange={(e) => setStoreType(e.target.value)}>
+            <option value="">{t("allCategories")}</option>
+            {[...new Set(templates.map((format) => format.store_type))].sort((a, b) => storeTypeLabel(a, locale).localeCompare(storeTypeLabel(b, locale), locale))
+              .map((type) => <option key={type} value={type}>{storeTypeLabel(type, locale)}</option>)}
           </select>
         </label>
       </div>
       <details className="space-y-2 rounded border px-2 py-1.5 text-xs">
-        <summary className="cursor-pointer">More format filters</summary>
+        <summary className="cursor-pointer">{t("moreFormatFilters")}</summary>
         <div className="grid gap-2 sm:grid-cols-3">
-          <Field label="Default floor size"><select className={controlClass} value={size} onChange={(e) => setSize(e.target.value)}>
-            <option value="all">Any size</option><option value="compact">Compact · up to 144 cells</option>
-            <option value="medium">Medium · 145–480 cells</option><option value="large">Large · over 480 cells</option>
+          <Field label={t("defaultFloorSize")}><select className={controlClass} value={size} onChange={(e) => setSize(e.target.value)}>
+            <option value="all">{t("anySize")}</option><option value="compact">{t("compactSize")}</option>
+            <option value="medium">{t("mediumSize")}</option><option value="large">{t("largeSize")}</option>
           </select></Field>
-          <Field label="Default seating"><select className={controlClass} value={seating} onChange={(e) => setSeating(e.target.value)}>
-            <option value="all">Any seating</option><option value="with">With dining tables</option><option value="without">Without dining tables</option>
+          <Field label={t("defaultSeating")}><select className={controlClass} value={seating} onChange={(e) => setSeating(e.target.value)}>
+            <option value="all">{t("anySeating")}</option><option value="with">{t("withDiningTables")}</option><option value="without">{t("withoutDiningTables")}</option>
           </select></Field>
-          <Field label="Sort formats"><select className={controlClass} value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="default">Format order</option><option value="name">Name · A–Z</option>
-            <option value="smallest">Smallest floor first</option><option value="largest">Largest floor first</option><option value="seats">Most seats first</option>
+          <Field label={t("sortFormats")}><select className={controlClass} value={sort} onChange={(e) => setSort(e.target.value)}>
+            <option value="default">{t("formatOrder")}</option><option value="name">{t("formatNameOrder")}</option>
+            <option value="smallest">{t("smallestFloorFirst")}</option><option value="largest">{t("largestFloorFirst")}</option><option value="seats">{t("mostTablesFirst")}</option>
           </select></Field>
         </div>
-        <p className="text-muted-foreground">Size and seating describe each starting layout. You can customize them after selecting a format.</p>
+        <p className="text-muted-foreground">{t("formatFiltersHint")}</p>
       </details>
       {templatesQuery.isSuccess && <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        <p className="text-muted-foreground" aria-live="polite">{filtered.length} of {templates.length} formats</p>
+        <p className="text-muted-foreground" aria-live="polite">{t(templates.length === 1 ? "formatCountSingle" : "formatCount", { shown: filtered.length, total: templates.length })}</p>
         {(search || storeType || size !== "all" || seating !== "all" || sort !== "default") && <button type="button" className="underline"
-          onClick={() => { setSearch(""); setStoreType(""); setSize("all"); setSeating("all"); setSort("default"); }}>Clear format filters</button>}
+          onClick={clearFilters}>{t("clearFormatFilters")}</button>}
       </div>}
-      {templatesQuery.isPending && <p role="status" className="text-xs">Loading store formats…</p>}
-      {templatesQuery.isError && <p role="alert" className="text-xs text-destructive">Could not load store formats. <button type="button" className="underline" onClick={() => void templatesQuery.refetch()}>Retry</button></p>}
-      <div className="grid max-h-48 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2" aria-label="Store formats">
-        {filtered.map((t) => (
-          <button key={t.id} type="button" aria-pressed={value.templateId === t.id}
-            onClick={() => { update({ templateId: t.id }); onTemplateSelected?.(t); }}
-            className={cn("rounded-md border p-2 text-left text-xs transition-colors", value.templateId === t.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
-            <div className="font-medium">{t.name}</div>
-            <div className="text-muted-foreground">{t.grid[0]}×{t.grid[1]} · {t.racks} displays · {t.skus} products by default</div>
+      {templatesQuery.isPending && <p role="status" className="text-xs">{t("loadingFormats")}</p>}
+      {templatesQuery.isError && <p role="alert" className="text-xs text-destructive">{t("loadFormatsError")} <button type="button" className="underline" disabled={templatesQuery.isFetching}
+        onClick={() => void templatesQuery.refetch()}>{t(templatesQuery.isFetching ? "tryingAgain" : "tryAgain")}</button></p>}
+      <div role="group" className="grid max-h-48 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2" aria-label={t("storeFormats")}>
+        {filtered.map((format) => (
+          <button key={format.id} type="button" aria-pressed={value.templateId === format.id}
+            onClick={() => { update({ templateId: format.id }); onTemplateSelected?.(format); }}
+            className={cn("min-w-0 break-words rounded-md border p-2 text-left text-xs transition-colors", value.templateId === format.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
+            <div className="font-medium">{format.name}</div>
+            <div className="text-muted-foreground">{storeTypeLabel(format.store_type, locale)}</div>
+            <div className="text-muted-foreground">{t("defaultFormatSummary", { width: format.grid[0], height: format.grid[1], displays: format.racks, products: format.skus })}</div>
           </button>
         ))}
       </div>
-      {templatesQuery.isSuccess && !filtered.length && <p className="text-xs text-muted-foreground">No matching formats. Try another search or category.</p>}
+      {templatesQuery.isSuccess && !filtered.length && <p className="text-xs text-muted-foreground">
+        {t(templates.length ? "noMatchingFormats" : "emptyFormats")}
+        {!templates.length && <> <button type="button" className="underline" disabled={templatesQuery.isFetching}
+          onClick={() => void templatesQuery.refetch()}>{t(templatesQuery.isFetching ? "tryingAgain" : "tryAgain")}</button></>}
+      </p>}
+      {selected && (search || storeType || size !== "all" || seating !== "all") && <p className="text-xs text-muted-foreground">{t("formatSelectionHint")}</p>}
       {value.templateId && <>
         <div className="grid gap-3 sm:grid-cols-[170px_minmax(0,1fr)]">
           <div className="space-y-1.5">
@@ -158,7 +185,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>Retry</button></p>}
           </div>
           <div className="space-y-2">
-            <p className="text-xs"><strong>{selected?.name}</strong></p>
+            {selected && <p className="text-xs"><span className="text-muted-foreground">{t("selectedFormat")}: </span><strong>{selected.name}</strong></p>}
             <p className="text-xs text-muted-foreground">{selected?.description}</p>
             <div className="grid grid-cols-2 gap-2">
               <Field label={t("widthCells")}><input type="number" className={controlClass} min={8} max={40} step={1} placeholder={String(selected?.grid[0] ?? 12)} value={value.width ?? ""} onChange={(e) => update({ width: e.target.value === "" ? null : Number(e.target.value) })} /></Field>

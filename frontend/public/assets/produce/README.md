@@ -116,3 +116,25 @@ Download and verify the manifest sources, preserving their paths, then run:
 blender --background --python scripts/convert_onion.py -- \
   --source-dir /path/to/onions --output frontend/public/assets/produce/onion.glb
 ```
+
+`kiwi.glb` uses **Food Kiwi 01** by **Oliver Harries**, published by
+[Poly Haven](https://polyhaven.com/a/food_kiwi_01) under CC0. `kiwi-sources.json`
+records the original files, hashes, authored dimensions and converted output.
+The fruit lies on its side at approximately 90.1 × 69.5 × 68.6 mm. Its two
+detail levels contain 240 and 1,200 triangles, with bottom-centred unit bounds
+and inverse-transpose normal correction. Original 1K JPEG color, OpenGL normal
+and roughness maps are retained; the fuzzy skin detail is in these maps.
+
+Whole green/Hayward kiwi names use the scan. Gold or baby varieties, processed
+fruit, juices and multipacks retain their package representation. Shelf and
+table stock stays in one layer with small, stable scale/brightness changes and
+half-turn variation. Medium uses the photo color with a matte nonmetallic
+surface; High adds the normal and roughness maps. A brown oval fallback remains
+visible during loading or after failure, and absent kiwis cause no request.
+
+Rebuild with Blender 4.3.2 after downloading and verifying the manifest files:
+
+```sh
+blender --background --python scripts/convert_kiwi.py -- \
+  --source-dir /path/to/kiwis --output frontend/public/assets/produce/kiwi.glb
+```

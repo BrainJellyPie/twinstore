@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { readLocale, resolveLocale, translate, useI18n, useLocale } from "../i18n";
 import { LanguagePicker } from "../LanguagePicker";
 import { LOCALES, messages, type Locale, type MessageKey } from "../messages";
-import { storeTypeLabel } from "@/features/home/storeLabels";
+import { storeTypeLabel } from "../storeLabels";
 
 beforeEach(() => { localStorage.clear(); useLocale.getState().setLocale("en"); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); useLocale.getState().setLocale("en"); localStorage.clear(); });
@@ -78,6 +78,7 @@ it.each(LOCALES)("formats counts and keeps custom names intact in $code", ({ cod
   expect(translate(code, "filteredStores", { shown: 10000, total: 10000 })).toContain(count);
   expect(translate(code, "openStoreIn", { name: "A {name} <b>" })).toContain("A {name} <b>");
   expect(storeTypeLabel("cafe", code)).toBe(translate(code, "cafe"));
+  expect(storeTypeLabel("gift", code)).toBe(translate(code, "giftShop"));
   expect(storeTypeLabel("pizza_shop", code)).toBe("Pizza shop");
   expect(storeTypeLabel("constructor", code)).toBe("Constructor");
   expect(storeTypeLabel("__proto__", code)).toBe("Proto");
