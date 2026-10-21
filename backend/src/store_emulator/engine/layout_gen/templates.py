@@ -39,6 +39,7 @@ class StoreTemplate:
     closed_days: tuple[int, ...] = ()
     style: LayoutStyle = "aisles"
     dining_tables: int = 0
+    checkouts: int = 1
     seating_zone: SeatingZone = "auto"
     checkout_placement: CheckoutPlacement = "auto"
     design_theme: StoreDesign | None = None
@@ -121,18 +122,18 @@ TEMPLATES: list[StoreTemplate] = [
         id="hypermarket", name="Large-format hypermarket", description="A 32×26 grocery anchor with pantry aisles, fresh food, household departments and a broad cold wall.",
         store_type="supermarket", grid=(32, 26), fridges=["dairy", "fresh_produce", "fresh_meals", "soft_drinks", "water_sports", "beer_alcohol"] * 3,
         freezers=["ice_cream"] * 4, wall_shelves=["household", "pet_care", "health_beauty"] * 4,
-        gondolas=["pantry", "pantry", "instant_food", "household", "chips", "sweets", "pet_care"], open_hours=(8, 23),
+        gondolas=["pantry", "pantry", "instant_food", "household", "chips", "sweets", "pet_care"], open_hours=(8, 23), checkouts=6,
     ),
     StoreTemplate(
         id="warehouse_club", name="Warehouse club", description="Large 36×28 bulk-shopping floor with long sightlines and a central spine.",
         store_type="supermarket", grid=(36, 28), fridges=["dairy", "fresh_meals", "water_sports"] * 6,
         freezers=["ice_cream"] * 4, wall_shelves=["household", "car_care", "electronics"] * 4,
-        gondolas=["pantry", "household", "pet_care", "water_sports", "chips"], style="spine", open_hours=(9, 21),
+        gondolas=["pantry", "household", "pet_care", "water_sports", "chips"], style="spine", open_hours=(9, 21), checkouts=8,
     ),
     StoreTemplate(
         id="organic_market", name="Organic neighborhood market", description="Produce, pantry essentials and chilled meals around a generous circulation loop.",
         store_type="supermarket", grid=(18, 16), fridges=["fresh_produce", "dairy", "fresh_meals"] * 3,
-        wall_shelves=["pantry", "pantry", "household"], gondolas=["fresh_produce", "pantry", "bakery"], style="loop", open_hours=(8, 21),
+        wall_shelves=["pantry", "pantry", "household"], gondolas=["fresh_produce", "pantry", "bakery"], style="loop", open_hours=(8, 21), checkouts=2,
     ),
     StoreTemplate(
         id="community_pharmacy", name="Community pharmacy", description="First aid, OTC care and wellness displays with a front service counter. No prescription dispensing is modeled.",
@@ -144,7 +145,7 @@ TEMPLATES: list[StoreTemplate] = [
         id="wellness_pharmacy", name="Wellness & care pharmacy", description="Spacious care departments connected by a clear central spine; first aid, personal care and wellness.",
         store_type="pharmacy", grid=(20, 16), fridges=["water_sports", "dairy"],
         wall_shelves=["pharmacy_care", "wellness", "health_beauty"] * 2, gondolas=["wellness", "pharmacy_care", "health_beauty"],
-        near_counter=["wellness"], style="spine", open_hours=(8, 22),
+        near_counter=["wellness"], style="spine", open_hours=(8, 22), checkouts=2,
     ),
     StoreTemplate(
         id="specialty_cafe", name="Specialty coffee bar", description="Coffee menu and pastry displays with an open center. Models counter purchases; seating service is not simulated.",
@@ -170,7 +171,7 @@ TEMPLATES: list[StoreTemplate] = [
         id="food_hall", name="Food hall & deli", description="Several food and beverage displays around a central circulation spine; use multiple checkout counters for service points.",
         store_type="restaurant", grid=(26, 20), fridges=["fresh_meals", "soft_drinks", "dairy"] * 3,
         wall_shelves=["restaurant_menu", "bakery", "cafe_menu"] * 2, gondolas=["restaurant_menu", "fresh_meals", "desserts", "bakery"],
-        near_counter=["cafe_menu", "desserts"], style="spine", open_hours=(10, 22), dining_tables=8,
+        near_counter=["cafe_menu", "desserts"], style="spine", open_hours=(10, 22), dining_tables=8, checkouts=4,
     ),
     StoreTemplate(
         id="fashion_boutique", name="Fashion boutique", description="Curated apparel and accessories on free-flow display islands with perimeter collections.",
@@ -364,7 +365,10 @@ def generate_store(
         counter_xs.sort(key=lambda x: abs(x - entrance_x))
     elif checkout_placement == "away_from_entrance":
         counter_xs.sort(key=lambda x: -abs(x - entrance_x))
-    counter_xs = counter_xs[:options.checkouts]
+    checkout_count = min(t.checkouts, len(counter_xs)) if options.checkouts is None else options.checkouts
+    if checkout_count > len(counter_xs):
+        raise ValueError(f"This {w}×{h} grid fits at most {len(counter_xs)} checkout counters with the selected gates and placement. Reduce the counter count, change placement or increase the width.")
+    counter_xs = counter_xs[:checkout_count]
     for i, x in enumerate(counter_xs):
         b.add(RackType.COUNTER, x, h - 1, name=f"Counter {i + 1}", variant="b")
     front_xs = [x for x in range(1, w - 1) if b.free(x, h - 1)]

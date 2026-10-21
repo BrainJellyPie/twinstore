@@ -35,7 +35,7 @@ class LayoutOptions(BaseModel):
     shelf_direction: ShelfDirection = "horizontal"
     entrance: EntrancePosition = "left"
     exit_position: ExitPosition = "shared"
-    checkouts: int = Field(default=1, ge=1, le=4)
+    checkouts: int | None = Field(default=None, ge=1, le=12)
     checkout_placement: CheckoutPlacement = "auto"
     fixture_design: FixtureDesign = "mixed"
     design_theme: StoreDesign | None = None
