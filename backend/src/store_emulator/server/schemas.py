@@ -234,3 +234,7 @@ class EngineInfo(BaseModel):
     uses_llm: bool
     model: str = ""
     default: bool = False
+    # False when `model` is a cloud model whose provider has no API key (runs on it would fail); `suggested_model`
+    # then names a fast model of a provider that has one ("" if none does).
+    model_ready: bool = True
+    suggested_model: str = ""
