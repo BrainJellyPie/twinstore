@@ -470,6 +470,15 @@ def generate_store(
         raise ValueError(f"unknown store template: {template_id}")
     rng = random.Random(stable_seed("layout-template", template_id, seed))
     options = options or LayoutOptions()
+    open_hour = t.open_hours[0] if options.open_hour is None else options.open_hour
+    close_hour = t.open_hours[1] if options.close_hour is None else options.close_hour
+    closed_days = list(t.closed_days) if options.closed_days is None else options.closed_days
+    if open_hour >= close_hour:
+        raise ValueError("Opening hour must be earlier than closing hour. Overnight hours are not supported; use 0–24 for all-day opening.")
+    if len(closed_days) != len(set(closed_days)):
+        raise ValueError("Closed weekdays must not contain duplicates.")
+    if len(closed_days) == 7:
+        raise ValueError("Keep at least one open weekday for this store.")
     if options.excluded_categories:
         excluded = set(options.excluded_categories)
         unknown = excluded - CATALOG.keys()
@@ -631,8 +640,8 @@ def generate_store(
         "fashion": "luxury", "home": "minimal", "beauty": "luxury", "books": "warm",
         "electronics": "industrial", "sports": "industrial", "flowers": "botanical",
     }
-    days = [DaySchedule(day=Weekday(d), is_open=d not in t.closed_days,
-                        open_hour=t.open_hours[0], close_hour=t.open_hours[1]) for d in range(1, 8)]
+    days = [DaySchedule(day=Weekday(d), is_open=d not in closed_days,
+                        open_hour=open_hour, close_hour=close_hour) for d in range(1, 8)]
     return Store(
         id=store_id or f"store_{template_id}_{seed}", name=name or t.name, type=t.store_type,
         grid_size=(w, h), weekly_schedule=days, racks=b.racks,

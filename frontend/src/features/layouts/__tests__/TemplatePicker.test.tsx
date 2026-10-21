@@ -29,6 +29,51 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
+it("sets operating hours, protects the last open day and restores only the schedule", async () => {
+  mount();
+  fireEvent.click(await screen.findByText("Operating hours · 7 open days"));
+  fireEvent.change(screen.getByLabelText("Opening hour (0–23)"), { target: { value: "6" } });
+  fireEvent.change(screen.getByLabelText("Closing hour (1–24)"), { target: { value: "15" } });
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
+  for (const day of ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]) {
+    fireEvent.click(screen.getByRole("checkbox", { name: day }));
+  }
+  expect((screen.getByRole("checkbox", { name: "Monday" }) as HTMLInputElement).disabled).toBe(true);
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ open_hour: 6, close_hour: 15, closed_days: [2, 3, 4, 5, 6, 7] }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Sunday" }));
+  expect((screen.getByRole("checkbox", { name: "Monday" }) as HTMLInputElement).disabled).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Use format operating hours" }));
+  expect((screen.getByLabelText("Opening hour (0–23)") as HTMLInputElement).value).toBe("");
+  expect((screen.getByLabelText("Width (8–40 cells)") as HTMLInputElement).value).toBe("24");
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ open_hour: null, close_hour: null, closed_days: null }), expect.any(AbortSignal)));
+});
+
+it("does not request a preview or export when explicit hours are reversed", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByText("Operating hours · 7 open days"));
+  fireEvent.change(screen.getByLabelText("Opening hour (0–23)"), { target: { value: "20" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ open_hour: 20 }), expect.any(AbortSignal)));
+  const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+  fireEvent.change(screen.getByLabelText("Closing hour (1–24)"), { target: { value: "6" } });
+  expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+  expect((screen.getByRole("button", { name: "Export options" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Opening hour (0–23)") as HTMLInputElement).value).toBe("");
+  expect((screen.getByLabelText("Closing hour (1–24)") as HTMLInputElement).value).toBe("");
+});
+
+it("can use a wizard's hours without offering a conflicting second schedule editor", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><TemplatePicker value={{ ...DEFAULT_TEMPLATE_CHOICE, open_hour: 6, close_hour: 15, closed_days: [6, 7] }}
+    onChange={vi.fn()} showOperatingHours={false} /></QueryClientProvider>);
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  expect(screen.queryByLabelText("Opening hour (0–23)")).toBeNull();
+  expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ open_hour: 6, close_hour: 15, closed_days: [6, 7] }), expect.any(AbortSignal));
+});
+
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><Picker /></QueryClientProvider>);

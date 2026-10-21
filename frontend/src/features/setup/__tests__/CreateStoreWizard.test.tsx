@@ -36,7 +36,7 @@ it("creates the selected initial format with the wizard metadata", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Choose pharmacy" }));
   await submit();
   await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ meta: expect.objectContaining({
-    name: "My Pharmacy", store_type: "pharmacy", layout: expect.objectContaining({ template_id: "community_pharmacy", width: 24, design_theme: "minimal" }),
+    name: "My Pharmacy", store_type: "pharmacy", layout: expect.objectContaining({ template_id: "community_pharmacy", width: 24, design_theme: "minimal", open_hour: 0, close_hour: 24, closed_days: [] }),
   }) })));
   await waitFor(() => expect(created).toHaveBeenCalledWith("proj_new"));
 });

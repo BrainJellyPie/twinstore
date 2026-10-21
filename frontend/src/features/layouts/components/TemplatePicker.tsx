@@ -11,8 +11,9 @@ import { GenerationOptionsFile } from "./GenerationOptionsFile";
 import { CompareFloorPlans } from "./CompareFloorPlans";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, sharedDesign, sharedCurrency }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, sharedDesign, sharedCurrency, showOperatingHours = true }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
@@ -21,6 +22,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   onApplyCurrencyToAll?: (currency: string) => void;
   sharedDesign?: NonNullable<TemplateChoice["design_theme"]>;
   sharedCurrency?: string;
+  showOperatingHours?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [storeType, setStoreType] = useState("");
@@ -38,6 +40,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     enabled: validTemplateChoice(value), staleTime: Infinity,
   });
   const selected = templates.find((t) => t.id === value.templateId);
+  const closedDays = value.closed_days ?? selected?.closed_days ?? [];
   const activeDesign = value.design_theme ?? selected?.default_design;
   const categories = selected?.categories ?? [];
   const excluded = new Set(value.excluded_categories ?? []);
@@ -133,7 +136,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "counter").length} checkout counters</p>
               <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green IN: entrance · Rose OUT: exit · Split IN/OUT: shared gate · Slate: checkout · Purple: seating</p>
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
-              {!validTemplateChoice(value) ? "Enter valid grid dimensions, product and table counts, and reserved-area values." : preview.isError ? "Preview unavailable." : "Updating preview…"}
+              {!validTemplateChoice(value) ? "Enter valid grid dimensions, product and table counts, operating hours and reserved-area values. Keep at least one open weekday." : preview.isError ? "Preview unavailable." : "Updating preview…"}
             </div>}
             {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>Retry</button></p>}
           </div>
@@ -235,10 +238,35 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>
+        {showOperatingHours && <details className="space-y-2 rounded border p-2 text-xs">
+          <summary className="cursor-pointer">Operating hours · {7 - closedDays.length} open days</summary>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Opening hour (0–23)"><input type="number" min={0} max={23} step={1} className={controlClass}
+              placeholder={String(selected?.open_hours[0] ?? 0)} value={value.open_hour ?? ""}
+              onChange={(event) => update({ open_hour: event.target.value === "" ? null : Number(event.target.value) })} /></Field>
+            <Field label="Closing hour (1–24)"><input type="number" min={1} max={24} step={1} className={controlClass}
+              placeholder={String(selected?.open_hours[1] ?? 24)} value={value.close_hour ?? ""}
+              onChange={(event) => update({ close_hour: event.target.value === "" ? null : Number(event.target.value) })} /></Field>
+          </div>
+          <p className="text-muted-foreground">Blank hours use the format default. Use 0–24 for all-day opening. Closing must be later than opening; overnight hours are not supported.</p>
+          <fieldset className="space-y-2">
+            <legend>Open weekdays</legend>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {WEEKDAYS.map((day, index) => <label key={day} className="flex items-center gap-1.5">
+                <input type="checkbox" checked={!closedDays.includes(index + 1)} disabled={closedDays.length === 6 && !closedDays.includes(index + 1)}
+                  onChange={(event) => update({ closed_days: event.target.checked
+                    ? closedDays.filter((value) => value !== index + 1)
+                    : [...closedDays, index + 1].sort((a, b) => a - b) })} />{day}
+              </label>)}
+            </div>
+          </fieldset>
+          <p className="text-muted-foreground">Keep at least one open weekday. These hours apply to every open day of this floor.</p>
+          <button type="button" className="underline" onClick={() => update({ open_hour: null, close_hour: null, closed_days: null })}>Use format operating hours</button>
+        </details>}
         {categories.length > 0 && <details className="space-y-2 rounded border p-2 text-xs">
           <summary className="cursor-pointer">Product categories · {includedCount} of {categories.length} included</summary>
           <p className="text-muted-foreground">Choose which categories this format should stock. Excluded categories remove their generated displays. Keep at least one category.</p>

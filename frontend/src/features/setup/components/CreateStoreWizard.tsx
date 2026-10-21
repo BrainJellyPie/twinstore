@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { TemplatePicker } from "@/features/layouts/components/TemplatePicker";
 import { DEFAULT_TEMPLATE_CHOICE, templateRequest, validTemplateChoice } from "@/features/layouts/templateOptions";
@@ -41,7 +41,9 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   const [step, setStep] = useState<1 | 2>(1);
   const [values, setValues] = useState<WizardValues>({ ...DEFAULT_VALUES, storeType: "convenience" });
   const [withTemplate, setWithTemplate] = useState(true);
-  const [template, setTemplate] = useState(DEFAULT_TEMPLATE_CHOICE);
+  const [templateOptions, setTemplate] = useState(DEFAULT_TEMPLATE_CHOICE);
+  const template = useMemo(() => ({ ...templateOptions, open_hour: values.openHour, close_hour: values.closeHour,
+    closed_days: buildWeeklySchedule(values).filter((day) => !day.is_open).map((day) => day.day) }), [templateOptions, values]);
   const layoutValid = !withTemplate || validTemplateChoice(template);
   const [step1Errors, setStep1Errors] = useState<Step1Errors | null>(null);
   const [step2Errors, setStep2Errors] = useState<Step2Errors | null>(null);
@@ -123,7 +125,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
                 <input type="checkbox" checked={withTemplate} onChange={(e) => setWithTemplate(e.target.checked)} />
                 Start with a furnished store template
               </label>
-              {withTemplate ? <TemplatePicker value={template} onChange={setTemplate}
+              {withTemplate ? <TemplatePicker value={template} onChange={setTemplate} showOperatingHours={false}
                 onTemplateSelected={(format) => onChange("storeType", format.store_type)} />
                 : <p className="text-xs text-muted-foreground">Start with an empty layout to draw or import your own floor plan.</p>}
               <p className="text-xs text-muted-foreground">Your store name, type and opening hours above apply to the initial layout. More layouts and multi-floor stores can be added from the project.</p>
