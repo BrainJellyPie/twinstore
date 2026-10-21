@@ -13,6 +13,8 @@ assortment depth. The generator lays the store out the way such shops usually ar
 The result always passes `engine.validation.validate` without errors (checked by tests).
 """
 
+import hashlib
+import json
 import random
 from dataclasses import dataclass, field, replace
 
@@ -21,7 +23,7 @@ from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotIt
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Face, Weekday, stable_seed
 
-from .catalog import CATALOG, category_label, localized
+from .catalog import CATALOG, CatalogItem, category_label, localized
 
 @dataclass(frozen=True)
 class StoreTemplate:
@@ -374,8 +376,7 @@ class _Builder:
                 raise ValueError(f"Reserved area '{area.label}' must fit inside the {self.w}×{self.h} floor, leaving the outer wall cells clear.")
             self.reserved.update((x, y) for x in range(area.x, area.x + area.width)
                                  for y in range(area.y, area.y + area.height))
-        self.sku_n = 0
-        self.by_name: dict[str, SlotItem] = {}
+        self.by_product: dict[CatalogItem, SlotItem] = {}
         self.counts: dict[str, int] = {}
 
     def free(self, x: int, y: int) -> bool:
@@ -390,10 +391,11 @@ class _Builder:
         items: list[SlotItem] = []
         for item in order:
             name, price = localized(item, self.currency)
-            if name not in self.by_name:  # a product shown on several faces is one SKU with more facings
-                self.sku_n += 1
-                self.by_name[name] = SlotItem(sku=f"g{self.sku_n:04d}", name=name, price=price)
-            items.append(self.by_name[name])
+            if item not in self.by_product:  # a product shown on several faces is one SKU with more facings
+                identity = json.dumps([item.en, item.ko, item.usd_cents], ensure_ascii=False, separators=(",", ":"))
+                sku = f"g_{hashlib.sha256(identity.encode('utf-8')).hexdigest()[:32]}"
+                self.by_product[item] = SlotItem(sku=sku, name=name, price=price)
+            items.append(self.by_product[item])
         return items
 
     def _slots(self, category: str, faces: list[Face]) -> list[Slot]:

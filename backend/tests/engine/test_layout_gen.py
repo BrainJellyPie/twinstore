@@ -33,10 +33,13 @@ def test_every_template_is_valid(template_id, currency):
                    for r in store.product_racks)
     elif currency == "JPY":
         assert all(item.price % 10 == 0 for item in items)
-    # Same product on several faces is one SKU (extra facings), never a renamed duplicate.
-    names = {}
+    # Repeated facings share a SKU; distinct catalog products can share a display name.
+    products = {}
+    sku_products = {}
     for i in items:
-        assert names.setdefault(i.name, i.sku) == i.sku
+        identity = (i.name, i.price)
+        assert products.setdefault(identity, i.sku) == i.sku
+        assert sku_products.setdefault(i.sku, identity) == identity
 
 
 def test_generation_is_deterministic_and_styles_differ():
