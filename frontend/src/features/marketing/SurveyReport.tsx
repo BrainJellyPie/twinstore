@@ -2,9 +2,9 @@
 // preference shares, the Van Westendorp price range, segment means and verbatims; respondent-level CSV export.
 
 import { useState } from "react";
-import { Download, Quote } from "lucide-react";
+import { Download, FileText, Quote } from "lucide-react";
 
-import { surveyBoardUrl, surveyCsvUrl, type ScaleKind, type SurveyReport as Report } from "@/shared/api/marketing";
+import { surveyBoardUrl, surveyCsvUrl, surveyReportUrl, type ScaleKind, type SurveyReport as Report } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
@@ -55,6 +55,7 @@ export function SurveyReportView({ projectId, report: r }: { projectId: string; 
             )}
           </ul>
           <div className="mt-auto flex flex-wrap gap-2 pt-2">
+            <Button asChild size="sm"><a href={surveyReportUrl(projectId, r.survey_id)} target="_blank" rel="noopener"><FileText className="size-4" /> Report</a></Button>
             <Button asChild variant="outline" size="sm"><a href={surveyCsvUrl(projectId, r.survey_id)} download><Download className="size-4" /> Answers CSV</a></Button>
             <Button asChild variant="ghost" size="sm"><a href={surveyBoardUrl(projectId, r.survey_id)} download={`${r.survey_id}-board.jpg`}><Download className="size-4" /> Board</a></Button>
           </div>

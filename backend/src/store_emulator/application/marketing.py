@@ -42,7 +42,7 @@ from store_emulator.engine.marketing import (
     survey_panel,
     van_westendorp,
 )
-from store_emulator.engine.marketing.report import ReportNarrative, report_html, report_markdown, write_narrative
+from store_emulator.engine.marketing.report import ReportNarrative, report_html, report_markdown, survey_report_html, write_narrative
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.prompting import display_price
@@ -384,6 +384,14 @@ def get_survey(pid: str, sid: str) -> SurveyView:
     path = _job_dir(pid, "survey", sid) / "report.json"
     report = SurveyReport.model_validate(read_json(path)) if path.exists() else None
     return SurveyView(**status.model_dump(), report=report)
+
+
+def survey_report(pid: str, sid: str) -> str:
+    view = get_survey(pid, sid)
+    if view.report is None:
+        raise AppError("the concept test has no answers yet", 409)
+    board = _job_dir(pid, "survey", sid) / "board.jpg"
+    return survey_report_html(view.report, board.read_bytes() if board.exists() else None)
 
 
 def survey_board_path(pid: str, sid: str) -> Path:

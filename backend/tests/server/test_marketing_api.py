@@ -144,5 +144,7 @@ def test_concept_test_with_fake_vision_model(client, monkeypatch):
     assert client.get(f"/api/projects/{PID}/surveys/{sid}/board.jpg").content[:2] == b"\xff\xd8"
     csv = client.get(f"/api/projects/{PID}/surveys/{sid}/export.csv").text.splitlines()
     assert csv[0].startswith("respondent,age_group,gender,purchase_intent_A") and len(csv) == 13
+    page = client.get(f"/api/projects/{PID}/surveys/{sid}/report.html").text
+    assert "Concept test report" in page and "data:image/jpeg;base64," in page and "Price range for Leafy" in page and "<svg" in page
     quota = {**body, "age_groups": ["70s"]}
     assert client.post(f"/api/projects/{PID}/surveys", json=quota).status_code == 400
