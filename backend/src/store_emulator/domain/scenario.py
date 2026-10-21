@@ -7,9 +7,9 @@ be calibrated against POS data (see `ScenarioPriors`).
 """
 
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Weather(StrEnum):
@@ -56,9 +56,15 @@ class EventKind(StrEnum):
 class LocalEvent(BaseModel):
     kind: EventKind
     intensity: float = Field(default=0.6, ge=0.0, le=1.0)
-    start_hour: int = Field(default=0, ge=0, le=24)
-    end_hour: int = Field(default=24, ge=0, le=24)
+    start_hour: int = Field(default=0, ge=0, le=23)
+    end_hour: int = Field(default=24, ge=1, le=24)
     note: str = ""
+
+    @model_validator(mode="after")
+    def validate_hours(self) -> Self:
+        if self.end_hour <= self.start_hour:
+            raise ValueError("Event end hour must be later than start hour within the same day.")
+        return self
 
 
 class PromotionKind(StrEnum):
