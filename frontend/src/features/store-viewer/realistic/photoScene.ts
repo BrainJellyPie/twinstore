@@ -116,9 +116,10 @@ function bakeMesh(mesh: THREE.Mesh): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   for (const name of ["position", "normal", "uv"]) {
     const a = mesh.geometry.getAttribute(name);
-    if (a) g.setAttribute(name, a);
+    // World-space baking must never transform the live scene's shared buffers.
+    if (a) g.setAttribute(name, a.clone());
   }
-  g.setIndex(mesh.geometry.index);
+  g.setIndex(mesh.geometry.index?.clone() ?? null);
   for (const group of mesh.geometry.groups) g.addGroup(group.start, group.count, group.materialIndex);
   g.applyMatrix4(mesh.matrixWorld);
   return g;
@@ -150,13 +151,14 @@ function daylight(): THREE.DataTexture {
   return tex;
 }
 
-/** Area lights under the ceiling: one panel per 2 × 2 m, facing down. */
+/** Match buildStore's checkerboard panels in the centered store, facing down. */
 function ceilingLights(width: number, depth: number, intensity: number): THREE.Group {
   const group = new THREE.Group();
-  for (let x = 1; x < width; x += 2) {
-    for (let z = 1; z < depth; z += 2) {
-      const light = new THREE.RectAreaLight("#fff7ee", intensity, 0.9, 0.9);
-      light.position.set(x, CEILING_HEIGHT - 0.02, z);
+  for (let x = 0; x < width; x++) {
+    for (let z = 0; z < depth; z++) {
+      if ((x + z) % 2 !== 0) continue;
+      const light = new THREE.RectAreaLight("#fff7ee", intensity, 0.46, 0.46);
+      light.position.set(x + 0.5 - width / 2, CEILING_HEIGHT - 0.02, z + 0.5 - depth / 2);
       light.rotation.x = -Math.PI / 2;
       group.add(light);
     }
@@ -195,7 +197,11 @@ export function buildPhotoScene(
     const g = bakeMesh(mesh);
     if (mats.length === 1 || g.groups.length === 0) {
       const mat = converted[0];
-      if (mat) add(mat, g.index ? g.toNonIndexed() : g);
+      if (mat) {
+        const flat = g.index ? g.toNonIndexed() : g;
+        if (flat !== g) g.dispose();
+        add(mat, flat);
+      } else g.dispose();
       return;
     }
     // Multi-material: one geometry per group.
@@ -211,6 +217,8 @@ export function buildPhotoScene(
       }
       add(mat, part);
     }
+    if (flat !== g) flat.dispose();
+    g.dispose();
   });
 
   const scene = new THREE.Scene();

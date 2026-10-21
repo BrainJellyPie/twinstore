@@ -183,7 +183,7 @@ function ExperimentJob({ projectId, id, setups }: { projectId: string; id: strin
   });
   if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
   const report = view.data.report;
-  return report ? <ExperimentReportView report={report} layoutName={setups.find((s) => s.id === report.setup_id)?.name} /> : <JobState job={view.data} />;
+  return report ? <ExperimentReportView projectId={projectId} report={report} layoutName={setups.find((s) => s.id === report.setup_id)?.name} /> : <JobState job={view.data} />;
 }
 
 function SurveyJob({ projectId, id }: { projectId: string; id: string }) {

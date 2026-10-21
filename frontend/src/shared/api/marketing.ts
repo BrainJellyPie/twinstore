@@ -195,6 +195,12 @@ export const getExperiment = (pid: string, eid: string, signal?: AbortSignal) =>
   fetchJson<ExperimentView>(`${root(pid)}/experiments/${eid}`, { signal });
 export const deleteExperiment = (pid: string, eid: string) => fetchJson<void>(`${root(pid)}/experiments/${eid}`, { method: "DELETE" });
 
+export interface ReportNarrative { summary: string; interpretation: string; next_steps: string; model: string }
+export const experimentReportUrl = (pid: string, eid: string) => `${BASE}${root(pid)}/experiments/${eid}/report.html`;
+export const experimentMarkdownUrl = (pid: string, eid: string) => `${BASE}${root(pid)}/experiments/${eid}/report.md`;
+export const writeNarrative = (pid: string, eid: string, model: string) =>
+  fetchJson<ReportNarrative>(`${root(pid)}/experiments/${eid}/narrative`, { method: "POST", body: JSON.stringify({ model }) });
+
 export const startSurvey = (pid: string, req: SurveyRequest) =>
   fetchJson<JobStatus>(`${root(pid)}/surveys`, { method: "POST", body: JSON.stringify(req) });
 export const listSurveys = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/surveys`, { signal });

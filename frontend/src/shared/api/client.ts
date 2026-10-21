@@ -1711,16 +1711,46 @@ export interface FloorPlanImport {
   racks: number;
   notes: string[];
   warnings: string[];
+  source_page: number;
+  source_pages: number;
+  source_rotation: number;
+}
+
+export interface FloorPlanPreview {
+  page_number: number;
+  page_count: number;
+  rotation: number;
+  width: number;
+  height: number;
+  image: string;
+}
+
+export async function previewFloorPlan(
+  projectId: string, file: File, opts: { pageNumber: number; rotation: number; signal?: AbortSignal },
+): Promise<FloorPlanPreview> {
+  const form = new FormData();
+  form.append("plan", file);
+  form.append("page_number", String(opts.pageNumber));
+  form.append("rotation", String(opts.rotation));
+  const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan/preview`, { method: "POST", body: form, signal: opts.signal });
+  if (!res.ok) {
+    const body: unknown = await res.json().catch(() => null);
+    const detail = body && typeof body === "object" && "detail" in body ? body.detail : null;
+    throw new Error(typeof detail === "string" ? detail : `Preview failed (HTTP ${res.status})`);
+  }
+  return res.json() as Promise<FloorPlanPreview>;
 }
 
 export async function importFloorPlan(
-  projectId: string, file: File, opts: { reader: "auto" | "classic" | "vlm"; model?: string; name?: string },
+  projectId: string, file: File, opts: { reader: "auto" | "classic" | "vlm"; model?: string; name?: string; pageNumber?: number; rotation?: number },
 ): Promise<FloorPlanImport> {
   const form = new FormData();
   form.append("plan", file);
   form.append("reader", opts.reader);
   form.append("model", opts.model ?? "");
   form.append("name", opts.name ?? "");
+  form.append("page_number", String(opts.pageNumber ?? 1));
+  form.append("rotation", String(opts.rotation ?? 0));
   const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -1749,7 +1779,15 @@ export interface StorefrontResult { venue_id: string; appeal: StorefrontAppeal; 
 
 export interface ReceiptLine { name: string; quantity: number; unit_price: number | null; line_total: number | null; sku: string; matched: boolean }
 export interface ReceiptReading { receipt_id: string; store: string; timestamp: string; currency: string; lines: ReceiptLine[]; total: number | null; notes: string[] }
-export interface ReceiptsResult { receipts: ReceiptReading[]; matched_lines: number; unmatched_lines: number; csv: string }
+export interface ReceiptsResult { receipts: ReceiptReading[]; matched_lines: number; unmatched_lines: number; csv: string; products: Record<string, string>; currency: string }
+export interface ReceiptIssue { receipt_id: string; line_index: number | null; severity: "error" | "warning"; code: string; message: string }
+export interface ReceiptReview { receipts: ReceiptReading[]; issues: ReceiptIssue[]; ready: boolean; included_lines: number; currency: string; csv: string }
+
+export function reviewReceipts(projectId: string, runId: string, receipts: ReceiptReading[]): Promise<ReceiptReview> {
+  return fetchJson(`/api/projects/${projectId}/receipts/review`, {
+    method: "POST", body: JSON.stringify({ run_id: runId, receipts }),
+  });
+}
 
 async function postForm<T>(path: string, form: FormData): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });

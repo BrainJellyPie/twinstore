@@ -32,6 +32,7 @@ export function createShellMaterials(
   signTexture: THREE.Texture,
   partEnv: THREE.Texture | null = null,
   woodMaps: ScannedMaterialMaps | null = null,
+  wallMaps: ScannedMaterialMaps | null = null,
   designTheme: StoreDesign = "classic",
 ): ShellMaterials {
   // Material-owned clones keep hook cleanup and shell rebuilds independent.
@@ -74,7 +75,12 @@ export function createShellMaterials(
 
   const palette = INTERIOR_DESIGNS[designTheme];
   const mats: ShellMaterials = {
-    wall: std(palette.wall, 0.92),
+    wall: std(palette.wall, 0.92, 0, {
+      map: wallMaps?.map.clone() ?? null,
+      roughnessMap: wallMaps?.roughnessMap.clone() ?? null,
+      normalMap: wallMaps?.normalMap?.clone() ?? null,
+      normalScale: new THREE.Vector2(0.2, 0.2),
+    }),
     band: std(palette.band, 0.6),
     bandLine: std(palette.accent, 0.5),
     trim: std("#d9dcdf", 0.5, 0.1),

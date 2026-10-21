@@ -8,16 +8,17 @@ export interface ScannedMaterialMaps {
   normalMap: THREE.Texture | null;
 }
 
-type Surface = "floor_tiles_08" | "wood_table_001";
+type Surface = "floor_tiles_08" | "wood_table_001" | "plaster_001";
 
-// Bundled CC0 scans: no CDN dependency at runtime. Keep the procedural surface
+// Bundled CC0 PBR maps: no CDN dependency at runtime. Keep the procedural surface
 // visible until the entire set is ready, including when a download fails.
-export function useScannedMaterial(surface: Surface, repeatX: number, repeatY: number, quality: GraphicsQuality) {
+export function useScannedMaterial(surface: Surface | null, repeatX: number, repeatY: number, quality: GraphicsQuality) {
   const request = useMemo(() => ({ surface, repeatX, repeatY, quality }), [surface, repeatX, repeatY, quality]);
   const [loaded, setLoaded] = useState<{ request: typeof request; maps: ScannedMaterialMaps } | null>(null);
 
   useEffect(() => {
     const { surface, repeatX, repeatY, quality } = request;
+    if (!surface) return;
     let alive = true;
     const textures: THREE.Texture[] = [];
     const loader = new THREE.TextureLoader();

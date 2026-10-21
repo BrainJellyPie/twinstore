@@ -43,3 +43,42 @@ def test_storefront_sets_venue_pull(client):
 def test_receipts_need_a_vision_model(client):
     res = client.post(f"/api/projects/{PID}/receipts", files=[("photos", ("r.png", _png(True), "image/png"))], data={"model": "none"})
     assert res.status_code == 400
+
+
+def test_receipt_review_uses_catalog_and_requires_corrections(client):
+    store = client.get(f"/api/projects/{PID}/setups/setup_7d6d").json()["store"]
+    item = next(item for rack in store["racks"] for slot in rack["slots"] for item in slot["items"])
+    body = {"setup_id": "setup_7d6d", "receipts": [{"receipt_id": "r1", "currency": "KRW", "lines": [
+        {"name": "OCR typo", "sku": "not_in_store", "matched": True, "quantity": 2, "line_total": 1000},
+    ]}]}
+    res = client.post(f"/api/projects/{PID}/receipts/review", json=body)
+    assert res.status_code == 200, res.text
+    assert not res.json()["ready"] and res.json()["csv"] == ""
+    line = body["receipts"][0]["lines"][0]
+    line["sku"] = item["sku"]
+    body["receipts"][0]["currency"] = res.json()["currency"]
+    fixed = client.post(f"/api/projects/{PID}/receipts/review", json=body).json()
+    assert fixed["ready"] and fixed["included_lines"] == 1 and fixed["csv"]
+    assert fixed["receipts"][0]["lines"][0]["matched"]
+    assert client.post("/api/projects/no_such_project/receipts/review", json=body).status_code == 404
+    body["run_id"] = "../outside"
+    assert client.post(f"/api/projects/{PID}/receipts/review", json=body).status_code == 422
+
+
+def test_receipt_review_uses_saved_run_currency(client, tmp_path):
+    import json
+    from store_emulator.server.deps import get_config
+
+    store = client.get(f"/api/projects/{PID}/setups/setup_7d6d").json()["store"]
+    item = next(item for rack in store["racks"] for slot in rack["slots"] for item in slot["items"])
+    target = tmp_path / ".data" / PID / "runs" / "receipt_review" / "input"
+    target.mkdir(parents=True)
+    (target / "store.json").write_text(json.dumps(store))
+    config = get_config().model_copy(update={"currency": "JPY"})
+    (target / "config.json").write_text(config.model_dump_json())
+    body = {"run_id": "receipt_review", "receipts": [{"receipt_id": "r1", "currency": "JPY", "lines": [
+        {"name": item["name"], "sku": item["sku"], "quantity": 1, "unit_price": 150},
+    ]}]}
+    response = client.post(f"/api/projects/{PID}/receipts/review", json=body)
+    assert response.status_code == 200, response.text
+    assert response.json()["ready"] and response.json()["currency"] == "JPY"

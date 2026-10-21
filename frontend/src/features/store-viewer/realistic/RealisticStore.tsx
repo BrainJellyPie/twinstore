@@ -96,7 +96,9 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   const get = useThree((s) => s.get);
   const partEnv = useMemo(() => (quality === "high" ? null : acquireRoomEnvironment(get().gl)), [quality, get]);
   const woodMaps = useScannedMaterial("wood_table_001", 1, 1, quality);
-  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, designTheme), [quality, signTexture, partEnv, woodMaps, designTheme]);
+  // The plaster is authored at one repeat/metre; Medium avoids these extra maps.
+  const wallMaps = useScannedMaterial(quality === "high" ? "plaster_001" : null, 1 / M, 1 / M, quality);
+  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme]);
   const layout = useMemo(() => layoutProducts(built.plans, { maxRows: preset.maxRows }), [built, preset.maxRows]);
   const products = useMemo(
     () => buildProductMeshes(layout, currency, quality === "high" ? 160 : 128, quality === "high", quality === "high" ? 4 : 1, quality !== "high"),

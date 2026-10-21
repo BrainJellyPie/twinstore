@@ -12,8 +12,8 @@ it("applies independent interior finishes without altering shared sign assets", 
   const sign = new THREE.Texture();
   const disposed = vi.spyOn(sign, "dispose");
   const classic = createShellMaterials("medium", sign);
-  const warm = createShellMaterials("medium", sign, null, null, "warm");
-  const industrial = createShellMaterials("high", sign, null, null, "industrial");
+  const warm = createShellMaterials("medium", sign, null, null, null, "warm");
+  const industrial = createShellMaterials("high", sign, null, null, null, "industrial");
   const color = (material: THREE.Material) => (material as THREE.MeshStandardMaterial).color.getHexString();
   expect(new Set([color(classic.wall), color(warm.wall), color(industrial.wall)]).size).toBe(3);
   expect(new Set([color(classic.metalWhite), color(warm.metalWhite), color(industrial.metalWhite)]).size).toBe(3);

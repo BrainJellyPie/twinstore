@@ -3,13 +3,15 @@
 from collections.abc import Callable
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import marketing as mk
 from store_emulator.application.errors import AppError
 from store_emulator.application.marketing import ExperimentView, SurveyView
 from store_emulator.domain.marketing import ExperimentRequest, JobStatus, MarketingInfo, SurveyRequest
+from store_emulator.engine.marketing.report import ReportNarrative
 
 from ..deps import get_config
 
@@ -43,6 +45,35 @@ def list_experiments(pid: str) -> list[JobStatus]:
 @router.get("/{pid}/experiments/{eid}", summary="A/B test status and report", response_model=ExperimentView)
 def get_experiment(pid: str, eid: str) -> ExperimentView:
     return _call(lambda: mk.get_experiment(pid, eid))
+
+
+@router.get("/{pid}/experiments/{eid}/report.html", summary="A/B test report (print-ready HTML)", response_class=HTMLResponse)
+def experiment_report_html(pid: str, eid: str, download: bool = False) -> HTMLResponse:
+    """Summary with a rule-based recommendation, the test design, results with paired 95 % intervals and charts,
+    tracked products, method and caveats; the model commentary when one was written. Print it to save a PDF."""
+    html = _call(lambda: mk.experiment_report_html(pid, eid))
+    headers = {"Content-Disposition": f'attachment; filename="{eid}-report.html"'} if download else None
+    return HTMLResponse(html, headers=headers)
+
+
+@router.get("/{pid}/experiments/{eid}/report.md", summary="A/B test report (Markdown)")
+def experiment_report_markdown(pid: str, eid: str) -> PlainTextResponse:
+    text = _call(lambda: mk.experiment_report_markdown(pid, eid))
+    return PlainTextResponse(text, media_type="text/markdown", headers={"Content-Disposition": f'attachment; filename="{eid}-report.md"'})
+
+
+class NarrativeRequest(BaseModel):
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+@router.post("/{pid}/experiments/{eid}/narrative", summary="Write the report commentary with a model", response_model=ReportNarrative)
+async def experiment_narrative(pid: str, eid: str, req: NarrativeRequest) -> ReportNarrative:
+    return await run_in_threadpool(_call, lambda: mk.write_experiment_narrative(pid, eid, req.model, get_config()))
+
+
+@router.delete("/{pid}/experiments/{eid}/narrative", summary="Remove the report commentary", status_code=204)
+def delete_experiment_narrative(pid: str, eid: str) -> None:
+    _call(lambda: mk.delete_experiment_narrative(pid, eid))
 
 
 @router.post("/{pid}/surveys", summary="Start a concept test", response_model=JobStatus)

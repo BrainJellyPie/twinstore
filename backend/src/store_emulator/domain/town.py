@@ -8,7 +8,7 @@ the south-west corner of a `size_m` × `size_m` square (the town center is at
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .analysis import ComparisonReport
 from .persona import AgeGroup
@@ -72,6 +72,8 @@ TOWN_SEGMENTS: list[TownSegment] = ["resident", "worker", "student", "commuter",
 
 
 class Building(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     id: str
     kind: BuildingKind
     name: str = ""
@@ -88,6 +90,8 @@ class Building(BaseModel):
 
 
 class Venue(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     id: str
     name: str
     category: VenueCategory
@@ -110,6 +114,8 @@ class Venue(BaseModel):
 
 
 class Road(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     id: str
     kind: RoadKind
     points: list[tuple[float, float]]
@@ -128,6 +134,8 @@ class TownSpec(BaseModel):
 
 
 class Town(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     id: str
     name: str
     archetype: TownArchetype

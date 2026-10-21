@@ -57,7 +57,7 @@ def test_product_library(client):
     assert client.get(f"/api/projects/{PID}/lab/packages/{a['asset_id']}").status_code == 404
 
 
-def test_rule_ab_test(client):
+def test_rule_ab_test(client, monkeypatch):
     body = {
         "setup_id": SETUP, "panel": 60, "focus_skus": ["A0017"],
         "variants": [
@@ -75,6 +75,27 @@ def test_rule_ab_test(client):
     assert any("100 shoppers" in n for n in report["notes"])
     assert [j["job_id"] for j in client.get(f"/api/projects/{PID}/experiments").json()] == [eid]
     assert client.get(f"/api/projects/{PID}/marketing").json()["currency"] == report["currency"]
+
+    html = client.get(f"/api/projects/{PID}/experiments/{eid}/report.html")
+    assert html.status_code == 200 and html.headers["content-type"].startswith("text/html")
+    assert "Half price" in html.text and "<svg" in html.text and "Method and caveats" in html.text
+    md = client.get(f"/api/projects/{PID}/experiments/{eid}/report.md").text
+    assert md.startswith("# ") and "## Results" in md and "| Arm |" in md
+    assert "attachment" in client.get(f"/api/projects/{PID}/experiments/{eid}/report.html?download=1").headers["content-disposition"]
+
+    class _Writer:
+        async def generate_structured_async(self, response_model, system_prompt, user_prompt, *, max_retries=1, seed=None):  # noqa: ANN001
+            assert "## Results" in user_prompt
+            return response_model.model_validate({"summary": "Half price moved units.", "interpretation": "Price matters.", "next_steps": "Test -30 %."})
+
+    from store_emulator.application import marketing
+    monkeypatch.setattr(marketing, "build_client", lambda *a, **k: _Writer())
+    note = client.post(f"/api/projects/{PID}/experiments/{eid}/narrative", json={"model": "openai/gpt-4o-mini"})
+    assert note.status_code == 200 and note.json()["model"] == "openai/gpt-4o-mini"
+    assert "Half price moved units." in client.get(f"/api/projects/{PID}/experiments/{eid}/report.html").text
+    assert "Commentary (model-written)" in client.get(f"/api/projects/{PID}/experiments/{eid}/report.md").text
+    assert client.delete(f"/api/projects/{PID}/experiments/{eid}/narrative").status_code == 204
+    assert "Half price moved units." not in client.get(f"/api/projects/{PID}/experiments/{eid}/report.html").text
 
     nothing = {"setup_id": SETUP, "variants": [{"name": "Ghost", "changes": [{"kind": "promo", "sku": "NOPE"}]}]}
     assert client.post(f"/api/projects/{PID}/experiments", json=nothing).status_code == 400

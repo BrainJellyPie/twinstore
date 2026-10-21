@@ -172,9 +172,10 @@ shelf studio, which supplies exact boxes; phone photos are edited the same way. 
 | Input | What TwinStore does with it |
 | :-- | :-- |
 | Shelf photo | detects shelves and facings, reads names and price tags → a rack face in the planogram |
-| Floor-plan image (sketch, scan, PDF page) | ink mask → walls, racks, doors → an 8–16 tile grid at 1.25 m per tile (or a vision model reads it) |
+| Floor-plan image or multi-page PDF | preview the selected page and rotation → ink mask or vision model → walls, racks, doors on an 8–16 tile grid; PDF support included |
 | Storefront photo | a vision model rates sign, entrance, window and upkeep → the venue's pull in the neighborhood model |
-| Receipt photos | transcribed by a vision model, matched to the store's products → a POS export that scores a run |
+| Receipt photos | transcribed by a vision model → review product matches, quantities and paid amounts → check and score a run against corrected POS lines |
+| Anonymous track CSV | device-extracted grid coordinates → observed vs simulated visitor and occupancy heatmaps, tracking-gap accounting and per-cell differences; aggregate reports only |
 | Rival's shelf photo | price index and assortment overlap against your layout → the rival's price-adjusted pull |
 
 ### Marketing studio
@@ -189,11 +190,16 @@ For brand managers, category teams and research agencies (**Market** in the comm
   Every arm runs on the **same shoppers with the same random numbers** as the control, so the result reports paired
   differences with bootstrap 95 % intervals — revenue, conversion and units per visitor, and units, spend and buyers of
   each tracked product — and names a winner only when its interval clears zero. Rule shoppers answer in seconds;
-  vision shoppers also see packs and signs.
+  vision shoppers also see packs and signs. Every finished test comes with a **report** — summary and
+  recommendation, design, charts, tracked products, method — as a print-ready page (PDF) or Markdown.
 - **Concept tests** — up to four images side by side; a vision model answers as each sampled persona (with age and
   gender quotas): purchase intent, pack appeal, value, stand-out (1–5), a Van Westendorp price range, preference and
   one open answer. Results show distributions, means with CIs, top-2-box, Wilson intervals for preference, the price
   curves with the acceptable range, segment tables and verbatims; respondent-level CSV export.
+
+- **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
+  then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
+  persona and trip only and point at the steps they mean.
 
 Synthetic respondents are for screening and direction; calibrate against a real panel before deciding.
 
@@ -391,6 +397,8 @@ for ceramic flooring and wood fixtures. Diffuse and roughness maps are used at e
 quality level; High adds OpenGL normal maps for surface relief. Assets load locally
 with procedural fallbacks. Authors, source URLs and checksums are in
 [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
+High also uses [ambientCG Plaster 001](https://ambientcg.com/a/Plaster001), licensed CC0,
+with consistent texture scale across wall lengths, corners and rotated sections.
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
 for photographic indoor lighting and reflections; attribution and file provenance are in
 [`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).
