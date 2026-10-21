@@ -446,6 +446,7 @@ def generate_store(
     # Every populated face opens onto a continuous aisle. Cross-aisles split
     # long shelf runs, and the front two rows stay clear for checkout circulation.
     aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]
+    aisle = options.aisle_width or aisle
     vertical = options.shelf_direction == "vertical" and layout_style != "perimeter"
     pattern_width, pattern_height = (h, w) if vertical else (w, h)
     row_ys = list(range(2, pattern_height - 2, aisle + 1))
@@ -456,6 +457,8 @@ def generate_store(
     else:
         if layout_style == "loop":
             row_ys = [2, pattern_height - 4] if pattern_height >= 8 else [2]
+            if options.aisle_width is not None and row_ys[-1] - row_ys[0] <= aisle:
+                row_ys = row_ys[:1]
             island_xs = [x for x in island_xs if 3 <= x < pattern_width - 3]
         for row, y in enumerate(row_ys):
             for x in island_xs:
