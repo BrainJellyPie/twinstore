@@ -87,6 +87,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
           </>
         )}
         {ask.error && <p className="text-[0.75rem] text-destructive">{ask.error.message}</p>}
+        {reset.error && <p role="alert" className="text-[0.75rem] text-destructive">{reset.error.message}</p>}
         <div ref={end} />
       </div>
       <div className="flex flex-wrap gap-1.5">
