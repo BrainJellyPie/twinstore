@@ -14,6 +14,7 @@ from store_emulator.domain.marketing import SurveyAnswer, VariantChange
 from store_emulator.domain.optimize import OptimizeObjective
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
+from store_emulator.domain.types import Face
 from store_emulator.engine.marketing import (
     apply_changes,
     likert_summary,
@@ -27,7 +28,6 @@ from store_emulator.engine.marketing.variants import charm_price
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.perception.shelf_render import render_face
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
-from store_emulator.domain.types import Face
 
 SAMPLE = Path(__file__).resolve().parents[2] / "sample_data" / "proj_67916afd" / "runs" / "run_ab0039" / "input"
 DRINK_1 = "r_b5cf7836"
@@ -93,7 +93,10 @@ def test_package_image_reaches_the_vision_shoppers_shelf(store: Store, tmp_path:
 
 
 def test_discount_sells_more_of_the_product_on_the_same_shoppers(store: Store, personas: list[Persona]) -> None:
-    from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS, sample_cue
+    from store_emulator.application.presets.behavior import (
+        BEHAVIOR_PATTERNS,
+        sample_cue,
+    )
 
     panel = select_personas(personas, 160, seed=3)
     evaluator = LayoutEvaluator(SimulationConfig(seed=3), panel, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(),

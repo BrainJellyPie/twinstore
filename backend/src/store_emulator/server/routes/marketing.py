@@ -1,6 +1,7 @@
 """Marketing studio: A/B experiments on a layout and survey-style concept tests."""
 
 from collections.abc import Callable
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 from starlette.concurrency import run_in_threadpool
