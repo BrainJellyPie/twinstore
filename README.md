@@ -164,6 +164,12 @@ with clear circulation around it, appears in Classic and Realistic views, and ca
 be selected from any of its four cells in the floor editor. As with other fixtures,
 the existing floor-edit unlock step clears product placements before editing.
 
+Choose where seating starts: front/entrance side, back wall, left, right or center.
+Tables extend into neighboring space as their count increases, retaining their
+circulation space. Checkout counters can use the default arrangement or be placed
+near or away from the entrance. These choices appear in the preview and are saved
+per layout or building floor, including when reusing settings for an alternative.
+
 The floor editor supports up to 40×40 cells, with zoom controls and a scrollable
 grid that keeps fixtures readable on large floors and smaller screens. Width and
 depth can be typed directly. Reducing the grid never deletes fixtures silently;

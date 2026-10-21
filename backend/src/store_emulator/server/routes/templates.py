@@ -8,8 +8,8 @@ from pydantic import BaseModel
 from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
-    BuildingLayoutRequest, EntrancePosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
-    StoreDesign, TemplateLayoutRequest,
+    BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
+    SeatingZone, StoreDesign, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
 
@@ -54,12 +54,14 @@ def preview(
     checkouts: int = Query(default=1, ge=1, le=4), fixture_design: FixtureDesign = "mixed",
     design_theme: StoreDesign | None = None,
     dining_tables: int | None = Query(default=None, ge=0, le=12),
+    seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
 ) -> dict[str, Any]:
     if get_template(template_id) is None:
         raise HTTPException(404, f"unknown template: {template_id}")
     options = LayoutOptions(style=style, width=width, height=height, density=density,
                             entrance=entrance, checkouts=checkouts, fixture_design=fixture_design,
-                            design_theme=design_theme, dining_tables=dining_tables)
+                            design_theme=design_theme, dining_tables=dining_tables,
+                            seating_zone=seating_zone, checkout_placement=checkout_placement)
     try:
         return generate_store(template_id, seed=seed, currency=currency, options=options).model_dump(mode="json")
     except ValueError as exc:
