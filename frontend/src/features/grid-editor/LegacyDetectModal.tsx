@@ -1,5 +1,5 @@
-// The grid editor only handles 1-cell racks. Editing a legacy setup containing
-// multi-cell racks risks data corruption, so detect on entry and block via modal.
+// Product racks use 1-cell slot editing. Multi-cell dining furniture has no
+// product faces and can be edited without migrating legacy product slots.
 //   "with_run": run history exists → cannot reset, only "create new setup" exposed.
 //   "clean":    no history → reset is permitted (2-step PUT is the caller's job).
 
@@ -19,7 +19,7 @@ export type LegacyState = "ok" | "with_run" | "clean";
 export function checkLegacy(setup: SetupDetailWithBlocked): LegacyState {
   const hasMultiCell =
     setup.store?.racks.some(
-      (r) => r.shape.flat().filter((x) => x === 1).length > 1,
+      (r) => r.type !== "table" && r.shape.flat().filter((x) => x === 1).length > 1,
     ) ?? false;
   if (!hasMultiCell) return "ok";
   return setup.runId ? "with_run" : "clean";

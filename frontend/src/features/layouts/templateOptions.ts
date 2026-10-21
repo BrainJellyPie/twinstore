@@ -9,7 +9,7 @@ export interface TemplateChoice extends LayoutOptions {
 
 export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   templateId: "urban_cvs", seed: 0, currency: "USD", style: null,
-  density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed", design_theme: null,
+  density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed", design_theme: null, dining_tables: null,
 };
 
 export const LAYOUT_STYLES = [
@@ -20,7 +20,8 @@ export const LAYOUT_STYLES = [
 export function validTemplateChoice(value: TemplateChoice): boolean {
   return !!value.templateId && Number.isSafeInteger(value.seed) &&
     (value.width == null || (Number.isInteger(value.width) && value.width >= 8 && value.width <= 40)) &&
-    (value.height == null || (Number.isInteger(value.height) && value.height >= 6 && value.height <= 40));
+    (value.height == null || (Number.isInteger(value.height) && value.height >= 6 && value.height <= 40)) &&
+    (value.dining_tables == null || (Number.isInteger(value.dining_tables) && value.dining_tables >= 0 && value.dining_tables <= 12));
 }
 
 export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
@@ -28,7 +29,8 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
   return {
     template_id: value.templateId, seed: value.seed, currency: value.currency, style: value.style,
     width: value.width, height: value.height, density: value.density, entrance: value.entrance,
-    checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme, requirements: value.requirements,
+    checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme,
+    dining_tables: value.dining_tables, requirements: value.requirements,
   };
 }
 

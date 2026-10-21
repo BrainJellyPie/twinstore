@@ -57,7 +57,8 @@ def test_legacy_wizard_can_still_start_with_an_empty_layout(client):
 
 
 @pytest.mark.parametrize("layout,status", [({"template_id": "not-a-store"}, 404),
-                                           ({"template_id": "urban_cvs", "width": 99}, 422)])
+                                           ({"template_id": "urban_cvs", "width": 99}, 422),
+                                           ({"template_id": "specialty_cafe", "width": 8, "height": 6, "dining_tables": 12}, 422)])
 def test_invalid_initial_layout_creates_no_project_or_persona_job(client, layout, status):
     api, generation = client
     before = api.get("/api/projects").json()

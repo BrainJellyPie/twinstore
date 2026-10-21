@@ -8,6 +8,7 @@ import { useGlbModel } from "@/shared/hooks/useGlbModel";
 import { uniformScaleToTile } from "@/shared/utils/glbHelpers";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { DiningTable } from "./DiningTable";
 
 const GHOST_URL = "/assets/ghost/character-ghost.glb";
 const GHOST_HEIGHT = 0.55;
@@ -150,7 +151,7 @@ export function AssetFixture({ rack, variationTexture }: AssetFixtureProps) {
   const hoveredRackId = useSimulationStore((s) => s.hoveredRackId);
   const isHovered = hoveredRackId === rack.id;
 
-  if (!url) return null;
+  if (!url && rack.type !== "table") return null;
 
   // GLB authoring convention is mirrored vs. the grid-editor face convention along
   // the N-S axis, so flip the rotation sign for every fixture. Effect: 0/180
@@ -199,13 +200,13 @@ export function AssetFixture({ rack, variationTexture }: AssetFixtureProps) {
           : undefined
       }
     >
-      {cells.map(({ col, row }) => {
+      {rack.type === "table" ? <DiningTable width={shapeCols} depth={shapeRows} hovered={isHovered} /> : cells.map(({ col, row }) => {
         const cx = col - shapeCols / 2 + 0.5;
         const cz = row - shapeRows / 2 + 0.5;
         return (
           <AssetInstance
             key={`${col}-${row}`}
-            url={url}
+            url={url!}
             cellCenter={[cx, 0, cz]}
             overrideMap={variationTexture}
             hovered={isHovered}
