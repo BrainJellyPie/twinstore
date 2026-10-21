@@ -1604,3 +1604,50 @@ export async function importFloorPlan(
   }
   return res.json() as Promise<FloorPlanImport>;
 }
+
+// ── Photo inputs (storefront appeal, receipts) ───────────────────────────────
+
+export interface StorefrontAppeal {
+  method: "vlm" | "image_stats";
+  model: string;
+  signage: number;
+  entrance: number;
+  window: number;
+  upkeep: number;
+  overall: number;
+  attractiveness: number;
+  reasons: string;
+}
+
+export interface StorefrontResult { venue_id: string; appeal: StorefrontAppeal; previous_attractiveness: number; town: Town }
+
+export interface ReceiptLine { name: string; quantity: number; unit_price: number | null; line_total: number | null; sku: string; matched: boolean }
+export interface ReceiptReading { receipt_id: string; store: string; timestamp: string; currency: string; lines: ReceiptLine[]; total: number | null; notes: string[] }
+export interface ReceiptsResult { receipts: ReceiptReading[]; matched_lines: number; unmatched_lines: number; csv: string }
+
+async function postForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    let detail = body;
+    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
+    throw new Error(detail || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export function rateStorefront(projectId: string, venueId: string, photo: File, model = ""): Promise<StorefrontResult> {
+  const form = new FormData();
+  form.append("photo", photo);
+  form.append("model", model);
+  return postForm(`/api/projects/${projectId}/town/venues/${venueId}/storefront`, form);
+}
+
+export function readReceipts(projectId: string, photos: File[], target: { setupId?: string; runId?: string }, model = ""): Promise<ReceiptsResult> {
+  const form = new FormData();
+  for (const p of photos) form.append("photos", p);
+  form.append("setup_id", target.setupId ?? "");
+  form.append("run_id", target.runId ?? "");
+  form.append("model", model);
+  return postForm(`/api/projects/${projectId}/receipts`, form);
+}

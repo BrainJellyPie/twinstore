@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Eye, Footprints, Globe2, Loader2, MapPinPlus, MousePointer2, Sparkles, Trash2, Users } from "lucide-react";
 
 import * as api from "@/shared/api/client";
+import { StorefrontCard } from "./StorefrontCard";
 import { VlmSynergyDialog } from "./VlmSynergyDialog";
 import type { SynergyRow, Town, TownArchetype, TownDayType, TownSpec, VenueCategory } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
@@ -122,6 +123,8 @@ export function TownPage({ projectId }: { projectId: string }) {
             {demandQ.data ? <DemandView demand={demandQ.data} /> : <p className="text-xs text-muted-foreground">Estimating…</p>}
           </section>
         )}
+
+        {town && <StorefrontCard projectId={projectId} town={town} onTown={setTown} />}
 
         {town && (
           <section className="space-y-2">
