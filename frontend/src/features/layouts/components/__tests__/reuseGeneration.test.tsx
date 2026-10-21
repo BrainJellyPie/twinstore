@@ -19,7 +19,8 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const source: Layout = { id: "setup_cafe", name: "Garden café", parentId: null, status: "locked", createdAt: "2026-10-21",
   generation: { template_id: "book_cafe", source_setup_id: "older_parent", name: "Previous name", seed: 12, currency: "JPY",
-    width: 24, height: 18, style: "free_flow", dining_tables: 3, design_theme: "botanical", requirements: "Quiet reading corner" } };
+    width: 24, height: 18, style: "free_flow", dining_tables: 3, seating_zone: "right", checkout_placement: "near_entrance",
+    design_theme: "botanical", requirements: "Quiet reading corner" } };
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>;
@@ -31,14 +32,14 @@ it("restores a saved brief and options, then submits a linked alternative with t
   fireEvent.click(screen.getByRole("button", { name: "Reuse options from Garden café" }));
   expect(JSON.parse(screen.getByTestId("settings").textContent!)).toMatchObject({
     sourceSetupId: source.id, templateId: "book_cafe", width: 24, height: 18, seed: 12, currency: "JPY",
-    requirements: "Quiet reading corner", design_theme: "botanical", dining_tables: 3,
+    requirements: "Quiet reading corner", design_theme: "botanical", dining_tables: 3, seating_zone: "right", checkout_placement: "near_entrance",
   });
   fireEvent.click(screen.getByRole("button", { name: "Use five tables" }));
   fireEvent.change(screen.getByLabelText("Layout name"), { target: { value: "More café seating" } });
   fireEvent.click(screen.getByRole("button", { name: "Add layout" }));
   expect(mutation.mutate).toHaveBeenCalledWith(expect.objectContaining({
     name: "More café seating", source: expect.objectContaining({ kind: "template", sourceSetupId: source.id,
-      dining_tables: 5, requirements: "Quiet reading corner", currency: "JPY" }),
+      dining_tables: 5, seating_zone: "right", checkout_placement: "near_entrance", requirements: "Quiet reading corner", currency: "JPY" }),
   }), expect.any(Object));
 });
 

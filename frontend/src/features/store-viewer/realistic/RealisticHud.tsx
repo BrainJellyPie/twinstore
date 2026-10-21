@@ -140,6 +140,16 @@ function PhotoPanel() {
         <ToggleGroup type="single" value={String(photo.target)} onValueChange={(v) => v && photo.setTarget(Number(v))} variant="outline" size="sm" aria-label="Sample budget">
           {TARGETS.map((t) => <ToggleGroupItem key={t} value={String(t)} className="h-6 px-2 text-[0.75rem]">{t}</ToggleGroupItem>)}
         </ToggleGroup>
+        {photo.perspective && (
+          <label className="flex items-center gap-1 text-[0.75rem] text-muted-foreground" title="Depth of field: focus on what is at the centre of the view">
+            <input type="checkbox" checked={photo.dof} onChange={(e) => photo.setDof(e.target.checked)} /> DoF
+            {photo.dof && (
+              <select value={photo.fStop} onChange={(e) => photo.setDof(true, Number(e.target.value))} className="h-5 rounded border bg-card px-0.5 text-[0.7rem]" aria-label="Aperture">
+                {[1.4, 2.8, 5.6].map((f) => <option key={f} value={f}>f/{f}</option>)}
+              </select>
+            )}
+          </label>
+        )}
         <label className="ml-auto flex items-center gap-1 text-[0.75rem] text-muted-foreground" title="Edge-aware smoothing; strongest while samples are few">
           <input type="checkbox" checked={photo.denoise} onChange={(e) => photo.setDenoise(e.target.checked)} /> Denoise
         </label>

@@ -1319,9 +1319,11 @@ export interface LayoutOptions {
   density?: "spacious" | "balanced" | "dense";
   entrance?: "left" | "center" | "right";
   checkouts?: number;
+  checkout_placement?: "auto" | "near_entrance" | "away_from_entrance";
   fixture_design?: "mixed" | "a" | "b" | "c";
   design_theme?: StoreDesign | null;
   dining_tables?: number | null;
+  seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {

@@ -94,6 +94,11 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <Field label="Checkout counters"><select className={controlClass} value={value.checkouts ?? 1} onChange={(e) => update({ checkouts: Number(e.target.value) })}>
                 {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
               </select></Field>
+              <Field label="Checkout placement"><select className={controlClass} value={value.checkout_placement ?? "auto"}
+                onChange={(e) => update({ checkout_placement: e.target.value as TemplateChoice["checkout_placement"] })}>
+                <option value="auto">Default front counters</option><option value="near_entrance">Near the entrance</option>
+                <option value="away_from_entrance">Away from the entrance</option>
+              </select></Field>
               <Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
                 <option value="">Format default{selected ? ` (${INTERIOR_DESIGNS[selected.default_design]?.label ?? "Classic retail"})` : ""}</option>
                 {Object.entries(INTERIOR_DESIGNS).map(([id, palette]) => <option key={id} value={id}>{palette.label}</option>)}
@@ -108,16 +113,23 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value="">Format default ({selected?.default_dining_tables ?? 0}, sized to fit)</option>
                 {Array.from({ length: 13 }, (_, n) => <option key={n} value={n}>{n === 0 ? "No seating" : `${n} tables · ${n * 4} seats`}</option>)}
               </select></Field>
+              <Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
+                disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
+                onChange={(e) => update({ seating_zone: e.target.value as TemplateChoice["seating_zone"] })}>
+                <option value="auto">Format default</option><option value="front">Front / entrance side</option>
+                <option value="back">Back wall</option><option value="left">Left side</option>
+                <option value="right">Right side</option><option value="center">Center</option>
+              </select></Field>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed", design_theme: null, dining_tables: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", entrance: "left", checkouts: 1, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, seating_zone: "auto", seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>
         <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: reserve a quiet consultation corner or keep seasonal gifts near the entrance." /></Field>
         {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
-        <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>
+        <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>
       </>}
     </div>
   );

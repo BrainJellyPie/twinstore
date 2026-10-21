@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
-import { DenoiseMaterial, WebGLPathTracer } from "three-gpu-pathtracer";
+import { DenoiseMaterial, PhysicalCamera, WebGLPathTracer } from "three-gpu-pathtracer";
 import { GenerateMeshBVHWorker } from "three-mesh-bvh/worker";
 
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
@@ -36,7 +36,7 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
     let disposeScene: (() => void) | null = null;
     let disposeDenoise: (() => void) | null = null;
     let saved = usePhotoMode.getState().saveRequest;
-    const signature = new Float64Array(32);
+    const signature = new Float64Array(34);
 
     // Let the HUD paint "Building…" before the main thread is busy baking geometry.
     const timer = window.setTimeout(async () => {
@@ -92,22 +92,49 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
         await pt.setSceneAsync(photo.scene, get().camera, { onProgress: (p) => { if (alive) usePhotoMode.setState({ progress: p }); } });
         if (!alive || usePhotoMode.getState().status === "off") return;
         usePhotoMode.setState({ status: "tracing", samples: 0 });
+        // Depth of field: a physical camera that follows the live one and focuses on the frame's centre.
+        const lens = new PhysicalCamera();
+        lens.apertureBlades = 6;
+        const ray = new THREE.Raycaster();
+        const centre = new THREE.Vector2(0, 0);
         renderPhoto = () => {
           // Zustand changes synchronously; React's effect cleanup can run after
           // the next frame. A queued draw must not resurrect a stopped photo.
           const state = usePhotoMode.getState();
           if (!alive || state.status === "off") return;
           const camera = get().camera;
+          const live = camera as THREE.PerspectiveCamera;
+          const perspective = live.isPerspectiveCamera === true;
+          if (perspective !== state.perspective) usePhotoMode.setState({ perspective });
+          const dof = perspective && state.dof;
           const m = camera.matrixWorld.elements;
           const p = camera.projectionMatrix.elements;
-          let moved = false;
+          let moved = signature[32] !== (dof ? 1 : 0) || signature[33] !== state.fStop;
+          signature[32] = dof ? 1 : 0;
+          signature[33] = state.fStop;
           for (let i = 0; i < 16; i++) {
             if (signature[i] !== m[i] || signature[16 + i] !== p[i]) moved = true;
             signature[i] = m[i]!;
             signature[16 + i] = p[i]!;
           }
           if (moved) {
-            if (pt.camera !== camera) pt.setCamera(camera);
+            let traced: THREE.Camera = camera;
+            if (dof) {
+              lens.position.copy(live.position);
+              lens.quaternion.copy(live.quaternion);
+              lens.fov = live.fov;
+              lens.aspect = live.aspect;
+              lens.near = live.near;
+              lens.far = live.far;
+              lens.fStop = state.fStop;
+              lens.updateProjectionMatrix();
+              lens.updateMatrixWorld(true);
+              ray.setFromCamera(centre, live);
+              const hit = ray.intersectObjects(photo.scene.children, false)[0];
+              lens.focusDistance = hit ? hit.distance : 3;
+              traced = lens;
+            }
+            if (pt.camera !== traced) pt.setCamera(traced);
             else pt.updateCamera();
           }
           pt.pausePathTracing = pt.samples >= state.target;
