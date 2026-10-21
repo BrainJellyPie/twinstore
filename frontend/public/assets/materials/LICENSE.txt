@@ -31,3 +31,9 @@ Source: Metal032_1K-JPG.zip, Color / Roughness / NormalGL files.
 Original JPEG bytes are preserved. The uniformly white metalness map is represented
 by a constant metalness of 1. The API identifies the asset as PBRProcedural and
 provides no measured coverage; the viewer authors it at one repeat per 0.5 metre.
+
+Pavement 02 — Poly Haven, CC0 1.0
+https://polyhaven.com/a/pavement_02
+Photography: Charlotte Baglioni. Processing: Dario Barresi.
+Real-world coverage: approximately 2.12 x 2.12 metres (source dimensions in mm).
+Unmodified 1K JPEG diffuse, roughness and OpenGL normal maps, used in High.

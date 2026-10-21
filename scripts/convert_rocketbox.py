@@ -4,6 +4,7 @@ import struct
 import sys
 
 import bpy
+import numpy as np
 from pathlib import Path
 from mathutils import Vector
 
@@ -58,6 +59,31 @@ for mat in bpy.data.materials:
         mat.surface_render_method = "DITHERED"
         mat.use_backface_culling = False
     else:
+        # Legacy specular maps describe where a surface is glossy, not measured
+        # PBR roughness. Use their spatial detail with a bounded artistic transfer
+        # curve: keep cloth matte and let skin/eyes/shoes catch smaller highlights.
+        spec_path = base / "Textures" / (mat.name + "_specular.tga")
+        if spec_path.exists():
+            spec = bpy.data.images.load(str(spec_path), check_existing=True)
+            spec.colorspace_settings.name = "Non-Color"
+            spec.scale(512, 512)
+            pixels = np.empty(512 * 512 * 4, dtype=np.float32)
+            spec.pixels.foreach_get(pixels)
+            rgb = pixels.reshape(-1, 4)[:, :3]
+            intensity = np.clip(rgb @ np.array([0.2126, 0.7152, 0.0722]), 0, 1)
+            base_roughness, contrast = (0.64, 0.44) if "head" in mat.name else (0.90, 0.65)
+            values = base_roughness - contrast * np.sqrt(intensity)
+            packed = np.ones((512 * 512, 4), dtype=np.float32)
+            packed[:, :3] = values[:, None]
+            rough = bpy.data.images.new(mat.name + "_roughness", width=512, height=512)
+            rough.colorspace_settings.name = "Non-Color"
+            rough.pixels.foreach_set(packed.ravel())
+            rough.filepath_raw = str(root / (mat.name + "_roughness.png"))
+            rough.file_format = "PNG"
+            rough.save()
+            texr = nodes.new("ShaderNodeTexImage")
+            texr.image = rough
+            links.new(texr.outputs["Color"], bs.inputs["Roughness"])
         normal_path = base / "Textures" / (mat.name + "_normal.tga")
         if normal_path.exists():
             imn = bpy.data.images.load(str(normal_path), check_existing=True)

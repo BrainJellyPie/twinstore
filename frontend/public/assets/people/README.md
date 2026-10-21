@@ -13,8 +13,15 @@ the pinned source revision and SHA-256 records in `sources.json`.
 - Each includes captured `idle`, `walk`, and `browse` clips. Browsing shoppers
   turn their head and shoulders to look around the shelf. Independent skeletons
   and motion phases animate each shopper. Authored metric heights are preserved.
-- Textures are resized to 1024 px: JPEG for opaque color, PNG for normal maps
-  and hair alpha. Skin and cloth retain different roughness values.
+- Color, normal and hair-alpha textures are resized to 1024 px: JPEG for opaque
+  color, PNG for normal maps and hair alpha. Face and body materials also carry
+  512 px roughness maps derived from the original specular textures, so eyes,
+  skin, hair, fabric and shoes do not all reflect light with a uniform gloss.
+- This is an artistic conversion of legacy specular data, not measured PBR
+  roughness. With source luminance `s` in [0, 1], the face uses
+  `0.64 - 0.44 * sqrt(s)` and the body uses `0.90 - 0.65 * sqrt(s)`.
+  These bounded curves retain matte skin and clothing while preserving the
+  original map's locations of stronger highlights. Materials remain nonmetallic.
 - The original FBX skeletons use different rest poses for each motion. Bone
   orientations are baked into the avatar's own rest skeleton. Forward root
   travel is removed; the simulation owns shopper position.
