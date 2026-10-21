@@ -1307,6 +1307,7 @@ export interface StoreTemplate {
   open_hours: [number, number];
   default_style: NonNullable<LayoutOptions["style"]>;
   default_design: StoreDesign;
+  default_dining_tables: number;
 }
 
 export interface LayoutOptions {
@@ -1318,6 +1319,7 @@ export interface LayoutOptions {
   checkouts?: number;
   fixture_design?: "mixed" | "a" | "b" | "c";
   design_theme?: StoreDesign | null;
+  dining_tables?: number | null;
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {

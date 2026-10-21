@@ -15,6 +15,8 @@
 
 import type { Face, Position, Rack, BlockReason, BlockedFaceDetail } from "@/shared/types/domain";
 
+import { rackCells } from "@/shared/utils/grid";
+
 const FACES: Face[] = ["N", "S", "W", "E"];
 
 const FACE_OFFSETS: Record<Face, [number, number]> = {
@@ -27,22 +29,6 @@ const FACE_OFFSETS: Record<Face, [number, number]> = {
 // entrance / exit racks have no slotted faces, so exclude them from blocked-face calc.
 function isFacelessRack(rack: Rack): boolean {
   return rack.type === "entrance" || rack.type === "exit";
-}
-
-// Generalized for safety against future multi-cell racks; the editor only creates 1×1
-// (no rotation applied — multi-cell rotation isn't authored here).
-function rackCells(rack: Rack): Position[] {
-  const [px, py] = rack.position;
-  const cells: Position[] = [];
-  for (let dy = 0; dy < rack.shape.length; dy += 1) {
-    const row = rack.shape[dy] ?? [];
-    for (let dx = 0; dx < row.length; dx += 1) {
-      if (row[dx] === 1) {
-        cells.push([px + dx, py + dy]);
-      }
-    }
-  }
-  return cells;
 }
 
 function isInBounds([x, y]: Position, [w, h]: [number, number]): boolean {
@@ -69,7 +55,7 @@ export function computeAdjacentBlocked(
   const out: BlockedFaceDetail[] = [];
 
   for (const rack of racks) {
-    if (isFacelessRack(rack)) continue;
+    if (isFacelessRack(rack) || rack.type === "table") continue;
     // 1×1 assumption — if shape is larger, conservatively check only the (0,0) block
     // (the editor doesn't author multi-cell, so this is regression defense).
     const cells = rackCells(rack);

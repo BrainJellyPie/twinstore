@@ -18,6 +18,7 @@ class RackType(StrEnum):
     SHELF = "shelf"
     FRIDGE = "fridge"
     COUNTER = "counter"   # checkout face = unlocked exposed side face (see service_access_tiles)
+    TABLE = "table"       # furniture only; no product slots or table-service simulation
     ENTRANCE = "entrance"
     EXIT = "exit"
 
@@ -158,7 +159,7 @@ class Rack(BaseModel):
         occupied = set(self.occupied_positions)
         tiles: set[Position] = set()
         for idx, (r, c) in enumerate(self.block_cells):
-            for face in self.valid_faces(idx):
+            for face in (list(Face) if self.type == RackType.TABLE else self.valid_faces(idx)):
                 if (idx, face) in locked:
                     continue
                 dx, dy = _FACE_OFFSETS[face]
