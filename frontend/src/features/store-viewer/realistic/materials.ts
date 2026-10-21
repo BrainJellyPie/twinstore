@@ -134,6 +134,8 @@ export function createShellMaterials(
       polygonOffsetUnits: -2,
     }),
   };
+  // Photo mode converts materials by role (glass, emitters, contact-shadow decal).
+  for (const [key, m] of Object.entries(mats)) m.name = key;
   if (partEnv) {
     for (const key of ENV_KEYS) {
       const m = mats[key] as THREE.MeshStandardMaterial;

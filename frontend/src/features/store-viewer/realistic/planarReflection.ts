@@ -16,7 +16,7 @@ export interface PlanarReflection {
 const HIDE_IN_MIRROR = new Set(["shell-plinth", "shell-pavement", "shell-curb", "realistic-floor", "shell-ao", "scene-ground"]);
 const CEILING = new Set(["realistic-ceiling", "shell-ceilingLight"]);
 
-export function attachPlanarReflection(material: THREE.MeshStandardMaterial, strength = 0.22): PlanarReflection {
+export function attachPlanarReflection(material: THREE.MeshStandardMaterial, strength = 0.9): PlanarReflection {
   const target = new THREE.WebGLRenderTarget(512, 512, { type: THREE.HalfFloatType, samples: 0 });
   target.texture.colorSpace = THREE.LinearSRGBColorSpace;
   const textureMatrix = new THREE.Matrix4();
@@ -45,19 +45,28 @@ export function attachPlanarReflection(material: THREE.MeshStandardMaterial, str
         [
           "{",
           "  vec2 ruv = vReflectCoord.xy / vReflectCoord.w;",
-          "  float blur = 1.5 + roughnessFactor * 6.0;",
-          "  vec3 rc = texture2D( tReflect, ruv ).rgb * 0.4;",
-          "  rc += texture2D( tReflect, ruv + vec2( uTexel.x, uTexel.y ) * blur ).rgb * 0.15;",
-          "  rc += texture2D( tReflect, ruv + vec2( -uTexel.x, uTexel.y ) * blur ).rgb * 0.15;",
-          "  rc += texture2D( tReflect, ruv + vec2( uTexel.x, -uTexel.y ) * blur ).rgb * 0.15;",
-          "  rc += texture2D( tReflect, ruv + vec2( -uTexel.x, -uTexel.y ) * blur ).rgb * 0.15;",
-          "  outgoingLight = mix( outgoingLight, outgoingLight + rc, uReflectStrength * ( 1.0 - roughnessFactor ) );",
+          "  vec2 blur = uTexel * ( 0.75 + roughnessFactor * roughnessFactor * 10.0 );",
+          "  vec4 rc = texture2D( tReflect, ruv ) * 0.25;",
+          "  rc += texture2D( tReflect, ruv + vec2( blur.x, 0.0 ) ) * 0.125;",
+          "  rc += texture2D( tReflect, ruv - vec2( blur.x, 0.0 ) ) * 0.125;",
+          "  rc += texture2D( tReflect, ruv + vec2( 0.0, blur.y ) ) * 0.125;",
+          "  rc += texture2D( tReflect, ruv - vec2( 0.0, blur.y ) ) * 0.125;",
+          "  rc += texture2D( tReflect, ruv + blur ) * 0.0625;",
+          "  rc += texture2D( tReflect, ruv - blur ) * 0.0625;",
+          "  rc += texture2D( tReflect, ruv + vec2( blur.x, -blur.y ) ) * 0.0625;",
+          "  rc += texture2D( tReflect, ruv + vec2( -blur.x, blur.y ) ) * 0.0625;",
+          // Dielectric Fresnel: quiet at normal incidence, stronger along the aisle.
+          // Blend reflected coverage instead of adding light over every floor pixel.
+          "  float ndv = saturate( dot( normal, geometryViewDir ) );",
+          "  float fresnel = 0.04 + 0.96 * pow( 1.0 - ndv, 5.0 );",
+          "  float weight = saturate( uReflectStrength * fresnel * ( 1.0 - roughnessFactor ) * rc.a );",
+          "  outgoingLight = mix( outgoingLight, rc.rgb / max( rc.a, 0.0001 ), weight );",
           "}",
           "#include <opaque_fragment>",
         ].join("\n"),
       );
   };
-  material.customProgramCacheKey = () => "parastore-floor-reflect-v1";
+  material.customProgramCacheKey = () => "parastore-floor-reflect-v2";
   material.needsUpdate = true;
 
   let mirrorCam: THREE.Camera | null = null;
@@ -67,6 +76,7 @@ export function attachPlanarReflection(material: THREE.MeshStandardMaterial, str
   const normal = new THREE.Vector3(0, 1, 0);
   const size = new THREE.Vector2();
   const hidden: THREE.Object3D[] = [];
+  const clearColor = new THREE.Color();
 
   const update: PlanarReflection["update"] = (gl, scene, camera, floor) => {
     if (!floor) return;
@@ -119,17 +129,24 @@ export function attachPlanarReflection(material: THREE.MeshStandardMaterial, str
     const prevTarget = gl.getRenderTarget();
     const prevShadowAuto = gl.shadowMap.autoUpdate;
     const prevXr = gl.xr.enabled;
-    gl.xr.enabled = false;
-    gl.shadowMap.autoUpdate = false;
-    gl.setRenderTarget(target);
-    gl.clear();
-    gl.render(scene, mc);
-    gl.setRenderTarget(prevTarget);
-    gl.shadowMap.autoUpdate = prevShadowAuto;
-    gl.xr.enabled = prevXr;
-    scene.background = prevBackground;
-    scene.fog = prevFog;
-    for (const o of hidden) o.visible = true;
+    gl.getClearColor(clearColor);
+    const prevAlpha = gl.getClearAlpha();
+    try {
+      gl.xr.enabled = false;
+      gl.shadowMap.autoUpdate = false;
+      gl.setClearColor(0x000000, 0);
+      gl.setRenderTarget(target);
+      gl.clear();
+      gl.render(scene, mc);
+    } finally {
+      gl.setRenderTarget(prevTarget);
+      gl.setClearColor(clearColor, prevAlpha);
+      gl.shadowMap.autoUpdate = prevShadowAuto;
+      gl.xr.enabled = prevXr;
+      scene.background = prevBackground;
+      scene.fog = prevFog;
+      for (const o of hidden) o.visible = true;
+    }
   };
 
   return {
