@@ -1,7 +1,8 @@
 // A store in the home gallery: its footprint drawn to scale as a glowing isometric slab, then its
 // name, format and status. The card follows the pointer with a soft spotlight.
 
-import { ArrowUpRight, CalendarDays, Clock, Plus, Ruler } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowUpRight, CalendarDays, Camera, Clock, Map, Megaphone, Plus, Ruler, Store } from "lucide-react";
 
 import type { ProjectListItem } from "@/shared/api/client";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -24,6 +25,21 @@ const STORE_TYPE_LABELS: Record<string, string> = {
   electronics: "Electronics",
   pharmacy: "Pharmacy",
 };
+
+/** Labels for the formats above; any other format id reads as words ("pizza_shop" → "Pizza shop"). */
+function storeTypeLabel(type: string): string {
+  const known = STORE_TYPE_LABELS[type];
+  if (known) return known;
+  const words = type.replace(/[_-]+/g, " ").trim();
+  return words ? words[0]!.toUpperCase() + words.slice(1) : "Store";
+}
+
+const QUICK_LINKS = [
+  { to: "/projects/$pid", label: "Floor", icon: Store },
+  { to: "/marketing/$pid", label: "Market", icon: Megaphone },
+  { to: "/capture/$pid", label: "Capture", icon: Camera },
+  { to: "/town/$pid", label: "Area", icon: Map },
+] as const;
 
 function relativeTime(iso: string): string | null {
   const t = Date.parse(iso);
@@ -73,18 +89,17 @@ function Footprint({ grid }: { grid: [number, number] | null }) {
 
 export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectListItem; onOpen: () => void; index?: number }) {
   const status = STATUS_STYLE[project.status] ?? { dot: "bg-muted-foreground", label: project.status, tone: "border-border bg-card/60" };
-  const typeLabel = STORE_TYPE_LABELS[project.store_type] ?? project.store_type;
+  const typeLabel = storeTypeLabel(project.store_type);
   const openDays = project.weekly_schedule?.filter((d) => d.is_open).length ?? 0;
   const updated = relativeTime(project.updated_at);
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
+    <div
       onMouseMove={spotlightHandler}
       style={{ animationDelay: `${80 + index * 60}ms` }}
-      className="spotlight group flex animate-rise flex-col overflow-hidden rounded-[1.6rem] border border-glass-border bg-card/70 text-left shadow-[inset_0_1px_0_var(--highlight),var(--shadow-float)] backdrop-blur-xl transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-foreground/15 hover:shadow-[inset_0_1px_0_var(--highlight),var(--shadow-lift)] focus-visible:border-ring"
+      className="spotlight group flex animate-rise flex-col overflow-hidden rounded-[1.6rem] border border-glass-border bg-card/70 shadow-[inset_0_1px_0_var(--highlight),var(--shadow-float)] backdrop-blur-xl transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-foreground/15 hover:shadow-[inset_0_1px_0_var(--highlight),var(--shadow-lift)] focus-within:border-ring"
     >
+    <button type="button" onClick={onOpen} className="flex flex-1 flex-col text-left outline-none">
       <div className="dot-grid relative overflow-hidden px-5 pt-5 pb-2">
         <div
           className="pointer-events-none absolute inset-x-6 top-10 h-24 rounded-full opacity-60 blur-3xl transition-opacity duration-500 group-hover:opacity-100"
@@ -128,6 +143,15 @@ export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectList
         </div>
       </div>
     </button>
+      <nav className="flex border-t border-glass-border" aria-label={`Open ${project.name || "store"} in`}>
+        {QUICK_LINKS.map(({ to, label, icon: Icon }) => (
+          <Link key={label} to={to} params={{ pid: project.project_id }}
+            className="flex flex-1 items-center justify-center gap-1.5 py-2.5 text-[0.75rem] text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground">
+            <Icon className="size-3.5" aria-hidden /> {label}
+          </Link>
+        ))}
+      </nav>
+    </div>
   );
 }
 
