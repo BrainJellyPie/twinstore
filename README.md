@@ -359,6 +359,12 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
 
 ## Credits
 
+The realistic viewer also bundles [Poly Haven](https://polyhaven.com/) CC0 material scans
+for ceramic flooring and wood fixtures. Diffuse and roughness maps are used at every
+quality level; High adds OpenGL normal maps for surface relief. Assets load locally
+with procedural fallbacks. Authors, source URLs and checksums are in
+[`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
+
 - 3D assets in `frontend/public/assets/` are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
   [Mini Characters](https://kenney.nl/assets/mini-characters), [Graveyard Kit](https://kenney.nl/assets/graveyard-kit).
 - Validation uses dunnhumby *The Complete Journey*, X5 RetailHero, Ta-Feng, Instacart, Favorita, M5 and the ATC
