@@ -1,0 +1,338 @@
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import * as api from "@/shared/api/client";
+import { queryKeys } from "@/shared/queries/keys";
+import {
+  captureBatchPreview,
+  captureBatchSave,
+} from "@/services/mutations/captureBatch";
+import { useSimulationStore } from "@/stores/simulationStore";
+import { FloorPlanPreview } from "@/features/layouts/components/FloorPlanPreview";
+import { Button } from "@/shared/components/ui/button";
+
+export function CaptureBatch({
+  projectId,
+  captures,
+  onReview,
+}: {
+  projectId: string;
+  captures: api.CaptureStatus[];
+  onReview: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [setupId, setSetupId] = useState("");
+  const [requestId, setRequestId] = useState("");
+  const [acceptReduced, setAcceptReduced] = useState(false);
+  const preview = useMutation(captureBatchPreview(projectId));
+  const save = useMutation(captureBatchSave(projectId));
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const layouts = useQuery({
+    queryKey: queryKeys.setups(projectId),
+    queryFn: ({ signal }) => api.getSetups(projectId, signal),
+    enabled: open,
+  });
+  const setups = layouts.data ?? [];
+  const base = setupId || setups[0]?.id || "";
+  const busy = preview.isPending || save.isPending;
+  const chosen = selected.filter((id) =>
+    captures.some(
+      (c) => c.capture_id === id && c.status === "completed" && c.items > 0,
+    ),
+  );
+  const valid =
+    chosen.length > 0 &&
+    chosen.length <= 20 &&
+    chosen.length === selected.length &&
+    setups.some((s) => s.id === base) &&
+    !layouts.isError;
+  const report = preview.data;
+  const sameSelection =
+    preview.variables?.setup_id === base &&
+    JSON.stringify(preview.variables?.capture_ids) === JSON.stringify(chosen);
+  const clear = () => {
+    preview.reset();
+    save.reset();
+    setRequestId("");
+    setAcceptReduced(false);
+  };
+  return (
+    <section
+      className="shrink-0 rounded-2xl border bg-card p-3 text-sm"
+      aria-label="Combine shelf photos"
+    >
+      <Button
+        variant="outline"
+        disabled={busy}
+        onClick={() => {
+          setOpen(!open);
+          if (!open) clear();
+        }}
+      >
+        Combine reviewed shelf photos
+      </Button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          <p>
+            Select up to 20 completed photos, preview their shelves together,
+            then save one new draft. The original layout and photos stay
+            unchanged. Photos add racks on free floor; they do not recover room
+            geometry.
+          </p>
+          <label className="block">
+            Base layout
+            <select
+              className="mt-1 block h-10 w-full rounded-lg border bg-background px-2"
+              disabled={busy || layouts.isPending}
+              value={base}
+              onChange={(e) => {
+                clear();
+                setSetupId(e.target.value);
+              }}
+            >
+              {!base && <option value="">Choose a layout</option>}
+              {setups.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name || s.id}
+                </option>
+              ))}
+            </select>
+          </label>
+          {layouts.isError && (
+            <div role="alert">
+              Could not load layouts.{" "}
+              <Button variant="outline" onClick={() => void layouts.refetch()}>
+                Retry layouts
+              </Button>
+            </div>
+          )}
+          {!layouts.isPending && !layouts.isError && !setups.length && (
+            <p>
+              Create a base layout in your store first, then return to combine
+              photos.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                clear();
+                setSelected(
+                  captures
+                    .filter((c) => c.status === "completed" && c.items > 0)
+                    .slice(0, 20)
+                    .map((c) => c.capture_id),
+                );
+              }}
+            >
+              Select first 20 ready photos
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                clear();
+                setSelected([]);
+              }}
+            >
+              Clear selection
+            </Button>
+          </div>
+          <p>
+            {chosen.length} selected. Placement follows selection order. Review
+            each photo to correct names, quantities and prices before combining.
+          </p>
+          <div className="grid max-h-64 gap-2 overflow-auto sm:grid-cols-2">
+            {captures.map((c) => {
+              const ready = c.status === "completed" && c.items > 0;
+              const checked = selected.includes(c.capture_id);
+              return (
+                <div
+                  key={c.capture_id}
+                  className="flex items-center gap-2 rounded-lg border p-2"
+                >
+                  <label className="flex min-w-0 flex-1 items-center gap-2">
+                    <input
+                      type="checkbox"
+                      disabled={
+                        busy || !ready || (!checked && chosen.length >= 20)
+                      }
+                      checked={checked}
+                      onChange={() => {
+                        clear();
+                        setSelected(
+                          checked
+                            ? selected.filter((id) => id !== c.capture_id)
+                            : [...selected, c.capture_id],
+                        );
+                      }}
+                    />
+                    <img
+                      className="h-12 w-16 rounded object-cover"
+                      src={api.captureImageUrl(projectId, c.capture_id)}
+                      alt=""
+                    />
+                    <span className="min-w-0 break-words">
+                      {c.image_name}
+                      <br />
+                      <span className="text-xs text-muted-foreground">
+                        {c.status} · {c.items} products · {c.options.currency}
+                      </span>
+                    </span>
+                  </label>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => {
+                      clear();
+                      setOpen(false);
+                      onReview(c.capture_id);
+                    }}
+                  >
+                    Review
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          {chosen.length !== selected.length && (
+            <p role="alert">
+              A selected photo is no longer ready. Clear the selection and
+              choose again.
+            </p>
+          )}
+          <Button
+            disabled={!valid || busy}
+            onClick={() => {
+              clear();
+              setSetupId(base);
+              preview.mutate(
+                { capture_ids: chosen, setup_id: base },
+                {
+                  onSuccess: () =>
+                    setRequestId(crypto.randomUUID().replace(/-/g, "")),
+                },
+              );
+            }}
+          >
+            Preview combined layout
+          </Button>
+          {busy && (
+            <p role="status">
+              {save.isPending
+                ? "Saving one combined draft…"
+                : "Checking shelf placement…"}
+            </p>
+          )}
+          {(preview.error || save.error) && (
+            <p role="alert" className="text-destructive">
+              {preview.error?.message || save.error?.message}
+            </p>
+          )}
+          {report && sameSelection && (
+            <div className="space-y-3">
+              <p>
+                {report.rack_ids.length} new racks · {report.placed_items}{" "}
+                placed product entries · {report.placed_facings} facings.
+              </p>
+              <p>
+                {report.estimated_prices} product entries have estimated or
+                missing prices; {report.unrecognized_items} are not recognized.
+                These are not verified stock or prices. Exact complete product
+                names may reuse a SKU; similar names stay separate. Review the
+                resulting products.
+              </p>
+              <FloorPlanPreview store={report.store} areas={[]} />
+              <p className="break-words text-xs">
+                New rack IDs: {report.rack_ids.join(", ")}
+              </p>
+              {report.notes.map((note, i) => (
+                <p key={i} className="text-xs">
+                  {note}
+                </p>
+              ))}
+              {!!report.dropped.length && (
+                <p role="alert">
+                  Some products do not fit: {report.dropped.join(", ")}. Correct
+                  the photos or choose a roomier layout before saving.
+                </p>
+              )}
+              {report.reduced_facings > 0 && (
+                <label className="block rounded-lg border p-2">
+                  <input
+                    type="checkbox"
+                    checked={acceptReduced}
+                    disabled={busy || !!save.variables}
+                    onChange={(e) => setAcceptReduced(e.target.checked)}
+                  />{" "}
+                  Accept {report.placed_facings} facings instead of{" "}
+                  {report.requested_facings}; {report.reduced_facings} facings
+                  cannot be preserved in this grid.
+                </label>
+              )}
+              {!save.data && (
+                <Button
+                  disabled={
+                    !valid ||
+                    busy ||
+                    !requestId ||
+                    report.dropped.length > 0 ||
+                    (report.reduced_facings > 0 && !acceptReduced)
+                  }
+                  onClick={() =>
+                    save.mutate(
+                      {
+                        capture_ids: chosen,
+                        setup_id: base,
+                        source_sha256: report.source_sha256,
+                        request_id: requestId,
+                        allow_reduced_facings: acceptReduced,
+                      },
+                      {
+                        onSuccess: () => {
+                          void qc.invalidateQueries({
+                            queryKey: queryKeys.project(projectId),
+                          });
+                        },
+                      },
+                    )
+                  }
+                >
+                  {save.error
+                    ? "Retry saving this draft"
+                    : "Save combined draft"}
+                </Button>
+              )}
+            </div>
+          )}
+          {save.data && (
+            <div role="status">
+              <p>Combined draft saved. Your source layout is unchanged.</p>
+              <Button
+                onClick={() => {
+                  if (save.data) {
+                    useSimulationStore
+                      .getState()
+                      .setSelectedSetupId(save.data.setup_id);
+                    void navigate({
+                      to: "/projects/$pid",
+                      params: { pid: projectId },
+                    });
+                  }
+                }}
+              >
+                Open combined layout
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}

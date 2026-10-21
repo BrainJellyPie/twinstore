@@ -18,6 +18,7 @@ import { cn } from "@/shared/utils/cn";
 import { CAPTURE_CATEGORIES, categoryColor, categoryLabel } from "./categories";
 import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
 import { RivalCard } from "./RivalCard";
+import { CaptureBatch } from "./CaptureBatch";
 import { BeforeAfter, ShelfLabPanel } from "./ShelfLab";
 
 const capturesKey = (pid: string) => ["projects", pid, "captures"] as const;
@@ -40,6 +41,7 @@ export function CapturePage({ projectId }: { projectId: string }) {
     <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto md:overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <CaptureStrip projectId={projectId} captures={captures} selected={selected} onSelect={select} />
+        {captures.length > 0 && <CaptureBatch key={projectId} projectId={projectId} captures={captures} onReview={select} />}
         {selected ? (
           <CaptureWorkspace key={selected} projectId={projectId} captureId={selected} onDeleted={() => select(null)} />
         ) : (
