@@ -621,7 +621,8 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
   plastic housings and coated grilles use a nonmetallic finish. Cashier, customer and card-reader displays
   have distinct idle artwork in one shared 512 × 256 texture, retained in Photo mode. These decorative
   screens do not show simulation orders or payment totals. Cans in High separate printed labels from
-  reflective metal ends and rims, with the same finishes in Photo mode. Authors, source URLs and checksums are in
+  reflective metal ends and rims, with the same finishes in Photo mode. Round packages keep continuous
+  shading across their label wraps without changing the printed UVs or silhouette. Authors, source URLs and checksums are in
   [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 - **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
   ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;
