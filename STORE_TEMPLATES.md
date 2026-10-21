@@ -169,7 +169,7 @@ layouts default to that project currency. Existing shopper budgets are not
 converted when a different template currency is chosen; use matching currency
 for a simulation, or start a separate project for that market.
 
-Combine seven patterns (parallel aisles, racetrack, central spine, central cross aisles, free-flow islands,
+Combine eight patterns (parallel aisles, racetrack, central spine, central cross aisles, central plaza, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
 three display densities, left/center/right entry, one to twelve checkouts and shelf
 variants. Ten saved interior palettes—classic retail, warm wood, minimal white,
@@ -223,6 +223,15 @@ gap**, or the density default when no gap is selected. These paths can reduce
 seating capacity: automatic seating fits the available space, while an explicit
 count that does not fit produces an error. Reservations remain clear, and manual
 floor edits can change the generated arrangement later.
+**Central plaza** keeps a centered rectangle clear of shelves and dining tables,
+with shopping rows around it. Its width and depth are each one third of the interior
+dimension, rounded down, with a minimum of two cells per side. A 32×28 floor has a
+10×8 plaza; an 8×6 floor has a 2×2 plaza. The area stays clear in either shelf
+direction and at every density. **Interior aisle gap** and **Maximum shelf run**
+control the surrounding rows. Tables are placed outside the plaza, so explicit
+seating counts may need to be reduced; automatic seating fits the remaining space.
+Reserved areas remain clear even when they overlap the plaza. The pattern is saved
+and reused in layout and building options files.
 The perimeter pattern keeps its wall-based arrangement. Shelf direction is saved
 with the other options and can differ between floors or layout alternatives.
 
