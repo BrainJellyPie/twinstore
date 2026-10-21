@@ -71,9 +71,11 @@ data. `research/README.md` lists paper directions.
 
 ### Calibrated against real purchases
 `research/validation/` runs the engines on households of dunnhumby's *The
-Complete Journey* (and X5 RetailHero for demographic gradients), compares
-simulated trips with held-out real trips (weeks and households never used for
-calibration) and feeds what is wrong back into the simulator:
+Complete Journey* (plus X5 RetailHero, Ta-Feng, Instacart, Favorita, M5 and the
+ATC pedestrian tracks), compares simulated trips with held-out real trips
+(weeks and households never used for calibration) with Claude Haiku 5.5, Qwen
+3.8 Flash and GPT-6 Luna as decision models, and feeds what is wrong back into
+the simulator:
 - **Visit times from data**: a weekday × hour traffic profile fitted from
   transaction times (`engine/generators/traffic_profile.py`). A POS export with a
   timestamp column uploaded as supplemental data now sets when personas arrive;

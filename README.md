@@ -104,6 +104,19 @@ To evaluate performance, this chart compares **actual sales history from a physi
 
 >_Note: These results were generated via Intellicia's own synthetic consumers, not the synthesis method published in this repo._
 
+**The shoppers in this repo, on public data.** [`research/validation`](research/validation/) runs ParaStore's own engines on households of six public datasets and compares them with real trips they never saw: 150 households and 14 weeks of dunnhumby's *The Complete Journey*, held out, with Claude Haiku 5.5, Qwen 3.8 Flash and GPT-6 Luna as decision models.
+
+| Check (held out) | Simulated | Real reference |
+| :--- | :--- | :--- |
+| Category mix of the population (JSD) | `0.017–0.018` | `0.012` (a household's own earlier receipts) |
+| Per-household hit vs the store's best-sellers | `+0.027 to +0.035` (95 % CIs above 0) | – |
+| Classifier AUC, real vs simulated receipt | `0.56–0.62` | `0.52` (own earlier receipt vs later one) |
+| Own-price elasticity | `−0.78 to −1.60` | `−0.70` (M5) to `−2.62` (meta-analysis) |
+| Bigger trips from farther away (Ta-Feng) | `1.25–1.36×` | `1.33×` |
+| Walking speed (13,159 tracks) | `1.12 m/s` | `1.13 m/s` |
+
+The validation README lists what failed and what was fixed, and every number is reproducible from the saved trips.
+
 ## Demo video
 
 <div align="center">
