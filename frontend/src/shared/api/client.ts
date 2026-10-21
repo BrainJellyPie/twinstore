@@ -1961,6 +1961,9 @@ export interface RivalReport {
   venue_id: string;
   previous_attractiveness: number | null;
   attractiveness: number | null;
+  /** Rival name → our name for products the text model matched although their names differ. */
+  model_matches?: Record<string, string>;
+  match_note?: string;
 }
 
 export function compareRival(

@@ -52,13 +52,14 @@ from store_emulator.engine.shelf_lab import (
 )
 from store_emulator.engine.shelf_lab.audit import diff_face, match_field, price_findings
 from store_emulator.engine.shelf_lab.edits import cut_out
-from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival
+from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival, unmatched_names
+from store_emulator.engine.shelf_lab.rival_match import match_products
 
 from .async_executor import executor
 from .capture import capture_image_path, capture_llm_config, get_capture
 from .currencies import project_currency, simulation_currency
 from .errors import AppError, model_failure
-from .providers import assistive_vision_model
+from .providers import assistive_model, assistive_vision_model, build_client
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import metadata_path, personas_path, read_setup
@@ -576,16 +577,37 @@ class RivalRequest(BaseModel):
     venue_id: str = Field(default="", description="the rival's venue in the neighborhood (optional)")
     apply: bool = Field(default=False, description="scale the venue's pull by the price-adjusted factor")
     elasticity: float = Field(default=1.0, ge=0.0, le=3.0)
+    match_with_model: bool = Field(default=True, description="let the text model match products whose names differ")
+    model: str = Field(default="", description='model reference; "" = the app text model')
 
 
 class RivalReport(BaseModel):
     comparison: RivalComparison
+    model_matches: dict[str, str] = {}   # rival name → our name, matched by the model
+    match_note: str = ""
     venue_id: str = ""
     previous_attractiveness: float | None = None
     attractiveness: float | None = None
 
 
-def compare_rival_capture(pid: str, cid: str, req: RivalRequest, *, default_currency: str = "USD") -> RivalReport:
+def _model_matches(store: Store, result: CaptureResult, req: RivalRequest, config: SimulationConfig | None) -> tuple[dict[str, str], str]:
+    if not req.match_with_model or config is None:
+        return {}, ""
+    missing, ours = unmatched_names(store, result)
+    if not missing:
+        return {}, ""
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 1500})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        return asyncio.run(match_products(llm, missing, ours)), ""
+    except Exception as e:  # matching by name still works; say what was skipped
+        logger.warning(f"[shelf_lab] rival model matching failed: {type(e).__name__}: {e}")
+        return {}, model_failure(e, f"{len(missing)} product(s) were matched by name only")
+
+
+def compare_rival_capture(
+    pid: str, cid: str, req: RivalRequest, *, default_currency: str = "USD", config: SimulationConfig | None = None,
+) -> RivalReport:
     _, result = _capture(pid, cid)
     if not any(i.labeled for i in result.items):
         raise AppError("the rival's products have not been read (run the capture with a vision model or name them)", 409)
@@ -593,8 +615,9 @@ def compare_rival_capture(pid: str, cid: str, req: RivalRequest, *, default_curr
     currency = store.currency or project_currency(pid, default_currency)
     if result.currency != currency:
         raise AppError(f"Capture currency must match layout prices ({currency}); prices are not converted automatically.", 422)
-    comparison = compare_rival(store, result, elasticity=req.elasticity)
-    report = RivalReport(comparison=comparison, venue_id=req.venue_id)
+    aliases, note = _model_matches(store, result, req, config)
+    comparison = compare_rival(store, result, elasticity=req.elasticity, aliases=aliases)
+    report = RivalReport(comparison=comparison, venue_id=req.venue_id, model_matches=aliases, match_note=note)
     if req.venue_id:
         town = get_town(pid)
         venue = town.get_venue(req.venue_id) if town else None

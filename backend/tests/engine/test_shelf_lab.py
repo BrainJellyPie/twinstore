@@ -308,3 +308,35 @@ def test_rival_shelf_price_index_and_overlap(store: Store) -> None:
     assert 0 < report.overlap <= 1
     newcomer = cheaper.model_copy(update={"items": [*cheaper.items, cheaper.items[0].model_copy(update={"id": "x1", "name": "Rival Own Brand Cola", "sku": "x"})]})
     assert compare_rival(reference, newcomer).only_rival == ["Rival Own Brand Cola"]
+
+
+def test_rival_products_named_differently_match_through_aliases(store: Store) -> None:
+    import asyncio
+
+    from pydantic import BaseModel
+
+    from store_emulator.engine.shelf_lab.rival import compare_rival, unmatched_names
+    from store_emulator.engine.shelf_lab.rival_match import match_products
+
+    rack = next(r for r in store.racks if r.id == DRINK_1)
+    scene = make_scene(rack, Face.S, currency="USD", seed=21, severity="clean", gap_rate=0.0)
+    reference = _reference_store(store, scene)
+    rival = _gt_capture(scene)
+    first = rival.items[0]
+    renamed = rival.model_copy(update={"items": [first.model_copy(update={"name": "ZZ Totally Different Label"}), *rival.items[1:]]})
+    missing, ours = unmatched_names(reference, renamed)
+    assert missing == ["ZZ Totally Different Label"] and first.name in ours
+    assert compare_rival(reference, renamed).only_rival == ["ZZ Totally Different Label"]
+
+    class _Matcher:
+        async def generate_structured_async[T: BaseModel](self, response_model: type[T], system_prompt: str, user_prompt: str,
+                                                         *, max_retries: int = 1, seed: int | None = None) -> T:
+            assert "same brand, the same variant" in system_prompt and "- ZZ Totally Different Label" in user_prompt
+            return response_model.model_validate({"pairs": [{"rival": "ZZ Totally Different Label", "ours": first.name.upper()},
+                                                            {"rival": "Not asked", "ours": first.name},
+                                                            {"rival": "ZZ Totally Different Label", "ours": "Invented"}]})
+
+    aliases = asyncio.run(match_products(_Matcher(), missing, ours))
+    assert aliases == {"ZZ Totally Different Label": first.name}
+    report = compare_rival(reference, renamed, aliases=aliases)
+    assert report.only_rival == [] and report.matched == compare_rival(reference, rival).matched

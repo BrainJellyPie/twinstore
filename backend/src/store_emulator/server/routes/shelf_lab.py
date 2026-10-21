@@ -150,7 +150,9 @@ def export_restock_order(pid: str, cid: str, jid: str, req: RestockOrderRequest)
 
 
 @router.post("/{pid}/captures/{cid}/rival", summary="Compare a rival's shelf with ours", response_model=RivalReport)
-def rival(pid: str, cid: str, req: RivalRequest) -> RivalReport:
+async def rival(pid: str, cid: str, req: RivalRequest) -> RivalReport:
     """Price index and assortment overlap of a rival's captured shelf against our layout; optionally scales the rival
-    venue's pull in the neighborhood by the price-adjusted factor."""
-    return _call(lambda: lab.compare_rival_capture(pid, cid, req, default_currency=get_config().currency))
+    venue's pull in the neighborhood by the price-adjusted factor. Products whose names differ from ours are matched
+    by the text model (same brand, variant and size only) unless `match_with_model` is false."""
+    config = get_config()
+    return await run_in_threadpool(_call, lambda: lab.compare_rival_capture(pid, cid, req, default_currency=config.currency, config=config))

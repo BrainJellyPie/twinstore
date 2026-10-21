@@ -65,7 +65,7 @@ def test_rival_price_comparison_requires_matching_shelf_units(client, monkeypatc
     item = next(i for r in setup["store"]["racks"] for s in r["slots"] for i in s["items"])
     result = captured_product(capture, item)
     monkeypatch.setattr(shelf_lab, "_capture", lambda *_: (Image.new("RGB", (2, 2)), result))
-    response = client.post(f"/api/projects/{PID}/captures/cap_test/rival", json={"setup_id": SID})
+    response = client.post(f"/api/projects/{PID}/captures/cap_test/rival", json={"setup_id": SID, "match_with_model": False})
     assert response.status_code == status, response.text
     if status == 200:
         assert response.json()["comparison"]["price_index"] == 1.0
