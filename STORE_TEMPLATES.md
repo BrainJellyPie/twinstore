@@ -209,6 +209,9 @@ seating, currency, seed and design brief. Save a changed version as a linked
 alternative while preserving the source; floor alternatives keep their building
 identity. Use the import option to copy manual fixture edits or uploaded products.
 
+In the new-store wizard, open **Customize layout** for detailed settings and the options-file controls.
+Size, currency and the live floor plan remain available while these settings are folded.
+
 Use **Export options** to download a JSON file of the selected floor's generation
 settings, including currency, assortment seed, reserved areas and design brief.
 **Import options** validates the file and checks that the layout fits before

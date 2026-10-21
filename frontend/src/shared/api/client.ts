@@ -146,8 +146,8 @@ export async function createStore(
   // Direct base URL — Vite has no /api proxy, so a relative path would hit the dev server.
   const res = await fetch(`${BASE}/api/projects/create-store`, { method: "POST", body: fd });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Failed to create store (HTTP ${res.status})`);
+    const body = await res.text().catch(() => "");
+    throw new Error(apiErrorMessage(body, `Failed to create store (HTTP ${res.status})`));
   }
   return res.json() as Promise<CreateStoreResponse>;
 }

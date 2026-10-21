@@ -595,3 +595,72 @@ it("accepts any whole dining count through 48, rejects invalid counts, and resto
   expect(input.value).toBe("");
   expect((screen.getByLabelText("Space around dining tables") as HTMLSelectElement).disabled).toBe(false);
 });
+
+function CompactPicker() {
+  const [value, onChange] = useState(DEFAULT_TEMPLATE_CHOICE);
+  return <TemplatePicker value={value} onChange={onChange} budgetCurrency="USD" defaultCustomizationOpen={false} showOperatingHours={false} />;
+}
+function mountCompact() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><CompactPicker /></QueryClientProvider>);
+}
+
+it("keeps the live plan, size and currency available while customization starts folded", async () => {
+  mountCompact(); await screen.findByRole("img", { name: "Floor plan preview" });
+  const button = screen.getByRole("button", { name: "Customize layout" });
+  expect(button.getAttribute("aria-expanded")).toBe("false");
+  for (const id of button.getAttribute("aria-controls")!.split(" ")) expect(document.getElementById(id)?.hidden).toBe(true);
+  expect(screen.getByRole("spinbutton", { name: "Width (8–40 cells)" })).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Price currency" })).toBeTruthy();
+  expect(screen.queryByRole("combobox", { name: "Display density" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Add reserved area" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Import options" })).toBeNull();
+});
+
+it("preserves edits and avoids new preview requests when customization is folded", async () => {
+  mountCompact(); await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
+  fireEvent.click(screen.getByRole("button", { name: "Customize layout" }));
+  fireEvent.change(screen.getByLabelText("Display density"), { target: { value: "dense" } });
+  fireEvent.change(screen.getByLabelText("Entrance position"), { target: { value: "right" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ width: 24, density: "dense", entrance: "right", reserved_areas: [expect.any(Object)] }), expect.any(AbortSignal)));
+  const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+  fireEvent.click(screen.getByRole("button", { name: "Hide layout settings" }));
+  expect(screen.queryByRole("button", { name: "Remove area 1" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Customize layout" }));
+  expect((screen.getByLabelText("Display density") as HTMLSelectElement).value).toBe("dense");
+  expect((screen.getByLabelText("Entrance position") as HTMLSelectElement).value).toBe("right");
+  expect(screen.getByRole("button", { name: "Remove area 1" })).toBeTruthy();
+  expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+});
+
+it.each(["-1", "49", "1.5"])("explains an invalid hidden table count (%s) and recovers after correction", async (count) => {
+  mountCompact(); await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByRole("button", { name: "Customize layout" }));
+  const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: count } });
+  expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+  fireEvent.click(screen.getByRole("button", { name: "Hide layout settings" }));
+  expect(screen.getByRole("alert").textContent).toBe("Check the size and layout settings before continuing.");
+  fireEvent.click(screen.getByRole("button", { name: "Customize layout" }));
+  expect((screen.getByLabelText("Dining tables (4 seats each)") as HTMLInputElement).value).toBe(count);
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "0" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ dining_tables: 0 }), expect.any(AbortSignal)));
+});
+
+it("keeps a currency mismatch visible outside the folded customization", async () => {
+  mountCompact(); await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByRole("combobox", { name: "Price currency" }), { target: { value: "JPY" } });
+  const warning = await screen.findByText(/This project uses USD shopper budgets/);
+  expect(warning.closest("[hidden]")).toBeNull();
+  expect(screen.getByRole("button", { name: "Customize layout" }).getAttribute("aria-expanded")).toBe("false");
+});
+
+it("retains custom size when selecting another format from the simple view", async () => {
+  mountCompact(); await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
+  fireEvent.click(screen.getByRole("button", { name: /^Community pharmacy/ }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ template_id: "community_pharmacy", width: 24 }), expect.any(AbortSignal)));
+  expect(screen.getByRole("button", { name: "Customize layout" }).getAttribute("aria-expanded")).toBe("false");
+});

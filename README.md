@@ -241,6 +241,9 @@ product categories to stock, where the entrance, exit and checkouts go, how many
 direction and areas to keep clear; compare against the format default and download the plan as SVG. Every option and
 the floor editor (up to 40×40 cells) are documented in [`STORE_TEMPLATES.md`](./STORE_TEMPLATES.md).
 
+In the new-store wizard, choose a format, size and currency first. **Customize layout** opens
+shelf, entrance, seating and reserved-area settings; folding them keeps your edits.
+
 ### The neighborhood
 
 **Area** puts the store in a town: generate one (residential, university, station, suburban, tourist or mixed, at a
