@@ -184,7 +184,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
   const view = useQuery({
     queryKey: [...capturesKey(projectId), captureId],
     queryFn: ({ signal }) => api.getCapture(projectId, captureId, signal),
-    refetchInterval: (q) => (q.state.data && ["completed", "failed"].includes(q.state.data.status.status) ? false : 1200),
+    refetchInterval: (q) => (q.state.status === "error" || (q.state.data && ["completed", "failed"].includes(q.state.data.status.status)) ? false : 1200),
   });
   const del = useMutation({
     mutationFn: () => api.deleteCapture(projectId, captureId),
@@ -204,8 +204,16 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
     else setDraft({ ...draft, target: id, slot: needsOther(draft.kind) && !draft.other ? "other" : "target" });
   };
 
-  if (!status) return <div className="flex flex-1 items-center justify-center"><Loader2 className="size-6 animate-spin" /></div>;
+  const loadError = view.isError ? (
+    <div role="alert" className="space-y-2 rounded-xl border tone-bad p-3 text-sm">
+      <p>{view.error instanceof Error ? view.error.message : "Could not load this capture. Please try again."}</p>
+      <Button variant="outline" disabled={view.isFetching} onClick={() => void view.refetch()}>Retry capture</Button>
+    </div>
+  ) : null;
+  if (!status) return loadError ?? <div role="status" className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-6 animate-spin" />Loading capture…</div>;
   return (
+    <>
+    {loadError}
     <div className="flex min-h-0 flex-1 gap-4">
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--scene)] p-3 shadow-[var(--shadow-lift)]">
@@ -269,6 +277,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
         </div>
       </aside>
     </div>
+    </>
   );
 }
 
