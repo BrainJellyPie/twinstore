@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { CustomerResult, TimelineEvent } from "@/shared/types/domain";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { shopperPoseAt } from "@/features/store-viewer/realistic/shopperPose";
+import { livePlaybackClock } from "@/features/store-viewer/realistic/playbackClock";
 import { useSimulationLoop } from "../hooks/useSimulationLoop";
 
 const context = vi.hoisted(() => ({ frame: null as ((state: unknown, delta: number) => void) | null }));
@@ -123,4 +125,46 @@ it("continues at real time when a sparse schedule advances to its next open day"
   tick(0.5);
   expect(hook.result.current.playbackTimeRef.current).toBe(28800.5);
   expect(useSimulationMetricsStore.getState().finished).toBe(false);
+});
+
+it("publishes its exact time ref without notifying React subscribers each frame", () => {
+  const hook = renderHook(() => useSimulationLoop(options));
+  const source = livePlaybackClock.current!;
+  expect(source.time).toBe(hook.result.current.playbackTimeRef);
+  seek(7);
+  expect(source.time.current).toBe(28807);
+  usePlaybackControlStore.getState().setSpeed(1);
+  usePlaybackControlStore.getState().play();
+  const subscriber = vi.fn();
+  const unsubscribe = useSimulationMetricsStore.subscribe(subscriber);
+  tick(0.5);
+  unsubscribe();
+  expect(source.time.current).toBe(28807.5);
+  expect(subscriber).not.toHaveBeenCalled();
+  usePlaybackControlStore.getState().pause();
+  tick(10);
+  expect(source.time.current).toBe(28807.5);
+  seek(2);
+  expect(source.time.current).toBe(28802);
+  hook.unmount();
+  expect(livePlaybackClock.current).toBeNull();
+});
+
+it("rebinds the clock after StrictMode effect replay and releases it on unmount", () => {
+  const hook = renderHook(() => useSimulationLoop(options), { wrapper: StrictMode });
+  expect(livePlaybackClock.current!.time).toBe(hook.result.current.playbackTimeRef);
+  seek(7);
+  expect(livePlaybackClock.current!.time.current).toBe(28807);
+  hook.unmount();
+  expect(livePlaybackClock.current).toBeNull();
+});
+
+it("does not clear a replacement loop's clock when the old loop unmounts", () => {
+  const previous = renderHook(() => useSimulationLoop(options));
+  const replacement = renderHook(() => useSimulationLoop({ ...options, minTime: 28801 }));
+  previous.unmount();
+  expect(livePlaybackClock.current!.time).toBe(replacement.result.current.playbackTimeRef);
+  expect(livePlaybackClock.current!.time.current).toBe(28801);
+  replacement.unmount();
+  expect(livePlaybackClock.current).toBeNull();
 });
