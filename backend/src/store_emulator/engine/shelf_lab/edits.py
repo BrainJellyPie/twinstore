@@ -19,13 +19,13 @@ from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from store_emulator.domain.capture import Box, CaptureGap, CaptureItem, CaptureResult
 from store_emulator.domain.shelf_lab import EditChange, PhotoEdit
 from store_emulator.engine.capture.catalog_match import typical_price
 from store_emulator.engine.capture.planogram import display_name, sku_for
-from store_emulator.engine.perception.shelf_render import load_font, text_color
+from store_emulator.engine.perception.shelf_render import load_font, text_color, wrap_text
 from store_emulator.engine.prompting import display_price
 
 type FloatArray = npt.NDArray[np.float32]
@@ -230,13 +230,16 @@ def synth_package(name: str, brand: str = "", size: tuple[int, int] = (240, 320)
     d = ImageDraw.Draw(img)
     d.rounded_rectangle((4, 10, w - 5, h - 3), radius=int(w * 0.08), fill=(*body, 255))
     d.rounded_rectangle((4, 10, w - 5, h - 3), radius=int(w * 0.08), outline=(0, 0, 0, 60), width=2)
-    d.rectangle((4, int(h * 0.38), w - 5, int(h * 0.66)), fill=(250, 250, 248, 255))
+    d.rectangle((4, int(h * 0.36), w - 5, int(h * 0.68)), fill=(250, 250, 248, 255))
     ink = text_color(body)
-    font = load_font(max(12, int(w * 0.13)), bold=True)
+    font = load_font(max(12, int(w * 0.12)), bold=True)
     small = load_font(max(10, int(w * 0.08)))
-    label = name[:22]
-    tw = d.textlength(label, font=font)
-    d.text(((w - tw) / 2, h * 0.43), label, font=font, fill=(25, 25, 30, 255))
+    lines = wrap_text(d, name, font, int(w * 0.84), 2)
+    line_h = font.size if isinstance(font, ImageFont.FreeTypeFont) else 14
+    top = h * 0.52 - len(lines) * line_h * 0.6
+    for k, line in enumerate(lines):
+        tw = d.textlength(line, font=font)
+        d.text(((w - tw) / 2, top + k * line_h * 1.15), line, font=font, fill=(25, 25, 30, 255))
     if brand:
         bw = d.textlength(brand[:20], font=small)
         d.text(((w - bw) / 2, h * 0.2), brand[:20], font=small, fill=(*ink, 255))
