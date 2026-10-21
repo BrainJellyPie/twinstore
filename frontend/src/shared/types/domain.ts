@@ -49,7 +49,7 @@ export interface Rack {
   design_variant?: "a" | "b" | "c";
 }
 
-export type StoreDesign = "classic" | "warm" | "minimal" | "industrial" | "botanical" | "luxury" | "coastal" | "terracotta";
+export type StoreDesign = "classic" | "warm" | "minimal" | "industrial" | "botanical" | "luxury" | "coastal" | "terracotta" | "nordic" | "retro";
 
 export interface Store {
   id: string;

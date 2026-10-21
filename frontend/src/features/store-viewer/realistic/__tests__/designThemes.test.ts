@@ -2,11 +2,29 @@
 import { expect, it, vi } from "vitest";
 import * as THREE from "three";
 import { createShellMaterials, disposeMaterials } from "../materials";
+import { INTERIOR_DESIGNS } from "../designThemes";
 
 vi.mock("../canvasArt", () => ({
   createAoCanvas: () => document.createElement("canvas"),
   createWoodCanvas: () => document.createElement("canvas"),
 }));
+
+it.each(["nordic", "retro"] as const)("keeps %s finishes in both quality modes without mutating adjacent floors", (theme) => {
+  const sign = new THREE.Texture();
+  for (const quality of ["medium", "high"] as const) {
+    const neighbor = createShellMaterials(quality, sign, null, null, null, "classic");
+    const materials = createShellMaterials(quality, sign, null, null, null, theme);
+    for (const [material, color] of [["wall", "wall"], ["band", "band"], ["bandLine", "accent"], ["metalWhite", "shelf"], ["backPanel", "backing"], ["counterTop", "counter"], ["wood", "wood"], ["ceiling", "ceiling"]] as const) {
+      const actual = materials[material] as THREE.MeshStandardMaterial;
+      expect(`#${actual.color.getHexString()}`).toBe(INTERIOR_DESIGNS[theme][color]);
+      expect(actual).not.toBe(neighbor[material]);
+    }
+    disposeMaterials(materials);
+    expect(`#${(neighbor.wall as THREE.MeshStandardMaterial).color.getHexString()}`).toBe(INTERIOR_DESIGNS.classic.wall);
+    disposeMaterials(neighbor);
+  }
+  sign.dispose();
+});
 
 it("applies independent interior finishes without altering shared sign assets", () => {
   const sign = new THREE.Texture();

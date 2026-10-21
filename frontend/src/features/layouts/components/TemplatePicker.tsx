@@ -215,7 +215,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value="away_from_entrance">Away from the entrance</option>
               </select></Field>
               <p className="col-span-2 text-[10px] text-muted-foreground">Counters and small checkout displays share this wall. Other wall stock uses the remaining space.</p>
-              <div className="space-y-1"><Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
+              <div className="col-span-2 space-y-1 sm:col-span-1"><Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
                 <option value="">Format default{selected ? ` (${INTERIOR_DESIGNS[selected.default_design]?.label ?? "Classic retail"})` : ""}</option>
                 {Object.entries(INTERIOR_DESIGNS).map(([id, palette]) => <option key={id} value={id}>{palette.label}</option>)}
               </select></Field>

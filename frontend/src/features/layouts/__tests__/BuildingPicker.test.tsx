@@ -200,6 +200,16 @@ it("moves and duplicates a customized floor without losing its settings", () => 
 const ground: Layout = { id: "ground", name: "Ground store", parentId: null, status: "draft", createdAt: "2026-10-20",
   building: { id: "building", name: "Market", level: 1, label: "Ground", floor_count: 2 },
   generation: { template_id: "community_pharmacy", seed: 0, currency: "JPY", design_theme: "minimal", requirements: "Quiet corner" } };
+
+it("starts the design shop and diner with independent formats and the project's currency", () => {
+  render(<Building currency="JPY" />);
+  fireEvent.click(screen.getByRole("button", { name: "Design shop & diner" }));
+  expect(screen.getByText("nordic_lifestyle / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+  fireEvent.click(screen.getByRole("button", { name: "2F · Level 2 · Retro diner" }));
+  expect(screen.getByText("retro_diner / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+});
 const upstairs: Layout = { ...ground, id: "upstairs", name: "Upper café", building: { ...ground.building!, level: 2, label: "Café" },
   generation: { template_id: "specialty_cafe", seed: 0, currency: "JPY", dining_tables: 4, width: 20 } };
 const latest: Layout = { ...upstairs, id: "latest", name: "Latest café", parentId: upstairs.id, createdAt: "2026-10-21",

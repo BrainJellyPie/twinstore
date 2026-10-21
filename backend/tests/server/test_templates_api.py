@@ -59,7 +59,7 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     assert all(t["default_style"] and t["skus"] > 0 for t in templates.values())
 
 
-@pytest.mark.parametrize("theme", ["botanical", "coastal", "terracotta"])
+@pytest.mark.parametrize("theme", ["botanical", "coastal", "terracotta", "nordic", "retro"])
 @pytest.mark.parametrize("wall", ["front", "back", "left", "right"])
 def test_preview_matches_saved_custom_store(client, theme, wall):
     options = dict(seed=12, currency="JPY", style="spine", width=28, height=24,
