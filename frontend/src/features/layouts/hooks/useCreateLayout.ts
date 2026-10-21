@@ -1,14 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createSetup, generateLayout, type SetupSummaryShort } from "@/shared/api/client";
+import { createSetup, generateLayout, importFloorPlan, type SetupSummaryShort } from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
 
 // "import" clones from a parent setup; "empty" creates a blank setup; "template" generates a
-// complete store from a retail-format template.
+// complete store from a retail-format template; "plan" reads a floor plan image into a layout.
 type CreateLayoutSource =
   | { kind: "import"; parentSetupId: string }
   | { kind: "empty" }
-  | { kind: "template"; templateId: string; seed: number; currency: string; style: "aisles" | "loop" | null };
+  | { kind: "template"; templateId: string; seed: number; currency: string; style: "aisles" | "loop" | null }
+  | { kind: "plan"; file: File; reader: "auto" | "classic" };
 
 interface Params {
   projectId: string;
@@ -22,7 +23,9 @@ export function useCreateLayout() {
 
   return useMutation<SetupSummaryShort, Error, Params>({
     mutationFn: ({ projectId, name, source }) =>
-      source.kind === "template"
+      source.kind === "plan"
+        ? importFloorPlan(projectId, source.file, { reader: source.reader, name }).then((r) => r.setup)
+        : source.kind === "template"
         ? generateLayout(projectId, {
             template_id: source.templateId, seed: source.seed, currency: source.currency, style: source.style, name,
           })

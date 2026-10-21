@@ -1574,3 +1574,33 @@ export function listLabJobs(projectId: string, captureId: string, signal?: Abort
 export function getLabJob(projectId: string, captureId: string, jobId: string, signal?: AbortSignal): Promise<LabJobView> {
   return fetchJson(`/api/projects/${projectId}/captures/${captureId}/lab/jobs/${jobId}`, { signal });
 }
+
+// ── Floor plan import (sketch / CAD / PDF page → new layout) ─────────────────
+
+export interface FloorPlanImport {
+  setup_id: string;
+  setup: SetupSummaryShort;
+  reading: { width_m: number; depth_m: number; reader: string; fixtures: { kind: string; label: string }[]; notes: string[] };
+  grid_size: [number, number];
+  racks: number;
+  notes: string[];
+  warnings: string[];
+}
+
+export async function importFloorPlan(
+  projectId: string, file: File, opts: { reader: "auto" | "classic" | "vlm"; model?: string; name?: string },
+): Promise<FloorPlanImport> {
+  const form = new FormData();
+  form.append("plan", file);
+  form.append("reader", opts.reader);
+  form.append("model", opts.model ?? "");
+  form.append("name", opts.name ?? "");
+  const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan`, { method: "POST", body: form });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    let detail = body;
+    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
+    throw new Error(detail || `Import failed (HTTP ${res.status})`);
+  }
+  return res.json() as Promise<FloorPlanImport>;
+}

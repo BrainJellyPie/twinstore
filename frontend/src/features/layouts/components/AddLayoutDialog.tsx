@@ -32,7 +32,7 @@ import { useCreateLayout } from "../hooks/useCreateLayout";
 import { TemplatePicker, type TemplateChoice } from "./TemplatePicker";
 import type { Layout } from "../hooks/useLayouts";
 
-type Approach = "import" | "empty" | "template";
+type Approach = "import" | "empty" | "template" | "plan";
 
 const labelClass = "text-sm font-medium";
 
@@ -64,12 +64,15 @@ export function AddLayoutDialog({
     resolveDefaultParent(parentSetupId, layouts),
   );
   const [template, setTemplate] = useState<TemplateChoice>({ templateId: "urban_cvs", seed: 0, currency: "USD", style: null });
+  const [planFile, setPlanFile] = useState<File | null>(null);
+  const [planReader, setPlanReader] = useState<"auto" | "classic">("auto");
 
   // Restore defaults on each open; also reset the prior mutation's error state.
   useEffect(() => {
     if (open) {
       setName(`layout ${layouts.length + 1}`);
       setApproach("import");
+      setPlanFile(null);
       setSelectedParentId(resolveDefaultParent(parentSetupId, layouts));
       createLayout.reset();
     }
@@ -80,7 +83,8 @@ export function AddLayoutDialog({
   const canSubmit =
     trimmed.length > 0 &&
     !createLayout.isPending &&
-    (approach !== "import" || selectedParentId.length > 0);
+    (approach !== "import" || selectedParentId.length > 0) &&
+    (approach !== "plan" || planFile !== null);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -94,7 +98,9 @@ export function AddLayoutDialog({
             ? { kind: "import", parentSetupId: selectedParentId }
             : approach === "template"
               ? { kind: "template", ...template }
-              : { kind: "empty" },
+              : approach === "plan" && planFile
+                ? { kind: "plan", file: planFile, reader: planReader }
+                : { kind: "empty" },
       },
       {
         onSuccess: () => {
@@ -193,6 +199,30 @@ export function AddLayoutDialog({
                   Generate a store from a template
                 </label>
                 {approach === "template" && <TemplatePicker value={template} onChange={setTemplate} />}
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm" htmlFor="add-layout-approach-plan">
+                  <RadioGroupItem id="add-layout-approach-plan" value="plan" disabled={createLayout.isPending} />
+                  From a floor plan — sketch, CAD export or PDF
+                </label>
+                {approach === "plan" && (
+                  <div className="space-y-2 rounded-xl border bg-foreground/[0.02] p-3">
+                    <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-dashed border-foreground/15 px-3 py-5 text-center text-sm transition-colors hover:border-primary">
+                      <span className="font-medium">{planFile ? planFile.name : "Choose a plan image"}</span>
+                      <span className="text-xs text-muted-foreground">Walls, fixtures as boxes, a gap for the door. Words like “drinks” on a box pick its products.</span>
+                      <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden"
+                        onChange={(e) => setPlanFile(e.target.files?.[0] ?? null)} />
+                    </label>
+                    <div className="flex gap-1.5 text-xs">
+                      {([["auto", "Vision model, geometry fallback"], ["classic", "Geometry only (offline)"]] as const).map(([id, label]) => (
+                        <button key={id} type="button" onClick={() => setPlanReader(id)}
+                          className={cn("flex-1 rounded-lg border px-2 py-1.5", planReader === id ? "border-primary bg-primary/10 font-medium" : "text-muted-foreground hover:border-foreground/20")}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </RadioGroup>
           </div>
