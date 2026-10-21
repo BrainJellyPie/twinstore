@@ -1,0 +1,57 @@
+{
+  "asset": "food_kiwi_01",
+  "source": "https://polyhaven.com/a/food_kiwi_01",
+  "author": "Oliver Harries",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_kiwi.py; 240/1200 triangle LODs, laid on its side with bottom-centred unit bounds and inverse-transpose normals; original 1K JPEG color, OpenGL normal and roughness maps retained.",
+  "authored_dimensions_metres": {
+    "width": 0.09006310254335403,
+    "height": 0.06951960921287537,
+    "depth": 0.06862715631723404
+  },
+  "files": [
+    {
+      "file": "food_kiwi_01_1k.gltf",
+      "bytes": 2693,
+      "md5": "d0e08c2fd521e150b3956ae15eb2c402",
+      "sha256": "ba01ebeacdcb034501dc1743fd7278ee4c2dfd3e1860dcd192953fce6ff50b97",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/food_kiwi_01/food_kiwi_01_1k.gltf"
+    },
+    {
+      "file": "food_kiwi_01.bin",
+      "bytes": 184504,
+      "md5": "ee331eb144cf08cef2453cffe71c63f4",
+      "sha256": "2349d262bb9207f4316d74f3ef69999db99c6c6be67a5818a1104ade6ef6a1d4",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/food_kiwi_01/food_kiwi_01.bin"
+    },
+    {
+      "file": "textures/food_kiwi_01_rough_1k.jpg",
+      "bytes": 223133,
+      "md5": "8ac49e82b1879ddc4474f4cf52b40e36",
+      "sha256": "2a6f2eeb5eab0848db45eff7d4bef1f89e261c786dd82bb631d8e94852f6b3de",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_kiwi_01/food_kiwi_01_rough_1k.jpg"
+    },
+    {
+      "file": "textures/food_kiwi_01_diff_1k.jpg",
+      "bytes": 227414,
+      "md5": "5ed3276a4a0ae6a49d6cb5c722b649f0",
+      "sha256": "92ac003a0475505d265712e5d9e8e36db3dd7c591cef74ff7432b41aba4e8786",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_kiwi_01/food_kiwi_01_diff_1k.jpg"
+    },
+    {
+      "file": "textures/food_kiwi_01_nor_gl_1k.jpg",
+      "bytes": 156902,
+      "md5": "0742c2fbc90fff7b9516d942d4e7b1c6",
+      "sha256": "8ad52c5ac4226e38bab45f49228fa4795cfeef1abb09d45c91c6f8669c48f3a8",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_kiwi_01/food_kiwi_01_nor_gl_1k.jpg"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "kiwi.glb",
+      "bytes": 655916,
+      "sha256": "2e662314f8575e716378da64bf553abdfed9ac9f10feb8b23f56f790e7baa4d0"
+    }
+  ]
+}
