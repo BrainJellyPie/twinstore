@@ -138,3 +138,26 @@ Rebuild with Blender 4.3.2 after downloading and verifying the manifest files:
 blender --background --python scripts/convert_kiwi.py -- \
   --source-dir /path/to/kiwis --output frontend/public/assets/produce/kiwi.glb
 ```
+
+`sweet-potato.glb` uses **Sweet Potato** by **Jan Martens**, published by
+[Poly Haven](https://polyhaven.com/a/sweet_potato) under CC0. The adjacent
+`sweet-potato-sources.json` records all five verified sources and output hashes.
+The scan lies on its side at approximately 100.5 × 58.1 × 61.0 mm before the
+common product readability scale. Its 240/1,199-triangle LODs share original
+1K JPEG color, OpenGL normal and packed roughness/metalness maps, retained byte
+for byte. The authored metallic factor remains zero.
+
+Whole raw sweet potato names use this reddish-skinned scan. Other named
+varieties, yams, ordinary potatoes, cooked or cut food, plants and multipacks
+retain their existing package rules. Shelf and table displays use one layer,
+with stable half-turn, size and brightness variation. Medium uses photographic
+color and matte shading; High adds normal and roughness maps. A tapered brown
+fallback stays visible during loading or failure. Absent sweet potatoes cause
+no request for the asset.
+
+Rebuild with Blender 4.3.2 after downloading and verifying the manifest files:
+
+```sh
+blender --background --python scripts/convert_sweet_potato.py -- \
+  --source-dir /path/to/sweet-potatoes --output frontend/public/assets/produce/sweet-potato.glb
+```

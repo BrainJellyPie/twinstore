@@ -2,7 +2,7 @@
 // size, colours and label text. No three.js / DOM dependencies so they can be
 // unit-tested and reused by an offline renderer.
 
-export type PackageKind = "bottle" | "perfumeBottle" | "teaCup" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "lemon" | "onion" | "kiwi" | "pot" | "croissant" | "wateringCan";
+export type PackageKind = "bottle" | "perfumeBottle" | "teaCup" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "lemon" | "onion" | "kiwi" | "sweetPotato" | "pot" | "croissant" | "wateringCan";
 
 export type ProductCategory =
   | "drink"
@@ -191,6 +191,8 @@ const RULES: Rule[] = [
   [/sugar|flour/, () => spec("bag", 0.12, 0.18, 0.06, "pantry")],
   [/pasta\b|penne|spaghetti|macaroni|mac & cheese|\brice\b/, () => spec("box", 0.14, 0.23, 0.05, "pantry")],
   // Whole fresh produce only: flavored foods and packaged formats keep their rules.
+  [/^(?:(?:fresh|organic|raw|whole)\s+)*sweet(?:\s+|-)potato(?:es)?(?:\s+(?:loose|each|(?:[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)\s*(?:kg|g|lb|lbs)))?$/,
+    () => spec("sweetPotato", 0.10046297, 0.05812428, 0.06098930, "produce")],
   [/^(?:(?:fresh|organic|ripe|whole|green|hayward)\s+)*(?:kiwis?|kiwifruits?|kiwi\s+fruits?)(?:\s+(?:loose|each|(?:[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)\s*(?:kg|g|lb|lbs)))?$/,
     () => spec("kiwi", 0.09006310, 0.06951961, 0.06862716, "produce")],
   [/^(?:(?:fresh|organic|whole|yellow|brown)\s+)*onions?(?:\s+(?:loose|each|(?:[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)\s*(?:kg|g|lb|lbs)))?$/,
@@ -305,6 +307,7 @@ export function productPalette(name: string): ProductPalette {
   const kind = classifyProduct(n).kind;
   if (kind === "onion") base = "#a26530";
   else if (kind === "kiwi") base = "#8d633b";
+  else if (kind === "sweetPotato") base = "#8b594b";
   // Per-product jitter so same-keyword products are distinguishable.
   base = shade(base, (hash01(n, 7) - 0.5) * 0.24);
   let accent = PALETTE[(h >>> 8) % PALETTE.length]!;
