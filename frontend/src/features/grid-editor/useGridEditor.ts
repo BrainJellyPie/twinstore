@@ -6,6 +6,7 @@ import { useState, useMemo, useCallback } from "react";
 import type { Rack, Position, RackType, BlockedFaceDetail } from "@/shared/types/domain";
 import type { EditorRack, SetupDetailWithBlocked } from "./types";
 import { computeAdjacentBlocked, mergeBlockedFaces } from "./adjacentBlocked";
+import { rackCells } from "@/shared/utils/grid";
 
 const DEFAULT_GRID_SIZE: [number, number] = [8, 8];
 const DEFAULT_LEVELS = 4;
@@ -78,6 +79,30 @@ export function useGridEditor(initialSetup: SetupDetailWithBlocked) {
     setRacks((prev) => prev.map((r) => (r.id === rackId ? { ...r, ...patch } : r)));
   }, []);
 
+  const moveRacks = useCallback((rackIds: string[], [dx, dy]: Position): string | null => {
+    const ids = new Set(rackIds);
+    const moving = racks.filter((rack) => ids.has(rack.id)).map((rack): Rack => ({
+      ...rack, position: [rack.position[0] + dx, rack.position[1] + dy],
+    }));
+    const occupied = new Set(racks.filter((rack) => !ids.has(rack.id)).flatMap((rack) =>
+      rackCells(rack).map(([x, y]) => `${x},${y}`),
+    ));
+    for (const rack of moving) {
+      for (const [x, y] of rackCells(rack)) {
+        if (x < 0 || y < 0 || x >= gridSize[0] || y >= gridSize[1]) return "The entire fixture must stay inside the floor.";
+        if (occupied.has(`${x},${y}`)) return "That position overlaps another fixture. Choose a clear space.";
+      }
+    }
+    const positions = new Map(moving.map((rack) => [rack.id, rack.position]));
+    // Keep pending name/design edits when movement and text commits share an event.
+    setRacks((previous) => previous.map((rack) => {
+      const position = positions.get(rack.id);
+      return position ? { ...rack, position } : rack;
+    }));
+    setBackendBlockedFaces((previous) => previous.filter((face) => !ids.has(face.rack_id)));
+    return null;
+  }, [racks, gridSize]);
+
   // Update rotation only — do NOT remap faces. Multi-cell rack handling is delegated to backend validation.
   const rotateRack = useCallback(
     (rackId: string, rotation: 0 | 90 | 180 | 270) => {
@@ -101,6 +126,7 @@ export function useGridEditor(initialSetup: SetupDetailWithBlocked) {
     addRack,
     removeRack,
     updateRack,
+    moveRacks,
     rotateRack,
     reset,
     setBackendBlockedFaces,
