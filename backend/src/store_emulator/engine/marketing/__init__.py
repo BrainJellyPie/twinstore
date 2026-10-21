@@ -1,6 +1,6 @@
 """Marketing studio engines: layout variants for A/B tests, paired experiment runs, survey panels."""
 
-from .experiment import focus_outcomes, run_experiment, sku_sales
+from .experiment import focus_outcomes, price_response, run_experiment, sku_sales
 from .survey import (
     likert_summary,
     preference_shares,
@@ -14,6 +14,7 @@ __all__ = [
     "focus_outcomes",
     "likert_summary",
     "preference_shares",
+    "price_response",
     "run_experiment",
     "sku_sales",
     "survey_panel",

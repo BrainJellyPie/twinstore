@@ -132,8 +132,9 @@ def apply_changes(
                     continue
                 old = items[0].price
                 for item in items:
-                    item.price, item.regular_price = change.price, 0
-                applied.append(f"{name}: price {old} → {change.price}")
+                    reference = (item.regular_price or item.price) if change.keep_reference else 0
+                    item.price, item.regular_price = change.price, reference
+                applied.append(f"{name}: price {old} → {change.price}{' (shoppers remember ' + str(old) + ')' if change.keep_reference else ''}")
             case "discount":
                 if change.percent is None or change.percent >= 0:
                     warnings.append(f"discount: give a negative percentage for {name}")

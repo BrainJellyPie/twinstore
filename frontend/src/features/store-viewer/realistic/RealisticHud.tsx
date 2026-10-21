@@ -140,7 +140,10 @@ function PhotoPanel() {
         <ToggleGroup type="single" value={String(photo.target)} onValueChange={(v) => v && photo.setTarget(Number(v))} variant="outline" size="sm" aria-label="Sample budget">
           {TARGETS.map((t) => <ToggleGroupItem key={t} value={String(t)} className="h-6 px-2 text-[0.75rem]">{t}</ToggleGroupItem>)}
         </ToggleGroup>
-        <Button size="sm" className="ml-auto h-6 gap-1 px-2 text-[0.8rem]" disabled={photo.status !== "tracing" && photo.status !== "done"} onClick={photo.save}>
+        <label className="ml-auto flex items-center gap-1 text-[0.75rem] text-muted-foreground" title="Edge-aware smoothing; strongest while samples are few">
+          <input type="checkbox" checked={photo.denoise} onChange={(e) => photo.setDenoise(e.target.checked)} /> Denoise
+        </label>
+        <Button size="sm" className="h-6 gap-1 px-2 text-[0.8rem]" disabled={photo.status !== "tracing" && photo.status !== "done"} onClick={photo.save}>
           <Download className="size-3.5" /> PNG
         </Button>
       </div>
