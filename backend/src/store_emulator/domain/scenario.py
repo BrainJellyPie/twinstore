@@ -105,3 +105,70 @@ class Scenario(BaseModel):
     music: Literal["none", "calm", "upbeat"] = "none"
     lighting: Literal["dim", "normal", "bright"] = "normal"
     notes: str = Field(default="", max_length=400)   # free text added to LLM/VLM prompts
+
+
+class ScenarioPriors(BaseModel):
+    """Every effect size used below, so calibration can override any of them."""
+    weather_traffic: dict[str, float] = {
+        "clear": 1.0, "cloudy": 0.97, "rain": 0.85, "heavy_rain": 0.65, "snow": 0.7, "heatwave": 0.92,
+        "cold_snap": 0.82, "fine_dust": 0.87, "typhoon": 0.4,
+    }
+    weather_demand: dict[str, dict[str, float]] = {
+        "rain": {"hot_food": 1.2, "cold_drinks": 0.9, "health": 1.8},
+        "heavy_rain": {"hot_food": 1.3, "cold_drinks": 0.85, "health": 2.5},
+        "snow": {"hot_food": 1.4, "ice_cream": 0.5, "cold_drinks": 0.8},
+        "heatwave": {"cold_drinks": 1.6, "water": 1.8, "ice_cream": 2.0, "hot_food": 0.7},
+        "cold_snap": {"hot_food": 1.5, "ice_cream": 0.4, "cold_drinks": 0.75},
+        "fine_dust": {"health": 2.0, "water": 1.2},
+        "typhoon": {"hot_food": 1.8, "water": 1.7, "snacks": 1.3, "meals": 1.3},
+    }
+    weather_dwell: dict[str, float] = {"rain": 1.1, "heavy_rain": 1.15, "snow": 1.1, "heatwave": 1.1, "typhoon": 0.9}
+    # Typhoon / snow: people stock up.
+    weather_quantity: dict[str, float] = {"typhoon": 1.6, "snow": 1.2}
+    season_demand: dict[str, dict[str, float]] = {
+        "summer": {"cold_drinks": 1.15, "ice_cream": 1.3, "hot_food": 0.85},
+        "winter": {"hot_food": 1.2, "ice_cream": 0.7},
+        "spring": {}, "autumn": {},
+    }
+    day_traffic: dict[str, float] = {
+        "weekday": 1.0, "weekend": 0.95, "public_holiday": 0.9, "holiday_season": 0.8, "school_vacation": 0.92,
+    }
+    day_demand: dict[str, dict[str, float]] = {
+        "weekend": {"snacks": 1.2, "alcohol": 1.25, "meals": 0.9},
+        "public_holiday": {"snacks": 1.2, "alcohol": 1.3},
+        "holiday_season": {"alcohol": 1.4, "desserts": 1.3, "snacks": 1.15},
+        "school_vacation": {"ice_cream": 1.15, "snacks": 1.1, "meals": 0.9},
+    }
+    day_budget: dict[str, float] = {"holiday_season": 1.2, "weekend": 1.05}
+    # Per unit intensity: traffic multiplier = 1 + intensity × value (inside the event hours).
+    event_traffic: dict[str, float] = {
+        "festival": 0.9, "sports_match": 0.5, "concert": 0.6, "exam_period": 0.15, "payday": 0.1,
+        "competitor_opening": -0.3, "competitor_closed": 0.25, "road_construction": -0.2, "marathon": 0.4,
+        "conference": 0.3, "night_market": 0.7,
+    }
+    event_demand: dict[str, dict[str, float]] = {
+        "festival": {"cold_drinks": 1.4, "snacks": 1.3, "alcohol": 1.4},
+        "sports_match": {"alcohol": 1.8, "snacks": 1.6},
+        "concert": {"cold_drinks": 1.4, "snacks": 1.2, "water": 1.4},
+        "exam_period": {"caffeine": 1.7, "snacks": 1.25, "desserts": 1.15},
+        "payday": {"alcohol": 1.25, "desserts": 1.2, "meals": 1.1},
+        "marathon": {"water": 2.0, "cold_drinks": 1.5},
+        "conference": {"caffeine": 1.4, "meals": 1.2},
+        "night_market": {"alcohol": 1.3, "cold_drinks": 1.2},
+    }
+    event_budget: dict[str, float] = {"payday": 1.3}
+    event_impulse: dict[str, float] = {"festival": 1.2, "payday": 1.15, "night_market": 1.15, "sports_match": 1.1}
+    crowding_dwell: dict[str, float] = {"quiet": 1.1, "normal": 1.0, "busy": 0.88, "packed": 0.75}
+    crowding_impulse: dict[str, float] = {"quiet": 1.05, "normal": 1.0, "busy": 0.92, "packed": 0.8}
+    crowding_walkout: dict[str, float] = {"quiet": 0.8, "normal": 1.0, "busy": 1.4, "packed": 2.5}
+    music_dwell: dict[str, float] = {"none": 1.0, "calm": 1.08, "upbeat": 0.95}
+    music_impulse: dict[str, float] = {"none": 1.0, "calm": 1.03, "upbeat": 1.02}
+    lighting_impulse: dict[str, float] = {"dim": 0.95, "normal": 1.0, "bright": 1.04}
+    # Continuous temperature response (°C): 1 + slope × (t − pivot), clipped; replaces the categorical
+    # heat / cold demand for the same categories when a temperature is given.
+    temperature_slope: dict[str, float] = {"cold_drinks": 0.03, "water": 0.035, "ice_cream": 0.06, "hot_food": -0.02}
+    temperature_pivot: dict[str, float] = {"cold_drinks": 20.0, "water": 20.0, "ice_cream": 20.0, "hot_food": 15.0}
+    temperature_clip: dict[str, tuple[float, float]] = {"cold_drinks": (0.6, 1.8), "water": (0.7, 1.9),
+                                                         "ice_cream": (0.3, 2.4), "hot_food": (0.6, 1.6)}
+    # Promotion lift on the promoted item's pick probability (before the price effect).
+    promo_lift: dict[str, float] = {"discount": 1.3, "1+1": 1.9, "2+1": 1.6, "featured": 1.35}
