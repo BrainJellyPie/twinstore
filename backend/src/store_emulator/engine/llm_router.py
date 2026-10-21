@@ -8,6 +8,7 @@ member (mixture), or asks every member (vote, vision glances only).
 import asyncio
 import math
 import random
+import sys
 import threading
 from collections import Counter
 from dataclasses import dataclass
@@ -76,7 +77,9 @@ class EnsembleLLMClient:
         """Weighted, stable choice: the same route (persona) always gets the same member."""
         rng = random.Random(stable_seed(self._seed, "ensemble", route or ""))
         weights = [m.weight for m in self._members]
-        if not math.isfinite(sum(weights)):
+        total = sum(weights)
+        # Subnormal totals round the random draw and bias otherwise equal weights.
+        if not math.isfinite(total) or total < sys.float_info.min:
             largest = max(weights)
             weights = [weight / largest for weight in weights]
         member = rng.choices(self._members, weights=weights, k=1)[0]
