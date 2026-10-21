@@ -119,9 +119,16 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
       ] : [],
     },
     {
+      label: "Price sweep", hint: "−30 % to +30 %, demand curve",
+      build: () => heroProduct ? [-30, -15, 15, 30].map((pct) => ({
+        id: uid(), name: `${pct > 0 ? "+" : "−"}${Math.abs(pct)} % price`,
+        changes: [{ id: uid(), kind: "price" as const, sku: hero, price: Math.max(1, Math.round(heroProduct.price * (1 + pct / 100))), keep_reference: true }],
+      })) : [],
+    },
+    {
       label: "Price up", hint: "+10 % and +20 %",
       build: () => heroProduct ? [10, 20].map((pct) => ({
-        id: uid(), name: `+${pct} %`, changes: [{ id: uid(), kind: "price" as const, sku: hero, price: Math.round(heroProduct.price * (1 + pct / 100)) }],
+        id: uid(), name: `+${pct} %`, changes: [{ id: uid(), kind: "price" as const, sku: hero, price: Math.round(heroProduct.price * (1 + pct / 100)), keep_reference: true }],
       })) : [],
     },
     {
@@ -355,6 +362,11 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
           <Input value={priceText} inputMode="decimal" placeholder={product ? `now ${formatMoney(product.price, currency)}` : "Price"} className="num h-8 w-28 text-xs"
             onChange={(e) => { setPriceText(e.target.value); onPatch({ price: toMinor(e.target.value, divisor) }); }} aria-label="New price"
             aria-invalid={priceText.trim().length > 0 && c.price == null} />
+        )}
+        {c.kind === "price" && (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground" title="Shoppers compare the new price with the current one, as just after a change (reference price). Rule shoppers only react to price this way.">
+            <input type="checkbox" checked={!!c.keep_reference} onChange={(e) => onPatch({ keep_reference: e.target.checked })} /> shoppers remember the current price
+          </label>
         )}
         {(c.kind === "discount" || c.kind === "category_price") && (
           <div className="flex items-center gap-1">

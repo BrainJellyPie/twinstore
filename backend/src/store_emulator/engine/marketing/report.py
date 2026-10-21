@@ -13,7 +13,7 @@ from typing import Protocol
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.analysis import MetricComparison
-from store_emulator.domain.marketing import ExperimentReport, FocusOutcome, PriceRange, SurveyReport, VariantResult
+from store_emulator.domain.marketing import ExperimentReport, FocusOutcome, PriceRange, PriceResponse, SurveyReport, VariantResult
 
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
 _SYMBOL = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "KRW": "₩"}
@@ -96,6 +96,12 @@ def findings(r: ExperimentReport) -> Finding:
     if not wins and needed > r.panel_size:
         rec.append(f"To detect a 5 % change in revenue per visitor, run about {needed:,} shoppers per arm "
                    f"(this test had {r.panel_size}).")
+    pr = r.price_response
+    if pr and pr.best_price is not None:
+        kind = ("elastic: a price cut grows its revenue" if pr.elasticity < -1 else "inelastic: a price rise grows its revenue") \
+            if pr.elasticity is not None else ""
+        rec.append(f"Of the prices tested for {pr.name}, {money(pr.best_price, cur)} brings the most {pr.name} revenue per visitor"
+                   + (f"; its price elasticity across the arms is about {pr.elasticity:.2f} ({kind})." if kind else "."))
     if not rec:
         rec.append("Keep the control: none of the changes moved sales of the store or the tracked products.")
     return Finding(headline=headline, recommendation=rec)
@@ -183,6 +189,14 @@ def report_markdown(r: ExperimentReport, layout: str = "", narrative: ReportNarr
     if focus_rows:
         lines += ["", "## Tracked products (units per 100 visitors)", "",
                   _md_table(["Variant", "Product", "Control", "Variant", "Difference [95 % CI]", "P(more)"], focus_rows)]
+    if r.price_response:
+        pr = r.price_response
+        lines += ["", f"## Price response · {pr.name}", "", _md_table(
+            ["Arm", "Price", "Units / 100 visitors [95 % CI]", "Product revenue / 100 visitors"],
+            [[p.arm, money(p.price, cur), f"{p.units * 100:.1f} [{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]", money(p.revenue * 100, cur)]
+             for p in pr.points])]
+        if pr.elasticity is not None:
+            lines.append(f"\nPrice elasticity across the arms: {pr.elasticity:.2f}.")
     lines += ["", "## Best sellers per arm", ""]
     for a in [r.control, *r.variants]:
         top = ", ".join(f"{s.name} ({money(s.revenue, cur)})" for s in a.top_skus[:5])
@@ -201,6 +215,49 @@ def _method(r: ExperimentReport) -> list[str]:
         "Synthetic shoppers are for screening and direction: confirm large decisions with a field test.",
         *r.notes,
     ]
+
+
+def _demand_svg(pr: PriceResponse, currency: str) -> str:
+    """Units per 100 visitors against price, with the arms' 95 % intervals."""
+    w, h, left, bottom = 640, 220, 46, 30
+    lo_p, hi_p = pr.points[0].price, pr.points[-1].price
+    top = max(p.units_high for p in pr.points) * 100 * 1.15 or 1.0
+
+    def px(v: float) -> float:
+        return left + (v - lo_p) / max(1, hi_p - lo_p) * (w - left - 20)
+
+    def py(u: float) -> float:
+        return 10 + (1 - u * 100 / top) * (h - bottom - 10)
+
+    parts = [f'<svg viewBox="0 0 {w} {h}" width="100%" xmlns="http://www.w3.org/2000/svg">']
+    for t in (0, 0.5, 1):
+        y = 10 + (1 - t) * (h - bottom - 10)
+        parts.append(f'<line x1="{left}" x2="{w - 10}" y1="{y:.1f}" y2="{y:.1f}" stroke="#e5e7eb"/>'
+                     f'<text x="{left - 6}" y="{y + 4:.1f}" font-size="10" text-anchor="end" fill="#5f6368">{top * t:.1f}</text>')
+    pts = " ".join(f"{px(p.price):.1f},{py(p.units):.1f}" for p in pr.points)
+    parts.append(f'<polyline points="{pts}" fill="none" stroke="#2a78d6" stroke-width="2"/>')
+    for p in pr.points:
+        x = px(p.price)
+        parts.append(f'<line x1="{x:.1f}" x2="{x:.1f}" y1="{py(p.units_high):.1f}" y2="{py(p.units_low):.1f}" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="6" stroke-linecap="round"/>'
+                     f'<circle cx="{x:.1f}" cy="{py(p.units):.1f}" r="5" fill="{"#eb6834" if p.price == pr.best_price else "#2a78d6"}" stroke="#fff" stroke-width="2"/>'
+                     f'<text x="{x:.1f}" y="{h - 10}" font-size="10" text-anchor="middle" fill="#5f6368">{money(p.price, currency)}</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _price_section(r: ExperimentReport) -> str:
+    pr = r.price_response
+    if pr is None:
+        return ""
+    cur = r.currency
+    rows = "".join(
+        f"<tr><td>{escape(p.arm)}</td><td class=n>{money(p.price, cur)}</td><td class=n>{p.units * 100:.1f} "
+        f"<span class=note>[{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]</span></td><td class=n>{money(p.revenue * 100, cur)}"
+        f"{' ★' if p.price == pr.best_price else ''}</td></tr>" for p in pr.points)
+    el = f" · elasticity across the arms ≈ {pr.elasticity:.2f}" if pr.elasticity is not None else ""
+    return (f"<h2>Price response · {escape(pr.name)}</h2><p class='note'>Units per 100 visitors at each tested price (bars: 95 % intervals){el}. "
+            "★ = most product revenue.</p>" + _demand_svg(pr, cur)
+            + f"<table><tr><th>Arm</th><th>Price</th><th>Units / 100 visitors</th><th>Product revenue / 100 visitors</th></tr>{rows}</table>")
 
 
 # ── HTML ────────────────────────────────────────────────────────────────────────
@@ -310,6 +367,7 @@ def report_html(r: ExperimentReport, layout: str = "", narrative: ReportNarrativ
 <p class="note">Dot = paired difference; bar = 95 % interval. A bar crossing zero is within noise.</p>
 {_forest(spend_rows, "money", cur)}
 <table><tr><th>Arm</th><th>Revenue / visitor</th><th>vs control [95 % CI]</th><th>Conversion</th><th>Units / visitor</th><th>P(better)</th></tr>{arms}</table>
+{_price_section(r)}
 {('<h2>Tracked products</h2>' + ''.join(focus_blocks)) if focus_blocks else ''}
 <h2>Best sellers per arm</h2><table>{tops}</table>
 <h2>Method and caveats</h2><ul>{''.join(f'<li>{e(x)}</li>' for x in _method(r))}</ul>

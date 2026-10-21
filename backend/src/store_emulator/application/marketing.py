@@ -38,6 +38,7 @@ from store_emulator.engine.marketing import (
     apply_changes,
     likert_summary,
     preference_shares,
+    price_response,
     run_experiment,
     survey_panel,
     van_westendorp,
@@ -208,12 +209,16 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
             notes: list[str] = []
             if len(panel) < 100:
                 notes.append("Fewer than 100 shoppers per variant: differences under ~5 % are hard to tell from noise.")
+            if req.engine == "rule" and any(c.kind == "price" and not c.keep_reference for v in req.variants for c in v.changes):
+                notes.append("Rule shoppers react to a price relative to the usual one (and to their budget); a new everyday price "
+                             "resets that reference. Keep the current price as the reference, or use vision shoppers, to measure price response.")
             if req.engine == "rule" and any(c.kind == "promo" for v in req.variants for c in v.changes):
                 notes.append("The rule-based shoppers read promotion signs as a generic impulse boost; vision shoppers see the sign itself.")
             report = ExperimentReport(
                 experiment_id=status.job_id, name=name, setup_id=req.setup_id, engine=req.engine, model=model,
                 panel_size=len(panel), currency=currency, visitors_per_day=round(len(personas) / days, 1),
                 focus_skus=req.focus_skus, control=control_result, variants=results, winner=winner, notes=notes,
+                price_response=price_response(control_result, results),
                 seconds=round(time.perf_counter() - t0, 1),
             )
             _finish(pid, status, report)
