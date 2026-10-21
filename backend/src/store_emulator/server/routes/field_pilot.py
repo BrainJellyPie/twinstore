@@ -11,6 +11,7 @@ from store_emulator.application.errors import AppError
 from store_emulator.domain.field_pilot import PilotRequest, PilotRevision, PilotSummary, PilotView
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationPreview
+from store_emulator.domain.field_collection import PilotCollectionReport
 
 router = APIRouter(prefix="/api/projects", tags=["field pilots"])
 
@@ -47,6 +48,18 @@ def export_observations(pid: str, pilot_id: str) -> PlainTextResponse:
     text = _call(lambda: field_pilot.export_observations(pid, pilot_id))
     return PlainTextResponse(text, media_type="text/csv",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-observations.csv"'})
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/collection-checks", response_model=PilotCollectionReport, summary="Check collection completeness without reporting purchase outcomes")
+def get_collection_checks(pid: str, pilot_id: str) -> PilotCollectionReport:
+    return _call(lambda: field_pilot.get_collection_checks(pid, pilot_id))
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/follow-up.csv", summary="Export the latest collection follow-up checklist")
+def export_collection_tasks(pid: str, pilot_id: str) -> PlainTextResponse:
+    text = _call(lambda: field_pilot.export_collection_tasks(pid, pilot_id))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-follow-up.csv"'})
 
 
 @router.put("/{pid}/staff-pilots/{pilot_id}/observations", response_model=PilotView, summary="Replace observations from the complete CSV sheet")

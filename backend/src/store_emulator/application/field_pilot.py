@@ -15,6 +15,8 @@ from store_emulator.application.storage.setups import metadata_path
 from store_emulator.domain.field_pilot import FieldPilot, PilotRequest, PilotSummary, PilotView
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationImportRecord, ObservationPreview
+from store_emulator.domain.field_collection import PilotCollectionReport
+from store_emulator.engine.marketing.field_collection import check_collection, collection_tasks_csv
 from store_emulator.engine.marketing.field_observations import import_history_csv, preview_observations
 from store_emulator.engine.marketing.field_pilot import allocate_pilot, analyze_pilot, observations_csv, parse_observations
 from store_emulator.engine.marketing.field_planning import plan_pilot
@@ -70,6 +72,15 @@ def list_pilots(pid: str) -> list[PilotSummary]:
 def get_pilot(pid: str, pilot_id: str) -> PilotView:
     pilot = FieldPilot.model_validate(read_json(_path(pid, pilot_id)))
     return PilotView(pilot=pilot, analysis=analyze_pilot(pilot))
+
+
+def get_collection_checks(pid: str, pilot_id: str) -> PilotCollectionReport:
+    pilot = FieldPilot.model_validate(read_json(_path(pid, pilot_id)))
+    return check_collection(pilot)
+
+
+def export_collection_tasks(pid: str, pilot_id: str) -> str:
+    return collection_tasks_csv(get_collection_checks(pid, pilot_id))
 
 
 def export_observations(pid: str, pilot_id: str) -> str:

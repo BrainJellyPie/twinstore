@@ -7,7 +7,7 @@ import { cn } from "@/shared/utils/cn";
 import { LAYOUT_STYLES, templateRequest, validTemplateChoice, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
-import { LayoutOptionsFile } from "./LayoutOptionsFile";
+import { GenerationOptionsFile } from "./GenerationOptionsFile";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
@@ -57,8 +57,9 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
 
   return (
     <div className="space-y-3">
-      <LayoutOptionsFile value={value} canExport={validTemplateChoice(value) && preview.isSuccess} onChange={(choice) => {
+      <GenerationOptionsFile kind="layout" value={value} canExport={validTemplateChoice(value) && preview.isSuccess} onChange={(choice) => {
         onChange(choice);
+        setSearch(""); setStoreType(""); setSize("all"); setSeating("all"); setSort("default");
         const imported = templates.find((template) => template.id === choice.templateId);
         if (imported) onTemplateSelected?.(imported);
       }} />

@@ -240,3 +240,47 @@ def test_failed_atomic_commit_does_not_publish_history_or_change_observations(cl
     assert client.get(f"{ROOT}/staff-pilots/{pid}/imports/1").status_code == 404
     assert apply_import(client, pid, data, review).status_code == 200
     assert len(client.get(f"{ROOT}/staff-pilots/{pid}").json()["pilot"]["import_history"]) == 1
+
+
+def test_collection_checks_are_readonly_refresh_after_reviewed_import_and_survive_closure(client, tmp_path):
+    pid = create(client)["pilot"]["pilot_id"]
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    before = path.read_bytes()
+    initial = client.get(f"{ROOT}/staff-pilots/{pid}/collection-checks")
+    assert initial.status_code == 200 and initial.json()["unrecorded_tail"] == 40 and initial.json()["tasks"] == []
+    assert initial.json()["counts"]["purchase_missing_rate"] is None
+    assert path.read_bytes() == before
+    rows = list(csv.DictReader(io.StringIO(sheet(client, pid).decode())))
+    rows[0].update(enrolled="1", delivered="0", purchased="")
+    rows[2].update(enrolled="1", delivered="1", purchased="0")
+    out = io.StringIO(); writer = csv.DictWriter(out, fieldnames=list(rows[0])); writer.writeheader(); writer.writerows(rows)
+    assert upload(client, pid, out.getvalue().encode()).status_code == 200
+    report = client.get(f"{ROOT}/staff-pilots/{pid}/collection-checks").json()
+    assert report["revision"] == 1 and report["recording_gaps"] == 1 and report["unrecorded_tail"] == 37
+    assert report["counts"]["missing_purchase"] == 1 and len(report["tasks"]) == 2
+    assert "assignments" not in report and "purchases" not in report["counts"]
+    exported = client.get(f"{ROOT}/staff-pilots/{pid}/follow-up.csv")
+    assert exported.status_code == 200 and "attachment" in exported.headers["content-disposition"]
+    checklist = list(csv.DictReader(io.StringIO(exported.text)))
+    assert {r["issue"] for r in checklist} == {"purchase_unknown", "enrollment_gap"}
+    assert {r["revision"] for r in checklist} == {"1"}
+    assert upload(client, pid, sheet(client, pid, complete=True), revision=1).status_code == 200
+    complete = client.get(f"{ROOT}/staff-pilots/{pid}/collection-checks").json()
+    assert complete["tasks"] == [] and complete["target_completed"]
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 2}).status_code == 200
+    assert client.delete(f"{ROOT}/staff-pitches/pit_test").status_code == 204
+    closed = client.get(f"{ROOT}/staff-pilots/{pid}/collection-checks").json()
+    assert closed["revision"] == 3 and closed["finalized_at"] and closed["target_completed"]
+    assert client.get(f"{ROOT}/staff-pilots/{pid}/follow-up.csv").status_code == 200
+
+
+def test_collection_checks_validate_scope_and_do_not_require_new_saved_fields(client, tmp_path):
+    assert client.get("/api/projects/missing/staff-pilots/missing/collection-checks").status_code == 404
+    assert client.get(f"{ROOT}/staff-pilots/missing/follow-up.csv").status_code == 404
+    pid = create(client)["pilot"]["pilot_id"]
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    legacy = read_json(path)
+    for key in ("history_start_revision", "import_history", "planning"):
+        legacy.pop(key, None)
+    write_json(path, legacy)
+    assert client.get(f"{ROOT}/staff-pilots/{pid}/collection-checks").json()["counts"]["planned"] == 40

@@ -242,6 +242,13 @@ a layout until you save the form, and does not carry over the source layout's
 name or parent link. Manual fixture edits and product uploads are not part of
 this file; use the existing layout-copy or workbook tools for those.
 
+In **Multi-floor store**, **Export building options** saves the complete list of
+2–6 floors in one JSON file, with their order, labels and individual settings.
+**Import building options** checks every floor before replacing the current
+list; an invalid floor leaves your configuration intact. The new building keeps
+the name entered in the form and receives new floor identities when saved.
+Single-floor and whole-building files have separate import controls.
+
 Add up to 48 dining tables (192 seats, four chairs each) to any format. Enter any
 whole count from 0–48, or leave the field blank for the format default. Café and restaurant
 defaults include seating; small grids reduce the default count to fit. An explicit
@@ -380,6 +387,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   assumptions with the fixed plan, without using virtual shoppers as a conversion baseline.
   Observation imports show changes before applying them, flag cleared values and reversed purchase outcomes,
   and retain correction reasons and before/after records with a CSV history export.
+  Pilots open on **Collection checks**: staff/shift completeness, recording gaps and a follow-up checklist with
+  CSV export. Unrecorded tail slots are kept distinct from enrolled encounters needing outcome follow-up;
+  purchase counts and treatment effects remain in the separate observations/results view.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
@@ -598,7 +608,8 @@ world-space texture coordinates preserving its 2.12 m coverage across store size
 High also replaces the entrance's simple planters with a reduced Poly Haven
 Potted Plant 01 model by Rico Cilliers (CC0), with textured leaves and terracotta.
 Sources and rebuild instructions are in [`frontend/public/assets/props/`](./frontend/public/assets/props/README.md).
-Fresh bananas use Alexander Shulha's CC0 Poly Haven scan, with shared instancing,
+Fresh bananas use Alexander Shulha's CC0 Poly Haven scan; single and paired apples
+use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)

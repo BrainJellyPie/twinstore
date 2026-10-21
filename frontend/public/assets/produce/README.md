@@ -27,3 +27,26 @@ blender --background --python scripts/convert_bananas.py -- \
 ```
 
 Built with Blender 4.3.2. The application loads the model locally.
+
+`apples.glb` uses **Food Apple 01** by **Oliver Harries**, published by
+[Poly Haven](https://polyhaven.com/a/food_apple_01) under the same CC0 license.
+`apple-sources.json` records the source files, hashes and converted output.
+The 7,012-triangle source becomes 200/999-triangle single apples and
+400/1,998-triangle pairs. All four meshes share the original 1K JPEG color,
+OpenGL normal and roughness maps; the bundled model is 428,616 bytes.
+
+The authored single-apple dimensions are approximately 9.76 × 8.54 × 9.59 cm.
+A two-pack contains two apples with a 6 mm gap, maintaining each fruit's shape.
+Fresh red-apple names and explicit two-packs use these formats; apple juice,
+chips, pie and unsupported pack sizes keep their usual package geometry.
+Both formats load one shared asset per store. Produce stays in one shelf layer
+and retains its proportions when fitted to a small slot. Medium uses color only;
+High also uses normal and roughness maps. Rounded red fallbacks remain available.
+
+Download and verify the apple manifest sources, renaming the source
+`food_apple_01_1k.gltf` to `food_apple_01.gltf`, then run:
+
+```sh
+blender --background --python scripts/convert_apples.py -- \
+  --source-dir /path/to/apples --output frontend/public/assets/produce/apples.glb
+```

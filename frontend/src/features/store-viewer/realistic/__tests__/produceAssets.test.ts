@@ -9,18 +9,30 @@ interface ProduceModel {
   bufferViews: { byteOffset: number; byteStride?: number }[];
 }
 
-it("ships bounded banana LODs with unit normals and a bottom-centred unit footprint", () => {
-  const data = readFileSync("public/assets/produce/bananas.glb");
+it.each([
+  ["bananas", [["bananas-coarse", 300], ["bananas-fine", 1600]]],
+  ["apples", [["apple-coarse", 200], ["apple-fine", 1000], ["apple-pair-coarse", 400], ["apple-pair-fine", 2000]]],
+] as const)("ships bounded %s LODs with unit normals and a bottom-centred unit footprint", (asset, lods) => {
+  const data = readFileSync(`public/assets/produce/${asset}.glb`);
   const length = data.readUInt32LE(12);
   const model = JSON.parse(data.subarray(20, 20 + length).toString()) as ProduceModel;
-  for (const [name, budget] of [["bananas-coarse", 300], ["bananas-fine", 1600]] as const) {
+  for (const [name, budget] of lods) {
     const node = model.nodes.find((node) => node.name === name)!;
     expect(node).toBeDefined();
     const primitive = model.meshes[node.mesh]!.primitives[0]!;
     expect(model.accessors[primitive.indices]!.count / 3).toBeLessThanOrEqual(budget);
     const position = model.accessors[primitive.attributes.POSITION]!;
-    expect(position.min).toEqual([-0.5, 0, -0.5]);
-    expect(position.max).toEqual([0.5, 1, 0.5]);
+    position.min!.forEach((value, axis) => expect(value).toBeCloseTo([-0.5, 0, -0.5][axis]!, 5));
+    position.max!.forEach((value, axis) => expect(value).toBeCloseTo([0.5, 1, 0.5][axis]!, 5));
+    if (name.startsWith("apple-pair")) {
+      const view = model.bufferViews[position.bufferView]!;
+      const offset = 28 + length + view.byteOffset + (position.byteOffset ?? 0);
+      const xs = Array.from({ length: position.count }, (_, i) => data.readFloatLE(offset + i * (view.byteStride ?? 12)));
+      expect(xs.some((x) => x < 0)).toBe(true);
+      expect(xs.some((x) => x > 0)).toBe(true);
+      // The two apples retain a physical gap rather than forming one stretched fruit.
+      expect(Math.min(...xs.map(Math.abs))).toBeGreaterThan(0.014);
+    }
     const normal = model.accessors[primitive.attributes.NORMAL]!;
     const view = model.bufferViews[normal.bufferView]!;
     const offset = 28 + length + view.byteOffset + (normal.byteOffset ?? 0);

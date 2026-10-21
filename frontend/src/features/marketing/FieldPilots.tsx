@@ -11,31 +11,37 @@ import { formatMoney } from "@/shared/utils/money";
 import { PilotPlanner, PilotPlanningSummary } from "./PilotPlanner";
 import { emptyPlanningInputs, planningAssumptions } from "./pilotPlanning";
 import { PilotImportHistory, PilotObservationReview } from "./PilotObservationReview";
+import { PilotCollectionChecks } from "./PilotCollectionChecks";
 
 const percent = (n: number | null) => n == null ? "Unknown" : `${(n * 100).toFixed(1)}%`;
 const points = (n: number | null) => n == null ? "Not available" : `${n > 0 ? "+" : ""}${(n * 100).toFixed(1)} pp`;
 
 export function FieldPilots({ projectId, source }: { projectId: string; source?: PitchReport }) {
   const [selected, setSelected] = useState("");
+  const [mode, setMode] = useState<"collection" | "results">("collection");
+  const selectPilot = (id: string) => { setSelected(id); setMode("collection"); };
   const list = useQuery({ queryKey: pilotKeys.list(projectId), queryFn: ({ signal }) => listPilots(projectId, signal) });
-  const view = useQuery({ queryKey: pilotKeys.detail(projectId, selected), queryFn: ({ signal }) => getPilot(projectId, selected, signal), enabled: !!selected });
+  const view = useQuery({ queryKey: pilotKeys.detail(projectId, selected), queryFn: ({ signal }) => getPilot(projectId, selected, signal), enabled: !!selected && mode === "results" });
   const pilots = (list.data ?? []).filter((p) => !source || p.pitch_id === source.pitch_id);
   return <section className="space-y-4 rounded-2xl border bg-card p-4">
     <h2 className="text-lg font-semibold">Observed field pilots</h2>
     <p className="text-sm text-muted-foreground">Run the scripts with real eligible encounters, balanced within each staff/shift. Keep assigned groups even when a customer declines the script. No model calls are made here.</p>
     {source ? <details><summary className="cursor-pointer text-sm font-medium">Prepare a field pilot from these scripts</summary>
-      <PilotBuilder projectId={projectId} source={source} onCreated={setSelected} />
+      <PilotBuilder projectId={projectId} source={source} onCreated={selectPilot} />
     </details> : <p className="text-sm text-muted-foreground">To prepare a pilot, open a completed test under Staff scripts and choose “Prepare a field pilot from these scripts”. Saved pilots remain accessible here.</p>}
     {list.error && <p role="alert" className="text-sm text-destructive">{list.error.message}</p>}
-    <div className="flex flex-wrap gap-2">{pilots.map((p) => <Button key={p.pilot_id} variant={selected === p.pilot_id ? "default" : "outline"} onClick={() => setSelected(p.pilot_id)}>
+    <div className="flex flex-wrap gap-2">{pilots.map((p) => <Button key={p.pilot_id} variant={selected === p.pilot_id ? "default" : "outline"} onClick={() => selectPilot(p.pilot_id)}>
       {p.name} · {p.enrolled}/{p.planned} · {p.finalized_at ? "Closed" : "Collecting"}
     </Button>)}</div>
     {list.isPending && <p className="text-sm">Loading pilots…</p>}
     {!list.isPending && !list.error && pilots.length === 0 && <p className="text-sm text-muted-foreground">No field pilots yet.</p>}
     {selected && <div className="space-y-3">
-      <Button variant="ghost" size="sm" onClick={() => void view.refetch()} disabled={view.isFetching}>Reload pilot</Button>
-      {view.error && <p role="alert" className="text-sm text-destructive">{view.error.message}</p>}
-      {view.data ? <PilotResults key={`${selected}:${view.data.pilot.revision}`} projectId={projectId} view={view.data} /> : view.isPending && <p className="text-sm">Loading observations…</p>}
+      <div className="flex gap-2"><Button variant={mode === "collection" ? "default" : "outline"} onClick={() => setMode("collection")}>Collection checks</Button><Button variant={mode === "results" ? "default" : "outline"} onClick={() => setMode("results")}>Observations and results</Button></div>
+      {mode === "collection" ? <PilotCollectionChecks key={selected} projectId={projectId} pilotId={selected} /> : <>
+        <Button variant="ghost" size="sm" onClick={() => void view.refetch()} disabled={view.isFetching}>Reload pilot</Button>
+        {view.error && <p role="alert" className="text-sm text-destructive">{view.error.message}</p>}
+        {view.data ? <PilotResults key={`${selected}:${view.data.pilot.revision}`} projectId={projectId} view={view.data} /> : view.isPending && <p className="text-sm">Loading observations…</p>}
+      </>}
     </div>}
   </section>;
 }
@@ -93,6 +99,7 @@ export function PilotResults({ projectId, view }: { projectId: string; view: Pil
     await qc.cancelQueries({ queryKey: pilotKeys.detail(projectId, p.pilot_id) });
     qc.setQueryData(pilotKeys.detail(projectId, p.pilot_id), result);
     await qc.invalidateQueries({ queryKey: pilotKeys.list(projectId), exact: true });
+    await qc.invalidateQueries({ queryKey: pilotKeys.collection(projectId, p.pilot_id), exact: true });
   };
   const close = useMutation({ mutationFn: () => closePilot(projectId, p.pilot_id, p.revision), onSuccess: saved });
   const busy = reviewActive || close.isPending;

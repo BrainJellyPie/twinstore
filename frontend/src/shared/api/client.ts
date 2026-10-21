@@ -1385,6 +1385,16 @@ export interface GenerateBuildingRequest {
   floors: { label: string; layout: GenerateLayoutRequest }[];
 }
 
+export interface BuildingPreset {
+  format: "twinstore-building-options";
+  version: 1;
+  floors: GenerateBuildingRequest["floors"];
+}
+
+export function validateBuildingPreset(value: unknown, signal?: AbortSignal): Promise<BuildingPreset> {
+  return fetchJson("/api/store-templates/building-preset/validate", { method: "POST", body: JSON.stringify(value), signal });
+}
+
 export function generateBuilding(projectId: string, body: GenerateBuildingRequest): Promise<{ setups: SetupSummaryShort[]; active_setup_id: string }> {
   return fetchJson(`/api/projects/${projectId}/setups/generate-building`, { method: "POST", body: JSON.stringify(body) });
 }

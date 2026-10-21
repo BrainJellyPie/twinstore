@@ -80,6 +80,14 @@ class BuildingLayoutRequest(BaseModel):
     floors: list[BuildingFloorRequest] = Field(min_length=2, max_length=6)
 
 
+class BuildingPreset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    format: Literal["twinstore-building-options"]
+    version: Literal[1]
+    floors: list[BuildingFloorRequest] = Field(min_length=2, max_length=6)
+
+
 class BuildingFloorInfo(BaseModel):
     id: str
     name: str
