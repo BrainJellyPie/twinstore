@@ -263,6 +263,10 @@ For brand managers, category teams, store operators and research agencies (**Mar
   shoppers answer in seconds; vision shoppers also see packs and signs. Every finished test comes with a **report** —
   summary and recommendation, design, charts, tracked products, method, and optional model-written commentary — as a
   print-ready page (PDF) or Markdown.
+  **Price × sign analysis** reuses retained individual outcomes from new runs with control, price-only,
+  sign-only and combined arms. It checks the exact factor changes, computes paired main effects and the
+  interaction, and exports source-bound cells and contrasts. Missing cells withhold intervals; adjusted
+  bootstrap intervals describe a synthetic panel, not real sales effects or confirmatory evidence.
 - **Shelf tests** — the classic shelf impact test: the same respondents see the shelf as it is and with a new pack,
   price or sign (previewed live), pick what they would take and say what caught their eye first; pick share and
   stand-out are compared pair by pair.

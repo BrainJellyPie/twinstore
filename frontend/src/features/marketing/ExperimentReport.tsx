@@ -15,6 +15,7 @@ import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
 
 import { DemandChart, LiftChart, type LiftRow } from "./charts";
+import { FactorialReview } from "./FactorialReview";
 
 const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(digits)} %`;
 const pp = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)} pt`;
@@ -85,6 +86,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
         <Button variant="outline" size="sm" onClick={exportCsv}><Download className="size-4" /> CSV</Button>
       </div>
       <ReportBar projectId={projectId} experimentId={r.experiment_id} />
+      <FactorialReview key={`${projectId}:${r.experiment_id}`} projectId={projectId} experimentId={r.experiment_id} />
 
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${arms.length <= 5 ? arms.length : Math.ceil(arms.length / 2)}, minmax(0, 1fr))` }}>
         {arms.map((a, i) => {

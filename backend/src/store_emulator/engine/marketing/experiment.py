@@ -191,6 +191,7 @@ async def run_experiment(
     focus_skus: list[str],
     *,
     on_progress: Callable[[float, str], None] | None = None,
+    on_outcomes: Callable[[list[CustomerResult], list[list[CustomerResult]]], None] | None = None,
     seed: int = 0,
 ) -> tuple[VariantResult, list[VariantResult], str]:
     """Control and variant results on one panel, and the winner (best revenue per visitor with a CI above
@@ -211,6 +212,9 @@ async def run_experiment(
         if not common_ids:
             raise ValueError(f"No common successful shoppers remain across Control and the variants through '{name}'; the experiment cannot be compared.")
         runs.append(res)
+
+    if on_outcomes:
+        on_outcomes(base, runs)
 
     # Every arm must describe the same shoppers, including headline scores and the price curve.
     base = [r for r in base if r.persona_id in common_ids]
