@@ -379,9 +379,11 @@ def generate_store(
     for cat, y in zip(t.wall_shelves, range(2, h - 2), strict=False):
         b.add(RackType.SHELF, w - 1, y, category=cat, faces=[Face.W], rotation=270)
 
-    # A dining group occupies 2×2 cells, including its four chairs. Reserve a
-    # continuous one-cell circulation ring and keep it clear of retail displays.
-    table_positions = [(x, y) for y in range(2, h - 3, 3) for x in range(2, w - 3, 3)]
+    # A dining group occupies 2×2 cells, including its four chairs. Keep the
+    # selected circulation ring clear of other tables, walls and retail displays.
+    clearance = options.table_clearance
+    table_positions = [(x, y) for y in range(clearance + 1, h - clearance - 2, clearance + 2)
+                       for x in range(clearance + 1, w - clearance - 2, clearance + 2)]
     table_positions = [(x, y) for x, y in table_positions
                        if all(b.free(cx, cy) for cx in (x, x + 1) for cy in (y, y + 1))]
     # Rank safe seating positions without changing the table footprint or clearance.
@@ -398,14 +400,15 @@ def generate_store(
         table_positions.sort(key=lambda p: (p[0] + 0.5 - (w - 1) / 2) ** 2 + (p[1] + 0.5 - (h - 1) / 2) ** 2)
     table_count = min(t.dining_tables, len(table_positions)) if options.dining_tables is None else options.dining_tables
     if table_count > len(table_positions):
-        raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with clear aisles and the requested reserved areas. Reduce the table count, adjust reserved areas or increase the grid size.")
+        raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with {clearance}-cell circulation space and the requested reserved areas. Reduce the table count or clearance, adjust reserved areas or increase the grid size.")
     dining_clearance: set[tuple[int, int]] = set()
     for i, (x, y) in enumerate(table_positions[:table_count]):
         table = Rack(id=f"r_table_{i + 1}", type=RackType.TABLE, shape=[[1, 1], [1, 1]],
                      position=(x, y), rack_name=f"Dining table {i + 1}", rack_desc="Four seats; furniture only")
         b.racks.append(table)
         b.taken.update(table.occupied_positions)
-        dining_clearance.update((cx, cy) for cx in range(x - 1, x + 3) for cy in range(y - 1, y + 3))
+        dining_clearance.update((cx, cy) for cx in range(x - clearance, x + 2 + clearance)
+                                for cy in range(y - clearance, y + 2 + clearance))
 
     # Every populated face opens onto a continuous aisle. Cross-aisles split
     # long shelf runs, and the front two rows stay clear for checkout circulation.

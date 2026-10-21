@@ -126,10 +126,15 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value="back">Back wall</option><option value="left">Left side</option>
                 <option value="right">Right side</option><option value="center">Center</option>
               </select></Field>
+              <div className="col-span-2"><Field label="Space around dining tables"><select className={controlClass} value={value.table_clearance ?? 1}
+                disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
+                onChange={(e) => update({ table_clearance: Number(e.target.value) })}>
+                <option value={1}>1 cell · Standard</option><option value={2}>2 cells · More room</option><option value={3}>3 cells · Open seating</option>
+              </select></Field></div>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", shelf_direction: "horizontal", entrance: "left", checkouts: 1, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, seating_zone: "auto", reserved_areas: [], seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", shelf_direction: "horizontal", entrance: "left", checkouts: 1, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>

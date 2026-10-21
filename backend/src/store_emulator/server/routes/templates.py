@@ -59,12 +59,13 @@ def preview(
     checkouts: int = Query(default=1, ge=1, le=4), fixture_design: FixtureDesign = "mixed",
     design_theme: StoreDesign | None = None,
     dining_tables: int | None = Query(default=None, ge=0, le=12),
+    table_clearance: int = Query(default=1, ge=1, le=3),
     seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
 ) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density,
                             shelf_direction=shelf_direction,
                             entrance=entrance, checkouts=checkouts, fixture_design=fixture_design,
-                            design_theme=design_theme, dining_tables=dining_tables,
+                            design_theme=design_theme, dining_tables=dining_tables, table_clearance=table_clearance,
                             seating_zone=seating_zone, checkout_placement=checkout_placement)
     return _preview_store(template_id, seed, currency, options)
 
