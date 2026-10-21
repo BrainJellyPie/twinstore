@@ -73,7 +73,7 @@ function worldSize(name: string) {
 }
 
 function stackable(kind: PackageKind, h: number, clearance: number): number {
-  if (kind === "bottle" || kind === "bag" || kind === "tube" || kind === "jar") return 1;
+  if (kind === "bottle" || kind === "bag" || kind === "tube" || kind === "jar" || kind === "banana") return 1;
   return Math.max(1, Math.min(kind === "can" ? 3 : 2, Math.floor((clearance - 0.01) / (h + 0.004))));
 }
 
@@ -106,13 +106,14 @@ function placeOnShelf(
   const shelfDepth = edge.stockFront - bank.back - 0.02;
   items.forEach((item, k) => {
     const { spec, w, h, d } = worldSize(item.name);
-    const fit = Math.min(1, (clearance - 0.012) / h);
+    let fit = Math.min(1, (clearance - 0.012) / h);
+    if (spec.kind === "banana") fit = Math.min(fit, shelfDepth / d, (slotW - GAP) / w);
     const ph = h * fit;
     const pd = Math.min(d * fit, shelfDepth);
     let pw = w * fit;
-    const facings = Math.max(1, Math.min(MAX_FACINGS, Math.floor(slotW / (pw * 0.85 + GAP))));
+    const facings = Math.max(1, Math.min(MAX_FACINGS, Math.floor(slotW / (pw * (spec.kind === "banana" ? 1 : 0.85) + GAP))));
     const pitch = slotW / facings;
-    pw = Math.min(pw * 1.12, pitch - GAP);
+    pw = Math.min(pw * (spec.kind === "banana" ? 1 : 1.12), pitch - GAP);
     const rows = Math.max(1, Math.min(maxRows, Math.floor(shelfDepth / (pd + 0.006))));
     const rowPitch = rows > 1 ? Math.min((shelfDepth - pd) / (rows - 1), pd * 2.2) : 0;
     const stacks = stackable(spec.kind, ph, clearance);

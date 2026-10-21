@@ -43,6 +43,13 @@ describe("productCatalog", () => {
     ["Pringles Original 5.2oz", "tube"],
     ["Nutella Hazelnut Spread 13oz", "jar"],
     ["DiGiorno Personal Pan Pepperoni Pizza", "box"],
+    ["Bananas", "banana"],
+    [" Organic Bananas 1kg ", "banana"],
+    ["Banana Bunch", "banana"],
+    ["Banana Bread", "bag"],
+    ["Banana Chips", "bag"],
+    ["Banana Milk", "bottle"],
+    ["Banana Ice Cream", "pint"],
   ])("classifies %s as %s", (name, kind) => {
     expect(classifyProduct(name).kind).toBe(kind);
   });
@@ -166,6 +173,19 @@ describe("fixture planning and product layout", () => {
     const out = layoutProducts([planFixture(promo, 8, 6)], { maxRows: 2 });
     expect(out.talkers).toHaveLength(1);
     expect(out.talkers[0]!.promo).toBe("2 for $5");
+  });
+
+  it("keeps fresh bunches proportional and in one layer on a shelf", () => {
+    const produce = rack({ id: "produce", type: "shelf", position: [3, 3], slots: slots("S", [["Bananas"]]) });
+    const out = layoutProducts([planFixture(produce, 8, 6)], { maxRows: 3 });
+    expect(out.products.length).toBeGreaterThan(1);
+    expect(new Set(out.products.map((p) => p.y)).size).toBe(1);
+    expect(out.tags).toHaveLength(1);
+    for (const p of out.products) {
+      expect(p.kind).toBe("banana");
+      expect(p.sx / p.sy).toBeCloseTo(0.134 / 0.179);
+      expect(p.sz / p.sy).toBeCloseTo(0.223 / 0.179);
+    }
   });
 
   it("carries SKU photos into every shelf facing and freezer stack", () => {
