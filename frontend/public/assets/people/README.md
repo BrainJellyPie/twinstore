@@ -40,6 +40,9 @@ the pinned source revision and SHA-256 records in `sources.json`.
   These bounded curves retain matte skin and clothing while preserving the
   original map's locations of stronger highlights. Materials remain nonmetallic.
 - Normal maps use `EXT_texture_webp`, supported natively by Three's glTF loader.
+  Face strength is 0.4 and body strength is 0.65, so clothing folds and fabric
+  texture respond more clearly to light without equally amplifying facial pores.
+  These are artistic display settings rather than measured surface depths.
   The converter verifies identical decoded RGBA pixels before replacing the PNG
   buffers; geometry, rig, animations and other image buffers are left intact.
 - The original FBX skeletons use different rest poses for each motion. Bone

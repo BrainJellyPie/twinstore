@@ -333,11 +333,13 @@ def apply_to_store(store: Store, scenario: Scenario) -> tuple[Store, dict[str, f
                 promo = next((pr for pr in scenario.promotions if matches(pr.target, rack, item)), None)
                 if promo is not None:
                     price = item.price
+                    regular_price = item.regular_price
                     if promo.kind == PromotionKind.DISCOUNT:
+                        regular_price = regular_price or item.price
                         price = round(item.price * (1 - promo.discount_pct / 100))
                     label = promo.label or (f"{promo.discount_pct:.0f}% OFF" if promo.kind == PromotionKind.DISCOUNT
                                             else "SALE" if promo.kind == PromotionKind.FEATURED else promo.kind.value)
-                    item = item.model_copy(update={"price": price, "promo": label})
+                    item = item.model_copy(update={"price": price, "regular_price": regular_price, "promo": label})
                     lifts[item.sku] = priors.promo_lift.get(promo.kind.value, 1.2)
                 items.append(item)
             slots.append(slot.model_copy(update={"items": items}))

@@ -10,7 +10,7 @@ interface Model {
   accessors: { bufferView: number; byteOffset?: number; count: number; componentType: number; type: string; min?: number[]; max?: number[] }[];
   bufferViews: { byteOffset: number; byteStride?: number }[];
   materials: {
-    name: string; alphaMode?: string; alphaCutoff?: number; normalTexture?: { index: number };
+    name: string; alphaMode?: string; alphaCutoff?: number; normalTexture?: { index: number; scale?: number };
     pbrMetallicRoughness: { metallicFactor?: number; roughnessFactor?: number; metallicRoughnessTexture?: { index: number } };
   }[];
   textures: { source?: number; extensions?: { EXT_texture_webp?: { source: number } } }[];
@@ -40,6 +40,7 @@ describe("bundled shopper models", () => {
       const binaryStart = 20 + jsonLength + 8;
       expect(model.extensionsRequired).toContain("EXT_texture_webp");
       for (const material of model.materials.filter((m) => m.normalTexture)) {
+        expect(material.normalTexture!.scale).toBeCloseTo(material.name.includes("head") ? 0.4 : 0.65, 5);
         const texture = model.textures[material.normalTexture!.index]!;
         expect(texture.source).toBeUndefined();
         const image = model.images[texture.extensions!.EXT_texture_webp!.source]!;
