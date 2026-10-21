@@ -12,6 +12,7 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 <a href="https://github.com/BrainJellyPie/twinstore/releases/latest"><img alt="Download" src="https://img.shields.io/badge/download-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-0b0c10?style=for-the-badge"></a>
 <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-free%20for%20research%20%26%20small%20teams-6b4dff?style=for-the-badge"></a>
 <a href="./.github/assets/twinstore/twinstore-promo.mp4"><img alt="Watch" src="https://img.shields.io/badge/watch-the%20film-e0429b?style=for-the-badge"></a>
+<a href="./TwinStore_Technical_Report.pdf"><img alt="Technical report" src="https://img.shields.io/badge/read-technical%20report%20(PDF)-1f7a5c?style=for-the-badge"></a>
 </p>
 
 <p>
@@ -24,6 +25,7 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 <a href="#validated-on-real-baskets">Validation</a> ·
 <a href="#for-developers">Developers</a> ·
 <a href="#license">License</a> ·
+<a href="./TwinStore_Technical_Report.pdf">Technical report (PDF)</a> ·
 <a href="./QUICKSTART.md">한국어 빠른 시작</a>
 </p>
 
@@ -84,6 +86,49 @@ OpenAI-compatible server such as vLLM, Ollama or llama.cpp — under **Models** 
 <b>The film</b> · 55 s · what TwinStore is, in motion (<a href="./.github/assets/twinstore/twinstore-promo.mp4">MP4</a>)</td>
 <td width="50%"><a href="./.github/assets/twinstore/twinstore-demo.mp4"><img src="./.github/assets/twinstore/twinstore-demo-poster.jpg" alt="TwinStore running"></a><br>
 <b>The app, running</b> · 75 s real recording: home, ⌘K palette, 3D playback, heatmap, shopper's eye, one shopper's journey, marketing studio, conjoint, shelf capture, neighborhood, night theme (<a href="./.github/assets/twinstore/twinstore-demo.mp4">MP4</a>)</td>
+</tr>
+</table>
+
+### Feature demos
+
+Short real recordings of single features. Each preview loops; click it for the full-quality MP4.
+
+<table>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/templates.mp4"><img src="./.github/assets/twinstore/demos/templates.webp" alt="Start from a template"></a><br>
+<b>Start from a template</b> · 14 s · pick a store format, then a ready-made floor plan from the gallery (<a href="./.github/assets/twinstore/demos/templates.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/situations.mp4"><img src="./.github/assets/twinstore/demos/situations.webp" alt="Set the scene"></a><br>
+<b>Set the scene</b> · 10 s · weekday, weather, holiday and neighborhood visitors before a run (<a href="./.github/assets/twinstore/demos/situations.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/playback.mp4"><img src="./.github/assets/twinstore/demos/playback.webp" alt="Watch the day"></a><br>
+<b>Watch the day</b> · 12 s · 3D playback with the clock, live sales and the heatmap (<a href="./.github/assets/twinstore/demos/playback.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/shopper-eye.mp4"><img src="./.github/assets/twinstore/demos/shopper-eye.webp" alt="Shopper's eye"></a><br>
+<b>Shopper's eye</b> · 7 s · ride along at eye level as a shopper walks the aisles (<a href="./.github/assets/twinstore/demos/shopper-eye.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/journey.mp4"><img src="./.github/assets/twinstore/demos/journey.webp" alt="One shopper's journey"></a><br>
+<b>One shopper's journey</b> · 15 s · follow a single shopper: route, stops, what they saw and bought (<a href="./.github/assets/twinstore/demos/journey.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/compare.mp4"><img src="./.github/assets/twinstore/demos/compare.webp" alt="Compare two runs"></a><br>
+<b>Compare two runs</b> · 13 s · the same shoppers in two layouts, side by side (<a href="./.github/assets/twinstore/demos/compare.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/optimize.mp4"><img src="./.github/assets/twinstore/demos/optimize.webp" alt="Optimize the layout"></a><br>
+<b>Optimize the layout</b> · 14 s · let TwinStore search for a better arrangement toward your goal (<a href="./.github/assets/twinstore/demos/optimize.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/ab-test.mp4"><img src="./.github/assets/twinstore/demos/ab-test.webp" alt="A/B test a price"></a><br>
+<b>A/B test a price</b> · 8 s · a discount tested on paired shoppers, by segment (<a href="./.github/assets/twinstore/demos/ab-test.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/conjoint.mp4"><img src="./.github/assets/twinstore/demos/conjoint.webp" alt="Conjoint study"></a><br>
+<b>Conjoint study</b> · 8 s · design a choice study, run it, read part-worths and willingness to pay (<a href="./.github/assets/twinstore/demos/conjoint.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/shelflab.mp4"><img src="./.github/assets/twinstore/demos/shelflab.webp" alt="Shelf lab"></a><br>
+<b>Shelf lab</b> · 8 s · lay out a shelf and generate new packs for it (<a href="./.github/assets/twinstore/demos/shelflab.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/shelftest.mp4"><img src="./.github/assets/twinstore/demos/shelftest.webp" alt="Shelf test"></a><br>
+<b>Shelf test</b> · 9 s · place a new pack on the shelf and see whether shoppers notice it (<a href="./.github/assets/twinstore/demos/shelftest.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/neighborhood.mp4"><img src="./.github/assets/twinstore/demos/neighborhood.webp" alt="The neighborhood"></a><br>
+<b>The neighborhood</b> · 6 s · the store in its catchment: homes, rivals and who walks in (<a href="./.github/assets/twinstore/demos/neighborhood.mp4">MP4</a>)</td>
 </tr>
 </table>
 
