@@ -6,14 +6,17 @@ fails. The image is kept next to the layout in `.data/<pid>/floorplans/<setup id
 """
 
 import asyncio
+import base64
 import io
 import logging
+import math
 import re
 from contextlib import closing
 from pathlib import Path
+from threading import Lock
 from typing import Any, cast
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
 from store_emulator.domain.config import SimulationConfig
@@ -32,6 +35,9 @@ from .storage.setups import metadata_path, new_setup_data, setup_path
 logger = logging.getLogger(__name__)
 
 MAX_PLAN_BYTES = 25 * 1024 * 1024
+MAX_PLAN_SIDE = 2400
+MAX_IMAGE_PIXELS = 25_000_000
+_PDF_LOCK = Lock()  # PDFium native operations must not overlap across request threads.
 _SAFE_ID = re.compile(r"[a-z0-9_]+")
 
 
@@ -43,33 +49,81 @@ class FloorPlanImport(BaseModel):
     racks: int
     notes: list[str]
     warnings: list[str]
+    source_page: int = 1
+    source_pages: int = 1
+    source_rotation: int = 0
 
 
-def load_plan_image(data: bytes, filename: str) -> Image.Image:
-    """The plan as an image; a PDF's first page is rendered when pypdfium2 is installed."""
+class FloorPlanPreview(BaseModel):
+    page_number: int
+    page_count: int
+    rotation: int
+    width: int
+    height: int
+    image: str
+
+
+def _load_plan_page(data: bytes, filename: str, *, page_number: int, rotation: int) -> tuple[Image.Image, int]:
+    """Decode one selected page, with bounded rendering and detached native buffers."""
     if len(data) > MAX_PLAN_BYTES:
         raise AppError("plan too large (max 25 MB)", 413)
+    if page_number < 1 or rotation not in (0, 90, 180, 270):
+        raise AppError("choose a page starting at 1 and a rotation of 0, 90, 180 or 270 degrees", 422)
+    page_count = 1
     if data[:5] == b"%PDF-" or filename.lower().endswith(".pdf"):
         try:
-            import pypdfium2  # type: ignore[import-not-found]  # optional: renders PDF pages
+            import pypdfium2  # type: ignore[import-not-found]  # untyped native PDF binding
         except ImportError:
             raise AppError("reading PDF plans needs `uv pip install pypdfium2`; or upload the page as PNG/JPEG", 400) from None
         try:
-            with closing(pypdfium2.PdfDocument(data)) as pdf:  # type: ignore[reportUnknownMemberType]  # optional native binding
-                if len(pdf) == 0:
+            with _PDF_LOCK, closing(pypdfium2.PdfDocument(data)) as pdf:  # type: ignore[reportUnknownMemberType]  # native binding
+                page_count = len(pdf)
+                if page_count == 0:
                     raise AppError("the PDF has no pages", 400)
-                with closing(pdf[0]) as page:  # type: ignore[reportUnknownVariableType]
-                    with closing(page.render(scale=2)) as bitmap:  # type: ignore[reportUnknownMemberType]
+                if page_number > page_count:
+                    raise AppError(f"this PDF has {page_count} pages; choose a page in that range", 422)
+                with closing(pdf[page_number - 1]) as page:  # type: ignore[reportUnknownVariableType]
+                    width, height = cast(tuple[float, float], page.get_size())  # type: ignore[reportUnknownMemberType]
+                    if not all(math.isfinite(v) and v > 0 for v in (width, height)):
+                        raise AppError("the PDF page has invalid dimensions", 400)
+                    scale = min(2.0, MAX_PLAN_SIDE / max(width, height))
+                    with closing(page.render(scale=scale)) as bitmap:  # type: ignore[reportUnknownMemberType]
                         # Copy the pixels before the bitmap's native buffer is released.
-                        return cast(Image.Image, bitmap.to_pil()).convert("RGB")  # type: ignore[reportUnknownMemberType]
+                        img = cast(Image.Image, bitmap.to_pil()).convert("RGB")  # type: ignore[reportUnknownMemberType]
         except (RuntimeError, ValueError, IndexError) as e:
             raise AppError("the PDF could not be read; use a valid, unlocked PDF or upload PNG/JPEG", 400) from e
-    try:
-        img = Image.open(io.BytesIO(data))
-        img.load()
-    except (UnidentifiedImageError, OSError) as e:
-        raise AppError("not an image the server can read (use PNG, JPEG, WebP or PDF)", 400) from e
-    return img.convert("RGB")
+    else:
+        if page_number != 1:
+            raise AppError("an image has one page; choose page 1", 422)
+        try:
+            with Image.open(io.BytesIO(data)) as source:
+                if source.width * source.height > MAX_IMAGE_PIXELS:
+                    raise AppError("plan image exceeds 25 megapixels; resize it before importing", 413)
+                img = ImageOps.exif_transpose(source).convert("RGB")
+        except Image.DecompressionBombError as e:
+            raise AppError("plan image exceeds the supported pixel limit", 413) from e
+        except (UnidentifiedImageError, OSError) as e:
+            raise AppError("not an image the server can read (use PNG, JPEG, WebP or PDF)", 400) from e
+        img.thumbnail((MAX_PLAN_SIDE, MAX_PLAN_SIDE))
+    if rotation:
+        img = img.rotate(-rotation, expand=True)
+    return img, page_count
+
+
+def load_plan_image(data: bytes, filename: str) -> Image.Image:
+    """Backward-compatible first-page reader."""
+    return _load_plan_page(data, filename, page_number=1, rotation=0)[0]
+
+
+def preview_floor_plan(pid: str, data: bytes, filename: str, *, page_number: int, rotation: int) -> FloorPlanPreview:
+    if not _SAFE_ID.fullmatch(pid) or not metadata_path(pid).exists():
+        raise AppError(f"project not found: {pid}", 404)
+    img, page_count = _load_plan_page(data, filename, page_number=page_number, rotation=rotation)
+    img.thumbnail((1000, 1000))
+    output = io.BytesIO()
+    img.save(output, format="PNG")
+    return FloorPlanPreview(page_number=page_number, page_count=page_count, rotation=rotation, width=img.width,
+                            height=img.height, image="data:image/png;base64," + base64.b64encode(output.getvalue()).decode("ascii"))
 
 
 def read_plan(img: Image.Image, reader: PlanReader, model: str, config: SimulationConfig) -> FloorPlanReading:
@@ -92,14 +146,16 @@ def read_plan(img: Image.Image, reader: PlanReader, model: str, config: Simulati
 
 def import_floor_plan(
     pid: str, data: bytes, filename: str, *, reader: PlanReader, model: str, name: str | None, config: SimulationConfig,
+    page_number: int = 1, rotation: int = 0,
 ) -> FloorPlanImport:
     if not _SAFE_ID.fullmatch(pid) or not metadata_path(pid).exists():
         raise AppError(f"project not found: {pid}", 404)
-    img = load_plan_image(data, filename)
+    img, page_count = _load_plan_page(data, filename, page_number=page_number, rotation=rotation)
     try:
         reading = read_plan(img, reader, model, config)
     except ValueError as e:
         raise AppError(str(e), 422) from e
+    reading.notes.append(f"Imported page {page_number} of {page_count}; rotation {rotation} degrees clockwise.")
     meta = cast(dict[str, Any], read_json(metadata_path(pid)))
     schedule = [DaySchedule.model_validate(d) for d in cast(list[dict[str, Any]], meta.get("weekly_schedule") or [])]
     layout_name = name or f"floor plan ({Path(filename).stem[:40] or 'plan'})"
@@ -109,7 +165,8 @@ def import_floor_plan(
     errors = [i for i in issues if i.severity == "error"]
     if errors:
         raise AppError(f"the plan did not give a valid layout: {errors[0].message}", 422)
-    setup = new_setup_data(layout_name, None, store.model_dump(mode="json"), f"floor plan import ({reading.reader}): {'; '.join(notes)}"[:1000])
+    setup = new_setup_data(layout_name, None, store.model_dump(mode="json"),
+                           f"floor plan import ({reading.reader}), page {page_number}/{page_count}, rotation {rotation}: {'; '.join(notes)}"[:1000])
     write_json(setup_path(pid, setup["id"]), setup)
     set_active_setup(pid, setup["id"])
     folder = Path(DATA_DIR) / pid / "floorplans"
@@ -120,4 +177,5 @@ def import_floor_plan(
         setup_id=setup["id"], setup=setup_summary(pid, setup), reading=reading, grid_size=store.grid_size,
         racks=sum(1 for r in store.racks if r.slots), notes=[*reading.notes, *notes],
         warnings=[i.message for i in issues if i.severity == "warning"],
+        source_page=page_number, source_pages=page_count, source_rotation=rotation,
     )

@@ -280,6 +280,13 @@ Run through this before triggering generation or simulation:
   The estimates assume constant demand and exclude operational uncertainty.
   Do not add SKU effects: the audit evaluates each stockout against the otherwise
   stocked reference, so joint recovery can differ because of substitution.
+- **Selecting a PDF floor plan.** **Add layout → From a floor plan** previews
+  PNG/JPEG/WebP images and multi-page PDFs. Choose the page and clockwise rotation,
+  confirm the preview, then create the layout. Preview does not call a vision
+  model or create a layout. PDF support is installed by default. Uploads are capped
+  at 25 MB; images at 25 megapixels; rendered pages at 2,400 pixels on their longest
+  side. Import notes record the source page and rotation. The grid is still an
+  approximate reconstruction: review fixture positions, aisles and entrances.
 - **All run artifacts live in `backend/.data/`**, which is gitignored.
   Persona files, simulation results, and generated metadata never leave
   the local machine unless the user copies them out.
