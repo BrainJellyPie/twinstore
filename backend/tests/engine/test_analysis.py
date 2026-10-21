@@ -59,6 +59,7 @@ def test_compare_identical_runs_has_zero_effect():
     report = compare_runs(runs, runs, n_bootstrap=300)
     spend = next(m for m in report.metrics if m.metric == "spend")
     assert spend.diff == 0 and spend.ci_low == 0 and spend.ci_high == 0
+    assert spend.prob_b_greater == 0 and spend.prob_b_less == 0
 
 
 def test_compare_detects_a_consistent_lift():
@@ -66,6 +67,7 @@ def test_compare_detects_a_consistent_lift():
     b = [_customer(str(i), [("sku-a", 110 + i, 1, "planned")]) for i in range(80)]
     spend = next(m for m in compare_runs(a, b, n_bootstrap=300).metrics if m.metric == "spend")
     assert spend.diff == 10 and spend.ci_low > 0 and spend.prob_b_greater == 1.0
+    assert spend.prob_b_less == 0
 
 
 def test_required_n_scales_with_variance():

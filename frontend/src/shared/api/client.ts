@@ -591,6 +591,7 @@ export interface MetricComparison {
   ci_low: number;
   ci_high: number;
   prob_b_greater: number;
+  prob_b_less?: number | null;
   sd_paired_diff: number;
   n_for_5pct_effect: number;
 }
