@@ -60,7 +60,7 @@ interface Props {
   heatmaps: RunHeatmaps | null;
   rackStats?: RackStats[] | null;
   mode: "ready" | "running" | "playback";
-  // Extra controls floating over the canvas (e.g. the run toolbar in playback).
+  // Extra controls floating over the canvas.
   overlay?: ReactNode;
 }
 
