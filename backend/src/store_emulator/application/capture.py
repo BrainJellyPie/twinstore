@@ -205,6 +205,8 @@ def prepare_photo(data: bytes, filename: str) -> Image.Image:
         raise AppError(f"image too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)", 413)
     try:
         photo = load_photo(data)
+    except Image.DecompressionBombError as e:
+        raise AppError("Image dimensions are too large; reduce the resolution and try again.", 413) from e
     except (UnidentifiedImageError, OSError, ValueError) as e:
         raise AppError(f"not a readable image (JPEG, PNG or WebP): {filename}", 422) from e
     if min(photo.size) < 120:
