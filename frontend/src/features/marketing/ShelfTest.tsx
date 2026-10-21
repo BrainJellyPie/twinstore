@@ -56,9 +56,11 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
   const [model, setModel] = useState(initial?.model ?? "");
   const [name, setName] = useState(initial?.name ? `${initial.name} (copy)` : "");
 
+  const price = toMinor(priceText, divisor);
+  const invalidPrice = priceText.trim() !== "" && price === null;
   const changes: VariantChange[] = [
     ...(assetId ? [{ kind: "package" as const, sku: target, asset_id: assetId }] : []),
-    ...(toMinor(priceText, divisor) != null ? [{ kind: "price" as const, sku: target, price: toMinor(priceText, divisor), keep_reference: true }] : []),
+    ...(price !== null ? [{ kind: "price" as const, sku: target, price, keep_reference: true }] : []),
     ...(promo ? [{ kind: "promo" as const, sku: target, promo }] : []),
   ];
   // Live preview of both shelves, refreshed shortly after the last edit.
@@ -71,7 +73,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
   const preview = useQuery({
     queryKey: ["projects", projectId, "shelf-preview", debounced],
     queryFn: ({ signal }) => previewShelf(projectId, JSON.parse(debounced) as Parameters<typeof previewShelf>[1], signal),
-    enabled: !!rackId,
+    enabled: !!rackId && !invalidPrice,
     placeholderData: (prev) => prev,
     staleTime: 60_000,
   });
@@ -177,8 +179,10 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Test name (optional)" maxLength={80} className="mr-auto h-10 max-w-xs" />
         {!target && <span className="text-sm text-muted-foreground">Choose the product under test.</span>}
         {target && changes.length === 0 && <span className="text-sm text-muted-foreground">Change its pack, price or sign.</span>}
+        {invalidPrice && <p role="alert" className="text-sm text-destructive">Enter a valid nonnegative price, or leave it blank to keep the current price.</p>}
+        {preview.error && <p role="alert" className="text-sm text-destructive">{preview.error.message}</p>}
         {run.error && <p className="text-sm text-destructive">{run.error.message}</p>}
-        <Button size="lg" disabled={!target || changes.length === 0 || run.isPending} onClick={() => run.mutate()}>
+        <Button size="lg" disabled={!target || invalidPrice || changes.length === 0 || run.isPending} onClick={() => run.mutate()}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <Rows3 className="size-4" />} Run shelf test
         </Button>
       </div>
