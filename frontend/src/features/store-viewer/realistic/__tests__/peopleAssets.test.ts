@@ -1,6 +1,7 @@
 /// <reference types="node" />
 
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ALL_REALISTIC_CHARACTER_ASSETS, characterAnimationPhase } from "@/shared/utils/assetMap";
@@ -22,9 +23,15 @@ interface Model {
 }
 
 describe("bundled shopper models", () => {
+  const manifest = JSON.parse(readFileSync(resolve("public/assets/people/sources.json"), "utf8")) as {
+    outputs: { file: string; bytes: number; sha256: string }[];
+  };
   for (const url of ALL_REALISTIC_CHARACTER_ASSETS) {
     it(`ships ${url} with stationary walking and browsing motions`, () => {
       const data = readFileSync(resolve("public", url.slice(1)));
+      const record = manifest.outputs.find((entry) => url.endsWith(`/${entry.file}`));
+      expect(record?.bytes).toBe(data.length);
+      expect(record?.sha256).toBe(createHash("sha256").update(data).digest("hex"));
       expect(data.readUInt32LE(0)).toBe(0x46546c67);
       const jsonLength = data.readUInt32LE(12);
       const model = JSON.parse(data.subarray(20, 20 + jsonLength).toString()) as Model;

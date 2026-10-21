@@ -76,7 +76,7 @@ Constructed per customer and passed to the engine. The engine only needs to use 
 | `persona` | `Persona` | Customer profile (identity, age, gender, purpose, budget, etc.) |
 | `day` | `Weekday` | Simulation day (MON=1 ~ SUN=7) |
 | `arrival_hour` | `int` | Arrival time (0–23) |
-| `concurrent_visitors_in_hour` | `int` | Number of other customers arriving in the same hour (congestion reference) |
+| `concurrent_visitors_in_hour` | `int` | Number of customers arriving on the same weekday and hour, including this shopper (congestion reference) |
 | `cue` | `BehaviorCue` | Individual behavior variation seed (state/purse/emotion/company) |
 | `behavior_patterns` | `list[BehaviorPattern]` | Available behavior patterns |
 | `address`, `customer_profile` | `str` | Project context (may be empty) |

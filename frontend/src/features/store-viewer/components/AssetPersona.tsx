@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html, useAnimations } from "@react-three/drei";
+import { ErrorBoundary } from "react-error-boundary";
 import * as THREE from "three";
 import type { TimelineEvent } from "@/shared/types/domain";
 import { characterAssetFor, characterAnimationPhase, realisticCharacterAssetFor } from "@/shared/utils/assetMap";
@@ -77,6 +78,33 @@ interface CharacterMeshProps {
   animName: string;
   realistic: boolean;
   personaId: string;
+}
+
+function UnavailableCharacter({ realistic, color }: { realistic: boolean; color: string }) {
+  return (
+    <group name="shopper-placeholder" scale={realistic ? M / PERSONA_SCALE : CHARACTER_TARGET_HEIGHT / 1.75}>
+      <mesh position={[0, 1, 0]} castShadow receiveShadow>
+        <capsuleGeometry args={[0.2, 0.6, 4, 8]} />
+        <meshStandardMaterial color={color} roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 1.625, 0]} castShadow receiveShadow>
+        <sphereGeometry args={[0.125, 12, 8]} />
+        <meshStandardMaterial color="#c5c8ca" roughness={0.9} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <mesh position={[side * 0.1, 0.3, 0]} castShadow receiveShadow>
+            <cylinderGeometry args={[0.07, 0.07, 0.6, 8]} />
+            <meshStandardMaterial color={color} roughness={0.9} />
+          </mesh>
+          <mesh position={[side * 0.25, 1.05, 0]} castShadow receiveShadow>
+            <capsuleGeometry args={[0.055, 0.55, 4, 8]} />
+            <meshStandardMaterial color={color} roughness={0.9} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
 }
 
 function CharacterMesh({ url, animName, realistic, personaId }: CharacterMeshProps) {
@@ -211,9 +239,11 @@ export function AssetPersona({
     <group scale={scale}>
       <group ref={bounceRef}>
       <group ref={turnRef} name="shopper-heading">
-        <Suspense fallback={null}>
-          <CharacterMesh key={url} url={url} animName={animName} realistic={realistic} personaId={personaId} />
-        </Suspense>
+        <ErrorBoundary key={url} fallback={<UnavailableCharacter realistic={realistic} color={color} />}>
+          <Suspense fallback={null}>
+            <CharacterMesh url={url} animName={animName} realistic={realistic} personaId={personaId} />
+          </Suspense>
+        </ErrorBoundary>
       </group>
       {highlighted && (
         <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>

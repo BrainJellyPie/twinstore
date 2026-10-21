@@ -2,7 +2,7 @@
 // size, colours and label text. No three.js / DOM dependencies so they can be
 // unit-tested and reused by an offline renderer.
 
-export type PackageKind = "bottle" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "pot" | "croissant" | "wateringCan";
+export type PackageKind = "bottle" | "perfumeBottle" | "teaCup" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "pot" | "croissant" | "wateringCan";
 
 export type ProductCategory =
   | "drink"
@@ -83,6 +83,22 @@ type Rule = [RegExp, (n: string) => PackageSpec];
 // Ordered: first match wins. Ice-cream novelties precede candy ("Snickers Ice
 // Cream Bar"), candy precedes drinks ("Milk Chocolate"), cups precede noodles.
 const RULES: Rule[] = [
+  // Specialty packaging precedes food words such as tea, milk, jelly and oil.
+  [/\b(?:fragrance|perfume)\b.*\bset\b/, () => spec("box", 0.16, 0.12, 0.045, "other")],
+  [/\b(?:fragrance|perfume)\b.*\bpouch\b/, () => spec("bag", 0.11, 0.14, 0.025, "other")],
+  [/\beau de (?:toilette|parfum)\b|\bperfume oil\b/, (n) =>
+    has(n, /\b(?:5|10|15)\s*ml\b/)
+      ? spec("perfumeBottle", 0.032, 0.08, 0.024, "other")
+      : spec("perfumeBottle", 0.055, 0.12, 0.035, "other")],
+  [/\bperfume atomizer\b|\bamber travel spray\b/, () => spec("bottle", 0.022, 0.095, 0.022, "other")],
+  [/\bbody mist\b|\broom spray\b|\breed diffuser\b/, () => spec("bottle", 0.055, 0.18, 0.055, "other")],
+  [/\bcandle(?:\s+\d+(?:\.\d+)?\s*g)?$/, () => spec("jar", 0.075, 0.09, 0.075, "other")],
+  [/\b(?:dish soap|laundry liquid)\s+refill\b/, () => spec("bag", 0.12, 0.2, 0.05, "other")],
+  [/\b(?:oats|rice|lentils|chickpeas|pasta|nuts|seeds|coffee|tea)\b.*\brefill\s+\d+(?:\.\d+)?\s*(?:kg|g)\b/,
+    () => spec("bag", 0.13, 0.2, 0.06, "pantry")],
+  [/^mini milk tea tasting set$/, () => spec("box", 0.18, 0.12, 0.1, "drink")],
+  [/^(?:classic pearl milk tea|brown sugar pearl milk|taro milk tea|matcha pearl latte|thai milk tea|jasmine milk tea|mango fruit tea|passion fruit green tea|peach oolong tea|lychee coconut jelly tea|oat milk pearl tea)(?:\s+\d+(?:\.\d+)?\s*(?:ml|oz))?$/,
+    () => spec("teaCup", 0.095, 0.23, 0.095, "drink")],
   // Garden tools must precede beverage-can and water-bottle rules.
   [/^(?:(?:metal|galvanized)\s+)?watering can(?:\s+5\s*l)?$/,
     () => spec("wateringCan", 0.45233607, 0.19681853, 0.19101861, "other")],
@@ -129,6 +145,7 @@ const RULES: Rule[] = [
   [/iodized salt|table salt/, () => spec("tube", 0.085, 0.14, 0.085, "pantry")],
   [/\boil\b/, () => spec("bottle", 0.1, 0.3, 0.1, "pantry")],
   [/cooking spray|\bpam\b/, () => spec("tube", 0.055, 0.19, 0.055, "pantry")],
+  [/\bchocolate\s+(?:bar|block)\b/, () => spec("bag", 0.075, 0.19, 0.022, "candy")],
   [
     /king size|candy|skittles|sour patch|gummies|gummy|goldbears|haribo|airheads|life savers|reese|snickers|kit kat|butterfinger|hershey|twix|m&m|starburst|swedish fish|trolli|crawlers|share size/,
     (n) =>

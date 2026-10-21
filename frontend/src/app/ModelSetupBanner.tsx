@@ -1,10 +1,10 @@
-// Shown under the command bar while no API key is set: which local model stands in for the cloud
-// models, how far its download is, and the way to add a key.
+// Optional model setup stays compact so the store remains usable on small screens.
 
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Cpu, KeyRound, Loader2, TriangleAlert, X } from "lucide-react";
+import { ChevronDown, Cpu, KeyRound, Loader2, Sparkles, TriangleAlert, X } from "lucide-react";
 
+import { useI18n } from "@/shared/i18n/i18n";
 import { isPreparing, useLocalModelControl, useModelSetup } from "@/features/settings/useModelSetup";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
@@ -20,17 +20,20 @@ function readDismissed(): string | null {
 }
 
 export function ModelSetupBanner() {
+  const { t } = useI18n();
   const { data } = useModelSetup();
   const { start } = useLocalModelControl();
   const [dismissed, setDismissed] = useState<string | null>(readDismissed);
 
   if (!data?.warning) return null;
   const state = data.local.state;
-  // A dismissed banner comes back when the situation changes (e.g. the download finished or failed).
+  // Surface changed states even if a previous notice was dismissed.
   if (dismissed === state) return null;
   const busy = isPreparing(data);
   const ready = state === "ready";
-  const progress = data.local.progress;
+  const failed = state === "error";
+  const progress = data.local.progress !== null && Number.isFinite(data.local.progress)
+    ? Math.round(Math.max(0, Math.min(1, data.local.progress)) * 100) : null;
 
   const dismiss = () => {
     setDismissed(state);
@@ -43,53 +46,55 @@ export function ModelSetupBanner() {
 
   return (
     <div role="status" className="relative z-20 px-4 pt-2">
-      <div
-        className={cn(
-          "glass relative mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl px-4 py-2.5 text-sm",
-          ready ? "border-l-2 border-l-primary" : "border-l-2 border-l-warn",
-        )}
-      >
-        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-foreground/[0.06]" aria-hidden>
-          {busy ? <Loader2 className="size-4 animate-spin" /> : ready ? <Cpu className="size-4" /> : <TriangleAlert className="size-4" />}
+      <div className={cn("glass relative mx-auto flex max-w-6xl items-start gap-3 rounded-2xl px-3 py-2.5 text-sm", failed && "border-l-2 border-l-warn")}>
+        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-foreground/[0.06]" aria-hidden>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : ready ? <Cpu className="size-4" /> : failed ? <TriangleAlert className="size-4" /> : <Sparkles className="size-4" />}
         </span>
-        <div className="min-w-0 flex-1 pr-5 sm:pr-0">
-          <p className="leading-snug">{data.warning}</p>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium leading-snug">
+            {busy ? t("preparingVision") : ready ? t("localReady") : failed ? t("modelAttention") : t("exploreFree")}
+          </p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+            {ready ? t("localReadyHint") : busy ? t("preparingHint") : t("freePreviewHint")}
+          </p>
           {busy && (
-            <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-              <div className="h-1.5 w-48 overflow-hidden rounded-full bg-foreground/10" aria-hidden>
-                <div
-                  className={cn("h-full rounded-full bg-primary transition-[width] duration-500", progress === null && "w-1/3 animate-pulse")}
-                  style={progress !== null ? { width: `${Math.round(progress * 100)}%` } : undefined}
-                />
+            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <div role="progressbar" aria-label={t("modelDownload")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress ?? undefined}
+                className="h-1.5 w-32 max-w-full overflow-hidden rounded-full bg-foreground/10">
+                <div className={cn("h-full rounded-full bg-primary transition-[width] duration-500", progress === null && "w-1/3 animate-pulse")}
+                  style={progress !== null ? { width: `${progress}%` } : undefined} />
               </div>
-              <span className="num">
+              <span className="num min-w-0 break-words">
                 {progress !== null && data.local.total_mb > 0
                   ? `${data.local.downloaded_mb.toFixed(0)} / ${data.local.total_mb.toFixed(0)} MB`
                   : data.local.message}
               </span>
             </div>
           )}
+          <details className="group mt-1.5">
+            <summary className="flex w-fit cursor-pointer list-none items-center gap-1 rounded-sm text-xs font-medium text-primary focus-visible:outline-2 focus-visible:outline-ring">
+              {busy || ready ? t("modelDetails") : t("setupVision")}
+              <ChevronDown className="size-3 transition-transform group-open:rotate-180" aria-hidden />
+            </summary>
+            <div className="mt-2 space-y-2 border-t border-glass-border pt-2">
+              <p className="break-words text-xs leading-relaxed text-muted-foreground">{data.warning}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                {(state === "off" || failed) && (
+                  <Button size="sm" variant="outline" onClick={() => start.mutate()} disabled={start.isPending}>
+                    <Cpu className="size-3.5" aria-hidden /> {start.isPending ? t("starting") : failed ? t("retryLocal") : t("startLocal")}
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" asChild>
+                  <Link to="/settings"><KeyRound className="size-3.5" aria-hidden /> {t("modelSettings")}</Link>
+                </Button>
+              </div>
+              {start.isError && <p role="alert" className="break-words text-xs text-destructive">{start.error instanceof Error ? start.error.message : t("startLocalError")}</p>}
+            </div>
+          </details>
         </div>
-        <div className="flex w-full min-w-0 shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
-          {(state === "off" || state === "error") && (
-            <Button size="sm" variant="outline" onClick={() => start.mutate()} disabled={start.isPending}>
-              <Cpu className="size-3.5" aria-hidden /> Start local model
-            </Button>
-          )}
-          <Button size="sm" asChild>
-            <Link to="/settings">
-              <KeyRound className="size-3.5" aria-hidden /> Add an API key
-            </Link>
-          </Button>
-          <button
-            type="button"
-            onClick={dismiss}
-            className="absolute top-2 right-2 grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground sm:static"
-            aria-label="Hide this notice"
-          >
-            <X className="size-4" aria-hidden />
-          </button>
-        </div>
+        <button type="button" onClick={dismiss} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" aria-label={t("hideNotice")}>
+          <X className="size-4" aria-hidden />
+        </button>
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.result import AggregatedResult, FailedCustomer
 from store_emulator.domain.runner import ProgressCallback
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import PathFinder, stable_seed
+from store_emulator.domain.types import PathFinder, Weekday, stable_seed
 from store_emulator.engine.scenario import compile_scenario, hour_effects, priors_for, scale_trip
 from store_emulator.engine.validation import validate, clear_blocked_slots, log_cleared
 from .aggregator import aggregate
@@ -97,7 +97,7 @@ class PerCustomerSimulationRunner:
 
     def _validate_and_prepare(
         self, store: Store, personas: list[Persona],
-    ) -> tuple[list[list[float]], list[tuple[CustomerEntry, Persona]], Counter[int]]:
+    ) -> tuple[list[list[float]], list[tuple[CustomerEntry, Persona]], Counter[tuple[Weekday, int]]]:
         log_cleared(logger, "[simulation]", clear_blocked_slots(store))
 
         issues = validate(store)
@@ -111,9 +111,11 @@ class PerCustomerSimulationRunner:
 
         heatmap = compute_pathcalc_heatmap(store)
         customers = generate_customers(personas, seed=self.run_seed)
+        if store.weekly_schedule:
+            customers = [entry for entry in customers if store.is_open_at(entry.day, entry.hour)]
         persona_map = {p.id: p for p in personas}
         entries = [(e, persona_map[e.persona_id]) for e in customers if e.persona_id in persona_map]
-        hourly_counts: Counter[int] = Counter(p.arrival_hour for p in personas)
+        hourly_counts: Counter[tuple[Weekday, int]] = Counter((entry.day, entry.hour) for entry, _ in entries)
         return heatmap, entries, hourly_counts
 
     async def run(
@@ -166,7 +168,7 @@ class PerCustomerSimulationRunner:
                             persona=persona,
                             day=entry.day,
                             arrival_hour=entry.hour,
-                            concurrent_visitors_in_hour=hourly_counts.get(entry.hour, 0),
+                            concurrent_visitors_in_hour=hourly_counts.get((entry.day, entry.hour), 0),
                             cue=cue,
                             behavior_patterns=self.behavior_patterns,
                             address=address,
