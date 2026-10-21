@@ -1328,6 +1328,12 @@ export interface ReservedArea {
   height: number;
 }
 
+export interface DiningTableMix {
+  two_seat: number;
+  four_seat: number;
+  six_seat: number;
+}
+
 export interface LayoutOptions {
   style?: "aisles" | "loop" | "spine" | "cross" | "free_flow" | "perimeter" | "showroom" | null;
   width?: number | null;
@@ -1347,6 +1353,7 @@ export interface LayoutOptions {
   design_theme?: StoreDesign | null;
   dining_tables?: number | null;
   dining_seats?: 2 | 4 | 6;
+  table_mix?: DiningTableMix | null;
   table_rotation?: 0 | 90;
   table_clearance?: number;
   seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";

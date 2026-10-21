@@ -79,6 +79,55 @@ function mount() {
   render(<QueryClientProvider client={client}><Picker /></QueryClientProvider>);
 }
 
+it("starts a mix from the seating that actually fits when the format count is automatic", async () => {
+  const table = { id: "table1", type: "table" as const, shape: [[1, 1], [1, 1]], position: [2, 2] as [number, number], rotation: 0 as const,
+    levels: 1, dwell_min: 0, dwell_max: 0, rack_name: "Table", rack_desc: "", rack_decoration_desc: "", locked_faces: [], slots: [] };
+  vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Small restaurant", type: "restaurant", grid_size: [8, 6], weekly_schedule: [], racks: [table] });
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: /Family restaurant/ }));
+  await screen.findByText("1 dining tables · 4 seats");
+  fireEvent.click(screen.getByText("Mixed table sizes"));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Use mixed table sizes" }));
+  expect((screen.getByLabelText("4-seat tables") as HTMLInputElement).value).toBe("1");
+  expect((screen.getByLabelText("Dining tables (mixed sizes)") as HTMLInputElement).value).toBe("1");
+});
+
+it("edits mixed counts, guards the total, applies seating priorities and restores uniform tables", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByText("Mixed table sizes"));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Use mixed table sizes" }));
+  fireEvent.change(screen.getByLabelText("2-seat tables"), { target: { value: "3" } });
+  fireEvent.change(screen.getByLabelText("4-seat tables"), { target: { value: "2" } });
+  fireEvent.change(screen.getByLabelText("6-seat tables"), { target: { value: "1" } });
+  const mix = { two_seat: 3, four_seat: 2, six_seat: 1 };
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ dining_tables: 6, table_mix: mix }), expect.any(AbortSignal)));
+  expect((screen.getByLabelText("Dining tables (mixed sizes)") as HTMLInputElement).value).toBe("6");
+  expect((screen.getByLabelText("Dining tables (mixed sizes)") as HTMLInputElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).disabled).toBe(true);
+  const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+  fireEvent.change(screen.getByLabelText("6-seat tables"), { target: { value: "49" } });
+  expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+  expect((screen.getByRole("button", { name: "Export options" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("6-seat tables"), { target: { value: "1" } });
+  fireEvent.click(screen.getByText("Apply a layout priority"));
+  fireEvent.change(screen.getByLabelText("Layout priority"), { target: { value: "wide" } });
+  fireEvent.click(screen.getByRole("button", { name: "Apply priority" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ table_mix: mix, dining_tables: 6, table_clearance: 2 }), expect.any(AbortSignal)));
+  fireEvent.change(screen.getByLabelText("Layout priority"), { target: { value: "takeaway" } });
+  fireEvent.click(screen.getByRole("button", { name: "Apply priority" }));
+  expect((screen.getByLabelText("2-seat tables") as HTMLInputElement).value).toBe("0");
+  expect((screen.getByLabelText("4-seat tables") as HTMLInputElement).value).toBe("0");
+  expect((screen.getByLabelText("6-seat tables") as HTMLInputElement).value).toBe("0");
+  expect((screen.getByLabelText("Table rotation") as HTMLSelectElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("2-seat tables"), { target: { value: "2" } });
+  fireEvent.click(screen.getByRole("checkbox", { name: "Use mixed table sizes" }));
+  expect((screen.getByLabelText("Dining tables (4 seats each)") as HTMLInputElement).value).toBe("2");
+  expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).disabled).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByRole("checkbox", { name: "Use mixed table sizes" }) as HTMLInputElement).checked).toBe(false);
+});
+
 it("previews table sizes, retains the choice with zero tables and resets to four seats", async () => {
   mount();
   await screen.findByRole("img", { name: "Floor plan preview" });

@@ -43,6 +43,9 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     enabled: validTemplateChoice(value), staleTime: Infinity,
   });
   const selected = templates.find((t) => t.id === value.templateId);
+  const tableMix = value.table_mix;
+  const tableCount = tableMix ? tableMix.two_seat + tableMix.four_seat + tableMix.six_seat : value.dining_tables ?? selected?.default_dining_tables ?? 0;
+  const mixStartingCount = value.dining_tables ?? (preview.isSuccess ? preview.data.racks.filter((rack) => rack.type === "table").length : tableCount);
   const closedDays = value.closed_days ?? selected?.closed_days ?? [];
   const activeDesign = value.design_theme ?? selected?.default_design;
   const categories = selected?.categories ?? [];
@@ -73,6 +76,10 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     return 0;
   });
   const update = (patch: Partial<TemplateChoice>) => onChange({ ...value, ...patch });
+  function updateTableMix(patch: Partial<api.DiningTableMix>) {
+    const mix = { two_seat: 0, four_seat: 0, six_seat: 0, ...tableMix, ...patch };
+    update({ table_mix: mix, dining_tables: mix.two_seat + mix.four_seat + mix.six_seat });
+  }
 
   return (
     <div className="space-y-3">
@@ -154,6 +161,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <p>{priority.description}</p>
               <p className="text-muted-foreground">Apply these settings to this floor, then review the preview. Dimensions, product settings, design, operating hours and reserved areas stay as set. Space limits still apply.</p>
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ ...priority.options,
+                ...(priority.options.dining_tables === 0 && tableMix ? { table_mix: { two_seat: 0, four_seat: 0, six_seat: 0 } } : {}),
                 ...(priority.checkoutAtEntrance ? { checkout_wall: value.gate_wall ?? "front" } : {}) })}>Apply priority</button>
             </details>
             <div className="grid grid-cols-2 gap-2">
@@ -231,37 +239,51 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 {onApplyCurrencyToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={sharedCurrency === value.currency}
                   onClick={() => onApplyCurrencyToAll(value.currency)}>{sharedCurrency === value.currency ? "Currency used on all floors" : "Apply currency to all floors"}</button>}
               </div>
-              <div className="space-y-1"><Field label={`Dining tables (${value.dining_seats ?? 4} seats each)`}><input type="number" min={0} max={48} step={1} className={controlClass}
-                placeholder={`Format default (${selected?.default_dining_tables ?? 0})`} value={value.dining_tables ?? ""}
+              <div className="space-y-1"><Field label={tableMix ? "Dining tables (mixed sizes)" : `Dining tables (${value.dining_seats ?? 4} seats each)`}><input type="number" min={0} max={48} step={1} className={controlClass}
+                disabled={!!tableMix} placeholder={`Format default (${selected?.default_dining_tables ?? 0})`} value={tableMix ? tableCount : value.dining_tables ?? ""}
                 onChange={(e) => update({ dining_tables: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
-                <p className="text-[10px] text-muted-foreground">0–48 tables; blank uses the format default, sized to fit.</p>
+                <p className="text-[10px] text-muted-foreground">{tableMix ? "Total from the mixed table counts below." : "0–48 tables; blank uses the format default, sized to fit."}</p>
               </div>
               <div className="space-y-1"><Field label="Seats per table"><select className={controlClass} value={value.dining_seats ?? 4}
-                disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
+                disabled={!!tableMix || tableCount === 0}
                 onChange={(e) => update({ dining_seats: Number(e.target.value) as 2 | 4 | 6 })}>
                 <option value={2}>2 seats</option><option value={4}>4 seats</option><option value={6}>6 seats</option>
-              </select></Field><p className="text-[10px] text-muted-foreground">{value.table_rotation === 90 ? `2×${(value.dining_seats ?? 4) / 2}` : `${(value.dining_seats ?? 4) / 2}×2`} cells, including chairs.</p></div>
+              </select></Field><p className="text-[10px] text-muted-foreground">{tableMix ? "Choose each size in Mixed table sizes below." : `${value.table_rotation === 90 ? `2×${(value.dining_seats ?? 4) / 2}` : `${(value.dining_seats ?? 4) / 2}×2`} cells, including chairs.`}</p></div>
               <Field label="Table rotation"><select className={controlClass} value={value.table_rotation ?? 0}
-                disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
+                disabled={tableCount === 0}
                 onChange={(e) => update({ table_rotation: Number(e.target.value) as 0 | 90 })}>
                 <option value={0}>0°</option><option value={90}>90°</option>
               </select></Field>
-              <Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
-                disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
+              <div className="col-span-2 sm:col-span-1"><Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
+                disabled={tableCount === 0}
                 onChange={(e) => update({ seating_zone: e.target.value as TemplateChoice["seating_zone"] })}>
                 <option value="auto">Format default{selected?.default_seating_zone && selected.default_seating_zone !== "auto" ? ` (${selected.default_seating_zone})` : ""}</option><option value="front">Front edge</option>
                 <option value="back">Back wall</option><option value="left">Left side</option>
                 <option value="right">Right side</option><option value="center">Center</option>
-              </select></Field>
-              <Field label="Space around dining tables"><select className={controlClass} value={value.table_clearance ?? 1}
-                disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
+              </select></Field></div>
+              <div className="col-span-2 sm:col-span-1"><Field label="Space around dining tables"><select className={controlClass} value={value.table_clearance ?? 1}
+                disabled={tableCount === 0}
                 onChange={(e) => update({ table_clearance: Number(e.target.value) })}>
                 <option value={1}>1 cell · Standard</option><option value={2}>2 cells · More room</option><option value={3}>3 cells · Open seating</option>
-              </select></Field>
+              </select></Field></div>
             </div>
+            <details className="space-y-2 rounded border p-2 text-xs">
+              <summary className="cursor-pointer">Mixed table sizes{tableMix ? ` · ${tableCount} tables` : ""}</summary>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={!!tableMix}
+                onChange={(event) => event.target.checked
+                  ? updateTableMix({ [value.dining_seats === 2 ? "two_seat" : value.dining_seats === 6 ? "six_seat" : "four_seat"]: mixStartingCount })
+                  : update({ table_mix: null, dining_tables: tableCount })} />Use mixed table sizes</label>
+              {tableMix && <div className="grid grid-cols-3 gap-2">
+                {([["two_seat", "2-seat tables"], ["four_seat", "4-seat tables"], ["six_seat", "6-seat tables"]] as const).map(([key, label]) => <Field key={key} label={label}>
+                  <input type="number" min={0} max={48} step={1} className={controlClass} value={tableMix[key]}
+                    onChange={(event) => updateTableMix({ [key]: Number(event.target.value) })} />
+                </Field>)}
+              </div>}
+              <p className="text-muted-foreground">Set up to 48 tables in total. Larger groups are placed first, then smaller groups fill available space. Rotation, seating area and clearance apply to every size. If the mix cannot fit, adjust the counts or layout.</p>
+            </details>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, dining_seats: 4, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>

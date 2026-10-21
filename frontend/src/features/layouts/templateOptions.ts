@@ -14,7 +14,7 @@ export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   density: "balanced", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, fixture_design: "mixed", design_theme: null, dining_tables: null,
   checkout_placement: "auto", checkout_wall: "front", seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1, dining_seats: 4, table_rotation: 0,
   aisle_width: null, max_shelf_run: null, excluded_categories: [], products_per_category: null,
-  open_hour: null, close_hour: null, closed_days: null,
+  open_hour: null, close_hour: null, closed_days: null, table_mix: null,
 };
 
 export const LAYOUT_STYLES = [
@@ -37,6 +37,12 @@ export const LAYOUT_PRIORITIES: {
 ];
 
 export function validTemplateChoice(value: TemplateChoice): boolean {
+  if (value.table_mix != null) {
+    const counts = [value.table_mix.two_seat, value.table_mix.four_seat, value.table_mix.six_seat];
+    const total = counts.reduce((sum, count) => sum + count, 0);
+    if (counts.some((count) => !Number.isInteger(count) || count < 0 || count > 48) || total > 48 ||
+      (value.dining_tables != null && value.dining_tables !== total)) return false;
+  }
   return !!value.templateId && Number.isSafeInteger(value.seed) &&
     (value.open_hour == null || (Number.isInteger(value.open_hour) && value.open_hour >= 0 && value.open_hour <= 23)) &&
     (value.close_hour == null || (Number.isInteger(value.close_hour) && value.close_hour >= 1 && value.close_hour <= 24)) &&
@@ -66,7 +72,7 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
     width: value.width, height: value.height, density: value.density, aisle_width: value.aisle_width, entrance: value.entrance, exit_position: value.exit_position, shelf_direction: value.shelf_direction,
     max_shelf_run: value.max_shelf_run,
     checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme,
-    dining_tables: value.dining_tables, dining_seats: value.dining_seats, table_rotation: value.table_rotation, seating_zone: value.seating_zone, table_clearance: value.table_clearance,
+    dining_tables: value.dining_tables, dining_seats: value.dining_seats, table_mix: value.table_mix, table_rotation: value.table_rotation, seating_zone: value.seating_zone, table_clearance: value.table_clearance,
     checkout_placement: value.checkout_placement, checkout_wall: value.checkout_wall, reserved_areas: value.reserved_areas, requirements: value.requirements,
     excluded_categories: value.excluded_categories,
     products_per_category: value.products_per_category,

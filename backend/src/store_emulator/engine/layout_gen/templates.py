@@ -596,39 +596,56 @@ def generate_store(
     for cat, y in zip(t.wall_shelves, side_ys, strict=False):
         b.add(RackType.SHELF, w - 1, y, category=cat, faces=[Face.W], rotation=270)
 
-    # The footprint includes chairs; keep the selected circulation ring clear.
+    # Place larger mixed groups first; every footprint includes its chairs.
     clearance = options.table_clearance
-    table_width, table_depth = (2, options.dining_seats // 2) if options.table_rotation == 90 else (options.dining_seats // 2, 2)
-    table_positions = [(x, y) for y in range(clearance + 1, h - clearance - table_depth, clearance + table_depth)
-                       for x in range(clearance + 1, w - clearance - table_width, clearance + table_width)]
-    table_positions = [(x, y) for x, y in table_positions
-                       if all(b.free(cx, cy) and (cx, cy) not in cross_aisles
-                              for cx in range(x, x + table_width) for cy in range(y, y + table_depth))]
-    # Rank safe seating positions without changing the table footprint or clearance.
-    # As the count grows, seating extends into neighboring parts of the floor.
-    if seating_zone == "front":
-        table_positions.sort(key=lambda p: (-p[1], abs(p[0] + (table_width - 1) / 2 - entrance_x)))
-    elif seating_zone == "back":
-        table_positions.sort(key=lambda p: (p[1], abs(p[0] + (table_width - 1) / 2 - (w - 1) / 2)))
-    elif seating_zone == "left":
-        table_positions.sort(key=lambda p: (p[0], p[1]))
-    elif seating_zone == "right":
-        table_positions.sort(key=lambda p: (-p[0], p[1]))
-    elif seating_zone == "center":
-        table_positions.sort(key=lambda p: (p[0] + (table_width - 1) / 2 - (w - 1) / 2) ** 2 + (p[1] + (table_depth - 1) / 2 - (h - 1) / 2) ** 2)
-    table_count = min(t.dining_tables, len(table_positions)) if options.dining_tables is None else options.dining_tables
-    if table_count > len(table_positions):
-        raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with {clearance}-cell circulation space, the selected aisle pattern and requested reserved areas. Reduce the table count or clearance, adjust the layout or increase the grid size.")
+    mix = options.table_mix
+    groups: list[tuple[int, int | None]] = [(options.dining_seats, options.dining_tables)] if mix is None else [
+        (6, mix.six_seat), (4, mix.four_seat), (2, mix.two_seat),
+    ]
     dining_clearance: set[tuple[int, int]] = set()
-    for i, (x, y) in enumerate(table_positions[:table_count]):
-        seat_label = {2: "Two", 4: "Four", 6: "Six"}[options.dining_seats]
-        table = Rack(id=f"r_table_{i + 1}", type=RackType.TABLE, shape=[[1] * (options.dining_seats // 2) for _ in range(2)],
-                     position=(x, y), rotation=90 if options.table_rotation == 90 else 0,
-                     rack_name=f"Dining table {i + 1}", rack_desc=f"{seat_label} seats; furniture only")
-        b.racks.append(table)
-        b.taken.update(table.occupied_positions)
-        dining_clearance.update((cx, cy) for cx in range(x - clearance, x + table_width + clearance)
-                                for cy in range(y - clearance, y + table_depth + clearance))
+    table_index = 0
+    for seats, requested in groups:
+        target = t.dining_tables if requested is None else requested
+        if target == 0:
+            continue
+        table_width, table_depth = (2, seats // 2) if options.table_rotation == 90 else (seats // 2, 2)
+        step_x, step_y = (clearance + table_width, clearance + table_depth) if mix is None else (1, 1)
+        table_positions = [(x, y) for y in range(clearance + 1, h - clearance - table_depth, step_y)
+                           for x in range(clearance + 1, w - clearance - table_width, step_x)]
+        table_positions = [(x, y) for x, y in table_positions
+                           if all(b.free(cx, cy) and (cx, cy) not in cross_aisles
+                                  for cx in range(x, x + table_width) for cy in range(y, y + table_depth))]
+        # Seating extends into neighboring parts of the floor as its count grows.
+        if seating_zone == "front":
+            table_positions.sort(key=lambda p: (-p[1], abs(p[0] + (table_width - 1) / 2 - entrance_x)))
+        elif seating_zone == "back":
+            table_positions.sort(key=lambda p: (p[1], abs(p[0] + (table_width - 1) / 2 - (w - 1) / 2)))
+        elif seating_zone == "left":
+            table_positions.sort(key=lambda p: (p[0], p[1]))
+        elif seating_zone == "right":
+            table_positions.sort(key=lambda p: (-p[0], p[1]))
+        elif seating_zone == "center":
+            table_positions.sort(key=lambda p: (p[0] + (table_width - 1) / 2 - (w - 1) / 2) ** 2 + (p[1] + (table_depth - 1) / 2 - (h - 1) / 2) ** 2)
+        placed = 0
+        for x, y in table_positions:
+            if placed == target:
+                break
+            if any((cx, cy) in dining_clearance for cx in range(x, x + table_width) for cy in range(y, y + table_depth)):
+                continue
+            table_index += 1
+            seat_label = {2: "Two", 4: "Four", 6: "Six"}[seats]
+            table = Rack(id=f"r_table_{table_index}", type=RackType.TABLE, shape=[[1] * (seats // 2) for _ in range(2)],
+                         position=(x, y), rotation=90 if options.table_rotation == 90 else 0,
+                         rack_name=f"Dining table {table_index}", rack_desc=f"{seat_label} seats; furniture only")
+            b.racks.append(table)
+            b.taken.update(table.occupied_positions)
+            dining_clearance.update((cx, cy) for cx in range(x - clearance, x + table_width + clearance)
+                                    for cy in range(y - clearance, y + table_depth + clearance))
+            placed += 1
+        if requested is not None and placed < requested:
+            if mix is not None:
+                raise ValueError(f"This mixed dining arrangement can place {placed} of the requested {requested} {seats}-seat tables after larger tables, with {clearance}-cell circulation space. Reduce the mix or clearance, change the seating zone or rotation, or enlarge the floor.")
+            raise ValueError(f"This {w}×{h} grid fits at most {placed} dining tables with {clearance}-cell circulation space, the selected aisle pattern and requested reserved areas. Reduce the table count or clearance, adjust the layout or increase the grid size.")
 
     # Every populated face opens onto a continuous aisle. Cross-aisles split
     # long shelf runs, and the front two rows stay clear for checkout circulation.

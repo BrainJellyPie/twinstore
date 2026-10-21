@@ -99,7 +99,7 @@ def preview(
     return _preview_store(template_id, seed, currency, options)
 
 
-@router.post("/store-templates/preview", summary="Preview a generated store with reserved areas (not saved)")
+@router.post("/store-templates/preview", summary="Preview a generated store with full layout options (not saved)")
 def preview_options(req: TemplateLayoutRequest) -> Store:
     return _preview_store(req.template_id, req.seed, req.currency, req)
 
