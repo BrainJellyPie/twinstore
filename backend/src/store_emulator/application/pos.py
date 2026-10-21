@@ -61,7 +61,10 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         if "unit_price" in cols and row.get(cols["unit_price"], "").strip():
             price = _num(row.get(cols["unit_price"], ""), 0.0)
         elif "line_total" in cols:
-            price = _num(row.get(cols["line_total"], ""), 0.0) / qty if qty else 0.0
+            total = _num(row.get(cols["line_total"], ""), 0.0)
+            if qty == 0 and total != 0:
+                raise ValueError("POS line total must be zero when quantity is zero; a unit price cannot be derived.")
+            price = total / qty if qty else 0.0
         else:
             price = 0.0
         lines.append(PosLine(transaction_id=tx, sku=sku, quantity=qty, unit_price=price, hour=_hour(row, cols)))
