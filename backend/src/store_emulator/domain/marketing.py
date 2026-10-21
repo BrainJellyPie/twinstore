@@ -9,6 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.analysis import MetricComparison
+from store_emulator.domain.types import ResourceId
 
 type ChangeKind = Literal["price", "discount", "promo", "move", "package", "category_price"]
 type ExperimentEngine = Literal["rule", "vlm"]
@@ -46,7 +47,7 @@ class Variant(BaseModel):
 
 
 class ExperimentRequest(BaseModel):
-    setup_id: str = Field(description="the control layout; every variant starts from it")
+    setup_id: ResourceId = Field(description="the control layout; every variant starts from it")
     name: str = Field(default="", max_length=80)
     variants: list[Variant] = Field(min_length=1, max_length=6)
     focus_skus: list[str] = Field(default_factory=list[str], max_length=20, description="products whose sales the test is about")
@@ -241,7 +242,7 @@ class SurveyReport(BaseModel):
 class ShelfTestRequest(BaseModel):
     """Shelf impact test: the same respondents see the control shelf face and the changed one."""
     name: str = Field(default="", max_length=80)
-    setup_id: str
+    setup_id: ResourceId
     rack_id: str
     face: Literal["N", "S", "E", "W"] | None = Field(default=None, description="None = the face where the target stands")
     target_sku: str = Field(min_length=1, description="the product whose pick share and stand-out the test is about")
@@ -305,7 +306,7 @@ class ShelfTestReport(BaseModel):
 
 
 class ShelfPreviewRequest(BaseModel):
-    setup_id: str
+    setup_id: ResourceId
     rack_id: str
     target_sku: str = ""
     face: Literal["N", "S", "E", "W"] | None = None
