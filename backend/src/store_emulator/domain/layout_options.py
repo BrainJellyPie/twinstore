@@ -20,3 +20,33 @@ class LayoutOptions(BaseModel):
     entrance: EntrancePosition = "left"
     checkouts: int = Field(default=1, ge=1, le=4)
     fixture_design: FixtureDesign = "mixed"
+
+
+class TemplateLayoutRequest(LayoutOptions):
+    template_id: str
+    seed: int = 0
+    currency: Literal["USD", "KRW", "JPY"] = "USD"
+    name: str | None = Field(default=None, max_length=200)
+    requirements: str = Field(default="", max_length=2000)
+
+
+class BuildingFloorRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    label: str = Field(min_length=1, max_length=80)
+    layout: TemplateLayoutRequest
+
+
+class BuildingLayoutRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=160)
+    floors: list[BuildingFloorRequest] = Field(min_length=2, max_length=6)
+
+
+class BuildingFloorInfo(BaseModel):
+    id: str
+    name: str
+    level: int
+    label: str
+    floor_count: int

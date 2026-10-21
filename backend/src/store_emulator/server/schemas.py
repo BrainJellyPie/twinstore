@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from store_emulator.domain.store import DaySchedule
+from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.types import Face
 from store_emulator.engine.validation import BlockedFaceDetail, ClearedSlot, Issue
 
@@ -144,6 +145,7 @@ class SetupSummary(BaseModel):
     created_at: str
     updated_at: str
     readiness: Readiness | None = None
+    building: BuildingFloorInfo | None = None
 
 
 class SetupDetail(SetupSummary):

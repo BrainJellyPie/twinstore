@@ -53,3 +53,81 @@ def test_invalid_options_rejected_for_preview_and_save(client, patch):
 def test_unknown_templates_do_not_create_layouts(client):
     assert client.get("/api/store-templates/not-a-format/preview").status_code == 404
     assert client.post(f"/api/projects/{PID}/setups/generate", json={"template_id": "not-a-format"}).status_code == 404
+
+
+def _building():
+    return {"name": "Market house", "floors": [
+        {"label": "Ground shop", "layout": {"template_id": "fashion_boutique", "style": "free_flow"}},
+        {"label": "Upstairs café", "layout": {"template_id": "specialty_cafe", "width": 16, "height": 12, "checkouts": 2}},
+    ]}
+
+
+def test_building_floors_are_linked_but_keep_independent_layouts(client):
+    response = client.post(f"/api/projects/{PID}/setups/generate-building", json=_building())
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert len(result["setups"]) == 2
+    floors = [client.get(f"/api/projects/{PID}/setups/{s['id']}").json() for s in result["setups"]]
+    assert floors[0]["building"]["id"] == floors[1]["building"]["id"]
+    assert [f["building"]["level"] for f in floors] == [1, 2]
+    assert [f["store"]["type"] for f in floors] == ["fashion", "cafe"]
+    assert floors[1]["store"]["grid_size"] == [16, 12]
+    assert client.get(f"/api/projects/{PID}").json()["state"]["activeSetupId"] == floors[0]["id"]
+    assert "no travel between floors" in floors[0]["memo"]
+
+
+def test_unknown_upper_floor_leaves_no_partial_building(client):
+    before = client.get(f"/api/projects/{PID}").json()
+    body = _building()
+    body["floors"][1]["layout"]["template_id"] = "missing-format"
+    response = client.post(f"/api/projects/{PID}/setups/generate-building", json=body)
+    assert response.status_code == 404
+    after = client.get(f"/api/projects/{PID}").json()
+    assert before["setups"] == after["setups"]
+    assert before["state"] == after["state"]
+
+
+@pytest.mark.parametrize("labels", [["Only floor"], ["Floor"] * 2, ["Ground", " ground "], ["", "Upper"], [str(i) for i in range(7)]])
+def test_building_requires_two_to_six_uniquely_named_floors(client, labels):
+    body = {"name": "Building", "floors": [{"label": label, "layout": {"template_id": "urban_cvs"}} for label in labels]}
+    assert client.post(f"/api/projects/{PID}/setups/generate-building", json=body).status_code == 422
+
+
+def test_building_write_failure_rolls_back_new_floors(client, monkeypatch):
+    from store_emulator.application import template_layouts
+    from store_emulator.domain.layout_options import BuildingLayoutRequest
+    before = client.get(f"/api/projects/{PID}").json()
+    write = template_layouts.write_json
+    count = 0
+
+    def fail_second_write(path, data):
+        nonlocal count
+        count += 1
+        if count == 2:
+            raise OSError("disk full")
+        write(path, data)
+
+    monkeypatch.setattr(template_layouts, "write_json", fail_second_write)
+    with pytest.raises(OSError, match="disk full"):
+        template_layouts.create_building_layouts(PID, BuildingLayoutRequest.model_validate(_building()))
+    after = client.get(f"/api/projects/{PID}").json()
+    assert before["setups"] == after["setups"]
+    assert before["state"] == after["state"]
+
+
+def test_generators_require_project_metadata(client, tmp_path):
+    (tmp_path / ".data" / "orphan").mkdir()
+    assert client.post("/api/projects/orphan/setups/generate", json={"template_id": "urban_cvs"}).status_code == 404
+    assert client.post("/api/projects/orphan/setups/generate-building", json=_building()).status_code == 404
+
+
+def test_cloned_floor_keeps_its_building_identity(client):
+    floors = client.post(f"/api/projects/{PID}/setups/generate-building", json=_building()).json()["setups"]
+    copied = client.post(f"/api/projects/{PID}/setups", json={
+        "mode": "racks_and_items", "source_setup_id": floors[1]["id"], "name": "Café alternative",
+    })
+    assert copied.status_code == 200, copied.text
+    detail = client.get(f"/api/projects/{PID}/setups/{copied.json()['id']}").json()
+    assert detail["building"] == floors[1]["building"]
+    assert detail["parentId"] == floors[1]["id"]
+    assert detail["generation"]["template_id"] == "specialty_cafe"

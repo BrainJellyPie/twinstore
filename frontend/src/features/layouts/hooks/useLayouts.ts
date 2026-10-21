@@ -10,6 +10,7 @@ export interface Layout {
   parentId: string | null;
   status: string;
   createdAt: string;
+  building?: SetupSummary["building"];
 }
 
 function toLayout(s: SetupSummary): Layout {
@@ -19,6 +20,7 @@ function toLayout(s: SetupSummary): Layout {
     parentId: s.parentId,
     status: s.status,
     createdAt: s.created_at,
+    building: s.building,
   };
 }
 

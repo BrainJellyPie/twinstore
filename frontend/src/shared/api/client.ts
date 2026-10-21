@@ -101,6 +101,7 @@ export interface SetupSummaryShort {
   name: string;
   status: "draft" | "running" | "locked";
   parentId: string | null;
+  building?: BuildingFloorInfo | null;
   runId: string | null;
   memo: string;
   readiness: Readiness | null;
@@ -145,11 +146,16 @@ export async function createStore(
   return res.json() as Promise<CreateStoreResponse>;
 }
 
+export interface BuildingFloorInfo {
+  id: string; name: string; level: number; label: string; floor_count: number;
+}
+
 export interface SetupSummary {
   id: string;
   name: string;
   status: string;
   parentId: string | null;
+  building?: BuildingFloorInfo | null;
   runId: string | null;
   memo: string;
   readiness: Readiness | null;
@@ -1333,6 +1339,15 @@ export function previewStoreTemplate(request: GenerateLayoutRequest, signal?: Ab
 
 export function generateLayout(projectId: string, body: GenerateLayoutRequest): Promise<SetupSummaryShort> {
   return fetchJson(`/api/projects/${projectId}/setups/generate`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export interface GenerateBuildingRequest {
+  name: string;
+  floors: { label: string; layout: GenerateLayoutRequest }[];
+}
+
+export function generateBuilding(projectId: string, body: GenerateBuildingRequest): Promise<{ setups: SetupSummaryShort[]; active_setup_id: string }> {
+  return fetchJson(`/api/projects/${projectId}/setups/generate-building`, { method: "POST", body: JSON.stringify(body) });
 }
 
 // ── Shelf capture (photo → planogram) ───────────────────────────────────────

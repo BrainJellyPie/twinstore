@@ -31,3 +31,26 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
     checkouts: value.checkouts, fixture_design: value.fixture_design, requirements: value.requirements,
   };
 }
+
+export interface BuildingFloorChoice {
+  label: string;
+  choice: TemplateChoice;
+}
+
+export const BUILDING_PRESETS = [
+  { id: "department", name: "Department store", floors: [["Ground · Beauty", "beauty_flagship"], ["Level 2 · Fashion", "fashion_boutique"], ["Level 3 · Home", "design_showroom"], ["Level 4 · Dining", "food_hall"]] },
+  { id: "cafe_shop", name: "Shop with upstairs café", floors: [["Ground · Boutique", "fashion_boutique"], ["Level 2 · Book café", "book_cafe"]] },
+  { id: "wellness", name: "Pharmacy & wellness", floors: [["Ground · Pharmacy", "community_pharmacy"], ["Level 2 · Wellness", "wellness_pharmacy"]] },
+  { id: "dining", name: "Restaurant & coffee", floors: [["Ground · Restaurant", "quick_service"], ["Level 2 · Café", "specialty_cafe"]] },
+] as const;
+
+export function buildingPreset(id: string): BuildingFloorChoice[] {
+  const preset = BUILDING_PRESETS.find((p) => p.id === id) ?? BUILDING_PRESETS[0];
+  return preset.floors.map(([label, templateId]) => ({ label, choice: { ...DEFAULT_TEMPLATE_CHOICE, templateId } }));
+}
+
+export function validBuildingFloors(floors: BuildingFloorChoice[]): boolean {
+  const labels = floors.map((f) => f.label.trim().toLowerCase());
+  return floors.length >= 2 && floors.length <= 6 && new Set(labels).size === labels.length &&
+    floors.every((f) => f.label.trim().length > 0 && f.label.length <= 80 && validTemplateChoice(f.choice));
+}

@@ -131,6 +131,12 @@ variants. The preview uses the same options as the saved layout. Shuffle changes
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
+Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
+with a department store, shop with upstairs café, pharmacy/wellness building or
+restaurant/café, then select each floor to change its format and options. Floor
+labels appear in the layout tabs. Each floor has its own simulation; cross-floor
+travel, stairs, lifts and a combined building simulation are not modeled.
+
 Grid cells are not measured square meters. Pharmacy templates cover retail OTC
 care and wellness, not prescription dispensing. Café/restaurant templates model
 counter purchases, not seating, table service or kitchen operations.

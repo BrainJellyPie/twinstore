@@ -3,17 +3,13 @@
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from store_emulator.application.setups import set_active_setup, setup_summary
-from store_emulator.application.storage.io import write_json
-from store_emulator.application.storage.setups import (
-    new_setup_data,
-    setup_dir,
-    setup_path,
-)
+from store_emulator.application.errors import AppError
+from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
-    EntrancePosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
+    BuildingLayoutRequest, EntrancePosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
+    TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
 
@@ -30,14 +26,6 @@ class TemplateInfo(BaseModel):
     skus: int
     open_hours: tuple[int, int]
     default_style: LayoutStyle
-
-
-class GenerateLayoutRequest(LayoutOptions):
-    template_id: str
-    seed: int = 0
-    currency: Literal["USD", "KRW", "JPY"] = "USD"
-    name: str | None = Field(default=None, max_length=200)
-    requirements: str = Field(default="", max_length=2000)
 
 
 @router.get("/store-templates", summary="Store formats that can be generated", response_model=list[TemplateInfo])
@@ -70,22 +58,19 @@ def preview(
 
 
 @router.post("/projects/{pid}/setups/generate", summary="New layout from a store-format template")
-def generate_layout(pid: str, req: GenerateLayoutRequest) -> dict[str, Any]:
+def generate_layout(pid: str, req: TemplateLayoutRequest) -> dict[str, object]:
     """Creates a draft layout with fixtures and a full generic assortment; edit it like any layout."""
-    template = get_template(req.template_id)
-    if template is None:
-        raise HTTPException(404, f"unknown template: {req.template_id}")
-    if not setup_dir(pid).parent.is_dir():
-        raise HTTPException(404, f"project not found: {pid}")
-    options = LayoutOptions.model_validate(req.model_dump(include=set(LayoutOptions.model_fields)))
-    store = generate_store(req.template_id, seed=req.seed, currency=req.currency, options=options,
-                           store_id=f"store_{pid}", name=req.name or template.name)
-    memo = f"Generated from template '{template.name}' (seed {req.seed}, {req.currency})"
-    memo += f"\nLayout options: {options.model_dump_json()}"
-    if req.requirements.strip():
-        memo += f"\nDesign brief (for manual editing): {req.requirements.strip()}"
-    setup = new_setup_data(req.name or template.name, None, store.model_dump(mode="json"), memo=memo)
-    setup["generation"] = req.model_dump(mode="json")
-    write_json(setup_path(pid, setup["id"]), setup)
-    set_active_setup(pid, setup["id"])
-    return setup_summary(pid, setup)
+    try:
+        return create_template_layout(pid, req)
+    except AppError as exc:
+        raise HTTPException(exc.status_code, str(exc)) from exc
+
+
+@router.post("/projects/{pid}/setups/generate-building", summary="Create linked layouts for a multi-floor store")
+def generate_building(pid: str, req: BuildingLayoutRequest) -> dict[str, object]:
+    """Each floor is editable and simulated independently. Cross-floor travel is not simulated."""
+    try:
+        setups = create_building_layouts(pid, req)
+    except AppError as exc:
+        raise HTTPException(exc.status_code, str(exc)) from exc
+    return {"setups": setups, "active_setup_id": setups[0]["id"]}
