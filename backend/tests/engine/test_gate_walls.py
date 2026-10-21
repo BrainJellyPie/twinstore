@@ -49,3 +49,42 @@ def test_front_gates_keep_legacy_positions_and_wall_capacity_accounts_for_gates(
     assert generate_store("urban_cvs", seed=3) == generate_store("urban_cvs", seed=3, options=LayoutOptions(gate_wall="front"))
     with pytest.raises(ValueError, match="at most 2 checkout counters on the left wall"):
         generate_store("hypermarket", options=LayoutOptions(width=8, height=6, gate_wall="left", entrance="left", exit_position="right", checkout_wall="left", checkouts=3))
+
+
+@pytest.mark.parametrize("template", TEMPLATES, ids=lambda template: template.id)
+@pytest.mark.parametrize("entrance_wall,exit_wall", [("front", "back"), ("back", "front"), ("left", "right"), ("right", "left")])
+def test_every_format_supports_opposite_entry_and_exit_walls(template, entrance_wall, exit_wall):
+    store = generate_store(template.id, options=LayoutOptions(
+        gate_wall=entrance_wall, entrance="center", exit_wall=exit_wall, exit_position="center"))
+    width, height = store.grid_size
+    positions = {"front": (width // 2, height - 1), "back": (width // 2, 0), "left": (0, height // 2), "right": (width - 1, height // 2)}
+    rotations = {"front": 0, "back": 180, "left": 90, "right": 270}
+    assert store.entrances[0].position == positions[entrance_wall]
+    assert store.exits[0].position == positions[exit_wall]
+    assert store.exits[0].rotation == rotations[exit_wall]
+    assert len(store.counters) == template.checkouts
+    assert validate(store) == []
+
+
+@pytest.mark.parametrize("entrance_wall", ["front", "back", "left", "right"])
+@pytest.mark.parametrize("exit_wall", ["front", "back", "left", "right"])
+@pytest.mark.parametrize("exit_position", ["left", "center", "right"])
+def test_small_floor_keeps_independent_exit_and_its_checkout_bank_clear(entrance_wall, exit_wall, exit_position):
+    store = generate_store("hypermarket", options=LayoutOptions(
+        width=8, height=6, gate_wall=entrance_wall, entrance="center", exit_wall=exit_wall,
+        exit_position=exit_position, checkout_wall=exit_wall, checkouts=2, density="dense"))
+    gates = {gate.position for gate in store.entrances + store.exits}
+    assert all(gates.isdisjoint(rack.occupied_positions) for rack in store.racks if rack.type not in ("entrance", "exit"))
+    if entrance_wall != exit_wall:
+        assert len(gates) == 2
+    assert len(store.counters) == 2
+    assert validate(store) == []
+
+
+@pytest.mark.parametrize("entrance_wall", ["front", "back", "left", "right"])
+@pytest.mark.parametrize("exit_wall", ["front", "back", "left", "right"])
+def test_shared_gate_ignores_a_separate_exit_wall(entrance_wall, exit_wall):
+    options = LayoutOptions(gate_wall=entrance_wall, entrance="right")
+    default = generate_store("urban_cvs", options=options)
+    assert default == generate_store("urban_cvs", options=options.model_copy(update={"exit_wall": exit_wall}))
+    assert default == generate_store("urban_cvs", options=options.model_copy(update={"exit_wall": entrance_wall, "exit_position": "right"}))
