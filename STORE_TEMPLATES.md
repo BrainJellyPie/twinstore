@@ -1,6 +1,6 @@
 # Store layout templates
 
-Everything about generating a furnished starting layout: the 60 store formats, product categories, entrances and
+Everything about generating a furnished starting layout: the 64 store formats, product categories, entrances and
 exits, seating, checkouts, reserved areas, multi-floor buildings and the floor editor. The [README](./README.md#store-formats-and-templates)
 has the short version.
 
@@ -9,10 +9,22 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 60
+In a project, choose **New layout → Generate a store from a template**. Search 64
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+
+**Airport shopping gallery** is a 30×24 luxury loop with travel goods, fragrances,
+jewelry and electronics, four checkouts and 24-hour opening. **Hospital convenience
+& gift shop** is an 18×16 cross-aisle store for meals, care goods, baby supplies and
+flowers, also open all day. **Museum book & gift shop** uses a 16×14 Nordic floor
+with books, art supplies and keepsakes, open 10–18 Tuesday through Sunday.
+**Evening food court** has a 32×26 terracotta floor, twelve four-seat tables and six
+ordering counters, open 16–24. Its purchases use the counter-ordering model.
+**Travel retail & dining** combines the shopping gallery and evening food court;
+**Hospital services center** combines convenience, pharmacy and care-supply floors.
+All four formats support mixed table sizes, counter spacing, category selection,
+custom hours and portable option files.
 
 **Nordic lifestyle showroom** combines homeware, books and plant gifts in a 22×18
 floor with browsing islands and pale ash finishes. **Retro diner & shake bar**
