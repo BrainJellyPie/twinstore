@@ -11,6 +11,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   buys, longest visits) or search, open one, and see their trip step by step — wall-clock time,
   shelf, product, impulse or planned, and the thought recorded at each step — with the walked path
   and numbered stops on a floor map. **Follow in 3D** jumps playback to their arrival and highlights them.
+- Each first stop at a stocked shelf face shows **what the shopper saw** there (the vision shoppers'
+  renderer of that face at run time); click to enlarge. API: `GET .../runs/{run}/racks/{rack}/faces/{face}.png`.
 - **Interview**: ask that shopper why ("why didn't you buy anything at Snacks 1?"). A language model
   answers in the first person from the persona, the trip and the shelves they stopped at only, says
   so when they did not notice something, and cites the steps it means (hover to highlight them).
@@ -23,6 +25,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   API: `GET .../runs/{run}/shoppers/{id}/journey`, `GET/POST/DELETE .../shoppers/{id}/interview`.
 
 ### Photo mode (path-traced stills)
+- In the first-person shopper view, **DoF** traces through a physical camera focused on whatever sits
+  at the centre of the frame (f/1.4, f/2.8, f/5.6), for a photographic depth of field.
 - In the realistic 3D view, **Photo** path-traces the current view with three-gpu-pathtracer:
   global illumination, area-light shadows from the ceiling panels, a glossy floor, real glass and
   daylight through the storefront. It refines sample by sample (64 / 256 / 1024) and saves a PNG;
@@ -31,7 +35,15 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the contact-shadow decal dropped, the BVH built in a worker.
 
 ### Marketing studio
-- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with four tabs.
+- **Field pilot sample planning**: conservative power bounds aligned with the final 95% Hoeffding interval,
+  required encounters and operating days, explicit capacity shortfalls, and optional even allocation across
+  existing staff/shift blocks. Assumptions and a server-calculated assessment are saved with each new plan;
+  existing pilots remain fixed. No model calls or real-sales forecasts.
+- **Observed field pilots**: fixed staff/shift A/B assignment sheets from saved scripts, full-sheet CSV imports,
+  immutable stimulus snapshots, intention-to-treat purchase counts, missingness bounds, versioned atomic updates,
+  and locked closure. Complete targets receive a conservative fixed-sample conversion interval; unfinished targets
+  stay descriptive. The independent Field pilots tab retains results after deletion of a source screening job.
+- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with five tabs.
 - **Staff scripts**: independent A/B exposures on the same synthetic personas, with purchase intent,
   trust and pressure ratings, complete-pair bootstrap intervals, exploratory segments and customer replies.
   Saved product/persona snapshots and exact-script CSV support review; missing responses, restart recovery
@@ -51,6 +63,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   arms and the revenue-maximising tested price (in the app and the report). Rule shoppers react to
   price relative to the usual price, so a new everyday price without a reference gets a note.
 - **Duplicate and edit**: open any finished A/B or concept test as a pre-filled new one.
+- **By segment**: every A/B variant also reports its paired difference to control within each age
+  group and gender (20+ shoppers) for revenue per visitor and tracked-product units, with 95 %
+  intervals, in the app and the report.
 - **Automatic report** for every finished A/B test: a summary with a rule-based recommendation
   (roll out the winner with its daily and monthly revenue range, flag variants that lose, call out
   product-only lifts, the panel size needed to see a 5 % change), the test design, results with
@@ -58,6 +73,13 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   One self-contained, print-ready HTML page (print to PDF) and Markdown; a model can add a labelled
   commentary written from the report's numbers. API: `GET .../experiments/{eid}/report.html|.md`,
   `POST/DELETE .../experiments/{eid}/narrative`.
+- **Shelf tests** (virtual shelf impact test): pick a shelf and a product, give it a new pack, price
+  or sign, and preview both shelves live. The same respondents see the control and the test shelf
+  through a vision model (badge numbers shuffled per respondent), pick the one product they would take
+  and name what caught their eye first. Results: the product's pick share, noticed in the top three
+  and noticed first, control vs test with paired 95 % intervals; what everyone took; why. API:
+  `POST/GET .../shelf-tests`, `POST .../shelf-tests/preview`, `GET/DELETE .../shelf-tests/{id}`,
+  `GET .../shelf-tests/{id}/{control|test}.png`; a print-ready report at `.../shelf-tests/{id}/report.html`.
 - **Concept tests**: personas (with age / gender quotas) answer purchase intent, appeal, value,
   stand-out, Van Westendorp price and preference questions about up to four images through a vision
   model; Likert summaries, Wilson shares, price-sensitivity curves, segments, verbatims, CSV export,

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from filelock import FileLock, Timeout
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +46,12 @@ def _lock_path(project_id: str, setup_id: str) -> Path:
 
 def get_setups(project_id: str) -> list[dict[str, Any]]:
     """Setup summaries (store excluded) with readiness attached."""
-    setups = list_setups(project_id)
+    setups = list_setups(project_id, include_store=True)
     persona_count = _count_personas(project_id)
     gens = _running_generations(project_id)
     for s in setups:
         s["readiness"] = _compute_readiness(s, persona_count, gens)
+        s.pop("store", None)
     return setups
 
 
@@ -260,20 +262,19 @@ def save_setup_with_lock(
                     404, "setup_not_found", "not_found",
                     f"Setup not found: {setup_id}", {},
                 )
-            assert_setup_mutation_allowed(disk_setup, payload)
             store_data = payload.get("store")
+            try:
+                assert_setup_mutation_allowed(disk_setup, payload)
+                store_obj = Store.model_validate(store_data) if store_data is not None else None
+            except ValidationError as e:
+                msg = str(e).split("\n")[0][:200]
+                raise AppError(
+                    422, "invalid_store", "validation_error",
+                    f"invalid store data: {msg}", {},
+                ) from e
             cleared: list[ClearedSlot] = []
             issues: list[Issue] = []
-            store_obj: Store | None = None
-            if store_data is not None:
-                try:
-                    store_obj = Store.model_validate(store_data)
-                except Exception as e:
-                    msg = str(e).split("\n")[0][:200]
-                    raise AppError(
-                        422, "invalid_store", "validation_error",
-                        f"invalid store data: {msg}", {},
-                    )
+            if store_obj is not None:
                 issues = validate(store_obj)
                 errors = [i for i in issues if i.severity == "error"]
                 if errors:
@@ -564,6 +565,8 @@ def replace_slots(
         # Empty sku ("") creates no SlotItem; coords with zero non-empty
         # items skip Slot creation entirely (sparse representation).
         if sku:
+            if len(existing.items) >= 4:
+                raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} face {face_str} level {level} holds at most 4 products", 400)
             existing.items.append(SlotItem(
                 sku=sku, name=name, price=price, promo=promo,
             ))

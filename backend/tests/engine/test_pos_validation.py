@@ -47,3 +47,35 @@ def test_cp949_fallback_preserves_identifier_text():
     data = "receipt_id,sku,note\nNA,NULL,사과\n".encode("cp949")
     lines = parse_pos_csv(data)
     assert lines[0].transaction_id == "NA" and lines[0].sku == "NULL"
+
+
+@pytest.mark.parametrize("column", ["quantity", "unit_price", "line_total"])
+@pytest.mark.parametrize("value", ["not a number", "$2.50"])
+def test_invalid_numeric_pos_cells_are_not_silently_defaulted(column, value):
+    with pytest.raises(ValueError, match="numeric"):
+        parse_pos_csv(f"receipt_id,sku,{column}\nreceipt,item,{value}\n".encode())
+
+
+@pytest.mark.parametrize("hour", ["unknown", "", "NaN"])
+def test_optional_unknown_hours_remain_optional(hour):
+    lines = parse_pos_csv(f"receipt_id,sku,quantity,unit_price,hour\nreceipt,item,1,0,{hour}\n".encode())
+    assert lines[0].hour is None
+    assert lines[0].unit_price == 0
+
+
+def test_numeric_pos_cells_support_weighed_items_refunds_and_grouped_prices():
+    lines = parse_pos_csv(b'receipt_id,sku,quantity,unit_price\nsale,item,0.5,"1,250"\nrefund,item,-1,250\n')
+    assert [(line.quantity, line.unit_price) for line in lines] == [(0.5, 1250), (-1, 250)]
+
+
+@pytest.mark.parametrize("price,expected", [("", 250), ("  ", 250), ("0", 0), ("125", 125)])
+def test_line_total_fills_missing_unit_prices_without_replacing_explicit_zero(price, expected):
+    data = f"receipt_id,sku,quantity,unit_price,line_total\nr1,tea,2,{price},500\n".encode()
+    lines = parse_pos_csv(data)
+    assert lines[0].unit_price == expected
+
+
+def test_price_fallback_is_per_row_and_supports_weighed_goods():
+    data = b"receipt_id,sku,quantity,unit_price,line_total\nr1,tea,2,125,250\nr2,tea,0.5,,125\n"
+    lines = parse_pos_csv(data)
+    assert [line.unit_price for line in lines] == [125, 250]

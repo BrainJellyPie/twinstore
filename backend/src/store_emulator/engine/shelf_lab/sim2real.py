@@ -254,6 +254,8 @@ def summarize(answers: list[GlanceAnswer], conditions: list[Sim2RealCondition]) 
                 continue
             pairs = [(by["render"][pid], a) for pid, a in by[c].items()
                      if pid in by["render"] and not a.error and not by["render"][pid].error]
+            if not pairs:
+                continue
             same = sum(1 for r, a in pairs if r.sku == a.sku)
             p, lo, hi = wilson(same, len(pairs))
             rho: float | None = None

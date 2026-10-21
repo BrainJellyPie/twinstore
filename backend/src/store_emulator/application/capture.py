@@ -18,9 +18,10 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Annotated
 
 from PIL import Image, UnidentifiedImageError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from store_emulator.domain.capture import (
     CaptureItem,
@@ -53,6 +54,7 @@ from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.validation import validate
 
 from .async_executor import executor
+from .currencies import project_currency
 from .errors import AppError
 from .providers import PRESETS, resolve_model
 from .setups import set_active_setup, setup_summary
@@ -78,7 +80,7 @@ class CaptureView(BaseModel):
 class CaptureItemEdit(BaseModel):
     """One product of the corrected planogram. Products left out of the list are deleted."""
     id: str | None = Field(default=None, description="existing item id; omit for a product the user adds")
-    name: str = Field(min_length=1, max_length=120)
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
     brand: str = ""
     size: str = ""
     category: str = Field(default="", description="catalog category key or free text (mapped); empty = keep / infer")
@@ -203,6 +205,8 @@ def prepare_photo(data: bytes, filename: str) -> Image.Image:
         raise AppError(f"image too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)", 413)
     try:
         photo = load_photo(data)
+    except Image.DecompressionBombError as e:
+        raise AppError("Image dimensions are too large; reduce the resolution and try again.", 413) from e
     except (UnidentifiedImageError, OSError, ValueError) as e:
         raise AppError(f"not a readable image (JPEG, PNG or WebP): {filename}", 422) from e
     if min(photo.size) < 120:
@@ -226,7 +230,7 @@ def create_capture(
         raise AppError("the gdino detector needs the optional dependencies: uv sync --extra capture", 400)
     if options.detector == "vlm" and llm_config is None:
         raise AppError("the vlm detector needs a vision model (model must not be 'none')", 400)
-    options = options.model_copy(update={"currency": (options.currency or config.currency).upper()})
+    options = options.model_copy(update={"currency": (options.currency or project_currency(pid, config.currency)).upper()})
     cid = f"cap_{uuid.uuid4().hex[:8]}"
     folder = _dir(pid, cid)
     folder.mkdir(parents=True, exist_ok=True)
@@ -382,6 +386,8 @@ def apply_edits(result: CaptureResult, edits: list[CaptureItemEdit]) -> CaptureR
     if unknown:
         raise AppError(f"unknown item id(s): {', '.join(sorted(set(unknown)))}", 400)
     merged = [m for e in edits for m in e.merged_from]
+    if len(merged) != len(set(merged)):
+        raise AppError("a source item can only be merged once", 400)
     if set(merged) & set(ids):
         raise AppError("an item cannot be both kept and merged into another", 400)
     items: list[CaptureItem] = []
@@ -461,7 +467,7 @@ def _save_sku_images(pid: str, cid: str, result: CaptureResult) -> None:
 
 def apply_captures(
     pid: str, capture_ids: list[str], setup_id: str, *, rack_id: str | None = None, face: str | None = None,
-    new_rack: bool = False, name: str | None = None,
+    new_rack: bool = False, name: str | None = None, default_currency: str = "USD",
 ) -> ApplyResult:
     """Save a new draft layout (child of `setup_id`) with the captured shelves; the source stays untouched.
 
@@ -486,6 +492,10 @@ def apply_captures(
     if not source.get("store"):
         raise AppError("this layout has no store yet", 400)
     store = Store.model_validate(source["store"])
+    currency = store.currency or project_currency(pid, default_currency)
+    if any(result.currency != currency for result in results):
+        raise AppError(f"Every capture must use the layout's price currency ({currency}); prices are not converted automatically.", 422)
+    store = store.model_copy(update={"currency": currency})
     try:
         if rack_id and not new_rack:
             if len(results) != 1:

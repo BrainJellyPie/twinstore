@@ -64,6 +64,51 @@
       "sha256": "6028dbe3cb2ea250eacf3fb87d2c4e5ae8c2a7ff10ecad7883c27d721f2f8e88",
       "bytes": 367391,
       "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "metal_032_diff_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Metal032_1K-JPG.zip",
+      "archive_member": "Metal032_1K-JPG_Color.jpg",
+      "archive_sha256": "9e4f363905a647958c273154fa125d2a6440892d0e583f9b3af24bb08b5afc3c",
+      "sha256": "49493d6ade78ccbbbd270c6a15e4b4c9b1a097e66ddf28a1073de3e85712d9af",
+      "bytes": 701900,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "metal_032_rough_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Metal032_1K-JPG.zip",
+      "archive_member": "Metal032_1K-JPG_Roughness.jpg",
+      "archive_sha256": "9e4f363905a647958c273154fa125d2a6440892d0e583f9b3af24bb08b5afc3c",
+      "sha256": "55d3eee2b69008ad3701b18977495531d0e3515105102e56f40a4d1098d10bce",
+      "bytes": 404875,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "metal_032_nor_gl_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Metal032_1K-JPG.zip",
+      "archive_member": "Metal032_1K-JPG_NormalGL.jpg",
+      "archive_sha256": "9e4f363905a647958c273154fa125d2a6440892d0e583f9b3af24bb08b5afc3c",
+      "sha256": "8537c1015de5cc33d20231e5b6aa27309edcb983e1c37e608d08bb00f733747d",
+      "bytes": 341948,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "pavement_02_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pavement_02/pavement_02_diff_1k.jpg",
+      "sha256": "791d39aadbd48b483468d2ed68d21efce5be197c1d91cf7f3fad7e561c8e7675",
+      "bytes": 1178347
+    },
+    {
+      "file": "pavement_02_rough_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pavement_02/pavement_02_rough_1k.jpg",
+      "sha256": "128302c7d47c1273c8e1e1891d11556ebef8aa317f9b5bb111b49aba0dedc7d2",
+      "bytes": 574371
+    },
+    {
+      "file": "pavement_02_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pavement_02/pavement_02_nor_gl_1k.jpg",
+      "sha256": "a7c962384c155498d1878cda1dca7a4ad738cb15fdb06e3c3ec11238be355b37",
+      "bytes": 738746
     }
   ]
 }

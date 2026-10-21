@@ -98,7 +98,11 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   const woodMaps = useScannedMaterial("wood_table_001", 1, 1, quality);
   // The plaster is authored at one repeat/metre; Medium avoids these extra maps.
   const wallMaps = useScannedMaterial(quality === "high" ? "plaster_001" : null, 1 / M, 1 / M, quality);
-  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme]);
+  // Author the fine metal finish at a half-metre repeat, independent of beam dimensions.
+  const metalMaps = useScannedMaterial(quality === "high" ? "metal_032" : null, 2 / M, 2 / M, quality);
+  // Poly Haven's paving scan covers 2.12 m. Stores without an entrance have no pavement.
+  const pavementMaps = useScannedMaterial(quality === "high" && built.storefront ? "pavement_02" : null, 1 / (2.12 * M), 1 / (2.12 * M), quality);
+  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps]);
   const layout = useMemo(() => layoutProducts(built.plans, { maxRows: preset.maxRows }), [built, preset.maxRows]);
   const products = useMemo(
     () => buildProductMeshes(layout, currency, quality === "high" ? 160 : 128, quality === "high", quality === "high" ? 4 : 1, quality !== "high"),

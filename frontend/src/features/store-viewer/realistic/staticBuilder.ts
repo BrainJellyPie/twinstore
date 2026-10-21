@@ -81,8 +81,8 @@ export class StaticBuilder {
 
   add(mat: MatKey, geom: THREE.BufferGeometry, local: THREE.Matrix4): this {
     geom.applyMatrix4(this.tmp.multiplyMatrices(this.frame, local));
-    if (mat === "wall") {
-      // Project in store coordinates so long/rotated wall panels share the same
+    if (mat === "wall" || mat === "metalGrey" || mat === "aluminum" || mat === "pavement") {
+      // Project in store coordinates so panels, beams and paving share the same
       // texel density and adjoining segments don't restart or stretch the map.
       const position = geom.getAttribute("position");
       const normal = geom.getAttribute("normal");

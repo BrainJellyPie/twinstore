@@ -1,13 +1,16 @@
 // Visual grid editor — renders a width × height grid of GridCells.
 //
-// Pure display + onCellClick passthrough. Row iteration is outer (y), column
+// Row iteration is outer (y), column
 // iteration inner (x) — y=0 row sits at the top of the visual grid.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Minus, Plus } from "lucide-react";
 import type { Position, Rack, BlockedFaceDetail } from "@/shared/types/domain";
 import { Card } from "@/shared/components/ui/card";
+import { Button } from "@/shared/components/ui/button";
 import { GridCell } from "./GridCell";
 import { rackCells } from "@/shared/utils/grid";
+import { cn } from "@/shared/utils/cn";
 
 interface GridEditorProps {
   racks: Rack[];
@@ -15,6 +18,7 @@ interface GridEditorProps {
   blockedFaces: BlockedFaceDetail[];
   onCellClick: (position: Position) => void;
   selectedCell?: Position | null;
+  placing?: boolean;
 }
 
 export function GridEditor({
@@ -23,8 +27,10 @@ export function GridEditor({
   blockedFaces,
   onCellClick,
   selectedCell,
+  placing = false,
 }: GridEditorProps) {
   const [width, height] = gridSize;
+  const [cellSize, setCellSize] = useState(64);
 
   // Position-keyed lookup: `${x},${y}` → rack[]. A cell may hold two racks (entrance + exit).
   const racksByCell = useMemo(() => {
@@ -75,15 +81,36 @@ export function GridEditor({
   }
 
   return (
-    <Card data-testid="grid-editor" className="p-3">
-      <div
-        className="grid w-full gap-1"
-        style={{
-          gridTemplateColumns: `repeat(${width}, minmax(0, 1fr))`,
-        }}
-      >
-        {cells}
+    <Card data-testid="grid-editor" className="min-w-0 gap-2 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="text-muted-foreground">{width} × {height} cells · Scroll to explore</span>
+        <div className="flex items-center gap-1">
+          <Button type="button" variant="outline" size="icon-sm" aria-label="Zoom out grid"
+            disabled={cellSize <= 40} onClick={() => setCellSize((size) => size - 8)}>
+            <Minus className="size-3" />
+          </Button>
+          <output aria-label="Grid zoom" className="w-12 text-center">{Math.round(cellSize / 64 * 100)}%</output>
+          <Button type="button" variant="outline" size="icon-sm" aria-label="Zoom in grid"
+            disabled={cellSize >= 96} onClick={() => setCellSize((size) => size + 8)}>
+            <Plus className="size-3" />
+          </Button>
+        </div>
       </div>
+      <div
+        role="region"
+        aria-label="Floor grid"
+        tabIndex={0}
+        data-testid="grid-scroll-area"
+        className={cn("max-h-[55vh] min-h-40 overflow-auto rounded-md border p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", placing && "[&_button]:cursor-crosshair")}
+      >
+        <div className="grid w-max gap-1" data-testid="grid-canvas"
+          style={{ gridTemplateColumns: `repeat(${width}, ${cellSize}px)`, gridAutoRows: `${cellSize}px` }}>
+          {cells}
+        </div>
+      </div>
+      <span className="text-xs text-muted-foreground" aria-live="polite">
+        {selectedCell ? `Selected cell: column ${selectedCell[0] + 1}, row ${selectedCell[1] + 1}` : "Select a cell to edit its fixture."}
+      </span>
     </Card>
   );
 }

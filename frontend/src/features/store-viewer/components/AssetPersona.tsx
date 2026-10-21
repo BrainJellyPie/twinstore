@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html, useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -10,6 +10,7 @@ import { useSimulationStore } from "@/stores/simulationStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { M, PERSONA_SCALE } from "../realistic/constants";
 import { angleDelta } from "../realistic/shopperPose";
+import { shopperBlinkWeight } from "../realistic/shopperBlink";
 
 ALL_CHARACTER_ASSETS.forEach((url) => useGLTF.preload(url));
 
@@ -93,6 +94,23 @@ function CharacterMesh({ url, animName, realistic, personaId }: CharacterMeshPro
   const { actions, mixer } = useAnimations(animations, clone);
   const previousAction = useRef<THREE.AnimationAction | null>(null);
   const playing = usePlaybackControlStore((s) => s.playing);
+  const blinkTargets = useMemo(() => {
+    const targets: { weights: number[]; index: number }[] = [];
+    if (realistic) clone.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const index = object.morphTargetDictionary?.blink;
+      if (index !== undefined && object.morphTargetInfluences) targets.push({ weights: object.morphTargetInfluences, index });
+    });
+    return targets;
+  }, [clone, realistic]);
+  const blinkTime = useRef(0);
+  const blinkPhase = characterAnimationPhase(`${personaId}:blink`);
+  useFrame((_, delta) => {
+    if (!realistic || !usePlaybackControlStore.getState().playing) return;
+    blinkTime.current += Math.min(delta, 0.1);
+    const weight = shopperBlinkWeight(blinkTime.current, blinkPhase);
+    for (const target of blinkTargets) target.weights[target.index] = weight;
+  });
 
   useEffect(() => {
     mixer.timeScale = realistic && !playing ? 0 : 1;
@@ -147,7 +165,9 @@ export function AssetPersona({
   const realistic = useSimulationStore((s) => s.graphicsMode === "realistic");
   const url = realistic ? realisticCharacterAssetFor(personaId, gender) : characterAssetFor(personaId, gender);
   const scale = highlighted && !realistic ? 1.2 : 1;
-  const animName = realistic ? (isMoving ? "walk" : "idle") : animationFor(isMoving, event);
+  const animName = realistic
+    ? (isMoving ? "walk" : event?.action === "browse" ? "browse" : "idle")
+    : animationFor(isMoving, event);
   const isPaying = !realistic && event?.action === "pay";
 
   const bounceRef = useRef<THREE.Group>(null);

@@ -127,4 +127,4 @@ def get_job(pid: str, cid: str, jid: str) -> LabJobView:
 def rival(pid: str, cid: str, req: RivalRequest) -> RivalReport:
     """Price index and assortment overlap of a rival's captured shelf against our layout; optionally scales the rival
     venue's pull in the neighborhood by the price-adjusted factor."""
-    return _call(lambda: lab.compare_rival_capture(pid, cid, req))
+    return _call(lambda: lab.compare_rival_capture(pid, cid, req, default_currency=get_config().currency))

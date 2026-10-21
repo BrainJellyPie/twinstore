@@ -13,7 +13,15 @@ from typing import Protocol
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.analysis import MetricComparison
-from store_emulator.domain.marketing import ExperimentReport, FocusOutcome, PriceRange, PriceResponse, SurveyReport, VariantResult
+from store_emulator.domain.marketing import (
+    ExperimentReport,
+    FocusOutcome,
+    PriceRange,
+    PriceResponse,
+    ShelfTestReport,
+    SurveyReport,
+    VariantResult,
+)
 
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
 _SYMBOL = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "KRW": "₩"}
@@ -197,6 +205,10 @@ def report_markdown(r: ExperimentReport, layout: str = "", narrative: ReportNarr
              for p in pr.points])]
         if pr.elasticity is not None:
             lines.append(f"\nPrice elasticity across the arms: {pr.elasticity:.2f}.")
+    header, seg_rows = _segment_rows(r)
+    if seg_rows:
+        lines += ["", "## By segment (paired difference; ▲/▼ = 95 % interval above/below zero)", "",
+                  _md_table(["Segment", "n", *header], [[seg, str(n), *cells] for seg, n, cells in seg_rows])]
     lines += ["", "## Best sellers per arm", ""]
     for a in [r.control, *r.variants]:
         top = ", ".join(f"{s.name} ({money(s.revenue, cur)})" for s in a.top_skus[:5])
@@ -240,9 +252,43 @@ def _demand_svg(pr: PriceResponse, currency: str) -> str:
         x = px(p.price)
         parts.append(f'<line x1="{x:.1f}" x2="{x:.1f}" y1="{py(p.units_high):.1f}" y2="{py(p.units_low):.1f}" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="6" stroke-linecap="round"/>'
                      f'<circle cx="{x:.1f}" cy="{py(p.units):.1f}" r="5" fill="{"#eb6834" if p.price == pr.best_price else "#2a78d6"}" stroke="#fff" stroke-width="2"/>'
-                     f'<text x="{x:.1f}" y="{h - 10}" font-size="10" text-anchor="middle" fill="#5f6368">{money(p.price, currency)}</text>')
+                     f'<text x="{x:.1f}" y="{h - 10}" font-size="10" text-anchor="middle" fill="#5f6368">{escape(money(p.price, currency))}</text>')
     parts.append("</svg>")
     return "".join(parts)
+
+
+def _segment_rows(r: ExperimentReport) -> tuple[list[str], list[tuple[str, int, list[str]]]]:
+    """Header (one column per variant and metric) and rows of formatted paired differences by segment."""
+    cur = r.currency
+    metrics = [m for m in ("spend", "focus_units") if any(s.metric == m for v in r.variants for s in v.segments)]
+    header = [f"{v.name} · {'revenue / visitor' if m == 'spend' else 'units / 100'}" for v in r.variants for m in metrics]
+    segments = list(dict.fromkeys(s.segment for v in r.variants for s in v.segments))
+    rows: list[tuple[str, int, list[str]]] = []
+    for seg in segments:
+        cells: list[str] = []
+        n = 0
+        for v in r.variants:
+            for m in metrics:
+                x = next((s for s in v.segments if s.segment == seg and s.metric == m), None)
+                if x is None:
+                    cells.append("–")
+                    continue
+                n = x.n
+                mark = " ▲" if x.ci_low > 0 else " ▼" if x.ci_high < 0 else ""
+                cells.append((money(x.diff, cur, signed=True) if m == "spend" else f"{x.diff * 100:+.1f}") + mark)
+        rows.append((seg, n, cells))
+    return header, rows
+
+
+def _segment_section(r: ExperimentReport) -> str:
+    header, rows = _segment_rows(r)
+    if not rows:
+        return ""
+    body = "".join(f"<tr><td>{escape(seg.replace('age ', 'Age ').replace('gender ', ''))}</td><td class=n>{n}</td>"
+                   + "".join(f"<td class=n>{escape(c)}</td>" for c in cells) + "</tr>" for seg, n, cells in rows)
+    return ("<h2>By segment</h2><p class='note'>Paired difference to control within each segment; ▲ / ▼ = 95 % interval above / below zero. "
+            "Segments are smaller than the panel, so expect wider intervals.</p>"
+            f"<table><tr><th>Segment</th><th>n</th>{''.join(f'<th>{escape(h)}</th>' for h in header)}</tr>{body}</table>")
 
 
 def _price_section(r: ExperimentReport) -> str:
@@ -251,8 +297,8 @@ def _price_section(r: ExperimentReport) -> str:
         return ""
     cur = r.currency
     rows = "".join(
-        f"<tr><td>{escape(p.arm)}</td><td class=n>{money(p.price, cur)}</td><td class=n>{p.units * 100:.1f} "
-        f"<span class=note>[{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]</span></td><td class=n>{money(p.revenue * 100, cur)}"
+        f"<tr><td>{escape(p.arm)}</td><td class=n>{escape(money(p.price, cur))}</td><td class=n>{p.units * 100:.1f} "
+        f"<span class=note>[{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]</span></td><td class=n>{escape(money(p.revenue * 100, cur))}"
         f"{' ★' if p.price == pr.best_price else ''}</td></tr>" for p in pr.points)
     el = f" · elasticity across the arms ≈ {pr.elasticity:.2f}" if pr.elasticity is not None else ""
     return (f"<h2>Price response · {escape(pr.name)}</h2><p class='note'>Units per 100 visitors at each tested price (bars: 95 % intervals){el}. "
@@ -369,6 +415,7 @@ def report_html(r: ExperimentReport, layout: str = "", narrative: ReportNarrativ
 <table><tr><th>Arm</th><th>Revenue / visitor</th><th>vs control [95 % CI]</th><th>Conversion</th><th>Units / visitor</th><th>P(better)</th></tr>{arms}</table>
 {_price_section(r)}
 {('<h2>Tracked products</h2>' + ''.join(focus_blocks)) if focus_blocks else ''}
+{_segment_section(r)}
 <h2>Best sellers per arm</h2><table>{tops}</table>
 <h2>Method and caveats</h2><ul>{''.join(f'<li>{e(x)}</li>' for x in _method(r))}</ul>
 <footer>Generated by TwinStore from experiment {e(r.experiment_id)} in {r.seconds:.1f} s. Print this page to save it as PDF.</footer>
@@ -512,4 +559,57 @@ def survey_report_html(r: SurveyReport, board_jpeg: bytes | None = None) -> str:
         *r.notes,
     ])}</ul>
 <footer>Generated by TwinStore from concept test {e(r.survey_id)}. Print this page to save it as PDF.</footer>
+</main></body></html>"""
+
+
+# ── shelf test report ───────────────────────────────────────────────────────────
+
+_SHELF_METRIC = {"pick": "Would take it", "noticed": "Noticed (top three)", "noticed_first": "Noticed first"}
+
+
+def shelf_report_html(r: ShelfTestReport, control_png: bytes, test_png: bytes) -> str:
+    e = escape
+    pick = next((c for c in r.comparisons if c.metric == "pick"), None)
+
+    def pts(v: float) -> str:
+        return f"{'+' if v >= 0 else '−'}{abs(v) * 100:.1f}"
+
+    if pick is None:
+        headline = "No respondent answered both shelves."
+    elif pick.ci_low > 0 or pick.ci_high < 0:
+        headline = (f"{'More' if pick.ci_low > 0 else 'Fewer'} respondents take {r.target_name} on the test shelf: "
+                    f"{pick.control * 100:.0f} % → {pick.test * 100:.0f} % ({pts(pick.diff)} pt, 95 % interval {pts(pick.ci_low)} to {pts(pick.ci_high)} pt).")
+    else:
+        headline = (f"The change does not move {r.target_name}'s pick share beyond noise: {pick.control * 100:.0f} % → {pick.test * 100:.0f} % "
+                    f"(95 % interval {pts(pick.ci_low)} to {pts(pick.ci_high)} pt).")
+    rows = [(_SHELF_METRIC.get(c.metric, c.metric), f"{c.control * 100:.0f} % → {c.test * 100:.0f} %", c.diff * 100, c.ci_low * 100, c.ci_high * 100)
+            for c in r.comparisons]
+    forest = _forest(rows, "units", r.currency)
+    picks = "".join(f"<tr><td>{e(p.name)}{' ★' if p.sku == r.target_sku else ''}</td><td class=n>{p.control * 100:.0f} %</td><td class=n>{p.test * 100:.0f} %</td></tr>"
+                    for p in r.picks)
+    why = [c.why for c in r.choices if c.arm == "test" and c.pick_sku == r.target_sku and c.why][:10]
+
+    def img(png: bytes) -> str:
+        return f"data:image/png;base64,{b64encode(png).decode()}"
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{e(r.name)} · shelf test report</title><style>{_CSS}
+.shelves{{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}}.shelves img{{width:100%;border-radius:10px;border:1px solid var(--line)}}</style></head><body><main>
+<div class="meta"><span class="brand">twinstore</span> · Shelf test report · {now}</div>
+<h1>{e(r.name)}</h1>
+<div class="meta">{e(r.rack_name)} · {e(r.face)} side · {r.respondents} respondents saw both shelves · {e(r.model)}</div>
+<div class="shelves"><figure><img src="{img(control_png)}" alt="Control shelf"><figcaption class="note">Control</figcaption></figure>
+<figure><img src="{img(test_png)}" alt="Test shelf"><figcaption class="note">Test · {e('; '.join(r.applied))}</figcaption></figure></div>
+<h2>Summary</h2><div class="{'win' if pick and pick.ci_low > 0 else 'flat'}"><div class="headline">{e(headline)}</div></div>
+<h2>{e(r.target_name)}: test vs control <span class="note">· percentage points, paired 95 % intervals</span></h2>
+{forest}
+<h2>What respondents take</h2><table><tr><th>Product</th><th>Control</th><th>Test</th></tr>{picks}</table>
+{f'<h2>Why they took {e(r.target_name)} on the test shelf</h2><ul>{"".join(f"<li>{e(w)}</li>" for w in why)}</ul>' if why else ''}
+<h2>Method and caveats</h2><ul>{''.join(f'<li>{e(n)}</li>' for n in [
+        "Each respondent, one of the project's personas, saw the control and the test shelf through a vision model, with the badge numbers shuffled per respondent.",
+        "They named up to three products that caught their eye first and the one they would take; differences are paired by respondent (bootstrap 95 % intervals).",
+        *r.warnings, *r.notes,
+    ])}</ul>
+<footer>Generated by TwinStore from shelf test {e(r.test_id)}. Print this page to save it as PDF.</footer>
 </main></body></html>"""

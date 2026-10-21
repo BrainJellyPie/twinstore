@@ -9,6 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.analysis import MetricComparison
+from store_emulator.domain.types import ResourceId
 
 type ChangeKind = Literal["price", "discount", "promo", "move", "package", "category_price"]
 type ExperimentEngine = Literal["rule", "vlm"]
@@ -46,7 +47,7 @@ class Variant(BaseModel):
 
 
 class ExperimentRequest(BaseModel):
-    setup_id: str = Field(description="the control layout; every variant starts from it")
+    setup_id: ResourceId = Field(description="the control layout; every variant starts from it")
     name: str = Field(default="", max_length=80)
     variants: list[Variant] = Field(min_length=1, max_length=6)
     focus_skus: list[str] = Field(default_factory=list[str], max_length=20, description="products whose sales the test is about")
@@ -78,6 +79,18 @@ class SkuSales(BaseModel):
     buyers: int
 
 
+class SegmentLift(BaseModel):
+    """A variant's paired difference to control within one shopper segment."""
+    segment: str                      # "age 20s", "gender Female"
+    n: int
+    metric: Literal["spend", "focus_units"]   # store revenue per visitor, or units of the tracked products per visitor
+    control: float
+    variant: float
+    diff: float
+    ci_low: float
+    ci_high: float
+
+
 class VariantResult(BaseModel):
     name: str
     applied: list[str] = []           # what changed, in words
@@ -89,6 +102,7 @@ class VariantResult(BaseModel):
     focus: list[FocusOutcome] = []
     top_skus: list[SkuSales] = []
     prices: dict[str, int] = {}       # shelf price of each tracked product in this arm (lowest facing)
+    segments: list[SegmentLift] = []  # paired differences by age group and gender (segments of 20+ shoppers)
 
 
 class PricePoint(BaseModel):
@@ -133,7 +147,7 @@ class MarketingInfo(BaseModel):
 
 class JobStatus(BaseModel):
     job_id: str
-    kind: Literal["experiment", "survey", "pitch"]
+    kind: Literal["experiment", "survey", "pitch", "shelf"]
     name: str = ""
     status: JobState
     stage: str = ""
@@ -234,3 +248,87 @@ class SurveyReport(BaseModel):
     answers: list[SurveyAnswer] = []
     notes: list[str] = []
     seconds: float = 0.0
+
+
+# ── shelf tests ─────────────────────────────────────────────────────────────────
+
+class ShelfTestRequest(BaseModel):
+    """Shelf impact test: the same respondents see the control shelf face and the changed one."""
+    name: str = Field(default="", max_length=80)
+    setup_id: ResourceId
+    rack_id: str
+    face: Literal["N", "S", "E", "W"] | None = Field(default=None, description="None = the face where the target stands")
+    target_sku: str = Field(min_length=1, description="the product whose pick share and stand-out the test is about")
+    changes: list[VariantChange] = Field(min_length=1, max_length=10, description="what the test shelf changes: package, price, sign, placement")
+    panel: int = Field(default=60, ge=10, le=400)
+    age_groups: list[str] = Field(default_factory=list[str])
+    genders: list[str] = Field(default_factory=list[str])
+    model: str = Field(default="", description='vision model reference; "" = the app vision model')
+    seed: int = 0
+
+
+class ShelfChoice(BaseModel):
+    respondent: str
+    age_group: str
+    gender: str
+    arm: Literal["control", "test"]
+    pick_sku: str = ""                # "" = would not take anything
+    pick_name: str = ""
+    noticed: list[str] = []           # SKUs that caught the eye first (up to three, in order)
+    why: str = ""
+    error: str = ""
+
+
+class ShareComparison(BaseModel):
+    metric: Literal["pick", "noticed", "noticed_first"]
+    control: float
+    test: float
+    diff: float
+    ci_low: float
+    ci_high: float
+    prob_better: float
+
+
+class SkuShare(BaseModel):
+    sku: str
+    name: str
+    control: float
+    test: float
+
+
+class ShelfTestReport(BaseModel):
+    test_id: str
+    name: str
+    setup_id: str
+    rack_id: str
+    rack_name: str
+    face: str
+    target_sku: str
+    target_name: str
+    model: str
+    currency: str
+    respondents: int = Field(description="Respondents with a successful answer in both arms; all metrics use this paired panel")
+    errors: int
+    applied: list[str] = []
+    warnings: list[str] = []
+    comparisons: list[ShareComparison] = []
+    picks: list[SkuShare] = []
+    choices: list[ShelfChoice] = []
+    notes: list[str] = []
+    seconds: float = 0.0
+
+
+class ShelfPreviewRequest(BaseModel):
+    setup_id: ResourceId
+    rack_id: str
+    target_sku: str = ""
+    face: Literal["N", "S", "E", "W"] | None = None
+    changes: list[VariantChange] = Field(default_factory=list[VariantChange], max_length=10)
+
+
+class ShelfPreview(BaseModel):
+    face: str
+    control: str                      # PNG data URL
+    test: str
+    applied: list[str] = []
+    warnings: list[str] = []

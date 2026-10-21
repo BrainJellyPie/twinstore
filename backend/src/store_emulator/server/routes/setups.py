@@ -46,7 +46,7 @@ class SlotInputRow(BaseModel):
     level: int = Field(description="level (1~4 range)")
     sku: str = Field(default="", description="item SKU. Empty value means the slot is treated as empty and excluded from the registered count")
     name: str = Field(default="", description="display name for the SKU")
-    price: int = Field(default=0, description="unit: US cents (e.g. 549 = $5.49)")
+    price: int = Field(default=0, ge=0, description="unit: US cents (e.g. 549 = $5.49)")
     promo: str = Field(default="", description="promotion label for the SKU")
 
 

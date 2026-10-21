@@ -1,11 +1,14 @@
 import logging
+import math
 import os
 from pathlib import Path
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,7 +20,7 @@ from store_emulator.application.marketing import recover_running_jobs
 from store_emulator.application.local_vlm import manager as local_vlm
 from store_emulator.application.providers import cloud_providers_with_key
 from .deps import validate_resource_paths
-from .routes import simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing, interview
+from .routes import simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing, interview, field_pilot
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 # Silence noisy third-party loggers (raw request/response, completion calls, etc.).
@@ -84,6 +87,16 @@ app = FastAPI(
     ],
 )
 
+@app.exception_handler(RequestValidationError)
+async def validation_error_response(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    # Python's JSON parser accepts nonfinite numbers; echoed validation inputs must still be valid JSON.
+    detail = jsonable_encoder(exc.errors(), custom_encoder={
+        float: lambda value: value if math.isfinite(value) else str(value),
+        bytes: lambda value: value.decode("utf-8", errors="replace"),
+    })
+    return JSONResponse(status_code=422, content={"detail": detail})
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -109,6 +122,7 @@ app.include_router(vision_inputs.router)
 app.include_router(system.router)
 app.include_router(marketing.router)
 app.include_router(interview.router)
+app.include_router(field_pilot.router)
 
 
 @app.get("/api/health", tags=["system"], summary="Health check")

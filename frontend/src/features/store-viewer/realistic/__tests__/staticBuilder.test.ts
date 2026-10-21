@@ -42,11 +42,11 @@ describe("manufactured fixture edges", () => {
     geometry.dispose();
   });
 
-  it("keeps plaster density and UV continuity across differently sized wall segments", () => {
+  it.each(["wall", "metalGrey", "aluminum"] as const)("keeps %s density and UV continuity across differently sized segments", (material) => {
     const builder = new StaticBuilder();
-    builder.span("wall", 0, 0, 0, 1, 2, 0.1);
-    builder.span("wall", 1, 0, 0, 4, 2, 0.1);
-    const geometry = builder.build().get("wall")!;
+    builder.span(material, 0, 0, 0, 1, 2, 0.1);
+    builder.span(material, 1, 0, 0, 4, 2, 0.1);
+    const geometry = builder.build().get(material)!;
     const positions = geometry.getAttribute("position");
     const normals = geometry.getAttribute("normal");
     const uv = geometry.getAttribute("uv");
@@ -61,5 +61,24 @@ describe("manufactured fixture edges", () => {
     const right = front.find((vertex) => vertex.x === 4 && vertex.y === 0)!;
     expect(right.u - left.u).toBeCloseTo(right.x - left.x);
     geometry.dispose();
+  });
+
+  it("keeps paving stones at the same scale on long and rotated storefronts", () => {
+    for (const yaw of [0, Math.PI / 2]) {
+      const builder = new StaticBuilder();
+      builder.setFrame(3, -2, yaw).box("pavement", 8, 0.04, 1.7, 0, 0, 0);
+      const geometry = builder.build().get("pavement")!;
+      const positions = geometry.getAttribute("position");
+      const normals = geometry.getAttribute("normal");
+      const uv = geometry.getAttribute("uv");
+      const top = Array.from({ length: positions.count }, (_, i) => i).filter((i) => normals.getY(i) > 0.9);
+      const first = top[0]!;
+      for (const i of top.slice(1)) {
+        const metresInWorld = Math.hypot(positions.getX(i) - positions.getX(first), positions.getZ(i) - positions.getZ(first));
+        const uvDistance = Math.hypot(uv.getX(i) - uv.getX(first), uv.getY(i) - uv.getY(first));
+        expect(uvDistance).toBeCloseTo(metresInWorld, 5);
+      }
+      geometry.dispose();
+    }
   });
 });

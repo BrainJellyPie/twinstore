@@ -7,16 +7,18 @@ import type { Store } from "@/shared/types/domain";
 import { rackCells } from "@/shared/utils/grid";
 import { cn } from "@/shared/utils/cn";
 import { LAYOUT_STYLES, templateRequest, validTemplateChoice, type TemplateChoice } from "../templateOptions";
+import { ReservedAreasEditor } from "./ReservedAreasEditor";
 
 const RACK_COLORS: Record<string, string> = {
   fridge: "#38bdf8", shelf: "#f59e0b", counter: "#475569", entrance: "#22c55e", exit: "#22c55e", table: "#a78bfa",
 };
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
-export function TemplatePicker({ value, onChange, onTemplateSelected }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
+  budgetCurrency?: string;
 }) {
   const [search, setSearch] = useState("");
   const [storeType, setStoreType] = useState("");
@@ -65,12 +67,12 @@ export function TemplatePicker({ value, onChange, onTemplateSelected }: {
         <div className="grid gap-3 sm:grid-cols-[170px_1fr]">
           <div className="space-y-1.5">
             {preview.isSuccess && validTemplateChoice(value) ? <>
-              <FloorPlan store={preview.data} />
+              <FloorPlan store={preview.data} areas={value.reserved_areas ?? []} />
               <p className="text-xs text-muted-foreground">{preview.data.grid_size.join("×")} cells · {preview.data.racks.filter((r) => r.slots.length).length} displays · {new Set(preview.data.racks.flatMap((r) => r.slots.flatMap((s) => s.items.map((i) => i.sku)))).size} products</p>
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "table").length} dining tables · {preview.data.racks.filter((r) => r.type === "table").length * 4} seats</p>
               <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green: entry · Slate: checkout · Purple: seating</p>
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
-              {!validTemplateChoice(value) ? "Enter a valid grid size." : preview.isError ? "Preview unavailable." : "Updating preview…"}
+              {!validTemplateChoice(value) ? "Enter a valid grid size and reserved-area values." : preview.isError ? "Preview unavailable." : "Updating preview…"}
             </div>}
             {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>Retry</button></p>}
           </div>
@@ -93,6 +95,11 @@ export function TemplatePicker({ value, onChange, onTemplateSelected }: {
               <Field label="Checkout counters"><select className={controlClass} value={value.checkouts ?? 1} onChange={(e) => update({ checkouts: Number(e.target.value) })}>
                 {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
               </select></Field>
+              <Field label="Checkout placement"><select className={controlClass} value={value.checkout_placement ?? "auto"}
+                onChange={(e) => update({ checkout_placement: e.target.value as TemplateChoice["checkout_placement"] })}>
+                <option value="auto">Format default{selected?.default_checkout_placement === "near_entrance" ? " (near entrance)" : selected?.default_checkout_placement === "away_from_entrance" ? " (away from entrance)" : " (front counters)"}</option><option value="near_entrance">Near the entrance</option>
+                <option value="away_from_entrance">Away from the entrance</option>
+              </select></Field>
               <Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
                 <option value="">Format default{selected ? ` (${INTERIOR_DESIGNS[selected.default_design]?.label ?? "Classic retail"})` : ""}</option>
                 {Object.entries(INTERIOR_DESIGNS).map(([id, palette]) => <option key={id} value={id}>{palette.label}</option>)}
@@ -107,15 +114,24 @@ export function TemplatePicker({ value, onChange, onTemplateSelected }: {
                 <option value="">Format default ({selected?.default_dining_tables ?? 0}, sized to fit)</option>
                 {Array.from({ length: 13 }, (_, n) => <option key={n} value={n}>{n === 0 ? "No seating" : `${n} tables · ${n * 4} seats`}</option>)}
               </select></Field>
+              <Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
+                disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
+                onChange={(e) => update({ seating_zone: e.target.value as TemplateChoice["seating_zone"] })}>
+                <option value="auto">Format default{selected?.default_seating_zone && selected.default_seating_zone !== "auto" ? ` (${selected.default_seating_zone})` : ""}</option><option value="front">Front / entrance side</option>
+                <option value="back">Back wall</option><option value="left">Left side</option>
+                <option value="right">Right side</option><option value="center">Center</option>
+              </select></Field>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed", design_theme: null, dining_tables: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", entrance: "left", checkouts: 1, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, seating_zone: "auto", reserved_areas: [], seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>
-        <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: reserve a quiet consultation corner or keep seasonal gifts near the entrance." /></Field>
-        <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>
+        <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })} />
+        <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: use warm task lighting in the consultation corner or seasonal signs near the entrance." /></Field>
+        {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
+        <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>
       </>}
     </div>
   );
@@ -126,7 +142,7 @@ function Field({ label, children }: { label: string; children: ReactElement<{ id
   return <div className="space-y-1 text-xs"><label htmlFor={id}>{label}</label>{cloneElement(children, { id })}</div>;
 }
 
-function FloorPlan({ store }: { store: Store }) {
+function FloorPlan({ store, areas }: { store: Store; areas: api.ReservedArea[] }) {
   const [w, h] = store.grid_size;
   const palette = INTERIOR_DESIGNS[store.design_theme ?? "classic"];
   return <svg viewBox={`-0.2 -0.2 ${w + 0.4} ${h + 0.4}`} className="max-h-48 w-full rounded border" style={{ backgroundColor: palette.floor }} role="img" aria-label="Floor plan preview">
@@ -134,5 +150,12 @@ function FloorPlan({ store }: { store: Store }) {
     {store.racks.flatMap((r) => rackCells(r).map(([x, y]) => <rect key={`${r.id}-${x}-${y}`} x={x + 0.08} y={y + 0.08} width={0.84} height={0.84} rx={0.12} fill={RACK_COLORS[r.type] ?? "#cbd5e1"}>
       <title>{r.rack_name || r.type}</title>
     </rect>))}
+    {areas.map((area, index) => <g key={index}>
+      <rect x={area.x} y={area.y} width={area.width} height={area.height} fill="#0d948822"
+        stroke="#0f766e" strokeWidth={0.12} strokeDasharray="0.35 0.2" data-testid={`reserved-area-preview-${index}`}>
+        <title>{area.label}: kept clear</title>
+      </rect>
+      <text x={area.x + 0.15} y={area.y + 0.65} fontSize={0.6} fill="#115e59">{index + 1}</text>
+    </g>)}
   </svg>;
 }

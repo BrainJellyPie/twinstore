@@ -4,14 +4,13 @@
 import type { Persona } from "@/shared/types/domain";
 
 import { BASE } from "./client";
+import { apiErrorMessage } from "./errors";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    let detail = body;
-    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
-    throw new Error(detail || `${res.status} ${res.statusText}`);
+    throw new Error(apiErrorMessage(body, `${res.status} ${res.statusText}`));
   }
   return (res.status === 204 ? undefined : res.json()) as Promise<T>;
 }
@@ -32,6 +31,7 @@ export interface JourneyStep {
   quantity: number;
   origin: string;
   thought: string;
+  sees_products?: boolean;
   duration: number;
   x: number;
   y: number;
@@ -67,6 +67,9 @@ export const askShopper = (pid: string, runId: string, sid: string, question: st
   fetchJson<Interview>(`${base(pid, runId, sid)}/interview`, { method: "POST", body: JSON.stringify({ question, model }) });
 export const clearInterview = (pid: string, runId: string, sid: string) =>
   fetchJson<void>(`${base(pid, runId, sid)}/interview`, { method: "DELETE" });
+
+export const shelfFaceUrl = (pid: string, runId: string, rackId: string, face: string) =>
+  `${BASE}/api/projects/${pid}/runs/${runId}/racks/${encodeURIComponent(rackId)}/faces/${face}.png`;
 
 export type GroupSegment = "all" | "empty_handed" | "buyers" | "impulse" | "top_spenders";
 

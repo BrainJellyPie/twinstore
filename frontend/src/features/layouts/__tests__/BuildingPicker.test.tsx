@@ -3,17 +3,18 @@ import { useState } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { BuildingPicker } from "../components/BuildingPicker";
-import { buildingPreset, type TemplateChoice } from "../templateOptions";
+import { buildingPreset, savedBuildingFloors, type TemplateChoice } from "../templateOptions";
+import type { Layout } from "../hooks/useLayouts";
 
 vi.mock("../components/TemplatePicker", () => ({
   TemplatePicker: ({ value, onChange }: { value: TemplateChoice; onChange: (v: TemplateChoice) => void }) =>
-    <div><span>{value.templateId} / width {value.width ?? "default"}</span><button type="button" onClick={() => onChange({ ...value, width: 30 })}>Set floor width</button></div>,
+    <div><span>{value.templateId} / width {value.width ?? "default"}</span><span data-testid="floor-currency">{value.currency}</span><button type="button" onClick={() => onChange({ ...value, width: 30 })}>Set floor width</button></div>,
 }));
 afterEach(cleanup);
 
-function Building() {
-  const [floors, setFloors] = useState(() => buildingPreset("wellness"));
-  return <BuildingPicker floors={floors} onChange={setFloors} />;
+function Building({ currency = "USD" }: { currency?: string }) {
+  const [floors, setFloors] = useState(() => buildingPreset("wellness", currency));
+  return <BuildingPicker floors={floors} onChange={setFloors} defaultCurrency={currency} />;
 }
 
 it("keeps each floor's options when switching and editing", () => {
@@ -38,4 +39,58 @@ it("bounds floor count and flags duplicate labels", () => {
   expect((screen.getByRole("button", { name: "Add floor" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Remove floor" }));
   expect((screen.getByRole("button", { name: "Add floor" }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it("keeps the project's currency when choosing a preset or adding a floor", () => {
+  render(<Building currency="KRW" />);
+  expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
+  fireEvent.click(screen.getByRole("button", { name: "Department store" }));
+  fireEvent.click(screen.getByRole("button", { name: /4F/ }));
+  expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
+  fireEvent.click(screen.getByRole("button", { name: "Add floor" }));
+  expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
+});
+
+it("moves and duplicates a customized floor without losing its settings", () => {
+  render(<Building />);
+  fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move to higher level" }));
+  expect(screen.getByRole("button", { name: "2F · Ground · Pharmacy" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("community_pharmacy / width 30")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Duplicate floor" }));
+  expect(screen.getByRole("button", { name: "3F · Ground · Pharmacy copy 1" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByText("community_pharmacy / width 30")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Move to lower level" }));
+  expect(screen.getByRole("button", { name: "2F · Ground · Pharmacy copy 1" }).getAttribute("aria-pressed")).toBe("true");
+});
+
+const ground: Layout = { id: "ground", name: "Ground store", parentId: null, status: "draft", createdAt: "2026-10-20",
+  building: { id: "building", name: "Market", level: 1, label: "Ground", floor_count: 2 },
+  generation: { template_id: "community_pharmacy", seed: 0, currency: "JPY", design_theme: "minimal", requirements: "Quiet corner" } };
+const upstairs: Layout = { ...ground, id: "upstairs", name: "Upper café", building: { ...ground.building!, level: 2, label: "Café" },
+  generation: { template_id: "specialty_cafe", seed: 0, currency: "JPY", dining_tables: 4, width: 20 } };
+const latest: Layout = { ...upstairs, id: "latest", name: "Latest café", parentId: upstairs.id, createdAt: "2026-10-21",
+  generation: { ...upstairs.generation!, dining_tables: 6 } };
+
+it("restores the selected floor and the latest other floors, while rejecting incomplete buildings", () => {
+  const unrelated: Layout = { ...latest, id: "other", building: { ...latest.building!, id: "other_building" }, createdAt: "2026-10-22" };
+  const floors = savedBuildingFloors([latest, upstairs, unrelated, ground], ground)!;
+  expect(floors.map((floor) => floor.choice.sourceSetupId)).toEqual([ground.id, latest.id]);
+  expect(floors[0]!.choice.requirements).toBe("Quiet corner");
+  expect(floors[1]!.choice.dining_tables).toBe(6);
+  expect(savedBuildingFloors([latest, upstairs, ground], upstairs)![1]!.choice.sourceSetupId).toBe(upstairs.id);
+  expect(savedBuildingFloors([ground], ground)).toBeNull();
+  expect(savedBuildingFloors([ground, upstairs], { ...upstairs, generation: null })).toBeNull();
+});
+
+it("lets a reused floor choose a different saved version and keeps its source when duplicated", () => {
+  const changed = vi.fn();
+  const floors = savedBuildingFloors([ground, upstairs, latest], ground)!;
+  render(<BuildingPicker floors={floors} onChange={changed} sourceLayouts={[ground, upstairs, latest]} />);
+  fireEvent.click(screen.getByRole("button", { name: /2F/ }));
+  expect((screen.getByLabelText("Saved floor settings") as HTMLSelectElement).value).toBe(latest.id);
+  fireEvent.change(screen.getByLabelText("Saved floor settings"), { target: { value: upstairs.id } });
+  expect(changed).toHaveBeenLastCalledWith([floors[0], expect.objectContaining({ choice: expect.objectContaining({ sourceSetupId: upstairs.id, dining_tables: 4 }) })]);
+  fireEvent.click(screen.getByRole("button", { name: "Duplicate floor" }));
+  expect(changed.mock.lastCall![0][2].choice.sourceSetupId).toBe(latest.id);
 });

@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, Copy, FlaskConical, Images, Loader2, MessagesSquare, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { ClipboardList, Copy, FlaskConical, Images, Loader2, MessagesSquare, Plus, Rows3, Trash2, TriangleAlert } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import {
@@ -14,12 +14,16 @@ import {
   listPitches,
   getExperiment,
   getMarketingInfo,
+  getShelfTest,
+  listShelfTests,
+  deleteShelfTest,
   getSurvey,
   listExperiments,
   listSurveys,
   marketingKeys,
   type ExperimentRequest,
   type JobStatus,
+  type ShelfTestRequest,
   type SurveyRequest,
 } from "@/shared/api/marketing";
 import { queryKeys } from "@/shared/queries/keys";
@@ -30,17 +34,21 @@ import { ExperimentReportView } from "./ExperimentReport";
 import { usePackages } from "./hooks";
 import { ProductLibrary } from "./ProductLibrary";
 import { storeProducts } from "./products";
+import { ShelfTestBuilder, ShelfTestReportView } from "./ShelfTest";
 import { SurveyBuilder } from "./SurveyBuilder";
 import { SurveyReportView } from "./SurveyReport";
+import { FieldPilots } from "./FieldPilots";
 import { StaffPitchBuilder } from "./StaffPitchBuilder";
 import { StaffPitchReportView } from "./StaffPitchReport";
 
-type Tab = "ab" | "survey" | "pitch" | "products";
+type Tab = "ab" | "shelf" | "survey" | "pitch" | "pilot" | "products";
 
 const TABS: { id: Tab; label: string; icon: typeof FlaskConical; blurb: string }[] = [
   { id: "ab", label: "A/B tests", icon: FlaskConical, blurb: "Price, discount, promotion, placement and packaging on the same shoppers" },
+  { id: "shelf", label: "Shelf tests", icon: Rows3, blurb: "A new pack, price or sign on the shelf: pick share and stand-out on the same respondents" },
   { id: "survey", label: "Concept tests", icon: ClipboardList, blurb: "Synthetic respondents rate packs, prices and preference" },
   { id: "pitch", label: "Staff scripts", icon: MessagesSquare, blurb: "Compare wording with paired intent, trust and pressure ratings" },
+  { id: "pilot", label: "Field pilots", icon: ClipboardList, blurb: "Preassigned staff/shift experiments and observed purchase conversion" },
   { id: "products", label: "Products", icon: Images, blurb: "Package images, brands and the shelf products they show" },
 ];
 
@@ -48,7 +56,7 @@ const busy = (s: JobStatus["status"]) => s === "pending" || s === "running";
 
 export function MarketingPage({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<Tab>("ab");
-  const [selected, setSelected] = useState<Record<"ab" | "survey" | "pitch", string | null>>({ ab: null, survey: null, pitch: null });
+  const [selected, setSelected] = useState<Record<"ab" | "shelf" | "survey" | "pitch", string | null>>({ ab: null, shelf: null, survey: null, pitch: null });
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const setups = project.data?.setups ?? [];
   const [setupId, setSetupId] = useState("");
@@ -60,7 +68,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   });
   const products = useMemo(() => storeProducts(setup.data?.store), [setup.data?.store]);
   const info = useQuery({ queryKey: marketingKeys.info(projectId), queryFn: ({ signal }) => getMarketingInfo(projectId, signal), staleTime: 60_000 });
-  const currency = info.data?.currency ?? "USD";
+  const budgetCurrency = project.data?.metadata.currency ?? info.data?.currency ?? "USD";
+  const currency = setup.data?.store?.currency ?? budgetCurrency;
   const packages = usePackages(projectId).data ?? [];
 
   const experiments = useQuery({
@@ -78,9 +87,15 @@ export function MarketingPage({ projectId }: { projectId: string }) {
     queryFn: ({ signal }) => listPitches(projectId, signal),
     refetchInterval: (q) => (q.state.data?.some((j) => busy(j.status)) ? 1500 : false),
   });
-  const jobs = useMemo(() => (tab === "ab" ? experiments.data ?? [] : tab === "survey" ? surveys.data ?? [] : tab === "pitch" ? pitches.data ?? [] : []), [tab, experiments.data, surveys.data, pitches.data]);
-  const current = tab === "products" ? null : selected[tab];
-  const select = (id: string | null) => tab !== "products" && setSelected((s) => ({ ...s, [tab]: id }));
+  const shelfTests = useQuery({
+    queryKey: marketingKeys.shelfTests(projectId),
+    queryFn: ({ signal }) => listShelfTests(projectId, signal),
+    refetchInterval: (q) => (q.state.data?.some((j) => busy(j.status)) ? 1500 : false),
+  });
+  const jobs = useMemo(() => (tab === "ab" ? experiments.data ?? [] : tab === "shelf" ? shelfTests.data ?? [] : tab === "survey" ? surveys.data ?? []
+    : tab === "pitch" ? pitches.data ?? [] : []), [tab, experiments.data, shelfTests.data, surveys.data, pitches.data]);
+  const current = (tab === "products" || tab === "pilot") ? null : selected[tab];
+  const select = (id: string | null) => tab !== "products" && tab !== "pilot" && setSelected((s) => ({ ...s, [tab]: id }));
   // "Duplicate and edit": the builder opens pre-filled with a finished test's request.
   const [abDraft, setAbDraft] = useState<{ key: number; req: ExperimentRequest } | null>(null);
   const [surveyDraft, setSurveyDraft] = useState<{ key: number; req: SurveyRequest } | null>(null);
@@ -89,13 +104,19 @@ export function MarketingPage({ projectId }: { projectId: string }) {
     setAbDraft({ key: Date.now(), req });
     select("");
   };
+  const [shelfDraft, setShelfDraft] = useState<{ key: number; req: ShelfTestRequest } | null>(null);
+  const duplicateShelf = (req: ShelfTestRequest) => {
+    if (setups.some((s) => s.id === req.setup_id)) setSetupId(req.setup_id);
+    setShelfDraft({ key: Date.now(), req });
+    select("");
+  };
   const duplicateSurvey = (req: SurveyRequest) => {
     setSurveyDraft({ key: Date.now(), req });
     select("");
   };
 
   useEffect(() => {
-    if (tab === "products" || selected[tab] !== null || !jobs.length) return;
+    if (tab === "products" || tab === "pilot" || selected[tab] !== null || !jobs.length) return;
     // Open the latest test on first visit; "New test" sets the selection to "" afterwards.
     setSelected((s) => ({ ...s, [tab]: jobs[0]!.job_id }));
   }, [tab, jobs, selected]);
@@ -127,7 +148,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      {tab === "products" ? (
+      {tab === "pilot" ? <div className="min-h-0 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
         <div className="min-h-0 flex-1 overflow-y-auto pr-1"><ProductLibrary projectId={projectId} products={products} /></div>
       ) : (
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
@@ -135,7 +156,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             <button type="button" onClick={() => select("")}
               className={cn("flex items-center gap-2 rounded-2xl border-2 border-dashed px-3 py-3 text-sm transition-colors",
                 current === "" ? "border-primary text-foreground" : "border-foreground/15 text-muted-foreground hover:border-primary/60 hover:text-foreground")}>
-              <Plus className="size-4" /> New {tab === "ab" ? "A/B test" : tab === "pitch" ? "staff script test" : "concept test"}
+              <Plus className="size-4" /> New {tab === "ab" ? "A/B test" : tab === "shelf" ? "shelf test" : tab === "pitch" ? "staff script test" : "concept test"}
             </button>
             {jobs.map((j) => <JobItem key={j.job_id} projectId={projectId} job={j} active={current === j.job_id} onSelect={() => select(j.job_id)} onDeleted={() => select("")} />)}
           </aside>
@@ -145,8 +166,13 @@ export function MarketingPage({ projectId }: { projectId: string }) {
                 store={setup.data.store} currency={currency} initial={abDraft?.req}
                 onStarted={(j) => { setAbDraft(null); select(j.job_id); }} />
             ) : <Loading />)}
+            {tab === "shelf" && (current ? <ShelfJob projectId={projectId} id={current} onDuplicate={duplicateShelf} /> : setup.data?.store ? (
+              <ShelfTestBuilder key={`${activeSetup}:${shelfDraft?.key ?? 0}`} projectId={projectId} setupId={activeSetup} store={setup.data.store}
+                currency={currency} initial={shelfDraft?.req} onStarted={(j) => { setShelfDraft(null); select(j.job_id); }} />
+            ) : <Loading />)}
             {tab === "survey" && (current ? <SurveyJob projectId={projectId} id={current} onDuplicate={duplicateSurvey} /> : (
-              <SurveyBuilder key={surveyDraft?.key ?? 0} projectId={projectId} personaCount={project.data?.personas.length ?? 0} initial={surveyDraft?.req}
+              <SurveyBuilder key={`${surveyDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
+                defaultCurrency={budgetCurrency} initial={surveyDraft?.req}
                 onStarted={(j) => { setSurveyDraft(null); select(j.job_id); }} />
             ))}
             {tab === "pitch" && (current ? <PitchJob projectId={projectId} id={current} /> : setup.data?.store ? (
@@ -167,9 +193,11 @@ function Loading() {
 function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: string; job: JobStatus; active: boolean; onSelect: () => void; onDeleted: () => void }) {
   const qc = useQueryClient();
   const del = useMutation({
-    mutationFn: () => (job.kind === "experiment" ? deleteExperiment(projectId, job.job_id) : job.kind === "pitch" ? deletePitch(projectId, job.job_id) : deleteSurvey(projectId, job.job_id)),
+    mutationFn: () => (job.kind === "experiment" ? deleteExperiment(projectId, job.job_id) : job.kind === "pitch" ? deletePitch(projectId, job.job_id)
+      : job.kind === "shelf" ? deleteShelfTest(projectId, job.job_id) : deleteSurvey(projectId, job.job_id)),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: job.kind === "experiment" ? marketingKeys.experiments(projectId) : job.kind === "pitch" ? marketingKeys.pitches(projectId) : marketingKeys.surveys(projectId) });
+      await qc.invalidateQueries({ queryKey: job.kind === "experiment" ? marketingKeys.experiments(projectId) : job.kind === "pitch" ? marketingKeys.pitches(projectId)
+        : job.kind === "shelf" ? marketingKeys.shelfTests(projectId) : marketingKeys.surveys(projectId) });
       if (active) onDeleted();
     },
   });
@@ -252,6 +280,22 @@ function SurveyJob({ projectId, id, onDuplicate }: { projectId: string; id: stri
   );
 }
 
+function ShelfJob({ projectId, id, onDuplicate }: { projectId: string; id: string; onDuplicate: (req: ShelfTestRequest) => void }) {
+  const view = useQuery({
+    queryKey: marketingKeys.shelfTest(projectId, id),
+    queryFn: ({ signal }) => getShelfTest(projectId, id, signal),
+    refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
+  });
+  if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
+  const request = view.data.request;
+  return (
+    <>
+      {request && <DuplicateBar label="Duplicate and edit" onClick={() => onDuplicate(request)} />}
+      {view.data.report ? <ShelfTestReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />}
+    </>
+  );
+}
+
 function PitchJob({ projectId, id }: { projectId: string; id: string }) {
   const view = useQuery({
     queryKey: marketingKeys.pitch(projectId, id),
@@ -259,5 +303,5 @@ function PitchJob({ projectId, id }: { projectId: string; id: string }) {
     refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
   });
   if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
-  return view.data.report ? <StaffPitchReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />;
+  return view.data.report ? <div className="space-y-4"><StaffPitchReportView projectId={projectId} report={view.data.report} /><FieldPilots projectId={projectId} source={view.data.report} /></div> : <JobState job={view.data} />;
 }

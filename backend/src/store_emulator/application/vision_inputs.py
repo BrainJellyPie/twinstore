@@ -12,7 +12,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
 from store_emulator.domain.config import SimulationConfig
@@ -65,6 +65,9 @@ def _photo(data: bytes) -> Image.Image:
     try:
         img = Image.open(io.BytesIO(data))
         img.load()
+        img = ImageOps.exif_transpose(img)
+    except Image.DecompressionBombError as e:
+        raise AppError("Photo dimensions are too large; reduce the resolution and try again.", 413) from e
     except (UnidentifiedImageError, OSError) as e:
         raise AppError("not an image the server can read (use PNG, JPEG or WebP)", 400) from e
     return img.convert("RGB")
@@ -118,6 +121,8 @@ def _receipt_target(pid: str, setup_id: str | None, run_id: str | None, config: 
         except FileNotFoundError:
             raise AppError(f"setup not found: {setup_id}", 404) from None
         store = Store.model_validate(data) if data else None
+        if store is not None:
+            currency = store.currency or currency
     if store is None:
         return {}, currency
     return {item.sku: item.name for _, slot in store.all_slots for item in slot.items}, currency

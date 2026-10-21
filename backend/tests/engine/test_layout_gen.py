@@ -20,7 +20,7 @@ from store_emulator.engine.validation import validate
 
 
 @pytest.mark.parametrize("template_id", [t.id for t in TEMPLATES])
-@pytest.mark.parametrize("currency", ["USD", "KRW"])
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
 def test_every_template_is_valid(template_id, currency):
     store = generate_store(template_id, seed=3, currency=currency)
     assert not [i for i in validate(store) if i.severity == "error"]
@@ -31,6 +31,8 @@ def test_every_template_is_valid(template_id, currency):
         assert all(i.price % 100 == 0 for i in items)
         assert all(r.rack_name.startswith(category_label(r.rack_desc, currency))
                    for r in store.product_racks)
+    elif currency == "JPY":
+        assert all(item.price % 10 == 0 for item in items)
     # Same product on several faces is one SKU (extra facings), never a renamed duplicate.
     names = {}
     for i in items:
@@ -138,3 +140,71 @@ def test_dining_defaults_fit_small_grids_but_explicit_capacity_is_enforced():
     assert not any(r.type == "table" for r in generate_store("food_hall", options=LayoutOptions(dining_tables=0)).racks)
     with pytest.raises(ValueError, match="at most 1 dining tables"):
         generate_store("specialty_cafe", options=LayoutOptions(width=8, height=6, dining_tables=2))
+
+
+@pytest.mark.parametrize("zone", ["auto", "front", "back", "left", "right", "center"])
+@pytest.mark.parametrize("placement", ["auto", "near_entrance", "away_from_entrance"])
+@pytest.mark.parametrize("entrance", ["left", "center", "right"])
+@pytest.mark.parametrize("dimensions,tables", [((8, 6), 1), ((18, 14), 8)])
+def test_seating_and_checkout_placement_keep_routes_clear(zone, placement, entrance, dimensions, tables):
+    options = LayoutOptions(width=dimensions[0], height=dimensions[1], dining_tables=tables,
+                            seating_zone=zone, checkout_placement=placement, entrance=entrance,
+                            checkouts=4, density="dense", style="showroom")
+    store = generate_store("book_cafe", seed=5, options=options)
+    assert validate(store) == []
+    assert len(store.counters) == 4
+    assert sum(r.type == "table" for r in store.racks) == tables
+    assert store == generate_store("book_cafe", seed=5, options=options)
+
+
+def test_seating_starts_in_the_requested_part_of_the_floor():
+    positions = {}
+    for zone in ("auto", "front", "back", "left", "right", "center"):
+        store = generate_store("specialty_cafe", options=LayoutOptions(width=20, height=16,
+                               dining_tables=1, seating_zone=zone))
+        positions[zone] = next(r.position for r in store.racks if r.type == "table")
+    assert positions["auto"] == (2, 2)  # Existing saved defaults keep their layout.
+    assert positions["front"][1] > 16 * 2 / 3
+    assert positions["back"][1] < 16 / 3
+    assert positions["left"][0] < 20 / 3
+    assert positions["right"][0] > 20 * 2 / 3
+    assert abs(positions["center"][0] + 1 - 10) <= 2
+    assert abs(positions["center"][1] + 1 - 8) <= 2
+
+
+@pytest.mark.parametrize("entrance", ["left", "center", "right"])
+def test_checkout_placement_uses_distance_from_the_actual_entrance(entrance):
+    near = generate_store("hypermarket", options=LayoutOptions(entrance=entrance, checkout_placement="near_entrance"))
+    far = generate_store("hypermarket", options=LayoutOptions(entrance=entrance, checkout_placement="away_from_entrance"))
+    door_x = near.entrances[0].position[0]
+    assert abs(near.counters[0].position[0] - door_x) < abs(far.counters[0].position[0] - door_x)
+    assert validate(near) == validate(far) == []
+
+
+@pytest.mark.parametrize("template_id,tables,design", [
+    ("family_restaurant", 8, "warm"), ("neighborhood_bistro", 6, "luxury"),
+    ("takeaway_coffee", 0, "industrial"), ("tea_lounge", 6, "botanical"),
+    ("artisan_bakery", 2, "warm"), ("vintage_boutique", 0, "warm"),
+    ("hardware_store", 0, "industrial"), ("toy_hobby_store", 0, "minimal"),
+])
+def test_specialty_formats_have_distinct_defaults_that_users_can_override(template_id, tables, design):
+    store = generate_store(template_id)
+    assert store.design_theme == design
+    assert sum(r.type == "table" for r in store.racks) == tables
+    assert validate(store) == []
+    custom = generate_store(template_id, options=LayoutOptions(design_theme="classic", dining_tables=1,
+                            seating_zone="front", checkout_placement="away_from_entrance"))
+    assert custom.design_theme == "classic"
+    assert sum(r.type == "table" for r in custom.racks) == 1
+    assert validate(custom) == []
+
+
+def test_new_format_defaults_apply_actual_positions_and_specialty_products():
+    cafe = generate_store("tea_lounge")
+    tables = [rack for rack in cafe.racks if rack.type == "table"]
+    assert tables[0].position[0] > cafe.grid_size[0] / 2
+    assert any(rack.rack_desc == "tea_menu" for rack in cafe.product_racks)
+    assert any(rack.rack_desc == "hardware" for rack in generate_store("hardware_store").product_racks)
+    assert any(rack.rack_desc == "toys_hobbies" for rack in generate_store("toy_hobby_store").product_racks)
+    assert generate_store("vintage_boutique").design_theme != generate_store("fashion_boutique").design_theme
+    assert generate_store("takeaway_coffee").counters[0].position[0] == 1

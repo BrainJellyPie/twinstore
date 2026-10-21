@@ -58,7 +58,7 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         if not tx or not sku:
             continue
         qty = _num(row.get(cols.get("quantity", ""), ""), 1.0)
-        if "unit_price" in cols:
+        if "unit_price" in cols and row.get(cols["unit_price"], "").strip():
             price = _num(row.get(cols["unit_price"], ""), 0.0)
         elif "line_total" in cols:
             price = _num(row.get(cols["line_total"], ""), 0.0) / qty if qty else 0.0
@@ -71,15 +71,20 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
 
 
 def _num(text: str, default: float) -> float:
+    if not text.strip():
+        return default
     try:
         return float(text.replace(",", ""))
     except ValueError:
-        return default
+        raise ValueError(f"Invalid numeric POS value: {text!r}") from None
 
 
 def _hour(row: dict[str, str], cols: dict[str, str]) -> int | None:
     if "hour" in cols and row.get(cols["hour"]):
-        value = _num(row[cols["hour"]], -1)
+        try:
+            value = _num(row[cols["hour"]], -1)
+        except ValueError:
+            return None
         return int(value) if 0 <= value < 24 else None
     if "timestamp" in cols and row.get(cols["timestamp"]):
         text = row[cols["timestamp"]].strip()

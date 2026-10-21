@@ -11,6 +11,7 @@ export interface Layout {
   status: string;
   createdAt: string;
   building?: SetupSummary["building"];
+  generation?: SetupSummary["generation"];
 }
 
 function toLayout(s: SetupSummary): Layout {
@@ -21,6 +22,7 @@ function toLayout(s: SetupSummary): Layout {
     status: s.status,
     createdAt: s.created_at,
     building: s.building,
+    generation: s.generation,
   };
 }
 

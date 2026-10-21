@@ -1,5 +1,7 @@
 // Response types mirror backend schemas.py 1:1 — keep in sync.
 
+import { apiErrorMessage } from "./errors";
+
 import type {
   Store,
   StoreDesign,
@@ -29,7 +31,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText}: ${body}`);
+    throw new Error(apiErrorMessage(body, `${res.status} ${res.statusText}`));
   }
   return res.json() as Promise<T>;
 }
@@ -51,6 +53,7 @@ export interface ProjectMetadata {
   name: string;
   description: string;
   store_type: string;
+  currency?: string | null;
   grid_size: [number, number] | null;
   weekly_schedule: DaySchedule[];
   address: string;
@@ -103,6 +106,7 @@ export interface SetupSummaryShort {
   status: "draft" | "running" | "locked";
   parentId: string | null;
   building?: BuildingFloorInfo | null;
+  generation?: GenerateLayoutRequest | null;
   runId: string | null;
   memo: string;
   readiness: Readiness | null;
@@ -158,6 +162,7 @@ export interface SetupSummary {
   status: string;
   parentId: string | null;
   building?: BuildingFloorInfo | null;
+  generation?: GenerateLayoutRequest | null;
   runId: string | null;
   memo: string;
   readiness: Readiness | null;
@@ -167,7 +172,6 @@ export interface SetupSummary {
 
 export interface SetupDetail extends SetupSummary {
   store: Store | null;
-  generation?: GenerateLayoutRequest | null;
   blocked_faces?: BlockedFaceDetail[];
 }
 
@@ -1308,6 +1312,16 @@ export interface StoreTemplate {
   default_style: NonNullable<LayoutOptions["style"]>;
   default_design: StoreDesign;
   default_dining_tables: number;
+  default_seating_zone?: LayoutOptions["seating_zone"];
+  default_checkout_placement?: LayoutOptions["checkout_placement"];
+}
+
+export interface ReservedArea {
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface LayoutOptions {
@@ -1317,13 +1331,17 @@ export interface LayoutOptions {
   density?: "spacious" | "balanced" | "dense";
   entrance?: "left" | "center" | "right";
   checkouts?: number;
+  checkout_placement?: "auto" | "near_entrance" | "away_from_entrance";
   fixture_design?: "mixed" | "a" | "b" | "c";
   design_theme?: StoreDesign | null;
   dining_tables?: number | null;
+  seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
+  reserved_areas?: ReservedArea[];
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {
   template_id: string;
+  source_setup_id?: string | null;
   seed: number;
   currency: string;
   name?: string;
@@ -1335,12 +1353,10 @@ export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]
 }
 
 export function previewStoreTemplate(request: GenerateLayoutRequest, signal?: AbortSignal): Promise<Store> {
-  const { template_id, name: _name, requirements: _requirements, ...options } = request;
-  const q = new URLSearchParams();
-  for (const [key, value] of Object.entries(options)) {
-    if (value !== null && value !== undefined) q.set(key, String(value));
-  }
-  return fetchJson(`/api/store-templates/${encodeURIComponent(template_id)}/preview?${q}`, { signal });
+  const { name: _name, source_setup_id: _source, requirements: _requirements, ...options } = request;
+  return fetchJson("/api/store-templates/preview", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(options), signal,
+  });
 }
 
 export function generateLayout(projectId: string, body: GenerateLayoutRequest): Promise<SetupSummaryShort> {
@@ -1466,9 +1482,7 @@ export async function createCapture(
   const res = await fetch(`${BASE}/api/projects/${projectId}/captures`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    let detail = body;
-    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
-    throw new Error(detail || `Upload failed (HTTP ${res.status})`);
+    throw new Error(apiErrorMessage(body, `Upload failed (HTTP ${res.status})`));
   }
   return res.json() as Promise<CaptureStatus>;
 }
@@ -1757,9 +1771,7 @@ export async function importFloorPlan(
   const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    let detail = body;
-    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
-    throw new Error(detail || `Import failed (HTTP ${res.status})`);
+    throw new Error(apiErrorMessage(body, `Import failed (HTTP ${res.status})`));
   }
   return res.json() as Promise<FloorPlanImport>;
 }
@@ -1796,9 +1808,7 @@ async function postForm<T>(path: string, form: FormData): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    let detail = body;
-    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
-    throw new Error(detail || `HTTP ${res.status}`);
+    throw new Error(apiErrorMessage(body, `HTTP ${res.status}`));
   }
   return res.json() as Promise<T>;
 }

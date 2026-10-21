@@ -148,6 +148,8 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
         </section>
       )}
 
+      <SegmentTable report={r} />
+
       <section className="grid gap-3 lg:grid-cols-2">
         {r.variants.map((v) => (
           <div key={v.name} className="rounded-2xl border bg-card p-4 text-sm">
@@ -163,6 +165,48 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
         {r.notes.map((n) => <p key={n}>{n}</p>)}
       </footer>
     </div>
+  );
+}
+
+/** Paired differences by age group and gender; tinted when the 95 % interval clears zero. */
+function SegmentTable({ report: r }: { report: Report }) {
+  const metrics = (["spend", "focus_units"] as const).filter((m) => r.variants.some((v) => v.segments?.some((s) => s.metric === m)));
+  const segments = [...new Set(r.variants.flatMap((v) => (v.segments ?? []).map((s) => s.segment)))];
+  if (!segments.length) return null;
+  const fmt = (m: string, d: number) => (m === "spend" ? `${d >= 0 ? "+" : "−"}${formatMoney(Math.abs(d), r.currency)}` : `${d >= 0 ? "+" : "−"}${Math.abs(d * 100).toFixed(1)}`);
+  return (
+    <section className="rounded-2xl border bg-card p-4">
+      <h3 className="text-sm font-semibold">By segment</h3>
+      <p className="mb-2 text-xs text-muted-foreground">Paired difference to control within each age group and gender (20+ shoppers); tinted cells clear zero at 95 %.</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-left text-muted-foreground">
+            <tr>
+              <th className="py-1 pr-3">Segment</th><th className="pr-3 text-right">n</th>
+              {r.variants.flatMap((v) => metrics.map((m) => <th key={`${v.name}-${m}`} className="px-2 text-right whitespace-nowrap">{v.name}<br /><span className="font-normal">{m === "spend" ? "revenue / visitor" : "units / 100"}</span></th>))}
+            </tr>
+          </thead>
+          <tbody className="num">
+            {segments.map((seg) => (
+              <tr key={seg} className="border-t border-foreground/[0.06]">
+                <td className="py-1 pr-3 whitespace-nowrap">{seg.replace(/^age /, "Age ").replace(/^gender /, "")}</td>
+                <td className="pr-3 text-right text-muted-foreground">{r.variants[0]?.segments?.find((s) => s.segment === seg)?.n ?? ""}</td>
+                {r.variants.flatMap((v) => metrics.map((m) => {
+                  const x = v.segments?.find((s) => s.segment === seg && s.metric === m);
+                  const tone = x ? (x.ci_low > 0 ? "var(--viz-pos-2)" : x.ci_high < 0 ? "var(--viz-neg-2)" : null) : null;
+                  return (
+                    <td key={`${v.name}-${m}`} className="px-2 text-right" title={x ? `95 % interval ${fmt(m, x.ci_low)} to ${fmt(m, x.ci_high)}` : undefined}
+                      style={tone ? { background: `color-mix(in oklab, ${tone} 18%, transparent)` } : undefined}>
+                      {x ? fmt(m, x.diff) : "–"}
+                    </td>
+                  );
+                }))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

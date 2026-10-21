@@ -87,6 +87,7 @@ Marketing studio (`/marketing/<project>`):
 ab_test_calls (rule shoppers)   = 0
 ab_test_calls (vision shoppers) ≈ panel × (variants + 1) × 1–1.5    # 0..max_glances per shopper
 concept_test_calls              = panel                             # one structured answer per respondent
+shelf_test_calls                = 2 × panel                         # control and test shelf per respondent
 staff_script_calls              = min(panel, saved_personas) × 2     # separate A and B requests, plus retries
 ```
 
@@ -128,7 +129,88 @@ All-model failures are failed jobs; a server restart marks interrupted jobs fail
 Before claiming a sales effect, run a real field pilot: randomize eligible encounters within staff/shift blocks,
 record every assigned encounter (including refusals) and purchase, hold the offer constant, and decide the sample
 size and stopping rule before reviewing results. This module does not simulate staff availability, spoken tone,
-queue time, or store traffic, and does not yet import observed field conversions.
+queue time, or store traffic, and does not itself measure real purchases. Use the separate field-pilot workflow below for observed conversions.
+
+### Observed staff-script field pilots
+
+From a completed **Staff scripts** report, open **Prepare a field pilot from these scripts**. Define eligibility
+before exposing the assigned script and specify the target-SKU purchase window (for example, this store visit).
+Use anonymous staff IDs and distinct shift IDs. Each staff/shift block has an even 4–2,000 planned encounters;
+the complete plan has 40–10,000. Choose the fixed target before collecting data; use the optional sample planner below.
+The product, price, scripts, context, eligibility, window, seed and allocations are saved and cannot be edited.
+No model calls are needed to create or analyze a field pilot from a saved screening report.
+
+Enable **Plan sample size and duration** before saving a new plan. Enter:
+
+- The smallest worthwhile **absolute** conversion difference in percentage points: 5 pp means, for example,
+  20% versus 25%, not a 5% relative lift. This is your decision threshold, not a predicted script effect.
+- A target power lower bound (50–99%, initially 80%). The planner is deliberately conservative and baseline-free;
+  it does not infer conversion from synthetic shopper ratings.
+- Estimated unique eligible encounters per operating day across all participating staff/shifts, plus available
+  operating days. Use a real operational estimate, not total footfall or duplicate encounters.
+
+The preview compares the current sample with the required total, expected collection days and the **unclipped**
+95% interval half-width. Its power figure is a lower bound under the stated assumptions, not estimated actual
+power; a zero bound does not mean detection is impossible. The effect can be in either direction. If the required
+total fits the existing blocks and the 10,000-encounter limit, **Use recommended counts evenly across these blocks**
+updates the unsaved draft. This changes block weights: review the staff/shift mix and each block's capacity.
+Requirements beyond capacity are shown in full and are never silently reduced. Days are rounded up, exclude
+outcome follow-up, and do not check shift calendars. A sample can fit software limits while exceeding available time.
+An under-target plan may still be saved for descriptive learning; it is explicitly flagged as not meeting the target.
+
+For `N` independent encounters, balanced within every staff/shift block and weighted by planned counts, the
+existing Hoeffding interval has radius `r = sqrt(2 ln(40) / N)`. If the true weighted absolute conversion difference
+is at least `d`, a one-sided Hoeffding tail bounds the probability of failing to exclude zero in that direction.
+The power lower bound is `1 - exp(-N × max(0, d-r)² / 2)`. For target power `q`, the required total is
+`2 × (sqrt(ln(40)) + sqrt(ln(1/(1-q))))² / d²`, rounded up to an even total, at least 40 and at least four per block.
+The 95% two-sided interval already covers either direction; this is one precommitted comparison, not a correction
+for multiple pilots. The guarantee is conditional on independent outcomes, no repeat shoppers or interference,
+complete enrollment and observation of every planned slot, and no optional stopping or result-driven resizing.
+Blocking alone does not remove correlated outcomes within a shift. Do not split an oversized study into repeated
+pilots and select the best result. Seek a study-specific design if those assumptions do not fit your operation.
+
+The server recalculates and saves the assessment against the actual counts when **Save fixed pilot plan** is used.
+View it later under **Saved sample planning assessment**. It cannot resize a collecting or closed pilot; old pilots
+without planning assumptions remain readable. API preview: `POST /api/projects/{pid}/staff-pilots/plan`, JSON
+`{"assumptions":{"minimum_effect":0.1,"target_power":0.8,"eligible_per_day":50,"available_days":30},"block_counts":[1000,1000]}`.
+These are illustrative inputs, not measured store data. Preview makes no files or model calls. For persistence,
+send the same `assumptions` object as the optional `planning` field when creating a new pilot.
+
+Download **Observation sheet CSV**. Within each staff/shift, enroll the next eligible customer before revealing
+that row's script; follow sequence order without choosing customers by arm. Do not reuse customers or swap
+assignments. Keep the offer and observation process the same in both arms. Edit only these columns:
+
+| Column | 1 | 0 | Blank |
+| --- | --- | --- | --- |
+| `enrolled` | An eligible encounter received this assignment | This slot was never used | Slot status not recorded yet |
+| `delivered` | Assigned script was delivered | Script was not delivered or was refused | Delivery not recorded yet |
+| `purchased` | Target SKU bought within the saved window | Target SKU not bought within that window | Purchase outcome unknown |
+
+For unused or unrecorded slots, leave delivery and purchase blank. An enrolled customer remains in their assigned
+arm even if delivery is 0 (intention to treat). No customer names, video or receipt details are collected here.
+
+Upload the **full** UTF-8 CSV (up to 2 MB), retaining every row and assignment column. Uploads replace the previous
+observation sheet atomically; invalid rows, changed assignments, duplicates and omitted rows reject the whole file.
+Revision checks and file locks reject overlapping updates; reload before retrying a stale upload. Downloading the
+sheet again returns the current observations, so corrections can be made before closing.
+
+During collection, the dashboard shows recorded rates and worst/best missing-outcome bounds over enrolled
+encounters. These bounds are **not confidence intervals**. Unknown purchases do not become nonbuyers. Staff/shift
+rows expose uneven enrollment; non-delivery counts remain visible. No treatment-effect interval is shown while open.
+
+Once every slot is marked enrolled or unused and every enrolled outcome and delivery status is known, **Close and
+lock pilot** ends collection. This cannot be reopened or overwritten. If any planned slot was unused, the closed
+report stays descriptive. When the entire target is completed, B minus A is weighted by precommitted staff/shift
+sample sizes. Its conservative 95% Hoeffding interval remains nonzero at all-zero or all-one outcomes. It assumes
+independent encounters, no repeat shoppers or interference, and a fixed stopping rule; it does not account for
+unmodeled clustering, repeated peeking, or selecting the best of multiple experiments. It is intentionally wider
+than common asymptotic intervals. A positive interval is evidence for the measured conversion outcome under those
+assumptions, not a store-wide sales or profit forecast.
+
+All saved pilots are accessible under **Market → Field pilots**, even if their source synthetic test is later
+removed. Plans and observations are stored in `marketing/field-pilots/<id>/pilot.json`. They contain observed records
+only; no synthetic responses are mixed into the conversion counts. The implementation is verified with offline
+fixtures; operators must supply real records to evaluate a real store.
 
 ## Step 1 — Store info
 

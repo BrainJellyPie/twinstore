@@ -6,7 +6,7 @@ from pathlib import Path
 from store_emulator.application.errors import AppError
 from store_emulator.application.setups import set_active_setup, setup_summary
 from store_emulator.application.storage.io import write_json
-from store_emulator.application.storage.setups import metadata_path, new_setup_data, setup_path
+from store_emulator.application.storage.setups import metadata_path, new_setup_data, setup_path, read_setup
 from store_emulator.domain.layout_options import (
     BuildingFloorInfo, BuildingLayoutRequest, LayoutOptions, TemplateLayoutRequest,
 )
@@ -14,6 +14,12 @@ from store_emulator.engine.layout_gen import generate_store, get_template
 
 
 def prepare_template_layout(pid: str, req: TemplateLayoutRequest) -> dict[str, object]:
+    source: dict[str, object] | None = None
+    if req.source_setup_id is not None:
+        try:
+            source = read_setup(pid, req.source_setup_id)
+        except FileNotFoundError as exc:
+            raise AppError(f"source layout not found: {req.source_setup_id}", 404) from exc
     template = get_template(req.template_id)
     if template is None:
         raise AppError(f"unknown template: {req.template_id}", 404)
@@ -28,7 +34,9 @@ def prepare_template_layout(pid: str, req: TemplateLayoutRequest) -> dict[str, o
     memo += f"\nLayout options: {options.model_dump_json()}"
     if req.requirements.strip():
         memo += f"\nDesign brief (for manual editing): {req.requirements.strip()}"
-    setup: dict[str, object] = new_setup_data(name, None, store.model_dump(mode="json"), memo=memo)
+    setup: dict[str, object] = new_setup_data(name, req.source_setup_id, store.model_dump(mode="json"), memo=memo)
+    if source is not None and source.get("building") is not None:
+        setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
     setup["generation"] = req.model_dump(mode="json")
     return setup
 

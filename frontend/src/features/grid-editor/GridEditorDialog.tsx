@@ -24,7 +24,6 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
 import type { Position, Rack } from "@/shared/types/domain";
 import { GridEditor } from "./GridEditor";
 import { rackCells } from "@/shared/utils/grid";
@@ -32,7 +31,8 @@ import { RackEditPanel, type RackEditPanelHandle } from "./RackEditPanel";
 import { LegacyDetectModal, checkLegacy } from "./LegacyDetectModal";
 import { useGridEditor } from "./useGridEditor";
 import { saveSetup } from "./gridEditorApi";
-import { MIN_DIM, MAX_DIM, clampDim } from "./gridDimensions";
+import { MIN_DIM, MAX_DIM } from "./gridDimensions";
+import { DimensionInput } from "./DimensionInput";
 import { useProject } from "@/shared/queries/useProject";
 import type { Store } from "@/shared/types/domain";
 import type { EditorRack, SetupDetailWithBlocked } from "./types";
@@ -69,6 +69,7 @@ export function GridEditorDialog({
 
   const [selectedCell, setSelectedCell] = useState<Position | null>(null);
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null);
+  const [placing, setPlacing] = useState(false);
   const [legacyDismissed, setLegacyDismissed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -108,6 +109,13 @@ export function GridEditorDialog({
 
   const onCellClick = useCallback(
     (pos: Position) => {
+      if (placing && selectedRack) {
+        const offset: Position = [pos[0] - selectedRack.position[0], pos[1] - selectedRack.position[1]];
+        const error = editor.moveRacks(selectedCellRacks.map((rack) => rack.id), offset);
+        setSaveError(error);
+        if (!error) { setSelectedCell(pos); setPlacing(false); }
+        return;
+      }
       const existing = editor.racks.find(
         (r) => rackCells(r).some(([x, y]) => x === pos[0] && y === pos[1]),
       );
@@ -115,12 +123,21 @@ export function GridEditorDialog({
       // The draft is created in onRackChange when RackEditPanel's Type radio first emits.
       setSelectedCell(pos);
       setSelectedRackId(existing?.id ?? null);
+      setSaveError(null);
     },
-    [editor],
+    [editor, placing, selectedRack, selectedCellRacks],
   );
+
+  const onMove = (offset: Position) => {
+    if (!selectedCell || selectedCellRacks.length === 0) return;
+    const error = editor.moveRacks(selectedCellRacks.map((rack) => rack.id), offset);
+    setSaveError(error);
+    if (!error) setSelectedCell([selectedCell[0] + offset[0], selectedCell[1] + offset[1]]);
+  };
 
   const onRackChange = useCallback(
     (patch: Partial<EditorRack> | null) => {
+      setPlacing(false);
       // No selectedRack yet (empty cell) — create the draft on the first Type selection.
       if (selectedRack == null) {
         if (patch == null || selectedCell == null) return;
@@ -148,6 +165,7 @@ export function GridEditorDialog({
   // with the requested gate(s).
   const onGateConfigChange = useCallback(
     (config: "entrance" | "exit" | "both") => {
+      setPlacing(false);
       if (selectedCell == null) return;
       const cellRacks = editor.racks.filter(
         (r) => rackCells(r).some(([x, y]) => x === selectedCell[0] && y === selectedCell[1]),
@@ -192,6 +210,14 @@ export function GridEditorDialog({
     });
     const racksForSave = racksRef.current;
     setSaveError(null);
+    const outside = racksForSave.filter((rack) => rackCells(rack).some(([x, y]) =>
+      x < 0 || y < 0 || x >= editor.gridSize[0] || y >= editor.gridSize[1],
+    ));
+    if (outside.length > 0) {
+      const names = outside.slice(0, 3).map((rack) => rack.rack_name || rack.type).join(", ");
+      setSaveError(`${outside.length} fixture(s) fall outside this grid: ${names}${outside.length > 3 ? ", …" : ""}. Increase the dimensions or move/remove those fixtures before saving.`);
+      return;
+    }
     // shelf/fridge/counter require a name for identification; entrance/exit do not.
     const NAMED_TYPES = new Set(["shelf", "fridge", "counter"]);
     const unnamed = racksForSave.filter(
@@ -210,6 +236,7 @@ export function GridEditorDialog({
         id: `store_${crypto.randomUUID().slice(0, 8)}`,
         name: project.metadata.name,
         type: project.metadata.store_type,
+        currency: project.metadata.currency,
         grid_size: editor.gridSize,
         weekly_schedule: [...project.metadata.weekly_schedule],
         racks: [],
@@ -275,26 +302,12 @@ export function GridEditorDialog({
     setLegacyDismissed(true);
   }, []);
 
-  const onWidthChange = useCallback(
-    (raw: string) => {
-      const w = clampDim(Number(raw));
-      editor.setGridSize([w, editor.gridSize[1]]);
-    },
-    [editor],
-  );
-  const onHeightChange = useCallback(
-    (raw: string) => {
-      const h = clampDim(Number(raw));
-      editor.setGridSize([editor.gridSize[0], h]);
-    },
-    [editor],
-  );
-
   // Clear selection on close so the next open starts clean.
   useEffect(() => {
     if (!open) {
       setSelectedCell(null);
       setSelectedRackId(null);
+      setPlacing(false);
       setSaveError(null);
     }
   }, [open]);
@@ -312,8 +325,11 @@ export function GridEditorDialog({
       }}
     >
       <DialogContent
-        className="flex max-h-[90vh] w-[68vw] min-w-[640px] flex-col sm:max-w-[68vw]"
+        className="flex max-h-[92dvh] w-[calc(100vw-2rem)] min-w-0 flex-col sm:max-w-[min(92vw,1440px)]"
         data-testid="grid-editor-dialog"
+        onEscapeKeyDown={(event) => {
+          if (placing) { event.preventDefault(); setPlacing(false); setSaveError(null); }
+        }}
       >
         <DialogHeader>
           <DialogTitle>Floor Configuration</DialogTitle>
@@ -329,32 +345,13 @@ export function GridEditorDialog({
             }}
           />
         ) : (
-          <div className="-mx-6 flex flex-1 flex-col gap-3 overflow-y-auto px-6 pb-1">
-            {/* Dimension row — inline W/H inputs (5-20 clamp). */}
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Dimension:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground">W</span>
-                <Input
-                  type="number"
-                  min={MIN_DIM}
-                  max={MAX_DIM}
-                  value={editor.gridSize[0]}
-                  onChange={(e) => onWidthChange(e.target.value)}
-                  className="h-8 w-16"
-                  data-testid="grid-width-input"
-                />
-                <span className="text-muted-foreground">H</span>
-                <Input
-                  type="number"
-                  min={MIN_DIM}
-                  max={MAX_DIM}
-                  value={editor.gridSize[1]}
-                  onChange={(e) => onHeightChange(e.target.value)}
-                  className="h-8 w-16"
-                  data-testid="grid-height-input"
-                />
-              </div>
+          <div className="-mx-6 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 pb-1">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <DimensionInput axis="width" value={editor.gridSize[0]}
+                onChange={(width) => { editor.setGridSize([width, editor.gridSize[1]]); setSaveError(null); }} />
+              <DimensionInput axis="height" value={editor.gridSize[1]}
+                onChange={(height) => { editor.setGridSize([editor.gridSize[0], height]); setSaveError(null); }} />
+              <span className="text-xs text-muted-foreground">{MIN_DIM}–{MAX_DIM} cells per side</span>
             </div>
 
 
@@ -366,6 +363,7 @@ export function GridEditorDialog({
                   blockedFaces={editor.blockedFaces}
                   onCellClick={onCellClick}
                   selectedCell={selectedCell}
+                  placing={placing}
                 />
               </div>
               <div className="min-w-0">
@@ -376,6 +374,9 @@ export function GridEditorDialog({
                   selectedRack={selectedRack}
                   onChange={onRackChange}
                   onGateConfigChange={onGateConfigChange}
+                  onMove={onMove}
+                  placing={placing}
+                  onPlacementChange={(next) => { setPlacing(next); setSaveError(null); }}
                 />
               </div>
             </div>
@@ -396,7 +397,8 @@ export function GridEditorDialog({
           {saveError ? (
             <p
               data-testid="grid-save-error"
-              className="flex-1 truncate text-sm text-destructive"
+              role="alert"
+              className="flex-1 text-sm text-destructive"
               title={saveError}
             >
               {saveError}
@@ -416,7 +418,7 @@ export function GridEditorDialog({
               onClick={() => {
                 void onSave();
               }}
-              disabled={saving || isBlockingLegacy}
+              disabled={saving || isBlockingLegacy || placing}
               data-testid="grid-save-button"
             >
               {saving ? "Saving…" : "Save"}

@@ -20,8 +20,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from PIL import Image, ImageDraw, UnidentifiedImageError
-from pydantic import BaseModel, Field
+from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.domain.capture import CaptureResult
 from store_emulator.domain.config import EngineType, SimulationConfig
@@ -36,7 +36,7 @@ from store_emulator.domain.shelf_lab import (
     Sim2RealReport,
 )
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Face
+from store_emulator.domain.types import Face, RESOURCE_ID_PATTERN, ResourceId
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
@@ -52,6 +52,7 @@ from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival
 
 from .async_executor import executor
 from .capture import capture_image_path, capture_llm_config, get_capture
+from .currencies import project_currency, simulation_currency
 from .errors import AppError
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
@@ -72,9 +73,16 @@ class Sim2RealRequest(BaseModel):
     seed: int = 0
     situation: str = Field(default="", max_length=200, description='today\'s context, e.g. "heatwave, 34°C"')
 
+    @field_validator("conditions")
+    @classmethod
+    def _requires_photo(cls, conditions: list[Sim2RealCondition]) -> list[Sim2RealCondition]:
+        if not any(c != "render" for c in conditions):
+            raise ValueError("sim2real needs at least one photo condition to compare with the render")
+        return conditions
+
 
 class AuditRequest(BaseModel):
-    setup_id: str = Field(description="layout holding the reference planogram")
+    setup_id: ResourceId = Field(description="layout holding the reference planogram")
     rack_id: str = Field(description="the rack the photo shows")
     face: Literal["N", "S", "E", "W"] | None = Field(default=None, description="default: the face holding most products")
     edit_id: str = Field(default="", description="audit an edited photo instead of the original")
@@ -149,6 +157,9 @@ def upload_package(
     try:
         img = Image.open(io.BytesIO(data))
         img.load()
+        img = ImageOps.exif_transpose(img)
+    except Image.DecompressionBombError as e:
+        raise AppError("Image dimensions are too large; reduce the resolution and try again.", 413) from e
     except (UnidentifiedImageError, OSError) as e:
         raise AppError("not an image the server can read (use PNG, JPEG or WebP)", 400) from e
     img.thumbnail((1200, 1200))
@@ -345,6 +356,9 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
     photo, result = _photo_and_result(pid, cid, req.edit_id)
     if not any(i.labeled for i in result.items):
         raise AppError("sim2real needs a capture whose products were read (run the capture with a vision model)", 409)
+    currency = project_currency(pid, config.currency)
+    if result.currency != currency:
+        raise AppError(f"Capture currency must match project shopper budgets ({currency}); budgets are not converted automatically.", 422)
     llm_config = capture_llm_config(config, req.model)
     if llm_config is None:
         raise AppError("sim2real needs a vision model", 400)
@@ -377,7 +391,16 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
                 on_progress=on_progress,
             ))
             stats, agreement = summarize(answers, conditions)
+            if not agreement:
+                raise ValueError("No successful render/photo response pairs; check the vision model and retry.")
             notes: list[str] = []
+            failed = sum(bool(a.error) for a in answers)
+            if failed:
+                notes.append(f"{failed} of {len(answers)} model responses failed; comparisons use successful response pairs only")
+            compared = {a.condition for a in agreement}
+            for condition in conditions:
+                if condition != "render" and condition not in compared:
+                    notes.append(f"No complete response pairs for {condition}; comparison omitted")
             dropped = sum(1 for i in result.items if i.sku not in views.products)
             if dropped:
                 notes.append(f"{dropped} product(s) of the photo did not fit the rendered twin and carry no tag")
@@ -398,6 +421,8 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
 
 
 def _load_store(pid: str, setup_id: str) -> Store:
+    if not re.fullmatch(RESOURCE_ID_PATTERN, pid) or not re.fullmatch(RESOURCE_ID_PATTERN, setup_id):
+        raise AppError("invalid project or setup id", 400)
     try:
         setup = read_setup(pid, setup_id)
     except FileNotFoundError:
@@ -425,6 +450,9 @@ def _face_of(store: Store, rack_id: str, face: str | None) -> Face:
 def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig) -> LabJobStatus:
     _, result = _photo_and_result(pid, cid, req.edit_id)
     store = _load_store(pid, req.setup_id)
+    currency = simulation_currency(pid, store, config.currency)
+    if result.currency != currency:
+        raise AppError(f"Capture currency must match layout prices and project shopper budgets ({currency}); prices are not converted automatically.", 422)
     face = _face_of(store, req.rack_id, req.face)
     personas = _personas(pid)
     status = _new_job(pid, cid, "audit")
@@ -444,7 +472,7 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
             panel = select_personas(personas, req.panel, seed=req.seed)
             status.stage, status.progress = "simulating", 0.2
             _write_status(pid, status)
-            run_config = config.model_copy(update={"engine_type": EngineType.RULE_BASED, "seed": req.seed})
+            run_config = config.model_copy(update={"engine_type": EngineType.RULE_BASED, "seed": req.seed, "currency": currency})
             evaluator = LayoutEvaluator(run_config, panel, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(),
                                         OptimizeObjective.REVENUE_PER_VISITOR)
             missing = list(dict.fromkeys(f.sku for f in findings if f.kind == "missing" and f.sku))
@@ -478,7 +506,7 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
 # ── rival shelf ─────────────────────────────────────────────────────────────────
 
 class RivalRequest(BaseModel):
-    setup_id: str = Field(description="our layout, whose products and prices the rival's shelf is compared with")
+    setup_id: ResourceId = Field(description="our layout, whose products and prices the rival's shelf is compared with")
     venue_id: str = Field(default="", description="the rival's venue in the neighborhood (optional)")
     apply: bool = Field(default=False, description="scale the venue's pull by the price-adjusted factor")
     elasticity: float = Field(default=1.0, ge=0.0, le=3.0)
@@ -491,11 +519,15 @@ class RivalReport(BaseModel):
     attractiveness: float | None = None
 
 
-def compare_rival_capture(pid: str, cid: str, req: RivalRequest) -> RivalReport:
+def compare_rival_capture(pid: str, cid: str, req: RivalRequest, *, default_currency: str = "USD") -> RivalReport:
     _, result = _capture(pid, cid)
     if not any(i.labeled for i in result.items):
         raise AppError("the rival's products have not been read (run the capture with a vision model or name them)", 409)
-    comparison = compare_rival(_load_store(pid, req.setup_id), result, elasticity=req.elasticity)
+    store = _load_store(pid, req.setup_id)
+    currency = store.currency or project_currency(pid, default_currency)
+    if result.currency != currency:
+        raise AppError(f"Capture currency must match layout prices ({currency}); prices are not converted automatically.", 422)
+    comparison = compare_rival(store, result, elasticity=req.elasticity)
     report = RivalReport(comparison=comparison, venue_id=req.venue_id)
     if req.venue_id:
         town = get_town(pid)

@@ -110,6 +110,12 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 <b>Concept tests.</b> Drop pack images; personas rate intent, appeal, value, price range and preference.</td>
 </tr>
 <tr>
+<td><img src="./.github/assets/twinstore/screens/shoppers-light.jpg" alt="One shopper's journey with thoughts"><br>
+<b>Follow one shopper, then ask why.</b> Their path, stops and thoughts step by step; interview them afterwards, alone or as a group.</td>
+<td><img src="./.github/assets/twinstore/screens/market-sweep-light.jpg" alt="Price sweep: demand curve"><br>
+<b>Price sweeps.</b> A product at five prices on the same shoppers: demand curve, elasticity, revenue-maximising price.</td>
+</tr>
+<tr>
 <td><img src="./.github/assets/twinstore/screens/home-dark.jpg" alt="Home, night theme"><br>
 <b>Day and night.</b> A command bar, <kbd>⌘K</kbd> palette for everything, light and dark themes.</td>
 <td><img src="./.github/assets/twinstore/screens/settings-dark.jpg" alt="Model providers"><br>
@@ -124,10 +130,23 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 28
+In a project, choose **New layout → Generate a store from a template**. Search 36
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+
+Restaurant and café starting points include a family restaurant, neighborhood
+bistro, takeaway coffee kiosk, tea lounge and artisan bakery. Vintage boutiques,
+hardware stores and toy/hobby shops add distinct assortments and interior defaults.
+Formats can supply their own seating zone, checkout placement and palette; every
+default can be adjusted before saving. Multi-floor starting points also include a
+family shopping center and a vintage shop with an upstairs tea lounge.
+
+USD, KRW and JPY prices keep their currency with the saved layout and simulation
+results. New-project shopper budgets use the chosen currency, and additional
+layouts default to that project currency. Existing shopper budgets are not
+converted when a different template currency is chosen; use matching currency
+for a simulation, or start a separate project for that market.
 
 Combine six patterns (parallel aisles, racetrack, central spine, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
@@ -139,6 +158,23 @@ default palette; each building floor can use a different one. The preview uses t
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
+Use **Keep areas clear → Add reserved area** to leave up to eight named rectangles
+open for consultation, pickup, events or later customization. Set their starting
+column and row (counting from 1 at the back-left corner), width and depth. Areas
+must fit inside the outer wall cells, where the template keeps its doors and wall
+fixtures. The preview marks reserved space with dashed outlines; generated shelves
+and tables avoid it. Default seating adapts to the remaining space; an explicit
+table count that no longer fits returns an adjustment message. Areas remain
+walkable and do not add rooms or service behavior. Settings are saved and restored
+for single layouts and building floors; subsequent manual floor edits can use the
+space freely.
+
+To iterate on a generated layout, open **New layout → Generate a store from a
+template → Reuse options from …**. This restores its format, dimensions, style,
+seating, currency, seed and design brief. Save a changed version as a linked
+alternative while preserving the source; floor alternatives keep their building
+identity. Use the import option to copy manual fixture edits or uploaded products.
+
 Add up to 12 dining tables (four chairs each) to any format. Café and restaurant
 defaults include seating; small grids reduce the default count to fit. An explicit
 count that cannot fit returns a capacity message. Each group occupies 2×2 cells
@@ -146,11 +182,38 @@ with clear circulation around it, appears in Classic and Realistic views, and ca
 be selected from any of its four cells in the floor editor. As with other fixtures,
 the existing floor-edit unlock step clears product placements before editing.
 
+Choose where seating starts: front/entrance side, back wall, left, right or center.
+Tables extend into neighboring space as their count increases, retaining their
+circulation space. Checkout counters can use the default arrangement or be placed
+near or away from the entrance. These choices appear in the preview and are saved
+per layout or building floor, including when reusing settings for an alternative.
+
+The floor editor supports up to 40×40 cells, with zoom controls and a scrollable
+grid that keeps fixtures readable on large floors and smaller screens. Width and
+depth can be typed directly. Reducing the grid never deletes fixtures silently;
+save reports fixtures outside the new bounds so you can adjust the floor first.
+Select a shelf, counter, dining group or gate and use the move arrows to shift it
+one cell at a time. The full footprint must fit in clear space; paired entrances
+and exits move together. Names, designs and rotation stay with the fixture.
+For longer moves, choose **Move to a cell** and click the new top-left position
+on the grid. Occupied or out-of-bounds targets leave the fixture in place so you
+can pick another location; **Cancel placement** or Escape cancels the move.
+
 Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
 with a department store, shop with upstairs café, pharmacy/wellness building or
 restaurant/café, then select each floor to change its format and options. Floor
 labels appear in the layout tabs. Each floor has its own simulation; cross-floor
 travel, stairs, lifts and a combined building simulation are not modeled.
+
+For an existing generated building, **Reuse building options from …** restores
+the selected floor and the newest saved version of each other floor. Select a
+different saved floor version, move floors higher or lower, duplicate a floor,
+and change its options before saving a separate building. Each new floor records
+its source layout; the original building stays unchanged.
+
+Use **Find layout** beside the layout tabs to search saved alternatives by name,
+building, floor, store format or design brief. Filter single floors or building
+floors and switch directly to a result; the current layout appears first.
 
 Grid cells are not measured square meters. Pharmacy templates cover retail OTC
 care and wellness, not prescription dispensing. Café/restaurant templates model
@@ -206,6 +269,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   each tracked product — and names a winner only when its interval clears zero. Rule shoppers answer in seconds;
   vision shoppers also see packs and signs. Every finished test comes with a **report** — summary and
   recommendation, design, charts, tracked products, method — as a print-ready page (PDF) or Markdown.
+- **Shelf tests** — the classic shelf impact test: the same respondents see the shelf as it is and with a new pack,
+  price or sign (previewed live), pick what they would take and say what caught their eye first; pick share and
+  stand-out are compared pair by pair.
 - **Concept tests** — up to four images side by side; a vision model answers as each sampled persona (with age and
   gender quotas): purchase intent, pack appeal, value, stand-out (1–5), a Van Westendorp price range, preference and
   one open answer. Results show distributions, means with CIs, top-2-box, Wilson intervals for preference, the price
@@ -215,6 +281,14 @@ For brand managers, category teams and research agencies (**Market** in the comm
   context fixed; compare purchase intent, trust and pressure (1–5), paired bootstrap intervals, exploratory segments
   and customer replies. Save the stimuli and persona sample and export paired answers, including failures. Results
   screen wording for a field pilot; they do not estimate real conversion or sales. Needs a configured text model.
+- **Observed field pilots** — turn a saved staff-script test into a fixed, balanced A/B assignment sheet within
+  anonymous staff/shift blocks. Import actual encounter, delivery and target-product purchase records; retain
+  refusals in their assigned arm and keep unknown outcomes distinct from nonbuyers. Close collection to lock the
+  records. A complete planned sample receives a conservative 95% conversion-difference interval; early closure
+  stays descriptive. The Field pilots tab keeps these records accessible independently of the synthetic test.
+  Before saving, **Plan sample size and duration** compares your minimum worthwhile conversion difference and
+  daily eligible traffic with conservative sample requirements. It flags capacity/time shortfalls and saves the
+  assumptions with the fixed plan, without using virtual shoppers as a conversion baseline.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
@@ -419,9 +493,14 @@ with procedural fallbacks. Authors, source URLs and checksums are in
 [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 High also uses [ambientCG Plaster 001](https://ambientcg.com/a/Plaster001), licensed CC0,
 with consistent texture scale across wall lengths, corners and rotated sections.
+Exposed metal supports and frames use CC0 [ambientCG Metal 032](https://ambientcg.com/a/Metal032)
+in High, with color, roughness and normal maps at a consistent authored scale.
+The storefront pavement uses Poly Haven's CC0 Pavement 02 scan in High, with
+world-space texture coordinates preserving its 2.12 m coverage across store sizes.
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
-avatars under MIT: textured faces and clothing, normal maps, alpha-tested hair, and
-retargeted idle/walking animations. They pause with playback and keep adult proportions
+avatars under MIT: six appearances with textured faces and clothing, normal maps,
+varying surface roughness adapted from the original specular textures,
+alpha-tested hair, authored eyelid blinks, and retargeted idle/walking/browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
 [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
@@ -434,7 +513,7 @@ band of the front photo, so this is an approximation rather than a full package 
 Playback fills missing photo references from the current project image library;
 recorded run inputs and simulation results are not rewritten.
 
-- 3D assets in `frontend/public/assets/` are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
+- The original Classic market, character and ghost assets are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
   [Mini Characters](https://kenney.nl/assets/mini-characters), [Graveyard Kit](https://kenney.nl/assets/graveyard-kit).
 - Validation uses dunnhumby *The Complete Journey*, X5 RetailHero, Ta-Feng, Instacart, Favorita, M5 and the ATC
   pedestrian tracks; the capture benchmark's real-photo check uses ShelfWise "SKUs on shelves PL" (CC BY 4.0). None of

@@ -8,6 +8,7 @@ Files per project (`.data/<pid>/`):
 # (reuses Shelf Lab's private store and persona helpers)
 
 import asyncio
+import base64
 import csv
 import io
 import json
@@ -28,12 +29,18 @@ from store_emulator.domain.marketing import (
     ScaleSummary,
     SegmentRow,
     SurveyAnswer,
+    ShelfPreview,
+    ShelfPreviewRequest,
+    ShelfTestReport,
+    ShelfTestRequest,
     SurveyReport,
     SurveyRequest,
 )
 from store_emulator.domain.optimize import OptimizeObjective
 from store_emulator.domain.persona import Persona
+from store_emulator.domain.rack import Rack
 from store_emulator.domain.store import Store
+from store_emulator.domain.types import Face
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.marketing import (
     apply_changes,
@@ -44,7 +51,16 @@ from store_emulator.engine.marketing import (
     survey_panel,
     van_westendorp,
 )
-from store_emulator.engine.marketing.report import ReportNarrative, report_html, report_markdown, survey_report_html, write_narrative
+from store_emulator.engine.marketing.report import (
+    ReportNarrative,
+    report_html,
+    report_markdown,
+    shelf_report_html,
+    survey_report_html,
+    write_narrative,
+)
+from store_emulator.engine.marketing.shelf_test import compare_shelves, pick_shares, shelf_panel
+from store_emulator.engine.perception.shelf_render import render_face
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.prompting import display_price
@@ -54,6 +70,7 @@ from store_emulator.engine.simulation.factory import build_engine
 from .async_executor import executor
 from .capture import capture_llm_config
 from .errors import AppError
+from .currencies import project_currency, simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client
 from .shelf_lab import (
@@ -68,12 +85,12 @@ from .storage.setups import read_setup
 
 logger = logging.getLogger(__name__)
 
-Kind = Literal["experiment", "survey", "pitch"]
+Kind = Literal["experiment", "survey", "pitch", "shelf"]
 
 
 def _root(pid: str, kind: Kind) -> Path:
     _check_id(pid, "project id")
-    return Path(DATA_DIR) / pid / "marketing" / ("pitches" if kind == "pitch" else f"{kind}s")
+    return Path(DATA_DIR) / pid / "marketing" / {"pitch": "pitches", "shelf": "shelf_tests"}.get(kind, f"{kind}s")
 
 
 def _job_dir(pid: str, kind: Kind, jid: str) -> Path:
@@ -86,7 +103,7 @@ def _write_status(pid: str, status: JobStatus) -> None:
 
 
 def _new_job(pid: str, kind: Kind, name: str, request: BaseModel) -> JobStatus:
-    prefix = {"experiment": "exp", "survey": "srv", "pitch": "pit"}[kind]
+    prefix = {"experiment": "exp", "survey": "srv", "pitch": "pit", "shelf": "slf"}[kind]
     jid = f"{prefix}_{uuid.uuid4().hex[:12]}"
     status = JobStatus(job_id=jid, kind=kind, name=name, status="pending", stage="queued", created_at=now_iso())
     folder = _job_dir(pid, kind, jid)
@@ -134,7 +151,7 @@ def delete_job(pid: str, kind: Kind, jid: str) -> None:
 def recover_running_jobs() -> int:
     """Mark jobs left in flight by a previous server process as failed."""
     recovered = 0
-    for folder in ("experiments", "surveys", "pitches"):
+    for folder in ("experiments", "surveys", "pitches", "shelf_tests"):
         for path in Path(DATA_DIR).glob(f"*/marketing/{folder}/*/status.json"):
             try:
                 status = JobStatus.model_validate(read_json(path))
@@ -163,7 +180,8 @@ def _minor_per_major(currency: str) -> int:
 def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig) -> JobStatus:
     control = _load_store(pid, req.setup_id)
     personas = _personas(pid)
-    currency = config.currency
+    currency = simulation_currency(pid, control, config.currency)
+    config = config.model_copy(update={"currency": currency})
     uris: dict[str, str] = {}
     for v in req.variants:
         for c in v.changes:
@@ -298,7 +316,7 @@ def delete_experiment_narrative(pid: str, eid: str) -> None:
 
 # ── surveys ─────────────────────────────────────────────────────────────────────
 
-def _quota(personas: list[Persona], req: SurveyRequest) -> list[Persona]:
+def _quota(personas: list[Persona], req: SurveyRequest | ShelfTestRequest) -> list[Persona]:
     out = [p for p in personas
            if (not req.age_groups or str(p.age_group) in req.age_groups) and (not req.genders or str(p.gender) in req.genders)]
     if not out:
@@ -307,6 +325,11 @@ def _quota(personas: list[Persona], req: SurveyRequest) -> list[Persona]:
 
 
 def start_survey(pid: str, req: SurveyRequest, config: SimulationConfig) -> JobStatus:
+    _check_id(pid, "project id")
+    currency = project_currency(pid, config.currency)
+    if req.currency.upper() != currency:
+        raise AppError(f"Survey currency must match project shopper budgets ({currency}); budgets are not converted automatically.", 422)
+    req = req.model_copy(update={"currency": currency})
     images: list[Image.Image] = []
     for aid in req.stimuli:
         img = Image.open(package_path(pid, aid))
@@ -453,3 +476,112 @@ def survey_csv(pid: str, sid: str) -> str:
         row.append(a.error)
         w.writerow(row)
     return buf.getvalue()
+
+
+# ── shelf tests ─────────────────────────────────────────────────────────────────
+
+class ShelfTestView(JobStatus):
+    report: ShelfTestReport | None = None
+    request: ShelfTestRequest | None = None
+
+
+def _shelf_arms(pid: str, req: ShelfTestRequest | ShelfPreviewRequest, config: SimulationConfig) -> tuple[Rack, Rack, Face, list[str], list[str], str]:
+    """Control and test rack, the face to show, what changed, warnings and the currency."""
+    control = _load_store(pid, req.setup_id)
+    rack = next((r for r in control.racks if r.id == req.rack_id), None)
+    if rack is None:
+        raise AppError(f"rack not in this layout: {req.rack_id}", 404)
+    currency = simulation_currency(pid, control, config.currency)
+    uris = {c.asset_id: "file://" + str(package_path(pid, c.asset_id).resolve()) for c in req.changes if c.kind == "package" and c.asset_id}
+    test_store, applied, warnings = apply_changes(control, req.changes, package_uris=uris, minor_per_major=_minor_per_major(currency))
+    test_rack = next(r for r in test_store.racks if r.id == req.rack_id)
+    faces = {s.face for r in (rack, test_rack) for s in r.slots for i in s.items if not req.target_sku or i.sku == req.target_sku}
+    face = Face(req.face) if req.face else (sorted(faces, key=lambda f: f.value)[0] if faces else None)
+    if face is None or (req.target_sku and face not in faces):
+        raise AppError("the target product is on neither shelf: move it there or pick another rack", 400)
+    return rack, test_rack, face, applied, warnings, currency
+
+
+def preview_shelf(pid: str, req: ShelfPreviewRequest, config: SimulationConfig) -> ShelfPreview:
+    rack, test_rack, face, applied, warnings, currency = _shelf_arms(pid, req, config)
+
+    def url(r: Rack) -> str:
+        return "data:image/png;base64," + base64.b64encode(render_face(r, face, currency=currency, width=640, number_on_tag=False).png).decode()
+
+    return ShelfPreview(face=face.value, control=url(rack), test=url(test_rack), applied=applied, warnings=warnings)
+
+
+def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) -> JobStatus:
+    rack, test_rack, face, applied, warnings, currency = _shelf_arms(pid, req, config)
+    if not applied:
+        raise AppError(f"the test shelf changes nothing: {'; '.join(warnings) or 'no changes'}", 400)
+    names = {i.sku: i.name for r in (rack, test_rack) for sl in r.slots for i in sl.items}
+    target_name = names.get(req.target_sku, req.target_sku)
+    respondents = select_personas(_quota(_personas(pid), req), req.panel, seed=req.seed)
+    llm_config = capture_llm_config(config, req.model)
+    if llm_config is None:
+        raise AppError("a shelf test needs a vision model", 400)
+    llm_config = llm_config.model_copy(update={
+        "max_tokens": 400, "temperature": 0.6, "cache_dir": str(Path(DATA_DIR) / "llm_cache" / "shelf_test"),
+    })
+    name = req.name.strip() or f"Shelf test · {target_name}"
+    status = _new_job(pid, "shelf", name, req)
+
+    def run() -> None:
+        t0 = time.perf_counter()
+        status.status, status.stage = "running", "asking"
+        _write_status(pid, status)
+        try:
+            for arm, arm_rack in (("control", rack), ("test", test_rack)):
+                png = render_face(arm_rack, face, currency=currency, width=900, number_on_tag=False).png
+                (_job_dir(pid, "shelf", status.job_id) / f"{arm}.png").write_bytes(png)
+            choices = asyncio.run(shelf_panel(LiteLLMClient(llm_config), respondents, rack, test_rack, face, currency=currency, seed=req.seed))
+            ok = [c for c in choices if not c.error]
+            paired_ids = {c.respondent for c in ok if c.arm == "control"} & {c.respondent for c in ok if c.arm == "test"}
+            if not paired_ids:
+                raise ValueError("The vision model returned no complete response pairs; no shelf comparison is available.")
+            paired = [c for c in ok if c.respondent in paired_ids]
+            notes = ["Synthetic respondents looking at a rendered shelf: use for screening packs, prices and signs, then confirm in the field."]
+            if len(paired_ids) < len(respondents):
+                notes.append(f"{len(respondents) - len(paired_ids)} respondent(s) had incomplete responses and were excluded from all comparisons and pick shares.")
+            if len(paired_ids) < 40:
+                notes.append("Fewer than 40 respondents: only large differences in pick share are distinguishable from noise.")
+            report = ShelfTestReport(
+                test_id=status.job_id, name=name, setup_id=req.setup_id, rack_id=rack.id, rack_name=rack.rack_name or rack.id,
+                face=face.value, target_sku=req.target_sku, target_name=target_name, model=llm_config.model, currency=currency,
+                respondents=len(paired_ids), errors=len(choices) - len(ok), applied=applied, warnings=warnings,
+                comparisons=compare_shelves(paired, req.target_sku, seed=req.seed), picks=pick_shares(paired, names),
+                choices=choices, notes=notes, seconds=round(time.perf_counter() - t0, 1),
+            )
+            _finish(pid, status, report)
+        except Exception as e:
+            logger.exception(f"[marketing] shelf test {status.job_id} failed")
+            _finish(pid, status, None, f"{type(e).__name__}: {e}")
+
+    executor.submit(run)
+    return status
+
+
+def get_shelf_test(pid: str, tid: str) -> ShelfTestView:
+    status = _status(pid, "shelf", tid)
+    path = _job_dir(pid, "shelf", tid) / "report.json"
+    report = ShelfTestReport.model_validate(read_json(path)) if path.exists() else None
+    return ShelfTestView(**status.model_dump(), report=report, request=_request(pid, "shelf", tid, ShelfTestRequest))
+
+
+def shelf_test_image(pid: str, tid: str, arm: Literal["control", "test"]) -> bytes:
+    """The shelf face respondents saw in one arm (without badges)."""
+    view = get_shelf_test(pid, tid)
+    if view.report is None:
+        raise AppError("the shelf test has no results yet", 409)
+    path = _job_dir(pid, "shelf", tid) / f"{arm}.png"
+    if not path.exists():
+        raise AppError("This shelf test has no saved image; tests created before image snapshots cannot reproduce the original shelf.", 404)
+    return path.read_bytes()
+
+
+def shelf_test_report(pid: str, tid: str) -> str:
+    view = get_shelf_test(pid, tid)
+    if view.report is None:
+        raise AppError("the shelf test has no results yet", 409)
+    return shelf_report_html(view.report, shelf_test_image(pid, tid, "control"), shelf_test_image(pid, tid, "test"))

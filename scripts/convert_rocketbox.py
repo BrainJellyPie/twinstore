@@ -4,6 +4,7 @@ import struct
 import sys
 
 import bpy
+import numpy as np
 from pathlib import Path
 from mathutils import Vector
 
@@ -20,9 +21,21 @@ base = root / "Assets/Avatars/Adults" / name
 out = args.output_dir
 out.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.fbx(filepath=str(base / "Export" / (name + ".fbx")))
+bpy.ops.import_scene.fbx(filepath=str(base / "Export" / (name + "_facial.fbx")))
 rig = next(o for o in bpy.data.objects if o.type == "ARMATURE")
 meshes = [o for o in bpy.data.objects if o.type == "MESH"]
+for mesh in meshes:
+    keys = mesh.data.shape_keys
+    if not keys or "AU_45_Blink" not in keys.key_blocks:
+        raise ValueError(f"Missing authored blink shape in {mesh.name}")
+    keys.animation_data_clear()
+    # Keep the original eyelid deformation without shipping the entire facial
+    # performance library (visemes and expressions are not used by the viewer).
+    for key in list(keys.key_blocks):
+        if key.name not in {"Basis", "AU_45_Blink"}:
+            mesh.shape_key_remove(key)
+    keys.key_blocks["AU_45_Blink"].name = "blink"
+    keys.key_blocks["blink"].value = 0
 rig.animation_data_clear()
 for o in list(bpy.data.objects):
     if o != rig and o not in meshes:
@@ -58,6 +71,31 @@ for mat in bpy.data.materials:
         mat.surface_render_method = "DITHERED"
         mat.use_backface_culling = False
     else:
+        # Legacy specular maps describe where a surface is glossy, not measured
+        # PBR roughness. Use their spatial detail with a bounded artistic transfer
+        # curve: keep cloth matte and let skin/eyes/shoes catch smaller highlights.
+        spec_path = base / "Textures" / (mat.name + "_specular.tga")
+        if spec_path.exists():
+            spec = bpy.data.images.load(str(spec_path), check_existing=True)
+            spec.colorspace_settings.name = "Non-Color"
+            spec.scale(512, 512)
+            pixels = np.empty(512 * 512 * 4, dtype=np.float32)
+            spec.pixels.foreach_get(pixels)
+            rgb = pixels.reshape(-1, 4)[:, :3]
+            intensity = np.clip(rgb @ np.array([0.2126, 0.7152, 0.0722]), 0, 1)
+            base_roughness, contrast = (0.64, 0.44) if "head" in mat.name else (0.90, 0.65)
+            values = base_roughness - contrast * np.sqrt(intensity)
+            packed = np.ones((512 * 512, 4), dtype=np.float32)
+            packed[:, :3] = values[:, None]
+            rough = bpy.data.images.new(mat.name + "_roughness", width=512, height=512)
+            rough.colorspace_settings.name = "Non-Color"
+            rough.pixels.foreach_set(packed.ravel())
+            rough.filepath_raw = str(root / (mat.name + "_roughness.png"))
+            rough.file_format = "PNG"
+            rough.save()
+            texr = nodes.new("ShaderNodeTexImage")
+            texr.image = rough
+            links.new(texr.outputs["Color"], bs.inputs["Roughness"])
         normal_path = base / "Textures" / (mat.name + "_normal.tga")
         if normal_path.exists():
             imn = bpy.data.images.load(str(normal_path), check_existing=True)
@@ -79,6 +117,7 @@ gender = "f" if name.startswith("Female") else "m"
 clips = [
     ("idle", "all_animations_max_motextr_static", gender + "_idle_breathe_01.max.fbx"),
     ("walk", "all_animations_max_motextr_xy", gender + "_walk_neutral.max.fbx"),
+    ("browse", "all_animations_max_motextr_static", gender + "_idle_look_around_01.max.fbx"),
 ]
 owned = set(bpy.data.objects)
 start_root = rig.location.copy()
@@ -139,9 +178,9 @@ for clip, folder, filename in clips:
         bpy.data.actions.remove(source_action)
     print("CLIP", clip, start, end, flush=True)
 for action in list(bpy.data.actions):
-    if action.name not in {"idle", "walk"}:
+    if action.name not in {clip for clip, _, _ in clips}:
         bpy.data.actions.remove(action)
-# Default pose is the first idle frame; both named NLA tracks export independently.
+# Default pose is the first idle frame; named NLA tracks export independently.
 for track in rig.animation_data.nla_tracks:
     track.mute = True
 rig.animation_data.action = bpy.data.actions.get("idle")
@@ -166,6 +205,10 @@ bpy.ops.export_scene.gltf(
     export_anim_single_armature=True,
     export_image_format="AUTO",
     export_optimize_animation_size=True,
+    export_morph=True,
+    export_morph_normal=True,
+    # Runtime blinking must not be overwritten by zero-weight body-animation keys.
+    export_morph_animation=False,
 )
 print("OUTPUT", slug, (out / (slug + ".glb")).stat().st_size, flush=True)
 

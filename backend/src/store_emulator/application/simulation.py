@@ -38,6 +38,7 @@ from store_emulator.engine.analysis.compare import compare_runs, customer_metric
 from store_emulator.engine.analysis.fidelity import fidelity_report
 
 from store_emulator.application.errors import AppError
+from store_emulator.application.currencies import simulation_currency
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +132,7 @@ async def run_simulation(
     Caller uses the runner to extract engine-specific metadata via
     ``get_engine_metadata()``.
     """
+    config = config.model_copy(update={"currency": store.currency or config.currency})
     runner = build_runner(config)
     aggregated, customers = await runner.run(
         store, personas,
@@ -142,7 +144,7 @@ async def run_simulation(
 
 
 def prepare_simulation(
-    pid: str, setup_id: str, run_id: str | None = None, *, preview: bool = False,
+    pid: str, setup_id: str, run_id: str | None = None, *, preview: bool = False, default_currency: str = "USD",
 ) -> tuple[str, Store, list[Persona], str, str]:
     """Validate, load inputs, and transition state before running. AppError on failure.
 
@@ -151,7 +153,7 @@ def prepare_simulation(
     """
     setup = _validate_simulation(pid, setup_id, preview=preview)
     rid, store, personas, address, customer_profile = _load_simulation_inputs(
-        pid, setup, run_id,
+        pid, setup, run_id, default_currency,
     )
     _mark_simulation_running(pid, setup_id, rid, preview=preview)
     return rid, store, personas, address, customer_profile
@@ -179,7 +181,7 @@ def _validate_simulation(pid: str, setup_id: str, *, preview: bool = False) -> d
 
 
 def _load_simulation_inputs(
-    pid: str, setup: dict[str, Any], run_id: str | None,
+    pid: str, setup: dict[str, Any], run_id: str | None, default_currency: str = "USD",
 ) -> tuple[str, Store, list[Persona], str, str]:
     """Loads Store / Persona / metadata and pre-checks run_id collision."""
     if not setup.get("store"):
@@ -199,6 +201,7 @@ def _load_simulation_inputs(
 
     meta_file = metadata_path(pid)
     meta: dict[str, Any] = read_json(meta_file) if meta_file.exists() else {}
+    store.currency = simulation_currency(pid, store, default_currency)
     address = str(meta.get("address", ""))
     customer_profile = str(meta.get("customer_profile", ""))
     return rid, store, personas, address, customer_profile
@@ -246,6 +249,7 @@ def run_simulation_background(
     options = options or RunOptions()
     try:
         config = apply_options(config, options)
+        config = config.model_copy(update={"currency": store.currency or config.currency})
         town = get_town(pid) if options.use_town else None
         arrivals: list[TownArrival] = []
         if town is not None:

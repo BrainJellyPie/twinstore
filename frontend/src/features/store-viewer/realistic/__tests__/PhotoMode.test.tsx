@@ -22,10 +22,14 @@ vi.mock("@react-three/fiber", () => ({
 vi.mock("three/examples/jsm/loaders/HDRLoader.js", () => ({
   HDRLoader: class { loadAsync = mocks.hdr; },
 }));
-vi.mock("three-gpu-pathtracer", () => ({
-  WebGLPathTracer: class { constructor() { mocks.construct(); return mocks.tracer; } },
-  DenoiseMaterial: class { dispose = mocks.denoiseDispose; },
-}));
+vi.mock("three-gpu-pathtracer", async () => {
+  const { PerspectiveCamera } = await import("three");
+  return {
+    WebGLPathTracer: class { constructor() { mocks.construct(); return mocks.tracer; } },
+    DenoiseMaterial: class { dispose = mocks.denoiseDispose; },
+    PhysicalCamera: class extends PerspectiveCamera { apertureBlades = 0; fStop = 1.4; focusDistance = 25; },
+  };
+});
 vi.mock("three-mesh-bvh/worker", () => ({
   GenerateMeshBVHWorker: class { dispose = mocks.workerDispose; },
 }));
@@ -110,4 +114,28 @@ it("closes the GPU frame query even when drawing throws", () => {
   const draw = mocks.frame.mock.calls[0]![0] as (state: unknown, delta: number) => void;
   expect(() => draw(mocks.get(), 1 / 60)).toThrow("render failed");
   expect(end).toHaveBeenCalledOnce();
+});
+
+it("traces a perspective view through a physical lens focused on the frame's centre when depth of field is on", async () => {
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshStandardMaterial());
+  wall.position.set(0, 0, -4);
+  wall.updateMatrixWorld(true);
+  const photoScene = new THREE.Scene();
+  photoScene.add(wall);
+  mocks.scene.mockReturnValue({ scene: photoScene, triangles: 2, dispose: mocks.sceneDispose });
+  const camera = new THREE.PerspectiveCamera(50, 1.5, 0.1, 100);
+  camera.updateMatrixWorld(true);
+  mocks.get.mockReturnValue({ ...mocks.get(), camera });
+  usePhotoMode.getState().start();
+  usePhotoMode.getState().setDof(true, 2.8);
+  render(<PhotoMode width={4} depth={5} />);
+  await act(async () => { await vi.advanceTimersByTimeAsync(60); });
+  act(() => frameGate.photoRenderer!(1 / 60));
+  const calls = mocks.tracer.setCamera.mock.calls;
+  const lens = calls[calls.length - 1]![0] as THREE.PerspectiveCamera & { fStop: number; focusDistance: number };
+  expect(lens).not.toBe(camera);
+  expect(lens.fStop).toBe(2.8);
+  expect(lens.focusDistance).toBeCloseTo(4, 3);
+  expect(usePhotoMode.getState().perspective).toBe(true);
+  usePhotoMode.getState().setDof(false);
 });

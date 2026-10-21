@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from store_emulator.application.storage.io import (
     DATA_DIR, read_json, write_json, now_iso, generate_setup_id,
@@ -61,7 +61,15 @@ def read_setup(project_id: str, setup_id: str) -> dict[str, Any]:
     path = setup_path(project_id, setup_id)
     if not path.exists():
         raise FileNotFoundError(f"Setup not found: {setup_id}")
-    return read_json(path)
+    data: dict[str, object] = read_json(path)
+    store, generation = data.get("store"), data.get("generation")
+    # Earlier template layouts recorded their currency only in generation provenance.
+    if isinstance(store, dict) and isinstance(generation, dict):
+        store_fields = cast(dict[str, object], store)
+        currency = cast(dict[str, object], generation).get("currency")
+        if store_fields.get("currency") is None and isinstance(currency, str) and currency in {"USD", "KRW", "JPY"}:
+            store_fields["currency"] = currency
+    return data
 
 
 def write_setup(project_id: str, setup_id: str, data: dict[str, Any]) -> None:
@@ -69,18 +77,17 @@ def write_setup(project_id: str, setup_id: str, data: dict[str, Any]) -> None:
     write_json(setup_path(project_id, setup_id), data)
 
 
-def list_setups(project_id: str) -> list[dict[str, Any]]:
-    """Return setup summaries (store excluded), sorted by updated_at descending."""
+def list_setups(project_id: str, *, include_store: bool = False) -> list[dict[str, Any]]:
+    """Return setups sorted by updated_at, omitting stores unless requested for readiness."""
     d = setup_dir(project_id)
     if not d.exists():
         return []
-    exclude = {"store"}
     results: list[dict[str, Any]] = []
     for f in d.iterdir():
         if not f.suffix == ".json":
             continue
         data = read_json(f)
-        summary = {k: v for k, v in data.items() if k not in exclude}
+        summary = {k: v for k, v in data.items() if include_store or k != "store"}
         results.append(summary)
     results.sort(key=lambda s: str(s.get("updated_at", "")), reverse=True)
     return results

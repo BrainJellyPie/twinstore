@@ -12,7 +12,7 @@ import {
   useState,
   useEffect,
 } from "react";
-import { Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Trash2 } from "lucide-react";
 import { Card } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
@@ -128,11 +128,14 @@ export interface RackEditPanelProps {
   onChange: (patch: Partial<EditorRack> | null) => void;
   /** Toggle gate mode / config. Parent owns entrance/exit rack add/remove. */
   onGateConfigChange: (config: GateConfig) => void;
+  onMove?: (offset: Position) => void;
+  placing?: boolean;
+  onPlacementChange?: (placing: boolean) => void;
 }
 
 export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>(
   function RackEditPanel(
-    { selectedCell, selectedCellRacks, selectedRack, onChange, onGateConfigChange },
+    { selectedCell, selectedCellRacks, selectedRack, onChange, onGateConfigChange, onMove, placing = false, onPlacementChange },
     ref,
   ) {
     // Local state for the text input — synced when selectedRack changes.
@@ -269,6 +272,21 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
         {cellSelected && !hasAnyRack && (
           <p className="text-sm text-muted-foreground">Choose a type to add a rack.</p>
         )}
+
+        {hasAnyRack && onMove && <div className="space-y-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Move one cell</span>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Move selected fixture">
+            {([
+              ["left", -1, 0, ArrowLeft], ["up", 0, -1, ArrowUp],
+              ["down", 0, 1, ArrowDown], ["right", 1, 0, ArrowRight],
+            ] as const).map(([direction, dx, dy, Icon]) => <Button key={direction} type="button" variant="outline" size="icon-sm"
+              disabled={placing} aria-label={`Move fixture ${direction}`} onClick={() => onMove([dx, dy])}><Icon className="size-4" /></Button>)}
+            {onPlacementChange && <Button type="button" variant={placing ? "secondary" : "outline"} size="sm"
+              onClick={() => onPlacementChange(!placing)}>{placing ? "Cancel placement" : "Move to a cell"}</Button>}
+          </div>
+          {placing && <p role="status" className="text-xs text-primary">Click a clear grid cell for the fixture’s top-left corner. Press Escape to cancel.</p>}
+          {gateConfig === "both" && kind === "gate" && <p className="text-xs text-muted-foreground">Entrance and exit move together.</p>}
+        </div>}
 
         <div
           className={

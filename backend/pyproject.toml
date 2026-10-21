@@ -69,3 +69,6 @@ exclude = [".venv", "**/__pycache__"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+# Keep failed fixtures for debugging; successful sample-project copies can fill /tmp across runs.
+tmp_path_retention_count = 1
+tmp_path_retention_policy = "failed"

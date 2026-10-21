@@ -51,3 +51,36 @@ def test_personas_with_simulation_history_remain_locked(project):
     response = client.put("/api/projects/proj_test/personas", json={"personas": [persona.model_dump(mode="json")]})
     assert response.status_code == 409
     assert (root / "personas.json").read_bytes() == previous
+
+
+@pytest.mark.parametrize("rate", [-0.01, 1.01, "NaN", "Infinity", "-Infinity"])
+def test_invalid_purchase_frequencies_preserve_saved_personas(project, rate):
+    client, root, persona = project
+    previous = (root / "personas.json").read_bytes()
+    data = {**persona.model_dump(mode="json"), "category_rates": {"drinks": rate}}
+    response = client.put("/api/projects/proj_test/personas", json={"personas": [data]})
+    assert response.status_code == 422, response.text
+    assert (root / "personas.json").read_bytes() == previous
+    assert json.loads((root / "metadata.json").read_text())["updated_at"] == "original"
+
+
+@pytest.mark.parametrize("field", ["budget_min", "budget_max"])
+def test_negative_budgets_preserve_saved_personas(project, field):
+    client, root, persona = project
+    previous = (root / "personas.json").read_bytes()
+    data = {**persona.model_dump(mode="json"), field: -1}
+    response = client.put("/api/projects/proj_test/personas", json={"personas": [data]})
+    assert response.status_code == 422, response.text
+    assert (root / "personas.json").read_bytes() == previous
+    assert json.loads((root / "metadata.json").read_text())["updated_at"] == "original"
+
+
+@pytest.mark.parametrize("rate", [0, 1])
+def test_frequency_boundaries_remain_readable(project, rate):
+    client, _, persona = project
+    data = {**persona.model_dump(mode="json"), "category_rates": {"drinks": rate}}
+    response = client.put("/api/projects/proj_test/personas", json={"personas": [data]})
+    assert response.status_code == 200, response.text
+    saved = client.get("/api/projects/proj_test").json()["personas"][0]
+    assert saved["category_rates"] == {"drinks": rate}
+    assert saved["budget_min"] == saved["budget_max"] == 0

@@ -34,6 +34,8 @@ export function createShellMaterials(
   woodMaps: ScannedMaterialMaps | null = null,
   wallMaps: ScannedMaterialMaps | null = null,
   designTheme: StoreDesign = "classic",
+  metalMaps: ScannedMaterialMaps | null = null,
+  pavementMaps: ScannedMaterialMaps | null = null,
 ): ShellMaterials {
   // Material-owned clones keep hook cleanup and shell rebuilds independent.
   const wood = woodMaps?.map.clone() ?? canvasTexture(createWoodCanvas(), { anisotropy: 1 });
@@ -88,7 +90,12 @@ export function createShellMaterials(
     plinth: std(palette.plinth, 0.95),
     // Powder coating is a dielectric even when the substrate is steel.
     metalWhite: std(palette.shelf, 0.42, 0),
-    metalGrey: std("#9ea6ae", 0.35, 0.6),
+    metalGrey: std(metalMaps ? "#ffffff" : "#9ea6ae", metalMaps ? 1 : 0.35, metalMaps ? 1 : 0.6, {
+      map: metalMaps?.map.clone() ?? null,
+      roughnessMap: metalMaps?.roughnessMap.clone() ?? null,
+      normalMap: metalMaps?.normalMap?.clone() ?? null,
+      normalScale: new THREE.Vector2(0.25, 0.25),
+    }),
     backPanel: std(palette.backing, 0.6, 0.15),
     kick: std("#5c636b", 0.55, 0.35),
     rail: std("#cfd4d9", 0.35, 0.2),
@@ -124,8 +131,18 @@ export function createShellMaterials(
     black: std("#17191c", 0.45, 0.2),
     screen: emissive("#4f8fe8", 0.9),
     mat: std("#2f3337", 0.98),
-    aluminum: std("#b7bdc4", 0.32, 0.85),
-    pavement: std("#bdbab4", 0.9),
+    aluminum: std(metalMaps ? "#ffffff" : "#b7bdc4", metalMaps ? 1 : 0.32, metalMaps ? 1 : 0.85, {
+      map: metalMaps?.map.clone() ?? null,
+      roughnessMap: metalMaps?.roughnessMap.clone() ?? null,
+      normalMap: metalMaps?.normalMap?.clone() ?? null,
+      normalScale: new THREE.Vector2(0.25, 0.25),
+    }),
+    pavement: std(pavementMaps ? "#ffffff" : "#bdbab4", pavementMaps ? 1 : 0.9, 0, {
+      map: pavementMaps?.map.clone() ?? null,
+      roughnessMap: pavementMaps?.roughnessMap.clone() ?? null,
+      normalMap: pavementMaps?.normalMap?.clone() ?? null,
+      normalScale: new THREE.Vector2(0.45, 0.45),
+    }),
     curb: std("#9b9893", 0.9),
     ceiling: std(palette.ceiling, 0.95),
     ceilingLight: emissive("#ffffff", 4.5),

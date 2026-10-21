@@ -11,13 +11,14 @@ vi.mock("@/shared/api/client", () => ({ getStoreTemplates: vi.fn(), previewStore
 
 function Picker() {
   const [value, onChange] = useState(DEFAULT_TEMPLATE_CHOICE);
-  return <TemplatePicker value={value} onChange={onChange} />;
+  return <TemplatePicker value={value} onChange={onChange} budgetCurrency="USD" />;
 }
 
 beforeEach(() => {
   vi.mocked(api.getStoreTemplates).mockResolvedValue([
     { id: "urban_cvs", name: "City store", description: "Daily groceries", store_type: "convenience", grid: [12, 10], racks: 10, skus: 40, open_hours: [0, 24], default_style: "aisles", default_design: "classic", default_dining_tables: 0 },
     { id: "community_pharmacy", name: "Community pharmacy", description: "First aid and wellness", store_type: "pharmacy", grid: [14, 12], racks: 12, skus: 50, open_hours: [9, 21], default_style: "spine", default_design: "minimal", default_dining_tables: 0 },
+    { id: "family_restaurant", name: "Family restaurant", description: "Central dining", store_type: "restaurant", grid: [24, 20], racks: 20, skus: 40, open_hours: [11, 22], default_style: "perimeter", default_design: "warm", default_dining_tables: 8, default_seating_zone: "center", default_checkout_placement: "near_entrance" },
   ]);
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Preview", type: "convenience", grid_size: [12, 10], weekly_schedule: [], racks: [] });
 });
@@ -36,9 +37,13 @@ it("filters formats and sends selected requirements to the preview", async () =>
   fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
   fireEvent.change(screen.getByLabelText("Layout pattern"), { target: { value: "showroom" } });
   fireEvent.change(screen.getByLabelText("Checkout counters"), { target: { value: "3" } });
+  fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "away_from_entrance" } });
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "4" } });
+  fireEvent.change(screen.getByLabelText("Seating starts near"), { target: { value: "right" } });
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "28" } });
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
-    expect.objectContaining({ template_id: "community_pharmacy", style: "showroom", checkouts: 3, width: 28 }), expect.any(AbortSignal),
+    expect.objectContaining({ template_id: "community_pharmacy", style: "showroom", checkouts: 3, width: 28,
+      checkout_placement: "away_from_entrance", dining_tables: 4, seating_zone: "right" }), expect.any(AbortSignal),
   ));
 });
 
@@ -50,8 +55,11 @@ it("does not request an invalid size and resets options without losing the brief
   expect(screen.getByRole("status").textContent).toContain("valid grid size");
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
   fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "Quiet corner" } });
+  fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "near_entrance" } });
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Quiet corner");
+  expect((screen.getByLabelText("Checkout placement") as HTMLSelectElement).value).toBe("auto");
+  expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).disabled).toBe(true);
   await screen.findByRole("img", { name: "Floor plan preview" });
 });
 
@@ -63,4 +71,63 @@ it("shows preview errors instead of a stale successful plan", async () => {
   await screen.findByRole("alert");
   expect(screen.queryByRole("img", { name: "Floor plan preview" })).toBeNull();
   expect(screen.getByRole("alert").textContent).toContain("Preview failed");
+});
+
+it("makes a different budget currency explicit while still allowing a price preview", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Price currency"), { target: { value: "JPY" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ currency: "JPY" }), expect.any(AbortSignal),
+  ));
+  expect(screen.getByText(/This project uses USD shopper budgets/)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Price currency"), { target: { value: "USD" } });
+  expect(screen.queryByText(/Existing budgets are not converted/)).toBeNull();
+});
+
+it("shows each format's seating and checkout defaults without replacing explicit user choices", async () => {
+  mount();
+  await screen.findByRole("button", { name: /Family restaurant/ });
+  fireEvent.click(screen.getByRole("button", { name: /Family restaurant/ }));
+  expect(screen.getByRole("option", { name: "Format default (center)" })).toBeTruthy();
+  expect(screen.getByRole("option", { name: "Format default (near entrance)" })).toBeTruthy();
+  expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).disabled).toBe(false);
+  fireEvent.change(screen.getByLabelText("Seating starts near"), { target: { value: "front" } });
+  fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "away_from_entrance" } });
+  fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    template_id: "community_pharmacy", seating_zone: "front", checkout_placement: "away_from_entrance",
+  }), expect.any(AbortSignal)));
+});
+
+it("previews named clear areas, converts display coordinates and removes them on reset", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  fireEvent.change(screen.getByLabelText("Area 1 name"), { target: { value: "Consultation" } });
+  fireEvent.change(screen.getByLabelText("Area 1 start column"), { target: { value: "5" } });
+  fireEvent.change(screen.getByLabelText("Area 1 depth"), { target: { value: "4" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    reserved_areas: [{ label: "Consultation", x: 4, y: 2, width: 3, height: 4 }],
+  }), expect.any(AbortSignal)));
+  const marker = await screen.findByTestId("reserved-area-preview-0");
+  expect(marker.getAttribute("x")).toBe("4");
+  expect(marker.textContent).toBe("Consultation: kept clear");
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ reserved_areas: [] }), expect.any(AbortSignal)));
+  expect(screen.queryByTestId("reserved-area-preview-0")).toBeNull();
+});
+
+it("holds preview for incomplete area values and supports removing a reservation", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  await screen.findByTestId("reserved-area-preview-0");
+  const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+  fireEvent.change(screen.getByLabelText("Area 1 width"), { target: { value: "" } });
+  expect(screen.getByRole("status").textContent).toContain("reserved-area values");
+  expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+  fireEvent.click(screen.getByRole("button", { name: "Remove area 1" }));
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  expect(screen.queryByLabelText("Area 1 name")).toBeNull();
 });
