@@ -87,6 +87,7 @@ Marketing studio (`/marketing/<project>`):
 ab_test_calls (rule shoppers)   = 0
 ab_test_calls (vision shoppers) ≈ panel × (variants + 1) × 1–1.5    # 0..max_glances per shopper
 concept_test_calls              = panel                             # one structured answer per respondent
+staff_script_calls              = min(panel, saved_personas) × 2     # separate A and B requests, plus retries
 ```
 
 shopper_interview_calls         = 1 per question               # text model, from the run's trip log
@@ -100,6 +101,34 @@ signs, which only they can see.
 Source: `backend/src/store_emulator/engine/generators/persona.py:99-242`,
 `backend/src/store_emulator/engine/simulation/engines/pattern_intent_impulse/engine.py:56-119`,
 `backend/src/store_emulator/application/supplemental.py:214-499`.
+
+### Staff script A/B screening
+
+Open **Market → Staff scripts** and select the saved layout. Choose one shelf product, describe the common
+encounter (for example, a shopper comparing teas), and supply verified product facts if needed. Enter the exact
+current and alternative employee wording, with distinct names. Keep prices, offers and facts the same to isolate
+wording. A neutral greeting can be the control. The model is instructed to treat claims in a script as claims,
+not verified facts; this is not an automated fact-checking service.
+
+The default is 40 sampled personas and 80 planned text-model requests. At least 20 saved personas are required;
+the request is capped at 500. The seed fixes panel selection, first-request order and bootstrap sampling; providers
+may still be nondeterministic. Scripts are evaluated in separate requests, without A/B labels, variant names or
+the other script. Product, persona and request snapshots are saved under `marketing/pitches/<id>/`.
+
+The report compares **B minus A** on 1–5 purchase intent (primary), trust and pressure. Only personas with both
+valid responses enter either mean. Each 95% interval uses 2,000 resamples of paired differences and requires
+20 complete pairs. Intervals describe variation in the synthetic panel, not model error or real-customer uncertainty.
+A screening leader also requires at least 80% pair completion and no worse mean trust or pressure; those guardrail
+means are not a statistical non-inferiority test. Missing intervals mean insufficient pairs, not zero uncertainty.
+
+The paired CSV contains both arms, exact wording, context, product facts, prices, seed, model reference, ratings,
+replies, errors and inclusion flags. It retains failures and prefixes formula-like text for spreadsheet safety.
+All-model failures are failed jobs; a server restart marks interrupted jobs failed so they can be retried.
+
+Before claiming a sales effect, run a real field pilot: randomize eligible encounters within staff/shift blocks,
+record every assigned encounter (including refusals) and purchase, hold the offer constant, and decide the sample
+size and stopping rule before reviewing results. This module does not simulate staff availability, spoken tone,
+queue time, or store traffic, and does not yet import observed field conversions.
 
 ## Step 1 — Store info
 

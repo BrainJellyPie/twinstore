@@ -133,7 +133,7 @@ class MarketingInfo(BaseModel):
 
 class JobStatus(BaseModel):
     job_id: str
-    kind: Literal["experiment", "survey"]
+    kind: Literal["experiment", "survey", "pitch"]
     name: str = ""
     status: JobState
     stage: str = ""
