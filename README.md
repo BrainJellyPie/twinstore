@@ -280,7 +280,7 @@ inventory from a photo, placing orders or predicting recovered sales.
 
 ## Validated on real baskets
 
-<img src="./research/validation/figures/fig_validation_evidence.png" alt="Fig. 4 — Evidence that the twin's shoppers shop like real ones, on held-out households of public datasets">
+<img src="./.github/assets/twinstore/validation.png" alt="Fig. 4 — Evidence that the twin's shoppers shop like real ones, on held-out households of public datasets">
 
 **Fig. 4 — Validation.** TwinStore's own engines shop for the households of public datasets, and the simulated
 trips are compared with real trips they never saw. The main test uses dunnhumby's *The Complete Journey*: 150
@@ -308,13 +308,13 @@ Luna as decision models, alone and mixed into one population. Every failure the 
 | Walking speed (13,159 tracks) | `1.12 m/s` | `1.13 m/s` |
 | Seconds at the shelf per unplanned purchase (eye tracking) | `7–9` (median) | `8.2` |
 
-What failed, what was fixed, the limits and the reproduction steps are in
-[`research/validation`](./research/validation). Every number there is recomputed from the saved trips.
+The full validation study — what failed, what was fixed, its limits and how to reproduce it — is maintained outside
+this repository; every number in it is recomputed from the saved trips.
 
 ## For researchers
 
 Every stimulus and every model call is seeded and cached, so experiments are paired and reproducible, and figures
-regenerate from saved JSON without model calls. [`research/`](./research) holds the instruments and paper directions:
+regenerate from saved JSON without model calls. The research directions TwinStore is built for:
 
 - **VLM shopper bench** — position and order biases (Latin-square placement, shuffled tag numbers), merchandising
   levers, price read-back, persona and situation conditioning, corruption robustness, image-vs-text ablation, agreement
@@ -401,7 +401,7 @@ It then downloads the matching [llama.cpp](https://github.com/ggml-org/llama.cpp
 | `TWINSTORE_LOCAL_VLM_MODEL` | forces a model: `qwen3.5-0.8b`, `qwen3.5-2b`, … |
 
 A llama.cpp server already running on port 8081 is used as it is. A cloud key gives faster and far more accurate
-shoppers; the validation in [`research/validation`](./research/validation) uses cloud models.
+shoppers; the validation above uses cloud models.
 
 To run the model by hand instead:
 

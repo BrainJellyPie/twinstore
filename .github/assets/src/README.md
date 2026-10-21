@@ -16,4 +16,4 @@ open .github/assets/src/promo.html?play            # watch the film in a browser
 
 Needs Playwright with Chromium, ffmpeg, and `frontend/node_modules` (the pages load Geist, Geist Mono and Instrument
 Serif from there). Screenshots in `../twinstore/screens/` and shelf images in `../twinstore/media/` are captured from
-the running app and the Shelf Lab engine; the numbers in `validation.html` come from `research/validation/README.md`.
+the running app and the Shelf Lab engine; the numbers in `validation.html` come from the validation study.
