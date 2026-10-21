@@ -1,15 +1,16 @@
 // Concept test builder: up to four product images side by side (A–D), a short standard questionnaire, a quota of
 // the project's personas, and a vision model that answers as each of them.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ClipboardList, Loader2 } from "lucide-react";
+import { Check, ClipboardList, Loader2, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { marketingKeys, startSurvey, type JobStatus, type QuestionKind, type SurveyRequest } from "@/shared/api/marketing";
+import { designSurvey, marketingKeys, startSurvey, type JobStatus, type QuestionKind, type SurveyDesign, type SurveyRequest } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { minorUnitDivisor } from "@/shared/utils/money";
@@ -24,8 +25,11 @@ const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
 const GENDERS = ["Female", "Male"];
 const LETTERS = "ABCD";
 
-export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, onStarted }: {
-  projectId: string; personaCount: number; defaultCurrency?: string; initial?: SurveyRequest | null; onStarted: (job: JobStatus) => void;
+export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, setupId, prefill, onStarted }: {
+  projectId: string; personaCount: number; defaultCurrency?: string; initial?: SurveyRequest | null; setupId?: string;
+  /** A request routed from the command palette: fills the question and drafts the test from it. */
+  prefill?: { text: string; id: number };
+  onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
   const packages = usePackages(projectId).data ?? [];
@@ -50,6 +54,39 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   const referencePrice = toMinor(price, minorUnitDivisor(currency));
   const invalidPrice = price.trim().length > 0 && referencePrice === null;
 
+  // Draft the whole test from the question it should answer: images from the library, questions, brief, price,
+  // quotas. Everything stays editable; images the library does not have are reported, not invented.
+  const [question, setQuestion] = useState("");
+  const questionLength = Array.from(question.trim()).length;
+  const [drafted, setDrafted] = useState<{ question: string; design: SurveyDesign } | null>(null);
+  const draft = useMutation({
+    mutationFn: (q: string) => designSurvey(projectId, { question: q.trim(), setup_id: setupId, currency }),
+    onSuccess: (d, q) => {
+      setDrafted({ question: q, design: d });
+      if (d.stimuli.length > 0) {
+        setStimuli(d.stimuli);
+        setNames((n) => ({ ...n, ...Object.fromEntries(d.stimuli.map((id, i) => [id, d.stimulus_names[i] ?? ""]).filter(([, v]) => v)) }));
+      }
+      setQuestions(d.questions);
+      if (d.context) setContext(d.context.slice(0, 300));
+      setCurrency(d.currency);
+      setPrice(d.reference_price != null ? String(d.reference_price / minorUnitDivisor(d.currency)) : "");
+      setAges(d.age_groups);
+      setGenders(d.genders);
+      setName((current) => current.trim() ? current : d.name);
+    },
+  });
+  const queueDraft = useQueuedStart(draft.mutate);
+  const prefillId = prefill?.id;
+  const prefillText = prefill?.text;
+  useEffect(() => {
+    if (prefillId === undefined || !prefillText) return;
+    const text = Array.from(prefillText).slice(0, 500).join("");
+    setQuestion(text);
+    queueDraft(text);
+  }, [prefillId, prefillText, queueDraft]);
+  const shownDraft = drafted?.question === question ? drafted.design : null;
+
   const run = useMutation({
     mutationFn: () => startSurvey(projectId, {
       name: name.trim(), stimuli, stimulus_names: stimuli.map(label), questions: asked, context: context.trim(), currency,
@@ -64,6 +101,23 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   return (
     <div className="space-y-4">
       <section className="glass space-y-3 rounded-2xl p-4">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2">
+          <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
+          <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); draft.mutate(question); } }}
+            placeholder="What should the test answer? e.g. Which of our two new labels looks more premium to people in their twenties?"
+            aria-label="Question for the concept test" className="h-9 min-w-[14rem] flex-1 bg-card" />
+          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => draft.mutate(question)}>
+            {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the test
+          </Button>
+          {shownDraft && (
+            <div className="basis-full space-y-0.5 px-1 text-xs text-muted-foreground">
+              <p>{shownDraft.rationale} Check the images, questions and quotas below before fielding it.</p>
+              {shownDraft.warnings.map((w) => <p key={w}>· {w}</p>)}
+            </div>
+          )}
+          {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
+        </div>
         <div className="flex items-baseline justify-between">
           <h3 className="text-sm font-semibold">What respondents see <span className="font-normal text-muted-foreground">· pick 1–4 images, shown side by side as A–D</span></h3>
           <span className="num text-xs text-muted-foreground">{stimuli.length}/4</span>

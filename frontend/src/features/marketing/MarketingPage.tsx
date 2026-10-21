@@ -77,12 +77,13 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   // A request routed here from the command palette opens the right builder and drafts from the same words.
   const pendingAsk = useAssistStore((s) => s.pending);
   const takeAsk = useAssistStore((s) => s.take);
-  const [prefill, setPrefill] = useState<{ tab: "ab" | "conjoint" | "pitch"; text: string; id: number } | null>(null);
+  const [prefill, setPrefill] = useState<{ tab: "ab" | "conjoint" | "survey" | "pitch"; text: string; id: number } | null>(null);
   useEffect(() => {
     if (!pendingAsk) return;
-    const ask = takeAsk(projectId, ["ab_test", "conjoint", "staff_script"]);
+    const ask = takeAsk(projectId, ["ab_test", "conjoint", "concept_test", "staff_script"]);
     if (!ask) return;
-    const target = ask.destination === "ab_test" ? "ab" : ask.destination === "conjoint" ? "conjoint" : "pitch";
+    const target = ask.destination === "ab_test" ? "ab" : ask.destination === "conjoint" ? "conjoint"
+      : ask.destination === "concept_test" ? "survey" : "pitch";
     setTab(target);
     setSelected((s) => ({ ...s, [target]: "" }));
     setPrefill({ tab: target, text: ask.text, id: ask.id });
@@ -214,7 +215,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             ) : <Loading />)}
             {tab === "survey" && (current ? <SurveyJob projectId={projectId} id={current} onDuplicate={duplicateSurvey} /> : (
               <SurveyBuilder key={`${surveyDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
-                defaultCurrency={budgetCurrency} initial={surveyDraft?.req}
+                defaultCurrency={budgetCurrency} initial={surveyDraft?.req} setupId={activeSetup || undefined}
+                prefill={prefill?.tab === "survey" ? prefill : undefined}
                 onStarted={(j) => { setSurveyDraft(null); select(j.job_id); }} />
             ))}
             {tab === "conjoint" && (current ? <ConjointJob projectId={projectId} id={current} onDuplicate={duplicateConjoint} /> : (

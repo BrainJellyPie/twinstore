@@ -6,11 +6,18 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Concept tests drafted from a question
+- **Draft the test** in Concept tests: from "which of our two labels looks more premium to people in their
+  twenties?" the text model picks the product images to show from the library (by name, with the shelf product and
+  price each one shows), the questions, the brief respondents read, a shelf price when price matters, and age or
+  gender quotas only when the question names a group. Images the library does not have are reported, never
+  invented; "preference" is asked only with two or more images. API: `POST /api/projects/{pid}/surveys/design`.
+
 ### Ask TwinStore from the command palette
 - Inside a store, a sentence typed in the command palette (Ctrl K) that names no command can be handed to TwinStore:
   the text model decides whether it is an A/B test ("would a 1+1 sign on cola sell more than a 20 % cut?"), a
-  conjoint study, a staff script, the neighborhood, or a question about the last run, opens that page and drafts
-  from the same words (the A/B variants, the study, script B for the product the sentence names, the area settings,
+  conjoint study, a concept test, a staff script, the neighborhood, or a question about the last run, opens that page and drafts
+  from the same words (the A/B variants, the study, the concept test, script B for the product the sentence names, the area settings,
   or the analyst's answer). Nothing runs on its own; a request that fits none of these says what can be set up.
   A request that is not picked up within two minutes is dropped. API: `POST /api/assist/route`.
 
