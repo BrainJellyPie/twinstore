@@ -10,6 +10,7 @@ import { createPackageGeometry, PACKAGE_KINDS } from "./productGeometries";
 import type { PackageKind } from "./productCatalog";
 import type { ProductLayout } from "./productLayout";
 import { attachProductPhotos, productLabelKey } from "./productPhotos";
+import { loadScannedBananas } from "./scannedBananas";
 
 const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }> = {
   bottle: { roughness: 0.18, metalness: 0 },
@@ -20,7 +21,14 @@ const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }
   tube: { roughness: 0.35, metalness: 0.25 },
   box: { roughness: 0.62, metalness: 0 },
   bag: { roughness: 0.32, metalness: 0.15 },
+  banana: { roughness: 0.55, metalness: 0 },
 };
+
+export interface ProductLod {
+  mesh: THREE.InstancedMesh;
+  coarse: THREE.BufferGeometry;
+  fine: THREE.BufferGeometry;
+}
 
 export interface ProductMeshes {
   group: THREE.Group;
@@ -28,7 +36,7 @@ export interface ProductMeshes {
   textures: THREE.CanvasTexture[];
   // Swap package meshes between the coarse (overview) and fine (close-up) LOD.
   setDetail: (fine: boolean) => void;
-  loadPhotos: () => () => void;
+  loadAssets: (onReady?: () => void) => () => void;
   dispose: () => void;
 }
 
@@ -73,7 +81,8 @@ export function buildProductMeshes(
     if (list) list.push(p);
     else byKind.set(p.kind, [p]);
   }
-  const lods: { mesh: THREE.InstancedMesh; coarse: THREE.BufferGeometry; fine: THREE.BufferGeometry }[] = [];
+  const lods: ProductLod[] = [];
+  let bananaLod: ProductLod | null = null;
   for (const kind of PACKAGE_KINDS) {
     const list = byKind.get(kind);
     if (!list?.length) continue;
@@ -82,7 +91,9 @@ export function buildProductMeshes(
     const mat = createAtlasMaterial(labelTex, scale, { ...KIND_SURFACE[kind], cheap, selfLight: cheap ? 0.22 : 0.1 });
     const mesh = instanced(geom, mat, list.length);
     fine.setAttribute("aCell", geom.getAttribute("aCell"));
-    lods.push({ mesh, coarse: geom, fine });
+    const lod = { mesh, coarse: geom, fine };
+    lods.push(lod);
+    if (kind === "banana") bananaLod = lod;
     disposables.push(fine);
     mesh.name = `pkg-${kind}`;
     mesh.castShadow = castShadow;
@@ -163,6 +174,7 @@ export function buildProductMeshes(
     disposables.push(geom, mat);
   }
 
+  let cancelAssets = () => {};
   return {
     group,
     atlases: [labelAtlas, tagAtlas, talkerAtlas],
@@ -170,8 +182,15 @@ export function buildProductMeshes(
     setDetail: (fine) => {
       for (const l of lods) l.mesh.geometry = fine ? l.fine : l.coarse;
     },
-    loadPhotos: photos.load,
+    loadAssets: (onReady) => {
+      cancelAssets();
+      const stopPhotos = photos.load();
+      const stopBananas = bananaLod ? loadScannedBananas(bananaLod, cheap, onReady) : () => {};
+      cancelAssets = () => { stopPhotos(); stopBananas(); };
+      return cancelAssets;
+    },
     dispose: () => {
+      cancelAssets();
       photos.dispose();
       for (const d of disposables) d.dispose();
     },

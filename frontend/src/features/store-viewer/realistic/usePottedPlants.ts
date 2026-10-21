@@ -3,27 +3,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { DoorSpec } from "./buildStore";
 import { M } from "./constants";
-
-function disposePlant(scene: THREE.Object3D) {
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  const textures = new Set<THREE.Texture>();
-  const images = new Set<ImageBitmap>();
-  scene.traverse((object) => {
-    if (!(object instanceof THREE.Mesh)) return;
-    geometries.add(object.geometry);
-    for (const material of Array.isArray(object.material) ? object.material : [object.material]) materials.add(material);
-  });
-  for (const material of materials) for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
-  for (const texture of textures) {
-    const image: unknown = texture.image;
-    if (typeof ImageBitmap !== "undefined" && image instanceof ImageBitmap) images.add(image);
-    texture.dispose();
-  }
-  images.forEach((image) => image.close());
-  materials.forEach((material) => material.dispose());
-  geometries.forEach((geometry) => geometry.dispose());
-}
+import { disposeOwnedGltf } from "./gltfResources";
 
 export function usePottedPlants(enabled: boolean, doors: DoorSpec[]) {
   const request = useMemo(() => ({ enabled }), [enabled]);
@@ -34,7 +14,7 @@ export function usePottedPlants(enabled: boolean, doors: DoorSpec[]) {
     let alive = true;
     let scene: THREE.Group | null = null;
     void new GLTFLoader().loadAsync("/assets/props/potted-plant-01.glb").then((gltf) => {
-      if (!alive) { disposePlant(gltf.scene); return; }
+      if (!alive) { disposeOwnedGltf(gltf.scene); return; }
       scene = gltf.scene;
       scene.traverse((object) => {
         if (!(object instanceof THREE.Mesh)) return;
@@ -48,7 +28,7 @@ export function usePottedPlants(enabled: boolean, doors: DoorSpec[]) {
     }).catch(() => { /* The procedural planters stay visible if the asset cannot load. */ });
     return () => {
       alive = false;
-      if (scene) disposePlant(scene);
+      if (scene) disposeOwnedGltf(scene);
     };
   }, [request]);
 

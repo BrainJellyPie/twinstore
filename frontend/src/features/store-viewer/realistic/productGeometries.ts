@@ -3,6 +3,7 @@
 // area, everything else samples the flat body/accent colour zones.
 
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { LABEL_U0, ZONE_ACCENT, ZONE_BODY } from "./atlasLayout";
 import type { PackageKind } from "./productCatalog";
 
@@ -300,6 +301,28 @@ function bag(lod: Lod): THREE.BufferGeometry {
   return g;
 }
 
+function banana(lod: Lod): THREE.BufferGeometry {
+  const parts = [-0.22, 0, 0.22].map((x, index) => {
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(x, 0.85 - index * 0.04, -0.38),
+      new THREE.Vector3(x - 0.05, 0.02, 0),
+      new THREE.Vector3(x, 0.55 + index * 0.04, 0.4),
+    );
+    return new THREE.TubeGeometry(curve, lod ? 10 : 5, 0.11, lod ? 6 : 4, false);
+  });
+  const geometry = mergeGeometries(parts)!;
+  parts.forEach((part) => part.dispose());
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox!;
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  geometry.translate(-center.x, -box.min.y, -center.z);
+  geometry.scale(1 / size.x, 1 / size.y, 1 / size.z);
+  const uv = geometry.getAttribute("uv");
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, ZONE_BODY[0], ZONE_BODY[1]);
+  return geometry;
+}
+
 export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.BufferGeometry {
   switch (kind) {
     case "bottle":
@@ -316,9 +339,11 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
       return cup(0.43, lod);
     case "bag":
       return bag(lod);
+    case "banana":
+      return banana(lod);
     default:
       return box();
   }
 }
 
-export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag"];
+export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana"];
