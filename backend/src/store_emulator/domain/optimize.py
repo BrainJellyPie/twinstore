@@ -42,7 +42,7 @@ class OptimizeConstraints(BaseModel):
     max_moves: int = Field(default=10, ge=1, le=50)
     # Minimum relative improvement (in the objective's direction) the best layout must show on the
     # search customers to be returned; otherwise the baseline is returned unchanged.
-    min_improvement: float = Field(default=0.0, ge=0.0)
+    min_improvement: float = Field(default=0.0, ge=0.0, allow_inf_nan=False)
 
 
 class OptimizeSpec(BaseModel):
