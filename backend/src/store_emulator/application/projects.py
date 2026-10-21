@@ -126,7 +126,8 @@ def delete_project(project_id: str) -> None:
     if not project_dir.exists():
         raise FileNotFoundError(f"Project not found: {project_id}")
     for pattern in ("runs/*/status.json", "generations/*/status.json", "optimizations/*/status.json",
-                    "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json"):
+                    "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json",
+                    "synergy/*/status.json"):
         for status_path in project_dir.glob(pattern):
             try:
                 raw: object = read_json(status_path)

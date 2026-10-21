@@ -23,8 +23,8 @@ from .storage.io import DATA_DIR, now_iso, read_json, write_json
 
 logger = logging.getLogger(__name__)
 
-# Persona ids carry upper-case letters ("M1019"); nothing here may contain a path separator.
-_ID = re.compile(r"[A-Za-z0-9_-]{1,80}")
+# Town arrivals append "~t<number>" to persona IDs; path separators remain invalid.
+_ID = re.compile(r"[A-Za-z0-9_~-]{1,80}")
 
 
 def _check_id(value: str, what: str) -> None:

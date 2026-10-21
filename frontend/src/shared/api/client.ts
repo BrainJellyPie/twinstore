@@ -1717,7 +1717,15 @@ export interface StorefrontResult { venue_id: string; appeal: StorefrontAppeal; 
 
 export interface ReceiptLine { name: string; quantity: number; unit_price: number | null; line_total: number | null; sku: string; matched: boolean }
 export interface ReceiptReading { receipt_id: string; store: string; timestamp: string; currency: string; lines: ReceiptLine[]; total: number | null; notes: string[] }
-export interface ReceiptsResult { receipts: ReceiptReading[]; matched_lines: number; unmatched_lines: number; csv: string }
+export interface ReceiptsResult { receipts: ReceiptReading[]; matched_lines: number; unmatched_lines: number; csv: string; products: Record<string, string>; currency: string }
+export interface ReceiptIssue { receipt_id: string; line_index: number | null; severity: "error" | "warning"; code: string; message: string }
+export interface ReceiptReview { receipts: ReceiptReading[]; issues: ReceiptIssue[]; ready: boolean; included_lines: number; currency: string; csv: string }
+
+export function reviewReceipts(projectId: string, runId: string, receipts: ReceiptReading[]): Promise<ReceiptReview> {
+  return fetchJson(`/api/projects/${projectId}/receipts/review`, {
+    method: "POST", body: JSON.stringify({ run_id: runId, receipts }),
+  });
+}
 
 async function postForm<T>(path: string, form: FormData): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });

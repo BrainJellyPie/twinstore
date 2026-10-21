@@ -3,15 +3,33 @@
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import vision_inputs as service
 from store_emulator.application.errors import AppError
 from store_emulator.application.vision_inputs import ReceiptsResult, StorefrontResult
+from store_emulator.domain.receipt_review import ReceiptReview
+from store_emulator.domain.vision_inputs import ReceiptReading
 
 from ..deps import get_config
 
 router = APIRouter(prefix="/api/projects", tags=["photo inputs"])
+
+
+class ReceiptReviewRequest(BaseModel):
+    receipts: list[ReceiptReading] = Field(max_length=100)
+    setup_id: str = Field(default="", pattern=r"^[A-Za-z0-9_-]*$")
+    run_id: str = Field(default="", pattern=r"^[A-Za-z0-9_-]*$")
+
+
+@router.post("/{pid}/receipts/review", summary="Check corrected receipts before POS validation", response_model=ReceiptReview)
+def review_receipts(pid: str, body: ReceiptReviewRequest) -> ReceiptReview:
+    try:
+        return service.review_receipt_batch(pid, body.receipts, setup_id=body.setup_id or None,
+                                            run_id=body.run_id or None, config=get_config())
+    except AppError as e:
+        raise HTTPException(e.status_code, e.message) from e
 
 
 @router.post("/{pid}/town/venues/{venue_id}/storefront", summary="Rate a storefront photo; sets the venue's pull",

@@ -19,9 +19,9 @@ class StorefrontAppeal(BaseModel):
 
 class ReceiptLine(BaseModel):
     name: str
-    quantity: float = 1.0
-    unit_price: int | None = None            # minor units
-    line_total: int | None = None
+    quantity: float = Field(default=1.0, allow_inf_nan=False)
+    unit_price: int | None = Field(default=None, ge=-9_007_199_254_740_991, le=9_007_199_254_740_991)  # minor units, browser-safe integers
+    line_total: int | None = Field(default=None, ge=-9_007_199_254_740_991, le=9_007_199_254_740_991)
     sku: str = ""                            # the store's SKU when the name matches one of its products
     matched: bool = False
 
@@ -32,5 +32,5 @@ class ReceiptReading(BaseModel):
     timestamp: str = ""                      # ISO date-time as printed (may be date only)
     currency: str = ""
     lines: list[ReceiptLine] = []
-    total: int | None = None
+    total: int | None = Field(default=None, ge=-9_007_199_254_740_991, le=9_007_199_254_740_991)
     notes: list[str] = []

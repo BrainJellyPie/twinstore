@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
 from store_emulator.domain.config import EngineType, ExposureModel, PlanPolicy, RouteOrdering, SimulationConfig
 from store_emulator.domain.customer import CustomerResult
+from store_emulator.domain.movement import MovementReport
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.scenario import Scenario
@@ -21,6 +22,7 @@ from store_emulator.domain.runner import ProgressCallback, SimulationRunner
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import stable_seed
 from store_emulator.application.pos import parse_pos_csv
+from store_emulator.application.movement import read_movement, score_movement
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.application.runner import build_runner
 from store_emulator.application.scenarios import get_preset, prepare_inputs
@@ -449,6 +451,14 @@ def run_fidelity(pid: str, run_id: str, data: bytes, filename: str) -> FidelityR
     report = fidelity_report(load_run_store(base), load_run_results(base), lines)
     write_json(base / "output" / "fidelity.json", report.model_dump())
     return report
+
+
+def run_movement_fidelity(pid: str, run_id: str, data: bytes, *, max_gap_seconds: float) -> MovementReport:
+    return score_movement(_completed_run_base(pid, run_id), data, max_gap_seconds=max_gap_seconds)
+
+
+def get_movement_fidelity(pid: str, run_id: str) -> MovementReport | None:
+    return read_movement(_completed_run_base(pid, run_id))
 
 
 def export_customers_csv(pid: str, run_id: str) -> str:

@@ -30,6 +30,7 @@ export function createShellMaterials(
   signTexture: THREE.Texture,
   partEnv: THREE.Texture | null = null,
   woodMaps: ScannedMaterialMaps | null = null,
+  wallMaps: ScannedMaterialMaps | null = null,
 ): ShellMaterials {
   // Material-owned clones keep hook cleanup and shell rebuilds independent.
   const wood = woodMaps?.map.clone() ?? canvasTexture(createWoodCanvas(), { anisotropy: 1 });
@@ -70,7 +71,12 @@ export function createShellMaterials(
   });
 
   const mats: ShellMaterials = {
-    wall: std(SHELL_COLORS.wall, 0.92),
+    wall: std(SHELL_COLORS.wall, 0.92, 0, {
+      map: wallMaps?.map.clone() ?? null,
+      roughnessMap: wallMaps?.roughnessMap.clone() ?? null,
+      normalMap: wallMaps?.normalMap?.clone() ?? null,
+      normalScale: new THREE.Vector2(0.2, 0.2),
+    }),
     band: std(SHELL_COLORS.band, 0.6),
     bandLine: std(SHELL_COLORS.bandLine, 0.5),
     trim: std("#d9dcdf", 0.5, 0.1),
