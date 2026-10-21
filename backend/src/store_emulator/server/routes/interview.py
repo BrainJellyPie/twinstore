@@ -7,7 +7,14 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import interview as service
 from store_emulator.application.errors import AppError
-from store_emulator.domain.interview import GroupInterview, GroupInterviewRequest, Interview, InterviewQuestion, Journey
+from store_emulator.domain.interview import (
+    GroupInterview,
+    GroupInterviewRequest,
+    Interview,
+    InterviewQuestion,
+    Journey,
+    SuggestionRequest,
+)
 
 from ..deps import get_config
 
@@ -47,6 +54,14 @@ async def ask(pid: str, run_id: str, persona_id: str, q: InterviewQuestion) -> I
     """The shopper answers in the first person from their persona and this trip only, citing the journey steps the
     answer is about. Returns the whole transcript."""
     return await run_in_threadpool(_call, lambda: service.interview(pid, run_id, persona_id, q, get_config()))
+
+
+@router.post("/{pid}/runs/{run_id}/shoppers/{persona_id}/interview/suggestions", summary="Suggest next questions",
+             response_model=Interview)
+async def suggest(pid: str, run_id: str, persona_id: str, req: SuggestionRequest) -> Interview:
+    """Up to three questions a researcher would ask next, written by the model for this trip and the conversation so
+    far. Kept with the transcript (`suggestions`, `suggested_after`) until the conversation moves on."""
+    return await run_in_threadpool(_call, lambda: service.suggest_questions(pid, run_id, persona_id, req, get_config()))
 
 
 @router.delete("/{pid}/runs/{run_id}/shoppers/{persona_id}/interview", summary="Start the interview over", status_code=204)

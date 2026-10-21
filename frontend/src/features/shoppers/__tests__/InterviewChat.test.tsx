@@ -3,12 +3,12 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { askShopper, clearInterview, getInterview, interviewKeys, type Interview, type Journey } from "@/shared/api/interview";
+import { askShopper, clearInterview, getInterview, interviewKeys, suggestQuestions, type Interview, type Journey } from "@/shared/api/interview";
 import { InterviewChat } from "../InterviewChat";
 
 vi.mock("@/shared/api/interview", async (original) => ({
   ...await original<typeof import("@/shared/api/interview")>(),
-  askShopper: vi.fn(), clearInterview: vi.fn(), getInterview: vi.fn(),
+  askShopper: vi.fn(), clearInterview: vi.fn(), getInterview: vi.fn(), suggestQuestions: vi.fn(),
 }));
 vi.mock("@/shared/api/client", () => ({ BASE: "", getModels: vi.fn().mockResolvedValue([]) }));
 
@@ -26,6 +26,7 @@ const answered: Interview = { ...empty, messages: [
 
 beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
+  vi.mocked(suggestQuestions).mockRejectedValue(new Error("no model"));
 });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
@@ -75,10 +76,39 @@ it("prevents new questions while clearing the interview", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Start over" }));
   await waitFor(() => expect(clearInterview).toHaveBeenCalled());
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "Why?" } });
-  const suggestion = screen.getByRole("button", { name: "How did the prices feel to you today?" }) as HTMLButtonElement;
+  const suggestion = await screen.findByRole("button", { name: "How did the prices feel to you today?" }) as HTMLButtonElement;
   expect(suggestion.disabled).toBe(true);
   expect((screen.getByRole("button", { name: "Ask" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(suggestion);
   await act(async () => fireEvent.submit(screen.getByRole("textbox").closest("form")!));
   expect(askShopper).not.toHaveBeenCalled();
+});
+
+it("shows follow-ups the model wrote for this conversation and reuses stored ones", async () => {
+  vi.mocked(getInterview).mockResolvedValue({ ...answered, suggestions: ["Why were you in a hurry?"], suggested_after: 2 });
+  mount();
+  expect(await screen.findByRole("button", { name: "Why were you in a hurry?" })).toBeTruthy();
+  expect(screen.getByLabelText("Written for this trip")).toBeTruthy();
+  expect(suggestQuestions).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: "How did the prices feel to you today?" })).toBeNull();
+});
+
+it("asks the model for follow-ups once the conversation moves on and sends one when clicked", async () => {
+  vi.mocked(getInterview).mockResolvedValue({ ...answered, suggestions: ["Old question?"], suggested_after: 0 });
+  vi.mocked(suggestQuestions).mockResolvedValue({ ...answered, suggestions: ["What made you rush?"], suggested_after: 2 });
+  vi.mocked(askShopper).mockImplementation(() => new Promise(() => {}));
+  mount();
+  const chip = await screen.findByRole("button", { name: "What made you rush?" });
+  expect(suggestQuestions).toHaveBeenCalledWith("project", "r", "p", "", expect.anything());
+  expect(screen.queryByRole("button", { name: "Old question?" })).toBeNull();
+  fireEvent.click(chip);
+  await waitFor(() => expect(askShopper).toHaveBeenCalledWith("project", "r", "p", "What made you rush?", ""));
+});
+
+it("keeps the trip-based questions when no model can write follow-ups", async () => {
+  vi.mocked(getInterview).mockResolvedValue(empty);
+  mount();
+  expect(await screen.findByRole("button", { name: "You left without buying anything. What was missing?" })).toBeTruthy();
+  await waitFor(() => expect(suggestQuestions).toHaveBeenCalled());
+  expect(screen.queryByLabelText("Written for this trip")).toBeNull();
 });

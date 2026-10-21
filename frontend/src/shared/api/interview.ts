@@ -55,7 +55,15 @@ export interface Journey {
 }
 
 export interface InterviewMessage { role: "interviewer" | "shopper"; text: string; steps: number[]; created_at: string }
-export interface Interview { run_id: string; persona_id: string; model: string; messages: InterviewMessage[] }
+export interface Interview {
+  run_id: string;
+  persona_id: string;
+  model: string;
+  messages: InterviewMessage[];
+  /** Model-written next questions, written after `suggested_after` messages (-1: none yet). */
+  suggestions?: string[];
+  suggested_after?: number;
+}
 
 const base = (pid: string, runId: string, sid: string) => `/api/projects/${pid}/runs/${runId}/shoppers/${encodeURIComponent(sid)}`;
 
@@ -65,6 +73,8 @@ export const getInterview = (pid: string, runId: string, sid: string, signal?: A
   fetchJson<Interview>(`${base(pid, runId, sid)}/interview`, { signal });
 export const askShopper = (pid: string, runId: string, sid: string, question: string, model: string) =>
   fetchJson<Interview>(`${base(pid, runId, sid)}/interview`, { method: "POST", body: JSON.stringify({ question, model }) });
+export const suggestQuestions = (pid: string, runId: string, sid: string, model: string, signal?: AbortSignal) =>
+  fetchJson<Interview>(`${base(pid, runId, sid)}/interview/suggestions`, { method: "POST", body: JSON.stringify({ model }), signal });
 export const clearInterview = (pid: string, runId: string, sid: string) =>
   fetchJson<void>(`${base(pid, runId, sid)}/interview`, { method: "DELETE" });
 
@@ -111,4 +121,6 @@ export const interviewKeys = {
   groups: (pid: string, runId: string) => ["projects", pid, "runs", runId, "group-interviews"] as const,
   journey: (pid: string, runId: string, sid: string) => ["projects", pid, "runs", runId, "shoppers", sid, "journey"] as const,
   interview: (pid: string, runId: string, sid: string) => ["projects", pid, "runs", runId, "shoppers", sid, "interview"] as const,
+  suggestions: (pid: string, runId: string, sid: string, after: number, model: string) =>
+    ["projects", pid, "runs", runId, "shoppers", sid, "interview", "suggestions", after, model] as const,
 };

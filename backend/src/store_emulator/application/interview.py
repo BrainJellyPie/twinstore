@@ -27,15 +27,21 @@ from store_emulator.domain.interview import (
     InterviewMessage,
     InterviewQuestion,
     Journey,
+    SuggestionRequest,
     Theme,
 )
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, Face
-from store_emulator.engine.interview import ask_shopper, build_journey, code_themes
+from store_emulator.engine.interview import (
+    ask_shopper,
+    build_journey,
+    code_themes,
+    suggest_follow_ups,
+)
 from store_emulator.engine.perception.shelf_render import render_face
 
-from .errors import AppError
+from .errors import AppError, model_failure
 from .providers import build_client
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 
@@ -151,7 +157,7 @@ def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, conf
             reply = asyncio.run(ask_shopper(llm, journey, store, transcript.messages, q.question.strip()))
         except Exception as e:  # provider errors reach the user as a message, not a 500
             logger.warning(f"[interview] {pid}/{run_id}/{persona_id}: {type(e).__name__}: {e}")
-            raise AppError(f"the shopper could not answer ({type(e).__name__}): {str(e)[:200]}", 502) from e
+            raise AppError(model_failure(e, "The shopper could not answer"), 502) from e
         now = now_iso()
         transcript.model = q.model.strip() or llm_config.model
         transcript.messages += [
@@ -162,6 +168,42 @@ def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, conf
         path.parent.mkdir(parents=True, exist_ok=True)
         write_json(path, transcript.model_dump(mode="json"))
         return transcript
+
+
+def suggest_questions(pid: str, run_id: str, persona_id: str, req: SuggestionRequest, config: SimulationConfig) -> Interview:
+    """Model-written next questions for this trip and conversation, kept with the transcript until it moves on.
+
+    The model call runs without the interview lock, so a question asked meanwhile is never refused; suggestions
+    written for a conversation that has since changed are dropped instead of saved."""
+    transcript = get_interview(pid, run_id, persona_id)
+    if transcript.suggested_after == len(transcript.messages) and transcript.suggestions:
+        return transcript
+    journey = get_journey(pid, run_id, persona_id)
+    _, _, store, _ = _load(pid, run_id)
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.6, "max_tokens": 400})
+    try:
+        llm = build_client(llm_config, None, model_ref=req.model.strip() or None)
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        questions = asyncio.run(suggest_follow_ups(llm, journey, store, transcript.messages))
+    except Exception as e:  # suggestions are optional; the client keeps its own
+        logger.warning(f"[interview] follow-ups {pid}/{run_id}/{persona_id}: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "No follow-up questions"), 502) from e
+    path = _transcript_path(pid, run_id, persona_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock = FileLock(path.with_suffix(".lock"), timeout=5)
+    try:
+        with lock:
+            current = get_interview(pid, run_id, persona_id)
+            if len(current.messages) != len(transcript.messages):
+                return current
+            current.suggestions, current.suggested_after = questions, len(current.messages)
+            if questions:
+                write_json(path, current.model_dump(mode="json"))
+            return current
+    except Timeout:
+        return transcript.model_copy(update={"suggestions": questions, "suggested_after": len(transcript.messages)})
 
 
 # ── group interviews ────────────────────────────────────────────────────────────
@@ -218,7 +260,7 @@ def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: S
                 try:
                     reply = await ask_shopper(llm, j, store, [], question)
                 except Exception as e:  # one shopper failing must not sink the group
-                    return base.model_copy(update={"error": f"{type(e).__name__}: {str(e)[:160]}"})
+                    return base.model_copy(update={"error": model_failure(e, "No answer")})
             return base.model_copy(update={"answer": reply.answer, "steps": reply.steps})
 
         answers = list(await asyncio.gather(*(one(j) for j in journeys)))
