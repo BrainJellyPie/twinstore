@@ -235,3 +235,22 @@ def test_price_sweep_gives_a_demand_curve(store: Store, personas: list[Persona])
     rep = ExperimentReport(experiment_id="e", name="Sweep", setup_id="s", engine="rule", panel_size=200, currency="USD",
                            visitors_per_day=400, focus_skus=["A0017"], control=control, variants=results, price_response=pr)
     assert "Price response" in report_html(rep)
+
+
+def test_shelf_comparison_is_paired_by_respondent() -> None:
+    from store_emulator.domain.marketing import ShelfChoice
+    from store_emulator.engine.marketing.shelf_test import compare_shelves, pick_shares
+
+    def c(r: str, arm: str, pick: str, noticed: list[str]) -> ShelfChoice:
+        return ShelfChoice(respondent=r, age_group="30s", gender="Female", arm=arm, pick_sku=pick, noticed=noticed)  # type: ignore[arg-type]
+
+    choices = []
+    for i in range(20):
+        choices.append(c(f"p{i}", "control", "T" if i < 4 else "X", ["X", "T"] if i < 8 else ["X"]))
+        choices.append(c(f"p{i}", "test", "T" if i < 12 else "X", ["T"] if i < 16 else ["X"]))
+    choices.append(c("lonely", "test", "T", ["T"]))          # no control answer: left out of the pairs
+    pick, noticed, first = compare_shelves(choices, "T")
+    assert (pick.control, pick.test, pick.diff) == (0.2, 0.6, 0.4) and pick.ci_low > 0 and pick.prob_better > 0.99
+    assert (noticed.control, noticed.test) == (0.4, 0.8) and (first.control, first.test) == (0.0, 0.8)
+    shares = {s.sku: s for s in pick_shares(choices, {"T": "Target", "X": "Rival"})}
+    assert shares["T"].name == "Target" and abs(shares["T"].control + shares["X"].control - 1) < 1e-9
