@@ -1,0 +1,69 @@
+{
+  "asset": "Poly Haven Potted Plant 01",
+  "author": "Rico Cilliers",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "asset_url": "https://polyhaven.com/a/potted_plant_01",
+  "conversion": "Blender 4.3.2; scripts/convert_potted_plant.py; 176226 to 14499 triangles; original 1K maps; separate leaf alpha restored; authored metric size preserved.",
+  "files": [
+    {
+      "file": "textures/potted_plant_01_pot_rough_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_pot_rough_1k.jpg",
+      "bytes": 173192,
+      "sha256": "1256199fe3a88a0534bcd4c8bf141cfa9a28b68fce3f286193d0713796fd8561"
+    },
+    {
+      "file": "textures/potted_plant_01_leaves_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_leaves_nor_gl_1k.jpg",
+      "bytes": 177105,
+      "sha256": "2faa756e0ee2b8341c752b283b93599157bf56f4083a9f61b825cdfa0c7138ff"
+    },
+    {
+      "file": "textures/potted_plant_01_pot_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_pot_diff_1k.jpg",
+      "bytes": 204900,
+      "sha256": "51c9d80e8abe585bd3dbcebe7cba1d3ed1a22b137c7cb66baf0e462c08dca312"
+    },
+    {
+      "file": "potted_plant_01.bin",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/potted_plant_01/potted_plant_01.bin",
+      "bytes": 5345188,
+      "sha256": "a8dd1f7ce75f50dc25bbedc20809da02ee4193815c155b883a329925fa5548f7"
+    },
+    {
+      "file": "textures/potted_plant_01_leaves_rough_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_leaves_rough_1k.jpg",
+      "bytes": 91706,
+      "sha256": "765e3bd1bfdad39dd0d1cd755eafd1f9f1d46cbbb6013988cbfd1197de27a1f9"
+    },
+    {
+      "file": "textures/potted_plant_01_pot_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_pot_nor_gl_1k.jpg",
+      "bytes": 200349,
+      "sha256": "ec02e51751e0822d229d48bea1373b06e2675c3725ff04fd1f87ac516719e620"
+    },
+    {
+      "file": "textures/potted_plant_01_leaves_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_leaves_diff_1k.jpg",
+      "bytes": 124730,
+      "sha256": "b73891a0a606e139d0fcdd9e6fe503cd1210be3fc9c55fbd033941288231ccaa"
+    },
+    {
+      "file": "potted_plant_01.gltf",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/potted_plant_01/potted_plant_01_1k.gltf",
+      "bytes": 7969,
+      "sha256": "23b30294407684b02f14800d6685bd8938da5d2111e17753ac8dd3c37d8c88a0"
+    },
+    {
+      "file": "textures/potted_plant_01_leaves_alpha_1k.png",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/png/1k/potted_plant_01/potted_plant_01_leaves_alpha_1k.png",
+      "bytes": 90654,
+      "sha256": "380ff44359f128b7cf0e2912b378a0f61f4b0d8e8707dbe043c92465d82e9592"
+    }
+  ],
+  "output": {
+    "file": "potted-plant-01.glb",
+    "bytes": 2684592,
+    "sha256": "ecc7594630f1259485892cd66956a281fdfe0b2e2e2217d8047c51ce94216ee9"
+  }
+}

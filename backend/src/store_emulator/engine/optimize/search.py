@@ -366,7 +366,7 @@ async def optimize(
         if metric is not None:
             maximize = spec.objective.maximize
             validation_relative = round(metric.rel_diff if maximize else -metric.rel_diff, 6)
-            validation_prob = round(metric.prob_b_greater if maximize else 1.0 - metric.prob_b_greater, 4)
+            validation_prob = metric.prob_b_greater if maximize else metric.prob_b_less
             excludes_zero = metric.ci_low > 0 if maximize else metric.ci_high < 0
             if validation_relative <= 0:
                 notes.append(

@@ -17,6 +17,7 @@ import { acquireRoomEnvironment } from "./envCache";
 import { ReflectiveFloor } from "./ReflectiveFloor";
 import { useRealisticSettings } from "./graphicsSettings";
 import { useScannedMaterial } from "./useScannedMaterial";
+import { usePottedPlants } from "./usePottedPlants";
 
 interface Props {
   width: number;
@@ -86,6 +87,7 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   const fontsReady = useFontsReady();
 
   const built = useMemo(() => buildStore(width, depth, racks, quality === "high"), [width, depth, racks, quality]);
+  const plants = usePottedPlants(quality === "high" && built.doors.length > 0, built.doors);
   const signTexture = useMemo(() => {
     const t = new THREE.CanvasTexture(built.signAtlas.canvas);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -100,7 +102,7 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   const wallMaps = useScannedMaterial(quality === "high" ? "plaster_001" : null, 1 / M, 1 / M, quality);
   // Author the fine metal finish at a half-metre repeat, independent of beam dimensions.
   const metalMaps = useScannedMaterial(quality === "high" ? "metal_032" : null, 2 / M, 2 / M, quality);
-  // Poly Haven's paving scan covers 2.12 m. Stores without an entrance have no pavement.
+  // Poly Haven's paving scan covers 2.12 m. Stores without an exterior door have no pavement.
   const pavementMaps = useScannedMaterial(quality === "high" && built.storefront ? "pavement_02" : null, 1 / (2.12 * M), 1 / (2.12 * M), quality);
   const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps]);
   const layout = useMemo(() => layoutProducts(built.plans, { maxRows: preset.maxRows }), [built, preset.maxRows]);
@@ -158,14 +160,17 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
     pending
       .catch(() => undefined)
       .then(() => {
-        if (alive) g.visible = true;
+        if (alive) {
+          g.visible = true;
+          gl.shadowMap.needsUpdate = true;
+        }
       });
     return () => {
       alive = false;
       g.visible = true;
       useRealisticSettings.getState().setRealisticReady(false);
     };
-  }, [get, built, materials, products]);
+  }, [get, built, materials, products, plants]);
 
   // Fine package geometry only when the shelves are big on screen.
   const fineRef = useRef<boolean | null>(null);
@@ -199,6 +204,7 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
           name={`shell-${key}`}
           geometry={geom}
           material={materials[key]}
+          visible={!plants || (key !== "plant" && key !== "pot")}
           castShadow={!NO_CAST.has(key)}
           receiveShadow={!NO_RECEIVE.has(key)}
           renderOrder={key === "ao" ? 1 : key === "glass" || key === "lidGlass" ? 3 : 0}
@@ -220,6 +226,7 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
         ))}
       </group>
       <primitive object={products.group} />
+      {plants && <primitive object={plants} dispose={null} />}
       <AutoDoors doors={built.doors} materials={materials} />
       <RackHitboxes plans={built.plans} />
     </group>

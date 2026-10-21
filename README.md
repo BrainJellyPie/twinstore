@@ -524,6 +524,9 @@ Exposed metal supports and frames use CC0 [ambientCG Metal 032](https://ambientc
 in High, with color, roughness and normal maps at a consistent authored scale.
 The storefront pavement uses Poly Haven's CC0 Pavement 02 scan in High, with
 world-space texture coordinates preserving its 2.12 m coverage across store sizes.
+High also replaces the entrance's simple planters with a reduced Poly Haven
+Potted Plant 01 model by Rico Cilliers (CC0), with textured leaves and terracotta.
+Sources and rebuild instructions are in [`frontend/public/assets/props/`](./frontend/public/assets/props/README.md).
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: six appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
