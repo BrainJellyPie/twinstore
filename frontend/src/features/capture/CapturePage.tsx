@@ -451,7 +451,7 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
   const currentSetup = useSimulationStore((s) => s.selectedSetupId);
   const { data: setups = [] } = useQuery({ queryKey: queryKeys.setups(projectId), queryFn: ({ signal }) => api.getSetups(projectId, signal) });
   const [setupId, setSetupId] = useState<string>("");
-  const base = setupId || currentSetup || setups[setups.length - 1]?.id || "";
+  const base = [setupId, currentSetup].find((id) => setups.some((s) => s.id === id)) ?? setups[setups.length - 1]?.id ?? "";
   const { data: setup } = useQuery({
     queryKey: ["projects", projectId, "setups", base, "detail"],
     queryFn: ({ signal }) => api.getSetup(projectId, base, signal),
@@ -460,8 +460,9 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
   const racks = (setup?.store?.racks ?? []).filter((r) => r.type === (result.rack_type === "fridge" ? "fridge" : "shelf"));
   const [mode, setMode] = useState<"new" | "replace">("new");
   const [rackId, setRackId] = useState("");
+  const targetRackId = racks.some((r) => r.id === rackId) ? rackId : racks[0]?.id;
   const apply = useMutation({
-    mutationFn: () => api.applyCapture(projectId, captureId, mode === "new" ? { setup_id: base, new_rack: true } : { setup_id: base, rack_id: rackId || racks[0]?.id }),
+    mutationFn: () => api.applyCapture(projectId, captureId, mode === "new" ? { setup_id: base, new_rack: true } : { setup_id: base, rack_id: targetRackId }),
     onSuccess: async (r) => {
       // Captured SKU photos also decorate cached run playback.
       await qc.invalidateQueries({ queryKey: queryKeys.project(projectId) });
@@ -493,12 +494,12 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
         ))}
       </div>
       {mode === "replace" && (
-        <select className="mt-2 h-9 w-full rounded-lg border bg-background px-2" value={rackId || racks[0]?.id || ""} onChange={(e) => setRackId(e.target.value)}>
+        <select className="mt-2 h-9 w-full rounded-lg border bg-background px-2" value={targetRackId ?? ""} onChange={(e) => setRackId(e.target.value)}>
           {racks.map((r) => <option key={r.id} value={r.id}>{r.rack_name || r.id}</option>)}
         </select>
       )}
       {apply.error && <p className="mt-2 text-xs text-destructive">{apply.error instanceof Error ? apply.error.message : String(apply.error)}</p>}
-      <Button className="mt-3 h-auto min-h-10 w-full gap-2 py-2.5 whitespace-normal" size="lg" disabled={!base || apply.isPending || (mode === "replace" && racks.length === 0)} onClick={() => apply.mutate()}>
+      <Button className="mt-3 h-auto min-h-10 w-full gap-2 py-2.5 whitespace-normal" size="lg" disabled={!base || apply.isPending || (mode === "replace" && !targetRackId)} onClick={() => apply.mutate()}>
         {apply.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />} Create a layout with this shelf
       </Button>
       <p className="mt-2 text-xs text-muted-foreground">Saved as a new draft layout — the original stays as it is, ready for an A/B run.</p>
