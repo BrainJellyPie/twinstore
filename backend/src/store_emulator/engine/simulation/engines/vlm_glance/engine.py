@@ -176,7 +176,7 @@ class VLMGlanceEngine(RuleBasedEngine):
             return self.close_plan(store, plan, [])
 
         catalog = self._catalog_for(store)
-        limit = int(plan.budget * plan.tolerance) if plan.tolerance is not None else None
+        limit = int(plan.budget * plan.tolerance) if plan.budget is not None and plan.tolerance is not None else None
         resolved: list[tuple[str, str, str, str]] = []
         # A trip of known breadth (Persona.basket_kinds, e.g. from a past receipt) keeps the model's
         # first categories in its priority order; asked for n items, models otherwise spread them over
@@ -378,7 +378,7 @@ class VLMGlanceEngine(RuleBasedEngine):
             prompt = user_prompt(
                 persona, context.cue, plan.pattern, view,
                 basket=self._basket_names(context, plan),
-                money_left=None if persona.budget_max <= 0 or plan.tolerance is None
+                money_left=None if plan.budget is None or plan.tolerance is None
                 else int(plan.budget * plan.tolerance) - plan.spend,
                 currency=cfg.currency,
                 situation=context.situation,
