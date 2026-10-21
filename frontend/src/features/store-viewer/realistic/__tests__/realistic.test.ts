@@ -50,6 +50,16 @@ describe("productCatalog", () => {
     ["Banana Chips", "bag"],
     ["Banana Milk", "bottle"],
     ["Banana Ice Cream", "pint"],
+    ["Apples", "apple"],
+    ["Organic Gala Apples 1kg", "apple"],
+    ["Fuji Apple Each", "apple"],
+    ["Apples 2pk", "applePair"],
+    ["Red Apples 2-pack", "applePair"],
+    ["Apples 4pk", "box"],
+    ["Green Apples", "box"],
+    ["Apple Juice", "bottle"],
+    ["Apple Chips", "bag"],
+    ["Apple Pie", "box"],
   ])("classifies %s as %s", (name, kind) => {
     expect(classifyProduct(name).kind).toBe(kind);
   });
@@ -175,16 +185,20 @@ describe("fixture planning and product layout", () => {
     expect(out.talkers[0]!.promo).toBe("2 for $5");
   });
 
-  it("keeps fresh bunches proportional and in one layer on a shelf", () => {
-    const produce = rack({ id: "produce", type: "shelf", position: [3, 3], slots: slots("S", [["Bananas"]]) });
+  it.each([
+    ["Bananas", "banana", 0.134, 0.179, 0.223],
+    ["Apples", "apple", 0.09756, 0.08539, 0.09590],
+    ["Apples 2pk", "applePair", 0.20112, 0.08539, 0.09590],
+  ] as const)("keeps %s proportional and in one layer on a shelf", (name, kind, width, height, depth) => {
+    const produce = rack({ id: "produce", type: "shelf", position: [3, 3], slots: slots("S", [[name]]) });
     const out = layoutProducts([planFixture(produce, 8, 6)], { maxRows: 3 });
     expect(out.products.length).toBeGreaterThan(1);
     expect(new Set(out.products.map((p) => p.y)).size).toBe(1);
     expect(out.tags).toHaveLength(1);
     for (const p of out.products) {
-      expect(p.kind).toBe("banana");
-      expect(p.sx / p.sy).toBeCloseTo(0.134 / 0.179);
-      expect(p.sz / p.sy).toBeCloseTo(0.223 / 0.179);
+      expect(p.kind).toBe(kind);
+      expect(p.sx / p.sy).toBeCloseTo(width / height);
+      expect(p.sz / p.sy).toBeCloseTo(depth / height);
     }
   });
 
