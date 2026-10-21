@@ -334,6 +334,9 @@ def assistive_model(requested: str, config: LLMConfig) -> str:
     keep their configured model and never fall back."""
     if requested.strip():
         return requested.strip()
+    # Plain LiteLLM references retain the key supplied in the app configuration.
+    if ModelRef.parse(config.model) is None and config.api_key and config.api_key.get_secret_value().strip():
+        return config.model
     alternative = text_model_fallback(config.model)
     if alternative is not None:
         logger.info(f"[providers] {config.model} has no API key; assistive features use {alternative}")
