@@ -15,6 +15,8 @@ from urllib.parse import quote
 
 from PIL import Image, UnidentifiedImageError
 
+from store_emulator.domain.types import RESOURCE_ID_PATTERN
+
 from .io import DATA_DIR, read_json, write_json
 
 
@@ -25,7 +27,7 @@ _ALLOWED_FORMATS: Final[dict[str, tuple[str, str]]] = {
     "JPEG": ("image/jpeg", "jpg"),
     "WEBP": ("image/webp", "webp"),
 }
-_SAFE_PID: Final[re.Pattern[str]] = re.compile(r"[a-z0-9_]+")
+_SAFE_PID: Final[re.Pattern[str]] = re.compile(RESOURCE_ID_PATTERN)
 
 # Per-project lock that serializes manifest writes. Assumes a single process
 # (single uvicorn worker). Prevents lost-update on concurrent save_image calls
