@@ -428,7 +428,7 @@ def survey_csv(pid: str, sid: str) -> str:
                 vals = cast(list[int], getattr(a, q))
                 row += [vals[i] if i < len(vals) else "" for i in range(k)]
         if "price_vw" in r.questions:
-            row += [a.too_cheap or "", a.cheap or "", a.expensive or "", a.too_expensive or ""]
+            row += [value if value is not None else "" for value in (a.too_cheap, a.cheap, a.expensive, a.too_expensive)]
         if "preference" in r.questions:
             row.append(LETTERS[a.preferred] if a.preferred is not None else "")
         if "open" in r.questions:
