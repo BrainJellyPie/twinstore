@@ -1,6 +1,6 @@
 # Store layout templates
 
-Everything about generating a furnished starting layout: the 60 store formats, product categories, entrances and
+Everything about generating a furnished starting layout: the 64 store formats, product categories, entrances and
 exits, seating, checkouts, reserved areas, multi-floor buildings and the floor editor. The [README](./README.md#store-formats-and-templates)
 has the short version.
 
@@ -9,10 +9,22 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 60
+In a project, choose **New layout → Generate a store from a template**. Search 64
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+
+**Airport shopping gallery** is a 30×24 luxury loop with travel goods, fragrances,
+jewelry and electronics, four checkouts and 24-hour opening. **Hospital convenience
+& gift shop** is an 18×16 cross-aisle store for meals, care goods, baby supplies and
+flowers, also open all day. **Museum book & gift shop** uses a 16×14 Nordic floor
+with books, art supplies and keepsakes, open 10–18 Tuesday through Sunday.
+**Evening food court** has a 32×26 terracotta floor, twelve four-seat tables and six
+ordering counters, open 16–24. Its purchases use the counter-ordering model.
+**Travel retail & dining** combines the shopping gallery and evening food court;
+**Hospital services center** combines convenience, pharmacy and care-supply floors.
+All four formats support mixed table sizes, counter spacing, category selection,
+custom hours and portable option files.
 
 **Nordic lifestyle showroom** combines homeware, books and plant gifts in a 22×18
 floor with browsing islands and pale ash finishes. **Retro diner & shake bar**
@@ -24,6 +36,9 @@ for each layout or building floor. Blank hours and **Use format operating hours*
 format defaults, including its regular days off. Set 0–24 for all-day opening, keep at least
 one weekday open, and use a closing hour later than opening; overnight schedules are not supported.
 These settings are saved, reused and included in exported layout and building options files.
+The resolved weekly hours and closed weekdays also appear in **Compare with default**,
+**Review all floors** and expanded floor plans. SVG downloads include them in the
+accessible description. Matching days are grouped; 00:00–24:00 means all-day opening.
 In a building, **Apply operating hours to all floors** copies the current floor's effective
 opening, closing and closed weekdays to every floor, including resolved format defaults.
 The preview beside the button shows the hours and number of open days before applying.
@@ -243,6 +258,15 @@ only its named setting; floor labels, layouts, seating, reservations and briefs
 remain independent. You can customize an individual floor again afterward.
 These controls update the building being prepared; existing shopper budgets are
 not converted.
+
+**Apply size to all floors** copies the current floor's width and depth to every
+floor, resolving blank dimensions against its selected format. The floor review
+opens immediately so you can inspect each resized plan. Each floor retains its
+own format, product choices, seating and checkout settings, reserved areas, design, schedule and brief.
+If an explicit seating count or reserved area cannot fit, edit that floor or enlarge
+the shared size before saving; invalid floors cannot leave a partially saved building.
+You can resize one floor independently afterward. Sizes are grid cells, with widths
+8–40 and depths 6–40.
 
 **Space beside counters** reserves 0–3 empty cells along the checkout wall on either
 side of each counter, clipped at the wall ends. Counters respect the selected spacing;

@@ -15,6 +15,20 @@ export interface OperatingHours {
   closed_days: number[];
 }
 
+export interface FloorSize {
+  width: number;
+  height: number;
+}
+
+export function resolveFloorSize(value: Pick<LayoutOptions, "width" | "height">,
+  template: Pick<StoreTemplate, "grid"> | undefined): FloorSize | null {
+  if (!template) return null;
+  const width = value.width ?? template.grid[0];
+  const height = value.height ?? template.grid[1];
+  return Number.isInteger(width) && width >= 8 && width <= 40 && Number.isInteger(height) && height >= 6 && height <= 40
+    ? { width, height } : null;
+}
+
 export function resolveOperatingHours(value: Pick<LayoutOptions, "open_hour" | "close_hour" | "closed_days">,
   template: Pick<StoreTemplate, "open_hours" | "closed_days"> | undefined): OperatingHours | null {
   if (!template) return null;
@@ -142,6 +156,8 @@ export const BUILDING_PRESETS = [
   { id: "neighborhood_dining", name: "Neighborhood dining center", floors: [["Ground · Ice cream", "ice_cream_parlor"], ["Level 2 · Salads", "salad_cafe"], ["Level 3 · Burgers", "burger_shop"], ["Level 4 · Korean dining", "korean_restaurant"]] },
   { id: "daily_essentials", name: "Daily essentials center", floors: [["Ground · Refill grocery", "refill_market"], ["Level 2 · Care supplies", "care_supply_store"], ["Level 3 · Fragrances", "fragrance_boutique"], ["Level 4 · Bubble tea", "bubble_tea_cafe"]] },
   { id: "design_diner", name: "Design shop & diner", floors: [["Ground · Nordic living", "nordic_lifestyle"], ["Level 2 · Retro diner", "retro_diner"]] },
+  { id: "travel_dining", name: "Travel retail & dining", floors: [["Ground · Travel shopping", "airport_shopping_gallery"], ["Level 2 · Evening dining", "evening_food_court"]] },
+  { id: "hospital_services", name: "Hospital services center", floors: [["Ground · Convenience & gifts", "hospital_convenience"], ["Level 2 · Pharmacy", "community_pharmacy"], ["Level 3 · Care supplies", "care_supply_store"]] },
 ] as const;
 
 export function buildingPreset(id: string, currency = "USD"): BuildingFloorChoice[] {

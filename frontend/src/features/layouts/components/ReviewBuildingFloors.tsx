@@ -6,14 +6,19 @@ import * as api from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import { templateRequest, validBuildingFloors, validTemplateChoice, type BuildingFloorChoice } from "../templateOptions";
 import { FloorPlanPreview } from "./FloorPlanPreview";
+import { formatWeeklyHours } from "../weeklyHours";
 
 interface Props {
   floors: BuildingFloorChoice[];
   onEdit: (index: number) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function ReviewBuildingFloors({ floors, onEdit }: Props) {
-  const [open, setOpen] = useState(false);
+export function ReviewBuildingFloors({ floors, onEdit, open: controlledOpen, onOpenChange }: Props) {
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = controlledOpen ?? localOpen;
+  const setOpen = (next: boolean) => { setLocalOpen(next); onOpenChange?.(next); };
   return <Dialog open={open} onOpenChange={setOpen}>
     <DialogTrigger asChild><button type="button" className="rounded border px-2 py-1 text-xs hover:bg-muted">Review all floors</button></DialogTrigger>
     <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-[min(92vw,1000px)]">
@@ -71,6 +76,7 @@ function FloorReviews({ floors, onEdit }: Props) {
                   <FloorPlanPreview store={store} areas={floor.choice.reserved_areas ?? []} previewFrame={frame} />
                   <p className="text-xs">{store.racks.filter((rack) => rack.slots.length).length} displays · {tableCount} dining tables · {store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0)} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
                   <p className="text-xs text-muted-foreground">{INTERIOR_DESIGNS[store.design_theme ?? "classic"].label} · {floor.choice.reserved_areas?.length ?? 0} reserved areas</p>
+                  <p className="break-words text-xs text-muted-foreground">Operating hours: {formatWeeklyHours(store.weekly_schedule)}</p>
                 </>}
         </section>;
       })}

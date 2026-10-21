@@ -22,6 +22,20 @@ const floors: BuildingFloorChoice[] = [
 ];
 beforeEach(() => { vi.mocked(api.previewStoreTemplate).mockImplementation(async (request) => request.template_id === "juice_bar" ? small : large); });
 
+it("reviews resolved per-floor hours even when the choices use format defaults", async () => {
+  vi.mocked(api.previewStoreTemplate).mockImplementation(async (request) => ({
+    ...(request.template_id === "juice_bar" ? small : large),
+    weekly_schedule: Array.from({ length: 7 }, (_, index) => ({ day: index + 1,
+      is_open: request.template_id !== "juice_bar" || index !== 0,
+      open_hour: request.template_id === "juice_bar" ? 10 : 0, close_hour: request.template_id === "juice_bar" ? 18 : 24 })),
+  }));
+  mount();
+  fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
+  await screen.findByText("2 of 2 floor previews ready");
+  expect(within(screen.getByRole("region", { name: "1F · Juice" })).getByText("Operating hours: Mon: Closed; Tue–Sun: 10:00–18:00")).toBeTruthy();
+  expect(within(screen.getByRole("region", { name: "2F · Pizza" })).getByText("Operating hours: Every day: 00:00–24:00")).toBeTruthy();
+});
+
 function mount(value = floors) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   clients.push(client);

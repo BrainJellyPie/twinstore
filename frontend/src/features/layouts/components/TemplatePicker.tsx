@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
-import { LAYOUT_PRIORITIES, LAYOUT_STYLES, resolveOperatingHours, templateRequest, validTemplateChoice, type OperatingHours, type TemplateChoice } from "../templateOptions";
+import { LAYOUT_PRIORITIES, LAYOUT_STYLES, resolveFloorSize, resolveOperatingHours, templateRequest, validTemplateChoice, type FloorSize, type OperatingHours, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
@@ -16,7 +16,7 @@ import { CompareFloorPlans } from "./CompareFloorPlans";
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, sharedDesign, sharedCurrency, sharedHours = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, onApplySizeToAll, sharedDesign, sharedCurrency, sharedHours = false, sharedSize = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
@@ -24,9 +24,11 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   onApplyDesignToAll?: (design: NonNullable<TemplateChoice["design_theme"]>) => void;
   onApplyCurrencyToAll?: (currency: string) => void;
   onApplyHoursToAll?: (hours: OperatingHours) => void;
+  onApplySizeToAll?: (size: FloorSize) => void;
   sharedDesign?: NonNullable<TemplateChoice["design_theme"]>;
   sharedCurrency?: string;
   sharedHours?: boolean;
+  sharedSize?: boolean;
   showOperatingHours?: boolean;
   defaultCustomizationOpen?: boolean;
 }) {
@@ -56,6 +58,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const mixStartingCount = value.dining_tables ?? (preview.isSuccess ? preview.data.racks.filter((rack) => rack.type === "table").length : tableCount);
   const closedDays = value.closed_days ?? selected?.closed_days ?? [];
   const operatingHours = resolveOperatingHours(value, selected);
+  const floorSize = resolveFloorSize(value, selected);
   const activeDesign = value.design_theme ?? selected?.default_design;
   const categories = selected?.categories ?? [];
   const excluded = new Set(value.excluded_categories ?? []);
@@ -159,6 +162,13 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             <div className="grid grid-cols-2 gap-2">
               <Field label={t("widthCells")}><input type="number" className={controlClass} min={8} max={40} step={1} placeholder={String(selected?.grid[0] ?? 12)} value={value.width ?? ""} onChange={(e) => update({ width: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               <Field label={t("depthCells")}><input type="number" className={controlClass} min={6} max={40} step={1} placeholder={String(selected?.grid[1] ?? 10)} value={value.height ?? ""} onChange={(e) => update({ height: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
+              {onApplySizeToAll && <div className="col-span-2 space-y-1 text-xs">
+                <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50" disabled={!floorSize || sharedSize}
+                  onClick={() => { if (floorSize) onApplySizeToAll(floorSize); }}>{floorSize && sharedSize ? "Size used on all floors" : "Apply size to all floors"}</button>
+                <p className="text-muted-foreground">{floorSize
+                  ? `Applies ${floorSize.width}×${floorSize.height} cells to every floor and opens the floor review. Check that seating, counters and reserved areas still fit.`
+                  : "Enter a valid width and depth before applying the size to every floor."}</p>
+              </div>}
               <div className="col-span-2 space-y-1"><Field label={t("priceCurrency")}><select className={controlClass} value={value.currency} onChange={(e) => update({ currency: e.target.value })}>
                 <option value="USD">USD · $</option><option value="KRW">KRW · ₩</option><option value="JPY">JPY · ¥</option>
               </select></Field>
