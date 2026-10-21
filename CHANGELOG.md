@@ -132,8 +132,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   change; a pick right after a look is no longer floored again by the rack minimum, and new racks
   start at a 2 s minimum.
 - Demographic differences (income, kids, household size, marital status) in what simulated
-  households buy correlate with the real ones (r 0.22–0.30 for shoppers who never see their own
-  history, p ≤ 0.02; rule engine −0.01) — `research/validation/demographic_effects.py`.
+  households buy correlate with the real ones (r 0.27 over two held-out panels for shoppers who
+  never see their own history, p 0.006; one real past receipt 0.30; rule engine 0.08, n.s.) —
+  `research/validation/demographic_effects.py`, `demographic_pooled.py`.
+- Each needed category names the household's usual products there: repeat purchases on varied
+  trips 0.44–0.53 → 0.56–0.65 for the models (real 0.73).
 - The three-model mixture ensemble (each shopper one model at random) was checked on the held-out
   panel: between the best and the middle single model on most checks, best on product choice.
 
