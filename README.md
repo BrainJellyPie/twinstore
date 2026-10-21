@@ -134,6 +134,12 @@ In a project, choose **New layout → Generate a store from a template**. Search
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+Search matches names, descriptions and categories, ignores accents (`cafe` also
+finds `café`), and accepts words in any order. **More format filters** narrows the
+starting layouts by cell count and dining seating, or sorts by name, floor size
+or seat count. **Clear format filters** restores the catalog without changing
+the selected format or your layout settings. Size and seating filters describe
+defaults; the selected layout can still be customized.
 
 Restaurant and café starting points include a family restaurant, neighborhood
 bistro, takeaway coffee kiosk, tea lounge and artisan bakery. Vintage boutiques,
@@ -190,11 +196,14 @@ Interior shelf rows can run left to right or front to back. This rotates the
 interior pattern and its product-facing sides while keeping the entrance,
 checkouts, wall fixtures, seating and reserved areas in their chosen locations.
 **Interior aisle gap** overrides the density preset with 1–4 empty cells between
-interior rows and shelf runs. Density still controls the length of each shelf run.
+interior rows and shelf runs. **Maximum shelf run** separately limits adjacent
+display cells to 1–8 before leaving a cross aisle. It follows the density preset
+when unset (3 spacious, 4 balanced or 6 dense); patterns and reserved areas can
+shorten runs further. Both options apply in either shelf direction.
 A small racetrack layout drops its second row when both rows cannot fit the
-requested gap. The perimeter pattern has no interior rows, so this option is
+requested gap. The perimeter pattern has no interior rows, so both options are
 disabled there. Wall spacing and dining-table clearance remain separate; grid
-cells do not specify a physical distance. The chosen gap is saved and reused with
+cells do not specify a physical distance. The gap and run limit are saved and reused with
 the other layout options.
 
 **Central cross aisles** keeps intersecting horizontal and vertical paths clear

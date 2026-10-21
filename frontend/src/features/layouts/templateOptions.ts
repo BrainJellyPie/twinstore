@@ -13,7 +13,7 @@ export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   templateId: "urban_cvs", seed: 0, currency: "USD", style: null,
   density: "balanced", entrance: "left", exit_position: "shared", checkouts: null, fixture_design: "mixed", design_theme: null, dining_tables: null,
   checkout_placement: "auto", seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1,
-  aisle_width: null,
+  aisle_width: null, max_shelf_run: null,
 };
 
 export const LAYOUT_STYLES = [
@@ -27,6 +27,7 @@ export function validTemplateChoice(value: TemplateChoice): boolean {
     (value.width == null || (Number.isInteger(value.width) && value.width >= 8 && value.width <= 40)) &&
     (value.height == null || (Number.isInteger(value.height) && value.height >= 6 && value.height <= 40)) &&
     (value.aisle_width == null || (Number.isInteger(value.aisle_width) && value.aisle_width >= 1 && value.aisle_width <= 4)) &&
+    (value.max_shelf_run == null || (Number.isInteger(value.max_shelf_run) && value.max_shelf_run >= 1 && value.max_shelf_run <= 8)) &&
     (value.checkouts == null || (Number.isInteger(value.checkouts) && value.checkouts >= 1 && value.checkouts <= 12)) &&
     (value.dining_tables == null || (Number.isInteger(value.dining_tables) && value.dining_tables >= 0 && value.dining_tables <= 48)) &&
     (value.table_clearance == null || (Number.isInteger(value.table_clearance) && value.table_clearance >= 1 && value.table_clearance <= 3)) &&
@@ -40,6 +41,7 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
   return {
     template_id: value.templateId, source_setup_id: value.sourceSetupId, seed: value.seed, currency: value.currency, style: value.style,
     width: value.width, height: value.height, density: value.density, aisle_width: value.aisle_width, entrance: value.entrance, exit_position: value.exit_position, shelf_direction: value.shelf_direction,
+    max_shelf_run: value.max_shelf_run,
     checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme,
     dining_tables: value.dining_tables, seating_zone: value.seating_zone, table_clearance: value.table_clearance,
     checkout_placement: value.checkout_placement, reserved_areas: value.reserved_areas, requirements: value.requirements,

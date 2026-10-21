@@ -1332,6 +1332,7 @@ export interface LayoutOptions {
   height?: number | null;
   density?: "spacious" | "balanced" | "dense";
   aisle_width?: number | null;
+  max_shelf_run?: number | null;
   shelf_direction?: "horizontal" | "vertical";
   entrance?: "left" | "center" | "right";
   exit_position?: "shared" | "left" | "center" | "right";
