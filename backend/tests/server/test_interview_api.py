@@ -1,8 +1,12 @@
 """Shopper journeys and interviews on the sample run, with a fake language model (no network)."""
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
+
+from store_emulator.application.storage.io import read_json, write_json
 
 PID = "proj_67916afd"
 RUN = "run_efd57c"
@@ -68,6 +72,30 @@ def test_unknown_shopper_and_bad_ids(client):
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/NOBODY/journey").status_code == 404
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/a.b/journey").status_code == 400
     assert client.get(f"/api/projects/{PID}/runs/run_missing/shoppers/M1/journey").status_code == 404
+
+
+def test_town_shopper_can_view_journey_and_complete_interview(client, monkeypatch):
+    source_id = _shopper(client)
+    shopper_id = f"{source_id}~t1"
+    output = Path(".data") / PID / "runs" / RUN / "output"
+    customers = read_json(output / "timeline.json")
+    customer = next(c for c in customers if c["persona_id"] == source_id)
+    customer["persona_id"] = shopper_id
+    write_json(output / "timeline.json", [customer])
+    persona = read_json(output / "personas.json")[source_id]
+    persona["id"] = shopper_id
+    write_json(output / "personas.json", {shopper_id: persona})
+    from store_emulator.application import interview
+    monkeypatch.setattr(interview, "build_client", lambda *a, **k: _Fake())
+    url = f"/api/projects/{PID}/runs/{RUN}/shoppers/{shopper_id}"
+
+    journey = client.get(f"{url}/journey")
+    assert journey.status_code == 200, journey.text
+    assert journey.json()["persona"]["id"] == shopper_id
+    reply = client.post(f"{url}/interview", json={"question": "Why did you visit?"})
+    assert reply.status_code == 200, reply.text
+    assert len(client.get(f"{url}/interview").json()["messages"]) == 2
+    assert client.delete(f"{url}/interview").status_code == 204
 
 
 def test_model_errors_are_reported(client, monkeypatch):
