@@ -1316,6 +1316,7 @@ export interface StoreTemplate {
   default_checkouts?: number;
   default_seating_zone?: LayoutOptions["seating_zone"];
   default_checkout_placement?: LayoutOptions["checkout_placement"];
+  categories?: { id: string; label: string }[];
 }
 
 export interface ReservedArea {
@@ -1344,6 +1345,7 @@ export interface LayoutOptions {
   table_clearance?: number;
   seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
   reserved_areas?: ReservedArea[];
+  excluded_categories?: string[];
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {

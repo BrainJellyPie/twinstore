@@ -9,12 +9,18 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
     BuildingFloorRequest, BuildingLayoutRequest, BuildingPreset, CheckoutPlacement, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutPreset, LayoutStyle,
-    SeatingZone, ShelfDirection, StoreDesign, TemplateLayoutRequest,
+    SeatingZone, ShelfDirection, StoreDesign, TemplateCategoryId, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
+from store_emulator.engine.layout_gen.catalog import category_label
 from store_emulator.domain.store import Store
 
 router = APIRouter(prefix="/api", tags=["templates"])
+
+
+class TemplateCategory(BaseModel):
+    id: str
+    label: str
 
 
 class TemplateInfo(BaseModel):
@@ -32,6 +38,7 @@ class TemplateInfo(BaseModel):
     default_checkouts: int
     default_seating_zone: SeatingZone
     default_checkout_placement: CheckoutPlacement
+    categories: list[TemplateCategory]
 
 
 @router.get("/store-templates", summary="Store formats that can be generated", response_model=list[TemplateInfo])
@@ -46,6 +53,8 @@ def list_templates() -> list[TemplateInfo]:
             default_dining_tables=t.dining_tables, default_seating_zone=t.seating_zone,
             default_checkouts=t.checkouts,
             default_checkout_placement=t.checkout_placement,
+            categories=[TemplateCategory(id=category, label=category_label(category, "USD"))
+                        for category in sorted(set(t.fridges + t.freezers + t.wall_shelves + t.gondolas + t.near_counter))],
         ))
     return out
 
@@ -66,12 +75,14 @@ def preview(
     dining_tables: int | None = Query(default=None, ge=0, le=48),
     table_clearance: int = Query(default=1, ge=1, le=3),
     seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
+    excluded_categories: list[TemplateCategoryId] | None = Query(default=None, max_length=64),
 ) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density, aisle_width=aisle_width, max_shelf_run=max_shelf_run,
                             shelf_direction=shelf_direction,
                             entrance=entrance, exit_position=exit_position, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables, table_clearance=table_clearance,
-                            seating_zone=seating_zone, checkout_placement=checkout_placement)
+                            seating_zone=seating_zone, checkout_placement=checkout_placement,
+                            excluded_categories=excluded_categories or [])
     return _preview_store(template_id, seed, currency, options)
 
 

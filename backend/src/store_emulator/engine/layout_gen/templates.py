@@ -14,7 +14,7 @@ The result always passes `engine.validation.validate` without errors (checked by
 """
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from store_emulator.domain.layout_options import CheckoutPlacement, LayoutOptions, LayoutStyle, SeatingZone, StoreDesign
 from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotItem
@@ -387,6 +387,18 @@ def generate_store(
         raise ValueError(f"unknown store template: {template_id}")
     rng = random.Random(stable_seed("layout-template", template_id, seed))
     options = options or LayoutOptions()
+    if options.excluded_categories:
+        excluded = set(options.excluded_categories)
+        unknown = excluded - CATALOG.keys()
+        if unknown:
+            raise ValueError(f"Unknown product categories: {', '.join(sorted(unknown))}")
+        t = replace(t, fridges=[c for c in t.fridges if c not in excluded],
+                    freezers=[c for c in t.freezers if c not in excluded],
+                    wall_shelves=[c for c in t.wall_shelves if c not in excluded],
+                    gondolas=[c for c in t.gondolas if c not in excluded],
+                    near_counter=[c for c in t.near_counter if c not in excluded])
+        if not (t.fridges or t.freezers or t.wall_shelves or t.gondolas or t.near_counter):
+            raise ValueError("Keep at least one product category for this store format.")
     b = _Builder(t, currency, rng, options)
     w, h = b.w, b.h
     layout_style = style or options.style or t.style

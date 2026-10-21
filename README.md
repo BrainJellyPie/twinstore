@@ -180,6 +180,15 @@ clay—change walls, shelving,
 counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
 default palette; each building floor can use a different one. The preview uses the same options as the saved layout. Shuffle changes
 the assortment reproducibly; reset restores the format's layout defaults.
+
+Open **Product categories** to choose which parts of a format's assortment to
+stock. For example, exclude the beer/alcohol category from a convenience store
+or household goods from a pharmacy. Excluded categories remove their generated
+displays across cold walls, shelves and checkout areas. Keep at least one
+category; **Restore all product categories** brings back the format's full mix.
+These choices persist in saved alternatives, individual building floors and
+exported options files. They control catalog categories, not ingredients or
+dietary suitability; manually uploaded products use the existing product editor.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
 Choose **Expand floor plan** to inspect the current preview at a larger size,
