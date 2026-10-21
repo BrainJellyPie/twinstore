@@ -246,7 +246,23 @@ class VLMGlanceEngine(RuleBasedEngine):
                 m = (fx.need_for(cats) if fx.need else 1.0) * (fx.hour_need_for(hour, cats) if fx.hour_need else 1.0)
                 p = min(0.98, rate * m)
             (out if rng.random() < p else stocked).append(category)
+        usual = self._usual_by_category(context.store, context.persona.usual_products)
+        # What the household takes in a category it needs: without it the planner chooses there like a
+        # stranger, whenever the household's favourite is not among the first usual products it is shown.
+        out = [f"{c} (they usually take {' or '.join(usual[c][:2])})" if usual.get(c) else c for c in out]
         return out, stocked[:_STOCKED_SHOWN]
+
+    def _usual_by_category(self, store: Store, products: list[str]) -> dict[str, list[str]]:
+        """The persona's usual products grouped by the rack (category) that holds them, in their order."""
+        if not products:
+            return {}
+        rack_of = {item.name.lower(): rack.rack_name for rack, _, item, _, _ in self._catalog_for(store) if rack.rack_name}
+        out: dict[str, list[str]] = {}
+        for name in products:
+            cat = rack_of.get(name.lower())
+            if cat and name not in out.setdefault(cat, []):
+                out[cat].append(name)
+        return out
 
     async def _ask_plan(
         self, schema: type[EntryDecision], system: str, prompt: str, image: str | None, context: PerCustomerContext,
