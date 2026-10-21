@@ -549,8 +549,11 @@ def generate_store(
                       rotation=90 if layout_style == "perimeter" or vertical else 0,
                       variant="b" if (y // 3) % 2 else "a")
 
-    if options.excluded_categories and not any(rack.slots for rack in b.racks):
-        raise ValueError("The selected product categories have no display space. Reduce the checkout count, enlarge the floor or restore more categories.")
+    if not any(slot.items for rack in b.racks for slot in rack.slots):
+        raise ValueError(
+            "No products from the included categories fit this layout; they have no display space. "
+            "Enlarge the floor, reduce the checkout count or aisle width, choose another layout pattern, or include more categories."
+        )
 
     format_design: dict[str, StoreDesign] = {
         "pharmacy": "minimal", "cafe": "warm", "bakery": "warm", "restaurant": "warm",
