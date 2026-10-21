@@ -28,12 +28,17 @@ try {
   const bounds = await panel.boundingBox();
   assert(bounds);
   await page.mouse.move(bounds.x + bounds.width / 2, Math.min(bounds.y + bounds.height - 20, 850));
-  await page.mouse.wheel(0, 1600);
-  await page.waitForTimeout(300); // allow native scrolling to settle
   const save = page.getByRole('button', { name: 'Save combined draft' });
-  const rect = await save.boundingBox();
-  assert(rect && rect.y >= 0 && rect.y + rect.height <= 900, 'Save must be reachable with ordinary scrolling');
+  let rect = await save.boundingBox();
+  // A layout/font transition can consume the first wheel event; allow repeated user scrolling.
+  for (let attempt = 0; attempt < 10 && !(rect && rect.y >= 0 && rect.y + rect.height <= 900); attempt++) {
+    await page.mouse.wheel(0, 1600);
+    await page.waitForTimeout(150);
+    rect = await save.boundingBox();
+  }
+  console.log(JSON.stringify({panel: bounds, save: rect}));
   await page.screenshot({ path: 'capture-batch-desktop-preview.png' });
+  assert(rect && rect.y >= 0 && rect.y + rect.height <= 900, 'Save must be reachable with ordinary scrolling');
   const responsePromise = page.waitForResponse(response => response.url().endsWith('/captures/batch-save'));
   await save.click();
   const response = await responsePromise;

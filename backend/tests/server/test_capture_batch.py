@@ -116,7 +116,12 @@ def test_preview_save_reload_products_and_crops_without_touching_sources(workflo
     stored = read_setup(PID, saved.json()["setup_id"])
     reloaded = client.get(f"/api/projects/{PID}/setups/{saved.json()['setup_id']}")
     assert reloaded.status_code == 200, reloaded.text
-    assert reloaded.json()["store"] == stored["store"]
+    resolved = Store.model_validate(reloaded.json()["store"])
+    for _, slot in resolved.all_slots:
+        for item in slot.items:
+            assert item.image_url, "The public layout must resolve its saved crop images"
+            item.image_url = None
+    assert resolved == Store.model_validate(stored["store"])
     actual = Store.model_validate(stored["store"])
     assert actual == Store.model_validate(result["store"])
     assert {i.sku for _, slot in actual.all_slots for i in slot.items} == {
