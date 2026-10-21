@@ -139,3 +139,56 @@ async def answer_run_question(
     sheet = facts.casefold()
     figures = [f.strip() for f in answer.figures if f.strip() and f.strip().casefold() in sheet]
     return answer.model_copy(update={"figures": figures[:8], "follow_ups": [q.strip() for q in answer.follow_ups if q.strip()][:3]})
+
+
+class DifferenceReading(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    summary: str = Field(min_length=1, max_length=900, description="what B did differently from A, two or three sentences")
+    where: str = Field(default="", max_length=1200, description="where the difference came from: shelves, hours, products, groups")
+    caveats: str = Field(default="", max_length=600, description="what is within noise or cannot be told from the runs")
+    figures: list[str] = Field(default_factory=list[str], max_length=10, description="sheet lines the reading rests on, as written")
+
+
+DIFFERENCE_PROMPT = """You are a retail analyst explaining why one simulated store day (run B) differs from another
+(run A) to a store manager. The paired comparison gives per-shopper differences (B minus A) with 95 % intervals; the
+two fact sheets give each run's shelves, hours, products and shopper groups. Say what changed, then where it came
+from by comparing the sheets (name at most four shelves, products, hours or groups, each with its one most telling
+number), and what is within noise (an interval that includes zero) or cannot be told. Use only these numbers. Copy the lines you used into figures, exactly as written. Plain sentences, no markdown.
+Write in English."""
+
+
+_METRIC_NAMES = {"spend": "spend per shopper", "units": "units per shopper", "bought": "share who bought",
+                 "impulse_spend": "impulse spend per shopper", "visit_sec": "visit length", "path_tiles": "walking path"}
+
+
+def comparison_text(metrics: Sequence[tuple[str, float, float, float, float, float]], currency: str = "USD") -> str:
+    """(metric, mean A, mean B, difference, 95 % low, 95 % high) as sheet lines, in the units a manager reads."""
+    def fmt(metric: str, v: float, signed: bool = False) -> str:
+        sign = "+" if signed and v >= 0 else ""
+        if metric in ("spend", "impulse_spend"):
+            text = display_price(round(abs(v)), currency)
+            return f"{'-' if v < 0 else sign}{text}"
+        if metric == "bought":
+            return f"{v * 100:+.1f} pt" if signed else f"{v:.1%}"
+        if metric == "visit_sec":
+            return f"{sign}{v:.0f} s"
+        if metric == "path_tiles":
+            return f"{sign}{v:.1f} m"
+        return f"{sign}{v:.2f}"
+
+    return "\n".join(
+        f"{_METRIC_NAMES.get(m, m)}: A {fmt(m, a)}, B {fmt(m, b)}, B minus A {fmt(m, d, True)} "
+        f"(95 % interval {fmt(m, lo, True)} to {fmt(m, hi, True)})"
+        for m, a, b, d, lo, hi in metrics)
+
+
+async def explain_difference(
+    llm: StructuredLLM, comparison: str, facts_a: str, facts_b: str, labels: tuple[str, str] = ("A", "B"),
+) -> DifferenceReading:
+    user = (f"Paired comparison (per shopper):\n{comparison}\n\nRun A ({labels[0]}) fact sheet:\n{facts_a}\n\n"
+            f"Run B ({labels[1]}) fact sheet:\n{facts_b}")
+    reading = await llm.generate_structured_async(DifferenceReading, DIFFERENCE_PROMPT, user, max_retries=2, seed=0)
+    sheet = f"{comparison}\n{facts_a}\n{facts_b}".casefold()
+    figures = [f.strip() for f in reading.figures if f.strip() and f.strip().casefold() in sheet]
+    return reading.model_copy(update={"figures": figures[:10]})

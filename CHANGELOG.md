@@ -13,6 +13,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   kept), says plainly when the run cannot answer, and offers follow-up questions; the thread is kept with the run.
   API: `GET/POST/DELETE /api/projects/{pid}/runs/{run_id}/analyst`, `GET .../analyst/facts`.
 
+- **Explain the difference** in Compare runs: the model reads the paired comparison (in money, points, seconds and
+  metres) and both runs' fact sheets, and says what changed, which shelves, products, hours or groups it came from,
+  and what is within noise, with the figures it used. API: `POST /api/projects/{pid}/compare/explain?a=…&b=…`.
+- A model reply cut off by its length limit now says so ("the model's reply was cut off before it finished").
+
 ### Model-written shopper thoughts
 - Vision shoppers now say what they came for: the model's own mission and reason become the first step of each
   journey and the speech bubble at the door ("a cold soda and something salty (thirsty)"); a shopper who turns

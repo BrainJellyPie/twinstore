@@ -72,3 +72,29 @@ def test_failures_read_as_advice(client, monkeypatch):
     assert r.status_code == 502 and "limiting requests" in r.json()["detail"]
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/analyst").json()["messages"] == []
     assert client.get(f"/api/projects/{PID}/runs/run_missing/analyst/facts").status_code == 404
+
+
+def test_a_comparison_is_explained_from_both_sheets(client, monkeypatch):
+    from store_emulator.application import run_analyst
+
+    class _Explainer:
+        def __init__(self) -> None:
+            self.prompt = ""
+
+        async def generate_structured_async[T: BaseModel](
+            self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+        ) -> T:
+            self.prompt = user_prompt
+            return response_model.model_validate({"summary": "B sells about the same.", "where": "Drinks gain, snacks lose.",
+                                                  "caveats": "Within noise.", "figures": ["spend per shopper: A $", "Invented 1 / 2"]})
+
+    fake = _Explainer()
+    monkeypatch.setattr(run_analyst, "build_client", lambda *a, **k: fake)
+    r = client.post(f"/api/projects/{PID}/compare/explain?a=run_ab0039&b={RUN}", json={})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["summary"] == "B sells about the same." and body["figures"] == ["spend per shopper: A $"]
+    assert fake.prompt.startswith("Paired comparison (per shopper):\nspend per shopper: A $")
+    assert "share who bought: A " in fake.prompt and " pt (95 % interval " in fake.prompt
+    assert "Run A (run_ab0039) fact sheet:\nVisitors: " in fake.prompt and f"Run B ({RUN}) fact sheet:\nVisitors: " in fake.prompt
+    assert client.post(f"/api/projects/{PID}/compare/explain?a=run_missing&b={RUN}", json={}).status_code == 404

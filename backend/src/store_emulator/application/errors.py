@@ -69,6 +69,8 @@ _MODEL_FAILURES: tuple[tuple[tuple[str, ...], str], ...] = (
      "the provider is limiting requests right now. Wait a moment and try again."),
     (("timeout", "timed out"), "the model took too long to reply. Try again."),
     (("notfounderror", "model not found", "does not exist"), "the provider does not offer this model. Pick another one."),
+    (("max_tokens length limit", "output is incomplete", "finish_reason='length'"),
+     "the model's reply was cut off before it finished. Try again, or pick another model."),
     (("validation error", "instructorretryexception", "jsondecodeerror"),
      "the model's reply was not in the expected form. Try again, or pick another model."),
 )

@@ -619,6 +619,15 @@ export interface ComparisonReport {
   notes: string[];
 }
 
+/** Why run B differs from run A, read by the text model from the comparison and both runs' fact sheets. */
+export interface DifferenceReading { summary: string; where: string; caveats: string; figures: string[] }
+export function explainComparison(projectId: string, a: string, b: string, model = ""): Promise<DifferenceReading> {
+  const q = new URLSearchParams({ a, b });
+  return fetchJson(`/api/projects/${projectId}/compare/explain?${q.toString()}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model }),
+  });
+}
+
 export function compareRuns(
   projectId: string,
   runA: string,

@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import type { ComparisonReport, MetricComparison } from "@/shared/api/client";
+import { explainComparison, type ComparisonReport, type MetricComparison } from "@/shared/api/client";
 import { CompareDialog } from "../CompareDialog";
 
 const state = vi.hoisted(() => ({ report: null as ComparisonReport | null }));
@@ -11,6 +12,9 @@ vi.mock("../../hooks", () => ({
     run_id, status: "completed", setup_id: "s1", created_at: "2026-10-21T10:00:00Z",
   })) }),
   useCompare: () => ({ data: state.report, isLoading: false, isError: false }),
+}));
+vi.mock("@/shared/api/client", async (original) => ({
+  ...await original<typeof import("@/shared/api/client")>(), explainComparison: vi.fn(),
 }));
 afterEach(cleanup);
 
@@ -24,7 +28,9 @@ function show(overrides: Partial<MetricComparison> = {}) {
       n_for_5pct_effect: 0, ...overrides,
     }],
   };
-  render(<CompareDialog open onOpenChange={() => {}} projectId="p" layouts={[]} defaultRunId="run_b" />);
+  render(<QueryClientProvider client={new QueryClient()}>
+    <CompareDialog open onOpenChange={() => {}} projectId="p" layouts={[]} defaultRunId="run_b" />
+  </QueryClientProvider>);
 }
 
 it("shows absolute spend gains and their interval when baseline spend is zero", () => {
@@ -68,4 +74,15 @@ it.each([1, 100, 12345])("preserves an available relative sample size of %s", co
   show({ mean_a: 100, mean_b: 110, diff: 10, rel_diff: 0.1, n_for_5pct_effect: count });
   const cell = screen.getByRole("table").querySelector("tbody tr")!.lastElementChild!;
   expect(cell.textContent).toBe(count.toLocaleString());
+});
+
+
+it("explains the difference on request, with the figures it used", async () => {
+  vi.mocked(explainComparison).mockResolvedValue({ summary: "B sells more drinks.", where: "Drink 3 gains 40 buyers.",
+    caveats: "Snacks are within noise.", figures: ["Drink 3 1027 / 917"] });
+  show({ mean_a: 1000, mean_b: 1500, rel_diff: 0.5 });
+  fireEvent.click(screen.getByRole("button", { name: "Explain the difference" }));
+  expect(await screen.findByText("B sells more drinks.")).toBeTruthy();
+  expect(explainComparison).toHaveBeenCalledWith("p", "run_a", "run_b");
+  expect(screen.getByRole("list", { name: "Figures used" }).textContent).toContain("Drink 3 1027 / 917");
 });
