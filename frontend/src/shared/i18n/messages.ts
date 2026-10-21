@@ -82,6 +82,7 @@ export const messages = {
   filterStores: ["Filter stores", "매장 검색", "搜索门店", "店舗を検索", "Filtrar tiendas", "Filtrer les magasins"],
   clearStoreFilter: ["Clear store filter", "매장 검색 초기화", "清除门店搜索", "店舗検索をクリア", "Borrar el filtro de tiendas", "Effacer le filtre des magasins"],
   loadStoresError: ["Could not load stores", "매장을 불러올 수 없습니다", "无法加载门店", "店舗を読み込めませんでした", "No se pudieron cargar las tiendas", "Impossible de charger les magasins"],
+  routeErrorTitle: ["Something went wrong", "오류가 발생했습니다", "出现错误", "問題が発生しました", "Se ha producido un error", "Une erreur est survenue"],
   tryAgain: ["Try again", "다시 시도", "重试", "再試行", "Reintentar", "Réessayer"],
   tryingAgain: ["Trying again…", "다시 시도 중…", "正在重试…", "再試行中…", "Reintentando…", "Nouvelle tentative…"],
   loadingStores: ["Loading stores", "매장 불러오는 중", "正在加载门店", "店舗を読み込み中", "Cargando tiendas", "Chargement des magasins"],
