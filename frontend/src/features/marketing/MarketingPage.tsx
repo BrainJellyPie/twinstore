@@ -145,8 +145,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   }, [tab, jobs, selected]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-[1.7rem] leading-tight tracking-[-0.04em]">Marketing <span className="font-accent aurora-text">studio</span></h1>
           <p className="text-sm text-muted-foreground">{TABS.find((t) => t.id === tab)!.blurb}</p>
@@ -171,10 +171,10 @@ export function MarketingPage({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      {tab === "prices" ? <div className="min-h-0 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-0 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-0 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1"><ProductLibrary projectId={projectId} products={products} /></div>
+      {tab === "prices" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
+        <div className="min-h-64 flex-1 overflow-y-auto pr-1"><ProductLibrary projectId={projectId} products={products} /></div>
       ) : (
-        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <div className="grid min-h-64 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
           <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto">
             <button type="button" onClick={() => select("")}
               className={cn("flex items-center gap-2 rounded-2xl border-2 border-dashed px-3 py-3 text-sm transition-colors",
