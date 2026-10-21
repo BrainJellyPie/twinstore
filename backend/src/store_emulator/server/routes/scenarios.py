@@ -1,11 +1,16 @@
 """Scenario presets and a live preview of a scenario's effects."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
-from store_emulator.application.scenarios import PRESETS
+from store_emulator.application import scenarios as service
+from store_emulator.application.errors import AppError
+from store_emulator.application.scenarios import PRESETS, DescribeRequest
 from store_emulator.domain.scenario import Scenario
 from store_emulator.engine.scenario import compile_scenario
+
+from ..deps import get_config
 
 router = APIRouter(prefix="/api", tags=["scenarios"])
 
@@ -47,3 +52,23 @@ async def list_scenarios() -> list[ScenarioPreset]:
 async def preview_scenario(scenario: Scenario) -> ScenarioEffectsView:
     """Effects of a scenario without running anything (for the scenario editor)."""
     return _view(scenario)
+
+
+class DescribedScenarioView(BaseModel):
+    scenario: Scenario
+    effects: ScenarioEffectsView
+    warnings: list[str] = []
+
+
+@router.post("/scenarios/describe", summary="Set up a scenario from a description", response_model=DescribedScenarioView)
+async def describe_scenario(req: DescribeRequest) -> DescribedScenarioView:
+    """The text model turns a plain description of the day into a custom scenario. With a layout, promotions and
+    stock-outs are checked against its products; targets that match nothing are dropped and listed in `warnings`."""
+    def run() -> DescribedScenarioView:
+        try:
+            described = service.describe(req, get_config())
+        except AppError as e:
+            raise HTTPException(e.status_code, e.message) from e
+        return DescribedScenarioView(scenario=described.scenario, effects=_view(described.scenario), warnings=described.warnings)
+
+    return await run_in_threadpool(run)

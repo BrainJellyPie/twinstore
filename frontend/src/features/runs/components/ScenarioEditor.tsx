@@ -3,8 +3,8 @@
 // what the scenario does to traffic and category demand before anything runs.
 
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { CloudSun, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { CloudSun, Loader2, Plus, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import type { Crowding, DayType, EventKind, PromotionKind, Scenario, Weather } from "@/shared/api/client";
@@ -56,9 +56,14 @@ const CATEGORY_LABELS: Record<string, string> = {
 export function ScenarioEditor({
   value,
   onChange,
+  projectId,
+  setupId,
 }: {
   value: Scenario | null;
   onChange: (next: Scenario | null) => void;
+  /** With both, a described day's promotions and stock-outs are checked against this layout's products. */
+  projectId?: string;
+  setupId?: string;
 }) {
   const { data: presets = [] } = useQuery({
     queryKey: queryKeys.scenarios(),
@@ -87,7 +92,23 @@ export function ScenarioEditor({
   const effects = scenario?.id === "custom" ? liveEffects : presetEffects;
 
   const set = (patch: Partial<Scenario>) =>
-    onChange({ ...(scenario ?? BASELINE_SCENARIO), ...patch, id: "custom", name: "Custom situation" });
+    onChange({
+      ...(scenario ?? BASELINE_SCENARIO), ...patch, id: "custom",
+      name: scenario?.id === "custom" ? scenario.name : "Custom situation",
+    });
+
+  // "Describe the day": the text model fills in the settings; the details open so they can be checked.
+  const [day, setDay] = useState("");
+  const describe = useMutation({
+    mutationFn: (text: string) => api.describeScenario({ text, project_id: projectId, setup_id: setupId }),
+    onSuccess: (r) => {
+      onChange(r.scenario);
+      setCustomOpen(true);
+    },
+  });
+  const setUp = () => {
+    if (day.trim().length >= 3 && !describe.isPending) describe.mutate(day.trim());
+  };
 
   return (
     <div className="space-y-2">
@@ -121,10 +142,44 @@ export function ScenarioEditor({
             {p.scenario.name}
           </option>
         ))}
-        <option value="custom">Custom…</option>
+        <option value="custom">{scenario?.id === "custom" && scenario.name !== "Custom situation" ? scenario.name : "Custom…"}</option>
       </select>
       {scenario?.description && scenario.id !== "custom" && (
         <p className="text-xs text-muted-foreground">{scenario.description}</p>
+      )}
+
+      {/* Not a <form>: the editor sits inside the run dialog's form, and a nested submit would start the run. */}
+      <div className="flex items-start gap-1.5">
+        <textarea
+          value={day}
+          onChange={(e) => setDay(e.target.value.slice(0, 800))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              setUp();
+            }
+          }}
+          rows={2}
+          placeholder="Or describe the day: rainy Friday, a match at the stadium tonight, 1+1 on cola…"
+          aria-label="Describe the day"
+          className="min-h-[2.4rem] flex-1 resize-none rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        />
+        <button
+          type="button"
+          onClick={setUp}
+          disabled={day.trim().length < 3 || describe.isPending}
+          className="flex h-[2.4rem] shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-50"
+        >
+          {describe.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+          Set up
+        </button>
+      </div>
+      {describe.error && <p role="alert" className="text-xs text-destructive">{describe.error.message}</p>}
+      {describe.data && scenario?.description === describe.data.scenario.description && describe.data.warnings.length > 0 && (
+        <ul className="space-y-0.5 text-xs text-muted-foreground" aria-label="Notes on the described day">
+          {describe.data.warnings.map((w) => <li key={w}>· {w}</li>)}
+        </ul>
       )}
 
       {customOpen && (

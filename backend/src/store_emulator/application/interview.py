@@ -42,7 +42,7 @@ from store_emulator.engine.interview import (
 from store_emulator.engine.perception.shelf_render import render_face
 
 from .errors import AppError, model_failure
-from .providers import build_client
+from .providers import assistive_model, build_client
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -150,7 +150,8 @@ def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, conf
         transcript = get_interview(pid, run_id, persona_id)
         llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
         try:
-            llm = build_client(llm_config, None, model_ref=q.model.strip() or None)
+            model = assistive_model(q.model, llm_config)
+            llm = build_client(llm_config, None, model_ref=model)
         except ValueError as e:
             raise AppError(str(e), 400) from e
         try:
@@ -159,7 +160,7 @@ def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, conf
             logger.warning(f"[interview] {pid}/{run_id}/{persona_id}: {type(e).__name__}: {e}")
             raise AppError(model_failure(e, "The shopper could not answer"), 502) from e
         now = now_iso()
-        transcript.model = q.model.strip() or llm_config.model
+        transcript.model = model
         transcript.messages += [
             InterviewMessage(role="interviewer", text=q.question.strip(), created_at=now),
             InterviewMessage(role="shopper", text=reply.answer, steps=reply.steps, created_at=now_iso()),
@@ -182,7 +183,7 @@ def suggest_questions(pid: str, run_id: str, persona_id: str, req: SuggestionReq
     _, _, store, _ = _load(pid, run_id)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.6, "max_tokens": 400})
     try:
-        llm = build_client(llm_config, None, model_ref=req.model.strip() or None)
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
@@ -243,8 +244,9 @@ def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: S
     ids = [i for i in _segment(customers, req) if i in personas]
     journeys = [build_journey(run_id, customers[i], personas[i], store, currency) for i in ids]
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
+    model = assistive_model(req.model, llm_config)
     try:
-        llm = build_client(llm_config, None, model_ref=req.model.strip() or None)
+        llm = build_client(llm_config, None, model_ref=model)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     question = req.question.strip()
@@ -284,7 +286,7 @@ def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: S
               for i, t in enumerate(labels)]
     group = GroupInterview(
         group_id=f"grp_{uuid.uuid4().hex[:6]}", run_id=run_id, question=question, segment=req.segment if not req.persona_ids else "all",
-        model=req.model.strip() or llm_config.model, created_at=now_iso(), answers=answers, themes=themes,
+        model=model, created_at=now_iso(), answers=answers, themes=themes,
         errors=sum(1 for a in answers if a.error),
     )
     folder = _groups_dir(pid, run_id)

@@ -22,6 +22,14 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   numbers that ties the two together. It is kept with the study, can be rewritten with another model or removed, and
   appears (labelled as model-written) in the print-ready report. API: `POST/GET/DELETE
   .../{surveys|shelf-tests|conjoints|staff-pitches}/{id}/reading`.
+- **Describe the day** in the run dialog's situation editor: "rainy Friday evening, the game next door at 7, 1+1 on
+  Pepsi, out of ice cream" becomes weather, weekday, an evening sports match, the promotion and the stock-out, with
+  the details opened for checking. Promotions and stock-outs are matched against the layout's products: targets that
+  match nothing are left out and listed, and a target that reaches several products says how many.
+  API: `POST /api/scenarios/describe`.
+- Interviews, report commentary and the set-up helpers no longer fail when the app's text model has no API key:
+  they use a fast model of a provider that has one (the model actually used is recorded). Simulation runs and studies
+  keep their configured model.
 - Theme coding no longer fails when a model returns more than six themes: the smallest fold into "Other". This also
   fixes group interviews that lost their themes this way.
 
