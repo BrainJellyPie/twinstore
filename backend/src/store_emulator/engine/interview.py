@@ -186,8 +186,13 @@ async def suggest_follow_ups(
         q = " ".join(q.split()).strip(" -•\"'")
         if not q or len(q) > 200 or _norm(q) in asked or _norm(q) in {_norm(o) for o in out}:
             continue
-        out.append(q if q.endswith("?") else f"{q}?")
+        out.append(_as_prompt(q))
     return out[:3]
+
+
+def _as_prompt(text: str) -> str:
+    """A question keeps its mark, an instruction ("Walk me through…") its full stop; bare text becomes a question."""
+    return text if text.endswith(("?", ".", "!")) else f"{text}?"
 
 
 def _norm(text: str) -> str:
@@ -254,7 +259,7 @@ async def suggest_group_questions(llm: StructuredLLM, summary: str) -> list[Grou
     for q in ideas.questions:
         text = " ".join(q.question.split())
         if text and _norm(text) not in {_norm(o.question) for o in out}:
-            out.append(q.model_copy(update={"question": text if text.endswith("?") else f"{text}?"}))
+            out.append(q.model_copy(update={"question": _as_prompt(text)}))
     return out[:3]
 
 

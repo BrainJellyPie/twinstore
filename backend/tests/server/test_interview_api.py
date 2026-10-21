@@ -220,6 +220,7 @@ def test_group_questions_are_read_off_the_run(client, monkeypatch):
                 {"question": "Why did you stop at the snacks but not buy", "segment": "empty_handed", "why": "many stops, few buys"},
                 {"question": "Why did you stop at the snacks but not buy?", "segment": "all"},
                 {"question": "What made you grab the jerky?", "segment": "impulse", "why": "top impulse pick"},
+                {"question": "Walk me through your last stop.", "segment": "buyers"},
             ]})
 
     fake = _Planner()
@@ -228,5 +229,6 @@ def test_group_questions_are_read_off_the_run(client, monkeypatch):
     assert r.status_code == 200, r.text
     ideas = r.json()
     assert [(i["question"], i["segment"]) for i in ideas] == [
-        ("Why did you stop at the snacks but not buy?", "empty_handed"), ("What made you grab the jerky?", "impulse")]
+        ("Why did you stop at the snacks but not buy?", "empty_handed"), ("What made you grab the jerky?", "impulse"),
+        ("Walk me through your last stop.", "buyers")]
     assert fake.prompt.startswith("Shoppers: ") and "Shelves where shoppers stopped (stopped / bought there):" in fake.prompt
