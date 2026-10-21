@@ -3,7 +3,7 @@ afterwards ("why didn't you buy it?"), answered in character from the trip itsel
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.types import Action
@@ -66,6 +66,8 @@ class Interview(BaseModel):
 
 
 class InterviewQuestion(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     question: str = Field(min_length=1, max_length=600)
     model: str = Field(default="", description='model reference; "" = the app text model')
 
@@ -76,6 +78,8 @@ type GroupSegment = Literal["all", "empty_handed", "buyers", "impulse", "top_spe
 
 
 class GroupInterviewRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     question: str = Field(min_length=1, max_length=600)
     segment: GroupSegment = "all"
     persona_ids: list[str] = Field(default_factory=list[str], max_length=40, description="ask exactly these shoppers instead")
