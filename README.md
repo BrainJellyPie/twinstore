@@ -130,7 +130,7 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 40
+In a project, choose **New layout → Generate a store from a template**. Search 42
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
@@ -153,13 +153,19 @@ groups, a central spine and compact aisles, with distinct interior palettes and
 checkout placement. **Family essentials center** combines baby supplies, footwear
 and a family restaurant in a three-floor building.
 
+The **Garden & outdoor center** starts on a 32×26 floor with four checkouts,
+botanical finishes and garden tools, growing supplies, plants and homeware. The
+22×18 **Art & craft supply store** combines painting and craft materials with
+stationery and books. Both use central cross aisles. **Garden, crafts & café**
+combines these stores with an upstairs café as three separate floors.
+
 USD, KRW and JPY prices keep their currency with the saved layout and simulation
 results. New-project shopper budgets use the chosen currency, and additional
 layouts default to that project currency. Existing shopper budgets are not
 converted when a different template currency is chosen; use matching currency
 for a simulation, or start a separate project for that market.
 
-Combine six patterns (parallel aisles, racetrack, central spine, free-flow islands,
+Combine seven patterns (parallel aisles, racetrack, central spine, central cross aisles, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
 three display densities, left/center/right entry, one to twelve checkouts and shelf
 variants. Six saved interior palettes—classic retail, warm wood, minimal white,
@@ -190,6 +196,13 @@ requested gap. The perimeter pattern has no interior rows, so this option is
 disabled there. Wall spacing and dining-table clearance remain separate; grid
 cells do not specify a physical distance. The chosen gap is saved and reused with
 the other layout options.
+
+**Central cross aisles** keeps intersecting horizontal and vertical paths clear
+of shelves and tables through the interior. Their width follows **Interior aisle
+gap**, or the density default when no gap is selected. These paths can reduce
+seating capacity: automatic seating fits the available space, while an explicit
+count that does not fit produces an error. Reservations remain clear, and manual
+floor edits can change the generated arrangement later.
 The perimeter pattern keeps its wall-based arrangement. Shelf direction is saved
 with the other options and can differ between floors or layout alternatives.
 

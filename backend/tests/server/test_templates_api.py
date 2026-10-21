@@ -29,6 +29,8 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     assert templates["shoe_boutique"]["default_style"] == "showroom"
     assert templates["baby_family_store"]["default_design"] == "warm"
     assert templates["travel_essentials"]["default_checkout_placement"] == "near_entrance"
+    assert templates["garden_center"]["default_style"] == templates["art_craft_store"]["default_style"] == "cross"
+    assert templates["garden_center"]["default_checkouts"] == 4
     assert {"family_restaurant", "neighborhood_bistro", "takeaway_coffee", "tea_lounge", "artisan_bakery",
             "vintage_boutique", "hardware_store", "toy_hobby_store"} <= templates.keys()
     assert templates["family_restaurant"]["default_seating_zone"] == "center"
@@ -86,8 +88,9 @@ def test_unknown_templates_do_not_create_layouts(client):
 
 @pytest.mark.parametrize("template_id,store_type", [
     ("shoe_boutique", "fashion"), ("baby_family_store", "baby"), ("travel_essentials", "travel"),
+    ("garden_center", "garden"), ("art_craft_store", "crafts"),
 ])
-def test_family_and_travel_formats_preview_and_save_with_custom_space(client, template_id, store_type):
+def test_specialty_formats_preview_and_save_with_custom_space(client, template_id, store_type):
     options = {"template_id": template_id, "width": 18, "height": 14, "shelf_direction": "vertical",
                "reserved_areas": [{"label": "Customer assistance", "x": 4, "y": 4, "width": 3, "height": 3}]}
     preview = client.post("/api/store-templates/preview", json=options)
@@ -101,7 +104,7 @@ def test_family_and_travel_formats_preview_and_save_with_custom_space(client, te
 
 
 def test_reserved_area_preview_save_and_reuse_keep_identical_geometry(client):
-    options = {"template_id": "community_pharmacy", "width": 20, "height": 16, "seed": 3, "shelf_direction": "vertical", "aisle_width": 4, "dining_tables": 2, "table_clearance": 2, "exit_position": "right",
+    options = {"template_id": "community_pharmacy", "width": 20, "height": 16, "seed": 3, "style": "cross", "shelf_direction": "vertical", "aisle_width": 4, "dining_tables": 2, "table_clearance": 2, "exit_position": "right",
                "reserved_areas": [{"label": "Consultation", "x": 2, "y": 2, "width": 4, "height": 3}]}
     before = client.get(f"/api/projects/{PID}").json()
     preview = client.post("/api/store-templates/preview", json=options)
@@ -121,6 +124,7 @@ def test_reserved_area_preview_save_and_reuse_keep_identical_geometry(client):
     assert alternative["generation"]["reserved_areas"] == options["reserved_areas"]
     assert alternative["generation"]["shelf_direction"] == "vertical"
     assert alternative["generation"]["aisle_width"] == 4
+    assert alternative["generation"]["style"] == "cross"
     assert alternative["generation"]["table_clearance"] == 2
     assert alternative["generation"]["exit_position"] == "right"
     assert client.get(f"/api/projects/{PID}/setups/{saved['id']}").json() == saved
@@ -169,6 +173,23 @@ def test_building_floors_are_linked_but_keep_independent_layouts(client):
     assert floors[1]["store"]["grid_size"] == [16, 12]
     assert client.get(f"/api/projects/{PID}").json()["state"]["activeSetupId"] == floors[0]["id"]
     assert "no travel between floors" in floors[0]["memo"]
+
+
+def test_garden_craft_and_cafe_building_keeps_each_floor_pattern_and_assortment(client):
+    body = {"name": "Creative living", "floors": [
+        {"label": "Garden", "layout": {"template_id": "garden_center", "aisle_width": 4}},
+        {"label": "Crafts", "layout": {"template_id": "art_craft_store"}},
+        {"label": "Café", "layout": {"template_id": "specialty_cafe"}},
+    ]}
+    response = client.post(f"/api/projects/{PID}/setups/generate-building", json=body)
+    assert response.status_code == 200, response.text
+    for summary, requested in zip(response.json()["setups"], body["floors"], strict=True):
+        saved = client.get(f"/api/projects/{PID}/setups/{summary['id']}").json()
+        preview = client.post("/api/store-templates/preview", json=requested["layout"])
+        assert preview.status_code == 200, preview.text
+        assert saved["store"]["racks"] == preview.json()["racks"]
+        assert saved["building"]["label"] == requested["label"]
+        assert saved["generation"]["aisle_width"] == requested["layout"].get("aisle_width")
 
 
 def test_campus_building_can_save_and_reuse_a_48_table_dining_floor(client):
