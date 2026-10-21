@@ -582,36 +582,37 @@ def generate_store(
     for cat, y in zip(t.wall_shelves, side_ys, strict=False):
         b.add(RackType.SHELF, w - 1, y, category=cat, faces=[Face.W], rotation=270)
 
-    # A dining group occupies 2×2 cells, including its four chairs. Keep the
-    # selected circulation ring clear of other tables, walls and retail displays.
+    # The footprint includes chairs; keep the selected circulation ring clear.
     clearance = options.table_clearance
+    table_width = options.dining_seats // 2
     table_positions = [(x, y) for y in range(clearance + 1, h - clearance - 2, clearance + 2)
-                       for x in range(clearance + 1, w - clearance - 2, clearance + 2)]
+                       for x in range(clearance + 1, w - clearance - table_width, clearance + table_width)]
     table_positions = [(x, y) for x, y in table_positions
                        if all(b.free(cx, cy) and (cx, cy) not in cross_aisles
-                              for cx in (x, x + 1) for cy in (y, y + 1))]
+                              for cx in range(x, x + table_width) for cy in (y, y + 1))]
     # Rank safe seating positions without changing the table footprint or clearance.
     # As the count grows, seating extends into neighboring parts of the floor.
     if seating_zone == "front":
-        table_positions.sort(key=lambda p: (-p[1], abs(p[0] + 0.5 - entrance_x)))
+        table_positions.sort(key=lambda p: (-p[1], abs(p[0] + (table_width - 1) / 2 - entrance_x)))
     elif seating_zone == "back":
-        table_positions.sort(key=lambda p: (p[1], abs(p[0] + 0.5 - (w - 1) / 2)))
+        table_positions.sort(key=lambda p: (p[1], abs(p[0] + (table_width - 1) / 2 - (w - 1) / 2)))
     elif seating_zone == "left":
         table_positions.sort(key=lambda p: (p[0], p[1]))
     elif seating_zone == "right":
         table_positions.sort(key=lambda p: (-p[0], p[1]))
     elif seating_zone == "center":
-        table_positions.sort(key=lambda p: (p[0] + 0.5 - (w - 1) / 2) ** 2 + (p[1] + 0.5 - (h - 1) / 2) ** 2)
+        table_positions.sort(key=lambda p: (p[0] + (table_width - 1) / 2 - (w - 1) / 2) ** 2 + (p[1] + 0.5 - (h - 1) / 2) ** 2)
     table_count = min(t.dining_tables, len(table_positions)) if options.dining_tables is None else options.dining_tables
     if table_count > len(table_positions):
         raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with {clearance}-cell circulation space, the selected aisle pattern and requested reserved areas. Reduce the table count or clearance, adjust the layout or increase the grid size.")
     dining_clearance: set[tuple[int, int]] = set()
     for i, (x, y) in enumerate(table_positions[:table_count]):
-        table = Rack(id=f"r_table_{i + 1}", type=RackType.TABLE, shape=[[1, 1], [1, 1]],
-                     position=(x, y), rack_name=f"Dining table {i + 1}", rack_desc="Four seats; furniture only")
+        seat_label = {2: "Two", 4: "Four", 6: "Six"}[options.dining_seats]
+        table = Rack(id=f"r_table_{i + 1}", type=RackType.TABLE, shape=[[1] * table_width for _ in range(2)],
+                     position=(x, y), rack_name=f"Dining table {i + 1}", rack_desc=f"{seat_label} seats; furniture only")
         b.racks.append(table)
         b.taken.update(table.occupied_positions)
-        dining_clearance.update((cx, cy) for cx in range(x - clearance, x + 2 + clearance)
+        dining_clearance.update((cx, cy) for cx in range(x - clearance, x + table_width + clearance)
                                 for cy in range(y - clearance, y + 2 + clearance))
 
     # Every populated face opens onto a continuous aisle. Cross-aisles split

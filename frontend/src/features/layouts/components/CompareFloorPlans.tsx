@@ -4,6 +4,7 @@ import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes
 import * as api from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import type { Store } from "@/shared/types/domain";
+import { rackDiningSeats } from "@/shared/utils/dining";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 
 export function CompareFloorPlans({ store, areas, templateId, currency }: {
@@ -32,7 +33,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
     { label: "Floor size (cells)", value: (plan) => plan.store.grid_size.join("×") },
     { label: "Product displays", value: (plan) => plan.store.racks.filter((rack) => rack.slots.length).length },
     { label: "Unique products", value: (plan) => new Set(plan.store.racks.flatMap((rack) => rack.slots.flatMap((slot) => slot.items.map((item) => item.sku)))).size },
-    { label: "Dining tables / seats", value: (plan) => { const tables = plan.store.racks.filter((rack) => rack.type === "table").length; return `${tables} / ${tables * 4}`; } },
+    { label: "Dining tables / seats", value: (plan) => { const tables = plan.store.racks.filter((rack) => rack.type === "table").length; return `${tables} / ${plan.store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0)}`; } },
     { label: "Checkout counters", value: (plan) => plan.store.racks.filter((rack) => rack.type === "counter").length },
     { label: "Reserved areas", value: (plan) => plan.areas.length },
     { label: "Interior design", value: (plan) => INTERIOR_DESIGNS[plan.store.design_theme ?? "classic"].label },

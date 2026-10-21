@@ -79,6 +79,24 @@ function mount() {
   render(<QueryClientProvider client={client}><Picker /></QueryClientProvider>);
 }
 
+it("previews table sizes, retains the choice with zero tables and resets to four seats", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "2" } });
+  for (const seats of [2, 6, 4]) {
+    fireEvent.change(screen.getByLabelText("Seats per table"), { target: { value: String(seats) } });
+    expect((screen.getByLabelText(`Dining tables (${seats} seats each)`) as HTMLInputElement).value).toBe("2");
+    await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ dining_tables: 2, dining_seats: seats }), expect.any(AbortSignal)));
+  }
+  fireEvent.change(screen.getByLabelText("Seats per table"), { target: { value: "6" } });
+  fireEvent.change(screen.getByLabelText("Dining tables (6 seats each)"), { target: { value: "0" } });
+  expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).value).toBe("6");
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).value).toBe("4");
+});
+
 it.each(["front", "back", "left", "right"] as const)("applies priorities on the %s entrance wall without losing unrelated requirements", async (gateWall) => {
   const starting = { ...DEFAULT_TEMPLATE_CHOICE, width: 24, height: 18, seed: 7, currency: "JPY", gate_wall: gateWall,
     design_theme: "coastal" as const, dining_tables: 3, checkouts: 4, checkout_wall: "back" as const,

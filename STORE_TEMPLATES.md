@@ -230,12 +230,15 @@ remain independent. You can customize an individual floor again afterward.
 These controls update the building being prepared; existing shopper budgets are
 not converted.
 
-Add up to 48 dining tables (192 seats, four chairs each) to any format. Enter any
+Add up to 48 dining tables to any format. Choose **Seats per table**: two, four
+(the default) or six, for up to 288 seats when the floor has enough space. Enter any
 whole count from 0–48, or leave the field blank for the format default. Café and restaurant
 defaults include seating; small grids reduce the default count to fit. An explicit
-count that cannot fit returns a capacity message. Each group occupies 2×2 cells
+count that cannot fit returns a capacity message. Groups occupy 1×2, 2×2 or 3×2 cells
 with clear circulation around it, appears in Classic and Realistic views, and can
-be selected from any of its four cells in the floor editor. As with other fixtures,
+be selected from any occupied cell in the floor editor. Preview summaries, building
+totals and exported floor plans count the chairs actually shown. Each floor keeps
+its own table size in saved layouts and reusable options. As with other fixtures,
 the existing floor-edit unlock step clears product placements before editing.
 
 Set **Space around dining tables** to one, two or three cells. The generator keeps
