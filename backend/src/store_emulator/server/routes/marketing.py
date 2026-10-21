@@ -28,6 +28,7 @@ from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.domain.factorial import FactorialReport, FactorialRequest, FactorialSource
 from store_emulator.engine.marketing.conjoint_design import ConjointDesign
 from store_emulator.engine.marketing.experiment_design import ExperimentDesign
+from store_emulator.engine.marketing.survey_design import SurveyDesign
 from store_emulator.engine.marketing.reading import StudyReading
 from store_emulator.engine.marketing.script_writer import ScriptDraft
 from store_emulator.engine.marketing.report import ReportNarrative
@@ -144,6 +145,13 @@ def get_study_reading(pid: str, study: StudyPath, jid: str) -> StudyReading | No
 @router.delete("/{pid}/{study}/{jid}/reading", summary="Remove a study's reading", status_code=204)
 def delete_study_reading(pid: str, study: StudyPath, jid: str) -> None:
     _call(lambda: study_reading.delete_reading(pid, _STUDY_PATHS[study], jid))
+
+
+@router.post("/{pid}/surveys/design", summary="Draft a concept test from a question", response_model=SurveyDesign)
+async def design_survey(pid: str, req: study_design.SurveyDesignRequest) -> SurveyDesign:
+    """The text model picks the product images to show (from the project's library, by name), the questions, the
+    brief, an optional shelf price and the panel quotas for the question. Nothing runs; the draft fills the builder."""
+    return await run_in_threadpool(_call, lambda: study_design.design_concept(pid, req, get_config()))
 
 
 @router.post("/{pid}/surveys", summary="Start a concept test", response_model=JobStatus)

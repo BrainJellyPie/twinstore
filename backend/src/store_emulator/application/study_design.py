@@ -14,6 +14,8 @@ from store_emulator.engine.marketing.experiment_design import (
     ExperimentDesign,
     design_experiment,
 )
+from store_emulator.engine.marketing.survey_design import SurveyDesign, design_survey
+from store_emulator.engine.prompting import display_price
 
 from .currencies import project_currency
 from .errors import AppError, model_failure
@@ -97,3 +99,36 @@ def design_ab(pid: str, req: ExperimentDesignRequest, config: SimulationConfig) 
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[design] A/B draft failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The test could not be drafted"), 502) from e
+
+
+class SurveyDesignRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    question: str = Field(min_length=5, max_length=500, description="what the concept test should answer")
+    setup_id: str = Field(default="", description="a layout whose products and prices the images are listed with")
+    currency: str = Field(default="USD", min_length=3, max_length=3)
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+def design_concept(pid: str, req: SurveyDesignRequest, config: SimulationConfig) -> SurveyDesign:
+    """Images (from the project's library), questions, brief, price and quotas drafted by the text model from the
+    question; images that are not in the library are dropped and listed in `warnings`."""
+    from .shelf_lab import (
+        list_packages,  # late import: shelf_lab is heavy and imports capture
+    )
+
+    store = _store_for(pid, req.setup_id) if req.setup_id else None
+    store_currency = (store.currency or project_currency(pid, req.currency)).upper() if store is not None else req.currency.upper()
+    on_shelf = {i.sku: f"{i.name} at {display_price(i.price, store_currency)} on {r.rack_name or 'a shelf'}"
+                for r in store.product_racks for s in r.slots for i in s.items} if store is not None else {}
+    packages = [(p.name, p.asset_id, p.brand, on_shelf.get(p.sku, "")) for p in list_packages(pid)]
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1200})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        return asyncio.run(design_survey(llm, req.question, req.currency, packages))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[design] concept test draft failed: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "The concept test could not be drafted"), 502) from e
