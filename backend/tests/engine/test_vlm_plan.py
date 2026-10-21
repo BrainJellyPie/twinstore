@@ -529,3 +529,58 @@ def test_zero_weight_plan_items_are_skipped_without_failing_or_claiming_duplicat
     plan = asyncio.run(engine._vlm_plan(_context(store, _personas()[0], seed=0)))
     assert plan.entered and not plan.buys
     assert [entry[2] for entry in engine.plan_log[-1].resolved] == ["unavailable", "unavailable", "unresolved"]
+
+
+@pytest.mark.parametrize("tolerance", [None, 0.0, 1.5])
+@pytest.mark.parametrize("price", [100, 2_000_000_000])
+@pytest.mark.parametrize("planner", ["rule", "vlm"])
+def test_unlimited_personas_have_no_artificial_spending_cap(tolerance, price, planner):
+    from store_emulator.engine.simulation.engines.rule_based import RuleBasedEngine
+
+    store = _store()
+    context = _context(store, _personas()[0], seed=0)
+    context.persona.budget_max = 0
+    for rack in store.product_racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                if item.name == "Pepsi 20oz":
+                    item.price = price
+    config = _config().model_copy(update={"budget_tolerance": tolerance})
+    if planner == "rule":
+        engine = RuleBasedEngine(AStarPathFinder(), config)
+        plan, _ = engine._begin_plan(context)
+        assert engine.can_buy_more(plan, 0, price)
+    else:
+        fake = _FakeVLM({"enter": True, "mission": "Buy soda", "items": [
+            {"category": "Drink", "product": "Pepsi 20oz", "qty": 2},
+        ], "reason": "needed"})
+        engine = VLMGlanceEngine(llm=fake, pathfinder=AStarPathFinder(), config=config)
+        plan = asyncio.run(engine._vlm_plan(context))
+        assert sum(b.quantity for b in plan.buys) == 2
+    assert not engine.can_buy_more(plan, config.engines.rule_based.max_impulse_items, 0)
+
+
+def test_unlimited_rule_planning_does_not_apply_a_synthetic_affordability_penalty():
+    from store_emulator.engine.simulation.engines.rule_based import RuleBasedEngine
+
+    baseline = _store()
+    for rack in baseline.product_racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                item.price = 100
+                item.regular_price = 0
+    expensive = baseline.model_copy(deep=True)
+    for rack in expensive.product_racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                if item.name == "Pepsi 20oz":
+                    item.price = 2_000_000_000
+    for seed in range(40):
+        choices = []
+        for store in (baseline, expensive):
+            context = _context(store, _personas()[0], seed)
+            context.persona.budget_max = 0
+            context.persona.preferred_categories = ["Drink"]
+            engine = RuleBasedEngine(AStarPathFinder(), SimulationConfig())
+            choices.append([(action.product_sku, action.quantity) for action in engine._plan(context).buys])
+        assert choices[0] == choices[1]
