@@ -14,6 +14,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
 }) {
   const [active, setActive] = useState(0);
   const [pickerVersion, setPickerVersion] = useState(0);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const fieldId = useId();
   const index = Math.min(active, floors.length - 1);
   const floor = floors[index];
@@ -59,7 +60,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         onClick={() => setActive(i)}>{i + 1}F · {f.label || "Unnamed floor"}</button>)}
       <button type="button" disabled={floors.length >= 6} onClick={addFloor} className="rounded border px-2 py-1 text-xs disabled:opacity-40">Add floor</button>
     </div>
-    <ReviewBuildingFloors floors={floors} onEdit={setActive} />
+    <ReviewBuildingFloors floors={floors} onEdit={setActive} open={reviewOpen} onOpenChange={setReviewOpen} />
     {floor && <>
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex-1 space-y-1">
@@ -100,6 +101,12 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         onApplyDesignToAll={(design_theme) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, design_theme } })))}
         onApplyCurrencyToAll={(currency) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, currency } })))}
         onApplyHoursToAll={(hours) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...hours, closed_days: [...hours.closed_days] } })))}
+        onApplySizeToAll={(size) => {
+          onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...size } })));
+          setReviewOpen(true);
+        }}
+        sharedSize={floor.choice.width != null && floor.choice.height != null &&
+          floors.every((f) => f.choice.width === floor.choice.width && f.choice.height === floor.choice.height)}
         sharedHours={floor.choice.open_hour != null && floor.choice.close_hour != null && floor.choice.closed_days != null &&
           floors.every((f) => f.choice.open_hour === floor.choice.open_hour && f.choice.close_hour === floor.choice.close_hour &&
             f.choice.closed_days?.length === floor.choice.closed_days?.length &&

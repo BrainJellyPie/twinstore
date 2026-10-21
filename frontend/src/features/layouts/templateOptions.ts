@@ -15,6 +15,20 @@ export interface OperatingHours {
   closed_days: number[];
 }
 
+export interface FloorSize {
+  width: number;
+  height: number;
+}
+
+export function resolveFloorSize(value: Pick<LayoutOptions, "width" | "height">,
+  template: Pick<StoreTemplate, "grid"> | undefined): FloorSize | null {
+  if (!template) return null;
+  const width = value.width ?? template.grid[0];
+  const height = value.height ?? template.grid[1];
+  return Number.isInteger(width) && width >= 8 && width <= 40 && Number.isInteger(height) && height >= 6 && height <= 40
+    ? { width, height } : null;
+}
+
 export function resolveOperatingHours(value: Pick<LayoutOptions, "open_hour" | "close_hour" | "closed_days">,
   template: Pick<StoreTemplate, "open_hours" | "closed_days"> | undefined): OperatingHours | null {
   if (!template) return null;
