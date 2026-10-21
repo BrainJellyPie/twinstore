@@ -24,7 +24,11 @@ function metric(v: VariantResult, name: string) {
 }
 
 function download(name: string, rows: (string | number)[][]) {
-  const csv = rows.map((r) => r.map((c) => (typeof c === "string" && /[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : String(c))).join(",")).join("\n");
+  const csv = rows.map((r) => r.map((c) => {
+    // Keep report labels as text when opened in a spreadsheet; numeric losses stay numeric.
+    const text = typeof c === "string" && /^[=+\-@]/.test(c.trimStart()) ? `'${c}` : String(c);
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  }).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
   const a = Object.assign(document.createElement("a"), { href: url, download: `${name}.csv` });
   a.click();
