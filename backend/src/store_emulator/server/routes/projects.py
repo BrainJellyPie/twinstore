@@ -87,11 +87,13 @@ async def save_personas(pid: str, req: SavePersonasRequest) -> StatusResponse:
 
 @router.delete("/{pid}", summary="Delete project", response_model=StatusResponse)
 async def delete_project(pid: str) -> StatusResponse:
-    """Permanently delete the project and all child data (setups, runs)."""
+    """Permanently delete the project and child data. Returns 409 while a background job is active."""
     try:
         project_service.delete_project(pid)
     except FileNotFoundError:
         raise HTTPException(404, "project not found")
+    except AppError as e:
+        raise HTTPException(e.status_code, str(e)) from e
     return StatusResponse(status="deleted")
 
 
