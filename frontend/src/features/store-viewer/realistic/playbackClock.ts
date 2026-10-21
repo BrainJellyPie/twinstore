@@ -1,6 +1,11 @@
-// Mirrors the playback loop's clock (which lives in a ref inside
-// useSimulationLoop) from the public stores: integrates delta × speed while
-// playing and re-anchors on the minute the loop publishes. Pure step function.
+// Scene consumers read the mounted loop's exact time. Standalone previews use
+// the pure mirrored-clock helpers below, anchored to the published minute.
+
+// The mounted playback loop publishes its existing refs without notifying React
+// on every frame. Standalone scene previews can still use the mirrored clock.
+export const livePlaybackClock: {
+  current: { time: { current: number }; day: { current: number } } | null;
+} = { current: null };
 
 export interface ClockState {
   t: number;

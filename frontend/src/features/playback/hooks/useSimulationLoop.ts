@@ -13,6 +13,7 @@ import {
 import { parseTimeToSeconds } from "../utils/playback";
 import { colorForCustomer } from "@/shared/utils/hashColor";
 import { facingForEvent, positionBetweenEvents } from "@/features/store-viewer/realistic/shopperPose";
+import { livePlaybackClock } from "@/features/store-viewer/realistic/playbackClock";
 
 export interface PersonaFrame {
   id: string;
@@ -54,6 +55,14 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
   const accumulatorRef = useRef(new MetricsAccumulator());
   const personaFramesRef = useRef<PersonaFrame[]>([]);
   const activeDayRef = useRef(availableDays[0] ?? 1);
+
+  useEffect(() => {
+    const source = { time: playbackTimeRef, day: activeDayRef };
+    livePlaybackClock.current = source;
+    return () => {
+      if (livePlaybackClock.current === source) livePlaybackClock.current = null;
+    };
+  }, []);
 
   // Per-customer playback state carried across frames so forward play does not
   // rescan the full timeline each frame. Cleared on seek / loadDay.

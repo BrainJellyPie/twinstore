@@ -12,18 +12,3 @@ export interface PersonaRegistry {
 }
 
 export const personaRegistry: PersonaRegistry = { xs: [], zs: [], count: 0, hideNear: null };
-
-export function nearestPersona(x: number, z: number, maxDist: number): number {
-  let best = -1;
-  let bestD = maxDist * maxDist;
-  for (let i = 0; i < personaRegistry.count; i++) {
-    const dx = personaRegistry.xs[i]! - x;
-    const dz = personaRegistry.zs[i]! - z;
-    const d = dx * dx + dz * dz;
-    if (d < bestD) {
-      bestD = d;
-      best = i;
-    }
-  }
-  return best;
-}
