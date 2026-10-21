@@ -9,10 +9,10 @@ import { usePhotoMode } from "../photoModeStore";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(), frame: vi.fn(), hdr: vi.fn(), construct: vi.fn(), scene: vi.fn(),
-  workerDispose: vi.fn(), sceneDispose: vi.fn(),
+  workerDispose: vi.fn(), sceneDispose: vi.fn(), denoiseDispose: vi.fn(),
   tracer: {
     setBVHWorker: vi.fn(), setSceneAsync: vi.fn(), setCamera: vi.fn(), updateCamera: vi.fn(),
-    renderSample: vi.fn(), dispose: vi.fn(), tiles: { set: vi.fn() }, samples: 0,
+    renderSample: vi.fn(), dispose: vi.fn(), tiles: { set: vi.fn() }, target: { texture: null }, samples: 0,
   },
 }));
 vi.mock("@react-three/fiber", () => ({
@@ -24,6 +24,7 @@ vi.mock("three/examples/jsm/loaders/HDRLoader.js", () => ({
 }));
 vi.mock("three-gpu-pathtracer", () => ({
   WebGLPathTracer: class { constructor() { mocks.construct(); return mocks.tracer; } },
+  DenoiseMaterial: class { dispose = mocks.denoiseDispose; },
 }));
 vi.mock("three-mesh-bvh/worker", () => ({
   GenerateMeshBVHWorker: class { dispose = mocks.workerDispose; },
@@ -38,7 +39,7 @@ beforeEach(() => {
   mocks.scene.mockReturnValue({ scene: new THREE.Scene(), triangles: 12, dispose: mocks.sceneDispose });
   mocks.get.mockReturnValue({
     scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(),
-    gl: { getPixelRatio: () => 1, getContext: () => ({ getExtension: () => null }), render: vi.fn() },
+    gl: { getPixelRatio: () => 1, getContextAttributes: () => ({ premultipliedAlpha: true }), getContext: () => ({ getExtension: () => null }), render: vi.fn() },
   });
   frameGate.renderer = null;
   frameGate.photoRenderer = null;
@@ -84,6 +85,7 @@ it("keeps tracing across live composer replacement and restores the current rend
   expect(mocks.tracer.dispose).toHaveBeenCalledOnce();
   expect(mocks.workerDispose).toHaveBeenCalledOnce();
   expect(mocks.sceneDispose).toHaveBeenCalledOnce();
+  expect(mocks.denoiseDispose).toHaveBeenCalledOnce();
 });
 
 it("disposes an HDR that finishes after leaving photo mode", async () => {
