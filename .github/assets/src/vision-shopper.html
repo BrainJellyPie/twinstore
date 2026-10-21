@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TwinStore — vision shopper</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .main { display: grid; grid-template-columns: 400px 1fr; gap: 56px; }
+  .seen { display: flex; flex-direction: column; gap: 16px; }
+  .shot { position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); background: #fff; box-shadow: 0 24px 50px -28px rgb(16 20 36 / 0.45); }
+  .shot img { display: block; width: 100%; }
+  .shot .cap { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; }
+  .shot .cap .chip { background: rgb(255 255 255 / 0.92); backdrop-filter: blur(6px); }
+  .shot.tall img { height: 330px; object-fit: cover; object-position: top; }
+  .reticle { position: absolute; border: 2px solid #e0429b; border-radius: 10px; box-shadow: 0 0 0 4px rgb(224 66 155 / 0.18); }
+  .reticle::after { content: "#4 · interest 8"; position: absolute; left: -2px; top: -26px; padding: 2px 7px; border-radius: 7px; background: #e0429b; color: #fff; font: 600 11px var(--mono); white-space: nowrap; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: auto auto; gap: 64px 52px; align-content: start; padding-top: 14px; }
+  .steps .node { margin: 0; min-height: 168px; }
+  .code { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #0b0c10; color: #d9dcea; font: 11.5px/1.55 var(--mono); white-space: pre; overflow: hidden; }
+  .code .k { color: #8fe3ff; } .code .t { color: #c9b8ff; } .code .c { color: #6f7590; } .code .v { color: #d6ff5c; }
+  .bottom { margin-top: 46px; display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 22px; }
+  .bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; font: 11.5px var(--mono); color: var(--muted); }
+  .bar .track { flex: 1; height: 8px; border-radius: 8px; background: #eef0f5; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3)); }
+  .mini { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .mini .who { display: flex; gap: 4px; }
+  .mini .who i { width: 18px; height: 18px; border-radius: 50%; display: block; border: 2px solid #fff; box-shadow: 0 2px 6px -2px rgb(0 0 0 / 0.35); }
+</style>
+</head>
+<body data-wires="
+  s1.l >> s2.r ; s2.l >> s3.r ; s3.b >> s4.t ; s4.r >> s5.l ; s5.r >> s6.l ;
+  s5.t ~> s2.b : next shelf ;
+  eye.r > s3.l ;
+  shelf.r > s4.l
+">
+<div class="canvas">
+  <div class="title">
+    <div>
+      <div class="eyebrow">Fig. 2 — Vision shopper</div>
+      <h1>How a <em>vision shopper</em> decides</h1>
+      <div class="lede">Every decision is made by a vision-language model looking at what the shopper would see — a rendered
+        shelf or a real photo of it. The model only rates; purchases are seeded draws, so two layouts are compared on the
+        very same people.</div>
+    </div>
+    <div class="stamp"><b>engine · vlm_glance</b><br>EntryDecision · ShelfGlance<br>structured output, any provider</div>
+  </div>
+
+  <div class="main">
+    <div class="seen">
+      <div class="label">What the model sees</div>
+      <div class="shot tall" id="eye">
+        <img src="../twinstore/media/shopper-eye.jpg" alt="">
+        <div class="cap"><span class="chip c2"><i class="dot"></i>shopper's eye</span><span class="chip">photoreal 3D</span></div>
+      </div>
+      <div class="shot" id="shelf">
+        <img src="../twinstore/media/shelf-tagged.jpg" alt="">
+        <div class="cap"><span class="chip c3"><i class="dot"></i>shelf face</span><span class="chip">numbered tags</span></div>
+        <div class="reticle" style="left: 69.5%; top: 26%; width: 23%; height: 20.5%"></div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="node" id="s3"><span class="num">3</span>
+        <div class="hd"><span class="ic" data-icon="image"></span><div><h3>Glance</h3><div class="sub">one shelf face, as seen</div></div></div>
+        <p>The face is rendered with prices, promotion ribbons and numbered tags — or replaced by a real photo of the shelf.</p>
+        <div class="chips"><span class="chip c2">render</span><span class="chip c2">photo + tags</span><span class="chip c2">raw photo</span></div>
+      </div>
+      <div class="node" id="s2"><span class="num">2</span>
+        <div class="hd"><span class="ic c1" data-icon="walk"></span><div><h3>Walk</h3><div class="sub">A* on the grid, crowd-aware</div></div></div>
+        <p>Plan items resolve to SKUs by name, then category; the route visits their racks and passes others on the way.</p>
+        <div class="chips"><span class="chip">1.25 m tiles</span><span class="chip">dwell</span><span class="chip">egocentric camera</span></div>
+      </div>
+      <div class="node" id="s1"><span class="num">1</span>
+        <div class="hd"><span class="ic c1" data-icon="door"></span><div><h3>At the door</h3><div class="sub">store directory map + today</div></div></div>
+        <p>Reads the situation and where it came from; writes its mission, then decides whether to enter and what to buy.</p>
+        <div class="code"><span class="t">EntryDecision</span> { <span class="k">mission</span>, <span class="k">enter</span>,
+  <span class="k">items</span>: [{category, product, qty}] }</div>
+      </div>
+      <div class="node" id="s4"><span class="num">4</span>
+        <div class="hd"><span class="ic c3" data-icon="eye"></span><div><h3>Judge</h3><div class="sub">the VLM rates, never buys</div></div></div>
+        <p>Names the most eye-catching product by its tag and how tempting it is, given persona, basket and plan.</p>
+        <div class="code"><span class="t">ShelfGlance</span> { <span class="k">product</span>, <span class="k">number</span>,
+  <span class="k">interest</span>: <span class="v">0–10</span>, <span class="k">reason</span> }</div>
+      </div>
+      <div class="node" id="s5"><span class="num">5</span>
+        <div class="hd"><span class="ic k" data-icon="dice"></span><div><h3>Seeded draw</h3><div class="sub">common random numbers</div></div></div>
+        <p>P(buy) grows with interest, the plan and the budget left. Same seed per shopper and shelf across layouts.</p>
+        <div class="bar">interest 8<span class="track"><span class="fill" style="width:72%; display:block"></span></span>0.72</div>
+        <div class="bar">interest 3<span class="track"><span class="fill" style="width:21%; display:block"></span></span>0.21</div>
+      </div>
+      <div class="node" id="s6"><span class="num">6</span>
+        <div class="hd"><span class="ic v" data-icon="cart"></span><div><h3>Checkout &amp; log</h3><div class="sub">everything is replayable</div></div></div>
+        <p>Basket, spend, path, every glance with its image hash, tokens and cost — the 3D playback and dashboards read this.</p>
+        <div class="chips"><span class="chip v">trajectory</span><span class="chip v">glances</span><span class="chip v">tokens · $</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="zone solid"><div class="tag">Prompt <i>per glance</i></div>
+      <div class="chips"><span class="chip c1">persona · age · budget</span><span class="chip c1">situation · weather · events</span><span class="chip c1">mission &amp; plan</span><span class="chip c1">basket so far</span><span class="chip c1">time of day</span><span class="chip">image</span><span class="chip">JSON schema</span></div>
+      <p style="margin:10px 0 0; font-size:12.5px; color:var(--muted)">Korean-tuned prompt bodies, English outputs; grammar-constrained JSON on local servers keeps tiny models fast.</p>
+    </div>
+    <div class="zone solid"><div class="tag">Populations</div>
+      <div class="mini"><div class="who"><i style="background:#0aa2c6"></i><i style="background:#6b4dff"></i><i style="background:#e0429b"></i><i style="background:#86c400"></i></div><b style="font-size:13px">Mixture</b><span style="font-size:12px;color:var(--muted)">each shopper is one model, weighted</span></div>
+      <div class="mini"><div class="who"><i style="background:#0aa2c6"></i><i style="background:#0aa2c6"></i><i style="background:#0aa2c6"></i></div><b style="font-size:13px">Vote</b><span style="font-size:12px;color:var(--muted)">every model looks, majority wins</span></div>
+      <div class="chips"><span class="chip">OpenAI</span><span class="chip">Anthropic</span><span class="chip">Gemini</span><span class="chip">Qwen</span><span class="chip">OpenRouter</span><span class="chip">vLLM · Ollama · llama.cpp</span></div>
+    </div>
+    <div class="zone solid"><div class="tag">Controls <i>for research</i></div>
+      <div class="chips"><span class="chip c3">Latin-square placement</span><span class="chip c3">shuffled tag numbers</span><span class="chip c3">image vs text ablation</span><span class="chip c3">corruption robustness</span><span class="chip c3">read-back of prices</span><span class="chip c3">Fleiss' κ across models</span></div>
+      <p style="margin:10px 0 0; font-size:12.5px; color:var(--muted)">Every stimulus and call is seeded and cached by prompt — reruns are free and exact.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="legend"><span><i class="ln"></i>decision flow</span><span><i class="ln dash"></i>loop over shelves</span></div>
+    <span class="brand"><img src="../../../launcher/icon/twinstore.png" alt="">TwinStore · store digital twin</span>
+  </div>
+</div>
+<script src="icons.js"></script>
+<script src="kit.js"></script>
+</body>
+</html>

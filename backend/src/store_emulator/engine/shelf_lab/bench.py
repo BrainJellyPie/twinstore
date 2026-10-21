@@ -127,7 +127,7 @@ def plan_edits(result: CaptureResult, rng: random.Random, kinds: list[EditKind],
                 case "remove":
                     plans.append(PhotoEdit(kind="remove", item_id=target.id))
                 case "replace":
-                    plans.append(PhotoEdit(kind="replace", item_id=target.id, name=rng.choice(NEW_PRODUCTS), brand="Parastore Labs",
+                    plans.append(PhotoEdit(kind="replace", item_id=target.id, name=rng.choice(NEW_PRODUCTS), brand="TwinStore Labs",
                                            price=target.price))
                 case "price":
                     if target.price:

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TwinStore — system</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .cols { display: grid; grid-template-columns: 222px 250px 1fr 262px 222px; gap: 44px; align-items: stretch; }
+  .col { display: flex; flex-direction: column; }
+  .col .zone { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+  .zone .node + .node { margin-top: 10px; }
+  .node.sm { padding: 11px 13px; }
+  .node.sm .ic { width: 26px; height: 26px; border-radius: 8px; }
+  .node.sm .ic svg { width: 15px; height: 15px; }
+  .node.sm h3 { font-size: 14px; }
+  .node.sm .sub { font-size: 12px; }
+  .core-wrap { display: flex; flex-direction: column; justify-content: center; }
+  .core .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .core .seed { margin-top: 12px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: linear-gradient(90deg, rgb(63 223 255 / 0.12), rgb(165 134 255 / 0.12), rgb(255 95 198 / 0.12)); border: 1px solid rgb(255 255 255 / 0.12); font-size: 12px; color: #d6d9e6; }
+  .core .seed b { color: #fff; }
+  .twin-art { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+  .twin-art img { width: 58px; height: 58px; border-radius: 15px; box-shadow: 0 10px 24px -10px rgb(165 134 255 / 0.8); }
+  .stack { margin-top: 128px; display: grid; grid-template-columns: 1.55fr 1fr 0.95fr; gap: 22px; }
+  .layers { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+  .layer { padding: 7px 10px; border-radius: 12px; border: 1px solid var(--line); background: #fff; font: 600 12px var(--mono); box-shadow: 0 6px 16px -12px rgb(16 20 36 / 0.3); }
+  .layer small { display: block; font: 500 10.5px var(--mono); color: var(--muted); margin-top: 2px; }
+  .arrowl { color: var(--faint); font: 600 14px var(--mono); }
+  .models { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+</style>
+</head>
+<body data-wires="
+  in-shelf > b-capture ; in-plan > b-plan ; in-pos > b-receipt ; in-front > b-appeal ; in-rival > b-rival ; in-area > b-gen ;
+  b-capture.r > core.l ; b-plan.r > core.l ; b-receipt.r > core.l ; b-appeal.r > core.l ; b-rival.r > core.l ; b-gen.r > core.l ;
+  core.r >> e-rule.l ; core.r >> e-llm.l ; core.r >> e-vlm.l ; core.r >> e-ens.l ;
+  e-rule.r > results.l ; e-llm.r > results.l ; e-vlm.r > results.l ; e-ens.r > results.l ;
+  r-fid.b ~> core.b : calibrate on real POS
+">
+<div class="canvas">
+  <div class="title">
+    <div>
+      <div class="eyebrow">Fig. 1 — System</div>
+      <h1 style="max-width:1080px">One store, its <em>digital twin</em>, and a crowd of synthetic shoppers</h1>
+      <div class="lede">Photos, plans and sales data become a living twin of the store. Rule-based, language-model and
+        vision-language shoppers walk it on identical, seeded days, so every layout change is a controlled experiment.</div>
+    </div>
+    <div class="stamp"><b>TwinStore</b><br>built on Parastore (MIT)<br>FastAPI · React 19 · R3F · Go</div>
+  </div>
+
+  <div class="cols">
+    <div class="col">
+      <div class="zone" id="inputs"><div class="tag">Real world <i>in</i></div>
+        <div class="node sm" id="in-shelf"><div class="hd"><span class="ic c1" data-icon="camera"></span><div><h3>Shelf photos</h3><div class="sub">phone, straight on</div></div></div></div>
+        <div class="node sm" id="in-plan"><div class="hd"><span class="ic c1" data-icon="map"></span><div><h3>Floor plans</h3><div class="sub">sketch, scan, PDF page</div></div></div></div>
+        <div class="node sm" id="in-pos"><div class="hd"><span class="ic c1" data-icon="receipt"></span><div><h3>POS &amp; receipts</h3><div class="sub">CSV / XLSX, receipt photos</div></div></div></div>
+        <div class="node sm" id="in-front"><div class="hd"><span class="ic c1" data-icon="store"></span><div><h3>Storefronts</h3><div class="sub">street-side photos</div></div></div></div>
+        <div class="node sm" id="in-rival"><div class="hd"><span class="ic c1" data-icon="scale"></span><div><h3>Rival shelves</h3><div class="sub">the shop next door</div></div></div></div>
+        <div class="node sm" id="in-area"><div class="hd"><span class="ic c1" data-icon="pin"></span><div><h3>Neighborhood</h3><div class="sub">map import or generated</div></div></div></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="zone" id="builders"><div class="tag">Twin builders <i>vision</i></div>
+        <div class="node sm" id="b-capture"><div class="hd"><span class="ic" data-icon="scan"></span><div><h3>Shelf capture</h3><div class="sub">detect → read → planogram</div></div></div>
+          <div class="chips"><span class="chip c2">Grounding DINO</span><span class="chip c2">VLM OCR</span></div></div>
+        <div class="node sm" id="b-plan"><div class="hd"><span class="ic" data-icon="grid"></span><div><h3>Plan reader</h3><div class="sub">ink mask → walls, racks, doors</div></div></div>
+          <div class="chips"><span class="chip">1.25 m / tile</span><span class="chip">8–16 tiles</span></div></div>
+        <div class="node sm" id="b-receipt"><div class="hd"><span class="ic" data-icon="file"></span><div><h3>Receipt reader</h3><div class="sub">VLM → POS lines → SKUs</div></div></div></div>
+        <div class="node sm" id="b-appeal"><div class="hd"><span class="ic" data-icon="eye"></span><div><h3>Storefront appeal</h3><div class="sub">VLM score → Huff pull</div></div></div>
+          <div class="chips"><span class="chip">0.6 + 0.08·score</span></div></div>
+        <div class="node sm" id="b-rival"><div class="hd"><span class="ic" data-icon="percent"></span><div><h3>Rival compare</h3><div class="sub">price index, overlap</div></div></div></div>
+        <div class="node sm" id="b-gen"><div class="hd"><span class="ic" data-icon="wand"></span><div><h3>Generators</h3><div class="sub">10 store formats, towns</div></div></div></div>
+      </div>
+    </div>
+
+    <div class="core-wrap">
+      <div class="core" id="core">
+        <div class="twin-art"><img src="../../../launcher/icon/twinstore.png" alt=""><div><h2>The <em>twin</em></h2><div class="sub">one JSON world, versioned per layout</div></div></div>
+        <div class="grid2">
+          <div class="cell"><b>Store graph</b><span>grid · racks · faces · slots · SKUs · prices</span></div>
+          <div class="cell"><b>Personas</b><span>demographics · trip context · budgets</span></div>
+          <div class="cell"><b>Situations</b><span>19 presets · weather · promos · stock-outs</span></div>
+          <div class="cell"><b>Neighborhood</b><span>Huff demand · rivals · synergy</span></div>
+          <div class="cell"><b>Renderer</b><span>photoreal 3D · shelf faces · shopper's eye</span></div>
+          <div class="cell"><b>Photo layer</b><span>real crops · counterfactual edits · GT masks</span></div>
+        </div>
+        <div class="seed"><span class="chip">seed</span><span><b>Common random numbers</b> — same shoppers, same dice, only the layout differs</span></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="zone" id="engines"><div class="tag">Shopper engines</div>
+        <div class="node sm" id="e-rule"><div class="hd"><span class="ic k" data-icon="cpu"></span><div><h3>Rule-based</h3><div class="sub">fast surrogate, calibrated knobs</div></div></div></div>
+        <div class="node sm" id="e-llm"><div class="hd"><span class="ic c3" data-icon="sparkles"></span><div><h3>LLM planner</h3><div class="sub">pattern → intent → impulse</div></div></div></div>
+        <div class="node sm" id="e-vlm"><div class="hd"><span class="ic c3" data-icon="eye"></span><div><h3>VLM shoppers</h3><div class="sub">look at shelves, read tags</div></div></div>
+          <div class="chips"><span class="chip c3">interest 0–10</span><span class="chip c3">seeded draw</span></div></div>
+        <div class="node sm" id="e-ens"><div class="hd"><span class="ic c3" data-icon="users"></span><div><h3>Ensembles</h3><div class="sub">mixture or vote of models</div></div></div>
+          <div class="models"><span class="chip">OpenAI</span><span class="chip">Anthropic</span><span class="chip">Gemini</span><span class="chip">Qwen</span><span class="chip">vLLM</span><span class="chip">Ollama</span></div></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="zone" id="results"><div class="tag">Answers <i>out</i></div>
+        <div class="node sm" id="r-heat"><div class="hd"><span class="ic v" data-icon="flame"></span><div><h3>Heat &amp; paths</h3><div class="sub">dwell, glances, trajectories</div></div></div></div>
+        <div class="node sm" id="r-rev"><div class="hd"><span class="ic v" data-icon="chart"></span><div><h3>Revenue A/B</h3><div class="sub">paired Δ with CIs</div></div></div></div>
+        <div class="node sm" id="r-opt"><div class="hd"><span class="ic v" data-icon="target"></span><div><h3>Optimizer</h3><div class="sub">surrogate proposes, VLM judges</div></div></div></div>
+        <div class="node sm" id="r-lab"><div class="hd"><span class="ic v" data-icon="shield"></span><div><h3>Shelf Lab</h3><div class="sub">audits priced per day</div></div></div></div>
+        <div class="node sm" id="r-fid"><div class="hd"><span class="ic v" data-icon="gauge"></span><div><h3>Fidelity</h3><div class="sub">sim vs POS, held out</div></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="zone solid"><div class="tag">Backend <i>Python 3.13 · pyright strict</i></div>
+      <div class="layers">
+        <div class="layer">domain<small>Pydantic models, Protocols</small></div><span class="arrowl">←</span>
+        <div class="layer">engine<small>LLM/VLM, A*, renderers</small></div><span class="arrowl">←</span>
+        <div class="layer">application<small>use cases, storage</small></div><span class="arrowl">←</span>
+        <div class="layer">server<small>FastAPI routes</small></div>
+      </div>
+    </div>
+    <div class="zone solid"><div class="tag">Frontend <i>React 19 · TS strict</i></div>
+      <div class="chips" style="margin-top:12px"><span class="chip c2">R3F / Three.js</span><span class="chip c2">PMREM store env</span><span class="chip">TanStack Router + Query</span><span class="chip">Zustand</span><span class="chip">Tailwind v4</span><span class="chip">⌘K palette</span></div>
+    </div>
+    <div class="zone solid"><div class="tag">Launcher <i>Go · uv</i></div>
+      <div class="chips" style="margin-top:12px"><span class="chip k">TwinStore.exe</span><span class="chip k">TwinStore.app</span><span class="chip k">twinstore</span><span class="chip v">boot screen</span><span class="chip">127.0.0.1 only</span></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="legend"><span><i class="ln"></i>data flow</span><span><i class="ln dash"></i>feedback / calibration</span></div>
+    <span class="brand"><img src="../../../launcher/icon/twinstore.png" alt="">TwinStore · store digital twin</span>
+  </div>
+</div>
+<script src="icons.js"></script>
+<script src="kit.js"></script>
+</body>
+</html>

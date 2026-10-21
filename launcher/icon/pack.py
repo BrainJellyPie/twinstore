@@ -3,6 +3,7 @@
   twinstore.ico     Windows (16–256 px; heavier strokes up to 48 px)
   TwinStore.icns    macOS app bundle
   twinstore.png     Linux menu entry and the boot screen (512 px)
+  twinstore-mac.png the macOS-style icon (512 px) for docs and figures
 
 Run with any Python that has Pillow:  python3 launcher/icon/pack.py
 """
@@ -32,7 +33,8 @@ def main() -> None:
     mac.save(HERE / "TwinStore.icns", format="ICNS", append_images=[sized(mac, s) for s in mac_sizes])
 
     sized(flat, 512).save(HERE / "twinstore.png", optimize=True)
-    print("wrote twinstore.ico, TwinStore.icns, twinstore.png")
+    sized(mac, 512).save(HERE / "twinstore-mac.png", optimize=True)
+    print("wrote twinstore.ico, TwinStore.icns, twinstore.png, twinstore-mac.png")
 
 
 if __name__ == "__main__":

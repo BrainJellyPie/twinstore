@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TwinStore — launcher</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .grid { display: grid; grid-template-columns: 300px 340px 1fr; gap: 64px; align-items: center; }
+  .os { display: flex; flex-direction: column; gap: 16px; }
+  .tile { display: grid; grid-template-columns: 74px 1fr; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 22px; background: #fff; border: 1px solid var(--line); box-shadow: 0 18px 40px -26px rgb(16 20 36 / 0.45); }
+  .tile img { width: 74px; height: 74px; filter: drop-shadow(0 10px 16px rgb(107 77 255 / 0.35)); }
+  .tile b { display: block; font-size: 16px; font-family: var(--mono); font-weight: 600; }
+  .tile span { font-size: 12.5px; color: var(--muted); }
+  .tile .chips { margin-top: 6px; }
+  .steps .node { margin-top: 14px; }
+  .steps .node:first-child { margin-top: 0; }
+  .browser { border-radius: 18px; overflow: hidden; border: 1px solid var(--line-2); background: #fff; box-shadow: 0 40px 80px -40px rgb(16 20 36 / 0.55), 0 0 0 8px rgb(255 255 255 / 0.7); }
+  .browser .bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #f5f6f9; border-bottom: 1px solid var(--line); }
+  .browser .bar i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .browser .url { margin-left: 12px; flex: 1; padding: 5px 12px; border-radius: 99px; background: #fff; border: 1px solid var(--line); font: 12px var(--mono); color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
+  .browser img { display: block; width: 100%; }
+  .props { margin-top: 30px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+</style>
+</head>
+<body data-wires="
+  win.r >> go.l ; mac.r >> go.l ; lin.r >> go.l ;
+  go >> uv ; uv >> py ; py >> srv ;
+  srv.r >> browser.l
+">
+<div class="canvas">
+  <div class="title">
+    <div>
+      <div class="eyebrow">Fig. 5 — One-click launcher</div>
+      <h1>One icon. <em>Every OS.</em> Nothing to install.</h1>
+      <div class="lede">A small Go program, built from one source for Windows, macOS and Linux, finds the app files, fetches uv
+        (which brings Python and every dependency), starts the server and shows a live boot screen in the browser until the
+        app answers — then serves the app at that same address.</div>
+    </div>
+    <div class="stamp"><b>launcher/</b><br>Go standard library only<br>release.yml → one archive per OS</div>
+  </div>
+
+  <div class="grid">
+    <div class="os">
+      <div class="tile" id="win"><img src="../../../launcher/icon/twinstore.png" alt=""><div><b>TwinStore.exe</b><span>Windows 10/11 · icon &amp; version info embedded, no console window</span></div></div>
+      <div class="tile" id="mac"><img src="../../../launcher/icon/twinstore-mac.png" alt="" style="width:80px;height:80px;margin:-3px"><div><b>TwinStore.app</b><span>macOS 11+ · universal (Apple silicon + Intel), app files inside the bundle</span></div></div>
+      <div class="tile" id="lin"><img src="../../../launcher/icon/twinstore.png" alt=""><div><b>twinstore</b><span>Linux x64 / arm64 · adds itself to the app menu on first start</span></div></div>
+    </div>
+
+    <div class="steps">
+      <div class="node" id="go"><div class="hd"><span class="ic k" data-icon="terminal"></span><div><h3>Launcher</h3><div class="sub">find app files · single instance</div></div></div>
+        <div class="chips"><span class="chip">running.json</span><span class="chip">second click → reopen</span></div></div>
+      <div class="node" id="uv"><div class="hd"><span class="ic c1" data-icon="download"></span><div><h3>uv</h3><div class="sub">found on the machine, or fetched once</div></div></div>
+        <div class="chips"><span class="chip c1">no admin rights</span><span class="chip c1">no PATH edits</span></div></div>
+      <div class="node" id="py"><div class="hd"><span class="ic" data-icon="layers"></span><div><h3>Python 3.13 + packages</h3><div class="sub">uv run --frozen · lockfile exact</div></div></div>
+        <div class="chips"><span class="chip c2">venv outside read-only bundles</span></div></div>
+      <div class="node" id="srv"><div class="hd"><span class="ic c3" data-icon="server"></span><div><h3>TwinStore server</h3><div class="sub">private port · stops on end of stdin</div></div></div>
+        <div class="chips"><span class="chip c3">reverse proxy</span><span class="chip c3">SSE streaming</span></div></div>
+    </div>
+
+    <div class="browser" id="browser">
+      <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="url"><span style="color:#28a745">●</span> 127.0.0.1:8000</span></div>
+      <img src="../twinstore/media/boot.jpg" alt="">
+    </div>
+    <div class="chips" style="grid-column: 3; margin-top: -48px; justify-content: center"><span class="chip c2">boot screen → the app, same address</span><span class="chip c3">⌘K → Quit TwinStore</span><span class="chip">click again → reopen</span></div>
+  </div>
+
+  <div class="props">
+    <div class="node"><div class="hd"><span class="ic v" data-icon="lock"></span><div><h3>Local only</h3><div class="sub">127.0.0.1, host-checked, quit needs a same-site header</div></div></div></div>
+    <div class="node"><div class="hd"><span class="ic v" data-icon="file"></span><div><h3>Logs you can share</h3><div class="sub">live on the boot screen · Copy log · launcher.log</div></div></div></div>
+    <div class="node"><div class="hd"><span class="ic v" data-icon="database"></span><div><h3>Your data stays put</h3><div class="sub">app/backend/.data, or Application Support on macOS</div></div></div></div>
+    <div class="node"><div class="hd"><span class="ic v" data-icon="check"></span><div><h3>Smoke-tested in CI</h3><div class="sub">the packaged Linux launcher boots before release</div></div></div></div>
+  </div>
+
+  <div class="foot">
+    <div class="legend"><span><i class="ln"></i>start-up</span></div>
+    <span class="brand"><img src="../../../launcher/icon/twinstore.png" alt="">TwinStore · store digital twin</span>
+  </div>
+</div>
+<script src="icons.js"></script>
+<script src="kit.js"></script>
+</body>
+</html>

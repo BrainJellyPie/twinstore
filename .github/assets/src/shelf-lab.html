@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TwinStore — Shelf Lab</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  .row1 { display: grid; grid-template-columns: 290px 250px 1fr 310px; gap: 48px; align-items: center; }
+  .photo { position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 50px -28px rgb(16 20 36 / 0.45); background: #fff; }
+  .photo img { display: block; width: 100%; }
+  .photo .cap { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; }
+  .photo .cap .chip { background: rgb(255 255 255 / 0.92); }
+  .box { position: absolute; border: 2px solid; border-radius: 6px; }
+  .box.sw { border-color: #0aa2c6; background: rgb(10 162 198 / 0.12); }
+  .box.rm { border-color: #e0429b; background: rgb(224 66 155 / 0.14); }
+  .box.nw { border-color: #6b4dff; background: rgb(107 77 255 / 0.12); }
+  .box.pr { border-color: #e7a400; background: rgb(231 164 0 / 0.16); }
+  .edits { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .edit { display: grid; grid-template-columns: 34px 1fr; column-gap: 11px; align-items: center; border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 10px 12px; box-shadow: 0 10px 26px -18px rgb(16 20 36 / 0.35); }
+  .edit .ic { grid-row: span 2; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; color: #fff; }
+  .edit .ic svg { width: 18px; height: 18px; }
+  .edit b { display: block; font-size: 13px; }
+  .edit span { display: block; font: 11px/1.35 var(--mono); color: var(--muted); margin-top: 1px; }
+  .gt { margin-top: 14px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(90deg, var(--c1-soft), var(--c2-soft), var(--c3-soft)); border: 1px solid #e1dcff; font-size: 13px; }
+  .gt b { font-weight: 650; }
+  .row2 { margin-top: 64px; display: grid; grid-template-columns: 1.25fr 1fr 0.8fr; gap: 26px; }
+  .tri { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .tri figure { margin: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+  .tri img { display: block; width: 100%; height: 118px; object-fit: cover; object-position: top; }
+  .tri figcaption { padding: 6px 8px; font: 600 11px var(--mono); color: var(--ink-2); border-top: 1px solid var(--line); }
+  .tri .raw img { filter: saturate(1.05) contrast(1.02); }
+  .metric { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 10px; margin-top: 10px; padding: 9px 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+  .metric b { font-size: 13px; font-weight: 600; }
+  .metric code { font: 11.5px var(--mono); color: var(--c2); }
+  .metric span { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+  .find { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .loss { margin-top: 12px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #0b0c10; color: #fff; }
+  .loss .big { font: 400 34px/1 var(--serif); }
+  .loss .big em { font-style: italic; color: #d6ff5c; }
+  .loss small { color: #a4a9bb; font-size: 12px; line-height: 1.4; }
+</style>
+</head>
+<body data-wires="
+  photo >> detect ; detect >> edits-zone ; edits-zone >> edited ;
+  edited.b >> s2r.t : same personas · same seeds ;
+  edited.b > audit.t ;
+  edited.b > bench.t ;
+  plano.b ~> audit.t
+">
+<div class="canvas">
+  <div class="title">
+    <div>
+      <div class="eyebrow">Fig. 3 — Shelf Lab</div>
+      <h1>Real shelf photos, <em>edited with exact ground truth</em></h1>
+      <div class="lede">A phone photo becomes a planogram. Counterfactual edits change only the pixels inside the changed boxes,
+        so every edit comes with a perfect mask. The same shoppers then judge the render, the photo and the edited photo —
+        and audit gaps are priced by paired simulation.</div>
+    </div>
+    <div class="stamp"><b>engine · shelf_lab</b><br>edits · sim2real · audit · bench<br>pixels outside boxes: untouched</div>
+  </div>
+
+  <div class="row1">
+    <div class="photo" id="photo">
+      <img src="../twinstore/media/lab-before.jpg" alt="">
+      <div class="cap"><span class="chip c1"><i class="dot"></i>shelf photo</span></div>
+    </div>
+
+    <div>
+      <div class="node" id="detect"><div class="hd"><span class="ic" data-icon="scan"></span><div><h3>Detect &amp; read</h3><div class="sub">shelves, facings, tags</div></div></div>
+        <div class="chips"><span class="chip c2">Grounding DINO</span><span class="chip c2">classic CV</span><span class="chip c2">VLM reading</span></div>
+        <dl class="kv"><dt>bands → levels</dt><dd>top → bottom</dd><dt>products</dt><dd>name · price · facings</dd><dt>gaps</dt><dd>empty runs</dd></dl>
+      </div>
+      <div class="node" id="plano"><div class="hd"><span class="ic k" data-icon="grid"></span><div><h3>Planogram</h3><div class="sub">rack face in the twin</div></div></div>
+        <div class="chips"><span class="chip">replace a face</span><span class="chip">new racks</span></div>
+      </div>
+    </div>
+
+    <div class="zone" id="edits-zone"><div class="tag">Counterfactual edits <i>applied in order</i></div>
+      <div class="edits">
+        <div class="edit"><div class="ic" style="background:linear-gradient(135deg,#22c3e6,#0aa2c6)" data-icon="shuffle"></div><b>Swap</b><span>two products trade places</span></div>
+        <div class="edit"><div class="ic" style="background:linear-gradient(135deg,#ff6fb5,#e0429b)" data-icon="box"></div><b>Stock-out</b><span>empty the run, keep the shelf</span></div>
+        <div class="edit"><div class="ic" style="background:linear-gradient(135deg,#8f78ff,#6b4dff)" data-icon="sparkles"></div><b>New package</b><span>inpaint an uploaded pack</span></div>
+        <div class="edit"><div class="ic" style="background:linear-gradient(135deg,#ffc94d,#e7a400)" data-icon="tag"></div><b>Price tag</b><span>reprint the label</span></div>
+        <div class="edit"><div class="ic" style="background:linear-gradient(135deg,#d6ff5c,#8fd400); color:#1d2a00" data-icon="percent"></div><b>Promo</b><span>hang a 1+1 / % sign</span></div>
+      </div>
+      <div class="gt"><span class="chip k">GT</span><span><b>Exact masks.</b> Relit from the context ring, feathered inside the box — the rest of the photo is byte-identical.</span></div>
+    </div>
+
+    <div class="photo" id="edited">
+      <img src="../twinstore/media/lab-after.jpg" alt="">
+      <div class="cap"><span class="chip c3"><i class="dot"></i>edited</span><span class="chip">+ mask</span></div>
+      <div class="box sw" style="left:4%; top:14.6%; width:20%; height:15.5%"></div>
+      <div class="box sw" style="left:71%; top:31%; width:21%; height:15%"></div>
+      <div class="box rm" style="left:21.5%; top:49%; width:20%; height:15%"></div>
+      <div class="box nw" style="left:4%; top:67%; width:58%; height:15.5%"></div>
+      <div class="box pr" style="left:73%; top:86.5%; width:17%; height:4.5%"></div>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="zone solid" id="s2r"><div class="tag">Sim2real <i>same panel, three domains</i></div>
+      <div class="tri">
+        <figure><img src="../twinstore/media/shelf-render.jpg" alt=""><figcaption>render</figcaption></figure>
+        <figure><img src="../twinstore/media/shelf-tagged.jpg" alt=""><figcaption>photo + tags</figcaption></figure>
+        <figure class="raw"><img src="../twinstore/media/lab-before.jpg" alt=""><figcaption>raw photo</figcaption></figure>
+      </div>
+      <div class="metric"><b>Decision agreement</b><code>same_pick · 95% CI</code><span>share of personas who pick the same product (or nothing) on the photo as on the render</span></div>
+      <div class="metric"><b>Attention shift</b><code>level_share · Spearman ρ</code><span>which shelf level wins, and whether interest ranks agree</span></div>
+    </div>
+
+    <div class="zone solid" id="audit"><div class="tag">Compliance audit <i>priced</i></div>
+      <div class="hd" style="display:flex;gap:10px;align-items:center"><span class="label">findings</span></div>
+      <div class="find"><span class="chip c3">missing</span><span class="chip c3">gap</span><span class="chip a">misplaced</span><span class="chip a">facings</span><span class="chip c2">price</span><span class="chip">unexpected</span></div>
+      <div class="metric"><b>Compliance</b><code>matched / expected facings</code><span>per level and for the whole face</span></div>
+      <div class="loss"><div class="big"><em>loss</em>/day</div><small>each stock-out simulated against the reference with common random numbers → revenue per day with a CI</small></div>
+    </div>
+
+    <div class="zone solid" id="bench"><div class="tag">Benchmark</div>
+      <div class="node" style="margin-top:4px"><div class="hd"><span class="ic v" data-icon="database"></span><div><h3>Bench generator</h3><div class="sub">rendered or real captures</div></div></div>
+        <div class="chips"><span class="chip v">index.jsonl</span><span class="chip">image</span><span class="chip">mask</span><span class="chip">edits</span></div>
+      </div>
+      <p style="font-size:12.5px;color:var(--muted);margin:12px 2px 0">Detection, change localisation and decision-preserving reconstruction — evaluated against masks that are exact by construction.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="legend"><span><i class="ln"></i>pipeline</span><span><i class="ln dash"></i>reference from the layout</span></div>
+    <span class="brand"><img src="../../../launcher/icon/twinstore.png" alt="">TwinStore · store digital twin</span>
+  </div>
+</div>
+<script src="icons.js"></script>
+<script src="kit.js"></script>
+</body>
+</html>
