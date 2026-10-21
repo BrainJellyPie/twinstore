@@ -15,10 +15,11 @@ from store_emulator.domain.vision_inputs import ReceiptReading
 from ..deps import get_config
 
 router = APIRouter(prefix="/api/projects", tags=["photo inputs"])
+_MAX_RECEIPTS_PER_BATCH = 100
 
 
 class ReceiptReviewRequest(BaseModel):
-    receipts: list[ReceiptReading] = Field(max_length=100)
+    receipts: list[ReceiptReading] = Field(max_length=_MAX_RECEIPTS_PER_BATCH)
     setup_id: str = Field(default="", pattern=r"^[A-Za-z0-9_-]*$")
     run_id: str = Field(default="", pattern=r"^[A-Za-z0-9_-]*$")
 
@@ -53,7 +54,7 @@ async def storefront(
 @router.post("/{pid}/receipts", summary="Read receipt photos into POS lines", response_model=ReceiptsResult)
 async def receipts(
     pid: str,
-    photos: Annotated[list[UploadFile], File(description="one photo per receipt")],
+    photos: Annotated[list[UploadFile], File(max_length=_MAX_RECEIPTS_PER_BATCH, description="one photo per receipt, up to 100 per batch")],
     setup_id: Annotated[str, Form(pattern=r"^[A-Za-z0-9_-]*$", description="layout whose products the lines are matched to")] = "",
     run_id: Annotated[str, Form(pattern=r"^[A-Za-z0-9_-]*$", description="or: the run whose store the lines are matched to")] = "",
     model: Annotated[str, Form()] = "",
