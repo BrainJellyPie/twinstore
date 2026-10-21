@@ -63,6 +63,16 @@ describe("productCatalog", () => {
     ["Avocados 2pk", "box"],
     ["Avocado Halves", "box"],
     ["Green Avocado", "box"],
+    ["Lemon", "lemon"],
+    ["Fresh Lemons", "lemon"],
+    ["Organic Whole Lemon Each", "lemon"],
+    ["Yellow Eureka Lemons 500g", "lemon"],
+    [" Ripe Lemons 0.5 kg ", "lemon"],
+    ["LEMONS .25 lb", "lemon"],
+    ["Lemons 1.5 lbs", "lemon"],
+    ["Lemon Juice", "bottle"],
+    ["Lemonade", "bottle"],
+    ["Lemon Iced Tea", "bottle"],
     ["Apples", "apple"],
     ["Organic Gala Apples 1kg", "apple"],
     ["Fuji Apple Each", "apple"],
@@ -106,6 +116,16 @@ describe("productCatalog", () => {
     expect(classifyProduct("Terracotta Pot 20cm").w).toBe(0.2);
     expect(classifyProduct("Clay Plant Pot 12.5 cm").w).toBe(0.125);
     expect(classifyProduct("Terracotta Planter").w).toBe(0.2);
+  });
+
+  it.each([
+    "Lemons 2pk", "Lemons 2-pack", "Lemons 3 count", "Lemons 1kg 2pk",
+    "Lemon Halves", "Lemon Slices", "Lemon Zest", "Lemon Curd", "Lemon Oil",
+    "Preserved Lemons", "Dried Lemons", "Meyer Lemon", "Lemon Cookies",
+    "Lemon Soap", "Lemon Scented Cleaner", "Lemongrass", "Lemonade Powder",
+    "Lemons 0kg", "Lemons 0.00 g", "Lemons -1kg", "Lemons NaN kg", "Lemons Infinity kg", "Lemons 1e3g",
+  ])("does not turn %s into an individual whole lemon", (name) => {
+    expect(classifyProduct(name).kind).not.toBe("lemon");
   });
 
   it("does not mistake chocolate for cola or candy bars for milk", () => {
@@ -233,6 +253,7 @@ describe("fixture planning and product layout", () => {
     ["Terracotta Pot 20cm", "pot", 0.2, 0.2 * (0.5314331 / 0.4662051), 0.2],
     ["Watering Can 5L", "wateringCan", 0.45233607, 0.19681853, 0.19101861],
     ["Avocado", "avocado", 0.09518591, 0.14323448, 0.09456679],
+    ["Lemon", "lemon", 0.09536931, 0.06868193, 0.06826009],
     ["Croissant", "croissant", 0.2, 0.06199567, 0.07551152],
     ["Bananas", "banana", 0.134, 0.179, 0.223],
     ["Apples", "apple", 0.09756, 0.08539, 0.09590],
@@ -250,7 +271,7 @@ describe("fixture planning and product layout", () => {
     }
   });
 
-  it.each(["Terracotta Pot 20cm", "Croissant", "Watering Can 5L", "Avocado"])("keeps %s in a single layer on display tables", (name) => {
+  it.each(["Terracotta Pot 20cm", "Croissant", "Watering Can 5L", "Avocado", "Lemon"])("keeps %s in a single layer on display tables", (name) => {
     const table = rack({ id: "pots", type: "table", position: [3, 3], slots: slots("S", [[name]]) });
     const out = layoutProducts([planFixture(table, 8, 6)], { maxRows: 3 });
     expect(out.products.length).toBeGreaterThan(0);
