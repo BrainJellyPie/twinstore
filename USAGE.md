@@ -881,3 +881,40 @@ API: `GET/POST /api/projects/{pid}/protocols`; `GET .../{protocol_id}`;
 `POST .../{protocol_id}/amendments`; `GET .../{protocol_id}/export.json?head=<sha256>` and
 `GET .../{protocol_id}/changes.csv?head=<sha256>`. Creation: `request_id` (32 lowercase hex), `plan`, `data_stage`.
 Amendment: `expected_head`, full `plan`, `data_stage`, `reason`. JSON schema rejects unknown keys.
+
+### Observed shelf and checkout price checks
+
+Open **Market → Price checks**. Download the blank template, fill one file from verified shelf-label
+observations and a separate file from checkout checks, then enter a store reference and audit date.
+No simulation or model is called. Uploaded observations remain local request inputs; reviews are not saved.
+
+Both files use `check_id,sku,pack_reference,checked_on,currency,price_minor,terms`:
+
+- Assign one exact, case-sensitive `check_id` to each intended label/checkout pair. A missing side remains
+  visible; a header-only source is permitted, but at least one observation overall is required. Duplicate
+  check IDs within either file are rejected. Multiple checks of one SKU are allowed, not independent samples.
+- `sku` and `pack_reference` must agree on both sides. The latter identifies the full item/package quantity.
+  Verify item equivalence, price timing, channel, tax and deposit treatment yourself; matching IDs do not prove it.
+- `checked_on` and the audit date use `YYYY-MM-DD`. Both observations must fall on that date. Different-date
+  observations stay in the audit but do not produce a difference. No time-of-day matching is inferred.
+- `currency`: three uppercase letters; no currency conversion. `price_minor`: integer full payable item/package
+  price in currency minor units (USD cents, KRW won), 0–1,000,000,000,000. Explicit zero means free, not missing.
+  Do not supply baskets or prices requiring weighted-goods, multibuy, membership or coupon calculations.
+- `terms`: `public`, `conditional` or `unknown`. Only public/public pairs qualify. Unknown is not assumed public.
+- UTF-8 CSV (BOM allowed), 0–2,000 rows and at most 2 MB per file. No unknown/missing/duplicate columns.
+  Identifiers have 1–120 characters, no outer whitespace or control characters. Do not include personal data.
+
+The table retains the full union of IDs, both sources and all exclusion reasons. For comparable pairs,
+`difference_minor = checkout − label`. Totals are separated by currency and report higher/lower/equal counts,
+positive sum, negative sum and net sum. A zero net can conceal opposing discrepancies. These are sums of one
+price difference per check, **not** purchased quantities, customer losses, refunds, revenue effects, employee
+performance or a representative store error rate. There is no significance testing or repeated-look inference.
+
+Export the audit CSV and retain both originals. Export resubmits exactly the reviewed files and scope and
+requires the combined SHA-256 digest; mismatches return 409. Changes to either input clear the old result.
+The digest identifies bytes and scope, not authenticity. The audit CSV escapes spreadsheet formula-leading
+text; numeric signed differences stay numeric. Missing observations/differences are blank, not zero.
+
+This is a discrepancy worksheet, not a legal compliance verdict. Source-based requirements, limits and actual
+checks are recorded in `verification/2026-10-21-price-check-candidates.md` and
+`verification/2026-10-21-price-check-review.md`. Actual store data and operator usability were not tested.
