@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
-import { LAYOUT_STYLES, templateRequest, validTemplateChoice, type TemplateChoice } from "../templateOptions";
+import { LAYOUT_PRIORITIES, LAYOUT_STYLES, templateRequest, validTemplateChoice, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
@@ -29,6 +29,8 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const [size, setSize] = useState("all");
   const [seating, setSeating] = useState("all");
   const [sort, setSort] = useState("default");
+  const [priorityId, setPriorityId] = useState(LAYOUT_PRIORITIES[0]!.id);
+  const priority = LAYOUT_PRIORITIES.find((choice) => choice.id === priorityId) ?? LAYOUT_PRIORITIES[0]!;
   const templatesQuery = useQuery({
     queryKey: ["store-templates"], queryFn: ({ signal }) => api.getStoreTemplates(signal), staleTime: Infinity,
   });
@@ -143,6 +145,16 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           <div className="space-y-2">
             <p className="text-xs"><strong>{selected?.name}</strong></p>
             <p className="text-xs text-muted-foreground">{selected?.description}</p>
+            <details className="space-y-2 rounded border p-2 text-xs">
+              <summary className="cursor-pointer">Apply a layout priority</summary>
+              <Field label="Layout priority"><select className={controlClass} value={priority.id} onChange={(event) => setPriorityId(event.target.value)}>
+                {LAYOUT_PRIORITIES.map((choice) => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
+              </select></Field>
+              <p>{priority.description}</p>
+              <p className="text-muted-foreground">Apply these settings to this floor, then review the preview. Dimensions, product settings, design, operating hours and reserved areas stay as set. Space limits still apply.</p>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ ...priority.options,
+                ...(priority.checkoutAtEntrance ? { checkout_wall: value.gate_wall ?? "front" } : {}) })}>Apply priority</button>
+            </details>
             <div className="grid grid-cols-2 gap-2">
               <Field label="Layout pattern"><select className={controlClass} value={value.style ?? ""} onChange={(e) => update({ style: (e.target.value || null) as TemplateChoice["style"] })}>
                 <option value="">Format default{selected ? ` (${LAYOUT_STYLES.find(([id]) => id === selected.default_style)?.[1]})` : ""}</option>

@@ -23,6 +23,19 @@ export const LAYOUT_STYLES = [
   ["free_flow", "Free-flow islands"], ["perimeter", "Open center / perimeter"], ["showroom", "Showroom groups"],
 ] as const;
 
+export const LAYOUT_PRIORITIES: {
+  id: string; name: string; description: string; options: LayoutOptions; checkoutAtEntrance?: boolean;
+}[] = [
+  { id: "wide", name: "Wide circulation", description: "Cross aisles, spacious density, 3-cell aisle gaps, shelf runs up to 3 cells and 2-cell space around dining tables.",
+    options: { style: "cross", density: "spacious", aisle_width: 3, max_shelf_run: 3, table_clearance: 2 } },
+  { id: "capacity", name: "More display space", description: "Parallel aisles, dense displays, 1-cell aisle gaps, shelf runs up to 8 cells and standard 1-cell space around tables.",
+    options: { style: "aisles", density: "dense", aisle_width: 1, max_shelf_run: 8, table_clearance: 1 } },
+  { id: "open", name: "Open center, no seating", description: "Perimeter displays, balanced density and no dining tables. Restores density-based aisle gaps and shelf runs.",
+    options: { style: "perimeter", density: "balanced", dining_tables: 0, aisle_width: null, max_shelf_run: null } },
+  { id: "takeaway", name: "Takeaway service", description: "Perimeter displays, balanced density, no dining tables and two counters near the entrance on its wall. Restores density-based aisle gaps and shelf runs.",
+    options: { style: "perimeter", density: "balanced", dining_tables: 0, checkouts: 2, checkout_placement: "near_entrance", aisle_width: null, max_shelf_run: null }, checkoutAtEntrance: true },
+];
+
 export function validTemplateChoice(value: TemplateChoice): boolean {
   return !!value.templateId && Number.isSafeInteger(value.seed) &&
     (value.open_hour == null || (Number.isInteger(value.open_hour) && value.open_hour >= 0 && value.open_hour <= 23)) &&
@@ -99,6 +112,7 @@ export const BUILDING_PRESETS = [
   { id: "style_sound", name: "Style, sound & café", floors: [["Ground · Eyewear", "optical_shop"], ["Level 2 · Jewelry", "jewelry_boutique"], ["Level 3 · Music", "music_store"], ["Level 4 · Café", "specialty_cafe"]] },
   { id: "dining_house", name: "Dining house", floors: [["Ground · Juice bar", "juice_bar"], ["Level 2 · Noodles", "noodle_bar"], ["Level 3 · Sushi", "sushi_shop"], ["Level 4 · Pizza", "pizzeria"]] },
   { id: "neighborhood_dining", name: "Neighborhood dining center", floors: [["Ground · Ice cream", "ice_cream_parlor"], ["Level 2 · Salads", "salad_cafe"], ["Level 3 · Burgers", "burger_shop"], ["Level 4 · Korean dining", "korean_restaurant"]] },
+  { id: "daily_essentials", name: "Daily essentials center", floors: [["Ground · Refill grocery", "refill_market"], ["Level 2 · Care supplies", "care_supply_store"], ["Level 3 · Fragrances", "fragrance_boutique"], ["Level 4 · Bubble tea", "bubble_tea_cafe"]] },
 ] as const;
 
 export function buildingPreset(id: string, currency = "USD"): BuildingFloorChoice[] {
