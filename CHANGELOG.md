@@ -18,6 +18,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Print-ready HTML report and a long-format CSV (one row per option shown) for re-estimation elsewhere.
   API: `POST/GET /api/projects/{pid}/conjoints`, `GET .../conjoints/{id}`, `.../report.html`, `.../export.csv`.
 
+### Combine reviewed shelf photos
+- Capture now selects up to 20 completed photos, previews their combined floor plan, registers product crops and saves one new child layout. Opening it is explicit; the base layout and source photos are preserved.
+- Full product-name matching keeps similarly named variants separate. Dropped products block saving; reduced facing counts require explicit acceptance. Estimated/missing prices remain visible review warnings.
+- Source-bound previews, stable save request IDs and atomic draft records protect stale selections and uncertain retries. Boundary fixes cover legacy currency fallback, long IDs, invalid numeric data and refreshed layout lists hiding the saved result.
+
 ### Observed shelf and checkout price checks
 - New **Market → Price checks** joins two independently supplied observation CSVs, preserving missing sides and excluding mismatched SKU, package, currency, date or purchase terms.
 - Exact integer price differences, separate positive/negative currency sums and a sources-and-scope-bound audit export. No automatic price updates, legal verdicts, inferred customer losses or population statistics.

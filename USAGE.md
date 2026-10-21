@@ -918,3 +918,40 @@ text; numeric signed differences stay numeric. Missing observations/differences 
 This is a discrepancy worksheet, not a legal compliance verdict. Source-based requirements, limits and actual
 checks are recorded in `verification/2026-10-21-price-check-candidates.md` and
 `verification/2026-10-21-price-check-review.md`. Actual store data and operator usability were not tested.
+
+## Combine reviewed shelf photos into one layout
+
+Open the project's **Capture** screen. Upload/recognize each photo with the existing uploader, then
+use **Review** to correct its names, prices, shelf levels and facing counts. When at least one capture
+exists, **Combine reviewed shelf photos** appears below the photo strip:
+
+1. Choose a **Base layout**. Select completed, nonempty photos individually or use **Select first 20 ready photos**.
+2. Select **Preview combined layout**. Inspect the floor plan, new rack IDs, product/facing counts, and
+   estimated or missing prices. The placement follows selection order. No new model call is made here.
+3. If whole products do not fit, correct the photo or choose more free floor space and preview again.
+   If facing counts shrink to fit the grid, explicitly accept the displayed reduction before saving.
+4. **Save combined draft** writes one new child layout and registers available product crops. Existing
+   products, source layouts and captures stay intact. **Open combined layout** opens the result for editing.
+
+Complete normalized product names (including brand and size) can reuse an existing SKU; similar names
+are kept separate. This is name matching, not barcode verification. Review the result before simulation.
+Unrecognized products and missing/estimated prices remain review warnings. Missing prices may appear as
+zero in the grid: this is a placeholder, not an observed zero price. Correct these in the photo before saving.
+
+Up to 20 captures, 2,000 total facings and 24 facings per product are accepted. Every photo must match the
+base layout's currency; prices are never converted. Photos add racks onto free floor next to aisles, using
+existing shelf-level and left-to-right grid mapping. They do not recover camera geometry, exact dimensions,
+room locations or stock quantities; grid capacity may reduce facings. This workflow does not upload many
+photos at once or add automatic recognition beyond the existing single-photo pipeline.
+
+If a photo or base store changes after preview, save is rejected: preview again. After an uncertain save
+failure, **Retry saving this draft** reuses the same request and returns the existing draft if it was already
+written. Keep the current preview open for this retry; the browser does not persist a work queue across
+reloads. After reload, inspect Layouts for the saved combined draft before making another one. Crop image
+writes use the existing shared SKU image storage; a failed layout write can leave newly registered crops,
+and existing images are retained. No source layout or capture is deleted by this action.
+
+API: `POST /api/projects/{pid}/captures/batch-preview` accepts `capture_ids` and `setup_id`.
+`POST .../captures/batch-save` additionally requires the returned `source_sha256`, a stable 32-character
+lowercase hexadecimal `request_id`, and `allow_reduced_facings: true` when the preview reports a reduction.
+The same request ID must be reused unchanged after an uncertain save; a different payload returns 409.
