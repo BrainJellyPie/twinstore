@@ -169,7 +169,7 @@ it("closes the old layout dialog and resets playback even when layout IDs coinci
 it("does not request the previous layout while the next project has no layouts", async () => {
   const { router } = await mount([]);
   await act(async () => { await router.navigate({ to: "/projects/$pid", params: { pid: "beta" } }); });
-  await screen.findByText("Loading layout…");
+  await screen.findByText("No layouts found.");
   expect(api.getSetup).not.toHaveBeenCalled();
   expect(screen.queryByTestId("setup")).toBeNull();
 });

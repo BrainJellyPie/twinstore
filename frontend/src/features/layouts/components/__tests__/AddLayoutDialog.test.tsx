@@ -249,3 +249,11 @@ it("preserves a failed background request and its file when the dialog is reopen
   expect((screen.getByLabelText("Layout name") as HTMLInputElement).value).toBe("Keep failed request"); expect(screen.getByText(file.name)).toBeTruthy(); expect(screen.getByRole("alert").textContent).toContain("Background request failed");
   fireEvent.click(screen.getByTestId("add-layout-submit")); expect(mutation.mutate).toHaveBeenLastCalledWith(expect.objectContaining({ name: "Keep failed request", source: expect.objectContaining({ file }) }), expect.any(Object));
 });
+
+it.each(LOCALES)("starts an empty project with a blank layout in $code", ({ code }) => {
+  useLocale.getState().setLocale(code); show({ parentSetupId: "foreign-layout", layouts: [] });
+  expect((screen.getByLabelText(translate(code, "buildLayoutFromScratch")) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByTestId("add-layout-submit") as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByTestId("add-layout-submit"));
+  expect(mutation.mutate).toHaveBeenCalledWith(expect.objectContaining({ projectId: "raw-project", source: { kind: "empty" } }), expect.any(Object));
+});
