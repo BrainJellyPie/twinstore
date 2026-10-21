@@ -80,6 +80,29 @@ it("excludes chosen categories, keeps a stocked category and restores the assort
   expect((screen.getByRole("checkbox", { name: "Beer & Alcohol" }) as HTMLInputElement).checked).toBe(true);
 });
 
+it("places gates on other walls and keeps existing pickup areas when the wall changes", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
+  fireEvent.change(screen.getByLabelText("Depth (6–40 cells)"), { target: { value: "18" } });
+  fireEvent.change(screen.getByLabelText("Entrance & exit wall"), { target: { value: "left" } });
+  expect(within(screen.getByLabelText("Entrance position")).getByRole("option", { name: "Near back" })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Entrance position"), { target: { value: "center" } });
+  fireEvent.change(screen.getByLabelText("Area starting point"), { target: { value: "pickup" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  fireEvent.change(screen.getByLabelText("Entrance & exit wall"), { target: { value: "back" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    gate_wall: "back", entrance: "center", reserved_areas: [
+      { label: "Pickup", x: 2, y: 7, width: 2, height: 3 },
+      { label: "Pickup 2", x: 10, y: 2, width: 3, height: 2 },
+    ],
+  }), expect.any(AbortSignal)));
+  expect(within(screen.getByLabelText("Entrance position")).getByRole("option", { name: "Left" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Entrance & exit wall") as HTMLSelectElement).value).toBe("front");
+});
+
 it("limits products per category, validates whole counts and restores the full assortment", async () => {
   mount();
   fireEvent.click(await screen.findByText("Product categories · 3 of 3 included"));

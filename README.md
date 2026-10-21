@@ -139,6 +139,13 @@ category to 1–16 distinct products; leave it blank for the full assortment.
 The limit keeps display positions and seating unchanged, with repeated facings
 of the selected products. **Shuffle assortment** picks a reproducible mix;
 the same seed and category keep their selection across floor sizes and currencies.
+
+**Entrance & exit wall** places both gates on the front, back, left or right wall.
+On side walls, entrance and exit positions run from back to front. Back and side
+gates stay one cell inside the corners so their wall is unambiguous in 3D; front
+gates retain the existing positions. Near/away checkout placement uses the actual
+entrance location. New pickup-area starting points also follow the selected wall;
+existing reserved areas keep their coordinates.
 Search matches names, descriptions and categories, ignores accents (`cafe` also
 finds `café`), and accepts words in any order. **More format filters** narrows the
 starting layouts by cell count and dining seating, or sorts by name, floor size

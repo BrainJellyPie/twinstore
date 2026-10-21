@@ -1336,6 +1336,7 @@ export interface LayoutOptions {
   max_shelf_run?: number | null;
   shelf_direction?: "horizontal" | "vertical";
   entrance?: "left" | "center" | "right";
+  gate_wall?: "front" | "back" | "left" | "right";
   exit_position?: "shared" | "left" | "center" | "right";
   checkouts?: number | null;
   checkout_placement?: "auto" | "near_entrance" | "away_from_entrance";

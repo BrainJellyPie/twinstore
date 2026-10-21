@@ -9,7 +9,7 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
     BuildingFloorRequest, BuildingLayoutRequest, BuildingPreset, CheckoutPlacement, CheckoutWall, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutPreset, LayoutStyle,
-    SeatingZone, ShelfDirection, StoreDesign, TemplateCategoryId, TemplateLayoutRequest,
+    GateWall, SeatingZone, ShelfDirection, StoreDesign, TemplateCategoryId, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
 from store_emulator.engine.layout_gen.catalog import category_label
@@ -69,6 +69,7 @@ def preview(
     aisle_width: int | None = Query(default=None, ge=1, le=4),
     max_shelf_run: int | None = Query(default=None, ge=1, le=8),
     exit_position: ExitPosition = "shared",
+    gate_wall: GateWall = "front",
     shelf_direction: ShelfDirection = "horizontal",
     checkouts: int | None = Query(default=None, ge=1, le=12), fixture_design: FixtureDesign = "mixed",
     design_theme: StoreDesign | None = None,
@@ -81,7 +82,7 @@ def preview(
 ) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density, aisle_width=aisle_width, max_shelf_run=max_shelf_run,
                             shelf_direction=shelf_direction,
-                            entrance=entrance, exit_position=exit_position, checkouts=checkouts, fixture_design=fixture_design,
+                            entrance=entrance, exit_position=exit_position, gate_wall=gate_wall, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables, table_clearance=table_clearance,
                             seating_zone=seating_zone, checkout_placement=checkout_placement, checkout_wall=checkout_wall,
                             excluded_categories=excluded_categories or [], products_per_category=products_per_category)
