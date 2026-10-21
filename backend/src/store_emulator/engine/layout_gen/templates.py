@@ -538,6 +538,12 @@ def generate_store(
                       rotation=90 if layout_style == "perimeter" or vertical else 0,
                       variant="b" if (y // 3) % 2 else "a")
 
+    if not any(slot.items for rack in b.racks for slot in rack.slots):
+        raise ValueError(
+            "No products from the included categories fit this layout. Increase the grid size, "
+            "reduce aisle width, choose another layout pattern, or include more categories."
+        )
+
     format_design: dict[str, StoreDesign] = {
         "pharmacy": "minimal", "cafe": "warm", "bakery": "warm", "restaurant": "warm",
         "fashion": "luxury", "home": "minimal", "beauty": "luxury", "books": "warm",
