@@ -240,7 +240,7 @@ def _demand_svg(pr: PriceResponse, currency: str) -> str:
         x = px(p.price)
         parts.append(f'<line x1="{x:.1f}" x2="{x:.1f}" y1="{py(p.units_high):.1f}" y2="{py(p.units_low):.1f}" stroke="#2a78d6" stroke-opacity="0.45" stroke-width="6" stroke-linecap="round"/>'
                      f'<circle cx="{x:.1f}" cy="{py(p.units):.1f}" r="5" fill="{"#eb6834" if p.price == pr.best_price else "#2a78d6"}" stroke="#fff" stroke-width="2"/>'
-                     f'<text x="{x:.1f}" y="{h - 10}" font-size="10" text-anchor="middle" fill="#5f6368">{money(p.price, currency)}</text>')
+                     f'<text x="{x:.1f}" y="{h - 10}" font-size="10" text-anchor="middle" fill="#5f6368">{escape(money(p.price, currency))}</text>')
     parts.append("</svg>")
     return "".join(parts)
 
@@ -251,8 +251,8 @@ def _price_section(r: ExperimentReport) -> str:
         return ""
     cur = r.currency
     rows = "".join(
-        f"<tr><td>{escape(p.arm)}</td><td class=n>{money(p.price, cur)}</td><td class=n>{p.units * 100:.1f} "
-        f"<span class=note>[{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]</span></td><td class=n>{money(p.revenue * 100, cur)}"
+        f"<tr><td>{escape(p.arm)}</td><td class=n>{escape(money(p.price, cur))}</td><td class=n>{p.units * 100:.1f} "
+        f"<span class=note>[{p.units_low * 100:.1f}, {p.units_high * 100:.1f}]</span></td><td class=n>{escape(money(p.revenue * 100, cur))}"
         f"{' ★' if p.price == pr.best_price else ''}</td></tr>" for p in pr.points)
     el = f" · elasticity across the arms ≈ {pr.elasticity:.2f}" if pr.elasticity is not None else ""
     return (f"<h2>Price response · {escape(pr.name)}</h2><p class='note'>Units per 100 visitors at each tested price (bars: 95 % intervals){el}. "
