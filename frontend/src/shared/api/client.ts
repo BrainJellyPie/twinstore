@@ -1,5 +1,7 @@
 // Response types mirror backend schemas.py 1:1 — keep in sync.
 
+import { apiErrorMessage } from "./errors";
+
 import type {
   Store,
   StoreDesign,
@@ -29,7 +31,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText}: ${body}`);
+    throw new Error(apiErrorMessage(body, `${res.status} ${res.statusText}`));
   }
   return res.json() as Promise<T>;
 }
@@ -1473,9 +1475,7 @@ export async function createCapture(
   const res = await fetch(`${BASE}/api/projects/${projectId}/captures`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    let detail = body;
-    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
-    throw new Error(detail || `Upload failed (HTTP ${res.status})`);
+    throw new Error(apiErrorMessage(body, `Upload failed (HTTP ${res.status})`));
   }
   return res.json() as Promise<CaptureStatus>;
 }
@@ -1764,9 +1764,7 @@ export async function importFloorPlan(
   const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    let detail = body;
-    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
-    throw new Error(detail || `Import failed (HTTP ${res.status})`);
+    throw new Error(apiErrorMessage(body, `Import failed (HTTP ${res.status})`));
   }
   return res.json() as Promise<FloorPlanImport>;
 }
@@ -1803,9 +1801,7 @@ async function postForm<T>(path: string, form: FormData): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    let detail = body;
-    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
-    throw new Error(detail || `HTTP ${res.status}`);
+    throw new Error(apiErrorMessage(body, `HTTP ${res.status}`));
   }
   return res.json() as Promise<T>;
 }

@@ -92,6 +92,7 @@ async def validation_error_response(_request: Request, exc: RequestValidationErr
     # Python's JSON parser accepts nonfinite numbers; echoed validation inputs must still be valid JSON.
     detail = jsonable_encoder(exc.errors(), custom_encoder={
         float: lambda value: value if math.isfinite(value) else str(value),
+        bytes: lambda value: value.decode("utf-8", errors="replace"),
     })
     return JSONResponse(status_code=422, content={"detail": detail})
 
