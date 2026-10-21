@@ -24,6 +24,38 @@ function BuildingForm() {
   </>;
 }
 
+it("keeps a building starting point selected after an earlier building import started", async () => {
+  let complete: ((preset: api.BuildingPreset) => void) | undefined;
+  vi.mocked(api.validateBuildingPreset).mockImplementation(() => new Promise((resolve) => { complete = resolve; }));
+  render(<BuildingForm />);
+  const file = Object.assign(new File(["{}"], "building.json"), { text: async () => "{}" });
+  fireEvent.change(screen.getByLabelText("Import building options file"), { target: { files: [file] } });
+  await waitFor(() => expect(api.validateBuildingPreset).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole("button", { name: "Department store" }));
+  const selected = screen.getByTestId("floors").textContent;
+  await act(async () => complete?.({ format: "twinstore-building-options", version: 1, floors: [
+    { label: "Imported first", layout: { template_id: "community_pharmacy", seed: 7, currency: "USD" } },
+    { label: "Imported second", layout: { template_id: "bookstore", seed: 8, currency: "USD" } },
+  ] }));
+  expect(screen.getByTestId("floors").textContent).toBe(selected);
+  expect(vi.mocked(api.validateBuildingPreset).mock.calls[0]?.[1]?.aborted).toBe(true);
+  expect(screen.getByRole("button", { name: "Import building options" }).hasAttribute("disabled")).toBe(false);
+});
+
+it("applies a completed building import and allows another import", async () => {
+  vi.mocked(api.validateBuildingPreset).mockResolvedValue({ format: "twinstore-building-options", version: 1, floors: [
+    { label: "Imported first", layout: { template_id: "community_pharmacy", seed: 7, currency: "USD" } },
+    { label: "Imported second", layout: { template_id: "bookstore", seed: 8, currency: "USD" } },
+  ] });
+  render(<BuildingForm />);
+  const file = Object.assign(new File(["{}"], "building.json"), { text: async () => "{}" });
+  fireEvent.change(screen.getByLabelText("Import building options file"), { target: { files: [file] } });
+  await screen.findByRole("button", { name: "1F · Imported first" });
+  const floors = JSON.parse(screen.getByTestId("floors").textContent ?? "[]") as { label: string; choice: TemplateChoice }[];
+  expect(floors.map((floor) => floor.choice.templateId)).toEqual(["community_pharmacy", "bookstore"]);
+  expect(screen.getByRole("button", { name: "Import building options" }).hasAttribute("disabled")).toBe(false);
+});
+
 it("keeps a floor label edited while imported options are being checked", async () => {
   let complete: ((preset: api.LayoutPreset) => void) | undefined;
   vi.mocked(api.validateLayoutPreset).mockImplementation(() => new Promise((resolve) => { complete = resolve; }));

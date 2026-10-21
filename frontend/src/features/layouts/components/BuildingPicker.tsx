@@ -45,7 +45,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
 
   return <div className="space-y-3 rounded-lg border p-3">
     <p className="text-xs text-muted-foreground">Create 2–6 linked floor layouts. Each floor is edited and simulated independently; shoppers do not travel between floors.</p>
-    <GenerationOptionsFile kind="building" value={floors} canExport={validBuildingFloors(floors)} onChange={(next) => {
+    <GenerationOptionsFile key={pickerVersion} kind="building" value={floors} canExport={validBuildingFloors(floors)} onChange={(next) => {
       onChange(next); setActive(0); setPickerVersion((version) => version + 1);
     }} />
     <div className="flex flex-wrap gap-1.5" aria-label="Building starting points">

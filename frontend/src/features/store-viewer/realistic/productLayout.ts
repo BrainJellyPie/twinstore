@@ -73,7 +73,7 @@ function worldSize(name: string) {
 }
 
 function stackable(kind: PackageKind, h: number, clearance: number): number {
-  if (kind === "bottle" || kind === "bag" || kind === "tube" || kind === "jar" || kind === "banana" || kind === "apple" || kind === "applePair") return 1;
+  if (kind === "bottle" || kind === "bag" || kind === "tube" || kind === "jar" || kind === "banana" || kind === "apple" || kind === "applePair" || kind === "pot") return 1;
   return Math.max(1, Math.min(kind === "can" ? 3 : 2, Math.floor((clearance - 0.01) / (h + 0.004))));
 }
 
@@ -106,15 +106,15 @@ function placeOnShelf(
   const shelfDepth = edge.stockFront - bank.back - 0.02;
   items.forEach((item, k) => {
     const { spec, w, h, d } = worldSize(item.name);
-    const produce = spec.category === "produce";
+    const preserveProportions = spec.category === "produce" || spec.kind === "pot";
     let fit = Math.min(1, (clearance - 0.012) / h);
-    if (produce) fit = Math.min(fit, shelfDepth / d, (slotW - GAP) / w);
+    if (preserveProportions) fit = Math.min(fit, shelfDepth / d, (slotW - GAP) / w);
     const ph = h * fit;
     const pd = Math.min(d * fit, shelfDepth);
     let pw = w * fit;
-    const facings = Math.max(1, Math.min(MAX_FACINGS, Math.floor(slotW / (pw * (produce ? 1 : 0.85) + GAP))));
+    const facings = Math.max(1, Math.min(MAX_FACINGS, Math.floor(slotW / (pw * (preserveProportions ? 1 : 0.85) + GAP))));
     const pitch = slotW / facings;
-    pw = Math.min(pw * (produce ? 1 : 1.12), pitch - GAP);
+    pw = Math.min(pw * (preserveProportions ? 1 : 1.12), pitch - GAP);
     const rows = Math.max(1, Math.min(maxRows, Math.floor(shelfDepth / (pd + 0.006))));
     const rowPitch = rows > 1 ? Math.min((shelfDepth - pd) / (rows - 1), pd * 2.2) : 0;
     const stacks = stackable(spec.kind, ph, clearance);
@@ -197,7 +197,7 @@ function layoutBin(out: Emit, plan: FixturePlan, frame: Frame, floorY: number, h
       const fit = Math.min(1, (slotW - GAP) / fw, (rowD - 0.02) / fd, headroom / fh);
       const cols = Math.max(1, Math.min(4, Math.floor(slotW / (fw * fit + GAP))));
       const deep = Math.max(1, Math.min(3, Math.floor((rowD - 0.02) / (fd * fit + 0.01))));
-      const layers = Math.max(1, Math.min(2, Math.floor(headroom / (fh * fit + 0.004))));
+      const layers = spec.kind === "pot" ? 1 : Math.max(1, Math.min(2, Math.floor(headroom / (fh * fit + 0.004))));
       const pitchW = slotW / cols;
       const pitchD = (rowD - 0.02) / deep;
       for (let c = 0; c < cols; c++) {

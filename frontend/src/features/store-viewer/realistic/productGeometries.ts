@@ -338,6 +338,17 @@ function apple(lod: Lod, pair: boolean): THREE.BufferGeometry {
   return geometry;
 }
 
+// Follow the outer wall over the rim and down the inside, leaving the top open.
+function pot(lod: Lod): THREE.BufferGeometry {
+  const points: [number, number, Zone][] = [
+    [0, 0, "body"], [0.33, 0, "body"], [0.33, 0.08, "body"],
+    [0.29, 0.1, "body"], [0.45, 0.85, "body"], [0.5, 0.86, "body"],
+    [0.5, 1, "body"], [0.43, 1, "body"], [0.43, 0.86, "body"],
+    [0.25, 0.12, "body"], [0, 0.12, "body"],
+  ];
+  return revolve(profile(points), lod ? 24 : 12);
+}
+
 export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.BufferGeometry {
   switch (kind) {
     case "bottle":
@@ -354,6 +365,8 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
       return cup(0.43, lod);
     case "bag":
       return bag(lod);
+    case "pot":
+      return pot(lod);
     case "banana":
       return banana(lod);
     case "apple":
@@ -364,4 +377,4 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
   }
 }
 
-export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair"];
+export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "pot"];
