@@ -29,6 +29,7 @@ class TemplateInfo(BaseModel):
     default_design: StoreDesign
     default_style: LayoutStyle
     default_dining_tables: int
+    default_checkouts: int
     default_seating_zone: SeatingZone
     default_checkout_placement: CheckoutPlacement
 
@@ -43,6 +44,7 @@ def list_templates() -> list[TemplateInfo]:
             racks=sum(1 for r in s.racks if r.slots), skus=len({i.sku for r in s.racks for sl in r.slots for i in sl.items}),
             open_hours=t.open_hours, default_style=t.style, default_design=s.design_theme,
             default_dining_tables=t.dining_tables, default_seating_zone=t.seating_zone,
+            default_checkouts=t.checkouts,
             default_checkout_placement=t.checkout_placement,
         ))
     return out
@@ -57,7 +59,7 @@ def preview(
     density: LayoutDensity = "balanced", entrance: EntrancePosition = "left",
     exit_position: ExitPosition = "shared",
     shelf_direction: ShelfDirection = "horizontal",
-    checkouts: int = Query(default=1, ge=1, le=4), fixture_design: FixtureDesign = "mixed",
+    checkouts: int | None = Query(default=None, ge=1, le=12), fixture_design: FixtureDesign = "mixed",
     design_theme: StoreDesign | None = None,
     dining_tables: int | None = Query(default=None, ge=0, le=12),
     table_clearance: int = Query(default=1, ge=1, le=3),

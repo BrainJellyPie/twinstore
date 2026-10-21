@@ -19,6 +19,7 @@ beforeEach(() => {
     { id: "urban_cvs", name: "City store", description: "Daily groceries", store_type: "convenience", grid: [12, 10], racks: 10, skus: 40, open_hours: [0, 24], default_style: "aisles", default_design: "classic", default_dining_tables: 0 },
     { id: "community_pharmacy", name: "Community pharmacy", description: "First aid and wellness", store_type: "pharmacy", grid: [14, 12], racks: 12, skus: 50, open_hours: [9, 21], default_style: "spine", default_design: "minimal", default_dining_tables: 0 },
     { id: "family_restaurant", name: "Family restaurant", description: "Central dining", store_type: "restaurant", grid: [24, 20], racks: 20, skus: 40, open_hours: [11, 22], default_style: "perimeter", default_design: "warm", default_dining_tables: 8, default_seating_zone: "center", default_checkout_placement: "near_entrance" },
+    { id: "warehouse_club", name: "Warehouse club", description: "Bulk groceries", store_type: "supermarket", grid: [36, 28], racks: 60, skus: 80, open_hours: [9, 21], default_style: "spine", default_design: "classic", default_dining_tables: 0, default_checkouts: 8 },
   ]);
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Preview", type: "convenience", grid_size: [12, 10], weekly_schedule: [], racks: [] });
 });
@@ -140,4 +141,15 @@ it("holds preview for incomplete area values and supports removing a reservation
   fireEvent.click(screen.getByRole("button", { name: "Remove area 1" }));
   await screen.findByRole("img", { name: "Floor plan preview" });
   expect(screen.queryByLabelText("Area 1 name")).toBeNull();
+});
+
+it("offers large checkout counts and resets to the selected format's default", async () => {
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: /Warehouse club/ }));
+  expect((screen.getByLabelText("Checkout counters") as HTMLSelectElement).value).toBe("");
+  expect(screen.getByRole("option", { name: "Format default (8, sized to fit)" })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Checkout counters"), { target: { value: "12" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ checkouts: 12 }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ checkouts: null }), expect.any(AbortSignal)));
 });

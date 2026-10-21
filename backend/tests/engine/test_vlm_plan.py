@@ -367,3 +367,17 @@ def test_a_situation_scales_the_need_draw_by_its_measured_ratio():
     drink = sum("Drink" in d[0] for d in draws if d) / len(draws)
     snacks = sum("Snacks" in d[0] for d in draws if d) / len(draws)
     assert abs(drink - 0.6) < 0.06 and abs(snacks - 0.15) < 0.05
+
+
+def test_a_needed_category_names_the_households_usual_products_there():
+    store = _store()
+    rack = next(r for r in store.product_racks if r.rack_name and any(s.items for s in r.slots))
+    items = [i.name for s in rack.slots for i in s.items][:3]
+    persona = _personas()[0].model_copy(update={"category_rates": {rack.rack_name: 1.0, "Nothing here": 1.0},
+                                                "usual_products": ["Not on the shelf", *items]})
+    engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    needs = engine._needs(_context(store, persona, seed=1))  # pyright: ignore[reportPrivateUsage]
+    assert needs is not None
+    named = next(n for n in needs[0] if n.startswith(rack.rack_name))
+    assert named == f"{rack.rack_name} (they usually take {items[0]} or {items[1]})"
+    assert "Nothing here" in needs[0]                       # no usual product there: the bare category

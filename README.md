@@ -150,7 +150,7 @@ for a simulation, or start a separate project for that market.
 
 Combine six patterns (parallel aisles, racetrack, central spine, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
-three display densities, left/center/right entry, one to four checkouts and shelf
+three display densities, left/center/right entry, one to twelve checkouts and shelf
 variants. Six saved interior palettes—classic retail, warm wood, minimal white,
 industrial graphite, botanical sage and charcoal/brass—change walls, shelving,
 counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
@@ -206,6 +206,14 @@ on the front row. Checkout counters and impulse displays leave both gates clear.
 This supports separate arrival and departure routes; shoppers use the selected
 exit after shopping. Choosing the same position as the entrance keeps a shared
 gate. Exit settings are included in previews, saved layouts and reused options.
+
+Large formats now start with multiple checkout counters: six for the hypermarket,
+eight for the warehouse club, four for the food hall, and two for the organic
+market and wellness pharmacy. Choose **Format default** to adapt those counts to
+a smaller floor, or set an explicit count from 1–12. Counts that cannot fit beside
+the selected gates return a capacity message instead of silently dropping
+counters. Saved explicit choices, including a single counter, remain explicit
+when their options are reused. The preview shows the actual generated count.
 
 The floor editor supports up to 40×40 cells, with zoom controls and a scrollable
 grid that keeps fixtures readable on large floors and smaller screens. Width and
@@ -516,6 +524,9 @@ Exposed metal supports and frames use CC0 [ambientCG Metal 032](https://ambientc
 in High, with color, roughness and normal maps at a consistent authored scale.
 The storefront pavement uses Poly Haven's CC0 Pavement 02 scan in High, with
 world-space texture coordinates preserving its 2.12 m coverage across store sizes.
+High also replaces the entrance's simple planters with a reduced Poly Haven
+Potted Plant 01 model by Rico Cilliers (CC0), with textured leaves and terracotta.
+Sources and rebuild instructions are in [`frontend/public/assets/props/`](./frontend/public/assets/props/README.md).
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: six appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,

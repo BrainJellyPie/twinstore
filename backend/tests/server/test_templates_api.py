@@ -20,6 +20,9 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     templates = {t["id"]: t for t in response.json()}
     assert {"hypermarket", "community_pharmacy", "specialty_cafe", "quick_service", "design_showroom"} <= templates.keys()
     assert templates["hypermarket"]["grid"] == [32, 26]
+    assert templates["hypermarket"]["default_checkouts"] == 6
+    assert templates["warehouse_club"]["default_checkouts"] == 8
+    assert templates["food_hall"]["default_checkouts"] == 4
     assert {"family_restaurant", "neighborhood_bistro", "takeaway_coffee", "tea_lounge", "artisan_bakery",
             "vintage_boutique", "hardware_store", "toy_hobby_store"} <= templates.keys()
     assert templates["family_restaurant"]["default_seating_zone"] == "center"
@@ -57,7 +60,7 @@ def test_preview_matches_saved_custom_store(client):
 
 @pytest.mark.parametrize("patch", [
     {"width": 7}, {"width": 41}, {"height": 5}, {"height": 41}, {"checkouts": 0},
-    {"checkouts": 5}, {"style": "unknown"}, {"density": "unknown"}, {"currency": "INVALID"},
+    {"checkouts": 13}, {"style": "unknown"}, {"density": "unknown"}, {"currency": "INVALID"},
     {"entrance": "roof"}, {"exit_position": "roof"}, {"fixture_design": "unknown"}, {"design_theme": "unknown"},
     {"dining_tables": -1}, {"dining_tables": 13}, {"table_clearance": 0}, {"table_clearance": 4},
     {"seating_zone": "roof"}, {"checkout_placement": "outside"}, {"shelf_direction": "diagonal"},
@@ -220,6 +223,36 @@ def test_oversized_seating_rejects_preview_and_entire_building(client):
     body["floors"][1]["layout"] = options
     assert client.post(f"/api/projects/{PID}/setups/generate-building", json=body).status_code == 422
     assert client.get(f"/api/projects/{PID}").json() == before
+
+
+def test_checkout_capacity_rejects_preview_and_entire_building(client):
+    options = {"template_id": "warehouse_club", "width": 8, "height": 6,
+               "entrance": "center", "exit_position": "right", "checkouts": 5}
+    preview = client.post("/api/store-templates/preview", json=options)
+    assert preview.status_code == 422 and "at most 4 checkout counters" in preview.json()["detail"]
+    before = client.get(f"/api/projects/{PID}").json()
+    body = _building()
+    body["floors"][1]["layout"] = options
+    assert client.post(f"/api/projects/{PID}/setups/generate-building", json=body).status_code == 422
+    assert client.get(f"/api/projects/{PID}").json() == before
+
+
+@pytest.mark.parametrize("count", [None, 1, 12])
+def test_large_checkout_defaults_and_explicit_counts_match_preview_save_and_reuse(client, count):
+    options = {"template_id": "hypermarket", "checkouts": count}
+    preview = client.post("/api/store-templates/preview", json=options)
+    assert preview.status_code == 200, preview.text
+    original = client.post(f"/api/projects/{PID}/setups/generate", json=options).json()
+    source = client.get(f"/api/projects/{PID}/setups/{original['id']}").json()
+    assert source["store"]["racks"] == preview.json()["racks"]
+    assert sum(r["type"] == "counter" for r in source["store"]["racks"]) == (6 if count is None else count)
+    reused = client.post(f"/api/projects/{PID}/setups/generate", json={
+        **source["generation"], "source_setup_id": original["id"], "name": "Checkout alternative",
+    })
+    assert reused.status_code == 200, reused.text
+    saved = client.get(f"/api/projects/{PID}/setups/{reused.json()['id']}").json()
+    assert saved["store"]["racks"] == source["store"]["racks"]
+    assert saved["generation"]["checkouts"] == count
 
 
 def test_dining_tables_can_be_edited_and_saved_without_product_faces(client):
