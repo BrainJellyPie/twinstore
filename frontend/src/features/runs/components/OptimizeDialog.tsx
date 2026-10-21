@@ -309,6 +309,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
         </ol>
       </div>
       {result.notes.length > 0 && <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">{result.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
+      {apply.error != null && <p role="alert" className="text-sm text-destructive">{apply.error instanceof Error ? apply.error.message : "Could not save the layout. Please try again."}</p>}
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onRestart}>Try other settings</Button>
@@ -327,7 +328,7 @@ function JudgeView({ report, result, status, apply, onRestart }: {
   report: VLMJudgeReport;
   result: api.OptimizeResult;
   status: api.OptimizationStatus;
-  apply: { mutate: () => void; isPending: boolean };
+  apply: { mutate: () => void; isPending: boolean; error: unknown };
   onRestart: () => void;
 }) {
   const winner = report.candidates.find((c) => c.winner);
@@ -400,6 +401,7 @@ function JudgeView({ report, result, status, apply, onRestart }: {
         </div>
       )}
       {report.notes.length > 0 && <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">{report.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
+      {apply.error != null && <p role="alert" className="text-sm text-destructive">{apply.error instanceof Error ? apply.error.message : "Could not save the layout. Please try again."}</p>}
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onRestart}>Try other settings</Button>
