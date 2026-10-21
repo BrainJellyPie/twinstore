@@ -12,6 +12,7 @@ interface ProductModel {
 it.each([
   ["produce/bananas", [["bananas-coarse", 300], ["bananas-fine", 1600]]],
   ["produce/apples", [["apple-coarse", 200], ["apple-fine", 1000], ["apple-pair-coarse", 400], ["apple-pair-fine", 2000]]],
+  ["products/watering-can", [["watering-can-coarse", 500], ["watering-can-fine", 2500]]],
   ["products/croissant", [["croissant-coarse", 300], ["croissant-fine", 1500]]],
   ["products/terracotta-pot", [["pot-coarse", 300], ["pot-fine", 1500]]],
 ] as const)("ships bounded %s LODs with unit normals and a bottom-centred unit footprint", (asset, lods) => {

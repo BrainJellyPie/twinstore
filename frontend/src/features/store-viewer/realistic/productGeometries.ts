@@ -360,6 +360,27 @@ function croissant(lod: Lod): THREE.BufferGeometry {
   return revolve(profile(points), lod ? 24 : 12).rotateZ(-Math.PI / 2).translate(-0.5, 0.5, 0);
 }
 
+function wateringCan(lod: Lod): THREE.BufferGeometry {
+  const segments = lod ? 20 : 10;
+  const body = new THREE.CylinderGeometry(0.082, 0.095, 0.16, segments).translate(-0.09, 0.08, 0);
+  const lid = new THREE.CylinderGeometry(0.045, 0.082, 0.035, segments).translate(-0.09, 0.1775, 0);
+  const start = new THREE.Vector3(-0.02, 0.035, 0), end = new THREE.Vector3(0.17, 0.16, 0);
+  const spout = new THREE.TubeGeometry(new THREE.LineCurve3(start, end), 1, 0.012, lod ? 10 : 6, false);
+  const rotation = new THREE.Quaternion().setFromUnitVectors(THREE.Object3D.DEFAULT_UP, end.clone().sub(start).normalize());
+  const rose = new THREE.CylinderGeometry(0.027, 0.012, 0.035, segments).applyQuaternion(rotation).translate(end.x, end.y, end.z);
+  const handle = new THREE.TorusGeometry(0.067, 0.006, lod ? 6 : 4, segments).translate(-0.185, 0.09, 0);
+  const parts = [body, lid, spout, rose, handle];
+  const geometry = mergeGeometries(parts)!;
+  parts.forEach((part) => part.dispose());
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox!, size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+  geometry.translate(-center.x, -box.min.y, -center.z);
+  geometry.scale(1 / size.x, 1 / size.y, 1 / size.z);
+  const uv = geometry.getAttribute("uv");
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, ZONE_BODY[0], ZONE_BODY[1]);
+  return geometry;
+}
+
 export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.BufferGeometry {
   switch (kind) {
     case "bottle":
@@ -376,6 +397,8 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
       return cup(0.43, lod);
     case "bag":
       return bag(lod);
+    case "wateringCan":
+      return wateringCan(lod);
     case "croissant":
       return croissant(lod);
     case "pot":
@@ -390,4 +413,4 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
   }
 }
 
-export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "pot", "croissant"];
+export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "pot", "croissant", "wateringCan"];
