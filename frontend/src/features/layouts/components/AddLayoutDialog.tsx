@@ -7,12 +7,15 @@
 // On success, useCreateLayout's onSuccess switches selectedSetupId to the new layout
 // and this component closes via onOpenChange(false).
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { previewFloorPlan } from "@/shared/api/client";
 
 import { Button } from "@/shared/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -69,6 +72,16 @@ export function AddLayoutDialog({
   const [floors, setFloors] = useState(() => buildingPreset("department"));
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [planReader, setPlanReader] = useState<"auto" | "classic">("auto");
+  const [planPage, setPlanPage] = useState(1);
+  const [planRotation, setPlanRotation] = useState(0);
+  const [planFileVersion, setPlanFileVersion] = useState(0);
+  const previewScope = useId();
+  const planPreview = useQuery({
+    queryKey: ["floorplan-preview", projectId, previewScope, planFileVersion, planPage, planRotation],
+    queryFn: ({ signal }) => previewFloorPlan(projectId, planFile!, { pageNumber: planPage, rotation: planRotation, signal }),
+    enabled: open && approach === "plan" && planFile !== null && Number.isInteger(planPage) && planPage >= 1,
+    retry: false, staleTime: Infinity, gcTime: 0,
+  });
 
   // Restore defaults on each open; also reset the prior mutation's error state.
   useEffect(() => {
@@ -76,6 +89,8 @@ export function AddLayoutDialog({
       setName(`layout ${layouts.length + 1}`);
       setApproach("import");
       setPlanFile(null);
+      setPlanPage(1);
+      setPlanRotation(0);
       setSelectedParentId(resolveDefaultParent(parentSetupId, layouts));
       createLayout.reset();
     }
@@ -87,7 +102,7 @@ export function AddLayoutDialog({
     trimmed.length > 0 &&
     !createLayout.isPending &&
     (approach !== "import" || selectedParentId.length > 0) &&
-    (approach !== "plan" || planFile !== null) &&
+    (approach !== "plan" || (planFile !== null && planPage >= 1 && Number.isInteger(planPage) && planPreview.isSuccess)) &&
     (approach !== "template" || validTemplateChoice(template)) &&
     (approach !== "building" || (trimmed.length <= 160 && validBuildingFloors(floors)));
 
@@ -106,7 +121,7 @@ export function AddLayoutDialog({
             : approach === "template"
               ? { kind: "template", ...template }
               : approach === "plan" && planFile
-                ? { kind: "plan", file: planFile, reader: planReader }
+                ? { kind: "plan", file: planFile, reader: planReader, pageNumber: planPage, rotation: planRotation }
                 : { kind: "empty" },
       },
       {
@@ -122,6 +137,7 @@ export function AddLayoutDialog({
       <DialogContent className={cn("max-h-[90dvh] overflow-y-auto", (approach === "template" || approach === "building") ? "sm:max-w-[760px]" : "sm:max-w-[420px]")}>
         <DialogHeader>
           <DialogTitle>Add layout</DialogTitle>
+          <DialogDescription className="sr-only">Create a layout from an existing store, a template, an image or a PDF floor plan.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -224,9 +240,35 @@ export function AddLayoutDialog({
                     <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-dashed border-foreground/15 px-3 py-5 text-center text-sm transition-colors hover:border-primary">
                       <span className="font-medium">{planFile ? planFile.name : "Choose a plan image"}</span>
                       <span className="text-xs text-muted-foreground">Walls, fixtures as boxes, a gap for the door. Words like “drinks” on a box pick its products.</span>
-                      <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden"
-                        onChange={(e) => setPlanFile(e.target.files?.[0] ?? null)} />
+                      <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" disabled={createLayout.isPending}
+                        aria-label="Choose floor plan file" onChange={(e) => {
+                          setPlanFile(e.target.files?.[0] ?? null);
+                          setPlanFileVersion((version) => version + 1);
+                          setPlanPage(1);
+                          setPlanRotation(0);
+                          e.target.value = "";
+                        }} />
                     </label>
+                    {planFile && <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <label>Page {planPreview.data ? `of ${planPreview.data.page_count}` : ""}
+                          <Input aria-label="Floor plan page" type="number" min={1} max={planPreview.data?.page_count} step={1}
+                            value={planPage} disabled={createLayout.isPending} onChange={(e) => setPlanPage(Number(e.target.value))} className="mt-1 h-8" />
+                        </label>
+                        <label>Clockwise rotation
+                          <select aria-label="Floor plan rotation" value={planRotation} disabled={createLayout.isPending}
+                            onChange={(e) => setPlanRotation(Number(e.target.value))} className="mt-1 h-8 w-full rounded border bg-background px-2">
+                            {[0, 90, 180, 270].map((angle) => <option key={angle} value={angle}>{angle}°</option>)}
+                          </select>
+                        </label>
+                      </div>
+                      {planPreview.isFetching && <p className="text-xs text-muted-foreground" role="status">Rendering preview…</p>}
+                      {planPreview.isError && <p role="alert" className="text-xs text-destructive">{planPreview.error.message}</p>}
+                      {planPreview.data && <img src={planPreview.data.image}
+                        alt={`Floor plan page ${planPreview.data.page_number}, rotated ${planPreview.data.rotation} degrees clockwise`}
+                        className="max-h-48 w-full rounded border bg-white object-contain" />}
+                      <p className="text-xs text-muted-foreground">Confirm the selected page and orientation before creating the layout. Preview uses no vision model.</p>
+                    </div>}
                     <div className="flex gap-1.5 text-xs">
                       {([["auto", "Vision model, geometry fallback"], ["classic", "Geometry only (offline)"]] as const).map(([id, label]) => (
                         <button key={id} type="button" onClick={() => setPlanReader(id)}

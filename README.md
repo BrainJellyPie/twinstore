@@ -169,9 +169,10 @@ shelf studio, which supplies exact boxes; phone photos are edited the same way. 
 | Input | What TwinStore does with it |
 | :-- | :-- |
 | Shelf photo | detects shelves and facings, reads names and price tags → a rack face in the planogram |
-| Floor-plan image (sketch, scan, PDF page) | ink mask → walls, racks, doors → an 8–16 tile grid at 1.25 m per tile (or a vision model reads it) |
+| Floor-plan image or multi-page PDF | preview the selected page and rotation → ink mask or vision model → walls, racks, doors on an 8–16 tile grid; PDF support included |
 | Storefront photo | a vision model rates sign, entrance, window and upkeep → the venue's pull in the neighborhood model |
-| Receipt photos | transcribed by a vision model, matched to the store's products → a POS export that scores a run |
+| Receipt photos | transcribed by a vision model → review product matches, quantities and paid amounts → check and score a run against corrected POS lines |
+| Anonymous track CSV | device-extracted grid coordinates → observed vs simulated visitor and occupancy heatmaps, tracking-gap accounting and per-cell differences; aggregate reports only |
 | Rival's shelf photo | price index and assortment overlap against your layout → the rival's price-adjusted pull |
 
 ### Marketing studio

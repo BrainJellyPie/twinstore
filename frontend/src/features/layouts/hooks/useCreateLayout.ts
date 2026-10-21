@@ -11,7 +11,7 @@ type CreateLayoutSource =
   | { kind: "empty" }
   | { kind: "building"; floors: BuildingFloorChoice[] }
   | ({ kind: "template" } & TemplateChoice)
-  | { kind: "plan"; file: File; reader: "auto" | "classic" };
+  | { kind: "plan"; file: File; reader: "auto" | "classic"; pageNumber: number; rotation: number };
 
 interface Params {
   projectId: string;
@@ -28,7 +28,7 @@ export function useCreateLayout() {
       source.kind === "building"
         ? generateBuilding(projectId, { name, floors: source.floors.map((f) => ({ label: f.label, layout: templateRequest(f.choice) })) }).then((result) => result.setups[0]!)
         : source.kind === "plan"
-        ? importFloorPlan(projectId, source.file, { reader: source.reader, name }).then((r) => r.setup)
+        ? importFloorPlan(projectId, source.file, { reader: source.reader, name, pageNumber: source.pageNumber, rotation: source.rotation }).then((r) => r.setup)
         : source.kind === "template"
         ? generateLayout(projectId, {
             ...templateRequest(source), name,
