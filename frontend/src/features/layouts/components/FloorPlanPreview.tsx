@@ -5,6 +5,7 @@ import type { ReservedArea } from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import type { Store } from "@/shared/types/domain";
 import { rackCells } from "@/shared/utils/grid";
+import { formatWeeklyHours } from "../weeklyHours";
 
 const RACK_COLORS: Record<string, string> = {
   fridge: "#38bdf8", shelf: "#f59e0b", counter: "#475569", entrance: "#22c55e", exit: "#fb7185", table: "#a78bfa",
@@ -30,7 +31,7 @@ export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store;
     const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
     title.textContent = `${store.name} — ${store.grid_size.join("×")} cells`;
     const description = document.createElementNS("http://www.w3.org/2000/svg", "desc");
-    description.textContent = `${tables} dining tables, ${seats} seats, ${store.racks.filter((rack) => rack.type === "counter").length} checkout counters. ${FLOOR_LEGEND}. ${areas.map((area, index) => `Area ${index + 1}: ${area.label}, ${area.width}×${area.height} cells at column ${area.x + 1}, row ${area.y + 1}.`).join(" ")}`;
+    description.textContent = `${tables} dining tables, ${seats} seats, ${store.racks.filter((rack) => rack.type === "counter").length} checkout counters. Operating hours: ${formatWeeklyHours(store.weekly_schedule)}. ${FLOOR_LEGEND}. ${areas.map((area, index) => `Area ${index + 1}: ${area.label}, ${area.width}×${area.height} cells at column ${area.x + 1}, row ${area.y + 1}.`).join(" ")}`;
     exported.prepend(title, description);
     const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(exported)], { type: "image/svg+xml;charset=utf-8" }));
     const link = document.createElement("a");
@@ -44,27 +45,31 @@ export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store;
     <Dialog onOpenChange={(open) => { if (!open) setZoom(1); }}>
       <DialogTrigger asChild><button type="button" className="w-full rounded-md border px-2 py-1 text-xs hover:bg-muted">Expand floor plan</button></DialogTrigger>
       <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-[min(92vw,1000px)]" data-testid="expanded-floor-plan-dialog">
-        <DialogHeader>
+        <DialogHeader className="shrink-0">
           <DialogTitle>Floor plan details</DialogTitle>
           <DialogDescription>{store.name} · {store.grid_size.join("×")} cells. Columns run left to right; rows run from back to front.</DialogDescription>
         </DialogHeader>
-        <div role="group" aria-label="Floor plan controls" className="flex flex-wrap items-center gap-2 text-xs">
+        <div role="group" aria-label="Floor plan controls" className="flex shrink-0 flex-wrap items-center gap-2 text-xs">
           <button type="button" aria-label="Zoom out floor plan" disabled={zoom === 1} className="rounded border px-2 py-1 disabled:opacity-40" onClick={() => setZoom((current) => Math.max(1, current - 0.5))}>−</button>
           <span className="min-w-10 text-center">{Math.round(zoom * 100)}%</span>
           <button type="button" aria-label="Zoom in floor plan" disabled={zoom === 4} className="rounded border px-2 py-1 disabled:opacity-40" onClick={() => setZoom((current) => Math.min(4, current + 0.5))}>+</button>
           <button type="button" className="rounded border px-2 py-1" onClick={() => setZoom(1)}>Fit floor plan</button>
           <button type="button" className="rounded border px-2 py-1 sm:ml-auto" onClick={downloadPlan}>Download SVG</button>
         </div>
-        <div className="h-[min(60dvh,720px)] min-h-40 shrink overflow-auto rounded-md border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          role="region" aria-label="Expanded floor grid" tabIndex={0} data-testid="expanded-floor-scroll">
-          <FloorPlan store={store} areas={areas} detailed zoom={zoom} ref={detailedPlan} />
-        </div>
-        <div className="space-y-1.5 text-xs">
-          <p>{store.racks.filter((rack) => rack.slots.length).length} displays · {tables} dining tables · {seats} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
-          <p className="text-muted-foreground">{FLOOR_LEGEND}</p>
-          {!!areas.length && <ol className="max-h-24 list-decimal space-y-1 overflow-y-auto pl-5" aria-label="Reserved areas in this floor plan">
-            {areas.map((area, index) => <li key={index}>{area.label} · {area.width}×{area.height} cells · column {area.x + 1}, row {area.y + 1}</li>)}
-          </ol>}
+        <div className="min-h-0 space-y-3 overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          role="region" aria-label="Floor plan content" tabIndex={0}>
+          <div className="h-[min(60dvh,720px)] min-h-40 overflow-auto rounded-md border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            role="region" aria-label="Expanded floor grid" tabIndex={0} data-testid="expanded-floor-scroll">
+            <FloorPlan store={store} areas={areas} detailed zoom={zoom} ref={detailedPlan} />
+          </div>
+          <div className="space-y-1.5 text-xs">
+            <p>{store.racks.filter((rack) => rack.slots.length).length} displays · {tables} dining tables · {seats} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
+            <p className="break-words text-muted-foreground">Operating hours: {formatWeeklyHours(store.weekly_schedule)}</p>
+            <p className="text-muted-foreground">{FLOOR_LEGEND}</p>
+            {!!areas.length && <ol className="max-h-24 list-decimal space-y-1 overflow-y-auto pl-5" aria-label="Reserved areas in this floor plan">
+              {areas.map((area, index) => <li key={index}>{area.label} · {area.width}×{area.height} cells · column {area.x + 1}, row {area.y + 1}</li>)}
+            </ol>}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -36,6 +36,9 @@ for each layout or building floor. Blank hours and **Use format operating hours*
 format defaults, including its regular days off. Set 0–24 for all-day opening, keep at least
 one weekday open, and use a closing hour later than opening; overnight schedules are not supported.
 These settings are saved, reused and included in exported layout and building options files.
+The resolved weekly hours and closed weekdays also appear in **Compare with default**,
+**Review all floors** and expanded floor plans. SVG downloads include them in the
+accessible description. Matching days are grouped; 00:00–24:00 means all-day opening.
 In a building, **Apply operating hours to all floors** copies the current floor's effective
 opening, closing and closed weekdays to every floor, including resolved format defaults.
 The preview beside the button shows the hours and number of open days before applying.
