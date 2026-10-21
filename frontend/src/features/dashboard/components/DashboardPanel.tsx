@@ -74,7 +74,7 @@ function PlaybackContent({ customers, minTime, maxTime, store, summary, projectI
       <Summary />
       <CustomerBehavior />
       {summary && <RunKpis summary={summary} />}
-      {projectId && runId && <RunAnalystSection key={`${projectId}:${runId}`} projectId={projectId} runId={runId} />}
+      {projectId && runId && <RunAnalystSection key={`analyst:${projectId}:${runId}`} projectId={projectId} runId={runId} />}
       <RackRanking store={store} />
       <TopItems store={store} />
       {projectId && runId && <VisionGlancesSection projectId={projectId} runId={runId} />}
