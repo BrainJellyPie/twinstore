@@ -70,6 +70,7 @@ def test_rule_ab_test(client, monkeypatch):
     eid = started.json()["job_id"]
     view = _wait(client, f"/api/projects/{PID}/experiments/{eid}")
     report = view["report"]
+    assert view["request"]["variants"][0]["changes"][0]["percent"] == -50 and view["request"]["panel"] == 60
     assert report["panel_size"] == 60 and [v["name"] for v in report["variants"]] == ["Half price", "Eye level"]
     assert all(v["applied"] and v["vs_control"] and v["focus"] for v in report["variants"])
     assert any("100 shoppers" in n for n in report["notes"])

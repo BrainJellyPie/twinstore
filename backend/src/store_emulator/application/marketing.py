@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from PIL import Image
+from pydantic import BaseModel
 
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.marketing import (
@@ -232,13 +233,22 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
 
 class ExperimentView(JobStatus):
     report: ExperimentReport | None = None
+    request: ExperimentRequest | None = None   # what was asked, for "duplicate and edit"
+
+
+def _request[T: BaseModel](pid: str, kind: Kind, jid: str, model: type[T]) -> T | None:
+    path = _job_dir(pid, kind, jid) / "request.json"
+    try:
+        return model.model_validate(read_json(path)) if path.exists() else None
+    except ValueError:
+        return None  # written by an older version with a different schema
 
 
 def get_experiment(pid: str, eid: str) -> ExperimentView:
     status = _status(pid, "experiment", eid)
     path = _job_dir(pid, "experiment", eid) / "report.json"
     report = ExperimentReport.model_validate(read_json(path)) if path.exists() else None
-    return ExperimentView(**status.model_dump(), report=report)
+    return ExperimentView(**status.model_dump(), report=report, request=_request(pid, "experiment", eid, ExperimentRequest))
 
 
 # ── experiment report ───────────────────────────────────────────────────────────
@@ -382,13 +392,14 @@ def summarize_survey(
 
 class SurveyView(JobStatus):
     report: SurveyReport | None = None
+    request: SurveyRequest | None = None
 
 
 def get_survey(pid: str, sid: str) -> SurveyView:
     status = _status(pid, "survey", sid)
     path = _job_dir(pid, "survey", sid) / "report.json"
     report = SurveyReport.model_validate(read_json(path)) if path.exists() else None
-    return SurveyView(**status.model_dump(), report=report)
+    return SurveyView(**status.model_dump(), report=report, request=_request(pid, "survey", sid, SurveyRequest))
 
 
 def survey_report(pid: str, sid: str) -> str:
