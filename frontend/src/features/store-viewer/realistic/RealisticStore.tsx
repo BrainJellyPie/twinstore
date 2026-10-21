@@ -186,17 +186,21 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   // Fine package geometry only when the shelves are big on screen.
   const fineRef = useRef<boolean | null>(null);
   const upperRef = useRef<THREE.Group>(null);
-  useFrame(({ camera }) => {
+  useFrame(({ camera, gl }) => {
+    const ortho = (camera as THREE.OrthographicCamera).isOrthographicCamera;
     // Camera-side walls close up only in the first-person view.
-    if (upperRef.current) upperRef.current.visible = !(camera as THREE.OrthographicCamera).isOrthographicCamera;
+    if (upperRef.current && upperRef.current.visible !== !ortho) {
+      upperRef.current.visible = !ortho;
+      gl.shadowMap.needsUpdate = true;
+    }
     if (groupRef.current?.visible && framesRef.current < 2 && ++framesRef.current === 2) {
       useRealisticSettings.getState().setRealisticReady(true);
     }
-    const ortho = (camera as THREE.OrthographicCamera).isOrthographicCamera;
     const fine = !ortho || (camera as THREE.OrthographicCamera).zoom > 190;
     if (fineRef.current !== fine) {
       fineRef.current = fine;
       products.setDetail(fine);
+      if (quality === "high") gl.shadowMap.needsUpdate = true;
     }
   });
   useEffect(() => {
