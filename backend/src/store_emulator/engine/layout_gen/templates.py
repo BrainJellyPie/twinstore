@@ -528,6 +528,38 @@ TEMPLATES: list[StoreTemplate] = [
         style="plaza", open_hours=(11, 24), dining_tables=8, seating_zone="back", checkouts=3,
         design_theme="terracotta", checkout_placement="near_entrance",
     ),
+    StoreTemplate(
+        id="art_supply_warehouse", name="Art supply warehouse", description="A 36×28 industrial store with long art-material and stationery aisles, books, hobby kits and basic tools. Five checkout counters; open 9–20 daily.",
+        store_type="crafts", grid=(36, 28), fridges=[],
+        wall_shelves=["art_craft", "stationery", "books", "hardware", "toys_hobbies"] * 4,
+        gondolas=["art_craft", "art_craft", "stationery", "toys_hobbies", "hardware"],
+        near_counter=["stationery", "art_craft"], style="aisles", open_hours=(9, 20),
+        checkouts=5, design_theme="industrial",
+    ),
+    StoreTemplate(
+        id="beauty_outlet", name="Beauty & fragrance outlet", description="A 32×24 minimal shop for personal care, fragrance and wellness products, with cross aisles and four checkout counters. Open 10–22 daily; services and treatments are not modeled.",
+        store_type="beauty", grid=(32, 24), fridges=[],
+        wall_shelves=["health_beauty", "fragrances", "wellness"] * 5,
+        gondolas=["health_beauty", "fragrances", "health_beauty", "wellness"],
+        near_counter=["fragrances", "wellness"], style="cross", open_hours=(10, 22),
+        checkouts=4, design_theme="minimal", checkout_placement="near_entrance",
+    ),
+    StoreTemplate(
+        id="indian_curry_house", name="Indian curry house", description="Twelve curry, biryani, bread, side and drink choices around a 24×20 warm dining floor with eight four-seat tables and three ordering counters. Open 11–22, closed Tuesdays. Models counter purchases.",
+        store_type="restaurant", grid=(24, 20), fridges=["water_sports", "soft_drinks"],
+        wall_shelves=["indian_menu"] * 5, gondolas=["indian_menu", "desserts"],
+        near_counter=["indian_menu"], style="perimeter", open_hours=(11, 22), closed_days=(2,),
+        dining_tables=8, seating_zone="center", checkouts=3, design_theme="warm",
+        checkout_placement="near_entrance",
+    ),
+    StoreTemplate(
+        id="vietnamese_cafe", name="Vietnamese café & pho", description="Pho bowls, banh mi, rolls, coffee and tea on a 22×18 botanical floor with a browsing loop, six four-seat tables and two ordering counters. Open 9–21, closed Mondays. Models counter purchases without kitchen or table service.",
+        store_type="cafe", grid=(22, 18), fridges=["water_sports", "soft_drinks"],
+        wall_shelves=["vietnamese_menu", "vietnamese_menu", "soft_drinks", "desserts"],
+        gondolas=["vietnamese_menu", "desserts"], near_counter=["vietnamese_menu"],
+        style="loop", open_hours=(9, 21), closed_days=(1,), dining_tables=6,
+        seating_zone="back", checkouts=2, design_theme="botanical", checkout_placement="near_entrance",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}

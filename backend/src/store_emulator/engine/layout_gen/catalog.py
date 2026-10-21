@@ -283,6 +283,18 @@ _SPECIALTY: dict[str, list[tuple[str, int]]] = {
         ("Cheese Quesadilla", 899), ("Chicken Quesadilla", 1199), ("Loaded Nachos", 1099),
         ("Guacamole & Tortilla Chips", 749), ("Corn & Lime Side", 499), ("Cinnamon Churros 3pc", 549),
     ],
+    "indian_menu": [
+        ("Butter Chicken Curry Bowl", 1499), ("Chickpea Chana Masala Bowl", 1199), ("Palak Paneer Bowl", 1399),
+        ("Lentil Dal Bowl", 1099), ("Vegetable Biryani Bowl", 1299), ("Chicken Biryani Bowl", 1499),
+        ("Garlic Naan 2pc", 499), ("Vegetable Samosa 2pc", 599), ("Cucumber Raita Cup", 349),
+        ("Mango Lassi", 549), ("Masala Chai Cup", 399), ("Gulab Jamun 2pc", 499),
+    ],
+    "vietnamese_menu": [
+        ("Beef Pho Noodle Bowl", 1499), ("Chicken Pho Noodle Bowl", 1399), ("Vegetable Pho Noodle Bowl", 1299),
+        ("Grilled Pork Banh Mi", 999), ("Tofu Banh Mi", 899), ("Lemongrass Chicken Rice Bowl", 1399),
+        ("Tofu Vermicelli Bowl", 1199), ("Fresh Summer Rolls 2pc", 699), ("Crispy Spring Rolls 3pc", 649),
+        ("Vietnamese Iced Coffee", 499), ("Lemongrass Iced Tea", 449), ("Coconut Rice Pudding Cup", 499),
+    ],
 }
 for _category, _products in _SPECIALTY.items():
     CATALOG[_category] = [CatalogItem(name, name, price) for name, price in _products]
