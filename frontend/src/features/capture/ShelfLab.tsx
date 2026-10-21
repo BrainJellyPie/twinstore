@@ -395,6 +395,25 @@ function Progress({ value, label }: { value: number; label: string }) {
   );
 }
 
+function RecentJobs({ projectId, captureId, kind, current, onPick }: {
+  projectId: string; captureId: string; kind: "sim2real" | "audit"; current: string | null; onPick: (id: string) => void;
+}) {
+  const jobs = useQuery({ queryKey: jobsKey(projectId, captureId), queryFn: ({ signal }) => api.listLabJobs(projectId, captureId, signal) });
+  const mine = (jobs.data ?? []).filter((j) => j.kind === kind && j.status === "completed").slice(0, 6);
+  if (mine.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      <span className="text-muted-foreground">Earlier runs:</span>
+      {mine.map((j) => (
+        <button key={j.job_id} type="button" onClick={() => onPick(j.job_id)}
+          className={cn("num rounded-full border px-2 py-0.5", current === j.job_id ? "border-primary text-foreground" : "text-muted-foreground hover:border-foreground/20")}>
+          {new Date(j.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const CONDITION_LABEL: Record<Sim2RealCondition, string> = { render: "Render", photo: "Photo + tags", photo_raw: "Raw photo" };
 const LEVEL_COLORS: Record<string, string> = { "4": "var(--heat-1)", "3": "var(--volt)", "2": "var(--heat-2)", "1": "var(--heat-3)" };
 
@@ -456,7 +475,30 @@ function Sim2RealView({ report }: { report: Sim2RealReport }) {
   );
 }
 
-function Sim2RealCard({ projectId, captureId, editId, labeled }: { projectId: string; captureId: string; editId: string | null; labeled: boolean }) {
+function AttentionToggle({ report, onAttention }: { report: Sim2RealReport; onAttention: (shares: Record<string, number> | null) => void }) {
+  const [on, setOn] = useState<Sim2RealCondition | null>(null);
+  const show = (c: Sim2RealCondition | null) => {
+    setOn(c);
+    const stats = c ? report.stats.find((s) => s.condition === c) : undefined;
+    onAttention(stats && stats.answers > 0 ? Object.fromEntries(Object.entries(stats.picks).map(([sku, n]) => [sku, n / stats.answers])) : null);
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      <span className="text-muted-foreground">Attention on the photo:</span>
+      {report.conditions.map((c) => (
+        <button key={c} type="button" onClick={() => show(on === c ? null : c)}
+          className={cn("rounded-full border px-2.5 py-1", on === c ? "border-transparent bg-primary font-medium text-primary-foreground" : "hover:border-foreground/20")}>
+          {CONDITION_LABEL[c]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Sim2RealCard({ projectId, captureId, editId, labeled, onAttention }: {
+  projectId: string; captureId: string; editId: string | null; labeled: boolean;
+  onAttention: (shares: Record<string, number> | null) => void;
+}) {
   const qc = useQueryClient();
   const [personas, setPersonas] = useState(24);
   const [raw, setRaw] = useState(true);
@@ -493,9 +535,15 @@ function Sim2RealCard({ projectId, captureId, editId, labeled }: { projectId: st
       <Button className="w-full gap-2" disabled={!labeled || start.isPending || status?.status === "running" || status?.status === "pending"} onClick={() => start.mutate()}>
         {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />} Run sim2real panel
       </Button>
+      <RecentJobs projectId={projectId} captureId={captureId} kind="sim2real" current={jobId} onPick={setJobId} />
       {status && status.status !== "completed" && status.status !== "failed" && <Progress value={status.progress} label="Shoppers glancing…" />}
       {status?.status === "failed" && <p className="rounded-lg tone-bad border p-2 text-xs">{status.error}</p>}
-      {job.data?.sim2real && <Sim2RealView report={job.data.sim2real} />}
+      {job.data?.sim2real && (
+        <>
+          <AttentionToggle report={job.data.sim2real} onAttention={onAttention} />
+          <Sim2RealView report={job.data.sim2real} />
+        </>
+      )}
     </section>
   );
 }
@@ -648,6 +696,7 @@ function AuditCard({ projectId, captureId, editId, result, onFocus }: {
       <Button variant="outline" className="w-full gap-2" disabled={!base || !rack || start.isPending || status?.status === "running" || status?.status === "pending"} onClick={() => start.mutate()}>
         {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <ClipboardCheck className="size-4" />} Audit against the layout
       </Button>
+      <RecentJobs projectId={projectId} captureId={captureId} kind="audit" current={jobId} onPick={setJobId} />
       {status && status.status !== "completed" && status.status !== "failed" && <Progress value={status.progress} label={status.stage === "simulating" ? "Simulating shoppers…" : "Comparing…"} />}
       {status?.status === "failed" && <p className="rounded-lg tone-bad border p-2 text-xs">{status.error}</p>}
       {job.data?.audit && <AuditView report={job.data.audit} onFocus={onFocus} />}
@@ -657,9 +706,10 @@ function AuditCard({ projectId, captureId, editId, result, onFocus }: {
 
 // ── Panel ─────────────────────────────────────────────────────────────────
 
-export function ShelfLabPanel({ projectId, captureId, result, draft, setDraft, editId, onSelectEdit, onFocus }: {
+export function ShelfLabPanel({ projectId, captureId, result, draft, setDraft, editId, onSelectEdit, onFocus, onAttention }: {
   projectId: string; captureId: string; result: CaptureResult; draft: LabDraft; setDraft: (d: LabDraft) => void;
   editId: string | null; onSelectEdit: (id: string | null) => void; onFocus: (box: CaptureBox | null) => void;
+  onAttention: (shares: Record<string, number> | null) => void;
 }) {
   const labeled = result.items.some((i) => i.labeled);
   const divider = "border-t border-glass-border pt-4";
@@ -668,7 +718,7 @@ export function ShelfLabPanel({ projectId, captureId, result, draft, setDraft, e
       <Composer projectId={projectId} captureId={captureId} result={result} draft={draft} setDraft={setDraft} onCreated={(s) => onSelectEdit(s.edit_id)} />
       <EditsGallery projectId={projectId} captureId={captureId} editId={editId} onSelect={onSelectEdit} />
       <div className={divider}>
-        <Sim2RealCard projectId={projectId} captureId={captureId} editId={editId} labeled={labeled} />
+        <Sim2RealCard projectId={projectId} captureId={captureId} editId={editId} labeled={labeled} onAttention={onAttention} />
       </div>
       <div className={divider}>
         <AuditCard projectId={projectId} captureId={captureId} editId={editId} result={result} onFocus={onFocus} />

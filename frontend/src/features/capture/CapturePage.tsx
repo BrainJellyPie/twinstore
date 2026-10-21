@@ -190,6 +190,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
   const [editId, setEditId] = useState<string | null>(null);
   const [showMask, setShowMask] = useState(false);
   const [focus, setFocus] = useState<CaptureBox | null>(null);
+  const [attention, setAttention] = useState<Record<string, number> | null>(null);
   const status = view.data?.status;
   const result = view.data?.result ?? null;
   const pick = (id: string) => {
@@ -207,7 +208,8 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
               maskUrl={api.editFileUrl(projectId, captureId, editId, "mask")} size={result.image_size} showMask={showMask} />
           ) : (
             <PhotoOverlay projectId={projectId} captureId={captureId} result={result} size={status.image_size} hover={hover} onHover={setHover}
-              onPick={tab === "lab" ? pick : undefined} marks={tab === "lab" ? { target: draft.target, other: draft.other } : undefined} focus={focus} />
+              onPick={tab === "lab" ? pick : undefined} marks={tab === "lab" ? { target: draft.target, other: draft.other } : undefined} focus={focus}
+              attention={tab === "lab" ? attention : null} />
           )}
           {editId && (
             <button type="button" onClick={() => setShowMask(!showMask)} className="glass absolute bottom-5 left-5 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium">
@@ -254,7 +256,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
           {result && tab === "planogram" && <ApplyPanel projectId={projectId} captureId={captureId} result={result} />}
           {result && tab === "lab" && (
             <ShelfLabPanel projectId={projectId} captureId={captureId} result={result} draft={draft} setDraft={setDraft}
-              editId={editId} onSelectEdit={setEditId} onFocus={setFocus} />
+              editId={editId} onSelectEdit={setEditId} onFocus={setFocus} onAttention={setAttention} />
           )}
           {!result && status.status !== "failed" && <p className="p-6 text-center text-sm text-muted-foreground">Reading the shelf…</p>}
         </div>
@@ -263,10 +265,11 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
   );
 }
 
-function PhotoOverlay({ projectId, captureId, result, size, hover, onHover, onPick, marks, focus }: {
+function PhotoOverlay({ projectId, captureId, result, size, hover, onHover, onPick, marks, focus, attention }: {
   projectId: string; captureId: string; result: CaptureResult | null; size: [number, number];
   hover: string | null; onHover: (id: string | null) => void;
   onPick?: (id: string) => void; marks?: { target: string | null; other: string | null }; focus?: CaptureBox | null;
+  attention?: Record<string, number> | null;
 }) {
   const [w, h] = result?.image_size ?? size;
   if (!w || !h) return null;
@@ -295,6 +298,25 @@ function PhotoOverlay({ projectId, captureId, result, size, hover, onHover, onPi
               </rect>
             );
           }))}
+          {attention && result.items.map((it) => {
+            const share = attention[it.sku] ?? 0;
+            const b = it.boxes[0];
+            if (!b) return null;
+            const all = it.boxes.reduce((acc, bx) => ({ x1: Math.min(acc.x1, bx.x1), y1: Math.min(acc.y1, bx.y1), x2: Math.max(acc.x2, bx.x2), y2: Math.max(acc.y2, bx.y2) }), b);
+            const heat = share >= 0.3 ? "var(--heat-3)" : share >= 0.12 ? "var(--heat-2)" : share > 0 ? "var(--heat-1)" : "#000";
+            return (
+              <g key={`att-${it.id}`} pointerEvents="none">
+                <rect x={all.x1} y={all.y1} width={all.x2 - all.x1} height={all.y2 - all.y1} rx={w / 160}
+                  fill={heat} fillOpacity={share > 0 ? 0.25 + Math.min(0.5, share) : 0.45} stroke={share > 0 ? heat : "none"} strokeWidth={Math.max(2, w / 300)} />
+                {share > 0 && (
+                  <text x={(all.x1 + all.x2) / 2} y={all.y1 + (all.y2 - all.y1) / 2} textAnchor="middle" dominantBaseline="central"
+                    fontSize={Math.max(14, w / 30)} fontWeight={700} fill="white" stroke="black" strokeWidth={Math.max(1, w / 500)} paintOrder="stroke">
+                    {Math.round(share * 100)}%
+                  </text>
+                )}
+              </g>
+            );
+          })}
           {focus && (
             <rect x={focus.x1} y={focus.y1} width={focus.x2 - focus.x1} height={focus.y2 - focus.y1} rx={w / 150}
               fill="none" stroke="var(--volt)" strokeWidth={Math.max(4, w / 120)} className="animate-pulse" pointerEvents="none" />
