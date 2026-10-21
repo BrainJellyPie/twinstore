@@ -6,6 +6,11 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Model-written shopper thoughts
+- Vision shoppers now say what they came for: the model's own mission and reason become the first step of each
+  journey and the speech bubble at the door ("a cold soda and something salty (thirsty)"); a shopper who turns
+  away says why ("turns away: queue").
+
 ### Conjoint studies
 - New **Conjoint** tab in the Market page: a choice-based conjoint on the project's personas. Define a product's
   attributes and levels plus price levels; each respondent gets their own level-balanced random choice tasks

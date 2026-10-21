@@ -5,6 +5,7 @@ import asyncio
 import io
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
@@ -26,6 +27,7 @@ from store_emulator.engine.perception import (
 )
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.engines.vlm_glance import VLMGlanceEngine
+from store_emulator.engine.simulation.engines.vlm_glance.engine import narrate_entry
 from store_emulator.engine.simulation.engines.vlm_glance.planning import match_plan_item
 from store_emulator.engine.simulation.engines.vlm_glance.prompt import (
     EntryDecision,
@@ -248,6 +250,8 @@ def test_vlm_plan_becomes_planned_purchases_with_the_named_quantities():
     assert call["image"] is not None and call["route"] == _personas()[0].id and call["max_tokens"] == 410
     assert "Today: a heatwave." in str(call["prompt"]) and "- Drink: " in str(call["prompt"])
     assert decision.trace["plan_source"] == "vlm" and decision.trace["mission"] == PLAN["mission"]
+    # The model's mission and reason are the shopper's thought at the door (journeys, speech bubbles).
+    assert decision.actions[0].description == "a cold soda and something salty (thirsty)"
     meta = engine.metadata()
     planning = meta["planning"]
     assert isinstance(planning, dict)
@@ -286,9 +290,28 @@ def test_enter_false_walks_out_without_buying_or_looking():
     assert len(results) == 6 and aggregated.summary.total_customers == 6
     assert aggregated.summary.buyers == 0 and aggregated.summary.conversion_rate == 0.0
     assert all(r.total_spent == 0 and r.timeline[0].action == Action.ENTER for r in results)
+    assert all(r.timeline[0].description == "turns away: queue" for r in results)
     assert vlm.glance_calls == 0
     planning = engine.metadata()["planning"]
     assert isinstance(planning, dict) and planning["enter_rate"] == 0.0
+
+
+@pytest.mark.parametrize(("mission", "reason", "entered", "expected"), [
+    ("milk and bread", "out of both", True, "milk and bread (out of both)"),
+    ("milk run because we are out of milk", "out of milk", True, "milk run because we are out of milk"),
+    ("", "restock", True, "restock"),
+    ("too crowded", "", False, "turns away: too crowded"),
+    ("", "", True, ""),
+])
+def test_entry_narration_uses_the_models_words(mission, reason, entered, expected):
+    engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    plan = asyncio.run(engine.decide_actions(_context(_store(), _personas()[0], seed=11)))
+    for action in plan.actions:
+        action.description = ""
+    holder = SimpleNamespace(planned=plan.actions)
+    narrate_entry(holder, mission, reason, entered=entered)  # type: ignore[arg-type]
+    assert plan.actions[0].description == expected
+    assert all(a.description == "" for a in plan.actions[1:])
 
 
 def test_failed_plan_falls_back_to_the_rule_plan_and_is_counted():
