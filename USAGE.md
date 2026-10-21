@@ -189,10 +189,35 @@ assignments. Keep the offer and observation process the same in both arms. Edit 
 For unused or unrecorded slots, leave delivery and purchase blank. An enrolled customer remains in their assigned
 arm even if delivery is 0 (intention to treat). No customer names, video or receipt details are collected here.
 
-Upload the **full** UTF-8 CSV (up to 2 MB), retaining every row and assignment column. Uploads replace the previous
-observation sheet atomically; invalid rows, changed assignments, duplicates and omitted rows reject the whole file.
-Revision checks and file locks reject overlapping updates; reload before retrying a stale upload. Downloading the
-sheet again returns the current observations, so corrections can be made before closing.
+Choose the **full** UTF-8 CSV (up to 2 MB) under **Review full observation sheet**, retaining every row and assignment
+column. Selecting a file does not save it. Invalid rows, changed assignments, duplicates and omitted rows reject
+the entire preview. Review the before/after table (100 fields per page) and the counts of newly recorded, corrected
+and cleared values. A blank **clears** a known observation; it does not preserve the old value. Removal of enrolled
+encounters and yes/no purchase reversals are explicitly flagged. Verify corrections against your actual source
+records; these checks cannot determine whether a purchase occurred.
+
+Enter an **Import reason** without customer identities or receipt details, confirm that you reviewed the changes,
+then choose **Apply reviewed observations**. **Discard preview** leaves the saved records untouched. Applying a
+reviewed sheet atomically replaces observations and publishes its import-history reference. The server binds the
+review to the exact file bytes, saved observations and revision; a changed file or concurrent update requires a
+new preview. Revision checks and file locks reject overlapping updates. A sheet with no changed values adds no
+revision or history entry. Downloading **Observation sheet CSV** again returns the current observations.
+
+**Observation import history** retains each committed import's reason, timestamp, revision, CSV SHA-256 and exact
+field changes, including previous values. It remains readable after closure and source-screening deletion. Export
+all recorded changes through **Export import history CSV**; blank means unknown and 0/1 mean no/yes. Formula-like
+reasons are prefixed with an apostrophe in the export for spreadsheet safety. Only committed entries are visible;
+an interrupted write may leave an unreferenced detail file that is ignored. Keep `pilot.json` and its `imports/`
+directory together when backing up. Missing committed detail files cause an error instead of an incomplete export.
+Older pilots disclose where history starts; changes made before this feature were not recorded and cannot be
+reconstructed. History records submitted edits, not authenticated reviewer identity or tamper-proof evidence.
+Corrections do not relax the fixed sample, no optional stopping, or complete-outcome requirements below.
+
+API clients must first `POST .../staff-pilots/{id}/observations/preview` with multipart `file` and `revision`.
+The existing `PUT .../{id}/observations` now also requires the returned `review_token` and a nonblank `reason`
+(up to 300 characters), alongside that same file and revision. Read committed details at `GET .../{id}/imports/{revision}`
+and the full change export at `GET .../{id}/imports.csv`. The token binds content; it is not authentication or proof
+that a person inspected the preview. No raw CSV file is retained and no model call is made.
 
 During collection, the dashboard shows recorded rates and worst/best missing-outcome bounds over enrolled
 encounters. These bounds are **not confidence intervals**. Unknown purchases do not become nonbuyers. Staff/shift

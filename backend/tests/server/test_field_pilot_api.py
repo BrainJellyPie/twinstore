@@ -52,7 +52,11 @@ def sheet(client, pid, *, complete=False):
 
 
 def upload(client, pid, data, revision=0):
-    return client.put(f"{ROOT}/staff-pilots/{pid}/observations", files={"file": ("observations.csv", data, "text/csv")}, data={"revision": str(revision)})
+    review = client.post(f"{ROOT}/staff-pilots/{pid}/observations/preview", files={"file": ("observations.csv", data, "text/csv")}, data={"revision": str(revision)})
+    if review.status_code != 200:
+        return review
+    return client.put(f"{ROOT}/staff-pilots/{pid}/observations", files={"file": ("observations.csv", data, "text/csv")},
+                      data={"revision": str(revision), "review_token": review.json()["review_token"], "reason": "Offline test import"})
 
 
 def test_end_to_end_observed_pilot_and_locked_results(client, tmp_path):
@@ -98,6 +102,7 @@ def test_concurrent_updates_cannot_lose_a_revision(client, tmp_path):
         results = list(pool.map(lambda _: upload(client, pid, data), range(2)))
     assert sorted(r.status_code for r in results) == [200, 409]
     assert client.get(f"{ROOT}/staff-pilots/{pid}").json()["pilot"]["revision"] == 1
+    assert len(client.get(f"{ROOT}/staff-pilots/{pid}").json()["pilot"]["import_history"]) == 1
 
 
 def test_unknown_project_and_pilot_ids_and_upload_limit(client):
@@ -147,3 +152,91 @@ def test_planning_validates_project_and_assumptions_and_reads_legacy_pilots(clie
     write_json(path, legacy)
     response = client.get(f"{ROOT}/staff-pilots/{pid}")
     assert response.status_code == 200 and response.json()["pilot"]["planning"] is None
+
+
+def preview_import(client, pid, data, revision=0):
+    return client.post(f"{ROOT}/staff-pilots/{pid}/observations/preview", files={"file": ("sheet.csv", data)}, data={"revision": str(revision)})
+
+
+def apply_import(client, pid, data, preview, reason="Verified source records"):
+    return client.put(f"{ROOT}/staff-pilots/{pid}/observations", files={"file": ("sheet.csv", data)},
+                      data={"revision": str(preview["revision"]), "review_token": preview["review_token"], "reason": reason})
+
+
+def test_review_is_readonly_and_apply_requires_exact_review_and_reason(client, tmp_path):
+    pid = create(client)["pilot"]["pilot_id"]
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    original = path.read_bytes()
+    data = sheet(client, pid, complete=True)
+    review = preview_import(client, pid, data).json()
+    assert review["summary"]["changed_assignments"] == 40 and len(review["changes"]) == 120
+    assert path.read_bytes() == original and not (path.parent / "imports").exists()
+    assert client.put(f"{ROOT}/staff-pilots/{pid}/observations", files={"file": ("x.csv", data)}, data={"revision": "0"}).status_code == 422
+    assert apply_import(client, pid, data + b"\n", review).status_code in (400, 409)
+    assert apply_import(client, pid, sheet(client, pid), review).status_code == 409
+    assert apply_import(client, pid, data, {**review, "review_token": "0" * 64}).status_code == 409
+    assert apply_import(client, pid, data, review, reason="   ").status_code == 400
+    assert path.read_bytes() == original
+    saved = apply_import(client, pid, data, review)
+    assert saved.status_code == 200, saved.text
+    history = saved.json()["pilot"]["import_history"]
+    assert len(history) == 1 and history[0]["revision"] == 1 and history[0]["summary"] == review["summary"]
+    audit = client.get(f"{ROOT}/staff-pilots/{pid}/imports/1").json()
+    assert audit["changes"] == review["changes"] and audit["record"] == history[0]
+    assert apply_import(client, pid, data, review).status_code == 409
+    noop = preview_import(client, pid, data, 1).json()
+    assert noop["summary"]["changed_fields"] == 0
+    assert apply_import(client, pid, data, noop).json()["pilot"]["revision"] == 1
+    assert len(client.get(f"{ROOT}/staff-pilots/{pid}").json()["pilot"]["import_history"]) == 1
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 1}).status_code == 200
+    assert client.get(f"{ROOT}/staff-pilots/{pid}/imports/1").json() == audit
+    rows = list(csv.DictReader(io.StringIO(client.get(f"{ROOT}/staff-pilots/{pid}/imports.csv").text)))
+    assert len(rows) == 120 and rows[0]["reason"] == "Verified source records"
+    assert client.get(f"{ROOT}/staff-pilots/{pid}/imports/2").status_code == 404
+
+
+def test_corrections_preserve_prior_values_and_legacy_history_boundary(client, tmp_path):
+    pid = create(client)["pilot"]["pilot_id"]
+    assert upload(client, pid, sheet(client, pid, complete=True)).status_code == 200
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    legacy = read_json(path); legacy.pop("history_start_revision"); legacy.pop("import_history")
+    write_json(path, legacy)
+    assert client.get(f"{ROOT}/staff-pilots/{pid}").json()["pilot"]["history_start_revision"] is None
+    assert client.get(f"{ROOT}/staff-pilots/{pid}/imports/1").status_code == 404
+    rows = list(csv.DictReader(io.StringIO(sheet(client, pid).decode())))
+    rows[0]["purchased"] = "0" if rows[0]["purchased"] == "1" else "1"
+    rows[1]["purchased"] = ""
+    out = io.StringIO(); writer = csv.DictWriter(out, fieldnames=list(rows[0])); writer.writeheader(); writer.writerows(rows)
+    data = out.getvalue().encode(); review = preview_import(client, pid, data, 1).json()
+    assert review["summary"]["purchase_reversals"] == 1 and review["summary"]["cleared_values"] == 1
+    saved = apply_import(client, pid, data, review, reason="=Verified correction").json()
+    assert saved["pilot"]["history_start_revision"] == 1
+    assert [r["revision"] for r in saved["pilot"]["import_history"]] == [2]
+    assert saved["analysis"]["a"]["missing_outcomes"] + saved["analysis"]["b"]["missing_outcomes"] == 1
+    assert saved["analysis"]["ci_low"] is None
+    exported = list(csv.DictReader(io.StringIO(client.get(f"{ROOT}/staff-pilots/{pid}/imports.csv").text)))
+    assert len(exported) == 2 and exported[0]["reason"] == "'=Verified correction"
+    (path.parent / "imports" / "2.json").unlink()
+    assert client.get(f"{ROOT}/staff-pilots/{pid}/imports.csv").status_code == 409
+
+
+def test_failed_atomic_commit_does_not_publish_history_or_change_observations(client, tmp_path, monkeypatch):
+    from store_emulator.application import field_pilot
+    pid = create(client)["pilot"]["pilot_id"]
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    before = path.read_bytes(); data = sheet(client, pid, complete=True); review = preview_import(client, pid, data).json()
+    real_write = field_pilot.write_json
+
+    def fail_commit(target, value):
+        if target.name == "pilot.json":
+            raise OSError("Simulated disk failure")
+        real_write(target, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(field_pilot, "write_json", fail_commit)
+        with pytest.raises(OSError, match="Simulated disk failure"):
+            apply_import(client, pid, data, review)
+    assert path.read_bytes() == before
+    assert client.get(f"{ROOT}/staff-pilots/{pid}/imports/1").status_code == 404
+    assert apply_import(client, pid, data, review).status_code == 200
+    assert len(client.get(f"{ROOT}/staff-pilots/{pid}").json()["pilot"]["import_history"]) == 1
