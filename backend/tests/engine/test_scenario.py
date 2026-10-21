@@ -158,3 +158,20 @@ def test_part_of_day_demand_follows_the_shoppers_arrival_hour():
     engine = RuleBasedEngine(AStarPathFinder(), SimulationConfig(scenario_priors=priors))
     engine.prepare(_store())
     assert engine._demand({"alcohol"}, 19) == 2.0 and engine._demand({"alcohol"}, 15) == 1.0  # pyright: ignore[reportPrivateUsage]
+
+
+def test_trip_size_follows_the_situation_and_the_part_of_day():
+    from store_emulator.engine.scenario import ScenarioPriors, compile_scenario, hour_effects, scale_trip
+
+    priors = ScenarioPriors(size_ratio={"day:weekend": 1.5, "hour:evening": 2.0})
+    p = _personas()[0].model_copy(update={"basket_size": 10, "basket_kinds": 4})
+    weekend = compile_scenario(Scenario(day_type="weekend"), priors)
+    assert weekend.size == 1.5
+    sized = scale_trip(p, weekend, 10, seed=1)
+    assert sized.basket_size == 15 and sized.basket_kinds == 6
+    assert scale_trip(p, weekend, 19, seed=1).basket_size == 30           # weekend evening
+    assert scale_trip(p, hour_effects(priors), 9, seed=1) is p               # no situation, morning
+    assert scale_trip(p.model_copy(update={"basket_size": 0}), weekend, 10, seed=1).basket_size == 0
+    sizes = [scale_trip(p.model_copy(update={"basket_size": 3}), compile_scenario(Scenario(), ScenarioPriors(
+        size_ratio={"day:weekday": 1.5})), 12, seed=s).basket_size for s in range(400)]
+    assert set(sizes) == {4, 5} and 4.3 < sum(sizes) / len(sizes) < 4.7   # 4.5 by stochastic rounding

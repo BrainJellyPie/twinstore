@@ -8,9 +8,11 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import marketing as mk
+from store_emulator.application import staff_pitch
 from store_emulator.application.errors import AppError
 from store_emulator.application.marketing import ExperimentView, SurveyView
 from store_emulator.domain.marketing import ExperimentRequest, JobStatus, MarketingInfo, SurveyRequest
+from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.engine.marketing.report import ReportNarrative
 
 from ..deps import get_config
@@ -117,3 +119,30 @@ def delete_experiment(pid: str, eid: str) -> None:
 @router.delete("/{pid}/surveys/{sid}", summary="Delete a concept test", status_code=204)
 def delete_survey(pid: str, sid: str) -> None:
     _call(lambda: mk.delete_job(pid, "survey", sid))
+
+
+@router.post("/{pid}/staff-pitches", summary="Start a paired staff script screening test", response_model=JobStatus)
+async def start_pitch(pid: str, req: PitchRequest) -> JobStatus:
+    return await run_in_threadpool(_call, lambda: staff_pitch.start_pitch(pid, req, get_config()))
+
+
+@router.get("/{pid}/staff-pitches", summary="Staff script tests", response_model=list[JobStatus])
+def list_pitches(pid: str) -> list[JobStatus]:
+    return _call(lambda: mk.list_jobs(pid, "pitch"))
+
+
+@router.get("/{pid}/staff-pitches/{pitch_id}", summary="Staff script test status and report", response_model=PitchView)
+def get_pitch(pid: str, pitch_id: str) -> PitchView:
+    return _call(lambda: staff_pitch.get_pitch(pid, pitch_id))
+
+
+@router.get("/{pid}/staff-pitches/{pitch_id}/export.csv", summary="Paired script ratings and exact stimuli")
+def pitch_csv(pid: str, pitch_id: str) -> PlainTextResponse:
+    text = _call(lambda: staff_pitch.pitch_csv(pid, pitch_id))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pitch_id}.csv"'})
+
+
+@router.delete("/{pid}/staff-pitches/{pitch_id}", summary="Delete a completed staff script test", status_code=204)
+def delete_pitch(pid: str, pitch_id: str) -> None:
+    _call(lambda: mk.delete_job(pid, "pitch", pitch_id))

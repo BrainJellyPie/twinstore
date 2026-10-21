@@ -90,6 +90,9 @@ class ScenarioEffects:
     # by arrival hour (ScenarioPriors.hour_demand, need_ratio "hour:…").
     hour_demand: dict[str, dict[str, float]] = field(default_factory=dict[str, dict[str, float]])
     hour_need: dict[str, dict[str, float]] = field(default_factory=dict[str, dict[str, float]])
+    # Trip size multiplier of the situation, and per part of the day (ScenarioPriors.size_ratio).
+    size: float = 1.0
+    hour_size: dict[str, float] = field(default_factory=dict[str, float])
 
     def hour_for(self, hour: int, categories: set[str]) -> float:
         """Demand multiplier of the visit's part of the day, clipped to [0.2, 3]."""
@@ -122,6 +125,24 @@ class ScenarioEffects:
         return min(3.0, max(0.2, m))
 
 
+def _stochastic_round(x: float, rng: random.Random) -> int:
+    return math.floor(x) + (1 if rng.random() < x - math.floor(x) else 0)
+
+
+def scale_trip(p: Persona, fx: ScenarioEffects, hour: int, seed: int) -> Persona:
+    """A trip sized from receipts (Persona.basket_size > 0), resized by the situation and the part of
+    the day (ScenarioPriors.size_ratio); its number of categories moves with it. Identity otherwise."""
+    size = fx.size * fx.hour_size.get(part_of_day(hour), 1.0)
+    if p.basket_size <= 0 or size == 1.0:
+        return p
+    rng = random.Random(stable_seed(seed, "trip-size"))
+    items = max(1, _stochastic_round(p.basket_size * size, rng))
+    update: dict[str, int] = {"basket_size": items}
+    if p.basket_kinds > 0:
+        update["basket_kinds"] = min(items, max(1, _stochastic_round(p.basket_kinds * size, rng)))
+    return p.model_copy(update=update)
+
+
 def part_of_day(hour: int) -> str:
     return "morning" if hour < 12 else "evening" if hour >= 17 else "midday"
 
@@ -131,6 +152,7 @@ def hour_effects(p: ScenarioPriors, fx: ScenarioEffects | None = None) -> Scenar
     fx = fx or ScenarioEffects()
     fx.hour_demand = {k: dict(v) for k, v in p.hour_demand.items()}
     fx.hour_need = {k.removeprefix("hour:"): dict(v) for k, v in p.need_ratio.items() if k.startswith("hour:")}
+    fx.hour_size = {k.removeprefix("hour:"): v for k, v in p.size_ratio.items() if k.startswith("hour:")}
     return fx
 
 
@@ -200,6 +222,7 @@ def compile_scenario(scenario: Scenario, priors: ScenarioPriors | None = None) -
     keys += [(f"event:{e.kind.value}", e.intensity) for e in scenario.events]
     for key, power in keys:
         _mul(fx.need, p.need_ratio.get(key, {}), power=power)
+        fx.size *= p.size_ratio.get(key, 1.0) ** power
     return hour_effects(p, fx)
 
 
@@ -316,7 +339,8 @@ def apply_to_store(store: Store, scenario: Scenario) -> tuple[Store, dict[str, f
 def apply_to_personas(
     personas: list[Persona], scenario: Scenario, effects: ScenarioEffects, *, seed: int, scale_traffic: bool = True,
 ) -> list[Persona]:
-    """Day filter, traffic scaling per hour (thinning / seeded clones) and budget scaling.
+    """Day filter, traffic scaling per hour (thinning / seeded clones) and budget scaling. (Trip size
+    is scaled per customer by the simulator: `scale_trip`.)
 
     Original personas keep their ids, so a scenario run stays paired with a baseline run on the
     same seed; clones get ids "<id>~s<k>".
@@ -327,9 +351,9 @@ def apply_to_personas(
         m = effects.traffic(p.arrival_hour) if scale_traffic else 1.0
         rng = random.Random(stable_seed(seed, "scenario-traffic", p.id))
         copies = math.floor(m) + (1 if rng.random() < m - math.floor(m) else 0)
-        budget = {}
+        update: dict[str, int] = {}
         if effects.budget != 1.0:
-            budget = {"budget_min": round(p.budget_min * effects.budget), "budget_max": round(p.budget_max * effects.budget)}
+            update = {"budget_min": round(p.budget_min * effects.budget), "budget_max": round(p.budget_max * effects.budget)}
         for k in range(copies):
-            out.append(p.model_copy(update={**budget, **({"id": f"{p.id}~s{k}"} if k else {})}))
+            out.append(p.model_copy(update={**update, **({"id": f"{p.id}~s{k}"} if k else {})}))
     return out

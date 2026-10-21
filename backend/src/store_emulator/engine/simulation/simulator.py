@@ -14,7 +14,7 @@ from store_emulator.domain.result import AggregatedResult, FailedCustomer
 from store_emulator.domain.runner import ProgressCallback
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import PathFinder, stable_seed
-from store_emulator.engine.scenario import compile_scenario, priors_for
+from store_emulator.engine.scenario import compile_scenario, hour_effects, priors_for, scale_trip
 from store_emulator.engine.validation import validate, clear_blocked_slots, log_cleared
 from .aggregator import aggregate
 from .customer_executor import execute_decision
@@ -127,8 +127,11 @@ class PerCustomerSimulationRunner:
         on_progress: ProgressCallback | None = None,
     ) -> tuple[AggregatedResult, list[CustomerResult]]:
         pathcalc_heatmap, entries, hourly_counts = self._validate_and_prepare(store, personas)
+        priors = priors_for(store.type, self.config.scenario_priors)
         if self.config.scenario is not None:   # situation effects follow the store's format
-            self._scenario = compile_scenario(self.config.scenario, priors_for(store.type, self.config.scenario_priors))
+            self._scenario = compile_scenario(self.config.scenario, priors)
+        # Trip size by situation and part of the day (receipt-sized trips only).
+        size_fx = self._scenario if self._scenario is not None else hour_effects(priors)
         prepare = getattr(self.engine, "prepare", None)
         if callable(prepare):
             prepare(store)
@@ -152,6 +155,7 @@ class PerCustomerSimulationRunner:
         async def simulate_one(entry: CustomerEntry, persona: Persona) -> CustomerResult | None:
             nonlocal completed
             customer_seed = stable_seed(run_seed, persona.id)
+            persona = scale_trip(persona, size_fx, entry.hour, customer_seed)
             cue = self.cue_sampler(random.Random(stable_seed(customer_seed, "cue")))
             async with semaphore:
                 reason = ""

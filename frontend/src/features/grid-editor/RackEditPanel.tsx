@@ -33,7 +33,7 @@ import { RackPreview } from "./RackPreview";
 // - counter : counter — branched via the design dropdown
 // - gate    : entrance / exit / both — branched via the gateConfig select
 //             (a single cell may hold both entrance + exit racks)
-type UiKind = "gate" | "rack" | "counter";
+type UiKind = "gate" | "rack" | "counter" | "table";
 
 // A cell may legitimately hold entrance + exit racks together (backend allows it).
 export type GateConfig = "entrance" | "exit" | "both";
@@ -92,6 +92,7 @@ function deriveUiState(racks: EditorRack[]): {
   }
   // Non-gate types assume a single rack at the cell.
   const rack = racks[0]!;
+  if (rack.type === "table") return { kind: "table", rackDesign: "shelf_a", counterDesign: "counter_a", gateConfig: "entrance" };
   const variant: "a" | "b" | "c" = rack.design_variant ?? "a";
   if (rack.type === "counter") {
     return {
@@ -181,10 +182,14 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
     const gateConfig: GateConfig = ui?.gateConfig ?? "entrance";
     const rotation: 0 | 90 | 180 | 270 = selectedRack?.rotation ?? 0;
 
-    const showNameAndDesign = kind === "rack" || kind === "counter";
+    const showNameAndDesign = kind === "rack" || kind === "counter" || kind === "table";
     const showGateConfig = kind === "gate";
 
     function handleKindChange(next: UiKind) {
+      if (next === "table") {
+        onChange({ type: "table", shape: [[1, 1], [1, 1]], slots: [], locked_faces: [], design_variant: "a" });
+        return;
+      }
       if (next === "gate") {
         // Entering gate mode — parent handles entrance/exit add/remove.
         // Default to entrance-only.
@@ -193,12 +198,12 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
       }
       if (next === "counter") {
         const opt = COUNTER_DESIGNS.find((d) => d.key === counterDesign) ?? COUNTER_DESIGNS[0]!;
-        onChange({ type: opt.type, design_variant: opt.design_variant });
+        onChange({ type: opt.type, shape: [[1]], design_variant: opt.design_variant });
         return;
       }
       // rack
       const opt = RACK_DESIGNS.find((d) => d.key === rackDesign) ?? RACK_DESIGNS[0]!;
-      onChange({ type: opt.type, design_variant: opt.design_variant });
+      onChange({ type: opt.type, shape: [[1]], design_variant: opt.design_variant });
     }
 
     function handleRackDesignChange(key: RackDesignKey) {
@@ -287,6 +292,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                 [
                   { key: "rack", label: "Rack" },
                   { key: "counter", label: "Counter" },
+                  { key: "table", label: "Dining table" },
                   { key: "gate", label: "Entrance/Exit" },
                 ] as const
               ).map(({ key, label }) => (
@@ -341,7 +347,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                   htmlFor="rack-name-input"
                   className="text-xs font-medium text-muted-foreground"
                 >
-                  {kind === "counter" ? "Counter name" : "Rack name"}
+                  {kind === "counter" ? "Counter name" : kind === "table" ? "Table name" : "Rack name"}
                 </label>
                 <Input
                   id="rack-name-input"
@@ -354,7 +360,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
+              {kind === "table" ? <p className="text-xs text-muted-foreground">2×2 cells, including four chairs. Furniture only; table service is not simulated.</p> : <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-muted-foreground">Design</span>
                 {kind === "rack" ? (
                   <Select
@@ -397,7 +403,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                     </SelectContent>
                   </Select>
                 )}
-              </div>
+              </div>}
 
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-muted-foreground">Rotation</span>

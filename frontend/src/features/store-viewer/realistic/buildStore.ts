@@ -8,7 +8,6 @@ import {
   CHEST_DIMS,
   COUNTER_DIMS,
   SPINE,
-  TABLE_DIMS,
   doorSide,
   frameFor,
   frameToWorld,
@@ -20,6 +19,7 @@ import {
 import { StaticBuilder, type MatKey } from "./staticBuilder";
 import { createSignAtlas, signKey, signText, type Atlas, type SignStyle } from "./canvasArt";
 import { cellUv } from "./atlasLayout";
+import { diningTableParts } from "./diningTable";
 
 export interface DoorSpec {
   key: string;
@@ -550,17 +550,14 @@ function buildCounter(ctx: Ctx, plan: FixturePlan) {
 
 function buildTable(ctx: Ctx, plan: FixturePlan) {
   const { b } = ctx;
-  const f = frameFor(plan, TABLE_DIMS.depth, "center");
-  const hw = f.width / 2;
-  const hd = f.depth / 2;
-  const H = TABLE_DIMS.height;
+  const ns = plan.front === "N" || plan.front === "S";
+  const f = frameFor(plan, ns ? plan.fp.d : plan.fp.w, "center");
   b.setFrame(f.ox, f.oz, f.yaw);
-  b.span("wood", -hw, H - 0.04, -hd, hw, H, hd);
-  b.span("wood", -hw, 0.12, -hd + 0.04, hw, 0.15, hd - 0.04);
-  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    b.span("metalGrey", x * hw - (x > 0 ? 0.04 : 0), 0, z * hd - (z > 0 ? 0.04 : 0), x * hw + (x < 0 ? 0.04 : 0), H - 0.04, z * hd + (z < 0 ? 0.04 : 0));
+  for (const part of diningTableParts(f.width, f.depth)) {
+    const [x, y, z] = part.position;
+    const [w, h, d] = part.size;
+    b.span(part.material, x - w / 2, y - h / 2, z - d / 2, x + w / 2, y + h / 2, z + d / 2);
   }
-  b.span("rail", -hw, H - 0.07, hd, hw, H - 0.02, hd + 0.01);
   ctx.decals.push({ x: f.ox, z: f.oz, w: f.width + 0.3, d: f.depth + 0.3, yaw: f.yaw, opacity: 0.4 });
 }
 
