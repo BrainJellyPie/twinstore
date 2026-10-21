@@ -312,6 +312,12 @@ class RuleBasedEngine:
                               why, force_browse=True)
         if not actions:
             return False
+        buy = actions[-1]
+        if plan.tolerance is not None and item.price > 0:
+            remaining = int(plan.budget * plan.tolerance) - plan.spend
+            buy.quantity = min(buy.quantity, max(0, remaining // item.price))
+            if buy.quantity == 0:
+                return False
         out.actions.extend(actions)
         out.buys += 1
         plan.chosen.add(item.sku)
@@ -417,6 +423,7 @@ class RuleBasedEngine:
                 quantity = 2 + (1 if rng.random() < multi else 0)
             if self._fx.quantity > 1.0 and rng.random() < self._fx.quantity - 1.0:
                 quantity += 1  # stocking up (typhoon, snow)
+        quantity = min(quantity, self._config.max_quantity_per_line)
         out: list[CustomerAction] = []
         params = self._config.engines.rule_based
         looks = force_browse or pattern.browse_required_before_buy or rng.random() < params.browse_before_buy_prob
