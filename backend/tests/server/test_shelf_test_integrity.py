@@ -109,3 +109,17 @@ def test_completed_shelf_images_survive_source_layout_changes(client, change):
         image = client.get(f"{url}/{arm}.png")
         assert image.status_code == 200
         assert image.content == original
+
+
+@pytest.mark.parametrize("invalid", ["target", "face"])
+def test_shelf_test_requires_target_on_visible_face(client, invalid):
+    store = client.get(f"/api/projects/{PID}/setups/{SID}").json()["store"]
+    rack = next(r for r in store["racks"] if r["id"] == BODY["rack_id"])
+    target_faces = {s["face"] for s in rack["slots"] if any(i["sku"] == BODY["target_sku"] for i in s["items"])}
+    face = next(f for f in "NSEW" if f not in target_faces)
+    request = {**BODY, "face": face}
+    if invalid == "target":
+        request["target_sku"] = "missing_product"
+    response = client.post(f"/api/projects/{PID}/shelf-tests", json=request)
+    assert response.status_code == 400, response.text
+    marketing.executor.submit.assert_not_called()

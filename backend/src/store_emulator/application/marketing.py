@@ -490,7 +490,7 @@ def _shelf_arms(pid: str, req: ShelfTestRequest | ShelfPreviewRequest, config: S
     test_rack = next(r for r in test_store.racks if r.id == req.rack_id)
     faces = {s.face for r in (rack, test_rack) for s in r.slots for i in s.items if not req.target_sku or i.sku == req.target_sku}
     face = Face(req.face) if req.face else (sorted(faces, key=lambda f: f.value)[0] if faces else None)
-    if face is None:
+    if face is None or (req.target_sku and face not in faces):
         raise AppError("the target product is on neither shelf: move it there or pick another rack", 400)
     return rack, test_rack, face, applied, warnings, currency
 
