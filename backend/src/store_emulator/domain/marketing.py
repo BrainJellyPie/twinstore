@@ -102,6 +102,7 @@ class SegmentLift(BaseModel):
 
 class VariantResult(BaseModel):
     name: str
+    customers: int | None = Field(default=None, ge=0)  # analyzed common cohort; unknown in older reports
     applied: list[str] = []           # what changed, in words
     warnings: list[str] = []
     revenue_per_visitor: float = 0.0
