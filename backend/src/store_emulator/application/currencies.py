@@ -6,10 +6,14 @@ from store_emulator.application.storage.setups import metadata_path
 from store_emulator.domain.store import Store
 
 
-def simulation_currency(pid: str, store: Store, fallback: str) -> str:
+def project_currency(pid: str, fallback: str) -> str:
     path = metadata_path(pid)
     meta: dict[str, object] = read_json(path) if path.exists() else {}
-    budget_currency = str(meta.get("currency") or fallback).upper()
+    return str(meta.get("currency") or fallback).upper()
+
+
+def simulation_currency(pid: str, store: Store, fallback: str) -> str:
+    budget_currency = project_currency(pid, fallback)
     if store.currency and store.currency != budget_currency:
         raise AppError(
             f"This layout uses {store.currency}, but project shopper budgets use {budget_currency}. "
