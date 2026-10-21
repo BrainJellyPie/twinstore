@@ -40,11 +40,12 @@ it("filters formats and sends selected requirements to the preview", async () =>
   fireEvent.change(screen.getByLabelText("Checkout counters"), { target: { value: "3" } });
   fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "away_from_entrance" } });
   fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "4" } });
+  fireEvent.change(screen.getByLabelText("Space around dining tables"), { target: { value: "2" } });
   fireEvent.change(screen.getByLabelText("Seating starts near"), { target: { value: "right" } });
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "28" } });
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
     expect.objectContaining({ template_id: "community_pharmacy", style: "showroom", checkouts: 3, width: 28,
-      checkout_placement: "away_from_entrance", dining_tables: 4, seating_zone: "right", shelf_direction: "vertical" }), expect.any(AbortSignal),
+      checkout_placement: "away_from_entrance", dining_tables: 4, table_clearance: 2, seating_zone: "right", shelf_direction: "vertical" }), expect.any(AbortSignal),
   ));
 });
 
@@ -61,6 +62,8 @@ it("does not request an invalid size and resets options without losing the brief
   expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Quiet corner");
   expect((screen.getByLabelText("Checkout placement") as HTMLSelectElement).value).toBe("auto");
   expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Space around dining tables") as HTMLSelectElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Space around dining tables") as HTMLSelectElement).value).toBe("1");
   expect((screen.getByLabelText("Interior shelf direction") as HTMLSelectElement).value).toBe("horizontal");
   await screen.findByRole("img", { name: "Floor plan preview" });
 });
@@ -95,6 +98,7 @@ it("shows each format's seating and checkout defaults without replacing explicit
   expect(screen.getByRole("option", { name: "Format default (center)" })).toBeTruthy();
   expect(screen.getByRole("option", { name: "Format default (near entrance)" })).toBeTruthy();
   expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).disabled).toBe(false);
+  expect((screen.getByLabelText("Space around dining tables") as HTMLSelectElement).disabled).toBe(false);
   fireEvent.change(screen.getByLabelText("Seating starts near"), { target: { value: "front" } });
   fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "away_from_entrance" } });
   fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));

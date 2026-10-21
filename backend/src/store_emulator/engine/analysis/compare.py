@@ -85,6 +85,7 @@ def compare_runs(
             ci_low=round(float(np.percentile(boot, lo_q)), 6),
             ci_high=round(float(np.percentile(boot, hi_q)), 6),
             prob_b_greater=round(float((boot > 0).mean()), 4),
+            prob_b_less=round(float((boot < 0).mean()), 4),
             sd_paired_diff=round(sd, 6),
             n_for_5pct_effect=required_n(sd, mean_a),
         ))

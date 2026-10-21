@@ -188,6 +188,13 @@ with clear circulation around it, appears in Classic and Realistic views, and ca
 be selected from any of its four cells in the floor editor. As with other fixtures,
 the existing floor-edit unlock step clears product placements before editing.
 
+Set **Space around dining tables** to one, two or three cells. The generator keeps
+that space free of other fixtures on every side of each dining group, including
+between tables and wall displays. More clearance reduces the number of tables
+that fit; default seating adapts, while explicit counts return an adjustment
+message if necessary. This setting uses grid cells and applies during generation;
+manual fixture movement checks bounds and overlap independently.
+
 Choose where seating starts: front/entrance side, back wall, left, right or center.
 Tables extend into neighboring space as their count increases, retaining their
 circulation space. Checkout counters can use the default arrangement or be placed
@@ -503,6 +510,9 @@ Exposed metal supports and frames use CC0 [ambientCG Metal 032](https://ambientc
 in High, with color, roughness and normal maps at a consistent authored scale.
 The storefront pavement uses Poly Haven's CC0 Pavement 02 scan in High, with
 world-space texture coordinates preserving its 2.12 m coverage across store sizes.
+High also replaces the entrance's simple planters with a reduced Poly Haven
+Potted Plant 01 model by Rico Cilliers (CC0), with textured leaves and terracotta.
+Sources and rebuild instructions are in [`frontend/public/assets/props/`](./frontend/public/assets/props/README.md).
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: six appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,

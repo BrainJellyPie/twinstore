@@ -426,9 +426,29 @@ def compare_project_runs(
     pid: str, run_a: str, run_b: str, *, n_bootstrap: int = 2000, seed: int = 0,
 ) -> ComparisonReport:
     """Paired comparison of two completed runs of the same project (B − A)."""
-    a = load_run_results(_completed_run_base(pid, run_a))
-    b = load_run_results(_completed_run_base(pid, run_b))
+    base_a = _completed_run_base(pid, run_a)
+    base_b = _completed_run_base(pid, run_b)
+    currencies: list[str] = []
+    for base in (base_a, base_b):
+        currency = "USD"
+        for relative_path in ("output/summary.json", "input/config.json", "input/store.json"):
+            path = base / relative_path
+            saved: dict[str, object] = read_json(path) if path.exists() else {}
+            value = saved.get("currency")
+            if isinstance(value, str) and value.strip():
+                currency = value.strip().upper()
+                break
+        currencies.append("USD" if currency == "USD_CENTS" else currency)
+    if currencies[0] != currencies[1]:
+        raise AppError(
+            f"These runs use different currencies ({currencies[0]} and {currencies[1]}). "
+            "Compare runs in the same currency; saved monetary values are not converted automatically.",
+            422,
+        )
+    a = load_run_results(base_a)
+    b = load_run_results(base_b)
     report = compare_runs(a, b, run_a=run_a, run_b=run_b, n_bootstrap=n_bootstrap, seed=seed)
+    report.notes.append(f"Spend values in both runs use {currencies[0]} minor units.")
     ma, mb = _manifest_or_empty(pid, run_a), _manifest_or_empty(pid, run_b)
     if ma and mb and (ma.get("seed"), ma.get("replicate")) != (mb.get("seed"), mb.get("replicate")):
         report.notes.append(
