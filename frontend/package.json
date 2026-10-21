@@ -71,6 +71,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@react-three/test-renderer": "9.1.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tanstack/router-plugin": "^1.167.22",
     "@testing-library/jest-dom": "^6.9.1",

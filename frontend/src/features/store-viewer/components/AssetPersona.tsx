@@ -234,7 +234,7 @@ export function AssetPersona({
         turn.rotation.y = facing;
         turnReady.current = true;
       } else {
-        turn.rotation.y += angleDelta(turn.rotation.y, facing) * (1 - Math.exp(-12 * Math.min(delta, 0.1)));
+        turn.rotation.y += angleDelta(turn.rotation.y, facing) * (1 - Math.exp(-12 * delta));
       }
     }
     if (!bounceRef.current) return;

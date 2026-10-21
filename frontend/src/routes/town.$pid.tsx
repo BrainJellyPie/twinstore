@@ -8,5 +8,5 @@ export const Route = createFileRoute("/town/$pid")({
 
 function TownRoute() {
   const { pid } = Route.useParams();
-  return <TownPage projectId={pid} />;
+  return <TownPage key={pid} projectId={pid} />;
 }
