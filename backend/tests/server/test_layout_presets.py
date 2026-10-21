@@ -69,7 +69,7 @@ def test_invalid_files_do_not_create_any_files(client, tmp_path, body, status):
 
 def test_building_file_keeps_floor_order_and_settings_without_source_links(client, tmp_path):
     floors = [
-        {"label": " Ground · Pharmacy ", "layout": preset(currency="KRW", source_setup_id="old_pharmacy")["layout"]},
+        {"label": " Ground · Pharmacy ", "layout": preset(currency="KRW", source_setup_id="old_pharmacy", excluded_categories=["wellness"])["layout"]},
         {"label": "Upstairs · Tea", "layout": preset(template_id="tea_lounge", dining_tables=4, design_theme="coastal",
             requirements="Quiet seating by the windows.", name="Old tea floor", currency="JPY")["layout"]},
     ]
@@ -81,6 +81,7 @@ def test_building_file_keeps_floor_order_and_settings_without_source_links(clien
     validated = response.json()["floors"]
     assert [f["label"] for f in validated] == ["Ground · Pharmacy", "Upstairs · Tea"]
     assert [f["layout"]["currency"] for f in validated] == ["KRW", "JPY"]
+    assert validated[0]["layout"]["excluded_categories"] == ["wellness"]
     assert all("source_setup_id" not in f["layout"] and "name" not in f["layout"] for f in validated)
     assert validated[1]["layout"]["requirements"] == "Quiet seating by the windows."
     write_json(tmp_path / ".data" / "proj_building" / "metadata.json", {"currency": "KRW", "name": "New building"})
@@ -92,6 +93,7 @@ def test_building_file_keeps_floor_order_and_settings_without_source_links(clien
         assert saved["building"]["label"] == validated[index]["label"]
         assert saved["building"]["level"] == index + 1
         assert saved["store"]["currency"] == validated[index]["layout"]["currency"]
+        assert saved["generation"]["excluded_categories"] == validated[index]["layout"]["excluded_categories"]
 
 
 @pytest.mark.parametrize("labels", [["One"], [str(i) for i in range(7)], ["Ground", " ground "], ["", "Tea"]])
