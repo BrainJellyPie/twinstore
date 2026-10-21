@@ -3,11 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { closePilot, createPilot, importPilot, pilotKeys, type PilotView } from "@/shared/api/fieldPilot";
+import { closePilot, createPilot, importPilot, pilotKeys, previewPilotPlan, type PilotPlanningResult, type PilotView } from "@/shared/api/fieldPilot";
 import type { PitchReport } from "@/shared/api/marketing";
 import { PilotBuilder, PilotResults } from "../FieldPilots";
 
-vi.mock("@/shared/api/fieldPilot", async (original) => ({ ...await original<typeof import("@/shared/api/fieldPilot")>(), createPilot: vi.fn(), importPilot: vi.fn(), closePilot: vi.fn() }));
+vi.mock("@/shared/api/fieldPilot", async (original) => ({ ...await original<typeof import("@/shared/api/fieldPilot")>(), createPilot: vi.fn(), importPilot: vi.fn(), closePilot: vi.fn(), previewPilotPlan: vi.fn() }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const source: PitchReport = {
@@ -28,6 +28,19 @@ function result(): PilotView {
 let qc: QueryClient;
 beforeEach(() => { qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); });
 function wrapper({ children }: { children: React.ReactNode }) { return <QueryClientProvider client={qc}>{children}</QueryClientProvider>; }
+
+function planningResult(counts = [100]): PilotPlanningResult {
+  const total = counts.reduce((a, b) => a + b, 0);
+  return { method: "hoeffding-fixed-v1", assumptions: { minimum_effect: 0.2, target_power: 0.8, eligible_per_day: 30, available_days: 14 },
+    block_counts: counts, planned_encounters: total, required_encounters: 510, planned_power_lower_bound: total >= 510 ? 0.8 : 0,
+    planned_ci_half_width: 0.272, planned_days: Math.ceil(total / 30), required_days: 17, suggested_block_counts: [510], notes: ["Planning assumptions only."] };
+}
+function enterPlanning() {
+  fireEvent.click(screen.getByLabelText("Plan sample size and duration"));
+  fireEvent.change(screen.getByLabelText("Minimum effect (percentage points)"), { target: { value: "20" } });
+  fireEvent.change(screen.getByLabelText("Eligible encounters per operating day"), { target: { value: "30" } });
+  fireEvent.change(screen.getByLabelText("Available operating days"), { target: { value: "14" } });
+}
 
 describe("field pilot planning", () => {
   it("saves a precommitted staff/shift plan from the selected script snapshot", async () => {
@@ -98,5 +111,75 @@ describe("observed field results", () => {
     expect(screen.getByText(/conservative 95% interval/)).toBeTruthy();
     expect(screen.queryByLabelText("Import full observation sheet")).toBeNull();
     expect(screen.queryByRole("button", { name: "Close and lock pilot" })).toBeNull();
+  });
+});
+
+describe("sample size and feasibility", () => {
+  it("calculates, applies even counts and saves assumptions with the actual design", async () => {
+    vi.mocked(previewPilotPlan).mockImplementation(async (_p, _a, counts) => planningResult(counts));
+    vi.mocked(createPilot).mockResolvedValue(result());
+    render(<PilotBuilder projectId="p" source={source} onCreated={vi.fn()} />, { wrapper });
+    fireEvent.change(screen.getByLabelText("Eligible encounters"), { target: { value: "First eligible encounter" } });
+    enterPlanning();
+    expect(await screen.findByText(/current sample does not meet/)).toBeTruthy();
+    expect(screen.getByText("The required sample exceeds the available operating days.")).toBeTruthy();
+    expect(previewPilotPlan).toHaveBeenCalledWith("p", planningResult().assumptions, [100], expect.any(AbortSignal));
+    fireEvent.click(screen.getByRole("button", { name: "Use recommended counts evenly across these blocks" }));
+    expect((screen.getByLabelText("Planned encounters 1") as HTMLInputElement).value).toBe("510");
+    expect(await screen.findByText(/current sample meets/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save fixed pilot plan" }));
+    await waitFor(() => expect(createPilot).toHaveBeenCalledWith("p", "pit_test", expect.objectContaining({
+      planning: planningResult().assumptions, blocks: [{ staff_id: "staff_1", shift_id: "shift_1", encounters: 510 }],
+    })));
+  });
+
+  it("hides stale calculations after editing assumptions and blocks invalid planning inputs", async () => {
+    vi.mocked(previewPilotPlan).mockResolvedValue(planningResult());
+    render(<PilotBuilder projectId="p" source={source} onCreated={vi.fn()} />, { wrapper });
+    fireEvent.change(screen.getByLabelText("Eligible encounters"), { target: { value: "Each customer once" } });
+    enterPlanning();
+    await screen.findByText(/Required for the target:/);
+    fireEvent.change(screen.getByLabelText("Minimum effect (percentage points)"), { target: { value: "" } });
+    expect(screen.queryByText(/Required for the target:/)).toBeNull();
+    expect((screen.getByRole("button", { name: "Save fixed pilot plan" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText("Plan sample size and duration"));
+    expect((screen.getByRole("button", { name: "Save fixed pilot plan" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("does not show a capped sufficient sample when requirements exceed capacity", async () => {
+    vi.mocked(previewPilotPlan).mockResolvedValue({ ...planningResult(), required_encounters: 50000, required_days: 1667, suggested_block_counts: null });
+    render(<PilotBuilder projectId="p" source={source} onCreated={vi.fn()} />, { wrapper });
+    enterPlanning();
+    expect(await screen.findByText(/No smaller sample is presented as sufficient/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use recommended counts evenly across these blocks" })).toBeNull();
+  });
+
+  it("does not retain an old recommendation while a changed valid assumption is calculating", async () => {
+    vi.mocked(previewPilotPlan).mockResolvedValueOnce(planningResult()).mockImplementation(() => new Promise(() => {}));
+    render(<PilotBuilder projectId="p" source={source} onCreated={vi.fn()} />, { wrapper });
+    enterPlanning();
+    await screen.findByText(/Required for the target:/);
+    fireEvent.change(screen.getByLabelText("Minimum effect (percentage points)"), { target: { value: "5" } });
+    expect(screen.getByText("Calculating sample requirements…")).toBeTruthy();
+    expect(screen.queryByText(/Required for the target:/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use recommended counts evenly across these blocks" })).toBeNull();
+  });
+
+  it("shows the saved assessment without offering to resize a collecting pilot", () => {
+    const view = result(); view.pilot.planning = planningResult();
+    view.pilot.planning.planned_power_lower_bound = 0.999999999;
+    render(<PilotResults projectId="p" view={view} />, { wrapper });
+    expect(screen.getByText("Saved sample planning assessment")).toBeTruthy();
+    expect(screen.getByText(/Planning assumptions: 20.0 pp/)).toBeTruthy();
+    expect(screen.getByText(/at least 99.9% power/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use recommended counts evenly across these blocks" })).toBeNull();
+  });
+
+  it("surfaces a failed planning request instead of showing a result", async () => {
+    vi.mocked(previewPilotPlan).mockRejectedValue(new Error("Project not found"));
+    render(<PilotBuilder projectId="p" source={source} onCreated={vi.fn()} />, { wrapper });
+    enterPlanning();
+    expect((await screen.findByRole("alert")).textContent).toBe("Project not found");
+    expect(screen.queryByText(/Required for the target:/)).toBeNull();
   });
 });

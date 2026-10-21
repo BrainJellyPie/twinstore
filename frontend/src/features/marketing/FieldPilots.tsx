@@ -8,6 +8,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { formatMoney } from "@/shared/utils/money";
+import { PilotPlanner, PilotPlanningSummary } from "./PilotPlanner";
+import { emptyPlanningInputs, planningAssumptions } from "./pilotPlanning";
 
 const percent = (n: number | null) => n == null ? "Unknown" : `${(n * 100).toFixed(1)}%`;
 const points = (n: number | null) => n == null ? "Not available" : `${n > 0 ? "+" : ""}${(n * 100).toFixed(1)} pp`;
@@ -44,13 +46,16 @@ export function PilotBuilder({ projectId, source, onCreated }: { projectId: stri
   const [window, setWindow] = useState("Purchase of the target SKU before this store visit ends.");
   const [seed, setSeed] = useState("1");
   const [blocks, setBlocks] = useState([{ staff_id: "staff_1", shift_id: "shift_1", encounters: "100" }]);
+  const [planningInputs, setPlanningInputs] = useState(emptyPlanningInputs);
+  const planning = planningAssumptions(planningInputs);
   const total = blocks.reduce((n, b) => n + Number(b.encounters), 0);
   const aliases = /^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/;
   const valid = name.trim() && eligibility.trim() && window.trim() && seed.trim() && Number.isInteger(Number(seed)) && Number(seed) >= 0 && Number(seed) <= 2_147_483_647
+    && (!planningInputs.enabled || !!planning)
     && total >= 40 && total <= 10000 && new Set(blocks.map((b) => `${b.staff_id}:${b.shift_id}`)).size === blocks.length
     && blocks.every((b) => aliases.test(b.staff_id) && aliases.test(b.shift_id) && Number.isInteger(Number(b.encounters)) && Number(b.encounters) >= 4 && Number(b.encounters) <= 2000 && Number(b.encounters) % 2 === 0);
   const create = useMutation({
-    mutationFn: () => createPilot(projectId, source.pitch_id, { name: name.trim(), eligibility: eligibility.trim(), outcome_window: window.trim(), seed: Number(seed), blocks: blocks.map((b) => ({ ...b, encounters: Number(b.encounters) })) }),
+    mutationFn: () => createPilot(projectId, source.pitch_id, { name: name.trim(), eligibility: eligibility.trim(), outcome_window: window.trim(), seed: Number(seed), blocks: blocks.map((b) => ({ ...b, encounters: Number(b.encounters) })), planning }),
     onSuccess: async (result) => {
       qc.setQueryData(pilotKeys.detail(projectId, result.pilot.pilot_id), result);
       await qc.invalidateQueries({ queryKey: pilotKeys.list(projectId) });
@@ -71,7 +76,8 @@ export function PilotBuilder({ projectId, source, onCreated }: { projectId: stri
     <div className="flex gap-2"><Button type="button" variant="outline" size="sm" disabled={blocks.length >= 30} onClick={() => setBlocks([...blocks, { staff_id: `staff_${blocks.length + 1}`, shift_id: "shift_1", encounters: "100" }])}><Plus className="size-4" /> Add staff/shift</Button>
       {blocks.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => setBlocks(blocks.slice(0, -1))}>Remove last block</Button>}</div>
     <label className="block max-w-48 space-y-1 text-sm">Allocation seed<Input type="number" min={0} max={2_147_483_647} step={1} value={seed} onChange={(e) => setSeed(e.target.value)} required /></label>
-    <p className="text-xs text-muted-foreground">Target: {Number.isFinite(total) ? total : "—"} encounters. Choose sample size before collecting data; this is not a power calculation. The saved plan cannot be edited. Use assignments in sequence without inspecting future arms or selecting customers by arm.</p>
+    <PilotPlanner projectId={projectId} inputs={planningInputs} onChange={setPlanningInputs} counts={blocks.map((b) => Number(b.encounters))} onApply={(counts) => setBlocks(blocks.map((b, i) => ({ ...b, encounters: String(counts[i]) })))} />
+    <p className="text-xs text-muted-foreground">Target: {Number.isFinite(total) ? total : "—"} encounters. Choose sample size before collecting data. The saved plan cannot be edited. Use assignments in sequence without inspecting future arms or selecting customers by arm.</p>
     {create.error && <p role="alert" className="text-sm text-destructive">{create.error.message}</p>}
     <Button type="submit" disabled={!valid || create.isPending}>Save fixed pilot plan</Button>
   </form>;
@@ -127,6 +133,7 @@ export function PilotResults({ projectId, view }: { projectId: string; view: Pil
         <tbody>{a.blocks.map((b) => <tr key={`${b.staff_id}:${b.shift_id}`}><td className="py-1">{b.staff_id} / {b.shift_id}</td><td>{b.a.enrolled}/{b.a.planned}</td><td>{b.b.enrolled}/{b.b.planned}</td><td>{points(b.observed_diff)}</td></tr>)}</tbody>
       </table></div>
     </details>
+    {p.planning && <details><summary className="cursor-pointer text-sm font-semibold">Saved sample planning assessment</summary><div className="mt-2"><PilotPlanningSummary plan={p.planning} /></div></details>}
     <details><summary className="cursor-pointer text-sm font-semibold">Method and limitations</summary><ul className="mt-2 list-disc space-y-2 pl-5 text-xs text-muted-foreground">{a.notes.map((n) => <li key={n}>{n}</li>)}</ul></details>
   </div>;
 }

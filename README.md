@@ -158,6 +158,17 @@ default palette; each building floor can use a different one. The preview uses t
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
+Use **Keep areas clear → Add reserved area** to leave up to eight named rectangles
+open for consultation, pickup, events or later customization. Set their starting
+column and row (counting from 1 at the back-left corner), width and depth. Areas
+must fit inside the outer wall cells, where the template keeps its doors and wall
+fixtures. The preview marks reserved space with dashed outlines; generated shelves
+and tables avoid it. Default seating adapts to the remaining space; an explicit
+table count that no longer fits returns an adjustment message. Areas remain
+walkable and do not add rooms or service behavior. Settings are saved and restored
+for single layouts and building floors; subsequent manual floor edits can use the
+space freely.
+
 To iterate on a generated layout, open **New layout → Generate a store from a
 template → Reuse options from …**. This restores its format, dimensions, style,
 seating, currency, seed and design brief. Save a changed version as a linked
@@ -275,6 +286,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   refusals in their assigned arm and keep unknown outcomes distinct from nonbuyers. Close collection to lock the
   records. A complete planned sample receives a conservative 95% conversion-difference interval; early closure
   stays descriptive. The Field pilots tab keeps these records accessible independently of the synthetic test.
+  Before saving, **Plan sample size and duration** compares your minimum worthwhile conversion difference and
+  daily eligible traffic with conservative sample requirements. It flags capacity/time shortfalls and saves the
+  assumptions with the fixed plan, without using virtual shoppers as a conversion baseline.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
