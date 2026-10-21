@@ -20,7 +20,7 @@ from store_emulator.engine.validation import validate
 
 
 @pytest.mark.parametrize("template_id", [t.id for t in TEMPLATES])
-@pytest.mark.parametrize("currency", ["USD", "KRW"])
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
 def test_every_template_is_valid(template_id, currency):
     store = generate_store(template_id, seed=3, currency=currency)
     assert not [i for i in validate(store) if i.severity == "error"]
@@ -31,6 +31,8 @@ def test_every_template_is_valid(template_id, currency):
         assert all(i.price % 100 == 0 for i in items)
         assert all(r.rack_name.startswith(category_label(r.rack_desc, currency))
                    for r in store.product_racks)
+    elif currency == "JPY":
+        assert all(item.price % 10 == 0 for item in items)
     # Same product on several faces is one SKU (extra facings), never a renamed duplicate.
     names = {}
     for i in items:
@@ -177,3 +179,32 @@ def test_checkout_placement_uses_distance_from_the_actual_entrance(entrance):
     door_x = near.entrances[0].position[0]
     assert abs(near.counters[0].position[0] - door_x) < abs(far.counters[0].position[0] - door_x)
     assert validate(near) == validate(far) == []
+
+
+@pytest.mark.parametrize("template_id,tables,design", [
+    ("family_restaurant", 8, "warm"), ("neighborhood_bistro", 6, "luxury"),
+    ("takeaway_coffee", 0, "industrial"), ("tea_lounge", 6, "botanical"),
+    ("artisan_bakery", 2, "warm"), ("vintage_boutique", 0, "warm"),
+    ("hardware_store", 0, "industrial"), ("toy_hobby_store", 0, "minimal"),
+])
+def test_specialty_formats_have_distinct_defaults_that_users_can_override(template_id, tables, design):
+    store = generate_store(template_id)
+    assert store.design_theme == design
+    assert sum(r.type == "table" for r in store.racks) == tables
+    assert validate(store) == []
+    custom = generate_store(template_id, options=LayoutOptions(design_theme="classic", dining_tables=1,
+                            seating_zone="front", checkout_placement="away_from_entrance"))
+    assert custom.design_theme == "classic"
+    assert sum(r.type == "table" for r in custom.racks) == 1
+    assert validate(custom) == []
+
+
+def test_new_format_defaults_apply_actual_positions_and_specialty_products():
+    cafe = generate_store("tea_lounge")
+    tables = [rack for rack in cafe.racks if rack.type == "table"]
+    assert tables[0].position[0] > cafe.grid_size[0] / 2
+    assert any(rack.rack_desc == "tea_menu" for rack in cafe.product_racks)
+    assert any(rack.rack_desc == "hardware" for rack in generate_store("hardware_store").product_racks)
+    assert any(rack.rack_desc == "toys_hobbies" for rack in generate_store("toy_hobby_store").product_racks)
+    assert generate_store("vintage_boutique").design_theme != generate_store("fashion_boutique").design_theme
+    assert generate_store("takeaway_coffee").counters[0].position[0] == 1

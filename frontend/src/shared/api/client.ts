@@ -1310,6 +1310,8 @@ export interface StoreTemplate {
   default_style: NonNullable<LayoutOptions["style"]>;
   default_design: StoreDesign;
   default_dining_tables: number;
+  default_seating_zone?: LayoutOptions["seating_zone"];
+  default_checkout_placement?: LayoutOptions["checkout_placement"];
 }
 
 export interface LayoutOptions {
