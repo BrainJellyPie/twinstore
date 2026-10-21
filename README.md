@@ -287,6 +287,13 @@ list; an invalid floor leaves your configuration intact. The new building keeps
 the name entered in the form and receives new floor identities when saved.
 Single-floor and whole-building files have separate import controls.
 
+**Review all floors** shows every proposed floor at the same cell scale, with
+individual dimensions, palettes, currencies, seating and checkout counts. A
+summary totals floor cells, tables, seats and checkouts once all previews are
+ready. Invalid floors show their own errors; **Edit floor** returns directly to
+that floor's settings. Reviewing, expanding or downloading these plans does not
+create the building or replace any options.
+
 While configuring a building floor, **Apply design to all floors** copies its
 current interior palette across the building, including the resolved palette
 when the selected floor uses its format default. **Apply currency to all floors**
