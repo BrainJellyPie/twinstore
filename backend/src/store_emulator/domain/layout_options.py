@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-type LayoutStyle = Literal["aisles", "loop", "spine", "free_flow", "perimeter", "showroom"]
+type LayoutStyle = Literal["aisles", "loop", "spine", "cross", "free_flow", "perimeter", "showroom"]
 type LayoutDensity = Literal["spacious", "balanced", "dense"]
 type EntrancePosition = Literal["left", "center", "right"]
 type ExitPosition = Literal["shared", "left", "center", "right"]

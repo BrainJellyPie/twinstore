@@ -73,6 +73,17 @@ it("starts a family essentials center with baby supplies, footwear and dining", 
   expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
 });
 
+it("starts garden, crafts and cafe floors with the project's currency", () => {
+  render(<Building currency="JPY" />);
+  fireEvent.click(screen.getByRole("button", { name: "Garden, crafts & café" }));
+  expect(screen.getByText("garden_center / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /2F · Level 2 · Arts & crafts/ }));
+  expect(screen.getByText("art_craft_store / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /3F · Level 3 · Café/ }));
+  expect(screen.getByText("specialty_cafe / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+});
+
 it("moves and duplicates a customized floor without losing its settings", () => {
   render(<Building />);
   fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));

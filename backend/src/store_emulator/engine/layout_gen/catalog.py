@@ -169,6 +169,18 @@ _SPECIALTY: dict[str, list[tuple[str, int]]] = {
         ("Luggage Strap", 999), ("Refillable Travel Bottles 4pk", 1299), ("Compact Travel Umbrella", 1699),
         ("Travel Eye Mask", 899), ("Foldable Day Bag", 1999), ("Compact Toiletry Pouch", 1499),
     ],
+    "garden_supplies": [
+        ("Potting Mix 10L", 899), ("Vegetable Seed Pack", 299), ("Wildflower Seed Pack", 349),
+        ("Seedling Tray", 599), ("Terracotta Pot 20cm", 1299), ("Watering Can 5L", 1999),
+        ("Garden Hand Trowel", 999), ("Pruning Shears", 1799), ("Gardening Gloves", 899),
+        ("Plant Support Stakes 6pk", 749), ("Plant Labels 20pk", 449), ("Garden Hose Nozzle", 1499),
+    ],
+    "art_craft": [
+        ("Watercolor Paint Set", 1999), ("Acrylic Paint Set", 2499), ("Paint Brush Set", 1499),
+        ("Sketch Pad A4", 899), ("Drawing Pencils 12pk", 1299), ("Canvas Panel 30cm", 999),
+        ("Air-Dry Clay 1kg", 1199), ("Embroidery Starter Kit", 1799), ("Cotton Yarn Ball", 599),
+        ("Craft Cutting Mat", 1999), ("Paper Craft Pack", 799), ("Washable Craft Glue", 499),
+    ],
 }
 for _category, _products in _SPECIALTY.items():
     CATALOG[_category] = [CatalogItem(name, name, price) for name, price in _products]
