@@ -205,6 +205,8 @@ export const BUILDING_PRESETS = [
   { id: "world_dining", name: "Mediterranean & Mexican dining", floors: [["Ground · Mediterranean deli", "mediterranean_deli"], ["Level 2 · Mexican cantina", "mexican_cantina"]] },
   { id: "creative_beauty", name: "Creative & beauty center", floors: [["Ground · Art supplies", "art_supply_warehouse"], ["Level 2 · Beauty outlet", "beauty_outlet"]] },
   { id: "curry_pho", name: "Curry, pho & coffee", floors: [["Ground · Indian dining", "indian_curry_house"], ["Level 2 · Vietnamese café", "vietnamese_cafe"]] },
+  { id: "active_living", name: "Pets & outdoor living", floors: [["Ground · Pet supplies", "pet_superstore"], ["Level 2 · Sports & camping", "sports_outlet"]] },
+  { id: "thai_turkish", name: "Thai dining & Turkish café", floors: [["Ground · Thai dining", "thai_kitchen"], ["Level 2 · Turkish café", "turkish_cafe"]] },
 ] as const;
 
 export function buildingPreset(id: string, currency = "USD"): BuildingFloorChoice[] {

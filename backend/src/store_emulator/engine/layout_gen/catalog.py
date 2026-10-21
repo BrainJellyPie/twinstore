@@ -295,6 +295,30 @@ _SPECIALTY: dict[str, list[tuple[str, int]]] = {
         ("Tofu Vermicelli Bowl", 1199), ("Fresh Summer Rolls 2pc", 699), ("Crispy Spring Rolls 3pc", 649),
         ("Vietnamese Iced Coffee", 499), ("Lemongrass Iced Tea", 449), ("Coconut Rice Pudding Cup", 499),
     ],
+    "pet_accessories": [
+        ("Adjustable Dog Harness", 1999), ("Retractable Dog Leash", 1799), ("Reflective Pet Collar", 999),
+        ("Cat Scratching Pad", 1499), ("Foldable Pet Carrier", 3499), ("Stainless Pet Bowl", 1299),
+        ("Pet Grooming Brush", 899), ("Pet Nail Clippers", 799), ("Washable Pet Bed", 3999),
+        ("Pet Waste Bags 60pk", 699), ("Puzzle Treat Feeder", 1599), ("Collapsible Travel Pet Bowl", 999),
+    ],
+    "outdoor_gear": [
+        ("Compact Camping Lantern", 2499), ("Foldable Camp Chair", 3999), ("Lightweight Daypack", 4999),
+        ("Trekking Pole Pair", 3499), ("Insulated Picnic Bag", 2999), ("Camping Cookware Set", 4499),
+        ("Dry Bag 10L", 1999), ("Hiking Compass", 1299), ("Emergency Rain Poncho", 899),
+        ("Reflective Trail Vest", 1999), ("Camping Mug", 1299), ("Microfiber Travel Towel", 1499),
+    ],
+    "thai_menu": [
+        ("Chicken Pad Thai Bowl", 1399), ("Tofu Pad Thai Bowl", 1299), ("Thai Green Curry Bowl", 1499),
+        ("Thai Red Curry Bowl", 1499), ("Basil Chicken Rice Bowl", 1399), ("Pineapple Fried Rice Bowl", 1299),
+        ("Tom Yum Soup Cup", 799), ("Thai Spring Rolls 3pc", 649), ("Satay Chicken Skewers 3pc", 899),
+        ("Mango Sticky Rice", 699), ("Thai Iced Tea", 499), ("Coconut Iced Coffee", 549),
+    ],
+    "turkish_menu": [
+        ("Chicken Doner Wrap", 1199), ("Falafel Doner Wrap", 1099), ("Lamb Kofte Plate", 1599),
+        ("Spinach Gozleme", 999), ("Cheese Pide", 1299), ("Red Lentil Soup Cup", 699),
+        ("Bulgur Pilaf Bowl", 899), ("Baklava 3pc", 649), ("Simit Bread", 399),
+        ("Turkish Coffee Cup", 399), ("Apple Tea Cup", 449), ("Ayran Yogurt Drink", 449),
+    ],
 }
 for _category, _products in _SPECIALTY.items():
     CATALOG[_category] = [CatalogItem(name, name, price) for name, price in _products]

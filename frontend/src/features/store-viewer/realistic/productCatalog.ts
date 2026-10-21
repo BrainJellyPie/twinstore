@@ -99,9 +99,14 @@ const RULES: Rule[] = [
   [/^mini milk tea tasting set$/, () => spec("box", 0.18, 0.12, 0.1, "drink")],
   [/^(?:classic pearl milk tea|brown sugar pearl milk|taro milk tea|matcha pearl latte|thai milk tea|jasmine milk tea|mango fruit tea|passion fruit green tea|peach oolong tea|lychee coconut jelly tea|oat milk pearl tea)(?:\s+\d+(?:\.\d+)?\s*(?:ml|oz))?$/,
     () => spec("teaCup", 0.095, 0.23, 0.095, "drink")],
-  [/^(?:mango lassi|vietnamese iced coffee|lemongrass iced tea|iced mocha)$/,
+  [/^(?:mango lassi|vietnamese iced coffee|lemongrass iced tea|iced mocha|thai iced tea|coconut iced coffee)$/,
     () => spec("teaCup", 0.095, 0.23, 0.095, "drink")],
-  [/^masala chai cup$/, () => spec("cup", 0.085, 0.11, 0.085, "drink")],
+  [/^(?:masala chai cup|apple tea cup)$/, () => spec("cup", 0.085, 0.11, 0.085, "drink")],
+  [/^turkish coffee cup$/, () => spec("cup", 0.065, 0.075, 0.065, "drink")],
+  [/^ayran yogurt drink$/, () => spec("cup", 0.09, 0.13, 0.09, "drink")],
+  // Empty pet bowls and camping drinkware are merchandise, not prepared meals.
+  [/^(?:stainless pet bowl|collapsible travel pet bowl|pet feeding bowl)$/, () => spec("cup", 0.12, 0.055, 0.12, "other")],
+  [/^camping mug$/, () => spec("cup", 0.085, 0.1, 0.085, "other")],
   // Garden tools must precede beverage-can and water-bottle rules.
   [/^(?:(?:metal|galvanized)\s+)?watering can(?:\s+5\s*l)?$/,
     () => spec("wateringCan", 0.45233607, 0.19681853, 0.19101861, "other")],

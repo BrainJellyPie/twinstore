@@ -22,6 +22,8 @@ vi.mock("../components/TemplatePicker", () => ({
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
 it.each([
+  ["Pets & outdoor living", "pet_superstore", "2F · Level 2 · Sports & camping", "sports_outlet"],
+  ["Thai dining & Turkish café", "thai_kitchen", "2F · Level 2 · Turkish café", "turkish_cafe"],
   ["Creative & beauty center", "art_supply_warehouse", "2F · Level 2 · Beauty outlet", "beauty_outlet"],
   ["Curry, pho & coffee", "indian_curry_house", "2F · Level 2 · Vietnamese café", "vietnamese_cafe"],
   ["Commuter shopping & lunch", "station_food_market", "2F · Level 2 · Office cafeteria", "office_cafeteria"],
