@@ -41,7 +41,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 import { RestockPlanner } from "./RestockPlanner";
 
 import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
@@ -59,12 +59,6 @@ const PROMOS = ["1+1", "2+1", "SALE", "-30%", "NEW"];
 
 const editsKey = (pid: string, cid: string) => ["projects", pid, "captures", cid, "edits"] as const;
 const jobsKey = (pid: string, cid: string) => ["projects", pid, "captures", cid, "lab-jobs"] as const;
-
-function toMinor(text: string, currency: string): number | null {
-  const v = Number(text.replace(/[^0-9.]/g, ""));
-  if (!text.trim() || Number.isNaN(v)) return null;
-  return currency === "KRW" || currency === "JPY" ? Math.round(v) : Math.round(v * 100);
-}
 
 function describe(edit: PhotoEdit, names: Map<string, string>): string {
   const t = names.get(edit.item_id) ?? edit.item_id;
@@ -189,9 +183,9 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
       case "duplicate":
         return { ...base, other_id: draft.other ?? "" };
       case "replace":
-        return { ...base, name: name.trim() || "New product", price: toMinor(price, result.currency), asset_id: assetId };
+        return { ...base, name: name.trim() || "New product", price: toMinor(price, minorUnitDivisor(result.currency)), asset_id: assetId };
       case "price": {
-        const p = toMinor(price, result.currency);
+        const p = toMinor(price, minorUnitDivisor(result.currency));
         return p == null ? null : { ...base, price: p };
       }
       case "promo":
