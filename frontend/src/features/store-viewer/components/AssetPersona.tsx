@@ -184,12 +184,13 @@ function CharacterMesh({ url, animName, realistic, personaId, walkSpeed }: Chara
     const action = actions[animName];
     if (!action) return;
     const previous = previousAction.current;
+    const paused = realistic && !usePlaybackControlStore.getState().playing;
+    // A previous cross-fade can still contain older actions. A paused seek
+    // must remove every contributor before applying the newly selected pose.
+    if (paused) mixer.stopAllAction();
     action.reset().stopFading().setEffectiveWeight(1).play();
     if (realistic) action.time = action.getClip().duration * characterAnimationPhase(personaId);
-    if (previous && previous !== action) {
-      if (!realistic || usePlaybackControlStore.getState().playing) action.crossFadeFrom(previous, 0.15, false);
-      else previous.stop();
-    }
+    if (previous && previous !== action && !paused) action.crossFadeFrom(previous, 0.15, false);
     // A paused mixer cannot advance a fade from zero weight. Apply the first
     // pose immediately so newly loaded shoppers never remain in their bind pose.
     mixer.update(0);

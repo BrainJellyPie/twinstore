@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
@@ -31,11 +31,24 @@ function SimulationPage() {
 }
 
 function SimulationPageInner({ pid }: { pid: string }) {
+  const router = useRouter();
+  const content = useRef<HTMLDivElement>(null);
+  const navigationFocus = useRef<{ element: HTMLElement; source: "tab" | "finder" } | null>(null);
   const project = useProject(pid).data;
   const layoutsQuery = useLayouts(pid);
   const layouts = layoutsQuery.data;
   const selectedSetupId = useSimulationStore((s) => s.selectedSetupId);
   const switchLayout = useSwitchLayout();
+  const layoutMounted = useCallback((id: string) => {
+    const previous = navigationFocus.current;
+    if (!previous || previous.element.isConnected) return;
+    navigationFocus.current = null;
+    if (document.activeElement !== document.body || router.state.location.pathname.replace(/\/$/, "") !== `/projects/${pid}`) return;
+    const target = previous.source === "tab"
+      ? Array.from(content.current?.querySelectorAll<HTMLButtonElement>("[data-layout-id]") ?? []).find(tab => tab.dataset.layoutId === id)
+      : content.current?.querySelector<HTMLButtonElement>("[data-layout-finder-trigger]");
+    target?.focus();
+  }, [pid, router]);
   const effectiveSetupId = layouts?.some((layout) => layout.id === selectedSetupId)
     ? selectedSetupId
     : layouts?.[0]?.id;
@@ -76,7 +89,19 @@ function SimulationPageInner({ pid }: { pid: string }) {
         inner state. fallback=null works with startTransition so the previous content
         stays visible until the transition completes.
       */}
-      <Suspense fallback={null}>
+      <div ref={content} className="contents"
+        onFocusCapture={(event) => {
+          const target = event.target;
+          const source = target.hasAttribute("data-layout-id") ? "tab"
+            : target.hasAttribute("data-layout-finder-result") || target.hasAttribute("data-layout-finder-trigger") ? "finder" : null;
+          navigationFocus.current = source ? { element: target, source } : null;
+        }}
+        onBlurCapture={(event) => {
+          const next = event.relatedTarget;
+          // Suspense hides the old view before replacement, which also blurs its focused tab.
+          if (!next && typeof event.target.checkVisibility === "function" && !event.target.checkVisibility()) return;
+          if (!(next instanceof HTMLElement) || !next.matches("[data-layout-id],[data-layout-finder-result],[data-layout-finder-trigger]")) navigationFocus.current = null;
+        }}><Suspense fallback={null}>
         <SimulationPageContent
           key={effectiveSetupId}
           pid={pid}
@@ -84,9 +109,10 @@ function SimulationPageInner({ pid }: { pid: string }) {
           effectiveSetupId={effectiveSetupId}
           layouts={layouts}
           onLayoutSelect={switchLayout}
+          onLayoutMounted={layoutMounted}
           onAddLayout={() => setAddLayoutOpen(true)}
         />
-      </Suspense>
+      </Suspense></div>
       <AddLayoutDialog
         open={addLayoutOpen}
         onOpenChange={setAddLayoutOpen}
@@ -105,6 +131,7 @@ interface SimulationPageContentProps {
   effectiveSetupId: string;
   layouts: Layout[];
   onLayoutSelect: (id: string) => void;
+  onLayoutMounted: (id: string) => void;
   onAddLayout: () => void;
 }
 
@@ -114,6 +141,7 @@ function SimulationPageContent({
   effectiveSetupId,
   layouts,
   onLayoutSelect,
+  onLayoutMounted,
   onAddLayout,
 }: SimulationPageContentProps) {
   const setup = useSetup(pid, effectiveSetupId).data;
@@ -125,6 +153,7 @@ function SimulationPageContent({
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const generation = useSetupGeneration(pid, effectiveSetupId);
+  useLayoutEffect(() => { onLayoutMounted(effectiveSetupId); }, [effectiveSetupId, onLayoutMounted]);
 
   const location = project.metadata.address;
 

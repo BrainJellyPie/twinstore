@@ -27,7 +27,8 @@ vi.mock("@/views/simulation/states/EmptyFloorReadyView", () => ({
   EmptyFloorReadyView: ({ pid, setupId, layouts, onLayoutSelect, onAddLayout }: {
     pid: string; setupId: string; layouts: { id: string }[]; onLayoutSelect: (id: string) => void; onAddLayout: () => void;
   }) => <div><output data-testid="project">{pid}</output><output data-testid="setup">{setupId}</output>
-    {layouts.map((layout) => <button key={layout.id} onClick={() => onLayoutSelect(layout.id)}>{layout.id}</button>)}
+    {layouts.map((layout) => <button key={layout.id} data-layout-id={layout.id} onClick={() => onLayoutSelect(layout.id)}>{layout.id}</button>)}
+    <button data-layout-finder-trigger>Test finder</button><button data-layout-finder-result onClick={() => onLayoutSelect(layouts[0]!.id)}>First result</button>
     <button onClick={onAddLayout}>New layout</button></div>,
 }));
 vi.mock("@/features/layouts/components/AddLayoutDialog", () => ({
@@ -67,7 +68,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-async function mount(secondIds = ["b1", "b2"]) {
+async function mount(secondIds = ["b1", "b2"], settingsLoader?: () => Promise<void>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } }); clients.push(client);
   for (const [pid, ids] of [["alpha", ["a1", "a2"]], ["beta", secondIds]] as const) {
     client.setQueryData(queryKeys.project(pid), project(pid, [...ids]));
@@ -79,7 +80,8 @@ async function mount(secondIds = ["b1", "b2"]) {
   }
   const root = createRootRoute({ component: Outlet });
   const route = createRoute({ getParentRoute: () => root, path: "/projects/$pid", component: Route.options.component });
-  const router = createRouter({ routeTree: root.addChildren([route]), history: createMemoryHistory({ initialEntries: ["/projects/alpha"] }) });
+  const settings = createRoute({ getParentRoute: () => root, path: "/settings", loader: settingsLoader, component: () => <output>Settings page</output> });
+  const router = createRouter({ routeTree: root.addChildren([route, settings]), defaultPendingMs: 60_000, history: createMemoryHistory({ initialEntries: ["/projects/alpha"] }) });
   await router.load();
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
   await screen.findByText("alpha", { selector: "output" });
@@ -284,4 +286,64 @@ it("ignores a late persona retry response from a removed layout", async () => {
   await act(async () => { retried.resolve({ gen_id: "late-generation" }); });
   expect(api.getGenerationStatus).not.toHaveBeenCalled();
   expect(screen.getByTestId("setup").textContent).toBe("a1");
+});
+
+
+it("restores focus to the opened layout after keyed content is replaced", async () => {
+  await mount(); const target = screen.getByRole("button", { name: "a1" }); target.focus(); fireEvent.click(target);
+  await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "a1" }));
+});
+it("preserves focus moved outside while a requested layout is still loading", async () => {
+  const { client } = await mount(); const loading = deferred<api.SetupDetail>();
+  client.removeQueries({ queryKey: queryKeys.setup("alpha", "a1") }); vi.mocked(api.getSetup).mockReturnValue(loading.promise);
+  const outside = document.createElement("button"); outside.textContent = "Other control"; document.body.append(outside);
+  try {
+    const target = screen.getByRole("button", { name: "a1" }); target.focus(); fireEvent.click(target);
+    await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "a1", expect.any(AbortSignal))); outside.focus();
+    await act(async () => loading.resolve(setup("a1"))); await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+    expect(document.activeElement).toBe(outside);
+  } finally { outside.remove(); }
+});
+
+
+it("restores the finder trigger after opening a result replaces the project content", async () => {
+  await mount(); const result = screen.getByRole("button", { name: "First result" }); result.focus(); fireEvent.click(result);
+  await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1")); expect(document.activeElement).toBe(screen.getByRole("button", { name: "Test finder" }));
+});
+it("does not restore project focus while another route is already loading", async () => {
+  const settings = deferred<void>(); const { client, router } = await mount(undefined, () => settings.promise);
+  const layout = deferred<api.SetupDetail>(); client.removeQueries({ queryKey: queryKeys.setup("alpha", "a1") }); vi.mocked(api.getSetup).mockReturnValue(layout.promise);
+  const target = screen.getByRole("button", { name: "a1" }); target.focus(); fireEvent.click(target);
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "a1", expect.any(AbortSignal)));
+  let navigation!: Promise<void>; act(() => { navigation = router.navigate({ to: "/settings" }); }); await waitFor(() => expect(router.state.location.pathname).toBe("/settings"));
+  await act(async () => layout.resolve(setup("a1"))); await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+  expect(document.activeElement).not.toBe(screen.getByRole("button", { name: "a1" }));
+  await act(async () => { settings.resolve(); await navigation; }); await screen.findByText("Settings page");
+});
+
+it("restores a reachable tab when the focused selected layout is removed by a list refresh", async () => {
+  const { client } = await mount(); screen.getByRole("button", { name: "a2" }).focus();
+  await act(async () => { client.setQueryData(queryKeys.setups("alpha"), [setup("a1")]); });
+  await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "a1" }));
+});
+
+it("does not restore navigation focus after the user deliberately blurs it while loading", async () => {
+  const { client } = await mount(); const loading = deferred<api.SetupDetail>();
+  client.removeQueries({ queryKey: queryKeys.setup("alpha", "a1") }); vi.mocked(api.getSetup).mockReturnValue(loading.promise);
+  const target = screen.getByRole("button", { name: "a1" }); target.focus(); fireEvent.click(target);
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "a1", expect.any(AbortSignal))); target.blur();
+  await act(async () => loading.resolve(setup("a1"))); await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+  expect(document.activeElement).toBe(document.body);
+});
+
+it("retains navigation focus when Suspense blurs a hidden old view before replacing it", async () => {
+  const { client } = await mount(); const loading = deferred<api.SetupDetail>();
+  client.removeQueries({ queryKey: queryKeys.setup("alpha", "a1") }); vi.mocked(api.getSetup).mockReturnValue(loading.promise);
+  const target = screen.getByRole("button", { name: "a1" }); target.focus(); fireEvent.click(target);
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "a1", expect.any(AbortSignal)));
+  target.checkVisibility = () => false; target.blur();
+  await act(async () => loading.resolve(setup("a1"))); await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "a1" }));
 });
