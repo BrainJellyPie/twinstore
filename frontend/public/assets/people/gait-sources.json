@@ -1,0 +1,25 @@
+{
+  "revision": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
+  "walks": {
+    "female": {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Animations/all_animations_max_motextr_xy/f_walk_neutral.max.fbx",
+      "sha256": "e210c9e34949a4eacad0a85021d4d1a59aab177ca1737e6038309896147ebae2",
+      "frames": [
+        1,
+        38
+      ],
+      "fps": 30,
+      "distance_metres": 1.5966254519809726
+    },
+    "male": {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Animations/all_animations_max_motextr_xy/m_walk_neutral.max.fbx",
+      "sha256": "93089851a370e3a117a6bd04c002815f7133fce41c6271e9eb448ca1228b154f",
+      "frames": [
+        1,
+        33
+      ],
+      "fps": 30,
+      "distance_metres": 1.4958643913269043
+    }
+  }
+}

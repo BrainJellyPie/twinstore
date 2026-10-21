@@ -30,6 +30,7 @@ type app struct {
 	url        string // the address the browser uses (this launcher)
 
 	target    atomic.Pointer[url.URL] // the server, once it answers
+	starting  atomic.Bool
 	quit      chan struct{}
 	quitOnce  sync.Once
 	smokeDone chan int
@@ -60,6 +61,14 @@ func (a *app) dataHome() string {
 }
 
 func (a *app) start() {
+	if !a.starting.CompareAndSwap(false, true) {
+		return
+	}
+	defer a.starting.Store(false)
+	if a.running() {
+		return
+	}
+	a.status.reset()
 	a.status.done("files", a.root)
 	uv := findUV(a.home)
 	if uv == "" {

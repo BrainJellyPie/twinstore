@@ -13,6 +13,7 @@ import { M, PERSONA_SCALE } from "../realistic/constants";
 import { angleDelta } from "../realistic/shopperPose";
 import { shopperBlinkWeight } from "../realistic/shopperBlink";
 import { shopperGazeOffset } from "../realistic/shopperGaze";
+import { shopperWalkTimeScale } from "../realistic/shopperGait";
 
 const CHARACTER_TARGET_HEIGHT = 0.6;
 
@@ -66,6 +67,7 @@ interface AssetPersonaProps {
   gender?: string;
   facing: number;
   isMoving: boolean;
+  walkSpeed?: number;
   color: string;
   label: string;
   event: TimelineEvent | null;
@@ -78,6 +80,7 @@ interface CharacterMeshProps {
   animName: string;
   realistic: boolean;
   personaId: string;
+  walkSpeed?: number;
 }
 
 function UnavailableCharacter({ realistic, color }: { realistic: boolean; color: string }) {
@@ -107,7 +110,7 @@ function UnavailableCharacter({ realistic, color }: { realistic: boolean; color:
   );
 }
 
-function CharacterMesh({ url, animName, realistic, personaId }: CharacterMeshProps) {
+function CharacterMesh({ url, animName, realistic, personaId, walkSpeed }: CharacterMeshProps) {
   const { clone, bbox, offset, animations } = useGlbModel(url, {
     skinned: true,
     castShadow: true,
@@ -121,6 +124,7 @@ function CharacterMesh({ url, animName, realistic, personaId }: CharacterMeshPro
   const { actions, mixer } = useAnimations(animations, clone);
   const previousAction = useRef<THREE.AnimationAction | null>(null);
   const playing = usePlaybackControlStore((s) => s.playing);
+  const playbackSpeed = usePlaybackControlStore((s) => s.speed);
   const facialTargets = useMemo(() => {
     const targets: { weights: number[]; indices: Partial<Record<"blink" | "lookLeft" | "lookRight" | "lookUp" | "lookDown", number>> }[] = [];
     if (realistic) clone.traverse((object) => {
@@ -154,6 +158,11 @@ function CharacterMesh({ url, animName, realistic, personaId }: CharacterMeshPro
   useEffect(() => {
     mixer.timeScale = realistic && !playing ? 0 : 1;
   }, [mixer, playing, realistic]);
+
+  useEffect(() => {
+    const walk = actions.walk;
+    if (walk) walk.setEffectiveTimeScale(realistic ? shopperWalkTimeScale(url, walkSpeed, playbackSpeed, walk.getClip().duration) : 1);
+  }, [actions, realistic, url, walkSpeed, playbackSpeed]);
 
   useEffect(() => () => {
     mixer.stopAllAction();
@@ -198,6 +207,7 @@ export function AssetPersona({
   gender,
   facing,
   isMoving,
+  walkSpeed,
   color,
   label,
   event,
@@ -241,7 +251,7 @@ export function AssetPersona({
       <group ref={turnRef} name="shopper-heading">
         <ErrorBoundary key={url} fallback={<UnavailableCharacter realistic={realistic} color={color} />}>
           <Suspense fallback={null}>
-            <CharacterMesh url={url} animName={animName} realistic={realistic} personaId={personaId} />
+            <CharacterMesh url={url} animName={animName} realistic={realistic} personaId={personaId} walkSpeed={walkSpeed} />
           </Suspense>
         </ErrorBoundary>
       </group>

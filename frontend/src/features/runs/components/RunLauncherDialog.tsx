@@ -29,7 +29,7 @@ import { queryKeys } from "@/shared/queries/keys";
 import type { EngineType, RunOptions, Scenario } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 
-import { useEngines } from "../hooks";
+import { useAvailableModels, useEngines } from "../hooks";
 import { ModelPicker, type ModelChoice } from "./ModelPicker";
 import { ScenarioEditor } from "./ScenarioEditor";
 
@@ -91,10 +91,25 @@ function LauncherForm({
   const validSample = sampleMode === "all" || (sampleSize.trim() !== "" && Number.isSafeInteger(Number(sampleSize)) && Number(sampleSize) >= 1 && Number(sampleSize) <= personaCount);
   const validSeed = seed.trim() !== "" && Number.isSafeInteger(Number(seed));
   const validReplicate = replicate.trim() !== "" && Number.isSafeInteger(Number(replicate)) && Number(replicate) >= 0;
-  const valid = personaCount > 0 && validSample && validSeed && validReplicate;
   const customers = sampleMode === "all" ? personaCount : validSample ? Number(sampleSize) : 0;
   const usesLlm = engines?.find((e) => e.engine_type === engine)?.uses_llm ?? engine !== "rule_based";
   const modelOf = (type: EngineType) => engines?.find((e) => e.engine_type === type)?.model;
+  const models = useAvailableModels(usesLlm);
+  const available = models.data?.filter((model) => engine !== "vlm_glance" || model.vision);
+  let modelError: string | null = null;
+  if (usesLlm && modelChoice.kind !== "default") {
+    if (!available) modelError = models.isError ? t("modelListError") : t("loadingModels");
+    else if (modelChoice.kind === "single") {
+      modelError = !modelChoice.model ? t("needOneModel")
+        : available.some((model) => model.ref === modelChoice.model) ? null : t("unavailableModel", { model: modelChoice.model });
+    } else {
+      const members = modelChoice.ensemble?.members ?? [];
+      if (!members.length) modelError = t("needEnsemble");
+      else if (members.some((member) => !available.some((model) => model.ref === member.model))) modelError = t("unavailableEnsemble");
+      else if (members.some((member) => !Number.isFinite(member.weight) || member.weight <= 0)) modelError = t("invalidWeights");
+    }
+  }
+  const valid = personaCount > 0 && validSample && validSeed && validReplicate && modelError === null;
 
   const chooseEngine = (next: EngineType) => {
     setEngine(next);
@@ -317,7 +332,7 @@ function LauncherForm({
         <p className="text-xs text-muted-foreground" aria-live="polite">
           {isPreview ? t("previewSummary") : t("finalSummary")}
           {" · "}{scenario?.name ?? t("baselineSituation")}
-          {usesLlm && ` · ${modelChoice.kind === "single" ? modelChoice.model ?? t("serverDefaultModel") : modelChoice.kind === "ensemble" ? t("modelEnsemble") : modelOf(engine) || t("serverDefaultModel")}`}
+          {usesLlm && ` · ${modelChoice.kind === "single" ? modelChoice.model ?? t("chooseModel") : modelChoice.kind === "ensemble" ? t("modelEnsemble") : modelOf(engine) || t("serverDefaultModel")}`}
           {town && useTown && ` · ${t("neighborSummary", { percent: Math.round(townScale * 100) })}`}
         </p>
 
@@ -334,6 +349,8 @@ function LauncherForm({
           {!validSample ? t("sampleError", { max: personaCount }) : !validSeed ? t("seedError") : t("replicateError")}
         </p>
       )}
+
+      {modelError && <p id="run-model-error" role={!available && !models.isError ? "status" : "alert"} className={cn("break-words text-xs", !available && !models.isError ? "text-muted-foreground" : "text-destructive")}>{modelError}</p>}
 
       {simulate.isError && (
         <p role="alert" className="text-xs text-destructive">

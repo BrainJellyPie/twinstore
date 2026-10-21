@@ -7,7 +7,7 @@ import { useLocale, translate } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { RunLauncherDialog, type RunLauncherDialogProps } from "../RunLauncherDialog";
 
-vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), startRun: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn() }));
 vi.mock("../ScenarioEditor", () => ({ ScenarioEditor: () => <div>Situation editor</div> }));
 vi.mock("../ModelPicker", () => ({ ModelPicker: ({ onChange }: { onChange: (v: { kind: "single"; model: string }) => void }) =>
   <button type="button" onClick={() => onChange({ kind: "single", model: "text-only" })}>Select text model</button> }));
@@ -21,6 +21,7 @@ beforeEach(() => {
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.getEngines).mockResolvedValue(engines);
   vi.mocked(api.getTown).mockResolvedValue(null);
+  vi.mocked(api.getModels).mockResolvedValue([]);
   vi.mocked(api.startRun).mockResolvedValue({ project_id: "p", run_id: "r", setup_id: "s" });
 });
 afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); vi.unstubAllGlobals(); });

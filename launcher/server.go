@@ -90,7 +90,6 @@ func (a *app) handler() http.Handler {
 	}))
 	mux.HandleFunc("POST /__twinstore/retry", sameSite(func(w http.ResponseWriter, r *http.Request) {
 		if a.root != "" && !a.running() {
-			a.status.reset()
 			go a.start()
 		}
 		writeJSON(w, map[string]bool{"restarting": true})

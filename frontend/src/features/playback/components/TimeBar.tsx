@@ -24,11 +24,12 @@ const HEATMAP_LAYERS: { value: HeatmapMode; label: string; hint: string }[] = [
 ];
 
 const SPEED_LABEL: Record<PlaybackSpeed, string> = {
+  1: "Real time",
   60: "Normal",
   600: "Fast",
   3600: "Very fast",
 };
-const SPEED_VALUES: PlaybackSpeed[] = [60, 600, 3600];
+const SPEED_VALUES: PlaybackSpeed[] = [1, 60, 600, 3600];
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -199,14 +200,15 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
           <span className="eyebrow w-14">Speed</span>
           <ToggleGroup
             type="single"
+            aria-label="Playback speed"
             value={String(speed)}
             onValueChange={(v) => v && setSpeed(Number(v) as PlaybackSpeed)}
             size="sm"
             disabled={disabled}
-            className="min-w-40 flex-1 flex-wrap rounded-xl bg-foreground/[0.05] p-0.5"
+            className="grid min-w-40 flex-1 grid-cols-2 rounded-xl bg-foreground/[0.05] p-0.5 sm:flex"
           >
             {SPEED_VALUES.map((s) => (
-              <ToggleGroupItem key={s} value={String(s)} className="h-7 flex-1 rounded-[0.6rem] text-[0.8rem]">
+              <ToggleGroupItem key={s} value={String(s)} title={s === 1 ? "1 second of simulation per second" : `${s} seconds of simulation per second`} className="h-7 flex-1 rounded-[0.6rem] text-[0.8rem]">
                 {SPEED_LABEL[s]}
               </ToggleGroupItem>
             ))}

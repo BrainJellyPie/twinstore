@@ -2,6 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
 
+export function useAvailableModels(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.models(),
+    queryFn: ({ signal }) => api.getModels(signal),
+    staleTime: 60_000,
+    enabled,
+  });
+}
+
 export function useEngines() {
   return useQuery({
     queryKey: queryKeys.engines(),
