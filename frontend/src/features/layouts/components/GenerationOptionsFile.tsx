@@ -13,7 +13,9 @@ function portableLayout(value: TemplateChoice): api.GenerateLayoutRequest {
 }
 
 function importedChoice({ template_id, source_setup_id: _source, name: _name, ...options }: api.GenerateLayoutRequest): TemplateChoice {
-  return { ...DEFAULT_TEMPLATE_CHOICE, ...options, templateId: template_id };
+  const choice = { ...DEFAULT_TEMPLATE_CHOICE, ...options, templateId: template_id };
+  if (!Number.isSafeInteger(choice.seed)) throw new Error("This options file has a seed outside the supported whole-number range. Current settings were kept.");
+  return choice;
 }
 
 export function GenerationOptionsFile(props: Props) {

@@ -54,6 +54,9 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const [seating, setSeating] = useState("all");
   const [sort, setSort] = useState("default");
   const [priorityId, setPriorityId] = useState(LAYOUT_PRIORITIES[0]!.id);
+  const [seedDraft, setSeedDraft] = useState<{ seed: number; text: string } | null>(null);
+  const validSeed = Number.isSafeInteger(value.seed);
+  const seedText = seedDraft && Object.is(seedDraft.seed, value.seed) ? seedDraft.text : validSeed ? String(value.seed) : "";
   const priority = LAYOUT_PRIORITIES.find((choice) => choice.id === priorityId) ?? LAYOUT_PRIORITIES[0]!;
   const templatesQuery = useQuery({
     queryKey: ["store-templates"], queryFn: ({ signal }) => api.getStoreTemplates(signal), staleTime: Infinity,
@@ -398,8 +401,22 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               </div>}
               <p className="text-muted-foreground">Set up to 48 tables in total. Larger groups are placed first, then smaller groups fill available space. Rotation, seating area and clearance apply to every size. If the mix cannot fit, adjust the counts or layout.</p>
             </details>
+            <div className="space-y-1 text-xs">
+              <Field label="Assortment seed"><input type="text" className={controlClass} value={seedText}
+                aria-invalid={!validSeed} aria-describedby={`${customizationId}-seed-help${validSeed ? "" : ` ${customizationId}-seed-error`}`}
+                onChange={(event) => {
+                  const text = event.target.value;
+                  const parsed = /^[+-]?\d+$/.test(text.trim()) ? Number(text.trim()) : NaN;
+                  const seed = Number.isSafeInteger(parsed) ? parsed : NaN;
+                  setSeedDraft({ seed, text }); update({ seed });
+                }} /></Field>
+              <p id={`${customizationId}-seed-help`} className="text-muted-foreground">Use the same seed and product settings to recreate an assortment. Whole numbers from -9007199254740991 to 9007199254740991 are supported.</p>
+              {!validSeed && <p id={`${customizationId}-seed-error`} role="alert" className="text-destructive">Enter a whole-number seed within the supported range.</p>}
+              {value.seed === Number.MAX_SAFE_INTEGER && <p className="text-muted-foreground">Highest seed reached. Enter a smaller seed to shuffle again.</p>}
+            </div>
             <div className="flex flex-wrap gap-2 text-xs">
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50" disabled={!validSeed || value.seed === Number.MAX_SAFE_INTEGER}
+                onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment{validSeed ? ` (#${value.seed})` : ""}</button>
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, table_clearance_x: null, table_clearance_y: null, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, category_product_limits: {}, open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, seed: 0 })}>Reset layout options</button>
             </div>
             </div>

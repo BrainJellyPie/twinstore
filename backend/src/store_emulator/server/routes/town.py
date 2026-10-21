@@ -32,8 +32,8 @@ router = APIRouter(prefix="/api/projects", tags=["town"])
 
 class OsmImportRequest(BaseModel):
     address: str | None = Field(default=None, description="Street address or place name (geocoded with Nominatim)")
-    lat: float | None = None
-    lon: float | None = None
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
     radius_m: float = Field(default=600.0, ge=150.0, le=2000.0)
     focal_name: str | None = Field(default=None, description="Name of our store on the map, if it exists there")
 

@@ -108,3 +108,31 @@ it("leaves a newly added floor at its own defaults until assortment is applied a
   fireEvent.click(apply()); await screen.findByText("3 of 3 floor previews ready");
   expect(floors()[2]!.choice).toMatchObject({ products_per_category: 2, category_product_limits: { soft_drinks: 3, electronics: 1 }, excluded_categories: ["household"] });
 });
+
+
+it("keeps directly entered seeds independent until shared across floors", async () => {
+  await mount();
+  fireEvent.change(screen.getByLabelText("Assortment seed"), { target: { value: "-42" } });
+  fireEvent.click(screen.getByRole("button", { name: "2F · Floor 2" }));
+  expect((screen.getByLabelText("Assortment seed") as HTMLInputElement).value).toBe("1");
+  fireEvent.change(screen.getByLabelText("Assortment seed"), { target: { value: String(Number.MAX_SAFE_INTEGER) } });
+  expect(floors().map((floor) => floor.choice.seed)).toEqual([-42, Number.MAX_SAFE_INTEGER]);
+  fireEvent.click(screen.getByRole("button", { name: "1F · Floor 1" }));
+  expect((screen.getByLabelText("Assortment seed") as HTMLInputElement).value).toBe("-42");
+  fireEvent.click(screen.getByText(/^Product categories/));
+  fireEvent.click(apply()); await screen.findByText("2 of 2 floor previews ready");
+  expect(floors().map((floor) => floor.choice.seed)).toEqual([-42, -42]);
+  expect(floors().map((floor) => floor.choice.width)).toEqual([16, 17]);
+  await closeReview();
+});
+
+it("blocks sharing invalid seed text and recovers after correction without changing another floor", async () => {
+  await mount(); const other = floors()[1];
+  fireEvent.change(screen.getByLabelText("Assortment seed"), { target: { value: "9007199254740990.1" } });
+  expect(apply().disabled).toBe(true); fireEvent.click(apply());
+  expect(floors()[1]).toEqual(other);
+  expect((screen.getByRole("button", { name: "Export building options" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("Assortment seed"), { target: { value: "-42" } });
+  expect(apply().disabled).toBe(false);
+  expect(floors()[1]).toEqual(other);
+});
