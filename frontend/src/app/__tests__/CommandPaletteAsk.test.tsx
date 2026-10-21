@@ -33,6 +33,7 @@ it.each([
   ["ab_test", "Would a 1+1 sign on cola sell more?", "/marketing/$pid"],
   ["conjoint", "Would people pay more for oat milk?", "/marketing/$pid"],
   ["concept_test", "Which of our two labels looks more premium?", "/marketing/$pid"],
+  ["shelf_test", "Would the gold label stand out on the tea shelf?", "/marketing/$pid"],
   ["area", "We sit on a busy campus street", "/town/$pid"],
   ["run_question", "Why does the freezer sell so little?", "/projects/$pid"],
 ] as const)("routes a typed request to %s and hands the words to that page", async (destination, text, to) => {

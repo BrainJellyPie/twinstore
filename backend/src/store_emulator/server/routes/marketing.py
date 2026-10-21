@@ -28,6 +28,7 @@ from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.domain.factorial import FactorialReport, FactorialRequest, FactorialSource
 from store_emulator.engine.marketing.conjoint_design import ConjointDesign
 from store_emulator.engine.marketing.experiment_design import ExperimentDesign
+from store_emulator.engine.marketing.shelf_test_design import ShelfTestDesign
 from store_emulator.engine.marketing.survey_design import SurveyDesign
 from store_emulator.engine.marketing.reading import StudyReading
 from store_emulator.engine.marketing.script_writer import ScriptDraft
@@ -229,6 +230,13 @@ def pitch_csv(pid: str, pitch_id: str) -> PlainTextResponse:
 @router.delete("/{pid}/staff-pitches/{pitch_id}", summary="Delete a completed staff script test", status_code=204)
 def delete_pitch(pid: str, pitch_id: str) -> None:
     _call(lambda: mk.delete_job(pid, "pitch", pitch_id))
+
+
+@router.post("/{pid}/shelf-tests/design", summary="Draft a shelf test from a question", response_model=ShelfTestDesign)
+async def design_shelf_test(pid: str, req: study_design.ShelfTestDesignRequest) -> ShelfTestDesign:
+    """The text model picks the product under test (a product of the layout), its shelf and the change respondents
+    see (a library pack, a price, a sign). Nothing runs; the draft fills the builder."""
+    return await run_in_threadpool(_call, lambda: study_design.design_shelf(pid, req, get_config()))
 
 
 @router.post("/{pid}/shelf-tests", summary="Start a virtual shelf test", response_model=JobStatus)

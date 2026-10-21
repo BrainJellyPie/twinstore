@@ -14,6 +14,10 @@ from store_emulator.engine.marketing.experiment_design import (
     ExperimentDesign,
     design_experiment,
 )
+from store_emulator.engine.marketing.shelf_test_design import (
+    ShelfTestDesign,
+    design_shelf_test,
+)
 from store_emulator.engine.marketing.survey_design import SurveyDesign, design_survey
 from store_emulator.engine.prompting import display_price
 
@@ -132,3 +136,35 @@ def design_concept(pid: str, req: SurveyDesignRequest, config: SimulationConfig)
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[design] concept test draft failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The concept test could not be drafted"), 502) from e
+
+
+class ShelfTestDesignRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    question: str = Field(min_length=5, max_length=500, description="what the shelf test should answer")
+    setup_id: str = Field(min_length=1, description="the layout whose shelf respondents see")
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+def design_shelf(pid: str, req: ShelfTestDesignRequest, config: SimulationConfig) -> ShelfTestDesign:
+    """The product under test, its shelf and the change (pack, price, sign) drafted by the text model from the
+    question, on the layout's own products and the project's product images."""
+    from .shelf_lab import (
+        list_packages,  # late import: shelf_lab is heavy and imports capture
+    )
+
+    store = _store_for(pid, req.setup_id)
+    if store is None:
+        raise AppError("this layout has no store yet", 400)
+    currency = (store.currency or project_currency(pid, config.currency)).upper()
+    packages = [(p.name, p.asset_id) for p in list_packages(pid)]
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 900})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        return asyncio.run(design_shelf_test(llm, req.question, store, currency, packages))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[design] shelf test draft failed: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "The shelf test could not be drafted"), 502) from e

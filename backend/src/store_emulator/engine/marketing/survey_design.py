@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from store_emulator.domain.marketing import QuestionKind
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender
-from store_emulator.engine.prompting import relevant_first
+from store_emulator.engine.prompting import relevant_first, resolve_listed
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 MAX_LISTED = 80
@@ -81,15 +81,6 @@ def _listing(packages: Sequence[tuple[str, str, str]], question: str) -> str:
     return "Product images (write the quoted name only):\n" + "\n".join(f"- {line}" for line in shown)
 
 
-def _resolve(asked: str, ids: dict[str, tuple[str, str]]) -> tuple[str, str] | None:
-    """The library image a drafted name means: the exact name, else the longest listed name it starts with or
-    contains (a model sometimes copies the brand or description along with the name)."""
-    key = asked.strip().strip('"').casefold()
-    if key in ids:
-        return ids[key]
-    found = [n for n in ids if key.startswith(n)] or [n for n in ids if n in key]
-    return ids[max(found, key=len)] if found else None
-
 
 def to_design(draft: _Draft, packages: Sequence[tuple[str, str]], currency: str) -> SurveyDesign:
     """Image names resolved to library ids (first match wins, duplicates dropped); everything else checked."""
@@ -100,7 +91,7 @@ def to_design(draft: _Draft, packages: Sequence[tuple[str, str]], currency: str)
     stimuli: list[str] = []
     names: list[str] = []
     for asked in draft.images:
-        hit = _resolve(asked, ids)
+        hit = resolve_listed(asked, ids)
         if hit is None:
             warnings.append(f'No product image "{asked}" in the library; it was left out.')
         elif hit[0] not in stimuli:
