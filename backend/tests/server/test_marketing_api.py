@@ -149,3 +149,36 @@ def test_concept_test_with_fake_vision_model(client, monkeypatch):
     assert "Concept test report" in page and "data:image/jpeg;base64," in page and "Price range for Leafy" in page and "<svg" in page
     quota = {**body, "age_groups": ["70s"]}
     assert client.post(f"/api/projects/{PID}/surveys", json=quota).status_code == 400
+
+
+class _ShelfVLM:
+    def __init__(self, config: object) -> None:
+        pass
+
+    async def generate_structured_with_image_async(self, response_model, system_prompt, user_prompt, image_url, *, max_retries=1, seed=None, route=None):  # noqa: ANN001
+        assert image_url.startswith("data:image/png;base64,") and "badge" in system_prompt
+        return response_model.model_validate({"noticed": [1, 2], "pick": 1, "why": "It stood out."})
+
+
+def test_shelf_test_with_fake_vision_model(client, monkeypatch):
+    from store_emulator.application import marketing
+    monkeypatch.setattr(marketing, "LiteLLMClient", _ShelfVLM)
+    pkg = _upload(client, "Leafy Tea")
+    body = {"setup_id": SETUP, "rack_id": "r_801fadeb", "target_sku": "A0017", "panel": 12, "model": "openai/gpt-4o-mini",
+            "changes": [{"kind": "package", "sku": "A0017", "asset_id": pkg["asset_id"]}, {"kind": "promo", "sku": "A0017", "promo": "NEW"}]}
+    started = client.post(f"/api/projects/{PID}/shelf-tests", json=body)
+    assert started.status_code == 200, started.text
+    tid = started.json()["job_id"]
+    view = _wait(client, f"/api/projects/{PID}/shelf-tests/{tid}")
+    r = view["report"]
+    assert r["respondents"] == 12 and r["errors"] == 0 and r["target_name"].startswith("Arizona")
+    assert [c["metric"] for c in r["comparisons"]] == ["pick", "noticed", "noticed_first"]
+    assert len(r["choices"]) == 24 and {c["arm"] for c in r["choices"]} == {"control", "test"}
+    assert abs(sum(p["control"] for p in r["picks"]) - 1) < 1e-6 or len(r["picks"]) == 8
+    assert view["request"]["target_sku"] == "A0017"
+    for arm in ("control", "test"):
+        img = client.get(f"/api/projects/{PID}/shelf-tests/{tid}/{arm}.png")
+        assert img.status_code == 200 and img.content[:4] == b"\x89PNG"
+    bad = {**body, "changes": [{"kind": "promo", "sku": "NOPE"}]}
+    assert client.post(f"/api/projects/{PID}/shelf-tests", json=bad).status_code == 400
+    assert client.delete(f"/api/projects/{PID}/shelf-tests/{tid}").status_code == 204

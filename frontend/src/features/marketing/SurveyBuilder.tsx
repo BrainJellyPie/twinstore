@@ -24,8 +24,8 @@ const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
 const GENDERS = ["Female", "Male"];
 const LETTERS = "ABCD";
 
-export function SurveyBuilder({ projectId, personaCount, initial, onStarted }: {
-  projectId: string; personaCount: number; initial?: SurveyRequest | null; onStarted: (job: JobStatus) => void;
+export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, onStarted }: {
+  projectId: string; personaCount: number; defaultCurrency?: string; initial?: SurveyRequest | null; onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
   const packages = usePackages(projectId).data ?? [];
@@ -35,7 +35,7 @@ export function SurveyBuilder({ projectId, personaCount, initial, onStarted }: {
     Object.fromEntries((initial?.stimuli ?? []).map((id, i) => [id, initial?.stimulus_names[i] ?? ""]).filter(([, n]) => n)));
   const [questions, setQuestions] = useState<QuestionKind[]>(initial?.questions ?? ["purchase_intent", "appeal", "value", "preference", "open"]);
   const [context, setContext] = useState(initial?.context ?? "");
-  const [currency, setCurrency] = useState(initial?.currency ?? "USD");
+  const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency);
   const [price, setPrice] = useState(initial?.reference_price != null ? String(initial.reference_price / minorUnitDivisor(initial.currency)) : "");
   const [panel, setPanel] = useState(initial?.panel ?? 60);
   const [ages, setAges] = useState<string[]>(initial?.age_groups ?? []);

@@ -133,7 +133,7 @@ class MarketingInfo(BaseModel):
 
 class JobStatus(BaseModel):
     job_id: str
-    kind: Literal["experiment", "survey", "pitch"]
+    kind: Literal["experiment", "survey", "pitch", "shelf"]
     name: str = ""
     status: JobState
     stage: str = ""
@@ -232,5 +232,73 @@ class SurveyReport(BaseModel):
     preference: list[PreferenceShare] = []
     verbatims: list[str] = []
     answers: list[SurveyAnswer] = []
+    notes: list[str] = []
+    seconds: float = 0.0
+
+
+# ── shelf tests ─────────────────────────────────────────────────────────────────
+
+class ShelfTestRequest(BaseModel):
+    """Shelf impact test: the same respondents see the control shelf face and the changed one."""
+    name: str = Field(default="", max_length=80)
+    setup_id: str
+    rack_id: str
+    face: Literal["N", "S", "E", "W"] | None = Field(default=None, description="None = the face where the target stands")
+    target_sku: str = Field(min_length=1, description="the product whose pick share and stand-out the test is about")
+    changes: list[VariantChange] = Field(min_length=1, max_length=10, description="what the test shelf changes: package, price, sign, placement")
+    panel: int = Field(default=60, ge=10, le=400)
+    age_groups: list[str] = Field(default_factory=list[str])
+    genders: list[str] = Field(default_factory=list[str])
+    model: str = Field(default="", description='vision model reference; "" = the app vision model')
+    seed: int = 0
+
+
+class ShelfChoice(BaseModel):
+    respondent: str
+    age_group: str
+    gender: str
+    arm: Literal["control", "test"]
+    pick_sku: str = ""                # "" = would not take anything
+    pick_name: str = ""
+    noticed: list[str] = []           # SKUs that caught the eye first (up to three, in order)
+    why: str = ""
+    error: str = ""
+
+
+class ShareComparison(BaseModel):
+    metric: Literal["pick", "noticed", "noticed_first"]
+    control: float
+    test: float
+    diff: float
+    ci_low: float
+    ci_high: float
+    prob_better: float
+
+
+class SkuShare(BaseModel):
+    sku: str
+    name: str
+    control: float
+    test: float
+
+
+class ShelfTestReport(BaseModel):
+    test_id: str
+    name: str
+    setup_id: str
+    rack_id: str
+    rack_name: str
+    face: str
+    target_sku: str
+    target_name: str
+    model: str
+    currency: str
+    respondents: int
+    errors: int
+    applied: list[str] = []
+    warnings: list[str] = []
+    comparisons: list[ShareComparison] = []
+    picks: list[SkuShare] = []
+    choices: list[ShelfChoice] = []
     notes: list[str] = []
     seconds: float = 0.0
