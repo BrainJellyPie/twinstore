@@ -1,16 +1,19 @@
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
+from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import simulation as sim_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
+from store_emulator.application.movement import MAX_TRACK_BYTES
 from store_emulator.application.providers import ensure_resolvable
 from store_emulator.application.simulation import RunOptions
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
 from store_emulator.domain.config import EngineType, ExposureModel, PlanPolicy, RouteOrdering
+from store_emulator.domain.movement import MovementReport
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.scenario import Scenario
@@ -246,6 +249,31 @@ async def fidelity(
         raise HTTPException(e.status_code, str(e))
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
+
+
+@router.post("/{pid}/runs/{run_id}/movement", summary="Compare anonymous tracks with simulated movement", response_model=MovementReport)
+async def movement_fidelity(
+    pid: str, run_id: str,
+    file: Annotated[UploadFile, File(description="UTF-8 CSV: track_id,x,y,timestamp_sec; zero-based grid cells")],
+    max_gap_seconds: Annotated[float, Form(gt=0, le=300, allow_inf_nan=False)] = 30,
+) -> MovementReport:
+    data = await file.read(MAX_TRACK_BYTES + 1)
+    if len(data) > MAX_TRACK_BYTES:
+        raise HTTPException(413, "Track CSV is too large (maximum 10 MB).")
+    try:
+        return await run_in_threadpool(sim_service.run_movement_fidelity, pid, run_id, data, max_gap_seconds=max_gap_seconds)
+    except AppError as e:
+        raise HTTPException(e.status_code, e.message) from e
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+
+
+@router.get("/{pid}/runs/{run_id}/movement", summary="Read the aggregate movement comparison", response_model=MovementReport | None)
+def get_movement_fidelity(pid: str, run_id: str) -> MovementReport | None:
+    try:
+        return sim_service.get_movement_fidelity(pid, run_id)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
 
 
 @router.get("/{pid}/runs/{run_id}/export.csv", summary="Per-customer results as CSV")

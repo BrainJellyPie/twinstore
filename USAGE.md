@@ -242,6 +242,32 @@ Run through this before triggering generation or simulation:
   like `receipt_id`, `sku`/`product_name`, `qty`, `unit_price`/`sales_value`
   and `timestamp`/`hour`; SKUs are matched to catalog ids or names. Only
   products present in both are compared, so check the reported coverage.
+- **Receipt-photo review.** In a run's sales-validation section, **Receipts**
+  reads photos into an editable draft. Confirm each product against the saved
+  run's catalog, correct quantity and prices in minor currency units, and
+  exclude duplicate photos, returns or unreadable receipts. **Check receipts**
+  flags unknown products, missing amounts, duplicate IDs and currency mismatch.
+  A printed line total takes precedence over unit price × quantity so discounts
+  and total-only lines retain their paid value. Review subtotal warnings for
+  tax or excluded lines; those exclusions change basket comparisons. Set a local
+  date and time, or clear the timestamp to omit hourly scoring. Only **Use reviewed
+  receipts** sends the checked batch to POS validation; editing invalidates the
+  previous check. OCR and manual review are not proof of real-world forecast accuracy.
+- **Validating observed movement.** In a completed run, **Validate real movement**
+  accepts UTF-8 CSV with `track_id,x,y,timestamp_sec` (up to 10 MB / 100,000 samples).
+  Extract anonymous tracks on your device and align them to this run's grid first:
+  integer cells, origin at the upper left, x right and y down. Each visit needs a
+  distinct ID across the file; seconds must increase within a track. Rows may be
+  interleaved or unsorted. Duplicate identical samples are collapsed; conflicting
+  positions at the same timestamp are rejected. This module imports coordinates;
+  it does not upload video, detect people or perform camera calibration.
+  Visitor maps count each track once per cell. Occupancy assigns an interval to
+  its starting cell and excludes gaps over the chosen threshold (default 30 s);
+  the last sample adds no time. Compare equivalent layouts and operating periods
+  with adequate camera coverage. The report shows normalized map similarity and
+  visitor-share gaps, persists only aggregate data in `output/movement.json`, and
+  leaves simulator parameters unchanged. Use the gaps to select regions for a
+  calibration experiment; partial camera coverage is not evidence of low demand.
 - **All run artifacts live in `backend/.data/`**, which is gitignored.
   Persona files, simulation results, and generated metadata never leave
   the local machine unless the user copies them out.
