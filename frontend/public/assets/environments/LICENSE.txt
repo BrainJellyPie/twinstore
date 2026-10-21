@@ -1,0 +1,9 @@
+Gear Store — Poly Haven, CC0 1.0 Universal (public domain)
+https://polyhaven.com/a/gear_store
+https://polyhaven.com/license
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Photography: Dimitrios Savva. Processing: Jarod Guest.
+Unmodified 1K Radiance HDR panorama, 12 EV captured dynamic range.
+Bundled for offline image-based lighting in High quality.
+Exact download URL, size and SHA-256 checksum are in sources.json.

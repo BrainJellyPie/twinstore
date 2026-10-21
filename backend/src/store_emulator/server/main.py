@@ -10,12 +10,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from store_emulator.application.storage.generations import recover_running_generations
+from store_emulator.application.storage.jobs import recover_interrupted_jobs
 from store_emulator.application.storage.seed import seed_sample_projects
 from store_emulator.application.storage.setups import recover_running_setups
 from store_emulator.application.marketing import recover_running_jobs
 from store_emulator.application.local_vlm import manager as local_vlm
 from store_emulator.application.providers import cloud_providers_with_key
-from .deps import validate_project_path
+from .deps import validate_resource_paths
 from .routes import simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -43,6 +44,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     recovered_setups = recover_running_setups()
     if recovered_setups > 0:
         logger.info(f"server start: recovered {recovered_setups} running setups to draft")
+    recovered_jobs = recover_interrupted_jobs()
+    if recovered_jobs > 0:
+        logger.info(f"server start: marked {recovered_jobs} interrupted background jobs as failed")
     recovered_gens = recover_running_generations()
     if recovered_gens > 0:
         logger.info(f"server start: marked {recovered_gens} in-progress generations as failed")
@@ -60,7 +64,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     lifespan=lifespan,
-    dependencies=[Depends(validate_project_path)],
+    dependencies=[Depends(validate_resource_paths)],
     title="Store Emulator API",
     description=(
         "Block-grid store simulator API. "

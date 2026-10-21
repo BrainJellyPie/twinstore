@@ -9,7 +9,7 @@ import { computeAdjacentBlocked, mergeBlockedFaces } from "./adjacentBlocked";
 
 const DEFAULT_GRID_SIZE: [number, number] = [8, 8];
 const DEFAULT_LEVELS = 4;
-const DEFAULT_DWELL_MIN = 5;
+const DEFAULT_DWELL_MIN = 2;
 const DEFAULT_DWELL_MAX = 30;
 
 function makeNewRack(

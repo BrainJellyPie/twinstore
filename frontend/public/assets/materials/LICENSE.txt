@@ -1,0 +1,17 @@
+Poly Haven material scans — CC0 1.0 Universal (public domain)
+https://creativecommons.org/publicdomain/zero/1.0/
+https://polyhaven.com/license
+
+Floor Tiles 08
+https://polyhaven.com/a/floor_tiles_08
+Author: Rob Tuytel
+Real-world coverage: 1.5 x 1.5 metres
+
+Wood Table 001
+https://polyhaven.com/a/wood_table_001
+Photography: Dimitrios Savva. Processing: Rico Cilliers.
+Real-world coverage: 1.5 x 1.5 metres
+
+Files are unmodified 1K JPEG diffuse, roughness and OpenGL normal maps.
+Exact download URLs, SHA-256 checksums and sizes are recorded in sources.json.
+Assets are bundled locally; the application does not contact Poly Haven.

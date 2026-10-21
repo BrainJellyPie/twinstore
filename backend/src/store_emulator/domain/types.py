@@ -1,11 +1,14 @@
 import hashlib
 from enum import IntEnum, StrEnum
-from typing import Protocol
+from typing import Annotated, Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 type Position = tuple[int, int]
 type Shape = list[list[int]]
+
+RESOURCE_ID_PATTERN = r"^[A-Za-z0-9_-]+$"
+type ResourceId = Annotated[str, Field(pattern=RESOURCE_ID_PATTERN)]
 
 CARDINAL_DIRECTIONS: list[tuple[int, int]] = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 

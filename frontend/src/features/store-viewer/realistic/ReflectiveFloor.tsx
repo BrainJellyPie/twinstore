@@ -9,24 +9,27 @@ interface Props {
   depth: number;
   map: THREE.Texture;
   roughnessMap: THREE.Texture;
+  normalMap: THREE.Texture | null;
   // Real planar reflections (high quality); otherwise env-map gloss only.
   reflections: boolean;
 }
 
 const noRaycast = () => undefined;
 
-export function ReflectiveFloor({ width, depth, map, roughnessMap, reflections }: Props) {
+export function ReflectiveFloor({ width, depth, map, roughnessMap, normalMap, reflections }: Props) {
   const ref = useRef<THREE.Mesh>(null);
   const { material, reflection } = useMemo(() => {
     const m = new THREE.MeshStandardMaterial({
       map,
       roughnessMap,
+      normalMap,
+      normalScale: new THREE.Vector2(0.45, 0.45),
       roughness: 1,
       metalness: 0,
       envMapIntensity: 0.7,
     });
     return { material: m, reflection: reflections ? attachPlanarReflection(m) : null };
-  }, [map, roughnessMap, reflections]);
+  }, [map, roughnessMap, normalMap, reflections]);
 
   useEffect(
     () => () => {

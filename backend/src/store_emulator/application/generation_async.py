@@ -40,8 +40,8 @@ def start_persona_generation(
     spec §4.3 — supplemental_bytes / supplemental_filename are keyword-only.
     When provided, _run_persona_background summarizes them and updates metadata.
 
-    - Any in-flight generation (regardless of kind) → AppError(409).
-    - Simulation history present → personas locked → AppError(409).
+    - Any generation on this setup, or persona generation anywhere in the project → AppError(409).
+    - Running simulation or simulation history present → personas locked → AppError(409).
     - `ignore_active_gen_id`: lets a layout-chain caller skip its own gen_id
       from the active check. External callers pass None.
     """
@@ -56,9 +56,16 @@ def start_persona_generation(
             f"a {active.get('kind')} generation is already in progress (gen={active.get('gen_id')})", 409,
         )
 
+    active_personas = find_active_generation(project_id, kind="persona")
+    if active_personas and active_personas.get("gen_id") != ignore_active_gen_id:
+        raise AppError("persona generation is already in progress for this project.", 409)
+
     # Sim run present → personas locked; prevent overwrite.
     from store_emulator.application.storage.setups import list_setups as _list_setups
-    if any(s.get("runId") for s in _list_setups(project_id)):
+    setups = _list_setups(project_id)
+    if any(s.get("status") == "running" for s in setups):
+        raise AppError("personas cannot be regenerated while a simulation is running.", 409)
+    if any(s.get("runId") for s in setups):
         raise AppError("personas cannot be regenerated because the project has simulation history.", 409)
 
     gen_id = init_generation(project_id, setup_id, "persona")

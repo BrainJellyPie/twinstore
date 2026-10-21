@@ -1,0 +1,12 @@
+{
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "files": [
+    {
+      "file": "gear_store_1k.hdr",
+      "source": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/gear_store_1k.hdr",
+      "sha256": "da57679c74a67c7d7fde61cabf750bfd5a3b094e804e4168377c1c5074d34800",
+      "bytes": 1616743
+    }
+  ]
+}

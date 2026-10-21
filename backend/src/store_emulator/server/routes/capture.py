@@ -17,6 +17,7 @@ from store_emulator.domain.capture import (
     CaptureRackType,
     CaptureStatus,
 )
+from store_emulator.domain.types import ResourceId
 
 from ..deps import get_config
 
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/api/projects", tags=["capture"])
 
 
 class ApplyCaptureRequest(BaseModel):
-    setup_id: str = Field(description="layout to start from; it is not modified")
+    setup_id: ResourceId = Field(description="layout to start from; it is not modified")
     rack_id: str | None = Field(default=None, description="replace this rack's face with the captured shelf")
     face: str | None = Field(default=None, description="N | S | E | W; default: the face holding most products")
     new_rack: bool = Field(default=False, description="add the shelf as new rack(s) on free floor instead")
@@ -32,8 +33,8 @@ class ApplyCaptureRequest(BaseModel):
 
 
 class ApplyCapturesRequest(BaseModel):
-    capture_ids: list[str] = Field(min_length=1, description="several photos → several new racks")
-    setup_id: str
+    capture_ids: list[ResourceId] = Field(min_length=1, description="several photos → several new racks")
+    setup_id: ResourceId
     name: str | None = None
 
 

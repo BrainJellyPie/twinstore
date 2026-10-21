@@ -5,6 +5,7 @@ import { SHELL_COLORS, type GraphicsQuality } from "./constants";
 import type { MatKey } from "./staticBuilder";
 import { canvasTexture } from "./atlasMaterial";
 import { createAoCanvas, createWoodCanvas } from "./canvasArt";
+import type { ScannedMaterialMaps } from "./useScannedMaterial";
 
 export type ShellMaterials = Record<MatKey, THREE.Material>;
 
@@ -28,8 +29,10 @@ export function createShellMaterials(
   quality: GraphicsQuality,
   signTexture: THREE.Texture,
   partEnv: THREE.Texture | null = null,
+  woodMaps: ScannedMaterialMaps | null = null,
 ): ShellMaterials {
-  const wood = canvasTexture(createWoodCanvas(), { anisotropy: 1 });
+  // Material-owned clones keep hook cleanup and shell rebuilds independent.
+  const wood = woodMaps?.map.clone() ?? canvasTexture(createWoodCanvas(), { anisotropy: 1 });
   const ao = canvasTexture(createAoCanvas(), { anisotropy: 1 });
   ao.colorSpace = THREE.NoColorSpace;
 
@@ -98,7 +101,12 @@ export function createShellMaterials(
     freezerBody: std("#f6f7f8", 0.32, 0.05),
     freezerInterior: std("#dbe9f3", 0.5, 0.05, { emissive: "#dff0ff", emissiveIntensity: 0.12 }),
     bumper: std("#8a939c", 0.4, 0.4),
-    wood: std("#ffffff", 0.62, 0, { map: wood }),
+    wood: std("#ffffff", woodMaps ? 1 : 0.62, 0, {
+      map: wood,
+      roughnessMap: woodMaps?.roughnessMap.clone() ?? null,
+      normalMap: woodMaps?.normalMap?.clone() ?? null,
+      normalScale: new THREE.Vector2(0.3, 0.3),
+    }),
     counterTop: std("#e9e6df", 0.28, 0.02),
     black: std("#17191c", 0.45, 0.2),
     screen: emissive("#4f8fe8", 0.9),
@@ -161,7 +169,10 @@ export const NO_RECEIVE = new Set<MatKey>(["glass", "lidGlass", "led", "ceilingL
 export function disposeMaterials(mats: ShellMaterials) {
   for (const m of Object.values(mats)) {
     const sm = m as THREE.MeshStandardMaterial;
-    sm.map?.dispose();
+    // The sign atlas belongs to RealisticStore and survives material rebuilds.
+    if (m !== mats.sign) sm.map?.dispose();
+    sm.roughnessMap?.dispose();
+    sm.normalMap?.dispose();
     m.dispose();
   }
 }

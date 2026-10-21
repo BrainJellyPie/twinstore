@@ -14,6 +14,7 @@ Behavior (all knobs live in `RuleBasedConfig` and are meant to be calibrated):
    buy unplanned items with probability impulse_base × visibility × modifiers.
 """
 
+import math
 import random
 import re
 from dataclasses import dataclass, field
@@ -408,13 +409,22 @@ class RuleBasedEngine:
                 quantity += 1  # stocking up (typhoon, snow)
         out: list[CustomerAction] = []
         params = self._config.engines.rule_based
-        if force_browse or pattern.browse_required_before_buy or rng.random() < params.browse_before_buy_prob:
+        looks = force_browse or pattern.browse_required_before_buy or rng.random() < params.browse_before_buy_prob
+        look, pick = (rng.randint(3, 12) if looks else 0), rng.randint(2, 5)
+        if looks and params.shelf_time_median_sec > 0:
+            # Its own stream, seeded from the main one's current state: the main stream moves exactly
+            # as with the uniform times, so baskets and model prompts stay the same.
+            side = random.Random(hash(rng.getstate()))
+            total = side.lognormvariate(math.log(params.shelf_time_median_sec), params.shelf_time_log_sd)
+            pick = 2
+            look = max(1, round(min(120.0, max(3.0, total))) - pick)
+        if looks:
             out.append(CustomerAction(
                 nav="path", target=tile, face=slot.face, action=Action.BROWSE,
-                dwell=rng.randint(3, 12), description=why, origin=origin,
+                dwell=look, description=why, origin=origin,
             ))
         out.append(CustomerAction(
-            nav="path", target=tile, face=slot.face, action=Action.BUY, dwell=rng.randint(2, 5),
+            nav="path", target=tile, face=slot.face, action=Action.BUY, dwell=pick,
             product_sku=item.sku, quantity=quantity, description=f"picks {item.name}", origin=origin,
         ))
         return out
