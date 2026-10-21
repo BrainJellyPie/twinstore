@@ -176,6 +176,10 @@ class ScenarioPriors(BaseModel):
     # "day:weekend", "event:sports_match" (scaled by intensity), "weather:rain". Measured directly as
     # per-trip ratios on real receipts; empty for the convenience priors (no data yet).
     need_ratio: dict[str, dict[str, float]] = {}
+    # Part of the day of the visit, from the shopper's own arrival hour (no scenario needed): per-category
+    # multipliers for "morning" (before 12:00) and "evening" (from 17:00); midday is the reference. For
+    # shoppers whose needs come from their history, `need_ratio` keys "hour:morning" / "hour:evening".
+    hour_demand: dict[str, dict[str, float]] = {}
     temperature_clip: dict[str, tuple[float, float]] = {"cold_drinks": (0.6, 1.8), "water": (0.7, 1.9),
                                                          "ice_cream": (0.3, 2.4), "hot_food": (0.6, 1.6)}
     # Promotion lift on the promoted item's pick probability (before the price effect).
