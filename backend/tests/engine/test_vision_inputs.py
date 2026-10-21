@@ -64,7 +64,7 @@ def test_receipt_lines_become_a_pos_export() -> None:
     ]})
     reading = asyncio.run(vlm_receipt(fake, storefront(False), receipt_id="r001"))
     assert reading.total == 647 and reading.lines[0].unit_price == 249 and reading.timestamp == "2026-10-21 14:05"
-    matched = match_lines(reading, {"Coca-Cola Classic 20oz": "A0009", "Pepsi 20oz": "A0002"})
+    matched = match_lines(reading, {"A0009": "Coca-Cola Classic 20oz", "A0002": "Pepsi 20oz"})
     assert [line.matched for line in matched.lines] == [True, False] and matched.lines[0].sku == "A0009"
     csv = receipts_csv([matched])
     pos = parse_pos_csv(csv.encode(), "receipts.csv")

@@ -82,3 +82,39 @@ def test_receipt_review_uses_saved_run_currency(client, tmp_path):
     response = client.post(f"/api/projects/{PID}/receipts/review", json=body)
     assert response.status_code == 200, response.text
     assert response.json()["ready"] and response.json()["currency"] == "JPY"
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("products,printed,expected", [
+    ({"a": "Tea 500ml", "b": "TEA 500ML"}, "Tea 500ml", ""),
+    ({"a": "Tea 500ml", "b": "Tea-500ml"}, "TEA 500ML", ""),
+    ({"a": "Tea 500ml", "b": "Ｔｅａ ５００ｍｌ"}, "Tea 500ml", ""),
+    ({"a": "Tea 500ml", "b": "Tea 500ml", "c": "Tea 500ml XL"}, "Tea 500ml", ""),
+    ({"a": "Tea 500ml", "b": "Tea 500ml", "c": "Tea 500ml XL"}, "Tea 500m", ""),
+    ({"a": "Tea 500ml", "b": "Tea 550ml"}, "Tea 50ml", ""),
+    ({"a": "Tea 500ml", "b": "Orange juice"}, "Tea 500m", "a"),
+    ({"a": "Tea 500ml", "b": "Tea 550ml"}, "TEA-500ML", "a"),
+    ({"a": "Tea 500ml", "b": "Tea 500ml", "c": "Tea 500ml XL"}, "Tea 500ml XL", "c"),
+])
+def test_receipt_matching_keeps_ambiguous_products_for_manual_review(client, monkeypatch, reverse, products, printed, expected):
+    from store_emulator.application import vision_inputs
+    from tests.engine.test_vision_inputs import _Fake
+
+    client.get(f"/api/projects/{PID}/setups/setup_7d6d")
+    if reverse:
+        products = dict(reversed(list(products.items())))
+    monkeypatch.setattr(vision_inputs, "_receipt_target", lambda *args: (products, "USD"))
+    fake = _Fake({"currency": "USD", "lines": [{"name": printed, "quantity": 1, "unit_price": 1}]})
+    monkeypatch.setattr(vision_inputs, "_client", lambda *args: fake)
+
+    response = client.post(f"/api/projects/{PID}/receipts", files=[("photos", ("r.png", _png(True), "image/png"))])
+    assert response.status_code == 200, response.text
+    body = response.json()
+    line = body["receipts"][0]["lines"][0]
+    assert line["sku"] == expected
+    assert line["matched"] is bool(expected)
+    assert body["matched_lines"] == int(bool(expected))
+    assert body["unmatched_lines"] == int(not expected)
+    assert body["products"] == products
+    if not expected:
+        assert len(body["csv"].splitlines()) == 1
