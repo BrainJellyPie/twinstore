@@ -1,0 +1,53 @@
+{
+  "asset": "food_apple_01",
+  "source": "https://polyhaven.com/a/food_apple_01",
+  "author": "Oliver Harries",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_apples.py; single apple 200/999 triangle LODs and paired apples 400/1998; bottom-centred unit bounds; original 1K JPEG color, OpenGL normal and roughness maps retained. Two apples separated by 6 mm.",
+  "authored_dimensions_metres": {
+    "width": 0.09756118059158325,
+    "height": 0.08538994193077087,
+    "depth": 0.09590171277523041
+  },
+  "pair_width_metres": 0.2011223611831665,
+  "files": [
+    {
+      "file": "food_apple_01.gltf",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/food_apple_01/food_apple_01_1k.gltf",
+      "bytes": 2705,
+      "sha256": "6a7dc1cda1271c8b08e36e2b9fd44371b7149cca6262c71bc36d971cdac4325f"
+    },
+    {
+      "file": "textures/food_apple_01_diff_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_apple_01/food_apple_01_diff_1k.jpg",
+      "bytes": 183791,
+      "sha256": "b7fc17cfb5013958167bbc089ea4d1c193fb1c61ea4f3c974a9894ed9ba82e8a"
+    },
+    {
+      "file": "food_apple_01.bin",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/food_apple_01/food_apple_01.bin",
+      "bytes": 170680,
+      "sha256": "f14ff9647fdd9f5a59ef325f94154e91f1f14cc2563cd3fb572c4fe9ce5756ca"
+    },
+    {
+      "file": "textures/food_apple_01_nor_gl_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_apple_01/food_apple_01_nor_gl_1k.jpg",
+      "bytes": 63513,
+      "sha256": "c81b1e51ce7e789b65bfde2f046dcb5ba5773b5c6be3e572313be0600c51721b"
+    },
+    {
+      "file": "textures/food_apple_01_rough_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_apple_01/food_apple_01_rough_1k.jpg",
+      "bytes": 53123,
+      "sha256": "2e5a503af38df7b570b0e81cc9563125f0913b466e01140d4e24ea5ebdbec587"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "apples.glb",
+      "bytes": 428616,
+      "sha256": "c65df204136b64b32c6be778bd4ced4715d63ba4117129e8c45a266cea5a913d"
+    }
+  ]
+}

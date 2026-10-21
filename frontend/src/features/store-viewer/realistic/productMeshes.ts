@@ -10,7 +10,7 @@ import { createPackageGeometry, PACKAGE_KINDS } from "./productGeometries";
 import type { PackageKind } from "./productCatalog";
 import type { ProductLayout } from "./productLayout";
 import { attachProductPhotos, productLabelKey } from "./productPhotos";
-import { loadScannedBananas } from "./scannedBananas";
+import { loadScannedProduce, type ScannedProduceTarget } from "./scannedProduce";
 
 const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }> = {
   bottle: { roughness: 0.18, metalness: 0 },
@@ -22,6 +22,14 @@ const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }
   box: { roughness: 0.62, metalness: 0 },
   bag: { roughness: 0.32, metalness: 0.15 },
   banana: { roughness: 0.55, metalness: 0 },
+  apple: { roughness: 0.38, metalness: 0 },
+  applePair: { roughness: 0.38, metalness: 0 },
+};
+
+const SCANNED_PRODUCE: Partial<Record<PackageKind, { url: string; name: string }>> = {
+  banana: { url: "/assets/produce/bananas.glb", name: "bananas" },
+  apple: { url: "/assets/produce/apples.glb", name: "apple" },
+  applePair: { url: "/assets/produce/apples.glb", name: "apple-pair" },
 };
 
 export interface ProductLod {
@@ -82,7 +90,7 @@ export function buildProductMeshes(
     else byKind.set(p.kind, [p]);
   }
   const lods: ProductLod[] = [];
-  let bananaLod: ProductLod | null = null;
+  const scans = new Map<string, ScannedProduceTarget[]>();
   for (const kind of PACKAGE_KINDS) {
     const list = byKind.get(kind);
     if (!list?.length) continue;
@@ -93,7 +101,12 @@ export function buildProductMeshes(
     fine.setAttribute("aCell", geom.getAttribute("aCell"));
     const lod = { mesh, coarse: geom, fine };
     lods.push(lod);
-    if (kind === "banana") bananaLod = lod;
+    const scan = SCANNED_PRODUCE[kind];
+    if (scan) {
+      const targets = scans.get(scan.url) ?? [];
+      targets.push({ lod, name: scan.name });
+      scans.set(scan.url, targets);
+    }
     disposables.push(fine);
     mesh.name = `pkg-${kind}`;
     mesh.castShadow = castShadow;
@@ -185,8 +198,8 @@ export function buildProductMeshes(
     loadAssets: (onReady) => {
       cancelAssets();
       const stopPhotos = photos.load();
-      const stopBananas = bananaLod ? loadScannedBananas(bananaLod, cheap, onReady) : () => {};
-      cancelAssets = () => { stopPhotos(); stopBananas(); };
+      const stopScans = [...scans].map(([url, targets]) => loadScannedProduce(url, targets, cheap, onReady));
+      cancelAssets = () => { stopPhotos(); stopScans.forEach((stop) => stop()); };
       return cancelAssets;
     },
     dispose: () => {

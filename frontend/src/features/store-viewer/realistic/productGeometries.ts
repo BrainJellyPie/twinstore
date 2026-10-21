@@ -323,6 +323,21 @@ function banana(lod: Lod): THREE.BufferGeometry {
   return geometry;
 }
 
+function apple(lod: Lod, pair: boolean): THREE.BufferGeometry {
+  const base = new THREE.SphereGeometry(0.5, lod ? 16 : 8, lod ? 12 : 6);
+  base.translate(0, 0.5, 0);
+  const uv = base.getAttribute("uv");
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, ZONE_BODY[0], ZONE_BODY[1]);
+  if (!pair) return base;
+  const width = 0.09756 / 0.20112;
+  const offset = (0.09756 + 0.006) / (2 * 0.20112);
+  const halves = [-1, 1].map((sign) => base.clone().scale(width, 1, 1).translate(sign * offset, 0, 0));
+  const geometry = mergeGeometries(halves)!;
+  base.dispose();
+  halves.forEach((half) => half.dispose());
+  return geometry;
+}
+
 export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.BufferGeometry {
   switch (kind) {
     case "bottle":
@@ -341,9 +356,12 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
       return bag(lod);
     case "banana":
       return banana(lod);
+    case "apple":
+    case "applePair":
+      return apple(lod, kind === "applePair");
     default:
       return box();
   }
 }
 
-export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana"];
+export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair"];
