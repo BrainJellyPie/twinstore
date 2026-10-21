@@ -134,8 +134,9 @@ Short real recordings of single features. Each preview loops; click it for the f
 
 The language control next to the theme switch supports **English, 한국어, 中文, 日本語,
 Español and Français**. It follows your browser language on first use and remembers your
-selection. Home, navigation, store cards, search and the model notice are localized; feature
-editors and technical server messages currently remain in English.
+selection. Home, navigation, store cards, search, the model notice and the simulation launcher are localized.
+The detailed situation and model editors, other feature editors and technical server messages
+currently remain in English.
 
 ## What you can do
 
