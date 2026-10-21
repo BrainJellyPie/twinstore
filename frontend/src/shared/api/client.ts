@@ -1355,6 +1355,16 @@ export interface GenerateLayoutRequest extends LayoutOptions {
   requirements?: string;
 }
 
+export interface LayoutPreset {
+  format: "twinstore-layout-options";
+  version: 1;
+  layout: GenerateLayoutRequest;
+}
+
+export function validateLayoutPreset(value: unknown, signal?: AbortSignal): Promise<LayoutPreset> {
+  return fetchJson("/api/store-templates/preset/validate", { method: "POST", body: JSON.stringify(value), signal });
+}
+
 export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]> {
   return fetchJson("/api/store-templates", { signal });
 }
