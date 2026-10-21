@@ -149,6 +149,26 @@ function can(lod: Lod): THREE.BufferGeometry {
   return revolve(profile(pts, lod === 0 ? 0 : 0.06, lod === 0 ? 0.94 : 0.92), lod === 0 ? 6 : 14);
 }
 
+// Partition the existing surface without moving a vertex or adding triangles.
+// Separate batches let the path tracer retain the same finishes as live mode.
+export function createCanParts(lod: Lod): { body: THREE.BufferGeometry; metal: THREE.BufferGeometry } {
+  const source = can(lod);
+  const uv = source.getAttribute("uv");
+  const index = source.index!;
+  const bodyIndices: number[] = [], metalIndices: number[] = [];
+  for (let i = 0; i < index.count; i += 3) {
+    const triangle = [index.getX(i), index.getX(i + 1), index.getX(i + 2)];
+    const isMetal = triangle.every(vertex =>
+      Math.abs(uv.getX(vertex) - ZONE_ACCENT[0]) < 1e-6 && Math.abs(uv.getY(vertex) - ZONE_ACCENT[1]) < 1e-6,
+    );
+    (isMetal ? metalIndices : bodyIndices).push(...triangle);
+  }
+  const body = source.clone().setIndex(bodyIndices);
+  const metal = source.clone().setIndex(metalIndices);
+  source.dispose();
+  return { body, metal };
+}
+
 function tube(lod: Lod): THREE.BufferGeometry {
   const pts: [number, number, Zone][] =
     lod === 0

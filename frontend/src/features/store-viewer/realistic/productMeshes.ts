@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { cellUv } from "./atlasLayout";
 import { createAtlasMaterial, canvasTexture } from "./atlasMaterial";
 import { createLabelAtlas, createTagAtlas, createTalkerAtlas, tagKey, type Atlas } from "./canvasArt";
-import { createPackageGeometry, PACKAGE_KINDS } from "./productGeometries";
+import { createCanParts, createPackageGeometry, PACKAGE_KINDS } from "./productGeometries";
 import type { PackageKind } from "./productCatalog";
 import type { ProductLayout } from "./productLayout";
 import { attachProductPhotos, productLabelKey } from "./productPhotos";
@@ -17,7 +17,7 @@ const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }
   bottle: { roughness: 0.18, metalness: 0 },
   perfumeBottle: { roughness: 0.12, metalness: 0.08 },
   teaCup: { roughness: 0.3, metalness: 0 },
-  can: { roughness: 0.28, metalness: 0.55 },
+  can: { roughness: 0.38, metalness: 0 },
   cup: { roughness: 0.55, metalness: 0 },
   pint: { roughness: 0.5, metalness: 0 },
   jar: { roughness: 0.22, metalness: 0 },
@@ -116,8 +116,9 @@ export function buildProductMeshes(
   for (const kind of PACKAGE_KINDS) {
     const list = byKind.get(kind);
     if (!list?.length) continue;
-    const geom = createPackageGeometry(kind, 0);
-    const fine = createPackageGeometry(kind, 1);
+    const canParts = kind === "can" && !cheap ? [createCanParts(0), createCanParts(1)] as const : null;
+    const geom = canParts?.[0].body ?? createPackageGeometry(kind, 0);
+    const fine = canParts?.[1].body ?? createPackageGeometry(kind, 1);
     const mat = createAtlasMaterial(labelTex, scale, { ...KIND_SURFACE[kind], cheap, selfLight: cheap ? 0.22 : 0.1 });
     const mesh = instanced(geom, mat, list.length);
     fine.setAttribute("aCell", geom.getAttribute("aCell"));
@@ -159,6 +160,25 @@ export function buildProductMeshes(
     cells.needsUpdate = true;
     group.add(mesh);
     disposables.push(mesh, geom, mat);
+    if (canParts) {
+      // A single additional instanced batch covers the bare ends/rims of every
+      // can. It shares the label atlas, with independent transforms and buffers.
+      const metalMat = createAtlasMaterial(labelTex, scale, { roughness: 0.22, metalness: 1, selfLight: 0 });
+      const coarseMetal = canParts[0].metal, fineMetal = canParts[1].metal;
+      const metal = instanced(coarseMetal, metalMat, list.length);
+      const metalCells = coarseMetal.getAttribute("aCell") as THREE.InstancedBufferAttribute;
+      metalCells.array.set(cells.array);
+      metalCells.needsUpdate = true;
+      fineMetal.setAttribute("aCell", metalCells);
+      metal.instanceMatrix.array.set(mesh.instanceMatrix.array);
+      metal.instanceMatrix.needsUpdate = true;
+      metal.name = "pkg-can-metal";
+      metal.castShadow = castShadow;
+      metal.receiveShadow = true;
+      group.add(metal);
+      lods.push({ mesh: metal, coarse: coarseMetal, fine: fineMetal });
+      disposables.push(metal, coarseMetal, fineMetal, metalMat);
+    }
   }
 
   // --- Price tags
