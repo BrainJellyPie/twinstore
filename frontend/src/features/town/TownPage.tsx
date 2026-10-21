@@ -53,6 +53,13 @@ export function TownPage({ projectId }: { projectId: string }) {
   });
   const remove = useMutation({ mutationFn: (venueId: string) => api.removeTownVenue(projectId, venueId), onSuccess: setTown, onError });
   const analyze = useMutation({ mutationFn: () => api.getTownSynergy(projectId, dayType), onSuccess: setSynergy, onError });
+  const loadError = townQ.isError ? (
+    <div role="alert" className="min-w-0 max-w-md space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
+      <p className="font-medium">Could not load neighborhood.</p>
+      <p className="break-words text-muted-foreground">{townQ.error.message}</p>
+      <Button variant="outline" disabled={townQ.isFetching} onClick={() => void townQ.refetch()}>Retry</Button>
+    </div>
+  ) : null;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row">
@@ -69,6 +76,8 @@ export function TownPage({ projectId }: { projectId: string }) {
             <MapToolbar mode={mode} setMode={setMode} category={placeCategory} setCategory={setPlaceCategory} busy={place.isPending || remove.isPending} />
             <Legend />
           </>
+        ) : loadError ? (
+          <div className="flex h-full items-center justify-center p-4">{loadError}</div>
         ) : (
           <div className="dot-grid relative flex h-full flex-col items-center justify-center gap-5 text-center">
             <svg viewBox="0 0 220 140" className="w-72 opacity-90" aria-hidden>
@@ -98,9 +107,12 @@ export function TownPage({ projectId }: { projectId: string }) {
           <ArrowLeft className="size-3" /> Back to store
         </Link>
         {town && <TownSummary town={town} />}
+        {town && loadError}
         {error && <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p>}
-        <GeneratePanel projectId={projectId} onDone={setTown} onError={onError} hasTown={!!town} />
-        <ImportPanel projectId={projectId} onDone={setTown} onError={onError} />
+        {(townQ.isSuccess || town) && <>
+          <GeneratePanel projectId={projectId} onDone={setTown} onError={onError} hasTown={!!town} />
+          <ImportPanel projectId={projectId} onDone={setTown} onError={onError} />
+        </>}
 
         {town && (
           <section className="space-y-3">
@@ -120,7 +132,12 @@ export function TownPage({ projectId }: { projectId: string }) {
                 <option key={s.scenario.id} value={s.scenario.id}>{s.scenario.name}</option>
               ))}
             </select>
-            {demandQ.data ? <DemandView demand={demandQ.data} /> : <p className="text-xs text-muted-foreground">Estimating…</p>}
+            {demandQ.data ? <DemandView demand={demandQ.data} /> : demandQ.isPending ? <p className="text-xs text-muted-foreground">Estimating…</p> : null}
+            {demandQ.isError && <div role="alert" className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs">
+              <p>Could not estimate customer demand.</p>
+              <p className="break-words text-muted-foreground">{demandQ.error.message}</p>
+              <Button size="sm" variant="outline" disabled={demandQ.isFetching} onClick={() => void demandQ.refetch()}>Retry estimate</Button>
+            </div>}
           </section>
         )}
 
