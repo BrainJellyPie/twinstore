@@ -223,6 +223,47 @@ it("lets users edit applied priority settings and reset the floor normally", asy
   expect((screen.getByLabelText("Interior aisle gap") as HTMLSelectElement).value).toBe("");
 });
 
+it.each(["front", "back", "left", "right"] as const)("switches dining and service priorities on the %s wall without mixing incompatible counts", async (gateWall) => {
+  const changed = vi.fn();
+  const starting = { ...DEFAULT_TEMPLATE_CHOICE, width: 32, height: 28, seed: 7, currency: "JPY", gate_wall: gateWall,
+    design_theme: "nordic" as const, table_rotation: 90 as const, dining_tables: 5, dining_seats: 6 as const,
+    table_mix: { two_seat: 1, four_seat: 1, six_seat: 3 }, open_hour: 6, close_hour: 20, closed_days: [7],
+    requirements: "Keep a quiet seating corner", products_per_category: 2, excluded_categories: ["beer_alcohol"],
+    reserved_areas: [{ label: "Pickup", x: 24, y: 20, width: 3, height: 2 }] };
+  function PrioritizedPicker() {
+    const [choice, setChoice] = useState<typeof DEFAULT_TEMPLATE_CHOICE>(starting);
+    return <TemplatePicker value={choice} onChange={(next) => { changed(next); setChoice(next); }} />;
+  }
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><PrioritizedPicker /></QueryClientProvider>);
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByText("Apply a layout priority"));
+  const unchanged = { width: 32, height: 28, seed: 7, currency: "JPY", gate_wall: gateWall, design_theme: "nordic", table_rotation: 90,
+    open_hour: 6, close_hour: 20, closed_days: [7], products_per_category: 2, excluded_categories: ["beer_alcohol"], reserved_areas: starting.reserved_areas };
+  for (const [id, expected] of [
+    ["compact_cafe", { dining_tables: 4, dining_seats: 2, table_mix: null, table_clearance: 1, seating_zone: "back", checkouts: 1, checkout_clearance: 0 }],
+    ["family_dining", { dining_tables: 6, dining_seats: 6, table_mix: null, table_clearance: 2, seating_zone: "center", checkouts: 2, checkout_clearance: 1 }],
+    ["mixed_parties", { dining_tables: 6, dining_seats: 4, table_mix: { two_seat: 2, four_seat: 2, six_seat: 2 }, table_clearance: 1, checkouts: 2, checkout_clearance: 1 }],
+    ["service_points", { style: "spine", density: "spacious", dining_tables: 0, table_mix: { two_seat: 0, four_seat: 0, six_seat: 0 }, checkouts: 3, checkout_clearance: 2, aisle_width: 3, max_shelf_run: 3 }],
+    ["mixed_parties", { dining_tables: 6, table_mix: { two_seat: 2, four_seat: 2, six_seat: 2 } }],
+    ["family_dining", { dining_tables: 6, dining_seats: 6, table_mix: null }],
+  ] as const) {
+    const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+    fireEvent.change(screen.getByLabelText("Layout priority"), { target: { value: id } });
+    expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+    fireEvent.click(screen.getByRole("button", { name: "Apply priority" }));
+    const applied = { ...unchanged, ...expected, checkout_wall: gateWall, checkout_placement: "near_entrance" };
+    expect(changed).toHaveBeenLastCalledWith(expect.objectContaining(applied));
+    // Returning to a previous priority can reuse its already-cached preview.
+    await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenCalledWith(expect.objectContaining(applied), expect.any(AbortSignal)));
+    expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe(starting.requirements);
+  }
+  fireEvent.change(screen.getByLabelText("Dining tables (6 seats each)"), { target: { value: "3" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ dining_tables: 3, dining_seats: 6 }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Space beside counters") as HTMLSelectElement).value).toBe("0");
+});
+
 it("applies the actual default palette or explicit design and currency without submitting the form", async () => {
   const design = vi.fn(), currency = vi.fn(), submit = vi.fn();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
