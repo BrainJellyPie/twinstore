@@ -13,6 +13,7 @@ interface ProductModel {
 
 it.each([
   ["produce/bananas", [["bananas-coarse", 300], ["bananas-fine", 1600]]],
+  ["produce/avocado", [["avocado-coarse", 200], ["avocado-fine", 1000]]],
   ["produce/apples", [["apple-coarse", 200], ["apple-fine", 1000], ["apple-pair-coarse", 400], ["apple-pair-fine", 2000]]],
   ["products/watering-can", [["watering-can-coarse", 500], ["watering-can-fine", 2500]]],
   ["products/croissant", [["croissant-coarse", 300], ["croissant-fine", 1500]]],
@@ -30,8 +31,8 @@ it.each([
     position.min!.forEach((value, axis) => expect(value).toBeCloseTo([-0.5, 0, -0.5][axis]!, 5));
     position.max!.forEach((value, axis) => expect(value).toBeCloseTo([0.5, 1, 0.5][axis]!, 5));
     if (asset.startsWith("produce/")) {
-      const kind = name.startsWith("bananas") ? "banana" : name.startsWith("apple-pair") ? "applePair" : "apple";
-      const spec = classifyProduct(kind === "banana" ? "Bananas" : kind === "applePair" ? "Apples 2pk" : "Apples");
+      const kind = name.startsWith("avocado") ? "avocado" : name.startsWith("bananas") ? "banana" : name.startsWith("apple-pair") ? "applePair" : "apple";
+      const spec = classifyProduct(kind === "avocado" ? "Avocados" : kind === "banana" ? "Bananas" : kind === "applePair" ? "Apples 2pk" : "Apples");
       const view = model.bufferViews[position.bufferView]!;
       const offset = 28 + length + view.byteOffset + (position.byteOffset ?? 0);
       let maxX = 0, maxZ = 0;
