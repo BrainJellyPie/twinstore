@@ -39,10 +39,11 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     assert all(t["default_style"] and t["skus"] > 0 for t in templates.values())
 
 
-def test_preview_matches_saved_custom_store(client):
+@pytest.mark.parametrize("theme", ["botanical", "coastal", "terracotta"])
+def test_preview_matches_saved_custom_store(client, theme):
     options = dict(seed=12, currency="JPY", style="spine", width=28, height=24,
                    density="spacious", aisle_width=4, max_shelf_run=8, entrance="right", exit_position="center", checkouts=3, checkout_placement="away_from_entrance",
-                   fixture_design="c", design_theme="botanical", dining_tables=7, table_clearance=2, seating_zone="center", shelf_direction="vertical")
+                   fixture_design="c", design_theme=theme, dining_tables=7, table_clearance=2, seating_zone="center", shelf_direction="vertical")
     preview = client.get("/api/store-templates/food_hall/preview", params=options)
     assert preview.status_code == 200, preview.text
     response = client.post(f"/api/projects/{PID}/setups/generate", json={
@@ -54,7 +55,7 @@ def test_preview_matches_saved_custom_store(client):
     assert saved["store"]["grid_size"] == [28, 24]
     assert saved["store"]["name"] == "Lunch hall"
     assert saved["store"]["currency"] == preview.json()["currency"] == "JPY"
-    assert saved["store"]["design_theme"] == preview.json()["design_theme"] == "botanical"
+    assert saved["store"]["design_theme"] == preview.json()["design_theme"] == theme
     assert "Reserve a quiet corner" in saved["memo"]
     assert saved["generation"]["checkouts"] == 3
     assert saved["generation"]["dining_tables"] == 7
