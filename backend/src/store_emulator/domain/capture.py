@@ -134,3 +134,4 @@ class CaptureStatus(BaseModel):
     gaps: int = 0
     levels: int = 0
     applied_setup_ids: list[str] = []
+    upload_sha256: str = ""  # request content identity for safe upload retries

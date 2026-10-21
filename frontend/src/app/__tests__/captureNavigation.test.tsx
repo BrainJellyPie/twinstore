@@ -5,6 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { webcrypto } from "node:crypto";
 import { Route } from "../../routes/capture.$pid";
 
 vi.mock("@/shared/api/client", async (original) => ({
@@ -23,6 +24,7 @@ function status(id: string): api.CaptureStatus {
 const result: api.CaptureResult = { image_size: [100, 100], tilt_deg: 0, detector: "classic", detection_sources: {}, model: "none", currency: "USD",
   rack_type: "shelf", bands: [], items: [], gaps: [], dominant_category: "", notes: [], timings: {}, vlm_calls: 0, edited: false };
 beforeEach(() => {
+  vi.stubGlobal("crypto", webcrypto);
   vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   captures = { alpha: ["cap_a1", "cap_a2"], beta: ["cap_b1"] };
   vi.mocked(api.listCaptures).mockImplementation(async (pid) => captures[pid]!.map(status));
@@ -35,7 +37,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup(); clients.splice(0).forEach((client) => client.clear()); useSimulationStore.getState().reset();
-  vi.resetAllMocks(); vi.restoreAllMocks();
+  vi.resetAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 async function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } }); clients.push(client);
@@ -62,10 +64,10 @@ it("opens the next project's photo without requesting the previous project's sel
   expectOnlyOwnedCaptures();
 });
 
-it("opens existing photos in the next project after choosing New photo in the previous project", async () => {
+it("opens existing photos in the next project after choosing Add photos in the previous project", async () => {
   const { go } = await mount();
-  fireEvent.click(screen.getByRole("button", { name: "New photo" }));
-  expect(await screen.findByText("Choose a photo")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Add photos" }));
+  expect(await screen.findByText("Choose photos or drop them here")).toBeTruthy();
   await go();
   await waitFor(() => expect(screen.getByRole("img", { name: "Shelf photo" }).getAttribute("src")).toContain("/beta/captures/cap_b1/"));
   expectOnlyOwnedCaptures();
@@ -82,15 +84,15 @@ it("resets capture-specific editing state when a cached destination uses the sam
   expect(screen.getAllByRole("combobox")).toHaveLength(1);
 });
 
-it("keeps the selected photo and New photo mode when refreshing the same project", async () => {
+it("keeps the selected photo and Add photos mode when refreshing the same project", async () => {
   const { client } = await mount();
   fireEvent.click(screen.getByTitle("cap_a2.png"));
   await waitFor(() => expect(screen.getByRole("img", { name: "Shelf photo" }).getAttribute("src")).toContain("/alpha/captures/cap_a2/"));
   await act(async () => { client.setQueryData(["projects", "alpha", "captures"], captures.alpha!.map(status)); });
   expect(screen.getByRole("img", { name: "Shelf photo" }).getAttribute("src")).toContain("/alpha/captures/cap_a2/");
-  fireEvent.click(screen.getByRole("button", { name: "New photo" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add photos" }));
   await act(async () => { client.setQueryData(["projects", "alpha", "captures"], captures.alpha!.map(status)); });
-  expect(screen.getByText("Choose a photo")).toBeTruthy();
+  expect(screen.getByText("Choose photos or drop them here")).toBeTruthy();
   expect(screen.queryByRole("img", { name: "Shelf photo" })).toBeNull();
 });
 
@@ -99,13 +101,15 @@ it("does not select a late upload from the previous project in an empty destinat
   let finish!: (value: api.CaptureStatus) => void;
   vi.mocked(api.createCapture).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
   const { go, container } = await mount();
-  fireEvent.click(screen.getByRole("button", { name: "New photo" }));
-  await screen.findByText("Choose a photo");
+  fireEvent.click(screen.getByRole("button", { name: "Add photos" }));
+  await screen.findByText("Choose photos or drop them here");
   fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [new File(["photo"], "shelf.png", { type: "image/png" })] } });
+  await waitFor(() => expect((screen.getByRole("button", { name: "Start / resume queue" }) as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(screen.getByRole("button", { name: "Start / resume queue" }));
   await waitFor(() => expect(api.createCapture).toHaveBeenCalledOnce());
   await go();
   await act(async () => { finish(status("cap_uploaded_alpha")); });
-  await screen.findByText("Choose a photo");
+  await screen.findByText("Choose photos or drop them here");
   expect(screen.queryByRole("alert")).toBeNull();
   expectOnlyOwnedCaptures();
 });

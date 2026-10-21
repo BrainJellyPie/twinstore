@@ -1,0 +1,18 @@
+# Usability candidates: multi-photo capture intake
+
+2026-10-21. Requirements hypotheses based on public documentation and repository inspection; no interviews, usability measurements or market validation.
+
+Scenario: an operator has six shelf photos. Capture currently accepts a FileList but reads only `files[0]`, starts immediately and switches into that capture. The operator must reopen New photo for each image. The previous cycle already combines completed/reviewed photos into one draft; this cycle should connect the missing intake step rather than duplicate placement or introduce an analysis worksheet.
+
+Public sources checked this cycle (HTTP 200): [MDN multiple](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/multiple) documents selecting several files; [NN/g visibility of system status](https://www.nngroup.com/articles/visibility-system-status/) motivates clear ongoing task feedback; [NN/g user control](https://www.nngroup.com/articles/user-control-and-freedom/) supports pause/removal and recoverable errors; [Shopify product editing](https://help.shopify.com/en/manual/products/bulk-editing) redirects to Products documentation with bulk editing. These support design choices, not measured effectiveness or recognition accuracy.
+
+| Candidate / users | Input and current friction | Model/data requirements / feasibility | Verification |
+| --- | --- | --- | --- |
+| Multi-photo intake queue / operators, marketers building photographed store variants | Choose or drop files once, select shared recognition settings, explicitly start; current uploader silently ignores every file after the first | Existing capture API and recognition; bound the queue and process one accepted photo through terminal state before sending the next. Moderate, chosen | Mixed invalid/duplicate files, limits, immutable settings, status, pause/removal, retry without duplicate model jobs, navigation; real browser upload → review → combined draft |
+| Starter assortment selection / first-time operators, teaching demonstrations | Category/size choices instead of entering many products | Latest scenarios already adds formats, exact assortment seeds and cross-floor assortment application. Avoid duplicating it | Catalog coverage, original products, reference-price labels; revisit actual entry points |
+| Bulk price/name editing / operators, marketers comparing a known assortment | Many shelf items need shared changes | No new model, but identity/price scope across duplicated facings and undo need careful design; distinct next candidate | Preview affected SKUs, preserve unselected items, integer prices, stale revisions and undo |
+| Natural-language store starter / researchers/marketers | Describe a store without learning layout options | Existing generation, provider readiness, interpretation preview and reproducibility required; larger scope | Unsupported concepts, user corrections, cost disclosure and deterministic parameter replay |
+
+Selection: multi-photo intake, connecting to the last cycle's reviewed-photo combination. Deduplicate identical file bytes locally, show individual status/errors, preserve accepted captures, and keep later photos unsent when paused. Distinguish stopping the local queue from canceling server recognition. No durable browser file storage is promised; completed uploads remain in Capture history. Uncertain HTTP retries need a stable request identity; recognition failures require an explicit new attempt. No real stock/price/accuracy/time-saving claims.
+
+Initial integrated heads: main `ab76a1ee`, scenarios `692d80ba`, edge-case loop `db41a09a`; existing operator `4aab7dba` preserved. Expanded layout/floor-plan localization scope was read; new Capture UI remains English.

@@ -18,6 +18,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Print-ready HTML report and a long-format CSV (one row per option shown) for re-estimation elsewhere.
   API: `POST/GET /api/projects/{pid}/conjoints`, `GET .../conjoints/{id}`, `.../report.html`, `.../export.csv`.
 
+### Multi-photo capture intake
+- Capture accepts several selected/dropped shelf photos into an explicit-start queue, with byte-based duplicate checks, per-file/total limits, sequential recognition, per-photo review and safe retries. It connects directly to combined shelf layout creation.
+- Pause stops later uploads; accepted server jobs are preserved. Request IDs prevent duplicate recognition on uncertain retries, while removed uploads cannot be resurrected by replay. Interrupted server jobs become failed for an explicit new attempt.
+- Boundary fixes preserve queued currency across project refreshes, handle executor rejection and keep hidden upload controls out of the editing view.
+
 ### Combine reviewed shelf photos
 - Capture now selects up to 20 completed photos, previews their combined floor plan, registers product crops and saves one new child layout. Opening it is explicit; the base layout and source photos are preserved.
 - Full product-name matching keeps similarly named variants separate. Dropped products block saving; reduced facing counts require explicit acceptance. Estimated/missing prices remain visible review warnings.
