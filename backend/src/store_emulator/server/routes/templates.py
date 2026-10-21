@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
-    BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
+    BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
     SeatingZone, ShelfDirection, StoreDesign, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
@@ -29,6 +29,7 @@ class TemplateInfo(BaseModel):
     default_design: StoreDesign
     default_style: LayoutStyle
     default_dining_tables: int
+    default_checkouts: int
     default_seating_zone: SeatingZone
     default_checkout_placement: CheckoutPlacement
 
@@ -43,6 +44,7 @@ def list_templates() -> list[TemplateInfo]:
             racks=sum(1 for r in s.racks if r.slots), skus=len({i.sku for r in s.racks for sl in r.slots for i in sl.items}),
             open_hours=t.open_hours, default_style=t.style, default_design=s.design_theme,
             default_dining_tables=t.dining_tables, default_seating_zone=t.seating_zone,
+            default_checkouts=t.checkouts,
             default_checkout_placement=t.checkout_placement,
         ))
     return out
@@ -55,8 +57,9 @@ def preview(
     width: int | None = Query(default=None, ge=8, le=40),
     height: int | None = Query(default=None, ge=6, le=40),
     density: LayoutDensity = "balanced", entrance: EntrancePosition = "left",
+    exit_position: ExitPosition = "shared",
     shelf_direction: ShelfDirection = "horizontal",
-    checkouts: int = Query(default=1, ge=1, le=4), fixture_design: FixtureDesign = "mixed",
+    checkouts: int | None = Query(default=None, ge=1, le=12), fixture_design: FixtureDesign = "mixed",
     design_theme: StoreDesign | None = None,
     dining_tables: int | None = Query(default=None, ge=0, le=12),
     table_clearance: int = Query(default=1, ge=1, le=3),
@@ -64,7 +67,7 @@ def preview(
 ) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density,
                             shelf_direction=shelf_direction,
-                            entrance=entrance, checkouts=checkouts, fixture_design=fixture_design,
+                            entrance=entrance, exit_position=exit_position, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables, table_clearance=table_clearance,
                             seating_zone=seating_zone, checkout_placement=checkout_placement)
     return _preview_store(template_id, seed, currency, options)

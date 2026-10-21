@@ -150,7 +150,7 @@ for a simulation, or start a separate project for that market.
 
 Combine six patterns (parallel aisles, racetrack, central spine, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
-three display densities, left/center/right entry, one to four checkouts and shelf
+three display densities, left/center/right entry, one to twelve checkouts and shelf
 variants. Six saved interior palettes—classic retail, warm wood, minimal white,
 industrial graphite, botanical sage and charcoal/brass—change walls, shelving,
 counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
@@ -200,6 +200,20 @@ Tables extend into neighboring space as their count increases, retaining their
 circulation space. Checkout counters can use the default arrangement or be placed
 near or away from the entrance. These choices appear in the preview and are saved
 per layout or building floor, including when reusing settings for an alternative.
+
+The exit can share the entrance or occupy a separate left, center or right cell
+on the front row. Checkout counters and impulse displays leave both gates clear.
+This supports separate arrival and departure routes; shoppers use the selected
+exit after shopping. Choosing the same position as the entrance keeps a shared
+gate. Exit settings are included in previews, saved layouts and reused options.
+
+Large formats now start with multiple checkout counters: six for the hypermarket,
+eight for the warehouse club, four for the food hall, and two for the organic
+market and wellness pharmacy. Choose **Format default** to adapt those counts to
+a smaller floor, or set an explicit count from 1–12. Counts that cannot fit beside
+the selected gates return a capacity message instead of silently dropping
+counters. Saved explicit choices, including a single counter, remain explicit
+when their options are reused. The preview shows the actual generated count.
 
 The floor editor supports up to 40×40 cells, with zoom controls and a scrollable
 grid that keeps fixtures readable on large floors and smaller screens. Width and

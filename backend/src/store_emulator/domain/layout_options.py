@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 type LayoutStyle = Literal["aisles", "loop", "spine", "free_flow", "perimeter", "showroom"]
 type LayoutDensity = Literal["spacious", "balanced", "dense"]
 type EntrancePosition = Literal["left", "center", "right"]
+type ExitPosition = Literal["shared", "left", "center", "right"]
 type CheckoutPlacement = Literal["auto", "near_entrance", "away_from_entrance"]
 type SeatingZone = Literal["auto", "front", "back", "left", "right", "center"]
 type StoreDesign = Literal["classic", "warm", "minimal", "industrial", "botanical", "luxury"]
@@ -33,7 +34,8 @@ class LayoutOptions(BaseModel):
     density: LayoutDensity = "balanced"
     shelf_direction: ShelfDirection = "horizontal"
     entrance: EntrancePosition = "left"
-    checkouts: int = Field(default=1, ge=1, le=4)
+    exit_position: ExitPosition = "shared"
+    checkouts: int | None = Field(default=None, ge=1, le=12)
     checkout_placement: CheckoutPlacement = "auto"
     fixture_design: FixtureDesign = "mixed"
     design_theme: StoreDesign | None = None

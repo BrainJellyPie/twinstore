@@ -70,7 +70,8 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <FloorPlan store={preview.data} areas={value.reserved_areas ?? []} />
               <p className="text-xs text-muted-foreground">{preview.data.grid_size.join("×")} cells · {preview.data.racks.filter((r) => r.slots.length).length} displays · {new Set(preview.data.racks.flatMap((r) => r.slots.flatMap((s) => s.items.map((i) => i.sku)))).size} products</p>
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "table").length} dining tables · {preview.data.racks.filter((r) => r.type === "table").length * 4} seats</p>
-              <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green: entry · Slate: checkout · Purple: seating</p>
+              <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "counter").length} checkout counters</p>
+              <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green: entry / exit · Slate: checkout · Purple: seating</p>
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
               {!validTemplateChoice(value) ? "Enter a valid grid size and reserved-area values." : preview.isError ? "Preview unavailable." : "Updating preview…"}
             </div>}
@@ -97,8 +98,12 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <Field label="Front entrance"><select className={controlClass} value={value.entrance ?? "left"} onChange={(e) => update({ entrance: e.target.value as TemplateChoice["entrance"] })}>
                 <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
               </select></Field>
-              <Field label="Checkout counters"><select className={controlClass} value={value.checkouts ?? 1} onChange={(e) => update({ checkouts: Number(e.target.value) })}>
-                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+              <Field label="Exit position"><select className={controlClass} value={value.exit_position ?? "shared"} onChange={(e) => update({ exit_position: e.target.value as TemplateChoice["exit_position"] })}>
+                <option value="shared">Share entrance</option><option value="left">Front left</option><option value="center">Front center</option><option value="right">Front right</option>
+              </select></Field>
+              <Field label="Checkout counters"><select className={controlClass} value={value.checkouts ?? ""} onChange={(e) => update({ checkouts: e.target.value === "" ? null : Number(e.target.value) })}>
+                <option value="">Format default ({selected?.default_checkouts ?? 1}, sized to fit)</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
               </select></Field>
               <Field label="Checkout placement"><select className={controlClass} value={value.checkout_placement ?? "auto"}
                 onChange={(e) => update({ checkout_placement: e.target.value as TemplateChoice["checkout_placement"] })}>
@@ -126,15 +131,15 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value="back">Back wall</option><option value="left">Left side</option>
                 <option value="right">Right side</option><option value="center">Center</option>
               </select></Field>
-              <div className="col-span-2"><Field label="Space around dining tables"><select className={controlClass} value={value.table_clearance ?? 1}
+              <Field label="Space around dining tables"><select className={controlClass} value={value.table_clearance ?? 1}
                 disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
                 onChange={(e) => update({ table_clearance: Number(e.target.value) })}>
                 <option value={1}>1 cell · Standard</option><option value={2}>2 cells · More room</option><option value={3}>3 cells · Open seating</option>
-              </select></Field></div>
+              </select></Field>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", shelf_direction: "horizontal", entrance: "left", checkouts: 1, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", shelf_direction: "horizontal", entrance: "left", exit_position: "shared", checkouts: null, checkout_placement: "auto", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>
