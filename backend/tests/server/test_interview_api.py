@@ -49,6 +49,10 @@ def test_journey_and_interview(client, monkeypatch):
     buys = [s for s in steps if s["action"] == "buy"]
     assert buys and sum(s["quantity"] for s in buys) == journey["units"]
     assert any(b["rack_id"] in journey["shelves"] for b in buys) and len(journey["path"]) >= len(steps)
+    seen = next(s for s in steps if s["action"] in ("browse", "buy") and s["face"] and s["sees_products"])
+    png = client.get(f"/api/projects/{PID}/runs/{RUN}/racks/{seen['rack_id']}/faces/{seen['face']}.png")
+    assert png.status_code == 200 and png.content[:4] == b"\x89PNG"
+    assert client.get(f"/api/projects/{PID}/runs/{RUN}/racks/{seen['rack_id']}/faces/Q.png").status_code == 400
 
     from store_emulator.application import interview
     fake = _Fake()

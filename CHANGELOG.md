@@ -11,6 +11,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   buys, longest visits) or search, open one, and see their trip step by step — wall-clock time,
   shelf, product, impulse or planned, and the thought recorded at each step — with the walked path
   and numbered stops on a floor map. **Follow in 3D** jumps playback to their arrival and highlights them.
+- Each first stop at a stocked shelf face shows **what the shopper saw** there (the vision shoppers'
+  renderer of that face at run time); click to enlarge. API: `GET .../runs/{run}/racks/{rack}/faces/{face}.png`.
 - **Interview**: ask that shopper why ("why didn't you buy anything at Snacks 1?"). A language model
   answers in the first person from the persona, the trip and the shelves they stopped at only, says
   so when they did not notice something, and cites the steps it means (hover to highlight them).
