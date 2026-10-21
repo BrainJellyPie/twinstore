@@ -154,6 +154,14 @@ These settings persist independently for each floor and through options files
 and saved-layout reuse. The POST preview accepts them as `category_product_limits`,
 a map of category IDs to integer limits (at most 64 entries).
 
+In a building, **Apply assortment to all floors** copies category exclusions,
+the shared and individual product limits, and the assortment seed from the
+current floor, then opens the review. Formats, dimensions, currency, design,
+hours, seating and reserved areas keep their existing values. Each format
+uses only its own categories. An exclusion list that removes every category
+on another floor produces a review error; edit that floor to restore a category
+before saving. Each floor keeps independent settings after applying.
+
 **Entrance wall** places the entrance on the front, back, left or right wall.
 For a separate exit position, **Exit wall** can follow the entrance wall or use
 another wall, such as a front entrance with a back exit. **Share entrance** keeps
