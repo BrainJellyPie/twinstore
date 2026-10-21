@@ -180,6 +180,10 @@ class ScenarioPriors(BaseModel):
     # multipliers for "morning" (before 12:00) and "evening" (from 17:00); midday is the reference. For
     # shoppers whose needs come from their history, `need_ratio` keys "hour:morning" / "hour:evening".
     hour_demand: dict[str, dict[str, float]] = {}
+    # Trip size: ratio of a trip's number of items (Persona.basket_size, and its categories) under the
+    # situation, keyed like `need_ratio` ("day:weekend", "season:summer", "event:payday" (scaled by
+    # intensity), "hour:evening"). Only applied to trips sized from receipts; empty = sizes unchanged.
+    size_ratio: dict[str, float] = {}
     temperature_clip: dict[str, tuple[float, float]] = {"cold_drinks": (0.6, 1.8), "water": (0.7, 1.9),
                                                          "ice_cream": (0.3, 2.4), "hot_food": (0.6, 1.6)}
     # Promotion lift on the promoted item's pick probability (before the price effect).
