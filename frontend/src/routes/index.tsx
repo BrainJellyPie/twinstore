@@ -1,11 +1,11 @@
-import { useState, type CSSProperties } from "react";
+import { type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Aperture, ArrowRight, CloudSun, Eye, KeyRound, Megaphone, MessagesSquare, Search, Sparkles, Wand2 } from "lucide-react";
+import { Aperture, ArrowRight, CloudSun, Eye, KeyRound, Megaphone, MessagesSquare, Sparkles, Wand2 } from "lucide-react";
 
 import { MOD_KEY } from "@/app/commandPalette";
 import { HeroStore } from "@/features/home/HeroStore";
-import { NewStoreTile, StoreTile, StoreTileSkeleton } from "@/features/home/StoreTile";
+import { StoreGallery } from "@/features/home/StoreGallery";
 import { Button } from "@/shared/components/ui/button";
 import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
@@ -35,17 +35,12 @@ function FloatingChip({ className, eyebrow, value, style }: { className: string;
 
 function HomePage() {
   const navigate = useNavigate();
-  const { data: projects, isLoading, error, refetch } = useProjects();
-  const [filter, setFilter] = useState("");
+  const { data: projects, isLoading, isFetching, error, refetch } = useProjects();
   const newStore = () => navigate({ to: "/projects/new" });
   const templates = useQuery({ queryKey: ["store-templates"], queryFn: ({ signal }) => api.getStoreTemplates(signal), staleTime: Infinity });
   const scenarios = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios(signal), staleTime: Infinity });
   const counted = (label: string) =>
     label === "Situations" && scenarios.data ? `${scenarios.data.length} situations` : label;
-
-  const shown = (projects ?? []).filter((p) =>
-    `${p.name} ${p.store_type} ${p.description}`.toLowerCase().includes(filter.trim().toLowerCase()),
-  );
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -112,51 +107,9 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="relative mx-auto max-w-7xl px-6 pt-6 pb-16">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="eyebrow">Workspace</div>
-            <h2 className="mt-1 font-display text-[2rem] leading-none">
-              Your stores
-              {projects && projects.length > 0 && <span className="num ml-3 align-middle text-base text-muted-foreground">{projects.length}</span>}
-            </h2>
-          </div>
-          {projects && projects.length > 1 && (
-            <label className="glass flex h-10 w-full max-w-xs items-center gap-2 rounded-xl px-3 text-sm sm:w-72">
-              <Search className="size-4 text-muted-foreground" aria-hidden />
-              <input
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="Filter stores"
-                className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
-                aria-label="Filter stores"
-              />
-            </label>
-          )}
-        </div>
-
-        {error && (
-          <div className="tone-bad mb-5 flex items-center justify-between gap-3 rounded-2xl border p-4 text-sm">
-            {error instanceof Error ? error.message : "Could not load stores"}
-            <Button size="sm" variant="outline" onClick={() => refetch()}>
-              Try again
-            </Button>
-          </div>
-        )}
-
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => <StoreTileSkeleton key={i} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {shown.map((p, i) => (
-              <StoreTile key={p.project_id} index={i} project={p} onOpen={() => navigate({ to: "/projects/$pid", params: { pid: p.project_id } })} />
-            ))}
-            <NewStoreTile onClick={newStore} />
-          </div>
-        )}
-      </section>
+      <StoreGallery projects={projects} isLoading={isLoading} isFetching={isFetching} error={error}
+        onRetry={() => { void refetch(); }} onCreate={newStore}
+        onOpen={(pid) => { void navigate({ to: "/projects/$pid", params: { pid } }); }} />
     </div>
   );
 }
