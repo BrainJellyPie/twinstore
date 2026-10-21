@@ -107,7 +107,7 @@ def test_density_design_and_format_assortments_are_applied():
     assert any(r.rack_desc == "restaurant_menu" for r in restaurant.product_racks)
 
 
-@pytest.mark.parametrize("theme", ["classic", "warm", "minimal", "industrial", "botanical", "luxury", "coastal", "terracotta"])
+@pytest.mark.parametrize("theme", ["classic", "warm", "minimal", "industrial", "botanical", "luxury", "coastal", "terracotta", "nordic", "retro"])
 def test_interior_design_survives_store_round_trip(theme):
     from store_emulator.domain.store import Store
     store = generate_store("specialty_cafe", options=LayoutOptions(design_theme=theme))

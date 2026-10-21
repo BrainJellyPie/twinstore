@@ -403,6 +403,20 @@ TEMPLATES: list[StoreTemplate] = [
         wall_shelves=["bubble_tea_menu", "bubble_tea_menu", "desserts"], gondolas=["bubble_tea_menu"], near_counter=["bubble_tea_menu", "desserts"],
         style="perimeter", open_hours=(10, 22), dining_tables=4, checkouts=2, seating_zone="back", checkout_placement="near_entrance", design_theme="coastal",
     ),
+    StoreTemplate(
+        id="nordic_lifestyle", name="Nordic lifestyle showroom", description="Homeware, books and plant gifts on open browsing islands with pale ash finishes, slate accents and two checkout counters.",
+        store_type="home", grid=(22, 18), fridges=[],
+        wall_shelves=["home_design", "books", "flowers"] * 2,
+        gondolas=["home_design", "home_design", "books", "flowers"], near_counter=["souvenirs", "home_design"],
+        style="free_flow", open_hours=(10, 20), checkouts=2, design_theme="nordic",
+    ),
+    StoreTemplate(
+        id="retro_diner", name="Retro diner & shake bar", description="Burgers, hot meals, coffee and frozen desserts around six tables, cherry-red counters and mint accents. Models counter purchases; kitchen and table service are not simulated.",
+        store_type="restaurant", grid=(20, 16), fridges=["soft_drinks", "dairy", "water_sports"], freezers=["scoop_menu"],
+        wall_shelves=["burger_menu", "restaurant_menu"] * 2, gondolas=["burger_menu", "restaurant_menu"],
+        near_counter=["cafe_menu", "scoop_menu"], style="perimeter", open_hours=(7, 23), dining_tables=6,
+        checkouts=2, seating_zone="center", checkout_placement="near_entrance", design_theme="retro",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}

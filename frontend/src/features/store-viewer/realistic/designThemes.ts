@@ -24,4 +24,6 @@ export const INTERIOR_DESIGNS: Record<StoreDesign, InteriorPalette> = {
   luxury: { label: "Luxury charcoal & brass", wall: "#d7d2ca", band: "#302d32", accent: "#c4a160", shelf: "#55515a", backing: "#aaa3a0", counter: "#eee4d2", wood: "#ad855f", floor: "#d7d0c5", ceiling: "#ece7df", plinth: "#4e4645" },
   coastal: { label: "Coastal blue", wall: "#e5f0f2", band: "#346d88", accent: "#d5b87c", shelf: "#d8e5eb", backing: "#e9f1f2", counter: "#c9dde4", wood: "#d6c7a8", floor: "#e5e9e3", ceiling: "#f7fbfb", plinth: "#718c99" },
   terracotta: { label: "Terracotta clay", wall: "#f1ded2", band: "#a65f47", accent: "#d8aa6a", shelf: "#d6b6a4", backing: "#e7cbbb", counter: "#c89578", wood: "#b58665", floor: "#ead7c8", ceiling: "#fff0e5", plinth: "#986f59" },
+  nordic: { label: "Nordic ash", wall: "#f4f1e8", band: "#647681", accent: "#d2b989", shelf: "#eee9de", backing: "#e5e7e2", counter: "#e5d9c4", wood: "#ddd0b5", floor: "#e9e6db", ceiling: "#fcfaf4", plinth: "#959d99" },
+  retro: { label: "Retro cherry & mint", wall: "#f8edda", band: "#a43f45", accent: "#77b8ad", shelf: "#f2dfcb", backing: "#dcbaaa", counter: "#b3484d", wood: "#c49975", floor: "#eee1cc", ceiling: "#fff7e6", plinth: "#889a99" },
 };

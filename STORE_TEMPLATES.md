@@ -1,6 +1,6 @@
 # Store layout templates
 
-Everything about generating a furnished starting layout: the 58 store formats, product categories, entrances and
+Everything about generating a furnished starting layout: the 60 store formats, product categories, entrances and
 exits, seating, checkouts, reserved areas, multi-floor buildings and the floor editor. The [README](./README.md#store-formats-and-templates)
 has the short version.
 
@@ -9,10 +9,16 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 58
+In a project, choose **New layout → Generate a store from a template**. Search 60
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+
+**Nordic lifestyle showroom** combines homeware, books and plant gifts in a 22×18
+floor with browsing islands and pale ash finishes. **Retro diner & shake bar**
+starts with six tables, two ordering counters and a cherry-and-mint interior on
+a 20×16 floor. **Design shop & diner** combines them as two independent floors.
+The diner uses counter purchases; kitchen and table service are not simulated.
 Under **Operating hours**, set opening (0–23), closing (1–24) and open weekdays independently
 for each layout or building floor. Blank hours and **Use format operating hours** restore the
 format defaults, including its regular days off. Set 0–24 for all-day opening, keep at least
@@ -119,9 +125,9 @@ for a simulation, or start a separate project for that market.
 Combine seven patterns (parallel aisles, racetrack, central spine, central cross aisles, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
 three display densities, left/center/right entry, one to twelve checkouts and shelf
-variants. Eight saved interior palettes—classic retail, warm wood, minimal white,
+variants. Ten saved interior palettes—classic retail, warm wood, minimal white,
 industrial graphite, botanical sage, charcoal/brass, coastal blue and terracotta
-clay—change walls, shelving,
+clay, Nordic ash and retro cherry/mint—change walls, shelving,
 counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
 default palette; each building floor can use a different one. The preview uses the same options as the saved layout. Shuffle changes
 the assortment reproducibly; reset restores the format's layout defaults.
