@@ -50,6 +50,14 @@ the pinned source revision and SHA-256 records in `sources.json`.
 - The original FBX skeletons use different rest poses for each motion. Bone
   orientations are baked into the avatar's own rest skeleton. Forward root
   travel is removed; the simulation owns shopper position.
+- Walking cadence follows route velocity, the selected playback speed and the
+  source clip's removed root travel (female 1.59662545 m, male 1.49586439 m per
+  cycle). The exported clip duration and metre scale convert these into an
+  animation rate. Rates stay between 0.2 and 1.75 for moving shoppers; stationary
+  motion and facial timing remain unchanged. This reduces sliding at real-time
+  speed; foot planting remains approximate because avatar leg proportions vary.
+  `gait-sources.json` records the measurements and pinned source hashes. Rebuild it
+  with `blender --background --python scripts/measure_rocketbox_gait.py -- --source-dir /path/to/rocketbox --output frontend/public/assets/people/gait-sources.json`.
 - Hair uses alpha testing to avoid transparency sorting problems in crowds.
 - This set contains ten visual variants, selected deterministically by shopper ID. Avatars are representative
   figures, not reconstructions of individual simulated consumers.

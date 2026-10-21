@@ -21,6 +21,8 @@ export interface PersonaFrame {
   y: number;
   facing: number;
   isMoving: boolean;
+  // Store coordinate units per simulation second, excluding authored dwell.
+  walkSpeed: number;
   color: string;
   label: string;
   trail: { x: number; y: number }[];
@@ -246,7 +248,7 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
       if (prev.action === "exit") continue;
 
       const next = prevIdx + 1 < c.timeline.length ? c.timeline[prevIdx + 1]! : null;
-      const { x, y, moving: isMoving } = positionBetweenEvents(prev, next, rel);
+      const { x, y, moving: isMoving, speed: walkSpeed } = positionBetweenEvents(prev, next, rel);
       const heading = isMoving
         ? Math.atan2(next!.x - prev.x, next!.y - prev.y)
         : state.trailFacing;
@@ -268,7 +270,7 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
       frames.push({
         id: c.persona_id,
         gender,
-        x, y, facing, isMoving,
+        x, y, facing, isMoving, walkSpeed,
         color: colorForCustomer(c.persona_id),
         label,
         trail: outTrail,

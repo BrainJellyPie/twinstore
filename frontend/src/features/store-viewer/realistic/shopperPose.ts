@@ -39,9 +39,9 @@ export function facingForEvent(heading: number, moving: boolean, event: Pick<Tim
     : heading;
 }
 
-export function positionBetweenEvents(prev: TimelineEvent, next: TimelineEvent | null, time: number): { x: number; y: number; moving: boolean } {
+export function positionBetweenEvents(prev: TimelineEvent, next: TimelineEvent | null, time: number): { x: number; y: number; moving: boolean; speed: number } {
   if (!next || next.elapsed_sec <= prev.elapsed_sec || (next.x === prev.x && next.y === prev.y)) {
-    return { x: prev.x, y: prev.y, moving: false };
+    return { x: prev.x, y: prev.y, moving: false, speed: 0 };
   }
   // These timestamps mark the start of a stop. Wander-glance timestamps mark
   // its end in timeline_builder, so their duration must not be applied again.
@@ -50,7 +50,8 @@ export function positionBetweenEvents(prev: TimelineEvent, next: TimelineEvent |
   const departure = Math.min(next.elapsed_sec, prev.elapsed_sec + dwell);
   const moving = time >= departure && departure < next.elapsed_sec;
   const fraction = moving ? Math.min(1, (time - departure) / (next.elapsed_sec - departure)) : 0;
-  return { x: prev.x + (next.x - prev.x) * fraction, y: prev.y + (next.y - prev.y) * fraction, moving };
+  const speed = moving ? Math.hypot(next.x - prev.x, next.y - prev.y) / (next.elapsed_sec - departure) : 0;
+  return { x: prev.x + (next.x - prev.x) * fraction, y: prev.y + (next.y - prev.y) * fraction, moving, speed };
 }
 
 export function shopperPoseAt(customer: CustomerResult, timeSec: number): ShopperPose | null {
