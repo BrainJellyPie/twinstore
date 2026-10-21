@@ -2,10 +2,10 @@ import { expect, it } from "vitest";
 import { PACKAGE_KINDS } from "../productGeometries";
 import { produceVariation } from "../produceVariation";
 
-it("keeps produce variation deterministic, subtle and restricted to fresh produce", () => {
+it("keeps produce variation deterministic, subtle and restricted to fresh display foods", () => {
   for (const kind of PACKAGE_KINDS) {
     const values = Array.from({ length: 64 }, (_, i) => produceVariation(kind, `${kind}|${i}|0|0`));
-    if (!["apple", "applePair", "banana", "avocado", "lemon", "onion", "kiwi", "sweetPotato", "asianPear", "ginger"].includes(kind)) {
+    if (!["apple", "applePair", "banana", "avocado", "lemon", "onion", "kiwi", "sweetPotato", "asianPear", "ginger", "burgerBun"].includes(kind)) {
       expect(values.every((value) => value === null)).toBe(true);
       continue;
     }

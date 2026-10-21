@@ -26,6 +26,7 @@ const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }
   bag: { roughness: 0.32, metalness: 0.15 },
   wateringCan: { roughness: 0.65, metalness: 0.7 },
   croissant: { roughness: 0.68, metalness: 0 },
+  burgerBun: { roughness: 0.8, metalness: 0 },
   pot: { roughness: 0.85, metalness: 0 },
   banana: { roughness: 0.55, metalness: 0 },
   avocado: { roughness: 0.74, metalness: 0 },
@@ -42,6 +43,7 @@ const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }
 const SCANNED_PRODUCTS: Partial<Record<PackageKind, { url: string; name: string }>> = {
   wateringCan: { url: "/assets/products/watering-can.glb", name: "watering-can" },
   croissant: { url: "/assets/products/croissant.glb", name: "croissant" },
+  burgerBun: { url: "/assets/products/burger-bun.glb", name: "burger-bun" },
   pot: { url: "/assets/products/terracotta-pot.glb", name: "pot" },
   banana: { url: "/assets/produce/bananas.glb", name: "bananas" },
   avocado: { url: "/assets/produce/avocado.glb", name: "avocado" },
