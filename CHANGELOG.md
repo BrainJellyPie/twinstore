@@ -6,6 +6,14 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Photo mode (path-traced stills)
+- In the realistic 3D view, **Photo** path-traces the current view with three-gpu-pathtracer:
+  global illumination, area-light shadows from the ceiling panels, a glossy floor, real glass and
+  daylight through the storefront. It refines sample by sample (64 / 256 / 1024) and saves a PNG;
+  orbiting or zooming restarts it. The live scene is copied into a static one the path tracer can
+  read: instanced packages baked with their label UVs, shader-patched materials replaced by plain PBR,
+  the contact-shadow decal dropped, the BVH built in a worker.
+
 ### Marketing studio
 - New **Market** page (`/marketing/<project>`) for marketers and research agencies, with three tabs.
 - **Products**: a product image library (multi-file drop, background cut-out, name, brand, linked shelf
