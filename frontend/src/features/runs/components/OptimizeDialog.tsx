@@ -18,6 +18,7 @@ import { formatPercent } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
 
 import { ModelPicker, type ModelChoice } from "./ModelPicker";
+import { useAvailableModels } from "../hooks";
 
 const OBJECTIVES: { value: OptimizeObjective; label: string }[] = [
   { value: "revenue_per_visitor", label: "Revenue per visitor" },
@@ -59,6 +60,21 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
   const [judge, setJudge] = useState<JudgeSpec>({ judge: "rule", vlm_customers: 40, top_k: 3, calibrate: true });
   const [modelChoice, setModelChoice] = useState<ModelChoice>({ kind: "default" });
   const { data: scenarios = [] } = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios(signal), staleTime: Infinity });
+  const models = useAvailableModels(judge.judge === "vlm");
+  const available = models.data?.filter((model) => model.vision);
+  let modelError: string | null = null;
+  if (judge.judge === "vlm" && modelChoice.kind !== "default") {
+    if (!available) modelError = models.isError ? "Could not load models. Retry the model list." : "Loading models…";
+    else if (modelChoice.kind === "single") {
+      modelError = !modelChoice.model ? "Select a vision model."
+        : available.some((model) => model.ref === modelChoice.model) ? null : `Unavailable model: ${modelChoice.model}`;
+    } else {
+      const members = modelChoice.ensemble?.members ?? [];
+      if (!members.length) modelError = "Select at least one ensemble model.";
+      else if (members.some((member) => !available.some((model) => model.ref === member.model))) modelError = "An ensemble model is unavailable. Remove it or choose another model.";
+      else if (members.some((member) => !Number.isFinite(member.weight) || member.weight <= 0)) modelError = "Every ensemble weight must be a positive finite number.";
+    }
+  }
 
   const start = useMutation({
     mutationFn: () => api.startOptimization(projectId, setupId, spec, scenarioId, judge.judge === "vlm" ? {
@@ -158,6 +174,7 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
           {judge.judge === "vlm" && (
             <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
               <ModelPicker engine="vlm_glance" value={modelChoice} onChange={setModelChoice} />
+              {modelError && <p id="run-model-error" role="alert" className="text-xs text-destructive">{modelError}</p>}
               <div className="grid grid-cols-3 gap-3 text-xs">
                 <label className="flex flex-col gap-1">
                   <span className="text-muted-foreground">Vision shoppers per layout</span>
@@ -182,7 +199,7 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={() => start.mutate()} disabled={start.isPending}>
+            <Button onClick={() => { if (modelError === null) start.mutate(); }} disabled={start.isPending || modelError !== null}>
               {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Start
             </Button>
           </div>
