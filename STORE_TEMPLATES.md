@@ -19,6 +19,13 @@ format defaults, including its regular days off. Set 0–24 for all-day opening,
 one weekday open, and use a closing hour later than opening; overnight schedules are not supported.
 These settings are saved, reused and included in exported layout and building options files.
 
+**Apply a layout priority** combines common requirements: **Wide circulation** uses cross aisles,
+3-cell gaps, short shelf runs and more room around tables; **More display space** uses dense parallel
+aisles with 1-cell gaps and longer runs; **Open center, no seating** removes dining tables and uses
+perimeter displays; **Takeaway service** also places two counters near the entrance on its wall.
+Review the listed changes before applying. Dimensions, product settings, design, operating hours and reserved
+areas keep their current values. The preview checks capacity, and every applied field remains editable.
+
 **Refill & bulk grocery**, **Care & mobility supply store**, **Fragrance concept boutique**
 and **Bubble tea café** add refill packs, care aids, fragrance products and a dedicated tea
 menu. Each includes twelve specialty products. Their defaults range from a 28×22 botanical
