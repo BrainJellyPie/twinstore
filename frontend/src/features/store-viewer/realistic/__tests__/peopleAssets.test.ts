@@ -49,14 +49,17 @@ describe("bundled shopper models", () => {
         expect(data.subarray(imageStart + 8, imageStart + 12).toString()).toBe("WEBP");
         expect(data.subarray(imageStart + 12, imageStart + 16).toString()).toBe("VP8L"); // lossless codec
       }
-      for (const mesh of model.meshes) expect(mesh.extras.targetNames).toEqual(["blink"]);
+      const facialShapes = ["blink", "lookLeft", "lookRight", "lookUp", "lookDown"];
+      for (const mesh of model.meshes) expect(mesh.extras.targetNames).toEqual(facialShapes);
       const headPrimitive = model.meshes.flatMap((mesh) => mesh.primitives).find((p) => model.materials[p.material]!.name.includes("head"))!;
-      expect(headPrimitive.targets).toHaveLength(1);
-      const eyelids = model.accessors[headPrimitive.targets[0]!.POSITION]!;
-      const deformation = Math.max(...[...eyelids.min!, ...eyelids.max!].map(Math.abs));
-      expect(deformation).toBeGreaterThan(0.001);
-      expect(deformation).toBeLessThan(0.05);
-      // Constant morph keys in body clips would silently overwrite runtime blinking.
+      expect(headPrimitive.targets).toHaveLength(facialShapes.length);
+      for (const target of headPrimitive.targets) {
+        const shape = model.accessors[target.POSITION]!;
+        const deformation = Math.max(...[...shape.min!, ...shape.max!].map(Math.abs));
+        expect(deformation).toBeGreaterThan(0.001);
+        expect(deformation).toBeLessThan(0.05);
+      }
+      // Constant morph keys in body clips would silently overwrite runtime eye motion.
       expect(model.animations.flatMap((a) => a.channels).some((c) => c.target.path === "weights")).toBe(false);
       // Confirm the conversion embedded actual maps; an unbaked Blender node
       // graph can otherwise silently export the same flat roughness as before.

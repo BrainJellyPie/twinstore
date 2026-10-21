@@ -11,6 +11,7 @@ import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { M, PERSONA_SCALE } from "../realistic/constants";
 import { angleDelta } from "../realistic/shopperPose";
 import { shopperBlinkWeight } from "../realistic/shopperBlink";
+import { shopperGazeOffset } from "../realistic/shopperGaze";
 
 ALL_CHARACTER_ASSETS.forEach((url) => useGLTF.preload(url));
 
@@ -94,22 +95,34 @@ function CharacterMesh({ url, animName, realistic, personaId }: CharacterMeshPro
   const { actions, mixer } = useAnimations(animations, clone);
   const previousAction = useRef<THREE.AnimationAction | null>(null);
   const playing = usePlaybackControlStore((s) => s.playing);
-  const blinkTargets = useMemo(() => {
-    const targets: { weights: number[]; index: number }[] = [];
+  const facialTargets = useMemo(() => {
+    const targets: { weights: number[]; indices: Partial<Record<"blink" | "lookLeft" | "lookRight" | "lookUp" | "lookDown", number>> }[] = [];
     if (realistic) clone.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return;
-      const index = object.morphTargetDictionary?.blink;
-      if (index !== undefined && object.morphTargetInfluences) targets.push({ weights: object.morphTargetInfluences, index });
+      if (object.morphTargetDictionary && object.morphTargetInfluences) {
+        targets.push({ weights: object.morphTargetInfluences, indices: object.morphTargetDictionary });
+      }
     });
     return targets;
   }, [clone, realistic]);
-  const blinkTime = useRef(0);
+  const facialTime = useRef(0);
   const blinkPhase = characterAnimationPhase(`${personaId}:blink`);
+  const gazePhase = characterAnimationPhase(`${personaId}:gaze`);
   useFrame((_, delta) => {
     if (!realistic || !usePlaybackControlStore.getState().playing) return;
-    blinkTime.current += Math.min(delta, 0.1);
-    const weight = shopperBlinkWeight(blinkTime.current, blinkPhase);
-    for (const target of blinkTargets) target.weights[target.index] = weight;
+    facialTime.current += Math.min(delta, 0.1);
+    const blink = shopperBlinkWeight(facialTime.current, blinkPhase);
+    // Gaze shapes include eyelid movement. Fade them under a blink so the
+    // independent authored deformations cannot pull a closed eyelid open.
+    const horizontal = shopperGazeOffset(facialTime.current, gazePhase) * (1 - blink);
+    const vertical = shopperGazeOffset(facialTime.current, gazePhase, true) * (1 - blink);
+    for (const { weights, indices } of facialTargets) {
+      if (indices.blink !== undefined) weights[indices.blink] = blink;
+      if (indices.lookLeft !== undefined) weights[indices.lookLeft] = Math.max(0, -horizontal);
+      if (indices.lookRight !== undefined) weights[indices.lookRight] = Math.max(0, horizontal);
+      if (indices.lookDown !== undefined) weights[indices.lookDown] = Math.max(0, -vertical);
+      if (indices.lookUp !== undefined) weights[indices.lookUp] = Math.max(0, vertical);
+    }
   });
 
   useEffect(() => {
