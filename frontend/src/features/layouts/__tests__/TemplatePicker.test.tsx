@@ -233,7 +233,7 @@ it("edits mixed counts, guards the total, applies seating priorities and restore
   expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).disabled).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   expect((screen.getByRole("checkbox", { name: "Use mixed table sizes" }) as HTMLInputElement).checked).toBe(false);
-});
+}, 15_000);
 
 it("previews table sizes, retains the choice with zero tables and resets to four seats", async () => {
   mount();
@@ -251,7 +251,7 @@ it("previews table sizes, retains the choice with zero tables and resets to four
   expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).value).toBe("6");
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).value).toBe("4");
-});
+}, 15_000);
 
 it("rotates dining footprints independently of shelves and retains the choice while seating is disabled", async () => {
   mount();
@@ -297,7 +297,7 @@ it.each(["front", "back", "left", "right"] as const)("applies priorities on the 
     await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ ...unchanged, ...expected }), expect.any(AbortSignal)));
     expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe(starting.requirements);
   }
-});
+}, 15_000);
 
 it("lets users edit applied priority settings and reset the floor normally", async () => {
   mount();

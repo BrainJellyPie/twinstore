@@ -14,8 +14,11 @@ import type { SetupGenerationState } from "@/shared/queries/useSetupGeneration";
 import { Route } from "../../routes/projects/$pid";
 
 vi.mock("@/shared/api/client", () => ({ getProject: vi.fn(), getSetups: vi.fn(), getSetup: vi.fn(), getRuns: vi.fn(), deleteProject: vi.fn(), createSetup: vi.fn(), generateBuilding: vi.fn(), generateLayout: vi.fn(), importFloorPlan: vi.fn(), getSetupGenerations: vi.fn(), getGenerationStatus: vi.fn(), regeneratePersona: vi.fn() }));
-vi.mock("@/views/simulation/states/PreparingView", () => ({ PreparingView: ({ generation }: { generation: SetupGenerationState }) =>
-  <div><output data-testid="generation">{generation.phase}:{generation.currentGenId}</output><button onClick={generation.retry}>Retry generation</button></div>,
+vi.mock("@/views/simulation/states/PreparingView", () => ({ PreparingView: ({ generation, onAbandonProject, onBackToStores }: {
+  generation: SetupGenerationState; onAbandonProject: () => Promise<void>; onBackToStores: () => void;
+}) =>
+  <div><output data-testid="generation">{generation.phase}:{generation.currentGenId}</output><button onClick={generation.retry}>Retry generation</button>
+    <button onClick={() => { void onAbandonProject().catch(() => {}); }}>Confirmed deletion</button><button onClick={onBackToStores}>Return to stores</button></div>,
 }));
 vi.mock("@/views/simulation/states/ReadyView", () => ({ ReadyView: () => null }));
 vi.mock("@/views/simulation/states/RunningView", () => ({ RunningView: () => null }));
@@ -84,6 +87,56 @@ async function mount(secondIds = ["b1", "b2"]) {
   await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a2"));
   return { client, router };
 }
+
+async function mountFailed(pathname = "/projects/alpha", settingsLoader?: () => Promise<void>) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } }); clients.push(client);
+  const failed = { ...setup("a1"), readiness: { ready: false, reasons: ["layout_pending" as const] } };
+  client.setQueryData(queryKeys.project("alpha"), project("alpha", ["a1"]));
+  client.setQueryData(queryKeys.setups("alpha"), [failed]); client.setQueryData(queryKeys.setup("alpha", "a1"), failed);
+  client.setQueryData(queryKeys.runs("alpha", "a1"), []);
+  vi.mocked(api.getSetups).mockResolvedValue([failed]);
+  vi.mocked(api.getSetupGenerations).mockResolvedValue([{ gen_id: "failed_layout", status: "failed", kind: "layout", setup_id: "a1", error: "Layout failed", progress: null, created_at: null, updated_at: null }]);
+  const root = createRootRoute({ component: Outlet });
+  const route = createRoute({ getParentRoute: () => root, path: "/projects/$pid", component: Route.options.component });
+  const wizard = createRoute({ getParentRoute: () => root, path: "/projects/new", component: () => <output>New-store form</output> });
+  const home = createRoute({ getParentRoute: () => root, path: "/", component: () => <output>Store list</output> });
+  const settings = createRoute({ getParentRoute: () => root, path: "/settings", loader: settingsLoader, component: () => <output>Settings page</output> });
+  const router = createRouter({ routeTree: root.addChildren([route, wizard, home, settings]), defaultPendingMs: 60_000,
+    history: createMemoryHistory({ initialEntries: [pathname] }) });
+  await router.load(); render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+  await screen.findByText("failed:failed_layout", { selector: "output" });
+  return { router };
+}
+
+it.each(["/projects/alpha", "/projects/alpha/"])("opens the wizard after confirmed deletion from %s", async (pathname) => {
+  vi.mocked(api.deleteProject).mockResolvedValue({ status: "deleted" }); const { router } = await mountFailed(pathname);
+  fireEvent.click(screen.getByRole("button", { name: "Confirmed deletion" })); await screen.findByText("New-store form");
+  expect(api.deleteProject).toHaveBeenCalledWith("alpha"); expect(router.state.location.pathname).toBe("/projects/new");
+});
+
+it("keeps the current page after a deletion failure", async () => {
+  vi.mocked(api.deleteProject).mockRejectedValue(new Error("Deletion unavailable")); const { router } = await mountFailed();
+  fireEvent.click(screen.getByRole("button", { name: "Confirmed deletion" }));
+  await waitFor(() => expect(api.deleteProject).toHaveBeenCalledOnce());
+  expect(router.state.location.pathname).toBe("/projects/alpha"); expect(screen.queryByText("New-store form")).toBeNull();
+});
+
+it("preserves a destination already loading while deletion completes on the old page", async () => {
+  const deletion = deferred<{ status: string }>(), loading = deferred<void>(); vi.mocked(api.deleteProject).mockReturnValue(deletion.promise);
+  const { router } = await mountFailed("/projects/alpha", () => loading.promise);
+  fireEvent.click(screen.getByRole("button", { name: "Confirmed deletion" })); await waitFor(() => expect(api.deleteProject).toHaveBeenCalledOnce());
+  let navigation!: Promise<void>; act(() => { navigation = router.navigate({ to: "/settings" }); });
+  await waitFor(() => expect(router.state.location.pathname).toBe("/settings"));
+  expect(screen.getByRole("button", { name: "Confirmed deletion" })).toBeTruthy();
+  await act(async () => deletion.resolve({ status: "deleted" }));
+  expect(router.state.location.pathname).toBe("/settings"); expect(screen.queryByText("New-store form")).toBeNull();
+  await act(async () => { loading.resolve(); await navigation; }); await screen.findByText("Settings page");
+});
+
+it("returns to stores without deleting the failed project", async () => {
+  const { router } = await mountFailed(); fireEvent.click(screen.getByRole("button", { name: "Return to stores" }));
+  await screen.findByText("Store list"); expect(router.state.location.pathname).toBe("/"); expect(api.deleteProject).not.toHaveBeenCalled();
+});
 
 it("does not request another project's selected layout on direct navigation", async () => {
   const { router } = await mount();

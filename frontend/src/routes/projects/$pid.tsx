@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Suspense, useEffect, useState } from "react";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
@@ -119,7 +119,10 @@ function SimulationPageContent({
   const setup = useSetup(pid, effectiveSetupId).data;
   const runs = useRuns(pid, effectiveSetupId).data;
   const navigate = useNavigate();
+  const router = useRouter();
   const qc = useQueryClient();
+  const mounted = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const generation = useSetupGeneration(pid, effectiveSetupId);
 
@@ -175,11 +178,17 @@ function SimulationPageContent({
       <PreparingView
         generation={generation}
         contextKind={contextKind}
-        onAbandonProject={() => {
-          void deleteProject(pid).finally(() => {
-            qc.invalidateQueries({ queryKey: queryKeys.projects() });
-            void navigate({ to: "/projects/new" });
-          });
+        projectName={project.metadata.name}
+        layouts={layouts}
+        selectedSetupId={effectiveSetupId}
+        onLayoutSelect={onLayoutSelect}
+        onBackToStores={() => { void navigate({ to: "/" }); }}
+        onAbandonProject={async () => {
+          await deleteProject(pid);
+          await qc.invalidateQueries({ queryKey: queryKeys.projects() });
+          if (mounted.current && router.state.location.pathname.replace(/\/$/, "") === `/projects/${pid}`) {
+            await navigate({ to: "/projects/new" });
+          }
         }}
       />
     );
