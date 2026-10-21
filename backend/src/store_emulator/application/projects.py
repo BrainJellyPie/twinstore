@@ -1,7 +1,7 @@
 import shutil
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.store import DaySchedule
@@ -125,6 +125,17 @@ def delete_project(project_id: str) -> None:
     project_dir = _data / project_id
     if not project_dir.exists():
         raise FileNotFoundError(f"Project not found: {project_id}")
+    for pattern in ("runs/*/status.json", "generations/*/status.json", "optimizations/*/status.json",
+                    "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json"):
+        for status_path in project_dir.glob(pattern):
+            try:
+                raw: object = read_json(status_path)
+            except (OSError, ValueError):
+                continue
+            if isinstance(raw, dict):
+                state = cast(dict[str, object], raw).get("status")
+                if state in ("pending", "running"):
+                    raise AppError(f"cannot delete project while job '{status_path.parent.name}' is {state}. Wait until it finishes.", 409)
     shutil.rmtree(project_dir)
 
 
