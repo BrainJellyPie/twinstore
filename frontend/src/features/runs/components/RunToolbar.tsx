@@ -1,4 +1,4 @@
-// Floating toolbar over the 3D view in playback: switch between runs of this layout,
+// Toolbar below the 3D view in playback: switch between runs of this layout,
 // start another run, compare runs, export results, return to editing.
 
 import { useState } from "react";
@@ -43,7 +43,7 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
   const editable = setupStatus === "draft";
 
   return (
-    <div className="pointer-events-auto absolute bottom-4 left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-col gap-2">
+    <div className="relative z-10 flex min-w-0 shrink-0 flex-col gap-2" role="region" aria-label="Run actions">
       {lastRunError && (
         <p className="glass rounded-xl border border-destructive/40 px-3 py-1.5 text-sm text-destructive shadow-float">
           Last run failed: {lastRunError.split("\n")[0]}
@@ -51,7 +51,7 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
       )}
       <div className="glass flex flex-wrap items-center gap-1 rounded-2xl border p-1.5 shadow-float">
         <Select value={runId} onValueChange={setViewRunId}>
-          <SelectTrigger className="h-9 w-[270px] rounded-xl text-sm" aria-label="Run shown">
+          <SelectTrigger className="h-9 w-[270px] max-w-full rounded-xl text-sm" aria-label="Run shown">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
