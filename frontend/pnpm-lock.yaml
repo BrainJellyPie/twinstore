@@ -74,6 +74,12 @@ importers:
       three:
         specifier: ^0.183.2
         version: 0.183.2
+      three-gpu-pathtracer:
+        specifier: 0.0.24
+        version: 0.0.24(three-mesh-bvh@0.9.15(three@0.183.2))(three@0.183.2)(xatlas-web@0.1.0)
+      three-mesh-bvh:
+        specifier: 0.9.15
+        version: 0.9.15(three@0.183.2)
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -3973,8 +3979,20 @@ packages:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
     engines: {node: '>=6'}
 
+  three-gpu-pathtracer@0.0.24:
+    resolution: {integrity: sha512-fHQ7g7ywvSwRAQywhsfech2/kspQKinfFNOcNDTJS2Q34CzcF1kpESlOVvJH8kX/bGlCnxMI+Qo16kWGAy7zCA==}
+    peerDependencies:
+      three: '>=0.180.0'
+      three-mesh-bvh: '>=0.7.4'
+      xatlas-web: ^0.1.0
+
   three-mesh-bvh@0.8.3:
     resolution: {integrity: sha512-4G5lBaF+g2auKX3P0yqx+MJC6oVt6sB5k+CchS6Ob0qvH0YIhuUk1eYr7ktsIpY+albCqE80/FVQGV190PmiAg==}
+    peerDependencies:
+      three: '>= 0.159.0'
+
+  three-mesh-bvh@0.9.15:
+    resolution: {integrity: sha512-9xdEDkCzFoT8VPFH9DznwFSdbaIEjMvM106Iqq7TJurrIheUKDcdW4prfJTCxryih4XS/UxWs0H3K4MLMRFyOQ==}
     peerDependencies:
       three: '>= 0.159.0'
 
@@ -4338,6 +4356,9 @@ packages:
   wsl-utils@0.3.1:
     resolution: {integrity: sha512-g/eziiSUNBSsdDJtCLB8bdYEUMj4jR7AGeUo96p/3dTafgjHhpF4RiCFPiRILwjQoDXx5MqkBr4fwWtR3Ky4Wg==}
     engines: {node: '>=20'}
+
+  xatlas-web@0.1.0:
+    resolution: {integrity: sha512-PprVfuXbaIskxLTLBUQRaWfgSy9xUQqAMIRooOw0P6NYqwgh6T0voeer6+Z5M7AFt5SGXUybuww/uDGs1yw8vQ==}
 
   xlsx@0.18.5:
     resolution: {integrity: sha512-dmg3LCjBPHZnQp5/F/+nnTa+miPJxUXB6vtk42YjBBKayDNagxGEeIdWApkYPOf3Z3pm3k62Knjzp7lMeTEtFQ==}
@@ -8329,7 +8350,17 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
 
+  three-gpu-pathtracer@0.0.24(three-mesh-bvh@0.9.15(three@0.183.2))(three@0.183.2)(xatlas-web@0.1.0):
+    dependencies:
+      three: 0.183.2
+      three-mesh-bvh: 0.9.15(three@0.183.2)
+      xatlas-web: 0.1.0
+
   three-mesh-bvh@0.8.3(three@0.183.2):
+    dependencies:
+      three: 0.183.2
+
+  three-mesh-bvh@0.9.15(three@0.183.2):
     dependencies:
       three: 0.183.2
 
@@ -8648,6 +8679,8 @@ snapshots:
     dependencies:
       is-wsl: 3.1.1
       powershell-utils: 0.1.0
+
+  xatlas-web@0.1.0: {}
 
   xlsx@0.18.5:
     dependencies:

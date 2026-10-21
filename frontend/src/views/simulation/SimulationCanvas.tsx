@@ -23,6 +23,7 @@ import { StoreCameraControls } from "@/features/store-viewer/realistic/StoreCame
 import { useRealisticSettings } from "@/features/store-viewer/realistic/graphicsSettings";
 import { SceneGround } from "@/features/store-viewer/realistic/SceneGround";
 import { GatedRenderer } from "@/features/store-viewer/realistic/GatedRenderer";
+import { PhotoMode } from "@/features/store-viewer/realistic/PhotoMode";
 import { useSceneColors } from "@/features/store-viewer/realistic/useSceneColors";
 import { EYE_HEIGHT, FLOOR_SLAB, type GraphicsQuality } from "@/features/store-viewer/realistic/constants";
 
@@ -194,6 +195,7 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
         <SceneGround color={colors.sceneFloor} y={realistic ? -FLOOR_SLAB - 0.003 : -0.02} />
         <StoreScene {...props} realistic={realistic} quality={quality} hideCompass={shopperView} />
         {realistic && quality === "high" && <RealisticEffects />}
+        {realistic && <PhotoMode width={props.width} depth={props.depth} />}
         <GatedRenderer />
         <ShopperCamera
           active={shopperView}

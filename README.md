@@ -87,7 +87,7 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 <table>
 <tr>
 <td width="50%"><img src="./.github/assets/twinstore/screens/floor-light.jpg" alt="Photoreal 3D store with shoppers"><br>
-<b>Photoreal 3D twin.</b> Shoppers walk the floor on a wall-clock day; scrub, pause, speed up, follow anyone.</td>
+<b>Photoreal 3D twin.</b> Shoppers walk the floor on a wall-clock day; scrub, pause, speed up, follow anyone. <b>Photo</b> path-traces any view into a still.</td>
 <td width="50%"><img src="./.github/assets/twinstore/screens/shopper-light.jpg" alt="Shopper's-eye view"><br>
 <b>Shopper's-eye view.</b> The first-person camera shows what a shopper — and the vision model — sees.</td>
 </tr>
@@ -391,6 +391,12 @@ with procedural fallbacks. Authors, source URLs and checksums are in
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
 for photographic indoor lighting and reflections; attribution and file provenance are in
 [`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).
+Uploaded SKU photos and product crops from Capture also appear on 3D packages. Photos
+are shared across facings, with separate atlas cells for different image versions;
+missing images retain generated labels. Cylindrical packages use the central label
+band of the front photo, so this is an approximation rather than a full package scan.
+Playback fills missing photo references from the current project image library;
+recorded run inputs and simulation results are not rewritten.
 
 - 3D assets in `frontend/public/assets/` are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
   [Mini Characters](https://kenney.nl/assets/mini-characters), [Graveyard Kit](https://kenney.nl/assets/graveyard-kit).

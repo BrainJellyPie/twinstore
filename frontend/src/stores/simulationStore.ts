@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type DashboardTab = "dashboard" | "settings";
+export type DashboardTab = "dashboard" | "shoppers" | "settings";
 
 // Which per-tile layer the floor heatmap shows.
 // footfall = timeline events per tile, dwell = seconds spent per tile,

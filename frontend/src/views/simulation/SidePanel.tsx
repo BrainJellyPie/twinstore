@@ -1,7 +1,8 @@
-import { BarChart3, Settings2 } from "lucide-react";
+import { BarChart3, Settings2, UsersRound } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { DashboardPanel } from "@/features/dashboard/components/DashboardPanel";
 import { SettingsPanel } from "@/features/dashboard/components/SettingsPanel";
+import { ShopperPanel } from "@/features/shoppers/ShopperPanel";
 import type { Store, Persona, CustomerResult } from "@/shared/types/domain";
 import type { RunStatus, RunSummary } from "@/shared/api/client";
 import type { DashboardTab } from "@/stores/simulationStore";
@@ -64,11 +65,12 @@ export function SidePanel({
 }: SidePanelProps) {
   return (
     <aside className="panel m-3 flex w-[24rem] shrink-0 flex-col overflow-y-auto rounded-[1.6rem]">
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DashboardTab)} className="gap-0">
+      <Tabs value={activeTab === "shoppers" && mode !== "playback" ? "dashboard" : activeTab} onValueChange={(v) => setActiveTab(v as DashboardTab)} className="gap-0">
         <div className="sticky top-0 z-10 border-b border-glass-border bg-[var(--glass-strong)] px-3 pt-3 pb-2.5 backdrop-blur-xl">
           <TabsList className="h-11 w-full rounded-xl">
-            <TabsTrigger value="dashboard" className="gap-2 rounded-[0.65rem] text-sm"><BarChart3 className="size-4" />Results</TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2 rounded-[0.65rem] text-sm"><Settings2 className="size-4" />Store &amp; layout</TabsTrigger>
+            <TabsTrigger value="dashboard" className="gap-1.5 rounded-[0.65rem] text-sm"><BarChart3 className="size-4" />Results</TabsTrigger>
+            {mode === "playback" && <TabsTrigger value="shoppers" className="gap-1.5 rounded-[0.65rem] text-sm"><UsersRound className="size-4" />Shoppers</TabsTrigger>}
+            <TabsTrigger value="settings" className="gap-1.5 rounded-[0.65rem] text-sm"><Settings2 className="size-4" />{mode === "playback" ? "Store" : <>Store &amp; layout</>}</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="dashboard" className="px-3">
@@ -104,6 +106,11 @@ export function SidePanel({
             ) : null
           )}
         </TabsContent>
+        {mode === "playback" && store != null && projectId && runId && customers && (
+          <TabsContent value="shoppers" className="px-3">
+            <ShopperPanel projectId={projectId} runId={runId} customers={customers} personas={personas} store={store} />
+          </TabsContent>
+        )}
         <TabsContent value="settings" className="px-3">
           <SettingsPanel
             store={store}
