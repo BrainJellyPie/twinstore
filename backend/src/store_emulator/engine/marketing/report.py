@@ -82,6 +82,9 @@ def findings(r: ExperimentReport) -> Finding:
             if other is not v:
                 rec.append(f"{other.name} also beats the control ({money(om.diff, cur, signed=True)} per visitor); "
                            f"compare it with {v.name} head to head before choosing.")
+    elif losses:
+        headline = (f"Revenue per visitor falls for {', '.join(v.name for v in losses)} "
+                    f"beyond the noise of {r.panel_size} shoppers.")
     else:
         headline = f"No variant changes revenue per visitor beyond the noise of {r.panel_size} shoppers."
     for v, u in product_only:
@@ -261,7 +264,7 @@ def report_html(r: ExperimentReport, layout: str = "", narrative: ReportNarrativ
     f = findings(r)
     cur = r.currency
     e = escape
-    best = max(r.variants, key=lambda v: v.revenue_per_visitor, default=None)
+    best = max([r.control, *r.variants], key=lambda v: v.revenue_per_visitor)
     spend_rows = [(v.name, f"{pct(m.rel_diff)} vs control", m.diff, m.ci_low, m.ci_high)
                   for v in r.variants if (m := _metric(v, "spend")) is not None]
     focus_blocks: list[str] = []
@@ -288,8 +291,7 @@ def report_html(r: ExperimentReport, layout: str = "", narrative: ReportNarrativ
     engine = f"Vision shoppers{f' ({r.model})' if r.model else ''}" if r.engine == "vlm" else "Rule shoppers"
     kpis = "".join([
         f"<div class='kpi'><span>Control revenue / visitor</span><b>{e(money(r.control.revenue_per_visitor, cur))}</b></div>",
-        f"<div class='kpi'><span>Highest revenue / visitor{'' if best and best.name == r.winner else ' (within noise)'}</span>"
-        f"<b>{e(best.name) if best else '–'}</b></div>",
+        f"<div class='kpi'><span>Highest observed revenue / visitor</span><b>{e(best.name)}</b></div>",
         f"<div class='kpi'><span>Shoppers per arm</span><b>{r.panel_size:,}</b></div>",
         f"<div class='kpi'><span>Visitors a day</span><b>{r.visitors_per_day:,.0f}</b></div>",
     ])
