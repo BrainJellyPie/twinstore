@@ -227,6 +227,8 @@ async def compare(
     seed so customers share random draws — that is what makes the paired test sharp."""
     try:
         return sim_service.compare_project_runs(pid, a, b, n_bootstrap=n_bootstrap)
+    except AppError as e:
+        raise HTTPException(e.status_code, e.message)
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
 
