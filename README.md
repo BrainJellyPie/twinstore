@@ -163,11 +163,16 @@ For brand managers, category teams and research agencies (**Market** in the comm
   Every arm runs on the **same shoppers with the same random numbers** as the control, so the result reports paired
   differences with bootstrap 95 % intervals — revenue, conversion and units per visitor, and units, spend and buyers of
   each tracked product — and names a winner only when its interval clears zero. Rule shoppers answer in seconds;
-  vision shoppers also see packs and signs.
+  vision shoppers also see packs and signs. Every finished test comes with a **report** — summary and
+  recommendation, design, charts, tracked products, method — as a print-ready page (PDF) or Markdown.
 - **Concept tests** — up to four images side by side; a vision model answers as each sampled persona (with age and
   gender quotas): purchase intent, pack appeal, value, stand-out (1–5), a Van Westendorp price range, preference and
   one open answer. Results show distributions, means with CIs, top-2-box, Wilson intervals for preference, the price
   curves with the acceptable range, segment tables and verbatims; respondent-level CSV export.
+
+- **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
+  then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
+  persona and trip only and point at the steps they mean.
 
 Synthetic respondents are for screening and direction; calibrate against a real panel before deciding.
 
