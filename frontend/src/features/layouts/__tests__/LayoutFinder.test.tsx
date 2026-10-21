@@ -9,7 +9,8 @@ const cafe: Layout = { id: "cafe", name: "Upstairs retreat", parentId: null, sta
   building: { id: "house", name: "Market house", level: 2, label: "Café", floor_count: 2 },
   generation: { template_id: "book_cafe", seed: 1, currency: "JPY", requirements: "Quiet reading corner" } };
 const pharmacy: Layout = { id: "pharmacy", name: "Neighborhood care", parentId: null, status: "locked", createdAt: "2026-10-20",
-  generation: { template_id: "community_pharmacy", seed: 0, currency: "USD", requirements: "Open consultation space" } };
+  generation: { template_id: "community_pharmacy", seed: 0, currency: "USD", requirements: "Open consultation space",
+    reserved_areas: [{ label: "Express pickup", x: 2, y: 2, width: 3, height: 2 }] } };
 
 it("finds a floor by building, level and brief, and switches directly to that layout", () => {
   const onSelect = vi.fn();
@@ -42,4 +43,12 @@ it("filters floors, searches formats, and resets the finder when reopened", () =
 it("respects the parent navigation lock", () => {
   render(<LayoutFinder layouts={[cafe]} selectedId={cafe.id} onSelect={vi.fn()} disabled />);
   expect((screen.getByRole("button", { name: "Find layout" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("finds a layout by a saved reserved-area name", () => {
+  render(<LayoutFinder layouts={[pharmacy, cafe]} selectedId={cafe.id} onSelect={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Find layout" }));
+  fireEvent.change(screen.getByLabelText("Search layouts"), { target: { value: "express pickup" } });
+  expect(screen.getByRole("status").textContent).toBe("1 of 2 layouts");
+  expect(screen.getByTestId("layout-search-result-pharmacy").textContent).toContain("Reserved: Express pickup");
 });

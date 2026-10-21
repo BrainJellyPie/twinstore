@@ -1316,6 +1316,14 @@ export interface StoreTemplate {
   default_checkout_placement?: LayoutOptions["checkout_placement"];
 }
 
+export interface ReservedArea {
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface LayoutOptions {
   style?: "aisles" | "loop" | "spine" | "free_flow" | "perimeter" | "showroom" | null;
   width?: number | null;
@@ -1328,6 +1336,7 @@ export interface LayoutOptions {
   design_theme?: StoreDesign | null;
   dining_tables?: number | null;
   seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
+  reserved_areas?: ReservedArea[];
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {
@@ -1344,12 +1353,10 @@ export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]
 }
 
 export function previewStoreTemplate(request: GenerateLayoutRequest, signal?: AbortSignal): Promise<Store> {
-  const { template_id, name: _name, source_setup_id: _source, requirements: _requirements, ...options } = request;
-  const q = new URLSearchParams();
-  for (const [key, value] of Object.entries(options)) {
-    if (value !== null && value !== undefined) q.set(key, String(value));
-  }
-  return fetchJson(`/api/store-templates/${encodeURIComponent(template_id)}/preview?${q}`, { signal });
+  const { name: _name, source_setup_id: _source, requirements: _requirements, ...options } = request;
+  return fetchJson("/api/store-templates/preview", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(options), signal,
+  });
 }
 
 export function generateLayout(projectId: string, body: GenerateLayoutRequest): Promise<SetupSummaryShort> {

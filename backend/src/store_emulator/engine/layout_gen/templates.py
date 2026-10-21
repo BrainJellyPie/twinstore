@@ -280,12 +280,18 @@ class _Builder:
         self.w, self.h = options.width or t.grid[0], options.height or t.grid[1]
         self.racks: list[Rack] = []
         self.taken: set[tuple[int, int]] = set()
+        self.reserved: set[tuple[int, int]] = set()
+        for area in options.reserved_areas:
+            if area.x + area.width > self.w - 1 or area.y + area.height > self.h - 1:
+                raise ValueError(f"Reserved area '{area.label}' must fit inside the {self.w}×{self.h} floor, leaving the outer wall cells clear.")
+            self.reserved.update((x, y) for x in range(area.x, area.x + area.width)
+                                 for y in range(area.y, area.y + area.height))
         self.sku_n = 0
         self.by_name: dict[str, SlotItem] = {}
         self.counts: dict[str, int] = {}
 
     def free(self, x: int, y: int) -> bool:
-        return 0 <= x < self.w and 0 <= y < self.h and (x, y) not in self.taken
+        return 0 <= x < self.w and 0 <= y < self.h and (x, y) not in self.taken and (x, y) not in self.reserved
 
     def _items_for(self, category: str) -> list[SlotItem]:
         pool = CATALOG[category]
@@ -376,6 +382,8 @@ def generate_store(
     # A dining group occupies 2×2 cells, including its four chairs. Reserve a
     # continuous one-cell circulation ring and keep it clear of retail displays.
     table_positions = [(x, y) for y in range(2, h - 3, 3) for x in range(2, w - 3, 3)]
+    table_positions = [(x, y) for x, y in table_positions
+                       if all(b.free(cx, cy) for cx in (x, x + 1) for cy in (y, y + 1))]
     # Rank safe seating positions without changing the table footprint or clearance.
     # As the count grows, seating extends into neighboring parts of the floor.
     if seating_zone == "front":
@@ -390,7 +398,7 @@ def generate_store(
         table_positions.sort(key=lambda p: (p[0] + 0.5 - (w - 1) / 2) ** 2 + (p[1] + 0.5 - (h - 1) / 2) ** 2)
     table_count = min(t.dining_tables, len(table_positions)) if options.dining_tables is None else options.dining_tables
     if table_count > len(table_positions):
-        raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with clear aisles. Reduce the table count or increase the grid size.")
+        raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with clear aisles and the requested reserved areas. Reduce the table count, adjust reserved areas or increase the grid size.")
     dining_clearance: set[tuple[int, int]] = set()
     for i, (x, y) in enumerate(table_positions[:table_count]):
         table = Rack(id=f"r_table_{i + 1}", type=RackType.TABLE, shape=[[1, 1], [1, 1]],

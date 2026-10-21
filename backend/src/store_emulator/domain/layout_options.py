@@ -13,6 +13,16 @@ type StoreDesign = Literal["classic", "warm", "minimal", "industrial", "botanica
 type FixtureDesign = Literal["mixed", "a", "b", "c"]
 
 
+class ReservedArea(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    label: str = Field(min_length=1, max_length=80)
+    x: int = Field(ge=1, le=38)
+    y: int = Field(ge=1, le=38)
+    width: int = Field(ge=1, le=38)
+    height: int = Field(ge=1, le=38)
+
+
 class LayoutOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -27,6 +37,7 @@ class LayoutOptions(BaseModel):
     design_theme: StoreDesign | None = None
     dining_tables: int | None = Field(default=None, ge=0, le=12)
     seating_zone: SeatingZone = "auto"
+    reserved_areas: list[ReservedArea] = Field(default_factory=list[ReservedArea], max_length=8)
 
 
 class TemplateLayoutRequest(LayoutOptions):

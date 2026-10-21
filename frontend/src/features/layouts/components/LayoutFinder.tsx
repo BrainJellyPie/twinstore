@@ -21,7 +21,8 @@ export function LayoutFinder({ layouts, selectedId, onSelect, disabled }: {
     if (group === "building" && !layout.building) return false;
     const text = [layout.name, layout.building?.name, layout.building?.label,
       layout.building ? `${layout.building.level}F` : "", layout.generation?.template_id.replace(/_/g, " "),
-      layout.generation?.requirements, layout.generation?.currency].filter(Boolean).join(" ").toLowerCase();
+      layout.generation?.requirements, layout.generation?.currency,
+      ...(layout.generation?.reserved_areas ?? []).map((area) => area.label)].filter(Boolean).join(" ").toLowerCase();
     return terms.every((term) => text.includes(term));
   }).sort((a, b) => Number(b.id === selectedId) - Number(a.id === selectedId) || b.createdAt.localeCompare(a.createdAt));
 
@@ -38,7 +39,7 @@ export function LayoutFinder({ layouts, selectedId, onSelect, disabled }: {
     <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-xl">
       <DialogHeader>
         <DialogTitle>Find a layout</DialogTitle>
-        <DialogDescription>Search names, buildings, floor labels, store formats or saved design briefs.</DialogDescription>
+        <DialogDescription>Search names, buildings, floor labels, store formats, reserved areas or saved design briefs.</DialogDescription>
       </DialogHeader>
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-40 flex-1 space-y-1">
@@ -69,6 +70,7 @@ export function LayoutFinder({ layouts, selectedId, onSelect, disabled }: {
               layout.status === "locked" ? "Simulation saved" : layout.status === "running" ? "Running" : "Draft"].filter(Boolean).join(" · ")}
           </p>
           {layout.generation?.requirements && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{layout.generation.requirements}</p>}
+          {!!layout.generation?.reserved_areas?.length && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">Reserved: {layout.generation.reserved_areas.map((area) => area.label).join(", ")}</p>}
         </button>)}
         {filtered.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No matching layouts. Try another name, format or floor.</p>}
       </div>
