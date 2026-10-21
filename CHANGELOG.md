@@ -67,6 +67,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   card, a vision model reads the name, brand and size printed on the pack instead of using the file name, and links
   the image to the layout's product when it is an exact match and the image was not linked yet. With the local
   vision model off, a cloud vision model that has a key is used. API: `POST .../lab/packages/{id}/read`.
+- The create-store form can **write the customer profile from the store details** (name, type, description,
+  address, opening hours) in the form's language: who shops there, when and why. API: `POST /api/assist/customer-profile`.
 - Persona generation is grounded in the project's neighborhood model when there is one: the prompt carries who
   comes on a weekday and at the weekend (students, office workers, residents, commuters, linked trips), the busiest
   hours and how far people walk. It also uses a model that has an API key when the app's text model has none.

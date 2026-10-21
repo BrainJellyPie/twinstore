@@ -1073,6 +1073,13 @@ export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
   return fetchJson(`/api/projects/${projectId}/town/generate`, { method: "POST", ...json(spec) });
 }
 
+/** A customer profile drafted by the text model from the create-store form; nothing is saved. */
+export function draftCustomerProfile(req: {
+  name: string; description: string; address: string; store_type: string; hours: string; locale: string;
+}): Promise<{ profile: string }> {
+  return fetchJson(`/api/assist/customer-profile`, { method: "POST", ...json(req) });
+}
+
 /** The text model turns a description of the area into a generator spec; nothing is generated. */
 export function describeTown(projectId: string, req: { text: string; seed: number; model?: string }): Promise<{ spec: TownSpec; rationale: string }> {
   return fetchJson(`/api/projects/${projectId}/town/describe`, { method: "POST", ...json(req) });
