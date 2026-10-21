@@ -14,7 +14,7 @@ import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
 
-import { LiftChart, type LiftRow } from "./charts";
+import { DemandChart, LiftChart, type LiftRow } from "./charts";
 
 const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(digits)} %`;
 const pp = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)} pt`;
@@ -82,7 +82,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
       </div>
       <ReportBar projectId={projectId} experimentId={r.experiment_id} />
 
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(arms.length, 4)}, minmax(0, 1fr))` }}>
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${arms.length <= 5 ? arms.length : Math.ceil(arms.length / 2)}, minmax(0, 1fr))` }}>
         {arms.map((a, i) => {
           const spend = metric(a, "spend");
           const bought = metric(a, "bought");
@@ -108,6 +108,29 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
         <p className="mb-3 text-xs text-muted-foreground">Same {r.panel_size} shoppers in every arm; dot = paired difference, bar = 95 % bootstrap interval. A bar that crosses 0 is within noise.</p>
         <LiftChart rows={spendRows} format={signedMoney} axisLabel="per visitor" />
       </section>
+
+      {r.price_response && (
+        <section className="rounded-2xl border bg-card p-4">
+          <h3 className="text-sm font-semibold">Price response · {r.price_response.name}</h3>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Units per 100 visitors at each tested price (bars: 95 % intervals; orange = most product revenue)
+            {r.price_response.elasticity != null && <> · elasticity across the arms ≈ <b className="num text-foreground">{r.price_response.elasticity.toFixed(2)}</b></>}
+          </p>
+          <DemandChart response={r.price_response} currency={r.currency} />
+          <table className="mt-2 w-full text-xs">
+            <thead className="text-left text-muted-foreground"><tr><th className="py-1">Arm</th><th className="text-right">Price</th><th className="text-right">Units / 100 visitors</th><th className="text-right">Product revenue / 100 visitors</th></tr></thead>
+            <tbody className="num">
+              {r.price_response.points.map((p) => (
+                <tr key={p.arm} className="border-t border-foreground/[0.06]">
+                  <td className="py-1">{p.arm}</td><td className="text-right">{money(p.price)}</td>
+                  <td className="text-right">{(p.units * 100).toFixed(1)} <span className="text-muted-foreground">[{(p.units_low * 100).toFixed(1)}, {(p.units_high * 100).toFixed(1)}]</span></td>
+                  <td className="text-right">{money(p.revenue * 100)}{p.price === r.price_response!.best_price ? " ★" : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {focusSkus.length > 0 && (
         <section className="rounded-2xl border bg-card p-4">

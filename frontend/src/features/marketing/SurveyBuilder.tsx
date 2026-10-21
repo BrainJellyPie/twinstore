@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ClipboardList, Loader2 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { marketingKeys, startSurvey, type JobStatus, type QuestionKind } from "@/shared/api/marketing";
+import { marketingKeys, startSurvey, type JobStatus, type QuestionKind, type SurveyRequest } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -24,21 +24,24 @@ const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
 const GENDERS = ["Female", "Male"];
 const LETTERS = "ABCD";
 
-export function SurveyBuilder({ projectId, personaCount, onStarted }: { projectId: string; personaCount: number; onStarted: (job: JobStatus) => void }) {
+export function SurveyBuilder({ projectId, personaCount, initial, onStarted }: {
+  projectId: string; personaCount: number; initial?: SurveyRequest | null; onStarted: (job: JobStatus) => void;
+}) {
   const qc = useQueryClient();
   const packages = usePackages(projectId).data ?? [];
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
-  const [stimuli, setStimuli] = useState<string[]>([]);
-  const [names, setNames] = useState<Record<string, string>>({});
-  const [questions, setQuestions] = useState<QuestionKind[]>(["purchase_intent", "appeal", "value", "preference", "open"]);
-  const [context, setContext] = useState("");
-  const [currency, setCurrency] = useState("USD");
-  const [price, setPrice] = useState("");
-  const [panel, setPanel] = useState(60);
-  const [ages, setAges] = useState<string[]>([]);
-  const [genders, setGenders] = useState<string[]>([]);
-  const [model, setModel] = useState("");
-  const [name, setName] = useState("");
+  const [stimuli, setStimuli] = useState<string[]>(initial?.stimuli ?? []);
+  const [names, setNames] = useState<Record<string, string>>(() =>
+    Object.fromEntries((initial?.stimuli ?? []).map((id, i) => [id, initial?.stimulus_names[i] ?? ""]).filter(([, n]) => n)));
+  const [questions, setQuestions] = useState<QuestionKind[]>(initial?.questions ?? ["purchase_intent", "appeal", "value", "preference", "open"]);
+  const [context, setContext] = useState(initial?.context ?? "");
+  const [currency, setCurrency] = useState(initial?.currency ?? "USD");
+  const [price, setPrice] = useState(initial?.reference_price != null ? String(initial.reference_price / minorUnitDivisor(initial.currency)) : "");
+  const [panel, setPanel] = useState(initial?.panel ?? 60);
+  const [ages, setAges] = useState<string[]>(initial?.age_groups ?? []);
+  const [genders, setGenders] = useState<string[]>(initial?.genders ?? []);
+  const [model, setModel] = useState(initial?.model ?? "");
+  const [name, setName] = useState(initial?.name ? `${initial.name} (copy)`.slice(0, 80) : "");
 
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
   const pickStimulus = (id: string) => setStimuli((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length < 4 ? [...s, id] : s));

@@ -16,6 +16,8 @@ interface TimerExt {
 export interface FrameGate {
   // Replaces the plain scene render (e.g. a post-processing composer).
   renderer: ((delta: number) => void) | null;
+  // Photo mode takes priority while the live composer can resize or change.
+  photoRenderer: ((delta: number) => void) | null;
   // Last measured GPU frame time (ms), or null when unknown.
   gpuMs: number | null;
   // True while the previous frame is still executing on the GPU.
@@ -34,6 +36,7 @@ function createFrameGate(): FrameGate {
 
   const gate: FrameGate = {
     renderer: null,
+    photoRenderer: null,
     gpuMs: null,
     busy: () => {
       if (!ctx || !pending) return false;

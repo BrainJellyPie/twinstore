@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
-import { WebGLPathTracer } from "three-gpu-pathtracer";
+import { DenoiseMaterial, WebGLPathTracer } from "three-gpu-pathtracer";
 import { GenerateMeshBVHWorker } from "three-mesh-bvh/worker";
 
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
@@ -28,12 +28,13 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
   useEffect(() => {
     if (!active) return;
     const { gl, scene } = get();
-    const previous = frameGate.renderer;
+    let renderPhoto: (() => void) | null = null;
     usePlaybackControlStore.getState().pause();
     let alive = true;
     let pathTracer: WebGLPathTracer | null = null;
     let worker: GenerateMeshBVHWorker | null = null;
     let disposeScene: (() => void) | null = null;
+    let disposeDenoise: (() => void) | null = null;
     let saved = usePhotoMode.getState().saveRequest;
     const signature = new Float64Array(32);
 
@@ -42,7 +43,7 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
       try {
         const background = scene.background instanceof THREE.Color ? scene.background.clone() : null;
         const environment = await new HDRLoader().loadAsync("/assets/environments/gear_store_1k.hdr").catch(() => null);
-        if (!alive) {
+        if (!alive || usePhotoMode.getState().status === "off") {
           environment?.dispose();
           return;
         }
@@ -64,11 +65,37 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
         pt.dynamicLowRes = true;
         pt.lowResScale = 0.25;
         pt.rasterizeScene = false;
+        // Smart denoise on the final blit; it tone-maps itself, like the default blit.
+        const denoise = new DenoiseMaterial({
+          map: pt.target.texture, blending: THREE.NoBlending, premultipliedAlpha: gl.getContextAttributes()?.premultipliedAlpha ?? true,
+        });
+        disposeDenoise = () => denoise.dispose();
+        pt.renderToCanvasCallback = (target, renderer, quad) => {
+          const autoClear = renderer.autoClear;
+          renderer.autoClear = false;
+          const { denoise: on } = usePhotoMode.getState();
+          if (on && pt.samples >= 1) {
+            const blit = quad.material;
+            denoise.map = target.texture;
+            denoise.sigma = pt.samples < 32 ? 5 : pt.samples < 128 ? 3.5 : 2;
+            denoise.threshold = pt.samples < 32 ? 0.05 : 0.03;
+            quad.material = denoise;
+            quad.render(renderer);
+            quad.material = blit;
+          } else {
+            quad.render(renderer);
+          }
+          renderer.autoClear = autoClear;
+        };
         usePhotoMode.setState({ triangles: photo.triangles });
-        await pt.setSceneAsync(photo.scene, get().camera, { onProgress: (p) => usePhotoMode.setState({ progress: p }) });
-        if (!alive) return;
+        await pt.setSceneAsync(photo.scene, get().camera, { onProgress: (p) => { if (alive) usePhotoMode.setState({ progress: p }); } });
+        if (!alive || usePhotoMode.getState().status === "off") return;
         usePhotoMode.setState({ status: "tracing", samples: 0 });
-        frameGate.renderer = () => {
+        renderPhoto = () => {
+          // Zustand changes synchronously; React's effect cleanup can run after
+          // the next frame. A queued draw must not resurrect a stopped photo.
+          const state = usePhotoMode.getState();
+          if (!alive || state.status === "off") return;
           const camera = get().camera;
           const m = camera.matrixWorld.elements;
           const p = camera.projectionMatrix.elements;
@@ -82,7 +109,6 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
             if (pt.camera !== camera) pt.setCamera(camera);
             else pt.updateCamera();
           }
-          const state = usePhotoMode.getState();
           pt.pausePathTracing = pt.samples >= state.target;
           pt.renderSample();
           const samples = Math.floor(pt.samples);
@@ -94,17 +120,19 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
             download(gl.domElement.toDataURL("image/png"));
           }
         };
+        frameGate.photoRenderer = renderPhoto;
       } catch (e) {
-        if (alive) usePhotoMode.setState({ status: "error", error: e instanceof Error ? e.message : String(e) });
+        if (alive && usePhotoMode.getState().status !== "off") usePhotoMode.setState({ status: "error", error: e instanceof Error ? e.message : String(e) });
       }
     }, 60);
 
     return () => {
       alive = false;
       window.clearTimeout(timer);
-      frameGate.renderer = previous;
+      if (frameGate.photoRenderer === renderPhoto) frameGate.photoRenderer = null;
       pathTracer?.dispose();
       worker?.dispose();
+      disposeDenoise?.();
       disposeScene?.();
     };
   }, [active, get, width, depth]);

@@ -18,7 +18,7 @@ type JobState = Literal["pending", "running", "completed", "failed"]
 class VariantChange(BaseModel):
     """One change a variant makes to the control layout.
 
-    price           set the SKU's shelf price (`price`), as a new everyday price
+    price           set the SKU's shelf price (`price`), as a new everyday price (or against the current one, `keep_reference`)
     discount        cut the SKU's price by `percent` and keep the old one as the "was" price on the tag
     promo           hang a promotion sign (`promo`, e.g. "1+1", "SALE", "-30%") on the SKU
     move            move the SKU to `rack_id` / `face` / `level` (level 3 = eye level on a 4-level rack)
@@ -36,6 +36,8 @@ class VariantChange(BaseModel):
     asset_id: str = ""
     category: str = ""
     charm: bool = False
+    keep_reference: bool = Field(default=False, description="price: shoppers keep the current price as the usual one "
+                                 "(reference price), as just after a change; a cut then shows the was-price")
 
 
 class Variant(BaseModel):
@@ -86,6 +88,25 @@ class VariantResult(BaseModel):
     vs_control: list[MetricComparison] = []   # spend, units, bought … (empty for the control)
     focus: list[FocusOutcome] = []
     top_skus: list[SkuSales] = []
+    prices: dict[str, int] = {}       # shelf price of each tracked product in this arm (lowest facing)
+
+
+class PricePoint(BaseModel):
+    arm: str
+    price: int
+    units: float                      # units of the product per visitor
+    units_low: float                  # 95 % interval (paired difference to control, shifted by the control level)
+    units_high: float
+    revenue: float                    # the product's revenue per visitor (minor units)
+
+
+class PriceResponse(BaseModel):
+    """Demand for one product across the prices the arms set for it."""
+    sku: str
+    name: str
+    points: list[PricePoint]          # sorted by price
+    elasticity: float | None = None   # slope of log units on log price across the arms
+    best_price: int | None = None     # the tested price with the most product revenue per visitor
 
 
 class ExperimentReport(BaseModel):
@@ -101,6 +122,7 @@ class ExperimentReport(BaseModel):
     control: VariantResult
     variants: list[VariantResult]
     winner: str = ""                  # the variant with the best revenue per visitor whose CI is above zero
+    price_response: PriceResponse | None = None   # when a tracked product has three or more prices across the arms
     notes: list[str] = []
     seconds: float = 0.0
 

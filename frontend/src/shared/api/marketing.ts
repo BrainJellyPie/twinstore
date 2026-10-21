@@ -30,6 +30,8 @@ export interface VariantChange {
   asset_id?: string;
   category?: string;
   charm?: boolean;
+  /** price: shoppers keep the current price as the usual one (reference price). */
+  keep_reference?: boolean;
 }
 
 export interface Variant { name: string; changes: VariantChange[] }
@@ -70,7 +72,11 @@ export interface VariantResult {
   vs_control: MetricComparison[];
   focus: FocusOutcome[];
   top_skus: SkuSales[];
+  prices?: Record<string, number>;
 }
+
+export interface PricePoint { arm: string; price: number; units: number; units_low: number; units_high: number; revenue: number }
+export interface PriceResponse { sku: string; name: string; points: PricePoint[]; elasticity: number | null; best_price: number | null }
 
 export interface ExperimentReport {
   experiment_id: string;
@@ -85,6 +91,7 @@ export interface ExperimentReport {
   control: VariantResult;
   variants: VariantResult[];
   winner: string;
+  price_response?: PriceResponse | null;
   notes: string[];
   seconds: number;
 }
@@ -101,7 +108,7 @@ export interface JobStatus {
   finished_at: string;
 }
 
-export interface ExperimentView extends JobStatus { report: ExperimentReport | null }
+export interface ExperimentView extends JobStatus { report: ExperimentReport | null; request?: ExperimentRequest | null }
 
 export type QuestionKind = "purchase_intent" | "appeal" | "value" | "uniqueness" | "price_vw" | "preference" | "open";
 export type ScaleKind = "purchase_intent" | "appeal" | "value" | "uniqueness";
@@ -182,7 +189,7 @@ export interface SurveyReport {
   seconds: number;
 }
 
-export interface SurveyView extends JobStatus { report: SurveyReport | null }
+export interface SurveyView extends JobStatus { report: SurveyReport | null; request?: SurveyRequest | null }
 
 const root = (pid: string) => `/api/projects/${pid}`;
 

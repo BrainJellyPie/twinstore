@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.interview import InterviewMessage, Journey, JourneyStep, ShelfItem
@@ -89,7 +89,9 @@ Rules:
 
 
 class ShopperReply(BaseModel):
-    answer: str = Field(max_length=900)
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    answer: str = Field(min_length=1, max_length=900)
     steps: list[int] = Field(default_factory=list[int], max_length=12)
 
 

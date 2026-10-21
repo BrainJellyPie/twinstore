@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from PIL import Image
+from pydantic import BaseModel
 
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.marketing import (
@@ -38,6 +39,7 @@ from store_emulator.engine.marketing import (
     apply_changes,
     likert_summary,
     preference_shares,
+    price_response,
     run_experiment,
     survey_panel,
     van_westendorp,
@@ -210,12 +212,16 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
             notes: list[str] = []
             if len(panel) < 100:
                 notes.append("Fewer than 100 shoppers per variant: differences under ~5 % are hard to tell from noise.")
+            if req.engine == "rule" and any(c.kind == "price" and not c.keep_reference for v in req.variants for c in v.changes):
+                notes.append("Rule shoppers react to a price relative to the usual one (and to their budget); a new everyday price "
+                             "resets that reference. Keep the current price as the reference, or use vision shoppers, to measure price response.")
             if req.engine == "rule" and any(c.kind == "promo" for v in req.variants for c in v.changes):
                 notes.append("The rule-based shoppers read promotion signs as a generic impulse boost; vision shoppers see the sign itself.")
             report = ExperimentReport(
                 experiment_id=status.job_id, name=name, setup_id=req.setup_id, engine=req.engine, model=model,
                 panel_size=len(panel), currency=currency, visitors_per_day=round(len(personas) / days, 1),
                 focus_skus=req.focus_skus, control=control_result, variants=results, winner=winner, notes=notes,
+                price_response=price_response(control_result, results),
                 seconds=round(time.perf_counter() - t0, 1),
             )
             _finish(pid, status, report)
@@ -229,13 +235,22 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
 
 class ExperimentView(JobStatus):
     report: ExperimentReport | None = None
+    request: ExperimentRequest | None = None   # what was asked, for "duplicate and edit"
+
+
+def _request[T: BaseModel](pid: str, kind: Kind, jid: str, model: type[T]) -> T | None:
+    path = _job_dir(pid, kind, jid) / "request.json"
+    try:
+        return model.model_validate(read_json(path)) if path.exists() else None
+    except ValueError:
+        return None  # written by an older version with a different schema
 
 
 def get_experiment(pid: str, eid: str) -> ExperimentView:
     status = _status(pid, "experiment", eid)
     path = _job_dir(pid, "experiment", eid) / "report.json"
     report = ExperimentReport.model_validate(read_json(path)) if path.exists() else None
-    return ExperimentView(**status.model_dump(), report=report)
+    return ExperimentView(**status.model_dump(), report=report, request=_request(pid, "experiment", eid, ExperimentRequest))
 
 
 # ── experiment report ───────────────────────────────────────────────────────────
@@ -379,13 +394,14 @@ def summarize_survey(
 
 class SurveyView(JobStatus):
     report: SurveyReport | None = None
+    request: SurveyRequest | None = None
 
 
 def get_survey(pid: str, sid: str) -> SurveyView:
     status = _status(pid, "survey", sid)
     path = _job_dir(pid, "survey", sid) / "report.json"
     report = SurveyReport.model_validate(read_json(path)) if path.exists() else None
-    return SurveyView(**status.model_dump(), report=report)
+    return SurveyView(**status.model_dump(), report=report, request=_request(pid, "survey", sid, SurveyRequest))
 
 
 def survey_report(pid: str, sid: str) -> str:

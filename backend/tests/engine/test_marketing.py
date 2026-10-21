@@ -208,3 +208,30 @@ def test_report_without_a_winner_explains_product_only_lifts_and_sample_size() -
     assert f.headline.startswith("No variant changes revenue")
     assert any("sells more of the tracked product" in x for x in f.recommendation)
     assert any("about 1,200 shoppers per arm" in x for x in f.recommendation)
+
+
+def test_price_sweep_gives_a_demand_curve(store: Store, personas: list[Persona]) -> None:
+    from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS, sample_cue
+    from store_emulator.engine.marketing import price_response
+    from store_emulator.engine.marketing.report import report_html
+
+    panel = select_personas(personas, 200, seed=4)
+    evaluator = LayoutEvaluator(SimulationConfig(seed=4), panel, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(),
+                                OptimizeObjective.REVENUE_PER_VISITOR)
+    arms = []
+    for name, price in (("Cheaper", 89), ("Dearer", 189), ("Much dearer", 259)):
+        v, applied, warnings = apply_changes(store, [VariantChange(kind="price", sku="A0017", price=price, keep_reference=True)])
+        arms.append((name, v, applied, warnings))
+    control, results, _ = asyncio.run(run_experiment(evaluator, store, arms, panel, ["A0017"]))
+    assert control.prices == {"A0017": 129} and [r.prices["A0017"] for r in results] == [89, 189, 259]
+    pr = price_response(control, results)
+    assert pr is not None and [p.price for p in pr.points] == [89, 129, 189, 259]
+    assert all(p.units_low <= p.units <= p.units_high for p in pr.points)
+    assert pr.best_price in {89, 129, 189, 259}
+    assert pr.elasticity is not None and pr.elasticity < 0        # dearer -> fewer units against the remembered price
+    cut = next(i for r in v.racks for sl in r.slots for i in sl.items if i.sku == "A0017")
+    assert cut.price == 259 and cut.regular_price == 129
+    from store_emulator.domain.marketing import ExperimentReport
+    rep = ExperimentReport(experiment_id="e", name="Sweep", setup_id="s", engine="rule", panel_size=200, currency="USD",
+                           visitors_per_day=400, focus_skus=["A0017"], control=control, variants=results, price_response=pr)
+    assert "Price response" in report_html(rep)
