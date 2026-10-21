@@ -10,7 +10,7 @@ type EntrancePosition = Literal["left", "center", "right"]
 type ExitPosition = Literal["shared", "left", "center", "right"]
 type CheckoutPlacement = Literal["auto", "near_entrance", "away_from_entrance"]
 type SeatingZone = Literal["auto", "front", "back", "left", "right", "center"]
-type StoreDesign = Literal["classic", "warm", "minimal", "industrial", "botanical", "luxury"]
+type StoreDesign = Literal["classic", "warm", "minimal", "industrial", "botanical", "luxury", "coastal", "terracotta"]
 type FixtureDesign = Literal["mixed", "a", "b", "c"]
 type ShelfDirection = Literal["horizontal", "vertical"]
 
