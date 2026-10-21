@@ -143,3 +143,36 @@ it("replaces the complete floor list only after every imported floor passes vali
   expect(imported[0]?.choice.width).toBeUndefined();
   expect(api.validateLayoutPreset).not.toHaveBeenCalled();
 });
+
+it.each([Number.MAX_SAFE_INTEGER + 1, Number.MIN_SAFE_INTEGER - 1])("keeps the current layout when a validated file contains unsafe seed %s", async (seed) => {
+  const onChange = vi.fn();
+  vi.mocked(api.validateLayoutPreset).mockResolvedValue({ format: "twinstore-layout-options", version: 1,
+    layout: { template_id: "specialty_cafe", seed, currency: "USD" } });
+  render(<GenerationOptionsFile kind="layout" value={value} onChange={onChange} canExport />);
+  upload(JSON.stringify({ format: "twinstore-layout-options", version: 1, layout: { template_id: "specialty_cafe", seed } }));
+  await screen.findByText("This options file has a seed outside the supported whole-number range. Current settings were kept.");
+  expect(onChange).not.toHaveBeenCalled();
+});
+
+it.each([Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER])("imports exact boundary seed %s", async (seed) => {
+  const onChange = vi.fn();
+  vi.mocked(api.validateLayoutPreset).mockResolvedValue({ format: "twinstore-layout-options", version: 1,
+    layout: { template_id: "specialty_cafe", seed, currency: "USD" } });
+  render(<GenerationOptionsFile kind="layout" value={value} onChange={onChange} canExport />);
+  upload(JSON.stringify({ layout: { template_id: "specialty_cafe", seed } }));
+  await waitFor(() => expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ seed })));
+});
+
+it.each([[0, Number.MAX_SAFE_INTEGER + 1], [1, Number.MAX_SAFE_INTEGER + 1], [0, Number.MIN_SAFE_INTEGER - 1], [1, Number.MIN_SAFE_INTEGER - 1]])("rejects an entire building when floor %s has unsafe seed %s", async (index, seed) => {
+  const onChange = vi.fn();
+  const normalized: api.BuildingPreset = { format: "twinstore-building-options", version: 1, floors: [
+    { label: "Ground", layout: { template_id: "urban_cvs", seed: index === 0 ? seed : 42, currency: "USD" } },
+    { label: "Upper", layout: { template_id: "specialty_cafe", seed: index === 1 ? seed : 42, currency: "JPY" } },
+  ] };
+  vi.mocked(api.validateBuildingPreset).mockResolvedValue(normalized);
+  render(<GenerationOptionsFile kind="building" value={[{ label: "Keep downstairs", choice: value }, { label: "Keep upstairs", choice: value }]} onChange={onChange} canExport />);
+  const source = JSON.stringify(normalized), file = Object.assign(new File([source], "seeds.json"), { text: async () => source });
+  fireEvent.change(screen.getByLabelText("Import building options file"), { target: { files: [file] } });
+  await screen.findByText("This options file has a seed outside the supported whole-number range. Current settings were kept.");
+  expect(onChange).not.toHaveBeenCalled();
+});

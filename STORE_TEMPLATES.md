@@ -158,6 +158,13 @@ category to 1–16 distinct products; leave it blank for the full assortment.
 The limit keeps display positions and seating unchanged, with repeated facings
 of the selected products. **Shuffle assortment** picks a reproducible mix;
 the same seed and category keep their selection across floor sizes and currencies.
+Enter an **Assortment seed** directly to revisit a specific mix. Positive and
+negative whole numbers from -9007199254740991 through 9007199254740991 are supported.
+Empty, fractional, scientific-notation and out-of-range input must be corrected
+before previewing, exporting or saving. Shuffle advances to the next seed and
+stops at the upper bound. Seeds remain independent between floors, travel with
+options files and saved layouts, and are copied by **Apply assortment to all floors**.
+An imported layout or building file with an unsupported seed leaves the current settings intact.
 
 Set a number beside an individual category to override that shared limit. For
 example, use 3 for drinks and 12 for menu items while other categories follow the
