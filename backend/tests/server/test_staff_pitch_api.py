@@ -75,6 +75,19 @@ def test_staff_script_job_snapshot_export_and_delete(client, tmp_path):
     assert client.get(f"{ROOT}/{jid}").status_code == 404
 
 
+def test_staff_scripts_keep_the_layout_currency(client, tmp_path):
+    from store_emulator.application.storage.setups import metadata_path
+    path = metadata_path(PID)
+    write_json(path, {**read_json(path), "currency": "JPY"})
+    sid = client.post(f"/api/projects/{PID}/setups/generate", json={"template_id": "specialty_cafe", "currency": "JPY"}).json()["id"]
+    store = client.get(f"/api/projects/{PID}/setups/{sid}").json()["store"]
+    sku = next(i["sku"] for r in store["racks"] for s in r["slots"] for i in s["items"])
+    response = client.post(ROOT, json=body(setup_id=sid, sku=sku))
+    assert response.status_code == 200, response.text
+    report = wait(client, response.json()["job_id"])["report"]
+    assert report["product"]["currency"] == "JPY"
+
+
 @pytest.mark.parametrize("change,code", [
     ({"sku": "missing"}, 400), ({"setup_id": "../escape"}, 400), ({"setup_id": "setup_missing"}, 404),
     ({"panel": 2}, 422), ({"context": " "}, 422),
