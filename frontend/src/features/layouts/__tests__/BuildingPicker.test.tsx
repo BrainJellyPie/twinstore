@@ -21,6 +21,29 @@ vi.mock("../components/TemplatePicker", () => ({
 }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
+it("starts travel shopping and evening dining with independent options", () => {
+  render(<Building currency="JPY" />);
+  fireEvent.click(screen.getByRole("button", { name: "Travel retail & dining" }));
+  expect(screen.getByText("airport_shopping_gallery / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
+  fireEvent.click(screen.getByRole("button", { name: "2F · Level 2 · Evening dining" }));
+  expect(screen.getByText("evening_food_court / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+  fireEvent.click(screen.getByRole("button", { name: "1F · Ground · Travel shopping" }));
+  expect(screen.getByText("airport_shopping_gallery / width 30")).toBeTruthy();
+});
+
+it("starts hospital retail, pharmacy and care supplies as separate floors", () => {
+  render(<Building currency="KRW" />);
+  fireEvent.click(screen.getByRole("button", { name: "Hospital services center" }));
+  expect(screen.getByText("hospital_convenience / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "2F · Level 2 · Pharmacy" }));
+  expect(screen.getByText("community_pharmacy / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "3F · Level 3 · Care supplies" }));
+  expect(screen.getByText("care_supply_store / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
+});
+
 function Building({ currency = "USD" }: { currency?: string }) {
   const [floors, setFloors] = useState(() => buildingPreset("wellness", currency));
   return <BuildingPicker floors={floors} onChange={setFloors} defaultCurrency={currency} />;

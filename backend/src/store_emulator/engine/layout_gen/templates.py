@@ -417,6 +417,38 @@ TEMPLATES: list[StoreTemplate] = [
         near_counter=["cafe_menu", "scoop_menu"], style="perimeter", open_hours=(7, 23), dining_tables=6,
         checkouts=2, seating_zone="center", checkout_placement="near_entrance", design_theme="retro",
     ),
+    StoreTemplate(
+        id="airport_shopping_gallery", name="Airport shopping gallery", description="Travel gifts, fragrance, jewelry and electronics around a large luxury shopping loop with four checkout counters.",
+        store_type="travel", grid=(30, 24), fridges=["water_sports", "soft_drinks"],
+        wall_shelves=["fragrances", "jewelry", "electronics", "travel_gear", "apparel"] * 3,
+        gondolas=["travel_gear", "fragrances", "jewelry", "electronics", "souvenirs"],
+        near_counter=["souvenirs", "checkout_impulse"], style="loop", checkouts=4,
+        checkout_placement="away_from_entrance", design_theme="luxury",
+    ),
+    StoreTemplate(
+        id="hospital_convenience", name="Hospital convenience & gift shop", description="A 24-hour shop for visitors and staff with meals, everyday care supplies, baby essentials and flowers around clear cross aisles.",
+        store_type="convenience", grid=(18, 16), fridges=["fresh_meals", "dairy", "water_sports", "soft_drinks", "fresh_meals"],
+        wall_shelves=["care_supplies", "baby_supplies", "pharmacy_care", "flowers"] * 2,
+        gondolas=["care_supplies", "baby_supplies", "health_beauty", "bakery", "pantry"],
+        near_counter=["flowers", "coffee_station"], style="cross", checkouts=2,
+        checkout_placement="near_entrance", design_theme="minimal",
+    ),
+    StoreTemplate(
+        id="museum_gift_shop", name="Museum book & gift shop", description="Books, art supplies, keepsakes and small home gifts on Nordic display islands. Open 10–18, with Mondays closed.",
+        store_type="gift", grid=(16, 14), fridges=["water_sports"],
+        wall_shelves=["books", "art_craft", "souvenirs", "stationery", "home_design"],
+        gondolas=["books", "souvenirs", "art_craft", "home_design"], near_counter=["souvenirs", "stationery"],
+        style="free_flow", open_hours=(10, 18), closed_days=(1,), checkouts=2,
+        checkout_placement="away_from_entrance", design_theme="nordic",
+    ),
+    StoreTemplate(
+        id="evening_food_court", name="Evening food court", description="A large 16–24 dining hall with twelve four-seat tables, six ordering counters and hot-meal, burger, salad and juice displays. Models counter purchases.",
+        store_type="restaurant", grid=(32, 26), fridges=["soft_drinks", "water_sports", "dairy"] * 2, freezers=["scoop_menu"],
+        wall_shelves=["restaurant_menu", "korean_menu", "burger_menu", "salad_menu", "juice_menu"] * 2,
+        gondolas=["restaurant_menu", "korean_menu", "salad_menu"], near_counter=["juice_menu", "scoop_menu"],
+        style="perimeter", open_hours=(16, 24), dining_tables=12, checkouts=6, seating_zone="center",
+        checkout_placement="near_entrance", design_theme="terracotta",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
