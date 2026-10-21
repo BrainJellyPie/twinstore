@@ -1,7 +1,7 @@
 // Marketing studio: A/B tests of price, promotion, placement and packaging on the store's twin, concept tests with
 // synthetic respondents, and the product image library both use.
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardList, Copy, FlaskConical, Grid3x3, Images, Loader2, MessagesSquare, Plus, Rows3, Trash2, TriangleAlert } from "lucide-react";
 
@@ -78,6 +78,9 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   const pendingAsk = useAssistStore((s) => s.pending);
   const takeAsk = useAssistStore((s) => s.take);
   const [prefill, setPrefill] = useState<{ tab: "ab" | "conjoint" | "pitch"; text: string; id: number } | null>(null);
+  const prefillHandled = useCallback((id: number) => {
+    setPrefill((current) => current?.id === id ? null : current);
+  }, []);
   useEffect(() => {
     if (!pendingAsk) return;
     const ask = takeAsk(projectId, ["ab_test", "conjoint", "staff_script"]);
@@ -97,6 +100,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
     queryFn: ({ signal }) => api.getSetup(projectId, activeSetup, signal),
     enabled: !!activeSetup,
   });
+  const prefillReady = project.isSuccess && (!activeSetup || setup.isSuccess);
   const products = useMemo(() => storeProducts(setup.data?.store), [setup.data?.store]);
   const info = useQuery({ queryKey: marketingKeys.info(projectId), queryFn: ({ signal }) => getMarketingInfo(projectId, signal), staleTime: 60_000 });
   const budgetCurrency = project.data?.metadata.currency ?? info.data?.currency ?? "USD";
@@ -205,7 +209,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
           <main className="min-h-0 overflow-y-auto pr-1">
             {tab === "ab" && (current ? <ExperimentJob projectId={projectId} id={current} setups={setups} onDuplicate={duplicateExperiment} /> : setup.data?.store ? (
               <ExperimentBuilder key={`${activeSetup}:${abDraft?.key ?? 0}`} projectId={projectId} setupId={activeSetup} products={products}
-                store={setup.data.store} currency={currency} initial={abDraft?.req} prefill={prefill?.tab === "ab" ? prefill : undefined}
+                store={setup.data.store} currency={currency} initial={abDraft?.req}
+                prefill={prefillReady && prefill?.tab === "ab" ? prefill : undefined} onPrefillHandled={prefillHandled}
                 onStarted={(j) => { setAbDraft(null); select(j.job_id); }} />
             ) : <Loading />)}
             {tab === "shelf" && (current ? <ShelfJob projectId={projectId} id={current} onDuplicate={duplicateShelf} /> : setup.data?.store ? (
@@ -220,12 +225,12 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             {tab === "conjoint" && (current ? <ConjointJob projectId={projectId} id={current} onDuplicate={duplicateConjoint} /> : (
               <ConjointBuilder key={`${conjointDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
                 defaultCurrency={budgetCurrency} initial={conjointDraft?.req} setupId={currency === budgetCurrency ? activeSetup : undefined}
-                prefill={prefill?.tab === "conjoint" ? prefill : undefined}
+                prefill={prefillReady && prefill?.tab === "conjoint" ? prefill : undefined} onPrefillHandled={prefillHandled}
                 onStarted={(j) => { setConjointDraft(null); select(j.job_id); }} />
             ))}
             {tab === "pitch" && (current ? <PitchJob projectId={projectId} id={current} /> : setup.data?.store ? (
               <StaffPitchBuilder key={activeSetup} projectId={projectId} setupId={activeSetup} products={products} currency={currency}
-                prefill={prefill?.tab === "pitch" ? prefill : undefined}
+                prefill={prefillReady && prefill?.tab === "pitch" ? prefill : undefined} onPrefillHandled={prefillHandled}
                 personaCount={project.data?.personas.length ?? 0} onStarted={(j) => select(j.job_id)} />
             ) : <Loading />)}
           </main>

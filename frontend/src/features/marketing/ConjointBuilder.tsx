@@ -56,12 +56,13 @@ function sampleColumn(n: number, options: number, seed: number): number[] {
   return Array.from({ length: options }, (_, o) => order[o % n]!);
 }
 
-export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, setupId, prefill, onStarted }: {
+export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, setupId, prefill, onPrefillHandled, onStarted }: {
   projectId: string; personaCount: number; defaultCurrency?: string; initial?: ConjointRequest | null;
   /** A layout in the study's currency: drafted price levels bracket its comparable products. */
   setupId?: string;
   /** A question routed here from the command palette: filled in and drafted at once. */
   prefill?: { text: string; id: number };
+  onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
@@ -181,7 +182,8 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
     const text = Array.from(prefillText).slice(0, 500).join("");
     setQuestion(text);
     setQueued(text);
-  }, [prefillId, prefillText]);
+    onPrefillHandled?.(prefillId);
+  }, [prefillId, prefillText, onPrefillHandled]);
   useEffect(() => {
     if (queued !== null && queued === question) {
       setQueued(null);
