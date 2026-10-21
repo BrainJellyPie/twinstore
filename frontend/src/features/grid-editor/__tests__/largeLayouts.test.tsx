@@ -71,6 +71,7 @@ it("prevents shrinking through a dining footprint and saves every fixture once t
   expect(save).not.toHaveBeenCalled();
   fireEvent.change(width, { target: { value: "40" } });
   fireEvent.blur(width);
+  expect(screen.queryByRole("alert")).toBeNull();
   fireEvent.click(screen.getByTestId("grid-save-button"));
   await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
   expect(save).toHaveBeenCalledWith("p", "s", { store: { ...setup.store, grid_size: [40, 40], racks: [table] } });
