@@ -7,7 +7,7 @@ be calibrated against POS data (see `ScenarioPriors`).
 """
 
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -93,9 +93,12 @@ class Scenario(BaseModel):
     season: Season | None = None
     day_type: DayType = DayType.WEEKDAY
     # Restrict the run to these weekdays (1 = Monday … 7 = Sunday); empty = every simulated day.
-    only_days: list[int] = []
+    only_days: list[Annotated[int, Field(ge=1, le=7)]] = []
     traffic_multiplier: float = Field(default=1.0, ge=0.0, le=5.0)
-    hourly_traffic: dict[int, float] = {}
+    hourly_traffic: dict[
+        Annotated[int, Field(ge=0, le=23)],
+        Annotated[float, Field(ge=0, allow_inf_nan=False)],
+    ] = {}
     crowding: Crowding = Crowding.NORMAL
     events: list[LocalEvent] = []
     promotions: list[Promotion] = []
