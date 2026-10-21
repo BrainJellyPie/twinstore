@@ -15,6 +15,7 @@ import { VisionGlancesSection } from "@/features/runs/components/VisionGlancesSe
 import { PreviewRunsList } from "@/features/runs/components/PreviewRunsList";
 import { FloorConfigurationPanel } from "@/features/grid-editor/FloorConfigurationPanel";
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
+import { ProductBulkEditor } from "@/features/products/ProductBulkEditor";
 import { reasonIcon, reasonLabel, type Availability } from "@/views/simulation/availability";
 import { PlaybackStatus } from "./sections/PlaybackStatus";
 import { TimelineChart } from "./sections/TimelineChart";
@@ -136,6 +137,7 @@ function ReadyContent({
       {hasFloor && setup.store && (
         <section className="flex flex-col gap-2 rounded-lg border bg-card p-4 text-sm">
           <h3 className="text-sm font-medium">Step 2: Item placement</h3>
+          <ProductBulkEditor key={`${pid}:${sid}`} pid={pid} sid={sid} />
           <LayoutExcelControls
             store={setup.store}
             projectId={pid}

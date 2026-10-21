@@ -1,3 +1,4 @@
+import math
 import shutil
 import uuid
 from pathlib import Path
@@ -26,25 +27,55 @@ _DRAWN = {"shelf", "fridge", "counter", "table"}
 MAX_FOOTPRINT_RACKS = 160
 
 
-def _footprint(store: dict[str, Any]) -> dict[str, Any] | None:
+def _footprint(store: object) -> dict[str, object] | None:
     """The active layout as rectangles for the gallery tile: grid size and [x, y, w, h, type] per fixture."""
+    def integer(value: object) -> int | None:
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            return None
+        try:
+            return int(value) if math.isfinite(value) and int(value) == value else None
+        except OverflowError:
+            return None
+
+    if not isinstance(store, dict):
+        return None
+    store = cast(dict[str, object], store)
     raw = store.get("grid_size")
     if not isinstance(raw, list | tuple):
         return None
-    grid = cast(list[Any], raw)
+    grid = cast(list[object], raw)
     if len(grid) != 2:
         return None
-    racks: list[list[Any]] = []
-    for rack in cast(list[dict[str, Any]], store.get("racks") or [])[:MAX_FOOTPRINT_RACKS]:
-        kind = rack.get("type")
-        shape = cast(list[list[Any]], rack.get("shape") or [])
-        pos = cast(list[Any], rack.get("position") or [0, 0])
-        if kind not in _DRAWN or not shape or not shape[0] or len(pos) != 2:
+    gw, gh = integer(grid[0]), integer(grid[1])
+    if gw is None or gh is None or gw <= 0 or gh <= 0:
+        return None
+    racks: list[list[object]] = []
+    raw_racks = store.get("racks")
+    candidates = cast(list[object], raw_racks) if isinstance(raw_racks, list | tuple) else []
+    for raw_rack in candidates[:MAX_FOOTPRINT_RACKS]:
+        if not isinstance(raw_rack, dict):
             continue
-        rows, cols = len(shape), len(shape[0])
+        rack = cast(dict[str, object], raw_rack)
+        kind = rack.get("type")
+        shape = rack.get("shape")
+        raw_pos = rack.get("position", [0, 0])
+        if not isinstance(kind, str) or kind not in _DRAWN or not isinstance(shape, list | tuple) or not shape:
+            continue
+        shape = cast(list[object], shape)
+        if any(not isinstance(row, list | tuple) or not row for row in shape):
+            continue
+        rows, cols = len(shape), len(cast(list[object], shape[0]))
+        if any(len(cast(list[object], row)) != cols for row in shape) or not isinstance(raw_pos, list | tuple):
+            continue
+        pos = cast(list[object], raw_pos)
+        if len(pos) != 2:
+            continue
+        x, y = integer(pos[0]), integer(pos[1])
+        if x is None or y is None:
+            continue
         w, h = (rows, cols) if rack.get("rotation", 0) in (90, 270) else (cols, rows)
-        racks.append([int(pos[0]), int(pos[1]), w, h, kind])
-    return {"grid": [int(grid[0]), int(grid[1])], "racks": racks}
+        racks.append([x, y, w, h, kind])
+    return {"grid": [gw, gh], "racks": racks}
 
 
 def list_projects() -> list[dict[str, Any]]:

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
@@ -21,10 +21,18 @@ export function Step2Fields({ values, errors, disabled, onChange }: Step2FieldsP
   const { t, locale } = useI18n();
   // Plain state rather than a query mutation: the wizard also renders outside the app's query provider.
   const [drafting, setDrafting] = useState(false);
-  const [drafted, setDrafted] = useState<string | null>(null);
+  const [drafted, setDrafted] = useState<{ profile: string; context: string } | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const request = useRef(0);
+  const context = JSON.stringify([values.name, values.description, values.address, values.storeType,
+    values.openHour, values.closeHour, values.workingDayPreset, locale]);
+  useLayoutEffect(() => {
+    setDrafting(false);
+    setDraftError(null);
+    return () => { request.current += 1; };
+  }, [context, values.customerProfile, disabled]);
   const draft = async () => {
+    if (disabled || drafting) return;
     const id = ++request.current;
     setDrafting(true);
     setDraftError(null);
@@ -34,7 +42,7 @@ export function Step2Fields({ values, errors, disabled, onChange }: Step2FieldsP
         hours: `${values.openHour}:00–${values.closeHour}:00, ${DAYS[values.workingDayPreset]}`, locale,
       });
       if (id !== request.current) return;
-      setDrafted(r.profile);
+      setDrafted({ profile: r.profile, context });
       onChange("customerProfile", r.profile);
     } catch (e) {
       if (id === request.current) setDraftError(e instanceof Error ? e.message : String(e));
@@ -70,7 +78,7 @@ export function Step2Fields({ values, errors, disabled, onChange }: Step2FieldsP
             {drafting ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5 text-primary" />}
             {drafting ? t("draftingCustomerProfile") : t("draftCustomerProfile")}
           </button>
-          {drafted !== null && values.customerProfile === drafted && (
+          {drafted?.context === context && values.customerProfile === drafted.profile && (
             <span className="text-xs text-muted-foreground">{t("draftedCustomerProfileHint")}</span>
           )}
           {draftError && <span role="alert" className="text-xs text-destructive">{draftError}</span>}

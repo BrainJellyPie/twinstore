@@ -1,7 +1,7 @@
 // Neighborhood workspace: generate a synthetic town or import a real map, try what-ifs (open a
 // café next door, a rival store across the street), and see where our customers come from.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Eye, Footprints, Globe2, Loader2, MapPinPlus, MousePointer2, Sparkles, Trash2, Users } from "lucide-react";
@@ -249,54 +249,72 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
   const gen = useMutation({ mutationFn: () => api.generateTown(projectId, spec), onSuccess: onDone, onError });
   // "Describe the area": the text model fills the form below; generating stays a separate, explicit step.
   const [area, setArea] = useState("");
+  const areaLength = Array.from(area.trim()).length;
+  const [described, setDescribed] = useState<{
+    text: string; projectId: string; spec: TownSpec; rationale: string;
+  } | null>(null);
   const describe = useMutation({
-    mutationFn: (text: string) => api.describeTown(projectId, { text, seed: spec.seed }),
-    onSuccess: (r) => setSpec(r.spec),
+    mutationFn: (text: string) => api.describeTown(projectId, { text: text.trim(), seed: spec.seed }),
   });
-  // An area described in the command palette lands here: the panel opens and the form is filled from it.
+  const resetDescription = describe.reset;
+  useLayoutEffect(() => {
+    resetDescription();
+  }, [area, spec, projectId, resetDescription]);
+  const requestDescription = (text: string) => {
+    if (Array.from(text.trim()).length >= 5 && !describe.isPending) describe.mutate(text, {
+      onSuccess: (r) => {
+        setDescribed({ ...r, text, projectId });
+        setSpec(r.spec);
+      },
+    });
+  };
+  const rationale = described?.text === area && described.projectId === projectId
+    && described.spec === spec ? described.rationale : "";
+  // An area described in the command palette lands here: the panel opens, the text fills the box and the settings
+  // are drafted from it once the box shows it (so the reset above, on any text change, keeps the reply).
   const panel = useRef<HTMLDetailsElement>(null);
   const pendingAsk = useAssistStore((s) => s.pending);
   const takeAsk = useAssistStore((s) => s.take);
-  const queueDescribe = useQueuedStart(describe.mutate);
+  const queueDescription = useQueuedStart(requestDescription);
   useEffect(() => {
     if (!pendingAsk) return;
     const routed = takeAsk(projectId, ["area"]);
     if (!routed) return;
-    const text = routed.text.slice(0, 800);
+    const text = Array.from(routed.text).slice(0, 800).join("");
     setArea(text);
     if (panel.current) {
       panel.current.open = true;
       panel.current.scrollIntoView?.({ block: "nearest" });
     }
-    queueDescribe(text);
-  }, [pendingAsk, projectId, takeAsk, queueDescribe]);
+    queueDescription(text);
+  }, [pendingAsk, projectId, takeAsk, queueDescription]);
   const neighborChoices = [...new Set([...NEIGHBOR_CHOICES, ...spec.neighbor_categories])];
   return (
     <details ref={panel} className="rounded-lg border p-3" open={!hasTown}>
       <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Sparkles className="size-4" /> Generate a neighborhood</summary>
       <div className="mt-3 space-y-2 text-xs">
         <div className="flex items-start gap-1.5">
-          <textarea value={area} onChange={(e) => setArea(e.target.value.slice(0, 800))} rows={2} aria-label="Describe the area"
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (area.trim().length >= 5 && !describe.isPending) describe.mutate(area.trim()); } }}
+          <textarea value={area} onChange={(e) => setArea(Array.from(e.target.value).slice(0, 800).join(""))} rows={2} aria-label="Describe the area"
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); requestDescription(area); } }}
             placeholder="Describe the area: a busy campus street, two rival stores nearby, a café next door…"
             className="min-h-[2.4rem] flex-1 resize-none rounded-md border bg-background px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
-          <Button type="button" size="sm" variant="outline" className="h-[2.4rem] shrink-0" disabled={area.trim().length < 5 || describe.isPending} onClick={() => describe.mutate(area.trim())}>
+          <Button type="button" size="sm" variant="outline" className="h-[2.4rem] shrink-0" disabled={areaLength < 5 || describe.isPending} onClick={() => requestDescription(area)}>
             {describe.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Set up
           </Button>
         </div>
-        {describe.data?.rationale && <p className="text-muted-foreground">{describe.data.rationale} Check the settings, then generate.</p>}
+        {rationale && <p className="text-muted-foreground">{rationale} Check the settings, then generate.</p>}
         {describe.error && <p role="alert" className="text-destructive">{describe.error.message}</p>}
         <select className="h-8 w-full rounded-md border bg-background px-2" value={spec.archetype} onChange={(e) => setSpec({ ...spec, archetype: e.target.value as TownArchetype })} aria-label="Archetype">
           {Object.entries(ARCHETYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">Size</span>
-          <input type="range" min={400} max={2000} step={100} value={spec.size_m} onChange={(e) => setSpec({ ...spec, size_m: Number(e.target.value) })} className="flex-1 accent-primary" />
+          <input type="range" min={200} max={3000} step={50} value={spec.size_m} onChange={(e) => setSpec({ ...spec, size_m: Number(e.target.value) })} className="flex-1 accent-primary" />
           <span className="w-14 text-right tabular-nums">{spec.size_m} m</span>
         </label>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">Density</span>
-          <input type="range" min={0} max={1} step={0.1} value={spec.density} onChange={(e) => setSpec({ ...spec, density: Number(e.target.value) })} className="flex-1 accent-primary" />
+          <input type="range" min={0} max={1} step={0.01} value={spec.density} onChange={(e) => setSpec({ ...spec, density: Number(e.target.value) })} className="flex-1 accent-primary" />
           <span className="w-14 text-right tabular-nums">{Math.round(spec.density * 100)} %</span>
         </label>
         <label className="flex items-center gap-2">
