@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import { useI18n } from "@/shared/i18n/i18n";
-import { storeTypeLabel } from "./storeLabels";
+import { storeTypeLabel } from "@/shared/i18n/storeLabels";
 import type { ProjectListItem } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { NewStoreTile, StoreTile, StoreTileSkeleton } from "./StoreTile";
