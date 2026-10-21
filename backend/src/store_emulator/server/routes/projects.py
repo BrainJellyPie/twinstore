@@ -75,7 +75,7 @@ async def update_metadata(pid: str, req: UpdateMetadataRequest) -> StatusRespons
 
 @router.put("/{pid}/personas", summary="Save personas", response_model=StatusResponse)
 async def save_personas(pid: str, req: SavePersonasRequest) -> StatusResponse:
-    """Save project personas. **Returns 409 if simulation history exists.**"""
+    """Save project personas. **Returns 409 during generation/simulation or if simulation history exists.**"""
     try:
         project_service.save_project_personas(pid, personas=[p.model_dump(mode="json") for p in req.personas])
     except FileNotFoundError:

@@ -7,6 +7,7 @@ from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.store import DaySchedule
 from store_emulator.application.errors import AppError
 from store_emulator.application.generation_async import start_persona_generation
+from store_emulator.application.storage.generations import find_active_generation
 from store_emulator.application.storage.io import DATA_DIR, write_json, read_json, now_iso
 from store_emulator.application.storage.setups import (
     metadata_path, personas_path,
@@ -76,13 +77,18 @@ def save_project_personas(
     project_id: str,
     personas: list[object],
 ) -> None:
-    """Save personas. AppError if simulation history exists."""
+    """Save personas unless a generation, running simulation, or history locks them."""
     project_dir = _data / project_id
     if not project_dir.exists():
         raise FileNotFoundError(f"Project not found: {project_id}")
 
-    if any(s.get("runId") for s in list_setups(project_id)):
+    setups = list_setups(project_id)
+    if any(s.get("status") == "running" for s in setups):
+        raise AppError("personas cannot be modified while a simulation is running.", 409)
+    if any(s.get("runId") for s in setups):
         raise AppError("personas cannot be modified because the project has simulation history. Create a new project.", 409)
+    if find_active_generation(project_id, kind="persona"):
+        raise AppError("personas cannot be modified while persona generation is in progress.", 409)
     write_json(personas_path(project_id), personas)
 
     meta_file = metadata_path(project_id)

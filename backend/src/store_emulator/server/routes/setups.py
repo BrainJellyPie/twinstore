@@ -227,7 +227,8 @@ async def regenerate_persona(pid: str, sid: str) -> RegeneratePersonaResponse:
 
     **Errors:**
     - 404: setup not found
-    - 409: simulation history exists (`personas_locked`) or the setup already has an active generation (`generation_in_progress`)
+    - 409: a simulation is running, simulation history exists, this setup has an active generation,
+      or persona generation is active anywhere in the project
     """
     try:
         gen_id = generation_async.start_persona_generation(
