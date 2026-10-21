@@ -119,7 +119,7 @@ def _minor(v: float | None, currency: str) -> int | None:
 async def vlm_receipt(llm: VisionLLM, img: Image.Image, *, receipt_id: str, default_currency: str = "USD") -> ReceiptReading:
     url, _ = image_data_url(ImageOps.exif_transpose(img).convert("RGB"), max_side=1600, fmt="JPEG")
     r = await llm.generate_structured_with_image_async(_ReceiptVLM, RECEIPT_PROMPT, "Transcribe this receipt.", url, max_retries=1, seed=0)
-    currency = (r.currency or default_currency).upper()
+    currency = (r.currency.strip() or default_currency.strip()).upper()
     lines = [ReceiptLine(name=line.name.strip(), quantity=line.quantity, unit_price=_minor(line.unit_price, currency),
                          line_total=_minor(line.line_total, currency))
              for line in r.lines if line.name.strip()]
