@@ -1,0 +1,76 @@
+"""A situation described in words becomes a custom scenario; promotions and stock-outs are checked against the
+layout's products (fake model, no network)."""
+
+import pytest
+from fastapi.testclient import TestClient
+from pydantic import BaseModel
+
+PID = "proj_67916afd"
+SETUP = "setup_7d6d"
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from store_emulator.server.main import app
+    with TestClient(app) as c:
+        yield c
+
+
+class _Writer:
+    def __init__(self, draft: dict[str, object]) -> None:
+        self.draft = draft
+        self.prompts: list[str] = []
+
+    async def generate_structured_async[T: BaseModel](
+        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+    ) -> T:
+        self.prompts.append(user_prompt)
+        return response_model.model_validate(self.draft)
+
+
+DRAFT = {
+    "name": "Rainy match night", "weather": "rain", "temperature_c": 14, "day_type": "weekday", "only_days": [5, 9],
+    "crowding": "busy", "events": [{"kind": "sports_match", "intensity": 0.8, "start_hour": 18, "end_hour": 18}],
+    "promotions": [{"target": "Pepsi", "kind": "1+1", "label": "1+1"}, {"target": "Zorblax", "kind": "discount"}],
+    "stockouts": ["Firewood", "Snickers", "Snickers"], "notes": "Fans stop by before kick-off.",
+}
+
+
+def test_a_description_becomes_a_checked_scenario_with_its_effects(client, monkeypatch):
+    from store_emulator.application import scenarios
+    fake = _Writer(DRAFT)
+    monkeypatch.setattr(scenarios, "build_client", lambda *a, **k: fake)
+    text = "Rainy Friday, the game at the stadium tonight, 1+1 on Pepsi, out of Snickers"
+    r = client.post("/api/scenarios/describe", json={"text": text, "project_id": PID, "setup_id": SETUP})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    s = body["scenario"]
+    assert s["id"] == "custom" and s["name"] == "Rainy match night" and s["description"] == text
+    assert s["weather"] == "rain" and s["only_days"] == [5] and s["crowding"] == "busy"
+    assert s["events"][0]["kind"] == "sports_match" and s["events"][0]["end_hour"] == 24  # an empty window is widened
+    assert [p["target"] for p in s["promotions"]] == ["Pepsi"] and s["stockouts"] == ["Snickers"]
+    assert 'No product matches the promotion target "Zorblax"; it was left out.' in body["warnings"]
+    assert 'No product matches the stock-out "Firewood"; it was left out.' in body["warnings"]
+    assert all("applies to" in w or "No product" in w for w in body["warnings"])
+    assert body["effects"]["traffic"] < 1.0 and "rain" in body["effects"]["situation"].lower()
+    prompt = fake.prompts[0]
+    assert "Products: " in prompt and "Pepsi" in prompt and f"Description: {text}" in prompt
+
+
+def test_without_a_layout_targets_are_not_checked_and_errors_read_as_advice(client, monkeypatch):
+    from store_emulator.application import scenarios
+    monkeypatch.setattr(scenarios, "build_client", lambda *a, **k: _Writer({**DRAFT, "events": []}))
+    body = client.post("/api/scenarios/describe", json={"text": "Rainy Friday with a deal on Zorblax"}).json()
+    assert [p["target"] for p in body["scenario"]["promotions"]] == ["Pepsi", "Zorblax"] and body["warnings"] == []
+    assert client.post("/api/scenarios/describe", json={"text": "x", "project_id": PID, "setup_id": SETUP}).status_code == 422
+    assert client.post("/api/scenarios/describe", json={"text": "Rain", "project_id": PID, "setup_id": "nope"}).status_code == 404
+    assert client.post("/api/scenarios/describe", json={"text": "Rain", "project_id": "../x", "setup_id": SETUP}).status_code == 400
+
+    class _Broken:
+        async def generate_structured_async(self, *a, **k):
+            raise RuntimeError("AuthenticationError: invalid api key")
+
+    monkeypatch.setattr(scenarios, "build_client", lambda *a, **k: _Broken())
+    r = client.post("/api/scenarios/describe", json={"text": "Rainy Friday"})
+    assert r.status_code == 502 and "rejected the API key" in r.json()["detail"]

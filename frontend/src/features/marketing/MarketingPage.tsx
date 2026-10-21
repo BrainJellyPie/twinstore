@@ -205,7 +205,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             ))}
             {tab === "conjoint" && (current ? <ConjointJob projectId={projectId} id={current} onDuplicate={duplicateConjoint} /> : (
               <ConjointBuilder key={`${conjointDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
-                defaultCurrency={budgetCurrency} initial={conjointDraft?.req}
+                defaultCurrency={budgetCurrency} initial={conjointDraft?.req} setupId={currency === budgetCurrency ? activeSetup : undefined}
                 onStarted={(j) => { setConjointDraft(null); select(j.job_id); }} />
             ))}
             {tab === "pitch" && (current ? <PitchJob projectId={projectId} id={current} /> : setup.data?.store ? (

@@ -910,6 +910,26 @@ export function getScenarios(signal?: AbortSignal): Promise<ScenarioPreset[]> {
   return fetchJson("/api/scenarios", { signal });
 }
 
+export interface DescribedScenario {
+  scenario: Scenario;
+  effects: ScenarioEffects;
+  /** Promotion or stock-out targets that matched no product (left out) or several products. */
+  warnings: string[];
+}
+
+/** The text model turns a plain description of the day into a custom scenario, checked against the layout. */
+export function describeScenario(
+  req: { text: string; project_id?: string; setup_id?: string; model?: string },
+  signal?: AbortSignal,
+): Promise<DescribedScenario> {
+  return fetchJson("/api/scenarios/describe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+    signal,
+  });
+}
+
 export function previewScenario(scenario: Scenario, signal?: AbortSignal): Promise<ScenarioEffects> {
   return fetchJson("/api/scenarios/preview", {
     method: "POST",

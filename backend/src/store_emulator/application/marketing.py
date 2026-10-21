@@ -79,10 +79,10 @@ from store_emulator.engine.simulation.factory import build_engine
 
 from .async_executor import executor
 from .capture import capture_llm_config
-from .errors import AppError
+from .errors import AppError, model_failure
 from .currencies import project_currency, simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
-from .providers import build_client
+from .providers import assistive_model, build_client
 from .shelf_lab import (
     _check_id,  # pyright: ignore[reportPrivateUsage]
     _load_store,  # pyright: ignore[reportPrivateUsage]
@@ -317,14 +317,15 @@ def write_experiment_narrative(pid: str, eid: str, model: str, config: Simulatio
     report, layout, _ = _report_inputs(pid, eid)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 1500})
     try:
-        llm = build_client(llm_config, None, model_ref=model.strip() or None)
+        model = assistive_model(model, llm_config)
+        llm = build_client(llm_config, None, model_ref=model)
         narrative = asyncio.run(write_narrative(llm, report, layout))
     except ValueError as e:
         raise AppError(str(e), 400) from e
     except Exception as e:  # provider errors reach the user as a message
         logger.warning(f"[marketing] narrative for {eid} failed: {type(e).__name__}: {e}")
-        raise AppError(f"the commentary could not be written ({type(e).__name__}): {str(e)[:200]}", 502) from e
-    narrative.model = model.strip() or llm_config.model
+        raise AppError(model_failure(e, "The commentary could not be written"), 502) from e
+    narrative.model = model
     write_json(_job_dir(pid, "experiment", eid) / "narrative.json", narrative.model_dump(mode="json"))
     return narrative
 
