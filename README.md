@@ -134,6 +134,11 @@ In a project, choose **New layout → Generate a store from a template**. Search
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+Under **Product categories**, **Products per category** limits each included
+category to 1–16 distinct products; leave it blank for the full assortment.
+The limit keeps display positions and seating unchanged, with repeated facings
+of the selected products. **Shuffle assortment** picks a reproducible mix;
+the same seed and category keep their selection across floor sizes and currencies.
 Search matches names, descriptions and categories, ignores accents (`cafe` also
 finds `café`), and accepts words in any order. **More format filters** narrows the
 starting layouts by cell count and dining seating, or sorts by name, floor size

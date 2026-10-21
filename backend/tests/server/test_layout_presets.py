@@ -24,7 +24,7 @@ def test_import_normalizes_options_without_writes_and_can_generate_in_another_pr
                   dining_tables=2, table_clearance=2, seating_zone="back", exit_position="right",
                   reserved_areas=[{"label": " Consultation ", "x": 2, "y": 2, "width": 3, "height": 3}],
                   requirements="Keep consultation signs readable.", source_setup_id="setup_other_project",
-                  name="Old project floor")
+                  name="Old project floor", products_per_category=3)
     response = client.post("/api/store-templates/preset/validate", json=body)
     assert response.status_code == 200, response.text
     assert list(tmp_path.iterdir()) == []
@@ -49,6 +49,7 @@ def test_import_normalizes_options_without_writes_and_can_generate_in_another_pr
     assert saved["store"]["design_theme"] == "terracotta"
     assert saved["generation"]["reserved_areas"] == layout["reserved_areas"]
     assert saved["generation"]["requirements"] == layout["requirements"]
+    assert saved["generation"]["products_per_category"] == layout["products_per_category"] == 3
 
 
 @pytest.mark.parametrize("body,status", [
@@ -69,9 +70,9 @@ def test_invalid_files_do_not_create_any_files(client, tmp_path, body, status):
 
 def test_building_file_keeps_floor_order_and_settings_without_source_links(client, tmp_path):
     floors = [
-        {"label": " Ground · Pharmacy ", "layout": preset(currency="KRW", source_setup_id="old_pharmacy", excluded_categories=["wellness"], checkout_wall="left")["layout"]},
+        {"label": " Ground · Pharmacy ", "layout": preset(currency="KRW", source_setup_id="old_pharmacy", excluded_categories=["wellness"], checkout_wall="left", products_per_category=2)["layout"]},
         {"label": "Upstairs · Tea", "layout": preset(template_id="tea_lounge", dining_tables=4, design_theme="coastal",
-            requirements="Quiet seating by the windows.", name="Old tea floor", currency="JPY")["layout"]},
+            requirements="Quiet seating by the windows.", name="Old tea floor", currency="JPY", products_per_category=6)["layout"]},
     ]
     response = client.post("/api/store-templates/building-preset/validate", json={
         "format": "twinstore-building-options", "version": 1, "floors": floors,
@@ -96,6 +97,7 @@ def test_building_file_keeps_floor_order_and_settings_without_source_links(clien
         assert saved["store"]["currency"] == validated[index]["layout"]["currency"]
         assert saved["generation"]["excluded_categories"] == validated[index]["layout"]["excluded_categories"]
         assert saved["generation"]["checkout_wall"] == validated[index]["layout"]["checkout_wall"]
+        assert saved["generation"]["products_per_category"] == validated[index]["layout"]["products_per_category"] == [2, 6][index]
 
 
 @pytest.mark.parametrize("labels", [["One"], [str(i) for i in range(7)], ["Ground", " ground "], ["", "Tea"]])
