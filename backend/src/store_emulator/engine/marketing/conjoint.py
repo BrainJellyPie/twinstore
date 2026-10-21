@@ -216,21 +216,37 @@ def _probabilities(x: Floats, beta: Floats) -> Floats:
 
 def fit_logit(x: Floats, y: npt.NDArray[np.int64], *, ridge: float = RIDGE, start: Floats | None = None,
               weights: Floats | None = None) -> Floats:
-    """Penalised maximum likelihood by Newton's method (the objective is strictly concave, so it always converges)."""
+    """Penalised maximum likelihood by damped Newton steps, including separated choices and bootstrap warm starts."""
     t, a, k = x.shape
     w = np.ones(t) if weights is None else weights
     onehot = np.zeros((t, a))
     onehot[np.arange(t), y] = 1.0
-    beta = np.zeros(k) if start is None else start.copy()
+    beta: Floats = np.zeros(k) if start is None else start.copy()
     flat = x.reshape(t * a, k)
+
+    def objective(coefficients: Floats) -> float:
+        u = x @ coefficients
+        return float(w @ (u[np.arange(t), y] - np.logaddexp.reduce(u, axis=1))
+                     - 0.5 * ridge * (coefficients @ coefficients))
+
+    value = objective(beta)
     for _ in range(100):
         p = _probabilities(x, beta)
         grad = flat.T @ ((onehot - p) * w[:, None]).reshape(-1) - ridge * beta
         mean_x = (p[:, :, None] * x).sum(axis=1)
         hess = (flat * (p * w[:, None]).reshape(-1, 1)).T @ flat - (mean_x * w[:, None]).T @ mean_x + ridge * np.eye(k)
         step = np.linalg.solve(hess, grad)
-        beta = beta + step
-        if float(np.abs(step).max()) < 1e-7:
+        scale = 1.0
+        for _ in range(50):
+            candidate = beta + scale * step
+            updated = objective(candidate)
+            if updated >= value + 1e-4 * scale * float(grad @ step):
+                break
+            scale *= 0.5
+        else:
+            break
+        beta, value = candidate, updated
+        if float(np.abs(scale * step).max()) < 1e-7:
             break
     return beta
 
