@@ -111,6 +111,8 @@ const RULES: Rule[] = [
     () => spec("pint", 0.09, 0.105, 0.09, "icecream"),
   ],
   [/pizza\b|deep dish/, () => spec("box", 0.22, 0.22, 0.05, "frozen", true)],
+  // The prepared cantina bowl is served in a container, unlike frozen wraps.
+  [/^beef burrito bowl$/, () => spec("cup", 0.12, 0.075, 0.12, "pantry")],
   [/burrito|corn dog/, () => spec("bag", 0.085, 0.17, 0.045, "frozen", true)],
   [/fries|crinkles|tots\b|vegetables|any'tizers|popcorn chicken|nuggets/, () => spec("bag", 0.2, 0.28, 0.05, "frozen", true)],
   [

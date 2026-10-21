@@ -497,6 +497,37 @@ TEMPLATES: list[StoreTemplate] = [
         near_counter=["souvenirs", "stationery"], style="plaza", open_hours=(10, 20), closed_days=(2,),
         checkouts=3, checkout_placement="away_from_entrance", design_theme="nordic",
     ),
+    StoreTemplate(
+        id="compact_pharmacy", name="Compact neighborhood pharmacy", description="An 8×8 care shop with a central spine, one service counter and first-aid, wellness and personal-care displays. Open 9–19, with Sundays closed. No prescription dispensing is modeled.",
+        store_type="pharmacy", grid=(8, 8), fridges=["water_sports"],
+        wall_shelves=["pharmacy_care", "wellness", "health_beauty"],
+        gondolas=["pharmacy_care", "wellness"], near_counter=["pharmacy_care"],
+        style="spine", open_hours=(9, 19), closed_days=(7,), checkouts=1, design_theme="minimal",
+        checkout_placement="near_entrance",
+    ),
+    StoreTemplate(
+        id="round_the_clock_pharmacy", name="24-hour care pharmacy", description="A 24×18 pharmacy with cross aisles, four service counters and first-aid, wellness, personal-care and mobility supplies. Open 0–24 every day. Models retail purchases without prescription dispensing.",
+        store_type="pharmacy", grid=(24, 18), fridges=["water_sports", "water_sports"],
+        wall_shelves=["pharmacy_care", "wellness", "health_beauty", "care_supplies"] * 2,
+        gondolas=["pharmacy_care", "care_supplies", "wellness", "health_beauty"], near_counter=["pharmacy_care", "wellness"],
+        style="cross", open_hours=(0, 24), checkouts=4, design_theme="coastal", checkout_placement="near_entrance",
+    ),
+    StoreTemplate(
+        id="mediterranean_deli", name="Mediterranean deli", description="A 20×18 coastal deli with twelve pita, mezze, salad and rice dishes, six four-seat tables and two ordering counters. Perimeter displays leave the dining area open. Open 10–22, closed Mondays; purchases are made at counters.",
+        store_type="restaurant", grid=(20, 18), fridges=["mediterranean_menu", "water_sports"],
+        wall_shelves=["mediterranean_menu", "mediterranean_menu", "desserts", "soft_drinks"],
+        gondolas=["mediterranean_menu"], near_counter=["mediterranean_menu", "coffee_station"],
+        style="perimeter", open_hours=(10, 22), closed_days=(1,), dining_tables=6, seating_zone="center",
+        checkouts=2, design_theme="coastal", checkout_placement="near_entrance",
+    ),
+    StoreTemplate(
+        id="mexican_cantina", name="Mexican cantina", description="A 24×20 terracotta restaurant with twelve burrito, taco, quesadilla and side dishes, eight four-seat tables and three counters around a clear central plaza. Open 11–24 daily; models counter purchases, not kitchen or table service.",
+        store_type="restaurant", grid=(24, 20), fridges=["soft_drinks", "water_sports"],
+        wall_shelves=["mexican_menu", "mexican_menu", "desserts", "mexican_menu"],
+        gondolas=["mexican_menu", "desserts"], near_counter=["mexican_menu"],
+        style="plaza", open_hours=(11, 24), dining_tables=8, seating_zone="back", checkouts=3,
+        design_theme="terracotta", checkout_placement="near_entrance",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
