@@ -9,7 +9,7 @@ from store_emulator.engine.validation import validate
 
 
 @pytest.mark.parametrize("template_id", [t.id for t in TEMPLATES])
-@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "free_flow", "showroom"])
+@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "cross", "free_flow", "showroom"])
 def test_every_format_supports_vertical_shelves_with_accessible_products(template_id, style):
     store = generate_store(template_id, options=LayoutOptions(shelf_direction="vertical", style=style,
                            entrance="right", checkouts=4, density="dense"))
@@ -22,7 +22,7 @@ def test_every_format_supports_vertical_shelves_with_accessible_products(templat
 
 @pytest.mark.parametrize("dimensions", [(8, 6), (8, 7), (9, 8), (13, 11), (40, 40)])
 @pytest.mark.parametrize("density", ["spacious", "balanced", "dense"])
-@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "free_flow", "showroom"])
+@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "cross", "free_flow", "showroom"])
 def test_rotated_patterns_fit_custom_dimensions_and_reserved_areas(dimensions, density, style):
     area = ReservedArea(label="Pickup", x=2, y=2, width=2, height=2)
     options = LayoutOptions(width=dimensions[0], height=dimensions[1], shelf_direction="vertical", style=style,

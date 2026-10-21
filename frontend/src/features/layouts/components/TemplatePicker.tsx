@@ -96,6 +96,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value="">Density default ({densityGap} {densityGap === 1 ? "cell" : "cells"})</option>
                 {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} {n === 1 ? "cell" : "cells"}</option>)}
               </select></Field>
+              {(value.style ?? selected?.default_style) === "cross" && <p className="col-span-2 text-[11px] text-muted-foreground">Central cross aisles stay clear of shelves and tables. The aisle gap sets both path widths and can reduce seating capacity.</p>}
               <Field label="Width (8–40 cells)"><input type="number" className={controlClass} min={8} max={40} step={1} placeholder={String(selected?.grid[0] ?? 12)} value={value.width ?? ""} onChange={(e) => update({ width: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               <Field label="Depth (6–40 cells)"><input type="number" className={controlClass} min={6} max={40} step={1} placeholder={String(selected?.grid[1] ?? 10)} value={value.height ?? ""} onChange={(e) => update({ height: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               <Field label="Front entrance"><select className={controlClass} value={value.entrance ?? "left"} onChange={(e) => update({ entrance: e.target.value as TemplateChoice["entrance"] })}>

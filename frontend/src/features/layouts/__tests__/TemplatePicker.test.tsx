@@ -21,6 +21,7 @@ beforeEach(() => {
     { id: "family_restaurant", name: "Family restaurant", description: "Central dining", store_type: "restaurant", grid: [24, 20], racks: 20, skus: 40, open_hours: [11, 22], default_style: "perimeter", default_design: "warm", default_dining_tables: 8, default_seating_zone: "center", default_checkout_placement: "near_entrance" },
     { id: "warehouse_club", name: "Warehouse club", description: "Bulk groceries", store_type: "supermarket", grid: [36, 28], racks: 60, skus: 80, open_hours: [9, 21], default_style: "spine", default_design: "classic", default_dining_tables: 0, default_checkouts: 8 },
     { id: "campus_dining_hall", name: "Campus dining hall", description: "Weekday dining", store_type: "restaurant", grid: [32, 24], racks: 40, skus: 80, open_hours: [7, 21], default_style: "perimeter", default_design: "minimal", default_dining_tables: 24, default_checkouts: 4 },
+    { id: "garden_center", name: "Garden & outdoor center", description: "Plants and garden supplies", store_type: "garden", grid: [32, 26], racks: 60, skus: 40, open_hours: [8, 20], default_style: "cross", default_design: "botanical", default_dining_tables: 0, default_checkouts: 4 },
   ]);
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Preview", type: "convenience", grid_size: [12, 10], weekly_schedule: [], racks: [] });
 });
@@ -174,6 +175,20 @@ it("keeps an explicit aisle gap when density changes and supports returning to d
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
     expect.objectContaining({ density: "dense", aisle_width: null }), expect.any(AbortSignal),
   ));
+});
+
+it("explains cross-aisle seating capacity and lets other formats select the pattern", async () => {
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: /Garden & outdoor center/ }));
+  expect(screen.getByRole("option", { name: "Format default (Central cross aisles)" })).toBeTruthy();
+  expect(screen.getByText(/Central cross aisles stay clear of shelves and tables/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
+  expect(screen.queryByText(/Central cross aisles stay clear of shelves and tables/)).toBeNull();
+  fireEvent.change(screen.getByLabelText("Layout pattern"), { target: { value: "cross" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ template_id: "community_pharmacy", style: "cross" }), expect.any(AbortSignal),
+  ));
+  expect(screen.getByText(/Central cross aisles stay clear of shelves and tables/)).toBeTruthy();
 });
 
 it("accepts any whole dining count through 48, rejects invalid counts, and restores automatic seating when cleared", async () => {

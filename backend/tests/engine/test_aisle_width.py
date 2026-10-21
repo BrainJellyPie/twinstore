@@ -7,7 +7,7 @@ from store_emulator.engine.layout_gen import TEMPLATES, generate_store
 from store_emulator.engine.validation import validate
 
 
-@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "free_flow", "showroom"])
+@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "cross", "free_flow", "showroom"])
 @pytest.mark.parametrize("direction", ["horizontal", "vertical"])
 @pytest.mark.parametrize("gap", [1, 4])
 @pytest.mark.parametrize("dimensions", [(8, 6), (18, 14), (40, 40)])

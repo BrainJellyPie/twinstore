@@ -64,7 +64,7 @@ def test_rule_based_shoppers_buy_in_a_generated_store(template_id):
 
 
 @pytest.mark.parametrize("template_id", [t.id for t in TEMPLATES])
-@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "free_flow", "perimeter", "showroom"])
+@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "cross", "free_flow", "perimeter", "showroom"])
 @pytest.mark.parametrize("density", ["spacious", "balanced", "dense"])
 def test_all_format_pattern_density_combinations_are_accessible(template_id, style, density):
     store = generate_store(template_id, seed=17, options=LayoutOptions(
@@ -75,7 +75,7 @@ def test_all_format_pattern_density_combinations_are_accessible(template_id, sty
 
 
 @pytest.mark.parametrize("dimensions", [(8, 6), (8, 7), (9, 8), (13, 11), (40, 40)])
-@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "free_flow", "perimeter", "showroom"])
+@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "cross", "free_flow", "perimeter", "showroom"])
 @pytest.mark.parametrize("entrance", ["left", "center", "right"])
 def test_custom_sizes_keep_routes_and_stock_accessible(dimensions, style, entrance):
     store = generate_store("hypermarket", seed=8, options=LayoutOptions(
