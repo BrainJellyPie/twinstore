@@ -97,9 +97,25 @@ it("previews table sizes, retains the choice with zero tables and resets to four
   expect((screen.getByLabelText("Seats per table") as HTMLSelectElement).value).toBe("4");
 });
 
+it("rotates dining footprints independently of shelves and retains the choice while seating is disabled", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  expect((screen.getByLabelText("Table rotation") as HTMLSelectElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "2" } });
+  fireEvent.change(screen.getByLabelText("Seats per table"), { target: { value: "6" } });
+  fireEvent.change(screen.getByLabelText("Table rotation"), { target: { value: "90" } });
+  expect(screen.getByText("2×3 cells, including chairs.")).toBeTruthy();
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ table_rotation: 90, dining_seats: 6, shelf_direction: "horizontal" }), expect.any(AbortSignal)));
+  fireEvent.change(screen.getByLabelText("Dining tables (6 seats each)"), { target: { value: "0" } });
+  expect((screen.getByLabelText("Table rotation") as HTMLSelectElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Table rotation") as HTMLSelectElement).value).toBe("90");
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Table rotation") as HTMLSelectElement).value).toBe("0");
+});
+
 it.each(["front", "back", "left", "right"] as const)("applies priorities on the %s entrance wall without losing unrelated requirements", async (gateWall) => {
   const starting = { ...DEFAULT_TEMPLATE_CHOICE, width: 24, height: 18, seed: 7, currency: "JPY", gate_wall: gateWall,
-    design_theme: "coastal" as const, dining_tables: 3, checkouts: 4, checkout_wall: "back" as const,
+    design_theme: "coastal" as const, dining_tables: 3, table_rotation: 90 as const, checkouts: 4, checkout_wall: "back" as const,
     open_hour: 6, close_hour: 15, closed_days: [6, 7], products_per_category: 1, excluded_categories: ["beer_alcohol"],
     requirements: "Keep the consultation corner", reserved_areas: [{ label: "Consultation", x: 2, y: 2, width: 2, height: 3 }] };
   function PrioritizedPicker() {
@@ -111,7 +127,7 @@ it.each(["front", "back", "left", "right"] as const)("applies priorities on the 
   await screen.findByRole("img", { name: "Floor plan preview" });
   fireEvent.click(screen.getByText("Apply a layout priority"));
   const unchanged = { width: 24, height: 18, seed: 7, currency: "JPY", gate_wall: gateWall, design_theme: "coastal",
-    open_hour: 6, close_hour: 15, closed_days: [6, 7], products_per_category: 1, excluded_categories: ["beer_alcohol"], reserved_areas: starting.reserved_areas };
+    open_hour: 6, close_hour: 15, closed_days: [6, 7], products_per_category: 1, excluded_categories: ["beer_alcohol"], reserved_areas: starting.reserved_areas, table_rotation: 90 };
   for (const [id, expected] of [
     ["wide", { style: "cross", density: "spacious", aisle_width: 3, max_shelf_run: 3, table_clearance: 2, dining_tables: 3, checkouts: 4, checkout_wall: "back" }],
     ["capacity", { style: "aisles", density: "dense", aisle_width: 1, max_shelf_run: 8, table_clearance: 1, dining_tables: 3, checkouts: 4 }],

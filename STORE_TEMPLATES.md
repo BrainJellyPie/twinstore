@@ -241,6 +241,13 @@ totals and exported floor plans count the chairs actually shown. Each floor keep
 its own table size in saved layouts and reusable options. As with other fixtures,
 the existing floor-edit unlock step clears product placements before editing.
 
+Use **Table rotation** to turn every dining group on a floor by 90 degrees.
+Two-seat groups then occupy 2×1 cells and six-seat groups occupy 2×3 cells;
+four-seat groups keep their 2×2 footprint with the chairs facing the other way.
+The preview and capacity check use the rotated footprint and keep the requested
+clear space on every side. Each floor saves its own rotation; zero tables retain
+the choice for when seating is added again.
+
 Set **Space around dining tables** to one, two or three cells. The generator keeps
 that space free of other fixtures on every side of each dining group, including
 between tables and wall displays. More clearance reduces the number of tables
