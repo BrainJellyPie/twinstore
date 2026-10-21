@@ -234,6 +234,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               {onApplyPriorityToAll && <p className="text-muted-foreground">Applying to all floors opens their review. Each floor keeps its own dimensions, entrance, products, design, hours and reserved areas; entrance-side counters follow that floor's entrance wall.</p>}
             </details>
             <div className="grid grid-cols-2 gap-2">
+              <div className="col-span-2 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
               <Field label="Layout pattern"><select className={controlClass} value={value.style ?? ""} onChange={(e) => update({ style: (e.target.value || null) as TemplateChoice["style"] })}>
                 <option value="">Format default{selected ? ` (${LAYOUT_STYLES.find(([id]) => id === selected.default_style)?.[1]})` : ""}</option>
                 {LAYOUT_STYLES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
@@ -252,7 +253,9 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value="">Density default ({densityGap} {densityGap === 1 ? "cell" : "cells"})</option>
                 {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} {n === 1 ? "cell" : "cells"}</option>)}
               </select></Field>
+              </div>
               {(value.style ?? selected?.default_style) === "cross" && <p className="col-span-2 text-[11px] text-muted-foreground">Central cross aisles stay clear of shelves and tables. The aisle gap sets both path widths and can reduce seating capacity.</p>}
+              {(value.style ?? selected?.default_style) === "plaza" && <p className="col-span-2 text-[11px] text-muted-foreground">The central plaza stays clear of shelves and tables. Its width and depth each use one third of the interior, rounded down to whole cells with a 2-cell minimum. Aisle gaps control the surrounding rows; seating must fit outside the plaza.</p>}
               <div className="col-span-2 space-y-1"><Field label="Maximum shelf run"><select className={controlClass} value={value.max_shelf_run ?? ""}
                 disabled={(value.style ?? selected?.default_style) === "perimeter"}
                 onChange={(e) => update({ max_shelf_run: e.target.value === "" ? null : Number(e.target.value) })}>

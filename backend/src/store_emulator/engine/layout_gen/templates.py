@@ -599,11 +599,16 @@ def generate_store(
     aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]
     aisle = options.aisle_width or aisle
     run_length = options.max_shelf_run or run_length
-    cross_aisles: set[tuple[int, int]] = set()
+    clear_center: set[tuple[int, int]] = set()
     if layout_style == "cross":
         cross_x, cross_y = (w - aisle) // 2, (h - aisle) // 2
-        cross_aisles = {(x, y) for x in range(1, w - 1) for y in range(1, h - 1)
+        clear_center = {(x, y) for x in range(1, w - 1) for y in range(1, h - 1)
                         if cross_x <= x < cross_x + aisle or cross_y <= y < cross_y + aisle}
+    elif layout_style == "plaza":
+        plaza_width, plaza_depth = max(2, (w - 2) // 3), max(2, (h - 2) // 3)
+        plaza_x, plaza_y = (w - plaza_width) // 2, (h - plaza_depth) // 2
+        clear_center = {(x, y) for x in range(plaza_x, plaza_x + plaza_width)
+                        for y in range(plaza_y, plaza_y + plaza_depth)}
     checkout_placement = t.checkout_placement if options.checkout_placement == "auto" else options.checkout_placement
     seating_zone = t.seating_zone if options.seating_zone == "auto" else options.seating_zone
 
@@ -689,7 +694,7 @@ def generate_store(
         table_positions = [(x, y) for y in range(clearance + 1, h - clearance - table_depth, step_y)
                            for x in range(clearance + 1, w - clearance - table_width, step_x)]
         table_positions = [(x, y) for x, y in table_positions
-                           if all(b.free(cx, cy) and (cx, cy) not in cross_aisles
+                           if all(b.free(cx, cy) and (cx, cy) not in clear_center
                                   for cx in range(x, x + table_width) for cy in range(y, y + table_depth))]
         # Seating extends into neighboring parts of the floor as its count grows.
         if seating_zone == "front":
@@ -756,7 +761,7 @@ def generate_store(
             b.counts[category] = rng.randrange(len(CATALOG[category]))
         for i, (x, y, faces) in enumerate(tiles):
             cat = categories[min(len(categories) - 1, i * len(categories) // len(tiles))]
-            if b.free(x, y) and (x, y) not in dining_clearance and (x, y) not in cross_aisles:
+            if b.free(x, y) and (x, y) not in dining_clearance and (x, y) not in clear_center:
                 b.add(RackType.SHELF, x, y, category=cat, faces=faces,
                       rotation=90 if layout_style == "perimeter" or vertical else 0,
                       variant="b" if (y // 3) % 2 else "a")

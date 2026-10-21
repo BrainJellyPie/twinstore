@@ -52,7 +52,7 @@ export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
 
 export const LAYOUT_STYLES = [
   ["aisles", "Parallel aisles"], ["loop", "Racetrack loop"], ["spine", "Central spine"],
-  ["cross", "Central cross aisles"],
+  ["cross", "Central cross aisles"], ["plaza", "Central plaza"],
   ["free_flow", "Free-flow islands"], ["perimeter", "Open center / perimeter"], ["showroom", "Showroom groups"],
 ] as const;
 

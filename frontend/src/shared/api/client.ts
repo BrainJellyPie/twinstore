@@ -1335,7 +1335,7 @@ export interface DiningTableMix {
 }
 
 export interface LayoutOptions {
-  style?: "aisles" | "loop" | "spine" | "cross" | "free_flow" | "perimeter" | "showroom" | null;
+  style?: "aisles" | "loop" | "spine" | "cross" | "plaza" | "free_flow" | "perimeter" | "showroom" | null;
   width?: number | null;
   height?: number | null;
   density?: "spacious" | "balanced" | "dense";
