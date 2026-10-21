@@ -95,3 +95,19 @@ def test_density_design_and_format_assortments_are_applied():
     assert any(r.rack_desc == "pharmacy_care" for r in pharmacy.product_racks)
     restaurant = generate_store("quick_service")
     assert any(r.rack_desc == "restaurant_menu" for r in restaurant.product_racks)
+
+
+@pytest.mark.parametrize("theme", ["classic", "warm", "minimal", "industrial", "botanical", "luxury"])
+def test_interior_design_survives_store_round_trip(theme):
+    from store_emulator.domain.store import Store
+    store = generate_store("specialty_cafe", options=LayoutOptions(design_theme=theme))
+    assert Store.model_validate(store.model_dump()).design_theme == theme
+    assert validate(store) == []
+
+
+def test_old_stores_keep_classic_design_and_formats_supply_defaults():
+    from store_emulator.domain.store import Store
+    store = generate_store("community_pharmacy")
+    assert store.design_theme == "minimal"
+    assert generate_store("specialty_cafe").design_theme == "warm"
+    assert Store.model_validate(store.model_dump(exclude={"design_theme"})).design_theme == "classic"

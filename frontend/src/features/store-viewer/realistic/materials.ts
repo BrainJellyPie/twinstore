@@ -2,6 +2,8 @@
 
 import * as THREE from "three";
 import { SHELL_COLORS, type GraphicsQuality } from "./constants";
+import type { StoreDesign } from "@/shared/types/domain";
+import { INTERIOR_DESIGNS } from "./designThemes";
 import type { MatKey } from "./staticBuilder";
 import { canvasTexture } from "./atlasMaterial";
 import { createAoCanvas, createWoodCanvas } from "./canvasArt";
@@ -30,6 +32,7 @@ export function createShellMaterials(
   signTexture: THREE.Texture,
   partEnv: THREE.Texture | null = null,
   woodMaps: ScannedMaterialMaps | null = null,
+  designTheme: StoreDesign = "classic",
 ): ShellMaterials {
   // Material-owned clones keep hook cleanup and shell rebuilds independent.
   const wood = woodMaps?.map.clone() ?? canvasTexture(createWoodCanvas(), { anisotropy: 1 });
@@ -69,17 +72,18 @@ export function createShellMaterials(
     envMapIntensity: 0.25,
   });
 
+  const palette = INTERIOR_DESIGNS[designTheme];
   const mats: ShellMaterials = {
-    wall: std(SHELL_COLORS.wall, 0.92),
-    band: std(SHELL_COLORS.band, 0.6),
-    bandLine: std(SHELL_COLORS.bandLine, 0.5),
+    wall: std(palette.wall, 0.92),
+    band: std(palette.band, 0.6),
+    bandLine: std(palette.accent, 0.5),
     trim: std("#d9dcdf", 0.5, 0.1),
     cut: std(SHELL_COLORS.cut, 0.9),
-    plinth: std(SHELL_COLORS.plinth, 0.95),
+    plinth: std(palette.plinth, 0.95),
     // Powder coating is a dielectric even when the substrate is steel.
-    metalWhite: std("#eceef0", 0.42, 0),
+    metalWhite: std(palette.shelf, 0.42, 0),
     metalGrey: std("#9ea6ae", 0.35, 0.6),
-    backPanel: std("#e1e4e7", 0.6, 0.15),
+    backPanel: std(palette.backing, 0.6, 0.15),
     kick: std("#5c636b", 0.55, 0.35),
     rail: std("#cfd4d9", 0.35, 0.2),
     darkMetal: std("#24282d", 0.38, 0.65),
@@ -102,22 +106,22 @@ export function createShellMaterials(
     freezerBody: std("#f6f7f8", 0.32, 0.05),
     freezerInterior: std("#dbe9f3", 0.5, 0.05, { emissive: "#dff0ff", emissiveIntensity: 0.12 }),
     bumper: std("#8a939c", 0.4, 0.4),
-    wood: std("#ffffff", woodMaps ? 1 : 0.62, 0, {
+    wood: std(palette.wood, woodMaps ? 1 : 0.62, 0, {
       map: wood,
       roughnessMap: woodMaps?.roughnessMap.clone() ?? null,
       normalMap: woodMaps?.normalMap?.clone() ?? null,
       normalScale: new THREE.Vector2(0.3, 0.3),
     }),
     counterTop: quality === "high"
-      ? new THREE.MeshPhysicalMaterial({ color: "#e9e6df", roughness: 0.32, clearcoat: 0.28, clearcoatRoughness: 0.2 })
-      : std("#e9e6df", 0.32),
+      ? new THREE.MeshPhysicalMaterial({ color: palette.counter, roughness: 0.32, clearcoat: 0.28, clearcoatRoughness: 0.2 })
+      : std(palette.counter, 0.32),
     black: std("#17191c", 0.45, 0.2),
     screen: emissive("#4f8fe8", 0.9),
     mat: std("#2f3337", 0.98),
     aluminum: std("#b7bdc4", 0.32, 0.85),
     pavement: std("#bdbab4", 0.9),
     curb: std("#9b9893", 0.9),
-    ceiling: std("#eceeef", 0.95),
+    ceiling: std(palette.ceiling, 0.95),
     ceilingLight: emissive("#ffffff", 4.5),
     exitSign: emissive("#16c060", 1.5),
     plant: std("#3f7d3a", 0.8),

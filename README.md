@@ -127,7 +127,10 @@ Each format includes its own generic product assortment.
 Combine six patterns (parallel aisles, racetrack, central spine, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
 three display densities, left/center/right entry, one to four checkouts and shelf
-variants. The preview uses the same options as the saved layout. Shuffle changes
+variants. Six saved interior palettes—classic retail, warm wood, minimal white,
+industrial graphite, botanical sage and charcoal/brass—change walls, shelving,
+counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
+default palette; each building floor can use a different one. The preview uses the same options as the saved layout. Shuffle changes
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 

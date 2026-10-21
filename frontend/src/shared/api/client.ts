@@ -2,6 +2,7 @@
 
 import type {
   Store,
+  StoreDesign,
   Persona,
   DaySchedule,
   CustomerResult,
@@ -1304,6 +1305,7 @@ export interface StoreTemplate {
   skus: number;
   open_hours: [number, number];
   default_style: NonNullable<LayoutOptions["style"]>;
+  default_design: StoreDesign;
 }
 
 export interface LayoutOptions {
@@ -1314,6 +1316,7 @@ export interface LayoutOptions {
   entrance?: "left" | "center" | "right";
   checkouts?: number;
   fixture_design?: "mixed" | "a" | "b" | "c";
+  design_theme?: StoreDesign | null;
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {

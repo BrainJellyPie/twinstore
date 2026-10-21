@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import type { Rack } from "@/shared/types/domain";
+import { INTERIOR_DESIGNS } from "./designThemes";
+import type { Rack, StoreDesign } from "@/shared/types/domain";
 import { CEILING_HEIGHT, M, QUALITY_PRESETS, type GraphicsQuality } from "./constants";
 import { buildStore } from "./buildStore";
 import { createShellMaterials, disposeMaterials, NO_CAST, NO_RECEIVE } from "./materials";
@@ -23,11 +24,13 @@ interface Props {
   racks: Rack[];
   currency: string;
   quality: GraphicsQuality;
+  designTheme?: StoreDesign;
 }
 
 const noRaycast = () => undefined;
 
-function Surfaces({ width, depth, quality }: { width: number; depth: number; quality: GraphicsQuality }) {
+function Surfaces({ width, depth, quality, designTheme }: { width: number; depth: number; quality: GraphicsQuality; designTheme: StoreDesign }) {
+  const palette = INTERIOR_DESIGNS[designTheme];
   const high = quality === "high";
   // Poly Haven's scan covers 1.5 metres, independently of the store grid size.
   const scanned = useScannedMaterial("floor_tiles_08", width / (1.5 * M), depth / (1.5 * M), quality);
@@ -40,9 +43,9 @@ function Surfaces({ width, depth, quality }: { width: number; depth: number; qua
     roughMap.repeat.set(width / 4, depth / 4);
     const ceilMap = canvasTexture(createCeilingCanvas(), { repeat: true });
     ceilMap.repeat.set(width / 2, depth / 2);
-    const ceiling = new THREE.MeshStandardMaterial({ map: ceilMap, roughness: 0.95 });
+    const ceiling = new THREE.MeshStandardMaterial({ map: ceilMap, color: palette.ceiling, roughness: 0.95 });
     return { floorMap, roughMap, ceilMap, ceiling };
-  }, [width, depth, high]);
+  }, [width, depth, high, palette.ceiling]);
 
   useEffect(
     () => () => {
@@ -63,6 +66,7 @@ function Surfaces({ width, depth, quality }: { width: number; depth: number; qua
         roughnessMap={scanned?.roughnessMap ?? res.roughMap}
         normalMap={scanned?.normalMap ?? null}
         reflections={high}
+        color={palette.floor}
       />
       <mesh
         name="realistic-ceiling"
@@ -77,7 +81,7 @@ function Surfaces({ width, depth, quality }: { width: number; depth: number; qua
   );
 }
 
-export function RealisticStore({ width, depth, racks, currency, quality }: Props) {
+export function RealisticStore({ width, depth, racks, currency, quality, designTheme = "classic" }: Props) {
   const preset = QUALITY_PRESETS[quality];
   const fontsReady = useFontsReady();
 
@@ -92,7 +96,7 @@ export function RealisticStore({ width, depth, racks, currency, quality }: Props
   const get = useThree((s) => s.get);
   const partEnv = useMemo(() => (quality === "high" ? null : acquireRoomEnvironment(get().gl)), [quality, get]);
   const woodMaps = useScannedMaterial("wood_table_001", 1, 1, quality);
-  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps), [quality, signTexture, partEnv, woodMaps]);
+  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, designTheme), [quality, signTexture, partEnv, woodMaps, designTheme]);
   const layout = useMemo(() => layoutProducts(built.plans, { maxRows: preset.maxRows }), [built, preset.maxRows]);
   const products = useMemo(
     () => buildProductMeshes(layout, currency, quality === "high" ? 160 : 128, quality === "high", quality === "high" ? 4 : 1, quality !== "high"),
@@ -182,7 +186,7 @@ export function RealisticStore({ width, depth, racks, currency, quality }: Props
 
   return (
     <group ref={groupRef}>
-      <Surfaces width={width} depth={depth} quality={quality} />
+      <Surfaces width={width} depth={depth} quality={quality} designTheme={designTheme} />
       {meshes.map(([key, geom]) => (
         <mesh
           key={key}

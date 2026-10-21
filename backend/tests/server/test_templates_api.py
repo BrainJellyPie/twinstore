@@ -25,7 +25,7 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
 
 def test_preview_matches_saved_custom_store(client):
     options = dict(seed=12, currency="JPY", style="spine", width=28, height=24,
-                   density="spacious", entrance="right", checkouts=3, fixture_design="c")
+                   density="spacious", entrance="right", checkouts=3, fixture_design="c", design_theme="botanical")
     preview = client.get("/api/store-templates/food_hall/preview", params=options)
     assert preview.status_code == 200, preview.text
     response = client.post(f"/api/projects/{PID}/setups/generate", json={
@@ -36,6 +36,7 @@ def test_preview_matches_saved_custom_store(client):
     assert saved["store"]["racks"] == preview.json()["racks"]
     assert saved["store"]["grid_size"] == [28, 24]
     assert saved["store"]["name"] == "Lunch hall"
+    assert saved["store"]["design_theme"] == preview.json()["design_theme"] == "botanical"
     assert "Reserve a quiet corner" in saved["memo"]
     assert saved["generation"]["checkouts"] == 3
 
@@ -43,7 +44,7 @@ def test_preview_matches_saved_custom_store(client):
 @pytest.mark.parametrize("patch", [
     {"width": 7}, {"width": 41}, {"height": 5}, {"height": 41}, {"checkouts": 0},
     {"checkouts": 5}, {"style": "unknown"}, {"density": "unknown"}, {"currency": "INVALID"},
-    {"entrance": "roof"}, {"fixture_design": "unknown"},
+    {"entrance": "roof"}, {"fixture_design": "unknown"}, {"design_theme": "unknown"},
 ])
 def test_invalid_options_rejected_for_preview_and_save(client, patch):
     assert client.get("/api/store-templates/urban_cvs/preview", params=patch).status_code == 422
