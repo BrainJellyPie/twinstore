@@ -11,6 +11,7 @@ type LayoutDensity = Literal["spacious", "balanced", "dense"]
 type EntrancePosition = Literal["left", "center", "right"]
 type ExitPosition = Literal["shared", "left", "center", "right"]
 type CheckoutPlacement = Literal["auto", "near_entrance", "away_from_entrance"]
+type CheckoutWall = Literal["front", "back", "left", "right"]
 type SeatingZone = Literal["auto", "front", "back", "left", "right", "center"]
 type StoreDesign = Literal["classic", "warm", "minimal", "industrial", "botanical", "luxury", "coastal", "terracotta"]
 type FixtureDesign = Literal["mixed", "a", "b", "c"]
@@ -42,6 +43,7 @@ class LayoutOptions(BaseModel):
     exit_position: ExitPosition = "shared"
     checkouts: int | None = Field(default=None, ge=1, le=12)
     checkout_placement: CheckoutPlacement = "auto"
+    checkout_wall: CheckoutWall = "front"
     fixture_design: FixtureDesign = "mixed"
     design_theme: StoreDesign | None = None
     dining_tables: int | None = Field(default=None, ge=0, le=48)

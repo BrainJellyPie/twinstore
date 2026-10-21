@@ -44,10 +44,11 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
 
 
 @pytest.mark.parametrize("theme", ["botanical", "coastal", "terracotta"])
-def test_preview_matches_saved_custom_store(client, theme):
+@pytest.mark.parametrize("wall", ["front", "back", "left", "right"])
+def test_preview_matches_saved_custom_store(client, theme, wall):
     options = dict(seed=12, currency="JPY", style="spine", width=28, height=24,
                    density="spacious", aisle_width=4, max_shelf_run=8, entrance="right", exit_position="center", checkouts=3, checkout_placement="away_from_entrance",
-                   fixture_design="c", design_theme=theme, dining_tables=7, table_clearance=2, seating_zone="center", shelf_direction="vertical")
+                   fixture_design="c", design_theme=theme, dining_tables=7, table_clearance=2, seating_zone="center", shelf_direction="vertical", checkout_wall=wall)
     preview = client.get("/api/store-templates/food_hall/preview", params=options)
     assert preview.status_code == 200, preview.text
     response = client.post(f"/api/projects/{PID}/setups/generate", json={
@@ -66,6 +67,7 @@ def test_preview_matches_saved_custom_store(client, theme):
     assert saved["generation"]["table_clearance"] == 2
     assert saved["generation"]["seating_zone"] == "center"
     assert saved["generation"]["checkout_placement"] == "away_from_entrance"
+    assert saved["generation"]["checkout_wall"] == wall
     assert saved["generation"]["shelf_direction"] == "vertical"
     assert saved["generation"]["aisle_width"] == 4
     assert saved["generation"]["max_shelf_run"] == 8
@@ -78,7 +80,7 @@ def test_preview_matches_saved_custom_store(client, theme):
     {"checkouts": 13}, {"style": "unknown"}, {"density": "unknown"}, {"currency": "INVALID"},
     {"entrance": "roof"}, {"exit_position": "roof"}, {"fixture_design": "unknown"}, {"design_theme": "unknown"},
     {"dining_tables": -1}, {"dining_tables": 49}, {"table_clearance": 0}, {"table_clearance": 4},
-    {"seating_zone": "roof"}, {"checkout_placement": "outside"}, {"shelf_direction": "diagonal"},
+    {"seating_zone": "roof"}, {"checkout_placement": "outside"}, {"checkout_wall": "roof"}, {"shelf_direction": "diagonal"},
     {"aisle_width": 0}, {"aisle_width": 5}, {"aisle_width": 1.5},
     {"max_shelf_run": 0}, {"max_shelf_run": 9}, {"max_shelf_run": 1.5},
 ])

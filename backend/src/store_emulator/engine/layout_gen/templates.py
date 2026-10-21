@@ -437,35 +437,46 @@ def generate_store(
     checkout_placement = t.checkout_placement if options.checkout_placement == "auto" else options.checkout_placement
     seating_zone = t.seating_zone if options.seating_zone == "auto" else options.seating_zone
 
-    # Reserve both gates before allocating checkout counters along the front wall.
+    # Reserve both gates before allocating checkout counters on the chosen wall.
     entrance_x = {"left": 0, "center": w // 2, "right": w - 1}[options.entrance]
     exit_x = entrance_x if options.exit_position == "shared" else {"left": 0, "center": w // 2, "right": w - 1}[options.exit_position]
     b.add(RackType.ENTRANCE, entrance_x, h - 1)
     b.racks.append(Rack(id="r_exit", type=RackType.EXIT, shape=[[1]], position=(exit_x, h - 1)))
     b.taken.add((exit_x, h - 1))
-    counter_xs = [x for x in range(2 if checkout_placement == "auto" else 1, w - 1) if b.free(x, h - 1)]
+    wall = options.checkout_wall
+    if wall in ("front", "back"):
+        wall_positions = [(x, h - 1 if wall == "front" else 0) for x in range(1, w - 1)]
+    else:
+        wall_positions = [(0 if wall == "left" else w - 1, y) for y in range(1, h - 1)]
+    counter_positions = [p for p in wall_positions if b.free(*p)
+                         and not (wall == "front" and checkout_placement == "auto" and p[0] == 1)]
     if checkout_placement == "near_entrance":
-        counter_xs.sort(key=lambda x: abs(x - entrance_x))
+        counter_positions.sort(key=lambda p: abs(p[0] - entrance_x) + abs(p[1] - (h - 1)))
     elif checkout_placement == "away_from_entrance":
-        counter_xs.sort(key=lambda x: -abs(x - entrance_x))
-    checkout_count = min(t.checkouts, len(counter_xs)) if options.checkouts is None else options.checkouts
-    if checkout_count > len(counter_xs):
-        raise ValueError(f"This {w}×{h} grid fits at most {len(counter_xs)} checkout counters with the selected gates and placement. Reduce the counter count, change placement or increase the width.")
-    counter_xs = counter_xs[:checkout_count]
-    for i, x in enumerate(counter_xs):
-        b.add(RackType.COUNTER, x, h - 1, name=f"Counter {i + 1}", variant="b")
-    front_xs = [x for x in range(1, w - 1) if b.free(x, h - 1)]
-    for cat, x in zip(t.near_counter, front_xs, strict=False):
-        b.add(RackType.SHELF, x, h - 1, category=cat, faces=[Face.N], variant="c")
+        counter_positions.sort(key=lambda p: -(abs(p[0] - entrance_x) + abs(p[1] - (h - 1))))
+    checkout_count = min(t.checkouts, len(counter_positions)) if options.checkouts is None else options.checkouts
+    if checkout_count > len(counter_positions):
+        raise ValueError(f"This {w}×{h} grid fits at most {len(counter_positions)} checkout counters on the {wall} wall with the selected gates and placement. Reduce the counter count, choose another wall or enlarge the floor.")
+    counter_positions = counter_positions[:checkout_count]
+    rotation = {"front": 0, "back": 180, "left": 90, "right": 270}[wall]
+    face = {"front": Face.N, "back": Face.S, "left": Face.E, "right": Face.W}[wall]
+    for i, (x, y) in enumerate(counter_positions):
+        b.add(RackType.COUNTER, x, y, name=f"Counter {i + 1}", variant="b", rotation=rotation)
+    stock_positions = [p for p in wall_positions if b.free(*p)]
+    if wall != "front":
+        stock_positions.sort(key=lambda p: min(abs(p[0] - cx) + abs(p[1] - cy) for cx, cy in counter_positions))
+    for cat, (x, y) in zip(t.near_counter, stock_positions, strict=False):
+        b.add(RackType.SHELF, x, y, category=cat, faces=[face], variant="c", rotation=rotation)
 
     # Back wall (y = 0): reach-in fridges facing south, freezers continuing the row.
     back = [(RackType.FRIDGE, c, "a") for c in t.fridges] + [(RackType.FRIDGE, c, "b") for c in t.freezers]
-    xs = list(range(1, w - 1))
+    xs = [x for x in range(1, w - 1) if b.free(x, 0)]
     for (kind, cat, variant), x in zip(back, xs, strict=False):
         b.add(kind, x, 0, category=cat, faces=[Face.S], variant=variant)
 
     # Side wall (x = w-1): wall shelves facing west.
-    for cat, y in zip(t.wall_shelves, range(2, h - 2), strict=False):
+    side_ys = [y for y in range(2, h - 2) if b.free(w - 1, y)]
+    for cat, y in zip(t.wall_shelves, side_ys, strict=False):
         b.add(RackType.SHELF, w - 1, y, category=cat, faces=[Face.W], rotation=270)
 
     # A dining group occupies 2×2 cells, including its four chairs. Keep the
@@ -538,6 +549,8 @@ def generate_store(
                       rotation=90 if layout_style == "perimeter" or vertical else 0,
                       variant="b" if (y // 3) % 2 else "a")
 
+    if options.excluded_categories and not any(rack.slots for rack in b.racks):
+        raise ValueError("The selected product categories have no display space. Reduce the checkout count, enlarge the floor or restore more categories.")
     if not any(slot.items for rack in b.racks for slot in rack.slots):
         raise ValueError(
             "No products from the included categories fit this layout. Increase the grid size, "
