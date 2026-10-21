@@ -100,7 +100,7 @@ def pick_candidate(
     match: PlanMatch,
     *,
     chosen: set[str],
-    remaining: int,
+    remaining: int | None,
     attention: dict[int, float],
     promo_multiplier: float,
     rng: random.Random,
@@ -112,7 +112,7 @@ def pick_candidate(
         return None
     pool.sort(key=lambda e: (e[2].sku, e[0].id, e[1].face.value, e[1].level))
     weights = [
-        attention.get(e[1].level, 0.7) * (1.0 if e[2].price <= remaining else 0.15)
+        attention.get(e[1].level, 0.7) * (1.0 if remaining is None or e[2].price <= remaining else 0.15)
         * (promo_multiplier if e[2].promo else 1.0)
         for e in pool
     ]

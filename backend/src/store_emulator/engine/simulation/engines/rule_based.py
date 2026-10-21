@@ -101,7 +101,7 @@ class ShopperPlan:
     rng: random.Random
     grid: list[list[bool]]
     budget: int
-    tolerance: float
+    tolerance: float | None
     spend: int
     walk_out: bool
     buys: list[CustomerAction]
@@ -244,7 +244,7 @@ class RuleBasedEngine:
         plan = ShopperPlan(
             pattern=pattern, rng=rng, grid=store.walkable_grid(),
             budget=persona.budget_max if persona.budget_max > 0 else 10**9,
-            tolerance=cfg.budget_tolerance or 10.0, spend=0, walk_out=False, buys=[], chosen=set(), planned=[],
+            tolerance=cfg.budget_tolerance, spend=0, walk_out=False, buys=[], chosen=set(), planned=[],
             hour=context.arrival_hour,
         )
         return plan, middle
@@ -273,7 +273,7 @@ class RuleBasedEngine:
         return (
             impulse_buys < self._config.engines.rule_based.max_impulse_items
             and len(plan.buys) + impulse_buys < plan.pattern.max_products
-            and plan.spend + price <= plan.budget * plan.tolerance
+            and (plan.tolerance is None or plan.spend + price <= plan.budget * plan.tolerance)
         )
 
     async def _impulse(self, context: PerCustomerContext, plan: ShopperPlan) -> ImpulseOutcome:

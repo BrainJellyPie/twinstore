@@ -176,7 +176,7 @@ class VLMGlanceEngine(RuleBasedEngine):
             return self.close_plan(store, plan, [])
 
         catalog = self._catalog_for(store)
-        limit = int(plan.budget * plan.tolerance)
+        limit = int(plan.budget * plan.tolerance) if plan.tolerance is not None else None
         resolved: list[tuple[str, str, str, str]] = []
         # A trip of known breadth (Persona.basket_kinds, e.g. from a past receipt) keeps the model's
         # first categories in its priority order; asked for n items, models otherwise spread them over
@@ -205,7 +205,7 @@ class VLMGlanceEngine(RuleBasedEngine):
                 continue
             match = match_plan_item(item, catalog)
             entry = pick_candidate(
-                match, chosen=plan.chosen, remaining=limit - plan.spend,
+                match, chosen=plan.chosen, remaining=limit - plan.spend if limit is not None else None,
                 attention=cfg.perception.level_attention, promo_multiplier=cfg.engines.rule_based.promo_multiplier,
                 rng=plan.rng,
             ) if match.candidates else None
@@ -219,7 +219,9 @@ class VLMGlanceEngine(RuleBasedEngine):
             if kinds and category_label(rack) not in kept and len(kept) >= kinds:
                 resolved.append((label, sku_item.sku, "breadth", category_label(rack)))
                 continue
-            quantity = min(item.qty, cfg.max_quantity_per_line, max(0, (limit - plan.spend) // max(1, sku_item.price)))
+            quantity = min(item.qty, cfg.max_quantity_per_line)
+            if limit is not None and sku_item.price > 0:
+                quantity = min(quantity, max(0, (limit - plan.spend) // sku_item.price))
             if quantity < 1:
                 resolved.append((label, sku_item.sku, "over_budget", category_label(rack)))
                 continue
@@ -374,7 +376,8 @@ class VLMGlanceEngine(RuleBasedEngine):
             prompt = user_prompt(
                 persona, context.cue, plan.pattern, view,
                 basket=self._basket_names(context, plan),
-                money_left=None if persona.budget_max <= 0 else int(plan.budget * plan.tolerance) - plan.spend,
+                money_left=None if persona.budget_max <= 0 or plan.tolerance is None
+                else int(plan.budget * plan.tolerance) - plan.spend,
                 currency=cfg.currency,
                 situation=context.situation,
             )
