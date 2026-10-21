@@ -87,7 +87,7 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 <table>
 <tr>
 <td width="50%"><img src="./.github/assets/twinstore/screens/floor-light.jpg" alt="Photoreal 3D store with shoppers"><br>
-<b>Photoreal 3D twin.</b> Shoppers walk the floor on a wall-clock day; scrub, pause, speed up, follow anyone.</td>
+<b>Photoreal 3D twin.</b> Shoppers walk the floor on a wall-clock day; scrub, pause, speed up, follow anyone. <b>Photo</b> path-traces any view into a still.</td>
 <td width="50%"><img src="./.github/assets/twinstore/screens/shopper-light.jpg" alt="Shopper's-eye view"><br>
 <b>Shopper's-eye view.</b> The first-person camera shows what a shopper — and the vision model — sees.</td>
 </tr>

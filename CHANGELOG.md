@@ -6,6 +6,25 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Shopper journeys and interviews
+- Playback has a **Shoppers** tab: rank the run's shoppers (top spenders, left empty-handed, impulse
+  buys, longest visits) or search, open one, and see their trip step by step — wall-clock time,
+  shelf, product, impulse or planned, and the thought recorded at each step — with the walked path
+  and numbered stops on a floor map. **Follow in 3D** jumps playback to their arrival and highlights them.
+- **Interview**: ask that shopper why ("why didn't you buy anything at Snacks 1?"). A language model
+  answers in the first person from the persona, the trip and the shelves they stopped at only, says
+  so when they did not notice something, and cites the steps it means (hover to highlight them).
+  Suggested questions come from the trip. Transcripts are kept per run.
+  API: `GET .../runs/{run}/shoppers/{id}/journey`, `GET/POST/DELETE .../shoppers/{id}/interview`.
+
+### Photo mode (path-traced stills)
+- In the realistic 3D view, **Photo** path-traces the current view with three-gpu-pathtracer:
+  global illumination, area-light shadows from the ceiling panels, a glossy floor, real glass and
+  daylight through the storefront. It refines sample by sample (64 / 256 / 1024) and saves a PNG;
+  orbiting or zooming restarts it. The live scene is copied into a static one the path tracer can
+  read: instanced packages baked with their label UVs, shader-patched materials replaced by plain PBR,
+  the contact-shadow decal dropped, the BVH built in a worker.
+
 ### Marketing studio
 - New **Market** page (`/marketing/<project>`) for marketers and research agencies, with three tabs.
 - **Products**: a product image library (multi-file drop, background cut-out, name, brand, linked shelf

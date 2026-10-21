@@ -1,0 +1,97 @@
+// One shopper's trip: a mini floor map with the walked path and numbered stops, and the steps with the
+// thought recorded at each one. Steps cited by an interview answer are highlighted.
+
+import { DoorClosed, DoorOpen, Footprints, Eye, ShoppingBasket, CreditCard, Shuffle } from "lucide-react";
+
+import type { Journey, JourneyAction, JourneyStep } from "@/shared/api/interview";
+import type { Store } from "@/shared/types/domain";
+import { cn } from "@/shared/utils/cn";
+import { rackBounds } from "@/shared/utils/grid";
+import { formatMoney } from "@/shared/utils/money";
+
+const ICON: Record<JourneyAction, typeof Eye> = {
+  enter: DoorOpen, move: Footprints, browse: Eye, buy: ShoppingBasket, pay: CreditCard, wander: Shuffle, exit: DoorClosed,
+};
+const VERB: Record<JourneyAction, string> = {
+  enter: "Walks in", move: "Heads over", browse: "Looks at", buy: "Takes", pay: "Pays", wander: "Wanders", exit: "Leaves",
+};
+
+export function JourneyMap({ journey, store, active, onHover }: { journey: Journey; store: Store; active: Set<number>; onHover: (i: number | null) => void }) {
+  const [w, h] = store.grid_size;
+  const points = journey.path.map(([, x, y]) => `${x + 0.5},${y + 0.5}`).join(" ");
+  // One marker per spot: a shopper often browses and buys several times without moving.
+  const spots = new Map<string, JourneyStep[]>();
+  for (const s of journey.steps) {
+    if (s.action !== "browse" && s.action !== "buy") continue;
+    const key = `${s.x},${s.y}`;
+    spots.set(key, [...(spots.get(key) ?? []), s]);
+  }
+  return (
+    <svg viewBox={`-0.3 -0.3 ${w + 0.6} ${h + 0.6}`} className="w-full rounded-xl border bg-foreground/[0.025]" role="img" aria-label="Path through the store">
+      {store.racks.map((r) => {
+        const b = rackBounds(r);
+        return (
+          <rect key={r.id} x={r.position[0] + 0.08} y={r.position[1] + 0.08} width={b.w - 0.16} height={b.d - 0.16} rx={0.12}
+            className={cn(journey.shelves[r.id] ? "fill-foreground/25" : "fill-foreground/10")}>
+            <title>{r.rack_name || r.type}</title>
+          </rect>
+        );
+      })}
+      <polyline points={points} fill="none" stroke="var(--viz-1)" strokeWidth={0.09} strokeLinejoin="round" strokeLinecap="round" opacity={0.85} />
+      {[...spots.values()].map((group) => {
+        const s = group[0]!;
+        const bought = group.some((g) => g.action === "buy");
+        const on = group.some((g) => active.has(g.index));
+        const label = group.length > 1 ? `${s.index}+` : String(s.index);
+        return (
+          <g key={s.index} onPointerEnter={() => onHover(s.index)} onPointerLeave={() => onHover(null)} className="cursor-default">
+            <title>{group.map((g) => `${g.index}. ${g.action}${g.product_name ? ` ${g.product_name}` : ""}`).join("\n")}</title>
+            <circle cx={s.x + 0.5} cy={s.y + 0.5} r={on ? 0.44 : 0.34}
+              fill={bought ? "var(--viz-2)" : "var(--viz-1)"} stroke="var(--card)" strokeWidth={0.08} />
+            <text x={s.x + 0.5} y={s.y + 0.5} textAnchor="middle" dominantBaseline="central" fontSize={label.length > 2 ? 0.27 : 0.33} fill="#fff" fontWeight={700}>{label}</text>
+          </g>
+        );
+      })}
+      {journey.path[0] && <circle cx={journey.path[0][1] + 0.5} cy={journey.path[0][2] + 0.5} r={0.2} fill="var(--positive)" />}
+    </svg>
+  );
+}
+
+export function JourneySteps({ journey, active, onHover }: { journey: Journey; active: Set<number>; onHover: (i: number | null) => void }) {
+  return (
+    <ol className="relative space-y-1 before:absolute before:top-2 before:bottom-2 before:left-[0.95rem] before:w-px before:bg-foreground/10">
+      {journey.steps.map((s) => <Step key={s.index} step={s} currency={journey.currency} active={active.has(s.index)} onHover={onHover} />)}
+    </ol>
+  );
+}
+
+function Step({ step: s, currency, active, onHover }: { step: JourneyStep; currency: string; active: boolean; onHover: (i: number | null) => void }) {
+  const Icon = ICON[s.action] ?? Footprints;
+  const buy = s.action === "buy";
+  return (
+    <li
+      onPointerEnter={() => onHover(s.index)}
+      onPointerLeave={() => onHover(null)}
+      className={cn("relative flex gap-2.5 rounded-xl py-1.5 pr-2 pl-0.5 transition-colors", active && "bg-primary/[0.08] ring-1 ring-primary/30")}
+    >
+      <span className={cn("relative z-[1] grid size-7 shrink-0 place-items-center rounded-full border bg-card", buy && "border-transparent text-white")}
+        style={buy ? { background: "var(--viz-2)" } : undefined}>
+        <Icon className="size-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-1.5 text-[0.78rem]">
+          <span className="num font-semibold text-muted-foreground">{s.index}</span>
+          <span className="font-medium">{VERB[s.action] ?? s.action}{s.rack ? ` ${s.rack}` : ""}</span>
+          <span className="num ml-auto shrink-0 text-[0.7rem] text-muted-foreground">{s.time}</span>
+        </div>
+        {s.product_name && (
+          <div className="text-[0.78rem]">
+            <b>{s.product_name}</b>{s.quantity > 1 ? ` ×${s.quantity}` : ""} · <span className="num">{formatMoney(s.price * s.quantity, currency)}</span>
+            {s.origin === "impulse" && <span className="ml-1.5 rounded-full bg-[color-mix(in_oklab,var(--viz-2)_18%,transparent)] px-1.5 py-px text-[0.65rem] font-semibold">impulse</span>}
+          </div>
+        )}
+        {s.thought && <p className="mt-0.5 text-[0.76rem] leading-snug text-muted-foreground italic">“{s.thought}”</p>}
+      </div>
+    </li>
+  );
+}
