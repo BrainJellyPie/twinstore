@@ -24,7 +24,7 @@ from .marketing import (
     get_survey,
     load_reading,
 )
-from .providers import build_client
+from .providers import assistive_model, build_client
 from .staff_pitch import get_pitch
 from .storage.io import now_iso, write_json
 
@@ -83,8 +83,9 @@ def write_reading(pid: str, kind: StudyKind, jid: str, model: str, config: Simul
     """Code the open answers into themes and write a commentary on the numbers; replaces an earlier reading."""
     report_json, question, reasons = _material(pid, kind, jid)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 2000})
+    model = assistive_model(model, llm_config)
     try:
-        llm = build_client(llm_config, None, model_ref=model.strip() or None)
+        llm = build_client(llm_config, None, model_ref=model)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
@@ -92,7 +93,7 @@ def write_reading(pid: str, kind: StudyKind, jid: str, model: str, config: Simul
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[reading] {kind} {jid}: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The reading could not be written"), 502) from e
-    reading = reading.model_copy(update={"model": model.strip() or llm_config.model, "created_at": now_iso()})
+    reading = reading.model_copy(update={"model": model, "created_at": now_iso()})
     write_json(_job_dir(pid, kind, jid) / "reading.json", reading.model_dump(mode="json"))
     return reading
 

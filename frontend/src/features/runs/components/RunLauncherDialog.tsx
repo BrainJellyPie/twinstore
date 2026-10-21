@@ -245,7 +245,7 @@ function LauncherForm({
             <ChevronDown className="ml-auto size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden />
           </summary>
           <div className="space-y-5 border-t p-3">
-            <ScenarioEditor value={scenario} onChange={setScenario} />
+            <ScenarioEditor value={scenario} onChange={setScenario} projectId={projectId} setupId={setupId} />
 
             {town && (
               <div className="space-y-1.5 rounded-md border p-3 text-xs">

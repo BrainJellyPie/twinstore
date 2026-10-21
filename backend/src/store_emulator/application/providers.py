@@ -306,6 +306,41 @@ def resolve_model(
     })
 
 
+# Cloud providers tried, in order, when the app's text model has no key (assistive features only).
+_FALLBACK_ORDER = (ProviderKind.ANTHROPIC, ProviderKind.OPENAI, ProviderKind.GEMINI, ProviderKind.QWEN, ProviderKind.OPENROUTER)
+_PLAIN_PREFIX = {"gemini": ProviderKind.GEMINI, "anthropic": ProviderKind.ANTHROPIC, "openai": ProviderKind.OPENAI,
+                 "openrouter": ProviderKind.OPENROUTER}
+
+
+def text_model_fallback(model: str, settings: dict[ProviderKind, ProviderSettings] | None = None) -> str | None:
+    """A model reference to use instead of `model` when its provider has no API key: the first fast model of the
+    first cloud provider that has one. None when `model` can be used as it is, or nothing else can."""
+    settings = settings if settings is not None else load_settings()
+    parsed = ModelRef.parse(model)
+    kind = parsed.provider if parsed is not None else _PLAIN_PREFIX.get(model.partition("/")[0])
+    if kind is None or not PRESETS[kind].needs_key or _key_for(kind, settings)[0] is not None:
+        return None
+    for other in _FALLBACK_ORDER:
+        preset = PRESETS[other]
+        if other != kind and preset.models and _key_for(other, settings)[0] is not None:
+            fast = next((m for m in preset.models if "fast" in m.note), preset.models[0])
+            return f"{other.value}:{fast.id}"
+    return None
+
+
+def assistive_model(requested: str, config: LLMConfig) -> str:
+    """The model an assistive feature (interviews, commentary, set-up helpers) uses: the one asked for, else the app's
+    text model, else, when that has no API key, a fast model of a provider that has one. Simulation runs and studies
+    keep their configured model and never fall back."""
+    if requested.strip():
+        return requested.strip()
+    alternative = text_model_fallback(config.model)
+    if alternative is not None:
+        logger.info(f"[providers] {config.model} has no API key; assistive features use {alternative}")
+        return alternative
+    return config.model
+
+
 def build_client(
     config: LLMConfig, ensemble: EnsembleConfig | None = None, *, model_ref: str | None = None,
 ) -> SimLLM:

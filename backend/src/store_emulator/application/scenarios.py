@@ -1,6 +1,12 @@
-"""Scenario presets and applying a scenario to a run's inputs (store and visitors)."""
+"""Scenario presets, scenarios written from a description, and applying a scenario to a run's inputs."""
 
-from store_emulator.domain.config import SimulationConfig
+import asyncio
+import logging
+import re
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.scenario import (
     Crowding,
@@ -14,12 +20,20 @@ from store_emulator.domain.scenario import (
     Weather,
 )
 from store_emulator.domain.store import Store
+from store_emulator.domain.types import RESOURCE_ID_PATTERN
 from store_emulator.engine.scenario import (
     apply_to_personas,
     apply_to_store,
     compile_scenario,
     priors_for,
 )
+from store_emulator.engine.scenario_writer import DescribedScenario, describe_scenario
+
+from .errors import AppError, model_failure
+from .providers import assistive_model, build_client
+from .storage.setups import read_setup
+
+logger = logging.getLogger(__name__)
 
 PRESETS: list[Scenario] = [
     Scenario(id="baseline", name="Ordinary day", description="Mild weather, no events, normal crowding."),
@@ -94,3 +108,41 @@ def prepare_inputs(
     if store.weekly_schedule:
         personas = [person for person in personas if store.is_open_at(person.day, person.arrival_hour)]
     return store, personas
+
+
+# ── a situation described in words ───────────────────────────────────────────────
+
+class DescribeRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    text: str = Field(min_length=3, max_length=800, description="the day in plain words")
+    project_id: str = Field(default="", description="with setup_id: ground promotions and stock-outs in that store")
+    setup_id: str = ""
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+def _store_for(project_id: str, setup_id: str) -> Store | None:
+    if not project_id or not setup_id:
+        return None
+    if not re.fullmatch(RESOURCE_ID_PATTERN, project_id) or not re.fullmatch(RESOURCE_ID_PATTERN, setup_id):
+        raise AppError("invalid project or layout id", 400)
+    try:
+        data = read_setup(project_id, setup_id).get("store")
+    except FileNotFoundError:
+        raise AppError(f"layout not found: {setup_id}", 404) from None
+    return Store.model_validate(data) if data else None
+
+
+def describe(req: DescribeRequest, config: SimulationConfig) -> DescribedScenario:
+    """A custom scenario written by the text model from the description, checked against the store's products."""
+    store = _store_for(req.project_id, req.setup_id)
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 1200})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        return asyncio.run(describe_scenario(llm, req.text, store, [p.name for p in PRESETS]))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[scenarios] describe failed: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "The situation could not be set up"), 502) from e
