@@ -20,7 +20,7 @@ def sketch(seed: int = 0, *, outlined_gondolas: bool = True) -> Image.Image:
     rng = random.Random(seed)
     img = Image.new("RGB", (1000, 760), (247, 245, 238))
     d = ImageDraw.Draw(img)
-    j = lambda v: v + rng.uniform(-3, 3)  # noqa: E731 — hand jitter
+    j = lambda v: v + rng.uniform(-3, 3)
     ink = (30, 32, 40)
     x1, y1, x2, y2 = 80, 60, 920, 700
     lw = 7

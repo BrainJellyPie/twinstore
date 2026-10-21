@@ -140,6 +140,14 @@ def main(argv: list[str] | None = None) -> int:
     url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '::') else args.host}:{port}"
     threading.Thread(target=_open_when_ready, args=(url, not args.no_browser), daemon=True).start()
 
+    # No API key: vision shoppers get a small model chosen for this computer (application/local_vlm.py).
+    os.environ.setdefault("TWINSTORE_LOCAL_VLM_AUTO", "1")
+    from store_emulator.application.providers import cloud_providers_with_key
+
+    if not cloud_providers_with_key():
+        _say("No model API key is set. Vision shoppers will use a small local model chosen for this computer "
+             "(downloaded on first use); add a key in Settings → Model providers for faster, more accurate shoppers.")
+
     import uvicorn
 
     _say(f"Starting on {url} …")

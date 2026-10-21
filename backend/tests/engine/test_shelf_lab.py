@@ -270,7 +270,11 @@ def test_benchmark_writes_triples_with_exact_masks(tmp_path: Path) -> None:
 def test_levers_measure_the_pick_shift(tmp_path: Path, personas: list[Persona]) -> None:
     from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
     from store_emulator.engine.shelf_lab.bench import synthetic_shelves, write_bench
-    from store_emulator.engine.shelf_lab.levers import load_counterfactuals, run_lever, summarize_levers
+    from store_emulator.engine.shelf_lab.levers import (
+        load_counterfactuals,
+        run_lever,
+        summarize_levers,
+    )
 
     write_bench(tmp_path, synthetic_shelves(templates=["urban_cvs"], per_template=1, severities=["clean"]),
                 kinds=["remove", "price"], per_kind=1, seed=5)

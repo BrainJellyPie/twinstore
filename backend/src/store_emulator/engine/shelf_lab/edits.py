@@ -25,7 +25,11 @@ from store_emulator.domain.capture import Box, CaptureGap, CaptureItem, CaptureR
 from store_emulator.domain.shelf_lab import EditChange, PhotoEdit
 from store_emulator.engine.capture.catalog_match import typical_price
 from store_emulator.engine.capture.planogram import display_name, sku_for
-from store_emulator.engine.perception.shelf_render import load_font, text_color, wrap_text
+from store_emulator.engine.perception.shelf_render import (
+    load_font,
+    text_color,
+    wrap_text,
+)
 from store_emulator.engine.prompting import display_price
 
 type FloatArray = npt.NDArray[np.float32]

@@ -19,7 +19,13 @@ from store_emulator.domain.store import Store
 from store_emulator.domain.town import Town
 from store_emulator.domain.vision_inputs import ReceiptReading, StorefrontAppeal
 from store_emulator.engine.llm_client import LiteLLMClient
-from store_emulator.engine.vision_inputs import classic_appeal, match_lines, receipts_csv, vlm_appeal, vlm_receipt
+from store_emulator.engine.vision_inputs import (
+    classic_appeal,
+    match_lines,
+    receipts_csv,
+    vlm_appeal,
+    vlm_receipt,
+)
 
 from .capture import capture_llm_config
 from .errors import AppError
@@ -124,7 +130,7 @@ def read_receipts(
         img = _photo(data)
         try:
             reading = asyncio.run(vlm_receipt(llm, img, receipt_id=f"r{k + 1:03d}", default_currency=config.currency))
-        except Exception as e:  # noqa: BLE001 — report per receipt, keep the others
+        except Exception as e:  # noqa: BLE001 — one unreadable receipt must not fail the batch
             readings.append(ReceiptReading(receipt_id=f"r{k + 1:03d}", notes=[f"could not read: {type(e).__name__}: {e}"[:200]]))
             continue
         readings.append(match_lines(reading, products) if products else reading)

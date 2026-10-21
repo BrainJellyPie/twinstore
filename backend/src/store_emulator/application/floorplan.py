@@ -75,7 +75,7 @@ def read_plan(img: Image.Image, reader: PlanReader, model: str, config: Simulati
         return classic_read(img)
     try:
         return asyncio.run(vlm_read(LiteLLMClient(llm_config.model_copy(update={"max_tokens": 1500})), img, model=llm_config.model))
-    except Exception as e:  # noqa: BLE001 — any model failure falls back to the geometry reader
+    except Exception as e:
         if reader == "vlm":
             raise AppError(f"the vision model could not read the plan: {type(e).__name__}: {e}"[:300], 502) from e
         logger.info(f"[floorplan] vlm reader failed ({type(e).__name__}); using the classic reader")

@@ -14,6 +14,28 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the running app; ⌘K → **Quit TwinStore** stops everything.
 - Release workflow builds one archive per OS and smoke-tests the packaged Linux launcher.
 
+### Works without an API key
+- With no cloud key set, a notice under the command bar says so, and the Models page shows what
+  this computer is (CPU, cores, memory, GPU) and which local vision model it gets.
+- `application/hardware.py` reads the hardware (NVIDIA via `nvidia-smi`, AMD/Intel via sysfs or
+  WMI, Apple silicon unified memory) and picks the largest model that runs at a usable speed:
+  - Qwen3.5-9B / 4B / 2B on a GPU (85 % of VRAM; 45 % of unified memory on a Mac);
+  - Qwen3.5-2B, 0.8B or LFM2.5-VL-450M on a CPU, by cores and free memory.
+- `application/local_vlm.py` downloads the matching llama.cpp build (CUDA for the driver's CUDA
+  version, Metal, Vulkan or CPU) and the model, starts `llama-server` on 127.0.0.1, falls back to
+  the CPU build if a GPU build does not start, and points the `llamacpp` provider at it.
+- Launched from an app icon, this starts on its own (`TWINSTORE_LOCAL_VLM_AUTO=1`); otherwise one
+  click on the notice or the Models page. `TWINSTORE_LOCAL_VLM=off`, `TWINSTORE_LLAMA_SERVER` and
+  `TWINSTORE_LOCAL_VLM_MODEL` override it. API: `GET /api/system/models`,
+  `POST /api/system/local-model/start|stop`.
+
+### Situations measured on real data
+- `research/validation/real_effects.py` measures what seasons, weekends, the holiday season, a
+  big match and paydays do to real baskets and traffic (The Complete Journey, Favorita, M5), and
+  `situation_check.py` puts the same situations to the simulated shoppers.
+- The scenario layer no longer files frozen pizza, cream cheese and candy bars under ice cream
+  (in a simulated summer, frozen pizza sold 1.9×; on real receipts, 0.94×).
+
 ### Shelf Lab — real photos as experiments
 - Counterfactual edits on shelf photos (swap, stock-out, new package, price tag, promotion) with
   exact ground-truth masks: pixels outside the changed boxes are untouched.

@@ -17,7 +17,11 @@ import numpy as np
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
-from store_emulator.domain.vision_inputs import ReceiptLine, ReceiptReading, StorefrontAppeal
+from store_emulator.domain.vision_inputs import (
+    ReceiptLine,
+    ReceiptReading,
+    StorefrontAppeal,
+)
 from store_emulator.engine.capture.catalog_match import normalize_text
 from store_emulator.engine.capture.detect import image_data_url
 

@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "engine"))
-from test_floorplan import sketch  # noqa: E402
+from test_floorplan import sketch
 
 PID = "proj_67916afd"
 

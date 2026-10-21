@@ -26,8 +26,19 @@ from store_emulator.domain.shelf_lab import EditKind
 from store_emulator.engine.capture.synthetic import Severity
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.optimize.evaluate import select_personas
-from store_emulator.engine.shelf_lab.bench import ALL_KINDS, BenchShelf, capture_shelves, synthetic_shelves, write_bench
-from store_emulator.engine.shelf_lab.levers import LeverOutcome, load_counterfactuals, run_lever, summarize_levers
+from store_emulator.engine.shelf_lab.bench import (
+    ALL_KINDS,
+    BenchShelf,
+    capture_shelves,
+    synthetic_shelves,
+    write_bench,
+)
+from store_emulator.engine.shelf_lab.levers import (
+    LeverOutcome,
+    load_counterfactuals,
+    run_lever,
+    summarize_levers,
+)
 
 SAMPLE_PERSONAS = Path(__file__).resolve().parents[2] / "sample_data" / "proj_67916afd" / "personas.json"
 

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { KeyRound } from "lucide-react";
 
+import { LocalModelPanel } from "@/features/settings/LocalModelPanel";
 import { ProvidersPanel } from "@/features/settings/ProvidersPanel";
 
 export const Route = createFileRoute("/settings")({
@@ -28,7 +29,8 @@ function SettingsPage() {
           results, and are never sent back to the browser. Models of every ready provider appear in the run launcher,
           where several can be combined into an ensemble of consumers.
         </p>
-        <div className="mt-6">
+        <div className="mt-6 space-y-8">
+          <LocalModelPanel />
           <ProvidersPanel />
         </div>
       </div>

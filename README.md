@@ -146,27 +146,29 @@ shelf studio, which supplies exact boxes; phone photos are edited the same way. 
 
 ## Validated on real baskets
 
-<img src="./.github/assets/twinstore/validation.png" alt="Fig. 4 — Calibration and held-out validation on dunnhumby The Complete Journey">
+<img src="./research/validation/figures/fig_validation_evidence.png" alt="Fig. 4 — Evidence that the twin's shoppers shop like real ones, on held-out households of public datasets">
 
-**Fig. 4 — Validation.** The twin shops for households of six public datasets — dunnhumby *The Complete Journey*
-(801 households, 1.47 M lines) for the main test, plus X5 RetailHero, Ta-Feng, Instacart, Favorita, M5 and 13,159
-pedestrian tracks — and its trips are compared with real trips it never saw. Eleven failure modes found on the data
-changed the simulator. With the configuration frozen, on 150 new households and 14 later weeks, with Claude Haiku 5.5,
-Qwen 3.8 Flash and GPT-6 Luna as decision models:
+**Fig. 4 — Validation.** TwinStore's own engines shop for the households of six public datasets, and the simulated
+trips are compared with real trips they never saw. The main test uses dunnhumby's *The Complete Journey*: 150
+households and 14 weeks, held out, with Claude Haiku 5.5, Qwen 3.8 Flash and GPT-6 Luna as decision models. Every
+failure the data exposed changed the simulator:
+- visit times and trip size;
+- silent fallbacks;
+- shelf prices and price response;
+- walking speed;
+- trips that repeat the same staples.
 
 | Check (held out) | Simulated | Real reference |
-| :-- | :-- | :-- |
-| Category mix of the population (JSD) | **0.017–0.018** | 0.012 (a household's own earlier receipts) |
-| Per-household hit vs the store's best-sellers | **+0.027 to +0.035** (95 % CIs above 0) | – |
-| Classifier AUC, real vs simulated receipt | **0.56–0.62** (was 0.80–0.84) | 0.52 (own earlier receipt vs a later one) |
-| Own-price elasticity | **−0.78 to −1.60** | −0.70 (M5) to −2.62 (meta-analysis) |
-| Bigger trips from farther away (Ta-Feng) | **1.25–1.36×** | 1.33× |
-| Walking speed (13,159 tracks) | **1.12 m/s** | 1.13 m/s |
+| :--- | :--- | :--- |
+| Category mix of the population (JSD) | `0.017–0.018` | `0.012` (a household's own earlier receipts) |
+| Per-household hit vs the store's best-sellers | `+0.027 to +0.035` (95 % CIs above 0) | – |
+| Classifier AUC, real vs simulated receipt | `0.56–0.62` | `0.52` (own earlier receipt vs later one) |
+| Own-price elasticity | `−0.78 to −1.60` | `−0.70` (M5) to `−2.62` (meta-analysis) |
+| Bigger trips from farther away (Ta-Feng) | `1.25–1.36×` | `1.33×` |
+| Walking speed (13,159 tracks) | `1.12 m/s` | `1.13 m/s` |
 
-The three model families agree on every check; the rule engine, fitted to the same data, does not reach the
-individual-level results. Limits stay next to the results: trip size is an input taken from receipts, and at the
-product level a household's own history still predicts best. Full protocol, every table and reproduction:
-[`research/validation`](./research/validation).
+What failed, what was fixed, the limits and the reproduction steps are in
+[`research/validation`](./research/validation). Every number there is recomputed from the saved trips.
 
 ## For researchers
 
@@ -236,11 +238,27 @@ The former command name `parastore` still works.
 </details>
 
 <details>
-<summary><b>Vision shoppers on a CPU (no GPU, no API key)</b></summary>
+<summary><b>Vision shoppers without an API key (CPU or GPU, chosen automatically)</b></summary>
 
-The `vlm_glance` engine shows a vision-language model the shelves a shopper walks past — product names, shelf-edge
-price tags, promotion ribbons and numbered badges. Any LiteLLM vision model works; the defaults target a small model
-served locally by [llama.cpp](https://github.com/ggml-org/llama.cpp):
+With no API key set, TwinStore says so in a notice under the command bar and runs its vision shoppers on a small open
+model on your computer. It reads the hardware and picks the model:
+- a GPU gets Qwen3.5-9B, 4B or 2B (CUDA on NVIDIA, Metal on Apple silicon, Vulkan on AMD/Intel);
+- a CPU gets Qwen3.5-2B, 0.8B or LFM2.5-VL-450M, by cores and free memory.
+
+It then downloads the matching [llama.cpp](https://github.com/ggml-org/llama.cpp) build and the model into
+`.data/local_vlm/` and serves it on 127.0.0.1. Opened from the app icon this happens by itself; otherwise press
+**Start local model** in the notice or on the Models page.
+
+| Variable | Effect |
+| :--- | :--- |
+| `TWINSTORE_LOCAL_VLM=off` | turns it off |
+| `TWINSTORE_LLAMA_SERVER=/path/to/llama-server` | uses your own build |
+| `TWINSTORE_LOCAL_VLM_MODEL` | forces a model: `qwen3.5-0.8b`, `qwen3.5-2b`, … |
+
+A llama.cpp server already running on port 8081 is used as it is. A cloud key gives faster and far more accurate
+shoppers; the validation in [`research/validation`](./research/validation) uses cloud models.
+
+To run the model by hand instead:
 
 ```bash
 # Qwen3.5-0.8B (Q4_K_M) + its vision projector, ~1 GB RAM, 2 CPU threads
@@ -317,8 +335,9 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
 
 - 3D assets in `frontend/public/assets/` are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
   [Mini Characters](https://kenney.nl/assets/mini-characters), [Graveyard Kit](https://kenney.nl/assets/graveyard-kit).
-- Validation uses dunnhumby *The Complete Journey* and X5 RetailHero; the capture benchmark's real-photo check uses
-  ShelfWise "SKUs on shelves PL" (CC BY 4.0). None of these datasets are redistributed here.
+- Validation uses dunnhumby *The Complete Journey*, X5 RetailHero, Ta-Feng, Instacart, Favorita, M5 and the ATC
+  pedestrian tracks; the capture benchmark's real-photo check uses ShelfWise "SKUs on shelves PL" (CC BY 4.0). None of
+  these datasets are redistributed here.
 - Figures and the film are generated from HTML in [`.github/assets/src`](./.github/assets/src)
   (`render.mjs`, `render-video.mjs`).
 
