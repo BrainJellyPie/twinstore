@@ -31,7 +31,7 @@ from store_emulator.engine.vision_inputs import (
 )
 
 from .capture import capture_llm_config
-from .errors import AppError
+from .errors import AppError, model_failure
 from .storage.io import DATA_DIR, read_json
 from .storage.runs import load_run_store
 from .storage.setups import metadata_path, read_setup
@@ -91,10 +91,10 @@ def rate_storefront(pid: str, venue_id: str, data: bytes, *, model: str, config:
     else:
         try:
             appeal = asyncio.run(vlm_appeal(llm, img, model=llm.model))
-        except Exception as e:  # noqa: BLE001 — any model failure falls back to image statistics
-            logger.info(f"[vision_inputs] storefront model failed ({type(e).__name__}); using image statistics")
-            appeal = classic_appeal(img)
-            appeal = appeal.model_copy(update={"reasons": f"vision model unavailable ({type(e).__name__}); {appeal.reasons}"})
+        except Exception as e:
+            # A failed model call changes nothing: a statistics guess would silently move the venue's pull.
+            logger.warning(f"[vision_inputs] storefront model failed: {type(e).__name__}: {e}")
+            raise AppError(model_failure(e, "The storefront could not be rated"), 502) from e
     previous = venue.attractiveness
     venues = [v.model_copy(update={"attractiveness": appeal.attractiveness}) if v.id == venue_id else v for v in town.venues]
     saved = save_town(pid, town.model_copy(update={"venues": venues}), expected=town)
