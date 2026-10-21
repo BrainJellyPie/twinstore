@@ -39,6 +39,20 @@ export function facingForEvent(heading: number, moving: boolean, event: Pick<Tim
     : heading;
 }
 
+export function positionBetweenEvents(prev: TimelineEvent, next: TimelineEvent | null, time: number): { x: number; y: number; moving: boolean } {
+  if (!next || next.elapsed_sec <= prev.elapsed_sec || (next.x === prev.x && next.y === prev.y)) {
+    return { x: prev.x, y: prev.y, moving: false };
+  }
+  // These timestamps mark the start of a stop. Wander-glance timestamps mark
+  // its end in timeline_builder, so their duration must not be applied again.
+  const stopped = prev.action === "browse" || prev.action === "buy" || prev.action === "pay";
+  const dwell = stopped && Number.isFinite(prev.duration) ? Math.max(0, prev.duration) : 0;
+  const departure = Math.min(next.elapsed_sec, prev.elapsed_sec + dwell);
+  const moving = time >= departure && departure < next.elapsed_sec;
+  const fraction = moving ? Math.min(1, (time - departure) / (next.elapsed_sec - departure)) : 0;
+  return { x: prev.x + (next.x - prev.x) * fraction, y: prev.y + (next.y - prev.y) * fraction, moving };
+}
+
 export function shopperPoseAt(customer: CustomerResult, timeSec: number): ShopperPose | null {
   const tl = customer.timeline;
   if (!tl.length) return null;
@@ -63,14 +77,7 @@ export function shopperPoseAt(customer: CustomerResult, timeSec: number): Shoppe
   if (prev.action === "exit") return null;
 
   const next = prevIdx + 1 < tl.length ? tl[prevIdx + 1]! : null;
-  let x = prev.x;
-  let y = prev.y;
-  if (next && next.elapsed_sec > prev.elapsed_sec) {
-    const frac = Math.min(1, (rel - prev.elapsed_sec) / (next.elapsed_sec - prev.elapsed_sec));
-    x = prev.x + (next.x - prev.x) * frac;
-    y = prev.y + (next.y - prev.y) * frac;
-  }
-  const moving = !!(next && (next.x !== prev.x || next.y !== prev.y));
+  const { x, y, moving } = positionBetweenEvents(prev, next, rel);
 
   let heading = 0;
   if (moving) {
@@ -96,7 +103,7 @@ export function shopperPoseAt(customer: CustomerResult, timeSec: number): Shoppe
     lookYaw,
     pitch: browsing ? 0.2 : 0.1,
     moving,
-    event: prev.description ? prev : null,
+    event: prev,
   };
 }
 

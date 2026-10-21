@@ -12,7 +12,7 @@ import {
 } from "../utils/eventQueue";
 import { parseTimeToSeconds } from "../utils/playback";
 import { colorForCustomer } from "@/shared/utils/hashColor";
-import { facingForEvent } from "@/features/store-viewer/realistic/shopperPose";
+import { facingForEvent, positionBetweenEvents } from "@/features/store-viewer/realistic/shopperPose";
 
 export interface PersonaFrame {
   id: string;
@@ -245,16 +245,8 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
       const prev = c.timeline[prevIdx]!;
       if (prev.action === "exit") continue;
 
-      let x = prev.x;
-      let y = prev.y;
       const next = prevIdx + 1 < c.timeline.length ? c.timeline[prevIdx + 1]! : null;
-      if (next && next.elapsed_sec > prev.elapsed_sec) {
-        const frac = (rel - prev.elapsed_sec) / (next.elapsed_sec - prev.elapsed_sec);
-        x = prev.x + (next.x - prev.x) * frac;
-        y = prev.y + (next.y - prev.y) * frac;
-      }
-
-      const isMoving = !!(next && (next.x !== prev.x || next.y !== prev.y));
+      const { x, y, moving: isMoving } = positionBetweenEvents(prev, next, rel);
       const heading = isMoving
         ? Math.atan2(next!.x - prev.x, next!.y - prev.y)
         : state.trailFacing;
@@ -271,7 +263,7 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
 
       const label = personaNames.get(c.persona_id) ?? c.persona_id;
       const gender = personaGenders.get(c.persona_id) ?? "";
-      const currentEvent = prev.description ? prev : null;
+      const currentEvent = prev;
 
       frames.push({
         id: c.persona_id,

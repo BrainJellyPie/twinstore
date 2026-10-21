@@ -265,7 +265,7 @@ export function AssetPersona({
           {label}
         </div>
       </Html>
-      {event && !dimmed && <SpeechBubble event={event} />}
+      {event?.description && !dimmed && <SpeechBubble event={event} />}
       </group>
     </group>
   );
