@@ -158,6 +158,7 @@ class OptimizeResult(BaseModel):
     baseline_score: float
     best_score: float
     # (best − baseline) / |baseline| in the objective's direction: > 0 always means better.
+    # Zero when the baseline is zero; use the score difference in that case.
     relative_improvement: float
     best_store: Store
     applied_moves: list[str]  # human-readable, in application order, redundant moves pruned

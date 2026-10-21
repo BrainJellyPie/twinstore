@@ -249,9 +249,10 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
   const metric = result.validation?.metrics.find((m) => m.metric === result.validation_metric);
   const minimize = status.spec.objective === "walking_distance";
   const significant = metric ? (minimize ? metric.ci_high < 0 : metric.ci_low > 0) : false;
-  const good = validated != null && validated > 0 && significant;
+  const validationGain = metric ? (minimize ? -metric.diff : metric.diff) : validated;
+  const good = validationGain != null && validationGain > 0 && significant;
   const chart = result.history.map((h) => ({ i: h.iteration, score: h.score, best: h.best_score }));
-  const pct = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)} %`;
+  const searchGain = minimize ? result.baseline_score - result.best_score : result.best_score - result.baseline_score;
   if (result.judge) {
     return <JudgeView projectId={projectId} report={result.judge} result={result} status={status} apply={apply} onRestart={onRestart} />;
   }
@@ -260,7 +261,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
       <div className={cn("rounded-lg border p-3", good ? "tone-good" : "bg-muted/30")}>
         <div className="flex items-center gap-2 font-medium">
           {good ? <CheckCircle2 className="size-4 text-positive" /> : <TriangleAlert className="size-4 text-warn" />}
-          Validated on fresh shoppers: {validated != null ? pct(validated) : "—"}
+          Validated on fresh shoppers: {improvementText(validated, validationGain ?? 0, metric?.mean_a ?? 1)}
           {result.validation_prob_better != null && <span className="font-normal text-muted-foreground">· P(better) {formatPercent(result.validation_prob_better, 0)}</span>}
         </div>
         {metric && (
@@ -268,7 +269,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
             95 % interval of the difference: {metric.ci_low.toFixed(2)} … {metric.ci_high.toFixed(2)} ({result.validation?.paired_customers.toLocaleString()} paired shoppers)
           </div>
         )}
-        <div className="mt-1 text-xs text-muted-foreground">Search score: {pct(result.relative_improvement)} (optimistic — tuned on the search shoppers)</div>
+        <div className="mt-1 text-xs text-muted-foreground">Search score: {improvementText(result.relative_improvement, searchGain, result.baseline_score)} (optimistic — tuned on the search shoppers)</div>
       </div>
 
       <div className="h-40">
@@ -330,16 +331,18 @@ function JudgeView({ report, result, status, apply, onRestart }: {
   onRestart: () => void;
 }) {
   const winner = report.candidates.find((c) => c.winner);
-  const improved = winner && winner.label !== "baseline" && (winner.relative_improvement ?? 0) > 0;
-  const sure = winner?.delta_ci_low != null && winner.delta_ci_low > 0;
-  const pct = (x: number | null | undefined) => (x == null ? "—" : `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)} %`);
+  const minimize = status.spec.objective === "walking_distance";
+  const gain = minimize ? result.baseline_score - result.best_score : result.best_score - result.baseline_score;
+  const improved = winner && winner.label !== "baseline" && gain > 0;
+  const sure = minimize ? winner?.delta_ci_high != null && winner.delta_ci_high < 0
+    : winner?.delta_ci_low != null && winner.delta_ci_low > 0;
   const cal = report.calibration;
   return (
     <div className="space-y-4 text-sm">
       <div className={cn("rounded-xl border p-3", improved && sure ? "tone-good" : improved ? "tone-warn" : "bg-muted/30")}>
         <div className="flex items-center gap-2 font-medium">
           <Eye className="size-4" />
-          {improved ? `Vision shoppers prefer ${winner!.label}: ${pct(winner!.relative_improvement)}` : "Vision shoppers kept the current layout"}
+          {improved ? `Vision shoppers prefer ${winner!.label}: ${improvementText(winner!.relative_improvement, gain, result.baseline_score)}` : "Vision shoppers kept the current layout"}
           {winner?.prob_better != null && improved && <span className="font-normal text-muted-foreground">· P(better) {formatPercent(winner.prob_better, 0)}</span>}
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
@@ -407,4 +410,9 @@ function JudgeView({ report, result, status, apply, onRestart }: {
       </div>
     </div>
   );
+}
+
+function improvementText(relative: number | null | undefined, gain: number, baseline: number): string {
+  if (baseline === 0) return `${gain >= 0 ? "+" : ""}${gain.toFixed(2)} (absolute change from zero)`;
+  return relative == null ? "—" : `${relative >= 0 ? "+" : ""}${(relative * 100).toFixed(1)} %`;
 }
