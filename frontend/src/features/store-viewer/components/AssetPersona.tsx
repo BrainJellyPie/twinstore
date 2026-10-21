@@ -147,7 +147,9 @@ export function AssetPersona({
   const realistic = useSimulationStore((s) => s.graphicsMode === "realistic");
   const url = realistic ? realisticCharacterAssetFor(personaId, gender) : characterAssetFor(personaId, gender);
   const scale = highlighted && !realistic ? 1.2 : 1;
-  const animName = realistic ? (isMoving ? "walk" : "idle") : animationFor(isMoving, event);
+  const animName = realistic
+    ? (isMoving ? "walk" : event?.action === "browse" ? "browse" : "idle")
+    : animationFor(isMoving, event);
   const isPaying = !realistic && event?.action === "pay";
 
   const bounceRef = useRef<THREE.Group>(null);

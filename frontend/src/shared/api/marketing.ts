@@ -336,6 +336,7 @@ export const startShelfTest = (pid: string, req: ShelfTestRequest) =>
 export const listShelfTests = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/shelf-tests`, { signal });
 export const getShelfTest = (pid: string, id: string, signal?: AbortSignal) => fetchJson<ShelfTestView>(`${root(pid)}/shelf-tests/${id}`, { signal });
 export const deleteShelfTest = (pid: string, id: string) => fetchJson<void>(`${root(pid)}/shelf-tests/${id}`, { method: "DELETE" });
+export const shelfTestReportUrl = (pid: string, id: string) => `${BASE}${root(pid)}/shelf-tests/${id}/report.html`;
 export const shelfTestImageUrl = (pid: string, id: string, arm: "control" | "test") => `${BASE}${root(pid)}/shelf-tests/${id}/${arm}.png`;
 
 export interface ShelfPreview { face: string; control: string; test: string; applied: string[]; warnings: string[] }

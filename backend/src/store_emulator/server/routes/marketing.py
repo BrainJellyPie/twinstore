@@ -179,6 +179,11 @@ def get_shelf_test(pid: str, tid: str) -> mk.ShelfTestView:
     return _call(lambda: mk.get_shelf_test(pid, tid))
 
 
+@router.get("/{pid}/shelf-tests/{tid}/report.html", summary="Shelf test report (print-ready HTML)", response_class=HTMLResponse)
+def shelf_test_report(pid: str, tid: str) -> HTMLResponse:
+    return HTMLResponse(_call(lambda: mk.shelf_test_report(pid, tid)))
+
+
 @router.get("/{pid}/shelf-tests/{tid}/{arm}.png", summary="The shelf one arm saw", response_class=Response)
 async def shelf_test_image(pid: str, tid: str, arm: Literal["control", "test"]) -> Response:
     png = await run_in_threadpool(_call, lambda: mk.shelf_test_image(pid, tid, arm))

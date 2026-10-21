@@ -3,13 +3,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Rows3 } from "lucide-react";
+import { FileText, Loader2, Rows3 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import {
   marketingKeys,
   previewShelf,
   shelfTestImageUrl,
+  shelfTestReportUrl,
   startShelfTest,
   type JobStatus,
   type ShelfTestReport as Report,
@@ -197,12 +198,13 @@ export function ShelfTestReportView({ projectId, report: r }: { projectId: strin
   const topShare = Math.max(0.01, ...r.picks.flatMap((p) => [p.control, p.test]));
   return (
     <div className="space-y-4">
-      <div className={cn("rounded-2xl border px-4 py-3 text-sm", verdict === "more" ? "tone-good" : verdict === "fewer" ? "tone-bad" : "bg-foreground/[0.03]")}>
-        {pick ? (
+      <div className={cn("flex flex-wrap items-center gap-3 rounded-2xl border px-4 py-3 text-sm", verdict === "more" ? "tone-good" : verdict === "fewer" ? "tone-bad" : "bg-foreground/[0.03]")}>
+        <span className="min-w-0 flex-1">{pick ? (
           verdict
             ? <><b>{verdict === "more" ? "More" : "Fewer"} respondents take {r.target_name}</b> on the test shelf: {pctf(pick.control)} → {pctf(pick.test)} ({pp(pick.diff)}, 95 % interval {pp(pick.ci_low)} to {pp(pick.ci_high)}).</>
             : <>The change does not move {r.target_name}&apos;s pick share beyond noise: {pctf(pick.control)} → {pctf(pick.test)} (95 % interval {pp(pick.ci_low)} to {pp(pick.ci_high)}).</>
-        ) : "No paired answers."}
+        ) : "No paired answers."}</span>
+        <Button asChild size="sm" variant="outline"><a href={shelfTestReportUrl(projectId, r.test_id)} target="_blank" rel="noopener"><FileText className="size-4" /> Report</a></Button>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         {(["control", "test"] as const).map((arm) => (
