@@ -43,6 +43,7 @@ import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 import { RestockPlanner } from "./RestockPlanner";
+import { RestockOrderPlanner } from "./RestockOrderPlanner";
 
 import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
 
@@ -582,7 +583,7 @@ function ComplianceRing({ value }: { value: number }) {
   );
 }
 
-function AuditView({ report, onFocus }: { report: AuditReport; onFocus: (box: CaptureBox | null) => void }) {
+function AuditView({ projectId, report, onFocus }: { projectId: string; report: AuditReport; onFocus: (box: CaptureBox | null) => void }) {
   const delta = report.revenue_delta_per_day;
   return (
     <div className="space-y-4">
@@ -640,6 +641,7 @@ function AuditView({ report, onFocus }: { report: AuditReport; onFocus: (box: Ca
         {report.notes.length ? ` · ${report.notes.join("; ")}` : ""}
       </p>
       <RestockPlanner key={report.job_id} report={report} onFocus={onFocus} />
+      <RestockOrderPlanner key={`quantities:${report.job_id}`} projectId={projectId} report={report} />
     </div>
   );
 }
@@ -701,7 +703,7 @@ function AuditCard({ projectId, captureId, editId, result, onFocus }: {
       <RecentJobs projectId={projectId} captureId={captureId} kind="audit" current={jobId} onPick={setJobId} />
       {status && status.status !== "completed" && status.status !== "failed" && <Progress value={status.progress} label={status.stage === "simulating" ? "Simulating shoppers…" : "Comparing…"} />}
       {status?.status === "failed" && <p className="rounded-lg tone-bad border p-2 text-xs">{status.error}</p>}
-      {job.data?.audit && <AuditView report={job.data.audit} onFocus={onFocus} />}
+      {job.data?.audit && <AuditView projectId={projectId} report={job.data.audit} onFocus={onFocus} />}
     </section>
   );
 }

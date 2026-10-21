@@ -422,6 +422,10 @@ the render, the tagged photo and the raw photo (sim2real agreement with CIs), an
 layout are priced in revenue per day by paired simulation. The shelf here is a photoreal render from the built-in
 shelf studio, which supplies exact boxes; phone photos are edited the same way. Details: [`SHELF_LAB.md`](./SHELF_LAB.md).
 
+Completed audits also offer **Restocking quantities and budget**: enter verified stockroom counts, required shelf
+units, supplier pack sizes/costs and priorities to prepare a budgeted worksheet with CSV export. It shows unfilled
+units and pack surplus, without deriving inventory from a photo, placing orders or predicting recovered sales.
+
 ### Photos in, twin out
 
 | Input | What TwinStore does with it |
