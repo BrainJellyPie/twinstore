@@ -4,6 +4,37 @@ import { buildPhotoScene } from "../photoScene";
 import { CEILING_HEIGHT } from "../constants";
 
 describe("photo scene snapshots", () => {
+  it("retains instance tints alongside untinted meshes sharing the same material", () => {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial();
+    const fruit = new THREE.InstancedMesh(geometry, material, 2);
+    fruit.setMatrixAt(0, new THREE.Matrix4().makeScale(0.9, 0.9, 0.9));
+    fruit.setMatrixAt(1, new THREE.Matrix4().makeTranslation(2, 0, 0));
+    fruit.setColorAt(0, new THREE.Color().setRGB(0.88, 0.92, 0.96));
+    fruit.setColorAt(1, new THREE.Color().setScalar(0.95));
+    const original = Array.from(fruit.instanceColor!.array);
+    const live = new THREE.Scene();
+    live.add(fruit, new THREE.Mesh(geometry, material));
+    const photo = buildPhotoScene(live, { width: 4, depth: 5, background: null });
+    const baked = photo.scene.children.find((o) => o instanceof THREE.Mesh) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+    const color = baked.geometry.getAttribute("color");
+    const n = geometry.index!.count;
+    expect(color.count).toBe(n * 3);
+    expect(baked.material.vertexColors).toBe(true);
+    for (let i = 0; i < n * 3; i++) {
+      const expected = i < n ? [0.88, 0.92, 0.96] : i < n * 2 ? [0.95, 0.95, 0.95] : [1, 1, 1];
+      expect(color.getX(i)).toBeCloseTo(expected[0]!, 6);
+      expect(color.getY(i)).toBeCloseTo(expected[1]!, 6);
+      expect(color.getZ(i)).toBeCloseTo(expected[2]!, 6);
+    }
+    expect(baked.geometry.getAttribute("position").getX(0)).toBeCloseTo(0.45);
+    photo.dispose();
+    expect(material.vertexColors).toBe(false);
+    expect(geometry.getAttribute("color")).toBeUndefined();
+    expect(Array.from(fruit.instanceColor!.array)).toEqual(original);
+    fruit.dispose(); geometry.dispose(); material.dispose();
+  });
+
   it("leaves shared live geometry unchanged across repeated photos", () => {
     const live = new THREE.Scene();
     const geometry = new THREE.BoxGeometry(1, 1, 1);

@@ -698,6 +698,10 @@ Fresh bananas use Alexander Shulha's CC0 Poly Haven scan; single and paired appl
 use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
+Individual fruit instances have stable variations in orientation, size and subtle
+brightness, retained in Photo mode. Long bunches and paired apples keep their
+display footprint; packaged goods retain their authored appearance. Instance
+matrix and color buffers are explicitly released when the product display rebuilds.
 Garden-center terracotta pots use the hollow pot from Rico Cilliers' CC0 scan,
 with diameter-aware proportions, two detail levels and PBR maps. Plain croissants
 use Dario Barresi and Greg Zaal's CC0 Poly Haven scan with the same instanced detail

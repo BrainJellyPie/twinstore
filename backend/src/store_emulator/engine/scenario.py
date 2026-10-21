@@ -358,7 +358,9 @@ def apply_to_personas(
         copies = math.floor(m) + (1 if rng.random() < m - math.floor(m) else 0)
         update: dict[str, int] = {}
         if effects.budget != 1.0:
-            update = {"budget_min": round(p.budget_min * effects.budget), "budget_max": round(p.budget_max * effects.budget)}
+            # Zero means unlimited, so a positive spending cap cannot round down to zero.
+            cap = max(1, round(p.budget_max * effects.budget)) if p.budget_max > 0 else 0
+            update = {"budget_min": round(p.budget_min * effects.budget), "budget_max": cap}
         suffix = 1
         for k in range(copies):
             identifier = p.id
