@@ -369,6 +369,23 @@ def test_a_situation_scales_the_need_draw_by_its_measured_ratio():
     assert abs(drink - 0.6) < 0.06 and abs(snacks - 0.15) < 0.05
 
 
+@pytest.mark.parametrize("period", ["day:weekday", "hour:evening"])
+def test_zero_need_ratio_keeps_overlapping_categories_out_of_the_need_draw(period):
+    from store_emulator.domain.scenario import ScenarioPriors
+
+    store = _store()
+    persona = _personas()[0].model_copy(update={"category_rates": {"Water": 1.0}, "usual_products": []})
+    priors = ScenarioPriors(need_ratio={period: {"water": 0.0, "cold_drinks": 2.0}})
+    config = _config().model_copy(update={"scenario": Scenario(), "scenario_priors": priors})
+    fake = _FakeVLM()
+    engine = VLMGlanceEngine(llm=fake, pathfinder=AStarPathFinder(), config=config)
+    engine.prepare(store)
+    draws = [engine._needs(_context(store, persona, seed=s).model_copy(update={"arrival_hour": 19}))
+             for s in range(100)]
+    assert all(draw == ([], ["Water"]) for draw in draws)
+    assert fake.plan_calls == [] and fake.glance_calls == 0
+
+
 def test_a_needed_category_names_the_households_usual_products_there():
     store = _store()
     rack = next(r for r in store.product_racks if r.rack_name and any(s.items for s in r.slots))

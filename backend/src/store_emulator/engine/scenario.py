@@ -107,11 +107,15 @@ class ScenarioEffects:
     def hour_need_for(self, hour: int, categories: set[str]) -> float:
         table = self.hour_need.get(part_of_day(hour))
         ratios = [table[c] for c in sorted(categories) if c in table] if table else []
+        if 0.0 in ratios:
+            return 0.0
         return max(ratios, key=lambda r: abs(math.log(r)) if r > 0 else 0.0) if ratios else 1.0
 
     def need_for(self, categories: set[str]) -> float:
         """Strongest need ratio; equal strengths use category order for reproducible draws."""
         ratios = [self.need[c] for c in sorted(categories) if c in self.need]
+        if 0.0 in ratios:
+            return 0.0
         return max(ratios, key=lambda r: abs(math.log(r)) if r > 0 else 0.0) if ratios else 1.0
 
     def traffic(self, hour: int) -> float:
