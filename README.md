@@ -292,6 +292,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   refusals in their assigned arm and keep unknown outcomes distinct from nonbuyers. Close collection to lock the
   records. A complete planned sample receives a conservative 95% conversion-difference interval; early closure
   stays descriptive. The Field pilots tab keeps these records accessible independently of the synthetic test.
+  Before saving, **Plan sample size and duration** compares your minimum worthwhile conversion difference and
+  daily eligible traffic with conservative sample requirements. It flags capacity/time shortfalls and saves the
+  assumptions with the fixed plan, without using virtual shoppers as a conversion baseline.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their

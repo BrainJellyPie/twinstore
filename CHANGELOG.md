@@ -35,6 +35,10 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the contact-shadow decal dropped, the BVH built in a worker.
 
 ### Marketing studio
+- **Field pilot sample planning**: conservative power bounds aligned with the final 95% Hoeffding interval,
+  required encounters and operating days, explicit capacity shortfalls, and optional even allocation across
+  existing staff/shift blocks. Assumptions and a server-calculated assessment are saved with each new plan;
+  existing pilots remain fixed. No model calls or real-sales forecasts.
 - **Observed field pilots**: fixed staff/shift A/B assignment sheets from saved scripts, full-sheet CSV imports,
   immutable stimulus snapshots, intention-to-treat purchase counts, missingness bounds, versioned atomic updates,
   and locked closure. Complete targets receive a conservative fixed-sample conversion interval; unfinished targets

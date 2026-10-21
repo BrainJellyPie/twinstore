@@ -109,3 +109,41 @@ def test_unknown_project_and_pilot_ids_and_upload_limit(client):
     pid = create(client)["pilot"]["pilot_id"]
     assert upload(client, pid, b"x" * (2 * 1024 * 1024 + 1)).status_code == 413
     assert client.get(f"{ROOT}/staff-pilots/{pid}").json()["pilot"]["revision"] == 0
+
+
+def test_sample_planning_preview_and_saved_assessment_use_actual_fixed_design(client, tmp_path):
+    assumptions = {"minimum_effect": 0.2, "target_power": 0.8, "eligible_per_day": 30, "available_days": 14}
+    preview = client.post(f"{ROOT}/staff-pilots/plan", json={"assumptions": assumptions, "block_counts": [100]})
+    assert preview.status_code == 200, preview.text
+    plan = preview.json()
+    assert plan["required_encounters"] == 510 and plan["required_days"] == 17
+    assert client.get(f"{ROOT}/staff-pilots").json() == []  # preview is side-effect free
+    created = client.post(f"{ROOT}/staff-pitches/pit_test/pilots", json={
+        "name": "Planned tea", "eligibility": "Each customer once", "outcome_window": "Same visit",
+        "blocks": [{"staff_id": "s1", "shift_id": "day1", "encounters": 510}], "planning": assumptions,
+    })
+    assert created.status_code == 200, created.text
+    saved = created.json()["pilot"]
+    assert saved["planning"]["planned_encounters"] == 510  # never accept the old preview's 100
+    assert saved["planning"]["planned_power_lower_bound"] >= 0.8
+    pid = saved["pilot_id"]
+    assert upload(client, pid, sheet(client, pid, complete=True)).status_code == 200
+    closed = client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 1}).json()
+    assert closed["pilot"]["planning"] == saved["planning"]
+    assert 1 - closed["analysis"]["ci_low"] == pytest.approx(saved["planning"]["planned_ci_half_width"])
+    assert client.get(f"{ROOT}/staff-pilots/{pid}").json()["pilot"]["planning"] == saved["planning"]
+
+
+def test_planning_validates_project_and_assumptions_and_reads_legacy_pilots(client, tmp_path):
+    payload = {"assumptions": {"minimum_effect": 0.05, "target_power": 0.8, "eligible_per_day": 20, "available_days": 30}, "block_counts": [100]}
+    assert client.post("/api/projects/missing/staff-pilots/plan", json=payload).status_code == 404
+    payload["assumptions"]["minimum_effect"] = 0
+    assert client.post(f"{ROOT}/staff-pilots/plan", json=payload).status_code == 422
+    pid = create(client)["pilot"]["pilot_id"]
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    legacy = read_json(path)
+    legacy.pop("planning", None)
+    legacy["design"].pop("planning", None)
+    write_json(path, legacy)
+    response = client.get(f"{ROOT}/staff-pilots/{pid}")
+    assert response.status_code == 200 and response.json()["pilot"]["planning"] is None

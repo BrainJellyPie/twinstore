@@ -137,6 +137,6 @@ def analyze_pilot(pilot: FieldPilot) -> PilotAnalysis:
             "The final B-minus-A estimate weights staff/shift blocks by their precommitted planned counts. All planned encounters and outcomes are required for inference; an early close gives descriptive counts only.",
             "The 95% interval is a conservative Hoeffding bound: estimate ± sqrt(log(40)/2 × sum(block_weight² × (1/n_A + 1/n_B))). It assumes independent encounter outcomes within the fixed design, no repeat shoppers or interference, and is not robust to unmodeled clustering.",
             "Closing locks observations. Do not repeatedly restart pilots or stop based on interim rates; the interval is not valid for optional stopping or selection among many tests.",
-            "Planned sample size is operator-chosen, not a power calculation. Results apply to the measured product, offer, eligible encounters and staff/shifts; they are not store-wide revenue forecasts.",
+            "The sample plan was chosen before collection. Any saved power assessment is conditional on its planning assumptions, not an observed effect. Results apply to the measured product, offer, eligible encounters and staff/shifts; they are not store-wide revenue forecasts.",
         ],
     )

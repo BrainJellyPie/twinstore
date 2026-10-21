@@ -11,7 +11,9 @@ from store_emulator.application.staff_pitch import get_pitch
 from store_emulator.application.storage.io import DATA_DIR, now_iso, read_json, write_json
 from store_emulator.application.storage.setups import metadata_path
 from store_emulator.domain.field_pilot import FieldPilot, PilotRequest, PilotSummary, PilotView
+from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.engine.marketing.field_pilot import allocate_pilot, analyze_pilot, observations_csv, parse_observations
+from store_emulator.engine.marketing.field_planning import plan_pilot
 
 
 def _root(pid: str) -> Path:
@@ -39,9 +41,16 @@ def create_pilot(pid: str, pitch_id: str, req: PilotRequest) -> PilotView:
     pilot = FieldPilot(pilot_id=pilot_id, pitch_id=pitch_id, created_at=now, updated_at=now, design=req,
                        product=source.product.model_copy(deep=True), variants=source.request.variants,
                        context=source.request.context, product_facts=source.request.product_facts,
-                       assignments=allocate_pilot(pilot_id, req))
+                       assignments=allocate_pilot(pilot_id, req),
+                       planning=plan_pilot(PilotPlanningRequest(assumptions=req.planning,
+                                           block_counts=[b.encounters for b in req.blocks])) if req.planning else None)
     write_json(root / pilot_id / "pilot.json", pilot.model_dump(mode="json"))
     return PilotView(pilot=pilot, analysis=analyze_pilot(pilot))
+
+
+def preview_plan(pid: str, req: PilotPlanningRequest) -> PilotPlanningResult:
+    _root(pid)
+    return plan_pilot(req)
 
 
 def list_pilots(pid: str) -> list[PilotSummary]:
