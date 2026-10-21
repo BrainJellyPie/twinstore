@@ -424,6 +424,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   Pilots open on **Collection checks**: staff/shift completeness, recording gaps and a follow-up checklist with
   CSV export. Unrecorded tail slots are kept distinct from enrolled encounters needing outcome follow-up;
   purchase counts and treatment effects remain in the separate observations/results view.
+  **Reconcile POS purchases** matches anonymous transaction lines to fixed assignment IDs and the exact target SKU.
+  It proposes only unknown enrolled purchases, flags conflicts and unlinked records, and hands the complete candidate
+  sheet to the existing review/history workflow. Missing transactions never become nonpurchases.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their

@@ -35,6 +35,10 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the contact-shadow decal dropped, the BVH built in a worker.
 
 ### Marketing studio
+- **Field POS reconciliation**: preview anonymous transaction/SKU rows against saved field assignments, distinguish
+  positive evidence, conflicts and missing links, and send proposed purchases through the existing reviewed import.
+  Duplicate item rows and transactions shared by assignments are rejected within a file. No automatic nonpurchase
+  imputation, enrollment changes or overwriting of known outcomes; no model calls or raw POS persistence.
 - **Field collection checks**: default pilot monitoring view with staff/shift and A/B completeness denominators,
   recording-gap checks, unrecorded-tail counts and a filtered, paginated follow-up checklist. JSON and CSV contain
   outcome availability rather than purchase values. Imports and closure refresh the checklist; older and locked

@@ -284,3 +284,46 @@ def test_collection_checks_validate_scope_and_do_not_require_new_saved_fields(cl
         legacy.pop(key, None)
     write_json(path, legacy)
     assert client.get(f"{ROOT}/staff-pilots/{pid}/collection-checks").json()["counts"]["planned"] == 40
+
+
+def test_pos_preview_is_readonly_and_uses_the_existing_reviewed_import_history(client, tmp_path):
+    created = create(client); pid = created["pilot"]["pilot_id"]
+    rows = list(csv.DictReader(io.StringIO(sheet(client, pid).decode())))
+    rows[0].update(enrolled="1", delivered="0", purchased="")
+    out = io.StringIO(); writer = csv.DictWriter(out, fieldnames=list(rows[0])); writer.writeheader(); writer.writerows(rows)
+    assert upload(client, pid, out.getvalue().encode()).status_code == 200
+    endpoint = f"{ROOT}/staff-pilots/{pid}/pos/preview"
+    data = f"pilot_id,assignment_id,transaction_id,sku,net_quantity\n{pid},{rows[0]['assignment_id']},anonymous_tx,tea,2\n".encode()
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    before = path.read_bytes(); files = sorted(path.parent.rglob("*"))
+    preview = client.post(endpoint, files={"file": ("pos.csv", data)}, data={"revision": "1"})
+    assert preview.status_code == 200, preview.text
+    report = preview.json()
+    assert report["proposed_purchases"] == 1 and report["target_sku"] == "tea"
+    assert path.read_bytes() == before and sorted(path.parent.rglob("*")) == files
+    assert upload(client, pid, report["candidate_csv"].encode(), revision=1).status_code == 200
+    saved = client.get(f"{ROOT}/staff-pilots/{pid}").json()
+    assert saved["pilot"]["assignments"][0]["purchased"] is True
+    assert saved["pilot"]["assignments"][0]["delivered"] is False
+    assert saved["pilot"]["revision"] == 2 and len(saved["pilot"]["import_history"]) == 2
+    assert not saved["analysis"]["inference_ready"]
+    assert client.post(endpoint, files={"file": ("pos.csv", data)}, data={"revision": "1"}).status_code == 409
+    replay = client.post(endpoint, files={"file": ("pos.csv", data)}, data={"revision": "2"})
+    assert replay.json()["proposed_purchases"] == 0
+    assert upload(client, pid, report["candidate_csv"].encode(), revision=1).status_code == 409
+    assert upload(client, pid, sheet(client, pid, complete=True), revision=2).status_code == 200
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 3}).status_code == 200
+    assert client.post(endpoint, files={"file": ("pos.csv", data)}, data={"revision": "4"}).status_code == 409
+
+
+def test_pos_preview_errors_preserve_observations(client, tmp_path):
+    pid = create(client)["pilot"]["pilot_id"]
+    endpoint = f"{ROOT}/staff-pilots/{pid}/pos/preview"
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    before = path.read_bytes()
+    assert client.post(endpoint, files={"file": ("pos.csv", b"bad")}, data={"revision": "0"}).status_code == 400
+    assert client.post(endpoint, files={"file": ("pos.csv", b"x" * (2 * 1024 * 1024 + 1))}, data={"revision": "0"}).status_code == 413
+    assert client.post(endpoint, files={"file": ("pos.csv", b"bad")}, data={"revision": "-1"}).status_code == 422
+    assert client.post(f"{ROOT}/staff-pilots/missing/pos/preview", files={"file": ("pos.csv", b"bad")}, data={"revision": "0"}).status_code == 404
+    assert client.post("/api/projects/missing/staff-pilots/missing/pos/preview", files={"file": ("pos.csv", b"bad")}, data={"revision": "0"}).status_code == 404
+    assert path.read_bytes() == before

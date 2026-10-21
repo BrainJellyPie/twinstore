@@ -43,6 +43,14 @@ export interface ObservationImportRecord {
   revision: number; imported_at: string; reason: string; source_sha256: string; summary: ObservationDiff;
 }
 export interface ObservationImportAudit { record: ObservationImportRecord; changes: ObservationChange[] }
+export type PosMatchStatus = "proposed_purchase" | "already_recorded" | "conflicting_purchase" | "not_enrolled" | "no_target_evidence" | "unknown_assignment" | "unlinked";
+export interface PilotPosPreview {
+  pilot_id: string; revision: number; target_sku: string; outcome_window: string; source_sha256: string;
+  source_rows: number; transactions: number; linked_assignments: number; enrolled_without_evidence: number; proposed_purchases: number;
+  matches: { assignment_id: string; transaction_ids: string[]; target_units: number; status: PosMatchStatus;
+    staff_id: string | null; shift_id: string | null; sequence: number | null }[];
+  candidate_csv: string; notes: string[];
+}
 export type CollectionIssue = "purchase_unknown" | "delivery_unknown" | "enrollment_gap" | "unused_before_enrolled";
 export interface CollectionCounts {
   planned: number; enrolled: number; unused: number; unrecorded: number; complete_enrolled: number;
@@ -103,6 +111,10 @@ export const pilotCsvUrl = (pid: string, id: string) => `${root(pid)}/${id}/obse
 export async function previewPilotImport(pid: string, id: string, file: File, revision: number): Promise<ObservationPreview> {
   const form = new FormData(); form.append("file", file); form.append("revision", String(revision));
   return json<ObservationPreview>(`${root(pid)}/${id}/observations/preview`, { method: "POST", body: form });
+}
+export async function previewPilotPos(pid: string, id: string, file: File, revision: number): Promise<PilotPosPreview> {
+  const form = new FormData(); form.append("file", file); form.append("revision", String(revision));
+  return json<PilotPosPreview>(`${root(pid)}/${id}/pos/preview`, { method: "POST", body: form });
 }
 export async function importPilot(pid: string, id: string, file: File, revision: number, reviewToken: string, reason: string): Promise<PilotView> {
   const form = new FormData(); form.append("file", file); form.append("revision", String(revision));
