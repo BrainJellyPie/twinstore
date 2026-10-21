@@ -24,7 +24,7 @@ def test_import_normalizes_options_without_writes_and_can_generate_in_another_pr
                   dining_tables=2, table_clearance=2, seating_zone="back", exit_position="right",
                   reserved_areas=[{"label": " Consultation ", "x": 2, "y": 2, "width": 3, "height": 3}],
                   requirements="Keep consultation signs readable.", source_setup_id="setup_other_project",
-                  name="Old project floor", products_per_category=3)
+                  name="Old project floor", products_per_category=3, gate_wall="right")
     response = client.post("/api/store-templates/preset/validate", json=body)
     assert response.status_code == 200, response.text
     assert list(tmp_path.iterdir()) == []
@@ -50,6 +50,7 @@ def test_import_normalizes_options_without_writes_and_can_generate_in_another_pr
     assert saved["generation"]["reserved_areas"] == layout["reserved_areas"]
     assert saved["generation"]["requirements"] == layout["requirements"]
     assert saved["generation"]["products_per_category"] == layout["products_per_category"] == 3
+    assert saved["generation"]["gate_wall"] == layout["gate_wall"] == "right"
 
 
 @pytest.mark.parametrize("body,status", [

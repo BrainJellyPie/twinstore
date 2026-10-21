@@ -11,11 +11,12 @@ const STARTING_POINTS = [
   { id: "event", label: "Central event space", name: "Event space", width: 6, height: 4, zone: "center" },
 ] as const;
 
-export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left" }: {
+export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", gateWall = "front" }: {
   areas: ReservedArea[];
   onChange: (areas: ReservedArea[]) => void;
   grid: [number, number];
   entrance?: LayoutOptions["entrance"];
+  gateWall?: LayoutOptions["gate_wall"];
 }) {
   const id = useId();
   const [startingPoint, setStartingPoint] = useState("custom");
@@ -26,13 +27,19 @@ export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left" }
 
   function addArea() {
     const point = STARTING_POINTS.find((p) => p.id === startingPoint) ?? STARTING_POINTS[0];
-    const width = Math.min(point.width, grid[0] - 2), height = Math.min(point.height, grid[1] - 2);
+    const sidePickup = point.id === "pickup" && (gateWall === "left" || gateWall === "right");
+    const width = Math.min(sidePickup ? point.height : point.width, grid[0] - 2);
+    const height = Math.min(sidePickup ? point.width : point.height, grid[1] - 2);
     let x = 2, y = 2;
     if (point.zone === "back_right") x = grid[0] - width - 2;
     if (point.zone === "center") { x = Math.floor((grid[0] - width) / 2); y = Math.floor((grid[1] - height) / 2); }
     if (point.zone === "front_entry") {
       x = entrance === "right" ? grid[0] - width - 2 : entrance === "center" ? Math.floor((grid[0] - width) / 2) : 2;
-      y = grid[1] - height - 2;
+      y = gateWall === "back" ? 2 : grid[1] - height - 2;
+      if (sidePickup) {
+        x = gateWall === "left" ? 2 : grid[0] - width - 2;
+        y = entrance === "right" ? grid[1] - height - 2 : entrance === "center" ? Math.floor((grid[1] - height) / 2) : 2;
+      }
     }
     x = Math.max(1, Math.min(x, grid[0] - width - 1));
     y = Math.max(1, Math.min(y, grid[1] - height - 1));

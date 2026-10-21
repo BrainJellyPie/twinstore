@@ -11,7 +11,7 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const value: TemplateChoice = { ...DEFAULT_TEMPLATE_CHOICE, templateId: "community_pharmacy", sourceSetupId: "setup_old",
   width: 24, height: 20, currency: "JPY", style: "cross", seed: 7, aisle_width: 3, max_shelf_run: 2, design_theme: "terracotta", checkout_wall: "right",
-  reserved_areas: [{ label: "Consultation", x: 2, y: 2, width: 3, height: 3 }], requirements: "Keep signs readable.", excluded_categories: ["wellness"], products_per_category: 3 };
+  reserved_areas: [{ label: "Consultation", x: 2, y: 2, width: 3, height: 3 }], requirements: "Keep signs readable.", excluded_categories: ["wellness"], products_per_category: 3, gate_wall: "right" };
 
 function upload(source: string) {
   const file = Object.assign(new File([source], "floor-options.json", { type: "application/json" }), { text: async () => source });
@@ -39,7 +39,7 @@ it("exports portable settings and brief without source links or submitting the f
   expect(exported).toMatchObject({ format: "twinstore-layout-options", version: 1, layout: {
     template_id: "community_pharmacy", currency: "JPY", seed: 7, style: "cross", width: 24, height: 20,
     aisle_width: 3, max_shelf_run: 2, design_theme: "terracotta", reserved_areas: value.reserved_areas,
-    requirements: "Keep signs readable.", excluded_categories: ["wellness"], checkout_wall: "right", products_per_category: 3,
+    requirements: "Keep signs readable.", excluded_categories: ["wellness"], checkout_wall: "right", products_per_category: 3, gate_wall: "right",
   } });
   expect(exported.layout).not.toHaveProperty("source_setup_id");
   expect(exported.layout).not.toHaveProperty("name");
@@ -61,6 +61,7 @@ it("applies server-normalized options and clears values inherited from the previ
   expect(imported.requirements).toBeUndefined();
   expect(imported.excluded_categories).toEqual([]);
   expect(imported.products_per_category).toBeNull();
+  expect(imported.gate_wall).toBe("front");
 });
 
 it("preserves current options on invalid JSON, oversized files and server validation failures", async () => {

@@ -7,9 +7,9 @@ import { ReservedAreasEditor } from "../components/ReservedAreasEditor";
 
 afterEach(cleanup);
 
-function Editor({ grid, entrance = "left" }: { grid: [number, number]; entrance?: LayoutOptions["entrance"] }) {
+function Editor({ grid, entrance = "left", gateWall = "front" }: { grid: [number, number]; entrance?: LayoutOptions["entrance"]; gateWall?: LayoutOptions["gate_wall"] }) {
   const [areas, setAreas] = useState<ReservedArea[]>([]);
-  return <><ReservedAreasEditor areas={areas} onChange={setAreas} grid={grid} entrance={entrance} />
+  return <><ReservedAreasEditor areas={areas} onChange={setAreas} grid={grid} entrance={entrance} gateWall={gateWall} />
     <output data-testid="areas">{JSON.stringify(areas)}</output></>;
 }
 
@@ -39,6 +39,17 @@ it.each([['left', 2], ['center', 10], ['right', 19]] as const)("starts pickup ne
   fireEvent.change(screen.getByLabelText("Area starting point"), { target: { value: "pickup" } });
   fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
   expect(savedAreas()).toEqual([{ label: "Pickup", x, y: 14, width: 3, height: 2 }]);
+});
+
+it.each([
+  ["back", "left", 2, 2, 3, 2], ["back", "center", 10, 2, 3, 2], ["back", "right", 19, 2, 3, 2],
+  ["left", "left", 2, 2, 2, 3], ["left", "center", 2, 7, 2, 3], ["left", "right", 2, 13, 2, 3],
+  ["right", "left", 20, 2, 2, 3], ["right", "center", 20, 7, 2, 3], ["right", "right", 20, 13, 2, 3],
+] as const)("places pickup on the %s wall near its %s gate", (gateWall, entrance, x, y, width, height) => {
+  render(<Editor grid={[24, 18]} entrance={entrance} gateWall={gateWall} />);
+  fireEvent.change(screen.getByLabelText("Area starting point"), { target: { value: "pickup" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  expect(savedAreas()).toEqual([{ label: "Pickup", x, y, width, height }]);
 });
 
 it("keeps added areas editable, avoids duplicate names and enforces the eight-area limit", () => {
