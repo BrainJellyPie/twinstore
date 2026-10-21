@@ -68,3 +68,21 @@ def test_unknown_names_are_reported_or_refused(client, monkeypatch):
     monkeypatch.setattr(study_design, "build_client", lambda *a, **k: _Designer({"name": "x", "product": "Imaginary soda", "promo": "NEW"}))
     r = client.post(f"/api/projects/{PID}/shelf-tests/design", json={"question": "Would a NEW sign help?", "setup_id": SETUP})
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]
+
+
+def test_an_ambiguous_product_name_is_not_guessed(client):
+    from store_emulator.application.scenarios import (
+        _store_for,  # pyright: ignore[reportPrivateUsage]
+    )
+    from store_emulator.engine.marketing.shelf_test_design import (
+        _Draft,  # pyright: ignore[reportPrivateUsage]
+        to_design,
+    )
+    _, item = _layout_product()
+    store = _store_for(PID, SETUP)
+    assert store is not None
+    store = store.model_copy(deep=True)
+    other = next(i for r in store.product_racks for s in r.slots for i in s.items if i.sku != item.sku)
+    other.name = item.name
+    with pytest.raises(ValueError, match="several products"):
+        to_design(_Draft(name="x", product=item.name, promo="NEW"), store, "USD", [])

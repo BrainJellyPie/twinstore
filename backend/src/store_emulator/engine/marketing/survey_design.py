@@ -83,18 +83,20 @@ def _listing(packages: Sequence[tuple[str, str, str]], question: str) -> str:
 
 
 def to_design(draft: _Draft, packages: Sequence[tuple[str, str]], currency: str) -> SurveyDesign:
-    """Image names resolved to library ids (first match wins, duplicates dropped); everything else checked."""
-    ids: dict[str, tuple[str, str]] = {}
+    """Image names resolved to library ids (an ambiguous name is not guessed; repeats once); everything else checked."""
+    by_name: dict[str, list[tuple[str, str]]] = {}
     for name, aid in packages:
-        ids.setdefault(name.strip().casefold(), (aid, name))
+        by_name.setdefault(name.strip().casefold(), []).append((aid, name))
     warnings: list[str] = []
     stimuli: list[str] = []
     names: list[str] = []
     for asked in draft.images:
-        hit = resolve_listed(asked, ids)
-        if hit is None:
-            warnings.append(f'No product image "{asked}" in the library; it was left out.')
-        elif hit[0] not in stimuli:
+        found = resolve_listed(asked, by_name)
+        if found is None or len(found) != 1:
+            warnings.append(f'No unique product image "{asked}" in the library (missing or ambiguous name); it was left out.')
+            continue
+        hit = found[0]
+        if hit[0] not in stimuli:
             stimuli.append(hit[0])
             names.append(hit[1][:28])
     if len(stimuli) > MAX_STIMULI:

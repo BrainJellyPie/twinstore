@@ -77,23 +77,32 @@ def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], q
 
 def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tuple[str, str]]) -> ShelfTestDesign:
     """The product resolved to its SKU and the shelf it stands on, the pack to a library id, the price to minor units."""
-    where: dict[str, tuple[str, str]] = {}
+    skus_by_name: dict[str, set[str]] = {}
+    first_rack: dict[str, str] = {}
     for rack in store.product_racks:
         for slot in rack.slots:
             for item in slot.items:
-                where.setdefault(item.name.strip().casefold(), (item.sku, rack.id))
-    hit = resolve_listed(draft.product, where)
+                skus_by_name.setdefault(item.name.strip().casefold(), set()).add(item.sku)
+                first_rack.setdefault(item.sku, rack.id)
+    hit = resolve_listed(draft.product, skus_by_name)
     if hit is None:
         raise ValueError(f'the model chose "{draft.product}", which is not a product of this layout')
-    sku, rack_id = hit
+    if len(hit) > 1:
+        raise ValueError(f'several products of this layout are called "{draft.product}"; choose the product below')
+    sku = next(iter(hit))
+    rack_id = first_rack[sku]
     warnings: list[str] = []
     changes: list[VariantChange] = []
     if draft.package.strip():
-        asset = resolve_listed(draft.package, {name.strip().casefold(): aid for name, aid in packages})
-        if asset is None:
-            warnings.append(f'No product image "{draft.package}" in the library; the pack change was left out.')
+        images: dict[str, set[str]] = {}
+        for name, aid in packages:
+            images.setdefault(name.strip().casefold(), set()).add(aid)
+        asset = resolve_listed(draft.package, images)
+        if asset is None or len(asset) != 1:
+            warnings.append(f'No unique product image "{draft.package}" in the library (missing or ambiguous name); '
+                            "the pack change was left out.")
         else:
-            changes.append(VariantChange(kind="package", sku=sku, asset_id=asset))
+            changes.append(VariantChange(kind="package", sku=sku, asset_id=next(iter(asset))))
     if draft.price is not None and draft.price > 0:
         zero = currency.upper() in ZERO_DECIMAL
         changes.append(VariantChange(kind="price", sku=sku, price=round(draft.price) if zero else round(draft.price * 100),
