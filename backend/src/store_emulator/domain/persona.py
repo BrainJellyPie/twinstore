@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .types import Weekday
 
@@ -22,8 +22,8 @@ class Persona(BaseModel):
     purpose: str
     arrival_hour: int = 12  # 0–23 (not enforced by a Field constraint)
     preferred_categories: list[str] = []
-    budget_min: int = 0  # unit: US cents
-    budget_max: int = 0  # unit: US cents
+    budget_min: int = Field(default=0, ge=0)  # unit: project currency's minor units
+    budget_max: int = Field(default=0, ge=0)  # 0 = no budget limit
     behavior_tendency: str = ""
     # Different items this trip is for (e.g. drawn from the store's own receipts). 0 = the engine
     # decides from the behavior pattern; > 0 = engines plan this many and size the trip to it.
@@ -36,7 +36,7 @@ class Persona(BaseModel):
     # planners are told which of them the household has run out of this trip: a seeded draw per
     # category at its rate. A model asked for one trip otherwise buys every staple every time (milk on
     # 73 % of trips against 43 % on real receipts). Empty = no such draw.
-    category_rates: dict[str, float] = {}
+    category_rates: dict[str, Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]] = {}
     # Products this shopper habitually buys (names as on the shelf), e.g. from their purchase history.
     # The VLM planner sees them; the rule planner picks one of them first with probability habit_prob.
     usual_products: list[str] = []
