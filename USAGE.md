@@ -831,3 +831,53 @@ inputs lock during requests; export resubmits the reviewed file and scope with i
 return 409; a deleted project returns 404. Concurrent read-only reviews do not overwrite one another.
 API: `GET /api/projects/{pid}/unit-prices/template.csv`, `POST .../preview`, `POST .../export.csv` (multipart CSV,
 `focal_retailer`, `as_of`, `max_age_days`; export additionally requires `source_sha256`).
+
+### Research protocols and amendments
+
+Open **Market → Protocols** to record an original plan or open a saved history. This module is independent
+of the selected layout and uses no model calls. It records plans; it does not enforce them on simulations,
+change field-pilot assignments, calculate power or certify study validity.
+
+Record a title, synthetic/observed evidence source, research question, population/sampling, design/assignment,
+primary outcome with units and window, independent analysis unit, planned independent-unit count (1–1,000,000),
+exclusions/missing-data rule, stopping/interim rule and analysis/multiplicity plan. State staff/shift clustering
+and repeated observations where relevant. Title limit: 120 characters; each plan text field: 1,500 characters.
+No personal details or secrets. Text is trimmed; Unicode and line breaks/tabs are accepted, other controls rejected.
+
+Explicitly declare **Data not collected**, **Data collected; results unseen**, or **Results already seen**.
+This is your declaration, not an independent check. A first record can already be retrospective. Later records
+cannot move the declared stage backward; a different study should get its own protocol.
+
+Every amendment needs the current saved head and a reason (1–1,000 characters). The original plan and full
+snapshots remain in history. The UI shows field differences from each preceding revision and differences from
+the original plan. Planned-unit delta is withheld if the analysis-unit text or evidence source changed;
+matching text alone cannot verify actual comparability. Declaring a later data stage without changing the plan is a meaningful amendment; an unchanged
+plan/stage with only a new reason is rejected. Maximum 50 revisions per protocol and 100 protocols per project.
+
+Inputs lock during requests. Export is disabled for unsaved edits; **Reload saved version (discard draft)**
+explicitly replaces the draft with saved data. A save may complete after navigating away: reload the protocol
+list to check. Create requests use an idempotency ID, so retrying the same submitted creation cannot duplicate
+the record. Reusing that ID for a different original plan returns 409. Concurrent amendments and stale heads
+return 409; reload and review differences rather than overwriting another editor's change.
+
+**Export saved history JSON** includes complete snapshots, derived differences, method notes and the hash chain.
+**Export saved changes CSV** gives one row per changed field, including original fields, revision timestamp,
+reason, data-stage declaration and hashes; text is spreadsheet-escaped. Downloads require the displayed head,
+so changes in another session cause 409 instead of an unnoticed export of a different revision.
+
+History is stored under `.data/<project>/marketing/protocols/<protocol_id>.json` with a project-level file lock
+and atomic replacement. Reads are bounded to 4 MB and validate schema, project/record identity, sequence,
+parent hashes, content hashes and forward-only data stages. A corrupt record is listed as unavailable while
+other histories remain accessible; preserve the file and restore a verified backup. The app does not offer
+revision edit/delete or import endpoints.
+
+This is **not external preregistration or a trusted timestamp**. The server clock and declared stage cannot
+prove data were unseen. Someone with file access can replace the whole history and recompute hashes; local
+hash checks establish internal consistency, not authenticity, authorship, permanence or independent registration.
+Keep exported originals separately if needed and use an appropriate external registry for registration.
+Synthetic plans/results do not establish actual sales effects; no outcomes or statistical tests are performed here.
+
+API: `GET/POST /api/projects/{pid}/protocols`; `GET .../{protocol_id}`;
+`POST .../{protocol_id}/amendments`; `GET .../{protocol_id}/export.json?head=<sha256>` and
+`GET .../{protocol_id}/changes.csv?head=<sha256>`. Creation: `request_id` (32 lowercase hex), `plan`, `data_stage`.
+Amendment: `expected_head`, full `plan`, `data_stage`, `reason`. JSON schema rejects unknown keys.
