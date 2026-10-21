@@ -42,11 +42,11 @@ describe("manufactured fixture edges", () => {
     geometry.dispose();
   });
 
-  it("keeps plaster density and UV continuity across differently sized wall segments", () => {
+  it.each(["wall", "metalGrey", "aluminum"] as const)("keeps %s density and UV continuity across differently sized segments", (material) => {
     const builder = new StaticBuilder();
-    builder.span("wall", 0, 0, 0, 1, 2, 0.1);
-    builder.span("wall", 1, 0, 0, 4, 2, 0.1);
-    const geometry = builder.build().get("wall")!;
+    builder.span(material, 0, 0, 0, 1, 2, 0.1);
+    builder.span(material, 1, 0, 0, 4, 2, 0.1);
+    const geometry = builder.build().get(material)!;
     const positions = geometry.getAttribute("position");
     const normals = geometry.getAttribute("normal");
     const uv = geometry.getAttribute("uv");
