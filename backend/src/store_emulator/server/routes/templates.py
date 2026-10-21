@@ -32,6 +32,7 @@ class TemplateInfo(BaseModel):
     racks: int
     skus: int
     open_hours: tuple[int, int]
+    closed_days: list[int]
     default_design: StoreDesign
     default_style: LayoutStyle
     default_dining_tables: int
@@ -49,7 +50,7 @@ def list_templates() -> list[TemplateInfo]:
         out.append(TemplateInfo(
             id=t.id, name=t.name, description=t.description, store_type=t.store_type, grid=t.grid,
             racks=sum(1 for r in s.racks if r.slots), skus=len({i.sku for r in s.racks for sl in r.slots for i in sl.items}),
-            open_hours=t.open_hours, default_style=t.style, default_design=s.design_theme,
+            open_hours=t.open_hours, closed_days=list(t.closed_days), default_style=t.style, default_design=s.design_theme,
             default_dining_tables=t.dining_tables, default_seating_zone=t.seating_zone,
             default_checkouts=t.checkouts,
             default_checkout_placement=t.checkout_placement,
@@ -80,13 +81,19 @@ def preview(
     checkout_wall: CheckoutWall = "front",
     excluded_categories: list[TemplateCategoryId] | None = Query(default=None, max_length=64),
     products_per_category: int | None = Query(default=None, ge=1, le=16),
+    open_hour: int | None = Query(default=None, ge=0, le=23),
+    close_hour: int | None = Query(default=None, ge=1, le=24),
+    closed_days: str | None = Query(default=None, pattern=r"^(?:[1-7](?:,[1-7]){0,6})?$",
+                                  description="Comma-separated closed weekdays, Monday=1 to Sunday=7. Empty means open every day; omit for format defaults."),
 ) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density, aisle_width=aisle_width, max_shelf_run=max_shelf_run,
                             shelf_direction=shelf_direction,
                             entrance=entrance, exit_position=exit_position, gate_wall=gate_wall, exit_wall=exit_wall, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables, table_clearance=table_clearance,
                             seating_zone=seating_zone, checkout_placement=checkout_placement, checkout_wall=checkout_wall,
-                            excluded_categories=excluded_categories or [], products_per_category=products_per_category)
+                            excluded_categories=excluded_categories or [], products_per_category=products_per_category,
+                            open_hour=open_hour, close_hour=close_hour,
+                            closed_days=None if closed_days is None else [int(day) for day in closed_days.split(",") if day])
     return _preview_store(template_id, seed, currency, options)
 
 

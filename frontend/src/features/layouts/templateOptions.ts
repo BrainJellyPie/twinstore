@@ -14,6 +14,7 @@ export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   density: "balanced", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, fixture_design: "mixed", design_theme: null, dining_tables: null,
   checkout_placement: "auto", checkout_wall: "front", seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1,
   aisle_width: null, max_shelf_run: null, excluded_categories: [], products_per_category: null,
+  open_hour: null, close_hour: null, closed_days: null,
 };
 
 export const LAYOUT_STYLES = [
@@ -24,6 +25,11 @@ export const LAYOUT_STYLES = [
 
 export function validTemplateChoice(value: TemplateChoice): boolean {
   return !!value.templateId && Number.isSafeInteger(value.seed) &&
+    (value.open_hour == null || (Number.isInteger(value.open_hour) && value.open_hour >= 0 && value.open_hour <= 23)) &&
+    (value.close_hour == null || (Number.isInteger(value.close_hour) && value.close_hour >= 1 && value.close_hour <= 24)) &&
+    (value.open_hour == null || value.close_hour == null || value.open_hour < value.close_hour) &&
+    (value.closed_days == null || (value.closed_days.length < 7 && new Set(value.closed_days).size === value.closed_days.length &&
+      value.closed_days.every((day) => Number.isInteger(day) && day >= 1 && day <= 7))) &&
     (value.excluded_categories?.length ?? 0) <= 64 && (value.excluded_categories ?? []).every((category) => category.length > 0 && category.length <= 80) &&
     (value.products_per_category == null || (Number.isInteger(value.products_per_category) && value.products_per_category >= 1 && value.products_per_category <= 16)) &&
     (value.width == null || (Number.isInteger(value.width) && value.width >= 8 && value.width <= 40)) &&
@@ -51,6 +57,7 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
     products_per_category: value.products_per_category,
     gate_wall: value.gate_wall,
     exit_wall: value.exit_wall,
+    open_hour: value.open_hour, close_hour: value.close_hour, closed_days: value.closed_days,
   };
 }
 

@@ -18,6 +18,7 @@ type StoreDesign = Literal["classic", "warm", "minimal", "industrial", "botanica
 type FixtureDesign = Literal["mixed", "a", "b", "c"]
 type ShelfDirection = Literal["horizontal", "vertical"]
 type TemplateCategoryId = Annotated[str, Field(min_length=1, max_length=80)]
+type TemplateWeekday = Annotated[int, Field(strict=True, ge=1, le=7)]
 
 
 class ReservedArea(BaseModel):
@@ -55,6 +56,9 @@ class LayoutOptions(BaseModel):
     reserved_areas: list[ReservedArea] = Field(default_factory=list[ReservedArea], max_length=8)
     excluded_categories: list[TemplateCategoryId] = Field(default_factory=list[str], max_length=64)
     products_per_category: int | None = Field(default=None, ge=1, le=16)
+    open_hour: int | None = Field(default=None, strict=True, ge=0, le=23)
+    close_hour: int | None = Field(default=None, strict=True, ge=1, le=24)
+    closed_days: list[TemplateWeekday] | None = Field(default=None, max_length=7)
 
 
 class TemplateLayoutRequest(LayoutOptions):

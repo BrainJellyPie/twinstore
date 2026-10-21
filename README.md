@@ -12,6 +12,7 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 <a href="https://github.com/BrainJellyPie/twinstore/releases/latest"><img alt="Download" src="https://img.shields.io/badge/download-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-0b0c10?style=for-the-badge"></a>
 <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-free%20for%20research%20%26%20small%20teams-6b4dff?style=for-the-badge"></a>
 <a href="./.github/assets/twinstore/twinstore-promo.mp4"><img alt="Watch" src="https://img.shields.io/badge/watch-the%20film-e0429b?style=for-the-badge"></a>
+<a href="./TwinStore_Technical_Report.pdf"><img alt="Technical report" src="https://img.shields.io/badge/read-technical%20report%20(PDF)-1f7a5c?style=for-the-badge"></a>
 </p>
 
 <p>
@@ -24,6 +25,7 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 <a href="#validated-on-real-baskets">Validation</a> ·
 <a href="#for-developers">Developers</a> ·
 <a href="#license">License</a> ·
+<a href="./TwinStore_Technical_Report.pdf">Technical report (PDF)</a> ·
 <a href="./QUICKSTART.md">한국어 빠른 시작</a>
 </p>
 
@@ -87,6 +89,49 @@ OpenAI-compatible server such as vLLM, Ollama or llama.cpp — under **Models** 
 </tr>
 </table>
 
+### Feature demos
+
+Short real recordings of single features. Each preview loops; click it for the full-quality MP4.
+
+<table>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/templates.mp4"><img src="./.github/assets/twinstore/demos/templates.webp" alt="Start from a template"></a><br>
+<b>Start from a template</b> · 14 s · pick a store format, then a ready-made floor plan from the gallery (<a href="./.github/assets/twinstore/demos/templates.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/situations.mp4"><img src="./.github/assets/twinstore/demos/situations.webp" alt="Set the scene"></a><br>
+<b>Set the scene</b> · 10 s · weekday, weather, holiday and neighborhood visitors before a run (<a href="./.github/assets/twinstore/demos/situations.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/playback.mp4"><img src="./.github/assets/twinstore/demos/playback.webp" alt="Watch the day"></a><br>
+<b>Watch the day</b> · 12 s · 3D playback with the clock, live sales and the heatmap (<a href="./.github/assets/twinstore/demos/playback.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/shopper-eye.mp4"><img src="./.github/assets/twinstore/demos/shopper-eye.webp" alt="Shopper's eye"></a><br>
+<b>Shopper's eye</b> · 7 s · ride along at eye level as a shopper walks the aisles (<a href="./.github/assets/twinstore/demos/shopper-eye.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/journey.mp4"><img src="./.github/assets/twinstore/demos/journey.webp" alt="One shopper's journey"></a><br>
+<b>One shopper's journey</b> · 15 s · follow a single shopper: route, stops, what they saw and bought (<a href="./.github/assets/twinstore/demos/journey.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/compare.mp4"><img src="./.github/assets/twinstore/demos/compare.webp" alt="Compare two runs"></a><br>
+<b>Compare two runs</b> · 13 s · the same shoppers in two layouts, side by side (<a href="./.github/assets/twinstore/demos/compare.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/optimize.mp4"><img src="./.github/assets/twinstore/demos/optimize.webp" alt="Optimize the layout"></a><br>
+<b>Optimize the layout</b> · 14 s · let TwinStore search for a better arrangement toward your goal (<a href="./.github/assets/twinstore/demos/optimize.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/ab-test.mp4"><img src="./.github/assets/twinstore/demos/ab-test.webp" alt="A/B test a price"></a><br>
+<b>A/B test a price</b> · 8 s · a discount tested on paired shoppers, by segment (<a href="./.github/assets/twinstore/demos/ab-test.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/conjoint.mp4"><img src="./.github/assets/twinstore/demos/conjoint.webp" alt="Conjoint study"></a><br>
+<b>Conjoint study</b> · 8 s · design a choice study, run it, read part-worths and willingness to pay (<a href="./.github/assets/twinstore/demos/conjoint.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/shelflab.mp4"><img src="./.github/assets/twinstore/demos/shelflab.webp" alt="Shelf lab"></a><br>
+<b>Shelf lab</b> · 8 s · lay out a shelf and generate new packs for it (<a href="./.github/assets/twinstore/demos/shelflab.mp4">MP4</a>)</td>
+</tr>
+<tr>
+<td width="50%"><a href="./.github/assets/twinstore/demos/shelftest.mp4"><img src="./.github/assets/twinstore/demos/shelftest.webp" alt="Shelf test"></a><br>
+<b>Shelf test</b> · 9 s · place a new pack on the shelf and see whether shoppers notice it (<a href="./.github/assets/twinstore/demos/shelftest.mp4">MP4</a>)</td>
+<td width="50%"><a href="./.github/assets/twinstore/demos/neighborhood.mp4"><img src="./.github/assets/twinstore/demos/neighborhood.webp" alt="The neighborhood"></a><br>
+<b>The neighborhood</b> · 6 s · the store in its catchment: homes, rivals and who walks in (<a href="./.github/assets/twinstore/demos/neighborhood.mp4">MP4</a>)</td>
+</tr>
+</table>
+
 ## What you can do
 
 <table>
@@ -144,7 +189,9 @@ The **Floor** page is the store's day. Press **Run simulation** and choose:
   for example one model from each provider. The dialog estimates the number of model calls before you start.
 - **What kind of day.** One of **19 situations** — weather, temperature, weekday or holiday, crowding, local events,
   promotions, sold-out items and notes for the model shoppers — or your own. Customer sample, seed and
-  preview-or-final run are set in the same place.
+  preview-or-final run are set in the same place. The dialog opens with the engine and customer sample; expand
+  **Advanced settings** for situations, models, neighborhood visitors, seed, replicate and finalization. Vision
+  runs start with at most 30 customers, and language-model runs with at most 300; the call estimate stays visible.
 
 **Results** fill in as the day plays: revenue, conversion, basket, footfall and dwell heatmaps, revenue by rack, what
 caught the vision shoppers' eye and at which shelf level, who walked in at the door, and run diagnostics (failed
@@ -514,7 +561,9 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
   (CC0) for walls with consistent scale across lengths, corners and rotated sections, CC0
   [ambientCG Metal 032](https://ambientcg.com/a/Metal032) for exposed supports and frames in High, and Poly Haven's CC0
   Pavement 02 scan for the storefront pavement in High (world-space coordinates keep its 2.12 m coverage). Assets load
-  locally with procedural fallbacks; authors, source URLs and checksums are in
+  locally with procedural fallbacks. High also uses ambientCG’s CC0 Office Ceiling 001 material for
+  acoustic tiles, with matching color, roughness and normal maps; its tile grid and the Medium
+  fallback align with ceiling lights at a consistent physical scale. Authors, source URLs and checksums are in
   [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 - **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
   ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;

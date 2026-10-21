@@ -109,6 +109,33 @@
       "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pavement_02/pavement_02_nor_gl_1k.jpg",
       "sha256": "a7c962384c155498d1878cda1dca7a4ad738cb15fdb06e3c3ec11238be355b37",
       "bytes": 738746
+    },
+    {
+      "file": "office_ceiling_001_diff_1k.jpg",
+      "source": "https://ambientcg.com/get?file=OfficeCeiling001_1K-JPG.zip",
+      "archive_member": "OfficeCeiling001_1K-JPG_Color.jpg",
+      "archive_sha256": "925ef7003375852b80096a46a9a06db3eeee789c99680f789868acb47386d5bd",
+      "sha256": "1a34c9db312a12c49365875630136e421d77e729f275ef93529ad20c0b336208",
+      "bytes": 153738,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "office_ceiling_001_rough_1k.jpg",
+      "source": "https://ambientcg.com/get?file=OfficeCeiling001_1K-JPG.zip",
+      "archive_member": "OfficeCeiling001_1K-JPG_Roughness.jpg",
+      "archive_sha256": "925ef7003375852b80096a46a9a06db3eeee789c99680f789868acb47386d5bd",
+      "sha256": "46cdb743986c567206d45e51d87371a998462c571b54d1ba3f3f52e5a2c7f97f",
+      "bytes": 303697,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "office_ceiling_001_nor_gl_1k.jpg",
+      "source": "https://ambientcg.com/get?file=OfficeCeiling001_1K-JPG.zip",
+      "archive_member": "OfficeCeiling001_1K-JPG_NormalGL.jpg",
+      "archive_sha256": "925ef7003375852b80096a46a9a06db3eeee789c99680f789868acb47386d5bd",
+      "sha256": "d9d337c9bf76b844c8e5f7839cac1dcc2b2f6eccec4cc1efe36d43f9e239b70c",
+      "bytes": 1847149,
+      "license_url": "https://docs.ambientcg.com/license/"
     }
   ]
 }

@@ -70,7 +70,7 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
         </div>
       </section>
 
-      <Simulator report={r} />
+      <Simulator key={`${projectId}:${r.conjoint_id}`} report={r} />
 
       {r.segments.length > 0 && <Segments report={r} />}
 

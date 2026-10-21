@@ -35,6 +35,9 @@ function Surfaces({ width, depth, quality, designTheme }: { width: number; depth
   const high = quality === "high";
   // Poly Haven's scan covers 1.5 metres, independently of the store grid size.
   const scanned = useScannedMaterial("floor_tiles_08", width / (1.5 * M), depth / (1.5 * M), quality);
+  // Six tiles per image, each 0.5 world units (0.625 m). A half-tile offset
+  // centres the existing ceiling lights inside panels rather than over T-bars.
+  const ceilingMaps = useScannedMaterial(high ? "office_ceiling_001" : null, width / 3, depth / 3, quality, 1 / 12);
   const res = useMemo(() => {
     const { color, rough } = createFloorCanvases(4, 1024);
     const floorMap = canvasTexture(color, { anisotropy: high ? 8 : 2, repeat: true });
@@ -44,16 +47,24 @@ function Surfaces({ width, depth, quality, designTheme }: { width: number; depth
     roughMap.repeat.set(width / 4, depth / 4);
     const ceilMap = canvasTexture(createCeilingCanvas(), { repeat: true });
     ceilMap.repeat.set(width / 2, depth / 2);
-    const ceiling = new THREE.MeshStandardMaterial({ map: ceilMap, color: palette.ceiling, roughness: 0.95 });
-    return { floorMap, roughMap, ceilMap, ceiling };
-  }, [width, depth, high, palette.ceiling]);
+    ceilMap.offset.set(1 / 8, 1 / 8); // Four tiles per procedural image.
+    return { floorMap, roughMap, ceilMap };
+  }, [width, depth, high]);
+  const ceiling = useMemo(() => new THREE.MeshStandardMaterial({
+    map: ceilingMaps?.map ?? res.ceilMap,
+    roughnessMap: ceilingMaps?.roughnessMap ?? null,
+    normalMap: ceilingMaps?.normalMap ?? null,
+    normalScale: new THREE.Vector2(0.35, 0.35),
+    color: palette.ceiling,
+    roughness: ceilingMaps ? 1 : 0.95,
+  }), [ceilingMaps, res.ceilMap, palette.ceiling]);
+  useEffect(() => () => ceiling.dispose(), [ceiling]);
 
   useEffect(
     () => () => {
       res.floorMap.dispose();
       res.roughMap.dispose();
       res.ceilMap.dispose();
-      res.ceiling.dispose();
     },
     [res],
   );
@@ -73,7 +84,7 @@ function Surfaces({ width, depth, quality, designTheme }: { width: number; depth
         name="realistic-ceiling"
         position={[width / 2, CEILING_HEIGHT, depth / 2]}
         rotation={[Math.PI / 2, 0, 0]}
-        material={res.ceiling}
+        material={ceiling}
         raycast={noRaycast}
       >
         <planeGeometry args={[width, depth]} />
@@ -175,17 +186,21 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   // Fine package geometry only when the shelves are big on screen.
   const fineRef = useRef<boolean | null>(null);
   const upperRef = useRef<THREE.Group>(null);
-  useFrame(({ camera }) => {
+  useFrame(({ camera, gl }) => {
+    const ortho = (camera as THREE.OrthographicCamera).isOrthographicCamera;
     // Camera-side walls close up only in the first-person view.
-    if (upperRef.current) upperRef.current.visible = !(camera as THREE.OrthographicCamera).isOrthographicCamera;
+    if (upperRef.current && upperRef.current.visible !== !ortho) {
+      upperRef.current.visible = !ortho;
+      gl.shadowMap.needsUpdate = true;
+    }
     if (groupRef.current?.visible && framesRef.current < 2 && ++framesRef.current === 2) {
       useRealisticSettings.getState().setRealisticReady(true);
     }
-    const ortho = (camera as THREE.OrthographicCamera).isOrthographicCamera;
     const fine = !ortho || (camera as THREE.OrthographicCamera).zoom > 190;
     if (fineRef.current !== fine) {
       fineRef.current = fine;
       products.setDetail(fine);
+      if (quality === "high") gl.shadowMap.needsUpdate = true;
     }
   });
   useEffect(() => {

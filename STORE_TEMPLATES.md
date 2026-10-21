@@ -13,6 +13,11 @@ In a project, choose **New layout → Generate a store from a template**. Search
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+Under **Operating hours**, set opening (0–23), closing (1–24) and open weekdays independently
+for each layout or building floor. Blank hours and **Use format operating hours** restore the
+format defaults, including its regular days off. Set 0–24 for all-day opening, keep at least
+one weekday open, and use a closing hour later than opening; overnight schedules are not supported.
+These settings are saved, reused and included in exported layout and building options files.
 Under **Product categories**, **Products per category** limits each included
 category to 1–16 distinct products; leave it blank for the full assortment.
 The limit keeps display positions and seating unchanged, with repeated facings
