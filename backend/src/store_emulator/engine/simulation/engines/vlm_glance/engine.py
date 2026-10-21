@@ -49,6 +49,7 @@ from store_emulator.engine.perception import (
     store_directory,
 )
 from store_emulator.engine.routing.route_builder import build_journey, perceive_products
+from store_emulator.engine.scenario import words_categories
 
 from ..rule_based import (
     PATTERN_IMPULSE_FACTOR,
@@ -224,11 +225,12 @@ class VLMGlanceEngine(RuleBasedEngine):
                                      named, tuple(resolved), model=model, agreement=agreement))
         return self.close_plan(store, plan, middle)
 
-    @staticmethod
-    def _needs(context: PerCustomerContext) -> tuple[list[str], list[str]] | None:
+    def _needs(self, context: PerCustomerContext) -> tuple[list[str], list[str]] | None:
         """Which usual categories the household has run out of this trip: one seeded draw per category
-        at its rate (Persona.category_rates), most frequent first. The model then plans the trip; the
-        draw only sets what is missing at home, as a seeded draw sets impulse purchases."""
+        at its rate (Persona.category_rates), most frequent first, times the situation's measured need
+        ratio for that kind of product (summer: more water; a big match: more beer). The model then
+        plans the trip; the draw only sets what is missing at home, as a seeded draw sets impulse
+        purchases."""
         rates = context.persona.category_rates
         if not rates:
             return None
@@ -236,7 +238,8 @@ class VLMGlanceEngine(RuleBasedEngine):
         out: list[str] = []
         stocked: list[str] = []
         for category, rate in sorted(rates.items(), key=lambda kv: (-kv[1], kv[0])):
-            (out if rng.random() < rate else stocked).append(category)
+            p = min(0.98, rate * self._fx.need_for(words_categories(category))) if self._fx.need else rate
+            (out if rng.random() < p else stocked).append(category)
         return out, stocked[:_STOCKED_SHOWN]
 
     async def _ask_plan(

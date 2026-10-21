@@ -168,6 +168,11 @@ class ScenarioPriors(BaseModel):
     # heat / cold demand for the same categories when a temperature is given.
     temperature_slope: dict[str, float] = {"cold_drinks": 0.03, "water": 0.035, "ice_cream": 0.06, "hot_food": -0.02}
     temperature_pivot: dict[str, float] = {"cold_drinks": 20.0, "water": 20.0, "ice_cream": 20.0, "hot_food": 15.0}
+    # How a situation changes the share of trips that include a kind of product, for shoppers whose
+    # needs are drawn from their purchase history (Persona.category_rates): keyed "season:summer",
+    # "day:weekend", "event:sports_match" (scaled by intensity), "weather:rain". Measured directly as
+    # per-trip ratios on real receipts; empty for the convenience priors (no data yet).
+    need_ratio: dict[str, dict[str, float]] = {}
     temperature_clip: dict[str, tuple[float, float]] = {"cold_drinks": (0.6, 1.8), "water": (0.7, 1.9),
                                                          "ice_cream": (0.3, 2.4), "hot_food": (0.6, 1.6)}
     # Promotion lift on the promoted item's pick probability (before the price effect).

@@ -5,6 +5,8 @@ Files per project (`.data/<pid>/`):
 - marketing/experiments/<eid>/            request.json, status.json, report.json
 - marketing/surveys/<sid>/                request.json, status.json, report.json, board.jpg
 """
+# pyright: reportPrivateUsage=false
+# (reuses Shelf Lab's private store and persona helpers)
 
 import asyncio
 import csv
@@ -52,12 +54,7 @@ from .capture import capture_llm_config
 from .errors import AppError
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client
-from .shelf_lab import (  # pyright: ignore[reportPrivateUsage]
-    _check_id,
-    _load_store,
-    _personas,
-    package_path,
-)
+from .shelf_lab import _check_id, _load_store, _personas, package_path
 from .simulation import with_engine_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 

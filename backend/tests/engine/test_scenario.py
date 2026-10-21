@@ -116,3 +116,23 @@ def _cold_drink_units(scenario_id: str) -> float:
 def test_heatwave_sells_more_cold_drinks_than_an_ordinary_day():
     assert get_preset("heatwave_weekend") is not None
     assert _cold_drink_units("heatwave_weekend") > 1.15 * _cold_drink_units("baseline")
+
+
+def test_grocery_formats_use_the_profile_fitted_to_real_data():
+    from store_emulator.domain.scenario import Scenario, Weather
+    from store_emulator.engine.scenario import (
+        GROCERY_PRIORS,
+        ScenarioPriors,
+        compile_scenario,
+        priors_for,
+    )
+
+    assert priors_for("supermarket") is GROCERY_PRIORS and priors_for("Pharmacy") is GROCERY_PRIORS
+    assert priors_for("convenience") == ScenarioPriors()
+    custom = ScenarioPriors(weather_traffic={"rain": 0.5})
+    assert priors_for("supermarket", custom) is custom
+    rain = Scenario(weather=Weather.RAIN)
+    # Real grocery and drugstore traffic hardly moves with rain (Rossmann: −0.4 %); the convenience
+    # priors assume −15 %.
+    assert compile_scenario(rain, priors_for("supermarket")).base_traffic > 0.98
+    assert compile_scenario(rain, priors_for("convenience")).base_traffic < 0.9
