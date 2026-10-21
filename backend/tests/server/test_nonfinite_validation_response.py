@@ -71,3 +71,13 @@ def test_malformed_json_keeps_its_validation_error(project):
     response = client.post("/api/scenarios/preview", content='{"hourly_traffic":', headers={"Content-Type": "application/json"})
     assert response.status_code == 422
     assert response.json()["detail"][0]["type"] == "json_invalid"
+
+
+@pytest.mark.parametrize("body", [b"\xff", b"\x80broken", b"valid UTF-8"])
+def test_wrong_content_type_returns_readable_validation_error(project, body):
+    client, _, _ = project
+    response = client.post("/api/scenarios/preview", content=body, headers={"Content-Type": "application/octet-stream"})
+    assert response.status_code == 422, response.text
+    error = response.json()["detail"][0]
+    assert error["loc"] == ["body"]
+    assert error["input"] == body.decode("utf-8", errors="replace")
