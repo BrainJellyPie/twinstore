@@ -12,6 +12,7 @@ interface RawRow {
   level?: unknown;
   sku?: unknown;
   item_name?: unknown;
+  "price (minor units)"?: unknown;
   "price (cents)"?: unknown;
   price?: unknown;
   promo?: unknown;
@@ -25,11 +26,11 @@ function normalizeKeys(row: Record<string, unknown>): RawRow {
 
 function toIntPrice(raw: unknown): number {
   if (raw === null || raw === undefined || raw === "") return 0;
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return 0;
-  // Round to avoid truncation when a user pastes a dollar value like 5.49.
-  // The header label ("Price (cents)") is the primary defense; this round is backup.
-  return Math.round(n);
+  const n = typeof raw === "number" || typeof raw === "string" ? Number(raw) : NaN;
+  if (!Number.isSafeInteger(n) || n < 0) {
+    throw new Error(`Invalid price: ${String(raw)}. Enter a nonnegative whole number in the layout currency's minor units.`);
+  }
+  return n;
 }
 
 export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
@@ -52,7 +53,7 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
     level: Number(r.level),
     sku: r.sku ? String(r.sku) : "",
     name: r.item_name ? String(r.item_name) : "",
-    price: toIntPrice(r["price (cents)"] ?? r.price),
+    price: toIntPrice(r["price (minor units)"] ?? r["price (cents)"] ?? r.price),
     promo: r.promo ? String(r.promo) : "",
   }));
 
