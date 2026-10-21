@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  three-gpu-pathtracer@0.0.24:
+    hash: 84634594029af2083fca62ee5388208227bcd7e12f630a088e9bcab2f5dfc253
+    path: patches/three-gpu-pathtracer@0.0.24.patch
+
 importers:
 
   .:
@@ -76,7 +81,7 @@ importers:
         version: 0.183.2
       three-gpu-pathtracer:
         specifier: 0.0.24
-        version: 0.0.24(three-mesh-bvh@0.9.15(three@0.183.2))(three@0.183.2)(xatlas-web@0.1.0)
+        version: 0.0.24(patch_hash=84634594029af2083fca62ee5388208227bcd7e12f630a088e9bcab2f5dfc253)(three-mesh-bvh@0.9.15(three@0.183.2))(three@0.183.2)(xatlas-web@0.1.0)
       three-mesh-bvh:
         specifier: 0.9.15
         version: 0.9.15(three@0.183.2)
@@ -8350,7 +8355,7 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
 
-  three-gpu-pathtracer@0.0.24(three-mesh-bvh@0.9.15(three@0.183.2))(three@0.183.2)(xatlas-web@0.1.0):
+  three-gpu-pathtracer@0.0.24(patch_hash=84634594029af2083fca62ee5388208227bcd7e12f630a088e9bcab2f5dfc253)(three-mesh-bvh@0.9.15(three@0.183.2))(three@0.183.2)(xatlas-web@0.1.0):
     dependencies:
       three: 0.183.2
       three-mesh-bvh: 0.9.15(three@0.183.2)
