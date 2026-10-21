@@ -9,6 +9,7 @@ Files per capture (`.data/<pid>/captures/<cid>/`):
 """
 
 import asyncio
+import hashlib
 import io
 import json
 import logging
@@ -20,6 +21,7 @@ import uuid
 from pathlib import Path
 from typing import Annotated
 
+from filelock import FileLock, Timeout
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, StringConstraints
 
@@ -219,28 +221,66 @@ def prepare_photo(data: bytes, filename: str) -> Image.Image:
 
 def create_capture(
     pid: str, data: bytes, filename: str, options: CaptureOptions, config: SimulationConfig,
+    *, request_id: str | None = None,
 ) -> CaptureStatus:
-    """Store the photo and start recognition in the background; poll `get_capture`."""
+    """Store a photo and start recognition; stable request IDs replay the accepted job."""
     _check_id(pid, "project id")
     if not metadata_path(pid).exists():
         raise AppError(f"project not found: {pid}", 404)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise AppError("image too large (max 25 MB)", 413)
+    options = options.model_copy(update={"currency": (options.currency or project_currency(pid, config.currency)).upper()})
+    if request_id is None:
+        return _start_capture(pid, f"cap_{uuid.uuid4().hex[:8]}", data, filename, options, config, "")
+    if not re.fullmatch(r"[0-9a-f]{32}", request_id):
+        raise AppError("Invalid upload request id", 422)
+    digest = hashlib.sha256(json.dumps({
+        "image": hashlib.sha256(data).hexdigest(), "filename": filename,
+        "options": options.model_dump(mode="json"),
+    }, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    cid = f"cap_upload_{request_id}"
+    base = _base_dir(pid)
+    base.mkdir(parents=True, exist_ok=True)
+    try:
+        with FileLock(base / ".upload.lock", timeout=0):
+            if (_dir(pid, cid) / "status.json").exists():
+                accepted = _read_status(pid, cid)
+                if accepted.upload_sha256 != digest:
+                    raise AppError("This upload request belongs to a different photo or settings", 409)
+                return accepted
+            if (base / ".uploads" / f"{cid}.json").exists():
+                raise AppError("This photo was removed or its upload was interrupted. Clear the local entry and choose it again for a new attempt", 409)
+            return _start_capture(pid, cid, data, filename, options, config, digest)
+    except Timeout as exc:
+        raise AppError("Another photo is being accepted. Retry this upload shortly", 409) from exc
+
+
+def _start_capture(
+    pid: str, cid: str, data: bytes, filename: str, options: CaptureOptions,
+    config: SimulationConfig, digest: str,
+) -> CaptureStatus:
     photo = prepare_photo(data, filename)
     llm_config = capture_llm_config(config, options.model)
     if options.detector == "gdino" and not gdino_available():
         raise AppError("the gdino detector needs the optional dependencies: uv sync --extra capture", 400)
     if options.detector == "vlm" and llm_config is None:
         raise AppError("the vlm detector needs a vision model (model must not be 'none')", 400)
-    options = options.model_copy(update={"currency": (options.currency or project_currency(pid, config.currency)).upper()})
-    cid = f"cap_{uuid.uuid4().hex[:8]}"
+    if digest:
+        # Keep a receipt outside the removable photo directory; replay must not resurrect deletion.
+        write_json(_base_dir(pid) / ".uploads" / f"{cid}.json", {"upload_sha256": digest})
     folder = _dir(pid, cid)
     folder.mkdir(parents=True, exist_ok=True)
     photo.save(folder / "image.jpg", format="JPEG", quality=92)
     status = CaptureStatus(
         capture_id=cid, status="pending", stage="queued", options=options, image_name=filename[:200],
-        image_size=photo.size, created_at=now_iso(),
+        image_size=photo.size, created_at=now_iso(), upload_sha256=digest,
     )
     _write_status(pid, status)
-    executor.submit(_run_job, pid, status, llm_config)
+    try:
+        executor.submit(_run_job, pid, status, llm_config)
+    except RuntimeError as exc:
+        _write_status(pid, status.model_copy(update={"status": "failed", "error": "Could not start recognition. Retry as a new attempt.", "finished_at": now_iso()}))
+        raise AppError("Could not start recognition. Retry this upload to inspect its status", 503) from exc
     return status
 
 
@@ -532,3 +572,22 @@ def _memo(capture_ids: list[str], results: list[CaptureResult], report: Placemen
     where = f"rack {', '.join(report.rack_ids)} face {report.face.value}"
     dropped = f"; {len(report.dropped)} product(s) did not fit" if report.dropped else ""
     return f"shelf capture {', '.join(capture_ids)}: {products} products → {where}{dropped}"
+
+
+def recover_interrupted_captures() -> int:
+    """A restarted single-worker server has no surviving capture executor jobs."""
+    recovered = 0
+    for path in Path(DATA_DIR).glob("*/captures/*/status.json"):
+        try:
+            status = CaptureStatus.model_validate_json(path.read_bytes())
+            if status.status not in ("pending", "running"):
+                continue
+            status = status.model_copy(update={
+                "status": "failed", "error": "Recognition was interrupted by a server restart. Upload again for a new attempt.",
+                "finished_at": now_iso(),
+            })
+            write_json(path, status.model_dump(mode="json"))
+            recovered += 1
+        except (OSError, ValueError):
+            logger.warning("Could not recover capture status %s", path, exc_info=True)
+    return recovered

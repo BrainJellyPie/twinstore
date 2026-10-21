@@ -4,10 +4,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { Camera, Check, Eye, EyeOff, FlaskConical, ImagePlus, ListChecks, Loader2, Minus, Plus, Save, Trash2, Upload, Wand2 } from "lucide-react";
+import { Camera, Check, Eye, EyeOff, FlaskConical, ListChecks, Loader2, Minus, Plus, Save, Trash2, Wand2 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import type { CaptureBox, CaptureDetector, CaptureEdit, CaptureItem, CaptureResult, CaptureStatus } from "@/shared/api/client";
+import type { CaptureBox, CaptureEdit, CaptureItem, CaptureResult, CaptureStatus } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
@@ -19,6 +19,7 @@ import { CAPTURE_CATEGORIES, categoryColor, categoryLabel } from "./categories";
 import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
 import { RivalCard } from "./RivalCard";
 import { CaptureBatch } from "./CaptureBatch";
+import { CaptureUploadQueue } from "./CaptureUploadQueue";
 import { BeforeAfter, ShelfLabPanel } from "./ShelfLab";
 
 const capturesKey = (pid: string) => ["projects", pid, "captures"] as const;
@@ -38,110 +39,14 @@ export function CapturePage({ projectId }: { projectId: string }) {
   const select = (id: string | null) => { setChosenNew(id === null); setSelected(id); };
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto md:overflow-hidden">
-      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
+    <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:min-h-0">
         <CaptureStrip projectId={projectId} captures={captures} selected={selected} onSelect={select} />
         {captures.length > 0 && <CaptureBatch key={projectId} projectId={projectId} captures={captures} onReview={select} />}
-        {selected ? (
+        <div hidden={!!selected} className="min-h-64 shrink-0 md:flex-1"><CaptureUploadQueue key={projectId} visible={!selected} projectId={projectId} onAccepted={() => setChosenNew(true)} onReview={select} /></div>
+        {selected && (
           <CaptureWorkspace key={selected} projectId={projectId} captureId={selected} onDeleted={() => select(null)} />
-        ) : (
-          <UploadCard projectId={projectId} onStarted={select} large />
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Upload ────────────────────────────────────────────────────────────────
-
-function UploadCard({ projectId, onStarted, large = false }: { projectId: string; onStarted: (id: string) => void; large?: boolean }) {
-  const qc = useQueryClient();
-  const input = useRef<HTMLInputElement>(null);
-  const [drag, setDrag] = useState(false);
-  const [detector, setDetector] = useState<CaptureDetector>("auto");
-  const [model, setModel] = useState("");
-  const [chosenCurrency, setCurrency] = useState<string | null>(null);
-  const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
-  const currency = chosenCurrency ?? project.data?.metadata.currency ?? "USD";
-  const [rackType, setRackType] = useState<"shelf" | "fridge">("shelf");
-  const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
-  const upload = useMutation({
-    mutationFn: (file: File) => api.createCapture(projectId, file, { detector, model, currency, rack_type: rackType }),
-    onSuccess: async (s) => {
-      await qc.invalidateQueries({ queryKey: capturesKey(projectId) });
-      onStarted(s.capture_id);
-    },
-  });
-  const pick = (files: FileList | null) => {
-    const f = files?.[0];
-    if (f) upload.mutate(f);
-  };
-
-  return (
-    <div className={cn("grid gap-4", large ? "mx-auto mt-6 w-full max-w-3xl" : "")}>
-      <button
-        type="button"
-        onClick={() => input.current?.click()}
-        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files); }}
-        className={cn(
-          "spotlight flex flex-col items-center justify-center gap-3 rounded-[2rem] border-2 border-dashed border-foreground/15 bg-card/50 p-12 text-center backdrop-blur-xl transition-colors",
-          drag ? "border-primary bg-primary/5" : "hover:border-primary/60",
-        )}
-      >
-        <span className="relative grid size-20 place-items-center">
-          <span className="absolute inset-0 animate-spin-slow rounded-full bg-[conic-gradient(from_0deg,var(--heat-1),var(--heat-2),var(--heat-3),var(--volt),var(--heat-1))] opacity-70 blur-md" aria-hidden />
-          <span className="relative grid size-16 place-items-center rounded-full bg-background">
-            {upload.isPending ? <Loader2 className="size-8 animate-spin" /> : <ImagePlus className="size-8" />}
-          </span>
-        </span>
-        <span className="font-display text-[2rem] leading-tight">Photograph a shelf, <span className="font-accent aurora-text">get its planogram</span></span>
-        <span className="max-w-lg text-muted-foreground">
-          Drop a photo of one shelf section, taken straight on. TwinStore finds the shelves and every facing, reads each
-          product and its price tag, and turns it into a rack you can put into a layout and simulate.
-        </span>
-        <span className="mt-1 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground">
-          <Upload className="size-4" /> Choose a photo
-        </span>
-        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => pick(e.target.files)} />
-      </button>
-      {upload.error && <p className="text-sm text-destructive">{upload.error instanceof Error ? upload.error.message : String(upload.error)}</p>}
-      <div className="glass grid grid-cols-2 gap-3 rounded-2xl p-4 text-sm md:grid-cols-4">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Find products with</span>
-          <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={detector} onChange={(e) => setDetector(e.target.value as CaptureDetector)}>
-            <option value="auto">Best available</option>
-            <option value="gdino">Grounding DINO (object detector)</option>
-            <option value="classic">Shelf geometry (fast)</option>
-            <option value="vlm">Vision model boxes</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Read products with</span>
-          <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={model} onChange={(e) => setModel(e.target.value)}>
-            <option value="">App's vision model</option>
-            {models.filter((m) => m.vision).map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
-            <option value="none">Don't read (typical prices)</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Prices in</span>
-          <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            <option value="USD">US dollars</option>
-            <option value="KRW">Korean won</option>
-            <option value="JPY">Japanese yen</option>
-            <option value="EUR">Euros</option>
-            <option value="GBP">British pounds</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">It is a</span>
-          <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={rackType} onChange={(e) => setRackType(e.target.value as "shelf" | "fridge")}>
-            <option value="shelf">Shelf / gondola</option>
-            <option value="fridge">Fridge</option>
-          </select>
-        </label>
       </div>
     </div>
   );
@@ -157,7 +62,7 @@ function CaptureStrip({ projectId, captures, selected, onSelect }: {
     <div className="flex items-center gap-2 overflow-x-auto pb-1">
       <button type="button" onClick={() => onSelect(null)}
         className="flex h-16 w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-foreground/15 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
-        <Camera className="size-4" /> New photo
+        <Camera className="size-4" /> Add photos
       </button>
       {captures.map((c) => (
         <button key={c.capture_id} type="button" onClick={() => onSelect(c.capture_id)}

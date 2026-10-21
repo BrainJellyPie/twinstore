@@ -1406,7 +1406,7 @@ export interface LayoutOptions {
   table_clearance?: number;
   table_clearance_x?: number | null;
   table_clearance_y?: number | null;
-  seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
+  seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center" | "near_entrance" | "away_from_entrance";
   reserved_areas?: ReservedArea[];
   excluded_categories?: string[];
   products_per_category?: number | null;
@@ -1568,7 +1568,8 @@ export interface CaptureApplyResult {
 
 export async function createCapture(
   projectId: string, image: File,
-  opts: { detector: CaptureDetector; model: string; currency: string; rack_type: "shelf" | "fridge"; label?: string },
+  opts: { detector: CaptureDetector; model: string; currency: string; rack_type: "shelf" | "fridge"; label?: string; request_id?: string },
+  signal?: AbortSignal,
 ): Promise<CaptureStatus> {
   const form = new FormData();
   form.append("image", image);
@@ -1577,7 +1578,8 @@ export async function createCapture(
   form.append("currency", opts.currency);
   form.append("rack_type", opts.rack_type);
   if (opts.label) form.append("label", opts.label);
-  const res = await fetch(`${BASE}/api/projects/${projectId}/captures`, { method: "POST", body: form });
+  if (opts.request_id) form.append("request_id", opts.request_id);
+  const res = await fetch(`${BASE}/api/projects/${projectId}/captures`, { method: "POST", body: form, signal });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(apiErrorMessage(body, `Upload failed (HTTP ${res.status})`));

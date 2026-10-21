@@ -10,6 +10,8 @@ import { useRuns } from "@/shared/queries/useRuns";
 import { useSetupGeneration } from "@/shared/queries/useSetupGeneration";
 import { deleteProject } from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
+import { Button } from "@/shared/components/ui/button";
+import { useI18n } from "@/shared/i18n/i18n";
 import { PreparingView } from "@/views/simulation/states/PreparingView";
 import { ReadyView } from "@/views/simulation/states/ReadyView";
 import { RunningView } from "@/views/simulation/states/RunningView";
@@ -32,6 +34,7 @@ function SimulationPage() {
 
 function SimulationPageInner({ pid }: { pid: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const content = useRef<HTMLDivElement>(null);
   const navigationFocus = useRef<{ element: HTMLElement; source: "tab" | "finder" } | null>(null);
   const project = useProject(pid).data;
@@ -49,6 +52,7 @@ function SimulationPageInner({ pid }: { pid: string }) {
       : content.current?.querySelector<HTMLButtonElement>("[data-layout-finder-trigger]");
     target?.focus();
   }, [pid, router]);
+  const isCurrentProject = useCallback(() => router.state.location.pathname.replace(/\/$/, "") === `/projects/${pid}`, [pid, router]);
   const effectiveSetupId = layouts?.some((layout) => layout.id === selectedSetupId)
     ? selectedSetupId
     : layouts?.[0]?.id;
@@ -68,17 +72,26 @@ function SimulationPageInner({ pid }: { pid: string }) {
   }, []);
 
   const [addLayoutOpen, setAddLayoutOpen] = useState(false);
+  const reloadLayouts = <Button type="button" variant="outline" size="sm" disabled={layoutsQuery.isFetching}
+    onClick={() => { void layoutsQuery.refetch(); }}>{t("reloadLayouts")}</Button>;
+  const layoutError = layoutsQuery.isError ? <div role="alert"
+    className="max-h-48 w-full min-w-0 shrink-0 space-y-2 overflow-y-auto rounded-xl border border-destructive/30 p-4 text-sm [overflow-wrap:anywhere]">
+    <p className="font-medium">{t("layoutsLoadFailed")}</p>
+    {layoutsQuery.error instanceof Error && <p className="whitespace-pre-wrap text-muted-foreground">{layoutsQuery.error.message}</p>}
+    {reloadLayouts}
+  </div> : null;
 
-  if (!effectiveSetupId || !layouts) {
+  if (!layouts) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        Loading layout…
+      <div role={layoutsQuery.isError ? undefined : "status"} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 text-sm">
+        <div className="my-auto w-full min-w-0 shrink-0">{layoutError ?? <p className="text-center">{t("loadingLayouts")}</p>}</div>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
+      {layoutError}
       {/*
         Local Suspense — on layout switch, if useSetup(useSuspenseQuery)'s cache miss
         bubbles up to the root Suspense, SimulationPageInner itself unmounts and the
@@ -89,7 +102,7 @@ function SimulationPageInner({ pid }: { pid: string }) {
         inner state. fallback=null works with startTransition so the previous content
         stays visible until the transition completes.
       */}
-      <div ref={content} className="contents"
+      {effectiveSetupId ? <div ref={content} className="contents"
         onFocusCapture={(event) => {
           const target = event.target;
           const source = target.hasAttribute("data-layout-id") ? "tab"
@@ -112,16 +125,26 @@ function SimulationPageInner({ pid }: { pid: string }) {
           onLayoutMounted={layoutMounted}
           onAddLayout={() => setAddLayoutOpen(true)}
         />
-      </Suspense></div>
+      </Suspense></div> : <div className="flex min-h-40 min-w-0 flex-1 items-center justify-center p-4">
+        <div className="max-w-lg space-y-3 text-center [overflow-wrap:anywhere]">
+          <h2 className="font-medium">{t("noLayoutsFound")}</h2>
+          <p className="text-sm text-muted-foreground">{t("noLayoutsHint")}</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {!layoutsQuery.isError && reloadLayouts}
+            <Button type="button" size="sm" onClick={() => setAddLayoutOpen(true)}>{t("newLayout")}</Button>
+          </div>
+        </div>
+      </div>}
       <AddLayoutDialog
         open={addLayoutOpen}
         onOpenChange={setAddLayoutOpen}
         projectId={pid}
-        parentSetupId={effectiveSetupId}
+        parentSetupId={effectiveSetupId ?? ""}
         layouts={layouts}
         defaultCurrency={project.metadata.currency ?? "USD"}
+        isCurrentProject={isCurrentProject}
       />
-    </>
+    </div>
   );
 }
 

@@ -153,6 +153,10 @@ Clear the search alone or reset both search and group filters; neither changes y
 In **Add layout**, template customization starts folded. Floor-plan selection works with the
 keyboard; a failed preview can be retried without selecting the file again. If a saved source
 disappears, choose another source to copy or remove its links while keeping the saved options.
+You can close the creation dialog and keep working while a request finishes. The new layout
+is added to the list without replacing a choice you made after dismissing the dialog. Reopening
+a pending request preserves its inputs and prevents duplicate submissions. If creation fails,
+reopening retains the name, source and file so you can retry the same request.
 Model selection is localized too. Detailed layout and situation editors, other feature editors and technical server messages
 currently remain in English.
 
@@ -341,6 +345,8 @@ For brand managers, category teams, store operators and research agencies (**Mar
 Any finished A/B, shelf, concept or conjoint test can be **duplicated and edited** into the next one. Concept, shelf and
 conjoint tests have print-ready reports too. Synthetic respondents are for screening and direction; calibrate against
 a real panel before deciding.
+
+**Upload shelf photos together.** Capture’s **Add photos** panel accepts multiple files or a drop, checks duplicates and limits, and processes one photo at a time. Pause later uploads, retry an individual error, and review results before combining them. Accepted photos stay in history; unsent files require keeping the page open. [Queue details and limits](./USAGE.md#upload-several-shelf-photos-with-a-controlled-queue).
 
 **Combine shelf photos.** In Capture, choose **Combine reviewed shelf photos**, select completed photos,
 preview their racks together, then save and open one new draft. Original layouts and photos stay intact;

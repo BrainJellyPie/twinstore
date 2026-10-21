@@ -48,6 +48,7 @@ export interface AddLayoutDialogProps {
   parentSetupId: string;
   layouts: Layout[];
   defaultCurrency?: string;
+  isCurrentProject?: () => boolean;
 }
 
 function resolveDefaultParent(parentSetupId: string, layouts: Layout[]): string {
@@ -62,15 +63,17 @@ export function AddLayoutDialog({
   parentSetupId,
   layouts,
   defaultCurrency = "USD",
+  isCurrentProject,
 }: AddLayoutDialogProps) {
   const { t } = useI18n();
-  const createLayout = useCreateLayout();
+  const createLayout = useCreateLayout({ active: open, projectId, canSelect: isCurrentProject });
+  const creating = useRef(false);
   const planInput = useRef<HTMLInputElement>(null);
   const choosePlan = useRef<HTMLButtonElement>(null);
   const opener = useRef<HTMLElement | null>(null);
 
   const [name, setName] = useState<string>(() => t("layoutDefaultName", { number: layouts.length + 1 }));
-  const [approach, setApproach] = useState<Approach>("import");
+  const [approach, setApproach] = useState<Approach>(layouts.length ? "import" : "empty");
   const [selectedParentId, setSelectedParentId] = useState<string>(() =>
     resolveDefaultParent(parentSetupId, layouts),
   );
@@ -89,11 +92,11 @@ export function AddLayoutDialog({
     retry: false, staleTime: Infinity, gcTime: 0,
   });
 
-  // Restore defaults on each open; also reset the prior mutation's error state.
+  // Keep pending and failed requests attached to their inputs when reopening.
   useEffect(() => {
-    if (open) {
+    if (open && !creating.current && !createLayout.isError) {
       setName(t("layoutDefaultName", { number: layouts.length + 1 }));
-      setApproach("import");
+      setApproach(layouts.length ? "import" : "empty");
       setPlanFile(null);
       setPlanPage(1);
       setPlanRotation(0);
@@ -125,7 +128,8 @@ export function AddLayoutDialog({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || creating.current) return;
+    creating.current = true;
     createLayout.mutate(
       {
         projectId,
@@ -142,6 +146,7 @@ export function AddLayoutDialog({
                 : { kind: "empty" },
       },
       {
+        onSettled: () => { creating.current = false; },
         onSuccess: () => {
           onOpenChange(false);
         },
@@ -160,13 +165,15 @@ export function AddLayoutDialog({
           event.preventDefault();
           const target = opener.current;
           opener.current = null;
-          if (target?.isConnected && document.activeElement === document.body &&
+          if (target?.isConnected && document.activeElement === document.body && isCurrentProject?.() !== false &&
             (typeof target.checkVisibility !== "function" || target.checkVisibility())) target.focus();
         }}>
         <DialogHeader>
           <DialogTitle>{t("addLayoutTitle")}</DialogTitle>
           <DialogDescription className="sr-only">{t("addLayoutDescription")}</DialogDescription>
         </DialogHeader>
+
+        {createLayout.isPending && <p role="status" className="shrink-0 rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">{t("layoutCreationBackgroundHint")}</p>}
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
           <div className="-mx-1 min-h-0 min-w-0 flex-1 overflow-y-auto px-1" data-testid="add-layout-scroll-area">

@@ -33,6 +33,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
       await qc.cancelQueries({ queryKey: key });
       qc.setQueryData(key, t);
     },
+    onError: (_error, question) => setText(current => current || question),
     onSettled: () => setPending(null),
   });
   const reset = useMutation({
@@ -49,15 +50,16 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
   // conversation moves on. Without a model (or on error) the trip-based templates stay.
   const stored = transcript.data?.suggested_after === messages.length ? transcript.data.suggestions ?? [] : [];
   const ideas = useQuery({
-    queryKey: interviewKeys.suggestions(projectId, runId, sid, messages.length, model),
+    queryKey: interviewKeys.suggestions(projectId, runId, sid, messages, model),
     queryFn: ({ signal }) => suggestQuestions(projectId, runId, sid, model, signal),
     enabled: transcript.isSuccess && !stored.length && !busy,
     staleTime: Infinity,
     retry: false,
   });
   const written = stored.length ? stored
-    : ideas.data?.suggested_after === messages.length ? ideas.data.suggestions ?? [] : [];
-  const chips = written.length ? written : messages.length === 0 || ideas.isError ? suggestedQuestions(journey) : [];
+    : ideas.data?.suggested_after === messages.length && JSON.stringify(ideas.data.messages) === JSON.stringify(messages)
+      ? ideas.data.suggestions ?? [] : [];
+  const chips = written.length ? written : messages.length === 0 || ideas.isError || ideas.isSuccess ? suggestedQuestions(journey) : [];
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "nearest" });
@@ -124,8 +126,12 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
       <form className="flex items-end gap-1.5" onSubmit={(e) => { e.preventDefault(); send(text); }}>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value.slice(0, 600))}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(text); } }}
+          onChange={(e) => setText(Array.from(e.target.value).slice(0, 600).join(""))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
+              e.preventDefault(); send(text);
+            }
+          }}
           rows={2}
           placeholder={`Ask ${first}…`}
           className="min-h-[2.6rem] flex-1 resize-none rounded-xl border bg-card/60 px-3 py-2 text-[0.8rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40"

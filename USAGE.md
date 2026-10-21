@@ -941,8 +941,8 @@ zero in the grid: this is a placeholder, not an observed zero price. Correct the
 Up to 20 captures, 2,000 total facings and 24 facings per product are accepted. Every photo must match the
 base layout's currency; prices are never converted. Photos add racks onto free floor next to aisles, using
 existing shelf-level and left-to-right grid mapping. They do not recover camera geometry, exact dimensions,
-room locations or stock quantities; grid capacity may reduce facings. This workflow does not upload many
-photos at once or add automatic recognition beyond the existing single-photo pipeline.
+room locations or stock quantities; grid capacity may reduce facings. Use the photo intake queue below to
+upload several images; each still uses the existing single-photo recognition pipeline.
 
 If a photo or base store changes after preview, save is rejected: preview again. After an uncertain save
 failure, **Retry saving this draft** reuses the same request and returns the existing draft if it was already
@@ -955,3 +955,37 @@ API: `POST /api/projects/{pid}/captures/batch-preview` accepts `capture_ids` and
 `POST .../captures/batch-save` additionally requires the returned `source_sha256`, a stable 32-character
 lowercase hexadecimal `request_id`, and `allow_reduced_facings: true` when the preview reports a reduction.
 The same request ID must be reused unchanged after an uncertain save; a different payload returns 409.
+
+## Upload several shelf photos with a controlled queue
+
+In **Capture**, choose **Add photos** (or use the upload panel in an empty project). Select recognition
+settings first, then choose or drag several JPEG/PNG/WebP files together. **Start / resume queue** explicitly
+starts work. The queue waits for each accepted photo to finish recognition before uploading the next.
+Each photo may call the selected model; choosing **Shelf geometry (fast)** and **Don't read (typical prices)**
+uses geometry without a VLM and does not identify real product names or measured prices.
+
+- At most 20 files, 25 MiB per file and 100 MiB total in the local queue. Empty/unsupported files are
+  rejected with individual messages. Identical bytes already in the queue are skipped even if renamed;
+  different photos sharing a filename remain separate. The server independently validates/decodes images.
+- Settings and the selected currency stay fixed while files are queued. Clear the local queue to change
+  settings. File hashing and stable request IDs require HTTPS or localhost.
+- **Pause after current photo** stops later uploads. Remove an unsent entry to skip it. Accepted recognition
+  continues on the server; pause, removal, browser navigation and local clearing do not cancel a model call
+  or delete a stored capture. The queue remains when reviewing another photo in the same Capture page.
+- **Retry this photo** repeats an uncertain upload with the same request identity, or resumes status polling
+  without uploading again. If recognition has definitively failed, **Retry recognition (new attempt)** creates
+  a new capture and may make new model calls; the failed original is preserved. Resolve an uncertain upload
+  or status first before starting a new recognition attempt for another photo.
+- Use **Review photo** to correct names, prices, categories and facings. Once reviewed, the existing
+  **Combine reviewed shelf photos** flow previews and saves their products/crops/racks in one new layout.
+
+Keep the page open for unsent files. Browsers do not retain this queue across reloads or project navigation;
+accepted captures remain in history. A restarted single-worker server marks interrupted captures failed,
+rather than leaving them pending forever. A retry of a removed accepted photo returns a conflict rather than
+recreating it. Clear that local entry and select the file again if you intentionally want a new attempt.
+
+The existing `POST /api/projects/{pid}/captures` endpoint accepts an optional multipart `request_id` of
+32 lowercase hexadecimal characters. Retrying the same ID with the same image bytes, filename and normalized
+options returns the accepted capture; a changed payload returns 409. Receipts are retained outside removable
+capture folders. Failed/interrupted jobs are never automatically re-submitted by replaying an ID. Legacy
+uploads without request IDs retain their original behavior.

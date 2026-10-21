@@ -366,7 +366,10 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value="auto">Format default{selected?.default_seating_zone && selected.default_seating_zone !== "auto" ? ` (${selected.default_seating_zone})` : ""}</option><option value="front">Front edge</option>
                 <option value="back">Back wall</option><option value="left">Left side</option>
                 <option value="right">Right side</option><option value="center">Center</option>
-              </select></Field></div>
+                <option value="near_entrance">Entrance</option><option value="away_from_entrance">Farthest area</option>
+              </select></Field>
+                {(value.seating_zone === "near_entrance" || value.seating_zone === "away_from_entrance") && <p className="text-[10px] text-muted-foreground">Follows the entrance wall and position. Larger table counts spread into the remaining floor.</p>}
+              </div>
               <div className="col-span-2 sm:col-span-1"><Field label="Space around dining tables"><select className={controlClass} value={value.table_clearance ?? 1}
                 disabled={tableCount === 0}
                 onChange={(e) => update({ table_clearance: Number(e.target.value) })}>

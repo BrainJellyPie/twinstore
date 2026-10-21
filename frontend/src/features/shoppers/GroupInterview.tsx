@@ -75,7 +75,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, onOpen, onBack
           ))}
           {ideas.error && <p role="alert" className="text-[0.72rem] text-destructive">{ideas.error.message}</p>}
         </div>
-        <textarea value={question} onChange={(e) => setQuestion(e.target.value.slice(0, 600))} rows={3} aria-label="Question"
+        <textarea value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 600).join(""))} rows={3} aria-label="Question"
           className="w-full resize-none rounded-xl border bg-card/60 px-3 py-2 text-[0.8rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
         <div className="flex items-center gap-2 text-[0.72rem] text-muted-foreground">
           <span>Shoppers</span>

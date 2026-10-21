@@ -84,8 +84,8 @@ it("stops status polling after a failed request until the user retries", async (
 it("lets the user leave a failed capture without losing the history strip", async () => {
   vi.mocked(api.getCapture).mockRejectedValue(new Error("Unavailable"));
   mount(); await screen.findByRole("alert");
-  fireEvent.click(screen.getByRole("button", { name: "New photo" }));
-  await screen.findByText("Choose a photo");
+  fireEvent.click(screen.getByRole("button", { name: "Add photos" }));
+  await screen.findByText("Choose photos or drop them here");
   expect(screen.queryByRole("alert")).toBeNull();
   expect(screen.getByTitle("shelf.png")).toBeTruthy();
 });

@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
+from store_emulator.application.capture import recover_interrupted_captures
 from store_emulator.application.storage.generations import recover_running_generations
 from store_emulator.application.storage.jobs import recover_interrupted_jobs
 from store_emulator.application.storage.seed import seed_sample_projects
@@ -47,6 +48,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     recovered_setups = recover_running_setups()
     if recovered_setups > 0:
         logger.info(f"server start: recovered {recovered_setups} running setups to draft")
+    recovered_captures = recover_interrupted_captures()
+    if recovered_captures > 0:
+        logger.info(f"server start: marked {recovered_captures} interrupted captures as failed")
     recovered_jobs = recover_interrupted_jobs()
     if recovered_jobs > 0:
         logger.info(f"server start: marked {recovered_jobs} interrupted background jobs as failed")

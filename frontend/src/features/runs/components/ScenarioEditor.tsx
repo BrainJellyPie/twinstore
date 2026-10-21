@@ -2,7 +2,7 @@
 // or customize weather, calendar, events, promotions, stock-outs and crowding. A live preview shows
 // what the scenario does to traffic and category demand before anything runs.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CloudSun, Loader2, Plus, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
 
@@ -99,15 +99,25 @@ export function ScenarioEditor({
 
   // "Describe the day": the text model fills in the settings; the details open so they can be checked.
   const [day, setDay] = useState("");
+  const dayLength = Array.from(day.trim()).length;
+  const [described, setDescribed] = useState<api.DescribedScenario | null>(null);
   const describe = useMutation({
     mutationFn: (text: string) => api.describeScenario({ text, project_id: projectId, setup_id: setupId }),
-    onSuccess: (r) => {
-      onChange(r.scenario);
-      setCustomOpen(true);
-    },
   });
+  const resetDescription = describe.reset;
+  // Detach the old request before a reply can overwrite a newly committed edit or layout.
+  useLayoutEffect(() => {
+    resetDescription();
+  }, [day, value, projectId, setupId, resetDescription]);
   const setUp = () => {
-    if (day.trim().length >= 3 && !describe.isPending) describe.mutate(day.trim());
+    if (dayLength >= 3 && !describe.isPending) describe.mutate(day.trim(), {
+      // Per-request callbacks run only while this editor still observes that request.
+      onSuccess: (r) => {
+        setDescribed(r);
+        onChange(r.scenario);
+        setCustomOpen(true);
+      },
+    });
   };
 
   return (
@@ -152,9 +162,9 @@ export function ScenarioEditor({
       <div className="flex items-start gap-1.5">
         <textarea
           value={day}
-          onChange={(e) => setDay(e.target.value.slice(0, 800))}
+          onChange={(e) => setDay(Array.from(e.target.value).slice(0, 800).join(""))}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
               e.preventDefault();
               e.stopPropagation();
               setUp();
@@ -168,7 +178,7 @@ export function ScenarioEditor({
         <button
           type="button"
           onClick={setUp}
-          disabled={day.trim().length < 3 || describe.isPending}
+          disabled={dayLength < 3 || describe.isPending}
           className="flex h-[2.4rem] shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-50"
         >
           {describe.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
@@ -176,9 +186,9 @@ export function ScenarioEditor({
         </button>
       </div>
       {describe.error && <p role="alert" className="text-xs text-destructive">{describe.error.message}</p>}
-      {describe.data && scenario?.description === describe.data.scenario.description && describe.data.warnings.length > 0 && (
+      {described && scenario?.description === described.scenario.description && described.warnings.length > 0 && (
         <ul className="space-y-0.5 text-xs text-muted-foreground" aria-label="Notes on the described day">
-          {describe.data.warnings.map((w) => <li key={w}>· {w}</li>)}
+          {described.warnings.map((w) => <li key={w}>· {w}</li>)}
         </ul>
       )}
 

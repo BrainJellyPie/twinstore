@@ -213,3 +213,47 @@ it.each(LOCALES)("explains creation failures in the selected language and retain
   useLocale.getState().setLocale(code); mutation.isError = true; mutation.error = new Error("Store could not be copied"); show();
   const alert = screen.getByRole("alert"); expect(alert.textContent).toContain(translate(code, "createLayoutFailed")); expect(alert.textContent).toContain("Store could not be copied");
 });
+
+it("coalesces rapid submission and keeps in-flight values when reopened", () => {
+  const { props, rerender } = show(); fireEvent.change(screen.getByLabelText("Layout name"), { target: { value: "Original request" } });
+  const form = screen.getByTestId("add-layout-submit").closest("form")!; fireEvent.submit(form); fireEvent.submit(form); expect(mutation.mutate).toHaveBeenCalledOnce();
+  rerender(<AddLayoutDialog {...props} open={false} />); rerender(<AddLayoutDialog {...props} open />);
+  expect((screen.getByLabelText("Layout name") as HTMLInputElement).value).toBe("Original request"); expect(mutation.reset).toHaveBeenCalledOnce();
+  fireEvent.submit(screen.getByTestId("add-layout-submit").closest("form")!); expect(mutation.mutate).toHaveBeenCalledOnce();
+});
+it("allows a deliberate retry after the previous request settles with an error", () => {
+  const { props, rerender } = show(); fireEvent.click(screen.getByTestId("add-layout-submit"));
+  const options = mutation.mutate.mock.calls[0]?.[1] as { onSettled: () => void }; mutation.isError = true; mutation.error = new Error("Retry this request"); options.onSettled();
+  rerender(<AddLayoutDialog {...props} />); fireEvent.click(screen.getByTestId("add-layout-submit")); expect(mutation.mutate).toHaveBeenCalledTimes(2);
+});
+it.each(LOCALES)("explains background creation while keeping close available in $code", ({ code }) => {
+  useLocale.getState().setLocale(code); mutation.isPending = true; show();
+  expect(screen.getByRole("status").textContent).toBe(translate(code, "layoutCreationBackgroundHint"));
+  expect((screen.getByRole("button", { name: translate(code, "close") }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it("does not return focus to an old project while another route is loading", async () => {
+  const opener = document.createElement("button"); opener.textContent = "Old project opener"; document.body.append(opener); opener.focus(); let currentProject = true;
+  try {
+    const { props, rerender } = show({ isCurrentProject: () => currentProject }); await screen.findByRole("dialog", { name: "Add layout" }); currentProject = false;
+    rerender(<AddLayoutDialog {...props} open={false} />); await act(async () => { await new Promise(done => setTimeout(done, 20)); }); expect(document.activeElement).toBe(document.body);
+  } finally { opener.remove(); }
+});
+
+it("preserves a failed background request and its file when the dialog is reopened", async () => {
+  const { props, rerender } = show(); fireEvent.change(screen.getByLabelText("Layout name"), { target: { value: "Keep failed request" } });
+  fireEvent.click(screen.getByLabelText("From a floor plan — sketch, CAD export or PDF")); const file = new File(["plan"], "retry-original.pdf");
+  fireEvent.change(screen.getByLabelText("Choose floor plan file"), { target: { files: [file] } }); await screen.findByRole("img"); fireEvent.click(screen.getByTestId("add-layout-submit"));
+  mutation.isError = true; mutation.error = new Error("Background request failed"); const options = mutation.mutate.mock.calls[0]?.[1] as { onSettled: () => void }; options.onSettled();
+  rerender(<AddLayoutDialog {...props} open={false} />); rerender(<AddLayoutDialog {...props} open />);
+  expect((screen.getByLabelText("Layout name") as HTMLInputElement).value).toBe("Keep failed request"); expect(screen.getByText(file.name)).toBeTruthy(); expect(screen.getByRole("alert").textContent).toContain("Background request failed");
+  fireEvent.click(screen.getByTestId("add-layout-submit")); expect(mutation.mutate).toHaveBeenLastCalledWith(expect.objectContaining({ name: "Keep failed request", source: expect.objectContaining({ file }) }), expect.any(Object));
+});
+
+it.each(LOCALES)("starts an empty project with a blank layout in $code", ({ code }) => {
+  useLocale.getState().setLocale(code); show({ parentSetupId: "foreign-layout", layouts: [] });
+  expect((screen.getByLabelText(translate(code, "buildLayoutFromScratch")) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByTestId("add-layout-submit") as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByTestId("add-layout-submit"));
+  expect(mutation.mutate).toHaveBeenCalledWith(expect.objectContaining({ projectId: "raw-project", source: { kind: "empty" } }), expect.any(Object));
+});
