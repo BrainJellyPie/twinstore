@@ -353,11 +353,13 @@ def generate_store(
     checkout_placement = t.checkout_placement if options.checkout_placement == "auto" else options.checkout_placement
     seating_zone = t.seating_zone if options.seating_zone == "auto" else options.seating_zone
 
-    # Reserve the door before allocating checkout counters along the front wall.
+    # Reserve both gates before allocating checkout counters along the front wall.
     entrance_x = {"left": 0, "center": w // 2, "right": w - 1}[options.entrance]
+    exit_x = entrance_x if options.exit_position == "shared" else {"left": 0, "center": w // 2, "right": w - 1}[options.exit_position]
     b.add(RackType.ENTRANCE, entrance_x, h - 1)
-    b.racks.append(Rack(id="r_exit", type=RackType.EXIT, shape=[[1]], position=(entrance_x, h - 1)))
-    counter_xs = [x for x in range(2 if checkout_placement == "auto" else 1, w - 1) if x != entrance_x]
+    b.racks.append(Rack(id="r_exit", type=RackType.EXIT, shape=[[1]], position=(exit_x, h - 1)))
+    b.taken.add((exit_x, h - 1))
+    counter_xs = [x for x in range(2 if checkout_placement == "auto" else 1, w - 1) if b.free(x, h - 1)]
     if checkout_placement == "near_entrance":
         counter_xs.sort(key=lambda x: abs(x - entrance_x))
     elif checkout_placement == "away_from_entrance":
