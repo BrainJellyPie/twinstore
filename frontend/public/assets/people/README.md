@@ -25,9 +25,11 @@ the pinned source revision and SHA-256 records in `sources.json`.
   loop continuously, cross-fade into walking or browsing, and freeze with playback.
   This visual variation does not change simulated actions or attention.
 - The facial FBX's authored `AU_45_Blink` shape is retained as `blink`.
-  Eyelids close and reopen over 0.23 seconds, with
-  deterministic per-shopper intervals of 3.2–6 seconds. This cosmetic motion
-  pauses with playback and stays at a natural rate during accelerated simulation.
+  Eyelids close and reopen over 0.23 seconds. Each shopper uses 3.2–6 second
+  windows with a different deterministic onset in each window, so intervals vary.
+  About 14% of windows include a second blink starting 0.35 seconds after the first.
+  This cosmetic motion pauses with playback; its clock follows elapsed active
+  wall time independently of rendering frame rate and simulation speed.
 - Authored `AU_61`–`AU_64` shapes supply small left/right/up/down gaze shifts.
   Shoppers hold each fixation for 1.8–3.2 seconds and transition over 90 ms,
   with distinct deterministic schedules. Horizontal weights stay within 0.3;

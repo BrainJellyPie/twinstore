@@ -158,6 +158,23 @@ it("closes explicitly without executing an action", () => {
   expect(state.navigate).not.toHaveBeenCalled(); expect(state.setTheme).not.toHaveBeenCalled(); expect(state.quit).not.toHaveBeenCalled();
 });
 
+it.each(["Model providers", "Switch to day theme", "Quit TwinStore"])("does not execute %s when Enter is pressed on the close button", (query) => {
+  state.launched = true;
+  render(<CommandPalette />);
+  fireEvent.change(screen.getByRole("combobox", { name: "Command" }), { target: { value: query } });
+  expect(screen.getAllByRole("option")).toHaveLength(1);
+  const close = screen.getByRole("button", { name: "Close" });
+  close.focus();
+  // jsdom does not synthesize a button's native click from its Enter keydown.
+  const notPrevented = fireEvent.keyDown(close, { key: "Enter" });
+  expect(state.navigate).not.toHaveBeenCalled();
+  expect(state.setTheme).not.toHaveBeenCalled();
+  expect(state.quit).not.toHaveBeenCalled();
+  expect(notPrevented).toBe(true);
+  fireEvent.click(close);
+  expect(useCommandPalette.getState().open).toBe(false);
+});
+
 it.each(["Escape", "Close"])("returns focus to the original editor after dismissing with %s", async (method) => {
   useCommandPalette.setState({ open: false }); render(<><input aria-label="Original editor" /><CommandPalette /></>);
   const editor = screen.getByRole("textbox", { name: "Original editor" }); editor.focus();
