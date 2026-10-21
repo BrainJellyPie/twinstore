@@ -151,6 +151,24 @@ _SPECIALTY: dict[str, list[tuple[str, int]]] = {
     "tea_menu": [("Loose Leaf Green Tea 50g", 899), ("Jasmine Tea Pot", 595), ("Roasted Oolong Tea Pot", 695), ("Chamomile Tea", 425), ("Peppermint Infusion", 425), ("Chai Latte", 525), ("Iced Peach Tea", 495), ("Matcha Cookie", 325), ("Tea Sampler Gift Box", 1899), ("Ceramic Tea Cup", 1299), ("Honey Lemon Tea", 495), ("Decaf Rooibos Tea", 450)],
     "hardware": [("Claw Hammer", 1499), ("Screwdriver Set", 1999), ("Measuring Tape 5m", 999), ("Adjustable Wrench", 1799), ("Wall Plugs & Screws", 699), ("Painter's Tape", 499), ("Safety Glasses", 899), ("LED Work Light", 2499), ("Sanding Sheets 10pk", 799), ("Work Gloves", 1199), ("Spirit Level", 1599), ("Wood Glue", 649)],
     "toys_hobbies": [("Wooden Building Blocks", 2499), ("Jigsaw Puzzle 500pc", 1499), ("Family Board Game", 2999), ("Model Car", 1299), ("Sketching Kit", 1999), ("Soft Plush Bear", 1799), ("Card Game", 999), ("Modeling Clay Set", 1199), ("Science Activity Kit", 2499), ("Origami Paper Set", 699), ("Train Starter Set", 3999), ("Craft Bead Kit", 1599)],
+    "footwear": [
+        ("Everyday Canvas Sneakers", 3999), ("Mesh Running Shoes", 6999), ("Leather Loafers", 8999),
+        ("Trail Walking Shoes", 7999), ("Comfort Sandals", 4499), ("Ankle Boots", 9999),
+        ("Kids' Velcro Sneakers", 3499), ("Indoor Slippers", 1999), ("Performance Socks 3pk", 1299),
+        ("Cushioned Insoles", 1499), ("Shoe Care Brush", 899), ("Replacement Shoelaces", 499),
+    ],
+    "baby_supplies": [
+        ("Newborn Diapers 40pk", 1499), ("Toddler Diapers 36pk", 1599), ("Baby Wet Wipes 80pk", 349),
+        ("Cotton Baby Bibs 3pk", 1299), ("Muslin Swaddle Blanket", 1999), ("Baby Feeding Bottle", 999),
+        ("Silicone Feeding Bowl", 1299), ("Training Cup", 899), ("Cotton Baby Bodysuit", 1499),
+        ("Soft Baby Washcloths 6pk", 999), ("Baby Bath Towel", 1799), ("Diaper Changing Mat", 2499),
+    ],
+    "travel_gear": [
+        ("Cabin Travel Backpack", 5999), ("Packing Cubes 3pc", 2499), ("Travel Neck Pillow", 1999),
+        ("Luggage Tag Set", 799), ("Passport Wallet", 1799), ("Travel Adapter", 1999),
+        ("Luggage Strap", 999), ("Refillable Travel Bottles 4pk", 1299), ("Compact Travel Umbrella", 1699),
+        ("Travel Eye Mask", 899), ("Foldable Day Bag", 1999), ("Compact Toiletry Pouch", 1499),
+    ],
 }
 for _category, _products in _SPECIALTY.items():
     CATALOG[_category] = [CatalogItem(name, name, price) for name, price in _products]

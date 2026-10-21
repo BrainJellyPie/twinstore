@@ -273,6 +273,25 @@ TEMPLATES: list[StoreTemplate] = [
         gondolas=["toys_hobbies", "toys_hobbies", "stationery"], near_counter=["toys_hobbies"],
         style="free_flow", open_hours=(10, 21), design_theme="minimal",
     ),
+    StoreTemplate(
+        id="shoe_boutique", name="Footwear boutique", description="Footwear collections, shoe-care accessories and apparel arranged in showroom groups with charcoal and brass finishes.",
+        store_type="fashion", grid=(22, 16), fridges=[], wall_shelves=["footwear", "footwear", "apparel"] * 2,
+        gondolas=["footwear", "footwear", "sports"], near_counter=["footwear"], style="showroom",
+        open_hours=(10, 21), checkouts=2, checkout_placement="away_from_entrance", design_theme="luxury",
+    ),
+    StoreTemplate(
+        id="baby_family_store", name="Baby & family store", description="Baby essentials, clothing, books and family gifts along a central spine with warm wood finishes and two checkout counters.",
+        store_type="baby", grid=(24, 18), fridges=[], wall_shelves=["baby_supplies", "apparel", "books"] * 3,
+        gondolas=["baby_supplies", "baby_supplies", "toys_hobbies"], near_counter=["baby_supplies", "toys_hobbies"],
+        style="spine", open_hours=(9, 21), checkouts=2, design_theme="warm",
+    ),
+    StoreTemplate(
+        id="travel_essentials", name="Travel essentials shop", description="Travel bags, packing accessories, chargers and personal-care supplies in compact aisles with checkout near the entrance.",
+        store_type="travel", grid=(18, 12), fridges=["water_sports", "soft_drinks"],
+        wall_shelves=["travel_gear", "electronics", "health_beauty"] * 2,
+        gondolas=["travel_gear", "travel_gear", "electronics"], near_counter=["travel_gear", "health_beauty"],
+        open_hours=(6, 23), checkouts=2, checkout_placement="near_entrance", design_theme="industrial",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
