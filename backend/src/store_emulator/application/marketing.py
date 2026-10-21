@@ -29,9 +29,10 @@ from store_emulator.domain.marketing import (
     SurveyReport,
     SurveyRequest,
 )
-from store_emulator.domain.persona import Persona
 from store_emulator.domain.optimize import OptimizeObjective
+from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
+from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.marketing import (
     apply_changes,
     likert_summary,
@@ -42,17 +43,21 @@ from store_emulator.engine.marketing import (
 )
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
+from store_emulator.engine.prompting import display_price
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
-from store_emulator.engine.llm_client import LiteLLMClient
-from store_emulator.engine.prompting import display_price
 
 from .async_executor import executor
 from .capture import capture_llm_config
 from .errors import AppError
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
-from .shelf_lab import _check_id, _load_store, _personas, package_path  # pyright: ignore[reportPrivateUsage]
 from .providers import build_client
+from .shelf_lab import (
+    _check_id,  # pyright: ignore[reportPrivateUsage]
+    _load_store,  # pyright: ignore[reportPrivateUsage]
+    _personas,  # pyright: ignore[reportPrivateUsage]
+    package_path,
+)
 from .simulation import with_engine_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 
@@ -109,12 +114,35 @@ def _status(pid: str, kind: Kind, jid: str) -> JobStatus:
 
 
 def delete_job(pid: str, kind: Kind, jid: str) -> None:
+    status = _status(pid, kind, jid)
+    if status.status in ("pending", "running"):
+        raise AppError(f"{kind} is still {status.status}; wait until it finishes before deleting it", 409)
     folder = _job_dir(pid, kind, jid)
     if not folder.exists():
         raise AppError(f"{kind} not found: {jid}", 404)
     for f in sorted(folder.rglob("*"), reverse=True):
         f.unlink() if f.is_file() else f.rmdir()
     folder.rmdir()
+
+
+def recover_running_jobs() -> int:
+    """Mark jobs left in flight by a previous server process as failed."""
+    recovered = 0
+    for kind in ("experiment", "survey"):
+        for path in Path(DATA_DIR).glob(f"*/marketing/{kind}s/*/status.json"):
+            try:
+                status = JobStatus.model_validate(read_json(path))
+            except (OSError, ValueError) as e:
+                logger.warning(f"[marketing] could not recover {path}: {e}")
+                continue
+            if status.status in ("pending", "running"):
+                status.status = "failed"
+                status.stage = "interrupted"
+                status.error = "interrupted by server restart; start a new job to retry"
+                status.finished_at = now_iso()
+                write_json(path, status.model_dump(mode="json"))
+                recovered += 1
+    return recovered
 
 
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}

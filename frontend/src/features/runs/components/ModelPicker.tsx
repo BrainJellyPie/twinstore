@@ -116,6 +116,21 @@ export function ModelPicker({
 
       {value.kind === "ensemble" && usable.length > 0 && (
         <div className="space-y-2">
+          <button
+            type="button"
+            className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+            onClick={() => {
+              // One model per provider, equal shares: every shopper is drawn at random from them.
+              const perProvider = new Map<string, string>();
+              for (const m of usable) if (!perProvider.has(m.provider)) perProvider.set(m.provider, m.ref);
+              onChange({
+                kind: "ensemble",
+                ensemble: { members: [...perProvider.values()].map((ref) => ({ model: ref, weight: 1 })), mode: "mixture" },
+              });
+            }}
+          >
+            Mix one model from each provider
+          </button>
           <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-1.5">
             {usable.map((m) => {
               const w = weightOf(m.ref);

@@ -42,6 +42,7 @@ from store_emulator.engine.scenario import (
     ScenarioEffects,
     compile_scenario,
     item_categories,
+    priors_for,
     words_categories,
 )
 
@@ -126,7 +127,7 @@ class RuleBasedEngine:
     def __init__(self, pathfinder: PathFinder, config: SimulationConfig):
         self._pathfinder = pathfinder
         self._config = config
-        self._fx = compile_scenario(config.scenario) if config.scenario is not None else ScenarioEffects()
+        self._fx = compile_scenario(config.scenario, config.scenario_priors) if config.scenario is not None else ScenarioEffects()
         # Tokenized catalog per store object (one store per run; a run calls us per customer).
         self._catalog: tuple[Store, list[tuple[Rack, Slot, SlotItem, set[str], set[str]]]] | None = None
 
@@ -144,6 +145,11 @@ class RuleBasedEngine:
 
     def get_usage(self) -> TokenUsage:
         return TokenUsage()
+
+    def prepare(self, store: Store) -> None:
+        """Called once per run with the store: situation effects follow the store's format."""
+        if self._config.scenario is not None:
+            self._fx = compile_scenario(self._config.scenario, priors_for(store.type, self._config.scenario_priors))
 
     async def decide_actions(self, context: PerCustomerContext) -> EngineDecision:
         plan = self._plan(context)

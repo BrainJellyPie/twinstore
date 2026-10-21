@@ -48,6 +48,6 @@ async def start_local_model() -> LocalVLMStatus:
 
 
 @router.post("/local-model/stop", summary="Stop the local vision model started by TwinStore", response_model=LocalVLMStatus)
-async def stop_local_model() -> LocalVLMStatus:
+def stop_local_model() -> LocalVLMStatus:
     manager().stop()
     return manager().status()

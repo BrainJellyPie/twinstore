@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, SecretStr
 
 from .providers import EnsembleConfig
 from .rack import RackType
-from .scenario import Scenario
+from .scenario import Scenario, ScenarioPriors
 
 
 class EngineType(StrEnum):
@@ -206,6 +206,10 @@ class SimulationConfig(BaseModel):
     ensemble: EnsembleConfig | None = None
     # Situation of the simulated day(s): weather, events, promotions, stock-outs, crowding …
     scenario: Scenario | None = None
+    # Effect sizes of situations (weather, calendar, events, promotions). None: chosen by the store's
+    # type — grocery formats use the profile fitted to real data (engine/scenario.py GROCERY_PRIORS),
+    # the others the convenience-store priors.
+    scenario_priors: ScenarioPriors | None = None
 
     def dwell_for(self, rack_type: RackType) -> DwellRange:
         return self.dwell.get(rack_type, DwellRange(min=5, max=30))

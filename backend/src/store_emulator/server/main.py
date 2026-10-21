@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from store_emulator.application.storage.generations import recover_running_generations
 from store_emulator.application.storage.seed import seed_sample_projects
 from store_emulator.application.storage.setups import recover_running_setups
+from store_emulator.application.marketing import recover_running_jobs
 from store_emulator.application.local_vlm import manager as local_vlm
 from store_emulator.application.providers import cloud_providers_with_key
 from .routes import simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing
@@ -44,6 +45,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     recovered_gens = recover_running_generations()
     if recovered_gens > 0:
         logger.info(f"server start: marked {recovered_gens} in-progress generations as failed")
+    recovered_marketing = recover_running_jobs()
+    if recovered_marketing > 0:
+        logger.info(f"server start: marked {recovered_marketing} interrupted marketing jobs as failed")
     if not cloud_providers_with_key():
         # Launched from an app icon: give vision shoppers a model that runs on this computer.
         if os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1":

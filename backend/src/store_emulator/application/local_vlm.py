@@ -126,6 +126,10 @@ def _find_server(root: Path) -> Path | None:
 
 # ── the manager ─────────────────────────────────────────────────────────────
 
+class _StartCancelled(Exception):
+    """The user stopped this startup before the model was ready."""
+
+
 class LocalVLMManager:
     def __init__(self, home: Path | None = None, *, opener: Callable[[urllib.request.Request], IO[bytes]] | None = None,
                  hardware: Callable[[], HardwareProfile] = detect_hardware) -> None:
@@ -135,6 +139,8 @@ class LocalVLMManager:
         self._hw: HardwareProfile | None = None
         self._status = LocalVLMStatus(state="disabled" if self.disabled else "off")
         self._lock = threading.Lock()
+        self._cancel = threading.Event()
+        self._stopping = False
         self._thread: threading.Thread | None = None
         self._proc: subprocess.Popen[bytes] | None = None
 
@@ -150,7 +156,12 @@ class LocalVLMManager:
 
     def _set(self, **changes: object) -> None:
         with self._lock:
-            self._status = self._status.model_copy(update=changes)
+            if not self._cancel.is_set() or changes.get("state") == "disabled":
+                self._status = self._status.model_copy(update=changes)
+
+    def _check_cancelled(self) -> None:
+        if self._cancel.is_set():
+            raise _StartCancelled
 
     def plan(self) -> tuple[HardwareProfile, LocalVLMPlan]:
         if self._hw is None:            # detected once per process
@@ -168,50 +179,67 @@ class LocalVLMManager:
             self._set(state="disabled", message="turned off by TWINSTORE_LOCAL_VLM")
             return self.status()
         with self._lock:
-            busy = self._thread is not None and self._thread.is_alive()
+            busy = self._stopping or (self._thread is not None and self._thread.is_alive())
             ready = self._status.state == "ready" and (self._proc is None or self._proc.poll() is None)
-        if not busy and not ready:
-            self._thread = threading.Thread(target=self._run, name="local-vlm", daemon=True)
-            self._thread.start()
-        if wait and self._thread is not None:
-            self._thread.join()
+            if not busy and not ready:
+                self._cancel.clear()
+                self._thread = threading.Thread(target=self._run, name="local-vlm", daemon=True)
+                self._thread.start()
+            thread = self._thread
+        if wait and thread is not None:
+            thread.join()
         return self.status()
 
     def stop(self) -> None:
-        proc = self._proc
-        if proc is not None and proc.poll() is None:
-            proc.terminate()
+        with self._lock:
+            self._cancel.set()
+            proc, self._proc = self._proc, None
+            if proc is not None:
+                self._stopping = True
+            if proc is not None or self._status.managed or (self._thread is not None and self._thread.is_alive()):
+                self._status = self._status.model_copy(update={
+                    "state": "off", "message": "stopped", "managed": False, "api_base": None, "progress": None,
+                })
+        if proc is not None:
             try:
-                proc.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-        self._proc = None
-        if self._status.managed:
-            self._set(state="off", message="stopped", managed=False)
+                _terminate(proc)
+            finally:
+                with self._lock:
+                    self._stopping = False
 
     # ── pipeline ──
 
     def _run(self) -> None:
         try:
+            self._check_cancelled()
             self._set(state="preparing", message="Reading this computer's hardware", progress=None)
             hw, plan = self.plan()
+            self._check_cancelled()
             self._set(hardware=hw, plan=plan)
             if self._answers(DEFAULT_PORT):   # someone already serves a model there (e.g. by hand)
                 self._ready(f"http://127.0.0.1:{DEFAULT_PORT}/v1", managed=False, runtime="already running")
                 return
+            self._check_cancelled()
             server = self._runtime(hw, plan)
+            self._check_cancelled()
             files = [self._download_model(plan.model.repo, f) for f in (plan.model.file, plan.model.mmproj)]
+            self._check_cancelled()
             try:
                 self._serve(server, files[0], files[1], plan)
             except RuntimeError as e:
+                self._check_cancelled()
                 if plan.backend == "cpu":
                     raise
                 logger.warning(f"[local_vlm] {plan.backend} build did not start ({e}); falling back to the CPU")
                 plan = downgrade(plan, hw)
                 self._set(plan=plan)
                 server = self._runtime(hw, plan)
+                self._check_cancelled()
                 files = [self._download_model(plan.model.repo, f) for f in (plan.model.file, plan.model.mmproj)]
+                self._check_cancelled()
                 self._serve(server, files[0], files[1], plan)
+        except _StartCancelled:
+            pass
         except Exception as e:  # noqa: BLE001 — surfaced in the status, the app keeps working without it
             logger.warning(f"[local_vlm] {type(e).__name__}: {e}")
             self._set(state="error", message=f"{type(e).__name__}: {e}"[:300], progress=None)
@@ -226,6 +254,7 @@ class LocalVLMManager:
             return False
 
     def _runtime(self, hw: HardwareProfile, plan: LocalVLMPlan) -> Path:
+        self._check_cancelled()
         own = os.environ.get("TWINSTORE_LLAMA_SERVER")
         if own and Path(own).is_file():
             self._set(runtime=own)
@@ -256,6 +285,7 @@ class LocalVLMManager:
         target.mkdir(parents=True, exist_ok=True)
         for name in names:
             archive = self._download(assets[name], target / name, label=f"llama.cpp {release.get('tag_name', '')}")
+            self._check_cancelled()
             _safe_extract(archive, target)
             archive.unlink(missing_ok=True)
         found = _find_server(target)
@@ -269,60 +299,92 @@ class LocalVLMManager:
         return found
 
     def _download_model(self, repo: str, file: str) -> Path:
+        self._check_cancelled()
         path = self.home / "models" / repo.replace("/", "__") / file
         if path.is_file() and path.stat().st_size > 0:
             return path
         return self._download(HF_URL.format(repo=repo, file=file), path, label=file)
 
     def _download(self, url: str, path: Path, *, label: str) -> Path:
+        self._check_cancelled()
         path.parent.mkdir(parents=True, exist_ok=True)
         part = path.with_name(path.name + ".part")
         self._set(state="downloading", message=f"Downloading {label}", progress=0.0, downloaded_mb=0.0, total_mb=0.0)
-        with self._open(urllib.request.Request(url, headers={"User-Agent": "TwinStore"})) as r, part.open("wb") as out:
-            total = int(getattr(r, "headers", {}).get("Content-Length") or 0)
-            done = 0
-            last = 0.0
-            while chunk := r.read(1 << 20):
-                out.write(chunk)
-                done += len(chunk)
-                if time.monotonic() - last > 0.5:
-                    last = time.monotonic()
-                    self._set(progress=done / total if total else None, downloaded_mb=round(done / 1e6, 1),
-                              total_mb=round(total / 1e6, 1))
-        part.replace(path)
+        try:
+            with self._open(urllib.request.Request(url, headers={"User-Agent": "TwinStore"})) as r, part.open("wb") as out:
+                length = getattr(r, "headers", {}).get("Content-Length")
+                total = int(length) if length is not None else None
+                done = 0
+                last = 0.0
+                while chunk := r.read(1 << 20):
+                    self._check_cancelled()
+                    out.write(chunk)
+                    done += len(chunk)
+                    if time.monotonic() - last > 0.5:
+                        last = time.monotonic()
+                        self._set(progress=min(done / total, 1.0) if total else None, downloaded_mb=round(done / 1e6, 1),
+                                  total_mb=round(total / 1e6, 1) if total else 0.0)
+            self._check_cancelled()
+            if done == 0 or (total is not None and done != total):
+                raise RuntimeError(f"Download of {label} is incomplete: received {done} bytes, expected {total if total is not None else 'a nonempty file'}")
+            part.replace(path)
+        finally:
+            part.unlink(missing_ok=True)
         self._set(progress=1.0, downloaded_mb=round(done / 1e6, 1))
         return path
 
     def _serve(self, server: Path, model: Path, mmproj: Path, plan: LocalVLMPlan) -> None:
+        self._check_cancelled()
         port = DEFAULT_PORT if _port_free(DEFAULT_PORT) else _free_port()
         self._set(state="starting", message=f"Starting {plan.model.label} on {plan.device}", progress=None)
         cmd = [str(server), "-m", str(model), "--mmproj", str(mmproj), "--host", "127.0.0.1", "--port", str(port),
                "-c", str(plan.context), "-np", str(plan.parallel), "-ngl", str(plan.gpu_layers), "-t", str(plan.threads),
                "--reasoning", "off", "--image-max-tokens", "512", "--cache-ram", "256", "--no-webui", "-a", "local-model"]
-        log = (self.home / "server.log").open("ab")
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        self._proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                                      creationflags=flags)
+        with self._lock:
+            self._check_cancelled()
+            with (self.home / "server.log").open("ab") as log:
+                proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                        creationflags=flags)
+            self._proc = proc
         deadline = time.monotonic() + 600
         while time.monotonic() < deadline:
-            if self._proc.poll() is not None:
-                raise RuntimeError(f"llama-server exited with code {self._proc.returncode} (see {self.home / 'server.log'})")
+            self._check_cancelled()
+            if proc.poll() is not None:
+                raise RuntimeError(f"llama-server exited with code {proc.returncode} (see {self.home / 'server.log'})")
             if self._answers(port):
                 self._ready(f"http://127.0.0.1:{port}/v1", managed=True, runtime=self._status.runtime)
                 return
-            time.sleep(1.0)
-        self.stop()
+            self._cancel.wait(1.0)
+        _terminate(proc)
+        with self._lock:
+            if self._proc is proc:
+                self._proc = None
         raise RuntimeError("the local model did not load within 10 minutes")
 
     def _ready(self, api_base: str, *, managed: bool, runtime: str) -> None:
         from . import providers  # late import: providers imports nothing from here
 
-        providers.use_local_server(api_base)
         plan = self._status.plan
         label = f"{plan.model.label} on {plan.device}" if plan and managed else "the llama.cpp server on this computer"
-        self._set(state="ready", message=f"Ready: {label}", api_base=api_base, managed=managed, runtime=runtime,
-                  progress=None)
+        with self._lock:
+            self._check_cancelled()
+            providers.use_local_server(api_base)
+            self._status = self._status.model_copy(update={
+                "state": "ready", "message": f"Ready: {label}", "api_base": api_base, "managed": managed,
+                "runtime": runtime, "progress": None,
+            })
         logger.info(f"[local_vlm] ready at {api_base} ({label})")
+
+
+def _terminate(proc: subprocess.Popen[bytes]) -> None:
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
 
 _DIRECT = urllib.request.build_opener(urllib.request.ProxyHandler({}))
