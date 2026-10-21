@@ -4,12 +4,13 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { VlmSynergyDialog } from "../VlmSynergyDialog";
+import { useSimulationStore } from "@/stores/simulationStore";
 
 vi.mock("@/shared/api/client", () => ({ startVlmSynergy: vi.fn(), getVlmSynergyJob: vi.fn() }));
 vi.mock("@/features/runs/components/ModelPicker", () => ({ ModelPicker: () => null }));
 
 const clients: QueryClient[] = [];
-afterEach(() => { cleanup(); clients.splice(0).forEach((client) => client.clear()); vi.resetAllMocks(); });
+afterEach(() => { cleanup(); clients.splice(0).forEach((client) => client.clear()); vi.resetAllMocks(); useSimulationStore.getState().reset(); });
 
 const venue: api.SynergyRow = { venue_id: "cafe", name: "Corner Cafe", category: "cafe", distance_m: 12,
   effect_on_focal_visitors: 10, effect_on_focal_pct: 0.1, role: "complement" };
@@ -67,4 +68,36 @@ it("preserves progress after a polling failure and prevents repeat retries while
   await screen.findByText("9 / 20 shopper visits");
   await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   expect(api.startVlmSynergy).toHaveBeenCalledOnce();
+});
+
+function completed(currency?: string | null): { status: api.SynergyJobStatus; result: api.VLMSynergyResult & { currency?: string | null } } {
+  return { status: { ...status, status: "completed", phase: "done", done: 20 }, result: {
+    currency, venue_id: venue.venue_id, venue_name: venue.name, category: "cafe", distance_m: 12, model: "offline fixture",
+    visitors_with: 20, visitors_without: 10, delta_visitors: 10, linked_visitors_from_venue: 10, panel_customers: 4,
+    affected_customers: 2, affected_share: 0.5, spend_per_visitor_with: 1500, spend_per_visitor_without: 1000,
+    delta_spend_per_visitor: 500, delta_spend_ci_low: -200, delta_spend_ci_high: 800, prob_spend_higher: 0.8,
+    conversion_with: 0.5, conversion_without: 0.25, delta_conversion: 0.25, category_shifts: [],
+    revenue_per_day_with: 2000, revenue_per_day_without: 1000, delta_revenue_per_day: 1000,
+    delta_revenue_from_visitors: 300, delta_revenue_from_baskets: 700, examples: [], vlm_requests: 0,
+    failed_customers: 0, seconds: 0, notes: [],
+  } };
+}
+const monetaryCases = [
+  ["USD", "$10.00"], ["KRW", "₩1,000"], ["JPY", "¥1,000"], ["EUR", "€10.00"], ["USD_CENTS", "$10.00"],
+].flatMap(([currency, expected]) => ["USD", "KRW"].map(previousCurrency => ({ currency, expected, previousCurrency })));
+it.each(monetaryCases)("uses saved $currency amounts after viewing a $previousCurrency simulation", async ({ currency, expected, previousCurrency }) => {
+  useSimulationStore.getState().setCurrency(previousCurrency!);
+  vi.mocked(api.getVlmSynergyJob).mockResolvedValue(completed(currency)); show();
+  expect(await screen.findByText(`+${expected} / day`)).toBeTruthy(); expect(api.startVlmSynergy).toHaveBeenCalledOnce();
+});
+it.each([undefined, null, ""])("keeps legacy results without currency (%s) in unconverted minor units", async currency => {
+  useSimulationStore.getState().setCurrency("USD"); vi.mocked(api.getVlmSynergyJob).mockResolvedValue(completed(currency)); show();
+  expect(await screen.findByText("+1,000 minor units / day")).toBeTruthy();
+  expect(screen.getByText("Currency was not recorded for this saved result. Amounts are shown in minor units.")).toBeTruthy();
+  expect(screen.queryByText(/\$/)).toBeNull(); expect(api.startVlmSynergy).toHaveBeenCalledOnce();
+});
+it("keeps a displayed result in its own currency when another simulation changes the global currency", async () => {
+  useSimulationStore.getState().setCurrency("KRW"); vi.mocked(api.getVlmSynergyJob).mockResolvedValue(completed("KRW")); show();
+  await screen.findByText("+₩1,000 / day"); act(() => useSimulationStore.getState().setCurrency("USD"));
+  expect(screen.getByText("+₩1,000 / day")).toBeTruthy(); expect(screen.queryByText("+$10.00 / day")).toBeNull();
 });

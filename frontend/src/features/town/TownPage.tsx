@@ -26,7 +26,6 @@ export function TownPage({ projectId }: { projectId: string }) {
   const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [mode, setMode] = useState<MapMode>("inspect");
   const [placeCategory, setPlaceCategory] = useState<VenueCategory>("cafe");
-  const [synergy, setSynergy] = useState<SynergyRow[] | null>(null);
   const [vlmVenue, setVlmVenue] = useState<SynergyRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +41,7 @@ export function TownPage({ projectId }: { projectId: string }) {
   const setTown = (t: Town) => {
     qc.setQueryData(queryKeys.town(projectId), t);
     void qc.invalidateQueries({ queryKey: ["projects", projectId, "town", "demand"] });
-    setSynergy(null);
+    setVlmVenue(null);
     setError(null);
   };
   const onError = (e: unknown) => setError(e instanceof Error ? e.message.replace(/^\d+ [^:]*: /, "") : String(e));
@@ -52,7 +51,13 @@ export function TownPage({ projectId }: { projectId: string }) {
     onError,
   });
   const remove = useMutation({ mutationFn: (venueId: string) => api.removeTownVenue(projectId, venueId), onSuccess: setTown, onError });
-  const analyze = useMutation({ mutationFn: () => api.getTownSynergy(projectId, dayType), onSuccess: setSynergy, onError });
+  const analyze = useMutation({
+    mutationFn: (context: { town: Town; dayType: TownDayType }) => api.getTownSynergy(projectId, context.dayType),
+  });
+  const currentAnalysis = analyze.variables?.town === town && analyze.variables?.dayType === dayType;
+  const synergy = currentAnalysis ? analyze.data : undefined;
+  const analysisPending = currentAnalysis && analyze.isPending;
+  const analysisError = currentAnalysis ? analyze.error : null;
   const loadError = townQ.isError ? (
     <div role="alert" className="min-w-0 max-w-md space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
       <p className="font-medium">Could not load neighborhood.</p>
@@ -109,6 +114,7 @@ export function TownPage({ projectId }: { projectId: string }) {
         {town && <TownSummary town={town} />}
         {town && loadError}
         {error && <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p>}
+        {analysisError && <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{analysisError.message}</p>}
         {(townQ.isSuccess || town) && <>
           <GeneratePanel projectId={projectId} onDone={setTown} onError={onError} hasTown={!!town} />
           <ImportPanel projectId={projectId} onDone={setTown} onError={onError} />
@@ -120,7 +126,7 @@ export function TownPage({ projectId }: { projectId: string }) {
               <h3 className="font-medium">Our store's customers</h3>
               <div className="inline-flex rounded-md border p-0.5 text-xs">
                 {(["weekday", "weekend", "holiday"] as TownDayType[]).map((d) => (
-                  <button key={d} type="button" onClick={() => setDayType(d)} className={cn("rounded px-2 py-0.5", dayType === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
+                  <button key={d} type="button" onClick={() => { setDayType(d); setVlmVenue(null); }} className={cn("rounded px-2 py-0.5", dayType === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
                     {d}
                   </button>
                 ))}
@@ -147,8 +153,8 @@ export function TownPage({ projectId }: { projectId: string }) {
           <section className="space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Neighbor synergy</h3>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
-                {analyze.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Analyze
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setVlmVenue(null); analyze.mutate({ town, dayType }); }} disabled={analysisPending}>
+                {analysisPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Analyze
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -157,7 +163,7 @@ export function TownPage({ projectId }: { projectId: string }) {
             {synergy && <SynergyTable rows={synergy} onAskShoppers={setVlmVenue} />}
           </section>
         )}
-        <VlmSynergyDialog projectId={projectId} venue={vlmVenue} dayType={dayType} scenarioId={scenarioId}
+        <VlmSynergyDialog projectId={projectId} venue={vlmVenue && synergy?.includes(vlmVenue) ? vlmVenue : null} dayType={dayType} scenarioId={scenarioId}
           onOpenChange={(o) => { if (!o) setVlmVenue(null); }} />
       </aside>
     </div>
