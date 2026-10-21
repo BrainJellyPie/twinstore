@@ -27,6 +27,7 @@ from store_emulator.domain.marketing import (
 from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.domain.factorial import FactorialReport, FactorialRequest, FactorialSource
 from store_emulator.engine.marketing.conjoint_design import ConjointDesign
+from store_emulator.engine.marketing.experiment_design import ExperimentDesign
 from store_emulator.engine.marketing.reading import StudyReading
 from store_emulator.engine.marketing.report import ReportNarrative
 
@@ -45,6 +46,13 @@ def _call[T](fn: Callable[[], T]) -> T:
 @router.get("/{pid}/marketing", summary="Marketing studio settings", response_model=MarketingInfo)
 def marketing_info(pid: str) -> MarketingInfo:
     return MarketingInfo(currency=get_config().currency)
+
+
+@router.post("/{pid}/experiments/design", summary="Draft an A/B test from a question", response_model=ExperimentDesign)
+async def design_experiment(pid: str, req: study_design.ExperimentDesignRequest) -> ExperimentDesign:
+    """The text model drafts variants (price, discount, sign, move, package, category price) on the layout's own
+    products and shelves. Nothing runs; the draft fills the builder."""
+    return await run_in_threadpool(_call, lambda: study_design.design_ab(pid, req, get_config()))
 
 
 @router.post("/{pid}/experiments", summary="Start an A/B test", response_model=JobStatus)

@@ -68,3 +68,13 @@ def test_the_engine_list_says_when_a_default_model_has_no_key(keys, monkeypatch)
     assert llm["model"].startswith("gemini/") and llm["model_ready"] is False
     assert llm["suggested_model"] == "anthropic:claude-haiku-5-5"
     assert engines["rule_based"]["model_ready"] is True and engines["rule_based"]["suggested_model"] == ""
+
+
+def test_prompt_listings_put_products_the_question_names_first_and_share_the_rest():
+    from store_emulator.engine.prompting import relevant_first
+
+    entries = [("Drinks", f"Cola {i}", f"cola{i}") for i in range(5)] + [("Snacks", f"Chips {i}", f"chips{i}") for i in range(5)] \
+        + [("Ice cream", "Vanilla pint", "vanilla"), ("Ice cream", "Cookie dough pint", "dough")]
+    assert relevant_first(entries, "Would ice creams sell more at eye level?", 4) == ["vanilla", "dough", "cola0", "chips0"]
+    assert relevant_first(entries, "", 3) == ["cola0", "chips0", "vanilla"]
+    assert len(relevant_first(entries, "", 50)) == 12

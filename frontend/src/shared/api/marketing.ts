@@ -243,6 +243,14 @@ export const writeStudyReading = (pid: string, study: StudyPath, id: string, mod
 export const deleteStudyReading = (pid: string, study: StudyPath, id: string) =>
   fetchJson<void>(`${root(pid)}/${study}/${id}/reading`, { method: "DELETE" });
 
+/** An A/B test drafted by the text model from a question, on the layout's own products and shelves. */
+export interface ExperimentDesign {
+  name: string; variants: { name: string; changes: VariantChange[] }[]; focus_skus: string[]; engine: ExperimentEngine;
+  rationale: string; warnings: string[];
+}
+export const designExperiment = (pid: string, req: { question: string; setup_id: string; model?: string }) =>
+  fetchJson<ExperimentDesign>(`${root(pid)}/experiments/design`, { method: "POST", body: JSON.stringify(req) });
+
 export const startSurvey = (pid: string, req: SurveyRequest) =>
   fetchJson<JobStatus>(`${root(pid)}/surveys`, { method: "POST", body: JSON.stringify(req) });
 export const listSurveys = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/surveys`, { signal });

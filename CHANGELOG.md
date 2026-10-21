@@ -37,6 +37,13 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the details opened for checking. Promotions and stock-outs are matched against the layout's products: targets that
   match nothing are left out and listed, and a target that reaches several products says how many.
   API: `POST /api/scenarios/describe`.
+- **Draft the test** in the A/B builder: write the question ("would eye level or a 2+1 sign sell more ice cream?")
+  and the text model drafts variants from the builder's own changes (price, discount, sign, move, new package,
+  category price) on the layout's products, shelves and product images, with the products to track, the engine and a
+  rationale. Changes that point at nothing are left out and listed, as are changes that would do nothing.
+  API: `POST /api/projects/{pid}/experiments/design`.
+- Drafting prompts list the products a question names first and share the rest across shelves, so a long catalogue
+  is no longer cut off at whichever shelves come last.
 - **Draft the study** in the conjoint builder: write the question the study should answer and the text model drafts
   the product, attributes, levels and price levels in the study's currency, bracketing comparable products of the
   active layout (cited when the model used them), with a short rationale; everything stays editable before fielding.

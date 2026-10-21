@@ -11,7 +11,7 @@ from typing import Protocol
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.marketing import ConjointAttribute
-from store_emulator.engine.prompting import display_price
+from store_emulator.engine.prompting import display_price, relevant_first
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 MAX_LISTED = 120
@@ -65,10 +65,11 @@ answered, draft one study:
 Keep levels concrete (sizes with units, named claims). Write in English."""
 
 
-def _shelf_text(products: Sequence[tuple[str, int]], currency: str) -> str:
+def _shelf_text(products: Sequence[tuple[str, int]], currency: str, question: str = "") -> str:
     if not products:
         return "No store products given."
-    shown = list(dict.fromkeys(products))[:MAX_LISTED]
+    unique = list(dict.fromkeys(products))
+    shown = relevant_first([("", name, (name, price)) for name, price in unique], question, MAX_LISTED)
     return "Products in this store: " + "; ".join(f"{name} {display_price(price, currency)}" for name, price in shown)
 
 
@@ -105,6 +106,6 @@ async def design_conjoint(
 ) -> ConjointDesign:
     draft = await llm.generate_structured_async(
         _Draft, DESIGN_PROMPT.format(currency=currency.upper()),
-        f"{_shelf_text(products, currency)}\n\nQuestion: {question.strip()}", max_retries=2, seed=0,
+        f"{_shelf_text(products, currency, question)}\n\nQuestion: {question.strip()}", max_retries=2, seed=0,
     )
     return to_design(draft, currency, products)

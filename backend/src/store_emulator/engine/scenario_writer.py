@@ -23,6 +23,7 @@ from store_emulator.domain.scenario import (
     Weather,
 )
 from store_emulator.domain.store import Store
+from store_emulator.engine.prompting import relevant_first
 from store_emulator.engine.scenario import apply_to_store
 
 MAX_LISTED_PRODUCTS = 150
@@ -92,10 +93,11 @@ stock-outs the description does not mention.
 Write in English."""
 
 
-def _store_text(store: Store) -> str:
+def _store_text(store: Store, description: str = "") -> str:
     racks = [r for r in store.product_racks if r.slots]
-    names = list(dict.fromkeys(i.name for r in racks for s in r.slots for i in s.items))
-    shown = names[:MAX_LISTED_PRODUCTS]
+    entries = list(dict.fromkeys((r.rack_name, i.name, i.name) for r in racks for s in r.slots for i in s.items))
+    names = list(dict.fromkeys(name for _, _, name in entries))
+    shown = list(dict.fromkeys(relevant_first(entries, description, MAX_LISTED_PRODUCTS)))
     more = f" (and {len(names) - len(shown)} more)" if len(names) > len(shown) else ""
     return (f"Shelves: {', '.join(dict.fromkeys(r.rack_name for r in racks))}\n"
             f"Products: {'; '.join(shown)}{more}")
@@ -147,7 +149,7 @@ def to_scenario(draft: ScenarioDraft, description: str, store: Store | None) -> 
 async def describe_scenario(
     llm: StructuredLLM, description: str, store: Store | None, examples: Sequence[str] = (),
 ) -> DescribedScenario:
-    context = _store_text(store) if store is not None else "No store given: leave promotions and stock-outs empty."
+    context = _store_text(store, description) if store is not None else "No store given: leave promotions and stock-outs empty."
     hint = f"\n\nPresets the user could also pick: {', '.join(examples)}" if examples else ""
     draft = await llm.generate_structured_async(
         ScenarioDraft, WRITER_PROMPT, f"Store:\n{context}{hint}\n\nDescription: {description.strip()}",

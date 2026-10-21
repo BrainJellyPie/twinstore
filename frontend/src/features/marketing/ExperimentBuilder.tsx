@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, BadgePercent, Copy, Eye, FlaskConical, Loader2, Package, Plus, Sparkles, Tag, Tags, Trash2, Wand2, X } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { marketingKeys, startExperiment, type ChangeKind, type ExperimentEngine, type ExperimentRequest, type JobStatus, type VariantChange } from "@/shared/api/marketing";
+import { designExperiment, marketingKeys, startExperiment, type ChangeKind, type ExperimentEngine, type ExperimentRequest, type JobStatus, type VariantChange } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
@@ -100,6 +100,20 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
     },
   });
 
+  // Draft the whole test from the question it should answer; everything stays editable.
+  const [question, setQuestion] = useState("");
+  const draft = useMutation({
+    mutationFn: () => designExperiment(projectId, { question: question.trim(), setup_id: setupId }),
+    onSuccess: (d) => {
+      setVariants(d.variants.map((v) => ({ id: uid(), name: v.name, changes: v.changes.map((c) => ({ ...c, id: uid() })) })));
+      setEngine(d.engine);
+      const first = d.variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).find(Boolean);
+      if (first) setHero(first);
+      setExtraFocus(d.focus_skus.filter((s) => !d.variants.some((v) => v.changes.some((c) => c.sku === s))));
+      if (!name.trim()) setName(d.name);
+    },
+  });
+
   const update = (vid: string, fn: (v: DraftVariant) => DraftVariant) => setVariants((vs) => vs.map((v) => (v.id === vid ? fn(v) : v)));
   const heroProduct = productMap.get(hero);
   const heroRack = fixtures.find((f) => heroProduct?.racks.includes(f.name));
@@ -147,6 +161,23 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   return (
     <div className="space-y-4">
       <section className="glass space-y-3 rounded-2xl p-4">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2">
+          <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
+          <Input value={question} onChange={(e) => setQuestion(e.target.value.slice(0, 500))}
+            onKeyDown={(e) => { if (e.key === "Enter" && question.trim().length >= 5 && !draft.isPending) { e.preventDefault(); draft.mutate(); } }}
+            placeholder="What should the test answer? e.g. Does a 1+1 sign on cola sell more than a 20 % cut?"
+            aria-label="Question for the test" className="h-9 min-w-[14rem] flex-1 bg-card" />
+          <Button type="button" size="sm" variant="outline" disabled={question.trim().length < 5 || draft.isPending} onClick={() => draft.mutate()}>
+            {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the test
+          </Button>
+          {draft.data && (
+            <div className="basis-full space-y-0.5 px-1 text-xs text-muted-foreground">
+              <p>{draft.data.rationale} Check the variants below before running.</p>
+              {draft.data.warnings.map((w) => <p key={w}>· {w}</p>)}
+            </div>
+          )}
+          {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
+        </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex min-w-[15rem] flex-1 flex-col gap-1">
             <span className="text-xs text-muted-foreground">Product the test is about</span>
