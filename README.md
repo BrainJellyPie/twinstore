@@ -286,6 +286,15 @@ circulation space. Checkout counters can use the default arrangement or be place
 near or away from the entrance. These choices appear in the preview and are saved
 per layout or building floor, including when reusing settings for an alternative.
 
+**Checkout wall** places the counter bank on the front, back, left or right wall.
+Near/away placement uses distance from the actual entrance on the chosen wall.
+Small checkout displays move with the bank, and cold or wall displays use the
+remaining space. Side-wall capacity follows floor depth; front/back capacity
+follows width. The default count adapts to available space, while an explicit
+count that cannot fit returns an adjustment message. If the bank leaves no room
+for the only included product categories, choose fewer counters or restore more
+categories. Wall choices also travel with exported layout and building options.
+
 The exit can share the entrance or occupy a separate left, center or right cell
 on the front row. Checkout counters and impulse displays leave both gates clear.
 This supports separate arrival and departure routes; shoppers use the selected

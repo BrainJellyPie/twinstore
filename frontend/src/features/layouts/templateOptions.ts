@@ -12,7 +12,7 @@ export interface TemplateChoice extends LayoutOptions {
 export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   templateId: "urban_cvs", seed: 0, currency: "USD", style: null,
   density: "balanced", entrance: "left", exit_position: "shared", checkouts: null, fixture_design: "mixed", design_theme: null, dining_tables: null,
-  checkout_placement: "auto", seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1,
+  checkout_placement: "auto", checkout_wall: "front", seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1,
   aisle_width: null, max_shelf_run: null, excluded_categories: [],
 };
 
@@ -45,7 +45,7 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
     max_shelf_run: value.max_shelf_run,
     checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme,
     dining_tables: value.dining_tables, seating_zone: value.seating_zone, table_clearance: value.table_clearance,
-    checkout_placement: value.checkout_placement, reserved_areas: value.reserved_areas, requirements: value.requirements,
+    checkout_placement: value.checkout_placement, checkout_wall: value.checkout_wall, reserved_areas: value.reserved_areas, requirements: value.requirements,
     excluded_categories: value.excluded_categories,
   };
 }
