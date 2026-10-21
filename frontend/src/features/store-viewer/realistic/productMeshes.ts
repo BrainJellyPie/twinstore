@@ -15,6 +15,8 @@ import { produceVariation } from "./produceVariation";
 
 const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }> = {
   bottle: { roughness: 0.18, metalness: 0 },
+  perfumeBottle: { roughness: 0.12, metalness: 0.08 },
+  teaCup: { roughness: 0.3, metalness: 0 },
   can: { roughness: 0.28, metalness: 0.55 },
   cup: { roughness: 0.55, metalness: 0 },
   pint: { roughness: 0.5, metalness: 0 },

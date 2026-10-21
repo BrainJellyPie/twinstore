@@ -234,6 +234,32 @@ function box(): THREE.BufferGeometry {
   return g;
 }
 
+function perfumeBottle(): THREE.BufferGeometry {
+  const body = box().scale(1, 0.72, 1);
+  const neck = new THREE.BoxGeometry(0.24, 0.06, 0.24).translate(0, 0.75, 0);
+  const cap = new THREE.BoxGeometry(0.45, 0.22, 0.55).translate(0, 0.89, 0);
+  for (const part of [neck, cap]) {
+    const uv = part.getAttribute("uv");
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, ZONE_ACCENT[0], ZONE_ACCENT[1]);
+  }
+  const geometry = mergeGeometries([body, neck, cap])!;
+  body.dispose(); neck.dispose(); cap.dispose();
+  return geometry;
+}
+
+function teaCup(lod: Lod): THREE.BufferGeometry {
+  const body = revolve(profile([
+    [0, 0, "body"], [0.35, 0, "body"], [0.35, 0, "label"],
+    [0.48, 0.72, "label"], [0.5, 0.73, "accent"], [0.5, 0.76, "accent"], [0, 0.76, "accent"],
+  ], 0, 0.72), lod === 0 ? 8 : 16);
+  const straw = new THREE.CylinderGeometry(0.025, 0.025, 0.24, lod === 0 ? 6 : 10).translate(0.16, 0.88, 0);
+  const uv = straw.getAttribute("uv");
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, ZONE_ACCENT[0], ZONE_ACCENT[1]);
+  const geometry = mergeGeometries([body, straw])!;
+  body.dispose(); straw.dispose();
+  return geometry;
+}
+
 // Pillow bag: front and back surfaces bulge out and pinch to a seam on every
 // edge; crimped seals top and bottom.
 function bag(lod: Lod): THREE.BufferGeometry {
@@ -394,6 +420,10 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
   switch (kind) {
     case "bottle":
       return bottle(lod);
+    case "perfumeBottle":
+      return perfumeBottle();
+    case "teaCup":
+      return teaCup(lod);
     case "can":
       return can(lod);
     case "tube":
@@ -424,4 +454,4 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
   }
 }
 
-export const PACKAGE_KINDS: PackageKind[] = ["bottle", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "avocado", "pot", "croissant", "wateringCan"];
+export const PACKAGE_KINDS: PackageKind[] = ["bottle", "perfumeBottle", "teaCup", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "avocado", "pot", "croissant", "wateringCan"];
