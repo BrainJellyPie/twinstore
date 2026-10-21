@@ -47,7 +47,7 @@ def focus_outcomes(
     ids = sorted(set(a) & set(b))
     if not ids or not skus:
         return []
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(abs(seed))
     idx = rng.integers(0, len(ids), size=(n_bootstrap, len(ids)))
     groups = [(sku, names.get(sku, sku), {sku}) for sku in skus]
     if len(skus) > 1:
@@ -155,7 +155,7 @@ def segment_lifts(
     metrics: list[tuple[Literal["spend", "focus_units"], Callable[[CustomerResult], float]]] = [("spend", lambda r: float(r.total_spent))]
     if focus:
         metrics.append(("focus_units", lambda r: float(sum(e.quantity for e in r.purchases if e.product_sku in focus))))
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(abs(seed))
     out: list[SegmentLift] = []
     for segment in sorted(groups):
         ids = groups[segment]
@@ -176,6 +176,7 @@ def _summary(name: str, results: list[CustomerResult]) -> VariantResult:
     n = max(1, len(results))
     return VariantResult(
         name=name,
+        customers=len(results),
         revenue_per_visitor=round(sum(r.total_spent for r in results) / n, 4),
         conversion=round(sum(1 for r in results if r.purchases) / n, 4),
         units_per_visitor=round(sum(r.units_bought for r in results) / n, 4),
@@ -198,21 +199,43 @@ async def run_experiment(
     if on_progress:
         on_progress(0.0, "control")
     base = await evaluator.evaluate_customers(control, panel)
+    common_ids = {p.id for p in panel} & {r.persona_id for r in base}
+    if not common_ids:
+        raise ValueError("Control produced no successful shopper results for the requested panel; the experiment cannot be compared.")
+    runs: list[list[CustomerResult]] = []
+    for k, (name, store, _, _) in enumerate(variants, start=1):
+        if on_progress:
+            on_progress(k / total, name)
+        res = await evaluator.evaluate_customers(store, panel)
+        common_ids.intersection_update(r.persona_id for r in res)
+        if not common_ids:
+            raise ValueError(f"No common successful shoppers remain across Control and the variants through '{name}'; the experiment cannot be compared.")
+        runs.append(res)
+
+    # Every arm must describe the same shoppers, including headline scores and the price curve.
+    base = [r for r in base if r.persona_id in common_ids]
+    comparison_notes: list[str] = []
+    if len(common_ids) < len(panel):
+        comparison_notes.append(
+            f"Only {len(common_ids)} of {len(panel)} requested shoppers succeeded in every arm. "
+            "All summaries and comparisons use this common cohort; excluded shoppers may bias the result."
+        )
+    if len(common_ids) < 30:
+        comparison_notes.append("Fewer than 30 paired customers: intervals are unreliable.")
     names = {e.product_sku: e.product_name for r in base for e in r.purchases}
     for rack in control.racks:
         for slot in rack.slots:
             for item in slot.items:
                 names.setdefault(item.sku, item.name)
     control_result = _summary("Control", base)
+    control_result.warnings = list(comparison_notes)
     control_result.top_skus = sku_sales(base, keep=focus_skus)
     control_result.prices = _prices(control, focus_skus)
     results: list[VariantResult] = []
-    for k, (name, store, applied, warnings) in enumerate(variants, start=1):
-        if on_progress:
-            on_progress(k / total, name)
-        res = await evaluator.evaluate_customers(store, panel)
+    for (name, store, applied, warnings), outcomes in zip(variants, runs, strict=True):
+        res = [r for r in outcomes if r.persona_id in common_ids]
         out = _summary(name, res)
-        out.applied, out.warnings = applied, warnings
+        out.applied, out.warnings = applied, [*warnings, *comparison_notes]
         out.prices = _prices(store, focus_skus)
         out.segments = segment_lifts(base, res, panel, focus_skus, seed=seed)
         out.vs_control = compare_runs(base, res, run_a="Control", run_b=name, seed=seed).metrics

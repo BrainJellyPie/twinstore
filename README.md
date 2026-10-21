@@ -173,12 +173,23 @@ Choose **Expand floor plan** to inspect the current preview at a larger size,
 with numbered rows and columns, a cell grid, seating and checkout counts, and a
 list of reserved areas. Zoom up to 400% and scroll to inspect individual cells,
 or choose **Fit floor plan** to see the whole floor again. Close it or press Escape to return to the same settings.
+**Download SVG** saves the complete floor at any zoom level, including the grid,
+fixture colors and reserved-area markers. The file contains the store name,
+counts, color legend and reserved-area descriptions as accessible SVG metadata;
+it uses no external fonts or images and can be opened independently.
 The creation dialog keeps its title and action buttons visible while the options
 scroll, including on smaller screens.
 
 Interior shelf rows can run left to right or front to back. This rotates the
 interior pattern and its product-facing sides while keeping the entrance,
 checkouts, wall fixtures, seating and reserved areas in their chosen locations.
+**Interior aisle gap** overrides the density preset with 1–4 empty cells between
+interior rows and shelf runs. Density still controls the length of each shelf run.
+A small racetrack layout drops its second row when both rows cannot fit the
+requested gap. The perimeter pattern has no interior rows, so this option is
+disabled there. Wall spacing and dining-table clearance remain separate; grid
+cells do not specify a physical distance. The chosen gap is saved and reused with
+the other layout options.
 The perimeter pattern keeps its wall-based arrangement. Shelf direction is saved
 with the other options and can differ between floors or layout alternatives.
 
@@ -335,6 +346,8 @@ For brand managers, category teams and research agencies (**Market** in the comm
   Before saving, **Plan sample size and duration** compares your minimum worthwhile conversion difference and
   daily eligible traffic with conservative sample requirements. It flags capacity/time shortfalls and saves the
   assumptions with the fixed plan, without using virtual shoppers as a conversion baseline.
+  Observation imports show changes before applying them, flag cleared values and reversed purchase outcomes,
+  and retain correction reasons and before/after records with a CSV history export.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
@@ -549,7 +562,7 @@ Sources and rebuild instructions are in [`frontend/public/assets/props/`](./fron
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: six appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
-alpha-tested hair, authored eyelid blinks, and retargeted idle/walking/browsing animations. They pause with playback and keep adult proportions
+alpha-tested hair, authored eyelid blinks and small gaze shifts, and retargeted idle/walking/browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
 [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)

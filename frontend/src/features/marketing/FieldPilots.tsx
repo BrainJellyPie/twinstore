@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Plus } from "lucide-react";
 
-import { closePilot, createPilot, getPilot, importPilot, listPilots, pilotCsvUrl, pilotKeys, type PilotView } from "@/shared/api/fieldPilot";
+import { closePilot, createPilot, getPilot, listPilots, pilotCsvUrl, pilotKeys, type PilotView } from "@/shared/api/fieldPilot";
 import type { PitchReport } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -10,6 +10,7 @@ import { Textarea } from "@/shared/components/ui/textarea";
 import { formatMoney } from "@/shared/utils/money";
 import { PilotPlanner, PilotPlanningSummary } from "./PilotPlanner";
 import { emptyPlanningInputs, planningAssumptions } from "./pilotPlanning";
+import { PilotImportHistory, PilotObservationReview } from "./PilotObservationReview";
 
 const percent = (n: number | null) => n == null ? "Unknown" : `${(n * 100).toFixed(1)}%`;
 const points = (n: number | null) => n == null ? "Not available" : `${n > 0 ? "+" : ""}${(n * 100).toFixed(1)} pp`;
@@ -87,15 +88,14 @@ export function PilotResults({ projectId, view }: { projectId: string; view: Pil
   const { pilot: p, analysis: a } = view;
   const qc = useQueryClient();
   const [closing, setClosing] = useState(false);
-  const [localError, setLocalError] = useState("");
+  const [reviewActive, setReviewActive] = useState(false);
   const saved = async (result: PilotView) => {
     await qc.cancelQueries({ queryKey: pilotKeys.detail(projectId, p.pilot_id) });
     qc.setQueryData(pilotKeys.detail(projectId, p.pilot_id), result);
     await qc.invalidateQueries({ queryKey: pilotKeys.list(projectId), exact: true });
   };
-  const upload = useMutation({ mutationFn: (file: File) => importPilot(projectId, p.pilot_id, file, p.revision), onSuccess: saved });
   const close = useMutation({ mutationFn: () => closePilot(projectId, p.pilot_id, p.revision), onSuccess: saved });
-  const busy = upload.isPending || close.isPending;
+  const busy = reviewActive || close.isPending;
   return <div className="space-y-4">
     <header className="space-y-2"><h3 className="font-semibold">{p.design.name} · {p.finalized_at ? "Closed and locked" : "Collecting"}</h3>
       <p className="text-sm">{a.interpretation}</p>
@@ -106,21 +106,17 @@ export function PilotResults({ projectId, view }: { projectId: string; view: Pil
     </table></div>
     <p className="text-xs text-muted-foreground">Unrecorded slots: {a.a.unrecorded + a.b.unrecorded} · unused slots: {a.a.unused + a.b.unused} · enrolled encounters without script delivery: {a.a.not_delivered + a.b.not_delivered} · unknown delivery: {a.a.delivery_unknown + a.b.delivery_unknown}. Missing-outcome bounds are not confidence intervals.</p>
     <div className="flex flex-wrap items-center gap-3"><Button asChild variant="outline" size="sm"><a href={pilotCsvUrl(projectId, p.pilot_id)} download><Download className="size-4" /> Observation sheet CSV</a></Button>
-      {!p.finalized_at && <label className="text-sm">Import full observation sheet<input aria-label="Import full observation sheet" type="file" accept=".csv,text/csv" disabled={busy} className="ml-2 max-w-64 text-xs" onChange={(e) => {
-        const file = e.target.files?.[0]; e.target.value = ""; setLocalError("");
-        if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { setLocalError("Observation CSV exceeds 2 MB"); return; }
-        upload.mutate(file);
-      }} /></label>}
     </div>
+    {!p.finalized_at && <PilotObservationReview key={p.revision} projectId={projectId} pilot={p} disabled={close.isPending} onActive={setReviewActive} onSaved={saved} />}
     {!p.finalized_at && <div className="space-y-2 rounded-xl bg-muted/40 p-3 text-sm">
       <p>Edit only enrolled, delivered and purchased: 1 = yes, 0 = no, blank = unknown. Mark enrolled=0 only for an unused slot; keep its other outcomes blank. Record refused scripts as delivered=0 for an enrolled encounter, and still record its purchase outcome.</p>
-      <p>The full CSV replaces previously uploaded observations. Keep every row and all assignment columns. Close only after the saved outcome window has elapsed. Closing below target leaves a descriptive report.</p>
+      <p>The full CSV replaces previously uploaded observations after review. Keep every row and all assignment columns. Discard or apply a pending preview before closing. Close only after the saved outcome window has elapsed. Closing below target leaves a descriptive report.</p>
       <label className="flex items-start gap-2"><input type="checkbox" checked={closing} onChange={(e) => setClosing(e.target.checked)} disabled={busy} />I am ending collection and locking these observations.</label>
       <Button variant="outline" disabled={!closing || !a.can_finalize || busy} onClick={() => close.mutate()}>Close and lock pilot</Button>
       {!a.can_finalize && <p className="text-xs text-muted-foreground">Before closing, record every slot and all enrolled purchase and delivery outcomes.</p>}
     </div>}
-    {(localError || upload.error || close.error) && <p role="alert" className="text-sm text-destructive">{localError || upload.error?.message || close.error?.message}</p>}
+    {close.error && <p role="alert" className="text-sm text-destructive">{close.error.message}</p>}
+    <PilotImportHistory projectId={projectId} pilot={p} />
     <details><summary className="cursor-pointer text-sm font-semibold">Saved design and scripts</summary>
       <div className="mt-2 space-y-2 text-sm"><p>{p.product.name} · {p.product.sku} · {formatMoney(p.product.price, p.product.currency)} · {p.product.promo}</p>
         <p>Eligibility: {p.design.eligibility}</p><p>Outcome window: {p.design.outcome_window}</p><p>Context: {p.context}</p><p>Product facts: {p.product_facts || "None supplied"}</p>

@@ -189,6 +189,11 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
         </div>
       )}
 
+      {jobId && job.isPending && <p role="status" className="text-sm text-muted-foreground">Loading optimization status…</p>}
+      {jobId && job.isError && <div className="space-y-2 text-sm">
+        <p role="alert" className="text-destructive">{job.error instanceof Error ? job.error.message : "Could not load the optimization status. Please try again."}</p>
+        <Button variant="outline" disabled={job.isFetching} onClick={() => void job.refetch()}>Retry status</Button>
+      </div>}
       {jobId && job.data && <JobView projectId={projectId} view={job.data} onClose={onClose} onRestart={() => setJobId(null)} />}
     </div>
   );
@@ -241,6 +246,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
         <Button variant="outline" size="sm" className="gap-1.5" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
           <Square className="size-3.5" /> Stop
         </Button>
+        {cancel.error != null && <p role="alert" className="text-destructive">{cancel.error instanceof Error ? cancel.error.message : "Could not stop the optimization. Please try again."}</p>}
       </div>
     );
   }
@@ -309,6 +315,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
         </ol>
       </div>
       {result.notes.length > 0 && <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">{result.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
+      {apply.error != null && <p role="alert" className="text-sm text-destructive">{apply.error instanceof Error ? apply.error.message : "Could not save the layout. Please try again."}</p>}
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onRestart}>Try other settings</Button>
@@ -327,7 +334,7 @@ function JudgeView({ report, result, status, apply, onRestart }: {
   report: VLMJudgeReport;
   result: api.OptimizeResult;
   status: api.OptimizationStatus;
-  apply: { mutate: () => void; isPending: boolean };
+  apply: { mutate: () => void; isPending: boolean; error: unknown };
   onRestart: () => void;
 }) {
   const winner = report.candidates.find((c) => c.winner);
@@ -400,6 +407,7 @@ function JudgeView({ report, result, status, apply, onRestart }: {
         </div>
       )}
       {report.notes.length > 0 && <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">{report.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
+      {apply.error != null && <p role="alert" className="text-sm text-destructive">{apply.error instanceof Error ? apply.error.message : "Could not save the layout. Please try again."}</p>}
 
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onRestart}>Try other settings</Button>
