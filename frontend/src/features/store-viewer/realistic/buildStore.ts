@@ -577,8 +577,8 @@ function addSigns(b: StaticBuilder, signs: SignRequest[]): Atlas {
   return atlas;
 }
 
-export function buildStore(width: number, depth: number, racks: Rack[]): BuiltStore {
-  const b = new StaticBuilder();
+export function buildStore(width: number, depth: number, racks: Rack[], beveled = false): BuiltStore {
+  const b = new StaticBuilder(beveled);
   const plans = racks.map((r) => planFixture(r, width, depth));
   const cells = new Map<string, FixturePlan>();
   for (const p of plans) {
