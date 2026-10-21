@@ -30,6 +30,13 @@ it.each(["coffee", "COFFEE", "  Morning   Coffee ", "coffee shop", "office worke
   expect(screen.getByRole("status").textContent).toBe("1 of 2 stores");
 });
 
+it.each(["Cafe Etoile", "ＣＡＦＥ", "cafe-etoile"])("matches accents and width variants in %s while preserving store names and IDs", (query) => {
+  const { props } = show({ projects: [{ ...base, project_id: "proj_accent", name: "Café Étoile", store_type: "cafe" }, projects[1]!] });
+  filter(query); fireEvent.click(screen.getByRole("button", { name: "Café Étoile" }));
+  expect(screen.queryByRole("button", { name: "Night Market" })).toBeNull();
+  expect(props.onOpen).toHaveBeenCalledWith("proj_accent");
+});
+
 it("explains an empty result and restores the list with keyboard focus", () => {
   show(); filter("missing store");
   expect(screen.getByRole("heading", { name: "No matching stores" })).toBeTruthy();

@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
+import { searchText } from "@/shared/utils/searchText";
 import { LAYOUT_PRIORITIES, LAYOUT_STYLES, resolveFloorSize, resolveOperatingHours, templateRequest, validTemplateChoice, type FloorSize, type OperatingHours, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
@@ -17,10 +18,6 @@ import { CompareFloorPlans } from "./CompareFloorPlans";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-function normalizeSearch(text: string) {
-  return text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[_\s-]+/g, " ").trim();
-}
 
 export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, onApplySizeToAll, sharedDesign, sharedCurrency, sharedHours = false, sharedSize = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
   value: TemplateChoice;
@@ -76,7 +73,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const sharedExit = (value.exit_position ?? "shared") === "shared";
   const exitWall = sharedExit ? value.gate_wall : value.exit_wall ?? value.gate_wall;
   const sideExit = exitWall === "left" || exitWall === "right";
-  const terms = normalizeSearch(search).split(" ").filter(Boolean);
+  const terms = searchText(search).split(" ").filter(Boolean);
   const filtered = templates.filter((format) => {
     if (storeType && format.store_type !== storeType) return false;
     const cells = format.grid[0] * format.grid[1];
@@ -86,7 +83,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     if (seating === "with" && format.default_dining_tables === 0) return false;
     if (seating === "without" && format.default_dining_tables > 0) return false;
     const labels = LOCALES.map(({ code }) => storeTypeLabel(format.store_type, code)).join(" ");
-    const text = normalizeSearch(`${format.name} ${format.description} ${format.store_type} ${format.id} ${labels}`);
+    const text = searchText(`${format.name} ${format.description} ${format.store_type} ${format.id} ${labels}`);
     return terms.every((term) => text.includes(term));
   }).sort((a, b) => {
     if (sort === "name") return a.name.localeCompare(b.name, locale);
