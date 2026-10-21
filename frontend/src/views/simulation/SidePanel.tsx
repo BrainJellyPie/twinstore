@@ -1,3 +1,4 @@
+import { BarChart3, Settings2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { DashboardPanel } from "@/features/dashboard/components/DashboardPanel";
 import { SettingsPanel } from "@/features/dashboard/components/SettingsPanel";
@@ -62,12 +63,12 @@ export function SidePanel({
   runStatus,
 }: SidePanelProps) {
   return (
-    <aside className="flex h-full w-[23rem] shrink-0 flex-col overflow-y-auto border-l bg-surface">
+    <aside className="panel m-3 flex w-[24rem] shrink-0 flex-col overflow-y-auto rounded-[1.6rem]">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DashboardTab)} className="gap-0">
-        <div className="sticky top-0 z-10 bg-surface/90 px-3 pt-3 pb-2 backdrop-blur">
-          <TabsList className="h-10 w-full rounded-xl">
-            <TabsTrigger value="dashboard" className="rounded-lg text-sm">Results</TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-lg text-sm">Store &amp; layout</TabsTrigger>
+        <div className="sticky top-0 z-10 border-b border-glass-border bg-[var(--glass-strong)] px-3 pt-3 pb-2.5 backdrop-blur-xl">
+          <TabsList className="h-11 w-full rounded-xl">
+            <TabsTrigger value="dashboard" className="gap-2 rounded-[0.65rem] text-sm"><BarChart3 className="size-4" />Results</TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2 rounded-[0.65rem] text-sm"><Settings2 className="size-4" />Store &amp; layout</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="dashboard" className="px-3">
