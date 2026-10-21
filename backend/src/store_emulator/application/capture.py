@@ -227,7 +227,7 @@ def create_capture(
         raise AppError("the gdino detector needs the optional dependencies: uv sync --extra capture", 400)
     if options.detector == "vlm" and llm_config is None:
         raise AppError("the vlm detector needs a vision model (model must not be 'none')", 400)
-    options = options.model_copy(update={"currency": (options.currency or config.currency).upper()})
+    options = options.model_copy(update={"currency": (options.currency or project_currency(pid, config.currency)).upper()})
     cid = f"cap_{uuid.uuid4().hex[:8]}"
     folder = _dir(pid, cid)
     folder.mkdir(parents=True, exist_ok=True)
