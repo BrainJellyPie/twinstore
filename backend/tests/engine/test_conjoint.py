@@ -21,6 +21,22 @@ def test_design_balances_levels_and_avoids_repeated_profiles() -> None:
         assert max(counts) - min(counts) <= 2
 
 
+@pytest.mark.parametrize("levels", [[2, 2], [2, 2, 2], [2, 3], [3, 3], [2, 6], [6] * 7])
+@pytest.mark.parametrize("options", [2, 3, 4])
+@pytest.mark.parametrize("seed", range(12))
+def test_design_keeps_options_distinct_at_small_and_large_attribute_limits(levels, options, seed) -> None:
+    plan = design(levels, tasks=15, options=options, rng=random.Random(seed))
+    assert len(plan) == 15
+    for task in plan:
+        assert len(task) == options
+        assert len({tuple(profile) for profile in task}) == options
+        assert all(len(profile) == len(levels) for profile in task)
+        assert all(0 <= value < limit for profile in task for value, limit in zip(profile, levels, strict=True))
+        if levels == [2, 2] and options == 4:
+            assert {tuple(profile) for profile in task} == {(0, 0), (0, 1), (1, 0), (1, 1)}
+    assert plan == design(levels, tasks=15, options=options, rng=random.Random(seed))
+
+
 def test_tasks_text_and_choice_model() -> None:
     attrs = [ConjointAttribute(name="Sugar", levels=["Regular", "Zero"]), ConjointAttribute(name="Pack", levels=["PET", "Can"])]
     text = tasks_text(attrs, [149, 199], "USD", [[[0, 1, 0], [1, 0, 1]]], none_option=True)

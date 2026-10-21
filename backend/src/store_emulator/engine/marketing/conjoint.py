@@ -9,6 +9,7 @@ Intervals come from resampling respondents, so they respect that one person's ch
 import asyncio
 import random
 from collections.abc import Sequence
+from itertools import product
 from typing import Any, Literal, Protocol
 
 import numpy as np
@@ -72,6 +73,10 @@ def design(levels: Sequence[int], tasks: int, options: int, rng: random.Random) 
                     break
                 a = rng.randrange(len(levels))
                 profiles[o][a] = rng.randrange(levels[a])
+            if profiles[o] in profiles[:o]:
+                # Legal designs have enough combinations; checking at most o + 1 finds an unused one.
+                used = {tuple(p) for p in profiles[:o]}
+                profiles[o] = next(list(p) for p in product(*(range(n) for n in levels)) if p not in used)
         out.append(profiles)
     return out
 
