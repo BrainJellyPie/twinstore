@@ -71,6 +71,21 @@ export function characterAssetFor(personaId: string, gender?: string): string {
   return `${CHARACTERS}/${pool[idx]}`;
 }
 
+// MIT-licensed Microsoft Rocketbox avatars, converted and bundled locally.
+const REALISTIC_FEMALE_FILES = ["female-01.glb", "female-14.glb"];
+const REALISTIC_MALE_FILES = ["male-01.glb", "male-14.glb"];
+export const ALL_REALISTIC_CHARACTER_ASSETS = [...REALISTIC_FEMALE_FILES, ...REALISTIC_MALE_FILES].map((file) => `/assets/people/${file}`);
+
+export function realisticCharacterAssetFor(personaId: string, gender?: string): string {
+  const pool = gender === "Female" ? REALISTIC_FEMALE_FILES : gender === "Male" ? REALISTIC_MALE_FILES : [...REALISTIC_FEMALE_FILES, ...REALISTIC_MALE_FILES];
+  return `/assets/people/${pool[hashString(personaId) % pool.length]}`;
+}
+
+export function characterAnimationPhase(personaId: string): number {
+  // Mix the ID hash so sequential shopper IDs don't breathe in near-unison.
+  return (Math.imul(hashString(personaId), 0x9e3779b1) >>> 0) / 0x100000000;
+}
+
 export const ALL_MARKET_ASSETS = [
   `${MARKET}/freezer.glb`,
   `${MARKET}/freezers-standing.glb`,
