@@ -6,6 +6,7 @@ member (mixture), or asks every member (vote, vision glances only).
 """
 
 import asyncio
+import math
 import random
 import threading
 from collections import Counter
@@ -59,6 +60,8 @@ class EnsembleLLMClient:
     def __init__(self, members: list[tuple[str, float, SimLLM]], *, mode: EnsembleMode = "mixture", seed: int = 0):
         if not members:
             raise ValueError("an ensemble needs at least one member")
+        if any(not math.isfinite(weight) or weight <= 0 for _, weight, _ in members):
+            raise ValueError("ensemble weights must be finite and greater than zero")
         self.mode: EnsembleMode = mode
         self._seed = seed
         self._members = [_Member(name, weight, client) for name, weight, client in members]
@@ -72,7 +75,11 @@ class EnsembleLLMClient:
     def member_for(self, route: str | None) -> _Member:
         """Weighted, stable choice: the same route (persona) always gets the same member."""
         rng = random.Random(stable_seed(self._seed, "ensemble", route or ""))
-        member = rng.choices(self._members, weights=[m.weight for m in self._members], k=1)[0]
+        weights = [m.weight for m in self._members]
+        if not math.isfinite(sum(weights)):
+            largest = max(weights)
+            weights = [weight / largest for weight in weights]
+        member = rng.choices(self._members, weights=weights, k=1)[0]
         if route is not None:
             with self._lock:
                 self._assigned[route] = member.name
