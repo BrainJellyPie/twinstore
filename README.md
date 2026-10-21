@@ -365,6 +365,8 @@ for ceramic flooring and wood fixtures. Diffuse and roughness maps are used at e
 quality level; High adds OpenGL normal maps for surface relief. Assets load locally
 with procedural fallbacks. Authors, source URLs and checksums are in
 [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
+High also uses [ambientCG Plaster 001](https://ambientcg.com/a/Plaster001), licensed CC0,
+with consistent texture scale across wall lengths, corners and rotated sections.
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
 for photographic indoor lighting and reflections; attribution and file provenance are in
 [`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).
