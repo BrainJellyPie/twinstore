@@ -21,10 +21,10 @@ export function ReviewBuildingFloors({ floors, onEdit, open: controlledOpen, onO
   const setOpen = (next: boolean) => { setLocalOpen(next); onOpenChange?.(next); };
   return <Dialog open={open} onOpenChange={setOpen}>
     <DialogTrigger asChild><button type="button" className="rounded border px-2 py-1 text-xs hover:bg-muted">Review all floors</button></DialogTrigger>
-    <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-[min(92vw,1000px)]">
-      <DialogHeader>
-        <DialogTitle>Review building floors</DialogTitle>
-        <DialogDescription>Compare every floor at the same cell scale before creating the building. Floors are simulated independently.</DialogDescription>
+    <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-[min(92vw,1000px)] [@media(max-height:500px)]:gap-3 [@media(max-height:500px)]:p-4">
+      <DialogHeader className="shrink-0">
+        <DialogTitle className="[@media(max-height:500px)]:pr-6 [@media(max-height:500px)]:text-lg">Review building floors</DialogTitle>
+        <DialogDescription className="[@media(max-height:500px)]:sr-only">Compare every floor at the same cell scale before creating the building. Floors are simulated independently.</DialogDescription>
       </DialogHeader>
       <FloorReviews floors={floors} onEdit={(index) => { setOpen(false); onEdit(index); }} />
     </DialogContent>

@@ -72,6 +72,12 @@ Fixed table and counter counts need enough space: if the preview cannot fit, enl
 or adjust the counts and spacing. Choosing a priority changes nothing until **Apply priority**.
 Review the listed changes before applying. Dimensions, product settings, design, operating hours and reserved
 areas keep their current values. The preview checks capacity, and every applied field remains editable.
+In a building, **Apply priority to all floors** applies the selected priority to every floor
+and immediately opens the floor review. Counters placed near the entrance follow each floor's
+own entrance wall. Each floor retains its dimensions, format, seed, currency, product choices,
+design, operating hours, table rotation, brief and reserved areas. If a floor is too small for
+the requested seating or counters, its review shows the capacity error; **Edit floor** opens
+that floor so its dimensions, counts or spacing can be adjusted independently.
 
 **Refill & bulk grocery**, **Care & mobility supply store**, **Fragrance concept boutique**
 and **Bubble tea café** add refill packs, care aids, fragrance products and a dedicated tea

@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
-import { LAYOUT_PRIORITIES, LAYOUT_STYLES, resolveFloorSize, resolveOperatingHours, templateRequest, validTemplateChoice, type FloorSize, type OperatingHours, type TemplateChoice } from "../templateOptions";
+import { applyLayoutPriority, LAYOUT_PRIORITIES, LAYOUT_STYLES, resolveFloorSize, resolveOperatingHours, templateRequest, validTemplateChoice, type FloorSize, type LayoutPriority, type OperatingHours, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
@@ -22,7 +22,7 @@ function normalizeSearch(text: string) {
   return text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[_\s-]+/g, " ").trim();
 }
 
-export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, onApplySizeToAll, sharedDesign, sharedCurrency, sharedHours = false, sharedSize = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, onApplySizeToAll, onApplyPriorityToAll, sharedDesign, sharedCurrency, sharedHours = false, sharedSize = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
@@ -31,6 +31,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   onApplyCurrencyToAll?: (currency: string) => void;
   onApplyHoursToAll?: (hours: OperatingHours) => void;
   onApplySizeToAll?: (size: FloorSize) => void;
+  onApplyPriorityToAll?: (priority: LayoutPriority) => void;
   sharedDesign?: NonNullable<TemplateChoice["design_theme"]>;
   sharedCurrency?: string;
   sharedHours?: boolean;
@@ -225,9 +226,12 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               </select></Field>
               <p>{priority.description}</p>
               <p className="text-muted-foreground">Apply these settings to this floor, then review the preview. Dimensions, product settings, design, operating hours and reserved areas stay as set. Space limits still apply.</p>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ ...priority.options,
-                ...(priority.options.dining_tables === 0 && tableMix ? { table_mix: { two_seat: 0, four_seat: 0, six_seat: 0 } } : {}),
-                ...(priority.checkoutAtEntrance ? { checkout_wall: value.gate_wall ?? "front" } : {}) })}>Apply priority</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => onChange(applyLayoutPriority(value, priority))}>Apply priority</button>
+                {onApplyPriorityToAll && <button type="button" className="rounded border px-2 py-1 hover:bg-muted"
+                  onClick={() => onApplyPriorityToAll(priority)}>Apply priority to all floors</button>}
+              </div>
+              {onApplyPriorityToAll && <p className="text-muted-foreground">Applying to all floors opens their review. Each floor keeps its own dimensions, entrance, products, design, hours and reserved areas; entrance-side counters follow that floor's entrance wall.</p>}
             </details>
             <div className="grid grid-cols-2 gap-2">
               <Field label="Layout pattern"><select className={controlClass} value={value.style ?? ""} onChange={(e) => update({ style: (e.target.value || null) as TemplateChoice["style"] })}>
