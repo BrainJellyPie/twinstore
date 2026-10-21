@@ -5,6 +5,7 @@ baskets (VLM shoppers with and without the venue in their trip context). Backgro
 import asyncio
 import json
 import logging
+import re
 import time
 import uuid
 from pathlib import Path
@@ -17,6 +18,7 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.store import Store
 from store_emulator.domain.town import DayType, Town, VLMSynergyResult
+from store_emulator.domain.types import RESOURCE_ID_PATTERN, ResourceId
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
 from store_emulator.engine.town.vlm_synergy import vlm_basket_synergy
@@ -41,7 +43,7 @@ class SynergyRequest(BaseModel):
     ensemble: EnsembleConfig | None = None
     customers: int = Field(default=40, ge=4, le=400, description="Panel size (visitors simulated with the venue)")
     scenario_id: str | None = None
-    setup_id: str | None = Field(default=None, description="Layout to simulate (default: the active layout)")
+    setup_id: ResourceId | None = Field(default=None, description="Layout to simulate (default: the active layout)")
     day_type: DayType = "weekday"
 
 
@@ -114,6 +116,8 @@ def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: 
     if venue.id == town.focal_venue_id:
         raise AppError("pick a venue other than our own store", 400)
     setup_id = _setup_id(pid, town, request.setup_id)
+    if not re.fullmatch(RESOURCE_ID_PATTERN, setup_id):
+        raise AppError("invalid setup id", 400)
     try:
         setup = read_setup(pid, setup_id)
     except FileNotFoundError:

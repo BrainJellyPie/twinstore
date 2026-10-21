@@ -15,16 +15,13 @@ The result always passes `engine.validation.validate` without errors (checked by
 
 import random
 from dataclasses import dataclass, field
-from typing import Literal
 
+from store_emulator.domain.layout_options import LayoutOptions, LayoutStyle
 from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Face, Weekday, stable_seed
 
 from .catalog import CATALOG, category_label, localized
-
-type LayoutStyle = Literal["aisles", "loop"]
-
 
 @dataclass(frozen=True)
 class StoreTemplate:
@@ -116,6 +113,101 @@ TEMPLATES: list[StoreTemplate] = [
         wall_shelves=["souvenirs", "health_beauty"], gondolas=["souvenirs", "chips", "sweets", "instant_food"],
         open_hours=(7, 24),
     ),
+    StoreTemplate(
+        id="hypermarket", name="Large-format hypermarket", description="A 32×26 grocery anchor with pantry aisles, fresh food, household departments and a broad cold wall.",
+        store_type="supermarket", grid=(32, 26), fridges=["dairy", "fresh_produce", "fresh_meals", "soft_drinks", "water_sports", "beer_alcohol"] * 3,
+        freezers=["ice_cream"] * 4, wall_shelves=["household", "pet_care", "health_beauty"] * 4,
+        gondolas=["pantry", "pantry", "instant_food", "household", "chips", "sweets", "pet_care"], open_hours=(8, 23),
+    ),
+    StoreTemplate(
+        id="warehouse_club", name="Warehouse club", description="Large 36×28 bulk-shopping floor with long sightlines and a central spine.",
+        store_type="supermarket", grid=(36, 28), fridges=["dairy", "fresh_meals", "water_sports"] * 6,
+        freezers=["ice_cream"] * 4, wall_shelves=["household", "car_care", "electronics"] * 4,
+        gondolas=["pantry", "household", "pet_care", "water_sports", "chips"], style="spine", open_hours=(9, 21),
+    ),
+    StoreTemplate(
+        id="organic_market", name="Organic neighborhood market", description="Produce, pantry essentials and chilled meals around a generous circulation loop.",
+        store_type="supermarket", grid=(18, 16), fridges=["fresh_produce", "dairy", "fresh_meals"] * 3,
+        wall_shelves=["pantry", "pantry", "household"], gondolas=["fresh_produce", "pantry", "bakery"], style="loop", open_hours=(8, 21),
+    ),
+    StoreTemplate(
+        id="community_pharmacy", name="Community pharmacy", description="First aid, OTC care and wellness displays with a front service counter. No prescription dispensing is modeled.",
+        store_type="pharmacy", grid=(14, 12), fridges=["water_sports"],
+        wall_shelves=["pharmacy_care", "wellness", "health_beauty"], gondolas=["pharmacy_care", "wellness", "pharmacy_care", "health_beauty"],
+        near_counter=["wellness"], open_hours=(9, 21),
+    ),
+    StoreTemplate(
+        id="wellness_pharmacy", name="Wellness & care pharmacy", description="Spacious care departments connected by a clear central spine; first aid, personal care and wellness.",
+        store_type="pharmacy", grid=(20, 16), fridges=["water_sports", "dairy"],
+        wall_shelves=["pharmacy_care", "wellness", "health_beauty"] * 2, gondolas=["wellness", "pharmacy_care", "health_beauty"],
+        near_counter=["wellness"], style="spine", open_hours=(8, 22),
+    ),
+    StoreTemplate(
+        id="specialty_cafe", name="Specialty coffee bar", description="Coffee menu and pastry displays with an open center. Models counter purchases; seating service is not simulated.",
+        store_type="cafe", grid=(12, 10), fridges=["dairy", "soft_drinks"], wall_shelves=["cafe_menu", "bakery"],
+        gondolas=["desserts", "cafe_menu"], near_counter=["cafe_menu", "desserts"], style="perimeter", open_hours=(7, 20),
+    ),
+    StoreTemplate(
+        id="book_cafe", name="Bookshop café", description="Browsing islands for books and stationery plus a coffee and cake counter.",
+        store_type="cafe", grid=(18, 14), fridges=["dairy", "soft_drinks"], wall_shelves=["books", "books", "stationery"],
+        gondolas=["books", "books", "stationery"], near_counter=["cafe_menu", "desserts"], style="free_flow", open_hours=(9, 22),
+    ),
+    StoreTemplate(
+        id="dessert_cafe", name="Dessert & tea café", description="Small dessert displays, tea and coffee with a spacious showroom arrangement.",
+        store_type="cafe", grid=(14, 12), fridges=["dairy", "desserts"], wall_shelves=["bakery", "cafe_menu"],
+        gondolas=["desserts", "bakery"], near_counter=["cafe_menu", "desserts"], style="showroom", open_hours=(10, 22),
+    ),
+    StoreTemplate(
+        id="quick_service", name="Quick-service restaurant", description="Menu displays and pickup counter for lunch orders. Counter ordering is modeled, not kitchen preparation or table service.",
+        store_type="restaurant", grid=(14, 10), fridges=["soft_drinks", "water_sports"], wall_shelves=["restaurant_menu"],
+        gondolas=["restaurant_menu", "desserts"], near_counter=["restaurant_menu", "desserts"], style="perimeter", open_hours=(10, 23),
+    ),
+    StoreTemplate(
+        id="food_hall", name="Food hall & deli", description="Several food and beverage displays around a central circulation spine; use multiple checkout counters for service points.",
+        store_type="restaurant", grid=(26, 20), fridges=["fresh_meals", "soft_drinks", "dairy"] * 3,
+        wall_shelves=["restaurant_menu", "bakery", "cafe_menu"] * 2, gondolas=["restaurant_menu", "fresh_meals", "desserts", "bakery"],
+        near_counter=["cafe_menu", "desserts"], style="spine", open_hours=(10, 22),
+    ),
+    StoreTemplate(
+        id="fashion_boutique", name="Fashion boutique", description="Curated apparel and accessories on free-flow display islands with perimeter collections.",
+        store_type="fashion", grid=(16, 14), fridges=[], wall_shelves=["apparel"] * 5,
+        gondolas=["apparel", "souvenirs"], near_counter=["apparel"], style="free_flow", open_hours=(10, 21),
+    ),
+    StoreTemplate(
+        id="design_showroom", name="Home & design showroom", description="Separated homeware display groups with wide sightlines and perimeter collections.",
+        store_type="home", grid=(24, 20), fridges=[], wall_shelves=["home_design"] * 8,
+        gondolas=["home_design", "home_design", "flowers"], near_counter=["home_design"], style="showroom", open_hours=(10, 20),
+    ),
+    StoreTemplate(
+        id="beauty_flagship", name="Beauty flagship", description="Beauty collections and wellness stations along a spacious discovery loop.",
+        store_type="beauty", grid=(22, 18), fridges=[], wall_shelves=["health_beauty", "wellness"] * 4,
+        gondolas=["health_beauty", "wellness", "health_beauty"], near_counter=["health_beauty"], style="loop", open_hours=(10, 22),
+    ),
+    StoreTemplate(
+        id="bookstore", name="Independent bookstore", description="Book departments, stationery and gifts with a central discovery aisle.",
+        store_type="books", grid=(18, 16), fridges=[], wall_shelves=["books"] * 8,
+        gondolas=["books", "books", "stationery", "souvenirs"], near_counter=["stationery"], style="spine", open_hours=(10, 21),
+    ),
+    StoreTemplate(
+        id="electronics_shop", name="Electronics experience store", description="Device and accessory displays organized as separated showroom islands.",
+        store_type="electronics", grid=(20, 16), fridges=[], wall_shelves=["electronics"] * 6,
+        gondolas=["electronics"], near_counter=["electronics"], style="showroom", open_hours=(10, 21),
+    ),
+    StoreTemplate(
+        id="pet_store", name="Pet supplies store", description="Pet food, treats and care products with clear parallel shopping aisles.",
+        store_type="pets", grid=(16, 12), fridges=[], wall_shelves=["pet_care"] * 5,
+        gondolas=["pet_care", "household"], near_counter=["pet_care"], open_hours=(9, 21),
+    ),
+    StoreTemplate(
+        id="sports_store", name="Sports & outdoor store", description="Fitness accessories and apparel departments along a racetrack route.",
+        store_type="sports", grid=(22, 18), fridges=["water_sports"], wall_shelves=["sports", "apparel"] * 4,
+        gondolas=["sports", "apparel", "sports"], near_counter=["sports"], style="loop", open_hours=(10, 21),
+    ),
+    StoreTemplate(
+        id="florist", name="Flower & gift studio", description="Compact seasonal flower and gift displays with an open browsing center.",
+        store_type="flowers", grid=(12, 10), fridges=[], wall_shelves=["flowers", "home_design", "souvenirs"],
+        gondolas=["flowers"], near_counter=["flowers"], style="perimeter", open_hours=(9, 20),
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
@@ -126,9 +218,10 @@ def get_template(template_id: str) -> StoreTemplate | None:
 
 
 class _Builder:
-    def __init__(self, t: StoreTemplate, currency: str, rng: random.Random):
+    def __init__(self, t: StoreTemplate, currency: str, rng: random.Random, options: LayoutOptions):
         self.t, self.currency, self.rng = t, currency, rng
-        self.w, self.h = t.grid
+        self.options = options
+        self.w, self.h = options.width or t.grid[0], options.height or t.grid[1]
         self.racks: list[Rack] = []
         self.taken: set[tuple[int, int]] = set()
         self.sku_n = 0
@@ -167,7 +260,11 @@ class _Builder:
 
     def add(self, kind: RackType, x: int, y: int, *, category: str | None = None, faces: list[Face] | None = None,
             rotation: int = 0, name: str = "", variant: str = "a") -> None:
+        if not self.free(x, y):
+            raise ValueError(f"fixture position is unavailable: {(x, y)}")
         self.taken.add((x, y))
+        if kind == RackType.SHELF and self.options.fixture_design != "mixed":
+            variant = self.options.fixture_design
         label = name or (category_label(category, self.currency) if category else "")
         n = sum(1 for r in self.racks if r.rack_name.startswith(label)) if label else 0
         rack_name = f"{label} {n + 1}" if label and kind not in (RackType.COUNTER,) else label
@@ -181,28 +278,27 @@ class _Builder:
 
 def generate_store(
     template_id: str, *, seed: int = 0, currency: str = "USD", store_id: str = "", name: str = "",
-    style: LayoutStyle | None = None,
+    style: LayoutStyle | None = None, options: LayoutOptions | None = None,
 ) -> Store:
     t = _BY_ID.get(template_id)
     if t is None:
         raise ValueError(f"unknown store template: {template_id}")
     rng = random.Random(stable_seed("layout-template", template_id, seed))
-    b = _Builder(t, currency, rng)
+    options = options or LayoutOptions()
+    b = _Builder(t, currency, rng, options)
     w, h = b.w, b.h
-    layout_style = style or t.style
+    layout_style = style or options.style or t.style
 
-    # Front (south wall, y = h-1): entrance + exit at the bottom-left, counter next to it.
-    entrance_x = 0
+    # Reserve the door before allocating checkout counters along the front wall.
+    entrance_x = {"left": 0, "center": w // 2, "right": w - 1}[options.entrance]
     b.add(RackType.ENTRANCE, entrance_x, h - 1)
-    b.taken.discard((entrance_x, h - 1))  # entrance/exit tiles stay walkable
     b.racks.append(Rack(id="r_exit", type=RackType.EXIT, shape=[[1]], position=(entrance_x, h - 1)))
-    b.taken.add((entrance_x, h - 1))
-    counter_x = 2
-    b.add(RackType.COUNTER, counter_x, h - 1, name="Counter", variant="b")
-    for i, cat in enumerate(t.near_counter[:2]):
-        x = counter_x + 1 + i
-        if b.free(x, h - 1):
-            b.add(RackType.SHELF, x, h - 1, category=cat, faces=[Face.N], variant="c")
+    counter_xs = [x for x in range(2, w - 1) if x != entrance_x][:options.checkouts]
+    for i, x in enumerate(counter_xs):
+        b.add(RackType.COUNTER, x, h - 1, name=f"Counter {i + 1}", variant="b")
+    front_xs = [x for x in range(1, w - 1) if b.free(x, h - 1)]
+    for cat, x in zip(t.near_counter, front_xs, strict=False):
+        b.add(RackType.SHELF, x, h - 1, category=cat, faces=[Face.N], variant="c")
 
     # Back wall (y = 0): reach-in fridges facing south, freezers continuing the row.
     back = [(RackType.FRIDGE, c, "a") for c in t.fridges] + [(RackType.FRIDGE, c, "b") for c in t.freezers]
@@ -214,24 +310,38 @@ def generate_store(
     for cat, y in zip(t.wall_shelves, range(2, h - 2), strict=False):
         b.add(RackType.SHELF, w - 1, y, category=cat, faces=[Face.W], rotation=270)
 
-    # Islands: two-sided gondolas in rows with walkable aisles around them, split into runs of
-    # at most four racks by cross aisles; categories fill the island tiles in template order.
-    row_ys = list(range(2, h - 2, 3)) if layout_style == "aisles" else ([2, h - 4] if h >= 8 else [2])
-    island_xs = list(range(2, w - 3)) if layout_style == "aisles" else list(range(3, w - 4))
-    tiles: list[tuple[int, int]] = []
-    for y in row_ys:
-        run = 0
-        for x in island_xs:
-            if run == 4:
-                run = 0
-                continue
-            if b.free(x, y):
-                tiles.append((x, y))
-                run += 1
+    # Every populated face opens onto a continuous aisle. Cross-aisles split
+    # long shelf runs, and the front two rows stay clear for checkout circulation.
+    aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]
+    row_ys = list(range(2, h - 2, aisle + 1))
+    island_xs = [x for x in range(2, w - 2) if (x - 2) % (run_length + aisle) < run_length]
+    tiles: list[tuple[int, int, list[Face]]] = []
+    if layout_style == "perimeter":
+        tiles = [(0, y, [Face.E]) for y in range(2, h - 2)]
+    else:
+        if layout_style == "loop":
+            row_ys = [2, h - 4] if h >= 8 else [2]
+            island_xs = [x for x in island_xs if 3 <= x < w - 3]
+        for row, y in enumerate(row_ys):
+            for x in island_xs:
+                if layout_style == "spine" and abs(x - w // 2) < aisle:
+                    continue
+                if layout_style == "free_flow" and (x - 2 - row % 2) % (aisle + 1) != 0:
+                    continue
+                if layout_style == "showroom" and (x - 2) % (aisle + 3) >= 2:
+                    continue
+                tiles.append((x, y, [Face.N, Face.S]))
     if t.gondolas:
-        for i, (x, y) in enumerate(tiles):
-            cat = t.gondolas[min(len(t.gondolas) - 1, i * len(t.gondolas) // len(tiles))]
-            b.add(RackType.SHELF, x, y, category=cat, faces=[Face.N, Face.S], variant="b" if (y // 3) % 2 else "a")
+        categories = list(t.gondolas)
+        rng.shuffle(categories)
+        for category in sorted(set(categories)):
+            b.counts[category] = rng.randrange(len(CATALOG[category]))
+        for i, (x, y, faces) in enumerate(tiles):
+            cat = categories[min(len(categories) - 1, i * len(categories) // len(tiles))]
+            if b.free(x, y):
+                b.add(RackType.SHELF, x, y, category=cat, faces=faces,
+                      rotation=90 if layout_style == "perimeter" else 0,
+                      variant="b" if (y // 3) % 2 else "a")
 
     days = [DaySchedule(day=Weekday(d), is_open=d not in t.closed_days,
                         open_hour=t.open_hours[0], close_hour=t.open_hours[1]) for d in range(1, 8)]
