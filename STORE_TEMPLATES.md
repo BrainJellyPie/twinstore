@@ -1,6 +1,6 @@
 # Store layout templates
 
-Everything about generating a furnished starting layout: the 64 store formats, product categories, entrances and
+Everything about generating a furnished starting layout: the 68 store formats, product categories, entrances and
 exits, seating, checkouts, reserved areas, multi-floor buildings and the floor editor. The [README](./README.md#store-formats-and-templates)
 has the short version.
 
@@ -9,10 +9,22 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 64
+In a project, choose **New layout → Generate a store from a template**. Search 68
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+
+**Weekend farmers' market** uses a 28×22 botanical floor with cross aisles, four
+checkouts and produce, bread, pantry and flower displays. It opens only Saturday
+and Sunday, 8–16, and uses fixed pack prices. **Station fresh-food market** is a
+20×14 coastal shop with meals, salads and coffee, two tables toward the back and
+three counters, open 5–24. **Cinema snack shop** has an 18×12 industrial floor,
+three ordering counters, snacks, drinks and ice cream, open 10–24 with no seating.
+**Weekday office cafeteria** uses a 28×24 minimal dining floor with sixteen
+four-seat tables and four counters, open Monday–Friday, 7–19.
+**Commuter shopping & lunch** combines the station market and office cafeteria.
+**Weekend shopping & snacks** combines the farmers' market, museum gift shop
+and cinema snack shop; each floor retains its own opening days.
 
 **Airport shopping gallery** is a 30×24 luxury loop with travel goods, fragrances,
 jewelry and electronics, four checkouts and 24-hour opening. **Hospital convenience
@@ -60,6 +72,12 @@ Fixed table and counter counts need enough space: if the preview cannot fit, enl
 or adjust the counts and spacing. Choosing a priority changes nothing until **Apply priority**.
 Review the listed changes before applying. Dimensions, product settings, design, operating hours and reserved
 areas keep their current values. The preview checks capacity, and every applied field remains editable.
+In a building, **Apply priority to all floors** applies the selected priority to every floor
+and immediately opens the floor review. Counters placed near the entrance follow each floor's
+own entrance wall. Each floor retains its dimensions, format, seed, currency, product choices,
+design, operating hours, table rotation, brief and reserved areas. If a floor is too small for
+the requested seating or counters, its review shows the capacity error; **Edit floor** opens
+that floor so its dimensions, counts or spacing can be adjusted independently.
 
 **Refill & bulk grocery**, **Care & mobility supply store**, **Fragrance concept boutique**
 and **Bubble tea café** add refill packs, care aids, fragrance products and a dedicated tea

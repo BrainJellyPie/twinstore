@@ -185,7 +185,7 @@ currently remain in English.
 </tr>
 <tr>
 <td><img src="./.github/assets/twinstore/screens/wizard-light.jpg" alt="New store wizard with a starting layout"><br>
-<b>New store in two steps.</b> Store details, address, hours and one of 64 furnished starting layouts — or a floor-plan image.</td>
+<b>New store in two steps.</b> Store details, address, hours and one of 68 furnished starting layouts — or a floor-plan image.</td>
 <td><img src="./.github/assets/twinstore/screens/home-dark.jpg" alt="Home, night theme"><br>
 <b>Day and night.</b> A command bar, <kbd>⌘K</kbd> palette for everything, quick links on every store, light and dark themes.</td>
 </tr>
@@ -239,10 +239,11 @@ field (f/1.4–5.6) in the shopper's view; save it as PNG.
 
 ### Store formats and templates
 
-Start from **64 furnished formats** — convenience stores, supermarkets, hypermarkets and warehouse clubs, pharmacies,
+Start from **68 furnished formats** — convenience stores, supermarkets, hypermarkets and warehouse clubs, pharmacies,
 cafés, bakeries, pizzerias, sushi, ramen, Korean, burger, salad and ice-cream shops, fashion, footwear, eyewear,
-jewelry, music, bookstores, electronics, pet, garden and craft stores, airport retail, hospital convenience and museum gifts — each with its own assortment, palette, seating
-and checkouts, or from **16 multi-floor buildings** (department store, dining house, campus hub and more). Choose which
+jewelry, music, bookstores, electronics, pet, garden and craft stores, airport retail, hospital convenience, museum gifts,
+weekend markets, station food shops, cinema snacks and office cafeterias — each with its own assortment, palette, seating
+and checkouts, or from **18 multi-floor buildings** (department store, dining house, campus hub and more). Choose which
 product categories to stock, where the entrance, exit and checkouts go, how many dining tables, aisle widths, shelf
 direction and areas to keep clear; compare against the format default and download the plan as SVG. Every option and
 the floor editor (up to 40×40 cells) are documented in [`STORE_TEMPLATES.md`](./STORE_TEMPLATES.md).
@@ -262,7 +263,7 @@ photo sets its price index, and a vision check rates the synergy with the shop n
 
 ## Marketing studio
 
-For brand managers, category teams, store operators and research agencies (**Market** in the command bar). Eight tabs:
+For brand managers, category teams, store operators and research agencies (**Market** in the command bar). Nine tabs:
 
 - **A/B tests** — a variant is a list of changes to a saved layout: a new price, a discount with the was-price on the
   tag, a promotion sign (1+1, SALE, −30 %), a move to eye level or another fixture, a new pack, or a category re-price
@@ -309,6 +310,7 @@ For brand managers, category teams, store operators and research agencies (**Mar
   **Observed staff time** reviews an anonymous assignment/time CSV from a completed, locked pilot. It
   checks staff/shift coverage, withholds averages until all times are recorded, and exports a source-bound
   audit to inform explicit labor-cost assumptions without inferring profit or staff performance.
+- **Unit prices** — compare operator-supplied competitor offers across pack quantities, with explicit date, stock and purchase-condition exclusions. Separate currencies and quantity dimensions; export exact-rate audit data. No live prices, price write-back or inferred sales effects.
 - **Inventory** — upload observed period stock, movements, net sales, COGS and inventory values at cost.
   Reconcile each SKU before interpreting net unit sell-through, period turnover and GMROI. Missing data are
   rejected; stock/value conflicts withhold ratios. Export source inputs, calculations and review flags with

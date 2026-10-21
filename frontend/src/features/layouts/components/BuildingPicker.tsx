@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { cn } from "@/shared/utils/cn";
-import { BUILDING_PRESETS, DEFAULT_TEMPLATE_CHOICE, buildingPreset, choiceFromGeneration, validBuildingFloors, type BuildingFloorChoice } from "../templateOptions";
+import { applyLayoutPriority, BUILDING_PRESETS, DEFAULT_TEMPLATE_CHOICE, buildingPreset, choiceFromGeneration, validBuildingFloors, type BuildingFloorChoice } from "../templateOptions";
 import type { Layout } from "../hooks/useLayouts";
 import { TemplatePicker } from "./TemplatePicker";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
@@ -103,6 +103,10 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         onApplyHoursToAll={(hours) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...hours, closed_days: [...hours.closed_days] } })))}
         onApplySizeToAll={(size) => {
           onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...size } })));
+          setReviewOpen(true);
+        }}
+        onApplyPriorityToAll={(priority) => {
+          onChange(floors.map((f) => ({ ...f, choice: applyLayoutPriority(f.choice, priority) })));
           setReviewOpen(true);
         }}
         sharedSize={floor.choice.width != null && floor.choice.height != null &&

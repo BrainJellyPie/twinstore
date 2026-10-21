@@ -21,6 +21,21 @@ vi.mock("../components/TemplatePicker", () => ({
 }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
+it.each([
+  ["Commuter shopping & lunch", "station_food_market", "2F · Level 2 · Office cafeteria", "office_cafeteria"],
+  ["Weekend shopping & snacks", "weekend_farmers_market", "3F · Level 3 · Cinema snacks", "cinema_snack_shop"],
+])("starts %s with independent floor settings and the project currency", (preset, first, lastLabel, last) => {
+  render(<Building currency="JPY" />);
+  fireEvent.click(screen.getByRole("button", { name: preset }));
+  expect(screen.getByText(`${first} / width default`)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
+  fireEvent.click(screen.getByRole("button", { name: lastLabel }));
+  expect(screen.getByText(`${last} / width default`)).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+  fireEvent.click(screen.getByRole("button", { name: /^1F/ }));
+  expect(screen.getByText(`${first} / width 30`)).toBeTruthy();
+});
+
 it("starts travel shopping and evening dining with independent options", () => {
   render(<Building currency="JPY" />);
   fireEvent.click(screen.getByRole("button", { name: "Travel retail & dining" }));
