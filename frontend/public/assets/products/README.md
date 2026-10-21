@@ -52,3 +52,30 @@ blender --background --python scripts/convert_croissant.py -- \
   --source-dir /path/to/croissant \
   --output frontend/public/assets/products/croissant.glb
 ```
+
+`watering-can.glb` uses **Watering Can Metal 01** by **Charles Nderitu**,
+published by [Poly Haven](https://polyhaven.com/a/watering_can_metal_01) under
+CC0. `watering-can-sources.json` records source hashes and the converted output.
+The 11,837-triangle source becomes 499/2,500-triangle LODs, sharing the original
+1K JPEG color, OpenGL normal and packed metallic/roughness maps. The spout is
+turned along the shelf width; dimensions remain approximately 45.2 × 19.7 × 19.1 cm
+before the product readability scale. Handles, spout and sprinkler head are retained.
+
+Generic or metal watering-can names and the catalog's `Watering Can 5L` use this
+representative model. Explicit plastic models, other capacities and multipacks
+retain their existing geometry. The source does not specify a measured capacity;
+the viewer preserves its authored dimensions without inferring volume from the label.
+Cans retain their proportions and stay in one layer on shelves and tables.
+High uses the full reflective material. Medium uses diffuse color and constant
+roughness, since it has no scene environment for metallic reflections. A
+procedural body, handle and spout remain visible during loading or failure.
+Layouts without watering cans do not request the scan.
+
+Download and verify the manifest, preserving paths and renaming
+`watering_can_metal_01_1k.gltf` to `watering_can_metal_01.gltf`, then run:
+
+```sh
+blender --background --python scripts/convert_watering_can.py -- \
+  --source-dir /path/to/watering-can \
+  --output frontend/public/assets/products/watering-can.glb
+```

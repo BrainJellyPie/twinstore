@@ -111,12 +111,16 @@ def pick_candidate(
     if not pool:
         return None
     pool.sort(key=lambda e: (e[2].sku, e[0].id, e[1].face.value, e[1].level))
-    weights = [
-        attention.get(e[1].level, 0.7) * (1.0 if remaining is None or e[2].price <= remaining else 0.15)
-        * (promo_multiplier if e[2].promo else 1.0)
-        for e in pool
-    ]
-    return rng.choices(pool, weights=weights, k=1)[0]
+    candidates: list[CatalogEntry] = []
+    weights: list[float] = []
+    for entry in pool:
+        weight = (attention.get(entry[1].level, 0.7)
+                  * (1.0 if remaining is None or entry[2].price <= remaining else 0.15)
+                  * (promo_multiplier if entry[2].promo else 1.0))
+        if weight > 0:
+            candidates.append(entry)
+            weights.append(weight)
+    return rng.choices(candidates, weights=weights, k=1)[0] if candidates else None
 
 
 @dataclass(frozen=True)
@@ -129,7 +133,7 @@ class PlanRecord:
     reason: str
     items: tuple[tuple[str, str, int], ...]  # (category, product, qty) as the model named them
     # (named, resolved SKU or "", how, store category) per named item; how adds "duplicate",
-    # "over_budget", "unreachable" and "cap" to the PlanMatch kinds.
+    # "unavailable", "over_budget", "unreachable" and "cap" to the PlanMatch kinds.
     resolved: tuple[tuple[str, str, str, str], ...] = ()
     model: str = ""
     agreement: float | None = None

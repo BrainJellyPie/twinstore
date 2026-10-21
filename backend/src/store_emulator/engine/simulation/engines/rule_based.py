@@ -100,7 +100,7 @@ class ShopperPlan:
     pattern: BehaviorPattern
     rng: random.Random
     grid: list[list[bool]]
-    budget: int
+    budget: int | None
     tolerance: float | None
     spend: int
     walk_out: bool
@@ -187,7 +187,8 @@ class RuleBasedEngine:
                             * self._demand(words_categories(category), plan.hour) ** 0.5)
                 if rng.random() > min(0.98, hit_prob):
                     continue
-                pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng, usual)
+                remaining = plan.budget - plan.spend if plan.budget is not None else None
+                pick = self._pick_item(store, category, remaining, plan.chosen, rng, usual)
                 if pick is None:
                     continue
                 rack, slot, item = pick
@@ -197,7 +198,8 @@ class RuleBasedEngine:
                 # with mean items_per_category − 1. Drawn only when calibrated above 1.
                 extra_p = 1.0 - 1.0 / params.items_per_category
                 while (extra_p > 0 and len(plan.buys) < target and rng.random() < extra_p):
-                    more = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng, usual)
+                    remaining = plan.budget - plan.spend if plan.budget is not None else None
+                    more = self._pick_item(store, category, remaining, plan.chosen, rng, usual)
                     if more is None:
                         break
                     self.add_planned_buy(store, plan, middle, *more, f"also takes more {category}")
@@ -219,7 +221,8 @@ class RuleBasedEngine:
                     return
                 if kinds and category not in used and len(used) >= kinds:
                     continue
-                pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, plan.rng, usual)
+                remaining = plan.budget - plan.spend if plan.budget is not None else None
+                pick = self._pick_item(store, category, remaining, plan.chosen, plan.rng, usual)
                 if pick is not None and self.add_planned_buy(store, plan, middle, *pick, f"also needs {category}"):
                     progressed = True
                     if category not in used:
@@ -243,7 +246,7 @@ class RuleBasedEngine:
             ))
         plan = ShopperPlan(
             pattern=pattern, rng=rng, grid=store.walkable_grid(),
-            budget=persona.budget_max if persona.budget_max > 0 else 10**9,
+            budget=persona.budget_max if persona.budget_max > 0 else None,
             tolerance=cfg.budget_tolerance, spend=0, walk_out=False, buys=[], chosen=set(), planned=[],
             hour=context.arrival_hour,
         )
@@ -273,7 +276,7 @@ class RuleBasedEngine:
         return (
             impulse_buys < self._config.engines.rule_based.max_impulse_items
             and len(plan.buys) + impulse_buys < plan.pattern.max_products
-            and (plan.tolerance is None or plan.spend + price <= plan.budget * plan.tolerance)
+            and (plan.budget is None or plan.tolerance is None or plan.spend + price <= plan.budget * plan.tolerance)
         )
 
     async def _impulse(self, context: PerCustomerContext, plan: ShopperPlan) -> ImpulseOutcome:
@@ -313,7 +316,7 @@ class RuleBasedEngine:
         if not actions:
             return False
         buy = actions[-1]
-        if plan.tolerance is not None and item.price > 0:
+        if plan.budget is not None and plan.tolerance is not None and item.price > 0:
             remaining = int(plan.budget * plan.tolerance) - plan.spend
             buy.quantity = min(buy.quantity, max(0, remaining // item.price))
             if buy.quantity == 0:
@@ -373,7 +376,7 @@ class RuleBasedEngine:
         return (item.price / item.regular_price) ** e
 
     def _pick_item(
-        self, store: Store, category: str, remaining: int, chosen: set[str], rng: random.Random,
+        self, store: Store, category: str, remaining: int | None, chosen: set[str], rng: random.Random,
         usual: frozenset[str] = frozenset(),
     ) -> tuple[Rack, Slot, SlotItem] | None:
         words = expand_category(category)
@@ -384,10 +387,13 @@ class RuleBasedEngine:
         for rack, slot, item, rack_words, item_words in self._catalog_for(store):
             if item.sku in chosen or not (words & rack_words or words & item_words):
                 continue
-            fit = 1.0 if item.price <= remaining else 0.15
+            fit = 1.0 if remaining is None or item.price <= remaining else 0.15
+            weight = (attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0)
+                      * self._fx.demand_for(item_categories(rack, item)) * self._price_factor(item))
+            if weight <= 0:
+                continue
             candidates.append((rack, slot, item))
-            weights.append(attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0)
-                           * self._fx.demand_for(item_categories(rack, item)) * self._price_factor(item))
+            weights.append(weight)
         if not candidates:
             return None
         habit = self._config.engines.rule_based.habit_prob
