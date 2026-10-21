@@ -1,6 +1,14 @@
-import type { Face, Rack } from "../types/domain";
+import type { Face, Position, Rack } from "../types/domain";
 
 export const LEVEL_HEIGHT = 0.5;
+
+export function rackCells(rack: Rack): Position[] {
+  let shape = rack.shape;
+  for (let angle = 0; angle < (rack.rotation ?? 0); angle += 90) {
+    shape = Array.from({ length: shape[0]?.length ?? 0 }, (_, x) => shape.map((row) => row[x] ?? 0).reverse());
+  }
+  return shape.flatMap((row, y) => row.flatMap((cell, x): Position[] => cell ? [[rack.position[0] + x, rack.position[1] + y]] : []));
+}
 
 export function rackWorldCenter(rack: Rack): [number, number, number] {
   const { w, d } = rackBounds(rack);

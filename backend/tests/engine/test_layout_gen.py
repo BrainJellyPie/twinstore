@@ -45,13 +45,14 @@ def test_generation_is_deterministic_and_styles_differ():
     assert {r.position for r in loop.racks} != {r.position for r in aisles.racks}
 
 
-def test_rule_based_shoppers_buy_in_a_generated_store():
+@pytest.mark.parametrize("template_id", ["campus_cvs", "specialty_cafe"])
+def test_rule_based_shoppers_buy_in_a_generated_store(template_id):
     import json
     from pathlib import Path
     sample = Path(__file__).resolve().parents[2] / "sample_data" / "proj_67916afd" / "runs" / "run_ab0039" / "input"
     personas = [Persona.model_validate(p) for p in json.loads((sample / "personas.json").read_text())]
     cfg = apply_options(local_config(), RunOptions(engine_type=EngineType.RULE_BASED, seed=1))
-    store = generate_store("campus_cvs", seed=1)
+    store = generate_store(template_id, seed=1)
     agg, _, _ = asyncio.run(run_simulation(cfg, store, subsample_personas(personas, 200, 1)))
     assert agg.summary.conversion_rate > 0.5 and agg.summary.units_sold > 100
 
@@ -111,3 +112,29 @@ def test_old_stores_keep_classic_design_and_formats_supply_defaults():
     assert store.design_theme == "minimal"
     assert generate_store("specialty_cafe").design_theme == "warm"
     assert Store.model_validate(store.model_dump(exclude={"design_theme"})).design_theme == "classic"
+
+
+@pytest.mark.parametrize("dimensions,tables", [((8, 6), 1), ((14, 12), 6), ((40, 40), 12)])
+@pytest.mark.parametrize("style", ["aisles", "loop", "spine", "free_flow", "perimeter", "showroom"])
+@pytest.mark.parametrize("entrance", ["left", "center", "right"])
+def test_dining_furniture_reserves_space_without_blocking_shopping(dimensions, tables, style, entrance):
+    store = generate_store("book_cafe", options=LayoutOptions(width=dimensions[0], height=dimensions[1],
+                           dining_tables=tables, style=style, entrance=entrance, checkouts=4, density="dense"))
+    dining = [r for r in store.racks if r.type == "table"]
+    assert len(dining) == tables
+    assert validate(store) == []
+    grid = store.walkable_grid()
+    for table in dining:
+        assert len(table.occupied_positions) == 4
+        assert table.slots == [] and table.valid_faces(0) == []
+        assert table.access_tiles(store.grid_size)
+        assert all(grid[y][x] == 0 for x, y in table.occupied_positions)
+
+
+def test_dining_defaults_fit_small_grids_but_explicit_capacity_is_enforced():
+    small = generate_store("food_hall", options=LayoutOptions(width=8, height=6))
+    assert len([r for r in small.racks if r.type == "table"]) == 1
+    assert validate(small) == []
+    assert not any(r.type == "table" for r in generate_store("food_hall", options=LayoutOptions(dining_tables=0)).racks)
+    with pytest.raises(ValueError, match="at most 1 dining tables"):
+        generate_store("specialty_cafe", options=LayoutOptions(width=8, height=6, dining_tables=2))

@@ -165,7 +165,7 @@ def list_blocked_faces(store: Store) -> list[BlockedFaceDetail]:
     reachable = _flood_fill(grid, entrance_tiles)
 
     for rack in store.racks:
-        if rack.type in {RackType.ENTRANCE, RackType.EXIT}:
+        if rack.type in {RackType.ENTRANCE, RackType.EXIT, RackType.TABLE}:
             continue
         locked = {(bf.block, bf.face) for bf in rack.locked_faces}
         block_cells = rack.block_cells

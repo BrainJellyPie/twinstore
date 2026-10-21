@@ -19,8 +19,11 @@ def prepare_template_layout(pid: str, req: TemplateLayoutRequest) -> dict[str, o
         raise AppError(f"unknown template: {req.template_id}", 404)
     options = LayoutOptions.model_validate(req.model_dump(include=set(LayoutOptions.model_fields)))
     name = req.name or template.name
-    store = generate_store(req.template_id, seed=req.seed, currency=req.currency, options=options,
-                           store_id=f"store_{pid}", name=name)
+    try:
+        store = generate_store(req.template_id, seed=req.seed, currency=req.currency, options=options,
+                               store_id=f"store_{pid}", name=name)
+    except ValueError as exc:
+        raise AppError(str(exc), 422) from exc
     memo = f"Generated from template '{template.name}' (seed {req.seed}, {req.currency})"
     memo += f"\nLayout options: {options.model_dump_json()}"
     if req.requirements.strip():

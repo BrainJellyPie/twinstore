@@ -27,6 +27,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import type { Position, Rack } from "@/shared/types/domain";
 import { GridEditor } from "./GridEditor";
+import { rackCells } from "@/shared/utils/grid";
 import { RackEditPanel, type RackEditPanelHandle } from "./RackEditPanel";
 import { LegacyDetectModal, checkLegacy } from "./LegacyDetectModal";
 import { useGridEditor } from "./useGridEditor";
@@ -89,7 +90,7 @@ export function GridEditorDialog({
     if (selectedCell == null) return [];
     return editor.racks
       .filter(
-        (r) => r.position[0] === selectedCell[0] && r.position[1] === selectedCell[1],
+        (r) => rackCells(r).some(([x, y]) => x === selectedCell[0] && y === selectedCell[1]),
       )
       .map((r) => ({ ...r, design_variant: r.design_variant ?? "a" }) as EditorRack);
   }, [editor.racks, selectedCell]);
@@ -108,7 +109,7 @@ export function GridEditorDialog({
   const onCellClick = useCallback(
     (pos: Position) => {
       const existing = editor.racks.find(
-        (r) => r.position[0] === pos[0] && r.position[1] === pos[1],
+        (r) => rackCells(r).some(([x, y]) => x === pos[0] && y === pos[1]),
       );
       // Empty cell: do NOT create a draft yet — wait for type selection.
       // The draft is created in onRackChange when RackEditPanel's Type radio first emits.
@@ -149,7 +150,7 @@ export function GridEditorDialog({
     (config: "entrance" | "exit" | "both") => {
       if (selectedCell == null) return;
       const cellRacks = editor.racks.filter(
-        (r) => r.position[0] === selectedCell[0] && r.position[1] === selectedCell[1],
+        (r) => rackCells(r).some(([x, y]) => x === selectedCell[0] && y === selectedCell[1]),
       );
       // Drop non-gate racks in this cell (shelf/counter → gate transition).
       for (const r of cellRacks) {

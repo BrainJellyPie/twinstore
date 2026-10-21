@@ -139,6 +139,13 @@ default palette; each building floor can use a different one. The preview uses t
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
+Add up to 12 dining tables (four chairs each) to any format. Café and restaurant
+defaults include seating; small grids reduce the default count to fit. An explicit
+count that cannot fit returns a capacity message. Each group occupies 2×2 cells
+with clear circulation around it, appears in Classic and Realistic views, and can
+be selected from any of its four cells in the floor editor. As with other fixtures,
+the existing floor-edit unlock step clears product placements before editing.
+
 Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
 with a department store, shop with upstairs café, pharmacy/wellness building or
 restaurant/café, then select each floor to change its format and options. Floor
@@ -147,7 +154,8 @@ travel, stairs, lifts and a combined building simulation are not modeled.
 
 Grid cells are not measured square meters. Pharmacy templates cover retail OTC
 care and wellness, not prescription dispensing. Café/restaurant templates model
-counter purchases, not seating, table service or kitchen operations.
+counter purchases; tables reserve floor space but table service, dining time and
+kitchen operations are not simulated.
 
 ## How it works
 

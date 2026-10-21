@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import type { Position, Rack, BlockedFaceDetail } from "@/shared/types/domain";
 import { Card } from "@/shared/components/ui/card";
 import { GridCell } from "./GridCell";
+import { rackCells } from "@/shared/utils/grid";
 
 interface GridEditorProps {
   racks: Rack[];
@@ -29,11 +30,12 @@ export function GridEditor({
   const racksByCell = useMemo(() => {
     const map = new Map<string, Rack[]>();
     for (const rack of racks) {
-      const [x, y] = rack.position;
-      const key = `${x},${y}`;
-      const existing = map.get(key) ?? [];
-      existing.push(rack);
-      map.set(key, existing);
+      for (const [x, y] of rackCells(rack)) {
+        const key = `${x},${y}`;
+        const existing = map.get(key) ?? [];
+        existing.push(rack);
+        map.set(key, existing);
+      }
     }
     return map;
   }, [racks]);

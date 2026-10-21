@@ -27,6 +27,7 @@ class TemplateInfo(BaseModel):
     open_hours: tuple[int, int]
     default_design: StoreDesign
     default_style: LayoutStyle
+    default_dining_tables: int
 
 
 @router.get("/store-templates", summary="Store formats that can be generated", response_model=list[TemplateInfo])
@@ -38,6 +39,7 @@ def list_templates() -> list[TemplateInfo]:
             id=t.id, name=t.name, description=t.description, store_type=t.store_type, grid=t.grid,
             racks=sum(1 for r in s.racks if r.slots), skus=len({i.sku for r in s.racks for sl in r.slots for i in sl.items}),
             open_hours=t.open_hours, default_style=t.style, default_design=s.design_theme,
+            default_dining_tables=t.dining_tables,
         ))
     return out
 
@@ -51,12 +53,17 @@ def preview(
     density: LayoutDensity = "balanced", entrance: EntrancePosition = "left",
     checkouts: int = Query(default=1, ge=1, le=4), fixture_design: FixtureDesign = "mixed",
     design_theme: StoreDesign | None = None,
+    dining_tables: int | None = Query(default=None, ge=0, le=12),
 ) -> dict[str, Any]:
     if get_template(template_id) is None:
         raise HTTPException(404, f"unknown template: {template_id}")
     options = LayoutOptions(style=style, width=width, height=height, density=density,
-                            entrance=entrance, checkouts=checkouts, fixture_design=fixture_design, design_theme=design_theme)
-    return generate_store(template_id, seed=seed, currency=currency, options=options).model_dump(mode="json")
+                            entrance=entrance, checkouts=checkouts, fixture_design=fixture_design,
+                            design_theme=design_theme, dining_tables=dining_tables)
+    try:
+        return generate_store(template_id, seed=seed, currency=currency, options=options).model_dump(mode="json")
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.post("/projects/{pid}/setups/generate", summary="New layout from a store-format template")
