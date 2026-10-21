@@ -143,6 +143,46 @@ def test_turned_off_by_environment(no_keys, monkeypatch):
     assert mgr.start().state == "disabled"
 
 
+@pytest.mark.parametrize("payload, advertised_size", [(b"partial", 100), (b"", 0), (b"too long", 3)])
+def test_incomplete_model_download_is_not_cached_and_can_be_retried(tmp_path, payload, advertised_size):
+    responses = [_Resp(payload), _Resp(b"complete-model")]
+    responses[0].headers["Content-Length"] = str(advertised_size)
+    mgr = LocalVLMManager(tmp_path, opener=lambda req: responses.pop(0))
+    path = tmp_path / "models" / "test__model" / "model.gguf"
+
+    with pytest.raises(RuntimeError, match="[Dd]ownload"):
+        mgr._download_model("test/model", "model.gguf")
+
+    assert not path.exists()
+    assert not path.with_name(path.name + ".part").exists()
+    assert mgr._download_model("test/model", "model.gguf").read_bytes() == b"complete-model"
+    assert responses == []
+
+
+def test_download_without_content_length_accepts_nonempty_response(tmp_path):
+    response = _Resp(b"complete-model")
+    response.headers.clear()
+    mgr = LocalVLMManager(tmp_path, opener=lambda req: response)
+    assert mgr._download_model("test/model", "model.gguf").read_bytes() == b"complete-model"
+
+
+def test_failed_download_preserves_existing_file_and_removes_partial(tmp_path):
+    class InterruptedResponse(_Resp):
+        def read(self, size=-1):
+            if self.tell():
+                raise OSError("connection interrupted")
+            return super().read(size)
+
+    response = InterruptedResponse(b"partial")
+    mgr = LocalVLMManager(tmp_path, opener=lambda req: response)
+    path = tmp_path / "runtime.zip"
+    path.write_bytes(b"previous-download")
+    with pytest.raises(OSError, match="connection interrupted"):
+        mgr._download("https://example.invalid/runtime.zip", path, label="runtime")
+    assert path.read_bytes() == b"previous-download"
+    assert not path.with_name(path.name + ".part").exists()
+
+
 def test_model_setup_warns_without_any_key_and_not_with_one(no_keys, monkeypatch):
     from store_emulator.server.main import app
 

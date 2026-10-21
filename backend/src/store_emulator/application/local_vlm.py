@@ -278,18 +278,24 @@ class LocalVLMManager:
         path.parent.mkdir(parents=True, exist_ok=True)
         part = path.with_name(path.name + ".part")
         self._set(state="downloading", message=f"Downloading {label}", progress=0.0, downloaded_mb=0.0, total_mb=0.0)
-        with self._open(urllib.request.Request(url, headers={"User-Agent": "TwinStore"})) as r, part.open("wb") as out:
-            total = int(getattr(r, "headers", {}).get("Content-Length") or 0)
-            done = 0
-            last = 0.0
-            while chunk := r.read(1 << 20):
-                out.write(chunk)
-                done += len(chunk)
-                if time.monotonic() - last > 0.5:
-                    last = time.monotonic()
-                    self._set(progress=done / total if total else None, downloaded_mb=round(done / 1e6, 1),
-                              total_mb=round(total / 1e6, 1))
-        part.replace(path)
+        try:
+            with self._open(urllib.request.Request(url, headers={"User-Agent": "TwinStore"})) as r, part.open("wb") as out:
+                length = getattr(r, "headers", {}).get("Content-Length")
+                total = int(length) if length is not None else None
+                done = 0
+                last = 0.0
+                while chunk := r.read(1 << 20):
+                    out.write(chunk)
+                    done += len(chunk)
+                    if time.monotonic() - last > 0.5:
+                        last = time.monotonic()
+                        self._set(progress=min(done / total, 1.0) if total else None, downloaded_mb=round(done / 1e6, 1),
+                                  total_mb=round(total / 1e6, 1) if total else 0.0)
+            if done == 0 or (total is not None and done != total):
+                raise RuntimeError(f"Download of {label} is incomplete: received {done} bytes, expected {total if total is not None else 'a nonempty file'}")
+            part.replace(path)
+        finally:
+            part.unlink(missing_ok=True)
         self._set(progress=1.0, downloaded_mb=round(done / 1e6, 1))
         return path
 
