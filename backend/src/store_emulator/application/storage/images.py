@@ -69,9 +69,7 @@ class ImageEntry:
 def _project_dir(project_id: str) -> Path:
     if not _SAFE_PID.fullmatch(project_id):
         raise ValueError(f"unsafe project_id: {project_id}")
-    d = Path(DATA_DIR) / "images" / project_id
-    d.mkdir(parents=True, exist_ok=True)
-    return d
+    return Path(DATA_DIR) / "images" / project_id
 
 
 def _manifest_path(project_id: str) -> Path:
@@ -137,6 +135,7 @@ def save_image(
     # tmp-file collisions for the same SKU.
     with _project_lock(project_id):
         pdir = _project_dir(project_id)
+        pdir.mkdir(parents=True, exist_ok=True)
         fname = f"{_sku_hash(sku)}.{ext}"
         target = pdir / fname
         tmp = target.with_suffix(target.suffix + f".tmp-{uuid.uuid4().hex[:8]}")
