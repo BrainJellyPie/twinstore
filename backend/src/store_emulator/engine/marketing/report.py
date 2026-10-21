@@ -82,7 +82,7 @@ def findings(r: ExperimentReport) -> Finding:
     winner = next(((v, m) for v, m in wins if v.name == r.winner), wins[0] if wins else None)
     if winner:
         v, m = winner
-        headline = (f"{v.name} earns {money(m.diff, cur, signed=True)} per visitor ({pct(m.rel_diff)}) over the control, "
+        headline = (f"{v.name} earns {money(m.diff, cur, signed=True)} per visitor ({pct(m.rel_diff) if m.mean_a else 'from zero'}) over the control, "
                     f"beyond the noise of {r.panel_size} shoppers.")
         rec.append(f"Roll out {v.name}: about {money(m.diff * vpd, cur, signed=True)} a day and "
                    f"{money(m.diff * vpd * 30, cur, signed=True)} a month at {vpd:,.0f} visitors a day "
@@ -97,7 +97,7 @@ def findings(r: ExperimentReport) -> Finding:
     else:
         headline = f"No variant changes revenue per visitor beyond the noise of {r.panel_size} shoppers."
     for v, u in product_only:
-        rec.append(f"{v.name} sells more of the tracked product ({u.diff * 100:+.1f} units per 100 visitors, {pct(u.rel_diff, 0)}) "
+        rec.append(f"{v.name} sells more of the tracked product ({u.diff * 100:+.1f} units per 100 visitors, {pct(u.rel_diff, 0) if u.control else 'from zero'}) "
                    "without moving the basket: worth it for that product's margin or brand goals, not for store revenue.")
     if losses:
         rec.append(f"Avoid {', '.join(v.name for v in losses)}: revenue per visitor falls beyond noise.")
@@ -152,7 +152,7 @@ def _arm_rows(r: ExperimentReport) -> list[list[str]]:
             f"{chr(65 + i)} · {a.name}", money(a.revenue_per_visitor, cur),
             f"{money(spend.diff, cur, signed=True)} [{money(spend.ci_low, cur, signed=True)}, {money(spend.ci_high, cur, signed=True)}]" if spend else "–",
             f"{a.conversion * 100:.1f} %" + (f" ({bought.diff * 100:+.1f} pt)" if bought else ""),
-            f"{a.units_per_visitor:.2f}" + (f" ({pct(units.rel_diff)})" if units else ""),
+            f"{a.units_per_visitor:.2f}" + (f" ({pct(units.rel_diff) if units.mean_a else f'{units.diff:+.2f} from zero'})" if units else ""),
             f"{spend.prob_b_greater * 100:.0f} %" if spend else "–",
         ])
     return rows
@@ -369,7 +369,7 @@ def report_html(r: ExperimentReport, layout: str = "", narrative: ReportNarrativ
     cur = r.currency
     e = escape
     best = max([r.control, *r.variants], key=lambda v: v.revenue_per_visitor)
-    spend_rows = [(v.name, f"{pct(m.rel_diff)} vs control", m.diff, m.ci_low, m.ci_high)
+    spend_rows = [(v.name, f"{pct(m.rel_diff)} vs control" if m.mean_a else "from zero", m.diff, m.ci_low, m.ci_high)
                   for v in r.variants if (m := _metric(v, "spend")) is not None]
     focus_blocks: list[str] = []
     skus = list(dict.fromkeys(fo.sku for v in r.variants for fo in v.focus))
