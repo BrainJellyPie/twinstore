@@ -43,7 +43,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   const [values, setValues] = useState<WizardValues>({ ...DEFAULT_VALUES, storeType: "convenience" });
   const [withTemplate, setWithTemplate] = useState(true);
   const [templateOptions, setTemplate] = useState(DEFAULT_TEMPLATE_CHOICE);
-  const template = useMemo(() => ({ ...templateOptions, open_hour: values.openHour, close_hour: values.closeHour,
+  const template = useMemo(() => ({ ...templateOptions, weekly_hours: null, open_hour: values.openHour, close_hour: values.closeHour,
     closed_days: buildWeeklySchedule(values).filter((day) => !day.is_open).map((day) => day.day) }), [templateOptions, values]);
   const layoutValid = !withTemplate || validTemplateChoice(template);
   const [showStep1Errors, setShowStep1Errors] = useState(false);

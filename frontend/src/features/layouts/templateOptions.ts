@@ -1,4 +1,5 @@
 import type { GenerateLayoutRequest, LayoutOptions, StoreTemplate } from "@/shared/api/client";
+import type { DaySchedule } from "@/shared/types/domain";
 import type { Layout } from "./hooks/useLayouts";
 
 export interface TemplateChoice extends LayoutOptions {
@@ -13,6 +14,7 @@ export interface OperatingHours {
   open_hour: number;
   close_hour: number;
   closed_days: number[];
+  weekly_hours?: DaySchedule[];
 }
 
 export interface FloorSize {
@@ -29,17 +31,20 @@ export function resolveFloorSize(value: Pick<LayoutOptions, "width" | "height">,
     ? { width, height } : null;
 }
 
-export function resolveOperatingHours(value: Pick<LayoutOptions, "open_hour" | "close_hour" | "closed_days">,
+export function resolveOperatingHours(value: Pick<LayoutOptions, "open_hour" | "close_hour" | "closed_days" | "weekly_hours">,
   template: Pick<StoreTemplate, "open_hours" | "closed_days"> | undefined): OperatingHours | null {
   if (!template) return null;
   const open_hour = value.open_hour ?? template.open_hours[0];
   const close_hour = value.close_hour ?? template.open_hours[1];
   const closed_days = value.closed_days ?? template.closed_days ?? [];
   if (!Number.isInteger(open_hour) || open_hour < 0 || open_hour > 23 ||
-    !Number.isInteger(close_hour) || close_hour < 1 || close_hour > 24 || open_hour >= close_hour ||
-    closed_days.length >= 7 || new Set(closed_days).size !== closed_days.length ||
+    !Number.isInteger(close_hour) || close_hour < 1 || close_hour > 24 ||
+    (value.weekly_hours == null && (open_hour >= close_hour || closed_days.length >= 7 || new Set(closed_days).size !== closed_days.length)) ||
+    closed_days.length > 7 ||
     closed_days.some((day) => !Number.isInteger(day) || day < 1 || day > 7)) return null;
-  return { open_hour, close_hour, closed_days: [...closed_days].sort((a, b) => a - b) };
+  if (value.weekly_hours != null && !validWeeklyHours(value.weekly_hours)) return null;
+  return { open_hour, close_hour, closed_days: [...closed_days].sort((a, b) => a - b),
+    ...(value.weekly_hours ? { weekly_hours: value.weekly_hours.map((entry) => ({ ...entry })) } : {}) };
 }
 
 export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
@@ -47,7 +52,7 @@ export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   density: "balanced", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null,
   checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, seating_zone: "auto", reserved_areas: [], shelf_direction: "horizontal", table_clearance: 1, dining_seats: 4, table_rotation: 0,
   aisle_width: null, max_shelf_run: null, excluded_categories: [], products_per_category: null,
-  open_hour: null, close_hour: null, closed_days: null, table_mix: null,
+  open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, table_mix: null,
 };
 
 export const LAYOUT_STYLES = [
@@ -87,7 +92,16 @@ export function applyLayoutPriority(value: TemplateChoice, priority: LayoutPrior
   };
 }
 
+export function validWeeklyHours(hours: DaySchedule[]): boolean {
+  return hours.length === 7 && new Set(hours.map((entry) => entry.day)).size === 7 && hours.some((entry) => entry.is_open) &&
+    hours.every((entry) => Number.isInteger(entry.day) && entry.day >= 1 && entry.day <= 7 && typeof entry.is_open === "boolean" &&
+      Number.isInteger(entry.open_hour) && entry.open_hour >= 0 && entry.open_hour <= 23 &&
+      Number.isInteger(entry.close_hour) && entry.close_hour >= 1 && entry.close_hour <= 24 &&
+      (!entry.is_open || entry.open_hour < entry.close_hour));
+}
+
 export function validTemplateChoice(value: TemplateChoice): boolean {
+  if (value.weekly_hours != null && !validWeeklyHours(value.weekly_hours)) return false;
   if (value.table_mix != null) {
     const counts = [value.table_mix.two_seat, value.table_mix.four_seat, value.table_mix.six_seat];
     const total = counts.reduce((sum, count) => sum + count, 0);
@@ -98,8 +112,8 @@ export function validTemplateChoice(value: TemplateChoice): boolean {
   return !!value.templateId && Number.isSafeInteger(value.seed) &&
     (value.open_hour == null || (Number.isInteger(value.open_hour) && value.open_hour >= 0 && value.open_hour <= 23)) &&
     (value.close_hour == null || (Number.isInteger(value.close_hour) && value.close_hour >= 1 && value.close_hour <= 24)) &&
-    (value.open_hour == null || value.close_hour == null || value.open_hour < value.close_hour) &&
-    (value.closed_days == null || (value.closed_days.length < 7 && new Set(value.closed_days).size === value.closed_days.length &&
+    (value.weekly_hours != null || value.open_hour == null || value.close_hour == null || value.open_hour < value.close_hour) &&
+    (value.closed_days == null || (value.closed_days.length <= 7 && (value.weekly_hours != null || (value.closed_days.length < 7 && new Set(value.closed_days).size === value.closed_days.length)) &&
       value.closed_days.every((day) => Number.isInteger(day) && day >= 1 && day <= 7))) &&
     (value.excluded_categories?.length ?? 0) <= 64 && (value.excluded_categories ?? []).every((category) => category.length > 0 && category.length <= 80) &&
     (value.products_per_category == null || (Number.isInteger(value.products_per_category) && value.products_per_category >= 1 && value.products_per_category <= 16)) &&
@@ -131,7 +145,7 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
     products_per_category: value.products_per_category,
     gate_wall: value.gate_wall,
     exit_wall: value.exit_wall,
-    open_hour: value.open_hour, close_hour: value.close_hour, closed_days: value.closed_days,
+    open_hour: value.open_hour, close_hour: value.close_hour, closed_days: value.closed_days, weekly_hours: value.weekly_hours,
   };
 }
 

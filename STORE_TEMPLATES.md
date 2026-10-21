@@ -56,12 +56,23 @@ Under **Operating hours**, set opening (0–23), closing (1–24) and open weekd
 for each layout or building floor. Blank hours and **Use format operating hours** restore the
 format defaults, including its regular days off. Set 0–24 for all-day opening, keep at least
 one weekday open, and use a closing hour later than opening; overnight schedules are not supported.
-These settings are saved, reused and included in exported layout and building options files.
+**Set hours for each weekday** starts from those shared hours, then lets you change
+each day independently—for example, weekdays 08:00–20:00, Saturday 10:00–16:00
+and Sunday closed. Every open day needs a valid window; at least one day must stay
+open. Turning the option off restores the shared hours, while **Use format operating
+hours** clears both kinds of customization. A weekday schedule overrides shared hours
+and the format’s regular closures while enabled. These settings are saved, reused and
+included in exported layout and building options files. The New store wizard continues
+to use the operating schedule shown in its store form for the initial layout.
 The resolved weekly hours and closed weekdays also appear in **Compare with default**,
 **Review all floors** and expanded floor plans. SVG downloads include them in the
 accessible description. Matching days are grouped; 00:00–24:00 means all-day opening.
+The playback time axis covers the earliest opening and latest closing across all open
+weekdays, so an early-closing day cannot hide another day’s evening activity.
 In a building, **Apply operating hours to all floors** copies the current floor's effective
-opening, closing and closed weekdays to every floor, including resolved format defaults.
+opening, closing and closed weekdays—or the complete individual weekday schedule—to
+every floor, including resolved format defaults. Applying shared hours clears individual
+weekday schedules on the other floors.
 The preview beside the button shows the hours and number of open days before applying.
 Hours that do not resolve to a valid schedule cannot be shared. Each floor can then be adjusted independently;
 **Use format operating hours** restores only the current floor's own defaults.

@@ -64,6 +64,21 @@ class DiningTableMix(BaseModel):
         return self
 
 
+class TemplateDayHours(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    day: TemplateWeekday
+    is_open: bool = Field(default=True, strict=True)
+    open_hour: int = Field(default=9, strict=True, ge=0, le=23)
+    close_hour: int = Field(default=18, strict=True, ge=1, le=24)
+
+    @model_validator(mode="after")
+    def _valid_window(self) -> "TemplateDayHours":
+        if self.is_open and self.open_hour >= self.close_hour:
+            raise ValueError("Closing hour must be later than opening hour on each open weekday. Overnight hours are not supported.")
+        return self
+
+
 class LayoutOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -97,6 +112,17 @@ class LayoutOptions(BaseModel):
     open_hour: int | None = Field(default=None, strict=True, ge=0, le=23)
     close_hour: int | None = Field(default=None, strict=True, ge=1, le=24)
     closed_days: list[TemplateWeekday] | None = Field(default=None, max_length=7)
+    weekly_hours: list[TemplateDayHours] | None = Field(default=None, min_length=7, max_length=7)
+
+    @model_validator(mode="after")
+    def _complete_weekly_hours(self) -> "LayoutOptions":
+        if self.weekly_hours is not None:
+            if {entry.day for entry in self.weekly_hours} != set(range(1, 8)):
+                raise ValueError("Individual weekday hours must include each weekday exactly once.")
+            if not any(entry.is_open for entry in self.weekly_hours):
+                raise ValueError("Keep at least one open weekday for this store.")
+            self.weekly_hours = sorted(self.weekly_hours, key=lambda entry: entry.day)
+        return self
 
     @model_validator(mode="after")
     def _matching_table_count(self) -> "LayoutOptions":
