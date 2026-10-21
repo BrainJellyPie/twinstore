@@ -18,6 +18,7 @@ import { ReflectiveFloor } from "./ReflectiveFloor";
 import { useRealisticSettings } from "./graphicsSettings";
 import { useScannedMaterial } from "./useScannedMaterial";
 import { usePottedPlants } from "./usePottedPlants";
+import { createCheckoutDisplayCanvas } from "./checkoutDisplay";
 
 interface Props {
   width: number;
@@ -108,6 +109,9 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   }, [built]);
   // "medium": only small metal/glass parts sample the environment (see RealisticLighting).
   const get = useThree((s) => s.get);
+  const hasDisplays = built.geometries.has("screen");
+  const displayTexture = useMemo(() => hasDisplays ? canvasTexture(createCheckoutDisplayCanvas(), { anisotropy: 2 }) : null, [hasDisplays]);
+  useEffect(() => () => displayTexture?.dispose(), [displayTexture]);
   const partEnv = useMemo(() => (quality === "high" ? null : acquireRoomEnvironment(get().gl)), [quality, get]);
   const woodMaps = useScannedMaterial("wood_table_001", 1, 1, quality);
   // The plaster is authored at one repeat/metre; Medium avoids these extra maps.
@@ -118,7 +122,7 @@ export function RealisticStore({ width, depth, racks, currency, quality, designT
   const pavementMaps = useScannedMaterial(quality === "high" && built.storefront ? "pavement_02" : null, 1 / (2.12 * M), 1 / (2.12 * M), quality);
   // The source has no measured coverage; author the stone at one repeat/metre.
   const counterMaps = useScannedMaterial(quality === "high" && built.geometries.has("counterTop") ? "marble_012" : null, 1 / M, 1 / M, quality);
-  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps, designColors), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps, designColors]);
+  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps, designColors, displayTexture), [quality, signTexture, partEnv, woodMaps, wallMaps, designTheme, metalMaps, pavementMaps, counterMaps, designColors, displayTexture]);
   const layout = useMemo(() => layoutProducts(built.plans, { maxRows: preset.maxRows }), [built, preset.maxRows]);
   const products = useMemo(
     () => buildProductMeshes(layout, currency, quality === "high" ? 160 : 128, quality === "high", quality === "high" ? 4 : 1, quality !== "high"),
