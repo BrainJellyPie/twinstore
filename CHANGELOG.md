@@ -25,6 +25,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   API: `GET .../runs/{run}/shoppers/{id}/journey`, `GET/POST/DELETE .../shoppers/{id}/interview`.
 
 ### Photo mode (path-traced stills)
+- In the first-person shopper view, **DoF** traces through a physical camera focused on whatever sits
+  at the centre of the frame (f/1.4, f/2.8, f/5.6), for a photographic depth of field.
 - In the realistic 3D view, **Photo** path-traces the current view with three-gpu-pathtracer:
   global illumination, area-light shadows from the ceiling panels, a glossy floor, real glass and
   daylight through the storefront. It refines sample by sample (64 / 256 / 1024) and saves a PNG;
