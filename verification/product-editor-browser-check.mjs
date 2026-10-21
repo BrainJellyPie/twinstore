@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin=process.env.PRODUCT_TEST_ORIGIN || 'http://127.0.0.1:18767';
 const pid='proj_67916afd', sid='setup_products_fixture';
-const {sku}=JSON.parse(await readFile('fixture.json','utf8'));
+const {sku,name}=JSON.parse(await readFile('fixture.json','utf8'));
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-swiftshader']});
 try {
  const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];
@@ -13,6 +13,13 @@ try {
  await page.goto(`${origin}/projects/${pid}`);
  await page.locator(`[data-layout-id="${sid}"]`).click();
  await page.getByRole('button',{name:'Edit products together',exact:true}).click();
+ await page.getByLabel('Search products or racks',{exact:true}).fill(sku);
+ await page.getByLabel(`Name for ${sku}`,{exact:true}).fill('Unsaved draft');
+ // Inject one read failure, then retry against the real API and verify the stale draft is discarded.
+ await page.route(`**/setups/${sid}/product-edits`,route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Offline reload check'})}),{times:1});
+ await page.getByRole('button',{name:'Discard edits and reload products',exact:true}).click();
+ await page.getByRole('button',{name:'Discard edits and retry products',exact:true}).click();
+ await page.waitForFunction(({sku,name})=>Array.from(document.querySelectorAll('input')).some(input=>input.getAttribute('aria-label')===`Name for ${sku}` && input.value===name),{sku,name});
  await page.getByLabel('Search products or racks',{exact:true}).fill(sku);
  await page.getByLabel(`Select ${sku}`,{exact:true}).check();
  await page.getByLabel(`Name for ${sku}`,{exact:true}).fill('Offline edited tea');
@@ -24,19 +31,31 @@ try {
  await page.getByRole('button',{name:'Save as new product draft',exact:true}).waitFor();
  await page.screenshot({path:'product-preview.png'});
  // Reach Save at desktop/short/mobile sizes using ordinary wheel scrolling.
+ const saveButton=page.getByRole('button',{name:'Save as new product draft',exact:true});
+ const reachable=()=>saveButton.evaluate(button=>{
+   const rect=button.getBoundingClientRect(),dialog=button.closest('[role="dialog"]').getBoundingClientRect();
+   const hit=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);
+   return rect.top>=Math.max(0,dialog.top) && rect.bottom<=Math.min(innerHeight,dialog.bottom)
+     && rect.left>=Math.max(0,dialog.left) && rect.right<=Math.min(innerWidth,dialog.right)
+     && !!hit && button.contains(hit);
+ });
  for(const viewport of [{width:1280,height:900},{width:1280,height:640},{width:390,height:844}]){
    await page.setViewportSize(viewport);
+   // Allow the dialog's 200 ms geometry transition to settle before positioning the pointer.
+   await page.waitForTimeout(300);
    const dialog=await page.getByRole('dialog').boundingBox();assert(dialog);
    await page.mouse.move(dialog.x+dialog.width-15,Math.min(viewport.height-30,dialog.y+dialog.height-25));
-   let rect=await page.getByRole('button',{name:'Save as new product draft',exact:true}).boundingBox();
-   for(let i=0;i<15 && !(rect && rect.y>=0 && rect.y+rect.height<=viewport.height);i++){await page.mouse.wheel(0,1200);await page.waitForTimeout(150);rect=await page.getByRole('button',{name:'Save as new product draft',exact:true}).boundingBox();}
-   assert(rect && rect.y>=0 && rect.y+rect.height<=viewport.height,`Save reachable at ${viewport.width} x ${viewport.height}`);
-   await page.screenshot({path:`product-${viewport.width}x${viewport.height}.png`});
+   for(let i=0;i<15 && !await reachable();i++){await page.mouse.wheel(0,1200);await page.waitForTimeout(150);}
+   const rect=await saveButton.boundingBox();
+   console.log(JSON.stringify({viewport,rect,dialog:await page.getByRole('dialog').evaluate(e=>({scrollTop:e.scrollTop,scrollHeight:e.scrollHeight,clientHeight:e.clientHeight,rect:e.getBoundingClientRect().toJSON()}))}));
+   await page.screenshot({path:`product-${viewport.width}x${viewport.height}.png`,timeout:15000});
+   assert(await reachable(),`Save reachable without clipping at ${viewport.width} x ${viewport.height}`);
  }
  const pending=page.waitForResponse(r=>r.url().endsWith('/product-edits/save'));
  await page.getByRole('button',{name:'Save as new product draft',exact:true}).click();
  const savedResponse=await pending;assert(savedResponse.ok(),await savedResponse.text());const saved=await savedResponse.json();
  await page.getByRole('button',{name:'Open edited layout',exact:true}).click();
+ await page.locator(`[data-layout-id="${saved.setup_id}"][aria-selected="true"]`).waitFor();
  await page.getByRole('button',{name:'Edit products together',exact:true}).click();
  await page.getByLabel('Search products or racks',{exact:true}).fill(sku);
  assert.equal(await page.getByLabel(`Name for ${sku}`,{exact:true}).inputValue(),'Offline edited tea');

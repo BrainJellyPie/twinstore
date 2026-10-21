@@ -58,6 +58,17 @@ it("shows a reload failure instead of silently returning an old catalog", async 
   expect((await screen.findByRole("alert")).textContent).toContain("Catalog unavailable");
 });
 
+it("can retry a failed explicit reload and replace the stale editing snapshot", async () => {
+  await open();
+  fireEvent.change(screen.getByLabelText("Name for A"), { target: { value: "Old draft" } });
+  vi.mocked(api.getProductCatalog).mockRejectedValueOnce(new Error("Catalog unavailable"));
+  fireEvent.click(screen.getByRole("button", { name: "Discard edits and reload products" }));
+  await screen.findByRole("alert");
+  vi.mocked(api.getProductCatalog).mockResolvedValueOnce({ ...catalog, products: [{ ...row, names: ["Fresh catalog"] }] });
+  fireEvent.click(screen.getByRole("button", { name: /retry products/i }));
+  await waitFor(() => expect((screen.getByLabelText("Name for A") as HTMLInputElement).value).toBe("Fresh catalog"));
+});
+
 it("keeps hidden selections explicit and can undo a bulk edit", async () => {
   await open();
   fireEvent.click(screen.getByRole("button", { name: "Select shown" }));

@@ -26,13 +26,14 @@ function ProductSession({ pid, sid, onClose }: { pid: string; sid: string; onClo
   const catalog = useQuery(productCatalog(pid, sid));
   const [reload, setReload] = useState(0);
   const [reloading, setReloading] = useState(false);
-  return <>
-    {catalog.isError && <p role="alert">{catalog.error.message}<Button onClick={() => void catalog.refetch()}>Retry products</Button></p>}
-    {!catalog.data && !catalog.isError && <div role="status">Loading current products…</div>}
-    {catalog.data && <ProductForm key={reload} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} onClose={onClose} onReload={() => {
+  const reloadProducts = () => {
     setReloading(true);
     void catalog.refetch().then((result) => { if (result.isSuccess) setReload((v) => v + 1); }).finally(() => setReloading(false));
-  }} />}
+  };
+  return <>
+    {catalog.isError && <p role="alert">{catalog.error.message}<Button disabled={reloading} onClick={reloadProducts}>{catalog.data ? "Discard edits and retry products" : "Retry products"}</Button></p>}
+    {!catalog.data && !catalog.isError && <div role="status">Loading current products…</div>}
+    {catalog.data && <ProductForm key={reload} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} onClose={onClose} onReload={reloadProducts} />}
   </>;
 }
 function ProductForm({ pid, sid, initial, refreshing, onReload, onClose }: {
