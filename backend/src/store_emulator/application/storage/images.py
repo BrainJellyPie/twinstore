@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
-from urllib.parse import quote
+from urllib.parse import urlencode
 
 from PIL import Image, UnidentifiedImageError
 
@@ -193,6 +193,7 @@ def image_url_for(
     if entry is None:
         return None
     version = entry.get("version", "")
-    suffix = f"?v={version}" if version else ""
-    encoded_sku = quote(sku, safe="")
-    return f"/api/projects/{project_id}/images/{encoded_sku}{suffix}"
+    query = {"sku": sku}
+    if version:
+        query["v"] = version
+    return f"/api/projects/{project_id}/images?{urlencode(query)}"

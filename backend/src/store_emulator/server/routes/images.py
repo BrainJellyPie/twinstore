@@ -8,7 +8,8 @@ from store_emulator.application.storage import images as image_storage
 router = APIRouter(prefix="/api/projects/{pid}", tags=["images"])
 
 
-@router.post("/sku-images/{sku}", summary="Upload single SKU image")
+@router.post("/sku-images", summary="Upload single SKU image")
+@router.post("/sku-images/{sku:path}", include_in_schema=False)
 async def upload_sku_image(
     pid: str,
     sku: str,
@@ -34,7 +35,8 @@ async def upload_sku_image(
     return {"sku": sku, "url": url}
 
 
-@router.get("/images/{sku}", summary="Download SKU image")
+@router.get("/images", summary="Download SKU image")
+@router.get("/images/{sku:path}", include_in_schema=False)
 async def get_sku_image(pid: str, sku: str) -> FileResponse:
     try:
         resolved = image_storage.resolve_image(pid, sku)
