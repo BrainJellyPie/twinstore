@@ -16,7 +16,8 @@ function Picker() {
 
 beforeEach(() => {
   vi.mocked(api.getStoreTemplates).mockResolvedValue([
-    { id: "urban_cvs", name: "City store", description: "Daily groceries", store_type: "convenience", grid: [12, 10], racks: 10, skus: 40, open_hours: [0, 24], default_style: "aisles", default_design: "classic", default_dining_tables: 0 },
+    { id: "urban_cvs", name: "City store", description: "Daily groceries", store_type: "convenience", grid: [12, 10], racks: 10, skus: 40, open_hours: [0, 24], default_style: "aisles", default_design: "classic", default_dining_tables: 0,
+      categories: [{ id: "soft_drinks", label: "Drinks" }, { id: "beer_alcohol", label: "Beer & Alcohol" }, { id: "household", label: "Household & Daily" }] },
     { id: "community_pharmacy", name: "Community pharmacy", description: "First aid and wellness", store_type: "pharmacy", grid: [14, 12], racks: 12, skus: 50, open_hours: [9, 21], default_style: "spine", default_design: "minimal", default_dining_tables: 0 },
     { id: "family_restaurant", name: "Family restaurant", description: "Central dining", store_type: "restaurant", grid: [24, 20], racks: 20, skus: 40, open_hours: [11, 22], default_style: "perimeter", default_design: "warm", default_dining_tables: 8, default_seating_zone: "center", default_checkout_placement: "near_entrance" },
     { id: "warehouse_club", name: "Warehouse club", description: "Bulk groceries", store_type: "supermarket", grid: [36, 28], racks: 60, skus: 80, open_hours: [9, 21], default_style: "spine", default_design: "classic", default_dining_tables: 0, default_checkouts: 8 },
@@ -32,6 +33,28 @@ function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><Picker /></QueryClientProvider>);
 }
+
+it("excludes chosen categories, keeps a stocked category and restores the assortment independently", async () => {
+  mount();
+  fireEvent.click(await screen.findByText("Product categories · 3 of 3 included"));
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
+  fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "Keep local signs" } });
+  fireEvent.click(screen.getByRole("checkbox", { name: "Beer & Alcohol" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Household & Daily" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ width: 24, excluded_categories: ["beer_alcohol", "household"] }), expect.any(AbortSignal),
+  ));
+  expect(screen.getByText("Product categories · 1 of 3 included")).toBeTruthy();
+  expect((screen.getByRole("checkbox", { name: "Drinks" }) as HTMLInputElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Restore all product categories" }));
+  expect((screen.getByRole("checkbox", { name: "Drinks" }) as HTMLInputElement).disabled).toBe(false);
+  expect((screen.getByRole("checkbox", { name: "Beer & Alcohol" }) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("Width (8–40 cells)") as HTMLInputElement).value).toBe("24");
+  expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Keep local signs");
+  fireEvent.click(screen.getByRole("checkbox", { name: "Beer & Alcohol" }));
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByRole("checkbox", { name: "Beer & Alcohol" }) as HTMLInputElement).checked).toBe(true);
+});
 
 it("reveals the imported format even when previous catalog filters would hide it", async () => {
   mount();
