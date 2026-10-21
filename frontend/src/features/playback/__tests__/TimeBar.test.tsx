@@ -143,3 +143,36 @@ it("stops responding to shortcuts after unmount", () => {
   fireEvent.keyDown(window, { code: "Space" });
   expect(usePlaybackControlStore.getState().playing).toBe(false);
 });
+
+it.each([[false, false], [true, false], [false, true], [true, true]])(
+  "keeps real-time playback selected across pause and folded controls (phone=%s, shopper=%s)", (phone, shopperView) => {
+    small = phone;
+    useSimulationStore.setState({ shopperView });
+    render(<TimeBar minTime={28800} maxTime={72000} />);
+    const expand = screen.queryByRole("button", { name: "Expand playback controls" });
+    if (expand) fireEvent.click(expand);
+    expect(screen.getByRole("radio", { name: "Normal" }).getAttribute("aria-checked")).toBe("true");
+    const realTime = screen.getByRole("radio", { name: "Real time" });
+    fireEvent.click(realTime);
+    fireEvent.click(realTime);
+    expect(usePlaybackControlStore.getState().speed).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Play" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+    fireEvent.click(screen.getByRole("button", { name: "Collapse playback controls" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand playback controls" }));
+    expect(screen.getByRole("radio", { name: "Real time" }).getAttribute("aria-checked")).toBe("true");
+    expect(usePlaybackControlStore.getState().playing).toBe(false);
+    fireEvent.click(screen.getByRole("radio", { name: "Very fast" }));
+    expect(usePlaybackControlStore.getState().speed).toBe(3600);
+    fireEvent.click(screen.getByRole("radio", { name: "Real time" }));
+    expect(usePlaybackControlStore.getState().speed).toBe(1);
+  },
+);
+
+it.each([[28800, 28800], [72000, 28800]])("disables real-time selection for an unavailable interval %s..%s", (minTime, maxTime) => {
+  small = false;
+  render(<TimeBar minTime={minTime} maxTime={maxTime} />);
+  expect((screen.getByRole("radio", { name: "Real time" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("radio", { name: "Real time" }));
+  expect(usePlaybackControlStore.getState().speed).toBe(60);
+});

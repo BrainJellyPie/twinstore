@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type PlaybackSpeed = 60 | 600 | 3600;
+export type PlaybackSpeed = 1 | 60 | 600 | 3600;
 
 interface PlaybackControlState {
   playing: boolean;
