@@ -31,7 +31,8 @@ async def upload_sku_image(
     except ValueError as e:
         raise HTTPException(400, str(e))
     url = image_storage.image_url_for(pid, sku)
-    assert url is not None
+    if url is None:
+        raise HTTPException(404, "The project or image no longer exists.")
     return {"sku": sku, "url": url}
 
 

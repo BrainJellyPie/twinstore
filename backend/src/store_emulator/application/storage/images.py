@@ -163,6 +163,9 @@ def delete_project_images(project_id: str) -> None:
 
 
 def resolve_image(project_id: str, sku: str) -> tuple[Path, str] | None:
+    pdir = _project_dir(project_id).resolve()
+    if not metadata_path(project_id).is_file():
+        return None
     manifest = load_manifest(project_id)
     entry = manifest.get(sku)
     if entry is None:
@@ -172,7 +175,6 @@ def resolve_image(project_id: str, sku: str) -> tuple[Path, str] | None:
     if not isinstance(path_str, str) or not isinstance(mime, str):
         return None
     p = Path(path_str).resolve()
-    pdir = _project_dir(project_id).resolve()
     try:
         p.relative_to(pdir)
     except ValueError:
