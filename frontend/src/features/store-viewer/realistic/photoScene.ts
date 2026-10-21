@@ -238,8 +238,9 @@ export function buildPhotoScene(
     scene.add(new THREE.Mesh(merged, mat));
   }
 
-  // The panels are 0.46 m squares on every other tile, so each needs a high luminance to light the floor.
-  scene.add(ceilingLights(opts.width, opts.depth, 60));
+  // Balance the panels with photographic daylight without washing out pale
+  // packages and skin in the store's neutral tone mapper.
+  scene.add(ceilingLights(opts.width, opts.depth, 28));
   // The photographic interior HDR when it loaded (equirect, as the path tracer needs), else a sky.
   const env = opts.environment ?? daylight();
   scene.environment = env;
