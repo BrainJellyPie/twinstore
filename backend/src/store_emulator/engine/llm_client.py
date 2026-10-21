@@ -22,7 +22,7 @@ _SEED_MOD = 2**31 - 1
 # no code change; the call is retried once without the parameter.
 _REJECTED: dict[str, set[str]] = {}
 _REJECTED_LOCK = threading.Lock()
-_OPTIONAL_PARAMS = ("temperature", "thinking")
+_OPTIONAL_PARAMS = ("temperature", "thinking", "reasoning_effort")
 # A model can refuse several of them (GPT-6: max_tokens, then temperature): one retry per lesson.
 _ATTEMPTS = len(_OPTIONAL_PARAMS) + 2
 
@@ -42,7 +42,8 @@ def _should_retry_without(model: str, error: BaseException, sent: dict[str, obje
     """Remember a refused parameter and say whether the call is worth one retry without it. Calls
     already in flight when another call learned the same thing are retried too."""
     param = _rejected_param(error)
-    if param is None or param not in sent:
+    body = sent.get("extra_body")
+    if param is None or (param not in sent and not (isinstance(body, dict) and param in body)):
         return False
     with _REJECTED_LOCK:
         new = param not in _REJECTED.setdefault(model, set())
@@ -101,6 +102,9 @@ class LiteLLMClient:
             },
         ], rid
 
+    def _openai_hosted(self) -> bool:
+        return self.model.startswith("openai/gpt-") and "api.openai.com" in (self.api_base or "api.openai.com")
+
     def _call_kwargs(self, seed: int | None, max_tokens: int | None = None) -> dict[str, object]:
         """Provider-agnostic sampling kwargs. Unsupported params are dropped by LiteLLM."""
         kwargs: dict[str, object] = {
@@ -121,6 +125,11 @@ class LiteLLMClient:
         # the OpenAI-compatible endpoint takes the switch as a top-level body field.
         if self.model.startswith("openai/qwen") and "aliyuncs.com" in (self.api_base or ""):
             kwargs["extra_body"] = {"enable_thinking": False}
+        # OpenAI reasoning models (GPT-6 Luna) reason by default, and the reasoning tokens count
+        # against max_completion_tokens: a 160-token glance budget was used up before any JSON, so
+        # most glances failed. A model that refuses the switch is remembered and asked without it.
+        if self._openai_hosted() and _accepts(self.model, "reasoning_effort"):
+            kwargs["extra_body"] = {"reasoning_effort": "none"}
         if self.api_base:
             kwargs["api_base"] = self.api_base
             # Local OpenAI-compatible servers (llama.cpp, vLLM) usually need no key, but the OpenAI
@@ -175,8 +184,10 @@ class LiteLLMClient:
     ) -> Path | None:
         if self.cache_dir is None:
             return None
+        extra: dict[str, str] = {"reasoning": "none"} if self._openai_hosted() else {}
         key_src = json.dumps(
             {
+                **extra,
                 "model": self.model,
                 # Two local servers often share a placeholder model id; the endpoint tells them apart.
                 "api_base": self.api_base or "",

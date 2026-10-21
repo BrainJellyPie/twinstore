@@ -148,6 +148,21 @@ def test_basket_size_sets_the_planned_trip_size() -> None:
     assert asyncio.run(_baskets(config, 1)) == [1] * 20
 
 
+def test_basket_kinds_keeps_a_trip_within_that_many_categories() -> None:
+    config = SimulationConfig(engine_type=EngineType.RULE_BASED, seed=5)
+    config.engines.rule_based = config.engines.rule_based.model_copy(update={"walkout_prob": 0.0})
+    store = _store()
+    pf = AStarPathFinder()
+    runner = PerCustomerSimulationRunner(config, build_engine(config, llm=None, pathfinder=pf), pf, sample_cue,
+                                         BEHAVIOR_PATTERNS)
+    personas = [_persona(f"k{i}", day=Weekday.SAT, arrival_hour=15, budget_max=50000, basket_size=6, basket_kinds=2,
+                         preferred_categories=["Milk", "Bread", "Snacks", "Ice cream"]) for i in range(20)]
+    _, customers = asyncio.run(runner.run(store, personas, max_concurrent=4))
+    for c in customers:
+        names = {e.product_name for e in c.timeline if e.action == Action.BUY and e.origin == "planned"}
+        assert len(names) == 6 and len({n.rsplit(" ", 1)[0] for n in names}) == 2
+
+
 def test_plan_prompt_states_basket_size() -> None:
     from store_emulator.application.presets.behavior import (
         BEHAVIOR_PATTERNS as patterns,
@@ -159,7 +174,10 @@ def test_plan_prompt_states_basket_size() -> None:
     cue = sample_cue(random.Random(0))
     text = plan_user_prompt(_persona("p", basket_size=7), cue, patterns[0], day=Weekday.MON, hour=9,
                             situation="", budget=None, currency="USD", directory="Milk: ...")
-    assert "about 7 different items" in text
+    assert "about 7 different items" in text and "categor" not in text
+    kinds = plan_user_prompt(_persona("p", basket_size=7, basket_kinds=3), cue, patterns[0], day=Weekday.MON, hour=9,
+                             situation="", budget=None, currency="USD", directory="Milk: ...")
+    assert "about 7 different items, from about 3 categories" in kinds
     plain = plan_user_prompt(_persona("p"), cue, patterns[0], day=Weekday.MON, hour=9,
                              situation="", budget=None, currency="USD", directory="Milk: ...")
     assert "different item" not in plain
@@ -191,3 +209,43 @@ def test_rule_planner_prefers_usual_products() -> None:
     _, customers = asyncio.run(runner.run(store, personas, max_concurrent=4))
     planned = [e.product_name for c in customers for e in c.timeline if e.action == Action.BUY and e.origin == "planned"]
     assert planned == ["Milk 4"] * 10
+
+
+def test_directory_lists_each_price_and_the_regular_one() -> None:
+    from store_emulator.engine.perception.store_map import (
+        directory_text,
+        store_directory,
+    )
+
+    store = _store()
+    for rack in store.product_racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                if item.name == "Milk 0":
+                    item.regular_price, item.price = item.price, 240
+    text = directory_text(store_directory(store, examples=8), "USD", item_prices=True)
+    assert "Milk 0 $2.40 (was $3.00)" in text and "Bread 1 $2.51" in text
+    assert "(was" not in directory_text(store_directory(store, examples=8), "USD")   # category range only
+
+
+def test_rule_price_elasticity_shifts_choice_to_the_cheaper_product() -> None:
+    def share_of_cut(elasticity: float) -> float:
+        store = _store()
+        for rack in store.product_racks:
+            for slot in rack.slots:
+                for item in slot.items:
+                    if item.name == "Milk 0":
+                        item.regular_price, item.price = item.price, item.price // 2
+        config = SimulationConfig(engine_type=EngineType.RULE_BASED, seed=5)
+        config.engines.rule_based = config.engines.rule_based.model_copy(
+            update={"walkout_prob": 0.0, "price_elasticity": elasticity})
+        pf = AStarPathFinder()
+        runner = PerCustomerSimulationRunner(config, build_engine(config, llm=None, pathfinder=pf), pf, sample_cue,
+                                             BEHAVIOR_PATTERNS)
+        personas = [_persona(f"m{i}", day=Weekday.SAT, arrival_hour=15, budget_max=50000, basket_size=1,
+                             preferred_categories=["Milk"]) for i in range(60)]
+        _, customers = asyncio.run(runner.run(store, personas, max_concurrent=4))
+        names = [e.product_name for c in customers for e in c.timeline if e.action == Action.BUY and e.origin == "planned"]
+        return names.count("Milk 0") / max(1, len(names))
+
+    assert share_of_cut(-2.0) > share_of_cut(0.0) + 0.15

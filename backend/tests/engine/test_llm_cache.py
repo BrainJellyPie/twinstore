@@ -71,3 +71,22 @@ def test_max_tokens_is_renamed_when_the_model_wants_max_completion_tokens() -> N
     assert lc._should_retry_without(client.model, err, sent)  # pyright: ignore[reportPrivateUsage]
     again = client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
     assert "max_tokens" not in again and again["max_completion_tokens"] == sent["max_tokens"]
+
+
+def test_openai_reasoning_is_switched_off_and_dropped_when_refused(tmp_path) -> None:
+    from store_emulator.engine import llm_client as lc
+
+    model = "openai/gpt-test-reasoning"
+    client = lc.LiteLLMClient(LLMConfig(model=model, cache_dir=str(tmp_path)))
+    sent = client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
+    assert sent["extra_body"] == {"reasoning_effort": "none"}
+    # Only OpenAI's own endpoint: a local OpenAI-compatible server gets no such switch.
+    local = lc.LiteLLMClient(LLMConfig(model="openai/gpt-local", api_base="http://127.0.0.1:9/v1"))
+    assert "extra_body" not in local._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
+    # The switch is part of the cache key, so answers given with reasoning on are not reused.
+    msgs = [{"role": "user", "content": "hi"}]
+    plain = lc.LiteLLMClient(LLMConfig(model="openai/other", cache_dir=str(tmp_path)))
+    assert client._cache_path(_Answer, msgs, seed=1) != plain._cache_path(_Answer, msgs, seed=1)  # pyright: ignore[reportPrivateUsage]
+    err = RuntimeError("Unsupported value: 'reasoning_effort' does not support 'none' with this model.")
+    assert lc._should_retry_without(model, err, sent)  # pyright: ignore[reportPrivateUsage]
+    assert "extra_body" not in client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]

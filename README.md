@@ -131,7 +131,8 @@ the purchase rate, and paired layouts share every random number.
 **Fig. 3 — Shelf Lab.** Swap products, empty a run, inpaint a new package, reprint a price tag or hang a promotion on a
 real shelf photo. Only pixels inside the changed boxes move, so every edit has an exact mask. The same shoppers judge
 the render, the tagged photo and the raw photo (sim2real agreement with CIs), and compliance gaps against the reference
-layout are priced in revenue per day by paired simulation. Details: [`SHELF_LAB.md`](./SHELF_LAB.md).
+layout are priced in revenue per day by paired simulation. The shelf here is a photoreal render from the built-in
+shelf studio, which supplies exact boxes; phone photos are edited the same way. Details: [`SHELF_LAB.md`](./SHELF_LAB.md).
 
 ### Photos in, twin out
 
@@ -147,20 +148,24 @@ layout are priced in revenue per day by paired simulation. Details: [`SHELF_LAB.
 
 <img src="./.github/assets/twinstore/validation.png" alt="Fig. 4 — Calibration and held-out validation on dunnhumby The Complete Journey">
 
-**Fig. 4 — Validation.** On dunnhumby *The Complete Journey* (801 households, 1.47 M lines) the twin shops for real
-households; simulated trips are compared with their real, held-out trips. Five failure modes found on the data changed
-the simulator (visit times, convenience-store caps, weekly stock-ups, silent fallbacks, shelf prices). With the
-configuration frozen, on 150 new households and later weeks:
+**Fig. 4 — Validation.** The twin shops for households of six public datasets — dunnhumby *The Complete Journey*
+(801 households, 1.47 M lines) for the main test, plus X5 RetailHero, Ta-Feng, Instacart, Favorita, M5 and 13,159
+pedestrian tracks — and its trips are compared with real trips it never saw. Eleven failure modes found on the data
+changed the simulator. With the configuration frozen, on 150 new households and 14 later weeks, with Claude Haiku 5.5,
+Qwen 3.8 Flash and GPT-6 Luna as decision models:
 
-| Held out (weeks 40–53) | real | replay | rule | Claude Haiku 5.5 | Qwen 3.8 Flash |
-| :-- | --: | --: | --: | --: | --: |
-| Items / trip | 5.85 | 6.11 | 7.23 | **6.30** | 6.57 |
-| Category JSD ↓ | – | 0.012 | 0.079 | 0.021 | **0.017** |
-| Age × category r ↑ | – | 0.33 | 0.00 | **0.53** | **0.53** |
-| Per-trip hit ↑ (store popularity 0.31) | – | 0.29 | 0.19 | **0.34** | **0.34** |
+| Check (held out) | Simulated | Real reference |
+| :-- | :-- | :-- |
+| Category mix of the population (JSD) | **0.017–0.018** | 0.012 (a household's own earlier receipts) |
+| Per-household hit vs the store's best-sellers | **+0.027 to +0.035** (95 % CIs above 0) | – |
+| Classifier AUC, real vs simulated receipt | **0.56–0.62** (was 0.80–0.84) | 0.52 (own earlier receipt vs a later one) |
+| Own-price elasticity | **−0.78 to −1.60** | −0.70 (M5) to −2.62 (meta-analysis) |
+| Bigger trips from farther away (Ta-Feng) | **1.25–1.36×** | 1.33× |
+| Walking speed (13,159 tracks) | **1.12 m/s** | 1.13 m/s |
 
-Both language-model shoppers beat store popularity per trip, though not the household's own past purchases (0.36);
-spend per trip is still high (the shelf-price fix is being re-evaluated). Full protocol, all metrics and reproduction:
+The three model families agree on every check; the rule engine, fitted to the same data, does not reach the
+individual-level results. Limits stay next to the results: trip size is an input taken from receipts, and at the
+product level a household's own history still predicts best. Full protocol, every table and reproduction:
 [`research/validation`](./research/validation).
 
 ## For researchers

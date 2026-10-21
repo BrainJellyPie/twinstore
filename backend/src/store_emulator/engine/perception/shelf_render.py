@@ -222,6 +222,8 @@ def render_face(
                 draw.text((x1 - rw // 2 - 1, y0 + 11), ribbon, font=promo_font, fill=(255, 255, 255), anchor="mt")
             # Price tag on the shelf edge.
             price = display_price(item.price, currency)
+            if item.regular_price > item.price:
+                price = f"{price} (was {display_price(item.regular_price, currency)})"
             if number_on_tag:
                 price = f"#{mark}  {price}"
             pw = int(draw.textlength(price, font=price_font)) + 14

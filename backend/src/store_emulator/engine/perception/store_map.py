@@ -42,6 +42,7 @@ class DirectoryEntry:
     label: str
     rack_ids: tuple[str, ...]
     examples: tuple[str, ...]
+    example_prices: tuple[tuple[int, int], ...]   # (price, regular price or 0) per example
     min_price: int
     max_price: int
     promos: tuple[tuple[str, str], ...]  # (product name, promo label)
@@ -75,9 +76,11 @@ def store_directory(store: Store, *, examples: int = 3, rng: random.Random | Non
             rng.shuffle(shuffled)
             ranked = sorted(shuffled, key=lambda e: not e[1].promo)  # stable: promotions first, the rest at random
         names: list[str] = []
+        named_prices: list[tuple[int, int]] = []
         for _, item in ranked:
             if item.name not in names:
                 names.append(item.name)
+                named_prices.append((item.price, item.regular_price))
             if len(names) >= examples:
                 break
         promos: list[tuple[str, str]] = []
@@ -87,18 +90,27 @@ def store_directory(store: Store, *, examples: int = 3, rng: random.Random | Non
         prices = [item.price for _, item in entries]
         out.append(DirectoryEntry(
             label=category_label(racks[0]), rack_ids=tuple(r.id for r in racks), examples=tuple(names),
+            example_prices=tuple(named_prices),
             min_price=min(prices), max_price=max(prices), promos=tuple(promos), items=len(entries),
         ))
     return out
 
 
-def directory_text(directory: list[DirectoryEntry], currency: str, *, max_promos: int = 3) -> str:
-    """One line per category: "- Drink: Pepsi 20oz, Arizona Green Tea 23oz, … ($1.29–$3.29); on sale: …"."""
+def directory_text(directory: list[DirectoryEntry], currency: str, *, max_promos: int = 3,
+                   item_prices: bool = False) -> str:
+    """One line per category: "- Drink: Pepsi 20oz, Arizona Green Tea 23oz, … ($1.29–$3.29); on sale: …".
+    With `item_prices`, each product carries its own price ("Pepsi 20oz $1.29", "… $0.99 (was $1.29)"):
+    with only the category's range, planners could not respond to a product's price at all."""
     lines: list[str] = []
     for entry in directory:
         low, high = display_price(entry.min_price, currency), display_price(entry.max_price, currency)
         price = low if entry.min_price == entry.max_price else f"{low}–{high}"
-        line = f"- {entry.label}: {', '.join(entry.examples)} ({price})"
+        if item_prices:
+            named = [f"{n} {display_price(p, currency)}" + (f" (was {display_price(r, currency)})" if r > p else "")
+                     for n, (p, r) in zip(entry.examples, entry.example_prices, strict=True)]
+            line = f"- {entry.label}: {', '.join(named)}"
+        else:
+            line = f"- {entry.label}: {', '.join(entry.examples)} ({price})"
         if entry.promos:
             line += "; on sale: " + ", ".join(f"{name} {promo}" for name, promo in entry.promos[:max_promos])
         lines.append(line)

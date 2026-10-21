@@ -160,9 +160,11 @@ class RuleBasedEngine:
         plan.walk_out = pattern.allow_no_purchase and rng.random() < min(0.9, params.walkout_prob * self._fx.walkout)
         target = persona.basket_size if persona.basket_size > 0 else pattern.max_products
         usual = frozenset(p.lower() for p in persona.usual_products)
+        kinds = persona.basket_kinds if persona.basket_size > 0 else 0
+        used: list[str] = []   # categories in the basket, for a trip of known breadth (basket_kinds)
         if pattern.max_products > 0 and not plan.walk_out:
             for position, category in enumerate(persona.preferred_categories):
-                if len(plan.buys) >= target:
+                if len(plan.buys) >= target or (kinds and len(used) >= kinds):
                     break
                 # Lists are written in priority order: later entries are less likely to be bought.
                 hit_prob = (params.planned_hit_prob * params.plan_position_decay ** position
@@ -174,6 +176,7 @@ class RuleBasedEngine:
                     continue
                 rack, slot, item = pick
                 self.add_planned_buy(store, plan, middle, rack, slot, item, f"looks for {category}")
+                used.append(category)
                 # More products from the same category (several flavours, sizes): geometric extras
                 # with mean items_per_category − 1. Drawn only when calibrated above 1.
                 extra_p = 1.0 - 1.0 / params.items_per_category
@@ -183,21 +186,28 @@ class RuleBasedEngine:
                         break
                     self.add_planned_buy(store, plan, middle, *more, f"also takes more {category}")
             if persona.basket_size > 0:
-                self._fill_to_size(store, plan, middle, persona.preferred_categories, target, usual)
+                self._fill_to_size(store, plan, middle, persona.preferred_categories, target, usual, kinds, used)
         return self.close_plan(store, plan, middle)
 
     def _fill_to_size(self, store: Store, plan: ShopperPlan, middle: list[CustomerAction],
-                      categories: list[str], target: int, usual: frozenset[str] = frozenset()) -> None:
+                      categories: list[str], target: int, usual: frozenset[str] = frozenset(),
+                      kinds: int = 0, used: list[str] | None = None) -> None:
         """A trip of known size: keep taking products from the list (in priority order, round after
-        round) until the basket has `target` products, the list is exhausted or money runs out."""
+        round) until the basket has `target` products, the list is exhausted or money runs out. With
+        `kinds`, a new category is opened only while the basket spans fewer than `kinds` of them."""
+        used = used if used is not None else []
         while len(plan.buys) < target:
             progressed = False
             for category in categories:
                 if len(plan.buys) >= target:
                     return
+                if kinds and category not in used and len(used) >= kinds:
+                    continue
                 pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, plan.rng, usual)
                 if pick is not None and self.add_planned_buy(store, plan, middle, *pick, f"also needs {category}"):
                     progressed = True
+                    if category not in used:
+                        used.append(category)
             if not progressed:
                 return
 
@@ -266,7 +276,7 @@ class RuleBasedEngine:
             item = next((i for i in seen.slot.items if i.sku == seen.sku), None)
             if item is None or (pattern.id == "deal_hunting" and not item.promo):
                 continue
-            promo = params.promo_multiplier if item.promo else 1.0
+            promo = (params.promo_multiplier if item.promo else 1.0) * self._price_factor(item)
             situational = self._fx.impulse * self._fx.demand_for(item_categories(seen.rack, item))
             p_buy = min(0.95, params.impulse_base * seen.visibility * promo * factor * situational)
             p_look = min(0.98, p_buy * (1.0 + params.browse_only_ratio))
@@ -332,6 +342,13 @@ class RuleBasedEngine:
             pattern = pattern.model_copy(update={"max_products": basket_size})
         return pattern
 
+    def _price_factor(self, item: SlotItem) -> float:
+        """(price / regular price) ** price_elasticity; 1 when the price is the regular one."""
+        e = self._config.engines.rule_based.price_elasticity
+        if e == 0 or item.regular_price <= 0 or item.price <= 0:
+            return 1.0
+        return (item.price / item.regular_price) ** e
+
     def _pick_item(
         self, store: Store, category: str, remaining: int, chosen: set[str], rng: random.Random,
         usual: frozenset[str] = frozenset(),
@@ -347,7 +364,7 @@ class RuleBasedEngine:
             fit = 1.0 if item.price <= remaining else 0.15
             candidates.append((rack, slot, item))
             weights.append(attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0)
-                           * self._fx.demand_for(item_categories(rack, item)))
+                           * self._fx.demand_for(item_categories(rack, item)) * self._price_factor(item))
         if not candidates:
             return None
         habit = self._config.engines.rule_based.habit_prob

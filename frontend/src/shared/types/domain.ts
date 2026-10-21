@@ -17,6 +17,8 @@ export interface SlotItem {
   sku: string;
   name: string;
   price: number;   // minor currency unit (US cents for USD)
+  /** Usual price when `price` is temporary (a discount or a raise); 0 or absent = `price` is usual. */
+  regular_price?: number;
   promo: string;
   image_url?: string | null;
 }
@@ -72,6 +74,8 @@ export interface Persona {
   behavior_tendency: string;
   /** Different items this trip is for; 0 or absent = the engine decides. */
   basket_size?: number;
+  /** Categories those items span (e.g. from a past receipt); 0 or absent = unconstrained. */
+  basket_kinds?: number;
   /** Products the shopper habitually buys (shelf names). */
   usual_products?: string[];
 }
