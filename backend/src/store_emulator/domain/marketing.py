@@ -79,6 +79,18 @@ class SkuSales(BaseModel):
     buyers: int
 
 
+class SegmentLift(BaseModel):
+    """A variant's paired difference to control within one shopper segment."""
+    segment: str                      # "age 20s", "gender Female"
+    n: int
+    metric: Literal["spend", "focus_units"]   # store revenue per visitor, or units of the tracked products per visitor
+    control: float
+    variant: float
+    diff: float
+    ci_low: float
+    ci_high: float
+
+
 class VariantResult(BaseModel):
     name: str
     applied: list[str] = []           # what changed, in words
@@ -90,6 +102,7 @@ class VariantResult(BaseModel):
     focus: list[FocusOutcome] = []
     top_skus: list[SkuSales] = []
     prices: dict[str, int] = {}       # shelf price of each tracked product in this arm (lowest facing)
+    segments: list[SegmentLift] = []  # paired differences by age group and gender (segments of 20+ shoppers)
 
 
 class PricePoint(BaseModel):

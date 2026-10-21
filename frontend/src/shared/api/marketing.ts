@@ -73,6 +73,18 @@ export interface VariantResult {
   focus: FocusOutcome[];
   top_skus: SkuSales[];
   prices?: Record<string, number>;
+  segments?: SegmentLift[];
+}
+
+export interface SegmentLift {
+  segment: string;
+  n: number;
+  metric: "spend" | "focus_units";
+  control: number;
+  variant: number;
+  diff: number;
+  ci_low: number;
+  ci_high: number;
 }
 
 export interface PricePoint { arm: string; price: number; units: number; units_low: number; units_high: number; revenue: number }
