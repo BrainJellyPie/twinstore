@@ -48,6 +48,10 @@ _MUTATION_RATE = 0.5
 _MAX_POPULATION = 10
 
 
+class OptimizationCanceled(Exception):
+    """Raised between expensive steps when the job was asked to stop."""
+
+
 @dataclass(frozen=True)
 class _Candidate:
     moves: tuple[Move, ...]
@@ -76,6 +80,7 @@ class _Search:
         evaluator: LayoutEvaluator,
         rules: MoveRules,
         on_progress: ProgressCallback | None,
+        should_stop: Callable[[], bool] | None,
     ) -> None:
         self.baseline = baseline
         self.spec = spec
@@ -85,6 +90,7 @@ class _Search:
             "optimize", spec.seed, spec.algorithm, spec.scope.value, spec.objective.value,
         ))
         self.on_progress = on_progress
+        self.should_stop = should_stop
         self.best = baseline
         self.history: list[CandidateScore] = []
         self.notes: list[str] = []
@@ -109,9 +115,15 @@ class _Search:
         """Sort key: best first, earlier (shorter history) first on ties."""
         return -self.gain(candidate.score), candidate.iteration
 
+    def check_stop(self) -> None:
+        if self.should_stop is not None and self.should_stop():
+            raise OptimizationCanceled("optimization canceled between evaluation steps")
+
     async def evaluate(self, proposal: _Proposal) -> _Candidate:
+        self.check_stop()
         hits = self.evaluator.cache_hits
         score, summary = await self.evaluator.evaluate(proposal.store)
+        self.check_stop()
         self.cache_hits += self.evaluator.cache_hits - hits
         self.evaluations += 1
         key = store_fingerprint(proposal.store)
@@ -302,6 +314,7 @@ async def optimize(
     validation_personas: list[Persona] | None = None,
     on_progress: ProgressCallback | None = None,
     keep_top: int = 0,
+    should_stop: Callable[[], bool] | None = None,
 ) -> OptimizeResult:
     """Search for a better layout than `store` under `spec`. Never mutates `store`.
 
@@ -312,7 +325,12 @@ async def optimize(
     with the next replicate, i.e. fresh shopper randomness, and compared pairwise; that guards
     against picking a layout that only won on the search panel's particular draws. Validation
     is skipped when `spec.validation_size` is 0 or the baseline is kept.
+
+    `should_stop` is checked between evaluations, including validation; cancellation never
+    publishes a partial result and does not depend on progress-reporting callbacks.
     """
+    if should_stop is not None and should_stop():
+        raise OptimizationCanceled("optimization canceled before baseline evaluation")
     if evaluator.objective != spec.objective:
         raise ValueError(f"evaluator objective {evaluator.objective} does not match spec objective {spec.objective}")
     errors = [i for i in validate(store) if i.severity == "error"]
@@ -323,7 +341,8 @@ async def optimize(
     rules = MoveRules.for_baseline(store, spec.scope, spec.constraints)
     score, summary = await evaluator.evaluate(store)
     baseline = _Candidate((), (), store, score, summary, 0)
-    search = _Search(baseline, spec, evaluator, rules, on_progress)
+    search = _Search(baseline, spec, evaluator, rules, on_progress, should_stop)
+    search.check_stop()
     logger.info(
         f"[optimize] {spec.algorithm} over {spec.scope} for {spec.objective}: baseline {score},"
         f" budget {spec.budget}, {len(evaluator.personas)} customers per candidate"
@@ -335,6 +354,7 @@ async def optimize(
             await _hill_climb(search)
         case "genetic":
             await _genetic(search)
+    search.check_stop()
 
     notes = search.notes
     best = search.best
@@ -359,8 +379,11 @@ async def optimize(
     if best is not baseline and spec.validation_size > 0:
         personas = validation_personas if validation_personas else evaluator.personas
         replicate = evaluator.config.replicate + 1
+        search.check_stop()
         results_a = await evaluator.evaluate_customers(store, personas, replicate=replicate)
+        search.check_stop()
         results_b = await evaluator.evaluate_customers(best_store, personas, replicate=replicate)
+        search.check_stop()
         report = compare_runs(results_a, results_b, run_a="baseline", run_b="optimized", seed=spec.seed)
         metric = next((m for m in report.metrics if m.metric == metric_name), None)
         if metric is not None:
@@ -398,6 +421,7 @@ async def optimize(
             top.append(LayoutCandidate(iteration=candidate.iteration, score=candidate.score,
                                        moves=list(pruned_descriptions), store=pruned_store.model_copy(deep=True)))
 
+    search.check_stop()
     seconds = round(time.perf_counter() - started, 3)
     change = f"{relative:+.2%}" if baseline.score else f"{best.score - baseline.score:+.2f} from zero"
     logger.info(

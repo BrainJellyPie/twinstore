@@ -48,7 +48,7 @@ from store_emulator.engine.simulation.factory import build_engine
 from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunner
 
 from .evaluate import COMPARISON_METRICS, LayoutEvaluator, objective_value
-from .search import ProgressCallback, optimize
+from .search import OptimizationCanceled, ProgressCallback, optimize
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +58,6 @@ type PhaseCallback = Callable[[str], None]
 _IMPULSE_SCALES = (0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0)
 _LEVEL_TILTS = (0.0, 0.5, 1.0)
 _LEVEL_SMOOTHING = 0.02
-
-
-class OptimizationCanceled(Exception):
-    """Raised between expensive steps when the job was asked to stop."""
 
 
 def impulse_profile(store: Store, customers: list[CustomerResult]) -> ImpulseProfile:
@@ -268,7 +264,8 @@ async def judge_layout_search(
     phase("searching")
     surrogate = LayoutEvaluator(config, search_personas, cue_sampler, patterns, pathfinder, spec.objective)
     search_spec = spec.model_copy(update={"validation_customers": 0})
-    result = await optimize(store, search_spec, surrogate, on_progress=on_progress, keep_top=judge.top_k)
+    result = await optimize(store, search_spec, surrogate, on_progress=on_progress, keep_top=judge.top_k,
+                            should_stop=should_stop)
     result = result.model_copy(update={"spec": spec})
     candidates: list[LayoutCandidate] = [
         LayoutCandidate(iteration=0, score=result.baseline_score, moves=[], store=store), *result.top_candidates,
