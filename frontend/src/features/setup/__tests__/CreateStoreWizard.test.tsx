@@ -11,7 +11,7 @@ vi.mock("@/features/layouts/components/TemplatePicker", () => ({
   TemplatePicker: ({ value, onChange, onTemplateSelected }: { value: TemplateChoice; onChange: (v: TemplateChoice) => void; onTemplateSelected?: (t: StoreTemplate) => void }) =>
     <div><button type="button" onClick={() => {
       onChange({ ...value, templateId: "community_pharmacy", width: 24, design_theme: "minimal" });
-      onTemplateSelected?.({ id: "community_pharmacy", name: "Community pharmacy", description: "Care", store_type: "pharmacy", grid: [14, 12], racks: 20, skus: 30, open_hours: [9, 21], default_style: "aisles", default_design: "minimal" });
+      onTemplateSelected?.({ id: "community_pharmacy", name: "Community pharmacy", description: "Care", store_type: "pharmacy", grid: [14, 12], racks: 20, skus: 30, open_hours: [9, 21], default_style: "aisles", default_design: "minimal", default_dining_tables: 0 });
     }}>Choose pharmacy</button><button type="button" onClick={() => onChange({ ...value, width: 99 })}>Invalid size</button></div>,
 }));
 beforeEach(() => { create.mockResolvedValue({ metadata: { project_id: "proj_new" }, setup: { id: "setup_new" }, personaGenId: "gen_new" }); });

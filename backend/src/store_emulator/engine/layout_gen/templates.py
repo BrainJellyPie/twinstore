@@ -38,6 +38,7 @@ class StoreTemplate:
     open_hours: tuple[int, int] = (0, 24)
     closed_days: tuple[int, ...] = ()
     style: LayoutStyle = "aisles"
+    dining_tables: int = 0
 
 
 TEMPLATES: list[StoreTemplate] = [
@@ -97,7 +98,7 @@ TEMPLATES: list[StoreTemplate] = [
         store_type="bakery", grid=(10, 8),
         fridges=["dairy", "soft_drinks", "water_sports"], freezers=["ice_cream"],
         wall_shelves=["bakery", "bakery"], gondolas=["bakery", "bakery", "sweets"],
-        near_counter=["coffee_station", "checkout_impulse"], open_hours=(7, 22),
+        near_counter=["coffee_station", "checkout_impulse"], open_hours=(7, 22), dining_tables=2,
     ),
     StoreTemplate(
         id="office_lobby", name="Office-tower lobby store", description="Weekday office crowd: coffee, salads, sandwiches, snacks; closed on weekends.",
@@ -145,28 +146,28 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="specialty_cafe", name="Specialty coffee bar", description="Coffee menu and pastry displays with an open center. Models counter purchases; seating service is not simulated.",
         store_type="cafe", grid=(12, 10), fridges=["dairy", "soft_drinks"], wall_shelves=["cafe_menu", "bakery"],
-        gondolas=["desserts", "cafe_menu"], near_counter=["cafe_menu", "desserts"], style="perimeter", open_hours=(7, 20),
+        gondolas=["desserts", "cafe_menu"], near_counter=["cafe_menu", "desserts"], style="perimeter", open_hours=(7, 20), dining_tables=4,
     ),
     StoreTemplate(
         id="book_cafe", name="Bookshop café", description="Browsing islands for books and stationery plus a coffee and cake counter.",
         store_type="cafe", grid=(18, 14), fridges=["dairy", "soft_drinks"], wall_shelves=["books", "books", "stationery"],
-        gondolas=["books", "books", "stationery"], near_counter=["cafe_menu", "desserts"], style="free_flow", open_hours=(9, 22),
+        gondolas=["books", "books", "stationery"], near_counter=["cafe_menu", "desserts"], style="free_flow", open_hours=(9, 22), dining_tables=4,
     ),
     StoreTemplate(
         id="dessert_cafe", name="Dessert & tea café", description="Small dessert displays, tea and coffee with a spacious showroom arrangement.",
         store_type="cafe", grid=(14, 12), fridges=["dairy", "desserts"], wall_shelves=["bakery", "cafe_menu"],
-        gondolas=["desserts", "bakery"], near_counter=["cafe_menu", "desserts"], style="showroom", open_hours=(10, 22),
+        gondolas=["desserts", "bakery"], near_counter=["cafe_menu", "desserts"], style="showroom", open_hours=(10, 22), dining_tables=4,
     ),
     StoreTemplate(
         id="quick_service", name="Quick-service restaurant", description="Menu displays and pickup counter for lunch orders. Counter ordering is modeled, not kitchen preparation or table service.",
         store_type="restaurant", grid=(14, 10), fridges=["soft_drinks", "water_sports"], wall_shelves=["restaurant_menu"],
-        gondolas=["restaurant_menu", "desserts"], near_counter=["restaurant_menu", "desserts"], style="perimeter", open_hours=(10, 23),
+        gondolas=["restaurant_menu", "desserts"], near_counter=["restaurant_menu", "desserts"], style="perimeter", open_hours=(10, 23), dining_tables=4,
     ),
     StoreTemplate(
         id="food_hall", name="Food hall & deli", description="Several food and beverage displays around a central circulation spine; use multiple checkout counters for service points.",
         store_type="restaurant", grid=(26, 20), fridges=["fresh_meals", "soft_drinks", "dairy"] * 3,
         wall_shelves=["restaurant_menu", "bakery", "cafe_menu"] * 2, gondolas=["restaurant_menu", "fresh_meals", "desserts", "bakery"],
-        near_counter=["cafe_menu", "desserts"], style="spine", open_hours=(10, 22),
+        near_counter=["cafe_menu", "desserts"], style="spine", open_hours=(10, 22), dining_tables=8,
     ),
     StoreTemplate(
         id="fashion_boutique", name="Fashion boutique", description="Curated apparel and accessories on free-flow display islands with perimeter collections.",
@@ -310,6 +311,20 @@ def generate_store(
     for cat, y in zip(t.wall_shelves, range(2, h - 2), strict=False):
         b.add(RackType.SHELF, w - 1, y, category=cat, faces=[Face.W], rotation=270)
 
+    # A dining group occupies 2×2 cells, including its four chairs. Reserve a
+    # continuous one-cell circulation ring and keep it clear of retail displays.
+    table_positions = [(x, y) for y in range(2, h - 3, 3) for x in range(2, w - 3, 3)]
+    table_count = min(t.dining_tables, len(table_positions)) if options.dining_tables is None else options.dining_tables
+    if table_count > len(table_positions):
+        raise ValueError(f"This {w}×{h} grid fits at most {len(table_positions)} dining tables with clear aisles. Reduce the table count or increase the grid size.")
+    dining_clearance: set[tuple[int, int]] = set()
+    for i, (x, y) in enumerate(table_positions[:table_count]):
+        table = Rack(id=f"r_table_{i + 1}", type=RackType.TABLE, shape=[[1, 1], [1, 1]],
+                     position=(x, y), rack_name=f"Dining table {i + 1}", rack_desc="Four seats; furniture only")
+        b.racks.append(table)
+        b.taken.update(table.occupied_positions)
+        dining_clearance.update((cx, cy) for cx in range(x - 1, x + 3) for cy in range(y - 1, y + 3))
+
     # Every populated face opens onto a continuous aisle. Cross-aisles split
     # long shelf runs, and the front two rows stay clear for checkout circulation.
     aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]
@@ -338,7 +353,7 @@ def generate_store(
             b.counts[category] = rng.randrange(len(CATALOG[category]))
         for i, (x, y, faces) in enumerate(tiles):
             cat = categories[min(len(categories) - 1, i * len(categories) // len(tiles))]
-            if b.free(x, y):
+            if b.free(x, y) and (x, y) not in dining_clearance:
                 b.add(RackType.SHELF, x, y, category=cat, faces=faces,
                       rotation=90 if layout_style == "perimeter" else 0,
                       variant="b" if (y // 3) % 2 else "a")

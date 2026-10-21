@@ -25,7 +25,7 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
 
 def test_preview_matches_saved_custom_store(client):
     options = dict(seed=12, currency="JPY", style="spine", width=28, height=24,
-                   density="spacious", entrance="right", checkouts=3, fixture_design="c", design_theme="botanical")
+                   density="spacious", entrance="right", checkouts=3, fixture_design="c", design_theme="botanical", dining_tables=7)
     preview = client.get("/api/store-templates/food_hall/preview", params=options)
     assert preview.status_code == 200, preview.text
     response = client.post(f"/api/projects/{PID}/setups/generate", json={
@@ -39,12 +39,15 @@ def test_preview_matches_saved_custom_store(client):
     assert saved["store"]["design_theme"] == preview.json()["design_theme"] == "botanical"
     assert "Reserve a quiet corner" in saved["memo"]
     assert saved["generation"]["checkouts"] == 3
+    assert saved["generation"]["dining_tables"] == 7
+    assert sum(r["type"] == "table" for r in saved["store"]["racks"]) == 7
 
 
 @pytest.mark.parametrize("patch", [
     {"width": 7}, {"width": 41}, {"height": 5}, {"height": 41}, {"checkouts": 0},
     {"checkouts": 5}, {"style": "unknown"}, {"density": "unknown"}, {"currency": "INVALID"},
     {"entrance": "roof"}, {"fixture_design": "unknown"}, {"design_theme": "unknown"},
+    {"dining_tables": -1}, {"dining_tables": 13},
 ])
 def test_invalid_options_rejected_for_preview_and_save(client, patch):
     assert client.get("/api/store-templates/urban_cvs/preview", params=patch).status_code == 422
@@ -144,3 +147,36 @@ def test_long_building_and_floor_names_remain_valid_generation_requests(client):
     for floor in response.json()["setups"]:
         setup = client.get(f"/api/projects/{PID}/setups/{floor['id']}").json()
         assert TemplateLayoutRequest.model_validate(setup["generation"]).name == floor["name"]
+
+
+def test_oversized_seating_rejects_preview_and_entire_building(client):
+    options = {"template_id": "specialty_cafe", "width": 8, "height": 6, "dining_tables": 2}
+    preview = client.get("/api/store-templates/specialty_cafe/preview", params=options)
+    assert preview.status_code == 422 and "at most 1" in preview.json()["detail"]
+    before = client.get(f"/api/projects/{PID}").json()
+    body = _building()
+    body["floors"][1]["layout"] = options
+    assert client.post(f"/api/projects/{PID}/setups/generate-building", json=body).status_code == 422
+    assert client.get(f"/api/projects/{PID}").json() == before
+
+
+def test_dining_tables_can_be_edited_and_saved_without_product_faces(client):
+    result = client.post(f"/api/projects/{PID}/setups/generate", json={"template_id": "specialty_cafe"}).json()
+    url = f"/api/projects/{PID}/setups/{result['id']}"
+    detail = client.get(url).json()
+    store = detail["store"]
+    # Use the existing floor-edit unlock flow before changing any fixture.
+    for rack in store["racks"]:
+        for slot in rack["slots"]:
+            slot["items"] = []
+    unlocked = client.put(url, json={"setup": {"store": store}})
+    assert unlocked.status_code == 200, unlocked.text
+    table = next(r for r in store["racks"] if r["type"] == "table")
+    assert not any(face["rack_id"] == table["id"] for face in detail["blocked_faces"])
+    table["rack_name"] = "Window table"
+    table["rotation"] = 90
+    response = client.put(url, json={"setup": {"store": store}})
+    assert response.status_code == 200, response.text
+    assert response.json()["issues"] == []
+    saved = client.get(url).json()["store"]
+    assert next(r for r in saved["racks"] if r["id"] == table["id"])["rack_name"] == "Window table"

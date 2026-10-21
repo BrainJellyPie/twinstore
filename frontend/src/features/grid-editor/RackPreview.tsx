@@ -5,6 +5,7 @@ import { marketAssetFor } from "@/shared/utils/assetMap";
 import { useGlbModel } from "@/shared/hooks/useGlbModel";
 import { uniformScaleToTile } from "@/shared/utils/glbHelpers";
 import { CounterGhost } from "@/features/store-viewer/components/AssetFixture";
+import { DiningTable } from "@/features/store-viewer/components/DiningTable";
 
 interface RackPreviewProps {
   type: RackType;
@@ -26,7 +27,7 @@ export function RackPreview({ type, designVariant, rotation }: RackPreviewProps)
   // marketAssetFor reads only type + design_variant.
   const stub = { type, design_variant: designVariant } as unknown as Rack;
   const url = marketAssetFor(stub);
-  if (!url) return null;
+  if (!url && type !== "table") return null;
 
   // Mirror AssetFixture's rotation sign so the preview matches the 3D scene.
   const groupRot = (-rotation * Math.PI) / 180;
@@ -35,7 +36,7 @@ export function RackPreview({ type, designVariant, rotation }: RackPreviewProps)
     <div className="mx-auto aspect-square w-full max-w-48 overflow-hidden rounded-md border bg-muted/40">
       <Canvas
         orthographic
-        camera={{ zoom: 110, position: [2.5, 2, 3], near: -10, far: 20 }}
+        camera={{ zoom: type === "table" ? 65 : 110, position: [2.5, 2, 3], near: -10, far: 20 }}
         dpr={[1, 2]}
       >
         <ambientLight intensity={1.15} />
@@ -45,7 +46,7 @@ export function RackPreview({ type, designVariant, rotation }: RackPreviewProps)
           {/* PreviewMesh is bottom-aligned at y=0; lift the camera target to the
               asset's vertical midpoint by translating the group down ~0.5 unit. */}
           <group position={[0, -0.5, 0]} rotation={[0, groupRot, 0]}>
-            <PreviewMesh url={url} />
+            {type === "table" ? <DiningTable width={2} depth={2} /> : <PreviewMesh url={url!} />}
             {type === "counter" && designVariant === "b" && <CounterGhost />}
           </group>
         </Suspense>

@@ -22,6 +22,7 @@ class LayoutOptions(BaseModel):
     checkouts: int = Field(default=1, ge=1, le=4)
     fixture_design: FixtureDesign = "mixed"
     design_theme: StoreDesign | None = None
+    dining_tables: int | None = Field(default=None, ge=0, le=12)
 
 
 class TemplateLayoutRequest(LayoutOptions):

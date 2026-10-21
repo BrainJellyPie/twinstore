@@ -38,8 +38,6 @@ export function marketAssetFor(rack: Rack): string | null {
     }
     case "display":
       return `${MARKET}/freezer.glb`;
-    case "table":
-      return `${MARKET}/display-bread.glb`;
     default:
       return null;
   }

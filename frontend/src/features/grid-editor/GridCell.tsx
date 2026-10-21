@@ -1,6 +1,5 @@
 // A cell can host two racks only in the entrance+exit pair case; all other types
-// are single-rack. Multi-cell racks (legacy shape ≠ [[1]]) render only at rack.position
-// with no spanning — the editor only produces 1×1 racks, so this is a safe fallback.
+// are single-rack. Dining groups occupy four cells, each selecting the same fixture.
 
 import {
   Boxes,
@@ -8,6 +7,7 @@ import {
   DoorClosed,
   DoorOpen,
   Refrigerator,
+  Armchair,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Position, Rack, RackType, BlockedFaceDetail } from "@/shared/types/domain";
@@ -62,7 +62,7 @@ const RACK_VISUALS: Record<RackType, RackVisual | null> = {
   },
   // Other domain rack types are not produced by the grid editor; render as plain rack.
   display: null,
-  table: null,
+  table: { icon: Armchair, label: "Dining", bgClass: "bg-violet-100 dark:bg-violet-950/40", iconClass: "text-violet-700 dark:text-violet-300" },
   wall: null,
 };
 
