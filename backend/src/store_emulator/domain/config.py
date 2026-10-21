@@ -110,6 +110,12 @@ class RuleBasedConfig(BaseModel):
     # products move ±20 % (research/validation/price_check.py).
     price_elasticity: float = Field(default=-1.8, ge=-5.0, le=0.0)
     browse_before_buy_prob: float = Field(default=0.6, ge=0.0, le=1.0)
+    # Time at the shelf when the shopper looks before taking a product (look + pick, seconds): lognormal
+    # with this median and log-sd. Fitted to 88 unplanned purchases filmed with mobile eye trackers in a
+    # supermarket (median 8.2 s, quartiles 4.5–15 s; research/validation/eyetrack_check.py). 0 keeps
+    # the original uniform 3–12 s look + 2–5 s pick.
+    shelf_time_median_sec: float = Field(default=8.2, ge=0.0, le=120.0)
+    shelf_time_log_sd: float = Field(default=0.75, ge=0.0, le=2.0)
     # Unplanned stops that end without a purchase, per impulse buy (noticed, looked, walked on).
     browse_only_ratio: float = Field(default=1.0, ge=0.0)
     pattern_weights: dict[str, float] = {
