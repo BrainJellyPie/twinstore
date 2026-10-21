@@ -79,3 +79,15 @@ def test_price_fallback_is_per_row_and_supports_weighed_goods():
     data = b"receipt_id,sku,quantity,unit_price,line_total\nr1,tea,2,125,250\nr2,tea,0.5,,125\n"
     lines = parse_pos_csv(data)
     assert [line.unit_price for line in lines] == [125, 250]
+
+
+@pytest.mark.parametrize("total", ["100", "-100", "NaN", "Infinity", "not a number"])
+def test_zero_quantity_does_not_hide_an_invalid_or_nonzero_line_total(total):
+    with pytest.raises(ValueError):
+        parse_pos_csv(f"receipt_id,sku,quantity,line_total\nr1,tea,0,{total}\n".encode())
+
+
+@pytest.mark.parametrize("total", ["0", "", "0.0"])
+def test_zero_quantity_with_no_charge_keeps_a_zero_value(total):
+    lines = parse_pos_csv(f"receipt_id,sku,quantity,line_total\nr1,tea,0,{total}\n".encode())
+    assert lines[0].quantity == 0 and lines[0].unit_price == 0

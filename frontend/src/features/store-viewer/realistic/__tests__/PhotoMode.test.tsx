@@ -2,6 +2,8 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as THREE from "three";
+import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
+import type { WebGLPathTracer } from "three-gpu-pathtracer";
 import { PhotoMode } from "../PhotoMode";
 import { GatedRenderer } from "../GatedRenderer";
 import { frameGate } from "../frameGate";
@@ -13,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   tracer: {
     setBVHWorker: vi.fn(), setSceneAsync: vi.fn(), setCamera: vi.fn(), updateCamera: vi.fn(),
     renderSample: vi.fn(), dispose: vi.fn(), tiles: { set: vi.fn() }, target: { texture: null }, samples: 0,
+    renderToCanvasCallback: undefined as WebGLPathTracer["renderToCanvasCallback"] | undefined,
   },
 }));
 vi.mock("@react-three/fiber", () => ({
@@ -40,14 +43,16 @@ beforeEach(() => {
   vi.useFakeTimers();
   mocks.hdr.mockResolvedValue(null);
   mocks.tracer.setSceneAsync.mockResolvedValue({});
+  mocks.tracer.samples = 0;
   mocks.scene.mockReturnValue({ scene: new THREE.Scene(), triangles: 12, dispose: mocks.sceneDispose });
   mocks.get.mockReturnValue({
     scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(),
-    gl: { getPixelRatio: () => 1, getContextAttributes: () => ({ premultipliedAlpha: true }), getContext: () => ({ getExtension: () => null }), render: vi.fn() },
+    gl: { autoClear: true, getPixelRatio: () => 1, getContextAttributes: () => ({ premultipliedAlpha: true }), getContext: () => ({ getExtension: () => null }), render: vi.fn() },
   });
   frameGate.renderer = null;
   frameGate.photoRenderer = null;
   usePhotoMode.getState().stop();
+  usePhotoMode.setState({ denoise: true, dof: false });
 });
 
 afterEach(() => {
@@ -138,4 +143,46 @@ it("traces a perspective view through a physical lens focused on the frame's cen
   expect(lens.focusDistance).toBeCloseTo(4, 3);
   expect(usePhotoMode.getState().perspective).toBe(true);
   usePhotoMode.getState().setDof(false);
+});
+
+it.each([true, false])("restores the blit shader and renderer after a failed draw with denoise=%s", async (denoise) => {
+  usePhotoMode.getState().setDenoise(denoise);
+  usePhotoMode.getState().start();
+  render(<PhotoMode width={4} depth={5} />);
+  await act(async () => { await vi.advanceTimersByTimeAsync(60); });
+  mocks.tracer.samples = 1;
+  const blit = new THREE.MeshBasicMaterial();
+  const quad = new FullScreenQuad(blit);
+  vi.spyOn(quad, "render").mockImplementation(() => { throw new Error("blit failed"); });
+  const gl = mocks.get().gl;
+  const target = new THREE.WebGLRenderTarget(1, 1);
+  expect(() => mocks.tracer.renderToCanvasCallback!(target, gl, quad)).toThrow("blit failed");
+  expect(gl.autoClear).toBe(true);
+  expect(quad.material).toBe(blit);
+  target.dispose();
+  quad.dispose();
+  blit.dispose();
+});
+
+it("returns to live rendering and releases photo resources when a frame fails", async () => {
+  const live = vi.fn();
+  frameGate.renderer = live;
+  usePhotoMode.getState().start();
+  render(<><PhotoMode width={4} depth={5} /><GatedRenderer /></>);
+  await act(async () => { await vi.advanceTimersByTimeAsync(60); });
+  const queued = frameGate.photoRenderer!;
+  mocks.tracer.renderSample.mockImplementationOnce(() => { throw new Error("photo draw failed"); });
+  act(() => { expect(() => queued(1 / 60)).not.toThrow(); });
+  expect(usePhotoMode.getState().status).toBe("error");
+  expect(usePhotoMode.getState().error).toBe("photo draw failed");
+  expect(frameGate.photoRenderer).toBeNull();
+  expect(mocks.tracer.dispose).toHaveBeenCalledOnce();
+  expect(mocks.denoiseDispose).toHaveBeenCalledOnce();
+  expect(mocks.sceneDispose).toHaveBeenCalledOnce();
+  expect(mocks.workerDispose).toHaveBeenCalledOnce();
+  queued(1 / 60);
+  expect(mocks.tracer.renderSample).toHaveBeenCalledOnce();
+  const draw = mocks.frame.mock.calls[0]![0] as (state: unknown, delta: number) => void;
+  draw(mocks.get(), 1 / 60);
+  expect(live).toHaveBeenCalledOnce();
 });
