@@ -86,10 +86,10 @@ export function RealisticHud({ personaNames, showModeSwitch }: Props) {
               size="sm"
               aria-label="Render quality"
             >
-              <ToggleGroupItem value="medium" className="h-6 px-2 text-[0.8rem]" title="Soft shadows, fake contact AO">
+              <ToggleGroupItem value="medium" className="h-6 px-2 text-[0.8rem]" title="Textured surfaces and soft shadows">
                 Medium
               </ToggleGroupItem>
-              <ToggleGroupItem value="high" className="h-6 px-2 text-[0.8rem]" title="Adds GTAO, bloom, floor reflections, glass transmission">
+              <ToggleGroupItem value="high" className="h-6 px-2 text-[0.8rem]" title="Detailed surfaces, ambient occlusion, HDR lighting and reflections">
                 High
               </ToggleGroupItem>
             </ToggleGroup>
