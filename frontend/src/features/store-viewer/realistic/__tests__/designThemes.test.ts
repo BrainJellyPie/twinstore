@@ -3,6 +3,7 @@ import { expect, it, vi } from "vitest";
 import * as THREE from "three";
 import { createShellMaterials, disposeMaterials } from "../materials";
 import { INTERIOR_DESIGNS } from "../designThemes";
+import type { StoreDesign } from "@/shared/types/domain";
 
 vi.mock("../canvasArt", () => ({
   createAoCanvas: () => document.createElement("canvas"),
@@ -67,5 +68,32 @@ it("owns surface-map copies without disposing the loader's shared textures", () 
   owned.forEach((dispose) => expect(dispose).toHaveBeenCalledOnce());
   borrowed.forEach((dispose) => expect(dispose).not.toHaveBeenCalled());
   Object.values(maps).forEach((map) => map.dispose());
+  sign.dispose();
+});
+
+it.each(Object.keys(INTERIOR_DESIGNS) as StoreDesign[])("retains %s stone tint and independent map ownership across quality changes", (theme) => {
+  const sign = new THREE.Texture();
+  const maps = { map: new THREE.Texture(), roughnessMap: new THREE.Texture(), normalMap: new THREE.Texture() };
+  const borrowed = Object.values(maps).map(texture => vi.spyOn(texture, "dispose"));
+  const high = createShellMaterials("high", sign, null, null, null, theme, null, null, maps);
+  const medium = createShellMaterials("medium", sign, null, null, null, theme, null, null, maps);
+  const stone = high.counterTop as THREE.MeshPhysicalMaterial;
+  const plain = medium.counterTop as THREE.MeshStandardMaterial;
+  expect(stone.color.getHexString()).toBe(INTERIOR_DESIGNS[theme].counter.slice(1));
+  expect(plain.color.equals(stone.color)).toBe(true);
+  expect(stone.metalness).toBe(0);
+  expect(stone.roughness).toBe(1);
+  expect(stone.clearcoat).toBe(0);
+  expect(plain.map).toBeNull();
+  const owned = [stone.map!, stone.roughnessMap!, stone.normalMap!].map((texture, i) => {
+    expect(texture).not.toBe(Object.values(maps)[i]);
+    expect(texture.source).toBe(Object.values(maps)[i]!.source);
+    return vi.spyOn(texture, "dispose");
+  });
+  disposeMaterials(high);
+  owned.forEach(dispose => expect(dispose).toHaveBeenCalledOnce());
+  borrowed.forEach(dispose => expect(dispose).not.toHaveBeenCalled());
+  disposeMaterials(medium);
+  Object.values(maps).forEach(texture => texture.dispose());
   sign.dispose();
 });

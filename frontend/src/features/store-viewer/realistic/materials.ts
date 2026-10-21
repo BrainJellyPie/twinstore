@@ -36,6 +36,7 @@ export function createShellMaterials(
   designTheme: StoreDesign = "classic",
   metalMaps: ScannedMaterialMaps | null = null,
   pavementMaps: ScannedMaterialMaps | null = null,
+  counterMaps: ScannedMaterialMaps | null = null,
 ): ShellMaterials {
   // Material-owned clones keep hook cleanup and shell rebuilds independent.
   const wood = woodMaps?.map.clone() ?? canvasTexture(createWoodCanvas(), { anisotropy: 1 });
@@ -126,7 +127,16 @@ export function createShellMaterials(
       normalScale: new THREE.Vector2(0.3, 0.3),
     }),
     counterTop: quality === "high"
-      ? new THREE.MeshPhysicalMaterial({ color: palette.counter, roughness: 0.32, clearcoat: 0.28, clearcoatRoughness: 0.2 })
+      ? new THREE.MeshPhysicalMaterial({
+        color: palette.counter,
+        map: counterMaps?.map.clone() ?? null,
+        roughnessMap: counterMaps?.roughnessMap.clone() ?? null,
+        normalMap: counterMaps?.normalMap?.clone() ?? null,
+        normalScale: new THREE.Vector2(0.2, 0.2),
+        roughness: counterMaps ? 1 : 0.32,
+        clearcoat: counterMaps ? 0 : 0.28,
+        clearcoatRoughness: 0.2,
+      })
       : std(palette.counter, 0.32),
     black: std("#17191c", 0.45, 0.2),
     screen: emissive("#4f8fe8", 0.9),

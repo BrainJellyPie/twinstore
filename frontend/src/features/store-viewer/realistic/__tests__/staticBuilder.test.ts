@@ -81,4 +81,23 @@ describe("manufactured fixture edges", () => {
       geometry.dispose();
     }
   });
+
+  it.each([false, true].flatMap(beveled => [0, Math.PI / 4, Math.PI / 2, Math.PI].flatMap(yaw =>
+    [0.2, 1, 8].map(width => ({ beveled, yaw, width })),
+  )))("preserves stone texel density for width $width, yaw $yaw, bevel $beveled", ({ beveled, yaw, width }) => {
+    const builder = new StaticBuilder(beveled);
+    builder.setFrame(-3, 7, yaw).box("counterTop", width, 0.04, 0.6, 0, 0.9, 0);
+    const geometry = builder.build().get("counterTop")!;
+    const positions = geometry.getAttribute("position"), normals = geometry.getAttribute("normal"), uv = geometry.getAttribute("uv");
+    expect(Array.from(uv.array).every(Number.isFinite)).toBe(true);
+    const top = Array.from({ length: positions.count }, (_, i) => i).filter(i => normals.getY(i) > 0.999);
+    expect(top.length).toBeGreaterThanOrEqual(4);
+    const first = top[0]!;
+    for (const i of top.slice(1)) {
+      const distance = Math.hypot(positions.getX(i) - positions.getX(first), positions.getZ(i) - positions.getZ(first));
+      const uvDistance = Math.hypot(uv.getX(i) - uv.getX(first), uv.getY(i) - uv.getY(first));
+      expect(uvDistance).toBeCloseTo(distance, 5);
+    }
+    geometry.dispose();
+  });
 });
