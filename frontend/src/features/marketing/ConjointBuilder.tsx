@@ -96,11 +96,28 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
   if (parsed.length + (priceParts.length ? 1 : 0) < 2) problems.push("Use at least two attributes, counting price.");
 
   const profiles = parsed.reduce((n, a) => n * Math.max(1, a.levels.length), 1) * Math.max(1, validPrices.length);
-  const columns = [...parsed.map((a) => a.levels.length), validPrices.length].map((n, k) => (n ? sampleColumn(n, options, roll * 7919 + k * 104729) : []));
-  const sample = Array.from({ length: options }, (_, o) => [
-    ...parsed.map((a, k) => (a.levels.length ? `${a.name || "Attribute"}: ${a.levels[columns[k]![o]!]}` : "")).filter(Boolean),
-    ...(validPrices.length ? [`Price: ${formatMoney(validPrices[columns[parsed.length]![o]!]!, currency)}`] : []),
-  ]);
+  const levelCounts = [...parsed.map((a) => a.levels.length), validPrices.length];
+  const columns = levelCounts.map((n, k) => (n ? sampleColumn(n, options, roll * 7919 + k * 104729) : []));
+  const shown = new Set<string>();
+  const sample = Array.from({ length: options }, (_, o) => {
+    let profile = columns.map((column) => column[o] ?? 0);
+    // At most o prior profiles can block candidates; incomplete drafts may have fewer combinations.
+    for (let candidate = 0; shown.has(profile.join(",")) && candidate <= o; candidate++) {
+      let remaining = candidate;
+      const alternative = levelCounts.map((count) => {
+        const n = Math.max(1, count);
+        const level = remaining % n;
+        remaining = Math.floor(remaining / n);
+        return level;
+      });
+      if (remaining === 0 && !shown.has(alternative.join(","))) profile = alternative;
+    }
+    shown.add(profile.join(","));
+    return [
+      ...parsed.map((a, k) => (a.levels.length ? `${a.name || "Attribute"}: ${a.levels[profile[k]!]}` : "")).filter(Boolean),
+      ...(validPrices.length ? [`Price: ${formatMoney(validPrices[profile[parsed.length]!]!, currency)}`] : []),
+    ];
+  });
 
   const run = useMutation({
     mutationFn: () => startConjoint(projectId, {
