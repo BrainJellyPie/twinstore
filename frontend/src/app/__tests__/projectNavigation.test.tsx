@@ -9,11 +9,14 @@ import { useSimulationStore } from "@/stores/simulationStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { useCreateLayout } from "@/features/layouts/hooks/useCreateLayout";
+import type { GenerationListItem, GenerationStatus } from "@/shared/types/domain";
+import type { SetupGenerationState } from "@/shared/queries/useSetupGeneration";
 import { Route } from "../../routes/projects/$pid";
 
-vi.mock("@/shared/api/client", () => ({ getProject: vi.fn(), getSetups: vi.fn(), getSetup: vi.fn(), getRuns: vi.fn(), deleteProject: vi.fn(), createSetup: vi.fn(), generateBuilding: vi.fn(), generateLayout: vi.fn(), importFloorPlan: vi.fn() }));
-vi.mock("@/shared/queries/useSetupGeneration", () => ({ useSetupGeneration: () => ({ phase: "idle" }) }));
-vi.mock("@/views/simulation/states/PreparingView", () => ({ PreparingView: () => null }));
+vi.mock("@/shared/api/client", () => ({ getProject: vi.fn(), getSetups: vi.fn(), getSetup: vi.fn(), getRuns: vi.fn(), deleteProject: vi.fn(), createSetup: vi.fn(), generateBuilding: vi.fn(), generateLayout: vi.fn(), importFloorPlan: vi.fn(), getSetupGenerations: vi.fn(), getGenerationStatus: vi.fn(), regeneratePersona: vi.fn() }));
+vi.mock("@/views/simulation/states/PreparingView", () => ({ PreparingView: ({ generation }: { generation: SetupGenerationState }) =>
+  <div><output data-testid="generation">{generation.phase}:{generation.currentGenId}</output><button onClick={generation.retry}>Retry generation</button></div>,
+}));
 vi.mock("@/views/simulation/states/ReadyView", () => ({ ReadyView: () => null }));
 vi.mock("@/views/simulation/states/RunningView", () => ({ RunningView: () => null }));
 vi.mock("@/views/simulation/states/PlaybackView", () => ({ PlaybackView: () => null }));
@@ -46,6 +49,7 @@ beforeEach(() => {
   vi.mocked(api.getProject).mockImplementation(async (pid) => project(pid, pid === "alpha" ? ["a1", "a2"] : ["b1", "b2"]));
   vi.mocked(api.getSetup).mockImplementation(async (_pid, id) => setup(id));
   vi.mocked(api.getRuns).mockResolvedValue([]);
+  vi.mocked(api.getSetupGenerations).mockResolvedValue([]);
 });
 afterEach(() => {
   cleanup(); clients.splice(0).forEach((client) => client.clear());
@@ -179,4 +183,52 @@ it("preserves selection if layout creation fails", async () => {
   expect(screen.getByTestId("setup").textContent).toBe("a2");
   expect(useSimulationStore.getState().selectedSetupId).toBe("a2");
   expect(api.getSetups).not.toHaveBeenCalled();
+});
+
+it("keeps the selected layout while its uncached details are loading", async () => {
+  const { client } = await mount();
+  const details = deferred<api.SetupDetail>();
+  client.removeQueries({ queryKey: queryKeys.setup("alpha", "a1"), exact: true });
+  vi.mocked(api.getSetup).mockReturnValue(details.promise);
+  fireEvent.click(screen.getByRole("button", { name: "a1" }));
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "a1", expect.any(AbortSignal)));
+  expect(useSimulationStore.getState().selectedSetupId).toBe("a1");
+  await act(async () => { details.resolve(setup("a1")); });
+  await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+  expect(useSimulationStore.getState().selectedSetupId).toBe("a1");
+});
+
+it.each(["layout", "persona"] as const)("does not poll an old %s job under the replacement layout", async (kind) => {
+  const listing = deferred<GenerationListItem[]>();
+  const oldStatus = deferred<GenerationStatus>();
+  const generation: GenerationListItem = { gen_id: "old-generation", setup_id: "a2", kind, status: "running", error: null, progress: null, created_at: null, updated_at: null };
+  vi.mocked(api.getSetupGenerations).mockImplementation(async (_pid, sid) => sid === "a2" ? listing.promise : []);
+  vi.mocked(api.getGenerationStatus).mockReturnValue(oldStatus.promise);
+  const { client } = await mount();
+  await act(async () => { listing.resolve([generation]); });
+  await screen.findByTestId("generation");
+  expect(api.getGenerationStatus).toHaveBeenCalledWith("alpha", "a2", "old-generation");
+  await act(async () => { client.setQueryData(queryKeys.setups("alpha"), [setup("a1")]); });
+  await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+  expect(api.getGenerationStatus).not.toHaveBeenCalledWith("alpha", "a1", "old-generation");
+  await act(async () => { oldStatus.resolve({ ...generation, status: "failed", error: "Old layout disappeared" }); });
+  expect(screen.getByTestId("setup").textContent).toBe("a1");
+  expect(screen.queryByTestId("generation")).toBeNull();
+});
+
+it("ignores a late persona retry response from a removed layout", async () => {
+  const listing = deferred<GenerationListItem[]>();
+  const retried = deferred<{ gen_id: string }>();
+  vi.mocked(api.getSetupGenerations).mockImplementation(async (_pid, sid) => sid === "a2" ? listing.promise : []);
+  vi.mocked(api.regeneratePersona).mockReturnValue(retried.promise);
+  vi.mocked(api.getGenerationStatus).mockImplementation(() => new Promise(() => {}));
+  const { client } = await mount();
+  await act(async () => { listing.resolve([{ gen_id: "failed-generation", setup_id: "a2", kind: "persona", status: "failed", error: "Failed", progress: null, created_at: null, updated_at: null }]); });
+  fireEvent.click(await screen.findByRole("button", { name: "Retry generation" }));
+  await waitFor(() => expect(api.regeneratePersona).toHaveBeenCalledWith("alpha", "a2"));
+  await act(async () => { client.setQueryData(queryKeys.setups("alpha"), [setup("a1")]); });
+  await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+  await act(async () => { retried.resolve({ gen_id: "late-generation" }); });
+  expect(api.getGenerationStatus).not.toHaveBeenCalled();
+  expect(screen.getByTestId("setup").textContent).toBe("a1");
 });

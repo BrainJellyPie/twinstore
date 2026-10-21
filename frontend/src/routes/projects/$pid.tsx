@@ -78,6 +78,7 @@ function SimulationPageInner({ pid }: { pid: string }) {
       */}
       <Suspense fallback={null}>
         <SimulationPageContent
+          key={effectiveSetupId}
           pid={pid}
           project={project}
           effectiveSetupId={effectiveSetupId}
