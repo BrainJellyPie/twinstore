@@ -77,8 +77,9 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
           if (on && pt.samples >= 1) {
             const blit = quad.material;
             denoise.map = target.texture;
-            denoise.sigma = pt.samples < 32 ? 5 : pt.samples < 128 ? 3.5 : 2;
-            denoise.threshold = pt.samples < 32 ? 0.05 : 0.03;
+            // Few samples: noise exceeds a small edge threshold and would be kept as detail.
+            denoise.sigma = pt.samples < 32 ? 5 : pt.samples < 128 ? 4 : 2.5;
+            denoise.threshold = pt.samples < 32 ? 0.18 : pt.samples < 128 ? 0.1 : 0.05;
             quad.material = denoise;
             quad.render(renderer);
             quad.material = blit;
