@@ -647,6 +647,9 @@ def create_setup_from_source(
                 cast(dict[str, Any], rack_any)["slots"] = []
 
     new_setup = new_setup_data(final_name, source_setup_id, store_copy, memo)
+    for key in ("building", "generation"):
+        if source.get(key) is not None:
+            new_setup[key] = copy.deepcopy(source[key])
     write_json(setup_path(project_id, new_setup["id"]), new_setup)
     set_active_setup(project_id, new_setup["id"])
     return setup_summary(project_id, new_setup)

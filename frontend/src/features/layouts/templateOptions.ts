@@ -1,0 +1,56 @@
+import type { GenerateLayoutRequest, LayoutOptions } from "@/shared/api/client";
+
+export interface TemplateChoice extends LayoutOptions {
+  templateId: string;
+  seed: number;
+  currency: string;
+  requirements?: string;
+}
+
+export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
+  templateId: "urban_cvs", seed: 0, currency: "USD", style: null,
+  density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed",
+};
+
+export const LAYOUT_STYLES = [
+  ["aisles", "Parallel aisles"], ["loop", "Racetrack loop"], ["spine", "Central spine"],
+  ["free_flow", "Free-flow islands"], ["perimeter", "Open center / perimeter"], ["showroom", "Showroom groups"],
+] as const;
+
+export function validTemplateChoice(value: TemplateChoice): boolean {
+  return !!value.templateId && Number.isSafeInteger(value.seed) &&
+    (value.width == null || (Number.isInteger(value.width) && value.width >= 8 && value.width <= 40)) &&
+    (value.height == null || (Number.isInteger(value.height) && value.height >= 6 && value.height <= 40));
+}
+
+export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
+  // Explicit fields also keep the source union's `kind` out of the API request.
+  return {
+    template_id: value.templateId, seed: value.seed, currency: value.currency, style: value.style,
+    width: value.width, height: value.height, density: value.density, entrance: value.entrance,
+    checkouts: value.checkouts, fixture_design: value.fixture_design, requirements: value.requirements,
+  };
+}
+
+export interface BuildingFloorChoice {
+  label: string;
+  choice: TemplateChoice;
+}
+
+export const BUILDING_PRESETS = [
+  { id: "department", name: "Department store", floors: [["Ground · Beauty", "beauty_flagship"], ["Level 2 · Fashion", "fashion_boutique"], ["Level 3 · Home", "design_showroom"], ["Level 4 · Dining", "food_hall"]] },
+  { id: "cafe_shop", name: "Shop with upstairs café", floors: [["Ground · Boutique", "fashion_boutique"], ["Level 2 · Book café", "book_cafe"]] },
+  { id: "wellness", name: "Pharmacy & wellness", floors: [["Ground · Pharmacy", "community_pharmacy"], ["Level 2 · Wellness", "wellness_pharmacy"]] },
+  { id: "dining", name: "Restaurant & coffee", floors: [["Ground · Restaurant", "quick_service"], ["Level 2 · Café", "specialty_cafe"]] },
+] as const;
+
+export function buildingPreset(id: string): BuildingFloorChoice[] {
+  const preset = BUILDING_PRESETS.find((p) => p.id === id) ?? BUILDING_PRESETS[0];
+  return preset.floors.map(([label, templateId]) => ({ label, choice: { ...DEFAULT_TEMPLATE_CHOICE, templateId } }));
+}
+
+export function validBuildingFloors(floors: BuildingFloorChoice[]): boolean {
+  const labels = floors.map((f) => f.label.trim().toLowerCase());
+  return floors.length >= 2 && floors.length <= 6 && new Set(labels).size === labels.length &&
+    floors.every((f) => f.label.trim().length > 0 && f.label.length <= 80 && validTemplateChoice(f.choice));
+}

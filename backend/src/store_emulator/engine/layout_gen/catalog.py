@@ -132,6 +132,28 @@ CATEGORY_LABELS: dict[str, tuple[str, str]] = {
     "coffee_station": ("Coffee Station (hot coffee)", "즉석 커피"),
 }
 
+# Specialty assortments use generic English labels in both price modes.
+# Pharmacy entries are OTC retail goods; no prescription or dispensing simulation.
+_SPECIALTY: dict[str, list[tuple[str, int]]] = {
+    "pharmacy_care": [("Adhesive Bandages 30pk", 399), ("Sterile Gauze Pads", 549), ("Digital Thermometer", 1299), ("Saline Nasal Spray", 699), ("Antiseptic Wipes 20pk", 449), ("First Aid Kit", 1899), ("Elastic Support Bandage", 799), ("Reusable Cold Pack", 649)],
+    "wellness": [("Vitamin C Tablets 60pk", 999), ("Multivitamin Tablets 30pk", 1299), ("Electrolyte Sachets 6pk", 749), ("Hand Sanitizer 100ml", 299), ("Face Masks 10pk", 499), ("Lip Balm", 349), ("Sensitive Toothpaste", 599), ("Sunscreen SPF50", 1499)],
+    "pantry": [("Long Grain Rice 2kg", 599), ("Rolled Oats 1kg", 449), ("Pasta 500g", 229), ("Tomato Sauce 400g", 299), ("Olive Oil 500ml", 899), ("Canned Chickpeas 400g", 179), ("All Purpose Flour 1kg", 249), ("Ground Coffee 250g", 799)],
+    "restaurant_menu": [("Grilled Chicken Rice Bowl", 1199), ("Vegetable Rice Bowl", 999), ("Tomato Pasta", 1299), ("Mushroom Soup", 699), ("Garden Salad", 899), ("Cheese Toastie", 749), ("Roasted Vegetable Wrap", 849), ("Seasonal Lunch Set", 1499)],
+    "cafe_menu": [("Espresso", 250), ("Flat White", 425), ("Oat Milk Latte", 495), ("Filter Coffee", 350), ("Matcha Latte", 525), ("Earl Grey Tea", 375), ("Decaf Cappuccino", 450), ("Iced Mocha", 525)],
+    "desserts": [("Chocolate Brownie", 399), ("Lemon Tart", 499), ("Vanilla Cheesecake Slice", 599), ("Fruit Yogurt Parfait", 449), ("Chocolate Chip Muffin", 349), ("Strawberry Shortcake", 649), ("Almond Cookie", 249), ("Cinnamon Roll", 399)],
+    "apparel": [("Cotton T-Shirt", 1999), ("Linen Shirt", 3999), ("Denim Jeans", 5999), ("Knit Cardigan", 4999), ("Canvas Tote Bag", 1499), ("Cotton Socks 3pk", 999), ("Baseball Cap", 1799), ("Lightweight Scarf", 2499)],
+    "books": [("Contemporary Fiction Paperback", 1499), ("Travel Guide", 1999), ("Everyday Cooking Book", 2499), ("Children's Picture Book", 1299), ("Design & Architecture Book", 3499), ("Pocket Poetry Collection", 999), ("Nature Field Guide", 1899), ("Weekly Planner", 1199)],
+    "electronics": [("USB-C Cable 1m", 1299), ("Wireless Earbuds", 4999), ("Portable Power Bank", 2999), ("Phone Stand", 1499), ("Wireless Mouse", 2499), ("Bluetooth Speaker", 3999), ("USB Wall Charger", 1999), ("Screen Cleaning Kit", 899)],
+    "home_design": [("Ceramic Vase", 2499), ("Linen Cushion Cover", 1999), ("Scented Candle", 1499), ("Stoneware Mug", 1299), ("Cotton Throw Blanket", 3999), ("Desk Lamp", 4999), ("Wooden Serving Tray", 2999), ("Small Indoor Planter", 1799)],
+    "pet_care": [("Dry Cat Food 1kg", 1299), ("Dry Dog Food 2kg", 1999), ("Cat Treats 60g", 399), ("Dog Treats 100g", 499), ("Pet Shampoo", 899), ("Cat Litter 5L", 999), ("Rope Chew Toy", 699), ("Pet Feeding Bowl", 799)],
+    "sports": [("Yoga Mat", 2499), ("Resistance Band Set", 1999), ("Reusable Sports Bottle", 1499), ("Running Socks", 999), ("Tennis Balls 3pk", 799), ("Swimming Goggles", 1799), ("Fitness Towel", 1299), ("Foam Roller", 2999)],
+    "flowers": [("Seasonal Flower Bouquet", 2499), ("Mini Succulent", 799), ("Potted Herb", 599), ("Orchid Plant", 2999), ("Flower Food Sachets", 299), ("Greeting Card", 399), ("Gift Wrap", 249), ("Dried Flower Bundle", 1499)],
+}
+for _category, _products in _SPECIALTY.items():
+    CATALOG[_category] = [CatalogItem(name, name, price) for name, price in _products]
+    _label = _category.replace("_", " ").title()
+    CATEGORY_LABELS[_category] = (_label, _label)
+
 ZERO_DECIMAL = {"KRW", "JPY"}
 _KRW_PER_USD = 1350
 
