@@ -151,11 +151,17 @@ def recover_running_setups() -> int:
         for sf in setups.iterdir():
             if sf.suffix != ".json":
                 continue
-            data = read_json(sf)
-            if data.get("status") == "running":
-                data["status"] = "draft"
-                data["updated_at"] = now_iso()
-                write_json(sf, data)
-                recovered += 1
-                logger.info(f"[recovery] {proj_dir.name}/{sf.stem}: running → draft")
+            try:
+                raw: object = read_json(sf)
+                if not isinstance(raw, dict):
+                    raise ValueError("setup must be an object")
+                data = cast(dict[str, object], raw)
+                if data.get("status") == "running":
+                    data["status"] = "draft"
+                    data["updated_at"] = now_iso()
+                    write_json(sf, data)
+                    recovered += 1
+                    logger.info(f"[recovery] {proj_dir.name}/{sf.stem}: running → draft")
+            except (OSError, ValueError) as exc:
+                logger.warning("Could not recover setup %s: %s", sf, exc)
     return recovered

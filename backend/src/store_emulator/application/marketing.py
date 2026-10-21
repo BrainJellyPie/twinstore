@@ -162,16 +162,15 @@ def recover_running_jobs() -> int:
         for path in Path(DATA_DIR).glob(f"*/marketing/{folder}/*/status.json"):
             try:
                 status = JobStatus.model_validate(read_json(path))
+                if status.status in ("pending", "running"):
+                    status.status = "failed"
+                    status.stage = "interrupted"
+                    status.error = "interrupted by server restart; start a new job to retry"
+                    status.finished_at = now_iso()
+                    write_json(path, status.model_dump(mode="json"))
+                    recovered += 1
             except (OSError, ValueError) as e:
                 logger.warning(f"[marketing] could not recover {path}: {e}")
-                continue
-            if status.status in ("pending", "running"):
-                status.status = "failed"
-                status.stage = "interrupted"
-                status.error = "interrupted by server restart; start a new job to retry"
-                status.finished_at = now_iso()
-                write_json(path, status.model_dump(mode="json"))
-                recovered += 1
     return recovered
 
 

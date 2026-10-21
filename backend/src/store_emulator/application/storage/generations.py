@@ -8,7 +8,7 @@ kind: "layout" | "persona".
 import logging
 import uuid
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from store_emulator.application.storage.io import (
     DATA_DIR, read_json, write_json, now_iso,
@@ -137,12 +137,18 @@ def recover_running_generations() -> int:
             sf = gd / "status.json"
             if not sf.exists():
                 continue
-            data = read_json(sf)
-            if data.get("status") in ("pending", "running"):
-                data["status"] = "failed"
-                data["error"] = "interrupted by server restart"
-                data["updated_at"] = now_iso()
-                write_json(sf, data)
-                recovered += 1
-                logger.info(f"[recovery] {proj_dir.name}/{gd.name}: {data.get('kind')} generation → failed")
+            try:
+                raw: object = read_json(sf)
+                if not isinstance(raw, dict):
+                    raise ValueError("generation status must be an object")
+                data = cast(dict[str, object], raw)
+                if data.get("status") in ("pending", "running"):
+                    data["status"] = "failed"
+                    data["error"] = "interrupted by server restart"
+                    data["updated_at"] = now_iso()
+                    write_json(sf, data)
+                    recovered += 1
+                    logger.info(f"[recovery] {proj_dir.name}/{gd.name}: {data.get('kind')} generation → failed")
+            except (OSError, ValueError) as exc:
+                logger.warning("Could not recover generation %s: %s", sf, exc)
     return recovered
