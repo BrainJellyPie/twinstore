@@ -47,3 +47,52 @@ def test_fallback_skips_a_disabled_first_provider_and_uses_the_next_ready_one():
         ProviderKind.OPENAI: ProviderSettings(kind=ProviderKind.OPENAI, enabled=True, api_key=SecretStr('fake-enabled')),
     }
     assert text_model_fallback('gemini/missing', settings).startswith('openai:')
+
+
+def stopped_local_model(monkeypatch):
+    from types import SimpleNamespace
+    from store_emulator.application import local_vlm
+    status = SimpleNamespace(state='off', api_base=None)
+    monkeypatch.setattr(local_vlm, 'manager', lambda: SimpleNamespace(status=lambda: status))
+    return status
+
+
+@pytest.mark.parametrize('endpoint', [
+    'http://127.0.0.1:9000/v1', 'http://localhost:9000/v1', 'http://[::1]:9000/v1',
+    'https://127.0.0.1:8081/v1', 'http://127.0.0.1:8081/custom/v1',
+])
+def test_a_custom_local_vision_endpoint_is_not_replaced_by_a_cloud_model(monkeypatch, endpoint):
+    from store_emulator.application.providers import assistive_vision_model
+    stopped_local_model(monkeypatch)
+    monkeypatch.setenv('ANTHROPIC_API_KEY', 'fake-alternative')
+    config = LLMConfig(model='openai/custom-vision', api_base=endpoint)
+    assert assistive_vision_model('', config) == ''
+    assert assistive_vision_model(' openai:explicit-vision ', config) == 'openai:explicit-vision'
+
+
+@pytest.mark.parametrize('provider', [ProviderKind.ANTHROPIC, ProviderKind.OPENAI, ProviderKind.GEMINI, ProviderKind.QWEN])
+@pytest.mark.parametrize('source', ['settings', 'env'])
+def test_vision_fallback_excludes_disabled_providers(monkeypatch, provider, source):
+    from store_emulator.application import providers
+    stopped_local_model(monkeypatch)
+    setting = ProviderSettings(kind=provider, enabled=False)
+    if source == 'settings':
+        setting.api_key = SecretStr('fake-disabled')
+    else:
+        monkeypatch.setenv(PRESETS[provider].api_key_env, 'fake-disabled')
+    monkeypatch.setattr(providers, 'load_settings', lambda: {provider: setting})
+    config = LLMConfig(model='openai/local-vlm', api_base='http://127.0.0.1:8081/v1')
+    assert providers.assistive_vision_model('', config) == ''
+    setting.enabled = True
+    assert providers.assistive_vision_model('', config).startswith(f'{provider.value}:')
+
+
+@pytest.mark.parametrize('endpoint', ['http://127.0.0.1:8081/v1', 'http://localhost:8081/v1', 'http://[::1]:8081/v1'])
+def test_the_managed_vision_endpoint_can_fall_back_until_it_is_ready(monkeypatch, endpoint):
+    from store_emulator.application.providers import assistive_vision_model
+    status = stopped_local_model(monkeypatch)
+    monkeypatch.setenv('ANTHROPIC_API_KEY', 'fake-alternative')
+    config = LLMConfig(model='openai/local-vlm', api_base=endpoint)
+    assert assistive_vision_model('', config).startswith('anthropic:')
+    status.state = 'ready'
+    assert assistive_vision_model('', config) == ''
