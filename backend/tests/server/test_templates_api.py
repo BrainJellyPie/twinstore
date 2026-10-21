@@ -25,7 +25,7 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
 
 def test_preview_matches_saved_custom_store(client):
     options = dict(seed=12, currency="JPY", style="spine", width=28, height=24,
-                   density="spacious", entrance="right", checkouts=3, fixture_design="c")
+                   density="spacious", entrance="right", checkouts=3, fixture_design="c", design_theme="botanical")
     preview = client.get("/api/store-templates/food_hall/preview", params=options)
     assert preview.status_code == 200, preview.text
     response = client.post(f"/api/projects/{PID}/setups/generate", json={
@@ -36,6 +36,7 @@ def test_preview_matches_saved_custom_store(client):
     assert saved["store"]["racks"] == preview.json()["racks"]
     assert saved["store"]["grid_size"] == [28, 24]
     assert saved["store"]["name"] == "Lunch hall"
+    assert saved["store"]["design_theme"] == preview.json()["design_theme"] == "botanical"
     assert "Reserve a quiet corner" in saved["memo"]
     assert saved["generation"]["checkouts"] == 3
 
@@ -43,7 +44,7 @@ def test_preview_matches_saved_custom_store(client):
 @pytest.mark.parametrize("patch", [
     {"width": 7}, {"width": 41}, {"height": 5}, {"height": 41}, {"checkouts": 0},
     {"checkouts": 5}, {"style": "unknown"}, {"density": "unknown"}, {"currency": "INVALID"},
-    {"entrance": "roof"}, {"fixture_design": "unknown"},
+    {"entrance": "roof"}, {"fixture_design": "unknown"}, {"design_theme": "unknown"},
 ])
 def test_invalid_options_rejected_for_preview_and_save(client, patch):
     assert client.get("/api/store-templates/urban_cvs/preview", params=patch).status_code == 422
@@ -131,3 +132,15 @@ def test_cloned_floor_keeps_its_building_identity(client):
     assert detail["building"] == floors[1]["building"]
     assert detail["parentId"] == floors[1]["id"]
     assert detail["generation"]["template_id"] == "specialty_cafe"
+
+
+def test_long_building_and_floor_names_remain_valid_generation_requests(client):
+    from store_emulator.domain.layout_options import TemplateLayoutRequest
+    body = {"name": "B" * 160, "floors": [
+        {"label": label * 80, "layout": {"template_id": "compact_cvs"}} for label in ("G", "U")
+    ]}
+    response = client.post(f"/api/projects/{PID}/setups/generate-building", json=body)
+    assert response.status_code == 200, response.text
+    for floor in response.json()["setups"]:
+        setup = client.get(f"/api/projects/{PID}/setups/{floor['id']}").json()
+        assert TemplateLayoutRequest.model_validate(setup["generation"]).name == floor["name"]

@@ -83,10 +83,31 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
 ### Situations measured on real data
 - `research/validation/real_effects.py` measures what seasons, weekends, the holiday season, a
-  big match and paydays do to real baskets and traffic (The Complete Journey, Favorita, M5), and
+  big match, paydays, the weather and the time of day do to real baskets and traffic (The Complete
+  Journey, Favorita, M5, Rossmann, Walmart, Breakfast at the Frat, Instacart), and
   `situation_check.py` puts the same situations to the simulated shoppers.
+- Supermarkets, grocers and drugstores now use a **grocery profile** fitted to those effects
+  (`engine/grocery_priors.json`, `priors_for(store.type)`); convenience stores keep the old priors.
+  Held out, the simulated situation effects correlate 0.90 (rule engine) and 0.79–0.82 (Haiku,
+  Qwen, Luna) with the real ones; the convenience priors gave 0.27–0.65.
+- Shoppers whose needs come from their history draw them scaled by the measured ratio of the
+  situation (`ScenarioPriors.need_ratio`): more beer and snacks on a match day, more water in summer.
+- **Time of day**: per-shopper part-of-day demand and needs by arrival hour
+  (`ScenarioPriors.hour_demand`, `need_ratio["hour:evening"]`), from the same households' evening
+  vs morning trips (beer 2.1×, ice cream 1.9×); no scenario needed.
 - The scenario layer no longer files frozen pizza, cream cheese and candy bars under ice cream
   (in a simulated summer, frozen pizza sold 1.9×; on real receipts, 0.94×).
+
+### Shoppers checked against more real data
+- Time at the shelf follows a supermarket eye-tracking study (median 8.2 s per unplanned
+  purchase; `RuleBasedConfig.shelf_time_median_sec`), on its own random stream so baskets do not
+  change; a pick right after a look is no longer floored again by the rack minimum, and new racks
+  start at a 2 s minimum.
+- Demographic differences (income, kids, household size, marital status) in what simulated
+  households buy correlate with the real ones (r 0.22–0.30 for shoppers who never see their own
+  history, p ≤ 0.02; rule engine −0.01) — `research/validation/demographic_effects.py`.
+- The three-model mixture ensemble (each shopper one model at random) was checked on the held-out
+  panel: between the best and the middle single model on most checks, best on product choice.
 
 ### Shelf Lab — real photos as experiments
 - Counterfactual edits on shelf photos (swap, stock-out, new package, price tag, promotion) with

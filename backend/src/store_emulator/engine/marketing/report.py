@@ -427,9 +427,9 @@ def _price_svg(price: PriceRange, currency: str) -> str:
     if price.optimal_price_point is not None:
         x = px(price.optimal_price_point)
         parts.append(f'<line x1="{x:.1f}" x2="{x:.1f}" y1="8" y2="{h - bottom}" stroke="#111" stroke-opacity="0.5"/>'
-                     f'<text x="{x + 4:.1f}" y="18" font-size="10" fill="#111">optimal {money(price.optimal_price_point, currency)}</text>')
+                     f'<text x="{x + 4:.1f}" y="18" font-size="10" fill="#111">optimal {escape(money(price.optimal_price_point, currency))}</text>')
     for v, anchor in ((lo, "start"), ((lo + hi) / 2, "middle"), (hi, "end")):
-        parts.append(f'<text x="{px(v):.1f}" y="{h - 8}" font-size="10" text-anchor="{anchor}" fill="#5f6368">{money(v, currency)}</text>')
+        parts.append(f'<text x="{px(v):.1f}" y="{h - 8}" font-size="10" text-anchor="{anchor}" fill="#5f6368">{escape(money(v, currency))}</text>')
     for k in range(4):
         parts.append(f'<rect x="{left + k * 150}" y="{h + 6}" width="14" height="3" fill="{colors[k]}"/>'
                      f'<text x="{left + k * 150 + 20}" y="{h + 11}" font-size="11" fill="#111">{names[k]}</text>')
@@ -490,7 +490,7 @@ def survey_report_html(r: SurveyReport, board_jpeg: bytes | None = None) -> str:
         p = r.price
         price = (f"<h2>Price range for {e(name(0))} <span class='note'>· Van Westendorp, n = {p.n}</span></h2>{_price_svg(p, r.currency)}"
                  "<table><tr><th>Floor</th><th>Optimal</th><th>Indifference</th><th>Ceiling</th></tr><tr>"
-                 + "".join(f"<td>{money(v, r.currency) if v is not None else '–'}</td>" for v in
+                 + "".join(f"<td>{e(money(v, r.currency)) if v is not None else '–'}</td>" for v in
                            (p.point_of_marginal_cheapness, p.optimal_price_point, p.indifference_price_point, p.point_of_marginal_expensiveness))
                  + "</tr></table>")
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")

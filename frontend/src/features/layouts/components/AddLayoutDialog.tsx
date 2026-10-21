@@ -149,6 +149,7 @@ export function AddLayoutDialog({
               id="add-layout-name"
               data-testid="add-layout-name-input"
               value={name}
+              maxLength={approach === "building" ? 160 : 300}
               placeholder="e.g. layout 2"
               disabled={createLayout.isPending}
               onChange={(e) => setName(e.target.value)}

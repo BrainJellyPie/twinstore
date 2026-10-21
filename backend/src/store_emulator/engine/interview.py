@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.interview import InterviewMessage, Journey, JourneyStep, ShelfItem
@@ -89,7 +89,9 @@ Rules:
 
 
 class ShopperReply(BaseModel):
-    answer: str = Field(max_length=900)
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    answer: str = Field(min_length=1, max_length=900)
     steps: list[int] = Field(default_factory=list[int], max_length=12)
 
 
@@ -155,12 +157,22 @@ async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str])
     coding = await llm.generate_structured_async(
         ThemeCoding, THEMES_PROMPT, f"Question: {question}\n\nAnswers:\n{listed}", max_retries=1, seed=0,
     )
-    themes = [t.strip() for t in coding.themes if t.strip()][:6] or ["Other"]
+    themes: list[str] = []
+    indices: dict[int, int] = {}
+    for original, label in enumerate(coding.themes):
+        label = label.strip()
+        if label:
+            if label not in themes:
+                themes.append(label)
+            indices[original] = themes.index(label)
+    if not themes:
+        themes = ["Other"]
     out: list[int] = []
-    other = -1
+    other = themes.index("Other") if "Other" in themes else -1
     for i in range(len(answers)):
-        k = coding.assignments[i] if i < len(coding.assignments) else -1
-        if not 0 <= k < len(themes):
+        original = coding.assignments[i] if i < len(coding.assignments) else -1
+        k = indices.get(original, -1)
+        if k < 0:
             if other < 0:
                 themes.append("Other")
                 other = len(themes) - 1

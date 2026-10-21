@@ -9,9 +9,13 @@ import logging
 import random
 import re
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 from typing import cast
+
+from filelock import FileLock, Timeout
 
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.customer import CustomerResult
@@ -94,34 +98,51 @@ def get_interview(pid: str, run_id: str, persona_id: str) -> Interview:
     return Interview.model_validate(read_json(path))
 
 
+@contextmanager
+def _interview_lock(pid: str, run_id: str, persona_id: str) -> Iterator[None]:
+    path = _transcript_path(pid, run_id, persona_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock = FileLock(path.with_suffix(".lock"), timeout=0)
+    try:
+        lock.acquire()
+    except Timeout as e:
+        raise AppError("This shopper is answering a question. Try again when the answer is complete.", 409) from e
+    try:
+        yield
+    finally:
+        lock.release()
+
+
 def clear_interview(pid: str, run_id: str, persona_id: str) -> None:
-    _transcript_path(pid, run_id, persona_id).unlink(missing_ok=True)
+    with _interview_lock(pid, run_id, persona_id):
+        _transcript_path(pid, run_id, persona_id).unlink(missing_ok=True)
 
 
 def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, config: SimulationConfig) -> Interview:
-    journey = get_journey(pid, run_id, persona_id)
-    _, _, store, _ = _load(pid, run_id)
-    transcript = get_interview(pid, run_id, persona_id)
-    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
-    try:
-        llm = build_client(llm_config, None, model_ref=q.model.strip() or None)
-    except ValueError as e:
-        raise AppError(str(e), 400) from e
-    try:
-        reply = asyncio.run(ask_shopper(llm, journey, store, transcript.messages, q.question.strip()))
-    except Exception as e:  # provider errors reach the user as a message, not a 500
-        logger.warning(f"[interview] {pid}/{run_id}/{persona_id}: {type(e).__name__}: {e}")
-        raise AppError(f"the shopper could not answer ({type(e).__name__}): {str(e)[:200]}", 502) from e
-    now = now_iso()
-    transcript.model = q.model.strip() or llm_config.model
-    transcript.messages += [
-        InterviewMessage(role="interviewer", text=q.question.strip(), created_at=now),
-        InterviewMessage(role="shopper", text=reply.answer, steps=reply.steps, created_at=now_iso()),
-    ]
-    path = _transcript_path(pid, run_id, persona_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    write_json(path, transcript.model_dump(mode="json"))
-    return transcript
+    with _interview_lock(pid, run_id, persona_id):
+        journey = get_journey(pid, run_id, persona_id)
+        _, _, store, _ = _load(pid, run_id)
+        transcript = get_interview(pid, run_id, persona_id)
+        llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
+        try:
+            llm = build_client(llm_config, None, model_ref=q.model.strip() or None)
+        except ValueError as e:
+            raise AppError(str(e), 400) from e
+        try:
+            reply = asyncio.run(ask_shopper(llm, journey, store, transcript.messages, q.question.strip()))
+        except Exception as e:  # provider errors reach the user as a message, not a 500
+            logger.warning(f"[interview] {pid}/{run_id}/{persona_id}: {type(e).__name__}: {e}")
+            raise AppError(f"the shopper could not answer ({type(e).__name__}): {str(e)[:200]}", 502) from e
+        now = now_iso()
+        transcript.model = q.model.strip() or llm_config.model
+        transcript.messages += [
+            InterviewMessage(role="interviewer", text=q.question.strip(), created_at=now),
+            InterviewMessage(role="shopper", text=reply.answer, steps=reply.steps, created_at=now_iso()),
+        ]
+        path = _transcript_path(pid, run_id, persona_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_json(path, transcript.model_dump(mode="json"))
+        return transcript
 
 
 # ── group interviews ────────────────────────────────────────────────────────────
