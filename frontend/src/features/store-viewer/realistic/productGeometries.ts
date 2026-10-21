@@ -369,6 +369,15 @@ function kiwi(lod: Lod): THREE.BufferGeometry {
   return geometry;
 }
 
+function asianPear(lod: Lod): THREE.BufferGeometry {
+  return revolve(profile([
+    [0, 0, "body"], [0.2, 0.02, "body"], [0.4, 0.12, "body"],
+    [0.49, 0.27, "body"], [0.5, 0.4, "body"], [0.45, 0.55, "body"],
+    [0.3, 0.66, "body"], [0.08, 0.69, "body"], [0.025, 0.7, "body"],
+    [0.023, 0.98, "body"], [0, 1, "body"],
+  ]), lod ? 20 : 10);
+}
+
 function sweetPotato(lod: Lod): THREE.BufferGeometry {
   const geometry = revolve(profile([
     [0, 0, "body"], [0.18, 0.025, "body"], [0.36, 0.1, "body"],
@@ -497,6 +506,8 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
       return onion(lod);
     case "kiwi":
       return kiwi(lod);
+    case "asianPear":
+      return asianPear(lod);
     case "sweetPotato":
       return sweetPotato(lod);
     case "apple":
@@ -507,4 +518,4 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
   }
 }
 
-export const PACKAGE_KINDS: PackageKind[] = ["bottle", "perfumeBottle", "teaCup", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "avocado", "lemon", "onion", "kiwi", "sweetPotato", "pot", "croissant", "wateringCan"];
+export const PACKAGE_KINDS: PackageKind[] = ["bottle", "perfumeBottle", "teaCup", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "avocado", "lemon", "onion", "kiwi", "sweetPotato", "asianPear", "pot", "croissant", "wateringCan"];

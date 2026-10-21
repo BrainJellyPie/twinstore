@@ -1,0 +1,57 @@
+{
+  "asset": "food_pears_asian_01",
+  "source": "https://polyhaven.com/a/food_pears_asian_01",
+  "author": "Amal Kumar",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_asian_pear.py; upright food_pears_asian_01_e selected from the five-fruit arrangement; 299/1400 triangle LODs, bottom-centred unit bounds and inverse-transpose normals; original 1K JPEG color, OpenGL normal and packed roughness/metalness maps retained.",
+  "authored_dimensions_metres": {
+    "width": 0.04344487562775612,
+    "height": 0.06696554273366928,
+    "depth": 0.043426722288131714
+  },
+  "files": [
+    {
+      "file": "food_pears_asian_01_1k.gltf",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/food_pears_asian_01/food_pears_asian_01_1k.gltf",
+      "bytes": 9955,
+      "md5": "de92255775de37f9dd685fd73fa2e0ec",
+      "sha256": "ff3373b91eef143a3921198f61a3b10aa87bcb870f905b2271ce3917b34ff300"
+    },
+    {
+      "file": "textures/food_pears_asian_01_arm_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_pears_asian_01/food_pears_asian_01_arm_1k.jpg",
+      "bytes": 629396,
+      "md5": "050560a051eae1544158164078cb7823",
+      "sha256": "e62f7cb1045a7b82906940c3c9e1f7ae1b733cb39e9532c4ec79988f1ba1aa51"
+    },
+    {
+      "file": "textures/food_pears_asian_01_nor_gl_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_pears_asian_01/food_pears_asian_01_nor_gl_1k.jpg",
+      "bytes": 245203,
+      "md5": "78c8a12170c49d9217f86f7c04135e5b",
+      "sha256": "5e31717c809fd7237e3be31b191dcbe52e317b8d4cc7af27abcb404658dceb05"
+    },
+    {
+      "file": "food_pears_asian_01.bin",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/food_pears_asian_01/food_pears_asian_01.bin",
+      "bytes": 300136,
+      "md5": "77ae4efe197087f8441a8c98fe719f93",
+      "sha256": "a647edc202dbdeec6e4eb3c4d721f0acb91ddf5a82f26a3a751ec709cebdd77e"
+    },
+    {
+      "file": "textures/food_pears_asian_01_diff_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_pears_asian_01/food_pears_asian_01_diff_1k.jpg",
+      "bytes": 539427,
+      "md5": "aab0f3b8e260a7a17216fefad72cb0c1",
+      "sha256": "c07a55c97b966d49a0a3e6a628fcd38ce9d2abdddc57e24a742110245f4085c5"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "asian-pear.glb",
+      "bytes": 1460400,
+      "sha256": "aa2e67c121b144de6487c9494b6ce26202b9d8f0c5d27ff34c4383e166c400dd"
+    }
+  ]
+}
