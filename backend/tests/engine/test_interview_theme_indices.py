@@ -27,3 +27,12 @@ class ThemeModel:
 def test_cleaned_theme_labels_preserve_assignment_meaning(labels, assignments, expected_labels, expected_assignments):
     result = asyncio.run(code_themes(ThemeModel(labels, assignments), "Why?", ["Answer"] * len(assignments)))
     assert result == (expected_labels, expected_assignments)
+
+
+def test_more_themes_than_the_cap_keep_the_largest_and_fold_the_rest_into_other():
+    labels = ["A", "B", "C", "D", "E", "F", "G"]
+    assignments = [0, 0, 1, 2, 2, 2, 3, 4, 5, 6, 6, 6, 6]
+    themes, coded = asyncio.run(code_themes(ThemeModel(labels, assignments), "Why?", ["Answer"] * len(assignments)))
+    # Largest five by count (G 4, C 3, A 2, then B and D by order); E and F fold into Other.
+    assert themes == ["A", "B", "C", "D", "G", "Other"]
+    assert coded == [0, 0, 1, 2, 2, 2, 3, 5, 5, 4, 4, 4, 4]

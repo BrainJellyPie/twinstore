@@ -24,6 +24,8 @@ from store_emulator.domain.marketing import (
     VariantResult,
 )
 
+from .reading import StudyReading, reading_html
+
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
 _SYMBOL = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "KRW": "₩"}
 
@@ -485,7 +487,7 @@ def _price_svg(price: PriceRange, currency: str) -> str:
     return "".join(parts)
 
 
-def survey_report_html(r: SurveyReport, board_jpeg: bytes | None = None) -> str:
+def survey_report_html(r: SurveyReport, board_jpeg: bytes | None = None, reading: StudyReading | None = None) -> str:
     e = escape
     letters = "ABCD"
 
@@ -549,6 +551,7 @@ def survey_report_html(r: SurveyReport, board_jpeg: bytes | None = None) -> str:
 <div class="meta">{r.respondents} synthetic respondents · {len(r.stimuli)} product{'s' if len(r.stimuli) != 1 else ''} · {e(r.model)}</div>
 {board}
 <h2>Summary</h2><div class="flat"><ul>{''.join(f'<li>{e(x)}</li>' for x in leads) or '<li>No scale questions were asked.</li>'}</ul></div>
+{reading_html(reading)}
 {f'<h2>Scales <span class="note">· 1–5, red = low, blue = high; mean with 95 % interval; share answering 4–5</span></h2><table><tr><th>Question</th><th>Product</th><th>Answers</th><th>Mean</th><th>95 % CI</th><th>Top-2</th></tr>{scale_rows}</table>' if scale_rows else ''}
 {f'<h2>Would take home</h2><table><tr><th>Product</th><th>Share</th><th>95 % Wilson interval</th></tr>{pref}</table>' if pref else ''}
 {price}
@@ -568,7 +571,7 @@ def survey_report_html(r: SurveyReport, board_jpeg: bytes | None = None) -> str:
 _SHELF_METRIC = {"pick": "Would take it", "noticed": "Noticed (top three)", "noticed_first": "Noticed first"}
 
 
-def shelf_report_html(r: ShelfTestReport, control_png: bytes, test_png: bytes) -> str:
+def shelf_report_html(r: ShelfTestReport, control_png: bytes, test_png: bytes, reading: StudyReading | None = None) -> str:
     e = escape
     pick = next((c for c in r.comparisons if c.metric == "pick"), None)
 
@@ -603,6 +606,7 @@ def shelf_report_html(r: ShelfTestReport, control_png: bytes, test_png: bytes) -
 <div class="shelves"><figure><img src="{img(control_png)}" alt="Control shelf"><figcaption class="note">Control</figcaption></figure>
 <figure><img src="{img(test_png)}" alt="Test shelf"><figcaption class="note">Test · {e('; '.join(r.applied))}</figcaption></figure></div>
 <h2>Summary</h2><div class="{'win' if pick and pick.ci_low > 0 else 'flat'}"><div class="headline">{e(headline)}</div></div>
+{reading_html(reading)}
 <h2>{e(r.target_name)}: test vs control <span class="note">· percentage points, paired 95 % intervals</span></h2>
 {forest}
 <h2>What respondents take</h2><table><tr><th>Product</th><th>Control</th><th>Test</th></tr>{picks}</table>
@@ -631,7 +635,7 @@ def _utility_bar(u: float, lo: float, hi: float, span: float) -> str:
             f'<line x1="{x(lo):.1f}" y1="9" x2="{x(hi):.1f}" y2="9" stroke="#111" stroke-width="1.2"/></svg>')
 
 
-def conjoint_report_html(r: ConjointReport) -> str:
+def conjoint_report_html(r: ConjointReport, reading: StudyReading | None = None) -> str:
     e = escape
     cur = r.currency
     ranked = sorted(r.importances, key=lambda i: -i.importance)
@@ -700,6 +704,7 @@ def conjoint_report_html(r: ConjointReport) -> str:
 <div class="meta">{e(r.product)} · {r.options} options per task{' + none' if r.none_option else ''} · {e(r.model)}</div>
 <div class="kpis">{kpis}</div>
 <h2>Summary</h2><div class="flat"><ul>{''.join(f'<li>{e(x)}</li>' for x in leads)}</ul></div>
+{reading_html(reading)}
 <h2>What drives the choice <span class="note">· attribute importance, 95 % intervals over respondents</span></h2>
 <table><tr><th>Attribute</th><th style="width:50%"></th><th>Importance</th><th>95 % CI</th></tr>{imp}</table>
 <h2>Part-worths <span class="note">· utility centred within each attribute; willingness to pay over the first level</span></h2>

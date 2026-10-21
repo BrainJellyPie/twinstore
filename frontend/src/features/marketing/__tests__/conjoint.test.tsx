@@ -12,8 +12,9 @@ vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), getModels: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("@/shared/api/marketing", async (original) => ({
-  ...await original<typeof import("@/shared/api/marketing")>(), startConjoint: vi.fn(),
+  ...await original<typeof import("@/shared/api/marketing")>(), startConjoint: vi.fn(), getStudyReading: vi.fn().mockResolvedValue(null),
 }));
+const withQueries = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>;
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const pw = (attribute: string, level: string, utility: number, wtp: number | null = null) =>
@@ -48,7 +49,7 @@ it("simulates logit shares, including none, at any price in the tested range", (
 });
 
 it("shows importance, part-worths and a live simulator", () => {
-  render(<ConjointReportView projectId="p" report={REPORT} />);
+  render(<ConjointReportView projectId="p" report={REPORT} />, { wrapper: withQueries });
   expect(screen.getByText("What drives the choice")).toBeTruthy();
   expect(screen.getAllByText("Zero sugar").length).toBeGreaterThan(0);
   const before = screen.getAllByText(/^\d+ %$/).map((n) => n.textContent);
@@ -59,7 +60,7 @@ it("shows importance, part-worths and a live simulator", () => {
 });
 
 it.each([1, 3])("resets the simulator when switching to a study with %s attributes", (count) => {
-  const view = render(<ConjointReportView projectId="p" report={REPORT} />);
+  const view = render(<ConjointReportView projectId="p" report={REPORT} />, { wrapper: withQueries });
   fireEvent.change(screen.getByLabelText("Price of product A"), { target: { value: "249" } });
   fireEvent.click(screen.getByRole("button", { name: /Add product/ }));
   const attributes = [...REPORT.attributes, { name: "Brand", levels: ["Store", "Known"] }].slice(0, count);

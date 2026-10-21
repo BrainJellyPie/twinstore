@@ -59,6 +59,7 @@ from store_emulator.engine.marketing import (
 )
 from store_emulator.engine.marketing.conjoint import conjoint_panel, estimate, none_share
 from store_emulator.engine.marketing.factorial import capture_paired_outcomes
+from store_emulator.engine.marketing.reading import StudyReading
 from store_emulator.engine.marketing.report import (
     ReportNarrative,
     conjoint_report_html,
@@ -444,12 +445,18 @@ def get_survey(pid: str, sid: str) -> SurveyView:
     return SurveyView(**status.model_dump(), report=report, request=_request(pid, "survey", sid, SurveyRequest))
 
 
+def load_reading(pid: str, kind: Kind, jid: str) -> StudyReading | None:
+    """The model's reading of a study (commentary and themes), if one was written."""
+    path = _job_dir(pid, kind, jid) / "reading.json"
+    return StudyReading.model_validate(read_json(path)) if path.exists() else None
+
+
 def survey_report(pid: str, sid: str) -> str:
     view = get_survey(pid, sid)
     if view.report is None:
         raise AppError("the concept test has no answers yet", 409)
     board = _job_dir(pid, "survey", sid) / "board.jpg"
-    return survey_report_html(view.report, board.read_bytes() if board.exists() else None)
+    return survey_report_html(view.report, board.read_bytes() if board.exists() else None, load_reading(pid, "survey", sid))
 
 
 def survey_board_path(pid: str, sid: str) -> Path:
@@ -607,7 +614,8 @@ def shelf_test_report(pid: str, tid: str) -> str:
     view = get_shelf_test(pid, tid)
     if view.report is None:
         raise AppError("the shelf test has no results yet", 409)
-    return shelf_report_html(view.report, shelf_test_image(pid, tid, "control"), shelf_test_image(pid, tid, "test"))
+    return shelf_report_html(view.report, shelf_test_image(pid, tid, "control"), shelf_test_image(pid, tid, "test"),
+                             load_reading(pid, "shelf", tid))
 
 
 # ── conjoint ────────────────────────────────────────────────────────────────────
@@ -696,7 +704,7 @@ def conjoint_report(pid: str, cid: str) -> str:
     view = get_conjoint(pid, cid)
     if view.report is None:
         raise AppError("the conjoint study has no answers yet", 409)
-    return conjoint_report_html(view.report)
+    return conjoint_report_html(view.report, load_reading(pid, "conjoint", cid))
 
 
 def conjoint_csv(pid: str, cid: str) -> str:

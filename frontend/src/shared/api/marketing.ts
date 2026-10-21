@@ -220,6 +220,29 @@ export const experimentMarkdownUrl = (pid: string, eid: string) => `${BASE}${roo
 export const writeNarrative = (pid: string, eid: string, model: string) =>
   fetchJson<ReportNarrative>(`${root(pid)}/experiments/${eid}/narrative`, { method: "POST", body: JSON.stringify({ model }) });
 
+// A model's reading of a finished concept, shelf, conjoint or staff-script study: open answers coded into themes
+// (per arm for paired studies) and a commentary on the numbers. Mirrors engine/marketing/reading.py.
+export type StudyPath = "surveys" | "shelf-tests" | "conjoints" | "staff-pitches";
+export interface ReasonTheme { label: string; count: number; share: number; by_group: Record<string, number>; examples: string[] }
+export interface StudyReading {
+  summary: string;
+  interpretation: string;
+  next_steps: string;
+  themes_question: string;
+  themes: ReasonTheme[];
+  answers_coded: number;
+  groups: string[];
+  model: string;
+  created_at: string;
+}
+export const studyReadingKey = (pid: string, study: StudyPath, id: string) => ["projects", pid, "marketing", study, id, "reading"] as const;
+export const getStudyReading = (pid: string, study: StudyPath, id: string, signal?: AbortSignal) =>
+  fetchJson<StudyReading | null>(`${root(pid)}/${study}/${id}/reading`, { signal });
+export const writeStudyReading = (pid: string, study: StudyPath, id: string, model: string) =>
+  fetchJson<StudyReading>(`${root(pid)}/${study}/${id}/reading`, { method: "POST", body: JSON.stringify({ model }) });
+export const deleteStudyReading = (pid: string, study: StudyPath, id: string) =>
+  fetchJson<void>(`${root(pid)}/${study}/${id}/reading`, { method: "DELETE" });
+
 export const startSurvey = (pid: string, req: SurveyRequest) =>
   fetchJson<JobStatus>(`${root(pid)}/surveys`, { method: "POST", body: JSON.stringify(req) });
 export const listSurveys = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/surveys`, { signal });

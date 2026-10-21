@@ -8,6 +8,7 @@ shopper actually saw and did, and "I didn't notice it" is a valid answer.
 """
 
 import re
+from collections import Counter
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Protocol
@@ -199,8 +200,12 @@ Group answers that give the same reason; keep themes distinct and concrete (e.g.
 (starting at 0). Write in English."""
 
 
+MAX_THEMES = 6
+
+
 class ThemeCoding(BaseModel):
-    themes: list[str] = Field(min_length=1, max_length=6)
+    # Models sometimes return a seventh theme; accept it and fold the smallest ones into "Other" below.
+    themes: list[str] = Field(min_length=1, max_length=12)
     assignments: list[int]
 
 
@@ -208,7 +213,7 @@ async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str])
     """Theme labels and one theme index per answer; answers the model leaves out or misnumbers go to "Other"."""
     listed = "\n".join(f"{i}. {a}" for i, a in enumerate(answers))
     coding = await llm.generate_structured_async(
-        ThemeCoding, THEMES_PROMPT, f"Question: {question}\n\nAnswers:\n{listed}", max_retries=1, seed=0,
+        ThemeCoding, THEMES_PROMPT, f"Question: {question}\n\nAnswers:\n{listed}", max_retries=2, seed=0,
     )
     themes: list[str] = []
     indices: dict[int, int] = {}
@@ -231,4 +236,11 @@ async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str])
                 other = len(themes) - 1
             k = other
         out.append(k)
+    if len(themes) > MAX_THEMES:  # keep the largest themes, in their original order; the rest become "Other"
+        counts = Counter(out)
+        named = [k for k in range(len(themes)) if themes[k] != "Other"]
+        keep = sorted(sorted(named, key=lambda k: (-counts[k], k))[: MAX_THEMES - 1])
+        remap = {k: i for i, k in enumerate(keep)}
+        themes = [themes[k] for k in keep] + ["Other"]
+        out = [remap.get(k, len(themes) - 1) for k in out]
     return themes, out

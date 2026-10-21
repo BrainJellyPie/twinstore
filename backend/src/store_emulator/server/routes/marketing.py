@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import marketing as mk
 from store_emulator.application import staff_pitch
+from store_emulator.application import study_reading
 from store_emulator.application import factorial
 from store_emulator.application.errors import AppError
 from store_emulator.application.marketing import ExperimentView, SurveyView
@@ -25,6 +26,7 @@ from store_emulator.domain.marketing import (
 )
 from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.domain.factorial import FactorialReport, FactorialRequest, FactorialSource
+from store_emulator.engine.marketing.reading import StudyReading
 from store_emulator.engine.marketing.report import ReportNarrative
 
 from ..deps import get_config
@@ -106,6 +108,32 @@ async def experiment_narrative(pid: str, eid: str, req: NarrativeRequest) -> Rep
 @router.delete("/{pid}/experiments/{eid}/narrative", summary="Remove the report commentary", status_code=204)
 def delete_experiment_narrative(pid: str, eid: str) -> None:
     _call(lambda: mk.delete_experiment_narrative(pid, eid))
+
+
+_STUDY_PATHS: dict[str, study_reading.StudyKind] = {
+    "surveys": "survey", "shelf-tests": "shelf", "conjoints": "conjoint", "staff-pitches": "pitch",
+}
+StudyPath = Literal["surveys", "shelf-tests", "conjoints", "staff-pitches"]
+
+
+@router.post("/{pid}/{study}/{jid}/reading", summary="Write a model's reading of a study", response_model=StudyReading)
+async def write_study_reading(pid: str, study: StudyPath, jid: str, req: NarrativeRequest) -> StudyReading:
+    """Concept, shelf, conjoint and staff-script studies: the respondents' open answers coded into themes (per arm
+    for paired studies) and a commentary on the report's numbers. Replaces an earlier reading; the print-ready report
+    shows it, labelled as model-written."""
+    kind = _STUDY_PATHS[study]
+    return await run_in_threadpool(_call, lambda: study_reading.write_reading(pid, kind, jid, req.model, get_config()))
+
+
+@router.get("/{pid}/{study}/{jid}/reading", summary="A study's reading (null until one is written)",
+            response_model=StudyReading | None)
+def get_study_reading(pid: str, study: StudyPath, jid: str) -> StudyReading | None:
+    return _call(lambda: study_reading.get_reading(pid, _STUDY_PATHS[study], jid))
+
+
+@router.delete("/{pid}/{study}/{jid}/reading", summary="Remove a study's reading", status_code=204)
+def delete_study_reading(pid: str, study: StudyPath, jid: str) -> None:
+    _call(lambda: study_reading.delete_reading(pid, _STUDY_PATHS[study], jid))
 
 
 @router.post("/{pid}/surveys", summary="Start a concept test", response_model=JobStatus)
