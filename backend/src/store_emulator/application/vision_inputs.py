@@ -20,6 +20,7 @@ from store_emulator.domain.receipt_review import ReceiptReview
 from store_emulator.domain.store import Store
 from store_emulator.domain.town import Town
 from store_emulator.domain.vision_inputs import ReceiptReading, StorefrontAppeal
+from store_emulator.domain.types import RESOURCE_ID_PATTERN
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.receipt_review import review_receipts
 from store_emulator.engine.vision_inputs import (
@@ -40,7 +41,7 @@ from .town import require_town, save_town
 logger = logging.getLogger(__name__)
 
 MAX_PHOTO_BYTES = 25 * 1024 * 1024
-_SAFE_ID = re.compile(r"[a-z0-9_]+")
+_SAFE_ID = re.compile(RESOURCE_ID_PATTERN)
 
 
 class StorefrontResult(BaseModel):
