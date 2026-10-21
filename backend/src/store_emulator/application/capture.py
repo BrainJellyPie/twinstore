@@ -18,9 +18,10 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Annotated
 
 from PIL import Image, UnidentifiedImageError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from store_emulator.domain.capture import (
     CaptureItem,
@@ -79,7 +80,7 @@ class CaptureView(BaseModel):
 class CaptureItemEdit(BaseModel):
     """One product of the corrected planogram. Products left out of the list are deleted."""
     id: str | None = Field(default=None, description="existing item id; omit for a product the user adds")
-    name: str = Field(min_length=1, max_length=120)
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
     brand: str = ""
     size: str = ""
     category: str = Field(default="", description="catalog category key or free text (mapped); empty = keep / infer")
@@ -383,6 +384,8 @@ def apply_edits(result: CaptureResult, edits: list[CaptureItemEdit]) -> CaptureR
     if unknown:
         raise AppError(f"unknown item id(s): {', '.join(sorted(set(unknown)))}", 400)
     merged = [m for e in edits for m in e.merged_from]
+    if len(merged) != len(set(merged)):
+        raise AppError("a source item can only be merged once", 400)
     if set(merged) & set(ids):
         raise AppError("an item cannot be both kept and merged into another", 400)
     items: list[CaptureItem] = []

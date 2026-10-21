@@ -28,6 +28,8 @@ class TemplateInfo(BaseModel):
     default_design: StoreDesign
     default_style: LayoutStyle
     default_dining_tables: int
+    default_seating_zone: SeatingZone
+    default_checkout_placement: CheckoutPlacement
 
 
 @router.get("/store-templates", summary="Store formats that can be generated", response_model=list[TemplateInfo])
@@ -39,7 +41,8 @@ def list_templates() -> list[TemplateInfo]:
             id=t.id, name=t.name, description=t.description, store_type=t.store_type, grid=t.grid,
             racks=sum(1 for r in s.racks if r.slots), skus=len({i.sku for r in s.racks for sl in r.slots for i in sl.items}),
             open_hours=t.open_hours, default_style=t.style, default_design=s.design_theme,
-            default_dining_tables=t.dining_tables,
+            default_dining_tables=t.dining_tables, default_seating_zone=t.seating_zone,
+            default_checkout_placement=t.checkout_placement,
         ))
     return out
 

@@ -148,6 +148,9 @@ _SPECIALTY: dict[str, list[tuple[str, int]]] = {
     "pet_care": [("Dry Cat Food 1kg", 1299), ("Dry Dog Food 2kg", 1999), ("Cat Treats 60g", 399), ("Dog Treats 100g", 499), ("Pet Shampoo", 899), ("Cat Litter 5L", 999), ("Rope Chew Toy", 699), ("Pet Feeding Bowl", 799)],
     "sports": [("Yoga Mat", 2499), ("Resistance Band Set", 1999), ("Reusable Sports Bottle", 1499), ("Running Socks", 999), ("Tennis Balls 3pk", 799), ("Swimming Goggles", 1799), ("Fitness Towel", 1299), ("Foam Roller", 2999)],
     "flowers": [("Seasonal Flower Bouquet", 2499), ("Mini Succulent", 799), ("Potted Herb", 599), ("Orchid Plant", 2999), ("Flower Food Sachets", 299), ("Greeting Card", 399), ("Gift Wrap", 249), ("Dried Flower Bundle", 1499)],
+    "tea_menu": [("Loose Leaf Green Tea 50g", 899), ("Jasmine Tea Pot", 595), ("Roasted Oolong Tea Pot", 695), ("Chamomile Tea", 425), ("Peppermint Infusion", 425), ("Chai Latte", 525), ("Iced Peach Tea", 495), ("Matcha Cookie", 325), ("Tea Sampler Gift Box", 1899), ("Ceramic Tea Cup", 1299), ("Honey Lemon Tea", 495), ("Decaf Rooibos Tea", 450)],
+    "hardware": [("Claw Hammer", 1499), ("Screwdriver Set", 1999), ("Measuring Tape 5m", 999), ("Adjustable Wrench", 1799), ("Wall Plugs & Screws", 699), ("Painter's Tape", 499), ("Safety Glasses", 899), ("LED Work Light", 2499), ("Sanding Sheets 10pk", 799), ("Work Gloves", 1199), ("Spirit Level", 1599), ("Wood Glue", 649)],
+    "toys_hobbies": [("Wooden Building Blocks", 2499), ("Jigsaw Puzzle 500pc", 1499), ("Family Board Game", 2999), ("Model Car", 1299), ("Sketching Kit", 1999), ("Soft Plush Bear", 1799), ("Card Game", 999), ("Modeling Clay Set", 1199), ("Science Activity Kit", 2499), ("Origami Paper Set", 699), ("Train Starter Set", 3999), ("Craft Bead Kit", 1599)],
 }
 for _category, _products in _SPECIALTY.items():
     CATALOG[_category] = [CatalogItem(name, name, price) for name, price in _products]
