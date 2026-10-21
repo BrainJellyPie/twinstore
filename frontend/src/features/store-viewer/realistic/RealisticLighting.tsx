@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { QUALITY_PRESETS, type GraphicsQuality } from "./constants";
+import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
+import { CEILING_HEIGHT, QUALITY_PRESETS, type GraphicsQuality } from "./constants";
 import { personaRegistry } from "./personaRegistry";
 import { acquirePhotographicEnvironment, acquireRoomEnvironment, releaseRoomEnvironment, retainRoomEnvironment } from "./envCache";
+
+RectAreaLightUniformsLib.init();
 
 interface Props {
   width: number;
@@ -99,8 +102,8 @@ export function RealisticLighting({ width, depth, quality, dark }: Props) {
       {!fullEnv && <ambientLight intensity={dark ? 0.32 : 0.38} color={dark ? "#e8edff" : "#fffdf8"} />}
       <directionalLight
         key={quality}
-        position={[2.5, 12, 4.5]}
-        intensity={dark ? 1.9 : 2.1}
+        position={fullEnv ? [0.5, 12, 1.5] : [2.5, 12, 4.5]}
+        intensity={fullEnv ? (dark ? 1.2 : 1.4) : (dark ? 1.9 : 2.1)}
         color={dark ? "#f2f5ff" : "#fffaf2"}
         castShadow
         shadow-mapSize={[preset.shadowMapSize, preset.shadowMapSize]}
@@ -117,6 +120,17 @@ export function RealisticLighting({ width, depth, quality, dark }: Props) {
       {/* Low fill from the camera side so shelf fronts read well (high only — one
           light less per pixel matters under software GL). */}
       {quality === "high" && <directionalLight position={[8, 5, 10]} intensity={0.45} color="#eef4ff" />}
+      {fullEnv && [-1, 1].map((side) => (
+        <rectAreaLight
+          key={side}
+          color={dark ? "#e7efff" : "#fff8ed"}
+          intensity={dark ? 1.6 : 2.2}
+          width={Math.max(0.5, width * 0.72)}
+          height={Math.max(0.4, depth * 0.24)}
+          position={[0, CEILING_HEIGHT - 0.04, side * depth * 0.24]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        />
+      ))}
     </>
   );
 }

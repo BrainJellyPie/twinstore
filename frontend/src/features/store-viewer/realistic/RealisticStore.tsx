@@ -81,7 +81,7 @@ export function RealisticStore({ width, depth, racks, currency, quality }: Props
   const preset = QUALITY_PRESETS[quality];
   const fontsReady = useFontsReady();
 
-  const built = useMemo(() => buildStore(width, depth, racks), [width, depth, racks]);
+  const built = useMemo(() => buildStore(width, depth, racks, quality === "high"), [width, depth, racks, quality]);
   const signTexture = useMemo(() => {
     const t = new THREE.CanvasTexture(built.signAtlas.canvas);
     t.colorSpace = THREE.SRGBColorSpace;
