@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import { useI18n } from "@/shared/i18n/i18n";
+import { searchText } from "@/shared/utils/searchText";
 import { storeTypeLabel } from "@/shared/i18n/storeLabels";
 import type { ProjectListItem } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
@@ -15,10 +16,6 @@ interface StoreGalleryProps {
   onRetry: () => void;
   onOpen: (projectId: string) => void;
   onCreate: () => void;
-}
-
-function searchText(value: string) {
-  return value.normalize("NFKC").toLowerCase().replace(/[_\s-]+/g, " ").trim();
 }
 
 export function StoreGallery({ projects, isLoading, isFetching, error, onRetry, onOpen, onCreate }: StoreGalleryProps) {

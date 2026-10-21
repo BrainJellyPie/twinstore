@@ -17,11 +17,16 @@ import {
   Search,
   Store,
   Sun,
+  X,
 } from "lucide-react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/components/ui/dialog";
+import { translate, useI18n } from "@/shared/i18n/i18n";
+import { LOCALES, type MessageKey } from "@/shared/i18n/messages";
+import { storeTypeLabel } from "@/shared/i18n/storeLabels";
 import { useProjects } from "@/shared/queries/useProjects";
 import { cn } from "@/shared/utils/cn";
+import { searchText } from "@/shared/utils/searchText";
 
 import { useCommandPalette } from "./commandPalette";
 import { quitLauncher, useLauncher } from "./launcher";
@@ -33,8 +38,16 @@ interface Command {
   group: string;
   label: string;
   hint?: string;
+  aliases?: string;
   icon: typeof Store;
   run: () => void;
+}
+
+type LocalizedCommand = Omit<Command, "group" | "label" | "hint"> & { group: MessageKey; label: MessageKey; hint?: MessageKey };
+
+function isComposing(event: KeyboardEvent) {
+  // Some IMEs report 229 on the final composition key without isComposing.
+  return event.isComposing || event.keyCode === 229;
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -44,15 +57,15 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 function matches(command: Command, query: string): boolean {
-  const hay = `${command.label} ${command.hint ?? ""} ${command.group}`.toLowerCase();
-  return query
-    .toLowerCase()
-    .split(/\s+/)
+  const hay = searchText(`${command.label} ${command.hint ?? ""} ${command.group} ${command.aliases ?? ""} ${command.id}`);
+  return searchText(query)
+    .split(" ")
     .filter(Boolean)
     .every((token) => hay.includes(token));
 }
 
 function PaletteBody({ onDone }: { onDone: () => void }) {
+  const { locale, t } = useI18n();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const pid = projectIdFromPath(pathname);
@@ -64,48 +77,55 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   const itemRefs = useRef(new globalThis.Map<number, HTMLButtonElement>());
 
   const commands = useMemo<Command[]>(() => {
+    const localize = (command: LocalizedCommand): Command => ({
+      ...command,
+      group: translate(locale, command.group), label: translate(locale, command.label),
+      hint: command.hint ? translate(locale, command.hint) : undefined,
+      aliases: LOCALES.map(({ code }) => `${translate(code, command.group)} ${translate(code, command.label)} ${command.hint ? translate(code, command.hint) : ""}`).join(" "),
+    });
     const go = (to: string, params?: Record<string, string>) => () => navigate({ to, params });
     const list: Command[] = [];
     if (pid) {
       list.push(
-        { id: "floor", group: "This store", label: "Floor & simulation", hint: "3D store, runs, results", icon: Store, run: go("/projects/$pid", { pid }) },
-        { id: "area", group: "This store", label: "Neighborhood", hint: "demand, rivals, synergy", icon: Map, run: go("/town/$pid", { pid }) },
-        { id: "capture", group: "This store", label: "Shelf capture", hint: "photo → planogram", icon: Camera, run: go("/capture/$pid", { pid }) },
-        { id: "marketing", group: "This store", label: "Marketing studio", hint: "A/B tests, concept tests, product images", icon: Megaphone, run: go("/marketing/$pid", { pid }) },
+        localize({ id: "floor", group: "commandThisStore", label: "commandFloor", hint: "commandFloorHint", icon: Store, run: go("/projects/$pid", { pid }) }),
+        localize({ id: "area", group: "commandThisStore", label: "neighborhood", hint: "commandAreaHint", icon: Map, run: go("/town/$pid", { pid }) }),
+        localize({ id: "capture", group: "commandThisStore", label: "shelfCapture", hint: "commandCaptureHint", icon: Camera, run: go("/capture/$pid", { pid }) }),
+        localize({ id: "marketing", group: "commandThisStore", label: "marketingStudio", hint: "commandMarketingHint", icon: Megaphone, run: go("/marketing/$pid", { pid }) }),
       );
     }
     list.push(
-      { id: "home", group: "Go to", label: "All stores", hint: "home", icon: LayoutGrid, run: go("/") },
-      { id: "new", group: "Go to", label: "New store", hint: "create, wizard", icon: Plus, run: go("/projects/new") },
-      { id: "models", group: "Go to", label: "Model providers", hint: "API keys, settings, vision", icon: KeyRound, run: go("/settings") },
+      localize({ id: "home", group: "commandGoTo", label: "allStores", hint: "commandHomeHint", icon: LayoutGrid, run: go("/") }),
+      localize({ id: "new", group: "commandGoTo", label: "newStore", hint: "commandNewHint", icon: Plus, run: go("/projects/new") }),
+      localize({ id: "models", group: "commandGoTo", label: "modelProviders", hint: "commandModelsHint", icon: KeyRound, run: go("/settings") }),
     );
     for (const p of projects ?? []) {
       list.push({
         id: `store-${p.project_id}`,
-        group: "Stores",
-        label: p.name || "Untitled store",
-        hint: p.store_type,
+        group: translate(locale, "stores"),
+        label: p.name || translate(locale, "untitledStore"),
+        hint: storeTypeLabel(p.store_type, locale),
+        aliases: `${p.store_type} ${LOCALES.map(({ code }) => storeTypeLabel(p.store_type, code)).join(" ")}`,
         icon: Store,
         run: go("/projects/$pid", { pid: p.project_id }),
       });
     }
     list.push(
       theme === "dark"
-        ? { id: "theme", group: "Appearance", label: "Switch to day theme", hint: "light", icon: Sun, run: () => setTheme("light") }
-        : { id: "theme", group: "Appearance", label: "Switch to night theme", hint: "dark", icon: Moon, run: () => setTheme("dark") },
+        ? localize({ id: "theme", group: "commandAppearance", label: "switchDay", hint: "commandLightHint", icon: Sun, run: () => setTheme("light") })
+        : localize({ id: "theme", group: "commandAppearance", label: "switchNight", hint: "commandDarkHint", icon: Moon, run: () => setTheme("dark") }),
     );
     if (launched) {
-      list.push({ id: "quit", group: "App", label: "Quit TwinStore", hint: "stop the local server", icon: Power, run: () => void quitLauncher() });
+      list.push(localize({ id: "quit", group: "commandApp", label: "quitTwinStore", hint: "commandQuitHint", icon: Power, run: () => void quitLauncher() }));
     }
     return list;
-  }, [navigate, pid, projects, theme, setTheme, launched]);
+  }, [navigate, pid, projects, theme, setTheme, launched, locale]);
 
   const visible = useMemo(() => commands.filter((c) => matches(c, query)), [commands, query]);
   const current = Math.min(active, Math.max(visible.length - 1, 0));
 
   useEffect(() => {
     itemRefs.current.get(current)?.scrollIntoView({ block: "nearest" });
-  }, [current]);
+  }, [current, visible]);
 
   const run = (command: Command | undefined) => {
     if (!command) return;
@@ -114,6 +134,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (isComposing(e.nativeEvent)) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActive((current + 1) % Math.max(visible.length, 1));
@@ -128,29 +149,33 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
 
   let lastGroup = "";
   return (
-    <div onKeyDown={onKeyDown}>
-      <div className="flex items-center gap-3 border-b px-5">
+    <div className="flex min-h-0 flex-col" onKeyDown={onKeyDown}>
+      <div className="flex shrink-0 items-center gap-3 border-b px-5">
         <Search className="size-5 shrink-0 text-muted-foreground" aria-hidden />
         <input
-          autoFocus
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
             setActive(0);
           }}
-          placeholder="Jump to a store, page or action…"
-          className="h-16 w-full bg-transparent text-lg tracking-[-0.01em] outline-none placeholder:text-muted-foreground/70"
-          aria-label="Command"
+          placeholder={t("commandPlaceholder")}
+          className="h-16 min-w-0 flex-1 bg-transparent text-lg tracking-[-0.01em] outline-none placeholder:text-muted-foreground/70"
+          aria-label={t("command")}
           role="combobox"
+          aria-autocomplete="list"
           aria-expanded
           aria-controls="command-list"
           aria-activedescendant={visible[current] ? `cmd-${visible[current].id}` : undefined}
         />
-        <kbd className="num rounded-md border px-1.5 py-0.5 text-[0.7rem] text-muted-foreground">esc</kbd>
+        <kbd className="num hidden rounded-md border px-1.5 py-0.5 text-[0.7rem] text-muted-foreground sm:block">esc</kbd>
+        <button type="button" onClick={onDone} aria-label={t("close")} title={t("close")}
+          className="grid size-10 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+          <X className="size-4" aria-hidden />
+        </button>
       </div>
-      <div id="command-list" role="listbox" className="max-h-[min(26rem,60vh)] overflow-y-auto p-2">
+      <div id="command-list" role="listbox" aria-label={t("commandResults")} className="min-h-0 max-h-[min(26rem,60vh)] overflow-y-auto p-2">
         {visible.length === 0 && (
-          <p className="px-3 py-10 text-center text-sm text-muted-foreground">Nothing matches “{query}”.</p>
+          <p role="status" className="break-words px-3 py-10 text-center text-sm text-muted-foreground">{t("commandNoMatches", { query })}</p>
         )}
         {visible.map((c, i) => {
           const header = c.group !== lastGroup ? c.group : null;
@@ -168,6 +193,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
                 }}
                 type="button"
                 role="option"
+                tabIndex={-1}
                 aria-selected={isActive}
                 onMouseMove={() => setActive(i)}
                 onClick={() => run(c)}
@@ -186,7 +212,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
                   <Icon className="size-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[0.95rem] font-medium">{c.label}</span>
+                  <span title={c.label} className="block truncate text-[0.95rem] font-medium">{c.label}</span>
                   {c.hint && <span className="block truncate text-xs text-muted-foreground">{c.hint}</span>}
                 </span>
                 {isActive ? (
@@ -199,13 +225,13 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
           );
         })}
       </div>
-      <div className="flex items-center gap-4 border-t px-5 py-2.5 text-xs text-muted-foreground">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t px-5 py-2.5 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <kbd className="num rounded border px-1">↑</kbd>
-          <kbd className="num rounded border px-1">↓</kbd> move
+          <kbd className="num rounded border px-1">↓</kbd> {t("commandMove")}
         </span>
         <span className="flex items-center gap-1.5">
-          <kbd className="num rounded border px-1">↵</kbd> open
+          <kbd className="num rounded border px-1">↵</kbd> {t("commandOpen")}
         </span>
         <span className="ml-auto aurora-text font-medium">twinstore</span>
       </div>
@@ -214,12 +240,15 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
 }
 
 export function CommandPalette() {
+  const { t } = useI18n();
+  const returnFocus = useRef<HTMLElement | null>(null);
   const open = useCommandPalette((s) => s.open);
   const setOpen = useCommandPalette((s) => s.setOpen);
   const toggle = useCommandPalette((s) => s.toggle);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isComposing(e)) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         toggle();
@@ -236,10 +265,16 @@ export function CommandPalette() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         showCloseButton={false}
-        className="ring-aurora top-[14vh] max-w-[calc(100%-2rem)] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-[38rem]"
+        onOpenAutoFocus={() => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (returnFocus.current?.isConnected) returnFocus.current.focus();
+        }}
+        onEscapeKeyDown={(event) => { if (isComposing(event)) event.preventDefault(); }}
+        className="ring-aurora top-4 flex max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:top-[14vh] sm:max-h-[80dvh] sm:max-w-[38rem]"
       >
-        <DialogTitle className="sr-only">Command palette</DialogTitle>
-        <DialogDescription className="sr-only">Search stores, pages and actions</DialogDescription>
+        <DialogTitle className="sr-only">{t("commandPalette")}</DialogTitle>
+        <DialogDescription className="sr-only">{t("commandDescription")}</DialogDescription>
         <PaletteBody onDone={() => setOpen(false)} />
       </DialogContent>
     </Dialog>

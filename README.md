@@ -134,10 +134,13 @@ Short real recordings of single features. Each preview loops; click it for the f
 
 The language control next to the theme switch supports **English, 한국어, 中文, 日本語,
 Español and Français**. It follows your browser language on first use and remembers your
-selection. Home, navigation, store cards, search, the model notice, simulation launcher and
+selection. Home, navigation, the command palette, store cards, search, the model notice, simulation launcher and
 new-store forms are localized, including validation, file selection and the generation review.
 Template search and filters use the same languages. Search also accepts translated categories,
 accent and full-width variants, and template IDs; format names and descriptions remain in English.
+The command palette also searches original and translated command names. Use the arrow keys
+to select, Enter to open, or Escape and the close button to dismiss it. Text composition with
+an input method finishes before command keys take effect.
 Model selection is localized too. Detailed layout and situation editors, other feature editors and technical server messages
 currently remain in English.
 
