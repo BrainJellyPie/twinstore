@@ -2,7 +2,7 @@
 // size, colours and label text. No three.js / DOM dependencies so they can be
 // unit-tested and reused by an offline renderer.
 
-export type PackageKind = "bottle" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag";
+export type PackageKind = "bottle" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana";
 
 export type ProductCategory =
   | "drink"
@@ -13,6 +13,7 @@ export type ProductCategory =
   | "noodle"
   | "pantry"
   | "bakery"
+  | "produce"
   | "other";
 
 export interface PackageSpec {
@@ -169,12 +170,15 @@ const RULES: Rule[] = [
   [/pasta sides|knorr|rice-a-roni/, () => spec("bag", 0.13, 0.18, 0.04, "pantry")],
   [/sugar|flour/, () => spec("bag", 0.12, 0.18, 0.06, "pantry")],
   [/pasta\b|penne|spaghetti|macaroni|mac & cheese|\brice\b/, () => spec("box", 0.14, 0.23, 0.05, "pantry")],
+  // Fresh bunches only: banana-flavoured packaged foods keep their package rules.
+  [/^(?:(?:fresh|organic|ripe|yellow|cavendish)\s+)*bananas?(?:\s+(?:bunch|loose|each|\d+(?:\.\d+)?\s*(?:kg|g|lb|lbs)))?$/,
+    () => spec("banana", 0.134, 0.179, 0.223, "produce")],
 ];
 
 const DEFAULT_SPEC: PackageSpec = spec("box", 0.12, 0.18, 0.05, "other");
 
 export function classifyProduct(name: string): PackageSpec {
-  const n = name.toLowerCase();
+  const n = name.trim().toLowerCase();
   for (const [re, make] of RULES) {
     if (re.test(n)) return make(n);
   }

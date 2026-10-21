@@ -122,12 +122,15 @@ def save_image(
     try:
         with Image.open(io.BytesIO(data)) as img:
             fmt = (img.format or "").upper()
-    except (UnidentifiedImageError, OSError) as e:
+            if fmt not in _ALLOWED_FORMATS:
+                raise UnsupportedImageFormatError(
+                    f"unsupported image format ({fmt}): {filename}",
+                )
+            img.load()
+    except Image.DecompressionBombError as e:
+        raise ImageTooLargeError("Image dimensions are too large; reduce the resolution and try again.") from e
+    except (UnidentifiedImageError, OSError, ValueError) as e:
         raise UnsupportedImageFormatError(f"failed to identify image format: {filename}") from e
-    if fmt not in _ALLOWED_FORMATS:
-        raise UnsupportedImageFormatError(
-            f"unsupported image format ({fmt}): {filename}",
-        )
     mime, ext = _ALLOWED_FORMATS[fmt]
 
     # Serializes manifest read/modify/write within a project and avoids

@@ -1,0 +1,52 @@
+{
+  "asset": "bananas",
+  "source": "https://polyhaven.com/a/bananas",
+  "author": "Alexander Shulha",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_bananas.py; banana bunch only; 300/1600 triangle LODs; normalized bottom-centred unit bounds; original 1K JPEG PBR maps retained.",
+  "authored_dimensions_metres": {
+    "width": 0.13385158777236938,
+    "height": 0.17876547574996948,
+    "depth": 0.22287295758724213
+  },
+  "files": [
+    {
+      "file": "bananas.gltf",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/bananas/bananas_1k.gltf",
+      "bytes": 8796,
+      "sha256": "4709a758c91cbfb5df7df23fb6d9ed21778ed0030c260b11f9171ed28659e700"
+    },
+    {
+      "file": "textures/bananas_nor_gl_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/bananas/bananas_nor_gl_1k.jpg",
+      "bytes": 319878,
+      "sha256": "e760512ee4ed3135d23e7b87c995a4c8ec6a2b7fd767689deb11b6dd1e50e9a5"
+    },
+    {
+      "file": "textures/bananas_diff_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/bananas/bananas_diff_1k.jpg",
+      "bytes": 497595,
+      "sha256": "b659aca29f68d038c942cf37f3a89c206c8fea81ff69a5c89d6d7b139bdca6d9"
+    },
+    {
+      "file": "textures/bananas_arm_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/bananas/bananas_arm_1k.jpg",
+      "bytes": 564855,
+      "sha256": "f5b9a110b75545bec9d80279b02f38c995a257eea5ae5a1f6f6c39e601d4c8a5"
+    },
+    {
+      "file": "bananas.bin",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/bananas/bananas.bin",
+      "bytes": 1088376,
+      "sha256": "c98b7dbabd8ceb70c9b8ea92611c7c7833dd86c118c8013b941eb379bee26774"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "bananas.glb",
+      "bytes": 1439060,
+      "sha256": "38614ac645846f8e31178969938ee90bde580fd1abd40d7bdcabd8fec15c8a0f"
+    }
+  ]
+}
