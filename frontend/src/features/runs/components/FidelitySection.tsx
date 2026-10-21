@@ -27,8 +27,12 @@ const VERDICT_CLASS = {
 export function FidelitySection({ projectId, runId }: { projectId: string; runId: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLInputElement>(null);
-  const upload = useMutation({ mutationFn: (file: File) => uploadFidelity(projectId, runId, file) });
+  const upload = useMutation({
+    mutationKey: ["fidelity", projectId, runId],
+    mutationFn: (file: File) => uploadFidelity(projectId, runId, file),
+  });
   const receipts = useMutation({
+    mutationKey: ["receipt-readings", projectId, runId],
     mutationFn: (files: File[]) => readReceipts(projectId, files, { runId }),
   });
   const report = upload.data;
