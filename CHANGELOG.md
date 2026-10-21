@@ -18,6 +18,13 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Print-ready HTML report and a long-format CSV (one row per option shown) for re-estimation elsewhere.
   API: `POST/GET /api/projects/{pid}/conjoints`, `GET .../conjoints/{id}`, `.../report.html`, `.../export.csv`.
 
+### Observed staff time
+- Review anonymous timing CSVs against locked fixed staff-script plans, including refusals and non-delivery.
+  Missing time remains unknown; arm averages and differences require complete coverage. Staff/shift counts,
+  a blank template, source SHA-256 and revision-bound audit CSV support review without modifying outcomes.
+- Preserve small mean-time differences in the UI; zero-traffic and zero-contribution cost scenarios no longer
+  display or export negative zero.
+
 ### Fixes
 - Realistic shoppers no longer crash the 3D view when React remounts them (development StrictMode): the
   per-shopper animation mixer is no longer uncached while its actions are still reused.
@@ -71,6 +78,12 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   immutable stimulus snapshots, intention-to-treat purchase counts, missingness bounds, versioned atomic updates,
   and locked closure. Complete targets receive a conservative fixed-sample conversion interval; unfinished targets
   stay descriptive. The independent Field pilots tab retains results after deletion of a source screening job.
+- **Field pilot sensitivity checks**: post-closure staff, shift and block deletion diagnostics with planned-count
+  weighting, exact-zero handling, unavailable comparisons and a revision-bound CSV export. Fully completed
+  fixed plans are required; no outcome imputation, interim testing or additional significance claims.
+- **Staff-script cost scenarios**: apply explicit per-buyer contribution, per-assignment staff time, hourly labor
+  cost and daily eligible traffic to a completed, locked pilot. Show break-even conversion difference and
+  conditional contribution ranges with snapshot CSV export; no inferred costs or realized-profit claims.
 - New **Market** page (`/marketing/<project>`) for marketers and research agencies, with seven tabs: A/B tests,
   shelf tests, concept tests, conjoint, staff scripts, field pilots and products.
 - **Staff scripts**: independent A/B exposures on the same synthetic personas, with purchase intent,
