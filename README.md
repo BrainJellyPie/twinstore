@@ -476,9 +476,11 @@ with procedural fallbacks. Authors, source URLs and checksums are in
 [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 High also uses [ambientCG Plaster 001](https://ambientcg.com/a/Plaster001), licensed CC0,
 with consistent texture scale across wall lengths, corners and rotated sections.
+Exposed metal supports and frames use CC0 [ambientCG Metal 032](https://ambientcg.com/a/Metal032)
+in High, with color, roughness and normal maps at a consistent authored scale.
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
-avatars under MIT: textured faces and clothing, normal maps, alpha-tested hair, and
-retargeted idle/walking animations. They pause with playback and keep adult proportions
+avatars under MIT: six appearances with textured faces and clothing, normal maps,
+alpha-tested hair, and retargeted idle/walking/browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
 [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
@@ -491,7 +493,7 @@ band of the front photo, so this is an approximation rather than a full package 
 Playback fills missing photo references from the current project image library;
 recorded run inputs and simulation results are not rewritten.
 
-- 3D assets in `frontend/public/assets/` are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
+- The original Classic market, character and ghost assets are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
   [Mini Characters](https://kenney.nl/assets/mini-characters), [Graveyard Kit](https://kenney.nl/assets/graveyard-kit).
 - Validation uses dunnhumby *The Complete Journey*, X5 RetailHero, Ta-Feng, Instacart, Favorita, M5 and the ATC
   pedestrian tracks; the capture benchmark's real-photo check uses ShelfWise "SKUs on shelves PL" (CC BY 4.0). None of

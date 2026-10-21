@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from PIL import Image, ImageDraw, UnidentifiedImageError
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.domain.capture import CaptureResult
 from store_emulator.domain.config import EngineType, SimulationConfig
@@ -72,6 +72,13 @@ class Sim2RealRequest(BaseModel):
     edit_id: str = Field(default="", description="run on an edited photo instead of the original")
     seed: int = 0
     situation: str = Field(default="", max_length=200, description='today\'s context, e.g. "heatwave, 34°C"')
+
+    @field_validator("conditions")
+    @classmethod
+    def _requires_photo(cls, conditions: list[Sim2RealCondition]) -> list[Sim2RealCondition]:
+        if not any(c != "render" for c in conditions):
+            raise ValueError("sim2real needs at least one photo condition to compare with the render")
+        return conditions
 
 
 class AuditRequest(BaseModel):
@@ -381,7 +388,16 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
                 on_progress=on_progress,
             ))
             stats, agreement = summarize(answers, conditions)
+            if not agreement:
+                raise ValueError("No successful render/photo response pairs; check the vision model and retry.")
             notes: list[str] = []
+            failed = sum(bool(a.error) for a in answers)
+            if failed:
+                notes.append(f"{failed} of {len(answers)} model responses failed; comparisons use successful response pairs only")
+            compared = {a.condition for a in agreement}
+            for condition in conditions:
+                if condition != "render" and condition not in compared:
+                    notes.append(f"No complete response pairs for {condition}; comparison omitted")
             dropped = sum(1 for i in result.items if i.sku not in views.products)
             if dropped:
                 notes.append(f"{dropped} product(s) of the photo did not fit the rendered twin and carry no tag")
