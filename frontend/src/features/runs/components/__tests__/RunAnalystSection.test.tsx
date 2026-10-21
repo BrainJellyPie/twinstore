@@ -5,11 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { askAnalyst, clearAnalyst, getAnalyst, type AnalystThread } from "@/shared/api/interview";
 import { RunAnalystSection } from "../RunAnalystSection";
+import { useAssistStore } from "@/stores/assistStore";
 
 vi.mock("@/shared/api/interview", async (original) => ({
   ...await original<typeof import("@/shared/api/interview")>(), getAnalyst: vi.fn(), askAnalyst: vi.fn(), clearAnalyst: vi.fn(),
 }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); useAssistStore.setState({ pending: null }); });
 
 const empty: AnalystThread = { run_id: "r", model: "", messages: [] };
 const answered: AnalystThread = { run_id: "r", model: "m", messages: [
@@ -46,4 +47,16 @@ it("asks a typed question and clears the thread", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Ask" }));
   await waitFor(() => expect(askAnalyst).toHaveBeenCalledWith("p", "r", "Busiest hour?"));
   expect(screen.getByText("Reading the run…")).toBeTruthy();
+});
+
+it("asks a question routed from the command palette once, for its own project only", async () => {
+  vi.mocked(getAnalyst).mockResolvedValue(empty);
+  vi.mocked(askAnalyst).mockResolvedValue(answered);
+  useAssistStore.getState().send({ projectId: "other", destination: "run_question", text: "Not for this store" });
+  useAssistStore.getState().send({ projectId: "p", destination: "run_question", text: "Why is the freezer so quiet?" });
+  mount();
+  await waitFor(() => expect(askAnalyst).toHaveBeenCalledWith("p", "r", "Why is the freezer so quiet?"));
+  expect(await screen.findByText("Ice cream 1: under half of those who stop buy.")).toBeTruthy();
+  expect(askAnalyst).toHaveBeenCalledTimes(1);
+  expect(useAssistStore.getState().pending).toBeNull();
 });

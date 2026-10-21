@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
 import { TownPage } from "../TownPage";
+import { useAssistStore } from "@/stores/assistStore";
 
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), getTown: vi.fn(), getTownDemand: vi.fn(), getScenarios: vi.fn(),
@@ -28,7 +29,7 @@ beforeEach(() => {
   vi.mocked(api.getTownDemand).mockImplementation(() => new Promise(() => {}));
   vi.mocked(api.getScenarios).mockResolvedValue([]);
 });
-afterEach(() => { cleanup(); clients.splice(0).forEach((client) => client.clear()); vi.resetAllMocks(); vi.restoreAllMocks(); });
+afterEach(() => { useAssistStore.setState({ pending: null }); cleanup(); clients.splice(0).forEach((client) => client.clear()); vi.resetAllMocks(); vi.restoreAllMocks(); });
 async function mount(cached?: api.Town) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } }); clients.push(client);
   if (cached) client.setQueryData(queryKeys.town("alpha"), cached);
@@ -176,4 +177,16 @@ it("sets up the generator from a description and generates only on request", asy
   expect(screen.getByRole("button", { name: "Bank" })).toBeTruthy();  // a neighbor outside the usual chips still shows
   fireEvent.click(screen.getByRole("button", { name: "Generate" }));
   await waitFor(() => expect(api.generateTown).toHaveBeenCalledWith("alpha", expect.objectContaining({ archetype: "university", n_competitors: 2 })));
+});
+
+it("opens the generator and sets it up from an area described in the command palette", async () => {
+  vi.mocked(api.describeTown).mockResolvedValue({ rationale: "Offices and lunch traffic.", spec: {
+    archetype: "business_district", size_m: 700, density: 0.7, n_competitors: 1, neighbor_categories: ["cafe"], seed: 1, name: "Offices" } });
+  useAssistStore.getState().send({ projectId: "alpha", destination: "area", text: "An office district with one rival and lunch crowds" });
+  await mount(town);
+  await waitFor(() => expect(api.describeTown).toHaveBeenCalledWith("alpha", { text: "An office district with one rival and lunch crowds", seed: 1 }));
+  expect((screen.getByLabelText("Describe the area") as HTMLTextAreaElement).value).toBe("An office district with one rival and lunch crowds");
+  expect(await screen.findByText(/Offices and lunch traffic\./)).toBeTruthy();
+  expect((screen.getByLabelText("Describe the area").closest("details") as HTMLDetailsElement).open).toBe(true);
+  expect(api.generateTown).not.toHaveBeenCalled();
 });

@@ -105,3 +105,14 @@ it("writes script B from script A with the same product and the given direction"
   expect(draftPitchScript).toHaveBeenCalledWith("p", expect.objectContaining({ setup_id: "s", sku: "tea", current: "Can I help you?", direction: "lead with value" }));
   expect(screen.getByText(/Leads with value\. Same product and offer as script A\./)).toBeTruthy();
 });
+
+it("writes script B for the product a routed request names", async () => {
+  vi.mocked(draftPitchScript).mockResolvedValue({ name: "Taste first", script: "Have you tried the cold brew?", differs_by: "Leads with taste." });
+  const two = [...products, { sku: "cb", name: "Cold Brew", price: 3000, regularPrice: 3000, promo: "", facings: 1, racks: ["r1"] }];
+  render(<StaffPitchBuilder projectId="p" setupId="s" products={two} currency="KRW" personaCount={25} onStarted={vi.fn()}
+    prefill={{ id: 1, text: "A script that leads with taste for the cold brew" }} />, { wrapper });
+  await waitFor(() => expect((screen.getByLabelText("Script B text") as HTMLTextAreaElement).value).toBe("Have you tried the cold brew?"));
+  expect(draftPitchScript).toHaveBeenCalledWith("p", expect.objectContaining({ sku: "cb", direction: "A script that leads with taste for the cold brew" }));
+  expect((screen.getByLabelText("Product held constant") as HTMLSelectElement).value).toBe("cb");
+  expect(draftPitchScript).toHaveBeenCalledTimes(1);
+});

@@ -1,7 +1,7 @@
 // Neighborhood workspace: generate a synthetic town or import a real map, try what-ifs (open a
 // café next door, a rival store across the street), and see where our customers come from.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Eye, Footprints, Globe2, Loader2, MapPinPlus, MousePointer2, Sparkles, Trash2, Users } from "lucide-react";
@@ -14,6 +14,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
+import { useAssistStore } from "@/stores/assistStore";
 
 import { TownMap, type MapMode } from "./TownMap";
 import { ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
@@ -248,20 +250,37 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
   // "Describe the area": the text model fills the form below; generating stays a separate, explicit step.
   const [area, setArea] = useState("");
   const describe = useMutation({
-    mutationFn: () => api.describeTown(projectId, { text: area.trim(), seed: spec.seed }),
+    mutationFn: (text: string) => api.describeTown(projectId, { text, seed: spec.seed }),
     onSuccess: (r) => setSpec(r.spec),
   });
+  // An area described in the command palette lands here: the panel opens and the form is filled from it.
+  const panel = useRef<HTMLDetailsElement>(null);
+  const pendingAsk = useAssistStore((s) => s.pending);
+  const takeAsk = useAssistStore((s) => s.take);
+  const queueDescribe = useQueuedStart(describe.mutate);
+  useEffect(() => {
+    if (!pendingAsk) return;
+    const routed = takeAsk(projectId, ["area"]);
+    if (!routed) return;
+    const text = routed.text.slice(0, 800);
+    setArea(text);
+    if (panel.current) {
+      panel.current.open = true;
+      panel.current.scrollIntoView?.({ block: "nearest" });
+    }
+    queueDescribe(text);
+  }, [pendingAsk, projectId, takeAsk, queueDescribe]);
   const neighborChoices = [...new Set([...NEIGHBOR_CHOICES, ...spec.neighbor_categories])];
   return (
-    <details className="rounded-lg border p-3" open={!hasTown}>
+    <details ref={panel} className="rounded-lg border p-3" open={!hasTown}>
       <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Sparkles className="size-4" /> Generate a neighborhood</summary>
       <div className="mt-3 space-y-2 text-xs">
         <div className="flex items-start gap-1.5">
           <textarea value={area} onChange={(e) => setArea(e.target.value.slice(0, 800))} rows={2} aria-label="Describe the area"
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (area.trim().length >= 5 && !describe.isPending) describe.mutate(); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (area.trim().length >= 5 && !describe.isPending) describe.mutate(area.trim()); } }}
             placeholder="Describe the area: a busy campus street, two rival stores nearby, a café next door…"
             className="min-h-[2.4rem] flex-1 resize-none rounded-md border bg-background px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
-          <Button type="button" size="sm" variant="outline" className="h-[2.4rem] shrink-0" disabled={area.trim().length < 5 || describe.isPending} onClick={() => describe.mutate()}>
+          <Button type="button" size="sm" variant="outline" className="h-[2.4rem] shrink-0" disabled={area.trim().length < 5 || describe.isPending} onClick={() => describe.mutate(area.trim())}>
             {describe.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Set up
           </Button>
         </div>
