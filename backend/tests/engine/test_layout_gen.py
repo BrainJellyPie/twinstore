@@ -258,6 +258,10 @@ def test_large_fashion_outlet_has_four_checkouts_and_combines_apparel_shoes_and_
     ("sushi_shop", "sushi_menu", "minimal", 4, 2),
     ("noodle_bar", "noodle_menu", "warm", 6, 2),
     ("juice_bar", "juice_menu", "botanical", 2, 1),
+    ("korean_restaurant", "korean_menu", "warm", 12, 2),
+    ("burger_shop", "burger_menu", "industrial", 10, 3),
+    ("salad_cafe", "salad_menu", "botanical", 6, 2),
+    ("ice_cream_parlor", "scoop_menu", "coastal", 3, 1),
 ])
 @pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
 def test_dining_formats_have_distinct_complete_menus_and_seating(template_id, category, theme, tables, counters, currency):

@@ -130,7 +130,7 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 50
+In a project, choose **New layout → Generate a store from a template**. Search 54
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
@@ -177,6 +177,13 @@ restaurant with eight tables, with different seating positions and checkout
 counts. **Dining house** combines all four as independently configurable floors.
 These formats model menu purchases at counters; cooking and table service are
 not simulated.
+
+**Korean casual restaurant**, **Burger & fries shop**, **Salad & grain-bowl café**
+and **Ice cream & gelato parlor** add four more dedicated twelve-item menus.
+They start with 12, 10, 6 and 3 four-seat tables respectively, using warm,
+industrial, botanical and coastal finishes. **Neighborhood dining center**
+combines them as four editable floors. Seating, assortment, entrance and exit
+walls, checkout counts and clear areas can be adjusted separately on each floor.
 
 The campus dining hall starts with 24 four-seat tables (96 seats), four checkout
 counters and perimeter meal displays on a 32×24 floor, with weekday opening
