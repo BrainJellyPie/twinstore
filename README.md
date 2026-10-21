@@ -233,6 +233,15 @@ seating, currency, seed and design brief. Save a changed version as a linked
 alternative while preserving the source; floor alternatives keep their building
 identity. Use the import option to copy manual fixture edits or uploaded products.
 
+Use **Export options** to download a JSON file of the selected floor's generation
+settings, including currency, assortment seed, reserved areas and design brief.
+**Import options** validates the file and checks that the layout fits before
+replacing the current generation settings. You can use it in another project,
+in the new-store wizard or on an individual building floor. Import does not create
+a layout until you save the form, and does not carry over the source layout's
+name or parent link. Manual fixture edits and product uploads are not part of
+this file; use the existing layout-copy or workbook tools for those.
+
 Add up to 48 dining tables (192 seats, four chairs each) to any format. Enter any
 whole count from 0–48, or leave the field blank for the format default. Café and restaurant
 defaults include seating; small grids reduce the default count to fit. An explicit

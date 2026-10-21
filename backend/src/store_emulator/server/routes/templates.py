@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
-    BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
+    BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutPreset, LayoutStyle,
     SeatingZone, ShelfDirection, StoreDesign, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
@@ -78,6 +78,13 @@ def preview(
 @router.post("/store-templates/preview", summary="Preview a generated store with reserved areas (not saved)")
 def preview_options(req: TemplateLayoutRequest) -> Store:
     return _preview_store(req.template_id, req.seed, req.currency, req)
+
+
+@router.post("/store-templates/preset/validate", summary="Validate reusable layout options without saving a store", response_model_exclude_none=True)
+def validate_preset(req: LayoutPreset) -> LayoutPreset:
+    layout = req.layout.model_copy(update={"source_setup_id": None, "name": None})
+    _preview_store(layout.template_id, layout.seed, layout.currency, layout)
+    return req.model_copy(update={"layout": layout})
 
 
 def _preview_store(template_id: str, seed: int, currency: str, options: LayoutOptions) -> Store:

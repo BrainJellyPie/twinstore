@@ -58,6 +58,14 @@ class TemplateLayoutRequest(LayoutOptions):
     requirements: str = Field(default="", max_length=2000)
 
 
+class LayoutPreset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    format: Literal["twinstore-layout-options"]
+    version: Literal[1]
+    layout: TemplateLayoutRequest
+
+
 class BuildingFloorRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

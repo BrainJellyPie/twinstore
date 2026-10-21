@@ -7,6 +7,7 @@ import { cn } from "@/shared/utils/cn";
 import { LAYOUT_STYLES, templateRequest, validTemplateChoice, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
+import { LayoutOptionsFile } from "./LayoutOptionsFile";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
@@ -56,6 +57,11 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
 
   return (
     <div className="space-y-3">
+      <LayoutOptionsFile value={value} canExport={validTemplateChoice(value) && preview.isSuccess} onChange={(choice) => {
+        onChange(choice);
+        const imported = templates.find((template) => template.id === choice.templateId);
+        if (imported) onTemplateSelected?.(imported);
+      }} />
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1 text-xs">Find a store format
           <input className={controlClass} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pharmacy, café, large store…" />
