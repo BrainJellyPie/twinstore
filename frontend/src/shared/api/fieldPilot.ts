@@ -43,6 +43,24 @@ export interface ObservationImportRecord {
   revision: number; imported_at: string; reason: string; source_sha256: string; summary: ObservationDiff;
 }
 export interface ObservationImportAudit { record: ObservationImportRecord; changes: ObservationChange[] }
+export type CollectionIssue = "purchase_unknown" | "delivery_unknown" | "enrollment_gap" | "unused_before_enrolled";
+export interface CollectionCounts {
+  planned: number; enrolled: number; unused: number; unrecorded: number; complete_enrolled: number;
+  missing_purchase: number; missing_delivery: number; known_delivery: number; not_delivered: number;
+  purchase_missing_rate: number | null; non_delivery_rate: number | null;
+}
+export interface CollectionBlock {
+  staff_id: string; shift_id: string; counts: CollectionCounts; a: CollectionCounts; b: CollectionCounts;
+  last_recorded_sequence: number | null; recording_gaps: number; unused_before_enrolled: number;
+  unrecorded_tail: number; purchase_missing_gap: number | null;
+}
+export interface PilotCollectionReport {
+  pilot_id: string; name: string; revision: number; updated_at: string; finalized_at: string; outcome_window: string;
+  counts: CollectionCounts; recording_gaps: number; unused_before_enrolled: number; unrecorded_tail: number;
+  can_finalize: boolean; target_completed: boolean; blocks: CollectionBlock[];
+  tasks: { assignment_id: string; staff_id: string; shift_id: string; sequence: number; arm: "A" | "B"; issues: CollectionIssue[] }[];
+  guidance: { issue: CollectionIssue; title: string; action: string }[]; notes: string[];
+}
 export interface PilotArm {
   arm: "A" | "B"; planned: number; enrolled: number; unused: number; unrecorded: number;
   observed: number; purchases: number; missing_outcomes: number; not_delivered: number; delivery_unknown: number;
@@ -69,9 +87,12 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 export const pilotKeys = {
   list: (pid: string) => ["projects", pid, "staff-pilots"] as const,
   detail: (pid: string, id: string) => ["projects", pid, "staff-pilots", id] as const,
+  collection: (pid: string, id: string) => ["projects", pid, "staff-pilots", id, "collection"] as const,
 };
 export const listPilots = (pid: string, signal?: AbortSignal) => json<PilotSummary[]>(root(pid), { signal });
 export const getPilot = (pid: string, id: string, signal?: AbortSignal) => json<PilotView>(`${root(pid)}/${id}`, { signal });
+export const getPilotCollection = (pid: string, id: string, signal?: AbortSignal) => json<PilotCollectionReport>(`${root(pid)}/${id}/collection-checks`, { signal });
+export const pilotFollowupCsvUrl = (pid: string, id: string) => `${root(pid)}/${id}/follow-up.csv`;
 export const previewPilotPlan = (pid: string, assumptions: PilotPlanningAssumptions, blockCounts: number[], signal?: AbortSignal) => json<PilotPlanningResult>(`${root(pid)}/plan`, {
   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assumptions, block_counts: blockCounts }), signal,
 });
