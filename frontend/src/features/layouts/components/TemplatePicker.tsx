@@ -19,11 +19,12 @@ import { CompareFloorPlans } from "./CompareFloorPlans";
 import { WeeklyHoursEditor } from "./WeeklyHoursEditor";
 import { formatWeeklyHours } from "../weeklyHours";
 import { InteriorColorControls } from "./InteriorColorControls";
+import { resolveAssortmentSettings, type AssortmentSettings } from "../assortmentSettings";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, onApplySizeToAll, onApplyPriorityToAll, sharedDesign, sharedCurrency, sharedHours = false, sharedSize = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, onApplySizeToAll, onApplyPriorityToAll, onApplyAssortmentToAll, sharedAssortment = false, sharedDesign, sharedCurrency, sharedHours = false, sharedSize = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
@@ -33,6 +34,8 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   onApplyHoursToAll?: (hours: OperatingHours) => void;
   onApplySizeToAll?: (size: FloorSize) => void;
   onApplyPriorityToAll?: (priority: LayoutPriority) => void;
+  onApplyAssortmentToAll?: (settings: AssortmentSettings) => void;
+  sharedAssortment?: boolean;
   sharedDesign?: NonNullable<TemplateChoice["design_theme"]>;
   sharedCurrency?: string;
   sharedHours?: boolean;
@@ -63,6 +66,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     enabled: validTemplateChoice(value), staleTime: Infinity,
   });
   const selected = templates.find((t) => t.id === value.templateId);
+  const assortment = resolveAssortmentSettings(value);
   const tableMix = value.table_mix;
   const tableCount = tableMix ? tableMix.two_seat + tableMix.four_seat + tableMix.six_seat : value.dining_tables ?? selected?.default_dining_tables ?? 0;
   const mixStartingCount = value.dining_tables ?? (preview.isSuccess ? preview.data.racks.filter((rack) => rack.type === "table").length : tableCount);
@@ -467,6 +471,13 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           </div>
           {Object.keys(value.category_product_limits ?? {}).length > 0 && <button type="button" className="underline" onClick={() => update({ category_product_limits: {} })}>Use shared limit for all categories</button>}
           {(value.excluded_categories?.length ?? 0) > 0 && <button type="button" className="underline" onClick={() => update({ excluded_categories: [] })}>Restore all product categories</button>}
+          {onApplyAssortmentToAll && <div className="space-y-1 border-t pt-2">
+            <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50"
+              disabled={!assortment || sharedAssortment} onClick={() => { if (assortment) onApplyAssortmentToAll(assortment); }}>
+              {assortment && sharedAssortment ? "Assortment used on all floors" : "Apply assortment to all floors"}
+            </button>
+            <p className="text-muted-foreground">Copies category exclusions, shared and individual product limits, and the assortment seed to every floor, then opens the floor review. Each format uses its own categories; floors can be changed afterward.</p>
+          </div>}
         </details>}
         <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })}
           grid={[value.width ?? selected?.grid[0] ?? 12, value.height ?? selected?.grid[1] ?? 10]} entrance={value.entrance} gateWall={value.gate_wall} />

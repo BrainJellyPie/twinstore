@@ -6,6 +6,7 @@ import type { Layout } from "../hooks/useLayouts";
 import { TemplatePicker } from "./TemplatePicker";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
 import { ReviewBuildingFloors } from "./ReviewBuildingFloors";
+import { sameAssortmentSettings } from "../assortmentSettings";
 
 export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sourceLayouts = [] }: {
   floors: BuildingFloorChoice[];
@@ -101,6 +102,12 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))}
         onApplyDesignToAll={(design_theme, colors) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, design_theme, design_colors: colors ? { ...colors } : null } })))}
         onApplyCurrencyToAll={(currency) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, currency } })))}
+        onApplyAssortmentToAll={(settings) => {
+          onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...settings,
+            category_product_limits: { ...settings.category_product_limits }, excluded_categories: [...settings.excluded_categories] } })));
+          setReviewOpen(true);
+        }}
+        sharedAssortment={floors.every((f) => sameAssortmentSettings(floor.choice, f.choice))}
         onApplyHoursToAll={(hours) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...hours, closed_days: [...hours.closed_days], weekly_hours: hours.weekly_hours?.map((entry) => ({ ...entry })) ?? null } })))}
         onApplySizeToAll={(size) => {
           onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...size } })));
