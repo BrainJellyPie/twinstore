@@ -15,7 +15,7 @@ function view(plan = PLAN): ProtocolView {
     reviews: [{ revision: 1, changes: [{ field: "planned_sample_size", before: null, after: plan.planned_sample_size }] }],
     head_sha256: "a".repeat(64), changed_from_original: [], planned_sample_delta: 0, revisions_with_results_seen: 0, notes: ["Offline fixture, not external preregistration."] };
 }
-function listing() { return { protocols: current ? [{ protocol_id: ID, title: current.ledger.revisions.at(-1)!.plan.title, revision: current.ledger.revisions.length, data_stage: current.ledger.revisions.at(-1)!.data_stage, evidence_type: "synthetic", updated_at: "2026-10-21T00:00:00Z" }] : [], unavailable_ids: [] }; }
+function listing() { return { protocols: current ? [{ protocol_id: ID, title: current.ledger.revisions[current.ledger.revisions.length - 1]!.plan.title, revision: current.ledger.revisions.length, data_stage: current.ledger.revisions[current.ledger.revisions.length - 1]!.data_stage, evidence_type: "synthetic", updated_at: "2026-10-21T00:00:00Z" }] : [], unavailable_ids: [] }; }
 function response(value: unknown) { return new Response(JSON.stringify(value)); }
 async function normalFetch(url: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const path = String(url);
@@ -75,7 +75,7 @@ it("requires a changed plan and reason, then submits the viewed head and renders
 });
 
 function later(base: ProtocolView, revision: number, count: number): ProtocolView {
-  const last = base.ledger.revisions.at(-1)!;
+  const last = base.ledger.revisions[base.ledger.revisions.length - 1]!;
   return { ...base, ledger: { ...base.ledger, revisions: [...base.ledger.revisions, { ...last, revision, plan: { ...last.plan, planned_sample_size: count }, reason: "Changed target", previous_sha256: last.sha256, sha256: String(revision).repeat(64) }] },
     reviews: [...base.reviews, { revision, changes: [{ field: "planned_sample_size", before: last.plan.planned_sample_size, after: count }] }],
     head_sha256: String(revision).repeat(64), planned_sample_delta: count - 60, changed_from_original: ["planned_sample_size"] };

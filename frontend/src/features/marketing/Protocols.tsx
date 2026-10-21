@@ -31,7 +31,7 @@ export function Protocols({ projectId }: { projectId: string }) {
   return <section aria-label="Research protocols" className="space-y-4">
     <h2 className="text-lg font-semibold">Research protocols and amendments</h2>
     <p className="text-sm">Record the original plan and explain later changes. This local history is not external preregistration or proof that results were unseen. Synthetic studies do not establish actual sales effects.</p>
-    <div className="flex flex-wrap gap-2"><Button onClick={() => setSelected(`new:${crypto.randomUUID().replaceAll("-", "")}`)}>New protocol</Button>
+    <div className="flex flex-wrap gap-2"><Button onClick={() => setSelected(`new:${crypto.randomUUID().replace(/-/g, "")}`)}>New protocol</Button>
       <Button variant="outline" disabled={list.isFetching} onClick={() => void list.refetch()}>Reload protocol list</Button></div>
     {list.isFetching && <p role="status">Loading protocol list…</p>}
     {list.error && <p role="alert">{list.error.message}</p>}
@@ -52,7 +52,7 @@ function ProtocolDetail({ projectId, id }: { projectId: string; id: string }) {
 }
 
 function ProtocolEditor({ projectId, view, requestId = "", onCreated, onAmended }: { projectId: string; view?: ProtocolView; requestId?: string; onCreated?: (id: string) => void; onAmended?: () => void }) {
-  const latest = view?.ledger.revisions.at(-1);
+  const latest = view ? view.ledger.revisions[view.ledger.revisions.length - 1] : undefined;
   const [plan, setPlan] = useState<ProtocolPlan>(latest?.plan ?? emptyPlan);
   const [sample, setSample] = useState(latest ? String(latest.plan.planned_sample_size) : "");
   const [stage, setStage] = useState<DataStage | "">(latest?.data_stage ?? ""); const [reason, setReason] = useState("");
