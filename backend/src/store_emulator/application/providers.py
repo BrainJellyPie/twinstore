@@ -321,7 +321,7 @@ def text_model_fallback(model: str, settings: dict[ProviderKind, ProviderSetting
         return None
     for other in _FALLBACK_ORDER:
         preset = PRESETS[other]
-        if other != kind and preset.models and _key_for(other, settings)[0] is not None:
+        if other != kind and preset.models and provider_status(other, settings).ready:
             fast = next((m for m in preset.models if "fast" in m.note), preset.models[0])
             return f"{other.value}:{fast.id}"
     return None
@@ -333,8 +333,10 @@ def assistive_model(requested: str, config: LLMConfig) -> str:
     keep their configured model and never fall back."""
     if requested.strip():
         return requested.strip()
-    # Plain LiteLLM references retain the key supplied in the app configuration.
-    if ModelRef.parse(config.model) is None and config.api_key and config.api_key.get_secret_value().strip():
+    # Plain LiteLLM references retain the endpoint and key supplied in the app configuration.
+    if ModelRef.parse(config.model) is None and (
+        config.api_base or (config.api_key and config.api_key.get_secret_value().strip())
+    ):
         return config.model
     alternative = text_model_fallback(config.model)
     if alternative is not None:
