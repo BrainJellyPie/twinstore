@@ -371,6 +371,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   assumptions with the fixed plan, without using virtual shoppers as a conversion baseline.
   Observation imports show changes before applying them, flag cleared values and reversed purchase outcomes,
   and retain correction reasons and before/after records with a CSV history export.
+  Pilots open on **Collection checks**: staff/shift completeness, recording gaps and a follow-up checklist with
+  CSV export. Unrecorded tail slots are kept distinct from enrolled encounters needing outcome follow-up;
+  purchase counts and treatment effects remain in the separate observations/results view.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
