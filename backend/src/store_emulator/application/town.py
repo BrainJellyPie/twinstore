@@ -3,6 +3,8 @@
 import logging
 from pathlib import Path
 
+from filelock import FileLock, Timeout
+
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.scenario import Scenario
 from store_emulator.domain.town import (
@@ -54,10 +56,17 @@ def require_town(pid: str) -> Town:
     return town
 
 
-def save_town(pid: str, town: Town) -> Town:
-    if not (Path(DATA_DIR) / pid).is_dir():
+def save_town(pid: str, town: Town, *, expected: Town | None = None) -> Town:
+    path = _town_path(pid)
+    if not path.parent.is_dir():
         raise AppError(f"project not found: {pid}", 404)
-    write_json(_town_path(pid), town.model_dump(mode="json"))
+    try:
+        with FileLock(path.with_suffix(".lock"), timeout=0):
+            if expected is not None and get_town(pid) != expected:
+                raise AppError("Neighborhood changed while this action was running; reload it and try again", 409)
+            write_json(path, town.model_dump(mode="json"))
+    except Timeout as exc:
+        raise AppError("Another neighborhood update is in progress; try again", 409) from exc
     return town
 
 
@@ -86,13 +95,13 @@ def import_osm(
 
 def add_venue(pid: str, category: VenueCategory, x: float, y: float, name: str = "") -> Town:
     town = require_town(pid)
-    return save_town(pid, place_venue(town, category, x, y, name=name or None))
+    return save_town(pid, place_venue(town, category, x, y, name=name or None), expected=town)
 
 
 def delete_venue(pid: str, venue_id: str) -> Town:
     town = require_town(pid)
     try:
-        return save_town(pid, remove_venue(town, venue_id))
+        return save_town(pid, remove_venue(town, venue_id), expected=town)
     except ValueError as e:
         raise AppError(str(e), 400) from e
 
