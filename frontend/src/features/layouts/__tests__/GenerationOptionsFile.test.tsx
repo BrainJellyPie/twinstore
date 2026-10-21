@@ -9,8 +9,9 @@ vi.mock("@/shared/api/client", () => ({ validateLayoutPreset: vi.fn(), validateB
 beforeEach(() => vi.clearAllMocks());
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
+const weekly_hours = Array.from({ length: 7 }, (_, index) => ({ day: index + 1, is_open: index < 5, open_hour: index < 5 ? 8 : 10, close_hour: index < 5 ? 20 : 16 }));
 const value: TemplateChoice = { ...DEFAULT_TEMPLATE_CHOICE, templateId: "community_pharmacy", sourceSetupId: "setup_old",
-  width: 24, height: 20, currency: "JPY", style: "cross", seed: 7, aisle_width: 3, max_shelf_run: 2, design_theme: "terracotta", design_colors: { wall: "#123456", floor: "#abcdef", accent: null }, checkout_wall: "right",
+  weekly_hours, width: 24, height: 20, currency: "JPY", style: "cross", seed: 7, aisle_width: 3, max_shelf_run: 2, design_theme: "terracotta", design_colors: { wall: "#123456", floor: "#abcdef", accent: null }, checkout_wall: "right",
   reserved_areas: [{ label: "Consultation", x: 2, y: 2, width: 3, height: 3 }], requirements: "Keep signs readable.", excluded_categories: ["wellness"], products_per_category: 3, gate_wall: "right", exit_position: "center", exit_wall: "back" };
 
 function upload(source: string) {
@@ -37,7 +38,7 @@ it("exports portable settings and brief without source links or submitting the f
   });
   const exported = JSON.parse(source) as api.LayoutPreset;
   expect(exported).toMatchObject({ format: "twinstore-layout-options", version: 1, layout: {
-    template_id: "community_pharmacy", currency: "JPY", seed: 7, style: "cross", width: 24, height: 20,
+    weekly_hours, template_id: "community_pharmacy", currency: "JPY", seed: 7, style: "cross", width: 24, height: 20,
     aisle_width: 3, max_shelf_run: 2, design_theme: "terracotta", design_colors: { wall: "#123456", floor: "#abcdef", accent: null }, reserved_areas: value.reserved_areas,
     requirements: "Keep signs readable.", excluded_categories: ["wellness"], checkout_wall: "right", products_per_category: 3, gate_wall: "right", exit_position: "center", exit_wall: "back",
   } });

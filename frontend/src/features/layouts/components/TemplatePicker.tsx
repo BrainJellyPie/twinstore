@@ -11,11 +11,13 @@ import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes
 import * as api from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 import { searchText } from "@/shared/utils/searchText";
-import { applyLayoutPriority, LAYOUT_PRIORITIES, LAYOUT_STYLES, resolveFloorSize, resolveOperatingHours, templateRequest, validTemplateChoice, type FloorSize, type LayoutPriority, type OperatingHours, type TemplateChoice } from "../templateOptions";
+import { applyLayoutPriority, LAYOUT_PRIORITIES, LAYOUT_STYLES, resolveFloorSize, resolveOperatingHours, templateRequest, validTemplateChoice, validWeeklyHours, type FloorSize, type LayoutPriority, type OperatingHours, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
 import { CompareFloorPlans } from "./CompareFloorPlans";
+import { WeeklyHoursEditor } from "./WeeklyHoursEditor";
+import { formatWeeklyHours } from "../weeklyHours";
 import { InteriorColorControls } from "./InteriorColorControls";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
@@ -64,7 +66,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const tableMix = value.table_mix;
   const tableCount = tableMix ? tableMix.two_seat + tableMix.four_seat + tableMix.six_seat : value.dining_tables ?? selected?.default_dining_tables ?? 0;
   const mixStartingCount = value.dining_tables ?? (preview.isSuccess ? preview.data.racks.filter((rack) => rack.type === "table").length : tableCount);
-  const closedDays = value.closed_days ?? selected?.closed_days ?? [];
+  const closedDays = value.weekly_hours?.filter((entry) => !entry.is_open).map((entry) => entry.day) ?? value.closed_days ?? selected?.closed_days ?? [];
   const operatingHours = resolveOperatingHours(value, selected);
   const floorSize = resolveFloorSize(value, selected);
   const activeDesign = value.design_theme ?? selected?.default_design;
@@ -381,7 +383,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </details>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, seed: 0 })}>Reset layout options</button>
             </div>
             </div>
           </div>
@@ -389,6 +391,20 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
         <div id={`${customizationId}-more`} hidden={!customizationOpen} className="space-y-3">
         {showOperatingHours && <details className="space-y-2 rounded border p-2 text-xs">
           <summary className="cursor-pointer">Operating hours · {7 - closedDays.length} open days</summary>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={value.weekly_hours != null}
+            disabled={value.weekly_hours == null && !operatingHours}
+            onChange={(event) => {
+              if (!event.target.checked) update({ weekly_hours: null });
+              else if (operatingHours) update({ weekly_hours: Array.from({ length: 7 }, (_, index) => ({
+                day: index + 1, is_open: !operatingHours.closed_days.includes(index + 1),
+                open_hour: operatingHours.open_hour, close_hour: operatingHours.close_hour,
+              })) });
+            }} />Set hours for each weekday</label>
+          {value.weekly_hours != null ? <>
+            <WeeklyHoursEditor hours={value.weekly_hours} onChange={(weekly_hours) => update({ weekly_hours })} />
+            {!validWeeklyHours(value.weekly_hours) && <p role="alert" className="text-destructive">Enter whole hours from 0–23 for opening and 1–24 for closing. Closing must be later on each open weekday.</p>}
+            <p className="text-muted-foreground">These individual hours replace the shared hours while enabled. Turning this off restores the shared hours.</p>
+          </> : <>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Opening hour (0–23)"><input type="number" min={0} max={23} step={1} className={controlClass}
               placeholder={String(selected?.open_hours[0] ?? 0)} value={value.open_hour ?? ""}
@@ -410,14 +426,15 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </div>
           </fieldset>
           <p className="text-muted-foreground">Keep at least one open weekday. These hours apply to every open day of this floor.</p>
-          <button type="button" className="underline" onClick={() => update({ open_hour: null, close_hour: null, closed_days: null })}>Use format operating hours</button>
+          </>}
+          <button type="button" className="underline" onClick={() => update({ open_hour: null, close_hour: null, closed_days: null, weekly_hours: null })}>Use format operating hours</button>
           {onApplyHoursToAll && <div className="space-y-1 border-t pt-2">
             <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50"
               disabled={!operatingHours || sharedHours} onClick={() => { if (operatingHours) onApplyHoursToAll(operatingHours); }}>
               {operatingHours && sharedHours ? "Operating hours used on all floors" : "Apply operating hours to all floors"}
             </button>
             <p className="text-muted-foreground">{operatingHours
-              ? `Applies ${String(operatingHours.open_hour).padStart(2, "0")}:00–${String(operatingHours.close_hour).padStart(2, "0")}:00 and ${7 - operatingHours.closed_days.length} open days to every floor. Each floor can be changed afterward.`
+              ? operatingHours.weekly_hours ? `Applies ${formatWeeklyHours(operatingHours.weekly_hours)} to every floor. Each floor can be changed afterward.` : `Applies ${String(operatingHours.open_hour).padStart(2, "0")}:00–${String(operatingHours.close_hour).padStart(2, "0")}:00 and ${7 - operatingHours.closed_days.length} open days to every floor. Each floor can be changed afterward.`
               : "Choose valid hours with at least one open weekday before applying them to every floor."}</p>
           </div>}
         </details>}

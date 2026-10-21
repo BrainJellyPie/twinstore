@@ -24,9 +24,10 @@ export function useStoreAssets(store: Store): StoreAssets {
     const doors = racks.filter((f) => f.type === "entrance" || f.type === "exit");
     const items = racks.filter((f) => f.type !== "entrance" && f.type !== "exit");
 
-    const open = store.weekly_schedule?.find((d) => d.is_open);
-    const openHour = open?.open_hour ?? 0;
-    const closeHour = open?.close_hour ?? 24;
+    const open = (store.weekly_schedule ?? []).filter((day) => day.is_open);
+    // Every weekday shares the playback time axis, so include the entire week.
+    const openHour = open.length ? Math.min(...open.map((day) => day.open_hour)) : 0;
+    const closeHour = open.length ? Math.max(...open.map((day) => day.close_hour)) : 24;
 
     const days = (store.weekly_schedule ?? [])
       .filter((d) => d.is_open)
