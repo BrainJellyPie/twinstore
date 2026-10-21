@@ -39,11 +39,11 @@ export function CapturePage({ projectId }: { projectId: string }) {
   const select = (id: string | null) => { setChosenNew(id === null); setSelected(id); };
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto md:overflow-hidden">
+    <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto">
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:min-h-0">
         <CaptureStrip projectId={projectId} captures={captures} selected={selected} onSelect={select} />
         {captures.length > 0 && <CaptureBatch key={projectId} projectId={projectId} captures={captures} onReview={select} />}
-        <div hidden={!!selected} className="min-h-0 md:flex-1"><CaptureUploadQueue key={projectId} visible={!selected} projectId={projectId} onAccepted={() => setChosenNew(true)} onReview={select} /></div>
+        <div hidden={!!selected} className="min-h-64 shrink-0 md:flex-1"><CaptureUploadQueue key={projectId} visible={!selected} projectId={projectId} onAccepted={() => setChosenNew(true)} onReview={select} /></div>
         {selected && (
           <CaptureWorkspace key={selected} projectId={projectId} captureId={selected} onDeleted={() => select(null)} />
         )}
