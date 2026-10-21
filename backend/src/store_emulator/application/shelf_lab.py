@@ -36,7 +36,7 @@ from store_emulator.domain.shelf_lab import (
     Sim2RealReport,
 )
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Face
+from store_emulator.domain.types import Face, RESOURCE_ID_PATTERN, ResourceId
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
@@ -75,7 +75,7 @@ class Sim2RealRequest(BaseModel):
 
 
 class AuditRequest(BaseModel):
-    setup_id: str = Field(description="layout holding the reference planogram")
+    setup_id: ResourceId = Field(description="layout holding the reference planogram")
     rack_id: str = Field(description="the rack the photo shows")
     face: Literal["N", "S", "E", "W"] | None = Field(default=None, description="default: the face holding most products")
     edit_id: str = Field(default="", description="audit an edited photo instead of the original")
@@ -402,6 +402,8 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
 
 
 def _load_store(pid: str, setup_id: str) -> Store:
+    if not re.fullmatch(RESOURCE_ID_PATTERN, pid) or not re.fullmatch(RESOURCE_ID_PATTERN, setup_id):
+        raise AppError("invalid project or setup id", 400)
     try:
         setup = read_setup(pid, setup_id)
     except FileNotFoundError:
@@ -485,7 +487,7 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
 # ── rival shelf ─────────────────────────────────────────────────────────────────
 
 class RivalRequest(BaseModel):
-    setup_id: str = Field(description="our layout, whose products and prices the rival's shelf is compared with")
+    setup_id: ResourceId = Field(description="our layout, whose products and prices the rival's shelf is compared with")
     venue_id: str = Field(default="", description="the rival's venue in the neighborhood (optional)")
     apply: bool = Field(default=False, description="scale the venue's pull by the price-adjusted factor")
     elasticity: float = Field(default=1.0, ge=0.0, le=3.0)
