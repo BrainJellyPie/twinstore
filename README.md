@@ -229,6 +229,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   each tracked product — and names a winner only when its interval clears zero. Rule shoppers answer in seconds;
   vision shoppers also see packs and signs. Every finished test comes with a **report** — summary and
   recommendation, design, charts, tracked products, method — as a print-ready page (PDF) or Markdown.
+- **Shelf tests** — the classic shelf impact test: the same respondents see the shelf as it is and with a new pack,
+  price or sign (previewed live), pick what they would take and say what caught their eye first; pick share and
+  stand-out are compared pair by pair.
 - **Concept tests** — up to four images side by side; a vision model answers as each sampled persona (with age and
   gender quotas): purchase intent, pack appeal, value, stand-out (1–5), a Van Westendorp price range, preference and
   one open answer. Results show distributions, means with CIs, top-2-box, Wilson intervals for preference, the price

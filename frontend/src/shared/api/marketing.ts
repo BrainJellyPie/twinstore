@@ -98,7 +98,7 @@ export interface ExperimentReport {
 
 export interface JobStatus {
   job_id: string;
-  kind: "experiment" | "survey" | "pitch";
+  kind: "experiment" | "survey" | "pitch" | "shelf";
   name: string;
   status: JobState;
   stage: string;
@@ -224,6 +224,8 @@ export const marketingKeys = {
   surveys: (pid: string) => ["projects", pid, "surveys"] as const,
   survey: (pid: string, sid: string) => ["projects", pid, "surveys", sid] as const,
   pitches: (pid: string) => ["projects", pid, "staff-pitches"] as const,
+  shelfTests: (pid: string) => ["projects", pid, "shelf-tests"] as const,
+  shelfTest: (pid: string, id: string) => ["projects", pid, "shelf-tests", id] as const,
   pitch: (pid: string, id: string) => ["projects", pid, "staff-pitches", id] as const,
   packages: (pid: string) => ["projects", pid, "lab-packages"] as const,
 };
@@ -263,3 +265,79 @@ export const listPitches = (pid: string, signal?: AbortSignal) => fetchJson<JobS
 export const getPitch = (pid: string, id: string, signal?: AbortSignal) => fetchJson<PitchView>(`${root(pid)}/staff-pitches/${id}`, { signal });
 export const deletePitch = (pid: string, id: string) => fetchJson<void>(`${root(pid)}/staff-pitches/${id}`, { method: "DELETE" });
 export const pitchCsvUrl = (pid: string, id: string) => `${BASE}${root(pid)}/staff-pitches/${id}/export.csv`;
+
+
+// ── shelf tests ──────────────────────────────────────────────────────────────
+
+export interface ShelfTestRequest {
+  name?: string;
+  setup_id: string;
+  rack_id: string;
+  face?: "N" | "S" | "E" | "W" | null;
+  target_sku: string;
+  changes: VariantChange[];
+  panel: number;
+  age_groups?: string[];
+  genders?: string[];
+  model?: string;
+  seed?: number;
+}
+
+export interface ShelfChoice {
+  respondent: string;
+  age_group: string;
+  gender: string;
+  arm: "control" | "test";
+  pick_sku: string;
+  pick_name: string;
+  noticed: string[];
+  why: string;
+  error: string;
+}
+
+export interface ShareComparison {
+  metric: "pick" | "noticed" | "noticed_first";
+  control: number;
+  test: number;
+  diff: number;
+  ci_low: number;
+  ci_high: number;
+  prob_better: number;
+}
+
+export interface SkuShare { sku: string; name: string; control: number; test: number }
+
+export interface ShelfTestReport {
+  test_id: string;
+  name: string;
+  setup_id: string;
+  rack_id: string;
+  rack_name: string;
+  face: string;
+  target_sku: string;
+  target_name: string;
+  model: string;
+  currency: string;
+  respondents: number;
+  errors: number;
+  applied: string[];
+  warnings: string[];
+  comparisons: ShareComparison[];
+  picks: SkuShare[];
+  choices: ShelfChoice[];
+  notes: string[];
+  seconds: number;
+}
+
+export interface ShelfTestView extends JobStatus { report: ShelfTestReport | null; request?: ShelfTestRequest | null }
+
+export const startShelfTest = (pid: string, req: ShelfTestRequest) =>
+  fetchJson<JobStatus>(`${root(pid)}/shelf-tests`, { method: "POST", body: JSON.stringify(req) });
+export const listShelfTests = (pid: string, signal?: AbortSignal) => fetchJson<JobStatus[]>(`${root(pid)}/shelf-tests`, { signal });
+export const getShelfTest = (pid: string, id: string, signal?: AbortSignal) => fetchJson<ShelfTestView>(`${root(pid)}/shelf-tests/${id}`, { signal });
+export const deleteShelfTest = (pid: string, id: string) => fetchJson<void>(`${root(pid)}/shelf-tests/${id}`, { method: "DELETE" });
+export const shelfTestImageUrl = (pid: string, id: string, arm: "control" | "test") => `${BASE}${root(pid)}/shelf-tests/${id}/${arm}.png`;
+
+export interface ShelfPreview { face: string; control: string; test: string; applied: string[]; warnings: string[] }
+export const previewShelf = (pid: string, body: { setup_id: string; rack_id: string; target_sku: string; changes: VariantChange[] }, signal?: AbortSignal) =>
+  fetchJson<ShelfPreview>(`${root(pid)}/shelf-tests/preview`, { method: "POST", body: JSON.stringify(body), signal });

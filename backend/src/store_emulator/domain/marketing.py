@@ -302,3 +302,19 @@ class ShelfTestReport(BaseModel):
     choices: list[ShelfChoice] = []
     notes: list[str] = []
     seconds: float = 0.0
+
+
+class ShelfPreviewRequest(BaseModel):
+    setup_id: str
+    rack_id: str
+    target_sku: str = ""
+    face: Literal["N", "S", "E", "W"] | None = None
+    changes: list[VariantChange] = Field(default_factory=list[VariantChange], max_length=10)
+
+
+class ShelfPreview(BaseModel):
+    face: str
+    control: str                      # PNG data URL
+    test: str
+    applied: list[str] = []
+    warnings: list[str] = []
