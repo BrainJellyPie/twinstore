@@ -4,6 +4,7 @@ from typing import Annotated, Self
 
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
+from store_emulator.domain.field_planning import PilotPlanningAssumptions, PilotPlanningResult
 from store_emulator.domain.staff_pitch import Arm, PitchProduct, PitchVariant
 
 type Alias = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$")]
@@ -22,6 +23,7 @@ class PilotRequest(BaseModel):
     outcome_window: RequiredText
     blocks: list[PilotBlock] = Field(min_length=1, max_length=30)
     seed: int = Field(default=1, strict=True, ge=0, le=2_147_483_647)
+    planning: PilotPlanningAssumptions | None = None
 
     @model_validator(mode="after")
     def validate_design(self) -> Self:
@@ -57,6 +59,7 @@ class FieldPilot(BaseModel):
     context: str
     product_facts: str
     assignments: list[PilotAssignment]
+    planning: PilotPlanningResult | None = None
 
 
 class PilotArmSummary(BaseModel):

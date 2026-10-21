@@ -9,6 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from store_emulator.application import field_pilot
 from store_emulator.application.errors import AppError
 from store_emulator.domain.field_pilot import PilotRequest, PilotRevision, PilotSummary, PilotView
+from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 
 router = APIRouter(prefix="/api/projects", tags=["field pilots"])
 
@@ -28,6 +29,11 @@ def create_pilot(pid: str, pitch_id: str, req: PilotRequest) -> PilotView:
 @router.get("/{pid}/staff-pilots", response_model=list[PilotSummary], summary="List observed field pilots")
 def list_pilots(pid: str) -> list[PilotSummary]:
     return _call(lambda: field_pilot.list_pilots(pid))
+
+
+@router.post("/{pid}/staff-pilots/plan", response_model=PilotPlanningResult, summary="Preview conservative sample requirements before a field pilot")
+def preview_plan(pid: str, req: PilotPlanningRequest) -> PilotPlanningResult:
+    return _call(lambda: field_pilot.preview_plan(pid, req))
 
 
 @router.get("/{pid}/staff-pilots/{pilot_id}", response_model=PilotView, summary="Field pilot design and observed results")
