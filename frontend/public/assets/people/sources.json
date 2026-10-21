@@ -431,47 +431,47 @@
   "project": "Microsoft Rocketbox Avatar Library",
   "license": "MIT",
   "repository": "https://github.com/microsoft/Microsoft-Rocketbox",
-  "conversion": "Blender 4.3.2 + Pillow 11.1; scripts/convert_rocketbox.py; facial FBX with AU_45_Blink and AU_61/62/63/64 eye-gaze shapes retained; 1K JPEG color / lossless WebP normals / PNG alpha, 512px roughness derived artistically from original specular maps; skeletal idle + wait + walk + browse, root travel removed, hair alpha-tested.",
+  "conversion": "Blender 4.3.2 + Pillow 11.1; scripts/convert_rocketbox.py; facial FBX with AU_45_Blink and AU_61/62/63/64 eye-gaze shapes retained; 1K JPEG color / lossless WebP normals (face strength 0.4, body 0.65) / PNG alpha, 512px roughness derived artistically from original specular maps; skeletal idle + wait + walk + browse, root travel removed, hair alpha-tested.",
   "outputs": [
     {
       "file": "female-01.glb",
-      "bytes": 5344940,
-      "sha256": "15537607bc3ac1a3f92b1c3ba8ece448281223d980ebe1fd5ed5645b3b81dac3"
+      "bytes": 5344936,
+      "sha256": "6985dc9f97c065c0634ce7aac7ffd24ad77dc4e471d32cac8139ed5b344e0242"
     },
     {
       "file": "female-11.glb",
       "bytes": 5446512,
-      "sha256": "fa670c89619f0bf1b98645b634262f9d285d0d45b2881dd6756391a063220fff"
+      "sha256": "35d4e0db36d71ac59ec3ccb0381796daadba6f56cfaf5ea348fb9d002b676cfe"
     },
     {
       "file": "female-14.glb",
       "bytes": 5944948,
-      "sha256": "7f73df011cda4c0469ae6030f76e376a1277c171ce925e190c04e2553bcd9d84"
+      "sha256": "cc314951e8c7400b2d68ee09cec0df560072f628df4fe421740d5ee8c8aea26c"
     },
     {
       "file": "male-01.glb",
       "bytes": 5143644,
-      "sha256": "0abd9d3342ce763b97fcfd3b92f0e88386ad18a159354c06aa0a5674e9c2f85a"
+      "sha256": "018c23ba6e535336a866e8146287180120e51f9241b33f42c003f74cf6c469c6"
     },
     {
       "file": "male-12.glb",
       "bytes": 3843368,
-      "sha256": "075f29b0980da11e1ce2761b0648e142a7c7d50de39429fd4fd15522dc8eca94"
+      "sha256": "b801096ea0a99e0f70ac826b0d0defa53f92091bcfbf54747c66927bf1a51cb3"
     },
     {
       "file": "male-14.glb",
       "bytes": 3955260,
-      "sha256": "b9e951ac804f81d300295aae0428564f97dfada48d25f9e86094892d17ff7aa6"
+      "sha256": "3a0641243cd513d279f8860192537a8a88a8d7dff6bd4221782819b0e19c3b6d"
     },
     {
       "file": "female-09.glb",
       "bytes": 5429296,
-      "sha256": "9b9b9f07634f15567973d6bd726b462f5030c7add8a92b93eee05726d23b0c94"
+      "sha256": "1a261ef63d7910e55f3536794798e99022c4960d27d3fa6b72e6f19a6a9e5ac6"
     },
     {
       "file": "male-07.glb",
       "bytes": 4957192,
-      "sha256": "dfbb950c82f6d8b2a6466e50511225353aea8dd18f10f033f2620af75cad0ed1"
+      "sha256": "aea02e536b9ed0bf5ef2cf67ecb851b88e52cffb70a42647e2bf67cbcd4e2547"
     }
   ]
 }

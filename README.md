@@ -139,6 +139,17 @@ category to 1–16 distinct products; leave it blank for the full assortment.
 The limit keeps display positions and seating unchanged, with repeated facings
 of the selected products. **Shuffle assortment** picks a reproducible mix;
 the same seed and category keep their selection across floor sizes and currencies.
+
+**Entrance wall** places the entrance on the front, back, left or right wall.
+For a separate exit position, **Exit wall** can follow the entrance wall or use
+another wall, such as a front entrance with a back exit. **Share entrance** keeps
+both gates together regardless of any separate-exit wall in imported options.
+On side walls, entrance and exit positions run from back to front. Back and side
+gates stay one cell inside the corners so their wall is unambiguous in 3D; front
+gates retain the existing positions. Near/away checkout placement uses the actual
+entrance location. New pickup-area starting points also follow the selected wall;
+existing reserved areas keep their coordinates.
+
 Search matches names, descriptions and categories, ignores accents (`cafe` also
 finds `café`), and accepts words in any order. **More format filters** narrows the
 starting layouts by cell count and dining seating, or sorts by name, floor size
@@ -225,6 +236,9 @@ or choose **Fit floor plan** to see the whole floor again. Close it or press Esc
 fixture colors and reserved-area markers. The file contains the store name,
 counts, color legend and reserved-area descriptions as accessible SVG metadata;
 it uses no external fonts or images and can be opened independently.
+Entrances have green **IN** markers, exits have rose **OUT** markers, and a shared
+gate shows both labels in a split marker. These appear in thumbnails, expanded
+plans and SVG exports, including gates placed on the back or side walls.
 The creation dialog keeps its title and action buttons visible while the options
 scroll, including on smaller screens.
 
@@ -339,9 +353,9 @@ for the only included product categories, choose fewer counters or restore more
 categories. Wall choices also travel with exported layout and building options.
 
 The exit can share the entrance or occupy a separate left, center or right cell
-on the front row. Checkout counters and impulse displays leave both gates clear.
+on the chosen wall. Checkout counters and impulse displays leave both gates clear.
 This supports separate arrival and departure routes; shoppers use the selected
-exit after shopping. Choosing the same position as the entrance keeps a shared
+exit after shopping. Choosing the same wall and position as the entrance keeps a shared
 gate. Exit settings are included in previews, saved layouts and reused options.
 
 Large formats now start with multiple checkout counters: six for the hypermarket,
@@ -362,6 +376,14 @@ and exits move together. Names, designs and rotation stay with the fixture.
 For longer moves, choose **Move to a cell** and click the new top-left position
 on the grid. Occupied or out-of-bounds targets leave the fixture in place so you
 can pick another location; **Cancel placement** or Escape cancels the move.
+
+The 3D view fits the floor to the available screen when it opens or resizes,
+including large 40×40 stores on a small screen. **Fit store view** restores the
+whole-floor view after panning or zooming in Classic and Realistic modes.
+Returning from shopper view or Photo preserves the previous framing; fitting
+is available again after leaving those views.
+On phones, the store view sits above the results and settings panel; scroll down
+to reach the panel without squeezing the floor into a narrow side column.
 
 Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
 with a department store, shop with upstairs café, pharmacy/wellness building or
@@ -406,6 +428,10 @@ real shelf photo. Only pixels inside the changed boxes move, so every edit has a
 the render, the tagged photo and the raw photo (sim2real agreement with CIs), and compliance gaps against the reference
 layout are priced in revenue per day by paired simulation. The shelf here is a photoreal render from the built-in
 shelf studio, which supplies exact boxes; phone photos are edited the same way. Details: [`SHELF_LAB.md`](./SHELF_LAB.md).
+
+Completed audits also offer **Restocking quantities and budget**: enter verified stockroom counts, required shelf
+units, supplier pack sizes/costs and priorities to prepare a budgeted worksheet with CSV export. It shows unfilled
+units and pack surplus, without deriving inventory from a photo, placing orders or predicting recovered sales.
 
 ### Photos in, twin out
 
@@ -680,9 +706,13 @@ High also replaces the entrance's simple planters with a reduced Poly Haven
 Potted Plant 01 model by Rico Cilliers (CC0), with textured leaves and terracotta.
 Sources and rebuild instructions are in [`frontend/public/assets/props/`](./frontend/public/assets/props/README.md).
 Fresh bananas use Alexander Shulha's CC0 Poly Haven scan; single and paired apples
-use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
+and whole avocados use Oliver Harries' CC0 food scans. These use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
+Individual fruit instances have stable variations in orientation, size and subtle
+brightness, retained in Photo mode. Long bunches and paired apples keep their
+display footprint; packaged goods retain their authored appearance. Instance
+matrix and color buffers are explicitly released when the product display rebuilds.
 Garden-center terracotta pots use the hollow pot from Rico Cilliers' CC0 scan,
 with diameter-aware proportions, two detail levels and PBR maps. Plain croissants
 use Dario Barresi and Greg Zaal's CC0 Poly Haven scan with the same instanced detail
@@ -692,6 +722,7 @@ rebuild instructions are in [`frontend/public/assets/products/`](./frontend/publ
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: eight appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
+separate face/body normal-map strengths for soft skin and clearer fabric detail,
 alpha-tested hair, authored eyelid blinks and small gaze shifts, and retargeted breathing, varied standing, walking and browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
 [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).

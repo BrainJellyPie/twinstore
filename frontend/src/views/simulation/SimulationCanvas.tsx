@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -148,6 +148,7 @@ function StoreScene({
 export type SimulationCanvasProps = StoreSceneProps;
 
 export function SimulationCanvas(props: SimulationCanvasProps) {
+  const [fitRequest, setFitRequest] = useState(0);
   const graphicsMode = useSimulationStore((s) => s.graphicsMode);
   const shopperViewOn = useSimulationStore((s) => s.shopperView);
   const quality = useRealisticSettings((s) => s.quality);
@@ -214,10 +215,10 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
           maxTime={props.maxTime}
           eyeHeight={EYE_HEIGHT[graphicsMode]}
         />
-        <StoreCameraControls disabled={shopperView} maxZoom={realistic ? 420 : 140} />
+        <StoreCameraControls disabled={shopperView} maxZoom={realistic ? 420 : 140} width={props.width} depth={props.depth} fitRequest={fitRequest} />
       </Canvas>
       {realistic && <div className="realistic-lens" data-shopper={shopperView || undefined} aria-hidden />}
-      <RealisticHud personaNames={props.personaNames} showModeSwitch={props.customers === null} />
+      <RealisticHud personaNames={props.personaNames} showModeSwitch={props.customers === null} shopperViewActive={shopperView} onFitStore={() => setFitRequest((n) => n + 1)} />
     </>
   );
 }

@@ -12,6 +12,34 @@ const store: Store = { id: "preview", name: "Dining floor", type: "restaurant", 
   levels: 4, dwell_min: 0, dwell_max: 0, rack_name: "Window table", rack_desc: "", rack_decoration_desc: "", locked_faces: [], slots: [],
 }] };
 
+const gates: Store["racks"] = [
+  { ...store.racks[0]!, id: "entry", type: "entrance", position: [0, 2], shape: [[1, 1]], rotation: 90, rack_name: "Side & <entry>" },
+  { ...store.racks[0]!, id: "shared-exit", type: "exit", position: [0, 3], shape: [[1]], rack_name: "Shared departure" },
+  { ...store.racks[0]!, id: "exit", type: "exit", position: [7, 2], shape: [[1]], rack_name: "Back departure" },
+];
+
+it("distinguishes entrance, exit and overlapping gate cells regardless of rack order", () => {
+  const view = render(<FloorPlanPreview store={{ ...store, racks: gates }} areas={[]} />);
+  const verify = (plan: HTMLElement) => {
+    expect(plan.querySelectorAll("[data-gate-kind]")).toHaveLength(3);
+    const entrance = plan.querySelector('[data-gate-kind="entrance"]')!;
+    const exit = plan.querySelector('[data-gate-kind="exit"]')!;
+    const shared = plan.querySelector('[data-gate-kind="shared"]')!;
+    expect(entrance.querySelector("text")?.textContent).toBe("IN");
+    expect(exit.querySelector("text")?.textContent).toBe("OUT");
+    expect(entrance.querySelector("rect")?.getAttribute("fill")).not.toBe(exit.querySelector("rect")?.getAttribute("fill"));
+    expect([...shared.querySelectorAll("text")].map((node) => node.textContent)).toEqual(["IN", "OUT"]);
+    expect(shared.querySelector("title")?.textContent).toBe("Entrance and exit: Side & <entry> / Shared departure · column 1, row 4");
+    expect(shared.querySelectorAll("rect")).toHaveLength(2);
+  };
+  verify(screen.getByRole("img", { name: "Floor plan preview" }));
+  view.rerender(<FloorPlanPreview store={{ ...store, racks: [...gates].reverse() }} areas={[]} />);
+  verify(screen.getByRole("img", { name: "Floor plan preview" }));
+  fireEvent.click(screen.getByRole("button", { name: "Expand floor plan" }));
+  verify(screen.getByRole("img", { name: "Detailed floor plan" }));
+  expect(screen.getByText(/Split IN\/OUT: shared gate/)).toBeTruthy();
+});
+
 it("opens a detailed plan without submitting and returns to the unchanged creation dialog", async () => {
   const submit = vi.fn();
   render(<Dialog defaultOpen><DialogContent>
@@ -47,7 +75,7 @@ it("downloads the full floor at any zoom and safely preserves custom names", asy
   const revokeObjectURL = vi.fn();
   vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
   const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-  render(<FloorPlanPreview store={{ ...store, name: "Tea & <Books>" }} areas={[{ label: "A & <B>", x: 2, y: 3, width: 4, height: 5 }]} />);
+  render(<FloorPlanPreview store={{ ...store, name: "Tea & <Books>", racks: [...store.racks, ...gates] }} areas={[{ label: "A & <B>", x: 2, y: 3, width: 4, height: 5 }]} />);
   fireEvent.click(screen.getByRole("button", { name: "Expand floor plan" }));
   fireEvent.click(screen.getByRole("button", { name: "Zoom in floor plan" }));
   fireEvent.click(screen.getByRole("button", { name: "Download SVG" }));
@@ -71,6 +99,11 @@ it("downloads the full floor at any zoom and safely preserves custom names", asy
   expect(root.getAttribute("style")).toBeNull();
   expect(root.querySelector("title")?.textContent).toBe("Tea & <Books> — 40×40 cells");
   expect(root.querySelector("desc")?.textContent).toContain("Area 1: A & <B>, 4×5 cells at column 3, row 4.");
+  expect(root.querySelector("desc")?.textContent).toContain("Split IN/OUT: shared gate");
+  const shared = root.querySelector('[data-gate-kind="shared"]')!;
+  expect(shared.querySelector("title")?.textContent).toContain("Side & <entry> / Shared departure");
+  expect([...shared.querySelectorAll("text")].map((node) => node.textContent)).toEqual(["IN", "OUT"]);
+  expect(root.querySelector('[data-gate-kind="exit"] text')?.textContent).toBe("OUT");
   expect(root.querySelector("image, script, foreignObject")).toBeNull();
   await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith("blob:floor-plan"));
 });

@@ -42,6 +42,8 @@ def apply_budget(
     store: Store,
     budget_max: int,
     tolerance: float | None,
+    *,
+    max_quantity: int = 6,
 ) -> tuple[list[CustomerAction], int]:
     """Drop impulse buys (latest first) while spend exceeds budget_max × tolerance.
 
@@ -56,7 +58,7 @@ def apply_budget(
         if placement is None:
             return 0
         item = next((i for i in placement[1].items if i.sku == a.product_sku), None)
-        return (item.price if item else 0) * max(1, a.quantity)
+        return (item.price if item else 0) * min(max_quantity, max(1, a.quantity))
 
     spend = sum(line_total(a) for a in actions if a.action == Action.BUY)
     if spend <= cap:
@@ -183,6 +185,7 @@ class PatternIntentImpulseEngine:
         merged, dropped_invalid = drop_invalid_buys(merged, context.store)
         merged, dropped_budget = apply_budget(
             merged, context.store, context.persona.budget_max, cfg.budget_tolerance,
+            max_quantity=cfg.max_quantity_per_line,
         )
 
         return EngineDecision(

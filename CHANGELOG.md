@@ -153,6 +153,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   panel: between the best and the middle single model on most checks, best on product choice.
 
 ### Shelf Lab — real photos as experiments
+- Budgeted restocking quantities: verified stockroom counts, whole supplier packs, explicit priority,
+  pack availability and a single delivery fee. The audit-linked API, worksheet UI and CSV export show
+  unfilled demand, surplus, costs and constraints without placing orders or estimating sales recovery.
 - Counterfactual edits on shelf photos (swap, stock-out, new package, price tag, promotion) with
   exact ground-truth masks: pixels outside the changed boxes are untouched.
 - Sim2real: the same personas and seeds on the render, the tagged photo and the raw photo;

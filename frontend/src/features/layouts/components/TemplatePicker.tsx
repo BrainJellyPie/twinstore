@@ -44,6 +44,10 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const includedCount = categories.filter((category) => !excluded.has(category.id)).length;
   const densityGap = { spacious: 3, balanced: 2, dense: 1 }[value.density ?? "balanced"];
   const densityRun = { spacious: 3, balanced: 4, dense: 6 }[value.density ?? "balanced"];
+  const sideGates = value.gate_wall === "left" || value.gate_wall === "right";
+  const sharedExit = (value.exit_position ?? "shared") === "shared";
+  const exitWall = sharedExit ? value.gate_wall : value.exit_wall ?? value.gate_wall;
+  const sideExit = exitWall === "left" || exitWall === "right";
   const terms = search.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim().split(/\s+/).filter(Boolean);
   const filtered = templates.filter((t) => {
     if (storeType && t.store_type !== storeType) return false;
@@ -127,7 +131,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <p className="text-xs text-muted-foreground">{preview.data.grid_size.join("×")} cells · {preview.data.racks.filter((r) => r.slots.length).length} displays · {new Set(preview.data.racks.flatMap((r) => r.slots.flatMap((s) => s.items.map((i) => i.sku)))).size} products</p>
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "table").length} dining tables · {preview.data.racks.filter((r) => r.type === "table").length * 4} seats</p>
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "counter").length} checkout counters</p>
-              <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green: entry / exit · Slate: checkout · Purple: seating</p>
+              <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green IN: entrance · Rose OUT: exit · Split IN/OUT: shared gate · Slate: checkout · Purple: seating</p>
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
               {!validTemplateChoice(value) ? "Enter valid grid dimensions, product and table counts, and reserved-area values." : preview.isError ? "Preview unavailable." : "Updating preview…"}
             </div>}
@@ -166,19 +170,27 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               </div>
               <Field label="Width (8–40 cells)"><input type="number" className={controlClass} min={8} max={40} step={1} placeholder={String(selected?.grid[0] ?? 12)} value={value.width ?? ""} onChange={(e) => update({ width: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               <Field label="Depth (6–40 cells)"><input type="number" className={controlClass} min={6} max={40} step={1} placeholder={String(selected?.grid[1] ?? 10)} value={value.height ?? ""} onChange={(e) => update({ height: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
-              <Field label="Front entrance"><select className={controlClass} value={value.entrance ?? "left"} onChange={(e) => update({ entrance: e.target.value as TemplateChoice["entrance"] })}>
-                <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+              <Field label="Entrance wall"><select className={controlClass} value={value.gate_wall ?? "front"} onChange={(e) => update({ gate_wall: e.target.value as TemplateChoice["gate_wall"] })}>
+                <option value="front">Front wall</option><option value="back">Back wall</option><option value="left">Left wall</option><option value="right">Right wall</option>
               </select></Field>
-              <Field label="Exit position"><select className={controlClass} value={value.exit_position ?? "shared"} onChange={(e) => update({ exit_position: e.target.value as TemplateChoice["exit_position"] })}>
-                <option value="shared">Share entrance</option><option value="left">Front left</option><option value="center">Front center</option><option value="right">Front right</option>
+              <Field label="Entrance position"><select className={controlClass} value={value.entrance ?? "left"} onChange={(e) => update({ entrance: e.target.value as TemplateChoice["entrance"] })}>
+                <option value="left">{sideGates ? "Near back" : "Left"}</option><option value="center">Center</option><option value="right">{sideGates ? "Near front" : "Right"}</option>
               </select></Field>
+              <Field label="Exit position"><select className={controlClass} value={value.exit_position ?? "shared"} onChange={(e) => update({ exit_position: e.target.value as TemplateChoice["exit_position"], ...(e.target.value === "shared" ? { exit_wall: null } : {}) })}>
+                <option value="shared">Share entrance</option><option value="left">{sideExit ? "Near back" : "Left"}</option><option value="center">Center</option><option value="right">{sideExit ? "Near front" : "Right"}</option>
+              </select></Field>
+              <Field label="Exit wall"><select className={controlClass} value={sharedExit ? "" : value.exit_wall ?? ""} disabled={sharedExit}
+                onChange={(e) => update({ exit_wall: e.target.value === "" ? null : e.target.value as TemplateChoice["exit_wall"] })}>
+                <option value="">Same as entrance wall</option><option value="front">Front wall</option><option value="back">Back wall</option><option value="left">Left wall</option><option value="right">Right wall</option>
+              </select></Field>
+              <p className="col-span-2 text-[10px] text-muted-foreground">Choose a separate exit position to place it on another wall. Shared gates follow the entrance. Back and side gates stay one cell away from corners; center uses the wall midpoint.</p>
               <Field label="Checkout counters"><select className={controlClass} value={value.checkouts ?? ""} onChange={(e) => update({ checkouts: e.target.value === "" ? null : Number(e.target.value) })}>
                 <option value="">Format default ({selected?.default_checkouts ?? 1}, sized to fit)</option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
               </select></Field>
               <Field label="Checkout wall"><select className={controlClass} value={value.checkout_wall ?? "front"}
                 onChange={(e) => update({ checkout_wall: e.target.value as TemplateChoice["checkout_wall"] })}>
-                <option value="front">Front / entrance wall</option><option value="back">Back wall</option>
+                <option value="front">Front wall</option><option value="back">Back wall</option>
                 <option value="left">Left wall</option><option value="right">Right wall</option>
               </select></Field>
               <Field label="Checkout placement"><select className={controlClass} value={value.checkout_placement ?? "auto"}
@@ -211,7 +223,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
                 disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
                 onChange={(e) => update({ seating_zone: e.target.value as TemplateChoice["seating_zone"] })}>
-                <option value="auto">Format default{selected?.default_seating_zone && selected.default_seating_zone !== "auto" ? ` (${selected.default_seating_zone})` : ""}</option><option value="front">Front / entrance side</option>
+                <option value="auto">Format default{selected?.default_seating_zone && selected.default_seating_zone !== "auto" ? ` (${selected.default_seating_zone})` : ""}</option><option value="front">Front edge</option>
                 <option value="back">Back wall</option><option value="left">Left side</option>
                 <option value="right">Right side</option><option value="center">Center</option>
               </select></Field>
@@ -223,7 +235,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", exit_position: "shared", checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", fixture_design: "mixed", design_theme: null, dining_tables: null, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>
@@ -245,7 +257,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           {(value.excluded_categories?.length ?? 0) > 0 && <button type="button" className="underline" onClick={() => update({ excluded_categories: [] })}>Restore all product categories</button>}
         </details>}
         <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })}
-          grid={[value.width ?? selected?.grid[0] ?? 12, value.height ?? selected?.grid[1] ?? 10]} entrance={value.entrance} />
+          grid={[value.width ?? selected?.grid[0] ?? 12, value.height ?? selected?.grid[1] ?? 10]} entrance={value.entrance} gateWall={value.gate_wall} />
         <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: use warm task lighting in the consultation corner or seasonal signs near the entrance." /></Field>
         {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
         <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction and aisle gap apply to interior rows and cross-aisles; wall spacing and seating clearance are separate. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>

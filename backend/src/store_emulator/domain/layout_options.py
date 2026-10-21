@@ -10,6 +10,7 @@ type LayoutStyle = Literal["aisles", "loop", "spine", "cross", "free_flow", "per
 type LayoutDensity = Literal["spacious", "balanced", "dense"]
 type EntrancePosition = Literal["left", "center", "right"]
 type ExitPosition = Literal["shared", "left", "center", "right"]
+type GateWall = Literal["front", "back", "left", "right"]
 type CheckoutPlacement = Literal["auto", "near_entrance", "away_from_entrance"]
 type CheckoutWall = Literal["front", "back", "left", "right"]
 type SeatingZone = Literal["auto", "front", "back", "left", "right", "center"]
@@ -40,7 +41,9 @@ class LayoutOptions(BaseModel):
     max_shelf_run: int | None = Field(default=None, ge=1, le=8)
     shelf_direction: ShelfDirection = "horizontal"
     entrance: EntrancePosition = "left"
+    gate_wall: GateWall = "front"
     exit_position: ExitPosition = "shared"
+    exit_wall: GateWall | None = None
     checkouts: int | None = Field(default=None, ge=1, le=12)
     checkout_placement: CheckoutPlacement = "auto"
     checkout_wall: CheckoutWall = "front"

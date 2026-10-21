@@ -50,14 +50,14 @@ def test_generation_is_deterministic_and_styles_differ():
     assert {r.position for r in loop.racks} != {r.position for r in aisles.racks}
 
 
-@pytest.mark.parametrize("template_id", ["campus_cvs", "specialty_cafe"])
-def test_rule_based_shoppers_buy_in_a_generated_store(template_id):
+@pytest.mark.parametrize("template_id,gate_wall", [("campus_cvs", "left"), ("specialty_cafe", "back")])
+def test_rule_based_shoppers_buy_in_a_generated_store(template_id, gate_wall):
     import json
     from pathlib import Path
     sample = Path(__file__).resolve().parents[2] / "sample_data" / "proj_67916afd" / "runs" / "run_ab0039" / "input"
     personas = [Persona.model_validate(p) for p in json.loads((sample / "personas.json").read_text())]
     cfg = apply_options(local_config(), RunOptions(engine_type=EngineType.RULE_BASED, seed=1))
-    store = generate_store(template_id, seed=1, options=LayoutOptions(entrance="left", exit_position="right"))
+    store = generate_store(template_id, seed=1, options=LayoutOptions(entrance="left", exit_position="right", gate_wall=gate_wall, exit_wall="right"))
     agg, customers, _ = asyncio.run(run_simulation(cfg, store, subsample_personas(personas, 200, 1)))
     assert agg.summary.conversion_rate > 0.5 and agg.summary.units_sold > 100
     assert customers and all(customer.timeline for customer in customers)
