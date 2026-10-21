@@ -45,6 +45,8 @@ def start_persona_generation(
     - `ignore_active_gen_id`: lets a layout-chain caller skip its own gen_id
       from the active check. External callers pass None.
     """
+    if not metadata_path(project_id).is_file():
+        raise AppError(f"Project not found: {project_id}", 404)
     setup = read_setup(project_id, setup_id)
     if not setup:
         raise AppError(f"Setup not found: {setup_id}", 404)

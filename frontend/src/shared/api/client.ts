@@ -1848,6 +1848,7 @@ export function rateStorefront(projectId: string, venueId: string, photo: File, 
 }
 
 export function readReceipts(projectId: string, photos: File[], target: { setupId?: string; runId?: string }, model = ""): Promise<ReceiptsResult> {
+  if (photos.length > 100) return Promise.reject(new Error("Choose at most 100 receipt photos per batch."));
   const form = new FormData();
   for (const p of photos) form.append("photos", p);
   form.append("setup_id", target.setupId ?? "");

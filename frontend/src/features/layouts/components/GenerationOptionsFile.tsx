@@ -53,12 +53,14 @@ export function GenerationOptionsFile(props: Props) {
         const preset = await api.validateBuildingPreset(contents, controller.signal);
         if (controller.signal.aborted) return;
         const current = latestProps.current;
-        if (current.kind === "building") current.onChange(preset.floors.map((floor) => ({ label: floor.label, choice: importedChoice(floor.layout) })));
+        if (current.kind !== "building") return;
+        current.onChange(preset.floors.map((floor) => ({ label: floor.label, choice: importedChoice(floor.layout) })));
       } else {
         const preset = await api.validateLayoutPreset(contents, controller.signal);
         if (controller.signal.aborted) return;
         const current = latestProps.current;
-        if (current.kind === "layout") current.onChange(importedChoice(preset.layout));
+        if (current.kind !== "layout") return;
+        current.onChange(importedChoice(preset.layout));
       }
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof SyntaxError
