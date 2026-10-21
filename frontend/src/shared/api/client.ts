@@ -1363,6 +1363,7 @@ export interface LayoutOptions {
   reserved_areas?: ReservedArea[];
   excluded_categories?: string[];
   products_per_category?: number | null;
+  category_product_limits?: Record<string, number>;
   open_hour?: number | null;
   close_hour?: number | null;
   closed_days?: number[] | null;

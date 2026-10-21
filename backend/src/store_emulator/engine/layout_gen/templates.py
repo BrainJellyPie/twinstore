@@ -544,7 +544,7 @@ class _Builder:
         self.assortments: dict[str, list[CatalogItem]] = {}
         for category in set(t.fridges + t.freezers + t.wall_shelves + t.gondolas + t.near_counter):
             pool = CATALOG[category]
-            limit = options.products_per_category
+            limit = options.category_product_limits.get(category, options.products_per_category)
             self.assortments[category] = (
                 random.Random(stable_seed("layout-assortment", seed, category)).sample(pool, limit)
                 if limit is not None and limit < len(pool) else pool
@@ -629,6 +629,9 @@ def generate_store(
             raise ValueError("Closed weekdays must not contain duplicates.")
         if len(closed_days) == 7:
             raise ValueError("Keep at least one open weekday for this store.")
+    unknown_limits = options.category_product_limits.keys() - CATALOG.keys()
+    if unknown_limits:
+        raise ValueError(f"Unknown product categories in assortment limits: {', '.join(sorted(unknown_limits))}")
     if options.excluded_categories:
         excluded = set(options.excluded_categories)
         unknown = excluded - CATALOG.keys()
