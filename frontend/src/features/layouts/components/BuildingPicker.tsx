@@ -101,7 +101,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))}
         onApplyDesignToAll={(design_theme, colors) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, design_theme, design_colors: colors ? { ...colors } : null } })))}
         onApplyCurrencyToAll={(currency) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, currency } })))}
-        onApplyHoursToAll={(hours) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...hours, closed_days: [...hours.closed_days] } })))}
+        onApplyHoursToAll={(hours) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...hours, closed_days: [...hours.closed_days], weekly_hours: hours.weekly_hours?.map((entry) => ({ ...entry })) ?? null } })))}
         onApplySizeToAll={(size) => {
           onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...size } })));
           setReviewOpen(true);
@@ -115,7 +115,12 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         sharedHours={floor.choice.open_hour != null && floor.choice.close_hour != null && floor.choice.closed_days != null &&
           floors.every((f) => f.choice.open_hour === floor.choice.open_hour && f.choice.close_hour === floor.choice.close_hour &&
             f.choice.closed_days?.length === floor.choice.closed_days?.length &&
-            f.choice.closed_days?.every((day) => floor.choice.closed_days?.includes(day)))}
+            f.choice.closed_days?.every((day) => floor.choice.closed_days?.includes(day)) &&
+            (f.choice.weekly_hours == null ? floor.choice.weekly_hours == null :
+              f.choice.weekly_hours.length === floor.choice.weekly_hours?.length && f.choice.weekly_hours.every((entry) => {
+                const other = floor.choice.weekly_hours?.find((day) => day.day === entry.day);
+                return other?.is_open === entry.is_open && other.open_hour === entry.open_hour && other.close_hour === entry.close_hour;
+              })))}
         sharedDesign={floors.every((f) => f.choice.design_theme === floor.choice.design_theme &&
           INTERIOR_COLOR_FIELDS.every(([key]) => (f.choice.design_colors?.[key] ?? null) === (floor.choice.design_colors?.[key] ?? null))) ? floor.choice.design_theme ?? undefined : undefined}
         sharedCurrency={floors.every((f) => f.choice.currency === floor.choice.currency) ? floor.choice.currency : undefined} />

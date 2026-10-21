@@ -245,7 +245,7 @@ jewelry, music, bookstores, electronics, pet, garden and craft stores, airport r
 weekend markets, station food shops, cinema snacks, office cafeterias and central-plaza market and design halls — each with its own assortment, palette, seating
 and checkouts, or from **19 multi-floor buildings** (department store, dining house, campus hub and more). Choose which
 product categories to stock, where the entrance, exit and checkouts go, how many dining tables, aisle widths, shelf
-direction and areas to keep clear; customize wall, floor, accent and counter colors, compare against the format default and download the plan as SVG. Every option and
+direction and areas to keep clear, set different opening hours for each weekday; customize wall, floor, accent and counter colors, compare against the format default and download the plan as SVG. Every option and
 the floor editor (up to 40×40 cells) are documented in [`STORE_TEMPLATES.md`](./STORE_TEMPLATES.md).
 
 In the new-store wizard, choose a format, size and currency first. **Customize layout** opens
@@ -603,7 +603,7 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
   [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 - **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
   ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;
-  single and paired apples, whole avocados and kiwis use Oliver Harries' CC0 food scans; lemons and yellow onions use Kuutti Siitonen's CC0 scans, and whole sweet potatoes use Jan Martens' CC0 scan, with shared instancing, two detail
+  single and paired apples, whole avocados and kiwis use Oliver Harries' CC0 food scans; lemons and yellow onions use Kuutti Siitonen's CC0 scans, whole sweet potatoes use Jan Martens' CC0 scan, and Asian pears use Amal Kumar's CC0 scan, with shared instancing, two detail
   levels, photographic PBR maps and stable per-instance variation that is kept in Photo mode
   ([`produce/`](./frontend/public/assets/produce/README.md)). Garden-center terracotta pots use the hollow pot from Rico
   Cilliers' CC0 scan; plain croissants use Dario Barresi and Greg Zaal's CC0 Poly Haven scan; metal watering cans use

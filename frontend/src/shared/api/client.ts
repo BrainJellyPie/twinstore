@@ -1366,6 +1366,7 @@ export interface LayoutOptions {
   open_hour?: number | null;
   close_hour?: number | null;
   closed_days?: number[] | null;
+  weekly_hours?: DaySchedule[] | null;
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {

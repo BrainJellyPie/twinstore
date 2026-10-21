@@ -12,7 +12,7 @@ vi.mock("@/shared/mutations/useCreateStore", () => ({ useCreateStore: () => ({ m
 vi.mock("@/features/layouts/components/TemplatePicker", () => ({
   TemplatePicker: ({ value, onChange, onTemplateSelected }: { value: TemplateChoice; onChange: (v: TemplateChoice) => void; onTemplateSelected?: (t: StoreTemplate) => void }) =>
     <div><button type="button" onClick={() => {
-      onChange({ ...value, templateId: "community_pharmacy", width: 24, design_theme: "minimal" });
+      onChange({ ...value, templateId: "community_pharmacy", width: 24, design_theme: "minimal", weekly_hours: Array.from({ length: 7 }, (_, index) => ({ day: index + 1, is_open: index === 6, open_hour: 23, close_hour: 24 })) });
       onTemplateSelected?.({ id: "community_pharmacy", name: "Community pharmacy", description: "Care", store_type: "pharmacy", grid: [14, 12], racks: 20, skus: 30, open_hours: [9, 21], default_style: "aisles", default_design: "minimal", default_dining_tables: 0 });
     }}>Choose pharmacy</button><button type="button" onClick={() => onChange({ ...value, width: 99 })}>Invalid size</button></div>,
 }));
@@ -38,7 +38,7 @@ it("creates the selected initial format with the wizard metadata", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Choose pharmacy" }));
   await submit();
   await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ meta: expect.objectContaining({
-    name: "My Pharmacy", store_type: "pharmacy", layout: expect.objectContaining({ template_id: "community_pharmacy", width: 24, design_theme: "minimal", open_hour: 0, close_hour: 24, closed_days: [] }),
+    name: "My Pharmacy", store_type: "pharmacy", layout: expect.objectContaining({ template_id: "community_pharmacy", width: 24, design_theme: "minimal", weekly_hours: null, open_hour: 0, close_hour: 24, closed_days: [] }),
   }) })));
   await waitFor(() => expect(created).toHaveBeenCalledWith("proj_new"));
 });
