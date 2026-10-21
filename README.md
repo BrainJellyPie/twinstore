@@ -189,7 +189,7 @@ currently remain in English.
 </tr>
 <tr>
 <td><img src="./.github/assets/twinstore/screens/wizard-light.jpg" alt="New store wizard with a starting layout"><br>
-<b>New store in two steps.</b> Store details, address, hours and one of 74 furnished starting layouts — or a floor-plan image.</td>
+<b>New store in two steps.</b> Store details, address, hours and one of 78 furnished starting layouts — or a floor-plan image.</td>
 <td><img src="./.github/assets/twinstore/screens/home-dark.jpg" alt="Home, night theme"><br>
 <b>Day and night.</b> A command bar, <kbd>⌘K</kbd> palette for everything, quick links on every store, light and dark themes.</td>
 </tr>
@@ -243,11 +243,11 @@ field (f/1.4–5.6) in the shopper's view; save it as PNG.
 
 ### Store formats and templates
 
-Start from **74 furnished formats** — convenience stores, supermarkets, hypermarkets and warehouse clubs, pharmacies,
+Start from **78 furnished formats** — convenience stores, supermarkets, hypermarkets and warehouse clubs, pharmacies,
 cafés, bakeries, pizzerias, sushi, ramen, Korean, burger, salad and ice-cream shops, fashion, footwear, eyewear,
 jewelry, music, bookstores, electronics, pet, garden and craft stores, airport retail, hospital convenience, museum gifts,
-weekend markets, station food shops, cinema snacks, office cafeterias, central-plaza halls, compact and 24-hour pharmacies, Mediterranean delis and Mexican cantinas — each with its own assortment, palette, seating
-and checkouts, or from **21 multi-floor buildings** (department store, dining house, campus hub and more). Choose which
+weekend markets, station food shops, cinema snacks, office cafeterias, central-plaza halls, compact and 24-hour pharmacies, Mediterranean delis, Mexican cantinas, art-supply warehouses, beauty outlets, Indian curry houses and Vietnamese cafés — each with its own assortment, palette, seating
+and checkouts, or from **23 multi-floor buildings** (department store, dining house, campus hub and more). Choose which
 product categories to stock, where the entrance, exit and checkouts go, how many dining tables, aisle widths, shelf
 direction and areas to keep clear, set different opening hours for each weekday; customize wall, floor, accent and counter colors, compare against the format default and download the plan as SVG. Every option and
 the floor editor (up to 40×40 cells) are documented in [`STORE_TEMPLATES.md`](./STORE_TEMPLATES.md).
