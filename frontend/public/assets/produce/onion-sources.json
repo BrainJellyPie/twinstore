@@ -1,0 +1,57 @@
+{
+  "asset": "yellow_onion",
+  "source": "https://polyhaven.com/a/yellow_onion",
+  "author": "Kuutti Siitonen",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_onion.py; 249/1399 triangle LODs, bottom-centred unit bounds and inverse-transpose normals; original 1K JPEG color, OpenGL normal and ARM maps retained.",
+  "authored_dimensions_metres": {
+    "width": 0.0724824070930481,
+    "height": 0.08637567609548569,
+    "depth": 0.06863658130168915
+  },
+  "files": [
+    {
+      "file": "yellow_onion_1k.gltf",
+      "bytes": 2785,
+      "md5": "dae6fea89c74167e9140866b0b16201d",
+      "sha256": "0d4aaa4046c5b471ea7f9197c453f3d48699bc85e06fd13606c8ea09a1dce699",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/yellow_onion/yellow_onion_1k.gltf"
+    },
+    {
+      "file": "textures/yellow_onion_nor_gl_1k.jpg",
+      "bytes": 715114,
+      "md5": "649caf0e1fa5a79a9aa1319012def387",
+      "sha256": "f471dbeb82baaf3d743f28a254ed94587f83bd6131f03e656655c6d48717f137",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/yellow_onion/yellow_onion_nor_gl_1k.jpg"
+    },
+    {
+      "file": "textures/yellow_onion_diff_1k.jpg",
+      "bytes": 455175,
+      "md5": "65504103b6b8af63ba39e2b7d8f6805a",
+      "sha256": "ad28b9926c9190398f1006fcf0b89c44255eb41aee5d52391a41ad5fc0f13e80",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/yellow_onion/yellow_onion_diff_1k.jpg"
+    },
+    {
+      "file": "textures/yellow_onion_arm_1k.jpg",
+      "bytes": 492495,
+      "md5": "b3cf49965fa2ee909b819a19ba321c6f",
+      "sha256": "77398ea7072602555a86510bfe37a7427a22932efc13de799c6fe2bbe62d2b8d",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/yellow_onion/yellow_onion_arm_1k.jpg"
+    },
+    {
+      "file": "yellow_onion.bin",
+      "bytes": 139832,
+      "md5": "d85feec8c46d2aa13479cabbaf6a27cc",
+      "sha256": "586c1e459e31e0647d090df4497e88c4e905e598607e9632590fb74cce7ef5f5",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/yellow_onion/yellow_onion.bin"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "onion.glb",
+      "bytes": 1718496,
+      "sha256": "16d51e8b6f2deb696f0c389c377972acf6f8a79f959a1fd9ca6ebeaa3a37bb37"
+    }
+  ]
+}
