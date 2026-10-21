@@ -81,8 +81,7 @@ def save_project_personas(
     personas: list[object],
 ) -> None:
     """Save personas unless a generation, running simulation, or history locks them."""
-    project_dir = _data / project_id
-    if not project_dir.exists():
+    if not metadata_path(project_id).is_file():
         raise FileNotFoundError(f"Project not found: {project_id}")
 
     setups = list_setups(project_id)
