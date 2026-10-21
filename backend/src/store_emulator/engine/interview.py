@@ -50,11 +50,12 @@ def build_journey(run_id: str, customer: CustomerResult, persona: Persona, store
         face = e.face.value if e.face is not None else ""
         if rack is not None and e.action in (Action.BROWSE, Action.BUY):
             stops.setdefault(rack.id, set()).add(face)
+        stocked = rack is not None and any(sl.items and (not face or sl.face.value == face) for sl in rack.slots)
         steps.append(JourneyStep(
             index=len(steps) + 1, time=_clock(customer.arrival_time, e.elapsed_sec), elapsed_sec=e.elapsed_sec,
             action=e.action, rack_id=e.target_rack, rack=(rack.rack_name or rack.id) if rack else "", face=face,
             product_sku=e.product_sku, product_name=e.product_name, price=e.price, quantity=e.quantity, origin=e.origin,
-            thought=e.description.strip(), duration=e.duration, x=e.x, y=e.y,
+            thought=e.description.strip(), duration=e.duration, x=e.x, y=e.y, sees_products=stocked,
         ))
     shelves: dict[str, list[ShelfItem]] = {}
     for rid, faces in stops.items():

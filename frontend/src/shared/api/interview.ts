@@ -32,6 +32,7 @@ export interface JourneyStep {
   quantity: number;
   origin: string;
   thought: string;
+  sees_products?: boolean;
   duration: number;
   x: number;
   y: number;
@@ -67,6 +68,9 @@ export const askShopper = (pid: string, runId: string, sid: string, question: st
   fetchJson<Interview>(`${base(pid, runId, sid)}/interview`, { method: "POST", body: JSON.stringify({ question, model }) });
 export const clearInterview = (pid: string, runId: string, sid: string) =>
   fetchJson<void>(`${base(pid, runId, sid)}/interview`, { method: "DELETE" });
+
+export const shelfFaceUrl = (pid: string, runId: string, rackId: string, face: string) =>
+  `${BASE}/api/projects/${pid}/runs/${runId}/racks/${encodeURIComponent(rackId)}/faces/${face}.png`;
 
 export type GroupSegment = "all" | "empty_handed" | "buyers" | "impulse" | "top_spenders";
 

@@ -31,8 +31,9 @@ from store_emulator.domain.interview import (
 )
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action
+from store_emulator.domain.types import Action, Face
 from store_emulator.engine.interview import ask_shopper, build_journey, code_themes
+from store_emulator.engine.perception.shelf_render import render_face
 
 from .errors import AppError
 from .providers import build_client
@@ -74,6 +75,24 @@ def _run_data(base: str, mtime: float) -> tuple[dict[str, CustomerResult], dict[
 def _load(pid: str, run_id: str) -> tuple[dict[str, CustomerResult], dict[str, Persona], Store, str]:
     base = _run_dir(pid, run_id)
     return _run_data(str(base), (base / "output" / "timeline.json").stat().st_mtime)
+
+
+@lru_cache(maxsize=64)
+def _face_png(base: str, mtime: float, rack_id: str, face: str) -> bytes:
+    _, _, store, currency = _run_data(base, mtime)
+    rack = next((r for r in store.racks if r.id == rack_id), None)
+    if rack is None:
+        raise AppError(f"rack not in this run: {rack_id}", 404)
+    return render_face(rack, Face(face), currency=currency, width=640, number_on_tag=False).png
+
+
+def shelf_face_png(pid: str, run_id: str, rack_id: str, face: str) -> bytes:
+    """The shelf face as the shoppers of this run saw it (the vision shoppers' renderer, without badges)."""
+    _check_id(rack_id, "rack id")
+    if face not in ("N", "S", "E", "W"):
+        raise AppError(f"invalid face: {face}", 400)
+    base = _run_dir(pid, run_id)
+    return _face_png(str(base), (base / "output" / "timeline.json").stat().st_mtime, rack_id, face)
 
 
 def get_journey(pid: str, run_id: str, persona_id: str) -> Journey:

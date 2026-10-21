@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import interview as service
@@ -27,6 +27,13 @@ async def journey(pid: str, run_id: str, persona_id: str) -> Journey:
     """Every stop with its wall-clock time, shelf, product and the thought recorded at that step, the walked path,
     and the products on each shelf face the shopper stopped at."""
     return await run_in_threadpool(_call, lambda: service.get_journey(pid, run_id, persona_id))
+
+
+@router.get("/{pid}/runs/{run_id}/racks/{rack_id}/faces/{face}.png", summary="A shelf face as the run's shoppers saw it",
+            response_class=Response)
+async def shelf_face(pid: str, run_id: str, rack_id: str, face: str) -> Response:
+    png = await run_in_threadpool(_call, lambda: service.shelf_face_png(pid, run_id, rack_id, face))
+    return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=3600"})
 
 
 @router.get("/{pid}/runs/{run_id}/shoppers/{persona_id}/interview", summary="Interview transcript", response_model=Interview)

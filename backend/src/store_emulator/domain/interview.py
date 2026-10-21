@@ -31,6 +31,7 @@ class JourneyStep(BaseModel):
     quantity: int = 1
     origin: str = ""                  # planned | impulse
     thought: str = ""                 # the engine's description of this step
+    sees_products: bool = False       # the shelf face of this step holds products (worth showing)
     duration: int = 0
     x: int = 0
     y: int = 0

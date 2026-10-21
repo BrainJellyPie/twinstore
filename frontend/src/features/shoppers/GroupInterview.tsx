@@ -79,6 +79,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, onOpen, onBack
       </section>
 
       {shown && <GroupResult key={shown.group_id} group={shown} currency={currency} onOpen={onOpen} />}
+      {del.error && <p role="alert" className="text-[0.75rem] text-destructive">{del.error.message}</p>}
 
       {list.length > 0 && (
         <section className="space-y-1">
