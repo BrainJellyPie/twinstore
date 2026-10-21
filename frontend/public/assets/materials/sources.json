@@ -37,6 +37,33 @@
       "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_rough_1k.jpg",
       "sha256": "a2ca9ae89dfe7b8e2e5e92f0aa43467845417de8a50205b5852ef0d57c7624f9",
       "bytes": 237261
+    },
+    {
+      "file": "plaster_001_diff_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Plaster001_1K-JPG.zip",
+      "archive_member": "Plaster001_1K-JPG_Color.jpg",
+      "archive_sha256": "944b4831016e42ace4a89422e4e7190912ca2f7fed6f561354c48ec7bb54d3a4",
+      "sha256": "d3fe43282859ab7293ad41f2fa3c29f02df077e5bc326cf90a65cc588a4ac5a4",
+      "bytes": 828790,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "plaster_001_nor_gl_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Plaster001_1K-JPG.zip",
+      "archive_member": "Plaster001_1K-JPG_NormalGL.jpg",
+      "archive_sha256": "944b4831016e42ace4a89422e4e7190912ca2f7fed6f561354c48ec7bb54d3a4",
+      "sha256": "ea293c335a0b9243f0a825573b81304b8f99e60b2c067e493d0792adf96dfc72",
+      "bytes": 2091491,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "plaster_001_rough_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Plaster001_1K-JPG.zip",
+      "archive_member": "Plaster001_1K-JPG_Roughness.jpg",
+      "archive_sha256": "944b4831016e42ace4a89422e4e7190912ca2f7fed6f561354c48ec7bb54d3a4",
+      "sha256": "6028dbe3cb2ea250eacf3fb87d2c4e5ae8c2a7ff10ecad7883c27d721f2f8e88",
+      "bytes": 367391,
+      "license_url": "https://docs.ambientcg.com/license/"
     }
   ]
 }

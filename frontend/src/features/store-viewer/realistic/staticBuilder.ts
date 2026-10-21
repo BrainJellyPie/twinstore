@@ -81,6 +81,20 @@ export class StaticBuilder {
 
   add(mat: MatKey, geom: THREE.BufferGeometry, local: THREE.Matrix4): this {
     geom.applyMatrix4(this.tmp.multiplyMatrices(this.frame, local));
+    if (mat === "wall") {
+      // Project in store coordinates so long/rotated wall panels share the same
+      // texel density and adjoining segments don't restart or stretch the map.
+      const position = geom.getAttribute("position");
+      const normal = geom.getAttribute("normal");
+      const uv = geom.getAttribute("uv");
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+        const nx = normal.getX(i), ny = normal.getY(i), nz = normal.getZ(i);
+        if (Math.abs(ny) > 0.5) uv.setXY(i, x, ny > 0 ? -z : z);
+        else if (Math.abs(nx) > 0.5) uv.setXY(i, nx > 0 ? -z : z, y);
+        else uv.setXY(i, nz > 0 ? x : -x, y);
+      }
+    }
     const list = this.parts.get(mat);
     if (list) list.push(geom);
     else this.parts.set(mat, [geom]);

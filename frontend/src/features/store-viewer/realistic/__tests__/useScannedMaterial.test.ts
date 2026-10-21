@@ -16,6 +16,14 @@ function pendingLoads() {
 afterEach(() => vi.restoreAllMocks());
 
 describe("scanned material lifecycle", () => {
+  it("does not fetch optional surfaces when their quality tier is disabled", () => {
+    const loads = pendingLoads();
+    const hook = renderHook(() => useScannedMaterial(null, 1, 1, "medium"));
+    expect(loads).toHaveLength(0);
+    expect(hook.result.current).toBeNull();
+    hook.unmount();
+  });
+
   it("does not reuse disposed maps when switching back to an earlier quality", async () => {
     const loads = pendingLoads();
     const hook = renderHook(({ quality }: { quality: GraphicsQuality }) =>
