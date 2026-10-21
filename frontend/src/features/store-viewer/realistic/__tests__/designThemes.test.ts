@@ -14,9 +14,12 @@ it("applies independent interior finishes without altering shared sign assets", 
   const classic = createShellMaterials("medium", sign);
   const warm = createShellMaterials("medium", sign, null, null, null, "warm");
   const industrial = createShellMaterials("high", sign, null, null, null, "industrial");
+  const coastal = createShellMaterials("medium", sign, null, null, null, "coastal");
+  const terracotta = createShellMaterials("high", sign, null, null, null, "terracotta");
   const color = (material: THREE.Material) => (material as THREE.MeshStandardMaterial).color.getHexString();
-  expect(new Set([color(classic.wall), color(warm.wall), color(industrial.wall)]).size).toBe(3);
-  expect(new Set([color(classic.metalWhite), color(warm.metalWhite), color(industrial.metalWhite)]).size).toBe(3);
+  const palettes = [classic, warm, industrial, coastal, terracotta];
+  expect(new Set(palettes.map((palette) => color(palette.wall))).size).toBe(5);
+  expect(new Set(palettes.map((palette) => color(palette.metalWhite))).size).toBe(5);
   const original = color(classic.counterTop);
   disposeMaterials(warm);
   expect(color(classic.counterTop)).toBe(original);
@@ -24,6 +27,8 @@ it("applies independent interior finishes without altering shared sign assets", 
   expect(disposed).not.toHaveBeenCalled();
   disposeMaterials(classic);
   disposeMaterials(industrial);
+  disposeMaterials(coastal);
+  disposeMaterials(terracotta);
   sign.dispose();
 });
 
