@@ -14,7 +14,7 @@ async def upload_sku_image(
     sku: str,
     file: UploadFile = File(..., description="image file (PNG/JPG/WebP, ≤2MB)"),
 ) -> dict[str, str]:
-    data = await file.read()
+    data = await file.read(image_storage.MAX_IMAGE_BYTES + 1)
     try:
         # PIL parse + file write are sync I/O; offload to threadpool so the
         # event loop is not blocked.
