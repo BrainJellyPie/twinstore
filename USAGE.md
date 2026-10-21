@@ -89,6 +89,8 @@ ab_test_calls (vision shoppers) ≈ panel × (variants + 1) × 1–1.5    # 0..m
 concept_test_calls              = panel                             # one structured answer per respondent
 ```
 
+shopper_interview_calls         = 1 per question               # text model, from the run's trip log
+
 A concept test with the default 60 respondents is 60 vision calls (cached, so re-running it costs
 nothing); an A/B test with three variants on 300 vision shoppers is roughly 1,200–1,800. Run the
 rule shoppers first for price and placement questions, and keep vision shoppers for packaging and
