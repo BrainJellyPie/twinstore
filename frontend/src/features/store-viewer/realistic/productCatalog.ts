@@ -2,7 +2,7 @@
 // size, colours and label text. No three.js / DOM dependencies so they can be
 // unit-tested and reused by an offline renderer.
 
-export type PackageKind = "bottle" | "perfumeBottle" | "teaCup" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "lemon" | "pot" | "croissant" | "wateringCan";
+export type PackageKind = "bottle" | "perfumeBottle" | "teaCup" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "lemon" | "onion" | "pot" | "croissant" | "wateringCan";
 
 export type ProductCategory =
   | "drink"
@@ -191,6 +191,8 @@ const RULES: Rule[] = [
   [/sugar|flour/, () => spec("bag", 0.12, 0.18, 0.06, "pantry")],
   [/pasta\b|penne|spaghetti|macaroni|mac & cheese|\brice\b/, () => spec("box", 0.14, 0.23, 0.05, "pantry")],
   // Whole fresh produce only: flavored foods and packaged formats keep their rules.
+  [/^(?:(?:fresh|organic|whole|yellow|brown)\s+)*onions?(?:\s+(?:loose|each|(?:[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)\s*(?:kg|g|lb|lbs)))?$/,
+    () => spec("onion", 0.07248241, 0.08637568, 0.06863658, "produce")],
   [/^(?:(?:fresh|organic|ripe|whole|yellow|eureka)\s+)*lemons?(?:\s+(?:loose|each|(?:[1-9]\d*(?:\.\d+)?|0?\.\d*[1-9]\d*)\s*(?:kg|g|lb|lbs)))?$/,
     () => spec("lemon", 0.09536931, 0.06868193, 0.06826009, "produce")],
   [/^(?:(?:fresh|organic|ripe|hass)\s+)*avocados?(?:\s+(?:loose|each|\d+(?:\.\d+)?\s*(?:kg|g|lb|lbs)))?$/,
@@ -298,6 +300,7 @@ export function productPalette(name: string): ProductPalette {
       break;
     }
   }
+  if (classifyProduct(n).kind === "onion") base = "#a26530";
   // Per-product jitter so same-keyword products are distinguishable.
   base = shade(base, (hash01(n, 7) - 0.5) * 0.24);
   let accent = PALETTE[(h >>> 8) % PALETTE.length]!;
