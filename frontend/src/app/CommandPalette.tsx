@@ -149,11 +149,12 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
 
   let lastGroup = "";
   return (
-    <div className="flex min-h-0 flex-col" onKeyDown={onKeyDown}>
+    <div className="flex min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-3 border-b px-5">
         <Search className="size-5 shrink-0 text-muted-foreground" aria-hidden />
         <input
           value={query}
+          onKeyDown={onKeyDown}
           onChange={(e) => {
             setQuery(e.target.value);
             setActive(0);
