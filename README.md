@@ -242,6 +242,13 @@ a layout until you save the form, and does not carry over the source layout's
 name or parent link. Manual fixture edits and product uploads are not part of
 this file; use the existing layout-copy or workbook tools for those.
 
+In **Multi-floor store**, **Export building options** saves the complete list of
+2–6 floors in one JSON file, with their order, labels and individual settings.
+**Import building options** checks every floor before replacing the current
+list; an invalid floor leaves your configuration intact. The new building keeps
+the name entered in the form and receives new floor identities when saved.
+Single-floor and whole-building files have separate import controls.
+
 Add up to 48 dining tables (192 seats, four chairs each) to any format. Enter any
 whole count from 0–48, or leave the field blank for the format default. Café and restaurant
 defaults include seating; small grids reduce the default count to fit. An explicit
