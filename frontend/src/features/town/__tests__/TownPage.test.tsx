@@ -9,7 +9,7 @@ import { TownPage } from "../TownPage";
 
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), getTown: vi.fn(), getTownDemand: vi.fn(), getScenarios: vi.fn(),
-  generateTown: vi.fn(), importTownFromMap: vi.fn(),
+  generateTown: vi.fn(), importTownFromMap: vi.fn(), describeTown: vi.fn(),
 }));
 vi.mock("../TownMap", () => ({ TownMap: ({ town }: { town: api.Town }) => <div role="img" aria-label={town.name} /> }));
 vi.mock("../StorefrontCard", () => ({ StorefrontCard: () => null }));
@@ -159,4 +159,21 @@ it("shows estimating only while a first estimate is actually pending", async () 
   await act(async () => { pending.resolve(demand); });
   expect(await screen.findByText("137", { exact: true })).toBeTruthy();
   expect(screen.queryByText("Estimating…")).toBeNull();
+});
+
+
+it("sets up the generator from a description and generates only on request", async () => {
+  vi.mocked(api.describeTown).mockResolvedValue({ rationale: "A dense student street with rivals.", spec: {
+    archetype: "university", size_m: 650, density: 0.8, n_competitors: 2, neighbor_categories: ["cafe", "bank"], seed: 1, name: "Campus" } });
+  vi.mocked(api.generateTown).mockResolvedValue(town);
+  await mount();
+  fireEvent.change(await screen.findByLabelText("Describe the area"), { target: { value: "A busy campus street with two rival stores" } });
+  fireEvent.click(screen.getByRole("button", { name: "Set up" }));
+  expect(await screen.findByText(/A dense student street with rivals\. Check the settings, then generate\./)).toBeTruthy();
+  expect(api.describeTown).toHaveBeenCalledWith("alpha", { text: "A busy campus street with two rival stores", seed: 1 });
+  expect(api.generateTown).not.toHaveBeenCalled();
+  expect((screen.getByLabelText("Archetype") as HTMLSelectElement).value).toBe("university");
+  expect(screen.getByRole("button", { name: "Bank" })).toBeTruthy();  // a neighbor outside the usual chips still shows
+  fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+  await waitFor(() => expect(api.generateTown).toHaveBeenCalledWith("alpha", expect.objectContaining({ archetype: "university", n_competitors: 2 })));
 });

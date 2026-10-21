@@ -1057,6 +1057,11 @@ export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
   return fetchJson(`/api/projects/${projectId}/town/generate`, { method: "POST", ...json(spec) });
 }
 
+/** The text model turns a description of the area into a generator spec; nothing is generated. */
+export function describeTown(projectId: string, req: { text: string; seed: number; model?: string }): Promise<{ spec: TownSpec; rationale: string }> {
+  return fetchJson(`/api/projects/${projectId}/town/describe`, { method: "POST", ...json(req) });
+}
+
 export function importTownFromMap(
   projectId: string,
   req: { address?: string; lat?: number; lon?: number; radius_m: number },
