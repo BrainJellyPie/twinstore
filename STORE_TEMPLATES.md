@@ -1,6 +1,6 @@
 # Store layout templates
 
-Everything about generating a furnished starting layout: the 68 store formats, product categories, entrances and
+Everything about generating a furnished starting layout: the 70 store formats, product categories, entrances and
 exits, seating, checkouts, reserved areas, multi-floor buildings and the floor editor. The [README](./README.md#store-formats-and-templates)
 has the short version.
 
@@ -9,10 +9,19 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 68
+In a project, choose **New layout → Generate a store from a template**. Search 70
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+
+**Community market hall** starts with a 32×28 botanical floor, a central plaza,
+four four-seat tables toward the back and four checkout counters. Produce, meals,
+bread, pantry goods and flowers are available daily, 8–20, at fixed pack prices.
+**Creative design hall** uses a 30×24 Nordic floor with homeware, art materials,
+books, jewelry and plant gifts around the plaza, three counters and no dining tables.
+It opens 10–20, with Tuesdays closed. **Market & design commons** combines these
+two floors; each keeps its own dimensions, design and opening days. Both formats
+can use any of the eight layout patterns, custom seating and reserved areas.
 
 **Weekend farmers' market** uses a 28×22 botanical floor with cross aisles, four
 checkouts and produce, bread, pantry and flower displays. It opens only Saturday
