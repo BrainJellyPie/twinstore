@@ -158,6 +158,12 @@ default palette; each building floor can use a different one. The preview uses t
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
+Interior shelf rows can run left to right or front to back. This rotates the
+interior pattern and its product-facing sides while keeping the entrance,
+checkouts, wall fixtures, seating and reserved areas in their chosen locations.
+The perimeter pattern keeps its wall-based arrangement. Shelf direction is saved
+with the other options and can differ between floors or layout alternatives.
+
 Use **Keep areas clear → Add reserved area** to leave up to eight named rectangles
 open for consultation, pickup, events or later customization. Set their starting
 column and row (counting from 1 at the back-left corner), width and depth. Areas

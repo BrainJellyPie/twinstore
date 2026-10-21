@@ -11,6 +11,7 @@ type CheckoutPlacement = Literal["auto", "near_entrance", "away_from_entrance"]
 type SeatingZone = Literal["auto", "front", "back", "left", "right", "center"]
 type StoreDesign = Literal["classic", "warm", "minimal", "industrial", "botanical", "luxury"]
 type FixtureDesign = Literal["mixed", "a", "b", "c"]
+type ShelfDirection = Literal["horizontal", "vertical"]
 
 
 class ReservedArea(BaseModel):
@@ -30,6 +31,7 @@ class LayoutOptions(BaseModel):
     width: int | None = Field(default=None, ge=8, le=40)
     height: int | None = Field(default=None, ge=6, le=40)
     density: LayoutDensity = "balanced"
+    shelf_direction: ShelfDirection = "horizontal"
     entrance: EntrancePosition = "left"
     checkouts: int = Field(default=1, ge=1, le=4)
     checkout_placement: CheckoutPlacement = "auto"

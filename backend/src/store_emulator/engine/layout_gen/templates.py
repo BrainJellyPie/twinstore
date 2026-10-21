@@ -410,24 +410,28 @@ def generate_store(
     # Every populated face opens onto a continuous aisle. Cross-aisles split
     # long shelf runs, and the front two rows stay clear for checkout circulation.
     aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]
-    row_ys = list(range(2, h - 2, aisle + 1))
-    island_xs = [x for x in range(2, w - 2) if (x - 2) % (run_length + aisle) < run_length]
+    vertical = options.shelf_direction == "vertical" and layout_style != "perimeter"
+    pattern_width, pattern_height = (h, w) if vertical else (w, h)
+    row_ys = list(range(2, pattern_height - 2, aisle + 1))
+    island_xs = [x for x in range(2, pattern_width - 2) if (x - 2) % (run_length + aisle) < run_length]
     tiles: list[tuple[int, int, list[Face]]] = []
     if layout_style == "perimeter":
         tiles = [(0, y, [Face.E]) for y in range(2, h - 2)]
     else:
         if layout_style == "loop":
-            row_ys = [2, h - 4] if h >= 8 else [2]
-            island_xs = [x for x in island_xs if 3 <= x < w - 3]
+            row_ys = [2, pattern_height - 4] if pattern_height >= 8 else [2]
+            island_xs = [x for x in island_xs if 3 <= x < pattern_width - 3]
         for row, y in enumerate(row_ys):
             for x in island_xs:
-                if layout_style == "spine" and abs(x - w // 2) < aisle:
+                if layout_style == "spine" and abs(x - pattern_width // 2) < aisle:
                     continue
                 if layout_style == "free_flow" and (x - 2 - row % 2) % (aisle + 1) != 0:
                     continue
                 if layout_style == "showroom" and (x - 2) % (aisle + 3) >= 2:
                     continue
                 tiles.append((x, y, [Face.N, Face.S]))
+    if vertical:
+        tiles = [(y, x, [Face.W, Face.E]) for x, y, _ in tiles]
     if t.gondolas:
         categories = list(t.gondolas)
         rng.shuffle(categories)
@@ -437,7 +441,7 @@ def generate_store(
             cat = categories[min(len(categories) - 1, i * len(categories) // len(tiles))]
             if b.free(x, y) and (x, y) not in dining_clearance:
                 b.add(RackType.SHELF, x, y, category=cat, faces=faces,
-                      rotation=90 if layout_style == "perimeter" else 0,
+                      rotation=90 if layout_style == "perimeter" or vertical else 0,
                       variant="b" if (y // 3) % 2 else "a")
 
     format_design: dict[str, StoreDesign] = {
