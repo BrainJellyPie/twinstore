@@ -29,7 +29,8 @@ import {
 import { cn } from "@/shared/utils/cn";
 
 import { useCreateLayout } from "../hooks/useCreateLayout";
-import { TemplatePicker, type TemplateChoice } from "./TemplatePicker";
+import { TemplatePicker } from "./TemplatePicker";
+import { DEFAULT_TEMPLATE_CHOICE, validTemplateChoice, type TemplateChoice } from "../templateOptions";
 import type { Layout } from "../hooks/useLayouts";
 
 type Approach = "import" | "empty" | "template" | "plan";
@@ -63,7 +64,7 @@ export function AddLayoutDialog({
   const [selectedParentId, setSelectedParentId] = useState<string>(() =>
     resolveDefaultParent(parentSetupId, layouts),
   );
-  const [template, setTemplate] = useState<TemplateChoice>({ templateId: "urban_cvs", seed: 0, currency: "USD", style: null });
+  const [template, setTemplate] = useState<TemplateChoice>(DEFAULT_TEMPLATE_CHOICE);
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [planReader, setPlanReader] = useState<"auto" | "classic">("auto");
 
@@ -84,7 +85,8 @@ export function AddLayoutDialog({
     trimmed.length > 0 &&
     !createLayout.isPending &&
     (approach !== "import" || selectedParentId.length > 0) &&
-    (approach !== "plan" || planFile !== null);
+    (approach !== "plan" || planFile !== null) &&
+    (approach !== "template" || validTemplateChoice(template));
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -112,7 +114,7 @@ export function AddLayoutDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={approach === "template" ? "sm:max-w-[600px]" : "sm:max-w-[420px]"}>
+      <DialogContent className={cn("max-h-[90dvh] overflow-y-auto", approach === "template" ? "sm:max-w-[760px]" : "sm:max-w-[420px]")}>
         <DialogHeader>
           <DialogTitle>Add layout</DialogTitle>
         </DialogHeader>

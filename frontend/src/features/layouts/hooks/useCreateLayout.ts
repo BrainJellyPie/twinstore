@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createSetup, generateLayout, importFloorPlan, type SetupSummaryShort } from "@/shared/api/client";
+import { templateRequest, type TemplateChoice } from "../templateOptions";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
 
@@ -8,7 +9,7 @@ import { useSimulationStore } from "@/stores/simulationStore";
 type CreateLayoutSource =
   | { kind: "import"; parentSetupId: string }
   | { kind: "empty" }
-  | { kind: "template"; templateId: string; seed: number; currency: string; style: "aisles" | "loop" | null }
+  | ({ kind: "template" } & TemplateChoice)
   | { kind: "plan"; file: File; reader: "auto" | "classic" };
 
 interface Params {
@@ -27,7 +28,7 @@ export function useCreateLayout() {
         ? importFloorPlan(projectId, source.file, { reader: source.reader, name }).then((r) => r.setup)
         : source.kind === "template"
         ? generateLayout(projectId, {
-            template_id: source.templateId, seed: source.seed, currency: source.currency, style: source.style, name,
+            ...templateRequest(source), name,
           })
         : createSetup(projectId, {
             mode: source.kind === "import" ? "racks_and_items" : "empty",

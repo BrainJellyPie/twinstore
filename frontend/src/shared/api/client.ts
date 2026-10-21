@@ -159,6 +159,7 @@ export interface SetupSummary {
 
 export interface SetupDetail extends SetupSummary {
   store: Store | null;
+  generation?: GenerateLayoutRequest | null;
   blocked_faces?: BlockedFaceDetail[];
 }
 
@@ -1296,25 +1297,38 @@ export interface StoreTemplate {
   racks: number;
   skus: number;
   open_hours: [number, number];
+  default_style: NonNullable<LayoutOptions["style"]>;
 }
 
-export interface GenerateLayoutRequest {
+export interface LayoutOptions {
+  style?: "aisles" | "loop" | "spine" | "free_flow" | "perimeter" | "showroom" | null;
+  width?: number | null;
+  height?: number | null;
+  density?: "spacious" | "balanced" | "dense";
+  entrance?: "left" | "center" | "right";
+  checkouts?: number;
+  fixture_design?: "mixed" | "a" | "b" | "c";
+}
+
+export interface GenerateLayoutRequest extends LayoutOptions {
   template_id: string;
   seed: number;
   currency: string;
-  style?: "aisles" | "loop" | null;
   name?: string;
+  requirements?: string;
 }
 
 export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]> {
   return fetchJson("/api/store-templates", { signal });
 }
 
-export function previewStoreTemplate(
-  templateId: string, seed: number, currency: string, style: "aisles" | "loop" | null, signal?: AbortSignal,
-): Promise<Store> {
-  const q = new URLSearchParams({ seed: String(seed), currency, ...(style ? { style } : {}) });
-  return fetchJson(`/api/store-templates/${templateId}/preview?${q}`, { signal });
+export function previewStoreTemplate(request: GenerateLayoutRequest, signal?: AbortSignal): Promise<Store> {
+  const { template_id, name: _name, requirements: _requirements, ...options } = request;
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(options)) {
+    if (value !== null && value !== undefined) q.set(key, String(value));
+  }
+  return fetchJson(`/api/store-templates/${encodeURIComponent(template_id)}/preview?${q}`, { signal });
 }
 
 export function generateLayout(projectId: string, body: GenerateLayoutRequest): Promise<SetupSummaryShort> {
