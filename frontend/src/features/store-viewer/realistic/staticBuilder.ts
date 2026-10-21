@@ -55,7 +55,7 @@ function toIndexed(g: THREE.BufferGeometry): THREE.BufferGeometry {
 
 // Real manufactured edges catch a narrow highlight. Keep the extra triangles
 // on visible fixture bodies; walls, glass, labels and tiny rails stay simple.
-const BEVELED = new Set<MatKey>(["metalWhite", "fridgeShell", "freezerBody", "counterTop", "wood", "bumper"]);
+const BEVELED = new Set<MatKey>(["metalWhite", "fridgeShell", "freezerBody", "counterTop", "wood", "bumper", "black"]);
 
 export class StaticBuilder {
   constructor(private readonly beveled = false) {}
