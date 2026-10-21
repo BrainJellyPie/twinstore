@@ -37,7 +37,7 @@ export function CapturePage({ projectId }: { projectId: string }) {
   const select = (id: string | null) => { setChosenNew(id === null); setSelected(id); };
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto md:overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <CaptureStrip projectId={projectId} captures={captures} selected={selected} onSelect={select} />
         {selected ? (
@@ -214,8 +214,8 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
   return (
     <>
     {loadError}
-    <div className="flex min-h-0 flex-1 gap-4">
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 md:flex-row">
+      <div className="flex min-h-[55dvh] min-w-0 shrink-0 flex-col gap-2 md:min-h-0 md:flex-1">
         <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--scene)] p-3 shadow-[var(--shadow-lift)]">
           {editId && result ? (
             <BeforeAfter beforeUrl={api.captureImageUrl(projectId, captureId)} afterUrl={api.editFileUrl(projectId, captureId, editId, "image")}
@@ -250,17 +250,17 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
           </button>
         </div>
       </div>
-      <aside className="panel flex w-[28rem] shrink-0 flex-col overflow-hidden rounded-[1.6rem]">
+      <aside className="panel flex w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-[1.6rem] md:w-[28rem]">
         <div className="flex gap-1 border-b border-glass-border p-2">
           {([
             { id: "planogram", label: "Planogram", icon: ListChecks },
             { id: "lab", label: "Shelf Lab", icon: FlaskConical },
           ] as const).map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => setTab(id)}
-              className={cn("flex h-10 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors",
+              className={cn("flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium transition-colors",
                 tab === id ? "bg-foreground/[0.08] text-foreground shadow-[inset_0_1px_0_var(--highlight)]" : "text-muted-foreground hover:text-foreground")}>
-              <Icon className="size-4" /> {label}
-              {id === "lab" && <span className="rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-bold text-primary-foreground">NEW</span>}
+              <Icon className="hidden size-4 shrink-0 sm:block" /> {label}
+              {id === "lab" && <span className="hidden rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-bold text-primary-foreground sm:inline">NEW</span>}
             </button>
           ))}
         </div>
@@ -375,7 +375,7 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
 
   return (
     <section className="rounded-2xl border bg-card p-3">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="section-title">Products on this shelf</h3>
         <Button size="sm" disabled={!dirty || invalidPrice || save.isPending} onClick={() => save.mutate()} className="gap-1.5">
           {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : save.isSuccess && !dirty ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
@@ -400,8 +400,8 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
                       <Trash2 className="size-3.5" />
                     </button>
                   </div>
-                  <div className="mt-1.5 grid grid-cols-[1fr_88px_92px] items-center gap-2 text-xs">
-                    <select className="h-7 min-w-0 rounded-md border bg-background px-1" value={d.category} onChange={(e) => patch(d.id, { category: e.target.value })}>
+                  <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_92px] items-center gap-2 text-xs sm:grid-cols-[minmax(0,1fr)_88px_92px]">
+                    <select className="col-span-2 h-7 min-w-0 rounded-md border bg-background px-1 sm:col-span-1" value={d.category} onChange={(e) => patch(d.id, { category: e.target.value })}>
                       <option value="">{categoryLabel("")}</option>
                       {CAPTURE_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                     </select>
@@ -491,7 +491,7 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
         </select>
       )}
       {apply.error && <p className="mt-2 text-xs text-destructive">{apply.error instanceof Error ? apply.error.message : String(apply.error)}</p>}
-      <Button className="mt-3 w-full gap-2" size="lg" disabled={!base || apply.isPending || (mode === "replace" && racks.length === 0)} onClick={() => apply.mutate()}>
+      <Button className="mt-3 h-auto min-h-10 w-full gap-2 py-2.5 whitespace-normal" size="lg" disabled={!base || apply.isPending || (mode === "replace" && racks.length === 0)} onClick={() => apply.mutate()}>
         {apply.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />} Create a layout with this shelf
       </Button>
       <p className="mt-2 text-xs text-muted-foreground">Saved as a new draft layout — the original stays as it is, ready for an A/B run.</p>
