@@ -12,6 +12,7 @@ import {
 } from "../utils/eventQueue";
 import { parseTimeToSeconds } from "../utils/playback";
 import { colorForCustomer } from "@/shared/utils/hashColor";
+import { facingForEvent } from "@/features/store-viewer/realistic/shopperPose";
 
 export interface PersonaFrame {
   id: string;
@@ -254,9 +255,10 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
       }
 
       const isMoving = !!(next && (next.x !== prev.x || next.y !== prev.y));
-      const facing = isMoving
+      const heading = isMoving
         ? Math.atan2(next!.x - prev.x, next!.y - prev.y)
         : state.trailFacing;
+      const facing = facingForEvent(heading, isMoving, prev);
 
       // state.trail is the event-based accumulator. Append the interpolated current
       // position as the tail to form the output trail. slice cost is O(unique tiles

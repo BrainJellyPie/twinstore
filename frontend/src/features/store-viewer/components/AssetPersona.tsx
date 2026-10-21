@@ -9,6 +9,7 @@ import { formatMoney } from "@/shared/utils/money";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { M, PERSONA_SCALE } from "../realistic/constants";
+import { angleDelta } from "../realistic/shopperPose";
 
 ALL_CHARACTER_ASSETS.forEach((url) => useGLTF.preload(url));
 
@@ -150,7 +151,18 @@ export function AssetPersona({
   const isPaying = !realistic && event?.action === "pay";
 
   const bounceRef = useRef<THREE.Group>(null);
-  useFrame(() => {
+  const turnRef = useRef<THREE.Group>(null);
+  const turnReady = useRef(false);
+  useFrame((_, delta) => {
+    const turn = turnRef.current;
+    if (turn) {
+      if (!turnReady.current || !realistic || !usePlaybackControlStore.getState().playing) {
+        turn.rotation.y = facing;
+        turnReady.current = true;
+      } else {
+        turn.rotation.y += angleDelta(turn.rotation.y, facing) * (1 - Math.exp(-12 * Math.min(delta, 0.1)));
+      }
+    }
     if (!bounceRef.current) return;
     if (isPaying) {
       const t = (performance.now() % 400) / 400;
@@ -163,7 +175,7 @@ export function AssetPersona({
   return (
     <group scale={scale}>
       <group ref={bounceRef}>
-      <group rotation={[0, facing, 0]}>
+      <group ref={turnRef} name="shopper-heading">
         <Suspense fallback={null}>
           <CharacterMesh key={url} url={url} animName={animName} realistic={realistic} personaId={personaId} />
         </Suspense>

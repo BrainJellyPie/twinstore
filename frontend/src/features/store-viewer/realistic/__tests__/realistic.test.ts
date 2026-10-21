@@ -4,7 +4,7 @@ import { classifyProduct, hashString, luminance, productPalette, splitLabel } fr
 import { atlasGrid, cellUv } from "../atlasLayout";
 import { planFixture, faceTangent, FACE_NORMAL } from "../fixtureSpecs";
 import { layoutProducts } from "../productLayout";
-import { activeShoppers, angleDelta, shopperPoseAt } from "../shopperPose";
+import { activeShoppers, angleDelta, facingForEvent, shopperPoseAt } from "../shopperPose";
 import { createClock, stepClock } from "../playbackClock";
 
 const item = (name: string, price = 249, promo = ""): SlotItem => ({ sku: name, name, price, promo });
@@ -215,6 +215,14 @@ describe("shopper pose and playback clock", () => {
     expect(shopperPoseAt(customer, t0 + 41)).toBeNull();
     expect(activeShoppers([customer], 1, t0 + 5)).toHaveLength(1);
     expect(activeShoppers([customer], 2, t0 + 5)).toHaveLength(0);
+  });
+
+  it("orients bodies toward shelves without requiring a speech description", () => {
+    const event = { ...ev(20, 2, 3, "browse", "S"), description: "" };
+    expect(facingForEvent(Math.PI / 2, false, event)).toBe(Math.PI);
+    expect(facingForEvent(Math.PI / 2, true, event)).toBe(Math.PI / 2);
+    expect(facingForEvent(Math.PI / 2, false, { ...event, face: null })).toBe(Math.PI / 2);
+    expect(angleDelta(Math.PI - 0.01, -Math.PI + 0.01)).toBeCloseTo(0.02);
   });
 
   it("mirrors the playback clock from the published minute", () => {
