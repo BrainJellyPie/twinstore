@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { useState } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { LayoutOptions, ReservedArea } from "@/shared/api/client";
 import { ReservedAreasEditor } from "../components/ReservedAreasEditor";
 
 afterEach(cleanup);
 
-function Editor({ grid, entrance = "left", gateWall = "front" }: { grid: [number, number]; entrance?: LayoutOptions["entrance"]; gateWall?: LayoutOptions["gate_wall"] }) {
-  const [areas, setAreas] = useState<ReservedArea[]>([]);
+function Editor({ grid, initial = [], entrance = "left", gateWall = "front" }: { grid: [number, number]; initial?: ReservedArea[]; entrance?: LayoutOptions["entrance"]; gateWall?: LayoutOptions["gate_wall"] }) {
+  const [areas, setAreas] = useState<ReservedArea[]>(initial);
   return <><ReservedAreasEditor areas={areas} onChange={setAreas} grid={grid} entrance={entrance} gateWall={gateWall} />
     <output data-testid="areas">{JSON.stringify(areas)}</output></>;
 }
@@ -74,4 +74,45 @@ it("requires valid floor dimensions before adding a starting point", () => {
   render(<Editor grid={[7, 6]} />);
   expect((screen.getByRole("button", { name: "Add reserved area" }) as HTMLButtonElement).disabled).toBe(true);
   expect(savedAreas()).toEqual([]);
+});
+
+
+it("moves and swaps one existing area without changing other areas or submitting", () => {
+  const submit = vi.fn();
+  const first = { label: "Consultation", x: 2, y: 3, width: 4, height: 3 };
+  const second = { label: "Pickup", x: 5, y: 6, width: 2, height: 2 };
+  render(<form onSubmit={submit}><Editor grid={[24, 18]} initial={[first, second]} /></form>);
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to front right" }));
+  expect(savedAreas()).toEqual([{ ...first, x: 19, y: 14 }, second]);
+  expect((screen.getByRole("button", { name: "Swap area 1 width and depth" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to center" }));
+  fireEvent.click(screen.getByRole("button", { name: "Swap area 1 width and depth" }));
+  expect(savedAreas()).toEqual([{ ...first, x: 10, y: 7, width: 3, height: 4 }, second]);
+  fireEvent.click(screen.getByRole("button", { name: "Swap area 1 width and depth" }));
+  expect(savedAreas()[0]).toEqual({ ...first, x: 10, y: 7 });
+  expect(submit).not.toHaveBeenCalled();
+});
+
+it("uses current grid dimensions, recovers missing coordinates and holds invalid sizes", () => {
+  const first = { label: "Consultation", x: 2, y: 2, width: 4, height: 3 };
+  const view = render(<Editor grid={[24, 18]} initial={[first]} />);
+  view.rerender(<Editor grid={[8, 6]} initial={[first]} />);
+  fireEvent.change(screen.getByLabelText("Area 1 start column"), { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to back right" }));
+  expect(savedAreas()[0]).toEqual({ ...first, x: 3, y: 1 });
+  expect((screen.getByLabelText("Area 1 start column") as HTMLInputElement).value).toBe("4");
+  fireEvent.change(screen.getByLabelText("Area 1 width"), { target: { value: "" } });
+  expect((screen.getByRole("button", { name: "Move area 1 to center" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "Swap area 1 width and depth" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("Area 1 width"), { target: { value: "3" } });
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to front left" }));
+  expect(savedAreas()[0]).toEqual({ ...first, x: 1, y: 2, width: 3 });
+});
+
+it("keeps oversized swaps disabled without silently moving or shrinking a full interior area", () => {
+  const first = { label: "Event", x: 1, y: 1, width: 6, height: 4 };
+  render(<Editor grid={[8, 6]} initial={[first]} />);
+  const swap = screen.getByRole("button", { name: "Swap area 1 width and depth" });
+  expect((swap as HTMLButtonElement).disabled).toBe(true); fireEvent.click(swap);
+  expect(savedAreas()).toEqual([first]);
 });
