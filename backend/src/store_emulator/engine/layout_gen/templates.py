@@ -449,6 +449,38 @@ TEMPLATES: list[StoreTemplate] = [
         style="perimeter", open_hours=(16, 24), dining_tables=12, checkouts=6, seating_zone="center",
         checkout_placement="near_entrance", design_theme="terracotta",
     ),
+    StoreTemplate(
+        id="weekend_farmers_market", name="Weekend farmers' market", description="A large botanical market for produce, bread, pantry goods and flowers, with cross aisles and four checkout counters. Open Saturday and Sunday, 8–16; products use fixed pack prices.",
+        store_type="supermarket", grid=(28, 22), fridges=["fresh_produce", "fresh_produce", "dairy", "water_sports"],
+        wall_shelves=["bakery", "pantry", "flowers", "refill_goods"] * 3,
+        gondolas=["fresh_produce", "pantry", "bakery", "flowers", "refill_goods"], near_counter=["bakery", "flowers"],
+        style="cross", open_hours=(8, 16), closed_days=(1, 2, 3, 4, 5), checkouts=4,
+        checkout_placement="near_entrance", design_theme="botanical",
+    ),
+    StoreTemplate(
+        id="station_food_market", name="Station fresh-food market", description="Fresh meals, sandwiches, salads and coffee along a central spine, with two tables at the back and three checkout counters. Open 5–24 for commuter shopping.",
+        store_type="convenience", grid=(20, 14), fridges=["fresh_meals", "fresh_meals", "salad_menu", "energy_coffee", "water_sports", "dairy"],
+        wall_shelves=["bakery", "travel_gear", "pantry", "bakery"],
+        gondolas=["fresh_meals", "bakery", "salad_menu", "travel_gear"], near_counter=["coffee_station", "bakery"],
+        style="spine", open_hours=(5, 24), dining_tables=2, seating_zone="back", checkouts=3,
+        checkout_placement="near_entrance", design_theme="coastal",
+    ),
+    StoreTemplate(
+        id="cinema_snack_shop", name="Cinema snack shop", description="Popcorn, chips, sweets, drinks and ice cream in an open-center snack shop with three ordering counters and no dining tables. Open 10–24; tickets and screenings are outside the retail model.",
+        store_type="convenience", grid=(18, 12), fridges=["soft_drinks", "soft_drinks", "water_sports"], freezers=["ice_cream", "scoop_menu"],
+        wall_shelves=["chips", "sweets", "chips", "sweets", "bakery"],
+        gondolas=["chips", "sweets"], near_counter=["chips", "checkout_impulse"],
+        style="perimeter", open_hours=(10, 24), checkouts=3,
+        checkout_placement="near_entrance", design_theme="industrial",
+    ),
+    StoreTemplate(
+        id="office_cafeteria", name="Weekday office cafeteria", description="A 28×24 lunch floor with sixteen four-seat tables, four ordering counters and hot meals, salads and coffee. Open Monday–Friday, 7–19. Models counter purchases.",
+        store_type="restaurant", grid=(28, 24), fridges=["salad_menu", "fresh_meals", "water_sports", "dairy", "soft_drinks"],
+        wall_shelves=["restaurant_menu", "korean_menu", "bakery", "cafe_menu"] * 2,
+        gondolas=["restaurant_menu", "salad_menu", "korean_menu"], near_counter=["coffee_station", "juice_menu"],
+        style="perimeter", open_hours=(7, 19), closed_days=(6, 7), dining_tables=16, seating_zone="center", checkouts=4,
+        checkout_placement="near_entrance", design_theme="minimal",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
