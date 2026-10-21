@@ -12,7 +12,15 @@ from store_emulator.application import marketing as mk
 from store_emulator.application import staff_pitch
 from store_emulator.application.errors import AppError
 from store_emulator.application.marketing import ExperimentView, SurveyView
-from store_emulator.domain.marketing import ExperimentRequest, JobStatus, MarketingInfo, ShelfTestRequest, SurveyRequest
+from store_emulator.domain.marketing import (
+    ExperimentRequest,
+    JobStatus,
+    MarketingInfo,
+    ShelfPreview,
+    ShelfPreviewRequest,
+    ShelfTestRequest,
+    SurveyRequest,
+)
 from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.engine.marketing.report import ReportNarrative
 
@@ -154,6 +162,11 @@ async def start_shelf_test(pid: str, req: ShelfTestRequest) -> JobStatus:
     """The same respondents see the control shelf face and the changed one (new pack, price, sign, placement), pick one
     product and name what caught their eye first; the target's pick share and stand-out are compared pair by pair."""
     return await run_in_threadpool(_call, lambda: mk.start_shelf_test(pid, req, get_config()))
+
+
+@router.post("/{pid}/shelf-tests/preview", summary="Render the control and test shelf", response_model=ShelfPreview)
+async def preview_shelf(pid: str, req: ShelfPreviewRequest) -> ShelfPreview:
+    return await run_in_threadpool(_call, lambda: mk.preview_shelf(pid, req, get_config()))
 
 
 @router.get("/{pid}/shelf-tests", summary="Shelf tests of a project", response_model=list[JobStatus])

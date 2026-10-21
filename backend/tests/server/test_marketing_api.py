@@ -179,6 +179,8 @@ def test_shelf_test_with_fake_vision_model(client, monkeypatch):
     for arm in ("control", "test"):
         img = client.get(f"/api/projects/{PID}/shelf-tests/{tid}/{arm}.png")
         assert img.status_code == 200 and img.content[:4] == b"\x89PNG"
+    prev = client.post(f"/api/projects/{PID}/shelf-tests/preview", json={k: body[k] for k in ("setup_id", "rack_id", "target_sku", "changes")}).json()
+    assert prev["control"].startswith("data:image/png;base64,") and prev["control"] != prev["test"] and len(prev["applied"]) == 2
     bad = {**body, "changes": [{"kind": "promo", "sku": "NOPE"}]}
     assert client.post(f"/api/projects/{PID}/shelf-tests", json=bad).status_code == 400
     assert client.delete(f"/api/projects/{PID}/shelf-tests/{tid}").status_code == 204
