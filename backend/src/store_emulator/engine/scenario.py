@@ -10,6 +10,7 @@ import math
 import random
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.rack import Rack, Slot, SlotItem
@@ -83,6 +84,13 @@ class ScenarioEffects:
     budget: float = 1.0
     quantity: float = 1.0
     situation: str = ""
+    # Ratio of the share of trips that need each category (ScenarioPriors.need_ratio), 1 = unchanged.
+    need: dict[str, float] = field(default_factory=dict[str, float])
+
+    def need_for(self, categories: set[str]) -> float:
+        """The strongest of the categories' need ratios (a label can name two: "flavored water")."""
+        ratios = [self.need[c] for c in categories if c in self.need]
+        return max(ratios, key=lambda r: abs(math.log(r)) if r > 0 else 0.0) if ratios else 1.0
 
     def traffic(self, hour: int) -> float:
         return self.base_traffic * self.traffic_by_hour.get(hour, 1.0)
@@ -117,7 +125,10 @@ def _temperature_demand(t: float, p: ScenarioPriors) -> dict[str, float]:
 # profile was fitted on (research/validation: The Complete Journey, Favorita, M5, Rossmann, Frat).
 GROCERY_FORMATS: frozenset[str] = frozenset({"supermarket", "hypermarket", "grocery", "pharmacy", "drugstore",
                                              "mini_mart", "minimart"})
-GROCERY_PRIORS = ScenarioPriors()   # replaced below by the fitted profile
+# Fitted to real data by research/validation/calibrate_situations.py (traffic: Rossmann weather, CJ and
+# Favorita weekends and holidays, Rossmann/Favorita paydays; demand: The Complete Journey's
+# per-trip category shares by season, weekend, holiday season and Super Bowl Sunday).
+GROCERY_PRIORS = ScenarioPriors.model_validate_json((Path(__file__).with_name("grocery_priors.json")).read_text())
 
 
 def priors_for(store_type: str, override: ScenarioPriors | None = None) -> ScenarioPriors:
@@ -152,6 +163,12 @@ def compile_scenario(scenario: Scenario, priors: ScenarioPriors | None = None) -
     for hour, m in scenario.hourly_traffic.items():
         fx.traffic_by_hour[hour] = fx.traffic_by_hour.get(hour, 1.0) * m
     fx.situation = situation_text(scenario)
+    keys = [(f"weather:{w}", 1.0), (f"day:{scenario.day_type.value}", 1.0)]
+    if scenario.season is not None:
+        keys.append((f"season:{scenario.season.value}", 1.0))
+    keys += [(f"event:{e.kind.value}", e.intensity) for e in scenario.events]
+    for key, power in keys:
+        _mul(fx.need, p.need_ratio.get(key, {}), power=power)
     return fx
 
 

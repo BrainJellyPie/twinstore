@@ -342,12 +342,28 @@ def test_needs_are_a_seeded_draw_at_each_category_rate():
 
     store = _store()
     persona = _personas()[0].model_copy(update={"category_rates": {"Drink": 0.9, "Snacks": 0.5, "Ice cream": 0.1}})
-    draws = [VLMGlanceEngine._needs(_context(store, persona, seed=s)) for s in range(400)]  # pyright: ignore[reportPrivateUsage]
+    engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    draws = [engine._needs(_context(store, persona, seed=s)) for s in range(400)]  # pyright: ignore[reportPrivateUsage]
     assert all(d is not None for d in draws)
     share = {c: sum(c in d[0] for d in draws if d) / len(draws) for c in ("Drink", "Snacks", "Ice cream")}
     assert abs(share["Drink"] - 0.9) < 0.05 and abs(share["Snacks"] - 0.5) < 0.07 and abs(share["Ice cream"] - 0.1) < 0.05
-    assert draws[3] == VLMGlanceEngine._needs(_context(store, persona, seed=3))  # pyright: ignore[reportPrivateUsage]
-    assert VLMGlanceEngine._needs(_context(store, _personas()[0], seed=1)) is None  # pyright: ignore[reportPrivateUsage]
+    assert draws[3] == engine._needs(_context(store, persona, seed=3))  # pyright: ignore[reportPrivateUsage]
+    assert engine._needs(_context(store, _personas()[0], seed=1)) is None  # pyright: ignore[reportPrivateUsage]
     text = plan_user_prompt(persona, BehaviorCue(state=""), BEHAVIOR_PATTERNS[0], day=Weekday.MON, hour=9, situation="",
                             budget=None, currency="USD", directory="", needs=(["Drink"], ["Snacks", "Ice cream"]))
     assert "needed this trip: Drink." in text and "Still stocked at home (bought recently): Snacks, Ice cream." in text
+
+
+def test_a_situation_scales_the_need_draw_by_its_measured_ratio():
+    from store_emulator.domain.scenario import Scenario, ScenarioPriors, Season
+
+    store = _store()
+    persona = _personas()[0].model_copy(update={"category_rates": {"Drink": 0.3, "Snacks": 0.3}})
+    priors = ScenarioPriors(need_ratio={"season:summer": {"cold_drinks": 2.0, "snacks": 0.5}})
+    summer = _config().model_copy(update={"scenario": Scenario(season=Season.SUMMER), "scenario_priors": priors})
+    engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=summer)  # type: ignore[arg-type]
+    engine.prepare(store)
+    draws = [engine._needs(_context(store, persona, seed=s)) for s in range(600)]  # pyright: ignore[reportPrivateUsage]
+    drink = sum("Drink" in d[0] for d in draws if d) / len(draws)
+    snacks = sum("Snacks" in d[0] for d in draws if d) / len(draws)
+    assert abs(drink - 0.6) < 0.06 and abs(snacks - 0.15) < 0.05
