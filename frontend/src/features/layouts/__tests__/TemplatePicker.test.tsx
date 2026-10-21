@@ -34,6 +34,30 @@ function mount() {
   render(<QueryClientProvider client={client}><Picker /></QueryClientProvider>);
 }
 
+it("applies the actual default palette or explicit design and currency without submitting the form", async () => {
+  const design = vi.fn(), currency = vi.fn(), submit = vi.fn();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { rerender } = render(<QueryClientProvider client={client}><form onSubmit={submit}>
+    <TemplatePicker value={DEFAULT_TEMPLATE_CHOICE} onChange={vi.fn()} onApplyDesignToAll={design} onApplyCurrencyToAll={currency} />
+  </form></QueryClientProvider>);
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByRole("button", { name: "Apply design to all floors" }));
+  expect(design).toHaveBeenLastCalledWith("classic");
+  const value = { ...DEFAULT_TEMPLATE_CHOICE, design_theme: "terracotta" as const, currency: "JPY" };
+  rerender(<QueryClientProvider client={client}><form onSubmit={submit}>
+    <TemplatePicker value={value} onChange={vi.fn()} onApplyDesignToAll={design} onApplyCurrencyToAll={currency} />
+  </form></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Apply design to all floors" }));
+  fireEvent.click(screen.getByRole("button", { name: "Apply currency to all floors" }));
+  expect(design).toHaveBeenLastCalledWith("terracotta");
+  expect(currency).toHaveBeenLastCalledWith("JPY");
+  expect(submit).not.toHaveBeenCalled();
+  rerender(<QueryClientProvider client={client}><TemplatePicker value={value} onChange={vi.fn()}
+    onApplyDesignToAll={design} onApplyCurrencyToAll={currency} sharedDesign="terracotta" sharedCurrency="JPY" /></QueryClientProvider>);
+  expect((screen.getByRole("button", { name: "Design used on all floors" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "Currency used on all floors" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
 it("excludes chosen categories, keeps a stocked category and restores the assortment independently", async () => {
   mount();
   fireEvent.click(await screen.findByText("Product categories · 3 of 3 included"));

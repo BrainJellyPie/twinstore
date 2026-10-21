@@ -11,11 +11,15 @@ import { GenerationOptionsFile } from "./GenerationOptionsFile";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
-export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, sharedDesign, sharedCurrency }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
   budgetCurrency?: string;
+  onApplyDesignToAll?: (design: NonNullable<TemplateChoice["design_theme"]>) => void;
+  onApplyCurrencyToAll?: (currency: string) => void;
+  sharedDesign?: NonNullable<TemplateChoice["design_theme"]>;
+  sharedCurrency?: string;
 }) {
   const [search, setSearch] = useState("");
   const [storeType, setStoreType] = useState("");
@@ -33,6 +37,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     enabled: validTemplateChoice(value), staleTime: Infinity,
   });
   const selected = templates.find((t) => t.id === value.templateId);
+  const activeDesign = value.design_theme ?? selected?.default_design;
   const categories = selected?.categories ?? [];
   const excluded = new Set(value.excluded_categories ?? []);
   const includedCount = categories.filter((category) => !excluded.has(category.id)).length;
@@ -180,16 +185,22 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value="away_from_entrance">Away from the entrance</option>
               </select></Field>
               <p className="col-span-2 text-[10px] text-muted-foreground">Counters and small checkout displays share this wall. Other wall stock uses the remaining space.</p>
-              <Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
+              <div className="space-y-1"><Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
                 <option value="">Format default{selected ? ` (${INTERIOR_DESIGNS[selected.default_design]?.label ?? "Classic retail"})` : ""}</option>
                 {Object.entries(INTERIOR_DESIGNS).map(([id, palette]) => <option key={id} value={id}>{palette.label}</option>)}
               </select></Field>
+                {onApplyDesignToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={!activeDesign || sharedDesign === activeDesign}
+                  onClick={() => { if (activeDesign) onApplyDesignToAll(activeDesign); }}>{activeDesign && sharedDesign === activeDesign ? "Design used on all floors" : "Apply design to all floors"}</button>}
+              </div>
               <Field label="Shelf design"><select className={controlClass} value={value.fixture_design ?? "mixed"} onChange={(e) => update({ fixture_design: e.target.value as TemplateChoice["fixture_design"] })}>
                 <option value="mixed">Mixed displays</option><option value="a">Open rack A</option><option value="b">Open rack B</option><option value="c">Wall-end rack C</option>
               </select></Field>
-              <Field label="Price currency"><select className={controlClass} value={value.currency} onChange={(e) => update({ currency: e.target.value })}>
+              <div className="space-y-1"><Field label="Price currency"><select className={controlClass} value={value.currency} onChange={(e) => update({ currency: e.target.value })}>
                 <option value="USD">USD · $</option><option value="KRW">KRW · ₩</option><option value="JPY">JPY · ¥</option>
               </select></Field>
+                {onApplyCurrencyToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={sharedCurrency === value.currency}
+                  onClick={() => onApplyCurrencyToAll(value.currency)}>{sharedCurrency === value.currency ? "Currency used on all floors" : "Apply currency to all floors"}</button>}
+              </div>
               <div className="space-y-1"><Field label="Dining tables (4 seats each)"><input type="number" min={0} max={48} step={1} className={controlClass}
                 placeholder={`Format default (${selected?.default_dining_tables ?? 0})`} value={value.dining_tables ?? ""}
                 onChange={(e) => update({ dining_tables: e.target.value === "" ? null : Number(e.target.value) })} /></Field>

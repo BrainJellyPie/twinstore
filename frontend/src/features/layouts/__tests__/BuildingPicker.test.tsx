@@ -10,8 +10,14 @@ import * as api from "@/shared/api/client";
 vi.mock("@/shared/api/client", () => ({ validateBuildingPreset: vi.fn() }));
 
 vi.mock("../components/TemplatePicker", () => ({
-  TemplatePicker: ({ value, onChange }: { value: TemplateChoice; onChange: (v: TemplateChoice) => void }) =>
-    <div><span>{value.templateId} / width {value.width ?? "default"}</span><span data-testid="floor-currency">{value.currency}</span><button type="button" onClick={() => onChange({ ...value, width: 30 })}>Set floor width</button></div>,
+  TemplatePicker: ({ value, onChange, onApplyDesignToAll, onApplyCurrencyToAll }: {
+    value: TemplateChoice; onChange: (v: TemplateChoice) => void;
+    onApplyDesignToAll?: (design: NonNullable<TemplateChoice["design_theme"]>) => void; onApplyCurrencyToAll?: (currency: string) => void;
+  }) => <div><span>{value.templateId} / width {value.width ?? "default"}</span><span data-testid="floor-currency">{value.currency}</span>
+    <span data-testid="floor-design">{value.design_theme ?? "default"}</span>
+    <button type="button" onClick={() => onChange({ ...value, width: 30 })}>Set floor width</button>
+    <button type="button" onClick={() => onApplyDesignToAll?.("coastal")}>Share coastal design</button>
+    <button type="button" onClick={() => onApplyCurrencyToAll?.("JPY")}>Share JPY currency</button></div>,
 }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
@@ -47,6 +53,22 @@ it("keeps each floor's options when switching and editing", () => {
   fireEvent.click(screen.getByRole("button", { name: /1F/ }));
   expect(screen.getByText("community_pharmacy / width 30")).toBeTruthy();
   expect(screen.getByRole("button", { name: /2F · Consultation level/ })).toBeTruthy();
+});
+
+it("shares design and currency while keeping each floor's format, dimensions and label", () => {
+  render(<Building />);
+  fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
+  fireEvent.change(screen.getByLabelText("Floor label"), { target: { value: "Custom ground" } });
+  fireEvent.click(screen.getByRole("button", { name: "Share coastal design" }));
+  fireEvent.click(screen.getByRole("button", { name: "Share JPY currency" }));
+  fireEvent.click(screen.getByRole("button", { name: /2F/ }));
+  expect(screen.getByText("wellness_pharmacy / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-design").textContent).toBe("coastal");
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+  fireEvent.click(screen.getByRole("button", { name: "1F · Custom ground" }));
+  expect(screen.getByText("community_pharmacy / width 30")).toBeTruthy();
+  expect(screen.getByTestId("floor-design").textContent).toBe("coastal");
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
 });
 
 it("bounds floor count and flags duplicate labels", () => {
