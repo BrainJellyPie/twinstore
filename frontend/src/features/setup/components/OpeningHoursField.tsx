@@ -1,6 +1,7 @@
 // Cross-field validation (close > open) lives in the parent's validate.ts; this
 // component only renders error messages it receives. closeHour=24 means "24:00".
 
+import { useI18n } from "@/shared/i18n/i18n";
 import { cn } from "@/shared/utils/cn";
 import {
   Select,
@@ -38,9 +39,10 @@ export function OpeningHoursField({
   closeError,
   disabled,
 }: OpeningHoursFieldProps) {
+  const { t } = useI18n();
   return (
     <div className="space-y-1.5">
-      <span className={labelClass}>Opening hours</span>
+      <span className={labelClass}>{t("openingHours")}</span>
       <div className="flex items-center gap-3">
         <Select
           value={String(openHour)}
@@ -51,7 +53,8 @@ export function OpeningHoursField({
             id="setup-open-hour"
             className={cn("flex-1", openError && errorBorderClass)}
             aria-invalid={openError ? true : undefined}
-            aria-label="Opening time"
+            aria-label={t("openingTime")}
+            aria-describedby={openError ? "setup-open-hour-error" : undefined}
           >
             <SelectValue />
           </SelectTrigger>
@@ -73,7 +76,8 @@ export function OpeningHoursField({
             id="setup-close-hour"
             className={cn("flex-1", closeError && errorBorderClass)}
             aria-invalid={closeError ? true : undefined}
-            aria-label="Closing time"
+            aria-label={t("closingTime")}
+            aria-describedby={closeError ? "setup-close-hour-error" : undefined}
           >
             <SelectValue />
           </SelectTrigger>
@@ -88,8 +92,8 @@ export function OpeningHoursField({
       </div>
       {(openError || closeError) && (
         <div className="space-y-0.5">
-          {openError && <p className={errorTextClass}>{openError}</p>}
-          {closeError && <p className={errorTextClass}>{closeError}</p>}
+          {openError && <p id="setup-open-hour-error" role="alert" className={errorTextClass}>{openError}</p>}
+          {closeError && <p id="setup-close-hour-error" role="alert" className={errorTextClass}>{closeError}</p>}
         </div>
       )}
     </div>

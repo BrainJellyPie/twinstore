@@ -1,3 +1,4 @@
+import { useI18n } from "@/shared/i18n/i18n";
 import { Check } from "lucide-react";
 
 import { cn } from "@/shared/utils/cn";
@@ -11,13 +12,14 @@ interface WizardHeaderProps {
 // The wizard is a real sequence: a vertical stepper whose finished steps are checked and whose
 // active step glows.
 export function WizardHeader({ title, steps, activeIndex }: WizardHeaderProps) {
+  const { t } = useI18n();
   return (
     <div className="space-y-8">
       <div>
-        <div className="eyebrow">Create</div>
+        <div className="eyebrow">{t("create")}</div>
         <h1 className="mt-2 font-display text-[clamp(2.4rem,4vw,3.4rem)] leading-[0.95] tracking-[-0.05em]">
           {title}
-          <span className="block font-accent text-[0.9em] tracking-[-0.01em]"><span className="aurora-text pr-1">in two steps.</span></span>
+          <span className="block font-accent text-[0.9em] tracking-[-0.01em]"><span className="aurora-text pr-1">{t("inTwoSteps")}</span></span>
         </h1>
       </div>
       <ol className="relative space-y-1">
