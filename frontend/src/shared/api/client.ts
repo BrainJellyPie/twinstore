@@ -111,6 +111,7 @@ export interface SetupSummaryShort {
 }
 
 export interface CreateStoreMeta {
+  layout?: GenerateLayoutRequest | null;
   name: string;
   description: string;
   address: string;

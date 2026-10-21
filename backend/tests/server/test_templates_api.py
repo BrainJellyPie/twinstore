@@ -132,3 +132,15 @@ def test_cloned_floor_keeps_its_building_identity(client):
     assert detail["building"] == floors[1]["building"]
     assert detail["parentId"] == floors[1]["id"]
     assert detail["generation"]["template_id"] == "specialty_cafe"
+
+
+def test_long_building_and_floor_names_remain_valid_generation_requests(client):
+    from store_emulator.domain.layout_options import TemplateLayoutRequest
+    body = {"name": "B" * 160, "floors": [
+        {"label": label * 80, "layout": {"template_id": "compact_cvs"}} for label in ("G", "U")
+    ]}
+    response = client.post(f"/api/projects/{PID}/setups/generate-building", json=body)
+    assert response.status_code == 200, response.text
+    for floor in response.json()["setups"]:
+        setup = client.get(f"/api/projects/{PID}/setups/{floor['id']}").json()
+        assert TemplateLayoutRequest.model_validate(setup["generation"]).name == floor["name"]

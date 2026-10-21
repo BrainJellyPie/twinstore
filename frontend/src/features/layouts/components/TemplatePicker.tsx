@@ -12,7 +12,11 @@ const RACK_COLORS: Record<string, string> = {
 };
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
-export function TemplatePicker({ value, onChange }: { value: TemplateChoice; onChange: (v: TemplateChoice) => void }) {
+export function TemplatePicker({ value, onChange, onTemplateSelected }: {
+  value: TemplateChoice;
+  onChange: (v: TemplateChoice) => void;
+  onTemplateSelected?: (template: api.StoreTemplate) => void;
+}) {
   const [search, setSearch] = useState("");
   const [storeType, setStoreType] = useState("");
   const templatesQuery = useQuery({
@@ -48,7 +52,7 @@ export function TemplatePicker({ value, onChange }: { value: TemplateChoice; onC
       <div className="grid max-h-48 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2" aria-label="Store formats">
         {filtered.map((t) => (
           <button key={t.id} type="button" aria-pressed={value.templateId === t.id}
-            onClick={() => update({ templateId: t.id })}
+            onClick={() => { update({ templateId: t.id }); onTemplateSelected?.(t); }}
             className={cn("rounded-md border p-2 text-left text-xs transition-colors", value.templateId === t.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
             <div className="font-medium">{t.name}</div>
             <div className="text-muted-foreground">{t.grid[0]}×{t.grid[1]} · {t.racks} displays · {t.skus} products by default</div>

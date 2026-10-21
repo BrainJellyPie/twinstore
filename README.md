@@ -119,6 +119,11 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 
 ### Generate a store layout
 
+The **New store** wizard can start with a furnished template or an empty layout.
+The initial layout uses your store name, type and opening hours, and is ready to
+edit as soon as the project is created. Persona generation follows the existing
+wizard flow; choosing a template does not make an LLM layout-generation call.
+
 In a project, choose **New layout → Generate a store from a template**. Search 28
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.

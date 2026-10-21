@@ -28,7 +28,7 @@ class TemplateLayoutRequest(LayoutOptions):
     template_id: str
     seed: int = 0
     currency: Literal["USD", "KRW", "JPY"] = "USD"
-    name: str | None = Field(default=None, max_length=200)
+    name: str | None = Field(default=None, max_length=300)
     requirements: str = Field(default="", max_length=2000)
 
 
