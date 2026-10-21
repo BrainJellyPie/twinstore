@@ -43,10 +43,11 @@ from store_emulator.domain.store import Store
 from store_emulator.domain.types import PathFinder
 from store_emulator.engine.analysis.compare import compare_runs
 from store_emulator.engine.analysis.fidelity import spearman
+from store_emulator.engine.simulation.aggregator import aggregate
 from store_emulator.engine.simulation.factory import build_engine
 from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunner
 
-from .evaluate import COMPARISON_METRICS, LayoutEvaluator
+from .evaluate import COMPARISON_METRICS, LayoutEvaluator, objective_value
 from .search import ProgressCallback, optimize
 
 logger = logging.getLogger(__name__)
@@ -247,6 +248,8 @@ async def judge_layout_search(
     async def run_vlm(label: str, layout: Store) -> None:
         nonlocal requests
         score, aggregated, customers = await vlm.simulate(layout)
+        if label == "baseline" and not customers:
+            raise ValueError("The vision baseline produced no successful shopper results; layouts cannot be compared.")
         planning = vlm.engine_metadata().get("planning")
         errors = cast(dict[str, object], planning).get("plan_errors") if isinstance(planning, dict) else None
         requests += aggregated.token_usage.requests
@@ -279,17 +282,34 @@ async def judge_layout_search(
         await run_vlm(label, candidate.store)
 
     labels = ["baseline" if c.iteration == 0 else f"#{c.iteration}" for c in candidates]
+    successful_ids = {label: {c.persona_id for c in runs[label][2]} for label in labels}
+    comparable = [label for label in labels if successful_ids[label] & successful_ids["baseline"]]
+    common_ids = set[str].intersection(*(successful_ids[label] for label in comparable))
+    if not common_ids:
+        raise ValueError("The vision layouts have no common successful shoppers; rerun judging to compare the same panel.")
+    notes: list[str] = []
+    if len(common_ids) < len(vlm_personas):
+        notes.append(f"Ranked layouts use the same {len(common_ids)} of {len(vlm_personas)} requested shoppers "
+                     "who completed every comparable layout.")
+    for label, candidate in zip(labels, candidates, strict=True):
+        if label not in comparable:
+            continue
+        score, summary, customers, failed, plan_errors = runs[label]
+        paired = [c for c in customers if c.persona_id in common_ids]
+        if len(paired) != len(customers):
+            summary = aggregate(candidate.store, paired, vlm_personas, [],
+                                currency=vlm_config.currency, block_move_sec=vlm_config.block_move_sec).summary
+            score = objective_value(spec.objective, summary)
+        runs[label] = (score, summary, paired, failed, plan_errors)
     base_score, _, base_customers, _, _ = runs["baseline"]
     surrogate_ranks = _ranks([c.score for c in candidates], maximize)
-    vlm_scores = [runs[label][0] for label in labels]
-    vlm_ranks = _ranks(vlm_scores, maximize)
     judged: list[JudgedCandidate] = []
     reports: dict[str, ComparisonReport] = {}
     for i, (label, candidate) in enumerate(zip(labels, candidates, strict=True)):
         score, summary, customers, failed, plan_errors = runs[label]
         entry = JudgedCandidate(
             label=label, iteration=candidate.iteration, moves=candidate.moves, surrogate_score=candidate.score,
-            surrogate_rank=surrogate_ranks[i], vlm_score=score, vlm_rank=vlm_ranks[i],
+            surrogate_rank=surrogate_ranks[i], vlm_score=score,
             relative_improvement=_relative(base_score, score, maximize), failed_customers=failed,
             plan_errors=plan_errors, vlm_summary=summary,
         )
@@ -302,12 +322,18 @@ async def judge_layout_search(
                     "delta_mean": metric.diff, "delta_ci_low": metric.ci_low, "delta_ci_high": metric.ci_high,
                     "prob_better": metric.prob_b_greater if maximize else metric.prob_b_less,
                 })
+            else:
+                entry = entry.model_copy(update={"vlm_score": None, "relative_improvement": None})
+                notes.append(f"Candidate {label} has no successful shoppers paired with the baseline and is excluded from ranking.")
         judged.append(entry)
 
-    notes: list[str] = []
     # Winner: best VLM objective; ties go to the baseline (no change), then to the surrogate's order.
-    winner = min(judged, key=lambda c: (-(c.vlm_score or 0.0) if maximize else (c.vlm_score or 0.0),
-                                        c.iteration != 0, c.surrogate_rank))
+    ranked = sorted((c for c in judged if c.vlm_score is not None),
+                    key=lambda c: (-(c.vlm_score or 0.0) if maximize else (c.vlm_score or 0.0),
+                                   c.iteration != 0, c.surrogate_rank))
+    ranks = {c.label: rank for rank, c in enumerate(ranked, start=1)}
+    judged = [c.model_copy(update={"vlm_rank": ranks.get(c.label)}) for c in judged]
+    winner = next(c for c in judged if c.label == ranked[0].label)
     if winner.label != "baseline" and base_score != 0 and (winner.relative_improvement or 0.0) < spec.constraints.min_improvement:
         notes.append(f"The VLM winner {winner.label} improved the objective by {winner.relative_improvement:.2%},"
                      f" below min_improvement {spec.constraints.min_improvement:.2%}; the baseline is kept.")
@@ -315,33 +341,36 @@ async def judge_layout_search(
     surrogate_winner = min(judged, key=lambda c: c.surrogate_rank)
     judged = [c.model_copy(update={"winner": c.label == winner.label}) for c in judged]
     rho: float | None = None
-    if len(judged) >= 3:
-        rho = round(spearman(np.array([c.surrogate_score for c in judged]), np.array(vlm_scores)), 4)
+    if len(ranked) >= 3:
+        rho = round(spearman(np.array([c.surrogate_score for c in ranked]),
+                             np.array([c.vlm_score for c in ranked], dtype=float)), 4)
     if winner.label == "baseline":
-        notes.append(f"No judged candidate beat the baseline for the VLM shoppers on {len(vlm_personas)} customers;"
-                     " the baseline is returned.")
+        notes.append(f"The baseline is retained for the VLM shoppers on {len(common_ids)} paired customers.")
     else:
         change = (f"{winner.relative_improvement:+.2%}" if base_score
                   else f"{(winner.vlm_score or 0.0) - base_score:+.2f} (absolute change from zero)")
         notes.append(
             f"The VLM shoppers picked {winner.label} ({change} {spec.objective.value}"
-            f" vs baseline on {len(vlm_personas)} paired customers, P(better) {winner.prob_better})."
+            f" vs baseline on {len(common_ids)} paired customers, P(better) {winner.prob_better})."
         )
         if winner.delta_ci_low is not None and winner.delta_ci_high is not None and \
                 winner.delta_ci_low <= 0 <= winner.delta_ci_high:
             notes.append("The paired 95% interval of the winner's gain includes zero; judge with more customers"
                          " before acting on it.")
     if winner.label != surrogate_winner.label:
-        notes.append(f"The surrogate preferred {surrogate_winner.label}; the VLM shoppers ranked it"
-                     f" {surrogate_winner.vlm_rank} of {len(judged)}.")
+        if surrogate_winner.vlm_rank is None:
+            notes.append(f"The surrogate preferred {surrogate_winner.label}, which had no paired vision results.")
+        else:
+            notes.append(f"The surrogate preferred {surrogate_winner.label}; the VLM shoppers ranked it"
+                         f" {surrogate_winner.vlm_rank} of {len(ranked)}.")
     if rho is not None:
-        notes.append(f"Surrogate–VLM rank correlation over the {len(judged)} judged layouts: Spearman {rho:+.2f}.")
+        notes.append(f"Surrogate–VLM rank correlation over the {len(ranked)} ranked layouts: Spearman {rho:+.2f}.")
     failures = sum(c.failed_customers for c in judged)
     if failures:
         notes.append(f"{failures} VLM customer simulations failed and were left out of the paired deltas.")
 
     report = VLMJudgeReport(
-        model=model_label, ensemble=vlm_config.ensemble, customers=len(vlm_personas), metric=metric_name,
+        model=model_label, ensemble=vlm_config.ensemble, customers=len(common_ids), metric=metric_name,
         candidates=judged, winner=winner.label, surrogate_winner=surrogate_winner.label, spearman=rho,
         calibration=calibration, vlm_requests=requests, seconds=round(time.perf_counter() - started, 3),
         notes=notes,
