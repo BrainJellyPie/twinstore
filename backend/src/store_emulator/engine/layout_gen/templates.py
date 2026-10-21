@@ -17,6 +17,7 @@ import hashlib
 import json
 import random
 from dataclasses import dataclass, field, replace
+from typing import Literal
 
 from store_emulator.domain.layout_options import CheckoutPlacement, LayoutOptions, LayoutStyle, SeatingZone, StoreDesign
 from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotItem
@@ -472,11 +473,21 @@ def generate_store(
     seating_zone = t.seating_zone if options.seating_zone == "auto" else options.seating_zone
 
     # Reserve both gates before allocating checkout counters on the chosen wall.
-    entrance_x = {"left": 0, "center": w // 2, "right": w - 1}[options.entrance]
-    exit_x = entrance_x if options.exit_position == "shared" else {"left": 0, "center": w // 2, "right": w - 1}[options.exit_position]
-    b.add(RackType.ENTRANCE, entrance_x, h - 1)
-    b.racks.append(Rack(id="r_exit", type=RackType.EXIT, shape=[[1]], position=(exit_x, h - 1)))
-    b.taken.add((exit_x, h - 1))
+    gate_positions = {
+        "front": {"left": (0, h - 1), "center": (w // 2, h - 1), "right": (w - 1, h - 1)},
+        "back": {"left": (1, 0), "center": (w // 2, 0), "right": (w - 2, 0)},
+        "left": {"left": (0, 1), "center": (0, h // 2), "right": (0, h - 2)},
+        "right": {"left": (w - 1, 1), "center": (w - 1, h // 2), "right": (w - 1, h - 2)},
+    }[options.gate_wall]
+    entrance_position = gate_positions[options.entrance]
+    exit_position = entrance_position if options.exit_position == "shared" else gate_positions[options.exit_position]
+    entrance_x, entrance_y = entrance_position
+    gate_rotations: dict[str, Literal[0, 90, 180, 270]] = {"front": 0, "back": 180, "left": 90, "right": 270}
+    gate_rotation = gate_rotations[options.gate_wall]
+    b.add(RackType.ENTRANCE, *entrance_position, rotation=gate_rotation)
+    b.racks.append(Rack(id="r_exit", type=RackType.EXIT, shape=[[1]], position=exit_position,
+                       rotation=gate_rotation))
+    b.taken.add(exit_position)
     wall = options.checkout_wall
     if wall in ("front", "back"):
         wall_positions = [(x, h - 1 if wall == "front" else 0) for x in range(1, w - 1)]
@@ -485,9 +496,9 @@ def generate_store(
     counter_positions = [p for p in wall_positions if b.free(*p)
                          and not (wall == "front" and checkout_placement == "auto" and p[0] == 1)]
     if checkout_placement == "near_entrance":
-        counter_positions.sort(key=lambda p: abs(p[0] - entrance_x) + abs(p[1] - (h - 1)))
+        counter_positions.sort(key=lambda p: abs(p[0] - entrance_x) + abs(p[1] - entrance_y))
     elif checkout_placement == "away_from_entrance":
-        counter_positions.sort(key=lambda p: -(abs(p[0] - entrance_x) + abs(p[1] - (h - 1))))
+        counter_positions.sort(key=lambda p: -(abs(p[0] - entrance_x) + abs(p[1] - entrance_y)))
     checkout_count = min(t.checkouts, len(counter_positions)) if options.checkouts is None else options.checkouts
     if checkout_count > len(counter_positions):
         raise ValueError(f"This {w}×{h} grid fits at most {len(counter_positions)} checkout counters on the {wall} wall with the selected gates and placement. Reduce the counter count, choose another wall or enlarge the floor.")

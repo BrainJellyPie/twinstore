@@ -139,6 +139,13 @@ category to 1–16 distinct products; leave it blank for the full assortment.
 The limit keeps display positions and seating unchanged, with repeated facings
 of the selected products. **Shuffle assortment** picks a reproducible mix;
 the same seed and category keep their selection across floor sizes and currencies.
+
+**Entrance & exit wall** places both gates on the front, back, left or right wall.
+On side walls, entrance and exit positions run from back to front. Back and side
+gates stay one cell inside the corners so their wall is unambiguous in 3D; front
+gates retain the existing positions. Near/away checkout placement uses the actual
+entrance location. New pickup-area starting points also follow the selected wall;
+existing reserved areas keep their coordinates.
 Search matches names, descriptions and categories, ignores accents (`cafe` also
 finds `café`), and accepts words in any order. **More format filters** narrows the
 starting layouts by cell count and dining seating, or sorts by name, floor size
@@ -683,6 +690,10 @@ Fresh bananas use Alexander Shulha's CC0 Poly Haven scan; single and paired appl
 use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
+Individual fruit instances have stable variations in orientation, size and subtle
+brightness, retained in Photo mode. Long bunches and paired apples keep their
+display footprint; packaged goods retain their authored appearance. Instance
+matrix and color buffers are explicitly released when the product display rebuilds.
 Garden-center terracotta pots use the hollow pot from Rico Cilliers' CC0 scan,
 with diameter-aware proportions, two detail levels and PBR maps. Plain croissants
 use Dario Barresi and Greg Zaal's CC0 Poly Haven scan with the same instanced detail

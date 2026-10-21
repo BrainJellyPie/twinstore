@@ -11,6 +11,7 @@ import type { PackageKind } from "./productCatalog";
 import type { ProductLayout } from "./productLayout";
 import { attachProductPhotos, productLabelKey } from "./productPhotos";
 import { loadScannedProducts, type ScannedProductTarget } from "./scannedProducts";
+import { produceVariation } from "./produceVariation";
 
 const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }> = {
   bottle: { roughness: 0.18, metalness: 0 },
@@ -62,6 +63,7 @@ const _q = new THREE.Quaternion();
 const _p = new THREE.Vector3();
 const _s = new THREE.Vector3();
 const _e = new THREE.Euler();
+const _color = new THREE.Color();
 
 function instanced(geom: THREE.BufferGeometry, mat: THREE.Material, count: number): THREE.InstancedMesh {
   const mesh = new THREE.InstancedMesh(geom, mat, count);
@@ -119,8 +121,9 @@ export function buildProductMeshes(
     mesh.receiveShadow = true;
     const cells = geom.getAttribute("aCell") as THREE.InstancedBufferAttribute;
     list.forEach((p, i) => {
+      const variation = produceVariation(kind, `${kind}|${p.x}|${p.y}|${p.z}`);
       _p.set(p.x, p.y, p.z);
-      _q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, p.yaw);
+      _q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, p.yaw + (variation?.yaw ?? 0));
       _m.compose(_p, _q, _s.set(1, 1, 1));
       if (p.flat) {
         // Lay face-up: front (+Z) → +Y, centred on the footprint.
@@ -129,16 +132,19 @@ export function buildProductMeshes(
         _t.makeRotationX(-Math.PI / 2);
         _m.multiply(_t);
       }
-      _t.makeScale(p.sx, p.sy, p.sz);
+      const size = variation?.scale ?? 1;
+      _t.makeScale(p.sx * size, p.sy * size, p.sz * size);
       _m.multiply(_t);
       mesh.setMatrixAt(i, _m);
+      if (variation) mesh.setColorAt(i, _color.setScalar(variation.brightness));
       const uv = cellUv(labelAtlas.grid, labelAtlas.index.get(productLabelKey(p)) ?? 0);
       cells.setXY(i, uv.offset[0], uv.offset[1]);
     });
     mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     cells.needsUpdate = true;
     group.add(mesh);
-    disposables.push(geom, mat);
+    disposables.push(mesh, geom, mat);
   }
 
   // --- Price tags
@@ -161,7 +167,7 @@ export function buildProductMeshes(
     });
     mesh.instanceMatrix.needsUpdate = true;
     group.add(mesh);
-    disposables.push(geom, mat);
+    disposables.push(mesh, geom, mat);
   }
 
   // --- Shelf talkers (promo cards sticking out into the aisle)
@@ -190,7 +196,7 @@ export function buildProductMeshes(
     });
     mesh.instanceMatrix.needsUpdate = true;
     group.add(mesh);
-    disposables.push(geom, mat);
+    disposables.push(mesh, geom, mat);
   }
 
   let cancelAssets = () => {};

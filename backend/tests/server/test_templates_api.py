@@ -53,7 +53,7 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
 def test_preview_matches_saved_custom_store(client, theme, wall):
     options = dict(seed=12, currency="JPY", style="spine", width=28, height=24,
                    density="spacious", aisle_width=4, max_shelf_run=8, entrance="right", exit_position="center", checkouts=3, checkout_placement="away_from_entrance",
-                   fixture_design="c", design_theme=theme, dining_tables=7, table_clearance=2, seating_zone="center", shelf_direction="vertical", checkout_wall=wall, products_per_category=3)
+                   fixture_design="c", design_theme=theme, dining_tables=7, table_clearance=2, seating_zone="center", shelf_direction="vertical", checkout_wall=wall, products_per_category=3, gate_wall="back")
     preview = client.get("/api/store-templates/food_hall/preview", params=options)
     assert preview.status_code == 200, preview.text
     response = client.post(f"/api/projects/{PID}/setups/generate", json={
@@ -77,6 +77,7 @@ def test_preview_matches_saved_custom_store(client, theme, wall):
     assert saved["generation"]["aisle_width"] == 4
     assert saved["generation"]["max_shelf_run"] == 8
     assert saved["generation"]["products_per_category"] == 3
+    assert saved["generation"]["gate_wall"] == "back"
     assert saved["generation"]["exit_position"] == "center"
     assert sum(r["type"] == "table" for r in saved["store"]["racks"]) == 7
 
@@ -90,6 +91,7 @@ def test_preview_matches_saved_custom_store(client, theme, wall):
     {"aisle_width": 0}, {"aisle_width": 5}, {"aisle_width": 1.5},
     {"max_shelf_run": 0}, {"max_shelf_run": 9}, {"max_shelf_run": 1.5},
     {"products_per_category": 0}, {"products_per_category": 17}, {"products_per_category": 1.5},
+    {"gate_wall": "roof"},
 ])
 def test_invalid_options_rejected_for_preview_and_save(client, patch):
     assert client.get("/api/store-templates/urban_cvs/preview", params=patch).status_code == 422
