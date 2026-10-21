@@ -33,6 +33,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
       await qc.cancelQueries({ queryKey: key });
       qc.setQueryData(key, t);
     },
+    onError: (_error, question) => setText(current => current || question),
     onSettled: () => setPending(null),
   });
   const reset = useMutation({
@@ -126,7 +127,11 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, 600))}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(text); } }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
+              e.preventDefault(); send(text);
+            }
+          }}
           rows={2}
           placeholder={`Ask ${first}…`}
           className="min-h-[2.6rem] flex-1 resize-none rounded-xl border bg-card/60 px-3 py-2 text-[0.8rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
