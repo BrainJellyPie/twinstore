@@ -25,7 +25,7 @@ export function validTemplateChoice(value: TemplateChoice): boolean {
     (value.width == null || (Number.isInteger(value.width) && value.width >= 8 && value.width <= 40)) &&
     (value.height == null || (Number.isInteger(value.height) && value.height >= 6 && value.height <= 40)) &&
     (value.checkouts == null || (Number.isInteger(value.checkouts) && value.checkouts >= 1 && value.checkouts <= 12)) &&
-    (value.dining_tables == null || (Number.isInteger(value.dining_tables) && value.dining_tables >= 0 && value.dining_tables <= 12)) &&
+    (value.dining_tables == null || (Number.isInteger(value.dining_tables) && value.dining_tables >= 0 && value.dining_tables <= 48)) &&
     (value.table_clearance == null || (Number.isInteger(value.table_clearance) && value.table_clearance >= 1 && value.table_clearance <= 3)) &&
     (value.reserved_areas?.length ?? 0) <= 8 && (value.reserved_areas ?? []).every((area) =>
       area.label.trim().length > 0 && area.label.length <= 80 &&
@@ -75,6 +75,7 @@ export const BUILDING_PRESETS = [
   { id: "dining", name: "Restaurant & coffee", floors: [["Ground · Restaurant", "quick_service"], ["Level 2 · Café", "specialty_cafe"]] },
   { id: "family", name: "Family shopping center", floors: [["Ground · Toys & hobbies", "toy_hobby_store"], ["Level 2 · Books", "bookstore"], ["Level 3 · Home", "design_showroom"], ["Level 4 · Restaurant", "family_restaurant"]] },
   { id: "tea_vintage", name: "Vintage shop & tea lounge", floors: [["Ground · Vintage", "vintage_boutique"], ["Level 2 · Tea lounge", "tea_lounge"]] },
+  { id: "campus", name: "Campus hub", floors: [["Ground · Campus store", "campus_cvs"], ["Level 2 · Bookstore", "bookstore"], ["Level 3 · Dining hall", "campus_dining_hall"]] },
 ] as const;
 
 export function buildingPreset(id: string, currency = "USD"): BuildingFloorChoice[] {

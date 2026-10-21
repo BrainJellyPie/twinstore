@@ -73,7 +73,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "counter").length} checkout counters</p>
               <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green: entry / exit · Slate: checkout · Purple: seating</p>
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
-              {!validTemplateChoice(value) ? "Enter a valid grid size and reserved-area values." : preview.isError ? "Preview unavailable." : "Updating preview…"}
+              {!validTemplateChoice(value) ? "Enter a valid grid size, table count and reserved-area values." : preview.isError ? "Preview unavailable." : "Updating preview…"}
             </div>}
             {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>Retry</button></p>}
           </div>
@@ -120,10 +120,11 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <Field label="Price currency"><select className={controlClass} value={value.currency} onChange={(e) => update({ currency: e.target.value })}>
                 <option value="USD">USD · $</option><option value="KRW">KRW · ₩</option><option value="JPY">JPY · ¥</option>
               </select></Field>
-              <Field label="Dining tables (4 seats each)"><select className={controlClass} value={value.dining_tables ?? ""} onChange={(e) => update({ dining_tables: e.target.value === "" ? null : Number(e.target.value) })}>
-                <option value="">Format default ({selected?.default_dining_tables ?? 0}, sized to fit)</option>
-                {Array.from({ length: 13 }, (_, n) => <option key={n} value={n}>{n === 0 ? "No seating" : `${n} tables · ${n * 4} seats`}</option>)}
-              </select></Field>
+              <div className="space-y-1"><Field label="Dining tables (4 seats each)"><input type="number" min={0} max={48} step={1} className={controlClass}
+                placeholder={`Format default (${selected?.default_dining_tables ?? 0})`} value={value.dining_tables ?? ""}
+                onChange={(e) => update({ dining_tables: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
+                <p className="text-[10px] text-muted-foreground">0–48 tables; blank uses the format default, sized to fit.</p>
+              </div>
               <Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
                 disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
                 onChange={(e) => update({ seating_zone: e.target.value as TemplateChoice["seating_zone"] })}>
