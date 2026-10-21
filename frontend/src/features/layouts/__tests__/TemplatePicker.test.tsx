@@ -401,6 +401,58 @@ it("excludes chosen categories, keeps a stocked category and restores the assort
   expect((screen.getByRole("checkbox", { name: "Beer & Alcohol" }) as HTMLInputElement).checked).toBe(true);
 });
 
+it("overrides individual category limits, retains excluded limits and restores shared defaults", async () => {
+  mount(); await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByText("Product categories · 3 of 3 included"));
+  fireEvent.change(screen.getByLabelText("Products per category"), { target: { value: "2" } });
+  expect(screen.getByLabelText("Products for Drinks").getAttribute("placeholder")).toBe("2");
+  fireEvent.change(screen.getByLabelText("Products for Drinks"), { target: { value: "16" } });
+  fireEvent.change(screen.getByLabelText("Products for Household & Daily"), { target: { value: "1" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    products_per_category: 2, category_product_limits: { soft_drinks: 16, household: 1 },
+  }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Drinks" }));
+  expect((screen.getByLabelText("Products for Drinks") as HTMLInputElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Products for Drinks") as HTMLInputElement).value).toBe("16");
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    excluded_categories: ["soft_drinks"], category_product_limits: { soft_drinks: 16, household: 1 },
+  }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Drinks" }));
+  fireEvent.change(screen.getByLabelText("Products for Drinks"), { target: { value: "" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    products_per_category: 2, category_product_limits: { household: 1 },
+  }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("button", { name: "Use shared limit for all categories" }));
+  expect((screen.getByLabelText("Products for Household & Daily") as HTMLInputElement).value).toBe("");
+  expect((screen.getByLabelText("Products per category") as HTMLInputElement).value).toBe("2");
+  fireEvent.change(screen.getByLabelText("Products for Drinks"), { target: { value: "3" } });
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Products for Drinks") as HTMLInputElement).value).toBe("");
+  expect(screen.getByLabelText("Products for Drinks").getAttribute("placeholder")).toBe("All");
+});
+
+it("blocks invalid individual limits, recovers by clearing them and retains known limits across formats", async () => {
+  mount(); await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByText("Product categories · 3 of 3 included"));
+  fireEvent.change(screen.getByLabelText("Products for Drinks"), { target: { value: "4" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ category_product_limits: { soft_drinks: 4 } }), expect.any(AbortSignal)));
+  const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+  for (const value of ["0", "1.5", "17"]) {
+    fireEvent.change(screen.getByLabelText("Products for Drinks"), { target: { value } });
+    expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+    expect((screen.getByRole("button", { name: "Export options" }) as HTMLButtonElement).disabled).toBe(true);
+  }
+  fireEvent.change(screen.getByLabelText("Products for Drinks"), { target: { value: "" } });
+  expect((screen.getByRole("button", { name: "Export options" }) as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.change(screen.getByLabelText("Products for Drinks"), { target: { value: "3" } });
+  fireEvent.click(screen.getByRole("radio", { name: /^Community pharmacy/ }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    template_id: "community_pharmacy", category_product_limits: { soft_drinks: 3 },
+  }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("radio", { name: /^City store/ }));
+  expect((screen.getByLabelText("Products for Drinks") as HTMLInputElement).value).toBe("3");
+});
+
 it("previews moved and swapped areas without losing floor requirements", async () => {
   mount(); await screen.findByRole("img", { name: "Floor plan preview" });
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });

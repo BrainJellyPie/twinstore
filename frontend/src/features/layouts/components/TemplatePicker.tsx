@@ -383,7 +383,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </details>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, category_product_limits: {}, open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, seed: 0 })}>Reset layout options</button>
             </div>
             </div>
           </div>
@@ -445,14 +445,27 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             placeholder="Full assortment" value={value.products_per_category ?? ""}
             onChange={(event) => update({ products_per_category: event.target.value === "" ? null : Number(event.target.value) })} /></Field>
           <p className="text-muted-foreground">Set a maximum of 1–16 distinct products per included category, or leave blank for the full assortment. Displays stay in place and may repeat products. Shuffle selects another reproducible mix.</p>
+          <p className="text-muted-foreground">Set a different maximum beside a category to override the shared limit, or clear it to follow the shared setting. Excluded categories keep their limits for later.</p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {categories.map((category) => <label key={category.id} className="flex items-center gap-2">
-              <input type="checkbox" checked={!excluded.has(category.id)} disabled={!excluded.has(category.id) && includedCount === 1}
-                onChange={(event) => update({ excluded_categories: event.target.checked
-                  ? (value.excluded_categories ?? []).filter((id) => id !== category.id)
-                  : [...(value.excluded_categories ?? []), category.id] })} />{category.label}
-            </label>)}
+            {categories.map((category) => <div key={category.id} className="flex items-center gap-2">
+              <label className="flex min-w-0 flex-1 items-center gap-2">
+                <input type="checkbox" checked={!excluded.has(category.id)} disabled={!excluded.has(category.id) && includedCount === 1}
+                  onChange={(event) => update({ excluded_categories: event.target.checked
+                    ? (value.excluded_categories ?? []).filter((id) => id !== category.id)
+                    : [...(value.excluded_categories ?? []), category.id] })} />{category.label}
+              </label>
+              <input type="number" min={1} max={16} step={1} className="w-16 shrink-0 rounded-md border bg-background px-2 py-1.5 text-xs disabled:opacity-40"
+                aria-label={`Products for ${category.label}`} disabled={excluded.has(category.id)}
+                placeholder={value.products_per_category == null ? "All" : String(value.products_per_category)} value={value.category_product_limits?.[category.id] ?? ""}
+                onChange={(event) => {
+                  const category_product_limits = { ...value.category_product_limits };
+                  if (event.target.value === "") delete category_product_limits[category.id];
+                  else category_product_limits[category.id] = Number(event.target.value);
+                  update({ category_product_limits });
+                }} />
+            </div>)}
           </div>
+          {Object.keys(value.category_product_limits ?? {}).length > 0 && <button type="button" className="underline" onClick={() => update({ category_product_limits: {} })}>Use shared limit for all categories</button>}
           {(value.excluded_categories?.length ?? 0) > 0 && <button type="button" className="underline" onClick={() => update({ excluded_categories: [] })}>Restore all product categories</button>}
         </details>}
         <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })}
