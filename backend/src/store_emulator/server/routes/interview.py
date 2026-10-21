@@ -3,11 +3,15 @@
 from collections.abc import Callable
 
 from fastapi import APIRouter, HTTPException, Response
+from fastapi.responses import PlainTextResponse
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import interview as service
+from store_emulator.application import run_analyst as analyst
 from store_emulator.application.errors import AppError
 from store_emulator.domain.interview import (
+    AnalystQuestion,
+    AnalystThread,
     GroupInterview,
     GroupInterviewRequest,
     Interview,
@@ -93,3 +97,27 @@ def list_group_interviews(pid: str, run_id: str) -> list[GroupInterview]:
 @router.delete("/{pid}/runs/{run_id}/group-interviews/{group_id}", summary="Delete a group interview", status_code=204)
 def delete_group_interview(pid: str, run_id: str, group_id: str) -> None:
     _call(lambda: service.delete_group_interview(pid, run_id, group_id))
+
+
+# ── questions about the run ─────────────────────────────────────────────────────
+
+@router.get("/{pid}/runs/{run_id}/analyst", summary="Questions asked about this run", response_model=AnalystThread)
+def get_analyst(pid: str, run_id: str) -> AnalystThread:
+    return _call(lambda: analyst.get_thread(pid, run_id))
+
+
+@router.post("/{pid}/runs/{run_id}/analyst", summary="Ask a question about this run", response_model=AnalystThread)
+async def ask_analyst(pid: str, run_id: str, q: AnalystQuestion) -> AnalystThread:
+    """The model answers from the run's fact sheet (totals, hours, shelves, products, shopper groups) and lists the
+    figures it used; questions the run cannot answer are said to be so. Returns the whole thread."""
+    return await run_in_threadpool(_call, lambda: analyst.ask(pid, run_id, q, get_config()))
+
+
+@router.delete("/{pid}/runs/{run_id}/analyst", summary="Clear the questions about this run", status_code=204)
+def clear_analyst(pid: str, run_id: str) -> None:
+    _call(lambda: analyst.clear_thread(pid, run_id))
+
+
+@router.get("/{pid}/runs/{run_id}/analyst/facts", summary="The fact sheet answers are read from", response_class=PlainTextResponse)
+def analyst_facts(pid: str, run_id: str) -> str:
+    return _call(lambda: analyst.facts(pid, run_id))

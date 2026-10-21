@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { startPitch, type PitchReport } from "@/shared/api/marketing";
+import { draftPitchScript, startPitch, type PitchReport } from "@/shared/api/marketing";
 import { StaffPitchBuilder } from "../StaffPitchBuilder";
 import { StaffPitchReportView } from "../StaffPitchReport";
 
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), getModels: vi.fn().mockResolvedValue([]) }));
-vi.mock("@/shared/api/marketing", async (original) => ({ ...await original<typeof import("@/shared/api/marketing")>(), startPitch: vi.fn(), getStudyReading: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/shared/api/marketing", async (original) => ({ ...await original<typeof import("@/shared/api/marketing")>(), startPitch: vi.fn(), draftPitchScript: vi.fn(), getStudyReading: vi.fn().mockResolvedValue(null) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 beforeEach(() => { vi.mocked(startPitch).mockResolvedValue({ job_id: "pit_test", kind: "pitch", status: "pending", name: "Test", stage: "queued", progress: 0, error: "", created_at: "", finished_at: "" }); });
 
@@ -91,4 +91,17 @@ it("reports synthetic units, incomplete pairs, signed differences and saved stim
   expect(screen.getByText("Hello.")).toBeTruthy();
   expect(screen.getByRole("link", { name: "Paired answers CSV" }).getAttribute("href")).toContain("/staff-pitches/pit_test/export.csv");
   expect(screen.getByText(/p0.*excluded pair/)).toBeTruthy();
+});
+
+
+it("writes script B from script A with the same product and the given direction", async () => {
+  vi.mocked(draftPitchScript).mockResolvedValue({ name: "Value first", script: "This one is a good deal today.", differs_by: "Leads with value." });
+  render(<StaffPitchBuilder projectId="p" setupId="s" products={products} currency="KRW" personaCount={25} onStarted={vi.fn()} />, { wrapper });
+  fireEvent.change(screen.getByLabelText("Script A text"), { target: { value: "Can I help you?" } });
+  fireEvent.change(screen.getByLabelText("Direction for script B"), { target: { value: "lead with value" } });
+  fireEvent.click(screen.getByRole("button", { name: "Write an alternative" }));
+  await waitFor(() => expect((screen.getByLabelText("Script B text") as HTMLTextAreaElement).value).toBe("This one is a good deal today."));
+  expect((screen.getByLabelText("Script B name") as HTMLInputElement).value).toBe("Value first");
+  expect(draftPitchScript).toHaveBeenCalledWith("p", expect.objectContaining({ setup_id: "s", sku: "tea", current: "Can I help you?", direction: "lead with value" }));
+  expect(screen.getByText(/Leads with value\. Same product and offer as script A\./)).toBeTruthy();
 });

@@ -8,6 +8,7 @@ import { Button } from "@/shared/components/ui/button";
 import { RunProgress } from "@/features/runs/components/RunProgress";
 import { RunKpis } from "@/features/runs/components/RunKpis";
 import { DiagnosticsSection } from "@/features/runs/components/DiagnosticsSection";
+import { RunAnalystSection } from "@/features/runs/components/RunAnalystSection";
 import { FidelitySection } from "@/features/runs/components/FidelitySection";
 import { MovementSection } from "@/features/runs/components/MovementSection";
 import { VisionGlancesSection } from "@/features/runs/components/VisionGlancesSection";
@@ -74,6 +75,7 @@ function PlaybackContent({ customers, minTime, maxTime, store, summary, projectI
       <Summary />
       <CustomerBehavior />
       {summary && <RunKpis summary={summary} />}
+      {projectId && runId && <RunAnalystSection key={`${projectId}:${runId}`} projectId={projectId} runId={runId} />}
       <RackRanking store={store} />
       <TopItems store={store} />
       {projectId && runId && <VisionGlancesSection projectId={projectId} runId={runId} />}

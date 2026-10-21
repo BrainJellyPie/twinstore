@@ -10,6 +10,10 @@ from store_emulator.engine.marketing.conjoint_design import (
     ConjointDesign,
     design_conjoint,
 )
+from store_emulator.engine.marketing.experiment_design import (
+    ExperimentDesign,
+    design_experiment,
+)
 
 from .currencies import project_currency
 from .errors import AppError, model_failure
@@ -44,3 +48,52 @@ def design(pid: str, req: ConjointDesignRequest, config: SimulationConfig) -> Co
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[design] conjoint draft failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The study could not be drafted"), 502) from e
+
+
+class ExperimentDesignRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    question: str = Field(min_length=5, max_length=500, description="what the A/B test should answer")
+    setup_id: str = Field(min_length=1, description="the control layout")
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+def _last_run_units(pid: str, setup_id: str) -> dict[str, int]:
+    """Units sold per SKU in the layout's final run, when it has one (so "the best seller" means something)."""
+    from .interview import _load  # pyright: ignore[reportPrivateUsage]
+    from .storage.setups import read_setup
+
+    try:
+        run_id = str(read_setup(pid, setup_id).get("runId") or "")
+        customers = _load(pid, run_id)[0] if run_id else {}
+    except (FileNotFoundError, AppError):
+        return {}
+    units: dict[str, int] = {}
+    for c in customers.values():
+        for e in c.purchases:
+            units[e.product_sku] = units.get(e.product_sku, 0) + e.quantity
+    return units
+
+
+def design_ab(pid: str, req: ExperimentDesignRequest, config: SimulationConfig) -> ExperimentDesign:
+    """Variants drafted by the text model from the question, using only the layout's products, shelves and the
+    project's product images; changes that point at nothing are dropped and listed in `warnings`."""
+    from .shelf_lab import (
+        list_packages,  # late import: shelf_lab is heavy and imports capture
+    )
+
+    store = _store_for(pid, req.setup_id)
+    if store is None:
+        raise AppError("this layout has no store yet", 400)
+    currency = (store.currency or project_currency(pid, config.currency)).upper()
+    packages = [(p.name, p.asset_id) for p in list_packages(pid)]
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1500})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        return asyncio.run(design_experiment(llm, req.question, store, currency, packages, _last_run_units(pid, req.setup_id)))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[design] A/B draft failed: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "The test could not be drafted"), 502) from e

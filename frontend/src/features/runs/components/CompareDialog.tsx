@@ -2,7 +2,8 @@
 // confidence intervals, drawn as a forest plot (relative effect of B vs A).
 
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 
 import {
   Dialog,
@@ -18,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/select";
-import type { ComparisonReport, MetricComparison, RunListItem } from "@/shared/api/client";
+import { explainComparison, type ComparisonReport, type MetricComparison, type RunListItem } from "@/shared/api/client";
 import type { Layout } from "@/features/layouts/hooks/useLayouts";
 import { formatPercent } from "@/shared/utils/money";
 
@@ -103,9 +104,41 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
             </p>
           )}
           {compare.data && <CompareTable report={compare.data} />}
+          {compare.data && a && b && a !== b && <Explain key={`${a}:${b}`} projectId={projectId} a={a} b={b} />}
         </>
       )}
     </div>
+  );
+}
+
+/** The model's reading of the difference: what changed, where it came from, what is within noise. */
+function Explain({ projectId, a, b }: { projectId: string; a: string; b: string }) {
+  const explain = useMutation({ mutationFn: () => explainComparison(projectId, a, b) });
+  const r = explain.data;
+  if (!r) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => explain.mutate()} disabled={explain.isPending}
+          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60">
+          {explain.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5 text-primary" />}
+          {explain.isPending ? "Comparing the runs…" : "Explain the difference"}
+        </button>
+        <span className="text-xs text-muted-foreground">A model compares both runs shelf by shelf and hour by hour.</span>
+        {explain.error && <p role="alert" className="basis-full text-xs text-destructive">{explain.error.message}</p>}
+      </div>
+    );
+  }
+  return (
+    <section className="space-y-2 rounded-xl border bg-card p-3 text-sm" aria-label="Why the runs differ">
+      <p className="font-medium">{r.summary}</p>
+      {r.where && <p className="text-foreground/85">{r.where}</p>}
+      {r.caveats && <p className="text-muted-foreground">{r.caveats}</p>}
+      {r.figures.length > 0 && (
+        <ul className="space-y-0.5 border-l-2 border-primary/30 pl-2" aria-label="Figures used">
+          {r.figures.map((f) => <li key={f} className="text-[0.7rem] tabular-nums text-muted-foreground">{f}</li>)}
+        </ul>
+      )}
+    </section>
   );
 }
 

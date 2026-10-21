@@ -5,6 +5,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
 
+from store_emulator.application import run_analyst
 from store_emulator.application import simulation as sim_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
@@ -19,6 +20,7 @@ from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.scenario import Scenario
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import RESOURCE_ID_PATTERN, ResourceId
+from store_emulator.engine.run_analyst import DifferenceReading
 from store_emulator.server.schemas import EngineInfo, SimulationStartResponse
 from ..deps import get_config
 
@@ -241,6 +243,27 @@ async def compare(
         raise HTTPException(e.status_code, e.message)
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
+
+
+class ExplainRequest(BaseModel):
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+@router.post("/{pid}/compare/explain", summary="Explain why run B differs from run A", response_model=DifferenceReading)
+async def explain_compare(
+    pid: str, req: ExplainRequest,
+    a: str = Query(pattern=RESOURCE_ID_PATTERN, description="baseline run id"),
+    b: str = Query(pattern=RESOURCE_ID_PATTERN, description="variant run id"),
+) -> DifferenceReading:
+    """The text model reads the paired comparison and both runs' fact sheets (shelves, hours, products, groups) and
+    says what changed, where it came from and what is within noise, listing the figures it used."""
+    def run() -> DifferenceReading:
+        try:
+            return run_analyst.explain_comparison(pid, a, b, req.model, get_config())
+        except AppError as e:
+            raise HTTPException(e.status_code, e.message) from e
+
+    return await run_in_threadpool(run)
 
 
 @router.post("/{pid}/runs/{run_id}/fidelity", summary="Score a run against real POS data", response_model=FidelityReport)

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MessagesSquare } from "lucide-react";
+import { Loader2, MessagesSquare, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { marketingKeys, startPitch, type JobStatus } from "@/shared/api/marketing";
+import { draftPitchScript, marketingKeys, startPitch, type JobStatus } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -44,6 +44,12 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
     }),
     onSuccess: async (job) => { await qc.invalidateQueries({ queryKey: marketingKeys.pitches(projectId) }); onStarted(job); },
   });
+  // Script B drafted from script A: same product and offer, only the verified facts, a different approach.
+  const [direction, setDirection] = useState("");
+  const draft = useMutation({
+    mutationFn: () => draftPitchScript(projectId, { setup_id: setupId, sku, context, product_facts: facts, current: a, direction }),
+    onSuccess: (d) => { setB(d.script); setBName(d.name); },
+  });
   return <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (ready) run.mutate(); }}>
     <section className="space-y-3 rounded-2xl border bg-card p-4">
       <h2 className="font-semibold">Staff script A/B test</h2>
@@ -69,6 +75,19 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
           <Textarea aria-label={`Script ${v.arm} text`} value={v.value} onChange={(e) => v.setValue(e.target.value)} maxLength={1200} rows={6} required
             placeholder={v.arm === "A" ? "Write the exact words staff currently say." : "Write the alternative wording to test."} />
           <p className="text-xs text-muted-foreground">{v.value.length}/1,200 characters · name hidden from shoppers</p>
+          {v.arm === "B" && (
+            <div className="space-y-1.5 border-t pt-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Input aria-label="Direction for script B" value={direction} onChange={(e) => setDirection(e.target.value.slice(0, 200))}
+                  placeholder="Optional direction, e.g. lead with value, shorter, more personal" className="h-8 min-w-[12rem] flex-1 text-xs" />
+                <Button type="button" size="sm" variant="outline" disabled={!sku || draft.isPending} onClick={() => draft.mutate()}>
+                  {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Write an alternative
+                </Button>
+              </div>
+              {draft.data?.differs_by && <p className="text-xs text-muted-foreground">{draft.data.differs_by} Same product and offer as script A.</p>}
+              {draft.error && <p role="alert" className="text-xs text-destructive">{draft.error.message}</p>}
+            </div>
+          )}
         </section>)}
     </div>
     {(sameScripts || sameNames) && <p role="alert" className="text-sm text-destructive">Use distinct script names and different wording.</p>}

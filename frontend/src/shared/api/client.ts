@@ -619,6 +619,15 @@ export interface ComparisonReport {
   notes: string[];
 }
 
+/** Why run B differs from run A, read by the text model from the comparison and both runs' fact sheets. */
+export interface DifferenceReading { summary: string; where: string; caveats: string; figures: string[] }
+export function explainComparison(projectId: string, a: string, b: string, model = ""): Promise<DifferenceReading> {
+  const q = new URLSearchParams({ a, b });
+  return fetchJson(`/api/projects/${projectId}/compare/explain?${q.toString()}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model }),
+  });
+}
+
 export function compareRuns(
   projectId: string,
   runA: string,
@@ -1062,6 +1071,13 @@ export async function getTown(projectId: string, signal?: AbortSignal): Promise<
 
 export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
   return fetchJson(`/api/projects/${projectId}/town/generate`, { method: "POST", ...json(spec) });
+}
+
+/** A customer profile drafted by the text model from the create-store form; nothing is saved. */
+export function draftCustomerProfile(req: {
+  name: string; description: string; address: string; store_type: string; hours: string; locale: string;
+}): Promise<{ profile: string }> {
+  return fetchJson(`/api/assist/customer-profile`, { method: "POST", ...json(req) });
 }
 
 /** The text model turns a description of the area into a generator spec; nothing is generated. */
@@ -1945,6 +1961,9 @@ export interface RivalReport {
   venue_id: string;
   previous_attractiveness: number | null;
   attractiveness: number | null;
+  /** Rival name → our name for products the text model matched although their names differ. */
+  model_matches?: Record<string, string>;
+  match_note?: string;
 }
 
 export function compareRival(

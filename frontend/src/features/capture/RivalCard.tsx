@@ -81,6 +81,15 @@ export function RivalCard({ projectId, captureId, result }: { projectId: string;
             </ul>
           )}
           {c.only_rival.length > 0 && <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Only at the rival:</span> {c.only_rival.slice(0, 6).join(", ")}</p>}
+          {report?.model_matches && Object.keys(report.model_matches).length > 0 && (
+            <details className="text-xs text-muted-foreground">
+              <summary className="cursor-pointer">{Object.keys(report.model_matches).length} matched by the model despite different names</summary>
+              <ul className="mt-1 space-y-0.5">
+                {Object.entries(report.model_matches).map(([theirs, ours]) => <li key={theirs}>{theirs} → <span className="text-foreground">{ours}</span></li>)}
+              </ul>
+            </details>
+          )}
+          {report?.match_note && <p className="text-xs text-muted-foreground">{report.match_note}</p>}
           {venueId && c.suggested_pull_factor != null && (
             <Button className="w-full gap-2" disabled={run.isPending} onClick={() => run.mutate(true)}>
               Apply ×{c.suggested_pull_factor.toFixed(2)} to the rival's pull

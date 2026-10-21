@@ -2,12 +2,16 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { TemplateChoice } from "@/features/layouts/templateOptions";
+import * as api from "@/shared/api/client";
 import type { StoreTemplate } from "@/shared/api/client";
 import { useLocale, translate } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { CreateStoreWizard } from "../components/CreateStoreWizard";
 
 const { create } = vi.hoisted(() => ({ create: vi.fn() }));
+vi.mock("@/shared/api/client", async (original) => ({
+  ...await original<typeof import("@/shared/api/client")>(), draftCustomerProfile: vi.fn(),
+}));
 vi.mock("@/shared/mutations/useCreateStore", () => ({ useCreateStore: () => ({ mutateAsync: create, isPending: false, error: null }) }));
 vi.mock("@/features/layouts/components/TemplatePicker", () => ({
   TemplatePicker: ({ value, onChange, onTemplateSelected }: { value: TemplateChoice; onChange: (v: TemplateChoice) => void; onTemplateSelected?: (t: StoreTemplate) => void }) =>
@@ -166,4 +170,19 @@ it("preserves a selected file and customer profile through Back and submits the 
   expect(screen.getByRole("alertdialog").textContent).toContain(file.name);
   fireEvent.click(screen.getByRole("button", { name: "Generate" }));
   await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ supplemental: file })));
+});
+
+
+it("drafts the customer profile from the store details, in the form's language", async () => {
+  vi.mocked(api.draftCustomerProfile).mockResolvedValue({ profile: "Pharmacy regulars and evening commuters." });
+  render(<CreateStoreWizard />);
+  fillStore();
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.click(screen.getByRole("button", { name: "Write one from the store details" }));
+  await waitFor(() => expect((screen.getByLabelText("Customer profile & behavior") as HTMLTextAreaElement).value)
+    .toBe("Pharmacy regulars and evening commuters."));
+  expect(api.draftCustomerProfile).toHaveBeenCalledWith(expect.objectContaining({ name: "My Pharmacy", address: "12 Market Street", locale: "en" }));
+  expect(screen.getByText(/Drafted from the store details/)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Customer profile & behavior"), { target: { value: "Edited" } });
+  expect(screen.queryByText(/Drafted from the store details/)).toBeNull();
 });
