@@ -32,6 +32,9 @@ menu. Each includes twelve specialty products. Their defaults range from a 28×2
 grocery with cross aisles and four checkouts to a coastal café with four four-seat tables.
 **Daily essentials center** combines them as four editable floors. Refills use fixed pack
 prices; bulk weighing, clinical consultations and prescription dispensing are not simulated.
+Realistic and Photo views distinguish compact fragrance bottles, tea cups with straws and
+dry refill packs. Cosmetic mists and perfume oils keep their non-food packaging, and
+upright cups and fragrance bottles stay in a single layer on displays.
 Under **Product categories**, **Products per category** limits each included
 category to 1–16 distinct products; leave it blank for the full assortment.
 The limit keeps display positions and seating unchanged, with repeated facings

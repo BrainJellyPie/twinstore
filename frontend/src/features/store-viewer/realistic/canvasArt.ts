@@ -79,6 +79,10 @@ interface LabelGeometry {
 function labelGeometry(spec: PackageSpec): LabelGeometry {
   const circ = Math.PI * spec.w;
   switch (spec.kind) {
+    case "perfumeBottle":
+      return { physW: spec.w, physH: spec.h * 0.72, panelW: spec.w };
+    case "teaCup":
+      return { physW: circ, physH: spec.h * 0.72, panelW: Math.min(circ, spec.w * 1.25) };
     case "bottle":
       return { physW: circ, physH: spec.h * 0.36, panelW: Math.min(circ, spec.w * 1.25) };
     case "can":
