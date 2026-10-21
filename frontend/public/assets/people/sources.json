@@ -246,42 +246,114 @@
       "file": "Assets/Avatars/Adults/Male_Adult_12/Textures/m007_head_normal.tga",
       "sha256": "11fa11d7ae8476674b89486045cf05b49a5607d0899dc30672c2e9634d8569a4",
       "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_01/Textures/f001_head_specular.tga",
+      "file": "Assets/Avatars/Adults/Female_Adult_01/Textures/f001_head_specular.tga",
+      "sha256": "302c56927d1d032084fb4faca784591dd8ab42e8bafb1029db157f73608eb251",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_01/Textures/f001_body_specular.tga",
+      "file": "Assets/Avatars/Adults/Female_Adult_01/Textures/f001_body_specular.tga",
+      "sha256": "9b813e68b243074f74c4bbfb26d41cce2a70361efa09fcabe1962b4267bedb90",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_14/Textures/f017_head_specular.tga",
+      "file": "Assets/Avatars/Adults/Female_Adult_14/Textures/f017_head_specular.tga",
+      "sha256": "6ea5e1cb8627900c2de29d6921d3183d060ad008f3172a0b84d7ede3fab0d0a1",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_14/Textures/f017_body_specular.tga",
+      "file": "Assets/Avatars/Adults/Female_Adult_14/Textures/f017_body_specular.tga",
+      "sha256": "4aad81b133ad46ebafe59e4eba824091b4ca8c6a92d9c6320c7b7466e8aced2b",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_11/Textures/f011_head_specular.tga",
+      "file": "Assets/Avatars/Adults/Female_Adult_11/Textures/f011_head_specular.tga",
+      "sha256": "31ec6dba7675e53f03e3e2258ad4878ef01d4cff118b8339de7d8d54ef9aa747",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_11/Textures/f011_body_specular.tga",
+      "file": "Assets/Avatars/Adults/Female_Adult_11/Textures/f011_body_specular.tga",
+      "sha256": "a26ccfbfc43e237f8d2c1dabaf8da033f533d6a14d5ebca004a212f0a5623ce3",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_01/Textures/m002_head_specular.tga",
+      "file": "Assets/Avatars/Adults/Male_Adult_01/Textures/m002_head_specular.tga",
+      "sha256": "c051336b12d443cbd0e04dc3f1ce4109d420f426198aa02a1a1451b87e9a7831",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_01/Textures/m002_body_specular.tga",
+      "file": "Assets/Avatars/Adults/Male_Adult_01/Textures/m002_body_specular.tga",
+      "sha256": "c071a46bf86f2cc0062ccddae770a9bc21ebae325634439ac3cc1ed4d92fd684",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_14/Textures/m012_head_specular.tga",
+      "file": "Assets/Avatars/Adults/Male_Adult_14/Textures/m012_head_specular.tga",
+      "sha256": "10e23bf49f35b333879c5e90f31af0bae3bb6b3068c1f187584e004a7d73d586",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_14/Textures/m012_body_specular.tga",
+      "file": "Assets/Avatars/Adults/Male_Adult_14/Textures/m012_body_specular.tga",
+      "sha256": "d182fea9c04c5f4d7b13e9f8403cef765406e077eed8e547d56f601ac9b583c8",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_12/Textures/m007_head_specular.tga",
+      "file": "Assets/Avatars/Adults/Male_Adult_12/Textures/m007_head_specular.tga",
+      "sha256": "4482dd31552e5b6030389b51e5f443ed7f458433eeb3aa77b71c57e618cccd48",
+      "bytes": 12582956
+    },
+    {
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_12/Textures/m007_body_specular.tga",
+      "file": "Assets/Avatars/Adults/Male_Adult_12/Textures/m007_body_specular.tga",
+      "sha256": "2e9b4ada013a7fbc334cb69c44ad2a2cbc93c0e384c49961e2e10af36072f31f",
+      "bytes": 12582956
     }
   ],
   "project": "Microsoft Rocketbox Avatar Library",
   "license": "MIT",
   "repository": "https://github.com/microsoft/Microsoft-Rocketbox",
-  "conversion": "Blender 4.3.2; scripts/convert_rocketbox.py; 1K JPEG color / PNG normal and alpha, skeletal idle + walk + browse, root travel removed, hair alpha-tested.",
+  "conversion": "Blender 4.3.2; scripts/convert_rocketbox.py; 1K JPEG color / PNG normal and alpha, 512px roughness derived artistically from original specular maps; skeletal idle + walk + browse, root travel removed, hair alpha-tested.",
   "outputs": [
     {
       "file": "female-01.glb",
-      "bytes": 5375364,
-      "sha256": "326095c463d2dba69c1006bbfb37e8ecf49fba0f4321a8fa1455becbdb1cfa70"
+      "bytes": 5643256,
+      "sha256": "421d5a64dbd452cb04379429af350a7bc15c30c6e12f34bad043a5c7c034f744"
     },
     {
       "file": "female-11.glb",
-      "bytes": 5445768,
-      "sha256": "dcd8753d2e33261900bdf814a8ad43d781e75992f20b8c5903cea8709040bccb"
+      "bytes": 5762748,
+      "sha256": "0b92f7d0ad319eb8be31a4278fe3afda3408788a568fba581a26db4d5e6c9d8d"
     },
     {
       "file": "female-14.glb",
-      "bytes": 5980464,
-      "sha256": "c485c8dabe5ebd6951c2dc1bcc561ae531762350a20df050ae028db97cfdf43f"
+      "bytes": 6251856,
+      "sha256": "c7259a493e39d1166419d051756f14b6160158d72270d7203d164e2c9a73bf48"
     },
     {
       "file": "male-01.glb",
-      "bytes": 4985232,
-      "sha256": "0c2d556737ec10b87f5c7289b37c38b2f75de8f0d2013965cf4a0bc215ce4646"
+      "bytes": 5226816,
+      "sha256": "32eedad8aa1c8175a2c15adcbdaad3b6845ec45cb32aa5f32c25e4b6220c30f3"
     },
     {
       "file": "male-12.glb",
-      "bytes": 3715448,
-      "sha256": "bf5e94c8ae6623b742d790630bebd8e9e85fcb077075b46bd11f88d5ce7f7b47"
+      "bytes": 3990460,
+      "sha256": "591f4be9f7f75d08418a642e5e5f9c3810af4b1e2476b6f0ceba36545bbeebda"
     },
     {
       "file": "male-14.glb",
-      "bytes": 3757380,
-      "sha256": "24bc18b0a2f6df5aee2b57757f8fd21288c5ebfa63686039228c586666ef35de"
+      "bytes": 4048244,
+      "sha256": "c92b9b283ab2789fc6891215f651e3c7535507234f3e87e172442849f9870850"
     }
   ]
 }

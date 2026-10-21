@@ -27,14 +27,14 @@ it("applies independent interior finishes without altering shared sign assets", 
   sign.dispose();
 });
 
-it("owns metal-map copies without disposing the loader's shared textures", () => {
+it("owns surface-map copies without disposing the loader's shared textures", () => {
   const sign = new THREE.Texture();
   const maps = { map: new THREE.Texture(), roughnessMap: new THREE.Texture(), normalMap: new THREE.Texture() };
   const borrowed = Object.values(maps).map((map) => vi.spyOn(map, "dispose"));
-  const materials = createShellMaterials("high", sign, null, null, null, "classic", maps);
-  const owned = [materials.aluminum, materials.metalGrey].flatMap((source) => {
+  const materials = createShellMaterials("high", sign, null, null, null, "classic", maps, maps);
+  const owned = [materials.aluminum, materials.metalGrey, materials.pavement].flatMap((source) => {
     const material = source as THREE.MeshStandardMaterial;
-    expect(material.metalness).toBe(1);
+    expect(material.metalness).toBe(material.name === "pavement" ? 0 : 1);
     expect(material.map).not.toBe(maps.map);
     expect(material.map!.source).toBe(maps.map.source);
     return [material.map!, material.roughnessMap!, material.normalMap!].map((texture) => vi.spyOn(texture, "dispose"));

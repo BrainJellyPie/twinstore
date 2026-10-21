@@ -9,7 +9,12 @@ interface Model {
   animations: { name: string; channels: { target: { node: number; path: string }; sampler: number }[]; samplers: { output: number }[] }[];
   accessors: { bufferView: number; byteOffset?: number; count: number; componentType: number; type: string }[];
   bufferViews: { byteOffset: number; byteStride?: number }[];
-  materials: { name: string; alphaMode?: string; alphaCutoff?: number; normalTexture?: object }[];
+  materials: {
+    name: string; alphaMode?: string; alphaCutoff?: number; normalTexture?: object;
+    pbrMetallicRoughness: { metallicFactor?: number; roughnessFactor?: number; metallicRoughnessTexture?: { index: number } };
+  }[];
+  textures: { source: number }[];
+  images: { bufferView: number; mimeType: string }[];
   nodes: { name?: string }[];
   skins: { joints: number[] }[];
 }
@@ -31,6 +36,22 @@ describe("bundled shopper models", () => {
       }
 
       const binaryStart = 20 + jsonLength + 8;
+      // Confirm the conversion embedded actual maps; an unbaked Blender node
+      // graph can otherwise silently export the same flat roughness as before.
+      const mapped = model.materials.filter((m) => m.pbrMetallicRoughness.metallicRoughnessTexture);
+      expect(mapped).toHaveLength(2);
+      for (const material of mapped) {
+        const pbr = material.pbrMetallicRoughness;
+        expect(pbr.metallicFactor).toBe(0);
+        expect(pbr.roughnessFactor ?? 1).toBe(1);
+        const texture = model.textures[pbr.metallicRoughnessTexture!.index]!;
+        const image = model.images[texture.source]!;
+        expect(image.mimeType).toBe("image/png");
+        const imageStart = binaryStart + model.bufferViews[image.bufferView]!.byteOffset;
+        expect(data.subarray(imageStart + 1, imageStart + 4).toString()).toBe("PNG");
+        expect(data.readUInt32BE(imageStart + 16)).toBe(512);
+        expect(data.readUInt32BE(imageStart + 20)).toBe(512);
+      }
       // Root locomotion belongs to the simulation. The exported armature may
       // bob vertically, but must not walk away from the shopper's grid tile.
       for (const motion of model.animations) {
