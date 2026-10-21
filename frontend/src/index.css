@@ -593,3 +593,26 @@ select {
 .app-backdrop[data-calm] .blob {
   animation: none;
 }
+
+/* Realistic mode: a lens over the 3D view — soft vignette and fine sensor grain, stronger in the
+   shopper's-eye view. Pure CSS, so it costs the GPU nothing. */
+.realistic-lens {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse 75% 70% at 50% 48%, transparent 55%, rgb(0 0 0 / 0.22) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-blend-mode: normal, overlay;
+  opacity: 0.85;
+  mix-blend-mode: multiply;
+}
+.realistic-lens[data-shopper] {
+  background:
+    radial-gradient(ellipse 70% 65% at 50% 50%, transparent 45%, rgb(0 0 0 / 0.42) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+}
+.dark .realistic-lens {
+  opacity: 0.95;
+}
