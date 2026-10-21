@@ -61,24 +61,24 @@
  },
  "season_demand": {
   "summer": {
-   "cold_drinks": 1.009,
-   "ice_cream": 1.05,
-   "hot_food": 0.707,
-   "water": 1.103,
-   "snacks": 0.971,
-   "alcohol": 1.492,
-   "desserts": 1.12,
-   "meals": 0.974
+   "cold_drinks": 1.025,
+   "ice_cream": 1.089,
+   "hot_food": 0.714,
+   "water": 1.08,
+   "snacks": 0.899,
+   "alcohol": 1.413,
+   "desserts": 1.214,
+   "meals": 0.917
   },
   "winter": {
-   "hot_food": 1.034,
-   "ice_cream": 1.438,
-   "cold_drinks": 1.181,
-   "water": 1.094,
-   "snacks": 1.069,
-   "alcohol": 1.01,
-   "desserts": 1.07,
-   "meals": 1.126
+   "hot_food": 0.961,
+   "ice_cream": 1.352,
+   "cold_drinks": 1.121,
+   "water": 1.063,
+   "snacks": 1.059,
+   "alcohol": 1.065,
+   "desserts": 0.99,
+   "meals": 1.028
   },
   "spring": {},
   "autumn": {}
@@ -92,28 +92,28 @@
  },
  "day_demand": {
   "weekend": {
-   "snacks": 1.201,
-   "alcohol": 1.435,
-   "meals": 1.089,
-   "cold_drinks": 1.114,
-   "water": 1.073,
-   "ice_cream": 1.033,
-   "hot_food": 1.104,
-   "desserts": 1.163
+   "snacks": 1.114,
+   "alcohol": 1.89,
+   "meals": 0.914,
+   "cold_drinks": 1.044,
+   "water": 1.085,
+   "ice_cream": 0.888,
+   "hot_food": 0.936,
+   "desserts": 0.79
   },
   "public_holiday": {
    "snacks": 1.2,
    "alcohol": 1.3
   },
   "holiday_season": {
-   "alcohol": 1.131,
-   "desserts": 1.031,
-   "snacks": 1.381,
-   "cold_drinks": 0.992,
-   "water": 0.85,
-   "ice_cream": 0.968,
-   "hot_food": 1.355,
-   "meals": 1.033
+   "alcohol": 1.234,
+   "desserts": 0.903,
+   "snacks": 1.339,
+   "cold_drinks": 0.943,
+   "water": 0.88,
+   "ice_cream": 0.929,
+   "hot_food": 1.271,
+   "meals": 0.95
   },
   "school_vacation": {
    "ice_cream": 1.15,
@@ -146,13 +146,13 @@
   },
   "sports_match": {
    "alcohol": 3.0,
-   "snacks": 2.298,
-   "cold_drinks": 0.848,
-   "water": 1.009,
-   "ice_cream": 0.594,
-   "hot_food": 0.339,
-   "desserts": 0.309,
-   "meals": 0.564
+   "snacks": 2.463,
+   "cold_drinks": 0.9,
+   "water": 0.982,
+   "ice_cream": 0.69,
+   "hot_food": 0.405,
+   "desserts": 0.445,
+   "meals": 0.698
   },
   "concert": {
    "cold_drinks": 1.4,
@@ -318,24 +318,34 @@
  "hour_demand": {
   "evening": {
    "cold_drinks": 1.011,
-   "water": 0.953,
+   "water": 1.002,
    "ice_cream": 3.0,
-   "hot_food": 0.976,
-   "snacks": 1.124,
-   "alcohol": 2.196,
-   "desserts": 1.08,
-   "meals": 1.155
+   "hot_food": 0.84,
+   "snacks": 1.106,
+   "alcohol": 2.248,
+   "desserts": 0.957,
+   "meals": 1.036
   },
   "morning": {
    "cold_drinks": 0.988,
-   "water": 1.048,
-   "ice_cream": 0.3,
-   "hot_food": 1.024,
-   "snacks": 0.889,
-   "alcohol": 0.454,
-   "desserts": 0.926,
-   "meals": 0.865
+   "water": 0.999,
+   "ice_cream": 0.307,
+   "hot_food": 1.192,
+   "snacks": 0.904,
+   "alcohol": 0.445,
+   "desserts": 1.045,
+   "meals": 0.964
   }
+ },
+ "size_ratio": {
+  "day:weekend": 1.104,
+  "day:holiday_season": 1.038,
+  "season:summer": 0.983,
+  "season:winter": 1.029,
+  "event:sports_match": 0.903,
+  "event:payday": 1.008,
+  "hour:evening": 1.058,
+  "hour:morning": 0.945
  },
  "temperature_clip": {
   "cold_drinks": [
@@ -360,15 +370,5 @@
   "1+1": 1.9,
   "2+1": 1.6,
   "featured": 1.35
- },
- "size_ratio": {
-  "day:weekend": 1.104,
-  "day:holiday_season": 1.038,
-  "season:summer": 0.983,
-  "season:winter": 1.029,
-  "event:sports_match": 0.903,
-  "event:payday": 1.008,
-  "hour:evening": 1.058,
-  "hour:morning": 0.945
  }
 }
