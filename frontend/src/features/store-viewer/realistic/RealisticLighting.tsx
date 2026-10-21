@@ -70,6 +70,7 @@ export function RealisticLighting({ width, depth, quality, dark }: Props) {
   // Pixel ratio is capped per quality.
   const frame = useRef(0);
   const settle = useRef(0);
+  const previousCount = useRef(0);
   useEffect(() => {
     const { gl, setDpr } = get();
     const prevDpr = gl.getPixelRatio();
@@ -84,6 +85,11 @@ export function RealisticLighting({ width, depth, quality, dark }: Props) {
   }, [get, preset]);
   useFrame(({ gl }) => {
     if (gl.shadowMap.autoUpdate) return;
+    // Refresh even when the last shopper leaves and periodic updates stop.
+    if (previousCount.current !== personaRegistry.count) {
+      previousCount.current = personaRegistry.count;
+      gl.shadowMap.needsUpdate = true;
+    }
     frame.current++;
     // A few refreshes after (re)mounts so late-arriving meshes are captured.
     if (settle.current > 0) {
