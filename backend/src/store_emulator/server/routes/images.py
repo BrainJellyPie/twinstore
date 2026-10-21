@@ -8,7 +8,8 @@ from store_emulator.application.storage import images as image_storage
 router = APIRouter(prefix="/api/projects/{pid}", tags=["images"])
 
 
-@router.post("/sku-images/{sku}", summary="Upload single SKU image")
+@router.post("/sku-images", summary="Upload single SKU image")
+@router.post("/sku-images/{sku:path}", include_in_schema=False)
 async def upload_sku_image(
     pid: str,
     sku: str,
@@ -25,6 +26,8 @@ async def upload_sku_image(
         raise HTTPException(413, str(e))
     except image_storage.UnsupportedImageFormatError as e:
         raise HTTPException(422, str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
     except ValueError as e:
         raise HTTPException(400, str(e))
     url = image_storage.image_url_for(pid, sku)
@@ -32,7 +35,8 @@ async def upload_sku_image(
     return {"sku": sku, "url": url}
 
 
-@router.get("/images/{sku}", summary="Download SKU image")
+@router.get("/images", summary="Download SKU image")
+@router.get("/images/{sku:path}", include_in_schema=False)
 async def get_sku_image(pid: str, sku: str) -> FileResponse:
     try:
         resolved = image_storage.resolve_image(pid, sku)
