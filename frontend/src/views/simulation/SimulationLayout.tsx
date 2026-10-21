@@ -97,6 +97,7 @@ export function SimulationLayout({
       <CanvasErrorBoundary>
         <SimulationCanvas
           designTheme={assets.designTheme}
+          designColors={assets.designColors}
           width={assets.width}
           depth={assets.depth}
           racks={assets.racks}

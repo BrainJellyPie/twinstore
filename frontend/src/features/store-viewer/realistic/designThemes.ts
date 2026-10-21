@@ -1,4 +1,6 @@
-import type { StoreDesign } from "@/shared/types/domain";
+import type { InteriorColors, StoreDesign } from "@/shared/types/domain";
+
+export const INTERIOR_COLOR_FIELDS = [["wall", "Wall color"], ["floor", "Floor color"], ["accent", "Accent color"], ["counter", "Counter color"]] as const;
 
 export interface InteriorPalette {
   label: string;
@@ -27,3 +29,12 @@ export const INTERIOR_DESIGNS: Record<StoreDesign, InteriorPalette> = {
   nordic: { label: "Nordic ash", wall: "#f4f1e8", band: "#647681", accent: "#d2b989", shelf: "#eee9de", backing: "#e5e7e2", counter: "#e5d9c4", wood: "#ddd0b5", floor: "#e9e6db", ceiling: "#fcfaf4", plinth: "#959d99" },
   retro: { label: "Retro cherry & mint", wall: "#f8edda", band: "#a43f45", accent: "#77b8ad", shelf: "#f2dfcb", backing: "#dcbaaa", counter: "#b3484d", wood: "#c49975", floor: "#eee1cc", ceiling: "#fff7e6", plinth: "#889a99" },
 };
+
+export function resolveInteriorPalette(design: StoreDesign = "classic", colors?: InteriorColors | null): InteriorPalette {
+  const base = INTERIOR_DESIGNS[design];
+  const custom = INTERIOR_COLOR_FIELDS.some(([key]) => colors?.[key] != null);
+  return { ...base, label: `${base.label}${custom ? " · Custom colors" : ""}`,
+    wall: colors?.wall ?? base.wall, floor: colors?.floor ?? base.floor,
+    accent: colors?.accent ?? base.accent, band: colors?.accent ?? base.band,
+    counter: colors?.counter ?? base.counter };
+}

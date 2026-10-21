@@ -2,8 +2,8 @@
 
 import * as THREE from "three";
 import { SHELL_COLORS, type GraphicsQuality } from "./constants";
-import type { StoreDesign } from "@/shared/types/domain";
-import { INTERIOR_DESIGNS } from "./designThemes";
+import type { InteriorColors, StoreDesign } from "@/shared/types/domain";
+import { resolveInteriorPalette } from "./designThemes";
 import type { MatKey } from "./staticBuilder";
 import { canvasTexture } from "./atlasMaterial";
 import { createAoCanvas, createWoodCanvas } from "./canvasArt";
@@ -37,6 +37,7 @@ export function createShellMaterials(
   metalMaps: ScannedMaterialMaps | null = null,
   pavementMaps: ScannedMaterialMaps | null = null,
   counterMaps: ScannedMaterialMaps | null = null,
+  designColors: InteriorColors | null = null,
 ): ShellMaterials {
   // Material-owned clones keep hook cleanup and shell rebuilds independent.
   const wood = woodMaps?.map.clone() ?? canvasTexture(createWoodCanvas(), { anisotropy: 1 });
@@ -76,7 +77,7 @@ export function createShellMaterials(
     envMapIntensity: 0.25,
   });
 
-  const palette = INTERIOR_DESIGNS[designTheme];
+  const palette = resolveInteriorPalette(designTheme, designColors);
   const mats: ShellMaterials = {
     wall: std(palette.wall, 0.92, 0, {
       map: wallMaps?.map.clone() ?? null,

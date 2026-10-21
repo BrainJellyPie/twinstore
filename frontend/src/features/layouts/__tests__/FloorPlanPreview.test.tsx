@@ -113,3 +113,25 @@ it("downloads the full floor at any zoom and safely preserves custom names", asy
   expect(root.querySelector("image, script, foreignObject")).toBeNull();
   await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith("blob:floor-plan"));
 });
+
+function luminance(hex: string) {
+  const rgb = [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255)
+    .map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  return rgb[0]! * 0.2126 + rgb[1]! * 0.7152 + rgb[2]! * 0.0722;
+}
+function contrast(a: string, b: string) {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light! + 0.05) / (dark! + 0.05);
+}
+it.each(["#000000", "#ffffff", "#757575", "#808080", "#f59e0b", "#475569", "#1b2140", "#ff00ff"])("keeps coordinates, reserved labels and fixture boundaries legible on custom floor %s", (floor) => {
+  render(<FloorPlanPreview store={{ ...store, design_colors: { floor } }} areas={[{ label: "Meeting", x: 2, y: 3, width: 2, height: 2 }]} />);
+  fireEvent.click(screen.getByRole("button", { name: "Expand floor plan" }));
+  const svg = screen.getByRole("img", { name: "Detailed floor plan" });
+  const axis = svg.querySelector("text")!;
+  expect(contrast(axis.getAttribute("fill")!, floor)).toBeGreaterThanOrEqual(4.5);
+  const area = screen.getByTestId("detailed-area-preview-0");
+  const label = area.parentElement!.querySelector("text")!;
+  expect(contrast(label.getAttribute("fill")!, floor)).toBeGreaterThanOrEqual(4.5);
+  const table = [...svg.querySelectorAll("rect")].find((rect) => rect.querySelector("title")?.textContent === "Window table")!;
+  expect(contrast(table.getAttribute("stroke")!, floor)).toBeGreaterThanOrEqual(3);
+});

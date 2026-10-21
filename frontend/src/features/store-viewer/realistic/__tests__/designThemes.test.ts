@@ -97,3 +97,27 @@ it.each(Object.keys(INTERIOR_DESIGNS) as StoreDesign[])("retains %s stone tint a
   Object.values(maps).forEach(texture => texture.dispose());
   sign.dispose();
 });
+
+it.each((Object.keys(INTERIOR_DESIGNS) as StoreDesign[]).flatMap((theme) => Array.from({ length: 16 }, (_, mask) => ({ theme, mask }))))("resolves partial overrides without changing $theme defaults, mask $mask", async ({ theme, mask }) => {
+  const { resolveInteriorPalette, INTERIOR_COLOR_FIELDS } = await import("../designThemes");
+  const base = { ...INTERIOR_DESIGNS[theme] };
+  const overrides = Object.fromEntries(INTERIOR_COLOR_FIELDS.map(([key], i) => [key, mask & (1 << i) ? "#000000" : null]));
+  const actual = resolveInteriorPalette(theme, overrides);
+  INTERIOR_COLOR_FIELDS.forEach(([key], i) => expect(actual[key]).toBe(mask & (1 << i) ? "#000000" : base[key]));
+  expect(actual.band).toBe(mask & 4 ? "#000000" : base.band);
+  expect(actual.label.includes("Custom colors")).toBe(mask > 0);
+  expect(INTERIOR_DESIGNS[theme]).toEqual(base);
+});
+
+it.each(["medium", "high"] as const)("applies custom colors to %s materials without affecting neighboring floors", (quality) => {
+  const sign = new THREE.Texture();
+  const colors = { wall: "#000000", floor: "#ffffff", accent: "#123456", counter: "#ff00ff" };
+  const custom = createShellMaterials(quality, sign, null, null, null, "retro", null, null, null, colors);
+  const neighbor = createShellMaterials(quality, sign, null, null, null, "retro");
+  for (const [key, expected] of [["wall", "000000"], ["band", "123456"], ["bandLine", "123456"], ["counterTop", "ff00ff"]] as const) {
+    expect((custom[key] as THREE.MeshStandardMaterial).color.getHexString()).toBe(expected);
+    expect(custom[key]).not.toBe(neighbor[key]);
+  }
+  expect((neighbor.wall as THREE.MeshStandardMaterial).color.getHexString()).toBe(INTERIOR_DESIGNS.retro.wall.slice(1));
+  disposeMaterials(custom); disposeMaterials(neighbor); sign.dispose();
+});

@@ -10,7 +10,7 @@ import { HeatmapOverlay } from "@/features/store-viewer/components/HeatmapOverla
 import type { HeatmapPalette } from "@/features/store-viewer/utils/heatmapPalette";
 import { RackPerformanceLayer } from "@/features/store-viewer/components/RackPerformanceLayer";
 import { PlaybackScene } from "@/features/playback/components/PlaybackScene";
-import type { Rack, StoreDesign, CustomerResult } from "@/shared/types/domain";
+import type { Rack, StoreDesign, InteriorColors, CustomerResult } from "@/shared/types/domain";
 import type { RackStats } from "@/shared/api/client";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { ALL_CLASSIC_ASSETS } from "@/shared/utils/assetMap";
@@ -40,6 +40,7 @@ function LoadingOverlay() {
 
 interface StoreSceneProps {
   designTheme?: StoreDesign;
+  designColors?: InteriorColors | null;
   width: number;
   depth: number;
   racks: Rack[];
@@ -104,14 +105,14 @@ interface SceneMode {
 }
 
 function StoreScene({
-  width, depth, racks, doors, items, designTheme,
+  width, depth, racks, doors, items, designTheme, designColors,
   heatmapData, heatmapPalette, rackStats, currency, customers, personaNames, personaGenders, minTime, maxTime,
   availableDays, variationTexture, realistic, quality, hideCompass,
 }: StoreSceneProps & SceneMode) {
   return (
     <group position={[-width / 2, 0, -depth / 2]}>
       {realistic ? (
-        <RealisticStore width={width} depth={depth} racks={racks} currency={currency} quality={quality} designTheme={designTheme} />
+        <RealisticStore width={width} depth={depth} racks={racks} currency={currency} quality={quality} designTheme={designTheme} designColors={designColors} />
       ) : (
         <>
           <SolidFloor width={width} depth={depth} />

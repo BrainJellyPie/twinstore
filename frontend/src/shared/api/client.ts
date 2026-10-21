@@ -5,6 +5,7 @@ import { apiErrorMessage } from "./errors";
 import type {
   Store,
   StoreDesign,
+  InteriorColors,
   Persona,
   DaySchedule,
   CustomerResult,
@@ -1352,6 +1353,7 @@ export interface LayoutOptions {
   checkout_clearance?: number;
   fixture_design?: "mixed" | "a" | "b" | "c";
   design_theme?: StoreDesign | null;
+  design_colors?: InteriorColors | null;
   dining_tables?: number | null;
   dining_seats?: 2 | 4 | 6;
   table_mix?: DiningTableMix | null;

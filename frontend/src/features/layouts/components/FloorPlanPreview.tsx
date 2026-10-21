@@ -1,6 +1,6 @@
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { useId, useRef, useState, type Ref } from "react";
-import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
+import { resolveInteriorPalette } from "@/features/store-viewer/realistic/designThemes";
 import type { ReservedArea } from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import type { Store } from "@/shared/types/domain";
@@ -80,7 +80,12 @@ function FloorPlan({ store, areas, detailed = false, zoom = 1, ref, previewFrame
   const gridId = useId();
   const [w, h] = store.grid_size;
   const [frameWidth, frameHeight] = previewFrame ?? store.grid_size;
-  const palette = INTERIOR_DESIGNS[store.design_theme ?? "classic"];
+  const palette = resolveInteriorPalette(store.design_theme, store.design_colors);
+  const customFloor = store.design_colors?.floor != null;
+  const channels = [1, 3, 5].map((offset) => parseInt(palette.floor.slice(offset, offset + 2), 16) / 255)
+    .map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  const luminance = channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722;
+  const floorInk = luminance > 0.179 ? "#000000" : "#ffffff";
   const gates = new Map<string, { x: number; y: number; entrances: string[]; exits: string[] }>();
   for (const rack of store.racks) {
     if (rack.type !== "entrance" && rack.type !== "exit") continue;
@@ -97,22 +102,22 @@ function FloorPlan({ store, areas, detailed = false, zoom = 1, ref, previewFrame
     {detailed && <>
       <rect x={-1.2} y={-1.2} width={w + 1.4} height={h + 1.4} fill={palette.floor} />
       <defs><pattern id={gridId} width={1} height={1} patternUnits="userSpaceOnUse">
-        <path d="M 1 0 H 0 V 1" fill="none" stroke="#64748b" strokeOpacity={0.25} strokeWidth={0.04} />
+        <path d="M 1 0 H 0 V 1" fill="none" stroke={customFloor ? floorInk : "#64748b"} strokeOpacity={0.25} strokeWidth={0.04} />
       </pattern></defs>
       <rect x={0} y={0} width={w} height={h} fill={`url(#${gridId})`} />
-      {Array.from({ length: w }, (_, x) => <text key={`x-${x}`} x={x + 0.5} y={-0.35} textAnchor="middle" fontSize={0.55} fill="#475569">{x + 1}</text>)}
-      {Array.from({ length: h }, (_, y) => <text key={`y-${y}`} x={-0.35} y={y + 0.7} textAnchor="end" fontSize={0.55} fill="#475569">{y + 1}</text>)}
+      {Array.from({ length: w }, (_, x) => <text key={`x-${x}`} x={x + 0.5} y={-0.35} textAnchor="middle" fontSize={0.55} fill={customFloor ? floorInk : "#475569"}>{x + 1}</text>)}
+      {Array.from({ length: h }, (_, y) => <text key={`y-${y}`} x={-0.35} y={y + 0.7} textAnchor="end" fontSize={0.55} fill={customFloor ? floorInk : "#475569"}>{y + 1}</text>)}
     </>}
-    <rect x={0} y={0} width={w} height={h} fill="none" stroke="#94a3b8" strokeWidth={0.12} />
-    {store.racks.filter((rack) => rack.type !== "entrance" && rack.type !== "exit").flatMap((rack) => rackCells(rack).map(([x, y]) => <rect key={`${rack.id}-${x}-${y}`} x={x + 0.08} y={y + 0.08} width={0.84} height={0.84} rx={0.12} fill={RACK_COLORS[rack.type] ?? "#cbd5e1"}>
+    <rect x={0} y={0} width={w} height={h} fill="none" stroke={customFloor ? floorInk : "#94a3b8"} strokeWidth={0.12} />
+    {store.racks.filter((rack) => rack.type !== "entrance" && rack.type !== "exit").flatMap((rack) => rackCells(rack).map(([x, y]) => <rect key={`${rack.id}-${x}-${y}`} x={x + 0.08} y={y + 0.08} width={0.84} height={0.84} rx={0.12} fill={RACK_COLORS[rack.type] ?? "#cbd5e1"} stroke={customFloor ? floorInk : undefined} strokeWidth={0.04}>
       <title>{rack.rack_name || rack.type}</title>
     </rect>))}
     {areas.map((area, index) => <g key={index}>
-      <rect x={area.x} y={area.y} width={area.width} height={area.height} fill="#0d948822"
-        stroke="#0f766e" strokeWidth={0.12} strokeDasharray="0.35 0.2" data-testid={`${detailed ? "detailed" : "reserved"}-area-preview-${index}`}>
+      <rect x={area.x} y={area.y} width={area.width} height={area.height} fill={customFloor ? "none" : "#0d948822"}
+        stroke={customFloor ? floorInk : "#0f766e"} strokeWidth={0.12} strokeDasharray="0.35 0.2" data-testid={`${detailed ? "detailed" : "reserved"}-area-preview-${index}`}>
         <title>{area.label}: kept clear</title>
       </rect>
-      <text x={area.x + 0.15} y={area.y + 0.65} fontSize={0.6} fill="#115e59">{index + 1}</text>
+      <text x={area.x + 0.15} y={area.y + 0.65} fontSize={0.6} fill={customFloor ? floorInk : "#115e59"}>{index + 1}</text>
     </g>)}
     {[...gates.entries()].map(([key, gate]) => {
       const shared = gate.entrances.length > 0 && gate.exits.length > 0;

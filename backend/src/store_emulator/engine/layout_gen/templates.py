@@ -800,5 +800,6 @@ def generate_store(
         id=store_id or f"store_{template_id}_{seed}", name=name or t.name, type=t.store_type,
         grid_size=(w, h), weekly_schedule=days, racks=b.racks,
         design_theme=options.design_theme or t.design_theme or format_design.get(t.store_type, "classic"),
+        design_colors=options.design_colors,
         currency=currency.upper(),
     )

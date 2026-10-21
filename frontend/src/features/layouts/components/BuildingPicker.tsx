@@ -1,3 +1,4 @@
+import { INTERIOR_COLOR_FIELDS } from "@/features/store-viewer/realistic/designThemes";
 import { useId, useState } from "react";
 import { cn } from "@/shared/utils/cn";
 import { applyLayoutPriority, BUILDING_PRESETS, DEFAULT_TEMPLATE_CHOICE, buildingPreset, choiceFromGeneration, validBuildingFloors, type BuildingFloorChoice } from "../templateOptions";
@@ -98,7 +99,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
       </div>}
       <TemplatePicker key={`${index}-${pickerVersion}`} value={floor.choice} budgetCurrency={defaultCurrency}
         onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))}
-        onApplyDesignToAll={(design_theme) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, design_theme } })))}
+        onApplyDesignToAll={(design_theme, colors) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, design_theme, design_colors: colors ? { ...colors } : null } })))}
         onApplyCurrencyToAll={(currency) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, currency } })))}
         onApplyHoursToAll={(hours) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...hours, closed_days: [...hours.closed_days] } })))}
         onApplySizeToAll={(size) => {
@@ -115,7 +116,8 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
           floors.every((f) => f.choice.open_hour === floor.choice.open_hour && f.choice.close_hour === floor.choice.close_hour &&
             f.choice.closed_days?.length === floor.choice.closed_days?.length &&
             f.choice.closed_days?.every((day) => floor.choice.closed_days?.includes(day)))}
-        sharedDesign={floors.every((f) => f.choice.design_theme === floor.choice.design_theme) ? floor.choice.design_theme ?? undefined : undefined}
+        sharedDesign={floors.every((f) => f.choice.design_theme === floor.choice.design_theme &&
+          INTERIOR_COLOR_FIELDS.every(([key]) => (f.choice.design_colors?.[key] ?? null) === (floor.choice.design_colors?.[key] ?? null))) ? floor.choice.design_theme ?? undefined : undefined}
         sharedCurrency={floors.every((f) => f.choice.currency === floor.choice.currency) ? floor.choice.currency : undefined} />
     </>}
     {!validBuildingFloors(floors) && <p role="alert" className="text-xs text-destructive">Each floor needs a unique label and valid layout values.</p>}

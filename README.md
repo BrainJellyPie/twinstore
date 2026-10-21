@@ -245,7 +245,7 @@ jewelry, music, bookstores, electronics, pet, garden and craft stores, airport r
 weekend markets, station food shops, cinema snacks, office cafeterias and central-plaza market and design halls — each with its own assortment, palette, seating
 and checkouts, or from **19 multi-floor buildings** (department store, dining house, campus hub and more). Choose which
 product categories to stock, where the entrance, exit and checkouts go, how many dining tables, aisle widths, shelf
-direction and areas to keep clear; compare against the format default and download the plan as SVG. Every option and
+direction and areas to keep clear; customize wall, floor, accent and counter colors, compare against the format default and download the plan as SVG. Every option and
 the floor editor (up to 40×40 cells) are documented in [`STORE_TEMPLATES.md`](./STORE_TEMPLATES.md).
 
 In the new-store wizard, choose a format, size and currency first. **Customize layout** opens

@@ -359,15 +359,17 @@ it("applies the actual default palette or explicit design and currency without s
     <TemplatePicker value={DEFAULT_TEMPLATE_CHOICE} onChange={vi.fn()} onApplyDesignToAll={design} onApplyCurrencyToAll={currency} />
   </form></QueryClientProvider>);
   await screen.findByRole("img", { name: "Floor plan preview" });
+  expect(screen.getByText("Default design: Classic retail")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Apply design to all floors" }));
-  expect(design).toHaveBeenLastCalledWith("classic");
+  expect(design).toHaveBeenLastCalledWith("classic", null);
   const value = { ...DEFAULT_TEMPLATE_CHOICE, design_theme: "terracotta" as const, currency: "JPY" };
   rerender(<QueryClientProvider client={client}><form onSubmit={submit}>
     <TemplatePicker value={value} onChange={vi.fn()} onApplyDesignToAll={design} onApplyCurrencyToAll={currency} />
   </form></QueryClientProvider>);
   fireEvent.click(screen.getByRole("button", { name: "Apply design to all floors" }));
   fireEvent.click(screen.getByRole("button", { name: "Apply currency to all floors" }));
-  expect(design).toHaveBeenLastCalledWith("terracotta");
+  expect(design).toHaveBeenLastCalledWith("terracotta", null);
+  expect(screen.queryByText(/^Default design:/)).toBeNull();
   expect(currency).toHaveBeenLastCalledWith("JPY");
   expect(submit).not.toHaveBeenCalled();
   rerender(<QueryClientProvider client={client}><TemplatePicker value={value} onChange={vi.fn()}

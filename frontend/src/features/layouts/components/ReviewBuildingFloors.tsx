@@ -1,7 +1,7 @@
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { useId, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
+import { resolveInteriorPalette } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import { templateRequest, validBuildingFloors, validTemplateChoice, type BuildingFloorChoice } from "../templateOptions";
@@ -75,7 +75,7 @@ function FloorReviews({ floors, onEdit }: Props) {
                   <p className="text-xs text-muted-foreground">{store.name} · {store.grid_size.join("×")} cells · {store.currency ?? floor.choice.currency}</p>
                   <FloorPlanPreview store={store} areas={floor.choice.reserved_areas ?? []} previewFrame={frame} />
                   <p className="text-xs">{store.racks.filter((rack) => rack.slots.length).length} displays · {tableCount} dining tables · {store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0)} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
-                  <p className="text-xs text-muted-foreground">{INTERIOR_DESIGNS[store.design_theme ?? "classic"].label} · {floor.choice.reserved_areas?.length ?? 0} reserved areas</p>
+                  <p className="text-xs text-muted-foreground">{resolveInteriorPalette(store.design_theme, store.design_colors).label} · {floor.choice.reserved_areas?.length ?? 0} reserved areas</p>
                   <p className="break-words text-xs text-muted-foreground">Operating hours: {formatWeeklyHours(store.weekly_schedule)}</p>
                 </>}
         </section>;

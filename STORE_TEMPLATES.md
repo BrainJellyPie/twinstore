@@ -185,7 +185,14 @@ variants. Ten saved interior palettes—classic retail, warm wood, minimal white
 industrial graphite, botanical sage, charcoal/brass, coastal blue and terracotta
 clay, Nordic ash and retro cherry/mint—change walls, shelving,
 counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
-default palette; each building floor can use a different one. The preview uses the same options as the saved layout. Shuffle changes
+default palette; each building floor can use a different one. Open **Custom interior colors**
+to override walls, floor, accent bands/highlights or counter tops independently. The other
+finishes still follow the palette when you change it. Each color has a **Use design color**
+reset, and **Reset all custom colors** restores all four. Overrides use six-digit hex
+colors, including pure black and white; they are saved in layouts and portable option
+files and restored when reusing a layout. The floor tint also appears in previews,
+comparisons and exported SVG plans. Classic view keeps its original asset materials.
+The preview uses the same options as the saved layout. Shuffle changes
 the assortment reproducibly; reset restores the format's layout defaults.
 
 Open **Product categories** to choose which parts of a format's assortment to
@@ -296,8 +303,9 @@ that floor's settings. Reviewing, expanding or downloading these plans does not
 create the building or replace any options.
 
 While configuring a building floor, **Apply design to all floors** copies its
-current interior palette across the building, including the resolved palette
-when the selected floor uses its format default. **Apply currency to all floors**
+current interior palette and custom color overrides across the building, including the resolved palette
+when the selected floor uses its format default. Applying a floor with no color overrides
+clears overrides on the other floors. **Apply currency to all floors**
 uses that floor's price currency for every generated floor. Each action changes
 only its named setting; floor labels, layouts, seating, reservations and briefs
 remain independent. You can customize an individual floor again afterward.
