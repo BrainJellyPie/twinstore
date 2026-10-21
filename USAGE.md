@@ -87,6 +87,7 @@ Marketing studio (`/marketing/<project>`):
 ab_test_calls (rule shoppers)   = 0
 ab_test_calls (vision shoppers) ≈ panel × (variants + 1) × 1–1.5    # 0..max_glances per shopper
 concept_test_calls              = panel                             # one structured answer per respondent
+shelf_test_calls                = 2 × panel                         # control and test shelf per respondent
 staff_script_calls              = min(panel, saved_personas) × 2     # separate A and B requests, plus retries
 ```
 

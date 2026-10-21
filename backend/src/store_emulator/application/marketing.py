@@ -8,6 +8,7 @@ Files per project (`.data/<pid>/`):
 # (reuses Shelf Lab's private store and persona helpers)
 
 import asyncio
+import base64
 import csv
 import io
 import json
@@ -28,6 +29,8 @@ from store_emulator.domain.marketing import (
     ScaleSummary,
     SegmentRow,
     SurveyAnswer,
+    ShelfPreview,
+    ShelfPreviewRequest,
     ShelfTestReport,
     ShelfTestRequest,
     SurveyReport,
@@ -35,6 +38,7 @@ from store_emulator.domain.marketing import (
 )
 from store_emulator.domain.optimize import OptimizeObjective
 from store_emulator.domain.persona import Persona
+from store_emulator.domain.rack import Rack
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face
 from store_emulator.engine.llm_client import LiteLLMClient
@@ -474,7 +478,8 @@ class ShelfTestView(JobStatus):
     request: ShelfTestRequest | None = None
 
 
-def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) -> JobStatus:
+def _shelf_arms(pid: str, req: ShelfTestRequest | ShelfPreviewRequest, config: SimulationConfig) -> tuple[Rack, Rack, Face, list[str], list[str], str]:
+    """Control and test rack, the face to show, what changed, warnings and the currency."""
     control = _load_store(pid, req.setup_id)
     rack = next((r for r in control.racks if r.id == req.rack_id), None)
     if rack is None:
@@ -482,14 +487,27 @@ def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) 
     currency = control.currency or config.currency
     uris = {c.asset_id: "file://" + str(package_path(pid, c.asset_id).resolve()) for c in req.changes if c.kind == "package" and c.asset_id}
     test_store, applied, warnings = apply_changes(control, req.changes, package_uris=uris, minor_per_major=_minor_per_major(currency))
-    if not applied:
-        raise AppError(f"the test shelf changes nothing: {'; '.join(warnings) or 'no changes'}", 400)
-    faces = {s.face for s in rack.slots for i in s.items if i.sku == req.target_sku}
     test_rack = next(r for r in test_store.racks if r.id == req.rack_id)
-    faces |= {s.face for s in test_rack.slots for i in s.items if i.sku == req.target_sku}
+    faces = {s.face for r in (rack, test_rack) for s in r.slots for i in s.items if not req.target_sku or i.sku == req.target_sku}
     face = Face(req.face) if req.face else (sorted(faces, key=lambda f: f.value)[0] if faces else None)
     if face is None:
         raise AppError("the target product is on neither shelf: move it there or pick another rack", 400)
+    return rack, test_rack, face, applied, warnings, currency
+
+
+def preview_shelf(pid: str, req: ShelfPreviewRequest, config: SimulationConfig) -> ShelfPreview:
+    rack, test_rack, face, applied, warnings, currency = _shelf_arms(pid, req, config)
+
+    def url(r: Rack) -> str:
+        return "data:image/png;base64," + base64.b64encode(render_face(r, face, currency=currency, width=640, number_on_tag=False).png).decode()
+
+    return ShelfPreview(face=face.value, control=url(rack), test=url(test_rack), applied=applied, warnings=warnings)
+
+
+def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) -> JobStatus:
+    rack, test_rack, face, applied, warnings, currency = _shelf_arms(pid, req, config)
+    if not applied:
+        raise AppError(f"the test shelf changes nothing: {'; '.join(warnings) or 'no changes'}", 400)
     names = {i.sku: i.name for r in (rack, test_rack) for sl in r.slots for i in sl.items}
     target_name = names.get(req.target_sku, req.target_sku)
     respondents = select_personas(_quota(_personas(pid), req), req.panel, seed=req.seed)
