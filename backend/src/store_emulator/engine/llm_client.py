@@ -23,13 +23,18 @@ _SEED_MOD = 2**31 - 1
 _REJECTED: dict[str, set[str]] = {}
 _REJECTED_LOCK = threading.Lock()
 _OPTIONAL_PARAMS = ("temperature", "thinking")
+# A model can refuse several of them (GPT-6: max_tokens, then temperature): one retry per lesson.
+_ATTEMPTS = len(_OPTIONAL_PARAMS) + 2
 
 
 def _rejected_param(error: BaseException) -> str | None:
-    """The optional parameter a provider error says it refused, if any."""
+    """The optional parameter a provider error says it refused, if any. `max_tokens` is special: newer
+    OpenAI models want it renamed to `max_completion_tokens` (see _call_kwargs), not dropped."""
     text = str(error).lower()
     if not any(w in text for w in ("deprecated", "not supported", "unsupported", "does not support", "not allowed")):
         return None
+    if "'max_tokens'" in text and "max_completion_tokens" in text:
+        return "max_tokens"
     return next((p for p in _OPTIONAL_PARAMS if p in text), None)
 
 
@@ -104,6 +109,8 @@ class LiteLLMClient:
             "timeout": self.timeout_sec,
             "drop_params": True,
         }
+        if not _accepts(self.model, "max_tokens"):
+            kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
         if _accepts(self.model, "temperature"):
             kwargs["temperature"] = self.temperature
         # Claude models may think before answering (adaptive thinking), which can use up a small
@@ -208,7 +215,7 @@ class LiteLLMClient:
 
     def _create(self, response_model: type[BaseModel], msgs: object, max_retries: int,
                 seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
-        for attempt in range(2):
+        for attempt in range(_ATTEMPTS):
             kwargs = self._call_kwargs(seed, max_tokens)
             try:
                 return self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
@@ -218,14 +225,14 @@ class LiteLLMClient:
                     **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
             except Exception as e:
-                if attempt == 0 and _should_retry_without(self.model, e, kwargs):
+                if attempt < _ATTEMPTS - 1 and _should_retry_without(self.model, e, kwargs):
                     continue
                 raise
         raise AssertionError("unreachable")
 
     async def _acreate(self, response_model: type[BaseModel], msgs: object, max_retries: int,
                        seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
-        for attempt in range(2):
+        for attempt in range(_ATTEMPTS):
             kwargs = self._call_kwargs(seed, max_tokens)
             try:
                 return await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
@@ -235,7 +242,7 @@ class LiteLLMClient:
                     **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
             except Exception as e:
-                if attempt == 0 and _should_retry_without(self.model, e, kwargs):
+                if attempt < _ATTEMPTS - 1 and _should_retry_without(self.model, e, kwargs):
                     continue
                 raise
         raise AssertionError("unreachable")
@@ -341,7 +348,7 @@ class LiteLLMClient:
         """
         msgs, rid = self._messages(system_prompt, user_prompt)
         raw: object = None
-        for attempt in range(2):
+        for attempt in range(_ATTEMPTS):
             kwargs: dict[str, object] = {"messages": msgs, **self._call_kwargs(None)}
             if enable_search:
                 kwargs["tools"] = [{"google_search": {}}]
@@ -349,7 +356,7 @@ class LiteLLMClient:
                 raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
                 break
             except Exception as e:
-                if attempt == 0 and _should_retry_without(self.model, e, kwargs):
+                if attempt < _ATTEMPTS - 1 and _should_retry_without(self.model, e, kwargs):
                     continue
                 raise
         self._accumulate_usage(raw, rid)

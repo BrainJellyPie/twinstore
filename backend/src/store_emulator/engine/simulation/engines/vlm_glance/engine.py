@@ -137,6 +137,11 @@ class VLMGlanceEngine(RuleBasedEngine):
         store, persona = context.store, context.persona
         plan, middle = self._begin_plan(context)
         directory, image = self._entrance_view(store)
+        if vcfg.directory_shuffle or vcfg.directory_examples != 3:  # else the cached fixed directory
+            directory = directory_text(store_directory(
+                store, examples=vcfg.directory_examples,
+                rng=random.Random(stable_seed(context.seed, "directory")) if vcfg.directory_shuffle else None,
+            ), cfg.currency)
         # A trip of known size plans that many (up to the schema limit), whatever the default cap.
         max_items = (min(PLAN_ITEMS_LIMIT, persona.basket_size) if persona.basket_size > 0
                      else min(vcfg.max_plan_items, plan.pattern.max_products))

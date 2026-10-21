@@ -136,6 +136,8 @@ def user_prompt(
         f"Shopper: {who} {persona.description}".strip(),
         f"Came for: {persona.intent or persona.purpose}",
     ]
+    if persona.usual_products:
+        lines.append(f"Products they usually buy: {', '.join(persona.usual_products[:_USUAL_CATEGORIES])}")
     if persona.behavior_tendency:
         lines.append(f"Habits: {persona.behavior_tendency}")
     lines.append(f"Shopping style today: {_PATTERN_GLOSS.get(pattern.id, pattern.id.replace('_', ' '))}.")
@@ -325,6 +327,8 @@ def plan_user_prompt(
         lines.append(f"Usually comes for: {persona.intent or persona.purpose}")
     if persona.preferred_categories:
         lines.append(f"Usually buys: {', '.join(persona.preferred_categories[:_USUAL_CATEGORIES])}")
+    if persona.usual_products:
+        lines.append(f"Products they usually buy: {', '.join(persona.usual_products[:_USUAL_CATEGORIES])}")
     if persona.behavior_tendency:
         lines.append(f"Habits: {persona.behavior_tendency}")
     lines.append(f"Shopping style today: {_PATTERN_GLOSS.get(pattern.id, pattern.id.replace('_', ' '))}.")

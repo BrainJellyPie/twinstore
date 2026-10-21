@@ -36,7 +36,12 @@ from store_emulator.domain.shelf_lab import (
 )
 from store_emulator.domain.types import Face, stable_seed
 from store_emulator.engine.analysis.fidelity import spearman
-from store_emulator.engine.capture.planogram import SLOT_CAPACITY, PlacementReport, face_slots_from_capture, level_rows
+from store_emulator.engine.capture.planogram import (
+    SLOT_CAPACITY,
+    PlacementReport,
+    face_slots_from_capture,
+    level_rows,
+)
 from store_emulator.engine.layout_gen.catalog import CATEGORY_LABELS
 from store_emulator.engine.perception import MarkedItem, ShelfView, render_face
 from store_emulator.engine.perception.shelf_render import load_font

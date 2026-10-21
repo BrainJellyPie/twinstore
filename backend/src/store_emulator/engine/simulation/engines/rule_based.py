@@ -159,6 +159,7 @@ class RuleBasedEngine:
         pattern, rng = plan.pattern, plan.rng
         plan.walk_out = pattern.allow_no_purchase and rng.random() < min(0.9, params.walkout_prob * self._fx.walkout)
         target = persona.basket_size if persona.basket_size > 0 else pattern.max_products
+        usual = frozenset(p.lower() for p in persona.usual_products)
         if pattern.max_products > 0 and not plan.walk_out:
             for position, category in enumerate(persona.preferred_categories):
                 if len(plan.buys) >= target:
@@ -168,7 +169,7 @@ class RuleBasedEngine:
                             * self._fx.demand_for(words_categories(category)) ** 0.5)
                 if rng.random() > min(0.98, hit_prob):
                     continue
-                pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng)
+                pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng, usual)
                 if pick is None:
                     continue
                 rack, slot, item = pick
@@ -177,16 +178,16 @@ class RuleBasedEngine:
                 # with mean items_per_category − 1. Drawn only when calibrated above 1.
                 extra_p = 1.0 - 1.0 / params.items_per_category
                 while (extra_p > 0 and len(plan.buys) < target and rng.random() < extra_p):
-                    more = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng)
+                    more = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, rng, usual)
                     if more is None:
                         break
                     self.add_planned_buy(store, plan, middle, *more, f"also takes more {category}")
             if persona.basket_size > 0:
-                self._fill_to_size(store, plan, middle, persona.preferred_categories, target)
+                self._fill_to_size(store, plan, middle, persona.preferred_categories, target, usual)
         return self.close_plan(store, plan, middle)
 
     def _fill_to_size(self, store: Store, plan: ShopperPlan, middle: list[CustomerAction],
-                      categories: list[str], target: int) -> None:
+                      categories: list[str], target: int, usual: frozenset[str] = frozenset()) -> None:
         """A trip of known size: keep taking products from the list (in priority order, round after
         round) until the basket has `target` products, the list is exhausted or money runs out."""
         while len(plan.buys) < target:
@@ -194,7 +195,7 @@ class RuleBasedEngine:
             for category in categories:
                 if len(plan.buys) >= target:
                     return
-                pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, plan.rng)
+                pick = self._pick_item(store, category, plan.budget - plan.spend, plan.chosen, plan.rng, usual)
                 if pick is not None and self.add_planned_buy(store, plan, middle, *pick, f"also needs {category}"):
                     progressed = True
             if not progressed:
@@ -333,6 +334,7 @@ class RuleBasedEngine:
 
     def _pick_item(
         self, store: Store, category: str, remaining: int, chosen: set[str], rng: random.Random,
+        usual: frozenset[str] = frozenset(),
     ) -> tuple[Rack, Slot, SlotItem] | None:
         words = expand_category(category)
         attention = self._config.perception.level_attention
@@ -348,6 +350,11 @@ class RuleBasedEngine:
                            * self._fx.demand_for(item_categories(rack, item)))
         if not candidates:
             return None
+        habit = self._config.engines.rule_based.habit_prob
+        if usual and habit > 0:
+            mine = [i for i, c in enumerate(candidates) if c[2].name.lower() in usual]
+            if mine and rng.random() < habit:
+                return rng.choices([candidates[i] for i in mine], weights=[weights[i] for i in mine], k=1)[0]
         return rng.choices(candidates, weights=weights, k=1)[0]
 
     def _visit(

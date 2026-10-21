@@ -10,7 +10,12 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import shelf_lab as lab
 from store_emulator.application.errors import AppError
-from store_emulator.application.shelf_lab import AuditRequest, LabJobView, PackageAsset, Sim2RealRequest
+from store_emulator.application.shelf_lab import (
+    AuditRequest,
+    LabJobView,
+    PackageAsset,
+    Sim2RealRequest,
+)
 from store_emulator.domain.shelf_lab import EditedShelf, LabJobStatus, PhotoEdit
 
 from ..deps import get_config

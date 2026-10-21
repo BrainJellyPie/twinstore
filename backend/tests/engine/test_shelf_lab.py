@@ -25,7 +25,12 @@ from store_emulator.engine.capture import ClassicDetector, capture_shelf, sku_fo
 from store_emulator.engine.capture.synthetic import GTFacing, SyntheticShelf, make_scene
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
-from store_emulator.engine.shelf_lab import apply_edits, build_views, glance_panel, summarize
+from store_emulator.engine.shelf_lab import (
+    apply_edits,
+    build_views,
+    glance_panel,
+    summarize,
+)
 from store_emulator.engine.shelf_lab.audit import diff_face, match_field, price_findings
 from store_emulator.engine.shelf_lab.edits import synth_package
 from store_emulator.engine.simulation.engines.vlm_glance.prompt import ShelfGlance
@@ -214,7 +219,7 @@ def test_audit_finds_stockouts_and_prices_them(store: Store, personas: list[Pers
     assert sum(lv.matched_facings for lv in levels) == sum(lv.expected_facings for lv in levels)
     assert not [f for f in findings if f.kind in ("missing", "unexpected")]
 
-    target = sorted(result.items, key=lambda i: (i.band, i.order))[0]
+    target = min(result.items, key=lambda i: (i.band, i.order))
     edited = apply_edits(scene.image, result, [PhotoEdit(kind="remove", item_id=target.id)]).result
     field = match_field(reference, edited)
     levels, findings = diff_face(rack, Face.S, field, "USD")
@@ -234,7 +239,10 @@ def test_audit_finds_stockouts_and_prices_them(store: Store, personas: list[Pers
 
 
 def _evaluator(panel: list[Persona]) -> LayoutEvaluator:
-    from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS, sample_cue
+    from store_emulator.application.presets.behavior import (
+        BEHAVIOR_PATTERNS,
+        sample_cue,
+    )
 
     return LayoutEvaluator(SimulationConfig(seed=5), panel, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(),
                            OptimizeObjective.REVENUE_PER_VISITOR)

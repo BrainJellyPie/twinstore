@@ -23,7 +23,11 @@ from store_emulator.domain.shelf_lab import AuditFinding, LevelCompliance
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face
 from store_emulator.engine.analysis.compare import compare_runs
-from store_emulator.engine.capture.planogram import PlacementReport, match_store_skus, replace_rack_face
+from store_emulator.engine.capture.planogram import (
+    PlacementReport,
+    match_store_skus,
+    replace_rack_face,
+)
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator
 from store_emulator.engine.perception.shelf_render import face_slots
 from store_emulator.engine.prompting import display_price

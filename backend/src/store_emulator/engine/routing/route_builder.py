@@ -19,7 +19,7 @@ def build_journey(
     store: Store,
     actions: list[CustomerAction],
     pathfinder: PathFinder,
-    block_move_sec: int = 1,
+    block_move_sec: float = 1,
 ) -> list[JourneyStep]:
     grid = store.walkable_grid()
     w, h = store.grid_size
@@ -407,7 +407,7 @@ def _calculate_path(
     pathfinder: PathFinder,
     current: Position,
     action: CustomerAction,
-    block_move_sec: int = 1,
+    block_move_sec: float = 1,
 ) -> list[Position]:
     if action.nav == "leave":
         return pathfinder.find_path(grid, current, _exit_position(store))
@@ -459,7 +459,7 @@ def _wander_path(
     start: Position,
     area: tuple[int, int, int, int],
     dwell: int,
-    block_move_sec: int = 1,
+    block_move_sec: float = 1,
 ) -> list[Position]:
     """Build a wander path visiting rack access tiles inside `area` as waypoints.
 
@@ -470,7 +470,7 @@ def _wander_path(
     if not waypoints:
         return [start]
 
-    generous_limit = max(8, dwell // max(1, block_move_sec) * 2)
+    generous_limit = max(8, int(dwell / max(0.5, block_move_sec)) * 2)
     ordered = _order_nearest(start, waypoints)
 
     path: list[Position] = [start]

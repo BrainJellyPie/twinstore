@@ -185,12 +185,13 @@ def _run_job(
         search_personas = select_personas(personas, spec.eval_customers, seed=spec.seed)
         if vlm_config is None:
             evaluator = LayoutEvaluator(
-                config, search_personas, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(), spec.objective,
+                config, search_personas, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(diagonal=config.diagonal_moves),
+                spec.objective,
             )
             validation = select_personas(personas, spec.validation_size, seed=spec.seed + 1)
             result = asyncio.run(optimize(store, spec, evaluator, validation_personas=validation, on_progress=on_progress))
         else:
-            pathfinder = AStarPathFinder()
+            pathfinder = AStarPathFinder(diagonal=vlm_config.diagonal_moves)
             llm = build_client(vlm_config.llm_for(EngineType.VLM_GLANCE), vlm_config.ensemble)
             result = asyncio.run(judge_layout_search(
                 store, spec, judge,

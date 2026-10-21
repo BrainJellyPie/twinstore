@@ -1,3 +1,4 @@
+import math
 import random
 
 from store_emulator.domain.customer import CustomerResult, TimelineEvent
@@ -14,7 +15,7 @@ def build_timeline(
     arrival_time: str,
     journey: list[JourneyStep],
     store: Store,
-    block_move_sec: int = 3,
+    block_move_sec: float = 3,
     rng: random.Random | None = None,
     max_quantity: int = 6,
 ) -> CustomerResult:
@@ -22,11 +23,13 @@ def build_timeline(
     # customer so timelines are reproducible even when callers pass no rng.
     rng = rng or random.Random(stable_seed("timeline", persona_id, arrival_time))
     timeline: list[TimelineEvent] = []
-    t = 0
+    # Time runs as a float (fractional seconds per tile, diagonal steps of √2 tiles); events carry it
+    # rounded to whole seconds.
+    t = 0.0
 
     entrance = entrance_position(store)
     first_pos = journey[0].path[0] if journey and journey[0].path else entrance
-    timeline.append(TimelineEvent(elapsed_sec=t, x=first_pos[0], y=first_pos[1], action=Action.ENTER))
+    timeline.append(TimelineEvent(elapsed_sec=0, x=first_pos[0], y=first_pos[1], action=Action.ENTER))
 
     for step in journey:
         action_type = _resolve_action(step.action.action)
@@ -36,37 +39,38 @@ def build_timeline(
         if is_wander:
             wander_start = step.path[0] if step.path else _last_pos(step, timeline)
             timeline.append(TimelineEvent(
-                elapsed_sec=t, x=wander_start[0], y=wander_start[1],
+                elapsed_sec=round(t), x=wander_start[0], y=wander_start[1],
                 action=Action.WANDER,
                 description=step.action.description,
             ))
 
             rack_tiles = _rack_access_tiles(store)
-            budget = step.action.dwell
+            budget: float = step.action.dwell
 
-            for pos in step.path[1:]:
+            for prev_pos, pos in zip(step.path, step.path[1:], strict=False):
                 if budget <= 0:
                     break
-                t += block_move_sec
-                budget -= block_move_sec
-                timeline.append(TimelineEvent(elapsed_sec=t, x=pos[0], y=pos[1], action=Action.MOVE))
+                dt = _step_sec(prev_pos, pos, block_move_sec)
+                t += dt
+                budget -= dt
+                timeline.append(TimelineEvent(elapsed_sec=round(t), x=pos[0], y=pos[1], action=Action.MOVE))
 
                 if budget > 0 and pos in rack_tiles and rng.random() < _WANDER_GLANCE_PROB:
                     pause = min(budget, rng.randint(_WANDER_GLANCE_MIN, _WANDER_GLANCE_MAX))
                     t += pause
                     budget -= pause
                     timeline.append(TimelineEvent(
-                        elapsed_sec=t, x=pos[0], y=pos[1],
-                        action=Action.WANDER, duration=pause,
+                        elapsed_sec=round(t), x=pos[0], y=pos[1],
+                        action=Action.WANDER, duration=round(pause),
                     ))
 
             if budget > 0:
                 t += budget
             continue
         else:
-            for pos in step.path[1:]:
-                t += block_move_sec
-                timeline.append(TimelineEvent(elapsed_sec=t, x=pos[0], y=pos[1], action=Action.MOVE))
+            for prev_pos, pos in zip(step.path, step.path[1:], strict=False):
+                t += _step_sec(prev_pos, pos, block_move_sec)
+                timeline.append(TimelineEvent(elapsed_sec=round(t), x=pos[0], y=pos[1], action=Action.MOVE))
 
         current_pos = _last_pos(step, timeline)
 
@@ -79,7 +83,7 @@ def build_timeline(
 
         if step.action.nav == "leave":
             timeline.append(TimelineEvent(
-                elapsed_sec=t, x=current_pos[0], y=current_pos[1], action=Action.EXIT,
+                elapsed_sec=round(t), x=current_pos[0], y=current_pos[1], action=Action.EXIT,
             ))
             break
 
@@ -87,7 +91,7 @@ def build_timeline(
         target = step.action.target
         face = step.action.face
         te = TimelineEvent(
-            elapsed_sec=t, x=current_pos[0], y=current_pos[1],
+            elapsed_sec=round(t), x=current_pos[0], y=current_pos[1],
             action=action_type, duration=dwell,
             target_rack=rack_id_at(store, target, face) if target else "",
             face=face,
@@ -130,6 +134,11 @@ def build_timeline(
         timeline=timeline,
         total_spent=total_spent,
     )
+
+
+def _step_sec(a: Position, b: Position, block_move_sec: float) -> float:
+    """Walking time of one grid step: a tile, or √2 tiles on a diagonal."""
+    return block_move_sec * (math.sqrt(2.0) if a[0] != b[0] and a[1] != b[1] else 1.0)
 
 
 def _last_pos(step: JourneyStep, timeline: list[TimelineEvent]) -> Position:

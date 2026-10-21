@@ -19,7 +19,7 @@ def execute_decision(
     arrival_time: str,
     decision: EngineDecision,
     pathfinder: PathFinder,
-    block_move_sec: int,
+    block_move_sec: float,
     *,
     rng: random.Random | None = None,
     max_quantity: int = 6,

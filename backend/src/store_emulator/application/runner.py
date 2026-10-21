@@ -10,7 +10,7 @@ from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunn
 
 
 def build_runner(config: SimulationConfig) -> SimulationRunner:
-    pathfinder = AStarPathFinder()
+    pathfinder = AStarPathFinder(diagonal=config.diagonal_moves)
 
     if config.engine_type not in ENGINES:
         raise ValueError(f"unsupported engine type: {config.engine_type}")
