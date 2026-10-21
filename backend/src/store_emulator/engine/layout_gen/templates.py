@@ -481,6 +481,22 @@ TEMPLATES: list[StoreTemplate] = [
         style="perimeter", open_hours=(7, 19), closed_days=(6, 7), dining_tables=16, seating_zone="center", checkouts=4,
         checkout_placement="near_entrance", design_theme="minimal",
     ),
+    StoreTemplate(
+        id="community_market_hall", name="Community market hall", description="A 32×28 botanical market with a clear central plaza, four tables toward the back and four checkout counters. Produce, bread, meals, pantry goods and flowers are available daily, 8–20, at fixed pack prices.",
+        store_type="supermarket", grid=(32, 28), fridges=["fresh_produce", "fresh_produce", "dairy", "fresh_meals", "water_sports"],
+        wall_shelves=["bakery", "pantry", "flowers", "refill_goods"] * 3,
+        gondolas=["fresh_produce", "pantry", "bakery", "flowers", "refill_goods", "fresh_meals"],
+        near_counter=["coffee_station", "bakery"], style="plaza", open_hours=(8, 20), dining_tables=4,
+        seating_zone="back", checkouts=4, checkout_placement="near_entrance", design_theme="botanical",
+    ),
+    StoreTemplate(
+        id="creative_design_hall", name="Creative design hall", description="A 30×24 Nordic concept store with homeware, art materials, books, jewelry and plant gifts around an open central plaza. Three checkout counters; open 10–20 with Tuesdays closed.",
+        store_type="home", grid=(30, 24), fridges=[],
+        wall_shelves=["home_design", "art_craft", "books", "jewelry", "flowers"] * 3,
+        gondolas=["home_design", "art_craft", "books", "jewelry", "flowers", "stationery"],
+        near_counter=["souvenirs", "stationery"], style="plaza", open_hours=(10, 20), closed_days=(2,),
+        checkouts=3, checkout_placement="away_from_entrance", design_theme="nordic",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
@@ -769,8 +785,8 @@ def generate_store(
     if not any(slot.items for rack in b.racks for slot in rack.slots):
         raise ValueError(
             "No products from the included categories fit this layout: the selected product categories have "
-            "no display space. Increase the grid size, reduce aisle width or the checkout count, choose another "
-            "layout pattern, or include more categories."
+            "no display space. Increase the grid size, reduce aisle width, checkout count or counter spacing, "
+            "change the checkout wall or layout pattern, or include more categories."
         )
 
     format_design: dict[str, StoreDesign] = {

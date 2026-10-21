@@ -232,10 +232,12 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </details>
             <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-              <Field label="Layout pattern"><select className={controlClass} value={value.style ?? ""} onChange={(e) => update({ style: (e.target.value || null) as TemplateChoice["style"] })}>
-                <option value="">Format default{selected ? ` (${LAYOUT_STYLES.find(([id]) => id === selected.default_style)?.[1]})` : ""}</option>
+              <div className="space-y-1"><Field label="Layout pattern"><select className={controlClass} value={value.style ?? ""} onChange={(e) => update({ style: (e.target.value || null) as TemplateChoice["style"] })}>
+                <option value="">Format default</option>
                 {LAYOUT_STYLES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
               </select></Field>
+              {!value.style && selected && <p className="text-[11px] text-muted-foreground">Default pattern: {LAYOUT_STYLES.find(([id]) => id === selected.default_style)?.[1]}</p>}
+              </div>
               <Field label="Display density"><select className={controlClass} value={value.density ?? "balanced"} onChange={(e) => update({ density: e.target.value as TemplateChoice["density"] })}>
                 <option value="spacious">Spacious aisles</option><option value="balanced">Balanced</option><option value="dense">High capacity</option>
               </select></Field>

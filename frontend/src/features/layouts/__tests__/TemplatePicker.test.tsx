@@ -727,11 +727,14 @@ it("previews a central plaza while retaining dimensions and table rotation and a
 it("explains cross-aisle seating capacity and lets other formats select the pattern", async () => {
   mount();
   fireEvent.click(await screen.findByRole("button", { name: /Garden & outdoor center/ }));
-  expect(screen.getByRole("option", { name: "Format default (Central cross aisles)" })).toBeTruthy();
+  expect(within(screen.getByLabelText("Layout pattern")).getByRole("option", { name: "Format default" })).toBeTruthy();
+  expect(screen.getByText("Default pattern: Central cross aisles")).toBeTruthy();
   expect(screen.getByText(/Central cross aisles stay clear of shelves and tables/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
+  expect(screen.getByText("Default pattern: Central spine")).toBeTruthy();
   expect(screen.queryByText(/Central cross aisles stay clear of shelves and tables/)).toBeNull();
   fireEvent.change(screen.getByLabelText("Layout pattern"), { target: { value: "cross" } });
+  expect(screen.queryByText(/^Default pattern:/)).toBeNull();
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
     expect.objectContaining({ template_id: "community_pharmacy", style: "cross" }), expect.any(AbortSignal),
   ));
