@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as api from "@/shared/api/client";
 import { DEFAULT_TEMPLATE_CHOICE, templateRequest, type TemplateChoice } from "../templateOptions";
 
@@ -9,8 +9,10 @@ export function LayoutOptionsFile({ value, onChange, canExport }: {
 }) {
   const input = useRef<HTMLInputElement>(null);
   const request = useRef<AbortController | null>(null);
+  const latestOnChange = useRef(onChange);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useLayoutEffect(() => { latestOnChange.current = onChange; }, [onChange]);
   useEffect(() => () => request.current?.abort(), []);
 
   function downloadOptions() {
@@ -37,7 +39,7 @@ export function LayoutOptionsFile({ value, onChange, canExport }: {
       const preset = await api.validateLayoutPreset(contents, controller.signal);
       if (controller.signal.aborted) return;
       const { template_id, source_setup_id: _source, name: _name, ...options } = preset.layout;
-      onChange({ ...DEFAULT_TEMPLATE_CHOICE, ...options, templateId: template_id });
+      latestOnChange.current({ ...DEFAULT_TEMPLATE_CHOICE, ...options, templateId: template_id });
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof SyntaxError
         ? "This file is not valid JSON. Choose a TwinStore layout options file."
