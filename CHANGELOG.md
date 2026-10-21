@@ -35,6 +35,10 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the contact-shadow decal dropped, the BVH built in a worker.
 
 ### Marketing studio
+- **Field collection checks**: default pilot monitoring view with staff/shift and A/B completeness denominators,
+  recording-gap checks, unrecorded-tail counts and a filtered, paginated follow-up checklist. JSON and CSV contain
+  outcome availability rather than purchase values. Imports and closure refresh the checklist; older and locked
+  pilots are supported. No significance tests or automatic outcome imputation.
 - **Observation import review and history**: full-sheet change previews, explicit reasons and confirmation,
   file/revision-bound application, and retained before/after records with CSV export. Known-value clearing,
   enrollment removal and purchase reversals are flagged. Unchanged sheets do not create revisions; older pilots
