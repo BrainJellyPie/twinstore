@@ -238,7 +238,8 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           </div>
           {(value.excluded_categories?.length ?? 0) > 0 && <button type="button" className="underline" onClick={() => update({ excluded_categories: [] })}>Restore all product categories</button>}
         </details>}
-        <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })} />
+        <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })}
+          grid={[value.width ?? selected?.grid[0] ?? 12, value.height ?? selected?.grid[1] ?? 10]} entrance={value.entrance} />
         <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: use warm task lighting in the consultation corner or seasonal signs near the entrance." /></Field>
         {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
         <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction and aisle gap apply to interior rows and cross-aisles; wall spacing and seating clearance are separate. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>

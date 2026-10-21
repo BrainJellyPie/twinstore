@@ -243,6 +243,14 @@ walkable and do not add rooms or service behavior. Settings are saved and restor
 for single layouts and building floors; subsequent manual floor edits can use the
 space freely.
 
+**Area starting point** offers custom, consultation, pickup, fitting,
+demonstration and event-space rectangles. New areas fit the current floor;
+pickup starts near the chosen entrance, consultation starts in a back corner,
+and demonstration/event spaces start near the center. Names receive a number
+when another area already uses the same name. You can edit every position and
+dimension afterward. Starting points can overlap and retain the same walkable
+clear-space behavior; they do not add rooms or service simulation.
+
 To iterate on a generated layout, open **New layout → Generate a store from a
 template → Reuse options from …**. This restores its format, dimensions, style,
 seating, currency, seed and design brief. Save a changed version as a linked
