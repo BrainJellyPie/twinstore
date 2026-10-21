@@ -2,7 +2,7 @@
 // size, colours and label text. No three.js / DOM dependencies so they can be
 // unit-tested and reused by an offline renderer.
 
-export type PackageKind = "bottle" | "perfumeBottle" | "teaCup" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "lemon" | "onion" | "kiwi" | "sweetPotato" | "asianPear" | "ginger" | "pot" | "croissant" | "wateringCan";
+export type PackageKind = "bottle" | "perfumeBottle" | "teaCup" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "lemon" | "onion" | "kiwi" | "sweetPotato" | "asianPear" | "ginger" | "pot" | "croissant" | "burgerBun" | "wateringCan";
 
 export type ProductCategory =
   | "drink"
@@ -195,6 +195,9 @@ const RULES: Rule[] = [
     () => spec("bag", 0.12, 0.16, 0.035, "bakery"),
   ],
   [/cereal|cheerios|froot loops|frosted flakes|granola box/, () => spec("box", 0.19, 0.27, 0.065, "pantry")],
+  // Singular rolls and explicit individual sales; unqualified plural buns stay packaged.
+  [/^(?:(?:fresh|plain|unseeded)\s+)*(?:hamburger|burger)\s+(?:bun(?:\s+(?:each|loose|single))?|buns\s+(?:each|loose|single))$/,
+    () => spec("burgerBun", 0.11082269, 0.05778436, 0.10592587, "bakery")],
   [/bread|\bbuns?\b|loaf|bagels/, () => spec("bag", 0.26, 0.13, 0.13, "bakery")],
   [/tortillas/, () => spec("bag", 0.22, 0.24, 0.03, "bakery")],
   [/pasta sides|knorr|rice-a-roni/, () => spec("bag", 0.13, 0.18, 0.04, "pantry")],
@@ -324,6 +327,7 @@ export function productPalette(name: string): ProductPalette {
   else if (kind === "sweetPotato") base = "#8b594b";
   else if (kind === "asianPear") base = "#acb56a";
   else if (kind === "ginger") base = "#b49a72";
+  else if (kind === "burgerBun") base = "#c9944f";
   // Per-product jitter so same-keyword products are distinguishable.
   base = shade(base, (hash01(n, 7) - 0.5) * 0.24);
   let accent = PALETTE[(h >>> 8) % PALETTE.length]!;

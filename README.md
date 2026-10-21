@@ -136,7 +136,8 @@ The language control next to the theme switch supports **English, 한국어, 中
 Español and Français**. It follows your browser language on first use and remembers your
 selection. Home, navigation, the command palette, store cards, search, the model notice, simulation launcher and
 new-store forms and preparation screens are localized, including validation, file selection,
-generation review and failure recovery.
+generation review and failure recovery. Basic layout-creation controls and floor-plan import
+also use the selected language.
 If preparation progress cannot be loaded, **Reload progress** checks the existing task
 without starting another generation. Generation is available after the initial progress check,
 and a failed customer task can be restarted explicitly.
@@ -149,6 +150,9 @@ Layout tabs and the layout finder use these languages too. Use Left/Right, Home 
 to focus a tab, then Enter or Space to open it. The finder searches names, building floors,
 saved design briefs and IDs, accepting accent, full-width and separator variants.
 Clear the search alone or reset both search and group filters; neither changes your current layout.
+In **Add layout**, template customization starts folded. Floor-plan selection works with the
+keyboard; a failed preview can be retried without selecting the file again. If a saved source
+disappears, choose another source to copy or remove its links while keeping the saved options.
 Model selection is localized too. Detailed layout and situation editors, other feature editors and technical server messages
 currently remain in English.
 
@@ -616,7 +620,7 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
   [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 - **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
   ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;
-  single and paired apples, whole avocados, kiwis and ginger roots use Oliver Harries' CC0 food scans; lemons and yellow onions use Kuutti Siitonen's CC0 scans, whole sweet potatoes use Jan Martens' CC0 scan, and Asian pears use Amal Kumar's CC0 scan, with shared instancing, two detail
+  single and paired apples, whole avocados, kiwis and ginger roots use Oliver Harries' CC0 food scans; individual plain burger buns use Alexander Shulha's CC0 scan; lemons and yellow onions use Kuutti Siitonen's CC0 scans, whole sweet potatoes use Jan Martens' CC0 scan, and Asian pears use Amal Kumar's CC0 scan, with shared instancing, two detail
   levels, photographic PBR maps and stable per-instance variation that is kept in Photo mode
   ([`produce/`](./frontend/public/assets/produce/README.md)). Garden-center terracotta pots use the hollow pot from Rico
   Cilliers' CC0 scan; plain croissants use Dario Barresi and Greg Zaal's CC0 Poly Haven scan; metal watering cans use

@@ -79,3 +79,32 @@ blender --background --python scripts/convert_watering_can.py -- \
   --source-dir /path/to/watering-can \
   --output frontend/public/assets/products/watering-can.glb
 ```
+
+
+`burger-bun.glb` uses **Hamburger Buns** by **Alexander Shulha**, published by
+[Poly Haven](https://polyhaven.com/a/hamburger_buns) under CC0.
+`burger-bun-sources.json` records five verified sources and the output checksum.
+The middle roll (`hamburger_buns_02`) retains its original 3,950 triangles for
+close views and uses 200 triangles at a distance. Decimating the close-view
+surface introduced visible shading boundaries, so the original curvature is
+preserved. Both LODs share the original 1K JPEG color, OpenGL
+normal and packed roughness maps in a 2,140,696-byte model.
+
+The authored proportions remain approximately 11.1 × 5.8 × 10.6 cm before the
+usual product readability scale. Singular plain hamburger/burger-bun names and
+explicit individual sales (`Each`, `Loose`, `Single`) use the scan. Unqualified
+plural names, multipacks, seeded or specialty rolls, frozen bread and filled
+burgers retain their existing package rules.
+
+Shelves and tables keep rolls in one layer, preserving their proportions and
+adding stable half-turn, size and brightness variation within each footprint.
+Medium uses color and flat roughness; High also uses normal and roughness maps.
+A closed dome with a flat base stays visible during loading or failure. Layouts
+without individual plain burger buns make no request for the asset.
+
+Download and verify the manifest sources, preserving paths, then run:
+
+```sh
+blender --background --python scripts/convert_burger_bun.py -- \
+  --source-dir /path/to/hamburger-buns --output frontend/public/assets/products/burger-bun.glb
+```
