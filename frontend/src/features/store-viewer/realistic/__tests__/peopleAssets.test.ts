@@ -28,7 +28,7 @@ describe("bundled shopper models", () => {
       expect(data.readUInt32LE(0)).toBe(0x46546c67);
       const jsonLength = data.readUInt32LE(12);
       const model = JSON.parse(data.subarray(20, 20 + jsonLength).toString()) as Model;
-      expect(model.animations.map((a) => a.name).sort()).toEqual(["browse", "idle", "walk"]);
+      expect(model.animations.map((a) => a.name).sort()).toEqual(["browse", "idle", "wait", "walk"]);
       expect(model.skins[0]!.joints.length).toBeGreaterThan(50);
       expect(model.materials.filter((m) => m.normalTexture)).toHaveLength(2);
       const hair = model.materials.find((m) => m.name.includes("opacity"));
@@ -107,6 +107,24 @@ describe("bundled shopper models", () => {
       const spread = Array.from({ length: rotations.count }, (_, i) =>
         1 - Math.abs(quaternion(i).reduce((dot, value, axis) => dot + value * first[axis]!, 0)));
       expect(Math.max(...spread)).toBeGreaterThan(0.005);
+
+      // The longer standing variation must visibly move and close its loop.
+      const waiting = model.animations.find((a) => a.name === "wait")!;
+      for (const name of ["Bip01 Head", "Bip01 Pelvis", "Bip01 L Thigh", "Bip01 R Thigh"]) {
+        const channel = waiting.channels.find((c) => model.nodes[c.target.node]?.name === name && c.target.path === "rotation")!;
+        const accessor = model.accessors[waiting.samplers[channel.sampler]!.output]!;
+        const view = model.bufferViews[accessor.bufferView]!;
+        const offset = binaryStart + view.byteOffset + (accessor.byteOffset ?? 0);
+        const read = (i: number) => Array.from({ length: 4 }, (_, axis) => data.readFloatLE(offset + i * (view.byteStride ?? 16) + axis * 4));
+        const start = read(0);
+        const angle = (i: number) => 2 * Math.acos(Math.min(1, Math.abs(read(i).reduce((dot, value, axis) => dot + value * start[axis]!, 0))));
+        expect(angle(accessor.count - 1)).toBeLessThan(Math.PI / 180);
+        if (name === "Bip01 Head") {
+          const excursion = Math.max(...Array.from({ length: accessor.count }, (_, i) => angle(i)));
+          expect(excursion).toBeGreaterThan(10 * Math.PI / 180);
+          expect(excursion).toBeLessThan(30 * Math.PI / 180);
+        }
+      }
     });
   }
 

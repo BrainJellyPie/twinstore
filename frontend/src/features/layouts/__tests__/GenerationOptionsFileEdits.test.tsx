@@ -8,7 +8,7 @@ import { BuildingPicker } from "../components/BuildingPicker";
 import { GenerationOptionsFile } from "../components/GenerationOptionsFile";
 import { buildingPreset, type TemplateChoice } from "../templateOptions";
 
-vi.mock("@/shared/api/client", () => ({ validateLayoutPreset: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ validateLayoutPreset: vi.fn(), validateBuildingPreset: vi.fn() }));
 vi.mock("../components/TemplatePicker", () => ({
   TemplatePicker: ({ value, onChange }: { value: TemplateChoice; onChange: (choice: TemplateChoice) => void }) =>
     <GenerationOptionsFile kind="layout" value={value} onChange={onChange} canExport />,

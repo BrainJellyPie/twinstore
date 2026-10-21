@@ -126,6 +126,7 @@ for mat in bpy.data.materials:
 gender = "f" if name.startswith("Female") else "m"
 clips = [
     ("idle", "all_animations_max_motextr_static", gender + "_idle_breathe_01.max.fbx"),
+    ("wait", "all_animations_max_motextr_static", gender + "_idle_neutral_02.max.fbx"),
     ("walk", "all_animations_max_motextr_xy", gender + "_walk_neutral.max.fbx"),
     ("browse", "all_animations_max_motextr_static", gender + "_idle_look_around_01.max.fbx"),
 ]
