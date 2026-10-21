@@ -499,10 +499,12 @@ def export_customers_csv(pid: str, run_id: str) -> str:
         p = cast(dict[str, Any], personas_raw.get(r.persona_id, {}))
         m = customer_metrics(r)
         products = "; ".join(f"{e.product_name} x{e.quantity}" for e in r.purchases)
-        writer.writerow([
+        row: list[object] = [
             r.persona_id, int(r.day), r.arrival_time, r.leave_time,
             *[p.get(c, "") for c in persona_cols],
             *[int(m[c]) if float(m[c]).is_integer() else m[c] for c in metric_cols],
             products,
-        ])
+        ]
+        writer.writerow("'" + cell if isinstance(cell, str) and cell.lstrip().startswith(("=", "+", "-", "@")) else cell
+                        for cell in row)
     return out.getvalue()
