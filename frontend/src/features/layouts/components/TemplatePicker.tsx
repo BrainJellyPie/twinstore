@@ -1,4 +1,5 @@
-import { ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
+import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { useI18n } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { storeTypeLabel } from "@/shared/i18n/storeLabels";
@@ -41,6 +42,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const [customizationOpen, setCustomizationOpen] = useState(defaultCustomizationOpen);
   const [search, setSearch] = useState("");
   const searchInput = useRef<HTMLInputElement>(null);
+  const formatList = useRef<HTMLDivElement>(null);
   const [storeType, setStoreType] = useState("");
   const [size, setSize] = useState("all");
   const [seating, setSeating] = useState("all");
@@ -94,6 +96,27 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     return 0;
   });
   const update = (patch: Partial<TemplateChoice>) => onChange({ ...value, ...patch });
+  const selectFormat = (id: string) => {
+    if (id === value.templateId) return;
+    const format = templates.find((item) => item.id === id);
+    if (format) { update({ templateId: id }); onTemplateSelected?.(format); }
+  };
+  const handleFormatKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+      event.preventDefault(); event.stopPropagation(); return;
+    }
+    if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); event.currentTarget.click(); return; }
+    const arrow = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key);
+    if (!arrow && event.key !== "Home" && event.key !== "End") return;
+    event.preventDefault(); event.stopPropagation();
+    const delta = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? filtered.length - 1 : (index + delta + filtered.length) % filtered.length;
+    const next = filtered[nextIndex];
+    if (!next) return;
+    // Keep focus synchronous so rapid key presses cannot race deferred navigation.
+    if (arrow) selectFormat(next.id);
+    formatList.current?.querySelectorAll<HTMLButtonElement>('button[role="radio"]')[nextIndex]?.focus();
+  };
   const clearFilters = () => {
     setSearch(""); setStoreType(""); setSize("all"); setSeating("all"); setSort("default");
     searchInput.current?.focus();
@@ -104,7 +127,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
       <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
         <div className="space-y-1 text-xs">
           <label htmlFor={`${customizationId}-search`}>{t("findStoreFormat")}</label>
@@ -149,17 +172,22 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
       {templatesQuery.isPending && <p role="status" className="text-xs">{t("loadingFormats")}</p>}
       {templatesQuery.isError && <p role="alert" className="text-xs text-destructive">{t("loadFormatsError")} <button type="button" className="underline" disabled={templatesQuery.isFetching}
         onClick={() => void templatesQuery.refetch()}>{t(templatesQuery.isFetching ? "tryingAgain" : "tryAgain")}</button></p>}
-      <div role="group" className="grid max-h-48 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2" aria-label={t("storeFormats")}>
-        {filtered.map((format) => (
-          <button key={format.id} type="button" aria-pressed={value.templateId === format.id}
-            onClick={() => { update({ templateId: format.id }); onTemplateSelected?.(format); }}
-            className={cn("min-w-0 break-words rounded-md border p-2 text-left text-xs transition-colors", value.templateId === format.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
-            <div className="font-medium">{format.name}</div>
+      <p id={`${customizationId}-keyboard`} className="sr-only">{t("formatKeyboardHint")}</p>
+      <RadioGroupPrimitive.Root ref={formatList} value={value.templateId} onValueChange={selectFormat}
+        loop className="grid min-w-0 max-h-48 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2" aria-label={t("storeFormats")}
+        aria-describedby={`${customizationId}-keyboard`}>
+        {filtered.map((format, index) => (
+          <RadioGroupPrimitive.Item key={format.id} value={format.id}
+            onKeyDownCapture={(event) => handleFormatKeyDown(event, index)}
+            className={cn("min-w-0 rounded-md border p-2 text-left text-xs transition-colors [overflow-wrap:anywhere]", value.templateId === format.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
+            <div className="flex items-start justify-between gap-2 font-medium"><span className="min-w-0 flex-1">{format.name}</span>
+              <RadioGroupPrimitive.Indicator className="shrink-0"><Check className="size-3.5 text-primary" aria-hidden /></RadioGroupPrimitive.Indicator>
+            </div>
             <div className="text-muted-foreground">{storeTypeLabel(format.store_type, locale)}</div>
             <div className="text-muted-foreground">{t("defaultFormatSummary", { width: format.grid[0], height: format.grid[1], displays: format.racks, products: format.skus })}</div>
-          </button>
+          </RadioGroupPrimitive.Item>
         ))}
-      </div>
+      </RadioGroupPrimitive.Root>
       {templatesQuery.isSuccess && !filtered.length && <p className="text-xs text-muted-foreground">
         {t(templates.length ? "noMatchingFormats" : "emptyFormats")}
         {!templates.length && <> <button type="button" className="underline" disabled={templatesQuery.isFetching}

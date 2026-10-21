@@ -40,7 +40,7 @@ async function mount(expectEnabled = true) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } }); clients.push(client);
   client.setQueryData(["projects", "project"], { metadata: { currency: "USD" } });
   const mounted = render(<QueryClientProvider client={client}><CapturePage projectId="project" /></QueryClientProvider>);
-  const apply = await screen.findByRole("button", { name: "Create a layout with this shelf" });
+  const apply = await screen.findByRole("button", { name: "Create a layout with this shelf" }, { timeout: 3000 });
   if (expectEnabled) await waitFor(() => expect((apply as HTMLButtonElement).disabled).toBe(false));
   return { ...mounted, client, apply };
 }

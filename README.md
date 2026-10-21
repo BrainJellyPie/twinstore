@@ -250,6 +250,9 @@ the floor editor (up to 40×40 cells) are documented in [`STORE_TEMPLATES.md`](.
 
 In the new-store wizard, choose a format, size and currency first. **Customize layout** opens
 shelf, entrance, seating and reserved-area settings; folding them keeps your edits.
+The format list takes one Tab stop. Arrow keys choose a format; Home/End move to the
+ends, Enter or Space selects, and Tab continues to the next control. Filtering preserves
+the selected layout until you make another choice.
 Next, describe your customers and optionally select a CSV or XLSX file up to 10 MB. Review
 the store details before **Generate** starts persona creation with the configured model.
 
