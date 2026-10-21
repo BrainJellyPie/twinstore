@@ -31,7 +31,12 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the contact-shadow decal dropped, the BVH built in a worker.
 
 ### Marketing studio
-- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with three tabs.
+- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with four tabs.
+- **Staff scripts**: independent A/B exposures on the same synthetic personas, with purchase intent,
+  trust and pressure ratings, complete-pair bootstrap intervals, exploratory segments and customer replies.
+  Saved product/persona snapshots and exact-script CSV support review; missing responses, restart recovery
+  and conservative screening recommendations are explicit. API: `POST/GET /api/projects/{pid}/staff-pitches`,
+  `GET/DELETE .../{id}`, `.../{id}/export.csv`. This is wording screening, not a real sales-effect estimate.
 - **Products**: a product image library (multi-file drop, background cut-out, name, brand, linked shelf
   SKU, rename, delete), shared with Shelf Lab. The vision shoppers' shelf renderer draws a linked
   image instead of the plain package.
