@@ -1,0 +1,57 @@
+{
+  "asset": "food_avocado_01",
+  "source": "https://polyhaven.com/a/food_avocado_01",
+  "author": "Oliver Harries",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_avocado.py; 200/999 triangle LODs, bottom-centred unit bounds, inverse-transpose vertex normals; original 1K JPEG color, OpenGL normal and roughness maps retained.",
+  "authored_dimensions_metres": {
+    "width": 0.09518590569496155,
+    "height": 0.1432344764471054,
+    "depth": 0.09456679224967957
+  },
+  "files": [
+    {
+      "file": "food_avocado_01.gltf",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/food_avocado_01/food_avocado_01_1k.gltf",
+      "bytes": 2735,
+      "md5": "e4054137d65bf850cf455b65a186a5d2",
+      "sha256": "cce51afb7dcdc6c19371806993e2c1096788a10accf453fda1198875e59f7846"
+    },
+    {
+      "file": "textures/food_avocado_01_diff_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_avocado_01/food_avocado_01_diff_1k.jpg",
+      "bytes": 120451,
+      "md5": "7a1efff7e58bdf40b784f0e1734ae950",
+      "sha256": "b6953e91378f491d7aadde14f6dd9e83b22d37b160dcdb944c3f7b35454bae44"
+    },
+    {
+      "file": "textures/food_avocado_01_nor_gl_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_avocado_01/food_avocado_01_nor_gl_1k.jpg",
+      "bytes": 148148,
+      "md5": "ea3b6376ea9e7573ad91b67b2c970491",
+      "sha256": "325b29fb90b621687507eb099993597dd160a43666c2556f0bd717d217902231"
+    },
+    {
+      "file": "textures/food_avocado_01_rough_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/food_avocado_01/food_avocado_01_rough_1k.jpg",
+      "bytes": 133935,
+      "md5": "c482520f5a75512d347ea20dbfe52beb",
+      "sha256": "c830a9276d3069fb0a587d8630b0d8771724279e0e105afb67bf63ab923ca5e0"
+    },
+    {
+      "file": "food_avocado_01.bin",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/food_avocado_01/food_avocado_01.bin",
+      "bytes": 179900,
+      "md5": "d0f8e04587f9befd36f7e74af8adc136",
+      "sha256": "72503b157d307643cc7dc05102d9a8921a091de512c8c42c5a7a1716f99e113f"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "avocado.glb",
+      "bytes": 441080,
+      "sha256": "0624cec079566a33ed32c729a6a8ed1b0d43d56b6470f0aeab5a1d5d85505c3f"
+    }
+  ]
+}

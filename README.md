@@ -713,7 +713,7 @@ High also replaces the entrance's simple planters with a reduced Poly Haven
 Potted Plant 01 model by Rico Cilliers (CC0), with textured leaves and terracotta.
 Sources and rebuild instructions are in [`frontend/public/assets/props/`](./frontend/public/assets/props/README.md).
 Fresh bananas use Alexander Shulha's CC0 Poly Haven scan; single and paired apples
-use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
+and whole avocados use Oliver Harries' CC0 food scans. These use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
 Individual fruit instances have stable variations in orientation, size and subtle
