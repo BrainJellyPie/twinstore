@@ -74,10 +74,10 @@ def response_model(questions: Sequence[QuestionKind], stimuli: int) -> type[Base
             for i in range(stimuli):
                 fields[f"{q}_{LETTERS[i]}"] = (int, Field(ge=1, le=5))
         elif q == "price_vw":
-            fields["too_cheap"] = (float, Field(ge=0, description="price at which A is so cheap you would doubt its quality"))
-            fields["cheap"] = (float, Field(ge=0, description="price at which A is a bargain"))
-            fields["expensive"] = (float, Field(ge=0, description="price at which A starts to feel expensive"))
-            fields["too_expensive"] = (float, Field(ge=0, description="price at which A is too expensive to consider"))
+            fields["too_cheap"] = (float, Field(ge=0, allow_inf_nan=False, description="price at which A is so cheap you would doubt its quality"))
+            fields["cheap"] = (float, Field(ge=0, allow_inf_nan=False, description="price at which A is a bargain"))
+            fields["expensive"] = (float, Field(ge=0, allow_inf_nan=False, description="price at which A starts to feel expensive"))
+            fields["too_expensive"] = (float, Field(ge=0, allow_inf_nan=False, description="price at which A is too expensive to consider"))
         elif q == "preference" and stimuli > 1:
             fields["preferred"] = (Literal[tuple(LETTERS[:stimuli])], ...)
         elif q == "open":
@@ -137,26 +137,26 @@ async def survey_panel(
     async def ask(p: Persona) -> SurveyAnswer:
         base = SurveyAnswer(respondent=p.id, age_group=str(p.age_group), gender=str(p.gender))
         user = f"{persona_text(p, currency)}\n\n{('About the products: ' + context) if context else ''}\n\nQuestions:\n{asks}"
-        async with sem:
-            try:
+        try:
+            async with sem:
                 r = await llm.generate_structured_with_image_async(
                     model, SURVEY_PROMPT, user, url, max_retries=1, seed=stable_seed("survey", seed, p.id),
                 )
-            except Exception as e:  # noqa: BLE001 — one respondent failing must not sink the panel
-                return base.model_copy(update={"error": f"{type(e).__name__}: {str(e)[:160]}"})
-        data = r.model_dump()
-        upd: dict[str, Any] = {}
-        for q in SCALES:
-            if q in questions:
-                upd[q] = [int(data[f"{q}_{LETTERS[i]}"]) for i in range(stimuli)]
-        if "price_vw" in questions:
-            for key in ("too_cheap", "cheap", "expensive", "too_expensive"):
-                upd[key] = round(float(data[key]) * minor_per_major)
-        if "preferred" in data:
-            upd["preferred"] = LETTERS.index(str(data["preferred"]))
-        if "why" in data:
-            upd["why"] = str(data["why"]).strip()
-        return base.model_copy(update=upd)
+            data = r.model_dump()
+            upd: dict[str, Any] = {}
+            for q in SCALES:
+                if q in questions:
+                    upd[q] = [int(data[f"{q}_{LETTERS[i]}"]) for i in range(stimuli)]
+            if "price_vw" in questions:
+                for key in ("too_cheap", "cheap", "expensive", "too_expensive"):
+                    upd[key] = round(float(data[key]) * minor_per_major)
+            if "preferred" in data:
+                upd["preferred"] = LETTERS.index(str(data["preferred"]))
+            if "why" in data:
+                upd["why"] = str(data["why"]).strip()
+            return base.model_copy(update=upd)
+        except Exception as e:  # noqa: BLE001 — one respondent failing must not sink the panel
+            return base.model_copy(update={"error": f"{type(e).__name__}: {str(e)[:160]}"})
 
     return list(await asyncio.gather(*(ask(p) for p in personas)))
 
