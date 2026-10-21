@@ -4,10 +4,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Camera, Check, ImagePlus, Loader2, Minus, Plus, Save, Trash2, Upload, Wand2 } from "lucide-react";
+import { Camera, Check, Eye, EyeOff, FlaskConical, ImagePlus, ListChecks, Loader2, Minus, Plus, Save, Trash2, Upload, Wand2 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import type { CaptureDetector, CaptureEdit, CaptureItem, CaptureResult, CaptureStatus } from "@/shared/api/client";
+import type { CaptureBox, CaptureDetector, CaptureEdit, CaptureItem, CaptureResult, CaptureStatus } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
@@ -16,6 +16,8 @@ import { formatMoney } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
 
 import { CAPTURE_CATEGORIES, categoryColor, categoryLabel } from "./categories";
+import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
+import { BeforeAfter, ShelfLabPanel } from "./ShelfLab";
 
 const capturesKey = (pid: string) => ["projects", pid, "captures"] as const;
 
@@ -79,12 +81,17 @@ function UploadCard({ projectId, onStarted, large = false }: { projectId: string
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files); }}
         className={cn(
-          "flex flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed bg-card p-10 text-center transition-colors",
+          "spotlight flex flex-col items-center justify-center gap-3 rounded-[2rem] border-2 border-dashed border-foreground/15 bg-card/50 p-12 text-center backdrop-blur-xl transition-colors",
           drag ? "border-primary bg-primary/5" : "hover:border-primary/60",
         )}
       >
-        {upload.isPending ? <Loader2 className="size-10 animate-spin text-primary" /> : <ImagePlus className="size-10 text-primary" />}
-        <span className="font-display text-2xl font-semibold">Photograph a shelf, get its planogram</span>
+        <span className="relative grid size-20 place-items-center">
+          <span className="absolute inset-0 animate-spin-slow rounded-full bg-[conic-gradient(from_0deg,var(--heat-1),var(--heat-2),var(--heat-3),var(--volt),var(--heat-1))] opacity-70 blur-md" aria-hidden />
+          <span className="relative grid size-16 place-items-center rounded-full bg-background">
+            {upload.isPending ? <Loader2 className="size-8 animate-spin" /> : <ImagePlus className="size-8" />}
+          </span>
+        </span>
+        <span className="font-display text-[2rem] leading-tight">Photograph a shelf, <span className="font-accent aurora-text">get its planogram</span></span>
         <span className="max-w-lg text-muted-foreground">
           Drop a photo of one shelf section, taken straight on. Parastore finds the shelves and every facing, reads each
           product and its price tag, and turns it into a rack you can put into a layout and simulate.
@@ -95,10 +102,10 @@ function UploadCard({ projectId, onStarted, large = false }: { projectId: string
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => pick(e.target.files)} />
       </button>
       {upload.error && <p className="text-sm text-destructive">{upload.error instanceof Error ? upload.error.message : String(upload.error)}</p>}
-      <div className="grid grid-cols-2 gap-3 rounded-2xl border bg-card p-4 text-sm md:grid-cols-4">
+      <div className="glass grid grid-cols-2 gap-3 rounded-2xl p-4 text-sm md:grid-cols-4">
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Find products with</span>
-          <select className="h-9 rounded-lg border bg-background px-2" value={detector} onChange={(e) => setDetector(e.target.value as CaptureDetector)}>
+          <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={detector} onChange={(e) => setDetector(e.target.value as CaptureDetector)}>
             <option value="auto">Best available</option>
             <option value="gdino">Grounding DINO (object detector)</option>
             <option value="classic">Shelf geometry (fast)</option>
@@ -107,7 +114,7 @@ function UploadCard({ projectId, onStarted, large = false }: { projectId: string
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Read products with</span>
-          <select className="h-9 rounded-lg border bg-background px-2" value={model} onChange={(e) => setModel(e.target.value)}>
+          <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={model} onChange={(e) => setModel(e.target.value)}>
             <option value="">App's vision model</option>
             {models.filter((m) => m.vision).map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
             <option value="none">Don't read (typical prices)</option>
@@ -115,14 +122,14 @@ function UploadCard({ projectId, onStarted, large = false }: { projectId: string
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Prices in</span>
-          <select className="h-9 rounded-lg border bg-background px-2" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+          <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={currency} onChange={(e) => setCurrency(e.target.value)}>
             <option value="USD">US dollars</option>
             <option value="KRW">Korean won</option>
           </select>
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">It is a</span>
-          <select className="h-9 rounded-lg border bg-background px-2" value={rackType} onChange={(e) => setRackType(e.target.value as "shelf" | "fridge")}>
+          <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={rackType} onChange={(e) => setRackType(e.target.value as "shelf" | "fridge")}>
             <option value="shelf">Shelf / gondola</option>
             <option value="fridge">Fridge</option>
           </select>
@@ -141,13 +148,13 @@ function CaptureStrip({ projectId, captures, selected, onSelect }: {
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-1">
       <button type="button" onClick={() => onSelect(null)}
-        className="flex h-16 w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed text-xs text-muted-foreground hover:border-primary hover:text-foreground">
+        className="flex h-16 w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-foreground/15 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
         <Camera className="size-4" /> New photo
       </button>
       {captures.map((c) => (
         <button key={c.capture_id} type="button" onClick={() => onSelect(c.capture_id)}
-          className={cn("relative h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition-colors",
-            selected === c.capture_id ? "border-primary" : "border-transparent hover:border-border")}
+          className={cn("relative h-16 w-24 shrink-0 overflow-hidden rounded-2xl border-2 transition-[border-color,box-shadow]",
+            selected === c.capture_id ? "border-primary shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_20%,transparent)]" : "border-transparent hover:border-border")}
           title={c.image_name}>
           <img src={api.captureImageUrl(projectId, c.capture_id)} alt="" className="h-full w-full object-cover" />
           <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-0.5 text-left text-[0.68rem] text-white">
@@ -178,15 +185,35 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
     onSuccess: async () => { await qc.invalidateQueries({ queryKey: capturesKey(projectId) }); onDeleted(); },
   });
   const [hover, setHover] = useState<string | null>(null);
+  const [tab, setTab] = useState<"planogram" | "lab">("planogram");
+  const [draft, setDraft] = useState<LabDraft>(EMPTY_DRAFT);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [showMask, setShowMask] = useState(false);
+  const [focus, setFocus] = useState<CaptureBox | null>(null);
   const status = view.data?.status;
   const result = view.data?.result ?? null;
+  const pick = (id: string) => {
+    if (draft.slot === "other" && needsOther(draft.kind)) setDraft({ ...draft, other: id, slot: "target" });
+    else setDraft({ ...draft, target: id, slot: needsOther(draft.kind) && !draft.other ? "other" : "target" });
+  };
 
   if (!status) return <div className="flex flex-1 items-center justify-center"><Loader2 className="size-6 animate-spin" /></div>;
   return (
     <div className="flex min-h-0 flex-1 gap-4">
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl border bg-[var(--scene)]">
-          <PhotoOverlay projectId={projectId} captureId={captureId} result={result} size={status.image_size} hover={hover} onHover={setHover} />
+        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--scene)] p-3 shadow-[var(--shadow-lift)]">
+          {editId && result ? (
+            <BeforeAfter beforeUrl={api.captureImageUrl(projectId, captureId)} afterUrl={api.editFileUrl(projectId, captureId, editId, "image")}
+              maskUrl={api.editFileUrl(projectId, captureId, editId, "mask")} size={result.image_size} showMask={showMask} />
+          ) : (
+            <PhotoOverlay projectId={projectId} captureId={captureId} result={result} size={status.image_size} hover={hover} onHover={setHover}
+              onPick={tab === "lab" ? pick : undefined} marks={tab === "lab" ? { target: draft.target, other: draft.other } : undefined} focus={focus} />
+          )}
+          {editId && (
+            <button type="button" onClick={() => setShowMask(!showMask)} className="glass absolute bottom-5 left-5 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium">
+              {showMask ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />} {showMask ? "Hide" : "Show"} changed pixels
+            </button>
+          )}
           {status.status !== "completed" && status.status !== "failed" && (
             <div className="glass absolute inset-x-6 bottom-6 rounded-2xl border p-4 shadow-float">
               <div className="mb-2 font-medium">{STAGES[status.stage] ?? status.stage}</div>
@@ -207,18 +234,39 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
           </button>
         </div>
       </div>
-      <aside className="flex w-[27rem] shrink-0 flex-col gap-3 overflow-y-auto">
-        {status.status === "failed" && <p className="rounded-xl border tone-bad p-3 text-sm">{status.error}</p>}
-        {result && <ItemsEditor projectId={projectId} captureId={captureId} result={result} hover={hover} onHover={setHover} />}
-        {result && <ApplyPanel projectId={projectId} captureId={captureId} result={result} />}
+      <aside className="panel flex w-[28rem] shrink-0 flex-col overflow-hidden rounded-[1.6rem]">
+        <div className="flex gap-1 border-b border-glass-border p-2">
+          {([
+            { id: "planogram", label: "Planogram", icon: ListChecks },
+            { id: "lab", label: "Shelf Lab", icon: FlaskConical },
+          ] as const).map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" onClick={() => setTab(id)}
+              className={cn("flex h-10 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors",
+                tab === id ? "bg-foreground/[0.08] text-foreground shadow-[inset_0_1px_0_var(--highlight)]" : "text-muted-foreground hover:text-foreground")}>
+              <Icon className="size-4" /> {label}
+              {id === "lab" && <span className="rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-bold text-primary-foreground">NEW</span>}
+            </button>
+          ))}
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+          {status.status === "failed" && <p className="rounded-xl border tone-bad p-3 text-sm">{status.error}</p>}
+          {result && tab === "planogram" && <ItemsEditor projectId={projectId} captureId={captureId} result={result} hover={hover} onHover={setHover} />}
+          {result && tab === "planogram" && <ApplyPanel projectId={projectId} captureId={captureId} result={result} />}
+          {result && tab === "lab" && (
+            <ShelfLabPanel projectId={projectId} captureId={captureId} result={result} draft={draft} setDraft={setDraft}
+              editId={editId} onSelectEdit={setEditId} onFocus={setFocus} />
+          )}
+          {!result && status.status !== "failed" && <p className="p-6 text-center text-sm text-muted-foreground">Reading the shelf…</p>}
+        </div>
       </aside>
     </div>
   );
 }
 
-function PhotoOverlay({ projectId, captureId, result, size, hover, onHover }: {
+function PhotoOverlay({ projectId, captureId, result, size, hover, onHover, onPick, marks, focus }: {
   projectId: string; captureId: string; result: CaptureResult | null; size: [number, number];
   hover: string | null; onHover: (id: string | null) => void;
+  onPick?: (id: string) => void; marks?: { target: string | null; other: string | null }; focus?: CaptureBox | null;
 }) {
   const [w, h] = result?.image_size ?? size;
   if (!w || !h) return null;
@@ -235,14 +283,22 @@ function PhotoOverlay({ projectId, captureId, result, size, hover, onHover }: {
             <rect key={i} x={g.box.x1} y={g.box.y1} width={g.box.x2 - g.box.x1} height={g.box.y2 - g.box.y1}
               fill="#e0304a" fillOpacity={0.28} stroke="#e0304a" strokeWidth={Math.max(2, w / 350)} />
           ))}
-          {result.items.map((it) => it.boxes.map((bx, j) => (
-            <rect key={`${it.id}-${j}`} x={bx.x1} y={bx.y1} width={bx.x2 - bx.x1} height={bx.y2 - bx.y1} rx={w / 200}
-              fill={categoryColor(it.category)} fillOpacity={hover === it.id ? 0.45 : 0.12}
-              stroke={categoryColor(it.category)} strokeWidth={hover === it.id ? Math.max(3, w / 200) : Math.max(1.5, w / 450)}
-              onMouseEnter={() => onHover(it.id)} className="cursor-pointer">
-              <title>{it.name || "Unrecognized product"}</title>
-            </rect>
-          )))}
+          {result.items.map((it) => it.boxes.map((bx, j) => {
+            const role = marks?.target === it.id ? "target" : marks?.other === it.id ? "other" : null;
+            const color = role === "target" ? "var(--volt)" : role === "other" ? "var(--heat-1)" : categoryColor(it.category);
+            return (
+              <rect key={`${it.id}-${j}`} x={bx.x1} y={bx.y1} width={bx.x2 - bx.x1} height={bx.y2 - bx.y1} rx={w / 200}
+                fill={color} fillOpacity={role ? 0.35 : hover === it.id ? 0.45 : 0.12}
+                stroke={color} strokeWidth={role || hover === it.id ? Math.max(3, w / 180) : Math.max(1.5, w / 450)}
+                onMouseEnter={() => onHover(it.id)} onClick={onPick ? () => onPick(it.id) : undefined} className="cursor-pointer">
+                <title>{it.name || "Unrecognized product"}</title>
+              </rect>
+            );
+          }))}
+          {focus && (
+            <rect x={focus.x1} y={focus.y1} width={focus.x2 - focus.x1} height={focus.y2 - focus.y1} rx={w / 150}
+              fill="none" stroke="var(--volt)" strokeWidth={Math.max(4, w / 120)} className="animate-pulse" pointerEvents="none" />
+          )}
         </svg>
       )}
     </div>
@@ -371,7 +427,7 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
       <h3 className="section-title mb-2">Put it in a layout</h3>
       <label className="flex flex-col gap-1">
         <span className="text-xs text-muted-foreground">Start from</span>
-        <select className="h-9 rounded-lg border bg-background px-2" value={base} onChange={(e) => setSetupId(e.target.value)}>
+        <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={base} onChange={(e) => setSetupId(e.target.value)}>
           {setups.map((s) => <option key={s.id} value={s.id}>{s.name}{s.status === "draft" ? " (draft)" : ""}</option>)}
         </select>
       </label>
