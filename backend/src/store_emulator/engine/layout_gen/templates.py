@@ -355,6 +355,30 @@ TEMPLATES: list[StoreTemplate] = [
         wall_shelves=["juice_menu", "fresh_produce"], gondolas=["juice_menu"], near_counter=["juice_menu"],
         style="perimeter", open_hours=(7, 20), dining_tables=2, seating_zone="right", checkout_placement="near_entrance", design_theme="botanical",
     ),
+    StoreTemplate(
+        id="korean_restaurant", name="Korean casual restaurant", description="Rice bowls, stews and Korean sides around a warm dining floor with twelve four-seat tables and two ordering counters. Models counter purchases.",
+        store_type="restaurant", grid=(26, 22), fridges=["soft_drinks", "water_sports", "dairy"],
+        wall_shelves=["korean_menu"] * 6, gondolas=["korean_menu"], near_counter=["korean_menu", "tea_menu"],
+        style="perimeter", open_hours=(11, 22), dining_tables=12, checkouts=2, seating_zone="center", design_theme="warm",
+    ),
+    StoreTemplate(
+        id="burger_shop", name="Burger & fries shop", description="Burgers, fries and sides on an industrial dining floor with ten four-seat tables and three ordering counters near the entrance. Models counter purchases.",
+        store_type="restaurant", grid=(24, 20), fridges=["soft_drinks", "water_sports", "dairy"],
+        wall_shelves=["burger_menu"] * 5, gondolas=["burger_menu"], near_counter=["burger_menu", "desserts"],
+        style="perimeter", open_hours=(10, 23), dining_tables=10, checkouts=3, seating_zone="back", checkout_placement="near_entrance", design_theme="industrial",
+    ),
+    StoreTemplate(
+        id="salad_cafe", name="Salad & grain-bowl café", description="Salads, grain bowls and soup with botanical finishes, six four-seat tables and two ordering counters. Models counter purchases.",
+        store_type="cafe", grid=(22, 18), fridges=["salad_menu", "salad_menu", "juice_menu", "water_sports"],
+        wall_shelves=["salad_menu", "salad_menu", "cafe_menu"], gondolas=["salad_menu"], near_counter=["salad_menu", "cafe_menu"],
+        style="free_flow", open_hours=(8, 21), dining_tables=6, checkouts=2, seating_zone="left", design_theme="botanical",
+    ),
+    StoreTemplate(
+        id="ice_cream_parlor", name="Ice cream & gelato parlor", description="Scoops, cones, sundaes and milkshakes with coastal finishes and three four-seat tables near the front. Models counter purchases.",
+        store_type="cafe", grid=(14, 12), fridges=["scoop_menu", "dairy", "water_sports"], freezers=["scoop_menu", "scoop_menu"],
+        wall_shelves=["scoop_menu", "desserts"], gondolas=["scoop_menu"], near_counter=["scoop_menu"],
+        style="perimeter", open_hours=(11, 22), dining_tables=3, seating_zone="front", checkout_placement="near_entrance", design_theme="coastal",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
@@ -416,7 +440,7 @@ class _Builder:
             levels = [3, 2, 4, 1][:RACK_LEVELS]
             for i, level in enumerate(levels):
                 chunk = items[i * per_level:(i + 1) * per_level] or items[:per_level]
-                slots.append(Slot(block=0, face=face, level=level, items=chunk))
+                slots.append(Slot(block=0, face=face, level=level, items=[item.model_copy() for item in chunk]))
         return slots
 
     def add(self, kind: RackType, x: int, y: int, *, category: str | None = None, faces: list[Face] | None = None,

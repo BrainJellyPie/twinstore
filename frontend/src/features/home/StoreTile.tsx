@@ -28,7 +28,7 @@ const STORE_TYPE_LABELS: Record<string, string> = {
 
 /** Labels for the formats above; any other format id reads as words ("pizza_shop" → "Pizza shop"). */
 function storeTypeLabel(type: string): string {
-  const known = STORE_TYPE_LABELS[type];
+  const known = Object.prototype.hasOwnProperty.call(STORE_TYPE_LABELS, type) ? STORE_TYPE_LABELS[type] : undefined;
   if (known) return known;
   const words = type.replace(/[_-]+/g, " ").trim();
   return words ? words[0]!.toUpperCase() + words.slice(1) : "Store";
