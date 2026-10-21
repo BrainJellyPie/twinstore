@@ -21,15 +21,26 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
   const ask = useMutation({
     mutationFn: (q: string) => askAnalyst(projectId, runId, q),
     onMutate: (q) => { setPending(q); setText(""); },
-    onSuccess: (t) => qc.setQueryData(key, t),
+    onSuccess: async (t) => {
+      await qc.cancelQueries({ queryKey: key });
+      qc.setQueryData(key, t);
+    },
+    onError: (_error, question) => setText((current) => current || question),
     onSettled: () => setPending(null),
   });
-  const clear = useMutation({ mutationFn: () => clearAnalyst(projectId, runId), onSuccess: () => qc.invalidateQueries({ queryKey: key }) });
+  const clear = useMutation({
+    mutationFn: () => clearAnalyst(projectId, runId),
+    onSuccess: async () => {
+      await qc.cancelQueries({ queryKey: key });
+      qc.setQueryData(key, { run_id: runId, model: "", messages: [] });
+      ask.reset();
+    },
+  });
   const messages = thread.data?.messages ?? [];
   const last = [...messages].reverse().find((m) => m.role === "analyst");
   const suggestions = last ? last.follow_ups : messages.length === 0 ? STARTERS : [];
   const busy = ask.isPending || clear.isPending;
-  const send = (q: string) => { const t = q.trim(); if (t && !busy) ask.mutate(t); };
+  const send = (q: string) => { const t = q.trim(); if (Array.from(t).length >= 2 && !busy) { clear.reset(); ask.mutate(t); } };
   useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [messages.length, pending]);
 
   return (
@@ -42,6 +53,13 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
           </button>
         )}
       </div>
+      {thread.error && (
+        <div role="alert" className="mb-2 text-[0.72rem] text-destructive">
+          {thread.error.message}
+          <button type="button" onClick={() => void thread.refetch()} disabled={thread.isFetching}
+            className="ml-2 underline disabled:opacity-50">Retry</button>
+        </div>
+      )}
       <div className="space-y-2">
         {messages.map((m, i) => m.role === "user" ? (
           <p key={i} className="ml-6 rounded-2xl rounded-br-md bg-primary px-3 py-1.5 text-[0.78rem] text-primary-foreground">{m.text}</p>
@@ -75,10 +93,10 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
         </div>
       )}
       <form className="mt-2 flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-        <input value={text} onChange={(e) => setText(e.target.value.slice(0, 600))} placeholder="e.g. Why does the ice cream freezer sell so little?"
+        <input value={text} onChange={(e) => setText(Array.from(e.target.value).slice(0, 600).join(""))} placeholder="e.g. Why does the ice cream freezer sell so little?"
           aria-label="Question about this run"
           className={cn("h-8 min-w-0 flex-1 rounded-lg border bg-card/60 px-2.5 text-[0.78rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40")} />
-        <button type="submit" disabled={!text.trim() || busy} aria-label="Ask"
+        <button type="submit" disabled={Array.from(text.trim()).length < 2 || busy} aria-label="Ask"
           className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50">
           {ask.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
         </button>

@@ -6,6 +6,8 @@ only fills the builder; changes that point at nothing are dropped and reported.
 """
 
 from collections.abc import Mapping, Sequence
+from decimal import Decimal, ROUND_HALF_UP
+from math import isfinite
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
@@ -17,6 +19,7 @@ from store_emulator.engine.prompting import display_price, relevant_first
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 MAX_LISTED = 150
+MAX_PRICE = 9_007_199_254_740_991
 
 
 class StructuredLLM(Protocol):
@@ -93,9 +96,20 @@ def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], q
 
 def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tuple[str, str]]) -> ExperimentDesign:
     """Draft changes resolved to SKUs, shelf ids, minor-unit prices and image ids; the rest is dropped and reported."""
-    skus = {i.name.casefold(): i.sku for r in store.product_racks for s in r.slots for i in s.items}
-    shelves = {r.rack_name.casefold(): r.id for r in store.product_racks if r.rack_name}
-    images = {name.casefold(): aid for name, aid in packages}
+    product_ids: dict[str, set[str]] = {}
+    shelf_ids: dict[str, set[str]] = {}
+    image_ids: dict[str, set[str]] = {}
+    for rack in store.product_racks:
+        if rack.rack_name.strip():
+            shelf_ids.setdefault(rack.rack_name.strip().casefold(), set()).add(rack.id)
+        for slot in rack.slots:
+            for item in slot.items:
+                product_ids.setdefault(item.name.strip().casefold(), set()).add(item.sku)
+    for name, aid in packages:
+        image_ids.setdefault(name.strip().casefold(), set()).add(aid)
+    skus = {name: next(iter(ids)) for name, ids in product_ids.items() if len(ids) == 1}
+    shelves = {name: next(iter(ids)) for name, ids in shelf_ids.items() if len(ids) == 1}
+    images = {name: next(iter(ids)) for name, ids in image_ids.items() if len(ids) == 1}
     zero = currency.upper() in ZERO_DECIMAL
     warnings: list[str] = []
     variants: list[Variant] = []
@@ -105,14 +119,22 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
         for c in v.changes:
             sku = skus.get(c.product.strip().casefold(), "")
             if c.kind != "category_price" and not sku:
-                warnings.append(f'{v.name}: no product "{c.product}" in this layout; that change was left out.')
+                warnings.append(f'{v.name}: no unique product "{c.product}" in this layout (missing or ambiguous name); that change was left out.')
                 continue
             match c.kind:
                 case "price":
-                    if c.price is None or c.price <= 0:
+                    if c.price is None or not isfinite(c.price) or c.price <= 0:
                         warnings.append(f"{v.name}: no new price for {c.product}; left out.")
                         continue
-                    changes.append(VariantChange(kind="price", sku=sku, price=round(c.price) if zero else round(c.price * 100),
+                    amount = Decimal(str(c.price)) * (1 if zero else 100)
+                    if amount > MAX_PRICE:
+                        warnings.append(f"{v.name}: the price for {c.product} exceeds the safe integer limit; left out.")
+                        continue
+                    price = int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                    if price == 0:
+                        warnings.append(f"{v.name}: the price for {c.product} rounds to zero in {currency}; left out.")
+                        continue
+                    changes.append(VariantChange(kind="price", sku=sku, price=price,
                                                  keep_reference=True))
                 case "discount":
                     if c.percent is None or c.percent >= 0:
@@ -124,13 +146,13 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
                 case "move":
                     rack = shelves.get(c.shelf.strip().casefold(), "")
                     if not rack:
-                        warnings.append(f'{v.name}: no shelf "{c.shelf}" in this layout; that move was left out.')
+                        warnings.append(f'{v.name}: no unique shelf "{c.shelf}" in this layout (missing or ambiguous name); that move was left out.')
                         continue
                     changes.append(VariantChange(kind="move", sku=sku, rack_id=rack, level=c.level))
                 case "package":
                     aid = images.get(c.package.strip().casefold(), "")
                     if not aid:
-                        warnings.append(f'{v.name}: no product image "{c.package}"; that change was left out.')
+                        warnings.append(f'{v.name}: no unique product image "{c.package}" (missing or ambiguous name); that change was left out.')
                         continue
                     changes.append(VariantChange(kind="package", sku=sku, asset_id=aid))
                 case "category_price":
@@ -139,8 +161,11 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
                         continue
                     changes.append(VariantChange(kind="category_price", category=c.category.strip(), percent=c.percent))
         name = v.name.strip()[:40] or f"Variant {chr(66 + len(variants))}"
-        if name.casefold() in used:
-            name = f"{name} ({len(variants) + 2})"[:40]
+        base_name, number = name, len(variants) + 2
+        while name.casefold() in used:
+            suffix = f" ({number})"
+            name = base_name[:40 - len(suffix)] + suffix
+            number += 1
         if not changes:
             warnings.append(f"{v.name}: nothing left to change; the variant was left out.")
             continue
