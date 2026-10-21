@@ -164,7 +164,10 @@ function ceilingLights(width: number, depth: number, intensity: number): THREE.G
   return group;
 }
 
-export function buildPhotoScene(live: THREE.Scene, opts: { width: number; depth: number; background: THREE.Color | null }): PhotoScene {
+export function buildPhotoScene(
+  live: THREE.Scene,
+  opts: { width: number; depth: number; background: THREE.Color | null; environment?: THREE.Texture | null },
+): PhotoScene {
   live.updateMatrixWorld(true);
   const cache = new Map<THREE.Material, THREE.Material | null>();
   const owned: THREE.BufferGeometry[] = [];
@@ -228,9 +231,10 @@ export function buildPhotoScene(live: THREE.Scene, opts: { width: number; depth:
   }
 
   scene.add(ceilingLights(opts.width, opts.depth, 9));
-  const env = daylight();
+  // The photographic interior HDR when it loaded (equirect, as the path tracer needs), else a sky.
+  const env = opts.environment ?? daylight();
   scene.environment = env;
-  scene.environmentIntensity = 1;
+  scene.environmentIntensity = opts.environment ? 1.4 : 1;
   scene.background = opts.background;
 
   return {

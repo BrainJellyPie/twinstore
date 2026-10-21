@@ -5,6 +5,7 @@
 import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
 import { WebGLPathTracer } from "three-gpu-pathtracer";
 import { GenerateMeshBVHWorker } from "three-mesh-bvh/worker";
 
@@ -40,7 +41,13 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
     const timer = window.setTimeout(async () => {
       try {
         const background = scene.background instanceof THREE.Color ? scene.background.clone() : null;
-        const photo = buildPhotoScene(scene, { width, depth, background });
+        const environment = await new HDRLoader().loadAsync("/assets/environments/gear_store_1k.hdr").catch(() => null);
+        if (!alive) {
+          environment?.dispose();
+          return;
+        }
+        if (environment) environment.mapping = THREE.EquirectangularReflectionMapping;
+        const photo = buildPhotoScene(scene, { width, depth, background, environment });
         disposeScene = photo.dispose;
         const pt = new WebGLPathTracer(gl);
         pathTracer = pt;
