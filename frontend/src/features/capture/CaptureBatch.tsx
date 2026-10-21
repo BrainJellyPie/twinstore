@@ -60,7 +60,7 @@ export function CaptureBatch({
   };
   return (
     <section
-      className="shrink-0 rounded-2xl border bg-card p-3 text-sm"
+      className="max-h-[60dvh] shrink-0 overflow-y-auto rounded-2xl border bg-card p-3 text-sm"
       aria-label="Combine shelf photos"
     >
       <Button

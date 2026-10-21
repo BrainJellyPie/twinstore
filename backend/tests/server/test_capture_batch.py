@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from store_emulator.application.capture import save_capture
 from store_emulator.application.storage.io import write_json
-from store_emulator.application.storage.setups import read_setup, setup_path
+from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path
 from store_emulator.application.storage.images import load_manifest
 from store_emulator.domain.capture import (
     Box,
@@ -45,15 +45,9 @@ def workflow(tmp_path, monkeypatch):
                 ),
             ],
         )
-        write_json(
-            setup_path(PID, BASE),
-            {
-                "id": BASE,
-                "name": "Base",
-                "status": "draft",
-                "store": store.model_dump(mode="json"),
-            },
-        )
+        base = new_setup_data("Base", None, store.model_dump(mode="json"))
+        base["id"] = BASE
+        write_json(setup_path(PID, BASE), base)
         ids = []
         for index in range(2):
             result = CaptureResult(
@@ -120,6 +114,9 @@ def test_preview_save_reload_products_and_crops_without_touching_sources(workflo
     )
     assert saved.status_code == 200, saved.text
     stored = read_setup(PID, saved.json()["setup_id"])
+    reloaded = client.get(f"/api/projects/{PID}/setups/{saved.json()['setup_id']}")
+    assert reloaded.status_code == 200, reloaded.text
+    assert reloaded.json()["store"] == stored["store"]
     actual = Store.model_validate(stored["store"])
     assert actual == Store.model_validate(result["store"])
     assert {i.sku for _, slot in actual.all_slots for i in slot.items} == {
