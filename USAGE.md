@@ -253,6 +253,21 @@ Run through this before triggering generation or simulation:
   date and time, or clear the timestamp to omit hourly scoring. Only **Use reviewed
   receipts** sends the checked batch to POS validation; editing invalidates the
   previous check. OCR and manual review are not proof of real-world forecast accuracy.
+- **Validating observed movement.** In a completed run, **Validate real movement**
+  accepts UTF-8 CSV with `track_id,x,y,timestamp_sec` (up to 10 MB / 100,000 samples).
+  Extract anonymous tracks on your device and align them to this run's grid first:
+  integer cells, origin at the upper left, x right and y down. Each visit needs a
+  distinct ID across the file; seconds must increase within a track. Rows may be
+  interleaved or unsorted. Duplicate identical samples are collapsed; conflicting
+  positions at the same timestamp are rejected. This module imports coordinates;
+  it does not upload video, detect people or perform camera calibration.
+  Visitor maps count each track once per cell. Occupancy assigns an interval to
+  its starting cell and excludes gaps over the chosen threshold (default 30 s);
+  the last sample adds no time. Compare equivalent layouts and operating periods
+  with adequate camera coverage. The report shows normalized map similarity and
+  visitor-share gaps, persists only aggregate data in `output/movement.json`, and
+  leaves simulator parameters unchanged. Use the gaps to select regions for a
+  calibration experiment; partial camera coverage is not evidence of low demand.
 - **All run artifacts live in `backend/.data/`**, which is gitignored.
   Persona files, simulation results, and generated metadata never leave
   the local machine unless the user copies them out.
