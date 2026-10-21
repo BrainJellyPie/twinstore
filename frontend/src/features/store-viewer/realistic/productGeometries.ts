@@ -3,7 +3,7 @@
 // area, everything else samples the flat body/accent colour zones.
 
 import * as THREE from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { LABEL_U0, ZONE_ACCENT, ZONE_BODY } from "./atlasLayout";
 import type { PackageKind } from "./productCatalog";
 
@@ -156,9 +156,31 @@ function can(lod: Lod): THREE.BufferGeometry {
           [0.5, 0.93, "accent"],
           [0.42, 0.985, "accent"],
           [0.4, 1.0, "accent"],
+          [0.34, 0.985, "accent"],
           [0.0, 0.985, "accent"],
         ];
-  return revolve(profile(pts, lod === 0 ? 0 : 0.06, lod === 0 ? 0.94 : 0.92), lod === 0 ? 6 : 14);
+  const body = revolve(profile(pts, lod === 0 ? 0 : 0.06, lod === 0 ? 0.94 : 0.92), lod === 0 ? 6 : 14);
+  if (lod === 0) return body;
+  // An unopened pull tab sits inside the recessed lid, below the rolled rim.
+  const outline = new THREE.Shape();
+  outline.absellipse(0, 0, 0.105, 0.16, 0, Math.PI * 2, false, 0);
+  const hole = new THREE.Path();
+  hole.absellipse(0, 0.035, 0.055, 0.075, 0, Math.PI * 2, true, 0);
+  outline.holes.push(hole);
+  const extruded = new THREE.ExtrudeGeometry(outline, {
+    depth: 0.004, steps: 1, curveSegments: 8,
+    bevelEnabled: true, bevelSegments: 1, bevelSize: 0.001, bevelThickness: 0.001,
+  });
+  const tab = mergeVertices(extruded).rotateX(-Math.PI / 2).translate(0, 0.992, 0);
+  extruded.dispose();
+  const rivet = new THREE.CylinderGeometry(0.026, 0.026, 0.015, 10).translate(0, 0.9915, 0.1);
+  for (const part of [tab, rivet]) {
+    const uv = part.getAttribute("uv");
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, ZONE_ACCENT[0], ZONE_ACCENT[1]);
+  }
+  const geometry = mergeGeometries([body, tab, rivet])!;
+  body.dispose(); tab.dispose(); rivet.dispose();
+  return geometry;
 }
 
 // Partition the existing surface without moving a vertex or adding triangles.
