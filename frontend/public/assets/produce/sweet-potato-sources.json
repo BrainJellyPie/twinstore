@@ -1,0 +1,57 @@
+{
+  "asset": "sweet_potato",
+  "source": "https://polyhaven.com/a/sweet_potato",
+  "author": "Jan Martens",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_sweet_potato.py; 240/1199 triangle LODs, laid on its side with bottom-centred unit bounds and inverse-transpose normals; original 1K JPEG color, OpenGL normal and packed roughness/metalness maps retained.",
+  "authored_dimensions_metres": {
+    "width": 0.10046297311782837,
+    "height": 0.058124277740716934,
+    "depth": 0.060989297926425934
+  },
+  "files": [
+    {
+      "file": "sweet_potato_1k.gltf",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/sweet_potato/sweet_potato_1k.gltf",
+      "bytes": 2778,
+      "md5": "b98aed418751d30349734b63b9c2803e",
+      "sha256": "36a226b95a63b2e22711d75e17818f33f99a17e54737e5469a8c7d2a41896097"
+    },
+    {
+      "file": "sweet_potato.bin",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/sweet_potato/sweet_potato.bin",
+      "bytes": 50044,
+      "md5": "99cf4fdf834236f7bac73f432b42fb6e",
+      "sha256": "37608ecca6f9a9c2d25bc166819fb56f2a61076247e732852239662d75295f82"
+    },
+    {
+      "file": "textures/sweet_potato_diff_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/sweet_potato/sweet_potato_diff_1k.jpg",
+      "bytes": 633542,
+      "md5": "eaa396dc2a730e603024b55bc18dee02",
+      "sha256": "f236b36b78fd82fa6861c7e256435885bb72c4f4d7c8137989061cdda14a3d69"
+    },
+    {
+      "file": "textures/sweet_potato_nor_gl_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/sweet_potato/sweet_potato_nor_gl_1k.jpg",
+      "bytes": 617315,
+      "md5": "9432aeb9bf8cc3b1677419e4839657ea",
+      "sha256": "58e724f0cd776b898ab479f49edfae441b5f97d02a4941112f91106898135140"
+    },
+    {
+      "file": "textures/sweet_potato_arm_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/sweet_potato/sweet_potato_arm_1k.jpg",
+      "bytes": 465796,
+      "md5": "bd400b4593c4c58a213a03ae1f20d94b",
+      "sha256": "74e4d5b33dd0ffa0217a3c65e99e7464d72b16d2c00aafe88d837dd606a6a37a"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "sweet-potato.glb",
+      "bytes": 1757384,
+      "sha256": "bfaa1b34770421427c8b77784134d2715d7dddb48f37db4a1a96d950f3dc44cc"
+    }
+  ]
+}

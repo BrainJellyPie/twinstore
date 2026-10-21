@@ -17,6 +17,7 @@ function Picker() {
 }
 
 beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.getStoreTemplates).mockResolvedValue([
     { id: "urban_cvs", name: "City store", description: "Daily groceries", store_type: "convenience", grid: [12, 10], racks: 10, skus: 40, open_hours: [0, 24], default_style: "aisles", default_design: "classic", default_dining_tables: 0,
       categories: [{ id: "soft_drinks", label: "Drinks" }, { id: "beer_alcohol", label: "Beer & Alcohol" }, { id: "household", label: "Household & Daily" }] },
@@ -29,30 +30,30 @@ beforeEach(() => {
   ]);
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Preview", type: "convenience", grid_size: [12, 10], weekly_schedule: [], racks: [] });
 });
-afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); });
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); vi.unstubAllGlobals(); });
 
 it.each(LOCALES)("finds translated store categories and clears search with focus in $code", async ({ code }) => {
   useLocale.getState().setLocale(code); mountCompact();
-  await screen.findByRole("button", { name: /^Community pharmacy/ });
+  await screen.findByRole("radio", { name: /^Community pharmacy/ });
   const search = screen.getByLabelText(translate(code, "findStoreFormat"));
   expect((screen.getByRole("combobox", { name: translate(code, "storeCategory") }) as HTMLSelectElement).value).toBe("");
   fireEvent.change(search, { target: { value: translate(code, "pharmacy") } });
   const results = within(screen.getByLabelText(translate(code, "storeFormats")));
-  expect(results.getAllByRole("button")).toHaveLength(1);
-  expect(results.getByRole("button", { name: /^Community pharmacy/ })).toBeTruthy();
+  expect(results.getAllByRole("radio")).toHaveLength(1);
+  expect(results.getByRole("radio", { name: /^Community pharmacy/ })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: translate(code, "clearFormatSearch") }));
   expect(document.activeElement).toBe(search);
-  expect(results.getAllByRole("button")).toHaveLength(7);
+  expect(results.getAllByRole("radio")).toHaveLength(7);
 });
 
 it.each(["ＣＡＦＥ", "community_pharmacy", "COMMUNITY-PHARMACY", "  specialty  CAFE  "])("finds formats by normalized input %s", async (query) => {
-  mountCompact(); await screen.findByRole("button", { name: /^Community pharmacy/ });
+  mountCompact(); await screen.findByRole("radio", { name: /^Community pharmacy/ });
   fireEvent.change(screen.getByLabelText("Find a store format"), { target: { value: query } });
-  expect(within(screen.getByLabelText("Store formats")).getAllByRole("button")).toHaveLength(1);
+  expect(within(screen.getByLabelText("Store formats")).getAllByRole("radio")).toHaveLength(1);
 });
 
 it("clears only the search on Escape and preserves filters, selection and dimensions", async () => {
-  mountCompact(); fireEvent.click(await screen.findByRole("button", { name: /^Community pharmacy/ }));
+  mountCompact(); fireEvent.click(await screen.findByRole("radio", { name: /^Community pharmacy/ }));
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
   fireEvent.change(screen.getByLabelText("Store category"), { target: { value: "pharmacy" } });
   fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "medium" } });
@@ -64,7 +65,7 @@ it("clears only the search on Escape and preserves filters, selection and dimens
   expect((search as HTMLInputElement).value).toBe("");
   expect((screen.getByLabelText("Store category") as HTMLSelectElement).value).toBe("pharmacy");
   expect((screen.getByLabelText("Default floor size") as HTMLSelectElement).value).toBe("medium");
-  expect(screen.getByRole("button", { name: /^Community pharmacy/ }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByRole("radio", { name: /^Community pharmacy/ }).getAttribute("aria-checked")).toBe("true");
   expect((screen.getByLabelText("Width (8–40 cells)") as HTMLInputElement).value).toBe("24");
   fireEvent.click(screen.getByRole("button", { name: "Clear format filters" }));
   expect(document.activeElement).toBe(search);
@@ -73,22 +74,22 @@ it("clears only the search on Escape and preserves filters, selection and dimens
 });
 
 it("keeps a translated search and raw category filter working after a language switch", async () => {
-  useLocale.getState().setLocale("ko"); mountCompact(); await screen.findByRole("button", { name: /^Community pharmacy/ });
+  useLocale.getState().setLocale("ko"); mountCompact(); await screen.findByRole("radio", { name: /^Community pharmacy/ });
   fireEvent.change(screen.getByLabelText(translate("ko", "findStoreFormat")), { target: { value: "약국" } });
   fireEvent.change(screen.getByLabelText(translate("ko", "storeCategory")), { target: { value: "pharmacy" } });
   act(() => useLocale.getState().setLocale("fr"));
   expect((screen.getByLabelText(translate("fr", "findStoreFormat")) as HTMLInputElement).value).toBe("약국");
   expect((screen.getByLabelText(translate("fr", "storeCategory")) as HTMLSelectElement).value).toBe("pharmacy");
-  expect(within(screen.getByRole("group", { name: translate("fr", "storeFormats") })).getAllByRole("button")).toHaveLength(1);
+  expect(within(screen.getByRole("radiogroup", { name: translate("fr", "storeFormats") })).getAllByRole("radio")).toHaveLength(1);
   expect(screen.getByRole("option", { name: translate("fr", "pharmacy") }).getAttribute("value")).toBe("pharmacy");
 });
 
 it.each(LOCALES)("searches less common translated categories in $code", async ({ code }) => {
-  useLocale.getState().setLocale(code); mountCompact(); await screen.findByRole("button", { name: /^Garden/ });
+  useLocale.getState().setLocale(code); mountCompact(); await screen.findByRole("radio", { name: /^Garden/ });
   fireEvent.change(screen.getByLabelText(translate(code, "findStoreFormat")), { target: { value: translate(code, "gardenShop") } });
-  const results = within(screen.getByRole("group", { name: translate(code, "storeFormats") }));
-  expect(results.getAllByRole("button")).toHaveLength(1);
-  expect(results.getByRole("button", { name: /^Garden/ })).toBeTruthy();
+  const results = within(screen.getByRole("radiogroup", { name: translate(code, "storeFormats") }));
+  expect(results.getAllByRole("radio")).toHaveLength(1);
+  expect(results.getByRole("radio", { name: /^Garden/ })).toBeTruthy();
 });
 
 it.each(LOCALES)("retries a failed catalog without clearing the search in $code", async ({ code }) => {
@@ -96,9 +97,9 @@ it.each(LOCALES)("retries a failed catalog without clearing the search in $code"
   mountCompact(); await screen.findByText(translate(code, "loadFormatsError"), { exact: false });
   fireEvent.change(screen.getByLabelText(translate(code, "findStoreFormat")), { target: { value: translate(code, "pharmacy") } });
   fireEvent.click(screen.getByRole("button", { name: translate(code, "tryAgain") }));
-  const results = within(screen.getByRole("group", { name: translate(code, "storeFormats") }));
-  await waitFor(() => expect(results.getAllByRole("button")).toHaveLength(1));
-  expect(results.getByRole("button", { name: /^Community pharmacy/ })).toBeTruthy();
+  const results = within(screen.getByRole("radiogroup", { name: translate(code, "storeFormats") }));
+  await waitFor(() => expect(results.getAllByRole("radio")).toHaveLength(1));
+  expect(results.getByRole("radio", { name: /^Community pharmacy/ })).toBeTruthy();
   expect(api.getStoreTemplates).toHaveBeenCalledTimes(2);
 });
 
@@ -113,7 +114,7 @@ it("distinguishes loading and an empty catalog from no search matches, then reco
   expect(screen.queryByText(/No matching formats/)).toBeNull();
   expect(screen.queryByText("Selected format:")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-  await screen.findByRole("button", { name: /^City store/ });
+  await screen.findByRole("radio", { name: /^City store/ });
   expect(screen.getByText("7 of 7 formats")).toBeTruthy();
 });
 
@@ -190,7 +191,7 @@ it("starts a mix from the seating that actually fits when the format count is au
     levels: 1, dwell_min: 0, dwell_max: 0, rack_name: "Table", rack_desc: "", rack_decoration_desc: "", locked_faces: [], slots: [] };
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Small restaurant", type: "restaurant", grid_size: [8, 6], weekly_schedule: [], racks: [table] });
   mount();
-  fireEvent.click(await screen.findByRole("button", { name: /Family restaurant/ }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Family restaurant/ }));
   await screen.findByText("1 dining tables · 4 seats");
   fireEvent.click(screen.getByText("Mixed table sizes"));
   fireEvent.click(screen.getByRole("checkbox", { name: "Use mixed table sizes" }));
@@ -472,7 +473,7 @@ it("limits products per category, validates whole counts and restores the full a
 
 it("reveals the imported format even when previous catalog filters would hide it", async () => {
   mount();
-  await screen.findByRole("button", { name: /Community pharmacy/ });
+  await screen.findByRole("radio", { name: /Community pharmacy/ });
   fireEvent.change(screen.getByLabelText("Find a store format"), { target: { value: "pharmacy" } });
   fireEvent.change(screen.getByLabelText("Store category"), { target: { value: "pharmacy" } });
   fireEvent.change(screen.getByLabelText("Default seating"), { target: { value: "without" } });
@@ -480,18 +481,18 @@ it("reveals the imported format even when previous catalog filters would hide it
     layout: { template_id: "specialty_cafe", seed: 2, currency: "JPY", requirements: "Quiet seating" } });
   const file = Object.assign(new File(["{}"], "options.json"), { text: async () => "{}" });
   fireEvent.change(screen.getByLabelText("Import layout options file"), { target: { files: [file] } });
-  const imported = await screen.findByRole("button", { name: /Specialty café/ });
-  expect(imported.getAttribute("aria-pressed")).toBe("true");
+  const imported = await screen.findByRole("radio", { name: /Specialty café/ });
+  expect(imported.getAttribute("aria-checked")).toBe("true");
   expect(screen.getByText("7 of 7 formats")).toBeTruthy();
   expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Quiet seating");
 });
 
 it("filters formats and sends selected requirements to the preview", async () => {
   mount();
-  await screen.findByRole("button", { name: /Community pharmacy/ });
+  await screen.findByRole("radio", { name: /Community pharmacy/ });
   fireEvent.change(screen.getByLabelText("Find a store format"), { target: { value: "pharmacy" } });
-  expect(screen.queryByRole("button", { name: /City store/ })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
+  expect(screen.queryByRole("radio", { name: /City store/ })).toBeNull();
+  fireEvent.click(screen.getByRole("radio", { name: /Community pharmacy/ }));
   fireEvent.change(screen.getByLabelText("Layout pattern"), { target: { value: "showroom" } });
   fireEvent.change(screen.getByLabelText("Interior shelf direction"), { target: { value: "vertical" } });
   fireEvent.change(screen.getByLabelText("Interior aisle gap"), { target: { value: "4" } });
@@ -515,12 +516,12 @@ it("matches accents and unordered words without changing the selected layout", a
   await screen.findByRole("img", { name: "Floor plan preview" });
   const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
   fireEvent.change(screen.getByLabelText("Find a store format"), { target: { value: "CAFE specialty" } });
-  expect(screen.getByRole("button", { name: /Specialty café/ })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: /City store/ })).toBeNull();
+  expect(screen.getByRole("radio", { name: /Specialty café/ })).toBeTruthy();
+  expect(screen.queryByRole("radio", { name: /City store/ })).toBeNull();
   expect(screen.getByText("1 of 7 formats")).toBeTruthy();
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
   fireEvent.change(screen.getByLabelText("Find a store format"), { target: { value: "café" } });
-  expect(screen.getByRole("button", { name: /Specialty café/ })).toBeTruthy();
+  expect(screen.getByRole("radio", { name: /Specialty café/ })).toBeTruthy();
 });
 
 it("combines default floor size and seating filters and sorts the matching formats", async () => {
@@ -530,40 +531,40 @@ it("combines default floor size and seating filters and sorts the matching forma
   fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "large" } });
   fireEvent.change(screen.getByLabelText("Default seating"), { target: { value: "with" } });
   const results = within(screen.getByLabelText("Store formats"));
-  expect(results.getAllByRole("button")).toHaveLength(1);
-  expect(results.getByRole("button", { name: /Campus dining hall/ })).toBeTruthy();
+  expect(results.getAllByRole("radio")).toHaveLength(1);
+  expect(results.getByRole("radio", { name: /Campus dining hall/ })).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "medium" } });
   fireEvent.change(screen.getByLabelText("Sort formats"), { target: { value: "seats" } });
-  expect(results.getAllByRole("button").map((button) => button.textContent)).toEqual([
+  expect(results.getAllByRole("radio").map((button) => button.textContent)).toEqual([
     expect.stringContaining("Family restaurant"), expect.stringContaining("Specialty café"),
   ]);
   fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "large" } });
   fireEvent.change(screen.getByLabelText("Default seating"), { target: { value: "without" } });
   fireEvent.change(screen.getByLabelText("Sort formats"), { target: { value: "largest" } });
-  expect(results.getAllByRole("button").map((button) => button.textContent)).toEqual([
+  expect(results.getAllByRole("radio").map((button) => button.textContent)).toEqual([
     expect.stringContaining("Warehouse club"), expect.stringContaining("Garden & outdoor center"),
   ]);
   fireEvent.change(screen.getByLabelText("Sort formats"), { target: { value: "smallest" } });
-  expect(results.getAllByRole("button")[0]?.textContent).toContain("Garden & outdoor center");
+  expect(results.getAllByRole("radio")[0]?.textContent).toContain("Garden & outdoor center");
 });
 
 it("clears an empty search without discarding the selected format, custom dimensions or brief", async () => {
   mount();
-  fireEvent.click(await screen.findByRole("button", { name: /Community pharmacy/ }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Community pharmacy/ }));
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "28" } });
   fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "Keep consultation space" } });
   fireEvent.change(screen.getByLabelText("Store category"), { target: { value: "pharmacy" } });
   fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "large" } });
   expect(screen.getByText(/No matching formats/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Clear format filters" }));
-  expect(screen.getByRole("button", { name: /Community pharmacy/ }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByRole("radio", { name: /Community pharmacy/ }).getAttribute("aria-checked")).toBe("true");
   expect((screen.getByLabelText("Width (8–40 cells)") as HTMLInputElement).value).toBe("28");
   expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Keep consultation space");
   expect((screen.getByLabelText("Default floor size") as HTMLSelectElement).value).toBe("all");
   expect(screen.getByText("7 of 7 formats")).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "compact" } });
-  expect(screen.getByRole("button", { name: /City store/ })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: /Community pharmacy/ })).toBeNull();
+  expect(screen.getByRole("radio", { name: /City store/ })).toBeTruthy();
+  expect(screen.queryByRole("radio", { name: /Community pharmacy/ })).toBeNull();
 });
 
 it("does not request an invalid size and resets options without losing the brief", async () => {
@@ -616,8 +617,8 @@ it("makes a different budget currency explicit while still allowing a price prev
 
 it("shows each format's seating and checkout defaults without replacing explicit user choices", async () => {
   mount();
-  await screen.findByRole("button", { name: /Family restaurant/ });
-  fireEvent.click(screen.getByRole("button", { name: /Family restaurant/ }));
+  await screen.findByRole("radio", { name: /Family restaurant/ });
+  fireEvent.click(screen.getByRole("radio", { name: /Family restaurant/ }));
   expect((screen.getByLabelText("Interior shelf direction") as HTMLSelectElement).disabled).toBe(true);
   expect((screen.getByLabelText("Interior aisle gap") as HTMLSelectElement).disabled).toBe(true);
   expect((screen.getByLabelText("Maximum shelf run") as HTMLSelectElement).disabled).toBe(true);
@@ -627,7 +628,7 @@ it("shows each format's seating and checkout defaults without replacing explicit
   expect((screen.getByLabelText("Space around dining tables") as HTMLSelectElement).disabled).toBe(false);
   fireEvent.change(screen.getByLabelText("Seating starts near"), { target: { value: "front" } });
   fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "away_from_entrance" } });
-  fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
+  fireEvent.click(screen.getByRole("radio", { name: /Community pharmacy/ }));
   expect((screen.getByLabelText("Interior shelf direction") as HTMLSelectElement).disabled).toBe(false);
   expect((screen.getByLabelText("Interior aisle gap") as HTMLSelectElement).disabled).toBe(false);
   expect((screen.getByLabelText("Maximum shelf run") as HTMLSelectElement).disabled).toBe(false);
@@ -682,7 +683,7 @@ it("holds preview for incomplete area values and supports removing a reservation
 
 it("offers large checkout counts and resets to the selected format's default", async () => {
   mount();
-  fireEvent.click(await screen.findByRole("button", { name: /Warehouse club/ }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Warehouse club/ }));
   expect((screen.getByLabelText("Checkout counters") as HTMLSelectElement).value).toBe("");
   expect(screen.getByRole("option", { name: "Format default (8, sized to fit)" })).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Checkout counters"), { target: { value: "12" } });
@@ -728,11 +729,11 @@ it("previews a central plaza while retaining dimensions and table rotation and a
 
 it("explains cross-aisle seating capacity and lets other formats select the pattern", async () => {
   mount();
-  fireEvent.click(await screen.findByRole("button", { name: /Garden & outdoor center/ }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Garden & outdoor center/ }));
   expect(within(screen.getByLabelText("Layout pattern")).getByRole("option", { name: "Format default" })).toBeTruthy();
   expect(screen.getByText("Default pattern: Central cross aisles")).toBeTruthy();
   expect(screen.getByText(/Central cross aisles stay clear of shelves and tables/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
+  fireEvent.click(screen.getByRole("radio", { name: /Community pharmacy/ }));
   expect(screen.getByText("Default pattern: Central spine")).toBeTruthy();
   expect(screen.queryByText(/Central cross aisles stay clear of shelves and tables/)).toBeNull();
   fireEvent.change(screen.getByLabelText("Layout pattern"), { target: { value: "cross" } });
@@ -745,7 +746,7 @@ it("explains cross-aisle seating capacity and lets other formats select the patt
 
 it("accepts any whole dining count through 48, rejects invalid counts, and restores automatic seating when cleared", async () => {
   mount();
-  fireEvent.click(await screen.findByRole("button", { name: /Campus dining hall/ }));
+  fireEvent.click(await screen.findByRole("radio", { name: /Campus dining hall/ }));
   const input = screen.getByLabelText("Dining tables (4 seats each)") as HTMLInputElement;
   expect(input.placeholder).toBe("Format default (24)");
   for (const count of [13, 48]) {
@@ -828,7 +829,7 @@ it("keeps a currency mismatch visible outside the folded customization", async (
 it("retains custom size when selecting another format from the simple view", async () => {
   mountCompact(); await screen.findByRole("img", { name: "Floor plan preview" });
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
-  fireEvent.click(screen.getByRole("button", { name: /^Community pharmacy/ }));
+  fireEvent.click(screen.getByRole("radio", { name: /^Community pharmacy/ }));
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ template_id: "community_pharmacy", width: 24 }), expect.any(AbortSignal)));
   expect(screen.getByRole("button", { name: "Customize layout" }).getAttribute("aria-expanded")).toBe("false");
 });
