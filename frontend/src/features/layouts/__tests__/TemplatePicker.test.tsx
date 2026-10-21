@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { TemplatePicker } from "../components/TemplatePicker";
@@ -22,6 +22,7 @@ beforeEach(() => {
     { id: "warehouse_club", name: "Warehouse club", description: "Bulk groceries", store_type: "supermarket", grid: [36, 28], racks: 60, skus: 80, open_hours: [9, 21], default_style: "spine", default_design: "classic", default_dining_tables: 0, default_checkouts: 8 },
     { id: "campus_dining_hall", name: "Campus dining hall", description: "Weekday dining", store_type: "restaurant", grid: [32, 24], racks: 40, skus: 80, open_hours: [7, 21], default_style: "perimeter", default_design: "minimal", default_dining_tables: 24, default_checkouts: 4 },
     { id: "garden_center", name: "Garden & outdoor center", description: "Plants and garden supplies", store_type: "garden", grid: [32, 26], racks: 60, skus: 40, open_hours: [8, 20], default_style: "cross", default_design: "botanical", default_dining_tables: 0, default_checkouts: 4 },
+    { id: "specialty_cafe", name: "Specialty café", description: "Coffee and pastries", store_type: "cafe", grid: [18, 14], racks: 20, skus: 40, open_hours: [7, 22], default_style: "perimeter", default_design: "warm", default_dining_tables: 6 },
   ]);
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Preview", type: "convenience", grid_size: [12, 10], weekly_schedule: [], racks: [] });
 });
@@ -52,6 +53,62 @@ it("filters formats and sends selected requirements to the preview", async () =>
     expect.objectContaining({ template_id: "community_pharmacy", style: "showroom", checkouts: 3, width: 28, aisle_width: 4,
       checkout_placement: "away_from_entrance", dining_tables: 4, table_clearance: 2, seating_zone: "right", shelf_direction: "vertical", exit_position: "right" }), expect.any(AbortSignal),
   ));
+});
+
+it("matches accents and unordered words without changing the selected layout", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+  fireEvent.change(screen.getByLabelText("Find a store format"), { target: { value: "CAFE specialty" } });
+  expect(screen.getByRole("button", { name: /Specialty café/ })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /City store/ })).toBeNull();
+  expect(screen.getByText("1 of 7 formats")).toBeTruthy();
+  expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+  fireEvent.change(screen.getByLabelText("Find a store format"), { target: { value: "café" } });
+  expect(screen.getByRole("button", { name: /Specialty café/ })).toBeTruthy();
+});
+
+it("combines default floor size and seating filters and sorts the matching formats", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByText("More format filters"));
+  fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "large" } });
+  fireEvent.change(screen.getByLabelText("Default seating"), { target: { value: "with" } });
+  const results = within(screen.getByLabelText("Store formats"));
+  expect(results.getAllByRole("button")).toHaveLength(1);
+  expect(results.getByRole("button", { name: /Campus dining hall/ })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "medium" } });
+  fireEvent.change(screen.getByLabelText("Sort formats"), { target: { value: "seats" } });
+  expect(results.getAllByRole("button").map((button) => button.textContent)).toEqual([
+    expect.stringContaining("Family restaurant"), expect.stringContaining("Specialty café"),
+  ]);
+  fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "large" } });
+  fireEvent.change(screen.getByLabelText("Default seating"), { target: { value: "without" } });
+  fireEvent.change(screen.getByLabelText("Sort formats"), { target: { value: "largest" } });
+  expect(results.getAllByRole("button").map((button) => button.textContent)).toEqual([
+    expect.stringContaining("Warehouse club"), expect.stringContaining("Garden & outdoor center"),
+  ]);
+  fireEvent.change(screen.getByLabelText("Sort formats"), { target: { value: "smallest" } });
+  expect(results.getAllByRole("button")[0]?.textContent).toContain("Garden & outdoor center");
+});
+
+it("clears an empty search without discarding the selected format, custom dimensions or brief", async () => {
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: /Community pharmacy/ }));
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "28" } });
+  fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "Keep consultation space" } });
+  fireEvent.change(screen.getByLabelText("Store category"), { target: { value: "pharmacy" } });
+  fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "large" } });
+  expect(screen.getByText(/No matching formats/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Clear format filters" }));
+  expect(screen.getByRole("button", { name: /Community pharmacy/ }).getAttribute("aria-pressed")).toBe("true");
+  expect((screen.getByLabelText("Width (8–40 cells)") as HTMLInputElement).value).toBe("28");
+  expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Keep consultation space");
+  expect((screen.getByLabelText("Default floor size") as HTMLSelectElement).value).toBe("all");
+  expect(screen.getByText("7 of 7 formats")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Default floor size"), { target: { value: "compact" } });
+  expect(screen.getByRole("button", { name: /City store/ })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /Community pharmacy/ })).toBeNull();
 });
 
 it("does not request an invalid size and resets options without losing the brief", async () => {

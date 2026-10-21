@@ -134,6 +134,12 @@ In a project, choose **New layout → Generate a store from a template**. Search
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+Search matches names, descriptions and categories, ignores accents (`cafe` also
+finds `café`), and accepts words in any order. **More format filters** narrows the
+starting layouts by cell count and dining seating, or sorts by name, floor size
+or seat count. **Clear format filters** restores the catalog without changing
+the selected format or your layout settings. Size and seating filters describe
+defaults; the selected layout can still be customized.
 
 Restaurant and café starting points include a family restaurant, neighborhood
 bistro, takeaway coffee kiosk, tea lounge and artisan bakery. Vintage boutiques,
