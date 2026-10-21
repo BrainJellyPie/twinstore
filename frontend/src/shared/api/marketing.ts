@@ -2,14 +2,13 @@
 // backend domain/marketing.py — keep in sync. Prices are integers in the currency's minor unit.
 
 import { BASE, type MetricComparison } from "./client";
+import { apiErrorMessage } from "./errors";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    let detail = body;
-    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
-    throw new Error(detail || `${res.status} ${res.statusText}`);
+    throw new Error(apiErrorMessage(body, `${res.status} ${res.statusText}`));
   }
   return (res.status === 204 ? undefined : res.json()) as Promise<T>;
 }
