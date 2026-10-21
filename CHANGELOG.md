@@ -18,6 +18,13 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Print-ready HTML report and a long-format CSV (one row per option shown) for re-estimation elsewhere.
   API: `POST/GET /api/projects/{pid}/conjoints`, `GET .../conjoints/{id}`, `.../report.html`, `.../export.csv`.
 
+### Observed staff time
+- Review anonymous timing CSVs against locked fixed staff-script plans, including refusals and non-delivery.
+  Missing time remains unknown; arm averages and differences require complete coverage. Staff/shift counts,
+  a blank template, source SHA-256 and revision-bound audit CSV support review without modifying outcomes.
+- Preserve small mean-time differences in the UI; zero-traffic and zero-contribution cost scenarios no longer
+  display or export negative zero.
+
 ### Fixes
 - Realistic shoppers no longer crash the 3D view when React remounts them (development StrictMode): the
   per-shopper animation mixer is no longer uncached while its actions are still reused.

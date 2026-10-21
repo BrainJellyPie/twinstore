@@ -16,6 +16,8 @@ from store_emulator.domain.field_pilot import FieldPilot, PilotRequest, PilotSum
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationImportRecord, ObservationPreview
 from store_emulator.domain.field_collection import PilotCollectionReport
+from store_emulator.domain.field_timing import PilotTimingReport
+from store_emulator.engine.marketing.field_timing import review_timing, timing_csv, timing_template, validate_timing_pilot
 from store_emulator.domain.field_pos import PilotPosPreview
 from store_emulator.domain.field_sensitivity import PilotSensitivityReport
 from store_emulator.domain.field_economics import PilotEconomicsReport, PilotEconomicsRequest
@@ -220,3 +222,30 @@ def finalize_pilot(pid: str, pilot_id: str, revision: int) -> PilotView:
     except Timeout as exc:
         raise AppError("Another field pilot update is in progress; reload and retry", 409) from exc
     return PilotView(pilot=pilot, analysis=analyze_pilot(pilot))
+
+
+def _timing_source(pid: str, pilot_id: str, revision: int) -> FieldPilot:
+    pilot = FieldPilot.model_validate(read_json(_path(pid, pilot_id)))
+    if pilot.pilot_id != pilot_id or pilot.revision != revision:
+        raise AppError("The saved pilot differs from the requested revision. Reload the pilot", 409)
+    try:
+        validate_timing_pilot(pilot)
+    except ValueError as exc:
+        raise AppError(str(exc), 409) from exc
+    return pilot
+
+
+def export_timing_template(pid: str, pilot_id: str, revision: int) -> str:
+    return timing_template(_timing_source(pid, pilot_id, revision))
+
+
+def preview_timing(pid: str, pilot_id: str, data: bytes, revision: int) -> PilotTimingReport:
+    pilot = _timing_source(pid, pilot_id, revision)
+    try:
+        return review_timing(pilot, data)
+    except ValueError as exc:
+        raise AppError(str(exc), 400) from exc
+
+
+def export_timing(pid: str, pilot_id: str, data: bytes, revision: int) -> str:
+    return timing_csv(preview_timing(pid, pilot_id, data, revision))

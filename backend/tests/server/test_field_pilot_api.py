@@ -426,3 +426,46 @@ def test_cost_scenarios_reject_stale_invalid_and_unavailable_inputs(client, tmp_
     write_json(path, saved); before = path.read_bytes()
     assert client.post(endpoint, json=economics_request()).status_code == 409
     assert path.read_bytes() == before
+
+
+def test_staff_timing_template_preview_and_export_are_read_only(client, tmp_path):
+    pid = create(client)["pilot"]["pilot_id"]
+    url = f"{ROOT}/staff-pilots/{pid}/timing"
+    assert client.get(f"{url}/template.csv?revision=0").status_code == 409
+    assert upload(client, pid, sheet(client, pid, complete=True)).status_code == 200
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 1}).status_code == 200
+    template = client.get(f"{url}/template.csv?revision=2")
+    assert template.status_code == 200
+    rows = list(csv.DictReader(io.StringIO(template.text)))
+    assert len(rows) == 40 and all(r["staff_seconds"] == "" for r in rows)
+    out = io.StringIO(); writer = csv.DictWriter(out, fieldnames=list(rows[0])); writer.writeheader()
+    for row in rows: writer.writerow({**row, "staff_seconds": "0.001"})
+    data = out.getvalue().encode()
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    before = path.read_bytes()
+    response = client.post(f"{url}/preview", files={"file": ("time.csv", data)}, data={"revision": "2"})
+    assert response.status_code == 200, response.text
+    assert response.json()["a"]["mean_seconds"] == 0.001 and response.json()["difference_seconds"] == 0
+    audit = client.post(f"{url}/export.csv", files={"file": ("time.csv", data)}, data={"revision": "2"})
+    assert audit.status_code == 200 and "staff-time-r2.csv" in audit.headers["content-disposition"]
+    assert len(list(csv.DictReader(io.StringIO(audit.text)))) == 40
+    assert client.post(f"{url}/preview", files={"file": ("time.csv", data)}, data={"revision": "1"}).status_code == 409
+    assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("suffix", ["preview", "export.csv"])
+def test_timing_upload_errors_and_stale_exports_never_change_saved_pilot(client, tmp_path, suffix):
+    pid = create(client)["pilot"]["pilot_id"]
+    assert upload(client, pid, sheet(client, pid, complete=True)).status_code == 200
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 1}).status_code == 200
+    url = f"{ROOT}/staff-pilots/{pid}/timing/{suffix}"
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    before = path.read_bytes()
+    for revision, data, code in [("-1", b"bad", 422), ("1", b"bad", 409), ("2", b"bad", 400),
+                                  ("2", b"x" * (2 * 1024 * 1024 + 1), 413)]:
+        response = client.post(url, files={"file": ("time.csv", data)}, data={"revision": revision})
+        assert response.status_code == code, response.text
+    assert client.post(url.replace(pid, "missing"), files={"file": ("time.csv", b"bad")}, data={"revision": "2"}).status_code == 404
+    assert path.read_bytes() == before
+    saved = read_json(path); saved["pilot_id"] = "pilot_wrong"; write_json(path, saved)
+    assert client.post(url, files={"file": ("time.csv", b"bad")}, data={"revision": "2"}).status_code == 409

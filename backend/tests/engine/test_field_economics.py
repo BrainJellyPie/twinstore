@@ -135,3 +135,15 @@ def test_csv_retains_assumptions_snapshot_units_and_undefined_threshold():
     assert rows[0]["contribution_per_conversion_minor"] == "0" and rows[0]["seconds_per_encounter_a"] == "30"
     assert rows[0]["per_day_estimate_minor"] == "-30000.0"
     assert "not realized profit" in rows[0]["interpretation"]
+
+
+def test_zero_traffic_has_no_negative_zero_in_exported_costs():
+    report = pilot_economics(pilot(), request(eligible_encounters_per_day=0, seconds_per_encounter_b=3600))
+    assert all(math.copysign(1, v) == 1 for v in report.per_day.model_dump().values())
+    exported = next(csv.DictReader(io.StringIO(economics_csv(report))))
+    assert all(exported[k] == "0.0" for k in ("per_day_estimate_minor", "per_day_low_minor", "per_day_high_minor"))
+
+
+def test_zero_margin_and_equal_time_have_no_signed_zero_range():
+    report = pilot_economics(pilot(), request(contribution_per_conversion_minor=0, seconds_per_encounter_a=60))
+    assert all(v == 0 and math.copysign(1, v) == 1 for v in report.per_encounter.model_dump().values())

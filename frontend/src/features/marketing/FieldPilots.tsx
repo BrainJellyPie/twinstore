@@ -13,6 +13,7 @@ import { emptyPlanningInputs, planningAssumptions } from "./pilotPlanning";
 import { PilotImportHistory, PilotObservationReview } from "./PilotObservationReview";
 import { PilotCollectionChecks } from "./PilotCollectionChecks";
 import { PilotSensitivity } from "./PilotSensitivity";
+import { PilotTiming } from "./PilotTiming";
 import { PilotEconomics } from "./PilotEconomics";
 
 const percent = (n: number | null) => n == null ? "Unknown" : `${(n * 100).toFixed(1)}%`;
@@ -127,6 +128,7 @@ export function PilotResults({ projectId, view }: { projectId: string; view: Pil
     {close.error && <p role="alert" className="text-sm text-destructive">{close.error.message}</p>}
     <PilotImportHistory projectId={projectId} pilot={p} />
     <PilotSensitivity projectId={projectId} pilotId={p.pilot_id} revision={p.revision} eligible={!!p.finalized_at && a.inference_ready} />
+    <PilotTiming key={`timing:${projectId}:${p.pilot_id}:${p.revision}`} projectId={projectId} pilotId={p.pilot_id} revision={p.revision} eligible={!!p.finalized_at && a.inference_ready} />
     <PilotEconomics key={`${p.pilot_id}:${p.revision}`} projectId={projectId} pilotId={p.pilot_id} revision={p.revision} currency={p.product.currency} eligible={!!p.finalized_at && a.inference_ready} />
     <details><summary className="cursor-pointer text-sm font-semibold">Saved design and scripts</summary>
       <div className="mt-2 space-y-2 text-sm"><p>{p.product.name} · {p.product.sku} · {formatMoney(p.product.price, p.product.currency)} · {p.product.promo}</p>

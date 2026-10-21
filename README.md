@@ -238,6 +238,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   **Staff-script cost scenario** applies explicit contribution, staff-time, hourly labor cost and traffic
   assumptions to the locked conversion result. It shows break-even lift and conditional contribution ranges,
   with CSV export; these are cost scenarios, not realized profit or daily sales forecasts.
+  **Observed staff time** reviews an anonymous assignment/time CSV from a completed, locked pilot. It
+  checks staff/shift coverage, withholds averages until all times are recorded, and exports a source-bound
+  audit to inform explicit labor-cost assumptions without inferring profit or staff performance.
 - **Products** — drop packshots or phone photos of packs (the background is cut out), name them, tag the brand and link
   each to the shelf product it replaces. Shelf Lab and the vision shoppers use the same images.
 

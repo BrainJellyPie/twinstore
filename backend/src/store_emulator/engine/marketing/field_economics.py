@@ -33,8 +33,8 @@ def pilot_economics(pilot: FieldPilot, request: PilotEconomicsRequest) -> PilotE
     effect = Fraction(sum((1 if row.arm == "B" else -1) for row in pilot.assignments if row.purchased), len(pilot.assignments) // 2)
     per_encounter = ConditionalContribution(
         estimate_minor=float(effect * margin - labor),
-        low_minor=analysis.ci_low * margin - float(labor),
-        high_minor=analysis.ci_high * margin - float(labor),
+        low_minor=(analysis.ci_low * margin - float(labor)) or 0.0,
+        high_minor=(analysis.ci_high * margin - float(labor)) or 0.0,
     )
     daily = request.eligible_encounters_per_day
     return PilotEconomicsReport(
@@ -43,8 +43,9 @@ def pilot_economics(pilot: FieldPilot, request: PilotEconomicsRequest) -> PilotE
         conversion_difference=float(effect), conversion_ci_low=analysis.ci_low, conversion_ci_high=analysis.ci_high,
         incremental_labor_minor=float(labor), break_even_difference=float(labor / margin) if margin else None,
         per_encounter=per_encounter, per_day=ConditionalContribution(
-            estimate_minor=per_encounter.estimate_minor * daily, low_minor=per_encounter.low_minor * daily,
-            high_minor=per_encounter.high_minor * daily),
+            estimate_minor=per_encounter.estimate_minor * daily if daily else 0.0,
+            low_minor=per_encounter.low_minor * daily if daily else 0.0,
+            high_minor=per_encounter.high_minor * daily if daily else 0.0),
         notes=[
             "This is a conditional cost scenario for switching A to B, not realized profit or a sales forecast. Contribution, labor cost, time and daily traffic are operator assumptions, not measured by this module or inferred from virtual shoppers.",
             "Contribution per converted encounter is the common net target-product contribution for a buyer under either arm, after product costs, discounts and returns but before the staff time entered here. It is not selling price or unit margin unless one unit per buyer is justified. Other basket effects and fixed implementation costs are excluded.",

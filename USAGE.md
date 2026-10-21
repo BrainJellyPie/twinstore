@@ -257,6 +257,38 @@ identifiers are prefixed with an apostrophe. A stale revision must be reloaded i
 API: `GET /api/projects/{pid}/staff-pilots/{id}/sensitivity?revision={revision}` and the same path with
 `sensitivity.csv` for export. No extra persisted fields are required for existing saved pilots.
 
+**Observed staff time** connects supplied measurements to the same fixed assignments. Define the timing
+protocol before collection and record total active staff seconds alongside the observation sheet's assignment
+IDs, including refusals and non-delivery. Use the same start/stop rules in both arms; do not select only buyers.
+After closing a fully completed pilot, open **Market → Field pilots → Observations and results → Observed staff time**.
+Download a blank template, map your measurements to it, and upload a UTF-8 CSV with exactly these headers
+(in any order):
+
+```csv
+pilot_id,assignment_id,staff_seconds
+pilot_example,assignment_from_the_downloaded_sheet,12.125
+```
+
+The example IDs are placeholders; retain the actual generated IDs. No names, timestamps or customer details
+are needed. Each assignment may appear once. Times must be blank or decimal seconds from 0 to 3600, with
+at most three decimal places. A blank or omitted row is unknown; explicit 0 means verified zero time.
+Maximum upload: 2 MB / 10,000 rows. Duplicate IDs, foreign assignments, mixed pilots, invalid numbers and
+malformed CSVs are rejected rather than skipped.
+
+Coverage is shown per arm and staff/shift block. Means, maxima and B-minus-A average time are withheld until
+**every** planned encounter has a duration, even when one arm alone is complete. Once complete, pooled
+averages equal planned-count weighted block averages; delivery and purchase do not change the denominator.
+The UI shows up to eight significant digits; the export retains the calculated values. These are descriptive
+measurements supplied by the operator, not independently verified timing, confidence intervals, causal
+script effects, staffing-capacity estimates or a ranking of employees.
+
+**Export staff time audit CSV** includes every assigned row (unknowns stay blank), source SHA-256, the locked
+pilot revision and complete-plan means. The audit is distinct from the three-column upload template.
+Review/export does not change or save pilot observations or raw timing files; retain the audit and source
+file yourself. Stale revisions and incomplete/open pilots are rejected. Choose any whole-second assumptions
+for the cost scenario separately and document rounding; measured fractional means are not silently rounded
+or copied into costs. Timing error, future staffing mix and traffic uncertainty remain outside that scenario.
+
 In the same completed, locked pilot, **Staff-script cost scenario** checks whether the conversion difference
 could cover extra staff time **under your explicit assumptions**. Enter all five values; none is inferred from
 the product price, synthetic ratings or POS records:

@@ -15,6 +15,7 @@ from store_emulator.domain.field_pilot import PilotRequest, PilotRevision, Pilot
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationPreview
 from store_emulator.domain.field_collection import PilotCollectionReport
+from store_emulator.domain.field_timing import PilotTimingReport
 from store_emulator.domain.field_pos import PilotPosPreview
 
 router = APIRouter(prefix="/api/projects", tags=["field pilots"])
@@ -131,3 +132,28 @@ def export_economics(pid: str, pilot_id: str, req: PilotEconomicsRequest) -> Pla
     text = _call(lambda: field_pilot.export_economics(pid, pilot_id, req))
     return PlainTextResponse(text, media_type="text/csv",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-cost-scenario-r{req.revision}.csv"'})
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/timing/template.csv", summary="Download a blank staff time sheet for a completed fixed pilot")
+def export_timing_template(pid: str, pilot_id: str, revision: Annotated[int, Query(ge=0)]) -> PlainTextResponse:
+    text = _call(lambda: field_pilot.export_timing_template(pid, pilot_id, revision))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-staff-time-template.csv"'})
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/timing/preview", response_model=PilotTimingReport, summary="Review anonymous observed staff time without saving it")
+async def preview_timing(pid: str, pilot_id: str, file: UploadFile = File(...), revision: int = Form(..., ge=0)) -> PilotTimingReport:
+    data = await file.read(2 * 1024 * 1024 + 1)
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(413, "Staff time CSV exceeds 2 MB")
+    return await run_in_threadpool(_call, lambda: field_pilot.preview_timing(pid, pilot_id, data, revision))
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/timing/export.csv", summary="Export reviewed staff time, coverage and source metadata")
+async def export_timing(pid: str, pilot_id: str, file: UploadFile = File(...), revision: int = Form(..., ge=0)) -> PlainTextResponse:
+    data = await file.read(2 * 1024 * 1024 + 1)
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(413, "Staff time CSV exceeds 2 MB")
+    text = await run_in_threadpool(_call, lambda: field_pilot.export_timing(pid, pilot_id, data, revision))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-staff-time-r{revision}.csv"'})
