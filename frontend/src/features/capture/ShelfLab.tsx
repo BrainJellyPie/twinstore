@@ -423,17 +423,19 @@ function Sim2RealView({ report }: { report: Sim2RealReport }) {
           <div className="flex items-end justify-between">
             <div>
               <div className="eyebrow">{CONDITION_LABEL[a.condition]} vs render</div>
-              <div className="num text-3xl font-medium tracking-[-0.05em]">{Math.round(a.same_pick * 100)}%</div>
+              {a.pairs > 0
+                ? <div className="num text-3xl font-medium tracking-[-0.05em]">{Math.round(a.same_pick * 100)}%</div>
+                : <p className="mt-1 text-xs text-muted-foreground">No complete response pairs</p>}
             </div>
             <div className="text-right text-xs text-muted-foreground">
               same pick · n={a.pairs}<br />
               interest ρ {a.interest_spearman == null ? "–" : a.interest_spearman.toFixed(2)}
             </div>
           </div>
-          <div className="relative mt-2 h-2 rounded-full bg-foreground/10">
+          {a.pairs > 0 && <div className="relative mt-2 h-2 rounded-full bg-foreground/10">
             <div className="absolute inset-y-0 left-0 rounded-full aurora-gradient" style={{ width: `${a.same_pick * 100}%` }} />
             <div className="absolute -top-1 -bottom-1 border-x-2 border-foreground/60" style={{ left: `${a.ci_low * 100}%`, width: `${Math.max(0.5, (a.ci_high - a.ci_low) * 100)}%` }} title="95% Wilson interval" />
-          </div>
+          </div>}
         </div>
       ))}
       <div className="space-y-2">
@@ -446,7 +448,7 @@ function Sim2RealView({ report }: { report: Sim2RealReport }) {
                 <div key={lv} style={{ width: `${s.level_share[lv]! * 100}%`, background: LEVEL_COLORS[lv] }} title={`level ${lv}: ${Math.round(s.level_share[lv]! * 100)}%`} />
               ) : null))}
             </div>
-            <span className="num w-14 text-right text-muted-foreground">{Math.round(s.none_rate * 100)}% none</span>
+            <span className="num w-14 text-right text-muted-foreground">{s.answers > 0 ? `${Math.round(s.none_rate * 100)}% none` : "—"}</span>
           </div>
         ))}
         <div className="flex gap-3 text-[0.68rem] text-muted-foreground">
@@ -462,7 +464,8 @@ function Sim2RealView({ report }: { report: Sim2RealReport }) {
             {Object.entries(s.picks).slice(0, 3).map(([sku, n]) => (
               <div key={sku} className="flex justify-between gap-2"><span className="truncate">{report.products[sku] ?? sku}</span><span className="num text-muted-foreground">{n}</span></div>
             ))}
-            {Object.keys(s.picks).length === 0 && <span className="text-muted-foreground">No picks</span>}
+            {Object.keys(s.picks).length === 0 && <span className="text-muted-foreground">{s.answers > 0 ? "No picks" : "No successful responses"}</span>}
+            {s.errors > 0 && <p className="mt-1 text-destructive">{s.errors} model call{s.errors === 1 ? "" : "s"} failed</p>}
           </div>
         ))}
       </div>

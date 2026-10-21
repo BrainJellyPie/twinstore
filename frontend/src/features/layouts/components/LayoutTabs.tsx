@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react";
 import { cn } from "@/shared/utils/cn";
 
 import type { Layout } from "../hooks/useLayouts";
+import { LayoutFinder } from "./LayoutFinder";
 
 export interface LayoutTabsProps {
   layouts: Layout[];
@@ -50,6 +51,7 @@ export function LayoutTabs({ layouts, selectedId, onSelect, onAddNew, disabled =
       })}
       </div>
       <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
+      <LayoutFinder layouts={layouts} selectedId={selectedId} onSelect={onSelect} disabled={disabled} />
       <button
         type="button"
         disabled={disabled}
