@@ -143,6 +143,7 @@ function CompareTable({ report }: { report: ComparisonReport }) {
       <p className="text-xs text-muted-foreground">
         {report.paired_customers.toLocaleString()} paired customers · {report.n_bootstrap.toLocaleString()} bootstrap draws.
         Spend values are in the currency's minor unit.
+        With a zero baseline, intervals show absolute changes (conversion in percentage points).
       </p>
       {report.notes.map((n) => (
         <p key={n} className="rounded-md border tone-warn px-2.5 py-1.5 text-sm">{n}</p>
@@ -152,8 +153,6 @@ function CompareTable({ report }: { report: ComparisonReport }) {
 }
 
 function Headline({ m }: { m: MetricComparison }) {
-  const lowRel = m.mean_a ? m.ci_low / m.mean_a : 0;
-  const highRel = m.mean_a ? m.ci_high / m.mean_a : 0;
   const decisive = m.ci_low > 0 || m.ci_high < 0;
   const better = m.ci_low > 0;
   return (
@@ -163,9 +162,9 @@ function Headline({ m }: { m: MetricComparison }) {
         (decisive ? (better ? "tone-good" : "tone-bad") : "bg-muted/40")
       }
     >
-      <span className="font-medium">Spend per visitor: {signed(m.rel_diff)}</span>{" "}
+      <span className="font-medium">Spend per visitor: {signedChange(m, m.diff)}{m.mean_a ? "" : " minor units"}</span>{" "}
       <span className="text-muted-foreground">
-        ({signed(lowRel)} to {signed(highRel)}) —{" "}
+        ({signedChange(m, m.ci_low)} to {signedChange(m, m.ci_high)}) —{" "}
         {decisive
           ? better
             ? "B is reliably better."
@@ -180,9 +179,10 @@ function Headline({ m }: { m: MetricComparison }) {
 // crosses zero, and a shared scale would flatten small effects next to large ones.
 function ForestBar({ m }: { m: MetricComparison }) {
   const W = 110;
-  const rel = m.mean_a ? m.diff / m.mean_a : 0;
-  const lo = m.mean_a ? m.ci_low / m.mean_a : 0;
-  const hi = m.mean_a ? m.ci_high / m.mean_a : 0;
+  const baseline = m.mean_a || 1;
+  const rel = m.diff / baseline;
+  const lo = m.ci_low / baseline;
+  const hi = m.ci_high / baseline;
   const span = Math.max(0.01, Math.abs(lo), Math.abs(hi)) * 1.15;
   const scale = (x: number) => W / 2 + (Math.max(-span, Math.min(span, x)) / span) * (W / 2 - 6);
   const decisive = lo > 0 || hi < 0;
@@ -196,7 +196,7 @@ function ForestBar({ m }: { m: MetricComparison }) {
         <circle cx={scale(rel)} cy={8} r={3.5} fill="white" stroke={color} strokeWidth={2} />
       </svg>
       <span className="whitespace-nowrap text-[0.72rem] tabular-nums text-muted-foreground">
-        {signed(lo)} … {signed(hi)}
+        {signedChange(m, m.ci_low)} … {signedChange(m, m.ci_high)}
       </span>
     </div>
   );
@@ -205,6 +205,12 @@ function ForestBar({ m }: { m: MetricComparison }) {
 function signed(ratio: number): string {
   const s = formatPercent(ratio);
   return ratio > 0 ? `+${s}` : s;
+}
+
+function signedChange(m: MetricComparison, delta: number): string {
+  if (m.mean_a) return signed(delta / m.mean_a);
+  const value = m.metric === "bought" ? formatPercent(delta).replace("%", " pp") : fmt(m, delta);
+  return delta > 0 ? `+${value}` : value;
 }
 
 function fmt(m: MetricComparison, v: number): string {
