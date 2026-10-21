@@ -5,9 +5,14 @@
 <title>TwinStore — validation</title>
 <link rel="stylesheet" href="kit.css">
 <style>
-  .loop { display: grid; grid-template-columns: 250px 250px 250px 1fr; gap: 46px; align-items: start; }
-  .fixes { display: flex; flex-direction: column; gap: 14px; padding-top: 8px; }
-  .row2 { margin-top: 70px; margin-bottom: 120px; display: grid; grid-template-columns: 330px 1fr 300px; gap: 46px; align-items: start; }
+  .loop { display: grid; grid-template-columns: 270px 240px 260px 1fr; gap: 44px; align-items: start; }
+  .ev { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+  .ev .kpi b { font: 600 20px/1.1 var(--mono); letter-spacing: -0.02em; }
+  .ev .kpi i { font-style: normal; color: var(--faint); font: 12px var(--mono); }
+  .fixes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 18px; }
+  .fixzone { margin-top: 66px; }
+  .row2 { margin-top: 70px; display: grid; grid-template-columns: 1fr 330px; gap: 46px; align-items: stretch; }
+  #metrics { display: flex; flex-direction: column; }
   .fix { position: relative; border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 12px 14px 10px 44px; box-shadow: 0 12px 30px -20px rgb(16 20 36 / 0.35); }
   .fix .n { position: absolute; top: 12px; left: 12px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 600 11.5px var(--mono); color: #fff; background: linear-gradient(135deg, var(--c2), var(--c3)); box-shadow: 0 6px 12px -6px rgb(224 66 155 / 0.7); }
   .fix .found { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
@@ -37,87 +42,98 @@
   data >> twin ; twin >> personas ; personas >> engines ;
   engines.b >> metrics.t ;
   metrics.l >> results.r ;
-  metrics.b ~> fixes.b : found on the data ;
-  fixes.t ~> twin.b : changed the simulator
+  metrics.b ~> fixes.t @46 : found on the data
 ">
 <div class="canvas">
   <div class="title">
     <div>
       <div class="eyebrow">Fig. 4 — Real-data validation</div>
       <h1>Calibrated on real baskets, <em>tested on unseen households</em></h1>
-      <div class="lede">The twin shops for households of a public purchase dataset; simulated trips are compared with the
-        households' real, held-out trips, the simulator is changed where it is wrong, and the frozen configuration is
-        evaluated on a new panel and later weeks.</div>
+      <div class="lede">The twin shops for households of six public datasets; simulated trips are compared with real trips it
+        never saw, the simulator is changed where it is wrong, and the frozen configuration is evaluated on new
+        households and later weeks — with three model families as decision makers.</div>
     </div>
-    <div class="stamp"><b>research/validation</b><br>dunnhumby The Complete Journey<br>X5 RetailHero (cross-dataset)</div>
+    <div class="stamp"><b>research/validation</b><br>final held-out runs<br>it15_test_final · it19_test_needs</div>
   </div>
 
   <div class="loop">
     <div class="node" id="data"><span class="num">1</span>
-      <div class="hd"><span class="ic c1" data-icon="database"></span><div><h3>Real purchases</h3><div class="sub">The Complete Journey (2017)</div></div></div>
-      <dl class="kv"><dt>households</dt><dd>801</dd><dt>lines</dt><dd>1.47 M</dd><dt>calibration</dt><dd>weeks 27–39</dd><dt>held out</dt><dd>weeks 40–53</dd><dt>panel</dt><dd>150 / window</dd></dl>
+      <div class="hd"><span class="ic c1" data-icon="database"></span><div><h3>Six public datasets</h3><div class="sub">real shoppers, never redistributed</div></div></div>
+      <dl class="kv"><dt>Complete Journey</dt><dd>801 hh · 1.47 M lines</dd><dt>X5 RetailHero</dt><dd>240 clients</dd><dt>Ta-Feng</dt><dd>240 customers</dd><dt>Instacart</dt><dd>141 users</dd><dt>M5 · Favorita</dt><dd>prices · traffic</dd><dt>ATC tracks</dt><dd>13,159</dd></dl>
     </div>
     <div class="node" id="twin"><span class="num">2</span>
-      <div class="hd"><span class="ic" data-icon="store"></span><div><h3>Twin supermarket</h3><div class="sub">built from the data</div></div></div>
+      <div class="hd"><span class="ic" data-icon="store"></span><div><h3>Twin supermarket</h3><div class="sub">built from history weeks</div></div></div>
       <p>30 best-selling categories × 8 products at their typical shelf price, laid out by the assortment generator.</p>
-      <div class="chips"><span class="chip">history weeks only</span></div>
+      <div class="chips"><span class="chip">calib 27–39</span><span class="chip">held out 40–53</span></div>
     </div>
     <div class="node" id="personas"><span class="num">3</span>
       <div class="hd"><span class="ic" data-icon="users"></span><div><h3>Personas</h3><div class="sub">what each variant may see</div></div></div>
-      <div class="chips"><span class="chip c1">demo · demographics</span><span class="chip c1">store · + checkout stats</span><span class="chip c1">history · + own receipts</span></div>
+      <div class="chips"><span class="chip c1">store · age band + receipts</span><span class="chip c1">history · own rates + receipts</span><span class="chip c3">most likely vs varied trips</span></div>
       <p style="color:var(--muted)">Nothing from an evaluated window is ever an input.</p>
     </div>
     <div class="node" id="engines"><span class="num">4</span>
       <div class="hd"><span class="ic c3" data-icon="sparkles"></span><div><h3>Same personas, different minds</h3><div class="sub">only the decision model changes</div></div></div>
-      <div class="chips"><span class="chip k">rule · calibrated knobs</span><span class="chip c3">Claude Haiku 5.5</span><span class="chip c3">Qwen 3.8 Flash</span><span class="chip">replay-history (data drift)</span></div>
+      <div class="chips"><span class="chip k">rule · calibrated knobs</span><span class="chip c3">Claude Haiku 5.5</span><span class="chip c3">Qwen 3.8 Flash</span><span class="chip c3">GPT-6 Luna</span><span class="chip">replay (data's own drift)</span></div>
     </div>
   </div>
 
   <div class="row2">
-    <div class="fixes" id="fixes">
-    <div class="fix"><span class="n">1</span><b>Saturday at 10</b><div class="found">Asked for a visit time, 75 % of visits landed on Saturday 10:00 or 17:00.</div>
-      <div class="chg">weekday × hour traffic profile fitted from transactions</div><div class="delta"><s>0.54</s>→<b>0.038</b><span style="color:var(--muted);font-weight:500">hour JSD</span></div></div>
-    <div class="fix"><span class="n">2</span><b>Convenience caps</b><div class="found">Plans of ≤ 3 items, one product per category, quantity 1.</div>
-      <div class="chg">store-kind prompts · up to 30 items · basket_scale</div></div>
-    <div class="fix"><span class="n">3</span><b>Weekly stock-ups</b><div class="found">"This trip" became 10 categories and $55–68 for most households.</div>
-      <div class="chg">trip context from past receipts · Persona.basket_size</div></div>
-    <div class="fix"><span class="n">4</span><b>Silent fallbacks</b><div class="found">38 % of plans fell back to the rule planner on a cut-off answer.</div>
-      <div class="chg">200 + 70 tokens / item · one retry · fallbacks counted</div></div>
-    <div class="fix"><span class="n">5</span><b>Dear shelves</b><div class="found">Spend +25 %: the shelf held each category's top-revenue products.</div>
-      <div class="chg">shelf from best sellers by units and revenue</div></div>
-  </div>
     <div>
-    <div class="zone solid results" id="results"><div class="tag">Held out <i>weeks 40–53 · 150 new households · frozen</i></div>
+    <div class="zone solid results" id="results"><div class="tag">Held out <i>weeks 40–53 · 150 new households · varied trips</i></div>
       <table>
-        <thead><tr><th></th><th>real</th><th>replay</th><th>rule</th><th class="llm">Haiku</th><th class="llm">Qwen</th></tr></thead>
+        <thead><tr><th></th><th>real</th><th>replay</th><th>rule</th><th class="llm">Haiku</th><th class="llm">Qwen</th><th class="llm">Luna</th></tr></thead>
         <tbody>
-          <tr><td>Items / trip</td><td>5.85</td><td>6.11</td><td>7.23</td><td class="best">6.30</td><td>6.57</td></tr>
-          <tr><td>Spend $ / trip</td><td>22.5</td><td>23.9</td><td>34.4</td><td class="best">28.2</td><td>33.3</td></tr>
-          <tr><td>Category JSD ↓</td><td class="dim">–</td><td>0.012</td><td>0.079</td><td>0.021</td><td class="best">0.017</td></tr>
-          <tr><td>Hour JSD ↓</td><td class="dim">–</td><td>0.037</td><td>0.034</td><td>0.034</td><td>0.034</td></tr>
-          <tr><td>Age × category r ↑</td><td class="dim">–</td><td>0.33</td><td>0.00</td><td class="best">0.53</td><td class="best">0.53</td></tr>
-          <tr><td>Per-trip hit ↑ <span class="mono" style="color:var(--faint)">(popularity 0.31)</span></td><td class="dim">–</td><td>0.29</td><td>0.19</td><td class="best">0.34</td><td class="best">0.34</td></tr>
+          <tr><td>Items / trip <span class="mono" style="color:var(--faint)">(input)</span></td><td>5.85</td><td>6.11</td><td>7.25</td><td>6.78</td><td>6.93</td><td>6.81</td></tr>
+          <tr><td>Spend $ / trip</td><td>22.5</td><td>23.9</td><td>26.5</td><td class="best">24.5</td><td>29.8</td><td class="best">24.9</td></tr>
+          <tr><td>Category JSD ↓ <span class="mono" style="color:var(--faint)">history</span></td><td class="dim">–</td><td>0.012</td><td>0.033</td><td class="best">0.018</td><td class="best">0.018</td><td class="best">0.017</td></tr>
+          <tr><td>Category JSD ↓ <span class="mono" style="color:var(--faint)">store</span></td><td class="dim">–</td><td class="dim">–</td><td>0.093</td><td class="best">0.017</td><td>0.023</td><td>0.032</td></tr>
+          <tr><td>Hour JSD ↓</td><td class="dim">–</td><td>0.037</td><td>0.034</td><td>0.034</td><td>0.034</td><td>0.034</td></tr>
+          <tr><td>Trips with milk <span class="mono" style="color:var(--faint)">(real 0.41)</span></td><td>0.41</td><td>0.41</td><td>0.61</td><td>0.53</td><td>0.55</td><td class="best">0.42</td></tr>
         </tbody>
       </table>
-      <div class="note">Both language-model shoppers beat store popularity per trip, though not the household's own past (0.36). The spend gap is the
-        shelf-price issue fixed in step 5; re-evaluation is in progress.</div>
+      <div class="note">Per household (95 % CIs, paired): every model beats the store's best-sellers by +0.027 to +0.035 per trip, and varied
+        trips match trips drawn from the household's own purchase rates.</div>
     </div>
-    <div class="node" style="margin-top:22px"><div class="hd"><span class="ic c1" data-icon="globe"></span><div><h3>Cross-dataset check · X5 RetailHero</h3><div class="sub">240 clients, demographics only, nothing tuned on X5</div></div></div>
-      <p>Real items per trip follow an inverted U over age (25–44 highest, 65+ lowest). Neither model reproduces it when it decides the trip size itself (r ≈ 0) — so basket size comes from data, as in the <span class="mono">store</span> and <span class="mono">history</span> variants.</p>
-      <div class="chips"><span class="chip c1">age gradient</span><span class="chip c1">women +8 % vs men</span><span class="chip">no product names needed</span></div>
-    </div>
-    </div>
-    <div class="zone" id="metrics"><div class="tag">Metrics <i>metrics.py</i></div>
-      <div class="kpis">
-        <div class="kpi"><b class="mono">W₁</b><span>items, units, spend per trip</span></div>
-        <div class="kpi"><b class="mono">JSD</b><span>category mix, hour, weekday</span></div>
-        <div class="kpi"><b class="mono">r · hit</b><span>age gradients, per-trip hit rate</span></div>
+    <div class="zone solid" style="margin-top:26px"><div class="tag">Beyond baskets <i>simulated · real reference</i></div>
+      <div class="ev">
+        <div class="kpi"><b>−0.78…−1.60</b><span>own-price elasticity</span><i>real −0.70 (M5) … −2.62</i></div>
+        <div class="kpi"><b>1.25–1.36×</b><span>bigger trips from farther away</span><i>Ta-Feng real 1.33×</i></div>
+        <div class="kpi"><b>1.12 m/s</b><span>median walking speed</span><i>13,159 tracks: 1.13</i></div>
+        <div class="kpi"><b>1.25–1.7×</b><span>promotion ribbon lift</span><i>display in data: 1.4×</i></div>
+        <div class="kpi"><b>0.54–0.56</b><span>age × category r</span><i>own past trip: 0.33</i></div>
+        <div class="kpi"><b>3 / 3</b><span>model families agree</span><i>rule engine does not</i></div>
       </div>
-      <div style="margin-top:16px"><div class="label">category JSD · calibration</div><div class="big">0.113 → <em>0.018</em></div></div>
-      <div style="margin-top:12px"><div class="label">hour JSD</div><div class="big">0.504 → <em>0.038</em></div></div>
-      <div class="note">First iteration vs final, Claude Haiku, <span class="mono">history</span> variant, calibration window.</div>
+    </div>
     </div>
 
+    <div class="zone" id="metrics"><div class="tag">Metrics <i>metrics.py · c2st.py</i></div>
+      <div class="kpis">
+        <div class="kpi"><b class="mono">W₁ · JSD</b><span>items, spend; category mix, hour, weekday</span></div>
+        <div class="kpi"><b class="mono">paired CIs</b><span>per-household hit vs best-sellers and own rates</span></div>
+        <div class="kpi"><b class="mono">C2ST</b><span>can a classifier tell simulated from real?</span></div>
+      </div>
+      <div style="margin-top:16px"><div class="label">classifier AUC · real vs simulated</div><div class="big">0.84 → <em>0.56</em></div></div>
+      <div style="margin-top:12px"><div class="label">hour JSD · first try → held out</div><div class="big">0.54 → <em>0.034</em></div></div>
+      <div style="margin-top:12px"><div class="label">trips with milk · real 0.41</div><div class="big">0.73 → <em>0.42</em></div></div>
+      <div class="note" style="margin-top:auto">AUC and milk: GPT-6 Luna, history variant, most likely → varied trips. A household's own earlier receipt scores 0.52 AUC.</div>
+    </div>
+  </div>
+
+  <div class="zone fixzone" id="fixes"><div class="tag">What the loop found <i>and changed in the simulator · 6 of 11</i></div>
+      <div class="fixes">
+    <div class="fix"><span class="n">1</span><b>Saturday at 10</b><div class="found">Asked for a visit time, 75 % of visits landed on Saturday 10:00 or 17:00.</div>
+      <div class="chg">weekday × hour profile fitted from transactions</div><div class="delta"><s>0.54</s>→<b>0.034</b><span style="color:var(--muted);font-weight:500">hour JSD</span></div></div>
+    <div class="fix"><span class="n">3</span><b>Weekly stock-ups</b><div class="found">"This trip" became 10 categories and $55–68.</div>
+      <div class="chg">trip size from past receipts · Persona.basket_size</div></div>
+    <div class="fix"><span class="n">6</span><b>Three fixed examples</b><div class="found">87 % of planned products were the directory's examples.</div>
+      <div class="chg">every product listed, shuffled per shopper</div><div class="delta"><s>0.11</s>→<b>0.02</b><span style="color:var(--muted);font-weight:500">product JSD</span></div></div>
+    <div class="fix"><span class="n">9</span><b>Prices ignored</b><div class="found">No engine responded to a 20 % price change.</div>
+      <div class="chg">per-product and was-prices on tags · price_elasticity</div><div class="delta"><s>≈0</s>→<b>−0.78…−1.60</b></div></div>
+    <div class="fix"><span class="n">10</span><b>Silent glance failures</b><div class="found">Reasoning used up GPT-6 Luna's budget: 90 % of glances failed.</div>
+      <div class="chg">reasoning off · retry · errors reported</div><div class="delta"><s>225/251</s>→<b>0/254</b></div></div>
+    <div class="fix"><span class="n">11</span><b>Told apart by a classifier</b><div class="found">One product per category, staples on every trip.</div>
+      <div class="chg">seeded need draw per trip · receipt's breadth</div><div class="delta"><s>0.80–0.84</s>→<b>0.56–0.62</b><span style="color:var(--muted);font-weight:500">AUC</span></div></div>
+    </div>
   </div>
 
   <div class="foot">

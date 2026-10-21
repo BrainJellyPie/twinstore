@@ -130,22 +130,29 @@ def _paste(base: Image.Image, patch: Image.Image, box: PixelBox, alpha: Image.Im
 
 
 def context_mean(arr: FloatArray, box: PixelBox) -> FloatArray:
-    """Mean colour of the ring around `box` (the light falling on that spot, not the product)."""
+    """The light falling on `box`: the bright end (85th percentile per channel) of the ring around it.
+    Shelf edges, tags and white print reflect the light; the dark neighbouring products in the ring
+    would otherwise read as shade."""
     x1, y1, x2, y2 = box
     h, w = arr.shape[:2]
     m = max(4, round(min(x2 - x1, y2 - y1) * 0.35))
     ox1, oy1, ox2, oy2 = max(0, x1 - m), max(0, y1 - m), min(w, x2 + m), min(h, y2 + m)
-    outer = arr[oy1:oy2, ox1:ox2].reshape(-1, 3)
-    inner_n = (x2 - x1) * (y2 - y1)
-    total = outer.sum(axis=0) - arr[y1:y2, x1:x2].reshape(-1, 3).sum(axis=0)
-    n = max(1, len(outer) - inner_n)
-    return (total / n).astype(np.float32)
+    ring = np.ones((oy2 - oy1, ox2 - ox1), dtype=bool)
+    ring[y1 - oy1:y2 - oy1, x1 - ox1:x2 - ox1] = False
+    pixels = arr[oy1:oy2, ox1:ox2][ring]
+    if len(pixels) == 0:
+        return arr[y1:y2, x1:x2].reshape(-1, 3).mean(axis=0).astype(np.float32)
+    return np.percentile(pixels, 85, axis=0).astype(np.float32)
 
 
 def relight(patch: FloatArray, src_ctx: FloatArray, dst_ctx: FloatArray) -> FloatArray:
-    """Carry a patch from a spot lit like `src_ctx` to one lit like `dst_ctx` (per-channel gain, clamped)."""
-    gain = np.clip((dst_ctx + 4) / (src_ctx + 4), 0.75, 1.3)
-    return np.clip(patch * gain, 0, 255).astype(np.float32)
+    """Carry a patch from a spot lit like `src_ctx` to one lit like `dst_ctx`. The rings around both
+    spots hold neighbouring products as well as light, so the gain follows their brightness (clamped)
+    and their colour only slightly; a full per-channel gain would tint the patch with the neighbours."""
+    lum = np.array([0.299, 0.587, 0.114], dtype=np.float32)
+    level = float(np.clip((float(dst_ctx @ lum) + 4) / (float(src_ctx @ lum) + 4), 0.8, 1.25))
+    tint = np.clip(((dst_ctx + 4) / (src_ctx + 4)) / level, 0.96, 1.04)
+    return np.clip(patch * level * tint, 0, 255).astype(np.float32)
 
 
 def settle(patch: FloatArray, reference: FloatArray, dst_ctx: FloatArray, strength: float = 0.25) -> FloatArray:
