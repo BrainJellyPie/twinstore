@@ -5,12 +5,14 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { SMAAPass } from "three/examples/jsm/postprocessing/SMAAPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { frameGate } from "./frameGate";
 import { StoreGBufferPass } from "./StoreGBufferPass";
 
 // High-quality post stack: ground-truth AO + gentle bloom on the LED strips and
-// ceiling panels. Plugs into the GatedRenderer while mounted.
+// ceiling panels, followed by SMAA for fine alpha-tested edges. Plugs into the
+// GatedRenderer while mounted.
 export function RealisticEffects() {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
@@ -36,6 +38,8 @@ export function RealisticEffects() {
     c.addPass(ao);
     // HDR threshold well above lit white surfaces: only LED strips / panels bloom.
     c.addPass(new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.16, 0.22, 4.0));
+    // Three r183 SMAA operates in linear light, before display tone mapping.
+    c.addPass(new SMAAPass());
     c.addPass(new OutputPass());
     return c;
   }, [gl, scene, camera, size.width, size.height, dpr]);
@@ -45,7 +49,7 @@ export function RealisticEffects() {
     return () => {
       frameGate.renderer = null;
       // EffectComposer owns its ping-pong targets, but each pass owns the AO,
-      // bloom and output buffers. Release those on quality changes and resize.
+      // bloom, antialiasing and output buffers. Release those on quality changes and resize.
       for (const pass of composer.passes) {
         pass.dispose();
         // Three r183 leaves these shader materials out of pass.dispose().

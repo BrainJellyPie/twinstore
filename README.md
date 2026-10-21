@@ -685,6 +685,9 @@ when highlighted. Sources and conversion instructions are in
 High-quality ambient occlusion preserves hair and leaf alpha masks and excludes
 transparent glass from its occluders. Normal/depth rendering restores live
 materials after each pass and shares their textures without taking ownership.
+High also applies Three.js SMAA after AO/bloom and before tone mapping to soften
+alpha-tested hair, eyelashes and fine edges, alongside 4× geometry multisampling.
+Its lookup textures and render targets are released on resize or quality changes.
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
 for photographic indoor lighting and reflections; attribution and file provenance are in
 [`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).
