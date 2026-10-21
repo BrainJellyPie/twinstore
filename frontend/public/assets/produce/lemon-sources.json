@@ -1,0 +1,57 @@
+{
+  "asset": "lemon",
+  "source": "https://polyhaven.com/a/lemon",
+  "author": "Kuutti Siitonen",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_lemon.py; long axis laid along the shelf facing; 200/1000 triangle LODs, bottom-centred unit bounds, inverse-transpose normals; original 1K JPEG color, OpenGL normal and ARM maps retained.",
+  "authored_dimensions_metres": {
+    "width": 0.09536932408809662,
+    "height": 0.06868194043636322,
+    "depth": 0.0682600885629654
+  },
+  "files": [
+    {
+      "file": "textures/lemon_nor_gl_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lemon/lemon_nor_gl_1k.jpg",
+      "bytes": 900796,
+      "md5": "967ac253c8a1bc3623f1ebac3c7e543a",
+      "sha256": "6b82679555281f5addc4b8ba8c89aa0a44163354bb3db906aeec79ff6ce478a4"
+    },
+    {
+      "file": "textures/lemon_arm_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lemon/lemon_arm_1k.jpg",
+      "bytes": 441578,
+      "md5": "53c105e1a00b864cd0d41fa488f48a1a",
+      "sha256": "35e70eae295a4ce3a2572101740da2db00d28ecfc59d529588ea167b99e58491"
+    },
+    {
+      "file": "textures/lemon_diff_1k.jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/lemon/lemon_diff_1k.jpg",
+      "bytes": 410970,
+      "md5": "86c47e7daf0f9ba4aa0563be6cb7297c",
+      "sha256": "8b77be29d3032852bc6c1e327aefcc83377c405dcd437f85d2aac8b33f921618"
+    },
+    {
+      "file": "lemon.bin",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/lemon/lemon.bin",
+      "bytes": 95464,
+      "md5": "357973be23fd9b4bcf2a212ef30ecc31",
+      "sha256": "af5a040a7c14cf7d3537ed387ba2d2257feed2dbafb2f922ee566bf01abb859e"
+    },
+    {
+      "file": "lemon_1k.gltf",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/lemon/lemon_1k.gltf",
+      "bytes": 3036,
+      "md5": "79ad40158b71f7d08d7dcc4efc060468",
+      "sha256": "b9cbb0cda757eee2e8f76b9fe9021b0ef208d10a61bae4ac73d5f2c1c20865e3"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "lemon.glb",
+      "bytes": 1788736,
+      "sha256": "d8890e2458489374eec5ef078fd71204e6ce00d08a1fb97b5fb940d66e63654b"
+    }
+  ]
+}

@@ -73,3 +73,24 @@ Download and verify the avocado manifest sources, renaming
 blender --background --python scripts/convert_avocado.py -- \
   --source-dir /path/to/avocados --output frontend/public/assets/produce/avocado.glb
 ```
+
+`lemon.glb` uses **Lemon** by **Kuutti Siitonen**, published by
+[Poly Haven](https://polyhaven.com/a/lemon) under CC0. `lemon-sources.json`
+records the five verified source files and output checksum. The 4,012-triangle
+source becomes 200/1,000-triangle LODs with original 1K JPEG color, OpenGL normal
+and packed roughness maps. The fruit lies on its side at approximately
+9.54 × 6.87 × 6.83 cm before the common 10% product readability scale.
+
+Whole yellow lemon names use the scan; juices, preserved or cut fruit, Meyer
+varieties and multipacks retain their existing package rules. Shelf and table
+displays use one layer and preserve proportions. Half-turn, size and brightness
+variation stays within each display footprint. Medium uses color and flat
+roughness; High adds normal and roughness maps. A pointed procedural fallback
+remains visible during loading or failure; absent lemons cause no asset request.
+
+Download and verify the manifest files, preserving their paths, then run:
+
+```sh
+blender --background --python scripts/convert_lemon.py -- \
+  --source-dir /path/to/lemons --output frontend/public/assets/produce/lemon.glb
+```
