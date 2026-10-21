@@ -254,6 +254,17 @@ The preview and capacity check use the rotated footprint and keep the requested
 clear space on every side. Each floor saves its own rotation; zero tables retain
 the choice for when seating is added again.
 
+Open **Mixed table sizes** and enable **Use mixed table sizes** to combine
+two-, four- and six-seat groups on one floor. Set a count for each size, up to
+48 tables in total; the total table count updates automatically. Larger groups
+are placed first, then smaller groups use the remaining space. Every group keeps
+the selected rotation, seating area and circulation clearance. An arrangement
+that cannot fit reports which size needs adjustment; counts are never silently
+reduced. Turn mixing off to use the same total with the selected uniform size.
+The mix is saved with each floor and in reusable options files. Priorities that
+remove seating set all mixed counts to zero. The structured preview API accepts
+the same `table_mix` object as saved layout requests.
+
 Set **Space around dining tables** to one, two or three cells. The generator keeps
 that space free of other fixtures on every side of each dining group, including
 between tables and wall displays. More clearance reduces the number of tables

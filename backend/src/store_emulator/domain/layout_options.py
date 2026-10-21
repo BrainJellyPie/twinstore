@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from store_emulator.domain.types import ResourceId
 
@@ -31,6 +31,24 @@ class ReservedArea(BaseModel):
     height: int = Field(ge=1, le=38)
 
 
+class DiningTableMix(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    two_seat: int = Field(default=0, strict=True, ge=0, le=48)
+    four_seat: int = Field(default=0, strict=True, ge=0, le=48)
+    six_seat: int = Field(default=0, strict=True, ge=0, le=48)
+
+    @property
+    def total(self) -> int:
+        return self.two_seat + self.four_seat + self.six_seat
+
+    @model_validator(mode="after")
+    def _bounded_total(self) -> "DiningTableMix":
+        if self.total > 48:
+            raise ValueError("Mixed dining tables must total at most 48.")
+        return self
+
+
 class LayoutOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -52,6 +70,7 @@ class LayoutOptions(BaseModel):
     design_theme: StoreDesign | None = None
     dining_tables: int | None = Field(default=None, ge=0, le=48)
     dining_seats: int = Field(default=4, strict=True, ge=2, le=6, multiple_of=2)
+    table_mix: DiningTableMix | None = None
     table_rotation: int = Field(default=0, strict=True, ge=0, le=90, multiple_of=90)
     table_clearance: int = Field(default=1, ge=1, le=3)
     seating_zone: SeatingZone = "auto"
@@ -61,6 +80,12 @@ class LayoutOptions(BaseModel):
     open_hour: int | None = Field(default=None, strict=True, ge=0, le=23)
     close_hour: int | None = Field(default=None, strict=True, ge=1, le=24)
     closed_days: list[TemplateWeekday] | None = Field(default=None, max_length=7)
+
+    @model_validator(mode="after")
+    def _matching_table_count(self) -> "LayoutOptions":
+        if self.table_mix is not None and self.dining_tables is not None and self.dining_tables != self.table_mix.total:
+            raise ValueError("Dining table count must match the mixed table total, or be omitted.")
+        return self
 
 
 class TemplateLayoutRequest(LayoutOptions):
