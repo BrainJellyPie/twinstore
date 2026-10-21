@@ -18,6 +18,12 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   and what is within noise, with the figures it used. API: `POST /api/projects/{pid}/compare/explain?a=…&b=…`.
 - A model reply cut off by its length limit now says so ("the model's reply was cut off before it finished").
 
+### Edit placed products together
+- Step 2 now opens a searchable SKU editor for names, prices and promotion text. Select rows for bulk changes,
+  undo local edits, inspect mixed prior values and save a separate child layout with all placements preserved.
+- Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
+  No model call or new spreadsheet is required. See the product editor section in USAGE.md.
+
 ### Model-written shopper thoughts
 - Vision shoppers now say what they came for: the model's own mission and reason become the first step of each
   journey and the speech bubble at the door ("a cold soda and something salty (thirsty)"); a shopper who turns
