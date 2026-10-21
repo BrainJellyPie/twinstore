@@ -56,9 +56,11 @@ export const LAYOUT_STYLES = [
   ["free_flow", "Free-flow islands"], ["perimeter", "Open center / perimeter"], ["showroom", "Showroom groups"],
 ] as const;
 
-export const LAYOUT_PRIORITIES: {
+export interface LayoutPriority {
   id: string; name: string; description: string; options: LayoutOptions; checkoutAtEntrance?: boolean;
-}[] = [
+}
+
+export const LAYOUT_PRIORITIES: LayoutPriority[] = [
   { id: "wide", name: "Wide circulation", description: "Cross aisles, spacious density, 3-cell aisle gaps, shelf runs up to 3 cells and 2-cell space around dining tables.",
     options: { style: "cross", density: "spacious", aisle_width: 3, max_shelf_run: 3, table_clearance: 2 } },
   { id: "capacity", name: "More display space", description: "Parallel aisles, dense displays, 1-cell aisle gaps, shelf runs up to 8 cells and standard 1-cell space around tables.",
@@ -76,6 +78,14 @@ export const LAYOUT_PRIORITIES: {
   { id: "service_points", name: "Separated service counters", description: "Three counters with 2-cell spacing near the entrance, a spacious central spine, 3-cell aisle gaps and shelf runs up to 3 cells. Removes dining tables.",
     options: { style: "spine", density: "spacious", dining_tables: 0, checkouts: 3, checkout_clearance: 2, checkout_placement: "near_entrance", aisle_width: 3, max_shelf_run: 3 }, checkoutAtEntrance: true },
 ];
+
+export function applyLayoutPriority(value: TemplateChoice, priority: LayoutPriority): TemplateChoice {
+  return { ...value, ...priority.options,
+    ...(priority.options.table_mix ? { table_mix: { ...priority.options.table_mix } } : {}),
+    ...(priority.options.dining_tables === 0 && value.table_mix ? { table_mix: { two_seat: 0, four_seat: 0, six_seat: 0 } } : {}),
+    ...(priority.checkoutAtEntrance ? { checkout_wall: value.gate_wall ?? "front" } : {}),
+  };
+}
 
 export function validTemplateChoice(value: TemplateChoice): boolean {
   if (value.table_mix != null) {
