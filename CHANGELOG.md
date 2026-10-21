@@ -18,6 +18,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Print-ready HTML report and a long-format CSV (one row per option shown) for re-estimation elsewhere.
   API: `POST/GET /api/projects/{pid}/conjoints`, `GET .../conjoints/{id}`, `.../report.html`, `.../export.csv`.
 
+### Observed shelf and checkout price checks
+- New **Market → Price checks** joins two independently supplied observation CSVs, preserving missing sides and excluding mismatched SKU, package, currency, date or purchase terms.
+- Exact integer price differences, separate positive/negative currency sums and a sources-and-scope-bound audit export. No automatic price updates, legal verdicts, inferred customer losses or population statistics.
+- Boundary regressions reject numeric epoch strings in date inputs and keep upload errors attached to the file that needs correction.
+
 ### Research protocols and amendment history
 - New **Market → Protocols** records complete original plans and append-only amendments with reasons and self-declared data stages. Field differences and planned-sample changes are derived from retained snapshots.
 - Canonical linked hashes, atomic saves, cross-process locking, idempotent creation and expected-head checks protect the application workflow from stale overwrites and uncertain retries. JSON and CSV exports bind to the displayed head.
