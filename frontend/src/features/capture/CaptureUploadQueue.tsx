@@ -143,7 +143,15 @@ export function CaptureUploadQueue({
     }
   };
   const run = async () => {
-    if (busy.current || picking) return;
+    if (
+      busy.current ||
+      picking ||
+      entriesRef.current.some(
+        (entry) => entry.stage === "upload_error" || entry.stage === "poll_error",
+      )
+    ) {
+      return;
+    }
     busy.current = true;
     pause.current = false;
     setPaused(false);
@@ -235,7 +243,7 @@ export function CaptureUploadQueue({
   return (
     <section
       aria-label="Photo upload queue"
-      className="max-h-[70dvh] space-y-3 overflow-y-auto rounded-2xl border bg-card p-4 text-sm"
+      className="max-h-[70dvh] space-y-3 overflow-y-auto rounded-2xl border bg-card p-4 text-sm md:max-h-full"
     >
       <h2 className="text-lg font-semibold">Add shelf photos together</h2>
       <p>
@@ -421,7 +429,9 @@ export function CaptureUploadQueue({
               ) && (
                 <Button
                   size="sm"
-                  disabled={working || picking}
+                  disabled={
+                    working || picking || (e.stage === "recognition_error" && unresolved)
+                  }
                   onClick={() => {
                     update(e.id, {
                       stage: "queued",

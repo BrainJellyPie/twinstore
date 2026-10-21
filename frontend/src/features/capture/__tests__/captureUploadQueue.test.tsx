@@ -142,6 +142,32 @@ it("deduplicates bytes across filenames but keeps distinct photos sharing a name
   expect(screen.getByText(/0 of 2 ready/)).toBeTruthy();
   expect(screen.getByRole("alert").textContent).toContain("Identical photo");
 });
+it("accepts a multi-file drop without starting recognition before confirmation", async () => {
+  mount();
+  const drop = screen.getByRole("button", { name: "Choose photos or drop them here" }) as HTMLButtonElement;
+  await waitFor(() => expect(drop.disabled).toBe(false));
+  fireEvent.drop(drop, { dataTransfer: { files: [file("사진.png"), file("café.png")] } });
+  await screen.findByText(/0 of 2 ready/);
+  expect(api.createCapture).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Start / resume queue" }));
+  await screen.findByText(/2 of 2 ready/);
+  expect(vi.mocked(api.createCapture).mock.calls.map((call) => call[1].name)).toEqual(["사진.png", "café.png"]);
+});
+it("requires store currency to load and recovers from a project API error", async () => {
+  vi.mocked(api.getProject).mockRejectedValueOnce(new Error("Store offline"));
+  mount();
+  const retry = await screen.findByRole("button", { name: "Retry store" });
+  expect((screen.getByRole("button", { name: "Choose photos or drop them here" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("Shelf photo files"), { target: { files: [file("shelf.png")] } });
+  expect(api.createCapture).not.toHaveBeenCalled();
+  expect(screen.getByText(/0 of 0 ready/)).toBeTruthy();
+  vi.mocked(api.getProject).mockResolvedValue({ metadata: { currency: "KRW" } } as Awaited<ReturnType<typeof api.getProject>>);
+  fireEvent.click(retry);
+  await choose([file("shelf.png")]);
+  fireEvent.click(screen.getByRole("button", { name: "Start / resume queue" }));
+  await screen.findByText(/1 of 1 ready/);
+  expect(vi.mocked(api.createCapture).mock.calls[0]![2]?.currency).toBe("KRW");
+});
 it("rejects empty and unsupported files and bounds a selection to twenty", async () => {
   mount();
   await choose([
@@ -213,6 +239,28 @@ it("retries polling without uploading the accepted photo again", async () => {
   await screen.findByText(/1 of 1 ready/);
   expect(api.createCapture).toHaveBeenCalledTimes(1);
   expect(api.getCapture).toHaveBeenCalledTimes(2);
+});
+it("blocks a new recognition attempt while another accepted photo has an unknown status", async () => {
+  vi.mocked(api.getCapture)
+    .mockResolvedValueOnce({
+      status: { ...status, status: "failed", error: "Model unavailable" },
+      result: null,
+    })
+    .mockRejectedValueOnce(new Error("Status offline"));
+  mount();
+  await choose([file("1.png"), file("2.png"), file("3.png")]);
+  fireEvent.click(screen.getByRole("button", { name: "Start / resume queue" }));
+  await screen.findByRole("button", { name: "Retry this photo" });
+  const newAttempt = screen.getByRole("button", {
+    name: "Retry recognition (new attempt)",
+  }) as HTMLButtonElement;
+  expect(newAttempt.disabled).toBe(true);
+  fireEvent.click(newAttempt);
+  expect(api.createCapture).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByRole("button", { name: "Retry this photo" }));
+  await screen.findByText(/2 of 3 ready.*Queue stopped/);
+  expect(api.createCapture).toHaveBeenCalledTimes(3);
+  expect(newAttempt.disabled).toBe(false);
 });
 it("starts a new identity only after an explicit retry of failed recognition", async () => {
   vi.mocked(api.getCapture).mockResolvedValueOnce({

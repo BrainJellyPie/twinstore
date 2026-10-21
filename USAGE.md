@@ -941,8 +941,8 @@ zero in the grid: this is a placeholder, not an observed zero price. Correct the
 Up to 20 captures, 2,000 total facings and 24 facings per product are accepted. Every photo must match the
 base layout's currency; prices are never converted. Photos add racks onto free floor next to aisles, using
 existing shelf-level and left-to-right grid mapping. They do not recover camera geometry, exact dimensions,
-room locations or stock quantities; grid capacity may reduce facings. This workflow does not upload many
-photos at once or add automatic recognition beyond the existing single-photo pipeline.
+room locations or stock quantities; grid capacity may reduce facings. Use the photo intake queue below to
+upload several images; each still uses the existing single-photo recognition pipeline.
 
 If a photo or base store changes after preview, save is rejected: preview again. After an uncertain save
 failure, **Retry saving this draft** reuses the same request and returns the existing draft if it was already
@@ -974,7 +974,8 @@ uses geometry without a VLM and does not identify real product names or measured
   or delete a stored capture. The queue remains when reviewing another photo in the same Capture page.
 - **Retry this photo** repeats an uncertain upload with the same request identity, or resumes status polling
   without uploading again. If recognition has definitively failed, **Retry recognition (new attempt)** creates
-  a new capture and may make new model calls; the failed original is preserved.
+  a new capture and may make new model calls; the failed original is preserved. Resolve an uncertain upload
+  or status first before starting a new recognition attempt for another photo.
 - Use **Review photo** to correct names, prices, categories and facings. Once reviewed, the existing
   **Combine reviewed shelf photos** flow previews and saves their products/crops/racks in one new layout.
 
