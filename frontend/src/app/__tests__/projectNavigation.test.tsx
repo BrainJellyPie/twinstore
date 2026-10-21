@@ -32,9 +32,9 @@ vi.mock("@/views/simulation/states/EmptyFloorReadyView", () => ({
     <button onClick={onAddLayout}>New layout</button></div>,
 }));
 vi.mock("@/features/layouts/components/AddLayoutDialog", () => ({
-  AddLayoutDialog: function TestAddLayoutDialog({ open, projectId }: { open: boolean; projectId: string }) {
-    const createLayout = useCreateLayout();
-    return open ? <div role="dialog">Add to {projectId}
+  AddLayoutDialog: function TestAddLayoutDialog({ open, projectId, onOpenChange, isCurrentProject }: { open: boolean; projectId: string; onOpenChange: (open: boolean) => void; isCurrentProject?: () => boolean }) {
+    const createLayout = useCreateLayout({ active: open, projectId, canSelect: isCurrentProject });
+    return open ? <div role="dialog">Add to {projectId}<button onClick={() => onOpenChange(false)}>Close creation</button>
       <button onClick={() => createLayout.mutate({ projectId, name: "New", source: { kind: "empty" } })}>Create blank</button>
       {createLayout.isError && <span role="alert">Creation failed</span>}
     </div> : null;
@@ -346,4 +346,46 @@ it("retains navigation focus when Suspense blurs a hidden old view before replac
   target.checkVisibility = () => false; target.blur();
   await act(async () => loading.resolve(setup("a1"))); await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "a1" }));
+});
+
+
+it.each([false, true])("keeps the current layout after creation is dismissed (another layout selected: %s)", async (chooseOther) => {
+  const { client } = await mount(); const created = deferred<api.SetupSummaryShort>(); vi.mocked(api.createSetup).mockReturnValue(created.promise);
+  vi.mocked(api.getSetups).mockResolvedValue([setup("a1"), setup("a2"), setup("a3")]);
+  fireEvent.click(screen.getByRole("button", { name: "New layout" })); fireEvent.click(screen.getByRole("button", { name: "Create blank" }));
+  await waitFor(() => expect(api.createSetup).toHaveBeenCalledOnce()); fireEvent.click(screen.getByRole("button", { name: "Close creation" }));
+  if (chooseOther) { fireEvent.click(screen.getByRole("button", { name: "a1" })); await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1")); }
+  await act(async () => created.resolve({ ...setup("a3"), status: "draft" }));
+  await waitFor(() => expect(client.getQueryData<api.SetupSummary[]>(queryKeys.setups("alpha"))?.some(item => item.id === "a3")).toBe(true));
+  expect(screen.getByTestId("setup").textContent).toBe(chooseOther ? "a1" : "a2"); expect(useSimulationStore.getState().selectedSetupId).toBe(chooseOther ? "a1" : "a2");
+});
+
+it.each([false, true])("does not reactivate an old creation after its dialog is reopened (selection changed: %s)", async (chooseOther) => {
+  const { client } = await mount(); const created = deferred<api.SetupSummaryShort>(); vi.mocked(api.createSetup).mockReturnValue(created.promise);
+  vi.mocked(api.getSetups).mockResolvedValue([setup("a1"), setup("a2"), setup("a3")]);
+  fireEvent.click(screen.getByRole("button", { name: "New layout" })); fireEvent.click(screen.getByRole("button", { name: "Create blank" }));
+  await waitFor(() => expect(api.createSetup).toHaveBeenCalledOnce()); fireEvent.click(screen.getByRole("button", { name: "Close creation" }));
+  if (chooseOther) fireEvent.click(screen.getByRole("button", { name: "a1" }));
+  fireEvent.click(await screen.findByRole("button", { name: "New layout" }));
+  await act(async () => created.resolve({ ...setup("a3"), status: "draft" }));
+  await waitFor(() => expect(client.getQueryData<api.SetupSummary[]>(queryKeys.setups("alpha"))?.some(item => item.id === "a3")).toBe(true));
+  expect(screen.getByTestId("setup").textContent).toBe(chooseOther ? "a1" : "a2");
+});
+it("keeps a route already loading while the old project and creation dialog are still mounted", async () => {
+  const loading = deferred<void>(), created = deferred<api.SetupSummaryShort>(); const { client, router } = await mount(undefined, () => loading.promise);
+  vi.mocked(api.createSetup).mockReturnValue(created.promise); vi.mocked(api.getSetups).mockResolvedValue([setup("a1"), setup("a2"), setup("a3")]);
+  fireEvent.click(screen.getByRole("button", { name: "New layout" })); fireEvent.click(screen.getByRole("button", { name: "Create blank" })); await waitFor(() => expect(api.createSetup).toHaveBeenCalledOnce());
+  let navigation!: Promise<void>; act(() => { navigation = router.navigate({ to: "/settings" }); }); await waitFor(() => expect(router.state.location.pathname).toBe("/settings"));
+  expect(screen.getByRole("dialog")).toBeTruthy(); await act(async () => created.resolve({ ...setup("a3"), status: "draft" }));
+  await waitFor(() => expect(client.getQueryData<api.SetupSummary[]>(queryKeys.setups("alpha"))?.some(item => item.id === "a3")).toBe(true));
+  expect(screen.getByTestId("setup").textContent).toBe("a2"); expect(useSimulationStore.getState().selectedSetupId).toBe("a2");
+  await act(async () => { loading.resolve(); await navigation; }); await screen.findByText("Settings page");
+});
+it("checks current intent after waiting for an old list query to cancel", async () => {
+  const { client } = await mount(); const canceling = deferred<void>(); const cancel = vi.spyOn(client, "cancelQueries").mockReturnValueOnce(canceling.promise);
+  vi.mocked(api.createSetup).mockResolvedValue({ ...setup("a3"), status: "draft" }); vi.mocked(api.getSetups).mockResolvedValue([setup("a1"), setup("a2"), setup("a3")]);
+  fireEvent.click(screen.getByRole("button", { name: "New layout" })); fireEvent.click(screen.getByRole("button", { name: "Create blank" })); await waitFor(() => expect(cancel).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole("button", { name: "Close creation" })); fireEvent.click(screen.getByRole("button", { name: "a1" })); await waitFor(() => expect(screen.getByTestId("setup").textContent).toBe("a1"));
+  await act(async () => canceling.resolve()); await waitFor(() => expect(client.getQueryData<api.SetupSummary[]>(queryKeys.setups("alpha"))?.some(item => item.id === "a3")).toBe(true));
+  expect(screen.getByTestId("setup").textContent).toBe("a1");
 });

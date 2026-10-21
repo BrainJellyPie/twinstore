@@ -153,6 +153,10 @@ Clear the search alone or reset both search and group filters; neither changes y
 In **Add layout**, template customization starts folded. Floor-plan selection works with the
 keyboard; a failed preview can be retried without selecting the file again. If a saved source
 disappears, choose another source to copy or remove its links while keeping the saved options.
+You can close the creation dialog and keep working while a request finishes. The new layout
+is added to the list without replacing a choice you made after dismissing the dialog. Reopening
+a pending request preserves its inputs and prevents duplicate submissions. If creation fails,
+reopening retains the name, source and file so you can retry the same request.
 Model selection is localized too. Detailed layout and situation editors, other feature editors and technical server messages
 currently remain in English.
 

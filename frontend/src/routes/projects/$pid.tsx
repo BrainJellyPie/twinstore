@@ -49,6 +49,7 @@ function SimulationPageInner({ pid }: { pid: string }) {
       : content.current?.querySelector<HTMLButtonElement>("[data-layout-finder-trigger]");
     target?.focus();
   }, [pid, router]);
+  const isCurrentProject = useCallback(() => router.state.location.pathname.replace(/\/$/, "") === `/projects/${pid}`, [pid, router]);
   const effectiveSetupId = layouts?.some((layout) => layout.id === selectedSetupId)
     ? selectedSetupId
     : layouts?.[0]?.id;
@@ -120,6 +121,7 @@ function SimulationPageInner({ pid }: { pid: string }) {
         parentSetupId={effectiveSetupId}
         layouts={layouts}
         defaultCurrency={project.metadata.currency ?? "USD"}
+        isCurrentProject={isCurrentProject}
       />
     </>
   );
