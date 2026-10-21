@@ -92,11 +92,13 @@ export function GridCell({
         type="button"
         data-testid={`grid-cell-${x}-${y}`}
         data-empty="true"
+        aria-pressed={selected}
         onClick={onClick}
         className={cn(
           "relative aspect-square w-full rounded-md border border-border bg-card text-card-foreground",
           "transition-colors hover:bg-accent hover:text-accent-foreground",
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+          selected && "ring-2 ring-primary",
         )}
         aria-label={`empty cell ${x},${y}`}
       />
@@ -111,6 +113,7 @@ export function GridCell({
         data-testid={`grid-cell-${x}-${y}`}
         data-rack-ids={racks.map((r) => r.id).join(",")}
         data-rack-type="entrance_exit"
+        aria-pressed={selected}
         onClick={onClick}
         className={cn(
           "relative grid aspect-square w-full grid-cols-2 overflow-hidden rounded-md border border-border text-card-foreground",
@@ -165,6 +168,7 @@ export function GridCell({
       data-testid={`grid-cell-${x}-${y}`}
       data-rack-id={rack.id}
       data-rack-type={rack.type}
+      aria-pressed={selected}
       onClick={onClick}
       className={cn(
         "relative aspect-square w-full rounded-md border border-border text-card-foreground",

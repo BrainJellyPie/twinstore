@@ -164,11 +164,22 @@ with clear circulation around it, appears in Classic and Realistic views, and ca
 be selected from any of its four cells in the floor editor. As with other fixtures,
 the existing floor-edit unlock step clears product placements before editing.
 
+The floor editor supports up to 40×40 cells, with zoom controls and a scrollable
+grid that keeps fixtures readable on large floors and smaller screens. Width and
+depth can be typed directly. Reducing the grid never deletes fixtures silently;
+save reports fixtures outside the new bounds so you can adjust the floor first.
+
 Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
 with a department store, shop with upstairs café, pharmacy/wellness building or
 restaurant/café, then select each floor to change its format and options. Floor
 labels appear in the layout tabs. Each floor has its own simulation; cross-floor
 travel, stairs, lifts and a combined building simulation are not modeled.
+
+For an existing generated building, **Reuse building options from …** restores
+the selected floor and the newest saved version of each other floor. Select a
+different saved floor version, move floors higher or lower, duplicate a floor,
+and change its options before saving a separate building. Each new floor records
+its source layout; the original building stays unchanged.
 
 Grid cells are not measured square meters. Pharmacy templates cover retail OTC
 care and wellness, not prescription dispensing. Café/restaurant templates model
@@ -236,6 +247,11 @@ For brand managers, category teams and research agencies (**Market** in the comm
   context fixed; compare purchase intent, trust and pressure (1–5), paired bootstrap intervals, exploratory segments
   and customer replies. Save the stimuli and persona sample and export paired answers, including failures. Results
   screen wording for a field pilot; they do not estimate real conversion or sales. Needs a configured text model.
+- **Observed field pilots** — turn a saved staff-script test into a fixed, balanced A/B assignment sheet within
+  anonymous staff/shift blocks. Import actual encounter, delivery and target-product purchase records; retain
+  refusals in their assigned arm and keep unknown outcomes distinct from nonbuyers. Close collection to lock the
+  records. A complete planned sample receives a conservative 95% conversion-difference interval; early closure
+  stays descriptive. The Field pilots tab keeps these records accessible independently of the synthetic test.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their

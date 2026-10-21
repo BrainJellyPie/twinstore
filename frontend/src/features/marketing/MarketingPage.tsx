@@ -37,16 +37,18 @@ import { storeProducts } from "./products";
 import { ShelfTestBuilder, ShelfTestReportView } from "./ShelfTest";
 import { SurveyBuilder } from "./SurveyBuilder";
 import { SurveyReportView } from "./SurveyReport";
+import { FieldPilots } from "./FieldPilots";
 import { StaffPitchBuilder } from "./StaffPitchBuilder";
 import { StaffPitchReportView } from "./StaffPitchReport";
 
-type Tab = "ab" | "shelf" | "survey" | "pitch" | "products";
+type Tab = "ab" | "shelf" | "survey" | "pitch" | "pilot" | "products";
 
 const TABS: { id: Tab; label: string; icon: typeof FlaskConical; blurb: string }[] = [
   { id: "ab", label: "A/B tests", icon: FlaskConical, blurb: "Price, discount, promotion, placement and packaging on the same shoppers" },
   { id: "shelf", label: "Shelf tests", icon: Rows3, blurb: "A new pack, price or sign on the shelf: pick share and stand-out on the same respondents" },
   { id: "survey", label: "Concept tests", icon: ClipboardList, blurb: "Synthetic respondents rate packs, prices and preference" },
   { id: "pitch", label: "Staff scripts", icon: MessagesSquare, blurb: "Compare wording with paired intent, trust and pressure ratings" },
+  { id: "pilot", label: "Field pilots", icon: ClipboardList, blurb: "Preassigned staff/shift experiments and observed purchase conversion" },
   { id: "products", label: "Products", icon: Images, blurb: "Package images, brands and the shelf products they show" },
 ];
 
@@ -92,8 +94,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   });
   const jobs = useMemo(() => (tab === "ab" ? experiments.data ?? [] : tab === "shelf" ? shelfTests.data ?? [] : tab === "survey" ? surveys.data ?? []
     : tab === "pitch" ? pitches.data ?? [] : []), [tab, experiments.data, shelfTests.data, surveys.data, pitches.data]);
-  const current = tab === "products" ? null : selected[tab];
-  const select = (id: string | null) => tab !== "products" && setSelected((s) => ({ ...s, [tab]: id }));
+  const current = (tab === "products" || tab === "pilot") ? null : selected[tab];
+  const select = (id: string | null) => tab !== "products" && tab !== "pilot" && setSelected((s) => ({ ...s, [tab]: id }));
   // "Duplicate and edit": the builder opens pre-filled with a finished test's request.
   const [abDraft, setAbDraft] = useState<{ key: number; req: ExperimentRequest } | null>(null);
   const [surveyDraft, setSurveyDraft] = useState<{ key: number; req: SurveyRequest } | null>(null);
@@ -114,7 +116,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   };
 
   useEffect(() => {
-    if (tab === "products" || selected[tab] !== null || !jobs.length) return;
+    if (tab === "products" || tab === "pilot" || selected[tab] !== null || !jobs.length) return;
     // Open the latest test on first visit; "New test" sets the selection to "" afterwards.
     setSelected((s) => ({ ...s, [tab]: jobs[0]!.job_id }));
   }, [tab, jobs, selected]);
@@ -146,7 +148,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      {tab === "products" ? (
+      {tab === "pilot" ? <div className="min-h-0 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
         <div className="min-h-0 flex-1 overflow-y-auto pr-1"><ProductLibrary projectId={projectId} products={products} /></div>
       ) : (
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
@@ -301,5 +303,5 @@ function PitchJob({ projectId, id }: { projectId: string; id: string }) {
     refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
   });
   if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
-  return view.data.report ? <StaffPitchReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />;
+  return view.data.report ? <div className="space-y-4"><StaffPitchReportView projectId={projectId} report={view.data.report} /><FieldPilots projectId={projectId} source={view.data.report} /></div> : <JobState job={view.data} />;
 }
