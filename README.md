@@ -146,6 +146,7 @@ gates stay one cell inside the corners so their wall is unambiguous in 3D; front
 gates retain the existing positions. Near/away checkout placement uses the actual
 entrance location. New pickup-area starting points also follow the selected wall;
 existing reserved areas keep their coordinates.
+
 Search matches names, descriptions and categories, ignores accents (`cafe` also
 finds `café`), and accepts words in any order. **More format filters** narrows the
 starting layouts by cell count and dining seating, or sorts by name, floor size
@@ -370,6 +371,14 @@ For longer moves, choose **Move to a cell** and click the new top-left position
 on the grid. Occupied or out-of-bounds targets leave the fixture in place so you
 can pick another location; **Cancel placement** or Escape cancels the move.
 
+The 3D view fits the floor to the available screen when it opens or resizes,
+including large 40×40 stores on a small screen. **Fit store view** restores the
+whole-floor view after panning or zooming in Classic and Realistic modes.
+Returning from shopper view or Photo preserves the previous framing; fitting
+is available again after leaving those views.
+On phones, the store view sits above the results and settings panel; scroll down
+to reach the panel without squeezing the floor into a narrow side column.
+
 Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
 with a department store, shop with upstairs café, pharmacy/wellness building or
 restaurant/café, then select each floor to change its format and options. Floor
@@ -413,6 +422,10 @@ real shelf photo. Only pixels inside the changed boxes move, so every edit has a
 the render, the tagged photo and the raw photo (sim2real agreement with CIs), and compliance gaps against the reference
 layout are priced in revenue per day by paired simulation. The shelf here is a photoreal render from the built-in
 shelf studio, which supplies exact boxes; phone photos are edited the same way. Details: [`SHELF_LAB.md`](./SHELF_LAB.md).
+
+Completed audits also offer **Restocking quantities and budget**: enter verified stockroom counts, required shelf
+units, supplier pack sizes/costs and priorities to prepare a budgeted worksheet with CSV export. It shows unfilled
+units and pack surplus, without deriving inventory from a photo, placing orders or predicting recovered sales.
 
 ### Photos in, twin out
 

@@ -4,11 +4,12 @@ from collections.abc import Callable
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import shelf_lab as lab
+from store_emulator.application.restock_order import export_order, preview_order
 from store_emulator.application.errors import AppError
 from store_emulator.application.shelf_lab import (
     AuditRequest,
@@ -20,6 +21,7 @@ from store_emulator.application.shelf_lab import (
     Sim2RealRequest,
 )
 from store_emulator.domain.shelf_lab import EditedShelf, LabJobStatus, PhotoEdit
+from store_emulator.domain.restock_order import RestockOrderPlan, RestockOrderRequest
 
 from ..deps import get_config
 
@@ -121,6 +123,18 @@ def list_jobs(pid: str, cid: str) -> list[LabJobStatus]:
 @router.get("/{pid}/captures/{cid}/lab/jobs/{jid}", summary="Job status and report", response_model=LabJobView)
 def get_job(pid: str, cid: str, jid: str) -> LabJobView:
     return _call(lambda: lab.get_job(pid, cid, jid))
+
+
+@router.post("/{pid}/captures/{cid}/lab/jobs/{jid}/restock-order", response_model=RestockOrderPlan, summary="Preview stockroom transfers and budgeted whole-pack purchases")
+def restock_order(pid: str, cid: str, jid: str, req: RestockOrderRequest) -> RestockOrderPlan:
+    return _call(lambda: preview_order(pid, cid, jid, req))
+
+
+@router.post("/{pid}/captures/{cid}/lab/jobs/{jid}/restock-order.csv", summary="Export a budgeted restocking worksheet")
+def export_restock_order(pid: str, cid: str, jid: str, req: RestockOrderRequest) -> PlainTextResponse:
+    text = _call(lambda: export_order(pid, cid, jid, req))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{jid}-restock-order.csv"'})
 
 
 @router.post("/{pid}/captures/{cid}/rival", summary="Compare a rival's shelf with ours", response_model=RivalReport)

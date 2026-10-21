@@ -509,6 +509,41 @@ Run through this before triggering generation or simulation:
   The estimates assume constant demand and exclude operational uncertainty.
   Do not add SKU effects: the audit evaluates each stockout against the otherwise
   stocked reference, so joint recovery can differ because of substitution.
+- **Restocking quantities and budget.** In the same completed audit, enter verified
+  additional shelf units needed, available stockroom units, units per supplier pack,
+  pack cost in the audit currency's minor units, supplier available packs and priority
+  for each included SKU. Quantities start blank: an unknown is not zero. Required units
+  cover all listed levels of that SKU together; facings and modeled losses are never
+  converted into inventory counts. For counterfactual photos, check the actual store
+  before entering quantities. You can include 1–200 identified missing SKUs; excluded
+  SKUs and unidentified missing findings are disclosed in the result and CSV.
+  The total purchase budget and one delivery fee also use whole minor units (USD cents,
+  KRW won). Include taxes and applicable charges in the supplied prices; no FX conversion
+  is performed. Quantities/pack availability are capped at 1,000,000 and monetary inputs
+  at 1,000,000,000,000 minor units.
+  **Calculate restocking quantities** uses stockroom units first, then rounds the
+  remaining need up to whole packs. It allocates packs by ascending operator priority
+  (1 first; ties use case-sensitive SKU order), respecting supplier and budget limits.
+  The initial priority follows audit order, not modeled benefit. Partial fulfillment
+  leaves unfilled units; pack rounding can create surplus units. A cheaper later item
+  may fit even when an earlier pack is unaffordable. This is a sequential allocation,
+  not an optimal-profit solution. It never adds the isolated revenue effects.
+  The delivery fee is reserved once and charged only if at least one pack is ordered,
+  including zero-cost packs. A stockroom-only plan incurs no delivery charge. Use a
+  separate plan for separate suppliers or fee structures. Results show line costs,
+  supplier/budget constraints, total spend and unspent budget. Editing any input clears
+  the prior result and export until recalculated. **Export quantity plan CSV** includes
+  the source audit, inputs, excluded SKUs and quantities; plan-level budget/cost fields
+  repeat on each row and must not be summed. `goods_cost_minor` is the line cost.
+  Plans are not saved in the project; keep the exported worksheet. This feature places
+  no order, reserves no stock, changes no layout and makes no model call. Verify storage
+  capacity, expiry, lead time and supplier prices separately. Reusing the same stockroom
+  units in another plan can double-allocate them. No real-sales effect is inferred.
+  API: `POST /api/projects/{pid}/captures/{cid}/lab/jobs/{jid}/restock-order` accepts
+  `currency`, `budget_minor`, `delivery_fee_minor` and `items` (`sku`, `required_units`,
+  `stockroom_units`, `pack_size`, `pack_cost_minor`, `max_packs`, `priority`). The `.csv`
+  suffix exports the same plan from the same JSON body. Both require a completed saved
+  audit, matching currency and identified missing SKUs; duplicate SKU rows are rejected.
 - **Selecting a PDF floor plan.** **Add layout → From a floor plan** previews
   PNG/JPEG/WebP images and multi-page PDFs. Choose the page and clockwise rotation,
   confirm the preview, then create the layout. Preview does not call a vision
