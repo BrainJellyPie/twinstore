@@ -364,6 +364,9 @@ for ceramic flooring and wood fixtures. Diffuse and roughness maps are used at e
 quality level; High adds OpenGL normal maps for surface relief. Assets load locally
 with procedural fallbacks. Authors, source URLs and checksums are in
 [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
+High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
+for photographic indoor lighting and reflections; attribution and file provenance are in
+[`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).
 
 - 3D assets in `frontend/public/assets/` are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
   [Mini Characters](https://kenney.nl/assets/mini-characters), [Graveyard Kit](https://kenney.nl/assets/graveyard-kit).

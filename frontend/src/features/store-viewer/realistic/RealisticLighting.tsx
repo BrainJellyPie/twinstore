@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { QUALITY_PRESETS, type GraphicsQuality } from "./constants";
 import { personaRegistry } from "./personaRegistry";
-import { acquireRoomEnvironment, releaseRoomEnvironment, retainRoomEnvironment } from "./envCache";
+import { acquirePhotographicEnvironment, acquireRoomEnvironment, releaseRoomEnvironment, retainRoomEnvironment } from "./envCache";
 
 interface Props {
   width: number;
@@ -13,8 +13,8 @@ interface Props {
   dark: boolean;
 }
 
-// Store lighting: procedural store interior (storeEnvironment → PMREM, no
-// HDR downloads) for reflections and soft fill, a high key light standing in for
+// Store lighting: locally bundled photographic HDR in High, with an immediate
+// procedural store interior fallback. A high key light stands in for
 // the ceiling panels (soft PCF shadows), and a warm/cool hemisphere bounce.
 // On "medium" the environment is applied only to small metal/glass parts
 // (RealisticStore) — sampling it on every wall and floor pixel is the single
@@ -46,12 +46,21 @@ export function RealisticLighting({ width, depth, quality, dark }: Props) {
   }, [get]);
 
   const fullEnv = quality === "high";
+  const [photographic, setPhotographic] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    if (!fullEnv) return;
+    let alive = true;
+    void acquirePhotographicEnvironment(get().gl).then((texture) => {
+      if (alive) setPhotographic(texture);
+    });
+    return () => { alive = false; };
+  }, [get, fullEnv]);
   useEffect(() => {
     const { gl, scene } = get();
-    scene.environment = fullEnv ? env : null;
-    scene.environmentIntensity = dark ? 0.5 : 0.62;
+    scene.environment = fullEnv ? (photographic ?? env) : null;
+    scene.environmentIntensity = photographic && fullEnv ? (dark ? 0.38 : 0.48) : (dark ? 0.5 : 0.62);
     gl.toneMappingExposure = dark ? 0.9 : 0.98;
-  }, [get, dark, env, fullEnv]);
+  }, [get, dark, env, fullEnv, photographic]);
 
   // Shadow-map throttling: the store is static, so the map is redrawn only
   // every few frames while shoppers move (and a few times after changes).

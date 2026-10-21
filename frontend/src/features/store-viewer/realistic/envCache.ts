@@ -3,10 +3,13 @@
 // material rebuild once the environment "arrives").
 
 import * as THREE from "three";
+import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
 import { createStoreEnvironmentScene, disposeScene } from "./storeEnvironment";
 
 interface Entry {
-  texture: THREE.Texture;
+  target: THREE.WebGLRenderTarget;
+  photographicTarget?: THREE.WebGLRenderTarget;
+  photographic?: Promise<THREE.Texture | null>;
   users: number;
 }
 
@@ -17,13 +20,38 @@ export function acquireRoomEnvironment(gl: THREE.WebGLRenderer): THREE.Texture {
   if (!entry) {
     const pmrem = new THREE.PMREMGenerator(gl);
     const room = createStoreEnvironmentScene();
-    const texture = pmrem.fromScene(room, 0.025).texture;
+    const target = pmrem.fromScene(room, 0.025);
     pmrem.dispose();
     disposeScene(room);
-    entry = { texture, users: 0 };
+    entry = { target, users: 0 };
     cache.set(gl, entry);
   }
-  return entry.texture;
+  return entry.target.texture;
+}
+
+// High quality uses the measured range and reflections of a real fluorescent-lit
+// retail interior. Decode and prefilter once per renderer; retain the procedural
+// room as an immediate fallback and for Medium's small reflective parts.
+export function acquirePhotographicEnvironment(gl: THREE.WebGLRenderer): Promise<THREE.Texture | null> {
+  acquireRoomEnvironment(gl);
+  const entry = cache.get(gl)!;
+  entry.photographic ??= new HDRLoader().loadAsync("/assets/environments/gear_store_1k.hdr").then((hdr) => {
+    // The viewer may have closed while the file was loading.
+    if (cache.get(gl) !== entry) {
+      hdr.dispose();
+      return null;
+    }
+    const pmrem = new THREE.PMREMGenerator(gl);
+    try {
+      entry.photographicTarget = pmrem.fromEquirectangular(hdr);
+      entry.photographicTarget.texture.name = "Poly Haven · Gear Store";
+      return entry.photographicTarget.texture;
+    } finally {
+      pmrem.dispose();
+      hdr.dispose();
+    }
+  }).catch(() => null);
+  return entry.photographic;
 }
 
 // Effect-scoped ownership: the texture is disposed once the last holder lets
@@ -41,6 +69,7 @@ export function releaseRoomEnvironment(gl: THREE.WebGLRenderer): void {
   setTimeout(() => {
     if (entry.users > 0 || cache.get(gl) !== entry) return;
     cache.delete(gl);
-    entry.texture.dispose();
+    entry.target.dispose();
+    entry.photographicTarget?.dispose();
   }, 0);
 }
