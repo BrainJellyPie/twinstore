@@ -78,6 +78,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Runs no longer start on a cloud model whose provider has no API key (every shopper would fail): the run dialog
   starts from a fast model of a provider that has one and says so, or explains how to add a key; the server refuses
   such a run with the same advice. `GET /api/engines` reports `model_ready` and `suggested_model`.
+- A rival's shelf compared with ours now matches products whose names differ ("Coca-Cola Original 500ml" against
+  "Coke 500 ml") through the text model, same brand, variant and size only; the card lists those matches, and when the
+  model cannot be reached the comparison says which products were matched by name alone.
 - A storefront photo whose vision call fails leaves the venue's pull unchanged and says why, instead of saving an
   image-statistics guess into the demand model.
 - Theme coding no longer fails when a model returns more than six themes: the smallest fold into "Other". This also

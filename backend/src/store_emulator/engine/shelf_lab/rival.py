@@ -8,6 +8,7 @@ price-adjusted pull for the rival venue scales its Huff attractiveness by (1 / i
 
 import difflib
 import math
+from collections.abc import Mapping
 
 from pydantic import BaseModel
 
@@ -36,7 +37,26 @@ class RivalComparison(BaseModel):
     suggested_pull_factor: float | None
 
 
-def compare_rival(store: Store, rival: CaptureResult, *, elasticity: float = 1.0, cutoff: float = 0.86) -> RivalComparison:
+def unmatched_names(store: Store, rival: CaptureResult, *, cutoff: float = 0.86) -> tuple[list[str], list[str]]:
+    """Rival product names that neither an exact nor a close name match reaches, and our product names."""
+    ours = {normalize_text(item.name): item.name for _, slot in store.all_slots for item in slot.items}
+    keys = list(ours)
+    missing: list[str] = []
+    for item in rival.items:
+        if not item.labeled:
+            continue
+        name = display_name(item)
+        key = normalize_text(name)
+        if key not in ours and not difflib.get_close_matches(key, keys, n=1, cutoff=cutoff):
+            missing.append(name)
+    return list(dict.fromkeys(missing)), list(dict.fromkeys(ours.values()))
+
+
+def compare_rival(
+    store: Store, rival: CaptureResult, *, elasticity: float = 1.0, cutoff: float = 0.86,
+    aliases: Mapping[str, str] | None = None,
+) -> RivalComparison:
+    """`aliases`: rival product name → our product name for matches the names alone miss (e.g. read by a model)."""
     ours: dict[str, tuple[str, int, str]] = {}          # normalized name → (name, price, category)
     for rack, slot in store.all_slots:
         for item in slot.items:
@@ -51,7 +71,8 @@ def compare_rival(store: Store, rival: CaptureResult, *, elasticity: float = 1.0
             continue
         name = display_name(item)
         key = normalize_text(name)
-        hit = key if key in ours else next(iter(difflib.get_close_matches(key, keys, n=1, cutoff=cutoff)), None)
+        alias = normalize_text((aliases or {}).get(name, ""))
+        hit = key if key in ours else alias if alias in ours else next(iter(difflib.get_close_matches(key, keys, n=1, cutoff=cutoff)), None)
         canonical[name] = hit or f"rival:{key}"
         if hit is None:
             continue
