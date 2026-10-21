@@ -1,0 +1,61 @@
+"""Malformed fixture geometry must be rejected before modifying a saved layout."""
+
+from copy import deepcopy
+
+import pytest
+from fastapi.testclient import TestClient
+
+from store_emulator.application.storage.io import read_json, write_json
+
+
+@pytest.fixture
+def layout(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from store_emulator.server.main import app
+    client = TestClient(app, raise_server_exceptions=False)
+    root = tmp_path / ".data" / "proj_test"
+    write_json(root / "metadata.json", {"name": "Test"})
+    setup = client.post("/api/projects/proj_test/setups", json={"mode": "empty"}).json()
+    url = f"/api/projects/proj_test/setups/{setup['id']}"
+    store = {"id": "store", "name": "Test", "type": "cafe", "grid_size": [8, 6], "racks": [
+        {"id": "entry", "type": "entrance", "shape": [[1]], "position": [0, 0]},
+        {"id": "exit", "type": "exit", "shape": [[1]], "position": [7, 5]},
+        {"id": "shelf", "type": "shelf", "shape": [[1]], "position": [2, 2]},
+    ]}
+    saved = client.put(url, json={"setup": {"store": store}})
+    assert saved.status_code == 200, saved.text
+    path = root / "setups" / f"{setup['id']}.json"
+    return client, url, store, path
+
+
+@pytest.mark.parametrize("change", [
+    {"shape": [], "rotation": 90},
+    {"shape": [[1, 1], [1]]},
+    {"shape": [[1], [1, 1]]},
+    *[{"slots": [{"block": block, "face": "N", "level": 1,
+                   "items": [{"sku": "A", "name": "Product", "price": 100}]}]} for block in (-2, -1, 1)],
+    *[{"locked_faces": [{"block": block, "face": "N"}]} for block in (-1, 1)],
+])
+def test_invalid_geometry_preserves_saved_layout(layout, change):
+    client, url, store, path = layout
+    before = read_json(path)
+    store["racks"][2].update(change)
+
+    response = client.put(url, json={"setup": {"store": store}})
+
+    assert response.status_code == 422, response.text
+    assert read_json(path) == before
+
+
+def test_rotated_multicell_shape_and_valid_block_round_trip(layout):
+    client, url, original, _ = layout
+    store = deepcopy(original)
+    store["racks"][2].update({"shape": [[1, 1], [1, 0]], "rotation": 90,
+                               "locked_faces": [{"block": 2, "face": "S"}]})
+
+    response = client.put(url, json={"setup": {"store": store}})
+
+    assert response.status_code == 200, response.text
+    rack = client.get(url).json()["store"]["racks"][2]
+    assert rack["shape"] == [[1, 1], [1, 0]] and rack["rotation"] == 90
+    assert rack["locked_faces"] == [{"block": 2, "face": "S"}]

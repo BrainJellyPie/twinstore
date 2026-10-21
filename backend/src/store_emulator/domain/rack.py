@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .types import FACE_OFFSETS as _FACE_OFFSETS
 from .types import Face, Position, Shape
@@ -29,7 +29,7 @@ SLOT_CAPABLE_TYPES: frozenset[RackType] = frozenset({RackType.SHELF, RackType.FR
 
 
 class BlockFace(BaseModel):
-    block: int
+    block: int = Field(ge=0)
     face: Face
 
 
@@ -48,7 +48,7 @@ class SlotItem(BaseModel):
 class Slot(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    block: int
+    block: int = Field(ge=0)
     face: Face
     level: int = Field(default=1, ge=1, le=RACK_LEVELS)
     # Max 4 SKUs per face (spec rev 5 decision 10); 5+ raises ValidationError at the domain layer.
@@ -73,6 +73,22 @@ class Rack(BaseModel):
     design_variant: Literal["a", "b", "c"] = "a"
     locked_faces: list[BlockFace] = []
     slots: list[Slot] = []
+
+    @field_validator("shape")
+    @classmethod
+    def _rectangular_shape(cls, shape: Shape) -> Shape:
+        if not shape or not shape[0] or any(len(row) != len(shape[0]) for row in shape):
+            raise ValueError("rack shape must be a nonempty rectangular grid")
+        return shape
+
+    @model_validator(mode="after")
+    def _block_references(self) -> "Rack":
+        count = len(self.block_cells)
+        if any(slot.block >= count for slot in self.slots):
+            raise ValueError("slot block must refer to an occupied rack cell")
+        if any(face.block >= count for face in self.locked_faces):
+            raise ValueError("locked face block must refer to an occupied rack cell")
+        return self
 
     @property
     def rotated_shape(self) -> Shape:

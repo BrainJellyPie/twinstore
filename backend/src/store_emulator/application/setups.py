@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from filelock import FileLock, Timeout
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -260,20 +261,19 @@ def save_setup_with_lock(
                     404, "setup_not_found", "not_found",
                     f"Setup not found: {setup_id}", {},
                 )
-            assert_setup_mutation_allowed(disk_setup, payload)
             store_data = payload.get("store")
+            try:
+                assert_setup_mutation_allowed(disk_setup, payload)
+                store_obj = Store.model_validate(store_data) if store_data is not None else None
+            except ValidationError as e:
+                msg = str(e).split("\n")[0][:200]
+                raise AppError(
+                    422, "invalid_store", "validation_error",
+                    f"invalid store data: {msg}", {},
+                ) from e
             cleared: list[ClearedSlot] = []
             issues: list[Issue] = []
-            store_obj: Store | None = None
-            if store_data is not None:
-                try:
-                    store_obj = Store.model_validate(store_data)
-                except Exception as e:
-                    msg = str(e).split("\n")[0][:200]
-                    raise AppError(
-                        422, "invalid_store", "validation_error",
-                        f"invalid store data: {msg}", {},
-                    )
+            if store_obj is not None:
                 issues = validate(store_obj)
                 errors = [i for i in issues if i.severity == "error"]
                 if errors:
