@@ -214,14 +214,6 @@ it.each(LOCALES)("explains creation failures in the selected language and retain
   const alert = screen.getByRole("alert"); expect(alert.textContent).toContain(translate(code, "createLayoutFailed")); expect(alert.textContent).toContain("Store could not be copied");
 });
 
-it.each(LOCALES)("starts an empty project with a blank layout in $code", ({ code }) => {
-  useLocale.getState().setLocale(code); show({ parentSetupId: "foreign-layout", layouts: [] });
-  expect((screen.getByLabelText(translate(code, "buildLayoutFromScratch")) as HTMLInputElement).checked).toBe(true);
-  expect((screen.getByTestId("add-layout-submit") as HTMLButtonElement).disabled).toBe(false);
-  fireEvent.click(screen.getByTestId("add-layout-submit"));
-  expect(mutation.mutate).toHaveBeenCalledWith(expect.objectContaining({ projectId: "raw-project", source: { kind: "empty" } }), expect.any(Object));
-});
-
 it("coalesces rapid submission and keeps in-flight values when reopened", () => {
   const { props, rerender } = show(); fireEvent.change(screen.getByLabelText("Layout name"), { target: { value: "Original request" } });
   const form = screen.getByTestId("add-layout-submit").closest("form")!; fireEvent.submit(form); fireEvent.submit(form); expect(mutation.mutate).toHaveBeenCalledOnce();
@@ -256,4 +248,12 @@ it("preserves a failed background request and its file when the dialog is reopen
   rerender(<AddLayoutDialog {...props} open={false} />); rerender(<AddLayoutDialog {...props} open />);
   expect((screen.getByLabelText("Layout name") as HTMLInputElement).value).toBe("Keep failed request"); expect(screen.getByText(file.name)).toBeTruthy(); expect(screen.getByRole("alert").textContent).toContain("Background request failed");
   fireEvent.click(screen.getByTestId("add-layout-submit")); expect(mutation.mutate).toHaveBeenLastCalledWith(expect.objectContaining({ name: "Keep failed request", source: expect.objectContaining({ file }) }), expect.any(Object));
+});
+
+it.each(LOCALES)("starts an empty project with a blank layout in $code", ({ code }) => {
+  useLocale.getState().setLocale(code); show({ parentSetupId: "foreign-layout", layouts: [] });
+  expect((screen.getByLabelText(translate(code, "buildLayoutFromScratch")) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByTestId("add-layout-submit") as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByTestId("add-layout-submit"));
+  expect(mutation.mutate).toHaveBeenCalledWith(expect.objectContaining({ projectId: "raw-project", source: { kind: "empty" } }), expect.any(Object));
 });

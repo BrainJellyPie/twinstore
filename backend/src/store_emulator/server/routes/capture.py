@@ -55,13 +55,14 @@ async def create(
     currency: Annotated[str, Form()] = "",
     rack_type: Annotated[CaptureRackType, Form()] = "shelf",
     label: Annotated[str, Form()] = "",
+    request_id: Annotated[str | None, Form(pattern=r"^[0-9a-f]{32}$")] = None,
 ) -> CaptureStatus:
     """Detects shelf levels, product facings and gaps, reads each product (name, brand, category, price)
     with a vision-language model, and builds a planogram. Runs in the background; poll `GET .../captures/{cid}`."""
-    data = await image.read()
+    data = await image.read(capture_service.MAX_UPLOAD_BYTES + 1)
     options = CaptureOptions(detector=detector, model=model, currency=currency, rack_type=rack_type, label=label)
     return await run_in_threadpool(
-        _call, lambda: capture_service.create_capture(pid, data, image.filename or "photo", options, get_config()),
+        _call, lambda: capture_service.create_capture(pid, data, image.filename or "photo", options, get_config(), request_id=request_id),
     )
 
 
