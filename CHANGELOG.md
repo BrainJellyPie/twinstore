@@ -31,7 +31,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the contact-shadow decal dropped, the BVH built in a worker.
 
 ### Marketing studio
-- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with four tabs.
+- **Observed field pilots**: fixed staff/shift A/B assignment sheets from saved scripts, full-sheet CSV imports,
+  immutable stimulus snapshots, intention-to-treat purchase counts, missingness bounds, versioned atomic updates,
+  and locked closure. Complete targets receive a conservative fixed-sample conversion interval; unfinished targets
+  stay descriptive. The independent Field pilots tab retains results after deletion of a source screening job.
+- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with five tabs.
 - **Staff scripts**: independent A/B exposures on the same synthetic personas, with purchase intent,
   trust and pressure ratings, complete-pair bootstrap intervals, exploratory segments and customer replies.
   Saved product/persona snapshots and exact-script CSV support review; missing responses, restart recovery

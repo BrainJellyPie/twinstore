@@ -227,6 +227,11 @@ For brand managers, category teams and research agencies (**Market** in the comm
   context fixed; compare purchase intent, trust and pressure (1–5), paired bootstrap intervals, exploratory segments
   and customer replies. Save the stimuli and persona sample and export paired answers, including failures. Results
   screen wording for a field pilot; they do not estimate real conversion or sales. Needs a configured text model.
+- **Observed field pilots** — turn a saved staff-script test into a fixed, balanced A/B assignment sheet within
+  anonymous staff/shift blocks. Import actual encounter, delivery and target-product purchase records; retain
+  refusals in their assigned arm and keep unknown outcomes distinct from nonbuyers. Close collection to lock the
+  records. A complete planned sample receives a conservative 95% conversion-difference interval; early closure
+  stays descriptive. The Field pilots tab keeps these records accessible independently of the synthetic test.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
