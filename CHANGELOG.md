@@ -49,7 +49,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   `POST/DELETE .../experiments/{eid}/narrative`.
 - **Concept tests**: personas (with age / gender quotas) answer purchase intent, appeal, value,
   stand-out, Van Westendorp price and preference questions about up to four images through a vision
-  model; Likert summaries, Wilson shares, price-sensitivity curves, segments, verbatims, CSV export.
+  model; Likert summaries, Wilson shares, price-sensitivity curves, segments, verbatims, CSV export,
+  and a print-ready report (board, summary, answer distributions, price curves, segments, method).
   API: `POST/GET /api/projects/{pid}/surveys`, `GET/DELETE .../{sid}`, `.../board.jpg`, `.../export.csv`.
 
 ### One icon, every OS
