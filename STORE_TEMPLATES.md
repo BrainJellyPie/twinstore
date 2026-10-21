@@ -287,6 +287,14 @@ walkable and do not add rooms or service behavior. Settings are saved and restor
 for single layouts and building floors; subsequent manual floor edits can use the
 space freely.
 
+Existing areas have **Move area to** shortcuts for all four corners and the center.
+These keep the area name and size and leave the outer wall cells clear. **Swap
+width and depth** keeps the start column and row; it is disabled when the new
+rectangle would extend beyond the floor. Move the area first if it needs more room.
+Moving can repair missing or out-of-bounds coordinates after a floor resize, but
+never shrinks an area. Blank or oversized dimensions must be corrected first.
+Resizing the floor itself leaves existing area coordinates unchanged.
+
 **Area starting point** offers custom, consultation, pickup, fitting,
 demonstration and event-space rectangles. New areas fit the current floor;
 pickup starts near the chosen entrance, consultation starts in a back corner,
