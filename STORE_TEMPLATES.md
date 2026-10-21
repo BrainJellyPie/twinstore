@@ -1,6 +1,6 @@
 # Store layout templates
 
-Everything about generating a furnished starting layout: the 54 store formats, product categories, entrances and
+Everything about generating a furnished starting layout: the 58 store formats, product categories, entrances and
 exits, seating, checkouts, reserved areas, multi-floor buildings and the floor editor. The [README](./README.md#store-formats-and-templates)
 has the short version.
 
@@ -9,7 +9,7 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 54
+In a project, choose **New layout → Generate a store from a template**. Search 58
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
@@ -18,6 +18,13 @@ for each layout or building floor. Blank hours and **Use format operating hours*
 format defaults, including its regular days off. Set 0–24 for all-day opening, keep at least
 one weekday open, and use a closing hour later than opening; overnight schedules are not supported.
 These settings are saved, reused and included in exported layout and building options files.
+
+**Refill & bulk grocery**, **Care & mobility supply store**, **Fragrance concept boutique**
+and **Bubble tea café** add refill packs, care aids, fragrance products and a dedicated tea
+menu. Each includes twelve specialty products. Their defaults range from a 28×22 botanical
+grocery with cross aisles and four checkouts to a coastal café with four four-seat tables.
+**Daily essentials center** combines them as four editable floors. Refills use fixed pack
+prices; bulk weighing, clinical consultations and prescription dispensing are not simulated.
 Under **Product categories**, **Products per category** limits each included
 category to 1–16 distinct products; leave it blank for the full assortment.
 The limit keeps display positions and seating unchanged, with repeated facings

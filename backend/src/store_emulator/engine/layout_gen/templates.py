@@ -379,6 +379,30 @@ TEMPLATES: list[StoreTemplate] = [
         wall_shelves=["scoop_menu", "desserts"], gondolas=["scoop_menu"], near_counter=["scoop_menu"],
         style="perimeter", open_hours=(11, 22), dining_tables=3, seating_zone="front", checkout_placement="near_entrance", design_theme="coastal",
     ),
+    StoreTemplate(
+        id="refill_market", name="Refill & bulk grocery", description="A large 28×22 market for refill packs, pantry staples and reusable containers with broad cross aisles. Products use fixed pack prices; bulk weighing is not simulated.",
+        store_type="supermarket", grid=(28, 22), fridges=["dairy", "fresh_produce", "water_sports"] * 3,
+        wall_shelves=["refill_goods", "pantry", "household"] * 3, gondolas=["refill_goods", "refill_goods", "pantry"],
+        near_counter=["refill_goods"], style="cross", open_hours=(8, 21), checkouts=4, design_theme="botanical",
+    ),
+    StoreTemplate(
+        id="care_supply_store", name="Care & mobility supply store", description="Everyday care aids, mobility accessories and first-aid goods with a clear central spine and three service counters. Models retail purchases, not clinical consultations or prescription dispensing.",
+        store_type="pharmacy", grid=(24, 18), fridges=["water_sports"],
+        wall_shelves=["care_supplies", "pharmacy_care", "wellness"] * 2, gondolas=["care_supplies", "care_supplies", "pharmacy_care", "wellness"],
+        near_counter=["care_supplies"], style="spine", open_hours=(9, 19), checkouts=3, design_theme="minimal",
+    ),
+    StoreTemplate(
+        id="fragrance_boutique", name="Fragrance concept boutique", description="Perfumes, discovery sets and home scents in a luxury showroom with two checkout counters and open display groups.",
+        store_type="beauty", grid=(16, 14), fridges=[],
+        wall_shelves=["fragrances", "fragrances", "health_beauty"], gondolas=["fragrances", "fragrances", "health_beauty"],
+        near_counter=["fragrances"], style="showroom", open_hours=(10, 21), checkouts=2, design_theme="luxury",
+    ),
+    StoreTemplate(
+        id="bubble_tea_cafe", name="Bubble tea café", description="Pearl milk teas, fruit teas and desserts around a coastal café with four four-seat tables and two ordering counters. Models fixed menu purchases.",
+        store_type="cafe", grid=(16, 14), fridges=["bubble_tea_menu", "dairy", "water_sports"],
+        wall_shelves=["bubble_tea_menu", "bubble_tea_menu", "desserts"], gondolas=["bubble_tea_menu"], near_counter=["bubble_tea_menu", "desserts"],
+        style="perimeter", open_hours=(10, 22), dining_tables=4, checkouts=2, seating_zone="back", checkout_placement="near_entrance", design_theme="coastal",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}

@@ -135,6 +135,30 @@ CATEGORY_LABELS: dict[str, tuple[str, str]] = {
 # Specialty assortments use generic English labels in both price modes.
 # Pharmacy entries are OTC retail goods; no prescription or dispensing simulation.
 _SPECIALTY: dict[str, list[tuple[str, int]]] = {
+    "refill_goods": [
+        ("Rolled Oats Refill 1kg", 499), ("Brown Rice Refill 1kg", 449), ("Red Lentils Refill 1kg", 599),
+        ("Chickpeas Refill 1kg", 549), ("Wholegrain Pasta Refill 500g", 349), ("Mixed Nuts Refill 500g", 999),
+        ("Pumpkin Seeds Refill 250g", 599), ("Ground Coffee Refill 250g", 899), ("Loose Black Tea Refill 100g", 699),
+        ("Dish Soap Refill 500ml", 499), ("Laundry Liquid Refill 1L", 899), ("Reusable Produce Bags 3pk", 799),
+    ],
+    "care_supplies": [
+        ("Adjustable Walking Cane", 2499), ("Folding Walking Frame", 7999), ("Shower Stool", 4999),
+        ("Long-Handled Reaching Aid", 1999), ("Weekly Pill Organizer", 899), ("Digital Thermometer", 1299),
+        ("Reusable Cold Pack", 999), ("Soft Knee Support", 1599), ("Large-Grip Cutlery Set", 2499),
+        ("Non-Slip Bath Mat", 1999), ("Bedside Storage Caddy", 1799), ("Large-Print Medication Log", 699),
+    ],
+    "fragrances": [
+        ("Citrus Eau de Toilette 50ml", 4999), ("Rose Eau de Parfum 50ml", 6999), ("Cedar Eau de Parfum 50ml", 7499),
+        ("Green Tea Body Mist 100ml", 1999), ("Vanilla Perfume Oil 10ml", 2499), ("Amber Travel Spray 10ml", 2199),
+        ("Fragrance Discovery Set 6pc", 2999), ("Lavender Room Spray 100ml", 1799), ("Fig Reed Diffuser 100ml", 2499),
+        ("Sandalwood Candle 180g", 2299), ("Refillable Perfume Atomizer", 1299), ("Fragrance Gift Pouch", 499),
+    ],
+    "bubble_tea_menu": [
+        ("Classic Pearl Milk Tea", 549), ("Brown Sugar Pearl Milk", 649), ("Taro Milk Tea", 599),
+        ("Matcha Pearl Latte", 649), ("Thai Milk Tea", 599), ("Jasmine Milk Tea", 549),
+        ("Mango Fruit Tea", 599), ("Passion Fruit Green Tea", 579), ("Peach Oolong Tea", 579),
+        ("Lychee Coconut Jelly Tea", 629), ("Oat Milk Pearl Tea", 649), ("Mini Milk Tea Tasting Set", 899),
+    ],
     "korean_menu": [
         ("Vegetable Bibimbap", 1099), ("Beef Bulgogi Rice Bowl", 1499), ("Spicy Pork Rice Bowl", 1299),
         ("Kimchi Fried Rice", 1049), ("Tofu Kimchi Stew", 1199), ("Soybean Paste Stew", 1099),
