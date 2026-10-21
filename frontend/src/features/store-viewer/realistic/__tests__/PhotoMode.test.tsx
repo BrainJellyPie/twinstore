@@ -130,8 +130,9 @@ it("traces a perspective view through a physical lens focused on the frame's cen
   usePhotoMode.getState().setDof(true, 2.8);
   render(<PhotoMode width={4} depth={5} />);
   await act(async () => { await vi.advanceTimersByTimeAsync(60); });
-  act(() => frameGate.photoRenderer!());
-  const lens = mocks.tracer.setCamera.mock.calls.at(-1)![0] as THREE.PerspectiveCamera & { fStop: number; focusDistance: number };
+  act(() => frameGate.photoRenderer!(1 / 60));
+  const calls = mocks.tracer.setCamera.mock.calls;
+  const lens = calls[calls.length - 1]![0] as THREE.PerspectiveCamera & { fStop: number; focusDistance: number };
   expect(lens).not.toBe(camera);
   expect(lens.fStop).toBe(2.8);
   expect(lens.focusDistance).toBeCloseTo(4, 3);
