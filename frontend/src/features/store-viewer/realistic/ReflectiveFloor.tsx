@@ -42,7 +42,8 @@ export function ReflectiveFloor({ width, depth, map, roughnessMap, normalMap, re
   );
 
   useFrame((state) => {
-    if (!reflection || frameGate.busy()) return;
+    // The path tracer computes its own reflections; skip the live mirror pass.
+    if (!reflection || frameGate.photoRenderer || frameGate.busy()) return;
     reflection.update(state.gl, state.scene, state.camera, ref.current);
   });
 

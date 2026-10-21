@@ -16,9 +16,13 @@ export function GatedRenderer() {
   useFrame((state, delta) => {
     if (frameGate.busy()) return;
     frameGate.begin();
-    if (frameGate.renderer) frameGate.renderer(delta);
-    else state.gl.render(state.scene, state.camera);
-    frameGate.end();
+    try {
+      const render = frameGate.photoRenderer ?? frameGate.renderer;
+      if (render) render(delta);
+      else state.gl.render(state.scene, state.camera);
+    } finally {
+      frameGate.end();
+    }
   }, 1);
 
   return null;

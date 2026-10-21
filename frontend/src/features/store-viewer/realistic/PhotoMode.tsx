@@ -28,7 +28,7 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
   useEffect(() => {
     if (!active) return;
     const { gl, scene } = get();
-    const previous = frameGate.renderer;
+    let renderPhoto: (() => void) | null = null;
     usePlaybackControlStore.getState().pause();
     let alive = true;
     let pathTracer: WebGLPathTracer | null = null;
@@ -42,7 +42,7 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
       try {
         const background = scene.background instanceof THREE.Color ? scene.background.clone() : null;
         const environment = await new HDRLoader().loadAsync("/assets/environments/gear_store_1k.hdr").catch(() => null);
-        if (!alive) {
+        if (!alive || usePhotoMode.getState().status === "off") {
           environment?.dispose();
           return;
         }
@@ -65,10 +65,14 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
         pt.lowResScale = 0.25;
         pt.rasterizeScene = false;
         usePhotoMode.setState({ triangles: photo.triangles });
-        await pt.setSceneAsync(photo.scene, get().camera, { onProgress: (p) => usePhotoMode.setState({ progress: p }) });
-        if (!alive) return;
+        await pt.setSceneAsync(photo.scene, get().camera, { onProgress: (p) => { if (alive) usePhotoMode.setState({ progress: p }); } });
+        if (!alive || usePhotoMode.getState().status === "off") return;
         usePhotoMode.setState({ status: "tracing", samples: 0 });
-        frameGate.renderer = () => {
+        renderPhoto = () => {
+          // Zustand changes synchronously; React's effect cleanup can run after
+          // the next frame. A queued draw must not resurrect a stopped photo.
+          const state = usePhotoMode.getState();
+          if (!alive || state.status === "off") return;
           const camera = get().camera;
           const m = camera.matrixWorld.elements;
           const p = camera.projectionMatrix.elements;
@@ -82,7 +86,6 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
             if (pt.camera !== camera) pt.setCamera(camera);
             else pt.updateCamera();
           }
-          const state = usePhotoMode.getState();
           pt.pausePathTracing = pt.samples >= state.target;
           pt.renderSample();
           const samples = Math.floor(pt.samples);
@@ -94,15 +97,16 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
             download(gl.domElement.toDataURL("image/png"));
           }
         };
+        frameGate.photoRenderer = renderPhoto;
       } catch (e) {
-        if (alive) usePhotoMode.setState({ status: "error", error: e instanceof Error ? e.message : String(e) });
+        if (alive && usePhotoMode.getState().status !== "off") usePhotoMode.setState({ status: "error", error: e instanceof Error ? e.message : String(e) });
       }
     }, 60);
 
     return () => {
       alive = false;
       window.clearTimeout(timer);
-      frameGate.renderer = previous;
+      if (frameGate.photoRenderer === renderPhoto) frameGate.photoRenderer = null;
       pathTracer?.dispose();
       worker?.dispose();
       disposeScene?.();
