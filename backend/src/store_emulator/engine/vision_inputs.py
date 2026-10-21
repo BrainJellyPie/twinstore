@@ -10,7 +10,9 @@ Receipts: the model transcribes a receipt photo (store, time, product lines, tot
 matched to the store's products so receipts can score a run like a POS export.
 """
 
+import csv
 import difflib
+import io
 from typing import Protocol
 
 import numpy as np
@@ -118,7 +120,7 @@ async def vlm_receipt(llm: VisionLLM, img: Image.Image, *, receipt_id: str, defa
     url, _ = image_data_url(ImageOps.exif_transpose(img).convert("RGB"), max_side=1600, fmt="JPEG")
     r = await llm.generate_structured_with_image_async(_ReceiptVLM, RECEIPT_PROMPT, "Transcribe this receipt.", url, max_retries=1, seed=0)
     currency = (r.currency or default_currency).upper()
-    lines = [ReceiptLine(name=line.name.strip(), quantity=line.quantity or 1.0, unit_price=_minor(line.unit_price, currency),
+    lines = [ReceiptLine(name=line.name.strip(), quantity=line.quantity, unit_price=_minor(line.unit_price, currency),
                          line_total=_minor(line.line_total, currency))
              for line in r.lines if line.name.strip()]
     stamp = f"{r.date} {r.time}".strip() if r.date else ""
@@ -143,12 +145,17 @@ def match_lines(reading: ReceiptReading, products: dict[str, str], *, cutoff: fl
 
 def receipts_csv(readings: list[ReceiptReading]) -> str:
     """POS-export CSV of matched lines (columns the fidelity report understands)."""
-    rows = ["receipt_id,sku,quantity,unit_price,line_total,timestamp"]
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(["receipt_id", "sku", "quantity", "unit_price", "line_total", "timestamp"])
     for r in readings:
         for line in r.lines:
             if not line.matched:
                 continue
-            unit = "" if line.unit_price is None else str(line.unit_price)
+            # POS scoring consumes unit_price. Preserve actual paid amounts after discounts,
+            # and receipts that show a line total without a unit price.
+            unit = (line.line_total / line.quantity if line.line_total is not None and line.quantity > 0
+                    else line.unit_price)
             total = "" if line.line_total is None else str(line.line_total)
-            rows.append(f"{r.receipt_id},{line.sku},{line.quantity:g},{unit},{total},{r.timestamp}")
-    return "\n".join(rows) + "\n"
+            writer.writerow([r.receipt_id, line.sku, line.quantity, unit, total, r.timestamp])
+    return output.getvalue()

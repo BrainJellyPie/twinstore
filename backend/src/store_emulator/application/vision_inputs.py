@@ -9,16 +9,19 @@ import asyncio
 import io
 import logging
 import re
+from collections import Counter
 from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
 from store_emulator.domain.config import SimulationConfig
+from store_emulator.domain.receipt_review import ReceiptReview
 from store_emulator.domain.store import Store
 from store_emulator.domain.town import Town
 from store_emulator.domain.vision_inputs import ReceiptReading, StorefrontAppeal
 from store_emulator.engine.llm_client import LiteLLMClient
+from store_emulator.engine.receipt_review import review_receipts
 from store_emulator.engine.vision_inputs import (
     classic_appeal,
     match_lines,
@@ -29,7 +32,7 @@ from store_emulator.engine.vision_inputs import (
 
 from .capture import capture_llm_config
 from .errors import AppError
-from .storage.io import DATA_DIR
+from .storage.io import DATA_DIR, read_json
 from .storage.runs import load_run_store
 from .storage.setups import metadata_path, read_setup
 from .town import require_town, save_town
@@ -52,6 +55,8 @@ class ReceiptsResult(BaseModel):
     matched_lines: int
     unmatched_lines: int
     csv: str
+    products: dict[str, str] = {}  # SKU → display name, for manual correction
+    currency: str = ""
 
 
 def _photo(data: bytes) -> Image.Image:
@@ -93,9 +98,12 @@ def rate_storefront(pid: str, venue_id: str, data: bytes, *, model: str, config:
     return StorefrontResult(venue_id=venue_id, appeal=appeal, previous_attractiveness=previous, town=saved)
 
 
-def _products(pid: str, setup_id: str | None, run_id: str | None) -> dict[str, str]:
-    """Product name → SKU of a run's store (preferred: the store the run simulated) or of a layout."""
+def _receipt_target(pid: str, setup_id: str | None, run_id: str | None, config: SimulationConfig) -> tuple[dict[str, str], str]:
+    """Use the run's saved catalog and currency, even after app settings change."""
+    if not _SAFE_ID.fullmatch(pid) or not metadata_path(pid).exists():
+        raise AppError(f"project not found: {pid}", 404)
     store: Store | None = None
+    currency = config.currency
     if run_id:
         if not _SAFE_ID.fullmatch(run_id):
             raise AppError(f"invalid run id: {run_id}", 400)
@@ -103,6 +111,7 @@ def _products(pid: str, setup_id: str | None, run_id: str | None) -> dict[str, s
         if not (base / "input").exists():
             raise AppError(f"run not found: {run_id}", 404)
         store = load_run_store(base)
+        currency = SimulationConfig.model_validate(read_json(base / "input" / "config.json")).currency
     elif setup_id:
         try:
             data = read_setup(pid, setup_id).get("store")
@@ -110,8 +119,15 @@ def _products(pid: str, setup_id: str | None, run_id: str | None) -> dict[str, s
             raise AppError(f"setup not found: {setup_id}", 404) from None
         store = Store.model_validate(data) if data else None
     if store is None:
-        return {}
-    return {item.name: item.sku for _, slot in store.all_slots for item in slot.items}
+        return {}, currency
+    return {item.sku: item.name for _, slot in store.all_slots for item in slot.items}, currency
+
+
+def review_receipt_batch(
+    pid: str, readings: list[ReceiptReading], *, setup_id: str | None, run_id: str | None, config: SimulationConfig,
+) -> ReceiptReview:
+    products, currency = _receipt_target(pid, setup_id, run_id, config)
+    return review_receipts(readings, products, currency)
 
 
 def read_receipts(
@@ -124,16 +140,20 @@ def read_receipts(
     llm = _client(config, model)
     if llm is None:
         raise AppError("reading receipts needs a vision model", 400)
-    products = _products(pid, setup_id, run_id)
+    products, currency = _receipt_target(pid, setup_id, run_id, config)
+    # A shared display name is ambiguous; the reviewer must choose its SKU explicitly.
+    name_counts = Counter(products.values())
+    names = {name: sku for sku, name in products.items() if name_counts[name] == 1}
     readings: list[ReceiptReading] = []
     for k, data in enumerate(photos):
         img = _photo(data)
         try:
-            reading = asyncio.run(vlm_receipt(llm, img, receipt_id=f"r{k + 1:03d}", default_currency=config.currency))
+            reading = asyncio.run(vlm_receipt(llm, img, receipt_id=f"r{k + 1:03d}", default_currency=currency))
         except Exception as e:  # noqa: BLE001 — one unreadable receipt must not fail the batch
             readings.append(ReceiptReading(receipt_id=f"r{k + 1:03d}", notes=[f"could not read: {type(e).__name__}: {e}"[:200]]))
             continue
-        readings.append(match_lines(reading, products) if products else reading)
+        readings.append(match_lines(reading, names) if names else reading)
     matched = sum(1 for r in readings for line in r.lines if line.matched)
     total = sum(len(r.lines) for r in readings)
-    return ReceiptsResult(receipts=readings, matched_lines=matched, unmatched_lines=total - matched, csv=receipts_csv(readings))
+    return ReceiptsResult(receipts=readings, matched_lines=matched, unmatched_lines=total - matched,
+                          csv=receipts_csv(readings), products=products, currency=currency)

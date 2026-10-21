@@ -4,6 +4,7 @@ import { Receipt, Upload } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
 import { readReceipts, uploadFidelity, type FidelityMetric } from "@/shared/api/client";
+import { ReceiptReviewPanel } from "./ReceiptReviewPanel";
 
 function verdict(m: FidelityMetric): "good" | "fair" | "poor" | null {
   if (m.value === null) return null;
@@ -28,12 +29,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
   const receiptRef = useRef<HTMLInputElement>(null);
   const upload = useMutation({ mutationFn: (file: File) => uploadFidelity(projectId, runId, file) });
   const receipts = useMutation({
-    mutationFn: async (files: File[]) => {
-      const read = await readReceipts(projectId, files, { runId });
-      if (read.matched_lines === 0) throw new Error(`No receipt line matched a product of this store (${read.unmatched_lines} unmatched).`);
-      upload.mutate(new File([read.csv], "receipts.csv", { type: "text/csv" }));
-      return read;
-    },
+    mutationFn: (files: File[]) => readReceipts(projectId, files, { runId }),
   });
   const report = upload.data;
 
@@ -57,7 +53,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
             variant="outline"
             size="sm"
             className="h-7 gap-1 px-2 text-xs"
-            disabled={upload.isPending}
+            disabled={upload.isPending || receipts.isPending}
             onClick={() => inputRef.current?.click()}
           >
             <Upload className="size-3" />
@@ -83,7 +79,10 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) upload.mutate(file);
+            if (file) {
+              receipts.reset();
+              upload.mutate(file);
+            }
             e.target.value = "";
           }}
         />
@@ -95,10 +94,8 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
         </p>
       )}
       {receipts.data && (
-        <p className="text-xs text-muted-foreground">
-          {receipts.data.receipts.length} receipt(s) read · {receipts.data.matched_lines} lines matched to products
-          {receipts.data.unmatched_lines ? ` · ${receipts.data.unmatched_lines} not on this store's shelves` : ""}
-        </p>
+        <ReceiptReviewPanel key={`${projectId}:${runId}:${receipts.submittedAt}`} projectId={projectId} runId={runId}
+          result={receipts.data} scoring={upload.isPending} onScore={(file) => upload.mutate(file)} />
       )}
       {receipts.isError && (
         <p className="text-xs text-destructive">{receipts.error instanceof Error ? receipts.error.message : "Could not read the receipts"}</p>

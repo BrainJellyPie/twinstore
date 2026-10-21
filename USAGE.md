@@ -242,6 +242,17 @@ Run through this before triggering generation or simulation:
   like `receipt_id`, `sku`/`product_name`, `qty`, `unit_price`/`sales_value`
   and `timestamp`/`hour`; SKUs are matched to catalog ids or names. Only
   products present in both are compared, so check the reported coverage.
+- **Receipt-photo review.** In a run's sales-validation section, **Receipts**
+  reads photos into an editable draft. Confirm each product against the saved
+  run's catalog, correct quantity and prices in minor currency units, and
+  exclude duplicate photos, returns or unreadable receipts. **Check receipts**
+  flags unknown products, missing amounts, duplicate IDs and currency mismatch.
+  A printed line total takes precedence over unit price × quantity so discounts
+  and total-only lines retain their paid value. Review subtotal warnings for
+  tax or excluded lines; those exclusions change basket comparisons. Set a local
+  date and time, or clear the timestamp to omit hourly scoring. Only **Use reviewed
+  receipts** sends the checked batch to POS validation; editing invalidates the
+  previous check. OCR and manual review are not proof of real-world forecast accuracy.
 - **All run artifacts live in `backend/.data/`**, which is gitignored.
   Persona files, simulation results, and generated metadata never leave
   the local machine unless the user copies them out.
