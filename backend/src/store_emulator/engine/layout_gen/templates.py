@@ -440,7 +440,7 @@ class _Builder:
             levels = [3, 2, 4, 1][:RACK_LEVELS]
             for i, level in enumerate(levels):
                 chunk = items[i * per_level:(i + 1) * per_level] or items[:per_level]
-                slots.append(Slot(block=0, face=face, level=level, items=chunk))
+                slots.append(Slot(block=0, face=face, level=level, items=[item.model_copy() for item in chunk]))
         return slots
 
     def add(self, kind: RackType, x: int, y: int, *, category: str | None = None, faces: list[Face] | None = None,
