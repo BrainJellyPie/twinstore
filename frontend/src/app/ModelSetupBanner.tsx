@@ -45,14 +45,14 @@ export function ModelSetupBanner() {
     <div role="status" className="relative z-20 px-4 pt-2">
       <div
         className={cn(
-          "glass mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl px-4 py-2.5 text-sm",
+          "glass relative mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl px-4 py-2.5 text-sm",
           ready ? "border-l-2 border-l-primary" : "border-l-2 border-l-warn",
         )}
       >
         <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-foreground/[0.06]" aria-hidden>
           {busy ? <Loader2 className="size-4 animate-spin" /> : ready ? <Cpu className="size-4" /> : <TriangleAlert className="size-4" />}
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 pr-5 sm:pr-0">
           <p className="leading-snug">{data.warning}</p>
           {busy && (
             <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
@@ -70,7 +70,7 @@ export function ModelSetupBanner() {
             </div>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full min-w-0 shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
           {(state === "off" || state === "error") && (
             <Button size="sm" variant="outline" onClick={() => start.mutate()} disabled={start.isPending}>
               <Cpu className="size-3.5" aria-hidden /> Start local model
@@ -84,7 +84,7 @@ export function ModelSetupBanner() {
           <button
             type="button"
             onClick={dismiss}
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground"
+            className="absolute top-2 right-2 grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground sm:static"
             aria-label="Hide this notice"
           >
             <X className="size-4" aria-hidden />

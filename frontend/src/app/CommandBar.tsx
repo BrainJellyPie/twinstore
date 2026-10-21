@@ -30,12 +30,15 @@ interface NavItem {
 
 function NavSegment({ items }: { items: NavItem[] }) {
   return (
-    <nav aria-label="Main" className="glass flex items-center gap-0.5 rounded-2xl p-1">
+    <nav aria-label="Main" className="glass col-span-2 row-start-2 flex items-center justify-self-center gap-0.5 rounded-2xl p-1 sm:col-span-1 sm:col-start-2 sm:row-start-1">
       {items.map(({ to, params, label, icon: Icon, active, disabled }) =>
         disabled ? (
           <span
             key={label}
             className="flex h-9 cursor-not-allowed items-center gap-2 rounded-xl px-3 text-sm text-muted-foreground/35"
+            role="link"
+            aria-label={label}
+            aria-disabled="true"
             title="Open a store first"
           >
             <Icon className="size-[1.05rem]" aria-hidden />
@@ -46,6 +49,8 @@ function NavSegment({ items }: { items: NavItem[] }) {
             key={label}
             to={to}
             params={params}
+            aria-label={label}
+            title={label}
             aria-current={active ? "page" : undefined}
             className={cn(
               "relative flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-[color,background-color,box-shadow] duration-200",
@@ -138,7 +143,7 @@ export function CommandBar() {
   ];
 
   return (
-    <header className="relative z-30 grid h-[4.25rem] shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent,var(--border)_20%,var(--border)_80%,transparent)]">
+    <header className="relative z-30 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2 sm:h-[4.25rem] sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-4 sm:px-4 sm:py-0 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent,var(--border)_20%,var(--border)_80%,transparent)]">
       <div className="flex min-w-0 items-center gap-3">
         <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-xl" aria-label="TwinStore home">
           <BrandMark />
@@ -174,7 +179,7 @@ export function CommandBar() {
 
       <NavSegment items={items} />
 
-      <div className="flex min-w-0 items-center justify-end gap-2">
+      <div className="col-start-2 row-start-1 flex items-center justify-end gap-2 sm:col-start-3">
         <button
           type="button"
           onClick={() => openPalette(true)}
