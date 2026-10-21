@@ -186,3 +186,60 @@ def test_shelf_test_with_fake_vision_model(client, monkeypatch):
     bad = {**body, "changes": [{"kind": "promo", "sku": "NOPE"}]}
     assert client.post(f"/api/projects/{PID}/shelf-tests", json=bad).status_code == 400
     assert client.delete(f"/api/projects/{PID}/shelf-tests/{tid}").status_code == 204
+
+
+class _ConjointLLM:
+    """Picks the option with zero sugar and the lowest price; every fifth task, none."""
+
+    def __init__(self, config: object) -> None:
+        self.n = 0
+
+    async def generate_structured_async[T: BaseModel](
+        self, response_model: type[T], system_prompt: str, user_prompt: str,
+        *, max_retries: int = 1, seed: int | None = None, route: str | None = None, max_tokens: int | None = None,
+    ) -> T:
+        assert "choice task" in system_prompt and "You are choosing a 500 ml iced tea." in user_prompt
+        answers: dict[str, object] = {"why": "Zero sugar at a fair price."}
+        for block in user_prompt.split("Task ")[1:]:
+            task = block.split(":", 1)[0]
+            options = [line.strip() for line in block.splitlines()[1:] if line.strip()[:2] in ("A:", "B:", "C:")]
+
+            def score(line: str) -> float:
+                return (1.0 if "Zero sugar" in line else 0.0) - float(line.rsplit("$", 1)[1]) / 2
+
+            self.n += 1
+            answers[f"task_{task}"] = "none" if self.n % 5 == 0 else max(options, key=score)[0]
+        return response_model.model_validate(answers)
+
+
+def test_conjoint_with_fake_model(client, monkeypatch):
+    from store_emulator.application import marketing
+    monkeypatch.setattr(marketing, "LiteLLMClient", _ConjointLLM)
+    body = {
+        "product": "a 500 ml iced tea", "panel": 20, "tasks": 6, "options": 3, "model": "openai/gpt-4o-mini",
+        "attributes": [{"name": "Sugar", "levels": ["Regular", "Less sugar", "Zero sugar"]}, {"name": "Pack", "levels": ["PET", "Can"]}],
+        "prices": [149, 199, 249],
+    }
+    started = client.post(f"/api/projects/{PID}/conjoints", json=body)
+    assert started.status_code == 200, started.text
+    cid = started.json()["job_id"]
+    assert cid.startswith("cjt_")
+    view = _wait(client, f"/api/projects/{PID}/conjoints/{cid}")
+    r = view["report"]
+    assert r["respondents"] == 20 and r["errors"] == 0 and r["fit"]["choices"] == 120
+    assert 0.15 < r["none_share"] < 0.25 and r["price_slope"] < 0
+    sugar = {p["level"]: p for p in r["part_worths"] if p["attribute"] == "Sugar"}
+    assert sugar["Zero sugar"]["utility"] > sugar["Less sugar"]["utility"] and sugar["Zero sugar"]["wtp"] > 0
+    importance = {i["attribute"]: i["importance"] for i in r["importances"]}
+    assert set(importance) == {"Sugar", "Pack", "Price"} and abs(sum(importance.values()) - 1) < 1e-3
+    assert importance["Pack"] < importance["Sugar"]
+    assert view["request"]["product"] == "a 500 ml iced tea"
+    csv = client.get(f"/api/projects/{PID}/conjoints/{cid}/export.csv").text.splitlines()
+    assert csv[0] == "respondent,age_group,gender,task,option,Sugar,Pack,price,chosen" and len(csv) == 1 + 20 * 6 * 4
+    assert sum(int(line.rsplit(",", 1)[1]) for line in csv[1:]) == 120
+    page = client.get(f"/api/projects/{PID}/conjoints/{cid}/report.html").text
+    assert "Conjoint report" in page and "What drives the choice" in page and "<svg" in page
+    assert [j["job_id"] for j in client.get(f"/api/projects/{PID}/conjoints").json()] == [cid]
+    bad = {**body, "prices": [199]}
+    assert client.post(f"/api/projects/{PID}/conjoints", json=bad).status_code == 422
+    assert client.delete(f"/api/projects/{PID}/conjoints/{cid}").status_code == 204

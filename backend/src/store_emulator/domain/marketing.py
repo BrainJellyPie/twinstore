@@ -157,7 +157,7 @@ class MarketingInfo(BaseModel):
 
 class JobStatus(BaseModel):
     job_id: str
-    kind: Literal["experiment", "survey", "pitch", "shelf"]
+    kind: Literal["experiment", "survey", "pitch", "shelf", "conjoint"]
     name: str = ""
     status: JobState
     stage: str = ""
@@ -342,3 +342,127 @@ class ShelfPreview(BaseModel):
     test: str
     applied: list[str] = []
     warnings: list[str] = []
+
+
+# ── conjoint ────────────────────────────────────────────────────────────────────
+
+type Label = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+
+
+class ConjointAttribute(BaseModel):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
+    levels: list[Label] = Field(min_length=2, max_length=6)
+
+    @model_validator(mode="after")
+    def validate_levels(self) -> Self:
+        if len({level.casefold() for level in self.levels}) != len(self.levels):
+            raise ValueError(f"Give the levels of '{self.name}' different names")
+        return self
+
+
+class ConjointRequest(BaseModel):
+    """Choice-based conjoint: each respondent chooses between a few versions of a product (or none) in several
+    choice tasks, and a logit model over all choices says what each attribute level is worth."""
+    name: str = Field(default="", max_length=80)
+    product: str = Field(min_length=1, max_length=160, description='what is being chosen, e.g. "a 500 ml bottle of iced tea"')
+    context: str = Field(default="", max_length=300, description="anything else respondents are told")
+    attributes: list[ConjointAttribute] = Field(min_length=1, max_length=6)
+    prices: list[int] = Field(default_factory=list[int], max_length=6,
+                              description="price levels in minor units (empty = no price attribute); estimated as one price slope")
+    currency: str = "USD"
+    tasks: int = Field(default=8, ge=3, le=15, description="choice tasks per respondent")
+    options: int = Field(default=3, ge=2, le=4, description="product versions per task")
+    none_option: bool = Field(default=True, description='respondents may choose "none of these"')
+    panel: int = Field(default=60, ge=10, le=600)
+    age_groups: list[str] = Field(default_factory=list[str])
+    genders: list[str] = Field(default_factory=list[str])
+    model: str = Field(default="", description='model reference; "" = the app vision model')
+    seed: int = 0
+
+    @model_validator(mode="after")
+    def validate_design(self) -> Self:
+        if len(self.prices) == 1:
+            raise ValueError("Give at least two price levels, or none")
+        if len(set(self.prices)) != len(self.prices) or any(p < 0 for p in self.prices):
+            raise ValueError("Price levels must be different, non-negative amounts")
+        names = [a.name.casefold() for a in self.attributes] + (["price"] if self.prices else [])
+        if len(names) != len(set(names)):
+            raise ValueError("Give each attribute a different name (the price attribute is called 'Price')")
+        if len(names) < 2:
+            raise ValueError("A conjoint study needs at least two attributes, counting price")
+        return self
+
+
+class ConjointTask(BaseModel):
+    profiles: list[list[int]]         # per option: the level index of each attribute (price last, when there is one)
+    choice: int | None = None         # chosen option; None = none of these
+
+
+class ConjointRespondent(BaseModel):
+    respondent: str
+    age_group: str
+    gender: str
+    tasks: list[ConjointTask] = []
+    why: str = ""
+    error: str = ""
+
+
+class PartWorth(BaseModel):
+    """Utility of a level, centred within its attribute, with a 95 % interval over respondents."""
+    attribute: str
+    level: str
+    utility: float
+    ci_low: float
+    ci_high: float
+    wtp: float | None = None          # minor units worth paying for this level over the attribute's first level
+    wtp_low: float | None = None
+    wtp_high: float | None = None
+
+
+class AttributeImportance(BaseModel):
+    attribute: str
+    importance: float                 # share of the summed utility ranges
+    ci_low: float
+    ci_high: float
+
+
+class ConjointFit(BaseModel):
+    choices: int
+    log_likelihood: float
+    null_log_likelihood: float
+    mcfadden_r2: float
+    hit_rate: float                   # share of choices the model predicts as the most likely option
+    chance_rate: float
+
+
+class ConjointSegment(BaseModel):
+    segment: str
+    n: int
+    importances: dict[str, float]
+    none_share: float
+
+
+class ConjointReport(BaseModel):
+    conjoint_id: str
+    name: str
+    model: str
+    product: str
+    currency: str
+    attributes: list[ConjointAttribute]
+    prices: list[int] = []
+    options: int
+    none_option: bool
+    respondents: int
+    errors: int
+    none_share: float = 0.0
+    part_worths: list[PartWorth] = []
+    importances: list[AttributeImportance] = []
+    price_slope: float | None = None  # utility per minor unit of price
+    price_mean: float = 0.0           # price at which the price part-worth is zero
+    none_utility: float | None = None # utility of "none", on the scale of the centred part-worths
+    fit: ConjointFit | None = None
+    segments: list[ConjointSegment] = []
+    answers: list[ConjointRespondent] = []
+    verbatims: list[str] = []
+    notes: list[str] = []
+    seconds: float = 0.0

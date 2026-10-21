@@ -13,6 +13,7 @@ from store_emulator.application import staff_pitch
 from store_emulator.application.errors import AppError
 from store_emulator.application.marketing import ExperimentView, SurveyView
 from store_emulator.domain.marketing import (
+    ConjointRequest,
     ExperimentRequest,
     JobStatus,
     MarketingInfo,
@@ -193,3 +194,36 @@ async def shelf_test_image(pid: str, tid: str, arm: Literal["control", "test"]) 
 @router.delete("/{pid}/shelf-tests/{tid}", summary="Delete a shelf test", status_code=204)
 def delete_shelf_test(pid: str, tid: str) -> None:
     _call(lambda: mk.delete_job(pid, "shelf", tid))
+
+
+@router.post("/{pid}/conjoints", summary="Start a choice-based conjoint study", response_model=JobStatus)
+async def start_conjoint(pid: str, req: ConjointRequest) -> JobStatus:
+    """Respondents choose between versions of a product (attribute levels and prices) in several choice tasks; a logit
+    model gives part-worths, attribute importance and willingness to pay, with intervals over respondents."""
+    return await run_in_threadpool(_call, lambda: mk.start_conjoint(pid, req, get_config()))
+
+
+@router.get("/{pid}/conjoints", summary="Conjoint studies of a project", response_model=list[JobStatus])
+def list_conjoints(pid: str) -> list[JobStatus]:
+    return _call(lambda: mk.list_jobs(pid, "conjoint"))
+
+
+@router.get("/{pid}/conjoints/{cid}", summary="Conjoint study status and report", response_model=mk.ConjointView)
+def get_conjoint(pid: str, cid: str) -> mk.ConjointView:
+    return _call(lambda: mk.get_conjoint(pid, cid))
+
+
+@router.get("/{pid}/conjoints/{cid}/report.html", summary="Conjoint report (print-ready HTML)", response_class=HTMLResponse)
+def conjoint_report(pid: str, cid: str) -> HTMLResponse:
+    return HTMLResponse(_call(lambda: mk.conjoint_report(pid, cid)))
+
+
+@router.get("/{pid}/conjoints/{cid}/export.csv", summary="Every option shown and whether it was chosen, as CSV")
+def conjoint_csv(pid: str, cid: str) -> PlainTextResponse:
+    text = _call(lambda: mk.conjoint_csv(pid, cid))
+    return PlainTextResponse(text, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{cid}.csv"'})
+
+
+@router.delete("/{pid}/conjoints/{cid}", summary="Delete a conjoint study", status_code=204)
+def delete_conjoint(pid: str, cid: str) -> None:
+    _call(lambda: mk.delete_job(pid, "conjoint", cid))

@@ -4,6 +4,7 @@ Files per project (`.data/<pid>/`):
 - lab_assets/<aid>.png, <aid>.json        product images (shared with Shelf Lab's "new package" edits)
 - marketing/experiments/<eid>/            request.json, status.json, report.json
 - marketing/surveys/<sid>/                request.json, status.json, report.json, board.jpg
+- marketing/conjoints/<cid>/              request.json, status.json, report.json
 """
 # (reuses Shelf Lab's private store and persona helpers)
 
@@ -23,6 +24,9 @@ from pydantic import BaseModel
 
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.marketing import (
+    ConjointReport,
+    ConjointRequest,
+    ConjointRespondent,
     ExperimentReport,
     ExperimentRequest,
     JobStatus,
@@ -51,8 +55,10 @@ from store_emulator.engine.marketing import (
     survey_panel,
     van_westendorp,
 )
+from store_emulator.engine.marketing.conjoint import conjoint_panel, estimate, none_share
 from store_emulator.engine.marketing.report import (
     ReportNarrative,
+    conjoint_report_html,
     report_html,
     report_markdown,
     shelf_report_html,
@@ -85,7 +91,7 @@ from .storage.setups import read_setup
 
 logger = logging.getLogger(__name__)
 
-Kind = Literal["experiment", "survey", "pitch", "shelf"]
+Kind = Literal["experiment", "survey", "pitch", "shelf", "conjoint"]
 
 
 def _root(pid: str, kind: Kind) -> Path:
@@ -103,7 +109,7 @@ def _write_status(pid: str, status: JobStatus) -> None:
 
 
 def _new_job(pid: str, kind: Kind, name: str, request: BaseModel) -> JobStatus:
-    prefix = {"experiment": "exp", "survey": "srv", "pitch": "pit", "shelf": "slf"}[kind]
+    prefix = {"experiment": "exp", "survey": "srv", "pitch": "pit", "shelf": "slf", "conjoint": "cjt"}[kind]
     jid = f"{prefix}_{uuid.uuid4().hex[:12]}"
     status = JobStatus(job_id=jid, kind=kind, name=name, status="pending", stage="queued", created_at=now_iso())
     folder = _job_dir(pid, kind, jid)
@@ -151,7 +157,7 @@ def delete_job(pid: str, kind: Kind, jid: str) -> None:
 def recover_running_jobs() -> int:
     """Mark jobs left in flight by a previous server process as failed."""
     recovered = 0
-    for folder in ("experiments", "surveys", "pitches", "shelf_tests"):
+    for folder in ("experiments", "surveys", "pitches", "shelf_tests", "conjoints"):
         for path in Path(DATA_DIR).glob(f"*/marketing/{folder}/*/status.json"):
             try:
                 status = JobStatus.model_validate(read_json(path))
@@ -317,7 +323,7 @@ def delete_experiment_narrative(pid: str, eid: str) -> None:
 
 # ── surveys ─────────────────────────────────────────────────────────────────────
 
-def _quota(personas: list[Persona], req: SurveyRequest | ShelfTestRequest) -> list[Persona]:
+def _quota(personas: list[Persona], req: SurveyRequest | ShelfTestRequest | ConjointRequest) -> list[Persona]:
     out = [p for p in personas
            if (not req.age_groups or str(p.age_group) in req.age_groups) and (not req.genders or str(p.gender) in req.genders)]
     if not out:
@@ -586,3 +592,116 @@ def shelf_test_report(pid: str, tid: str) -> str:
     if view.report is None:
         raise AppError("the shelf test has no results yet", 409)
     return shelf_report_html(view.report, shelf_test_image(pid, tid, "control"), shelf_test_image(pid, tid, "test"))
+
+
+# ── conjoint ────────────────────────────────────────────────────────────────────
+
+def start_conjoint(pid: str, req: ConjointRequest, config: SimulationConfig) -> JobStatus:
+    _check_id(pid, "project id")
+    currency = project_currency(pid, config.currency)
+    if req.prices and req.currency.upper() != currency:
+        raise AppError(f"Conjoint prices must be in the project currency ({currency}); budgets are not converted automatically.", 422)
+    req = req.model_copy(update={"currency": currency})
+    respondents = select_personas(_quota(_personas(pid), req), req.panel, seed=req.seed)
+    llm_config = capture_llm_config(config, req.model)
+    if llm_config is None:
+        raise AppError("a conjoint study needs a model", 400)
+    llm_config = llm_config.model_copy(update={
+        "max_tokens": 240 + 24 * req.tasks, "temperature": 0.6, "cache_dir": str(Path(DATA_DIR) / "llm_cache" / "conjoint"),
+    })
+    name = req.name.strip() or f"Conjoint · {req.product}"
+    status = _new_job(pid, "conjoint", name, req)
+
+    def run() -> None:
+        t0 = time.perf_counter()
+        status.status, status.stage = "running", "asking"
+        _write_status(pid, status)
+        try:
+            answers = asyncio.run(conjoint_panel(
+                LiteLLMClient(llm_config), respondents, req.attributes, req.prices, product=req.product, context=req.context,
+                currency=currency, tasks=req.tasks, options=req.options, none_option=req.none_option, seed=req.seed,
+            ))
+            status.stage, status.progress = "estimating", 0.9
+            _write_status(pid, status)
+            _finish(pid, status, summarize_conjoint(status.job_id, name, llm_config.model, req, answers,
+                                                     seconds=round(time.perf_counter() - t0, 1)))
+        except Exception as e:
+            logger.exception(f"[marketing] conjoint {status.job_id} failed")
+            _finish(pid, status, None, f"{type(e).__name__}: {e}")
+
+    executor.submit(run)
+    return status
+
+
+def summarize_conjoint(
+    cid: str, name: str, model: str, req: ConjointRequest, answers: list[ConjointRespondent], *, seconds: float = 0.0,
+) -> ConjointReport:
+    ok = [a for a in answers if not a.error]
+    est = estimate(ok, req.attributes, req.prices, none_option=req.none_option, currency=req.currency, seed=req.seed)
+    if est is None:
+        raise ValueError("No respondent answered the choice tasks; check the model and try again.")
+    notes = ["Synthetic respondents: use the study to screen which attributes and levels matter and to shape a real conjoint, "
+             "then calibrate against real choices before pricing on it."]
+    errors = len(answers) - len(ok)
+    if errors:
+        notes.append(f"{errors} respondent(s) could not answer (model errors) and are left out.")
+    if len(ok) < 30:
+        notes.append("Fewer than 30 respondents: part-worth intervals are wide; read the order of levels, not the exact values.")
+    if req.prices and (est.price_slope is None or est.price_slope >= 0):
+        notes.append("Higher prices did not lower the chance of being chosen, so willingness to pay is not shown; "
+                     "try a wider price range or a model that weighs budget more.")
+    if est.fit.hit_rate < est.fit.chance_rate * 1.25:
+        notes.append("The model predicts choices barely better than chance: answers look close to random.")
+    share = none_share(ok)
+    if req.none_option and share > 0.5:
+        notes.append(f"Most choices ({share * 100:.0f} %) were “none”: the offers may sit outside what respondents expect to pay.")
+    return ConjointReport(
+        conjoint_id=cid, name=name, model=model, product=req.product, currency=req.currency, attributes=req.attributes,
+        prices=req.prices, options=req.options, none_option=req.none_option, respondents=len(ok), errors=errors,
+        none_share=share, part_worths=est.part_worths, importances=est.importances, price_slope=est.price_slope,
+        price_mean=est.price_mean, none_utility=est.none_utility, fit=est.fit, segments=est.segments, answers=answers,
+        verbatims=[a.why for a in ok if a.why][:40], notes=notes, seconds=seconds,
+    )
+
+
+class ConjointView(JobStatus):
+    report: ConjointReport | None = None
+    request: ConjointRequest | None = None
+
+
+def get_conjoint(pid: str, cid: str) -> ConjointView:
+    status = _status(pid, "conjoint", cid)
+    path = _job_dir(pid, "conjoint", cid) / "report.json"
+    report = ConjointReport.model_validate(read_json(path)) if path.exists() else None
+    return ConjointView(**status.model_dump(), report=report, request=_request(pid, "conjoint", cid, ConjointRequest))
+
+
+def conjoint_report(pid: str, cid: str) -> str:
+    view = get_conjoint(pid, cid)
+    if view.report is None:
+        raise AppError("the conjoint study has no answers yet", 409)
+    return conjoint_report_html(view.report)
+
+
+def conjoint_csv(pid: str, cid: str) -> str:
+    """One row per option shown (long format), ready for re-estimation in other tools."""
+    view = get_conjoint(pid, cid)
+    if view.report is None:
+        raise AppError("the conjoint study has no answers yet", 409)
+    r = view.report
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["respondent", "age_group", "gender", "task", "option", *[a.name for a in r.attributes],
+                *(["price"] if r.prices else []), "chosen"])
+    for a in r.answers:
+        if a.error:
+            continue
+        for t, task in enumerate(a.tasks, start=1):
+            for o, profile in enumerate(task.profiles):
+                levels = [r.attributes[i].levels[profile[i]] for i in range(len(r.attributes))]
+                price = [r.prices[profile[len(r.attributes)]]] if r.prices else []
+                w.writerow([a.respondent, a.age_group, a.gender, t, LETTERS[o], *levels, *price, int(task.choice == o)])
+            if r.none_option:
+                w.writerow([a.respondent, a.age_group, a.gender, t, "none", *([""] * len(r.attributes)),
+                            *([""] if r.prices else []), int(task.choice is None)])
+    return buf.getvalue()
