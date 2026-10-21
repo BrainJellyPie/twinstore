@@ -74,7 +74,7 @@ function worldSize(name: string) {
 
 function stackable(kind: PackageKind, h: number, clearance: number): number {
   if (kind === "perfumeBottle" || kind === "teaCup") return 1;
-  if (kind === "bottle" || kind === "bag" || kind === "tube" || kind === "jar" || kind === "banana" || kind === "apple" || kind === "applePair" || kind === "avocado" || kind === "lemon" || kind === "onion" || kind === "kiwi" || kind === "sweetPotato" || kind === "asianPear" || kind === "pot" || kind === "croissant" || kind === "wateringCan") return 1;
+  if (kind === "bottle" || kind === "bag" || kind === "tube" || kind === "jar" || kind === "banana" || kind === "apple" || kind === "applePair" || kind === "avocado" || kind === "lemon" || kind === "onion" || kind === "kiwi" || kind === "sweetPotato" || kind === "asianPear" || kind === "ginger" || kind === "pot" || kind === "croissant" || kind === "wateringCan") return 1;
   return Math.max(1, Math.min(kind === "can" ? 3 : 2, Math.floor((clearance - 0.01) / (h + 0.004))));
 }
 
@@ -198,7 +198,7 @@ function layoutBin(out: Emit, plan: FixturePlan, frame: Frame, floorY: number, h
       const fit = Math.min(1, (slotW - GAP) / fw, (rowD - 0.02) / fd, headroom / fh);
       const cols = Math.max(1, Math.min(4, Math.floor(slotW / (fw * fit + GAP))));
       const deep = Math.max(1, Math.min(3, Math.floor((rowD - 0.02) / (fd * fit + 0.01))));
-      const layers = spec.kind === "pot" || spec.kind === "croissant" || spec.kind === "wateringCan" || spec.kind === "avocado" || spec.kind === "lemon" || spec.kind === "onion" || spec.kind === "kiwi" || spec.kind === "sweetPotato" || spec.kind === "asianPear" || spec.kind === "perfumeBottle" || spec.kind === "teaCup" ? 1 : Math.max(1, Math.min(2, Math.floor(headroom / (fh * fit + 0.004))));
+      const layers = spec.kind === "pot" || spec.kind === "croissant" || spec.kind === "wateringCan" || spec.kind === "avocado" || spec.kind === "lemon" || spec.kind === "onion" || spec.kind === "kiwi" || spec.kind === "sweetPotato" || spec.kind === "asianPear" || spec.kind === "ginger" || spec.kind === "perfumeBottle" || spec.kind === "teaCup" ? 1 : Math.max(1, Math.min(2, Math.floor(headroom / (fh * fit + 0.004))));
       const pitchW = slotW / cols;
       const pitchD = (rowD - 0.02) / deep;
       for (let c = 0; c < cols; c++) {

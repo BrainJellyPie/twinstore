@@ -186,3 +186,30 @@ Rebuild with Blender 4.3.2 after downloading and verifying the manifest files:
 blender --background --python scripts/convert_asian_pear.py -- \
   --source-dir /path/to/asian-pears --output frontend/public/assets/produce/asian-pear.glb
 ```
+
+
+`ginger.glb` uses **Food Ginger 01** by **Oliver Harries**, published by
+[Poly Haven](https://polyhaven.com/a/food_ginger_01) under CC0.
+`ginger-sources.json` records five verified sources and the output checksum.
+The 7,205-triangle source becomes 300/1,400-triangle LODs, sharing its original
+1K JPEG color, OpenGL normal and roughness maps in a 467,632-byte model.
+
+The long axis is laid across the display and uniformly scaled by 0.35, giving
+approximately 20.1 × 5.2 × 8.4 cm before the usual product readability scale.
+This is an artistic retail display size, not a measured root size. Both LODs
+have bottom-centred unit bounds; inverse-transpose normals preserve the lighting
+when the instances restore these proportions.
+
+Whole fresh/raw ginger and ginger-root names use the scan. Drinks, powders,
+pastes, pickled or cut ginger, supplements, plants and multipacks retain their
+package rules. Shelf and table displays use one layer with stable half-turn,
+size and brightness variation. Medium uses color and flat roughness; High also
+uses normal and roughness maps. A knobbly procedural root stays visible during
+loading or failure; a store without whole ginger makes no model request.
+
+Download and verify the manifest sources, preserving paths, then run:
+
+```sh
+blender --background --python scripts/convert_ginger.py -- \
+  --source-dir /path/to/ginger --output frontend/public/assets/produce/ginger.glb
+```

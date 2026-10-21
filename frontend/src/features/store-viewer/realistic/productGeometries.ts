@@ -398,6 +398,29 @@ function asianPear(lod: Lod): THREE.BufferGeometry {
   ]), lod ? 20 : 10);
 }
 
+function ginger(lod: Lod): THREE.BufferGeometry {
+  const lobes = [
+    [-0.05, 0.18, 0, 0.38, 0.18, 0.14, 0],
+    [0.28, 0.19, 0.025, 0.2, 0.14, 0.15, 0.2],
+    [-0.31, 0.17, 0.12, 0.17, 0.13, 0.18, -0.5],
+    [-0.04, 0.22, -0.16, 0.17, 0.16, 0.2, 0.65],
+    [0.15, 0.15, 0.18, 0.14, 0.1, 0.14, -0.3],
+  ] as const;
+  const parts = lobes.map(([x, y, z, sx, sy, sz, yaw]) =>
+    new THREE.SphereGeometry(1, lod ? 10 : 6, lod ? 6 : 4)
+      .scale(sx, sy, sz).rotateY(yaw).translate(x, y, z),
+  );
+  const geometry = mergeGeometries(parts)!;
+  parts.forEach(part => part.dispose());
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox!, size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+  geometry.translate(-center.x, -box.min.y, -center.z);
+  geometry.scale(1 / size.x, 1 / size.y, 1 / size.z);
+  const uv = geometry.getAttribute("uv");
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, ZONE_BODY[0], ZONE_BODY[1]);
+  return geometry;
+}
+
 function sweetPotato(lod: Lod): THREE.BufferGeometry {
   const geometry = revolve(profile([
     [0, 0, "body"], [0.18, 0.025, "body"], [0.36, 0.1, "body"],
@@ -528,6 +551,8 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
       return kiwi(lod);
     case "asianPear":
       return asianPear(lod);
+    case "ginger":
+      return ginger(lod);
     case "sweetPotato":
       return sweetPotato(lod);
     case "apple":
@@ -538,4 +563,4 @@ export function createPackageGeometry(kind: PackageKind, lod: Lod = 1): THREE.Bu
   }
 }
 
-export const PACKAGE_KINDS: PackageKind[] = ["bottle", "perfumeBottle", "teaCup", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "avocado", "lemon", "onion", "kiwi", "sweetPotato", "asianPear", "pot", "croissant", "wateringCan"];
+export const PACKAGE_KINDS: PackageKind[] = ["bottle", "perfumeBottle", "teaCup", "can", "cup", "pint", "jar", "tube", "box", "bag", "banana", "apple", "applePair", "avocado", "lemon", "onion", "kiwi", "sweetPotato", "asianPear", "ginger", "pot", "croissant", "wateringCan"];

@@ -27,6 +27,9 @@ the pinned source revision and SHA-256 records in `sources.json`.
   loop continuously, cross-fade into walking or browsing, and freeze with playback.
   Pausing retains an unfinished blend; seeking to a different action while paused
   applies that pose immediately without retaining earlier motion contributions.
+  While playing, interrupted transitions blend over 0.15 seconds from the current
+  visible weights, preserving the phase of any action still contributing. Rapid
+  walking/browsing changes therefore do not restart from a different body pose.
   This visual variation does not change simulated actions or attention.
 - The facial FBX's authored `AU_45_Blink` shape is retained as `blink`.
   Eyelids close and reopen over 0.23 seconds. Each shopper uses 3.2–6 second
