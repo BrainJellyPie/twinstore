@@ -90,7 +90,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
   const collapsed = pref && pref.view === shopperView ? pref.collapsed : shopperView;
 
   return (
-    <div className={cn("glass absolute top-4 right-4 z-20 overflow-hidden rounded-[1.4rem] text-foreground transition-[width] duration-300", collapsed ? "w-[21rem]" : "w-[25rem]")}>
+    <div className={cn("glass absolute top-16 right-4 z-20 max-w-[calc(100%-2rem)] overflow-hidden rounded-[1.4rem] text-foreground transition-[width] duration-300 xl:top-4", collapsed ? "w-[21rem]" : "w-[25rem]")}>
       <div className="flex items-center justify-between gap-3 px-5 pt-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1">
