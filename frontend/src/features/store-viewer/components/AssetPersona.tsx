@@ -129,7 +129,10 @@ function CharacterMesh({ url, animName, realistic, personaId }: CharacterMeshPro
 
   useEffect(() => () => {
     mixer.stopAllAction();
-    mixer.uncacheRoot(clone);
+    // No uncacheRoot: useAnimations keeps its actions and replays them after a
+    // remount (StrictMode), and three.js cannot rebind an uncached action's
+    // bindings. The mixer is per shopper and is collected with it.
+    previousAction.current = null;
     const skeletons = new Set<THREE.Skeleton>();
     clone.traverse((object) => {
       if (object instanceof THREE.SkinnedMesh) skeletons.add(object.skeleton);
