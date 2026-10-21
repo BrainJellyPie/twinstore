@@ -1310,6 +1310,7 @@ export interface StoreTemplate {
   racks: number;
   skus: number;
   open_hours: [number, number];
+  closed_days?: number[];
   default_style: NonNullable<LayoutOptions["style"]>;
   default_design: StoreDesign;
   default_dining_tables: number;
@@ -1350,6 +1351,9 @@ export interface LayoutOptions {
   reserved_areas?: ReservedArea[];
   excluded_categories?: string[];
   products_per_category?: number | null;
+  open_hour?: number | null;
+  close_hour?: number | null;
+  closed_days?: number[] | null;
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {
