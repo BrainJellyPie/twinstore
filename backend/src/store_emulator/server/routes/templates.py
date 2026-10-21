@@ -9,7 +9,7 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
     BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
-    SeatingZone, StoreDesign, TemplateLayoutRequest,
+    SeatingZone, ShelfDirection, StoreDesign, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
 from store_emulator.domain.store import Store
@@ -55,12 +55,14 @@ def preview(
     width: int | None = Query(default=None, ge=8, le=40),
     height: int | None = Query(default=None, ge=6, le=40),
     density: LayoutDensity = "balanced", entrance: EntrancePosition = "left",
+    shelf_direction: ShelfDirection = "horizontal",
     checkouts: int = Query(default=1, ge=1, le=4), fixture_design: FixtureDesign = "mixed",
     design_theme: StoreDesign | None = None,
     dining_tables: int | None = Query(default=None, ge=0, le=12),
     seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
 ) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density,
+                            shelf_direction=shelf_direction,
                             entrance=entrance, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables,
                             seating_zone=seating_zone, checkout_placement=checkout_placement)

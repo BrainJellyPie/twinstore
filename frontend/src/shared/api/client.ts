@@ -1329,6 +1329,7 @@ export interface LayoutOptions {
   width?: number | null;
   height?: number | null;
   density?: "spacious" | "balanced" | "dense";
+  shelf_direction?: "horizontal" | "vertical";
   entrance?: "left" | "center" | "right";
   checkouts?: number;
   checkout_placement?: "auto" | "near_entrance" | "away_from_entrance";
