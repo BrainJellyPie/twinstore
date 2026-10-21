@@ -1360,6 +1360,8 @@ export interface LayoutOptions {
   table_mix?: DiningTableMix | null;
   table_rotation?: 0 | 90;
   table_clearance?: number;
+  table_clearance_x?: number | null;
+  table_clearance_y?: number | null;
   seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
   reserved_areas?: ReservedArea[];
   excluded_categories?: string[];
