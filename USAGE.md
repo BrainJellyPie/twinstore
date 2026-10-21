@@ -793,3 +793,41 @@ Stop and ask before:
   through every downstream prompt.
 - Mutating files under `backend/.data/` — those are the user's runs and
   may be irrecoverable.
+
+### Observed competitor unit prices
+
+Open **Market → Unit prices**, download the blank offer template, and supply operator-verified observations.
+Set the exact focal retailer ID, as-of date and maximum observation age (0–365 days, inclusive; zero means
+that date only). This read-only worksheet is independent of the selected simulation layout and makes no model calls.
+
+| Column | Meaning |
+|---|---|
+| `offer_id`, `retailer` | Exact, case-sensitive IDs; one observation per retailer/offer pair. Choose the observation before upload; duplicates are rejected, not silently replaced with the latest. |
+| `comparison_group` | Operator-asserted comparable product/quality group; use consistent tax, deposit, delivery and channel treatment. No automatic SKU matching. |
+| `observed_on`, `currency` | ISO date `YYYY-MM-DD` and three uppercase currency letters. Currencies remain separate; no conversion. |
+| `pack_count`, `quantity_per_pack`, `unit` | Total bundle quantity is count × quantity; units `g`, `kg`, `ml`, `l`, `item`. Mass normalizes to kg, volume to l; count stays separate. |
+| `price_minor` | Total payable bundle price, in integer minor units (USD cents, KRW won). Explicit zero is allowed. Do not use a per-pack price for a multipack. |
+| `availability` | Exactly `in_stock`, `out_of_stock` or `unknown`. Only `in_stock` qualifies. |
+| `terms` | `public` or `conditional`; member/coupon/eligibility offers are conditional and excluded. No inferred promotion arithmetic. |
+
+UTF-8 (optional BOM), exact template headers in any order, at most 2 MB / 2,000 rows. IDs have 1–120 characters
+without outer whitespace or control characters. Pack count is 1–1,000; quantity per pack is positive, at most
+1,000,000, with up to three decimals (whole counts for `item`); price is 0–1,000,000,000,000 minor units. Missing values are not zero.
+
+Each product group/currency/base-unit comparison uses the lowest qualifying focal offer and lowest qualifying
+competitor offer, with all exact ties and eligible offer/retailer counts. It is an observed minimum, not an average,
+market census, optimal price or sales effect. Gap = focal − competitor; percentage gap divides by competitor price
+and is unavailable for a zero competitor price. Missing sides remain unavailable. Comparisons use exact rational
+arithmetic before rounding display values to 12 significant digits. Displayed minima can round alike while their
+exact relation still differs. Source rows and exact rate/gap fractions are retained in the audit CSV.
+
+Future, stale, conditional, out-of-stock and unknown-stock observations are retained with reasons but excluded.
+No offer being present does not prove an assortment gap. The operator must verify comparable quality and pricing
+scope. The tool does not implement a jurisdiction's price-label compliance rules, modify prices, or feed observed
+price differences into a demand model. No significance tests, repeated-test claims or staff/shift aggregations occur.
+
+Download the audit and keep the original file: reviews are not saved. Editing scope clears the displayed result;
+inputs lock during requests; export resubmits the reviewed file and scope with its source SHA-256. Changed bytes
+return 409; a deleted project returns 404. Concurrent read-only reviews do not overwrite one another.
+API: `GET /api/projects/{pid}/unit-prices/template.csv`, `POST .../preview`, `POST .../export.csv` (multipart CSV,
+`focal_retailer`, `as_of`, `max_age_days`; export additionally requires `source_sha256`).
