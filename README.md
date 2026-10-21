@@ -586,7 +586,7 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
 ## Credits
 
 - **Shoppers.** Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
-  avatars under MIT: twelve appearances with textured faces and clothing, normal maps, varying surface roughness adapted
+  avatars under MIT: fourteen appearances with textured faces and clothing, normal maps, varying surface roughness adapted
   from the original specular textures, separate face/body normal-map strengths for soft skin and clearer fabric
   detail, alpha-tested hair, authored eyelid blinks with varied timing and small gaze shifts, and retargeted breathing, varied standing,
   walking and browsing animations. They pause with playback and keep adult proportions when highlighted. Sources and

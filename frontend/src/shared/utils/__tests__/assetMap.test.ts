@@ -17,7 +17,7 @@ describe("photographic shopper selection", () => {
     const selected = new Set(Array.from({ length: 1000 }, (_, i) => realisticCharacterAssetFor(`shopper-${i}`)));
     expect([...selected].sort()).toEqual([...ALL_REALISTIC_CHARACTER_ASSETS].sort());
     expect(new Set(ALL_REALISTIC_CHARACTER_ASSETS).size).toBe(ALL_REALISTIC_CHARACTER_ASSETS.length);
-    expect(realisticCharacterAssetFor("female-varied-4", "Female")).toBe("/assets/people/female-15.glb");
-    expect(realisticCharacterAssetFor("male-varied-3", "Male")).toBe("/assets/people/male-05.glb");
+    expect(realisticCharacterAssetFor("female-wardrobe-0", "Female")).toBe("/assets/people/female-04.glb");
+    expect(realisticCharacterAssetFor("male-wardrobe-6", "Male")).toBe("/assets/people/male-08.glb");
   });
 });
