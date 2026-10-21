@@ -233,6 +233,9 @@ or choose **Fit floor plan** to see the whole floor again. Close it or press Esc
 fixture colors and reserved-area markers. The file contains the store name,
 counts, color legend and reserved-area descriptions as accessible SVG metadata;
 it uses no external fonts or images and can be opened independently.
+Entrances have green **IN** markers, exits have rose **OUT** markers, and a shared
+gate shows both labels in a split marker. These appear in thumbnails, expanded
+plans and SVG exports, including gates placed on the back or side walls.
 The creation dialog keeps its title and action buttons visible while the options
 scroll, including on smaller screens.
 
@@ -716,6 +719,7 @@ rebuild instructions are in [`frontend/public/assets/products/`](./frontend/publ
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: eight appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
+separate face/body normal-map strengths for soft skin and clearer fabric detail,
 alpha-tested hair, authored eyelid blinks and small gaze shifts, and retargeted breathing, varied standing, walking and browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
 [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).

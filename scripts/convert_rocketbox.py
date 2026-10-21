@@ -117,7 +117,9 @@ for mat in bpy.data.materials:
             texn = nodes.new("ShaderNodeTexImage")
             texn.image = imn
             normal = nodes.new("ShaderNodeNormalMap")
-            normal.inputs["Strength"].default_value = 0.2
+            # Preserve facial softness while letting fabric folds and knit
+            # structure catch light; these are artistic display strengths.
+            normal.inputs["Strength"].default_value = 0.4 if "head" in mat.name else 0.65
             links.new(texn.outputs["Color"], normal.inputs["Color"])
             links.new(normal.outputs["Normal"], bs.inputs["Normal"])
 # Convert motion-capture bone orientations into the avatar's own bind skeleton.
