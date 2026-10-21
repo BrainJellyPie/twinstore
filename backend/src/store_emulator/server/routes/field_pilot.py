@@ -1,17 +1,21 @@
 """Observed staff-script field experiments; no model calls."""
 
 from collections.abc import Callable
+from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import PlainTextResponse
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import field_pilot
 from store_emulator.application.errors import AppError
+from store_emulator.domain.field_sensitivity import PilotSensitivityReport
+from store_emulator.domain.field_economics import PilotEconomicsReport, PilotEconomicsRequest
 from store_emulator.domain.field_pilot import PilotRequest, PilotRevision, PilotSummary, PilotView
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationPreview
 from store_emulator.domain.field_collection import PilotCollectionReport
+from store_emulator.domain.field_timing import PilotTimingReport
 from store_emulator.domain.field_pos import PilotPosPreview
 
 router = APIRouter(prefix="/api/projects", tags=["field pilots"])
@@ -104,3 +108,52 @@ def get_import_audit(pid: str, pilot_id: str, revision: int) -> ObservationImpor
 @router.post("/{pid}/staff-pilots/{pilot_id}/close", response_model=PilotView, summary="Close collection and lock the field results")
 def finalize_pilot(pid: str, pilot_id: str, req: PilotRevision) -> PilotView:
     return _call(lambda: field_pilot.finalize_pilot(pid, pilot_id, req.revision))
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/sensitivity", response_model=PilotSensitivityReport, summary="Describe staff and shift influence after fixed-plan closure")
+def sensitivity(pid: str, pilot_id: str, revision: Annotated[int, Query(ge=0)]) -> PilotSensitivityReport:
+    return _call(lambda: field_pilot.get_sensitivity(pid, pilot_id, revision))
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/sensitivity.csv", summary="Export all descriptive group deletion checks at a saved revision")
+def export_sensitivity_report(pid: str, pilot_id: str, revision: Annotated[int, Query(ge=0)]) -> PlainTextResponse:
+    text = _call(lambda: field_pilot.export_sensitivity(pid, pilot_id, revision))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-sensitivity-r{revision}.csv"'})
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/economics", response_model=PilotEconomicsReport, summary="Calculate a conditional staff-script cost scenario after fixed-plan closure")
+def preview_economics(pid: str, pilot_id: str, req: PilotEconomicsRequest) -> PilotEconomicsReport:
+    return _call(lambda: field_pilot.preview_economics(pid, pilot_id, req))
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/economics.csv", summary="Export a staff-script cost scenario and its explicit assumptions")
+def export_economics(pid: str, pilot_id: str, req: PilotEconomicsRequest) -> PlainTextResponse:
+    text = _call(lambda: field_pilot.export_economics(pid, pilot_id, req))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-cost-scenario-r{req.revision}.csv"'})
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/timing/template.csv", summary="Download a blank staff time sheet for a completed fixed pilot")
+def export_timing_template(pid: str, pilot_id: str, revision: Annotated[int, Query(ge=0)]) -> PlainTextResponse:
+    text = _call(lambda: field_pilot.export_timing_template(pid, pilot_id, revision))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-staff-time-template.csv"'})
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/timing/preview", response_model=PilotTimingReport, summary="Review anonymous observed staff time without saving it")
+async def preview_timing(pid: str, pilot_id: str, file: UploadFile = File(...), revision: int = Form(..., ge=0)) -> PilotTimingReport:
+    data = await file.read(2 * 1024 * 1024 + 1)
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(413, "Staff time CSV exceeds 2 MB")
+    return await run_in_threadpool(_call, lambda: field_pilot.preview_timing(pid, pilot_id, data, revision))
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/timing/export.csv", summary="Export reviewed staff time, coverage and source metadata")
+async def export_timing(pid: str, pilot_id: str, file: UploadFile = File(...), revision: int = Form(..., ge=0)) -> PlainTextResponse:
+    data = await file.read(2 * 1024 * 1024 + 1)
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(413, "Staff time CSV exceeds 2 MB")
+    text = await run_in_threadpool(_call, lambda: field_pilot.export_timing(pid, pilot_id, data, revision))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-staff-time-r{revision}.csv"'})

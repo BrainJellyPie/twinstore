@@ -224,6 +224,113 @@ checklist without purchase counts or treatment effects. **Observations and resul
 sheet, import review, history and result report. This separation helps monitor collection without reading outcomes;
 it is not enforced blinding or a substitute for a fixed stopping rule.
 
+After completing **every planned encounter and purchase/delivery outcome** and closing the fixed plan, open
+**Observations and results → Staff and shift sensitivity → Show sensitivity checks**. The report describes how
+the B-minus-A target-product conversion difference changes when all blocks belonging to one staff alias, one
+shift ID, or one staff/shift pair are omitted in turn. Every group is shown, including those whose removal leaves
+no data. Repeated staff aliases across shifts are removed together; repeated shift IDs across staff are removed
+together. Use a distinct shift ID for each actual shift and consistent anonymous staff aliases before collection.
+Reusing an ID for unrelated shifts or people merges their records; the diagnostic cannot detect or correct that.
+
+Within block `b`, calculate `d_b = purchases_B / planned_B - purchases_A / planned_A`. The full difference is
+`sum(n_b × d_b) / sum(n_b)`, with `n_b` the precommitted block size. For each deletion use the same formula over
+the remaining whole blocks. These pilots have balanced assignment within each block and require complete outcomes,
+so the result also equals the difference between the remaining arms' pooled conversion rates. Refusals and
+non-delivery stay in their original assigned arm. No per-protocol subset, missing-value imputation or new model
+call is used. The original full-plan result remains primary; deleting groups changes the population represented.
+
+The screen shows the removed sample weight, remaining encounters, deletion estimate, change from the full plan,
+range and largest absolute change per scope. Values are absolute percentage points. **Opposite sign** means strictly
+positive becomes negative or strictly negative becomes positive; an exact zero is not a reversal. Removing the only
+group is **Not estimable**, never zero. Ranges are descriptive, not confidence intervals. Comparisons share data
+and are not independent replications. Large changes can reflect noise, composition, heterogeneity or protocol
+differences; they do not establish a staff performance effect or diagnose confounding. Stable signs do not prove
+causality or fix clustered outcomes, repeated shoppers or interference. Do not choose a favorable deletion, replace
+the primary estimate, repeat tests across these rows, or restart pilots for a preferred result.
+
+Open pilots, early closures with unused slots, missing observations and assignments inconsistent with the saved
+design are rejected. Do not close early to unlock the report. No stored observations, history, closure state or
+primary interval are modified. **Export all sensitivity checks CSV** includes all three scopes and the requested
+locked revision. Differences, changes and weights are proportions (multiply differences by 100 for percentage
+points); unavailable values are blank. Plan totals repeat per row and must not be summed. Exported formula-like
+identifiers are prefixed with an apostrophe. A stale revision must be reloaded instead of mixing snapshots.
+API: `GET /api/projects/{pid}/staff-pilots/{id}/sensitivity?revision={revision}` and the same path with
+`sensitivity.csv` for export. No extra persisted fields are required for existing saved pilots.
+
+**Observed staff time** connects supplied measurements to the same fixed assignments. Define the timing
+protocol before collection and record total active staff seconds alongside the observation sheet's assignment
+IDs, including refusals and non-delivery. Use the same start/stop rules in both arms; do not select only buyers.
+After closing a fully completed pilot, open **Market → Field pilots → Observations and results → Observed staff time**.
+Download a blank template, map your measurements to it, and upload a UTF-8 CSV with exactly these headers
+(in any order):
+
+```csv
+pilot_id,assignment_id,staff_seconds
+pilot_example,assignment_from_the_downloaded_sheet,12.125
+```
+
+The example IDs are placeholders; retain the actual generated IDs. No names, timestamps or customer details
+are needed. Each assignment may appear once. Times must be blank or decimal seconds from 0 to 3600, with
+at most three decimal places. A blank or omitted row is unknown; explicit 0 means verified zero time.
+Maximum upload: 2 MB / 10,000 rows. Duplicate IDs, foreign assignments, mixed pilots, invalid numbers and
+malformed CSVs are rejected rather than skipped.
+
+Coverage is shown per arm and staff/shift block. Means, maxima and B-minus-A average time are withheld until
+**every** planned encounter has a duration, even when one arm alone is complete. Once complete, pooled
+averages equal planned-count weighted block averages; delivery and purchase do not change the denominator.
+The UI shows up to eight significant digits; the export retains the calculated values. These are descriptive
+measurements supplied by the operator, not independently verified timing, confidence intervals, causal
+script effects, staffing-capacity estimates or a ranking of employees.
+
+**Export staff time audit CSV** includes every assigned row (unknowns stay blank), source SHA-256, the locked
+pilot revision and complete-plan means. The audit is distinct from the three-column upload template.
+Review/export does not change or save pilot observations or raw timing files; retain the audit and source
+file yourself. Stale revisions and incomplete/open pilots are rejected. Choose any whole-second assumptions
+for the cost scenario separately and document rounding; measured fractional means are not silently rounded
+or copied into costs. Timing error, future staffing mix and traffic uncertainty remain outside that scenario.
+
+In the same completed, locked pilot, **Staff-script cost scenario** checks whether the conversion difference
+could cover extra staff time **under your explicit assumptions**. Enter all five values; none is inferred from
+the product price, synthetic ratings or POS records:
+
+- **Contribution per converted encounter:** a common net contribution from the target product for a buyer in
+  either arm, after product costs, discounts and returns, before staff time entered here. Use currency minor
+  units (USD cents, KRW won). It is not selling price, basket revenue or per-unit margin unless one unit per
+  buyer is justified. A different contribution per buyer in A and B is outside this model.
+- **Loaded labor cost per hour:** the assumed cost of staff time in the same currency's minor units. Avoid
+  counting the same labor cost both here and in contribution.
+- **Average staff seconds per assigned encounter, A and B:** whole-second assumptions across all eligible
+  assigned encounters, including refusal and non-delivery, not just buyers or delivered scripts.
+- **Assumed eligible encounters per day:** the daily scenario volume for the same eligible population and
+  staff/shift mix. This is not measured footfall or a staff-capacity calculation.
+
+Blank means unknown; enter zero explicitly if justified. Money inputs are bounded at 1,000,000,000 minor units,
+time at 3,600 seconds per encounter and daily volume at 1,000,000. Let `m` be contribution per buyer, `h` hourly
+labor cost, `tA/tB` the average seconds and `d` the full-plan B-minus-A conversion difference. Incremental labor
+per encounter is `c = (tB - tA) × h / 3600`; incremental contribution is `d × m - c`. The break-even difference
+is `c / m`, shown in percentage points without clipping. A threshold outside −100 to +100 pp is disclosed.
+At zero contribution the threshold is undefined and only the assumed labor difference remains. A cheaper B
+can have a negative threshold. Expectations can be fractional minor units; they are not rounded to whole cents
+or won in the CSV. The screen also uses minor units and preserves small nonzero values.
+
+**Calculate cost scenario** transforms the original conservative fixed-sample 95% conversion interval by the
+same `× m - c` formula. This is a range for mean incremental contribution **conditional on fixed costs**; it
+does not include uncertainty in contribution, labor, time or traffic. Daily values multiply each bound and
+estimate by the entered eligible volume. They are not prediction intervals for realized daily profit. Product
+mix, other basket effects, fixed implementation costs, capacity changes and future demand are excluded. Reusing
+the pilot with different cost inputs creates scenarios, not new evidence or independent tests; do not select
+favorable assumptions to claim a confirmed profit effect. The original stopping rule and full-plan result remain.
+
+The same complete fixed assignments and known purchase/delivery records are required; no unused or missing rows
+are dropped, and non-delivery stays in its assigned arm. The calculation does not repair clustering, repeated
+shoppers, confounding or a changed offer. No observation, design, history or closure state is modified. Scenarios
+are not persisted: **Export cost scenario CSV** retains the exact successful input snapshot, source revision,
+currency, formulas' inputs and outputs. Conversion differences use proportions in CSV (multiply by 100 for pp);
+an undefined threshold is blank. Editing any input clears the old result/export. Both preview and export reject
+stale revisions. API: `POST /api/projects/{pid}/staff-pilots/{id}/economics` and `economics.csv`, JSON with
+`revision`, `currency`, `contribution_per_conversion_minor`, `labor_per_hour_minor`, `seconds_per_encounter_a`,
+`seconds_per_encounter_b` and `eligible_encounters_per_day`. No live model call is made.
+
 For observed POS evidence, open **Observations and results → Reconcile POS purchases**. Prepare a UTF-8 CSV with
 the following columns (each exactly once, any column order):
 
