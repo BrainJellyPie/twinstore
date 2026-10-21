@@ -29,13 +29,20 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
   const ask = useMutation({
     mutationFn: (q: string) => askShopper(projectId, runId, sid, q, model),
     onMutate: (q) => { setPending(q); setText(""); },
-    onSuccess: (t) => qc.setQueryData(key, t),
+    onSuccess: async (t) => {
+      await qc.cancelQueries({ queryKey: key });
+      qc.setQueryData(key, t);
+    },
     onSettled: () => setPending(null),
   });
   const reset = useMutation({
     mutationFn: () => clearInterview(projectId, runId, sid),
-    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    onSuccess: async () => {
+      await qc.cancelQueries({ queryKey: key });
+      await qc.invalidateQueries({ queryKey: key });
+    },
   });
+  const busy = ask.isPending || reset.isPending;
   const messages = transcript.data?.messages ?? [];
   const first = journey.persona.identity.split(/[,(]/)[0]?.trim() || "the shopper";
 
@@ -45,7 +52,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
 
   const send = (q: string) => {
     const t = q.trim();
-    if (t && !ask.isPending) ask.mutate(t);
+    if (t && !busy) ask.mutate(t);
   };
 
   return (
@@ -84,7 +91,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
       </div>
       <div className="flex flex-wrap gap-1.5">
         {suggestedQuestions(journey).map((q) => (
-          <button key={q} type="button" onClick={() => send(q)} disabled={ask.isPending}
+          <button key={q} type="button" onClick={() => send(q)} disabled={busy}
             className="rounded-full border px-2.5 py-1 text-left text-[0.72rem] text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground disabled:opacity-50">
             {q}
           </button>
@@ -99,7 +106,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
           placeholder={`Ask ${first}…`}
           className="min-h-[2.6rem] flex-1 resize-none rounded-xl border bg-card/60 px-3 py-2 text-[0.8rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         />
-        <Button type="submit" size="sm" className="h-[2.6rem]" disabled={!text.trim() || ask.isPending} aria-label="Ask"><Send className="size-4" /></Button>
+        <Button type="submit" size="sm" className="h-[2.6rem]" disabled={!text.trim() || busy} aria-label="Ask"><Send className="size-4" /></Button>
       </form>
       <div className="flex items-center gap-2 text-[0.72rem] text-muted-foreground">
         <select value={model} onChange={(e) => setModel(e.target.value)} className="h-7 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5" aria-label="Model">
@@ -107,7 +114,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
           {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
         </select>
         {messages.length > 0 && (
-          <button type="button" onClick={() => reset.mutate()} className="inline-flex items-center gap-1 hover:text-foreground"><RotateCcw className="size-3" /> Start over</button>
+          <button type="button" onClick={() => reset.mutate()} disabled={busy} className="inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50"><RotateCcw className="size-3" /> Start over</button>
         )}
       </div>
     </div>
