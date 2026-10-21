@@ -45,7 +45,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
 
   return <div className="space-y-3 rounded-lg border p-3">
     <p className="text-xs text-muted-foreground">Create 2–6 linked floor layouts. Each floor is edited and simulated independently; shoppers do not travel between floors.</p>
-    <GenerationOptionsFile kind="building" value={floors} canExport={validBuildingFloors(floors)} onChange={(next) => {
+    <GenerationOptionsFile key={pickerVersion} kind="building" value={floors} canExport={validBuildingFloors(floors)} onChange={(next) => {
       onChange(next); setActive(0); setPickerVersion((version) => version + 1);
     }} />
     <div className="flex flex-wrap gap-1.5" aria-label="Building starting points">
@@ -66,7 +66,10 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
             onChange={(e) => onChange(floors.map((f, i) => i === index ? { ...f, label: e.target.value } : f))} />
         </div>
         <button type="button" disabled={floors.length <= 2} className="rounded border px-2 py-1.5 text-xs disabled:opacity-40"
-          onClick={() => { onChange(floors.filter((_, i) => i !== index)); setActive(Math.max(0, index - 1)); }}>Remove floor</button>
+          onClick={() => {
+            onChange(floors.filter((_, i) => i !== index)); setActive(Math.max(0, index - 1));
+            setPickerVersion((version) => version + 1);
+          }}>Remove floor</button>
       </div>
       <div className="flex flex-wrap gap-1.5">
         <button type="button" disabled={index === 0} onClick={() => moveFloor(-1)}
@@ -81,13 +84,21 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         <select id={`${fieldId}-source`} className="w-full rounded border bg-background px-2 py-1.5" value={floor.choice.sourceSetupId}
           onChange={(event) => {
             const source = sourceLayouts.find((layout) => layout.id === event.target.value);
-            if (source?.generation) onChange(floors.map((f, i) => i === index
-              ? { ...f, choice: choiceFromGeneration(source.generation!, source.id) } : f));
+            if (source?.generation) {
+              onChange(floors.map((f, i) => i === index
+                ? { ...f, choice: choiceFromGeneration(source.generation!, source.id) } : f));
+              setPickerVersion((version) => version + 1);
+            }
           }}>
           {sourceLayouts.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
         </select>
       </div>}
-      <TemplatePicker key={`${index}-${pickerVersion}`} value={floor.choice} budgetCurrency={defaultCurrency} onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))} />
+      <TemplatePicker key={`${index}-${pickerVersion}`} value={floor.choice} budgetCurrency={defaultCurrency}
+        onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))}
+        onApplyDesignToAll={(design_theme) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, design_theme } })))}
+        onApplyCurrencyToAll={(currency) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, currency } })))}
+        sharedDesign={floors.every((f) => f.choice.design_theme === floor.choice.design_theme) ? floor.choice.design_theme ?? undefined : undefined}
+        sharedCurrency={floors.every((f) => f.choice.currency === floor.choice.currency) ? floor.choice.currency : undefined} />
     </>}
     {!validBuildingFloors(floors) && <p role="alert" className="text-xs text-destructive">Each floor needs a unique label and valid grid dimensions.</p>}
   </div>;

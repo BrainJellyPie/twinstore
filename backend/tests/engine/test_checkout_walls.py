@@ -62,5 +62,5 @@ def test_side_wall_capacity_uses_depth_and_default_front_placement_is_unchanged(
 def test_a_full_bank_cannot_silently_remove_the_only_requested_product_category(wall, category, counters):
     options = LayoutOptions(width=8, height=6, checkout_wall=wall, checkouts=counters,
                             checkout_placement="near_entrance", excluded_categories=[key for key in CATALOG if key != category])
-    with pytest.raises(ValueError, match="no display space"):
+    with pytest.raises(ValueError, match="No products from the included categories fit"):
         generate_store("urban_cvs", options=options)

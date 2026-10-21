@@ -550,7 +550,6 @@ def generate_store(
                       variant="b" if (y // 3) % 2 else "a")
 
     if not any(slot.items for rack in b.racks for slot in rack.slots):
-        # Both branches added this check; one message serves both callers' wording.
         raise ValueError(
             "No products from the included categories fit this layout: the selected product categories have "
             "no display space. Increase the grid size, reduce aisle width or the checkout count, choose another "

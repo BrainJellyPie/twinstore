@@ -111,6 +111,85 @@ def _buys(decision_actions: list[object]) -> list[tuple[str, int]]:
     return [(a.product_sku, a.quantity) for a in decision_actions if getattr(a, "action", None) == Action.BUY]  # type: ignore[attr-defined]
 
 
+@pytest.mark.parametrize("tolerance,price,expected", [
+    (None, 60000, True), (0.0, 100, False), (0.0, 0, True), (1.5, 7500, True), (1.5, 7501, False),
+])
+def test_impulse_limit_honors_disabled_and_zero_caps(tolerance, price, expected):
+    from store_emulator.engine.simulation.engines.rule_based import RuleBasedEngine
+
+    config = SimulationConfig(budget_tolerance=tolerance)
+    engine = RuleBasedEngine(AStarPathFinder(), config)
+    plan, _ = engine._begin_plan(_context(_store(), _personas()[0], seed=0))
+    assert engine.can_buy_more(plan, 0, price) is expected
+    assert not engine.can_buy_more(plan, config.engines.rule_based.max_impulse_items, 0)
+
+
+@pytest.mark.parametrize("tolerance,price,quantity,expected", [
+    (None, 60000, 2, 2), (0.0, 100, 1, 0), (0.0, 0, 2, 2), (1.5, 2500, 4, 3), (1.5, 7501, 1, 0),
+])
+def test_vlm_planned_quantity_honors_disabled_and_zero_caps(tolerance, price, quantity, expected):
+    store = _store()
+    for rack in store.product_racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                if item.name == "Pepsi 20oz":
+                    item.price = price
+    fake = _FakeVLM({"enter": True, "mission": "Buy Pepsi", "items": [
+        {"category": "Drink", "product": "Pepsi 20oz", "qty": quantity},
+    ], "reason": "needed"})
+    engine = VLMGlanceEngine(llm=fake, pathfinder=AStarPathFinder(),
+                            config=_config().model_copy(update={"budget_tolerance": tolerance}))
+    engine.prepare(store)
+    plan = asyncio.run(engine._vlm_plan(_context(store, _personas()[0], seed=0)))
+    assert sum(b.quantity for b in plan.buys) == expected
+
+
+def test_disabled_cap_does_not_put_a_synthetic_budget_in_glance_prompts(monkeypatch):
+    from store_emulator.engine.simulation.engines.vlm_glance import engine as vlm_module
+
+    limits = []
+    original = vlm_module.user_prompt
+
+    def capture(*args, **kwargs):
+        limits.append(kwargs["money_left"])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(vlm_module, "user_prompt", capture)
+    store = _store()
+    config = _config(glance_policy="all").model_copy(update={"budget_tolerance": None})
+    engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=config)
+    engine.prepare(store)
+    asyncio.run(engine.decide_actions(_context(store, _personas()[0], seed=11)))
+    assert limits
+    assert all(limit is None for limit in limits)
+
+
+def test_a_free_planned_item_is_kept_after_the_budget_is_fully_spent():
+    store = _store()
+    names = list(dict.fromkeys(item.name for rack in store.product_racks for slot in rack.slots for item in slot.items))[:2]
+    for rack in store.product_racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                if item.name in names:
+                    item.price = 7500 if item.name == names[0] else 0
+    fake = _FakeVLM({"enter": True, "mission": "Buy two products", "items": [
+        {"product": name, "qty": 1} for name in names
+    ], "reason": "needed"})
+    engine = VLMGlanceEngine(llm=fake, pathfinder=AStarPathFinder(), config=_config())
+    engine.prepare(store)
+    plan = asyncio.run(engine._vlm_plan(_context(store, _personas()[0], seed=0)))
+    assert len(plan.buys) == 2
+    assert plan.spend == 7500
+
+
+@pytest.mark.parametrize("value", [-0.01, "NaN", "Infinity", "-Infinity"])
+def test_invalid_budget_tolerance_is_rejected(value):
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        SimulationConfig.model_validate({"budget_tolerance": value})
+
+
 def test_directory_and_map_describe_the_store():
     store = _store()
     directory = store_directory(store)
@@ -367,6 +446,23 @@ def test_a_situation_scales_the_need_draw_by_its_measured_ratio():
     drink = sum("Drink" in d[0] for d in draws if d) / len(draws)
     snacks = sum("Snacks" in d[0] for d in draws if d) / len(draws)
     assert abs(drink - 0.6) < 0.06 and abs(snacks - 0.15) < 0.05
+
+
+@pytest.mark.parametrize("period", ["day:weekday", "hour:evening"])
+def test_zero_need_ratio_keeps_overlapping_categories_out_of_the_need_draw(period):
+    from store_emulator.domain.scenario import ScenarioPriors
+
+    store = _store()
+    persona = _personas()[0].model_copy(update={"category_rates": {"Water": 1.0}, "usual_products": []})
+    priors = ScenarioPriors(need_ratio={period: {"water": 0.0, "cold_drinks": 2.0}})
+    config = _config().model_copy(update={"scenario": Scenario(), "scenario_priors": priors})
+    fake = _FakeVLM()
+    engine = VLMGlanceEngine(llm=fake, pathfinder=AStarPathFinder(), config=config)
+    engine.prepare(store)
+    draws = [engine._needs(_context(store, persona, seed=s).model_copy(update={"arrival_hour": 19}))
+             for s in range(100)]
+    assert all(draw == ([], ["Water"]) for draw in draws)
+    assert fake.plan_calls == [] and fake.glance_calls == 0
 
 
 def test_a_needed_category_names_the_households_usual_products_there():

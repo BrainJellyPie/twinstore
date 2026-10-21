@@ -9,8 +9,6 @@ const WALL_URL = "/assets/market/wall.glb";
 const WALL_CORNER_URL = "/assets/market/wall-corner.glb";
 const WALL_DOOR_URL = "/assets/market/wall-door-rotate.glb";
 
-[WALL_URL, WALL_CORNER_URL, WALL_DOOR_URL].forEach((u) => useGLTF.preload(u));
-
 // Compute a shared scale from wall.glb. All wall parts (corner, door) must use this
 // scale so sizes match. We do not use useGlbModel here because we need a measurement
 // probe, not a render clone.

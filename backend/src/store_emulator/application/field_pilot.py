@@ -16,6 +16,8 @@ from store_emulator.domain.field_pilot import FieldPilot, PilotRequest, PilotSum
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationImportRecord, ObservationPreview
 from store_emulator.domain.field_collection import PilotCollectionReport
+from store_emulator.domain.field_pos import PilotPosPreview
+from store_emulator.engine.marketing.field_pos import reconcile_pos
 from store_emulator.engine.marketing.field_collection import check_collection, collection_tasks_csv
 from store_emulator.engine.marketing.field_observations import import_history_csv, preview_observations
 from store_emulator.engine.marketing.field_pilot import allocate_pilot, analyze_pilot, observations_csv, parse_observations
@@ -93,6 +95,16 @@ def review_observations(pid: str, pilot_id: str, data: bytes, revision: int) -> 
         raise AppError("The pilot changed or is closed. Reload it before reviewing observations", 409)
     try:
         return preview_observations(pilot, parse_observations(data, pilot), data)
+    except ValueError as exc:
+        raise AppError(str(exc), 400) from exc
+
+
+def review_pos(pid: str, pilot_id: str, data: bytes, revision: int) -> PilotPosPreview:
+    pilot = get_pilot(pid, pilot_id).pilot
+    if pilot.finalized_at or pilot.revision != revision:
+        raise AppError("The pilot changed or is closed. Reload it before reconciling POS records", 409)
+    try:
+        return reconcile_pos(pilot, data)
     except ValueError as exc:
         raise AppError(str(exc), 400) from exc
 

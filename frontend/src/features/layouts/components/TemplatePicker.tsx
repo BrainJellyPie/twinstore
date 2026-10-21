@@ -11,11 +11,15 @@ import { GenerationOptionsFile } from "./GenerationOptionsFile";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
-export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, sharedDesign, sharedCurrency }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
   budgetCurrency?: string;
+  onApplyDesignToAll?: (design: NonNullable<TemplateChoice["design_theme"]>) => void;
+  onApplyCurrencyToAll?: (currency: string) => void;
+  sharedDesign?: NonNullable<TemplateChoice["design_theme"]>;
+  sharedCurrency?: string;
 }) {
   const [search, setSearch] = useState("");
   const [storeType, setStoreType] = useState("");
@@ -33,6 +37,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     enabled: validTemplateChoice(value), staleTime: Infinity,
   });
   const selected = templates.find((t) => t.id === value.templateId);
+  const activeDesign = value.design_theme ?? selected?.default_design;
   const categories = selected?.categories ?? [];
   const excluded = new Set(value.excluded_categories ?? []);
   const includedCount = categories.filter((category) => !excluded.has(category.id)).length;
@@ -180,16 +185,22 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 <option value="away_from_entrance">Away from the entrance</option>
               </select></Field>
               <p className="col-span-2 text-[10px] text-muted-foreground">Counters and small checkout displays share this wall. Other wall stock uses the remaining space.</p>
-              <Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
+              <div className="space-y-1"><Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
                 <option value="">Format default{selected ? ` (${INTERIOR_DESIGNS[selected.default_design]?.label ?? "Classic retail"})` : ""}</option>
                 {Object.entries(INTERIOR_DESIGNS).map(([id, palette]) => <option key={id} value={id}>{palette.label}</option>)}
               </select></Field>
+                {onApplyDesignToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={!activeDesign || sharedDesign === activeDesign}
+                  onClick={() => { if (activeDesign) onApplyDesignToAll(activeDesign); }}>{activeDesign && sharedDesign === activeDesign ? "Design used on all floors" : "Apply design to all floors"}</button>}
+              </div>
               <Field label="Shelf design"><select className={controlClass} value={value.fixture_design ?? "mixed"} onChange={(e) => update({ fixture_design: e.target.value as TemplateChoice["fixture_design"] })}>
                 <option value="mixed">Mixed displays</option><option value="a">Open rack A</option><option value="b">Open rack B</option><option value="c">Wall-end rack C</option>
               </select></Field>
-              <Field label="Price currency"><select className={controlClass} value={value.currency} onChange={(e) => update({ currency: e.target.value })}>
+              <div className="space-y-1"><Field label="Price currency"><select className={controlClass} value={value.currency} onChange={(e) => update({ currency: e.target.value })}>
                 <option value="USD">USD · $</option><option value="KRW">KRW · ₩</option><option value="JPY">JPY · ¥</option>
               </select></Field>
+                {onApplyCurrencyToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={sharedCurrency === value.currency}
+                  onClick={() => onApplyCurrencyToAll(value.currency)}>{sharedCurrency === value.currency ? "Currency used on all floors" : "Apply currency to all floors"}</button>}
+              </div>
               <div className="space-y-1"><Field label="Dining tables (4 seats each)"><input type="number" min={0} max={48} step={1} className={controlClass}
                 placeholder={`Format default (${selected?.default_dining_tables ?? 0})`} value={value.dining_tables ?? ""}
                 onChange={(e) => update({ dining_tables: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
@@ -227,7 +238,8 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           </div>
           {(value.excluded_categories?.length ?? 0) > 0 && <button type="button" className="underline" onClick={() => update({ excluded_categories: [] })}>Restore all product categories</button>}
         </details>}
-        <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })} />
+        <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })}
+          grid={[value.width ?? selected?.grid[0] ?? 12, value.height ?? selected?.grid[1] ?? 10]} entrance={value.entrance} />
         <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: use warm task lighting in the consultation corner or seasonal signs near the entrance." /></Field>
         {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
         <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction and aisle gap apply to interior rows and cross-aisles; wall spacing and seating clearance are separate. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>

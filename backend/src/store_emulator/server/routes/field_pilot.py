@@ -12,6 +12,7 @@ from store_emulator.domain.field_pilot import PilotRequest, PilotRevision, Pilot
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationPreview
 from store_emulator.domain.field_collection import PilotCollectionReport
+from store_emulator.domain.field_pos import PilotPosPreview
 
 router = APIRouter(prefix="/api/projects", tags=["field pilots"])
 
@@ -85,6 +86,14 @@ def export_import_history(pid: str, pilot_id: str) -> PlainTextResponse:
     text = _call(lambda: field_pilot.export_import_history(pid, pilot_id))
     return PlainTextResponse(text, media_type="text/csv",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-import-history.csv"'})
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/pos/preview", response_model=PilotPosPreview, summary="Reconcile anonymous POS item records without saving observations")
+async def review_pos(pid: str, pilot_id: str, file: UploadFile = File(...), revision: int = Form(..., ge=0)) -> PilotPosPreview:
+    data = await file.read(2 * 1024 * 1024 + 1)
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(413, "POS CSV exceeds 2 MB")
+    return await run_in_threadpool(_call, lambda: field_pilot.review_pos(pid, pilot_id, data, revision))
 
 
 @router.get("/{pid}/staff-pilots/{pilot_id}/imports/{revision}", response_model=ObservationImportAudit, summary="Read the recorded changes in one import")

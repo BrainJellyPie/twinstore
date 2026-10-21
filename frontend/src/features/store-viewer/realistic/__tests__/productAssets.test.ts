@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 
-interface ProduceModel {
+interface ProductModel {
   nodes: { name: string; mesh: number }[];
   meshes: { primitives: { attributes: { POSITION: number; NORMAL: number }; indices: number }[] }[];
   accessors: { count: number; min?: number[]; max?: number[]; bufferView: number; byteOffset?: number }[];
@@ -10,12 +10,13 @@ interface ProduceModel {
 }
 
 it.each([
-  ["bananas", [["bananas-coarse", 300], ["bananas-fine", 1600]]],
-  ["apples", [["apple-coarse", 200], ["apple-fine", 1000], ["apple-pair-coarse", 400], ["apple-pair-fine", 2000]]],
+  ["produce/bananas", [["bananas-coarse", 300], ["bananas-fine", 1600]]],
+  ["produce/apples", [["apple-coarse", 200], ["apple-fine", 1000], ["apple-pair-coarse", 400], ["apple-pair-fine", 2000]]],
+  ["products/terracotta-pot", [["pot-coarse", 300], ["pot-fine", 1500]]],
 ] as const)("ships bounded %s LODs with unit normals and a bottom-centred unit footprint", (asset, lods) => {
-  const data = readFileSync(`public/assets/produce/${asset}.glb`);
+  const data = readFileSync(`public/assets/${asset}.glb`);
   const length = data.readUInt32LE(12);
-  const model = JSON.parse(data.subarray(20, 20 + length).toString()) as ProduceModel;
+  const model = JSON.parse(data.subarray(20, 20 + length).toString()) as ProductModel;
   for (const [name, budget] of lods) {
     const node = model.nodes.find((node) => node.name === name)!;
     expect(node).toBeDefined();

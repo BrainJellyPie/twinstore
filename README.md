@@ -243,6 +243,14 @@ walkable and do not add rooms or service behavior. Settings are saved and restor
 for single layouts and building floors; subsequent manual floor edits can use the
 space freely.
 
+**Area starting point** offers custom, consultation, pickup, fitting,
+demonstration and event-space rectangles. New areas fit the current floor;
+pickup starts near the chosen entrance, consultation starts in a back corner,
+and demonstration/event spaces start near the center. Names receive a number
+when another area already uses the same name. You can edit every position and
+dimension afterward. Starting points can overlap and retain the same walkable
+clear-space behavior; they do not add rooms or service simulation.
+
 To iterate on a generated layout, open **New layout → Generate a store from a
 template → Reuse options from …**. This restores its format, dimensions, style,
 seating, currency, seed and design brief. Save a changed version as a linked
@@ -264,6 +272,15 @@ In **Multi-floor store**, **Export building options** saves the complete list of
 list; an invalid floor leaves your configuration intact. The new building keeps
 the name entered in the form and receives new floor identities when saved.
 Single-floor and whole-building files have separate import controls.
+
+While configuring a building floor, **Apply design to all floors** copies its
+current interior palette across the building, including the resolved palette
+when the selected floor uses its format default. **Apply currency to all floors**
+uses that floor's price currency for every generated floor. Each action changes
+only its named setting; floor labels, layouts, seating, reservations and briefs
+remain independent. You can customize an individual floor again afterward.
+These controls update the building being prepared; existing shopper budgets are
+not converted.
 
 Add up to 48 dining tables (192 seats, four chairs each) to any format. Enter any
 whole count from 0–48, or leave the field blank for the format default. Café and restaurant
@@ -415,6 +432,9 @@ For brand managers, category teams and research agencies (**Market** in the comm
   Pilots open on **Collection checks**: staff/shift completeness, recording gaps and a follow-up checklist with
   CSV export. Unrecorded tail slots are kept distinct from enrolled encounters needing outcome follow-up;
   purchase counts and treatment effects remain in the separate observations/results view.
+  **Reconcile POS purchases** matches anonymous transaction lines to fixed assignment IDs and the exact target SKU.
+  It proposes only unknown enrolled purchases, flags conflicts and unlinked records, and hands the complete candidate
+  sheet to the existing review/history workflow. Missing transactions never become nonpurchases.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their
@@ -637,8 +657,11 @@ Fresh bananas use Alexander Shulha's CC0 Poly Haven scan; single and paired appl
 use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
+Garden-center terracotta pots use the hollow pot from Rico Cilliers' CC0 scan,
+with diameter-aware proportions, two detail levels and PBR maps. Sources and
+rebuild instructions are in [`frontend/public/assets/products/`](./frontend/public/assets/products/README.md).
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
-avatars under MIT: six appearances with textured faces and clothing, normal maps,
+avatars under MIT: eight appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
 alpha-tested hair, authored eyelid blinks and small gaze shifts, and retargeted breathing, varied standing, walking and browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in

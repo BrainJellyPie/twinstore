@@ -107,11 +107,15 @@ class ScenarioEffects:
     def hour_need_for(self, hour: int, categories: set[str]) -> float:
         table = self.hour_need.get(part_of_day(hour))
         ratios = [table[c] for c in sorted(categories) if c in table] if table else []
+        if 0.0 in ratios:
+            return 0.0
         return max(ratios, key=lambda r: abs(math.log(r)) if r > 0 else 0.0) if ratios else 1.0
 
     def need_for(self, categories: set[str]) -> float:
         """Strongest need ratio; equal strengths use category order for reproducible draws."""
         ratios = [self.need[c] for c in sorted(categories) if c in self.need]
+        if 0.0 in ratios:
+            return 0.0
         return max(ratios, key=lambda r: abs(math.log(r)) if r > 0 else 0.0) if ratios else 1.0
 
     def traffic(self, hour: int) -> float:
@@ -343,9 +347,10 @@ def apply_to_personas(
     is scaled per customer by the simulator: `scale_trip`.)
 
     Original personas keep their ids, so a scenario run stays paired with a baseline run on the
-    same seed; clones get ids "<id>~s<k>".
+    same seed; clones use the first available "<id>~s<k>" ids.
     """
     pool = [p for p in personas if not scenario.only_days or int(p.day) in scenario.only_days]
+    used_ids = {p.id for p in personas}
     out: list[Persona] = []
     for p in pool:
         m = effects.traffic(p.arrival_hour) if scale_traffic else 1.0
@@ -354,6 +359,15 @@ def apply_to_personas(
         update: dict[str, int] = {}
         if effects.budget != 1.0:
             update = {"budget_min": round(p.budget_min * effects.budget), "budget_max": round(p.budget_max * effects.budget)}
+        suffix = 1
         for k in range(copies):
-            out.append(p.model_copy(update={**update, **({"id": f"{p.id}~s{k}"} if k else {})}))
+            identifier = p.id
+            if k:
+                identifier = f"{p.id}~s{suffix}"
+                while identifier in used_ids:
+                    suffix += 1
+                    identifier = f"{p.id}~s{suffix}"
+                used_ids.add(identifier)
+                suffix += 1
+            out.append(p.model_copy(update={**update, "id": identifier}))
     return out

@@ -34,6 +34,30 @@ function mount() {
   render(<QueryClientProvider client={client}><Picker /></QueryClientProvider>);
 }
 
+it("applies the actual default palette or explicit design and currency without submitting the form", async () => {
+  const design = vi.fn(), currency = vi.fn(), submit = vi.fn();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { rerender } = render(<QueryClientProvider client={client}><form onSubmit={submit}>
+    <TemplatePicker value={DEFAULT_TEMPLATE_CHOICE} onChange={vi.fn()} onApplyDesignToAll={design} onApplyCurrencyToAll={currency} />
+  </form></QueryClientProvider>);
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByRole("button", { name: "Apply design to all floors" }));
+  expect(design).toHaveBeenLastCalledWith("classic");
+  const value = { ...DEFAULT_TEMPLATE_CHOICE, design_theme: "terracotta" as const, currency: "JPY" };
+  rerender(<QueryClientProvider client={client}><form onSubmit={submit}>
+    <TemplatePicker value={value} onChange={vi.fn()} onApplyDesignToAll={design} onApplyCurrencyToAll={currency} />
+  </form></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Apply design to all floors" }));
+  fireEvent.click(screen.getByRole("button", { name: "Apply currency to all floors" }));
+  expect(design).toHaveBeenLastCalledWith("terracotta");
+  expect(currency).toHaveBeenLastCalledWith("JPY");
+  expect(submit).not.toHaveBeenCalled();
+  rerender(<QueryClientProvider client={client}><TemplatePicker value={value} onChange={vi.fn()}
+    onApplyDesignToAll={design} onApplyCurrencyToAll={currency} sharedDesign="terracotta" sharedCurrency="JPY" /></QueryClientProvider>);
+  expect((screen.getByRole("button", { name: "Design used on all floors" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "Currency used on all floors" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
 it("excludes chosen categories, keeps a stocked category and restores the assortment independently", async () => {
   mount();
   fireEvent.click(await screen.findByText("Product categories · 3 of 3 included"));
@@ -238,6 +262,18 @@ it("previews named clear areas, converts display coordinates and removes them on
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ reserved_areas: [] }), expect.any(AbortSignal)));
   expect(screen.queryByTestId("reserved-area-preview-0")).toBeNull();
+});
+
+it("sizes area starting points from the current dimensions rather than an old preview", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "8" } });
+  fireEvent.change(screen.getByLabelText("Depth (6–40 cells)"), { target: { value: "6" } });
+  fireEvent.change(screen.getByLabelText("Area starting point"), { target: { value: "event" } });
+  fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    width: 8, height: 6, reserved_areas: [{ label: "Event space", x: 1, y: 1, width: 6, height: 4 }],
+  }), expect.any(AbortSignal)));
 });
 
 it("holds preview for incomplete area values and supports removing a reservation", async () => {

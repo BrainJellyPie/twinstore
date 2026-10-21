@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import * as THREE from "three";
+import { createPackageGeometry } from "../productGeometries";
 import type { CustomerResult, Rack, Slot, SlotItem } from "@/shared/types/domain";
 import { classifyProduct, hashString, luminance, productPalette, splitLabel } from "../productCatalog";
 import { atlasGrid, cellUv } from "../atlasLayout";
@@ -60,8 +62,23 @@ describe("productCatalog", () => {
     ["Apple Juice", "bottle"],
     ["Apple Chips", "bag"],
     ["Apple Pie", "box"],
+    ["Terracotta Pot 20cm", "pot"],
+    ["Clay Plant Pot 12.5 cm", "pot"],
+    ["Terra Cotta Planter", "pot"],
+    ["Terracotta Pot 4pk", "box"],
+    ["Terracotta Pot 0cm", "box"],
+    ["Terracotta Pot 100cm", "box"],
+    ["Clay Mask", "box"],
+    ["Cooking Pot", "box"],
+    ["Potting Mix", "bag"],
   ])("classifies %s as %s", (name, kind) => {
     expect(classifyProduct(name).kind).toBe(kind);
+  });
+
+  it("sizes terracotta pots from the stated diameter while preserving the source shape", () => {
+    expect(classifyProduct("Terracotta Pot 20cm").w).toBe(0.2);
+    expect(classifyProduct("Clay Plant Pot 12.5 cm").w).toBe(0.125);
+    expect(classifyProduct("Terracotta Planter").w).toBe(0.2);
   });
 
   it("does not mistake chocolate for cola or candy bars for milk", () => {
@@ -186,6 +203,7 @@ describe("fixture planning and product layout", () => {
   });
 
   it.each([
+    ["Terracotta Pot 20cm", "pot", 0.2, 0.2 * (0.5314331 / 0.4662051), 0.2],
     ["Bananas", "banana", 0.134, 0.179, 0.223],
     ["Apples", "apple", 0.09756, 0.08539, 0.09590],
     ["Apples 2pk", "applePair", 0.20112, 0.08539, 0.09590],
@@ -200,6 +218,24 @@ describe("fixture planning and product layout", () => {
       expect(p.sx / p.sy).toBeCloseTo(width / height);
       expect(p.sz / p.sy).toBeCloseTo(depth / height);
     }
+  });
+
+  it("keeps hollow pots in a single layer on display tables", () => {
+    const table = rack({ id: "pots", type: "table", position: [3, 3], slots: slots("S", [["Terracotta Pot 20cm"]]) });
+    const out = layoutProducts([planFixture(table, 8, 6)], { maxRows: 3 });
+    expect(out.products.length).toBeGreaterThan(0);
+    expect(new Set(out.products.map((p) => p.y)).size).toBe(1);
+  });
+
+  it.each([0, 1] as const)("keeps the fallback pot open at detail %s", (detail) => {
+    const geometry = createPackageGeometry("pot", detail);
+    const material = new THREE.MeshBasicMaterial();
+    const mesh = new THREE.Mesh(geometry, material);
+    const ray = new THREE.Raycaster(new THREE.Vector3(0.01, 2, 0.01), new THREE.Vector3(0, -1, 0));
+    const hits = ray.intersectObject(mesh);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits[0]!.point.y).toBeCloseTo(0.12);
+    geometry.dispose(); material.dispose();
   });
 
   it("carries SKU photos into every shelf facing and freezer stack", () => {

@@ -26,6 +26,8 @@ async def upload_sku_image(
         raise HTTPException(413, str(e))
     except image_storage.UnsupportedImageFormatError as e:
         raise HTTPException(422, str(e))
+    except image_storage.ImageStorageError as e:
+        raise HTTPException(500, str(e)) from e
     except FileNotFoundError as e:
         raise HTTPException(404, str(e)) from e
     except ValueError as e:

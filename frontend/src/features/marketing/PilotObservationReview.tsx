@@ -7,6 +7,7 @@ import {
 } from "@/shared/api/fieldPilot";
 import { Button } from "@/shared/components/ui/button";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { PilotPosReconciliation } from "./PilotPosReconciliation";
 
 export function PilotObservationReview({ projectId, pilot, disabled, onActive, onSaved }: {
   projectId: string; pilot: FieldPilot; disabled: boolean; onActive: (active: boolean) => void;
@@ -16,6 +17,7 @@ export function PilotObservationReview({ projectId, pilot, disabled, onActive, o
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
+  const [posActive, setPosActive] = useState(false);
   const preview = useMutation({
     mutationFn: (file: File) => previewPilotImport(projectId, pilot.pilot_id, file, pilot.revision),
     onSuccess: (data, file) => setReview({ file, preview: data }),
@@ -26,14 +28,19 @@ export function PilotObservationReview({ projectId, pilot, disabled, onActive, o
       selection.file, selection.preview.revision, selection.preview.review_token, reason.trim()),
     onSuccess: async (result) => { await onSaved(result); setReview(null); setConfirmed(false); setReason(""); onActive(false); },
   });
-  const busy = disabled || preview.isPending || apply.isPending;
+  const busy = disabled || preview.isPending || apply.isPending || posActive;
+  const startReview = (file: File, initialReason = "") => {
+    setReview(null); setConfirmed(false); setReason(initialReason); setError(""); preview.reset(); apply.reset();
+    if (file.size > 2 * 1024 * 1024) { setError("Observation CSV exceeds 2 MB"); onActive(false); return; }
+    onActive(true); preview.mutate(file);
+  };
   return <section className="space-y-3 rounded-xl border p-3">
+    <PilotPosReconciliation projectId={projectId} pilot={pilot} disabled={disabled || preview.isPending || apply.isPending || !!review}
+      onActive={(active) => { setPosActive(active); onActive(active); }} onReview={startReview} />
     <label className="block text-sm font-medium">Review full observation sheet<input aria-label="Review full observation sheet" type="file" accept=".csv,text/csv" disabled={busy} className="ml-2 max-w-64 text-xs" onChange={(e) => {
       const file = e.target.files?.[0]; e.target.value = "";
       if (!file) return;
-      setReview(null); setConfirmed(false); setReason(""); setError(""); preview.reset(); apply.reset();
-      if (file.size > 2 * 1024 * 1024) { setError("Observation CSV exceeds 2 MB"); onActive(false); return; }
-      onActive(true); preview.mutate(file);
+      startReview(file);
     }} /></label>
     <p className="text-xs text-muted-foreground">Selecting a file only previews changes. All assignments and staff/shift identities must match the saved sheet. Blanks clear existing observations; they do not mean “keep the old value”.</p>
     {preview.isPending && <p className="text-sm">Checking the complete sheet…</p>}
