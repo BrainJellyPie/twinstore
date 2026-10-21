@@ -136,9 +136,45 @@ queue time, or store traffic, and does not itself measure real purchases. Use th
 From a completed **Staff scripts** report, open **Prepare a field pilot from these scripts**. Define eligibility
 before exposing the assigned script and specify the target-SKU purchase window (for example, this store visit).
 Use anonymous staff IDs and distinct shift IDs. Each staff/shift block has an even 4–2,000 planned encounters;
-the complete plan has 40–10,000. This is a fixed sample target chosen by the operator, not a power calculation.
+the complete plan has 40–10,000. Choose the fixed target before collecting data; use the optional sample planner below.
 The product, price, scripts, context, eligibility, window, seed and allocations are saved and cannot be edited.
 No model calls are needed to create or analyze a field pilot from a saved screening report.
+
+Enable **Plan sample size and duration** before saving a new plan. Enter:
+
+- The smallest worthwhile **absolute** conversion difference in percentage points: 5 pp means, for example,
+  20% versus 25%, not a 5% relative lift. This is your decision threshold, not a predicted script effect.
+- A target power lower bound (50–99%, initially 80%). The planner is deliberately conservative and baseline-free;
+  it does not infer conversion from synthetic shopper ratings.
+- Estimated unique eligible encounters per operating day across all participating staff/shifts, plus available
+  operating days. Use a real operational estimate, not total footfall or duplicate encounters.
+
+The preview compares the current sample with the required total, expected collection days and the **unclipped**
+95% interval half-width. Its power figure is a lower bound under the stated assumptions, not estimated actual
+power; a zero bound does not mean detection is impossible. The effect can be in either direction. If the required
+total fits the existing blocks and the 10,000-encounter limit, **Use recommended counts evenly across these blocks**
+updates the unsaved draft. This changes block weights: review the staff/shift mix and each block's capacity.
+Requirements beyond capacity are shown in full and are never silently reduced. Days are rounded up, exclude
+outcome follow-up, and do not check shift calendars. A sample can fit software limits while exceeding available time.
+An under-target plan may still be saved for descriptive learning; it is explicitly flagged as not meeting the target.
+
+For `N` independent encounters, balanced within every staff/shift block and weighted by planned counts, the
+existing Hoeffding interval has radius `r = sqrt(2 ln(40) / N)`. If the true weighted absolute conversion difference
+is at least `d`, a one-sided Hoeffding tail bounds the probability of failing to exclude zero in that direction.
+The power lower bound is `1 - exp(-N × max(0, d-r)² / 2)`. For target power `q`, the required total is
+`2 × (sqrt(ln(40)) + sqrt(ln(1/(1-q))))² / d²`, rounded up to an even total, at least 40 and at least four per block.
+The 95% two-sided interval already covers either direction; this is one precommitted comparison, not a correction
+for multiple pilots. The guarantee is conditional on independent outcomes, no repeat shoppers or interference,
+complete enrollment and observation of every planned slot, and no optional stopping or result-driven resizing.
+Blocking alone does not remove correlated outcomes within a shift. Do not split an oversized study into repeated
+pilots and select the best result. Seek a study-specific design if those assumptions do not fit your operation.
+
+The server recalculates and saves the assessment against the actual counts when **Save fixed pilot plan** is used.
+View it later under **Saved sample planning assessment**. It cannot resize a collecting or closed pilot; old pilots
+without planning assumptions remain readable. API preview: `POST /api/projects/{pid}/staff-pilots/plan`, JSON
+`{"assumptions":{"minimum_effect":0.1,"target_power":0.8,"eligible_per_day":50,"available_days":30},"block_counts":[1000,1000]}`.
+These are illustrative inputs, not measured store data. Preview makes no files or model calls. For persistence,
+send the same `assumptions` object as the optional `planning` field when creating a new pilot.
 
 Download **Observation sheet CSV**. Within each staff/shift, enroll the next eligible customer before revealing
 that row's script; follow sequence order without choosing customers by arm. Do not reuse customers or swap
