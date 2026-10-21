@@ -40,7 +40,12 @@ def get_thread(pid: str, run_id: str) -> AnalystThread:
 
 
 def clear_thread(pid: str, run_id: str) -> None:
-    _path(pid, run_id).unlink(missing_ok=True)
+    path = _path(pid, run_id)
+    try:
+        with FileLock(path.with_suffix(".lock"), timeout=0):
+            _path(pid, run_id).unlink(missing_ok=True)
+    except Timeout as e:
+        raise AppError("The previous question is still being answered. Try again in a moment.", 409) from e
 
 
 def facts(pid: str, run_id: str) -> str:
