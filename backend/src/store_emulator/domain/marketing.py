@@ -4,9 +4,9 @@ concept tests answered by synthetic respondents.
 Prices are in the currency's minor unit (US cents, KRW won), like everywhere else in the store model.
 """
 
-from typing import Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from store_emulator.domain.analysis import MetricComparison
 from store_emulator.domain.types import ResourceId
@@ -42,7 +42,7 @@ class VariantChange(BaseModel):
 
 
 class Variant(BaseModel):
-    name: str = Field(min_length=1, max_length=40)
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
     changes: list[VariantChange] = Field(min_length=1, max_length=20)
 
 
@@ -55,6 +55,15 @@ class ExperimentRequest(BaseModel):
     model: str = Field(default="", description='vision model reference for engine "vlm"; "" = the app vision model')
     panel: int = Field(default=300, ge=20, le=3000, description="shoppers per variant (the same people in every variant)")
     seed: int = 1
+
+    @model_validator(mode="after")
+    def validate_variant_names(self) -> Self:
+        names = [variant.name.casefold() for variant in self.variants]
+        if "control" in names:
+            raise ValueError("The variant name 'Control' is reserved for the original layout")
+        if len(names) != len(set(names)):
+            raise ValueError("Give each variant a unique name (ignoring case and surrounding whitespace)")
+        return self
 
 
 class FocusOutcome(BaseModel):
