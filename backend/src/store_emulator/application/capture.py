@@ -53,6 +53,7 @@ from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.validation import validate
 
 from .async_executor import executor
+from .currencies import project_currency
 from .errors import AppError
 from .providers import PRESETS, resolve_model
 from .setups import set_active_setup, setup_summary
@@ -461,7 +462,7 @@ def _save_sku_images(pid: str, cid: str, result: CaptureResult) -> None:
 
 def apply_captures(
     pid: str, capture_ids: list[str], setup_id: str, *, rack_id: str | None = None, face: str | None = None,
-    new_rack: bool = False, name: str | None = None,
+    new_rack: bool = False, name: str | None = None, default_currency: str = "USD",
 ) -> ApplyResult:
     """Save a new draft layout (child of `setup_id`) with the captured shelves; the source stays untouched.
 
@@ -486,6 +487,10 @@ def apply_captures(
     if not source.get("store"):
         raise AppError("this layout has no store yet", 400)
     store = Store.model_validate(source["store"])
+    currency = store.currency or project_currency(pid, default_currency)
+    if any(result.currency != currency for result in results):
+        raise AppError(f"Every capture must use the layout's price currency ({currency}); prices are not converted automatically.", 422)
+    store = store.model_copy(update={"currency": currency})
     try:
         if rack_id and not new_rack:
             if len(results) != 1:

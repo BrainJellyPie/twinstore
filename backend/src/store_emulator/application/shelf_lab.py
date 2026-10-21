@@ -52,7 +52,7 @@ from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival
 
 from .async_executor import executor
 from .capture import capture_image_path, capture_llm_config, get_capture
-from .currencies import simulation_currency
+from .currencies import project_currency, simulation_currency
 from .errors import AppError
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
@@ -346,6 +346,9 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
     photo, result = _photo_and_result(pid, cid, req.edit_id)
     if not any(i.labeled for i in result.items):
         raise AppError("sim2real needs a capture whose products were read (run the capture with a vision model)", 409)
+    currency = project_currency(pid, config.currency)
+    if result.currency != currency:
+        raise AppError(f"Capture currency must match project shopper budgets ({currency}); budgets are not converted automatically.", 422)
     llm_config = capture_llm_config(config, req.model)
     if llm_config is None:
         raise AppError("sim2real needs a vision model", 400)
@@ -495,11 +498,15 @@ class RivalReport(BaseModel):
     attractiveness: float | None = None
 
 
-def compare_rival_capture(pid: str, cid: str, req: RivalRequest) -> RivalReport:
+def compare_rival_capture(pid: str, cid: str, req: RivalRequest, *, default_currency: str = "USD") -> RivalReport:
     _, result = _capture(pid, cid)
     if not any(i.labeled for i in result.items):
         raise AppError("the rival's products have not been read (run the capture with a vision model or name them)", 409)
-    comparison = compare_rival(_load_store(pid, req.setup_id), result, elasticity=req.elasticity)
+    store = _load_store(pid, req.setup_id)
+    currency = store.currency or project_currency(pid, default_currency)
+    if result.currency != currency:
+        raise AppError(f"Capture currency must match layout prices ({currency}); prices are not converted automatically.", 422)
+    comparison = compare_rival(store, result, elasticity=req.elasticity)
     report = RivalReport(comparison=comparison, venue_id=req.venue_id)
     if req.venue_id:
         town = get_town(pid)
