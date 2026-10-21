@@ -52,6 +52,7 @@ from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival
 
 from .async_executor import executor
 from .capture import capture_image_path, capture_llm_config, get_capture
+from .currencies import simulation_currency
 from .errors import AppError
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
@@ -425,6 +426,9 @@ def _face_of(store: Store, rack_id: str, face: str | None) -> Face:
 def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig) -> LabJobStatus:
     _, result = _photo_and_result(pid, cid, req.edit_id)
     store = _load_store(pid, req.setup_id)
+    currency = simulation_currency(pid, store, config.currency)
+    if result.currency != currency:
+        raise AppError(f"Capture currency must match layout prices and project shopper budgets ({currency}); prices are not converted automatically.", 422)
     face = _face_of(store, req.rack_id, req.face)
     personas = _personas(pid)
     status = _new_job(pid, cid, "audit")
@@ -444,7 +448,7 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
             panel = select_personas(personas, req.panel, seed=req.seed)
             status.stage, status.progress = "simulating", 0.2
             _write_status(pid, status)
-            run_config = config.model_copy(update={"engine_type": EngineType.RULE_BASED, "seed": req.seed})
+            run_config = config.model_copy(update={"engine_type": EngineType.RULE_BASED, "seed": req.seed, "currency": currency})
             evaluator = LayoutEvaluator(run_config, panel, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(),
                                         OptimizeObjective.REVENUE_PER_VISITOR)
             missing = list(dict.fromkeys(f.sku for f in findings if f.kind == "missing" and f.sku))

@@ -1,8 +1,9 @@
 """Marketing studio: A/B experiments on a layout and survey-style concept tests."""
 
 from collections.abc import Callable
+from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -11,7 +12,7 @@ from store_emulator.application import marketing as mk
 from store_emulator.application import staff_pitch
 from store_emulator.application.errors import AppError
 from store_emulator.application.marketing import ExperimentView, SurveyView
-from store_emulator.domain.marketing import ExperimentRequest, JobStatus, MarketingInfo, SurveyRequest
+from store_emulator.domain.marketing import ExperimentRequest, JobStatus, MarketingInfo, ShelfTestRequest, SurveyRequest
 from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.engine.marketing.report import ReportNarrative
 
@@ -146,3 +147,31 @@ def pitch_csv(pid: str, pitch_id: str) -> PlainTextResponse:
 @router.delete("/{pid}/staff-pitches/{pitch_id}", summary="Delete a completed staff script test", status_code=204)
 def delete_pitch(pid: str, pitch_id: str) -> None:
     _call(lambda: mk.delete_job(pid, "pitch", pitch_id))
+
+
+@router.post("/{pid}/shelf-tests", summary="Start a virtual shelf test", response_model=JobStatus)
+async def start_shelf_test(pid: str, req: ShelfTestRequest) -> JobStatus:
+    """The same respondents see the control shelf face and the changed one (new pack, price, sign, placement), pick one
+    product and name what caught their eye first; the target's pick share and stand-out are compared pair by pair."""
+    return await run_in_threadpool(_call, lambda: mk.start_shelf_test(pid, req, get_config()))
+
+
+@router.get("/{pid}/shelf-tests", summary="Shelf tests of a project", response_model=list[JobStatus])
+def list_shelf_tests(pid: str) -> list[JobStatus]:
+    return _call(lambda: mk.list_jobs(pid, "shelf"))
+
+
+@router.get("/{pid}/shelf-tests/{tid}", summary="Shelf test status and report", response_model=mk.ShelfTestView)
+def get_shelf_test(pid: str, tid: str) -> mk.ShelfTestView:
+    return _call(lambda: mk.get_shelf_test(pid, tid))
+
+
+@router.get("/{pid}/shelf-tests/{tid}/{arm}.png", summary="The shelf one arm saw", response_class=Response)
+async def shelf_test_image(pid: str, tid: str, arm: Literal["control", "test"]) -> Response:
+    png = await run_in_threadpool(_call, lambda: mk.shelf_test_image(pid, tid, arm))
+    return Response(png, media_type="image/png")
+
+
+@router.delete("/{pid}/shelf-tests/{tid}", summary="Delete a shelf test", status_code=204)
+def delete_shelf_test(pid: str, tid: str) -> None:
+    _call(lambda: mk.delete_job(pid, "shelf", tid))

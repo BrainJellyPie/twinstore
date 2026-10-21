@@ -24,6 +24,7 @@ from store_emulator.engine.simulation.factory import build_engine
 from store_emulator.engine.town.vlm_synergy import vlm_basket_synergy
 
 from .async_executor import executor
+from .currencies import simulation_currency
 from .errors import AppError
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
@@ -125,6 +126,7 @@ def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: 
     if not setup.get("store"):
         raise AppError("this layout has no store yet", 400)
     store = Store.model_validate(setup["store"])
+    currency = simulation_currency(pid, store, config.currency)
     if not personas_path(pid).exists():
         raise AppError("the project has no personas yet", 400)
     personas = [Persona.model_validate(p) for p in cast(list[dict[str, Any]], read_json(personas_path(pid)))]
@@ -135,6 +137,7 @@ def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: 
         raise AppError(f"unknown scenario preset: {request.scenario_id}", 400)
     run_config = config.model_copy(update={
         "engine_type": EngineType.VLM_GLANCE, "ensemble": request.ensemble,
+        "currency": currency,
         "scenario": None if scenario is None or scenario.id == "baseline" else scenario,
     })
     if request.model:

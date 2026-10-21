@@ -59,7 +59,7 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
         pt.tiles.set(2, 2);
         pt.bounces = 5;
         pt.transmissiveBounces = 8;
-        pt.filterGlossyFactor = 0.5;
+        pt.filterGlossyFactor = 1;
         pt.minSamples = 1;
         pt.fadeDuration = 0;
         pt.dynamicLowRes = true;
