@@ -38,9 +38,9 @@ class SlotItem(BaseModel):
 
     sku: str
     name: str
-    price: int = 0  # unit: US cents (e.g. 549 = $5.49)
+    price: int = Field(default=0, ge=0)  # unit: US cents (e.g. 549 = $5.49)
     # The usual shelf price when `price` is a temporary one (a discount or a raise); 0 = `price` is usual.
-    regular_price: int = 0
+    regular_price: int = Field(default=0, ge=0)
     promo: str = ""
     image_url: str | None = None  # backend fills this from manifest; falls back to placeholder when absent
 

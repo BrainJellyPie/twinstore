@@ -564,6 +564,8 @@ def replace_slots(
         # Empty sku ("") creates no SlotItem; coords with zero non-empty
         # items skip Slot creation entirely (sparse representation).
         if sku:
+            if len(existing.items) >= 4:
+                raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} face {face_str} level {level} holds at most 4 products", 400)
             existing.items.append(SlotItem(
                 sku=sku, name=name, price=price, promo=promo,
             ))
