@@ -103,6 +103,61 @@ Source: `backend/src/store_emulator/engine/generators/persona.py:99-242`,
 `backend/src/store_emulator/engine/simulation/engines/pattern_intent_impulse/engine.py:56-119`,
 `backend/src/store_emulator/application/supplemental.py:214-499`.
 
+### Inventory performance review
+
+Open **Market → Inventory** in a project. This worksheet uses supplied records without a simulation, model
+call or inventory write-back. Choose the inclusive reporting dates (1–3660 days) and an uppercase three-letter
+currency code, then **Download inventory template**. The template contains only column names, not sample data.
+
+Prepare one row per exact, case-sensitive SKU, with every numeric cell filled explicitly:
+
+| Column | Meaning |
+| --- | --- |
+| `sku` | Unique identifier, 1–200 characters; Unicode supported, no outer whitespace or control characters |
+| `opening_units`, `closing_units` | Recorded stock at the start and end of the selected period |
+| `received_units` | Stock received during the period |
+| `sold_units`, `returned_units` | Gross units sold and customer returns, separately |
+| `other_in_units`, `other_out_units` | Transfers, supplier returns, write-offs or corrections in the appropriate direction |
+| `net_sales_minor`, `cogs_minor` | Net sales excluding tax and net cost of goods sold, after applicable returns/adjustments |
+| `opening_cost_minor`, `closing_cost_minor` | Inventory values **at cost**, not selling price |
+
+Use the same period, currency and inventory scope for all rows, and the same unit within each SKU. Quantities
+allow 0–1,000,000 and up to three decimal places. Money uses integers in that currency's minor unit (USD cents,
+KRW won): net sales and COGS allow ±1,000,000,000,000, inventory values allow 0–1,000,000,000,000. A return-heavy
+period can have negative net sales or COGS. Do not invent costs from shelf prices. The currency code is a label;
+the app does not verify currency membership, convert amounts or infer the minor-unit scale.
+
+Upload UTF-8 CSV (BOM accepted), at most 2 MB and 2,000 SKU rows. Every template column must occur exactly once;
+column order may change. Missing values, duplicate SKUs, extra columns, invalid numbers and oversized files
+reject the whole upload. Aggregate repeated rows for a SKU before upload. Include no personal information.
+
+**Review inventory** computes:
+
+- Expected closing = opening + received + customer returns + other in − gross sold − other out.
+  Difference = recorded closing − expected closing. A difference is not automatically theft or shrinkage.
+- Net unit sell-through = (sold − customer returns) / (opening + received + other in). This explicitly defined
+  period convention is shown as a ratio, not a percentage or receipt-cohort rate. Returns are not counted a
+  second time in supply. Zero supply or negative net units makes the ratio unavailable; SKU units are not pooled.
+- Gross profit = net sales − net COGS. Negative profit remains negative.
+- Average inventory cost = (opening cost + closing cost) / 2. This endpoint approximation can miss inventory
+  peaks between the two dates. Period GMROI = gross profit / average inventory cost; period turnover = net COGS
+  / average inventory cost. Zero average cost is undefined; negative net COGS makes turnover unavailable.
+
+Stock differences, negative expected stock or nonzero value attached to zero stock withhold the affected
+SKU's ratios and the portfolio ratios. All supplied records remain in the financial totals. Portfolio ratios
+divide totals by summed average costs, never average SKU ratios. Reconciliation alone does not verify the
+records or detect every missing transaction or intraperiod shortage. Period ratios are not annualized, net
+profit after rent/labor, causal marketing effects or confidence intervals. No universal category targets are used.
+
+**Export inventory audit CSV** includes the exact reviewed period, calculation method, source SHA-256, supplied
+values, row results and portfolio totals. Unavailable ratios remain blank with reason flags; spreadsheet formula
+prefixes in SKU text are escaped. Keep the original CSV and audit together: reviews are not saved to the project.
+Editing the file or scope clears the result and export; controls lock while a request is pending. Separate
+reviews do not overwrite one another or update stock. A deleted project prevents subsequent review/export.
+
+API: `GET /api/projects/{pid}/inventory-review/template.csv`; multipart `POST .../preview` and
+`POST .../export.csv` with `file`, `start_date`, `end_date` and `currency`.
+
 ### Staff script A/B screening
 
 Open **Market → Staff scripts** and select the saved layout. Choose one shelf product, describe the common
