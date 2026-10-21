@@ -301,31 +301,36 @@ def _promo_label(promo: Promotion) -> str:
     return f"{promo.target} {promo.kind.value}"
 
 
-def _matches(target: str, rack: Rack, item: SlotItem) -> bool:
-    t = target.strip().lower()
-    if not t:
-        return False
-    if t == item.sku.lower() or t in item.name.lower():
-        return True
-    if t in rack.rack_name.lower():
-        return True
-    return bool(_tokens(t) & _tokens(f"{rack.rack_name} {rack.rack_desc} {item.name}")) and len(t) >= 3
-
-
 def apply_to_store(store: Store, scenario: Scenario) -> tuple[Store, dict[str, float]]:
     """Promotions change prices/labels, stock-outs empty the facings. Returns the new store and a
     sku → pick-probability lift for promoted items (used by the rule-based engine)."""
     lifts: dict[str, float] = {}
     priors = ScenarioPriors()
+    catalog_skus = {item.sku.lower() for rack in store.racks for slot in rack.slots for item in slot.items}
+    catalog_names = {item.name.lower() for rack in store.racks for slot in rack.slots for item in slot.items}
+    rack_labels = {label.lower() for rack in store.racks for label in (rack.rack_name, rack.rack_desc)}
+
+    def matches(target: str, rack: Rack, item: SlotItem) -> bool:
+        t = target.strip().lower()
+        if not t:
+            return False
+        if t in catalog_skus:
+            return t == item.sku.lower()
+        if t in catalog_names or t in rack_labels:
+            return t == item.name.lower() or t in (rack.rack_name.lower(), rack.rack_desc.lower())
+        if t in item.name.lower() or t in rack.rack_name.lower():
+            return True
+        return bool(_tokens(t) & _tokens(f"{rack.rack_name} {rack.rack_desc} {item.name}")) and len(t) >= 3
+
     racks: list[Rack] = []
     for rack in store.racks:
         slots: list[Slot] = []
         for slot in rack.slots:
             items: list[SlotItem] = []
             for item in slot.items:
-                if any(_matches(s, rack, item) for s in scenario.stockouts):
+                if any(matches(s, rack, item) for s in scenario.stockouts):
                     continue
-                promo = next((pr for pr in scenario.promotions if _matches(pr.target, rack, item)), None)
+                promo = next((pr for pr in scenario.promotions if matches(pr.target, rack, item)), None)
                 if promo is not None:
                     price = item.price
                     if promo.kind == PromotionKind.DISCOUNT:
