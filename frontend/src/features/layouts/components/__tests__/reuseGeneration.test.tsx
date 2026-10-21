@@ -19,7 +19,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 const source: Layout = { id: "setup_cafe", name: "Garden café", parentId: null, status: "locked", createdAt: "2026-10-21",
   generation: { template_id: "book_cafe", source_setup_id: "older_parent", name: "Previous name", seed: 12, currency: "JPY",
-    width: 24, height: 18, style: "free_flow", shelf_direction: "vertical", dining_tables: 3, seating_zone: "right", checkout_placement: "near_entrance",
+    width: 24, height: 18, style: "free_flow", shelf_direction: "vertical", dining_tables: 3, table_clearance: 2, seating_zone: "right", checkout_placement: "near_entrance",
     design_theme: "botanical", requirements: "Quiet reading corner",
     reserved_areas: [{ label: "Reading nook", x: 3, y: 3, width: 2, height: 4 }] } };
 
@@ -34,7 +34,7 @@ it("restores a saved brief and options, then submits a linked alternative with t
   expect(JSON.parse(screen.getByTestId("settings").textContent!)).toMatchObject({
     sourceSetupId: source.id, templateId: "book_cafe", width: 24, height: 18, seed: 12, currency: "JPY",
     requirements: "Quiet reading corner", design_theme: "botanical", dining_tables: 3, seating_zone: "right", checkout_placement: "near_entrance",
-    reserved_areas: source.generation!.reserved_areas, shelf_direction: "vertical",
+    reserved_areas: source.generation!.reserved_areas, shelf_direction: "vertical", table_clearance: 2,
   });
   fireEvent.click(screen.getByRole("button", { name: "Use five tables" }));
   fireEvent.change(screen.getByLabelText("Layout name"), { target: { value: "More café seating" } });
@@ -42,7 +42,7 @@ it("restores a saved brief and options, then submits a linked alternative with t
   expect(mutation.mutate).toHaveBeenCalledWith(expect.objectContaining({
     name: "More café seating", source: expect.objectContaining({ kind: "template", sourceSetupId: source.id,
       dining_tables: 5, seating_zone: "right", checkout_placement: "near_entrance", requirements: "Quiet reading corner", currency: "JPY",
-      reserved_areas: source.generation!.reserved_areas, shelf_direction: "vertical" }),
+      reserved_areas: source.generation!.reserved_areas, shelf_direction: "vertical", table_clearance: 2 }),
   }), expect.any(Object));
 });
 

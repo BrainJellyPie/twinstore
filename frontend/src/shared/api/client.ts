@@ -591,6 +591,7 @@ export interface MetricComparison {
   ci_low: number;
   ci_high: number;
   prob_b_greater: number;
+  prob_b_less?: number | null;
   sd_paired_diff: number;
   n_for_5pct_effect: number;
 }
@@ -1336,6 +1337,7 @@ export interface LayoutOptions {
   fixture_design?: "mixed" | "a" | "b" | "c";
   design_theme?: StoreDesign | null;
   dining_tables?: number | null;
+  table_clearance?: number;
   seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
   reserved_areas?: ReservedArea[];
 }

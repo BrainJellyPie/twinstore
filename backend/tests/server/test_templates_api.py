@@ -31,7 +31,7 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
 def test_preview_matches_saved_custom_store(client):
     options = dict(seed=12, currency="JPY", style="spine", width=28, height=24,
                    density="spacious", entrance="right", checkouts=3, checkout_placement="away_from_entrance",
-                   fixture_design="c", design_theme="botanical", dining_tables=7, seating_zone="center", shelf_direction="vertical")
+                   fixture_design="c", design_theme="botanical", dining_tables=7, table_clearance=2, seating_zone="center", shelf_direction="vertical")
     preview = client.get("/api/store-templates/food_hall/preview", params=options)
     assert preview.status_code == 200, preview.text
     response = client.post(f"/api/projects/{PID}/setups/generate", json={
@@ -47,6 +47,7 @@ def test_preview_matches_saved_custom_store(client):
     assert "Reserve a quiet corner" in saved["memo"]
     assert saved["generation"]["checkouts"] == 3
     assert saved["generation"]["dining_tables"] == 7
+    assert saved["generation"]["table_clearance"] == 2
     assert saved["generation"]["seating_zone"] == "center"
     assert saved["generation"]["checkout_placement"] == "away_from_entrance"
     assert saved["generation"]["shelf_direction"] == "vertical"
@@ -57,7 +58,7 @@ def test_preview_matches_saved_custom_store(client):
     {"width": 7}, {"width": 41}, {"height": 5}, {"height": 41}, {"checkouts": 0},
     {"checkouts": 5}, {"style": "unknown"}, {"density": "unknown"}, {"currency": "INVALID"},
     {"entrance": "roof"}, {"fixture_design": "unknown"}, {"design_theme": "unknown"},
-    {"dining_tables": -1}, {"dining_tables": 13},
+    {"dining_tables": -1}, {"dining_tables": 13}, {"table_clearance": 0}, {"table_clearance": 4},
     {"seating_zone": "roof"}, {"checkout_placement": "outside"}, {"shelf_direction": "diagonal"},
 ])
 def test_invalid_options_rejected_for_preview_and_save(client, patch):
@@ -71,7 +72,7 @@ def test_unknown_templates_do_not_create_layouts(client):
 
 
 def test_reserved_area_preview_save_and_reuse_keep_identical_geometry(client):
-    options = {"template_id": "community_pharmacy", "width": 20, "height": 16, "seed": 3, "shelf_direction": "vertical",
+    options = {"template_id": "community_pharmacy", "width": 20, "height": 16, "seed": 3, "shelf_direction": "vertical", "dining_tables": 2, "table_clearance": 2,
                "reserved_areas": [{"label": "Consultation", "x": 2, "y": 2, "width": 4, "height": 3}]}
     before = client.get(f"/api/projects/{PID}").json()
     preview = client.post("/api/store-templates/preview", json=options)
@@ -90,6 +91,7 @@ def test_reserved_area_preview_save_and_reuse_keep_identical_geometry(client):
     assert alternative["store"]["racks"] == saved["store"]["racks"]
     assert alternative["generation"]["reserved_areas"] == options["reserved_areas"]
     assert alternative["generation"]["shelf_direction"] == "vertical"
+    assert alternative["generation"]["table_clearance"] == 2
     assert client.get(f"/api/projects/{PID}/setups/{saved['id']}").json() == saved
 
 

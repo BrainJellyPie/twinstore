@@ -14,6 +14,7 @@ class MetricComparison(BaseModel):
     prob_b_greater: float  # share of bootstrap draws with diff > 0
     sd_paired_diff: float
     n_for_5pct_effect: int  # customers needed to detect a 5% relative change (α=0.05, power=0.8)
+    prob_b_less: float | None = None  # share of draws with diff < 0; absent in older saved reports
 
 
 class ComparisonReport(BaseModel):

@@ -188,6 +188,13 @@ with clear circulation around it, appears in Classic and Realistic views, and ca
 be selected from any of its four cells in the floor editor. As with other fixtures,
 the existing floor-edit unlock step clears product placements before editing.
 
+Set **Space around dining tables** to one, two or three cells. The generator keeps
+that space free of other fixtures on every side of each dining group, including
+between tables and wall displays. More clearance reduces the number of tables
+that fit; default seating adapts, while explicit counts return an adjustment
+message if necessary. This setting uses grid cells and applies during generation;
+manual fixture movement checks bounds and overlap independently.
+
 Choose where seating starts: front/entrance side, back wall, left, right or center.
 Tables extend into neighboring space as their count increases, retaining their
 circulation space. Checkout counters can use the default arrangement or be placed

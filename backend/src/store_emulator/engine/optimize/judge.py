@@ -300,7 +300,7 @@ async def judge_layout_search(
             if metric is not None:
                 entry = entry.model_copy(update={
                     "delta_mean": metric.diff, "delta_ci_low": metric.ci_low, "delta_ci_high": metric.ci_high,
-                    "prob_better": metric.prob_b_greater if maximize else round(1.0 - metric.prob_b_greater, 4),
+                    "prob_better": metric.prob_b_greater if maximize else metric.prob_b_less,
                 })
         judged.append(entry)
 
