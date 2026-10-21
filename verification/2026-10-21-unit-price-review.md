@@ -62,7 +62,30 @@ run was not counted as boundary coverage. The corrected boundary run above produ
 
 ## Full required checks
 
-Pending at the time of this draft; completed results and final integration snapshot will be recorded before push.
+Feature commit: `62f801ef`. Final code integration: `10a2f230334db299169e87eed991503fc354ed0f`,
+including main `58cf0382`, scenarios `6c088615`, edge `b7f969ca` and photoreal `dc9a7805`.
+The second integration changed only frontend/docs. Backend tree SHA is identical before/after:
+`83422f80e31513dc38db3ec849769751ca4a3f33`; the full backend run and pyright/boot therefore validate the
+final backend. Frontend build/lint/full tests were repeated after integration.
+
+| Required command | Actual result |
+|---|---|
+| `uv run pyright src/` | 0 errors, 0 warnings |
+| `uv run python -c "from store_emulator.server.main import app; print('OK')"` | OK |
+| `uv run pytest --basetemp=/workspace/.verification/twinstore-unit-prices/pytest-full` | 9,248 passed, 1 skipped, 446.60 s |
+| pnpm 10.33.0 `build` | Passed on final integration, Vite 22.82 s |
+| pnpm 10.33.0 `lint` | 0 errors, 19 pre-existing warnings; none in new feature files |
+| pnpm 10.33.0 `test` | 1,381 passed / 106 files, 111.08 s on final integration (previous snapshot: 1,352 passed, 110.83 s) |
+
+Commands run from `backend/` or `frontend/`; pnpm invoked through
+`npm exec --yes --package=pnpm@10.33.0 -- pnpm ...`. Logs under
+`/workspace/.verification/twinstore-unit-prices/`: `pyright.log`, `boot.log`, `pytest-full.log`,
+`final-build.log`, `final-lint.log`, `final-frontend.log`. Build retains existing chunk-size and Babel
+plugin-timing notices. The optional GroundingDINO test requires capture extras, explicit opt-in and an
+approximately 700 MB model download. No costly whole-store simulation was requested for this deterministic module.
+
+`git diff --check` passed; previous parastore checkout remains untouched. Destination `origin/feat/operator-modules` was re-fetched before publication: still `6661fae6`, an ancestor
+of the integrated result. Publication uses a normal fast-forward push; no force push or deletion.
 
 ## Limits and next candidate
 

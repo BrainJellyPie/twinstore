@@ -24,3 +24,5 @@ Choose observed unit prices: this adds external competitive pricing decisions af
 Initial local/remote operator head was `6661fae6`. Fetched main `3721cbdd`, scenarios `570f1968`, edge `d5b403d8`, photoreal `dc9a7805`; integrated to `b92364f2`. One TemplatePicker conflict resolved preserving translated dimension/currency labels and shared-floor sizing controls. Existing operator results remain in ancestry. Prior parastore checkout left untouched.
 
 Next distinct-domain candidate: prospective research protocol/amendment ledger, or dated inventory-cost snapshots if operator evidence becomes available.
+
+Final additional integration: main `58cf0382`, scenarios `6c088615`, edge `b7f969ca` into `10a2f230`; only frontend/docs changed after the feature commit. Existing operator work is retained. See the verification record for final checks.
