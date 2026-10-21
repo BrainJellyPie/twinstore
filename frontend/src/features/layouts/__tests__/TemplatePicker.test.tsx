@@ -708,6 +708,22 @@ it("keeps explicit spacing and run length when density changes and supports dens
   ));
 });
 
+it("previews a central plaza while retaining dimensions and table rotation and allowing surrounding aisle settings", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "32" } });
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "3" } });
+  fireEvent.change(screen.getByLabelText("Table rotation"), { target: { value: "90" } });
+  fireEvent.change(screen.getByLabelText("Layout pattern"), { target: { value: "plaza" } });
+  expect(screen.getByText(/The central plaza stays clear of shelves and tables/)).toBeTruthy();
+  expect((screen.getByLabelText("Interior aisle gap") as HTMLSelectElement).disabled).toBe(false);
+  fireEvent.change(screen.getByLabelText("Interior aisle gap"), { target: { value: "4" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ style: "plaza", width: 32, dining_tables: 3, table_rotation: 90, aisle_width: 4 }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Layout pattern") as HTMLSelectElement).value).toBe("");
+  expect(screen.queryByText(/The central plaza stays clear/)).toBeNull();
+});
+
 it("explains cross-aisle seating capacity and lets other formats select the pattern", async () => {
   mount();
   fireEvent.click(await screen.findByRole("button", { name: /Garden & outdoor center/ }));

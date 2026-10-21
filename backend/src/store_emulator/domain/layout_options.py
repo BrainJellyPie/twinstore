@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from store_emulator.domain.types import ResourceId
 
-type LayoutStyle = Literal["aisles", "loop", "spine", "cross", "free_flow", "perimeter", "showroom"]
+type LayoutStyle = Literal["aisles", "loop", "spine", "cross", "plaza", "free_flow", "perimeter", "showroom"]
 type LayoutDensity = Literal["spacious", "balanced", "dense"]
 type EntrancePosition = Literal["left", "center", "right"]
 type ExitPosition = Literal["shared", "left", "center", "right"]
