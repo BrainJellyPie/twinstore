@@ -70,8 +70,8 @@ export function characterAssetFor(personaId: string, gender?: string): string {
 }
 
 // MIT-licensed Microsoft Rocketbox avatars, converted and bundled locally.
-const REALISTIC_FEMALE_FILES = ["female-01.glb", "female-14.glb", "female-11.glb", "female-09.glb"];
-const REALISTIC_MALE_FILES = ["male-01.glb", "male-14.glb", "male-12.glb", "male-07.glb"];
+const REALISTIC_FEMALE_FILES = ["female-01.glb", "female-14.glb", "female-11.glb", "female-09.glb", "female-17.glb"];
+const REALISTIC_MALE_FILES = ["male-01.glb", "male-14.glb", "male-12.glb", "male-07.glb", "male-10.glb"];
 export const ALL_REALISTIC_CHARACTER_ASSETS = [...REALISTIC_FEMALE_FILES, ...REALISTIC_MALE_FILES].map((file) => `/assets/people/${file}`);
 
 export function realisticCharacterAssetFor(personaId: string, gender?: string): string {

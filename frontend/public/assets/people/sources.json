@@ -426,6 +426,102 @@
       "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_07/Textures/m013_opacity_color.tga",
       "bytes": 16777260,
       "sha256": "d5b075decc3904150c0af6afabae65bd66ceb8a5c6b192e93557e094f9af605d"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Female_Adult_17/Export/Female_Adult_17_facial.fbx",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_17/Export/Female_Adult_17_facial.fbx",
+      "bytes": 2114512,
+      "sha256": "9d17d5b7d9dc32f5e975ab8d8cd269cc5469cfd95c2f34305c5df3259ed0a8de"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Female_Adult_17/Textures/f006_body_color.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_17/Textures/f006_body_color.tga",
+      "bytes": 12582956,
+      "sha256": "d657c9113b23c72a58bca56bcfe7c0956caea976a6144c3f53c0181b9f2b746d"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Female_Adult_17/Textures/f006_body_normal.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_17/Textures/f006_body_normal.tga",
+      "bytes": 12582956,
+      "sha256": "2ff583af536bd7b2e4de27242a37d6a2659c7274c835ea0f397d96256b62ba60"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Female_Adult_17/Textures/f006_body_specular.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_17/Textures/f006_body_specular.tga",
+      "bytes": 12582956,
+      "sha256": "9f8e0cf9422a435e54700d57177da2a02f4f489359b33afd73a7274cdeaf121b"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Female_Adult_17/Textures/f006_head_color.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_17/Textures/f006_head_color.tga",
+      "bytes": 12582956,
+      "sha256": "f23bfa861e036dc9a39ae8c6595bf0128f021eb762464e58f72907a9b49ecbfa"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Female_Adult_17/Textures/f006_head_normal.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_17/Textures/f006_head_normal.tga",
+      "bytes": 12582956,
+      "sha256": "9388005b0d2a3b90c6d83c280fd603851a181f1ab2a4af02bbc348169a230c92"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Female_Adult_17/Textures/f006_head_specular.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_17/Textures/f006_head_specular.tga",
+      "bytes": 12582956,
+      "sha256": "454745f143b6bff6ea1fabf6dde0993685b2ecf08595c2dfc5b873ab427bf671"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Female_Adult_17/Textures/f006_opacity_color.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Female_Adult_17/Textures/f006_opacity_color.tga",
+      "bytes": 4194348,
+      "sha256": "2ce67c662cf20256c8bf0713e4aeff5f7be0ae3cee981df119dbc7d32111e3d0"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Male_Adult_10/Export/Male_Adult_10_facial.fbx",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_10/Export/Male_Adult_10_facial.fbx",
+      "bytes": 1877232,
+      "sha256": "e62c3c1345150d4cfebf454fbcb906d3cc8f4c846f4ee63e06d6928438b409a3"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Male_Adult_10/Textures/m024_body_color.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_10/Textures/m024_body_color.tga",
+      "bytes": 12582956,
+      "sha256": "5424cf19d81306897f005a94e104cfff08dd0d75cba57734cc056baab85e12cb"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Male_Adult_10/Textures/m024_body_normal.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_10/Textures/m024_body_normal.tga",
+      "bytes": 12582956,
+      "sha256": "7a9e4d43aa92d9eaf9d85d81a6554dea6ade8196f7416b325bf8107da45ccb66"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Male_Adult_10/Textures/m024_body_specular.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_10/Textures/m024_body_specular.tga",
+      "bytes": 12582956,
+      "sha256": "afb52fb44863182a26362309a867f22003401c28f21f6b88085f4af9442080cf"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Male_Adult_10/Textures/m024_head_color.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_10/Textures/m024_head_color.tga",
+      "bytes": 12582956,
+      "sha256": "60e12ea8f638ddeb99f315a805b907c7ddbb5ea048234b0b1e58c5bfb8bc1dd3"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Male_Adult_10/Textures/m024_head_normal.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_10/Textures/m024_head_normal.tga",
+      "bytes": 12582956,
+      "sha256": "42a8eeecd5c552b1052e5a9d2f4ced23b67fa78df4c6854ad95f21cb5e490393"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Male_Adult_10/Textures/m024_head_specular.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_10/Textures/m024_head_specular.tga",
+      "bytes": 12582956,
+      "sha256": "0160159b16d6a5b565b1d8155f4f8614d7202c1c8e6e10ba21360cb60c81f82b"
+    },
+    {
+      "file": "Assets/Avatars/Adults/Male_Adult_10/Textures/m024_opacity_color.tga",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Adults/Male_Adult_10/Textures/m024_opacity_color.tga",
+      "bytes": 4194348,
+      "sha256": "801be5b63549f6ca46c405a4d86c723735a7c4edcbb042c453bdb6fed31bfbdb"
     }
   ],
   "project": "Microsoft Rocketbox Avatar Library",
@@ -472,6 +568,16 @@
       "file": "male-07.glb",
       "bytes": 4957192,
       "sha256": "aea02e536b9ed0bf5ef2cf67ecb851b88e52cffb70a42647e2bf67cbcd4e2547"
+    },
+    {
+      "file": "female-17.glb",
+      "bytes": 5148284,
+      "sha256": "0a0e933d394ed652bc300182bf0bb7b1e9b3a58d45ca71d24e59d7350945adcf"
+    },
+    {
+      "file": "male-10.glb",
+      "bytes": 4997168,
+      "sha256": "a1478f7b45ac81dfe9bf5bbc629a60b74977f67ba889c20f4e039cc037afc6e4"
     }
   ]
 }
