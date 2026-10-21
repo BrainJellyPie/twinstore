@@ -51,7 +51,14 @@ from store_emulator.engine.marketing import (
     survey_panel,
     van_westendorp,
 )
-from store_emulator.engine.marketing.report import ReportNarrative, report_html, report_markdown, survey_report_html, write_narrative
+from store_emulator.engine.marketing.report import (
+    ReportNarrative,
+    report_html,
+    report_markdown,
+    shelf_report_html,
+    survey_report_html,
+    write_narrative,
+)
 from store_emulator.engine.marketing.shelf_test import compare_shelves, pick_shares, shelf_panel
 from store_emulator.engine.perception.shelf_render import render_face
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
@@ -567,3 +574,10 @@ def shelf_test_image(pid: str, tid: str, arm: Literal["control", "test"]) -> byt
     if rack is None:
         raise AppError("the rack is no longer in this layout", 404)
     return render_face(rack, Face(view.report.face), currency=view.report.currency, width=900, number_on_tag=False).png
+
+
+def shelf_test_report(pid: str, tid: str) -> str:
+    view = get_shelf_test(pid, tid)
+    if view.report is None:
+        raise AppError("the shelf test has no results yet", 409)
+    return shelf_report_html(view.report, shelf_test_image(pid, tid, "control"), shelf_test_image(pid, tid, "test"))

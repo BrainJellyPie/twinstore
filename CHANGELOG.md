@@ -66,7 +66,7 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   and name what caught their eye first. Results: the product's pick share, noticed in the top three
   and noticed first, control vs test with paired 95 % intervals; what everyone took; why. API:
   `POST/GET .../shelf-tests`, `POST .../shelf-tests/preview`, `GET/DELETE .../shelf-tests/{id}`,
-  `GET .../shelf-tests/{id}/{control|test}.png`.
+  `GET .../shelf-tests/{id}/{control|test}.png`; a print-ready report at `.../shelf-tests/{id}/report.html`.
 - **Concept tests**: personas (with age / gender quotas) answer purchase intent, appeal, value,
   stand-out, Van Westendorp price and preference questions about up to four images through a vision
   model; Likert summaries, Wilson shares, price-sensitivity curves, segments, verbatims, CSV export,
