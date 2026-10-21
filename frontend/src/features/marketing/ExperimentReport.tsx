@@ -43,7 +43,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
   const spendRows: LiftRow[] = r.variants.flatMap((v) => {
     const m = metric(v, "spend");
     return m ? [{
-      key: v.name, label: v.name, sub: `${pct(m.rel_diff)} vs control`, diff: m.diff, lo: m.ci_low, hi: m.ci_high,
+      key: v.name, label: v.name, sub: m.mean_a === 0 ? "from zero" : `${pct(m.rel_diff)} vs control`, diff: m.diff, lo: m.ci_low, hi: m.ci_high,
       detail: `P(better than control) ${Math.round(m.prob_b_greater * 100)} % · ${signedMoney(Math.round(m.diff * r.visitors_per_day))} per day`,
     }] : [];
   });
@@ -76,7 +76,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
         <div className="min-w-0 flex-1">
           {winner ? (
             <p className="text-sm"><b>{winner.name}</b> earns more per visitor than the control, beyond the noise of this panel
-              {(() => { const m = metric(winner, "spend"); return m ? <> — <b className="num">{signedMoney(m.diff)}</b> per visitor ({pct(m.rel_diff)}), about <b className="num">{signedMoney(Math.round(m.diff * r.visitors_per_day))}</b> a day.</> : "."; })()}
+              {(() => { const m = metric(winner, "spend"); return m ? <> — <b className="num">{signedMoney(m.diff)}</b> per visitor ({m.mean_a === 0 ? "from zero" : pct(m.rel_diff)}), about <b className="num">{signedMoney(Math.round(m.diff * r.visitors_per_day))}</b> a day.</> : "."; })()}
             </p>
           ) : (
             <p className="text-sm">No variant beats the control on revenue per visitor beyond the noise of {r.panel_size} shoppers. Check the tracked products below — a change can move its own product without moving the basket.</p>
@@ -98,9 +98,9 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
                 <span className="truncate text-sm font-semibold">{a.name}</span>
               </div>
               <dl className="space-y-1.5 text-sm">
-                <Kpi label="Revenue / visitor" value={money(a.revenue_per_visitor)} delta={spend ? pct(spend.rel_diff) : null} up={spend ? spend.ci_low > 0 : null} down={spend ? spend.ci_high < 0 : null} />
+                <Kpi label="Revenue / visitor" value={money(a.revenue_per_visitor)} delta={spend ? spend.mean_a === 0 ? `${signedMoney(spend.diff)} from zero` : pct(spend.rel_diff) : null} up={spend ? spend.ci_low > 0 : null} down={spend ? spend.ci_high < 0 : null} />
                 <Kpi label="Conversion" value={`${(a.conversion * 100).toFixed(1)} %`} delta={bought ? pp(bought.diff) : null} up={bought ? bought.ci_low > 0 : null} down={bought ? bought.ci_high < 0 : null} />
-                <Kpi label="Units / visitor" value={a.units_per_visitor.toFixed(2)} delta={units ? pct(units.rel_diff) : null} up={units ? units.ci_low > 0 : null} down={units ? units.ci_high < 0 : null} />
+                <Kpi label="Units / visitor" value={a.units_per_visitor.toFixed(2)} delta={units ? units.mean_a === 0 ? `${units.diff >= 0 ? "+" : ""}${units.diff.toFixed(2)} from zero` : pct(units.rel_diff) : null} up={units ? units.ci_low > 0 : null} down={units ? units.ci_high < 0 : null} />
               </dl>
             </div>
           );
