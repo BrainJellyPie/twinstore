@@ -9,6 +9,8 @@ import asyncio
 import io
 import logging
 import re
+from contextlib import closing
+from collections.abc import Sized
 from pathlib import Path
 from typing import Any, cast
 
@@ -53,10 +55,16 @@ def load_plan_image(data: bytes, filename: str) -> Image.Image:
             import pypdfium2  # type: ignore[import-not-found]  # optional: renders PDF pages
         except ImportError:
             raise AppError("reading PDF plans needs `uv pip install pypdfium2`; or upload the page as PNG/JPEG", 400) from None
-        pdf = pypdfium2.PdfDocument(data)  # type: ignore[reportUnknownMemberType]
-        page = pdf[0]  # type: ignore[reportUnknownVariableType]
-        img = cast(Image.Image, page.render(scale=2).to_pil())  # type: ignore[reportUnknownMemberType]
-        return img.convert("RGB")
+        try:
+            with closing(pypdfium2.PdfDocument(data)) as pdf:  # type: ignore[reportUnknownMemberType]  # optional native binding
+                if len(cast(Sized, pdf)) == 0:
+                    raise AppError("the PDF has no pages", 400)
+                with closing(pdf[0]) as page:  # type: ignore[reportUnknownVariableType]
+                    with closing(page.render(scale=2)) as bitmap:  # type: ignore[reportUnknownMemberType]
+                        # Copy the pixels before the bitmap's native buffer is released.
+                        return cast(Image.Image, bitmap.to_pil()).convert("RGB")  # type: ignore[reportUnknownMemberType]
+        except (RuntimeError, ValueError, IndexError) as e:
+            raise AppError("the PDF could not be read; use a valid, unlocked PDF or upload PNG/JPEG", 400) from e
     try:
         img = Image.open(io.BytesIO(data))
         img.load()

@@ -22,7 +22,7 @@ from store_emulator.application.storage.io import DATA_DIR, write_json, read_jso
 from store_emulator.application.storage.generations import find_active_generation, list_generations
 from store_emulator.application.storage.setups import (
     read_setup, write_setup, list_setups, new_setup_data,
-    delete_setup, find_descendants, personas_path, setup_path,
+    delete_setup, find_descendants, metadata_path, personas_path, setup_path,
     read_state, write_state,
 )
 
@@ -47,9 +47,9 @@ def get_setups(project_id: str) -> list[dict[str, Any]]:
     """Setup summaries (store excluded) with readiness attached."""
     setups = list_setups(project_id)
     persona_count = _count_personas(project_id)
-    gens_by_setup = _running_gens_by_setup(project_id)
+    gens = _running_generations(project_id)
     for s in setups:
-        s["readiness"] = _compute_readiness(s, persona_count, gens_by_setup.get(s["id"], []))
+        s["readiness"] = _compute_readiness(s, persona_count, gens)
     return setups
 
 
@@ -60,8 +60,8 @@ def get_setup(project_id: str, setup_id: str) -> dict[str, Any]:
     except FileNotFoundError:
         raise AppError(f"setup not found: {setup_id}", 404)
     persona_count = _count_personas(project_id)
-    gens_by_setup = _running_gens_by_setup(project_id)
-    setup["readiness"] = _compute_readiness(setup, persona_count, gens_by_setup.get(setup_id, []))
+    gens = _running_generations(project_id)
+    setup["readiness"] = _compute_readiness(setup, persona_count, gens)
     _resolve_slot_images(project_id, setup)
     return setup
 
@@ -94,11 +94,11 @@ def load_setup_with_validation(project_id: str, setup_id: str) -> dict[str, obje
         if store_obj is not None:
             blocked = list_blocked_faces(store_obj)
     persona_count = _count_personas(project_id)
-    gens_by_setup = _running_gens_by_setup(project_id)
+    gens = _running_generations(project_id)
     result: dict[str, object] = dict(setup)
     result["blocked_faces"] = [bf.model_dump(mode="json") for bf in blocked]
     result["readiness"] = _compute_readiness(
-        setup, persona_count, gens_by_setup.get(setup_id, [])
+        setup, persona_count, gens
     )
     _resolve_slot_images(project_id, result)
     return result
@@ -315,23 +315,15 @@ def _count_personas(project_id: str) -> int:
     return len(data)
 
 
-def _running_gens_by_setup(project_id: str) -> dict[str, list[dict[str, Any]]]:
-    result: dict[str, list[dict[str, Any]]] = {}
-    for g in list_generations(project_id):
-        if g.get("status") not in ("pending", "running"):
-            continue
-        sid = str(g.get("setup_id", ""))
-        if not sid:
-            continue
-        result.setdefault(sid, []).append(g)
-    return result
+def _running_generations(project_id: str) -> list[dict[str, Any]]:
+    return [g for g in list_generations(project_id) if g.get("status") in ("pending", "running")]
 
 
 def setup_summary(project_id: str, setup: dict[str, Any]) -> dict[str, Any]:
     """Summary with store excluded and readiness attached. Shared by new-setup responses."""
     summary = {k: v for k, v in setup.items() if k != "store"}
     persona_count = _count_personas(project_id)
-    gens = _running_gens_by_setup(project_id).get(setup["id"], [])
+    gens = _running_generations(project_id)
     summary["readiness"] = _compute_readiness(setup, persona_count, gens)
     return summary
 
@@ -355,7 +347,7 @@ def _compute_readiness(
     """
     reasons: list[str] = []
     for g in gens:
-        if g.get("kind") == "layout":
+        if g.get("kind") == "layout" and g.get("setup_id") == setup.get("id"):
             reasons.append("layout_pending")
         elif g.get("kind") == "persona":
             reasons.append("personas_pending")
@@ -609,6 +601,8 @@ def create_setup_from_source(
     - "empty": create setup with store=None. source_setup_id optional —
       when provided, used as parentId (inherits block meta); otherwise parentId=None.
     """
+    if not metadata_path(project_id).is_file():
+        raise AppError(f"project not found: {project_id}", 404)
     if mode not in ("racks_and_items", "racks", "empty"):
         raise AppError(f"unknown mode: {mode}", 400)
 

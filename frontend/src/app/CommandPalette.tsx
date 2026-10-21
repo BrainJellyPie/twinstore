@@ -10,6 +10,7 @@ import {
   KeyRound,
   LayoutGrid,
   Map,
+  Megaphone,
   Moon,
   Plus,
   Power,
@@ -70,6 +71,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         { id: "floor", group: "This store", label: "Floor & simulation", hint: "3D store, runs, results", icon: Store, run: go("/projects/$pid", { pid }) },
         { id: "area", group: "This store", label: "Neighborhood", hint: "demand, rivals, synergy", icon: Map, run: go("/town/$pid", { pid }) },
         { id: "capture", group: "This store", label: "Shelf capture", hint: "photo → planogram", icon: Camera, run: go("/capture/$pid", { pid }) },
+        { id: "marketing", group: "This store", label: "Marketing studio", hint: "A/B tests, concept tests, product images", icon: Megaphone, run: go("/marketing/$pid", { pid }) },
       );
     }
     list.push(

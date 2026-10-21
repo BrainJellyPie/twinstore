@@ -9,6 +9,7 @@ import { createLabelAtlas, createTagAtlas, createTalkerAtlas, tagKey, type Atlas
 import { createPackageGeometry, PACKAGE_KINDS } from "./productGeometries";
 import type { PackageKind } from "./productCatalog";
 import type { ProductLayout } from "./productLayout";
+import { attachProductPhotos, productLabelKey } from "./productPhotos";
 
 const KIND_SURFACE: Record<PackageKind, { roughness: number; metalness: number }> = {
   bottle: { roughness: 0.18, metalness: 0 },
@@ -27,6 +28,7 @@ export interface ProductMeshes {
   textures: THREE.CanvasTexture[];
   // Swap package meshes between the coarse (overview) and fine (close-up) LOD.
   setDetail: (fine: boolean) => void;
+  loadPhotos: () => () => void;
   dispose: () => void;
 }
 
@@ -60,8 +62,9 @@ export function buildProductMeshes(
   const disposables: { dispose: () => void }[] = [];
 
   // --- Packages
-  const labelAtlas = createLabelAtlas(layout.products.map((p) => p.name), cellPx);
+  const labelAtlas = createLabelAtlas(layout.products.map((p) => ({ key: productLabelKey(p), name: p.name })), cellPx);
   const labelTex = canvasTexture(labelAtlas.canvas, { anisotropy });
+  const photos = attachProductPhotos(labelAtlas, layout.products, () => { labelTex.needsUpdate = true; });
   disposables.push(labelTex);
   const scale = cellUv(labelAtlas.grid, 0).scale;
   const byKind = new Map<PackageKind, typeof layout.products>();
@@ -99,7 +102,7 @@ export function buildProductMeshes(
       _t.makeScale(p.sx, p.sy, p.sz);
       _m.multiply(_t);
       mesh.setMatrixAt(i, _m);
-      const uv = cellUv(labelAtlas.grid, labelAtlas.index.get(p.name) ?? 0);
+      const uv = cellUv(labelAtlas.grid, labelAtlas.index.get(productLabelKey(p)) ?? 0);
       cells.setXY(i, uv.offset[0], uv.offset[1]);
     });
     mesh.instanceMatrix.needsUpdate = true;
@@ -167,7 +170,9 @@ export function buildProductMeshes(
     setDetail: (fine) => {
       for (const l of lods) l.mesh.geometry = fine ? l.fine : l.coarse;
     },
+    loadPhotos: photos.load,
     dispose: () => {
+      photos.dispose();
       for (const d of disposables) d.dispose();
     },
   };

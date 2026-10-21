@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Rack } from "@/shared/types/domain";
-import { CEILING_HEIGHT, QUALITY_PRESETS, type GraphicsQuality } from "./constants";
+import { CEILING_HEIGHT, M, QUALITY_PRESETS, type GraphicsQuality } from "./constants";
 import { buildStore } from "./buildStore";
 import { createShellMaterials, disposeMaterials, NO_CAST, NO_RECEIVE } from "./materials";
 import { layoutProducts } from "./productLayout";
@@ -15,6 +15,7 @@ import { RackHitboxes } from "./RackHitboxes";
 import { acquireRoomEnvironment } from "./envCache";
 import { ReflectiveFloor } from "./ReflectiveFloor";
 import { useRealisticSettings } from "./graphicsSettings";
+import { useScannedMaterial } from "./useScannedMaterial";
 
 interface Props {
   width: number;
@@ -28,6 +29,8 @@ const noRaycast = () => undefined;
 
 function Surfaces({ width, depth, quality }: { width: number; depth: number; quality: GraphicsQuality }) {
   const high = quality === "high";
+  // Poly Haven's scan covers 1.5 metres, independently of the store grid size.
+  const scanned = useScannedMaterial("floor_tiles_08", width / (1.5 * M), depth / (1.5 * M), quality);
   const res = useMemo(() => {
     const { color, rough } = createFloorCanvases(4, 1024);
     const floorMap = canvasTexture(color, { anisotropy: high ? 8 : 2, repeat: true });
@@ -56,8 +59,9 @@ function Surfaces({ width, depth, quality }: { width: number; depth: number; qua
       <ReflectiveFloor
         width={width}
         depth={depth}
-        map={res.floorMap}
-        roughnessMap={res.roughMap}
+        map={scanned?.map ?? res.floorMap}
+        roughnessMap={scanned?.roughnessMap ?? res.roughMap}
+        normalMap={scanned?.normalMap ?? null}
         reflections={high}
       />
       <mesh
@@ -77,7 +81,7 @@ export function RealisticStore({ width, depth, racks, currency, quality }: Props
   const preset = QUALITY_PRESETS[quality];
   const fontsReady = useFontsReady();
 
-  const built = useMemo(() => buildStore(width, depth, racks), [width, depth, racks]);
+  const built = useMemo(() => buildStore(width, depth, racks, quality === "high"), [width, depth, racks, quality]);
   const signTexture = useMemo(() => {
     const t = new THREE.CanvasTexture(built.signAtlas.canvas);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -87,7 +91,10 @@ export function RealisticStore({ width, depth, racks, currency, quality }: Props
   // "medium": only small metal/glass parts sample the environment (see RealisticLighting).
   const get = useThree((s) => s.get);
   const partEnv = useMemo(() => (quality === "high" ? null : acquireRoomEnvironment(get().gl)), [quality, get]);
-  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv), [quality, signTexture, partEnv]);
+  const woodMaps = useScannedMaterial("wood_table_001", 1, 1, quality);
+  // The plaster is authored at one repeat/metre; Medium avoids these extra maps.
+  const wallMaps = useScannedMaterial(quality === "high" ? "plaster_001" : null, 1 / M, 1 / M, quality);
+  const materials = useMemo(() => createShellMaterials(quality, signTexture, partEnv, woodMaps, wallMaps), [quality, signTexture, partEnv, woodMaps, wallMaps]);
   const layout = useMemo(() => layoutProducts(built.plans, { maxRows: preset.maxRows }), [built, preset.maxRows]);
   const products = useMemo(
     () => buildProductMeshes(layout, currency, quality === "high" ? 160 : 128, quality === "high", quality === "high" ? 4 : 1, quality !== "high"),
@@ -113,6 +120,7 @@ export function RealisticStore({ width, depth, racks, currency, quality }: Props
     [built, signTexture],
   );
   useEffect(() => () => disposeMaterials(materials), [materials]);
+  useEffect(() => products.loadPhotos(), [products]);
   useEffect(() => () => products.dispose(), [products]);
 
   // Compile every program off the main thread (KHR_parallel_shader_compile)

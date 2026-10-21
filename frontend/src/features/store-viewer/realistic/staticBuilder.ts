@@ -4,6 +4,7 @@
 
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 
 export type MatKey =
   | "wall"
@@ -52,7 +53,13 @@ function toIndexed(g: THREE.BufferGeometry): THREE.BufferGeometry {
   return g;
 }
 
+// Real manufactured edges catch a narrow highlight. Keep the extra triangles
+// on visible fixture bodies; walls, glass, labels and tiny rails stay simple.
+const BEVELED = new Set<MatKey>(["metalWhite", "fridgeShell", "freezerBody", "counterTop", "wood", "bumper"]);
+
 export class StaticBuilder {
+  constructor(private readonly beveled = false) {}
+
   private parts = new Map<MatKey, THREE.BufferGeometry[]>();
   private frame = new THREE.Matrix4();
   private tmp = new THREE.Matrix4();
@@ -74,6 +81,20 @@ export class StaticBuilder {
 
   add(mat: MatKey, geom: THREE.BufferGeometry, local: THREE.Matrix4): this {
     geom.applyMatrix4(this.tmp.multiplyMatrices(this.frame, local));
+    if (mat === "wall") {
+      // Project in store coordinates so long/rotated wall panels share the same
+      // texel density and adjoining segments don't restart or stretch the map.
+      const position = geom.getAttribute("position");
+      const normal = geom.getAttribute("normal");
+      const uv = geom.getAttribute("uv");
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+        const nx = normal.getX(i), ny = normal.getY(i), nz = normal.getZ(i);
+        if (Math.abs(ny) > 0.5) uv.setXY(i, x, ny > 0 ? -z : z);
+        else if (Math.abs(nx) > 0.5) uv.setXY(i, nx > 0 ? -z : z, y);
+        else uv.setXY(i, nz > 0 ? x : -x, y);
+      }
+    }
     const list = this.parts.get(mat);
     if (list) list.push(geom);
     else this.parts.set(mat, [geom]);
@@ -98,7 +119,11 @@ export class StaticBuilder {
   // Axis-aligned box (in the current frame) given its centre.
   box(mat: MatKey, w: number, h: number, d: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): this {
     if (w <= 0 || h <= 0 || d <= 0) return this;
-    return this.add(mat, new THREE.BoxGeometry(w, h, d), this.local(x, y, z, rx, ry, rz));
+    const rounded = this.beveled && BEVELED.has(mat) && Math.min(w, h, d) >= 0.012;
+    const geometry = rounded
+      ? toIndexed(new RoundedBoxGeometry(w, h, d, 1, Math.min(0.006, Math.min(w, h, d) * 0.18)))
+      : new THREE.BoxGeometry(w, h, d);
+    return this.add(mat, geometry, this.local(x, y, z, rx, ry, rz));
   }
 
   // Box from min corner to max corner.

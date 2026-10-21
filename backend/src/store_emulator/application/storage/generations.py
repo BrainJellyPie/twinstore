@@ -103,10 +103,10 @@ def list_generations(project_id: str, setup_id: str | None = None) -> list[dict[
 
 def find_active_generation(
     project_id: str,
-    setup_id: str,
+    setup_id: str | None = None,
     kind: GenerationKind | None = None,
 ) -> dict[str, Any] | None:
-    """Return one in-flight (pending/running) generation for the setup, or None.
+    """Return one in-flight generation for the project or specified setup, or None.
 
     When ``kind`` is given, restricts the search to that kind.
     """

@@ -1,0 +1,25 @@
+Third-party material assets — CC0 1.0 Universal (public domain)
+https://creativecommons.org/publicdomain/zero/1.0/
+https://polyhaven.com/license
+
+Floor Tiles 08
+https://polyhaven.com/a/floor_tiles_08
+Author: Rob Tuytel
+Real-world coverage: 1.5 x 1.5 metres
+
+Wood Table 001
+https://polyhaven.com/a/wood_table_001
+Photography: Dimitrios Savva. Processing: Rico Cilliers.
+Real-world coverage: 1.5 x 1.5 metres
+
+Files are unmodified 1K JPEG diffuse, roughness and OpenGL normal maps.
+Exact download URLs, SHA-256 checksums and sizes are recorded in sources.json.
+Assets are bundled locally; the application does not contact Poly Haven.
+
+Plaster 001 — ambientCG (Lennart Demes)
+https://ambientcg.com/a/Plaster001
+https://docs.ambientcg.com/license/
+Source: Plaster001_1K-JPG.zip, Color / Roughness / NormalGL files.
+The original JPEG bytes are preserved; filenames use the application's PBR convention.
+The source provides no physical dimensions. The viewer uses one repeat per metre.
+Downloaded assets are served locally; the application does not contact ambientCG.

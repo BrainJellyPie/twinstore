@@ -9,7 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from store_emulator.application import marketing as mk
 from store_emulator.application.errors import AppError
 from store_emulator.application.marketing import ExperimentView, SurveyView
-from store_emulator.domain.marketing import ExperimentRequest, JobStatus, SurveyRequest
+from store_emulator.domain.marketing import ExperimentRequest, JobStatus, MarketingInfo, SurveyRequest
 
 from ..deps import get_config
 
@@ -21,6 +21,11 @@ def _call[T](fn: Callable[[], T]) -> T:
         return fn()
     except AppError as e:
         raise HTTPException(e.status_code, e.message) from e
+
+
+@router.get("/{pid}/marketing", summary="Marketing studio settings", response_model=MarketingInfo)
+def marketing_info(pid: str) -> MarketingInfo:
+    return MarketingInfo(currency=get_config().currency)
 
 
 @router.post("/{pid}/experiments", summary="Start an A/B test", response_model=JobStatus)

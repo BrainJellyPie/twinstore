@@ -36,8 +36,8 @@ async def storefront(
 async def receipts(
     pid: str,
     photos: Annotated[list[UploadFile], File(description="one photo per receipt")],
-    setup_id: Annotated[str, Form(description="layout whose products the lines are matched to")] = "",
-    run_id: Annotated[str, Form(description="or: the run whose store the lines are matched to")] = "",
+    setup_id: Annotated[str, Form(pattern=r"^[A-Za-z0-9_-]*$", description="layout whose products the lines are matched to")] = "",
+    run_id: Annotated[str, Form(pattern=r"^[A-Za-z0-9_-]*$", description="or: the run whose store the lines are matched to")] = "",
     model: Annotated[str, Form()] = "",
 ) -> ReceiptsResult:
     datas = [await p.read() for p in photos]

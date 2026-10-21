@@ -105,6 +105,10 @@ class ExperimentReport(BaseModel):
     seconds: float = 0.0
 
 
+class MarketingInfo(BaseModel):
+    currency: str                     # ISO code of shelf prices (minor units) in this app
+
+
 class JobStatus(BaseModel):
     job_id: str
     kind: Literal["experiment", "survey"]

@@ -4,18 +4,20 @@ from pathlib import Path
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from store_emulator.application.storage.generations import recover_running_generations
+from store_emulator.application.storage.jobs import recover_interrupted_jobs
 from store_emulator.application.storage.seed import seed_sample_projects
 from store_emulator.application.storage.setups import recover_running_setups
 from store_emulator.application.marketing import recover_running_jobs
 from store_emulator.application.local_vlm import manager as local_vlm
 from store_emulator.application.providers import cloud_providers_with_key
-from .routes import simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing
+from .deps import validate_resource_paths
+from .routes import simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing, interview
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 # Silence noisy third-party loggers (raw request/response, completion calls, etc.).
@@ -42,6 +44,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     recovered_setups = recover_running_setups()
     if recovered_setups > 0:
         logger.info(f"server start: recovered {recovered_setups} running setups to draft")
+    recovered_jobs = recover_interrupted_jobs()
+    if recovered_jobs > 0:
+        logger.info(f"server start: marked {recovered_jobs} interrupted background jobs as failed")
     recovered_gens = recover_running_generations()
     if recovered_gens > 0:
         logger.info(f"server start: marked {recovered_gens} in-progress generations as failed")
@@ -59,6 +64,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     lifespan=lifespan,
+    dependencies=[Depends(validate_resource_paths)],
     title="Store Emulator API",
     description=(
         "Block-grid store simulator API. "
@@ -102,6 +108,7 @@ app.include_router(floorplan.router)
 app.include_router(vision_inputs.router)
 app.include_router(system.router)
 app.include_router(marketing.router)
+app.include_router(interview.router)
 
 
 @app.get("/api/health", tags=["system"], summary="Health check")

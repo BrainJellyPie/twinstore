@@ -27,7 +27,7 @@ def read_json(path: Path) -> Any:  # json.load returns dict | list; caller refin
 
 
 def generate_setup_id() -> str:
-    return f"setup_{uuid.uuid4().hex[:4]}"
+    return f"setup_{uuid.uuid4().hex}"
 
 
 def now_iso() -> str:

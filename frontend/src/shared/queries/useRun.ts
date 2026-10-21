@@ -46,7 +46,8 @@ export async function fetchRunBundle(
   };
 }
 
-// Run results are immutable — staleTime Infinity caches forever, gcTime drops it after 30min.
+// Run results are immutable; uploaded SKU photos decorate their store response.
+// Image imports invalidate the project prefix. gcTime drops inactive runs after 30min.
 export function useRun(projectId: string, runId: string) {
   return useSuspenseQuery({
     queryKey: queryKeys.run(projectId, runId),

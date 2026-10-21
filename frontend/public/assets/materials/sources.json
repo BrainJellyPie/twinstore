@@ -1,0 +1,69 @@
+{
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "files": [
+    {
+      "file": "floor_tiles_08_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/floor_tiles_08/floor_tiles_08_diff_1k.jpg",
+      "sha256": "c618d589b732e22ae68d9a18af6baed551e1e736deb8d2039b2d8e7ffa320036",
+      "bytes": 414119
+    },
+    {
+      "file": "floor_tiles_08_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/floor_tiles_08/floor_tiles_08_nor_gl_1k.jpg",
+      "sha256": "93a800229fb4406d1206fd4eca7697459ea46bc5b811bb13fca274dab38c97aa",
+      "bytes": 259727
+    },
+    {
+      "file": "floor_tiles_08_rough_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/floor_tiles_08/floor_tiles_08_rough_1k.jpg",
+      "sha256": "436ac55cfbf394a45638e2b9c49377645a331e9d8109a429b1161dec7547c434",
+      "bytes": 160616
+    },
+    {
+      "file": "wood_table_001_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_diff_1k.jpg",
+      "sha256": "460dd08d240f4a1f02982415048c3c5c200f385db212da18dc7e2df68bf4d0be",
+      "bytes": 215573
+    },
+    {
+      "file": "wood_table_001_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_nor_gl_1k.jpg",
+      "sha256": "9bf7ddf5721e225c20290f1772ae37f9bdfd49658f6d458259eb794e2149d3cf",
+      "bytes": 51927
+    },
+    {
+      "file": "wood_table_001_rough_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_rough_1k.jpg",
+      "sha256": "a2ca9ae89dfe7b8e2e5e92f0aa43467845417de8a50205b5852ef0d57c7624f9",
+      "bytes": 237261
+    },
+    {
+      "file": "plaster_001_diff_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Plaster001_1K-JPG.zip",
+      "archive_member": "Plaster001_1K-JPG_Color.jpg",
+      "archive_sha256": "944b4831016e42ace4a89422e4e7190912ca2f7fed6f561354c48ec7bb54d3a4",
+      "sha256": "d3fe43282859ab7293ad41f2fa3c29f02df077e5bc326cf90a65cc588a4ac5a4",
+      "bytes": 828790,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "plaster_001_nor_gl_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Plaster001_1K-JPG.zip",
+      "archive_member": "Plaster001_1K-JPG_NormalGL.jpg",
+      "archive_sha256": "944b4831016e42ace4a89422e4e7190912ca2f7fed6f561354c48ec7bb54d3a4",
+      "sha256": "ea293c335a0b9243f0a825573b81304b8f99e60b2c067e493d0792adf96dfc72",
+      "bytes": 2091491,
+      "license_url": "https://docs.ambientcg.com/license/"
+    },
+    {
+      "file": "plaster_001_rough_1k.jpg",
+      "source": "https://ambientcg.com/get?file=Plaster001_1K-JPG.zip",
+      "archive_member": "Plaster001_1K-JPG_Roughness.jpg",
+      "archive_sha256": "944b4831016e42ace4a89422e4e7190912ca2f7fed6f561354c48ec7bb54d3a4",
+      "sha256": "6028dbe3cb2ea250eacf3fb87d2c4e5ae8c2a7ff10ecad7883c27d721f2f8e88",
+      "bytes": 367391,
+      "license_url": "https://docs.ambientcg.com/license/"
+    }
+  ]
+}

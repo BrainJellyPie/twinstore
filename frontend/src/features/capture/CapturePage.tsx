@@ -440,7 +440,8 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
   const apply = useMutation({
     mutationFn: () => api.applyCapture(projectId, captureId, mode === "new" ? { setup_id: base, new_rack: true } : { setup_id: base, rack_id: rackId || racks[0]?.id }),
     onSuccess: async (r) => {
-      await qc.invalidateQueries({ queryKey: queryKeys.setups(projectId) });
+      // Captured SKU photos also decorate cached run playback.
+      await qc.invalidateQueries({ queryKey: queryKeys.project(projectId) });
       await qc.invalidateQueries({ queryKey: capturesKey(projectId) });
       setSelectedSetupId(r.setup_id);
       void navigate({ to: "/projects/$pid", params: { pid: projectId } });

@@ -5,6 +5,7 @@ import { SHELL_COLORS, type GraphicsQuality } from "./constants";
 import type { MatKey } from "./staticBuilder";
 import { canvasTexture } from "./atlasMaterial";
 import { createAoCanvas, createWoodCanvas } from "./canvasArt";
+import type { ScannedMaterialMaps } from "./useScannedMaterial";
 
 export type ShellMaterials = Record<MatKey, THREE.Material>;
 
@@ -28,8 +29,11 @@ export function createShellMaterials(
   quality: GraphicsQuality,
   signTexture: THREE.Texture,
   partEnv: THREE.Texture | null = null,
+  woodMaps: ScannedMaterialMaps | null = null,
+  wallMaps: ScannedMaterialMaps | null = null,
 ): ShellMaterials {
-  const wood = canvasTexture(createWoodCanvas(), { anisotropy: 1 });
+  // Material-owned clones keep hook cleanup and shell rebuilds independent.
+  const wood = woodMaps?.map.clone() ?? canvasTexture(createWoodCanvas(), { anisotropy: 1 });
   const ao = canvasTexture(createAoCanvas(), { anisotropy: 1 });
   ao.colorSpace = THREE.NoColorSpace;
 
@@ -67,13 +71,19 @@ export function createShellMaterials(
   });
 
   const mats: ShellMaterials = {
-    wall: std(SHELL_COLORS.wall, 0.92),
+    wall: std(SHELL_COLORS.wall, 0.92, 0, {
+      map: wallMaps?.map.clone() ?? null,
+      roughnessMap: wallMaps?.roughnessMap.clone() ?? null,
+      normalMap: wallMaps?.normalMap?.clone() ?? null,
+      normalScale: new THREE.Vector2(0.2, 0.2),
+    }),
     band: std(SHELL_COLORS.band, 0.6),
     bandLine: std(SHELL_COLORS.bandLine, 0.5),
     trim: std("#d9dcdf", 0.5, 0.1),
     cut: std(SHELL_COLORS.cut, 0.9),
     plinth: std(SHELL_COLORS.plinth, 0.95),
-    metalWhite: std("#eceef0", 0.42, 0.25),
+    // Powder coating is a dielectric even when the substrate is steel.
+    metalWhite: std("#eceef0", 0.42, 0),
     metalGrey: std("#9ea6ae", 0.35, 0.6),
     backPanel: std("#e1e4e7", 0.6, 0.15),
     kick: std("#5c636b", 0.55, 0.35),
@@ -98,8 +108,15 @@ export function createShellMaterials(
     freezerBody: std("#f6f7f8", 0.32, 0.05),
     freezerInterior: std("#dbe9f3", 0.5, 0.05, { emissive: "#dff0ff", emissiveIntensity: 0.12 }),
     bumper: std("#8a939c", 0.4, 0.4),
-    wood: std("#ffffff", 0.62, 0, { map: wood }),
-    counterTop: std("#e9e6df", 0.28, 0.02),
+    wood: std("#ffffff", woodMaps ? 1 : 0.62, 0, {
+      map: wood,
+      roughnessMap: woodMaps?.roughnessMap.clone() ?? null,
+      normalMap: woodMaps?.normalMap?.clone() ?? null,
+      normalScale: new THREE.Vector2(0.3, 0.3),
+    }),
+    counterTop: quality === "high"
+      ? new THREE.MeshPhysicalMaterial({ color: "#e9e6df", roughness: 0.32, clearcoat: 0.28, clearcoatRoughness: 0.2 })
+      : std("#e9e6df", 0.32),
     black: std("#17191c", 0.45, 0.2),
     screen: emissive("#4f8fe8", 0.9),
     mat: std("#2f3337", 0.98),
@@ -123,6 +140,8 @@ export function createShellMaterials(
       polygonOffsetUnits: -2,
     }),
   };
+  // Photo mode converts materials by role (glass, emitters, contact-shadow decal).
+  for (const [key, m] of Object.entries(mats)) m.name = key;
   if (partEnv) {
     for (const key of ENV_KEYS) {
       const m = mats[key] as THREE.MeshStandardMaterial;
@@ -159,7 +178,10 @@ export const NO_RECEIVE = new Set<MatKey>(["glass", "lidGlass", "led", "ceilingL
 export function disposeMaterials(mats: ShellMaterials) {
   for (const m of Object.values(mats)) {
     const sm = m as THREE.MeshStandardMaterial;
-    sm.map?.dispose();
+    // The sign atlas belongs to RealisticStore and survives material rebuilds.
+    if (m !== mats.sign) sm.map?.dispose();
+    sm.roughnessMap?.dispose();
+    sm.normalMap?.dispose();
     m.dispose();
   }
 }

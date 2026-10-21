@@ -49,6 +49,8 @@ export function createAtlasMaterial(
       );
   };
   mat.customProgramCacheKey = () => "parastore-atlas-v2";
+  // Photo mode bakes the cell offset into UVs (the path tracer has no vertex shader hook).
+  mat.userData.atlasCellScale = scale;
   return mat;
 }
 
