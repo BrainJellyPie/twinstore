@@ -62,6 +62,22 @@ describe("productCatalog", () => {
     ["Apple Juice", "bottle"],
     ["Apple Chips", "bag"],
     ["Apple Pie", "box"],
+    ["Watering Can 5L", "wateringCan"],
+    ["Metal Watering Can 5 L", "wateringCan"],
+    ["Galvanized Watering Can", "wateringCan"],
+    ["Watering Can 10L", "can"],
+    ["Plastic Watering Can 5L", "can"],
+    ["Watering Can 5L 2pk", "can"],
+    ["Soda Can", "can"],
+    ["Water Bottle", "bottle"],
+    ["Croissant", "croissant"],
+    ["Fresh Butter Croissant", "croissant"],
+    ["Plain Croissant Each", "croissant"],
+    ["French Croissants", "croissant"],
+    ["Croissants 4pk", "box"],
+    ["Chocolate Croissant", "box"],
+    ["Ham Cheese Croissant", "box"],
+    ["Croissant Sandwich", "box"],
     ["Terracotta Pot 20cm", "pot"],
     ["Clay Plant Pot 12.5 cm", "pot"],
     ["Terra Cotta Planter", "pot"],
@@ -204,6 +220,8 @@ describe("fixture planning and product layout", () => {
 
   it.each([
     ["Terracotta Pot 20cm", "pot", 0.2, 0.2 * (0.5314331 / 0.4662051), 0.2],
+    ["Watering Can 5L", "wateringCan", 0.45233607, 0.19681853, 0.19101861],
+    ["Croissant", "croissant", 0.2, 0.06199567, 0.07551152],
     ["Bananas", "banana", 0.134, 0.179, 0.223],
     ["Apples", "apple", 0.09756, 0.08539, 0.09590],
     ["Apples 2pk", "applePair", 0.20112, 0.08539, 0.09590],
@@ -220,8 +238,8 @@ describe("fixture planning and product layout", () => {
     }
   });
 
-  it("keeps hollow pots in a single layer on display tables", () => {
-    const table = rack({ id: "pots", type: "table", position: [3, 3], slots: slots("S", [["Terracotta Pot 20cm"]]) });
+  it.each(["Terracotta Pot 20cm", "Croissant", "Watering Can 5L"])("keeps %s in a single layer on display tables", (name) => {
+    const table = rack({ id: "pots", type: "table", position: [3, 3], slots: slots("S", [[name]]) });
     const out = layoutProducts([planFixture(table, 8, 6)], { maxRows: 3 });
     expect(out.products.length).toBeGreaterThan(0);
     expect(new Set(out.products.map((p) => p.y)).size).toBe(1);

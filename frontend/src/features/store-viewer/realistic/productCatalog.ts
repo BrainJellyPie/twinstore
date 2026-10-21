@@ -2,7 +2,7 @@
 // size, colours and label text. No three.js / DOM dependencies so they can be
 // unit-tested and reused by an offline renderer.
 
-export type PackageKind = "bottle" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "pot";
+export type PackageKind = "bottle" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "pot" | "croissant" | "wateringCan";
 
 export type ProductCategory =
   | "drink"
@@ -83,6 +83,9 @@ type Rule = [RegExp, (n: string) => PackageSpec];
 // Ordered: first match wins. Ice-cream novelties precede candy ("Snickers Ice
 // Cream Bar"), candy precedes drinks ("Milk Chocolate"), cups precede noodles.
 const RULES: Rule[] = [
+  // Garden tools must precede beverage-can and water-bottle rules.
+  [/^(?:(?:metal|galvanized)\s+)?watering can(?:\s+5\s*l)?$/,
+    () => spec("wateringCan", 0.45233607, 0.19681853, 0.19101861, "other")],
   [
     /ice cream bar|ice cream sandwich|popsicle|bomb pop|drumstick|klondike|mochi|good humor|fatboy|outshine|fruit bar|\bcone\b|cookie sandwich|dessert sandwich|ice cream cone|haagen-dazs.*\bbar\b|almond bar/,
     () => spec("bag", 0.075, 0.2, 0.035, "icecream", true),
@@ -182,6 +185,8 @@ const RULES: Rule[] = [
       const diameter = Number(n.match(/([1-9]\d?(?:\.\d+)?)\s*cm$/)?.[1] ?? 20) / 100;
       return spec("pot", diameter, diameter * (0.5314331 / 0.4662051), diameter, "other");
     }],
+  [/^(?:(?:fresh|butter|plain|french)\s+)*croissants?(?:\s+(?:each|loose|single))?$/,
+    () => spec("croissant", 0.2, 0.06199567, 0.07551152, "bakery")],
 ];
 
 const DEFAULT_SPEC: PackageSpec = spec("box", 0.12, 0.18, 0.05, "other");
@@ -205,6 +210,8 @@ const PALETTE = [
 ];
 
 const KEYWORD_COLORS: [RegExp, string][] = [
+  [/^(?:(?:metal|galvanized)\s+)?watering can\b/, "#a6aaa5"],
+  [/\bcroissants?\b/, "#c88741"],
   [/^(?:terracotta|terra cotta|clay) (?:plant )?(?:pot|planter)\b/, "#b26e4e"],
   [/\bapples?\b/, "#a8342a"],
   [/water|smartwater|aquafina|dasani|evian|fiji|essentia|pure life/, "#8fc3ea"],

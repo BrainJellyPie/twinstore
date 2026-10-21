@@ -51,6 +51,7 @@ class LayoutOptions(BaseModel):
     seating_zone: SeatingZone = "auto"
     reserved_areas: list[ReservedArea] = Field(default_factory=list[ReservedArea], max_length=8)
     excluded_categories: list[TemplateCategoryId] = Field(default_factory=list[str], max_length=64)
+    products_per_category: int | None = Field(default=None, ge=1, le=16)
 
 
 class TemplateLayoutRequest(LayoutOptions):

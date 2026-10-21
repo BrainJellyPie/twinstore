@@ -80,6 +80,27 @@ it("excludes chosen categories, keeps a stocked category and restores the assort
   expect((screen.getByRole("checkbox", { name: "Beer & Alcohol" }) as HTMLInputElement).checked).toBe(true);
 });
 
+it("limits products per category, validates whole counts and restores the full assortment", async () => {
+  mount();
+  fireEvent.click(await screen.findByText("Product categories · 3 of 3 included"));
+  fireEvent.change(screen.getByLabelText("Products per category"), { target: { value: "4" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ products_per_category: 4 }), expect.any(AbortSignal),
+  ));
+  for (const invalid of ["0", "17", "1.5"]) {
+    const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+    fireEvent.change(screen.getByLabelText("Products per category"), { target: { value: invalid } });
+    expect(screen.queryByRole("button", { name: "Expand floor plan" })).toBeNull();
+    expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+  }
+  fireEvent.change(screen.getByLabelText("Products per category"), { target: { value: "" } });
+  await screen.findByRole("button", { name: "Expand floor plan" });
+  expect((screen.getByLabelText("Products per category") as HTMLInputElement).value).toBe("");
+  fireEvent.change(screen.getByLabelText("Products per category"), { target: { value: "8" } });
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Products per category") as HTMLInputElement).value).toBe("");
+});
+
 it("reveals the imported format even when previous catalog filters would hide it", async () => {
   mount();
   await screen.findByRole("button", { name: /Community pharmacy/ });
@@ -181,7 +202,7 @@ it("does not request an invalid size and resets options without losing the brief
   await screen.findByRole("img", { name: "Floor plan preview" });
   const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "99" } });
-  expect(screen.getByRole("status").textContent).toContain("valid grid size");
+  expect(screen.getByRole("status").textContent).toContain("valid grid dimensions");
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
   fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "Quiet corner" } });
   fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "near_entrance" } });

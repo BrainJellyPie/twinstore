@@ -13,6 +13,8 @@ assortment depth. The generator lays the store out the way such shops usually ar
 The result always passes `engine.validation.validate` without errors (checked by tests).
 """
 
+import hashlib
+import json
 import random
 from dataclasses import dataclass, field, replace
 
@@ -21,7 +23,7 @@ from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotIt
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Face, Weekday, stable_seed
 
-from .catalog import CATALOG, category_label, localized
+from .catalog import CATALOG, CatalogItem, category_label, localized
 
 @dataclass(frozen=True)
 class StoreTemplate:
@@ -328,6 +330,30 @@ TEMPLATES: list[StoreTemplate] = [
         gondolas=["apparel", "apparel", "footwear", "travel_gear"], near_counter=["apparel", "footwear"],
         style="loop", open_hours=(10, 22), checkouts=4, design_theme="coastal",
     ),
+    StoreTemplate(
+        id="pizzeria", name="Neighborhood pizzeria", description="Pizza, slices and sides around a terracotta dining floor with eight four-seat tables and two ordering counters. Models counter purchases.",
+        store_type="restaurant", grid=(22, 18), fridges=["soft_drinks", "water_sports", "dairy"],
+        wall_shelves=["pizza_menu"] * 5, gondolas=["pizza_menu", "desserts"], near_counter=["pizza_menu", "desserts"],
+        style="perimeter", open_hours=(11, 23), dining_tables=8, checkouts=2, seating_zone="center", design_theme="terracotta",
+    ),
+    StoreTemplate(
+        id="sushi_shop", name="Sushi & roll shop", description="Sushi sets, rolls and sides in a minimal showroom layout with four four-seat tables and two counters. Models counter purchases.",
+        store_type="restaurant", grid=(18, 14), fridges=["sushi_menu", "sushi_menu", "water_sports", "soft_drinks"],
+        wall_shelves=["sushi_menu", "tea_menu", "sushi_menu"], gondolas=["sushi_menu"], near_counter=["sushi_menu", "tea_menu"],
+        style="showroom", open_hours=(11, 22), dining_tables=4, checkouts=2, seating_zone="back", design_theme="minimal",
+    ),
+    StoreTemplate(
+        id="noodle_bar", name="Noodle & ramen bar", description="Noodle bowls and side dishes along a warm perimeter with six four-seat tables and two ordering counters. Models counter purchases.",
+        store_type="restaurant", grid=(20, 16), fridges=["soft_drinks", "water_sports", "dairy"],
+        wall_shelves=["noodle_menu"] * 4, gondolas=["noodle_menu"], near_counter=["noodle_menu", "tea_menu"],
+        style="perimeter", open_hours=(11, 23), dining_tables=6, checkouts=2, seating_zone="left", design_theme="warm",
+    ),
+    StoreTemplate(
+        id="juice_bar", name="Juice & smoothie bar", description="Fruit juices, smoothies and fruit bowls in a compact botanical café with two four-seat tables. Models counter purchases.",
+        store_type="cafe", grid=(12, 10), fridges=["juice_menu", "juice_menu", "water_sports"],
+        wall_shelves=["juice_menu", "fresh_produce"], gondolas=["juice_menu"], near_counter=["juice_menu"],
+        style="perimeter", open_hours=(7, 20), dining_tables=2, seating_zone="right", checkout_placement="near_entrance", design_theme="botanical",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
@@ -338,9 +364,17 @@ def get_template(template_id: str) -> StoreTemplate | None:
 
 
 class _Builder:
-    def __init__(self, t: StoreTemplate, currency: str, rng: random.Random, options: LayoutOptions):
+    def __init__(self, t: StoreTemplate, currency: str, rng: random.Random, options: LayoutOptions, seed: int):
         self.t, self.currency, self.rng = t, currency, rng
         self.options = options
+        self.assortments: dict[str, list[CatalogItem]] = {}
+        for category in set(t.fridges + t.freezers + t.wall_shelves + t.gondolas + t.near_counter):
+            pool = CATALOG[category]
+            limit = options.products_per_category
+            self.assortments[category] = (
+                random.Random(stable_seed("layout-assortment", seed, category)).sample(pool, limit)
+                if limit is not None and limit < len(pool) else pool
+            )
         self.w, self.h = options.width or t.grid[0], options.height or t.grid[1]
         self.racks: list[Rack] = []
         self.taken: set[tuple[int, int]] = set()
@@ -350,15 +384,14 @@ class _Builder:
                 raise ValueError(f"Reserved area '{area.label}' must fit inside the {self.w}×{self.h} floor, leaving the outer wall cells clear.")
             self.reserved.update((x, y) for x in range(area.x, area.x + area.width)
                                  for y in range(area.y, area.y + area.height))
-        self.sku_n = 0
-        self.by_name: dict[str, SlotItem] = {}
+        self.by_product: dict[CatalogItem, SlotItem] = {}
         self.counts: dict[str, int] = {}
 
     def free(self, x: int, y: int) -> bool:
         return 0 <= x < self.w and 0 <= y < self.h and (x, y) not in self.taken and (x, y) not in self.reserved
 
     def _items_for(self, category: str) -> list[SlotItem]:
-        pool = CATALOG[category]
+        pool = self.assortments[category]
         start = self.counts.get(category, 0)
         self.counts[category] = start + 1
         # Rotate through the assortment so two racks of one category carry different products.
@@ -366,10 +399,11 @@ class _Builder:
         items: list[SlotItem] = []
         for item in order:
             name, price = localized(item, self.currency)
-            if name not in self.by_name:  # a product shown on several faces is one SKU with more facings
-                self.sku_n += 1
-                self.by_name[name] = SlotItem(sku=f"g{self.sku_n:04d}", name=name, price=price)
-            items.append(self.by_name[name])
+            if item not in self.by_product:  # a product shown on several faces is one SKU with more facings
+                identity = json.dumps([item.en, item.ko, item.usd_cents], ensure_ascii=False, separators=(",", ":"))
+                sku = f"g_{hashlib.sha256(identity.encode('utf-8')).hexdigest()[:32]}"
+                self.by_product[item] = SlotItem(sku=sku, name=name, price=price)
+            items.append(self.by_product[item])
         return items
 
     def _slots(self, category: str, faces: list[Face]) -> list[Slot]:
@@ -423,7 +457,7 @@ def generate_store(
                     near_counter=[c for c in t.near_counter if c not in excluded])
         if not (t.fridges or t.freezers or t.wall_shelves or t.gondolas or t.near_counter):
             raise ValueError("Keep at least one product category for this store format.")
-    b = _Builder(t, currency, rng, options)
+    b = _Builder(t, currency, rng, options, seed)
     w, h = b.w, b.h
     layout_style = style or options.style or t.style
     aisle, run_length = {"spacious": (3, 3), "balanced": (2, 4), "dense": (1, 6)}[options.density]

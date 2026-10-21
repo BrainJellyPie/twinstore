@@ -1347,6 +1347,7 @@ export interface LayoutOptions {
   seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
   reserved_areas?: ReservedArea[];
   excluded_categories?: string[];
+  products_per_category?: number | null;
 }
 
 export interface GenerateLayoutRequest extends LayoutOptions {

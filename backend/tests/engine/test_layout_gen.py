@@ -33,10 +33,13 @@ def test_every_template_is_valid(template_id, currency):
                    for r in store.product_racks)
     elif currency == "JPY":
         assert all(item.price % 10 == 0 for item in items)
-    # Same product on several faces is one SKU (extra facings), never a renamed duplicate.
-    names = {}
+    # Repeated facings share a SKU; distinct catalog products can share a display name.
+    products = {}
+    sku_products = {}
     for i in items:
-        assert names.setdefault(i.name, i.sku) == i.sku
+        identity = (i.name, i.price)
+        assert products.setdefault(identity, i.sku) == i.sku
+        assert sku_products.setdefault(i.sku, identity) == identity
 
 
 def test_generation_is_deterministic_and_styles_differ():
@@ -248,3 +251,27 @@ def test_large_fashion_outlet_has_four_checkouts_and_combines_apparel_shoes_and_
     restricted = generate_store("fashion_outlet", options=LayoutOptions(excluded_categories=["footwear"]))
     assert {rack.rack_desc for rack in restricted.product_racks} == {"apparel", "travel_gear"}
     assert validate(restricted) == []
+
+
+@pytest.mark.parametrize("template_id,category,theme,tables,counters", [
+    ("pizzeria", "pizza_menu", "terracotta", 8, 2),
+    ("sushi_shop", "sushi_menu", "minimal", 4, 2),
+    ("noodle_bar", "noodle_menu", "warm", 6, 2),
+    ("juice_bar", "juice_menu", "botanical", 2, 1),
+])
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_dining_formats_have_distinct_complete_menus_and_seating(template_id, category, theme, tables, counters, currency):
+    store = generate_store(template_id, currency=currency)
+    menu = {item.name for rack in store.product_racks if rack.rack_desc == category
+            for slot in rack.slots for item in slot.items}
+    assert len(menu) == 12
+    assert sum(rack.type == "table" for rack in store.racks) == tables
+    assert len(store.counters) == counters and store.design_theme == theme
+    assert store.currency == currency and validate(store) == []
+    all_categories = {rack.rack_desc for rack in store.product_racks}
+    menu_only = generate_store(template_id, currency=currency, options=LayoutOptions(
+        excluded_categories=sorted(all_categories - {category}), dining_tables=0,
+        entrance="right", checkout_wall="left", checkouts=2))
+    assert {rack.rack_desc for rack in menu_only.product_racks} == {category}
+    assert not any(rack.type == "table" for rack in menu_only.racks)
+    assert validate(menu_only) == []

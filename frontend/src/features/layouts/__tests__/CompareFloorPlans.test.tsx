@@ -21,7 +21,7 @@ const current: Store = { ...baseline, id: "current", grid_size: [24, 18], design
   { ...rack, id: "counter", type: "counter", slots: [], position: [0, 16] },
 ] };
 const areas = [{ label: "Pickup", x: 2, y: 14, width: 3, height: 2 }];
-beforeEach(() => vi.mocked(api.previewStoreTemplate).mockResolvedValue(baseline));
+beforeEach(() => { vi.mocked(api.previewStoreTemplate).mockResolvedValue(baseline); });
 
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

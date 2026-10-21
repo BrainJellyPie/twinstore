@@ -266,6 +266,16 @@ def test_price_units_and_categories() -> None:
     assert match_category("shampoo", "Intense Repair") == "health_beauty"
 
 
+def test_catalog_names_without_pack_sizes_keep_their_category_and_price() -> None:
+    assert match_category("", "Ginger Ale", rack_type="fridge") == "soft_drinks"
+    assert typical_price("soft_drinks", "Ginger Ale", "USD")[0] == 189
+    assert match_category("", "Carrot Ginger Juice 350ml", rack_type="fridge") == "juice_menu"
+    assert typical_price("juice_menu", "Carrot Ginger Juice", "USD")[0] == 599
+    assert typical_price("soft_drinks", "Cola 500ml", "USD")[0] == 229
+    assert typical_price("soft_drinks", "Cola 1.5L", "USD")[0] == 349
+    assert match_category("", "Salmon Nigiri 2pc", rack_type="fridge") == "sushi_menu"
+
+
 def _item(i: int, level: int, facings: int, name: str, x: float, price: int = 199) -> CaptureItem:
     return CaptureItem(
         id=f"i{i:02d}", band=RACK_LEVELS - level, level=level, order=i, facings=facings, name=name, price=price,

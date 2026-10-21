@@ -1,0 +1,53 @@
+{
+  "asset": "Poly Haven Croissant",
+  "asset_url": "https://polyhaven.com/a/croissant",
+  "authors": {
+    "Dario Barresi": "Scanning",
+    "Greg Zaal": "Processing"
+  },
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "conversion": "Blender 4.3.2; scripts/convert_croissant.py; 1990 to 300/1500 triangle LODs; bottom-centred unit bounds; original 1K JPEG color, OpenGL normal and packed roughness maps retained.",
+  "authored_dimensions_metres": {
+    "width": 0.20000000298023224,
+    "height": 0.061995670199394226,
+    "depth": 0.07551151514053345
+  },
+  "files": [
+    {
+      "file": "textures/croissant_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/croissant/croissant_nor_gl_1k.jpg",
+      "bytes": 844912,
+      "sha256": "9706598c6aa7ec3f2311f3ab20eba3a2c2ea7dd1099a27ec269c19c8bd0411cf"
+    },
+    {
+      "file": "textures/croissant_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/croissant/croissant_diff_1k.jpg",
+      "bytes": 573933,
+      "sha256": "0eb9b98058f96f3c4f08f78c0a0b3cd6951edd24f9ca8347ff167e2d740d9405"
+    },
+    {
+      "file": "croissant.bin",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/croissant/croissant.bin",
+      "bytes": 44932,
+      "sha256": "d770a5ab7e3bcf3572343d74c7941e87eda87349fe414dd4ab206fa5e1e1524a"
+    },
+    {
+      "file": "textures/croissant_arm_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/croissant/croissant_arm_1k.jpg",
+      "bytes": 632316,
+      "sha256": "5184d5ac5874484b541b1f6249d400db83da129e7c72fe497f91d1dea2bd8708"
+    },
+    {
+      "file": "croissant.gltf",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/croissant/croissant_1k.gltf",
+      "bytes": 2680,
+      "sha256": "b6e1eb36f776e6b79500c51b57c0e29cd17598c2d8a20d0ec0513955a6cc3a2f"
+    }
+  ],
+  "output": {
+    "file": "croissant.glb",
+    "bytes": 2095144,
+    "sha256": "b2507a20ccce9573f57356b4e4e0ca226a6743c594a6e0e5460733f2bc6b628f"
+  }
+}

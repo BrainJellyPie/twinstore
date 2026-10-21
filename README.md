@@ -130,10 +130,15 @@ The initial layout uses your store name, type and opening hours, and is ready to
 edit as soon as the project is created. Persona generation follows the existing
 wizard flow; choosing a template does not make an LLM layout-generation call.
 
-In a project, choose **New layout → Generate a store from a template**. Search 46
+In a project, choose **New layout → Generate a store from a template**. Search 50
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+Under **Product categories**, **Products per category** limits each included
+category to 1–16 distinct products; leave it blank for the full assortment.
+The limit keeps display positions and seating unchanged, with repeated facings
+of the selected products. **Shuffle assortment** picks a reproducible mix;
+the same seed and category keep their selection across floor sizes and currencies.
 Search matches names, descriptions and categories, ignores accents (`cafe` also
 finds `café`), and accepts words in any order. **More format filters** narrows the
 starting layouts by cell count and dining seating, or sorts by name, floor size
@@ -153,6 +158,14 @@ hardware stores and toy/hobby shops add distinct assortments and interior defaul
 Formats can supply their own seating zone, checkout placement and palette; every
 default can be adjusted before saving. Multi-floor starting points also include a
 family shopping center and a vintage shop with an upstairs tea lounge.
+
+**Neighborhood pizzeria**, **Sushi & roll shop**, **Noodle & ramen bar** and
+**Juice & smoothie bar** each have a dedicated twelve-item menu. Their defaults
+range from a compact botanical juice bar with two tables to a terracotta pizza
+restaurant with eight tables, with different seating positions and checkout
+counts. **Dining house** combines all four as independently configurable floors.
+These formats model menu purchases at counters; cooking and table service are
+not simulated.
 
 The campus dining hall starts with 24 four-seat tables (96 seats), four checkout
 counters and perimeter meal displays on a 32×24 floor, with weekday opening
@@ -278,6 +291,13 @@ In **Multi-floor store**, **Export building options** saves the complete list of
 list; an invalid floor leaves your configuration intact. The new building keeps
 the name entered in the form and receives new floor identities when saved.
 Single-floor and whole-building files have separate import controls.
+
+**Review all floors** shows every proposed floor at the same cell scale, with
+individual dimensions, palettes, currencies, seating and checkout counts. A
+summary totals floor cells, tables, seats and checkouts once all previews are
+ready. Invalid floors show their own errors; **Edit floor** returns directly to
+that floor's settings. Reviewing, expanding or downloading these plans does not
+create the building or replace any options.
 
 While configuring a building floor, **Apply design to all floors** copies its
 current interior palette across the building, including the resolved palette
@@ -664,7 +684,10 @@ use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
 Garden-center terracotta pots use the hollow pot from Rico Cilliers' CC0 scan,
-with diameter-aware proportions, two detail levels and PBR maps. Sources and
+with diameter-aware proportions, two detail levels and PBR maps. Plain croissants
+use Dario Barresi and Greg Zaal's CC0 Poly Haven scan with the same instanced detail
+levels and single-layer display. Metal watering cans use Charles Nderitu's CC0
+scan, including its handle, spout and galvanized surface. Sources and
 rebuild instructions are in [`frontend/public/assets/products/`](./frontend/public/assets/products/README.md).
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: eight appearances with textured faces and clothing, normal maps,
@@ -675,6 +698,9 @@ when highlighted. Sources and conversion instructions are in
 High-quality ambient occlusion preserves hair and leaf alpha masks and excludes
 transparent glass from its occluders. Normal/depth rendering restores live
 materials after each pass and shares their textures without taking ownership.
+High also applies Three.js SMAA after AO/bloom and before tone mapping to soften
+alpha-tested hair, eyelashes and fine edges, alongside 4× geometry multisampling.
+Its lookup textures and render targets are released on resize or quality changes.
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
 for photographic indoor lighting and reflections; attribution and file provenance are in
 [`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).

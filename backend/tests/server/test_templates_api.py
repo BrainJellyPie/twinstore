@@ -35,6 +35,11 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     assert templates["fashion_outlet"]["grid"] == [32, 24]
     assert templates["fashion_outlet"]["default_checkouts"] == 4
     assert templates["music_store"]["default_style"] == "free_flow"
+    assert {"pizzeria", "sushi_shop", "noodle_bar", "juice_bar"} <= templates.keys()
+    assert templates["pizzeria"]["default_dining_tables"] == 8
+    assert templates["sushi_shop"]["default_style"] == "showroom"
+    assert templates["noodle_bar"]["default_seating_zone"] == "left"
+    assert templates["juice_bar"]["default_checkout_placement"] == "near_entrance"
     assert {"family_restaurant", "neighborhood_bistro", "takeaway_coffee", "tea_lounge", "artisan_bakery",
             "vintage_boutique", "hardware_store", "toy_hobby_store"} <= templates.keys()
     assert templates["family_restaurant"]["default_seating_zone"] == "center"
@@ -48,7 +53,7 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
 def test_preview_matches_saved_custom_store(client, theme, wall):
     options = dict(seed=12, currency="JPY", style="spine", width=28, height=24,
                    density="spacious", aisle_width=4, max_shelf_run=8, entrance="right", exit_position="center", checkouts=3, checkout_placement="away_from_entrance",
-                   fixture_design="c", design_theme=theme, dining_tables=7, table_clearance=2, seating_zone="center", shelf_direction="vertical", checkout_wall=wall)
+                   fixture_design="c", design_theme=theme, dining_tables=7, table_clearance=2, seating_zone="center", shelf_direction="vertical", checkout_wall=wall, products_per_category=3)
     preview = client.get("/api/store-templates/food_hall/preview", params=options)
     assert preview.status_code == 200, preview.text
     response = client.post(f"/api/projects/{PID}/setups/generate", json={
@@ -71,6 +76,7 @@ def test_preview_matches_saved_custom_store(client, theme, wall):
     assert saved["generation"]["shelf_direction"] == "vertical"
     assert saved["generation"]["aisle_width"] == 4
     assert saved["generation"]["max_shelf_run"] == 8
+    assert saved["generation"]["products_per_category"] == 3
     assert saved["generation"]["exit_position"] == "center"
     assert sum(r["type"] == "table" for r in saved["store"]["racks"]) == 7
 
@@ -83,6 +89,7 @@ def test_preview_matches_saved_custom_store(client, theme, wall):
     {"seating_zone": "roof"}, {"checkout_placement": "outside"}, {"checkout_wall": "roof"}, {"shelf_direction": "diagonal"},
     {"aisle_width": 0}, {"aisle_width": 5}, {"aisle_width": 1.5},
     {"max_shelf_run": 0}, {"max_shelf_run": 9}, {"max_shelf_run": 1.5},
+    {"products_per_category": 0}, {"products_per_category": 17}, {"products_per_category": 1.5},
 ])
 def test_invalid_options_rejected_for_preview_and_save(client, patch):
     assert client.get("/api/store-templates/urban_cvs/preview", params=patch).status_code == 422
@@ -99,6 +106,7 @@ def test_unknown_templates_do_not_create_layouts(client):
     ("shoe_boutique", "fashion"), ("baby_family_store", "baby"), ("travel_essentials", "travel"),
     ("garden_center", "garden"), ("art_craft_store", "crafts"),
     ("optical_shop", "eyewear"), ("jewelry_boutique", "jewelry"), ("music_store", "music"), ("fashion_outlet", "fashion"),
+    ("pizzeria", "restaurant"), ("sushi_shop", "restaurant"), ("noodle_bar", "restaurant"), ("juice_bar", "cafe"),
 ])
 def test_specialty_formats_preview_and_save_with_custom_space(client, template_id, store_type):
     options = {"template_id": template_id, "width": 18, "height": 14, "shelf_direction": "vertical",
