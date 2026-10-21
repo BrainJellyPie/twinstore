@@ -82,7 +82,13 @@ def to_design(draft: _Draft, currency: str, products: Sequence[tuple[str, int]])
     seen: set[str] = {"price"}
     for a in draft.attributes:
         name = a.name.strip()[:40]
-        levels = list(dict.fromkeys(level.strip()[:60] for level in a.levels if level.strip()))
+        levels: list[str] = []
+        seen_levels: set[str] = set()
+        for raw in a.levels:
+            level = raw.strip()[:60]
+            if level and level.casefold() not in seen_levels:
+                seen_levels.add(level.casefold())
+                levels.append(level)
         if not name or name.casefold() in seen or len(levels) < 2:
             continue
         seen.add(name.casefold())

@@ -20,6 +20,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   they put back, the shelf they skipped, something in the last answer), refreshed after every answer and reused
   until the conversation moves on. Without a working model the trip-based questions stay.
   API: `POST .../shoppers/{id}/interview/suggestions`.
+- **Suggest questions from this run** in group interviews: the model reads the run's numbers (shelves where shoppers
+  stopped without buying, impulse picks, empty-handed visits) and proposes three questions, each with the group to
+  ask and why. API: `POST .../runs/{run_id}/group-interviews/suggestions`.
 - Failed model calls in interviews say what to do ("the provider rejected the API key…", "the model's reply was
   not in the expected form. Try again, or pick another model.") instead of a raw provider error, and a shopper's
   answer gets one more retry when the model puts it outside the expected JSON.
@@ -41,6 +44,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Interviews, report commentary and the set-up helpers no longer fail when the app's text model has no API key:
   they use a fast model of a provider that has one (the model actually used is recorded). Simulation runs and studies
   keep their configured model.
+- Store tiles on the home page draw each store's own layout (fridges glowing, the counter marked) instead of the same
+  generic block for every store; `GET /api/projects` lists the active layout's `footprint`.
 - Product images are **named from what the pack says**: on upload (on by default) and with "Read the pack" on each
   card, a vision model reads the name, brand and size printed on the pack instead of using the file name, and links
   the image to the layout's product when it is an exact match and the image was not linked yet. With the local

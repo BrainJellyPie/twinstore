@@ -37,6 +37,18 @@ def test_the_text_model_is_kept_when_it_has_a_key_or_nothing_else_does(keys):
     assert text_model_fallback("ollama_chat/qwen3.5:2b") is None  # local models need no key
 
 
+@pytest.mark.parametrize(('primary', 'alternative_key'), [
+    ('gemini/gemini-3.1-pro-preview', 'ANTHROPIC_API_KEY'),
+    ('anthropic/claude-haiku-5-5', 'OPENAI_API_KEY'),
+    ('openai/gpt-6-luna', 'GEMINI_API_KEY'),
+])
+def test_an_explicit_config_key_keeps_the_apps_model(keys, primary, alternative_key):
+    from pydantic import SecretStr
+    keys(alternative_key)
+    config = LLMConfig(model=primary, api_key=SecretStr('fake-direct-config-key'))
+    assert assistive_model('', config) == primary
+
+
 def test_a_run_on_a_model_without_a_key_is_refused_before_it_starts(keys):
     from store_emulator.application.providers import ensure_resolvable
     from store_emulator.domain.config import EngineType, SimulationConfig

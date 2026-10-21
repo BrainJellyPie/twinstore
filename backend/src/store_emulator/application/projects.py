@@ -1,3 +1,4 @@
+import math
 import shutil
 import uuid
 from pathlib import Path
@@ -22,6 +23,61 @@ from store_emulator.application.storage.setups import (
 _data = Path(DATA_DIR)
 
 
+_DRAWN = {"shelf", "fridge", "counter", "table"}
+MAX_FOOTPRINT_RACKS = 160
+
+
+def _footprint(store: object) -> dict[str, object] | None:
+    """The active layout as rectangles for the gallery tile: grid size and [x, y, w, h, type] per fixture."""
+    def integer(value: object) -> int | None:
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            return None
+        try:
+            return int(value) if math.isfinite(value) and int(value) == value else None
+        except OverflowError:
+            return None
+
+    if not isinstance(store, dict):
+        return None
+    store = cast(dict[str, object], store)
+    raw = store.get("grid_size")
+    if not isinstance(raw, list | tuple):
+        return None
+    grid = cast(list[object], raw)
+    if len(grid) != 2:
+        return None
+    gw, gh = integer(grid[0]), integer(grid[1])
+    if gw is None or gh is None or gw <= 0 or gh <= 0:
+        return None
+    racks: list[list[object]] = []
+    raw_racks = store.get("racks")
+    candidates = cast(list[object], raw_racks) if isinstance(raw_racks, list | tuple) else []
+    for raw_rack in candidates[:MAX_FOOTPRINT_RACKS]:
+        if not isinstance(raw_rack, dict):
+            continue
+        rack = cast(dict[str, object], raw_rack)
+        kind = rack.get("type")
+        shape = rack.get("shape")
+        raw_pos = rack.get("position", [0, 0])
+        if not isinstance(kind, str) or kind not in _DRAWN or not isinstance(shape, list | tuple) or not shape:
+            continue
+        shape = cast(list[object], shape)
+        if any(not isinstance(row, list | tuple) or not row for row in shape):
+            continue
+        rows, cols = len(shape), len(cast(list[object], shape[0]))
+        if any(len(cast(list[object], row)) != cols for row in shape) or not isinstance(raw_pos, list | tuple):
+            continue
+        pos = cast(list[object], raw_pos)
+        if len(pos) != 2:
+            continue
+        x, y = integer(pos[0]), integer(pos[1])
+        if x is None or y is None:
+            continue
+        w, h = (rows, cols) if rack.get("rotation", 0) in (90, 270) else (cols, rows)
+        racks.append([x, y, w, h, kind])
+    return {"grid": [gw, gh], "racks": racks}
+
+
 def list_projects() -> list[dict[str, Any]]:
     """Project list with computed status badge."""
     projects: list[dict[str, Any]] = []
@@ -44,6 +100,8 @@ def list_projects() -> list[dict[str, Any]]:
             try:
                 active = read_setup(pid, active_sid)
                 has_store = active.get("store") is not None
+                if has_store:
+                    meta["footprint"] = _footprint(cast(dict[str, Any], active["store"]))
             except FileNotFoundError:
                 pass
         if has_run:

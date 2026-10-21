@@ -7,7 +7,7 @@ import { ArrowUpRight, CalendarDays, Camera, Clock, Map, Megaphone, Plus, Ruler,
 import { translate, useI18n } from "@/shared/i18n/i18n";
 import type { Locale, MessageKey } from "@/shared/i18n/messages";
 import { storeTypeLabel } from "@/shared/i18n/storeLabels";
-import type { ProjectListItem } from "@/shared/api/client";
+import type { LayoutFootprint, ProjectListItem } from "@/shared/api/client";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { spotlightHandler } from "@/shared/utils/spotlight";
 import { cn } from "@/shared/utils/cn";
@@ -38,7 +38,49 @@ function relativeTime(iso: string, locale: Locale): string | null {
   return new Date(time).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function Footprint({ grid }: { grid: [number, number] | null }) {
+const FIXTURE: Record<LayoutFootprint["racks"][number][4], { h: number; top: string; left: string; right: string }> = {
+  shelf: { h: 5, top: "var(--hero-shelf-top)", left: "var(--hero-shelf-left)", right: "var(--hero-shelf-right)" },
+  fridge: { h: 8, top: "var(--hero-fridge-top)", left: "var(--hero-fridge-left)", right: "var(--hero-fridge-right)" },
+  counter: { h: 4, top: "var(--hero-counter-top)", left: "var(--hero-counter-left)", right: "var(--hero-counter-right)" },
+  table: { h: 2.5, top: "var(--hero-shelf-top)", left: "var(--hero-shelf-left)", right: "var(--hero-shelf-right)" },
+};
+
+/** The store's real layout: its floor and every fixture as a small isometric block, drawn back to front. */
+function LayoutFootprintSvg({ layout }: { layout: LayoutFootprint }) {
+  const [gw, gh] = layout.grid;
+  const s = 46 / Math.max(gw, gh, 1);
+  const iso = (x: number, y: number, z = 0) => `${((x - y) * 0.87).toFixed(1)},${((x + y) * 0.5 - z).toFixed(1)}`;
+  const w = gw * s;
+  const d = gh * s;
+  const slab = 7;
+  const racks = [...layout.racks].sort((a, b) => a[0] + a[1] + a[2] + a[3] - (b[0] + b[1] + b[2] + b[3]));
+  return (
+    <svg viewBox="-50 -16 100 68" className="h-28 w-full drop-shadow-[0_18px_22px_rgb(0_0_0/0.25)] transition-transform duration-500 ease-out group-hover:-translate-y-1 group-hover:scale-[1.04]" aria-hidden>
+      <polygon points={[iso(0, d), iso(w, d), iso(w, d, -slab), iso(0, d, -slab)].join(" ")} fill="var(--hero-shelf-left)" />
+      <polygon points={[iso(w, 0), iso(w, d), iso(w, d, -slab), iso(w, 0, -slab)].join(" ")} fill="var(--hero-shelf-right)" />
+      <polygon points={[iso(0, 0), iso(w, 0), iso(w, d), iso(0, d)].join(" ")} fill="var(--hero-floor)" stroke="var(--hero-line)" />
+      {racks.map(([x, y, rw, rd, kind], i) => {
+        const f = FIXTURE[kind] ?? FIXTURE.shelf;
+        const inset = Math.min(0.12, rw / 4, rd / 4);
+        const x0 = (x + inset) * s, y0 = (y + inset) * s, x1 = (x + rw - inset) * s, y1 = (y + rd - inset) * s;
+        return (
+          <g key={i}>
+            <polygon points={[iso(x0, y1), iso(x1, y1), iso(x1, y1, f.h), iso(x0, y1, f.h)].join(" ")} fill={f.left} />
+            <polygon points={[iso(x1, y0), iso(x1, y1), iso(x1, y1, f.h), iso(x1, y0, f.h)].join(" ")} fill={f.right} />
+            <polygon points={[iso(x0, y0, f.h), iso(x1, y0, f.h), iso(x1, y1, f.h), iso(x0, y1, f.h)].join(" ")} fill={f.top} />
+            {kind === "fridge" && (
+              <polygon points={[iso(x0 + 0.6, y1, 1.6), iso(x1 - 0.6, y1, 1.6), iso(x1 - 0.6, y1, f.h - 1.4), iso(x0 + 0.6, y1, f.h - 1.4)].join(" ")}
+                fill="var(--hero-fridge-glow)" opacity={0.85} />
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function Footprint({ grid, layout }: { grid: [number, number] | null; layout?: LayoutFootprint | null }) {
+  if (layout && layout.racks.length > 0) return <LayoutFootprintSvg layout={layout} />;
   const [gw, gh] = grid ?? [10, 8];
   const s = 46 / Math.max(gw, gh);
   const w = gw * s;
@@ -101,7 +143,7 @@ export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectList
             <ArrowUpRight className="size-4" aria-hidden />
           </span>
         </div>
-        <Footprint grid={project.grid_size} />
+        <Footprint grid={project.grid_size} layout={project.footprint} />
       </div>
       <div className="flex flex-1 flex-col gap-1.5 border-t border-glass-border px-5 pt-4 pb-5">
         <span className="eyebrow">{typeLabel}</span>

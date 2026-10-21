@@ -112,6 +112,10 @@ export interface GroupInterview {
 
 export const askGroup = (pid: string, runId: string, body: { question: string; segment: GroupSegment; size: number; model: string; persona_ids?: string[] }) =>
   fetchJson<GroupInterview>(`/api/projects/${pid}/runs/${runId}/group-interviews`, { method: "POST", body: JSON.stringify(body) });
+export interface GroupQuestion { question: string; segment: GroupSegment; why: string }
+/** Three group questions the model reads off the run's numbers, each with the group to ask. */
+export const suggestGroupQuestions = (pid: string, runId: string, model: string) =>
+  fetchJson<GroupQuestion[]>(`/api/projects/${pid}/runs/${runId}/group-interviews/suggestions`, { method: "POST", body: JSON.stringify({ model }) });
 export const listGroups = (pid: string, runId: string, signal?: AbortSignal) =>
   fetchJson<GroupInterview[]>(`/api/projects/${pid}/runs/${runId}/group-interviews`, { signal });
 export const deleteGroup = (pid: string, runId: string, gid: string) =>

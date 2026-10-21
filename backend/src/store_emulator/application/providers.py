@@ -321,7 +321,7 @@ def text_model_fallback(model: str, settings: dict[ProviderKind, ProviderSetting
         return None
     for other in _FALLBACK_ORDER:
         preset = PRESETS[other]
-        if other != kind and preset.models and _key_for(other, settings)[0] is not None:
+        if other != kind and preset.models and provider_status(other, settings).ready:
             fast = next((m for m in preset.models if "fast" in m.note), preset.models[0])
             return f"{other.value}:{fast.id}"
     return None
@@ -333,6 +333,11 @@ def assistive_model(requested: str, config: LLMConfig) -> str:
     keep their configured model and never fall back."""
     if requested.strip():
         return requested.strip()
+    # Plain LiteLLM references retain the endpoint and key supplied in the app configuration.
+    if ModelRef.parse(config.model) is None and (
+        config.api_base or (config.api_key and config.api_key.get_secret_value().strip())
+    ):
+        return config.model
     alternative = text_model_fallback(config.model)
     if alternative is not None:
         logger.info(f"[providers] {config.model} has no API key; assistive features use {alternative}")
@@ -342,21 +347,30 @@ def assistive_model(requested: str, config: LLMConfig) -> str:
 
 def assistive_vision_model(requested: str, vision: LLMConfig) -> str:
     """The vision model an assistive feature (reading a pack) uses: the one asked for; else the app's vision model,
-    unless that is the local model and it is not running while a cloud provider with a key is set up, in which case
+    unless it targets the app's local server and it is not running while a cloud provider with a key is set up, in which case
     that provider's fast vision model. "" = the app's vision model."""
     if requested.strip():
         return requested.strip()
-    if not vision.api_base or urlsplit(vision.api_base).hostname not in {"127.0.0.1", "localhost", "::1"}:
+    if not vision.api_base:
+        return ""
+    endpoint = urlsplit(vision.api_base)
+    loopback = {"127.0.0.1", "localhost", "::1"}
+    if endpoint.hostname not in loopback:
         return ""
     from .local_vlm import manager  # late import: local_vlm imports this module
 
-    if manager().status().state == "ready":
+    status = manager().status()
+    if status.state == "ready":
+        return ""
+    managed = urlsplit(status.api_base or PRESETS[ProviderKind.LLAMACPP].default_api_base or "")
+    if (managed.hostname not in loopback or endpoint.scheme != managed.scheme or endpoint.port != managed.port
+            or endpoint.path.rstrip("/") != managed.path.rstrip("/")):
         return ""
     settings = load_settings()
     for kind in _FALLBACK_ORDER:
         preset = PRESETS[kind]
         seeing = [m for m in preset.models if m.vision]
-        if seeing and _key_for(kind, settings)[0] is not None:
+        if seeing and provider_status(kind, settings).ready:
             fast = next((m for m in seeing if "fast" in m.note), seeing[0])
             return f"{kind.value}:{fast.id}"
     return ""

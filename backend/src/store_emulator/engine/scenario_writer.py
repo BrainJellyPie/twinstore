@@ -6,6 +6,7 @@ stock-outs are checked against the store's own products; targets that match noth
 the run never silently ignores part of the description.
 """
 
+from collections import Counter
 from collections.abc import Sequence
 from typing import Literal, Protocol
 
@@ -103,9 +104,10 @@ def _store_text(store: Store) -> str:
 
 def matched_skus(store: Store, target: str) -> set[str]:
     """SKUs a promotion or stock-out target reaches, exactly as a run would apply it."""
-    before = {i.sku for r in store.racks for s in r.slots for i in s.items}
+    before = Counter(i.sku for r in store.racks for s in r.slots for i in s.items)
     after, _ = apply_to_store(store, Scenario(stockouts=[target]))
-    return before - {i.sku for r in after.racks for s in r.slots for i in s.items}
+    remaining = Counter(i.sku for r in after.racks for s in r.slots for i in s.items)
+    return set(before - remaining)
 
 
 def _reaches(store: Store, target: str, what: str, warnings: list[str]) -> bool:

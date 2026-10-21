@@ -104,7 +104,7 @@ export function ProductLibrary({ projectId, products, setupId }: { projectId: st
         </p>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))] gap-3">
-          {list.map((p) => <ProductCard key={p.asset_id} projectId={projectId} asset={p} products={products} setupId={setupId} />)}
+          {list.map((p) => <ProductCard key={`${projectId}:${p.asset_id}`} projectId={projectId} asset={p} products={products} setupId={setupId} />)}
         </div>
       )}
     </div>
@@ -113,10 +113,13 @@ export function ProductLibrary({ projectId, products, setupId }: { projectId: st
 
 function ProductCard({ projectId, asset, products, setupId }: { projectId: string; asset: PackageAsset; products: Product[]; setupId?: string }) {
   const qc = useQueryClient();
-  const [name, setName] = useState(asset.name);
-  const [brand, setBrand] = useState(asset.brand ?? "");
-  // A read (here or after upload) changes the saved name and brand; show them unless the user is mid-edit.
-  useEffect(() => { setName(asset.name); setBrand(asset.brand ?? ""); }, [asset.name, asset.brand]);
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const [brandDraft, setBrandDraft] = useState<string | null>(null);
+  const name = nameDraft ?? asset.name;
+  const brand = brandDraft ?? asset.brand ?? "";
+  // Saved values follow reads and refetches; unfinished edits remain until their own save is acknowledged.
+  useEffect(() => { setNameDraft((current) => current?.trim() === asset.name ? null : current); }, [asset.name]);
+  useEffect(() => { setBrandDraft((current) => current?.trim() === (asset.brand ?? "") ? null : current); }, [asset.brand]);
   const read = useMutation({
     mutationFn: () => api.readPackage(projectId, asset.asset_id, { setup_id: setupId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: marketingKeys.packages(projectId) }),
@@ -152,9 +155,9 @@ function ProductCard({ projectId, asset, products, setupId }: { projectId: strin
         </button>
       </div>
       <div className="space-y-1.5 p-2.5">
-        <Input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== asset.name && save.mutate({ name: name.trim() })}
+        <Input value={name} onChange={(e) => setNameDraft(e.target.value === asset.name ? null : e.target.value)} onBlur={() => name.trim() && name !== asset.name && save.mutate({ name: name.trim() })}
           className="h-8 text-sm font-medium" aria-label="Name" />
-        <Input value={brand} onChange={(e) => setBrand(e.target.value)} onBlur={() => brand !== (asset.brand ?? "") && save.mutate({ brand: brand.trim() })}
+        <Input value={brand} onChange={(e) => setBrandDraft(e.target.value === (asset.brand ?? "") ? null : e.target.value)} onBlur={() => brand !== (asset.brand ?? "") && save.mutate({ brand: brand.trim() })}
           placeholder="Brand" className="h-8 text-xs" aria-label="Brand" />
         <label className="flex items-center gap-1.5">
           <Link2 className={cn("size-3.5 shrink-0", linked ? "text-primary" : "text-muted-foreground")} aria-hidden />
@@ -185,6 +188,8 @@ function ProductCard({ projectId, asset, products, setupId }: { projectId: strin
           </p>
         )}
         {read.error && <p role="alert" className="text-[0.68rem] text-destructive">{read.error.message}</p>}
+        {save.error && <p role="alert" className="text-[0.68rem] text-destructive">{save.error.message}</p>}
+        {del.error && <p role="alert" className="text-[0.68rem] text-destructive">{del.error.message}</p>}
       </div>
     </div>
   );
