@@ -79,6 +79,49 @@ function mount() {
   render(<QueryClientProvider client={client}><Picker /></QueryClientProvider>);
 }
 
+it.each(["front", "back", "left", "right"] as const)("applies priorities on the %s entrance wall without losing unrelated requirements", async (gateWall) => {
+  const starting = { ...DEFAULT_TEMPLATE_CHOICE, width: 24, height: 18, seed: 7, currency: "JPY", gate_wall: gateWall,
+    design_theme: "coastal" as const, dining_tables: 3, checkouts: 4, checkout_wall: "back" as const,
+    open_hour: 6, close_hour: 15, closed_days: [6, 7], products_per_category: 1, excluded_categories: ["beer_alcohol"],
+    requirements: "Keep the consultation corner", reserved_areas: [{ label: "Consultation", x: 2, y: 2, width: 2, height: 3 }] };
+  function PrioritizedPicker() {
+    const [choice, setChoice] = useState<typeof DEFAULT_TEMPLATE_CHOICE>(starting);
+    return <TemplatePicker value={choice} onChange={setChoice} />;
+  }
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><PrioritizedPicker /></QueryClientProvider>);
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByText("Apply a layout priority"));
+  const unchanged = { width: 24, height: 18, seed: 7, currency: "JPY", gate_wall: gateWall, design_theme: "coastal",
+    open_hour: 6, close_hour: 15, closed_days: [6, 7], products_per_category: 1, excluded_categories: ["beer_alcohol"], reserved_areas: starting.reserved_areas };
+  for (const [id, expected] of [
+    ["wide", { style: "cross", density: "spacious", aisle_width: 3, max_shelf_run: 3, table_clearance: 2, dining_tables: 3, checkouts: 4, checkout_wall: "back" }],
+    ["capacity", { style: "aisles", density: "dense", aisle_width: 1, max_shelf_run: 8, table_clearance: 1, dining_tables: 3, checkouts: 4 }],
+    ["open", { style: "perimeter", density: "balanced", dining_tables: 0, aisle_width: null, max_shelf_run: null, checkouts: 4 }],
+    ["takeaway", { style: "perimeter", density: "balanced", dining_tables: 0, checkouts: 2, checkout_placement: "near_entrance", checkout_wall: gateWall }],
+  ] as const) {
+    const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+    fireEvent.change(screen.getByLabelText("Layout priority"), { target: { value: id } });
+    expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+    fireEvent.click(screen.getByRole("button", { name: "Apply priority" }));
+    await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ ...unchanged, ...expected }), expect.any(AbortSignal)));
+    expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe(starting.requirements);
+  }
+});
+
+it("lets users edit applied priority settings and reset the floor normally", async () => {
+  mount();
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  fireEvent.click(screen.getByText("Apply a layout priority"));
+  fireEvent.click(screen.getByRole("button", { name: "Apply priority" }));
+  expect((screen.getByLabelText("Layout pattern") as HTMLSelectElement).value).toBe("cross");
+  fireEvent.change(screen.getByLabelText("Interior aisle gap"), { target: { value: "4" } });
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ style: "cross", aisle_width: 4 }), expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Layout pattern") as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText("Interior aisle gap") as HTMLSelectElement).value).toBe("");
+});
+
 it("applies the actual default palette or explicit design and currency without submitting the form", async () => {
   const design = vi.fn(), currency = vi.fn(), submit = vi.fn();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
