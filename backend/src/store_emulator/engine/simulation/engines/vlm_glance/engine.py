@@ -149,10 +149,11 @@ class VLMGlanceEngine(RuleBasedEngine):
         max_items = (min(PLAN_ITEMS_LIMIT, persona.basket_size) if persona.basket_size > 0
                      else min(vcfg.max_plan_items, plan.pattern.max_products))
         system = plan_system_prompt(max_items=max_items, image=bool(image), store_type=store.type)
+        needs = self._needs(context)
         prompt = plan_user_prompt(
             persona, context.cue, plan.pattern, day=context.day, hour=context.arrival_hour,
             situation=context.situation, budget=persona.budget_max if persona.budget_max > 0 else None,
-            currency=cfg.currency, directory=directory, needs=self._needs(context),
+            currency=cfg.currency, directory=directory, needs=needs,
         )
         decision, model, agreement, error = await self._ask_plan(
             entry_decision_model(max_items), system, prompt, image or None, context,
@@ -182,7 +183,22 @@ class VLMGlanceEngine(RuleBasedEngine):
         # n categories (1.04 products per category against 1.43 on real receipts).
         kinds = persona.basket_kinds if persona.basket_size > 0 else 0
         kept: list[str] = []
-        for i, item in enumerate(decision.items):
+        items = list(decision.items)
+        if kinds and persona.category_rates:
+            # Under the breadth limit, what the household has run out of keeps its place, then the
+            # categories it buys most often: a model that lists an extra category first otherwise
+            # pushed a needed staple out of the trip, and kept categories the household never buys
+            # (18 % of planned products, 8 % on real receipts).
+            needed = {n.split(" (they usually take", 1)[0].casefold() for n in (needs[0] if needs else [])}
+            rates = {k.casefold(): v for k, v in persona.category_rates.items()}
+
+            def priority(it: PlannedItem) -> tuple[bool, float]:
+                m = match_plan_item(it, catalog)
+                cat = category_label(m.candidates[0][0]).casefold() if m.candidates else ""
+                return (cat not in needed, -rates.get(cat, 0.0))
+
+            items = sorted(items, key=priority)
+        for i, item in enumerate(items):
             label = item.product or item.category
             if i >= max_items:
                 resolved.append((label, "", "cap", ""))
