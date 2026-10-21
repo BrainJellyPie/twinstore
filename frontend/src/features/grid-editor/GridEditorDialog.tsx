@@ -326,9 +326,9 @@ export function GridEditorDialog({
           <div className="-mx-6 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 pb-1">
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <DimensionInput axis="width" value={editor.gridSize[0]}
-                onChange={(width) => editor.setGridSize([width, editor.gridSize[1]])} />
+                onChange={(width) => { editor.setGridSize([width, editor.gridSize[1]]); setSaveError(null); }} />
               <DimensionInput axis="height" value={editor.gridSize[1]}
-                onChange={(height) => editor.setGridSize([editor.gridSize[0], height])} />
+                onChange={(height) => { editor.setGridSize([editor.gridSize[0], height]); setSaveError(null); }} />
               <span className="text-xs text-muted-foreground">{MIN_DIM}–{MAX_DIM} cells per side</span>
             </div>
 

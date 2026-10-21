@@ -175,6 +175,12 @@ restaurant/café, then select each floor to change its format and options. Floor
 labels appear in the layout tabs. Each floor has its own simulation; cross-floor
 travel, stairs, lifts and a combined building simulation are not modeled.
 
+For an existing generated building, **Reuse building options from …** restores
+the selected floor and the newest saved version of each other floor. Select a
+different saved floor version, move floors higher or lower, duplicate a floor,
+and change its options before saving a separate building. Each new floor records
+its source layout; the original building stays unchanged.
+
 Grid cells are not measured square meters. Pharmacy templates cover retail OTC
 care and wellness, not prescription dispensing. Café/restaurant templates model
 counter purchases; tables reserve floor space but table service, dining time and

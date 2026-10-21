@@ -223,3 +223,31 @@ def test_invalid_generation_source_writes_nothing(client, source, status):
     })
     assert result.status_code == status
     assert client.get(f"/api/projects/{PID}").json() == before
+
+
+def test_reused_building_can_reorder_and_duplicate_floors_without_changing_sources(client):
+    original = client.post(f"/api/projects/{PID}/setups/generate-building", json=_building()).json()["setups"]
+    before = [client.get(f"/api/projects/{PID}/setups/{floor['id']}").json() for floor in original]
+    sources = [original[1], original[0], original[1]]
+    body = {"name": "Market alternative", "floors": [
+        {"label": label, "layout": {**source["generation"], "source_setup_id": source["id"]}}
+        for label, source in zip(["Café downstairs", "Shop upstairs", "Extra café"], sources)
+    ]}
+    response = client.post(f"/api/projects/{PID}/setups/generate-building", json=body)
+    assert response.status_code == 200, response.text
+    floors = response.json()["setups"]
+    assert [floor["parentId"] for floor in floors] == [source["id"] for source in sources]
+    assert len({floor["building"]["id"] for floor in floors}) == 1
+    assert floors[0]["building"]["id"] != original[0]["building"]["id"]
+    assert [floor["building"]["level"] for floor in floors] == [1, 2, 3]
+    assert all(floor["building"]["floor_count"] == 3 for floor in floors)
+    assert [client.get(f"/api/projects/{PID}/setups/{floor['id']}").json() for floor in original] == before
+
+
+def test_missing_source_in_reused_building_leaves_no_partial_floors(client):
+    body = _building()
+    body["floors"][1]["layout"]["source_setup_id"] = "setup_missing"
+    before = client.get(f"/api/projects/{PID}").json()
+    response = client.post(f"/api/projects/{PID}/setups/generate-building", json=body)
+    assert response.status_code == 404
+    assert client.get(f"/api/projects/{PID}").json() == before
