@@ -115,9 +115,17 @@ export function GridEditorDialog({
       // The draft is created in onRackChange when RackEditPanel's Type radio first emits.
       setSelectedCell(pos);
       setSelectedRackId(existing?.id ?? null);
+      setSaveError(null);
     },
     [editor],
   );
+
+  const onMove = (offset: Position) => {
+    if (!selectedCell || selectedCellRacks.length === 0) return;
+    const error = editor.moveRacks(selectedCellRacks.map((rack) => rack.id), offset);
+    setSaveError(error);
+    if (!error) setSelectedCell([selectedCell[0] + offset[0], selectedCell[1] + offset[1]]);
+  };
 
   const onRackChange = useCallback(
     (patch: Partial<EditorRack> | null) => {
@@ -351,6 +359,7 @@ export function GridEditorDialog({
                   selectedRack={selectedRack}
                   onChange={onRackChange}
                   onGateConfigChange={onGateConfigChange}
+                  onMove={onMove}
                 />
               </div>
             </div>
