@@ -63,7 +63,7 @@ def compare_runs(
     if len(ids) < 30:
         notes.append("Fewer than 30 paired customers: intervals are unreliable.")
 
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(abs(seed))
     n = len(ids)
     lo_q, hi_q = (1 - confidence) / 2 * 100, (1 + confidence) / 2 * 100
     metrics: list[MetricComparison] = []

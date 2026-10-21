@@ -91,3 +91,19 @@ def test_zero_quantity_does_not_hide_an_invalid_or_nonzero_line_total(total):
 def test_zero_quantity_with_no_charge_keeps_a_zero_value(total):
     lines = parse_pos_csv(f"receipt_id,sku,quantity,line_total\nr1,tea,0,{total}\n".encode())
     assert lines[0].quantity == 0 and lines[0].unit_price == 0
+
+
+@pytest.mark.parametrize("data_row", ["r1,tea,2,1,250", "r1,tea,2,100,250", "r1,tea,2,100,200,300", "0,100,2,1,250"])
+def test_extra_csv_fields_cannot_shift_transaction_and_product_ids(data_row):
+    with pytest.raises(ValueError, match="fields"):
+        parse_pos_csv(f"receipt_id,sku,quantity,unit_price\n{data_row}\n".encode())
+
+
+@pytest.mark.parametrize("index_column", [False, True])
+def test_quoted_grouped_prices_keep_identifiers_with_or_without_an_exported_index(index_column):
+    header = "receipt_id,sku,quantity,unit_price"
+    data_row = 'r1,tea,2,"1,250"'
+    if index_column:
+        header, data_row = "," + header, "0," + data_row
+    lines = parse_pos_csv(f"{header}\n{data_row}\n".encode())
+    assert (lines[0].transaction_id, lines[0].sku, lines[0].quantity, lines[0].unit_price) == ("r1", "tea", 2, 1250)

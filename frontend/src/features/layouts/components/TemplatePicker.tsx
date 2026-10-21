@@ -3,15 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
-import type { Store } from "@/shared/types/domain";
-import { rackCells } from "@/shared/utils/grid";
 import { cn } from "@/shared/utils/cn";
 import { LAYOUT_STYLES, templateRequest, validTemplateChoice, type TemplateChoice } from "../templateOptions";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
+import { FloorPlanPreview } from "./FloorPlanPreview";
 
-const RACK_COLORS: Record<string, string> = {
-  fridge: "#38bdf8", shelf: "#f59e0b", counter: "#475569", entrance: "#22c55e", exit: "#22c55e", table: "#a78bfa",
-};
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
 export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency }: {
@@ -67,7 +63,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
         <div className="grid gap-3 sm:grid-cols-[170px_1fr]">
           <div className="space-y-1.5">
             {preview.isSuccess && validTemplateChoice(value) ? <>
-              <FloorPlan store={preview.data} areas={value.reserved_areas ?? []} />
+              <FloorPlanPreview store={preview.data} areas={value.reserved_areas ?? []} />
               <p className="text-xs text-muted-foreground">{preview.data.grid_size.join("×")} cells · {preview.data.racks.filter((r) => r.slots.length).length} displays · {new Set(preview.data.racks.flatMap((r) => r.slots.flatMap((s) => s.items.map((i) => i.sku)))).size} products</p>
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "table").length} dining tables · {preview.data.racks.filter((r) => r.type === "table").length * 4} seats</p>
               <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "counter").length} checkout counters</p>
@@ -156,22 +152,4 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
 function Field({ label, children }: { label: string; children: ReactElement<{ id?: string }> }) {
   const id = useId();
   return <div className="space-y-1 text-xs"><label htmlFor={id}>{label}</label>{cloneElement(children, { id })}</div>;
-}
-
-function FloorPlan({ store, areas }: { store: Store; areas: api.ReservedArea[] }) {
-  const [w, h] = store.grid_size;
-  const palette = INTERIOR_DESIGNS[store.design_theme ?? "classic"];
-  return <svg viewBox={`-0.2 -0.2 ${w + 0.4} ${h + 0.4}`} className="max-h-48 w-full rounded border" style={{ backgroundColor: palette.floor }} role="img" aria-label="Floor plan preview">
-    <rect x={0} y={0} width={w} height={h} fill="none" stroke="#94a3b8" strokeWidth={0.12} />
-    {store.racks.flatMap((r) => rackCells(r).map(([x, y]) => <rect key={`${r.id}-${x}-${y}`} x={x + 0.08} y={y + 0.08} width={0.84} height={0.84} rx={0.12} fill={RACK_COLORS[r.type] ?? "#cbd5e1"}>
-      <title>{r.rack_name || r.type}</title>
-    </rect>))}
-    {areas.map((area, index) => <g key={index}>
-      <rect x={area.x} y={area.y} width={area.width} height={area.height} fill="#0d948822"
-        stroke="#0f766e" strokeWidth={0.12} strokeDasharray="0.35 0.2" data-testid={`reserved-area-preview-${index}`}>
-        <title>{area.label}: kept clear</title>
-      </rect>
-      <text x={area.x + 0.15} y={area.y + 0.65} fontSize={0.6} fill="#115e59">{index + 1}</text>
-    </g>)}
-  </svg>;
 }

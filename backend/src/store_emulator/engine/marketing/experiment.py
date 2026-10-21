@@ -47,7 +47,7 @@ def focus_outcomes(
     ids = sorted(set(a) & set(b))
     if not ids or not skus:
         return []
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(abs(seed))
     idx = rng.integers(0, len(ids), size=(n_bootstrap, len(ids)))
     groups = [(sku, names.get(sku, sku), {sku}) for sku in skus]
     if len(skus) > 1:
@@ -155,7 +155,7 @@ def segment_lifts(
     metrics: list[tuple[Literal["spend", "focus_units"], Callable[[CustomerResult], float]]] = [("spend", lambda r: float(r.total_spent))]
     if focus:
         metrics.append(("focus_units", lambda r: float(sum(e.quantity for e in r.purchases if e.product_sku in focus))))
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(abs(seed))
     out: list[SegmentLift] = []
     for segment in sorted(groups):
         ids = groups[segment]
