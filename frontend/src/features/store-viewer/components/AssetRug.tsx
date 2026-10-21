@@ -1,10 +1,8 @@
-import { useGLTF } from "@react-three/drei";
 import type { Rack } from "@/shared/types/domain";
 import { rackBounds, rackWorldCenter } from "@/shared/utils/grid";
 import { useGlbModel } from "@/shared/hooks/useGlbModel";
 
 const RUG_URL = "/assets/market/rugRectangle.glb";
-useGLTF.preload(RUG_URL);
 
 interface RugInstanceProps {
   position: [number, number, number];

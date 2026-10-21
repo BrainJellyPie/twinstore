@@ -551,8 +551,9 @@ def generate_store(
 
     if not any(slot.items for rack in b.racks for slot in rack.slots):
         raise ValueError(
-            "No products from the included categories fit this layout. Increase the grid size, "
-            "reduce aisle width, choose another layout pattern, or include more categories."
+            "No products from the included categories fit this layout: the selected categories have no display space. "
+            "Increase the grid size, reduce the checkout count or aisle width, choose another layout pattern, "
+            "or include more categories."
         )
 
     format_design: dict[str, StoreDesign] = {

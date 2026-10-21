@@ -48,7 +48,9 @@ the pinned source revision and SHA-256 records in `sources.json`.
   figures, not reconstructions of individual simulated consumers.
 
 The application loads these GLBs locally and makes no requests to Microsoft.
-Classic mode retains the existing lightweight characters.
+Classic mode retains the existing lightweight characters. Its character and
+fixture assets are preloaded only when Classic is selected, keeping the first
+Realistic view focused on the photographic assets it actually displays.
 
 To rebuild, download the `files` listed in `sources.json` into a source directory,
 preserving their `file` paths. Verify each SHA-256, then run from the repo root:

@@ -96,3 +96,13 @@ export const ALL_MARKET_ASSETS = [
 ];
 
 export const ALL_CHARACTER_ASSETS = CHARACTER_FILES.map((f) => `${CHARACTERS}/${f}`);
+
+export const ALL_CLASSIC_ASSETS = [
+  ...ALL_MARKET_ASSETS,
+  ...ALL_CHARACTER_ASSETS,
+  `${MARKET}/wall.glb`,
+  `${MARKET}/wall-corner.glb`,
+  `${MARKET}/wall-door-rotate.glb`,
+  `${MARKET}/rugRectangle.glb`,
+  "/assets/ghost/character-ghost.glb",
+];
