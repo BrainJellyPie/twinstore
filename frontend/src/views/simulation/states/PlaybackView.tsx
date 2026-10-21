@@ -52,16 +52,16 @@ export function PlaybackView({
           heatmaps={run.heatmaps}
           rackStats={run.summary.racks ?? null}
           mode="playback"
-          overlay={
-            <RunToolbar
-              projectId={pid}
-              setupId={selectedSetupId}
-              runId={runId}
-              setupStatus={setupStatus}
-              personaCount={personaCount}
-              layouts={layouts}
-            />
-          }
+        />
+      }
+      footerSlot={
+        <RunToolbar
+          projectId={pid}
+          setupId={selectedSetupId}
+          runId={runId}
+          setupStatus={setupStatus}
+          personaCount={personaCount}
+          layouts={layouts}
         />
       }
       sidePanelSlot={

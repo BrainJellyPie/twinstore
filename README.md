@@ -151,6 +151,9 @@ caught the vision shoppers' eye and at which shelf level, who walked in at the d
 customers, dropped over-budget or hallucinated buys, cost). Export every customer as CSV, validate a run against your
 POS export (CSV or XLSX) or receipts, and compare observed movement tracks with simulated occupancy.
 
+Run selection, comparison and exports sit below the store view. On phones and small tablets, playback controls
+start folded with Play/Pause and the time slider still available; expand them for speed, heatmaps and graphics.
+
 - **Compare runs** — any two runs side by side on paired customers: a forest plot of differences with bootstrap 95 %
   intervals, P(B > A) and how many customers you would need to detect a 5 % change.
 - **Optimize** — pick a goal (revenue, conversion, units, impulse revenue or shorter walks), what may change (shelves,

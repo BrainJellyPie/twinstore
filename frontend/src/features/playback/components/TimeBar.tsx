@@ -41,6 +41,13 @@ function formatClock12h(sec: number): string {
 }
 
 export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = false }: Props) {
+  const [smallScreen, setSmallScreen] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => setSmallScreen(media.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
   const playing = usePlaybackControlStore((s) => s.playing);
   const speed = usePlaybackControlStore((s) => s.speed);
   const togglePlay = usePlaybackControlStore((s) => s.togglePlay);
@@ -75,9 +82,10 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
-      if (e.code !== "Space" || disabled || finished) return;
+      if (e.code !== "Space" || disabled || finished || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
       if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(el.tagName))) return;
       e.preventDefault();
+      if (e.repeat) return;
       togglePlay();
     };
     window.addEventListener("keydown", onKey);
@@ -85,13 +93,13 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
   }, [disabled, finished, togglePlay]);
 
   const progress = disabled ? 0 : finished ? 1 : Math.min(1, Math.max(0, (currentMinute - minTime) / (maxTime - minTime)));
-  // The controls fold away in the shopper's-eye view (the view needs the screen) unless reopened there.
+  // Keep phones and the shopper's-eye view clear unless the controls are reopened.
   const [pref, setPref] = useState<{ view: boolean; collapsed: boolean } | null>(null);
-  const collapsed = pref && pref.view === shopperView ? pref.collapsed : shopperView;
+  const collapsed = pref && pref.view === shopperView ? pref.collapsed : shopperView || smallScreen;
 
   return (
-    <div className={cn("glass absolute top-16 right-4 z-20 max-w-[calc(100%-2rem)] overflow-hidden rounded-[1.4rem] text-foreground transition-[width] duration-300 xl:top-4", collapsed ? "w-[21rem]" : "w-[25rem]")}>
-      <div className="flex items-center justify-between gap-3 px-5 pt-4">
+    <div role="region" aria-label="Playback controls" className={cn("glass absolute top-16 right-4 z-20 max-h-[calc(100%-12rem)] max-w-[calc(100%-2rem)] overflow-y-auto rounded-[1.4rem] text-foreground transition-[width] duration-300 xl:top-4 xl:max-h-[calc(100%-9rem)]", collapsed ? "w-[21rem]" : "w-[25rem]")}>
+      <div className="flex items-center justify-between gap-2 px-3 pt-3 sm:gap-3 sm:px-5 sm:pt-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon-xs" className="-ml-1.5 rounded-full" disabled={isFirst} onClick={prevDay} aria-label="Previous day">
@@ -104,7 +112,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               <ChevronRight />
             </Button>
           </div>
-          <div className={cn("num mt-1 leading-none font-medium tracking-[-0.06em] transition-[font-size]", collapsed ? "text-[2rem]" : "text-[2.6rem]")}>
+          <div className={cn("num mt-1 whitespace-nowrap leading-none font-medium tracking-[-0.06em] transition-[font-size]", collapsed ? "text-[1.5rem] sm:text-[2rem]" : "text-[1.75rem] sm:text-[2.6rem]")}>
             {finished ? "Closed" : formatClock12h(currentMinute)}
           </div>
         </div>
@@ -120,7 +128,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               <Button
                 variant="outline"
                 size="icon-lg"
-                className="rounded-full"
+                className="size-8 rounded-full sm:size-10"
                 disabled={disabled}
                 onClick={() => seek(maxTime)}
                 title="Skip to closing time"
@@ -135,7 +143,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
                 title={playing ? "Pause (Space)" : "Play (Space)"}
                 aria-label={playing ? "Pause" : "Play"}
                 className={cn(
-                  "grid size-14 place-items-center rounded-full bg-primary text-primary-foreground transition-[transform,box-shadow] duration-200 hover:scale-105 active:scale-95 disabled:opacity-40",
+                  "grid size-10 place-items-center rounded-full bg-primary text-primary-foreground transition-[transform,box-shadow] duration-200 hover:scale-105 active:scale-95 disabled:opacity-40 sm:size-14",
                   "shadow-[inset_0_1px_0_rgb(255_255_255/0.35),0_0_0_6px_color-mix(in_oklab,var(--primary)_14%,transparent),0_14px_36px_-10px_var(--primary)]",
                   !playing && !disabled && "animate-pulse-ring",
                 )}
@@ -147,7 +155,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
         </div>
       </div>
 
-      <div className="px-5 pt-4 pb-1">
+      <div className="px-3 pt-3 pb-1 sm:px-5 sm:pt-4">
         <input
           type="range"
           min={minTime}
@@ -167,6 +175,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
             onClick={() => setPref({ view: shopperView, collapsed: !collapsed })}
             className="flex items-center gap-1 rounded-full px-2 text-muted-foreground transition-colors hover:text-foreground"
             aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand playback controls" : "Collapse playback controls"}
           >
             {Math.round(progress * 100)}% · {collapsed ? "controls" : "less"}
             <ChevronDown className={cn("size-3 transition-transform", !collapsed && "rotate-180")} />
@@ -185,8 +194,8 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
           </div>
         )
       ) : (
-      <div className="mt-2 space-y-3 border-t border-glass-border bg-foreground/[0.02] px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
+      <div className="mt-2 space-y-3 border-t border-glass-border bg-foreground/[0.02] px-3 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="eyebrow w-14">Speed</span>
           <ToggleGroup
             type="single"
@@ -194,7 +203,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
             onValueChange={(v) => v && setSpeed(Number(v) as PlaybackSpeed)}
             size="sm"
             disabled={disabled}
-            className="flex-1 rounded-xl bg-foreground/[0.05] p-0.5"
+            className="min-w-40 flex-1 flex-wrap rounded-xl bg-foreground/[0.05] p-0.5"
           >
             {SPEED_VALUES.map((s) => (
               <ToggleGroupItem key={s} value={String(s)} className="h-7 flex-1 rounded-[0.6rem] text-[0.8rem]">
@@ -203,7 +212,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
             ))}
           </ToggleGroup>
         </div>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="eyebrow flex w-14 items-center gap-1">
             <Layers className="size-3" aria-hidden />
             Layer
@@ -214,7 +223,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
             onValueChange={(v) => v && setHeatmapMode(v as HeatmapMode)}
             size="sm"
             aria-label="Heatmap layer"
-            className="flex-1 rounded-xl bg-foreground/[0.05] p-0.5"
+            className="min-w-40 flex-1 flex-wrap rounded-xl bg-foreground/[0.05] p-0.5"
           >
             {HEATMAP_LAYERS.map((l) => (
               <ToggleGroupItem
@@ -236,7 +245,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
             high
           </div>
         )}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="eyebrow flex w-14 items-center gap-1">
             <Box className="size-3" aria-hidden />
             View
