@@ -50,11 +50,13 @@ export function TownMap({
 
   const toWorld = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
-    if (!svg) return null;
-    const r = svg.getBoundingClientRect();
-    const sx = view.x + ((clientX - r.left) / r.width) * view.w;
-    const sy = view.y + ((clientY - r.top) / r.height) * view.w;
-    return { x: sx, y: S - sy };
+    const matrix = svg?.getScreenCTM();
+    if (!svg || !matrix) return null;
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    const position = point.matrixTransform(matrix.inverse());
+    return { x: position.x, y: S - position.y };
   };
 
   const onWheel = (e: WheelEvent<SVGSVGElement>) => {
@@ -72,10 +74,10 @@ export function TownMap({
   const onMove = (e: PointerEvent<SVGSVGElement>) => {
     const d = drag.current;
     const svg = svgRef.current;
-    if (!d || !svg) return;
-    const r = svg.getBoundingClientRect();
-    const dx = ((e.clientX - d.px) / r.width) * view.w;
-    const dy = ((e.clientY - d.py) / r.height) * view.w;
+    const matrix = svg?.getScreenCTM()?.inverse();
+    if (!d || !matrix) return;
+    const dx = (e.clientX - d.px) * matrix.a + (e.clientY - d.py) * matrix.c;
+    const dy = (e.clientX - d.px) * matrix.b + (e.clientY - d.py) * matrix.d;
     if (Math.abs(e.clientX - d.px) + Math.abs(e.clientY - d.py) > 4) d.moved = true;
     setView((v) => ({ ...v, x: d.vx - dx, y: d.vy - dy }));
   };

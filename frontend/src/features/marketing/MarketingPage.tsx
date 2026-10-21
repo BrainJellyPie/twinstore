@@ -43,13 +43,14 @@ import { storeProducts } from "./products";
 import { ShelfTestBuilder, ShelfTestReportView } from "./ShelfTest";
 import { SurveyBuilder } from "./SurveyBuilder";
 import { SurveyReportView } from "./SurveyReport";
+import { Protocols } from "./Protocols";
 import { UnitPrices } from "./UnitPrices";
 import { InventoryReview } from "./InventoryReview";
 import { FieldPilots } from "./FieldPilots";
 import { StaffPitchBuilder } from "./StaffPitchBuilder";
 import { StaffPitchReportView } from "./StaffPitchReport";
 
-type Tab = "ab" | "shelf" | "survey" | "conjoint" | "pitch" | "pilot" | "products" | "inventory" | "prices";
+type Tab = "ab" | "shelf" | "survey" | "conjoint" | "pitch" | "pilot" | "products" | "inventory" | "prices" | "protocols";
 type JobTab = "ab" | "shelf" | "survey" | "conjoint" | "pitch";
 
 const TABS: { id: Tab; label: string; icon: typeof FlaskConical; blurb: string }[] = [
@@ -59,6 +60,7 @@ const TABS: { id: Tab; label: string; icon: typeof FlaskConical; blurb: string }
   { id: "conjoint", label: "Conjoint", icon: Grid3x3, blurb: "Which features and prices win the choice: part-worths, willingness to pay and a market simulator" },
   { id: "pitch", label: "Staff scripts", icon: MessagesSquare, blurb: "Compare wording with paired intent, trust and pressure ratings" },
   { id: "pilot", label: "Field pilots", icon: ClipboardList, blurb: "Preassigned staff/shift experiments and observed purchase conversion" },
+  { id: "protocols", label: "Protocols", icon: ClipboardList, blurb: "Record original research plans and explain later amendments" },
   { id: "prices", label: "Unit prices", icon: ClipboardList, blurb: "Compare observed competitor offers by pack quantity, date and eligibility" },
   { id: "inventory", label: "Inventory", icon: ClipboardList, blurb: "Reconcile observed stock and review period margin, turnover and net unit sell-through" },
   { id: "products", label: "Products", icon: Images, blurb: "Package images, brands and the shelf products they show" },
@@ -112,8 +114,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   const jobs = useMemo(() => (tab === "ab" ? experiments.data ?? [] : tab === "shelf" ? shelfTests.data ?? [] : tab === "survey" ? surveys.data ?? []
     : tab === "conjoint" ? conjoints.data ?? [] : tab === "pitch" ? pitches.data ?? [] : []),
   [tab, experiments.data, shelfTests.data, surveys.data, conjoints.data, pitches.data]);
-  const current = (tab === "products" || tab === "pilot" || tab === "inventory" || tab === "prices") ? null : selected[tab];
-  const select = (id: string | null) => tab !== "products" && tab !== "pilot" && tab !== "inventory" && tab !== "prices" && setSelected((s) => ({ ...s, [tab]: id }));
+  const current = (tab === "products" || tab === "pilot" || tab === "inventory" || tab === "prices" || tab === "protocols") ? null : selected[tab];
+  const select = (id: string | null) => tab !== "products" && tab !== "pilot" && tab !== "inventory" && tab !== "prices" && tab !== "protocols" && setSelected((s) => ({ ...s, [tab]: id }));
   // "Duplicate and edit": the builder opens pre-filled with a finished test's request.
   const [abDraft, setAbDraft] = useState<{ key: number; req: ExperimentRequest } | null>(null);
   const [surveyDraft, setSurveyDraft] = useState<{ key: number; req: SurveyRequest } | null>(null);
@@ -139,7 +141,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   };
 
   useEffect(() => {
-    if (tab === "products" || tab === "pilot" || tab === "inventory" || tab === "prices" || selected[tab] !== null || !jobs.length) return;
+    if (tab === "products" || tab === "pilot" || tab === "inventory" || tab === "prices" || tab === "protocols" || selected[tab] !== null || !jobs.length) return;
     // Open the latest test on first visit; "New test" sets the selection to "" afterwards.
     setSelected((s) => ({ ...s, [tab]: jobs[0]!.job_id }));
   }, [tab, jobs, selected]);
@@ -171,7 +173,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      {tab === "prices" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
+      {tab === "protocols" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><Protocols key={projectId} projectId={projectId} /></div> : tab === "prices" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
         <div className="min-h-64 flex-1 overflow-y-auto pr-1"><ProductLibrary projectId={projectId} products={products} /></div>
       ) : (
         <div className="grid min-h-64 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
