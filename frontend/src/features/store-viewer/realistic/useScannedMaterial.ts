@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import type { GraphicsQuality } from "./constants";
 
@@ -13,10 +13,11 @@ type Surface = "floor_tiles_08" | "wood_table_001";
 // Bundled CC0 scans: no CDN dependency at runtime. Keep the procedural surface
 // visible until the entire set is ready, including when a download fails.
 export function useScannedMaterial(surface: Surface, repeatX: number, repeatY: number, quality: GraphicsQuality) {
-  const key = `${surface}:${repeatX}:${repeatY}:${quality}`;
-  const [loaded, setLoaded] = useState<{ key: string; maps: ScannedMaterialMaps } | null>(null);
+  const request = useMemo(() => ({ surface, repeatX, repeatY, quality }), [surface, repeatX, repeatY, quality]);
+  const [loaded, setLoaded] = useState<{ request: typeof request; maps: ScannedMaterialMaps } | null>(null);
 
   useEffect(() => {
+    const { surface, repeatX, repeatY, quality } = request;
     let alive = true;
     const textures: THREE.Texture[] = [];
     const loader = new THREE.TextureLoader();
@@ -39,7 +40,7 @@ export function useScannedMaterial(surface: Surface, repeatX: number, repeatY: n
       load("rough", false),
       quality === "high" ? load("nor_gl", false) : Promise.resolve(null),
     ]).then(([map, roughnessMap, normalMap]) => {
-      if (alive) setLoaded({ key, maps: { map, roughnessMap, normalMap } });
+      if (alive) setLoaded({ request, maps: { map, roughnessMap, normalMap } });
     }).catch(() => {
       alive = false;
       textures.forEach((texture) => texture.dispose());
@@ -50,7 +51,7 @@ export function useScannedMaterial(surface: Surface, repeatX: number, repeatY: n
       alive = false;
       textures.forEach((texture) => texture.dispose());
     };
-  }, [key, surface, repeatX, repeatY, quality]);
+  }, [request]);
 
-  return loaded?.key === key ? loaded.maps : null;
+  return loaded?.request === request ? loaded.maps : null;
 }
