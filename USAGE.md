@@ -224,6 +224,39 @@ checklist without purchase counts or treatment effects. **Observations and resul
 sheet, import review, history and result report. This separation helps monitor collection without reading outcomes;
 it is not enforced blinding or a substitute for a fixed stopping rule.
 
+After completing **every planned encounter and purchase/delivery outcome** and closing the fixed plan, open
+**Observations and results → Staff and shift sensitivity → Show sensitivity checks**. The report describes how
+the B-minus-A target-product conversion difference changes when all blocks belonging to one staff alias, one
+shift ID, or one staff/shift pair are omitted in turn. Every group is shown, including those whose removal leaves
+no data. Repeated staff aliases across shifts are removed together; repeated shift IDs across staff are removed
+together. Use a distinct shift ID for each actual shift and consistent anonymous staff aliases before collection.
+Reusing an ID for unrelated shifts or people merges their records; the diagnostic cannot detect or correct that.
+
+Within block `b`, calculate `d_b = purchases_B / planned_B - purchases_A / planned_A`. The full difference is
+`sum(n_b × d_b) / sum(n_b)`, with `n_b` the precommitted block size. For each deletion use the same formula over
+the remaining whole blocks. These pilots have balanced assignment within each block and require complete outcomes,
+so the result also equals the difference between the remaining arms' pooled conversion rates. Refusals and
+non-delivery stay in their original assigned arm. No per-protocol subset, missing-value imputation or new model
+call is used. The original full-plan result remains primary; deleting groups changes the population represented.
+
+The screen shows the removed sample weight, remaining encounters, deletion estimate, change from the full plan,
+range and largest absolute change per scope. Values are absolute percentage points. **Opposite sign** means strictly
+positive becomes negative or strictly negative becomes positive; an exact zero is not a reversal. Removing the only
+group is **Not estimable**, never zero. Ranges are descriptive, not confidence intervals. Comparisons share data
+and are not independent replications. Large changes can reflect noise, composition, heterogeneity or protocol
+differences; they do not establish a staff performance effect or diagnose confounding. Stable signs do not prove
+causality or fix clustered outcomes, repeated shoppers or interference. Do not choose a favorable deletion, replace
+the primary estimate, repeat tests across these rows, or restart pilots for a preferred result.
+
+Open pilots, early closures with unused slots, missing observations and assignments inconsistent with the saved
+design are rejected. Do not close early to unlock the report. No stored observations, history, closure state or
+primary interval are modified. **Export all sensitivity checks CSV** includes all three scopes and the requested
+locked revision. Differences, changes and weights are proportions (multiply differences by 100 for percentage
+points); unavailable values are blank. Plan totals repeat per row and must not be summed. Exported formula-like
+identifiers are prefixed with an apostrophe. A stale revision must be reloaded instead of mixing snapshots.
+API: `GET /api/projects/{pid}/staff-pilots/{id}/sensitivity?revision={revision}` and the same path with
+`sensitivity.csv` for export. No extra persisted fields are required for existing saved pilots.
+
 For observed POS evidence, open **Observations and results → Reconcile POS purchases**. Prepare a UTF-8 CSV with
 the following columns (each exactly once, any column order):
 

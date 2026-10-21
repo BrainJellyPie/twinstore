@@ -71,6 +71,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   immutable stimulus snapshots, intention-to-treat purchase counts, missingness bounds, versioned atomic updates,
   and locked closure. Complete targets receive a conservative fixed-sample conversion interval; unfinished targets
   stay descriptive. The independent Field pilots tab retains results after deletion of a source screening job.
+- **Field pilot sensitivity checks**: post-closure staff, shift and block deletion diagnostics with planned-count
+  weighting, exact-zero handling, unavailable comparisons and a revision-bound CSV export. Fully completed
+  fixed plans are required; no outcome imputation, interim testing or additional significance claims.
 - New **Market** page (`/marketing/<project>`) for marketers and research agencies, with seven tabs: A/B tests,
   shelf tests, concept tests, conjoint, staff scripts, field pilots and products.
 - **Staff scripts**: independent A/B exposures on the same synthetic personas, with purchase intent,

@@ -12,6 +12,7 @@ import { PilotPlanner, PilotPlanningSummary } from "./PilotPlanner";
 import { emptyPlanningInputs, planningAssumptions } from "./pilotPlanning";
 import { PilotImportHistory, PilotObservationReview } from "./PilotObservationReview";
 import { PilotCollectionChecks } from "./PilotCollectionChecks";
+import { PilotSensitivity } from "./PilotSensitivity";
 
 const percent = (n: number | null) => n == null ? "Unknown" : `${(n * 100).toFixed(1)}%`;
 const points = (n: number | null) => n == null ? "Not available" : `${n > 0 ? "+" : ""}${(n * 100).toFixed(1)} pp`;
@@ -124,6 +125,7 @@ export function PilotResults({ projectId, view }: { projectId: string; view: Pil
     </div>}
     {close.error && <p role="alert" className="text-sm text-destructive">{close.error.message}</p>}
     <PilotImportHistory projectId={projectId} pilot={p} />
+    <PilotSensitivity projectId={projectId} pilotId={p.pilot_id} revision={p.revision} eligible={!!p.finalized_at && a.inference_ready} />
     <details><summary className="cursor-pointer text-sm font-semibold">Saved design and scripts</summary>
       <div className="mt-2 space-y-2 text-sm"><p>{p.product.name} · {p.product.sku} · {formatMoney(p.product.price, p.product.currency)} · {p.product.promo}</p>
         <p>Eligibility: {p.design.eligibility}</p><p>Outcome window: {p.design.outcome_window}</p><p>Context: {p.context}</p><p>Product facts: {p.product_facts || "None supplied"}</p>

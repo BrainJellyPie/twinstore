@@ -17,6 +17,8 @@ from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlan
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationImportRecord, ObservationPreview
 from store_emulator.domain.field_collection import PilotCollectionReport
 from store_emulator.domain.field_pos import PilotPosPreview
+from store_emulator.domain.field_sensitivity import PilotSensitivityReport
+from store_emulator.engine.marketing.field_sensitivity import analyze_sensitivity, sensitivity_csv
 from store_emulator.engine.marketing.field_pos import reconcile_pos
 from store_emulator.engine.marketing.field_collection import check_collection, collection_tasks_csv
 from store_emulator.engine.marketing.field_observations import import_history_csv, preview_observations
@@ -79,6 +81,20 @@ def get_pilot(pid: str, pilot_id: str) -> PilotView:
 def get_collection_checks(pid: str, pilot_id: str) -> PilotCollectionReport:
     pilot = FieldPilot.model_validate(read_json(_path(pid, pilot_id)))
     return check_collection(pilot)
+
+
+def get_sensitivity(pid: str, pilot_id: str, revision: int) -> PilotSensitivityReport:
+    pilot = FieldPilot.model_validate(read_json(_path(pid, pilot_id)))
+    if pilot.revision != revision or pilot.pilot_id != pilot_id:
+        raise AppError("The saved pilot differs from the requested revision. Reload the pilot", 409)
+    try:
+        return analyze_sensitivity(pilot)
+    except ValueError as exc:
+        raise AppError(str(exc), 409) from exc
+
+
+def export_sensitivity(pid: str, pilot_id: str, revision: int) -> str:
+    return sensitivity_csv(get_sensitivity(pid, pilot_id, revision))
 
 
 def export_collection_tasks(pid: str, pilot_id: str) -> str:

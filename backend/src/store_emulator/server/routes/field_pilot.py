@@ -1,13 +1,15 @@
 """Observed staff-script field experiments; no model calls."""
 
 from collections.abc import Callable
+from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import PlainTextResponse
 from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import field_pilot
 from store_emulator.application.errors import AppError
+from store_emulator.domain.field_sensitivity import PilotSensitivityReport
 from store_emulator.domain.field_pilot import PilotRequest, PilotRevision, PilotSummary, PilotView
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationPreview
@@ -104,3 +106,15 @@ def get_import_audit(pid: str, pilot_id: str, revision: int) -> ObservationImpor
 @router.post("/{pid}/staff-pilots/{pilot_id}/close", response_model=PilotView, summary="Close collection and lock the field results")
 def finalize_pilot(pid: str, pilot_id: str, req: PilotRevision) -> PilotView:
     return _call(lambda: field_pilot.finalize_pilot(pid, pilot_id, req.revision))
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/sensitivity", response_model=PilotSensitivityReport, summary="Describe staff and shift influence after fixed-plan closure")
+def sensitivity(pid: str, pilot_id: str, revision: Annotated[int, Query(ge=0)]) -> PilotSensitivityReport:
+    return _call(lambda: field_pilot.get_sensitivity(pid, pilot_id, revision))
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/sensitivity.csv", summary="Export all descriptive group deletion checks at a saved revision")
+def export_sensitivity_report(pid: str, pilot_id: str, revision: Annotated[int, Query(ge=0)]) -> PlainTextResponse:
+    text = _call(lambda: field_pilot.export_sensitivity(pid, pilot_id, revision))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-sensitivity-r{revision}.csv"'})

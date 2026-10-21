@@ -327,3 +327,54 @@ def test_pos_preview_errors_preserve_observations(client, tmp_path):
     assert client.post(f"{ROOT}/staff-pilots/missing/pos/preview", files={"file": ("pos.csv", b"bad")}, data={"revision": "0"}).status_code == 404
     assert client.post("/api/projects/missing/staff-pilots/missing/pos/preview", files={"file": ("pos.csv", b"bad")}, data={"revision": "0"}).status_code == 404
     assert path.read_bytes() == before
+
+
+def test_sensitivity_requires_closure_and_exports_a_readonly_revision(client, tmp_path):
+    pid = create(client)["pilot"]["pilot_id"]
+    endpoint = f"{ROOT}/staff-pilots/{pid}/sensitivity"
+    assert client.get(endpoint, params={"revision": 0}).status_code == 409
+    assert upload(client, pid, sheet(client, pid, complete=True)).status_code == 200
+    assert client.get(endpoint, params={"revision": 1}).status_code == 409
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 1}).status_code == 200
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    before = path.read_bytes()
+    response = client.get(endpoint, params={"revision": 2})
+    assert response.status_code == 200, response.text
+    assert response.json()["difference"] == 1 and response.json()["revision"] == 2
+    assert response.json()["groups"][0]["difference"] is None
+    exported = client.get(endpoint + ".csv", params={"revision": 2})
+    assert exported.status_code == 200 and f"{pid}-sensitivity-r2.csv" in exported.headers["content-disposition"]
+    assert len(list(csv.DictReader(io.StringIO(exported.text)))) == 3
+    assert path.read_bytes() == before
+    assert client.get(endpoint, params={"revision": 1}).status_code == 409
+    assert client.get(endpoint + ".csv", params={"revision": 1}).status_code == 409
+    assert client.delete(f"{ROOT}/staff-pitches/pit_test").status_code == 204
+    assert client.get(endpoint, params={"revision": 2}).json() == response.json()
+
+
+def test_sensitivity_rejects_early_closure_and_invalid_revision_or_scope(client):
+    pid = create(client)["pilot"]["pilot_id"]
+    rows = list(csv.DictReader(io.StringIO(sheet(client, pid).decode())))
+    for row in rows:
+        row["enrolled"] = "0"
+    out = io.StringIO(); writer = csv.DictWriter(out, fieldnames=list(rows[0])); writer.writeheader(); writer.writerows(rows)
+    assert upload(client, pid, out.getvalue().encode()).status_code == 200
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 1}).status_code == 200
+    endpoint = f"{ROOT}/staff-pilots/{pid}/sensitivity"
+    assert client.get(endpoint, params={"revision": 2}).status_code == 409
+    for suffix in ("", ".csv"):
+        for query in ("", "?revision=-1", "?revision=1.5", "?revision=bad"):
+            assert client.get(endpoint + suffix + query).status_code == 422
+        assert client.get(endpoint.replace(pid, "missing") + suffix, params={"revision": 0}).status_code == 404
+        assert client.get(endpoint.replace(PID, "missing") + suffix, params={"revision": 0}).status_code == 404
+
+
+def test_sensitivity_rejects_corrupted_saved_assignments_without_touching_history(client, tmp_path):
+    pid = create(client)["pilot"]["pilot_id"]
+    assert upload(client, pid, sheet(client, pid, complete=True)).status_code == 200
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 1}).status_code == 200
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    data = read_json(path); data["assignments"] = []
+    write_json(path, data); before = path.read_bytes()
+    assert client.get(f"{ROOT}/staff-pilots/{pid}/sensitivity?revision=2").status_code == 409
+    assert path.read_bytes() == before
