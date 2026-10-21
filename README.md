@@ -201,6 +201,12 @@ circulation space. Checkout counters can use the default arrangement or be place
 near or away from the entrance. These choices appear in the preview and are saved
 per layout or building floor, including when reusing settings for an alternative.
 
+The exit can share the entrance or occupy a separate left, center or right cell
+on the front row. Checkout counters and impulse displays leave both gates clear.
+This supports separate arrival and departure routes; shoppers use the selected
+exit after shopping. Choosing the same position as the entrance keeps a shared
+gate. Exit settings are included in previews, saved layouts and reused options.
+
 The floor editor supports up to 40×40 cells, with zoom controls and a scrollable
 grid that keeps fixtures readable on large floors and smaller screens. Width and
 depth can be typed directly. Reducing the grid never deletes fixtures silently;

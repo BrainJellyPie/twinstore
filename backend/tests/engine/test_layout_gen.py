@@ -54,9 +54,13 @@ def test_rule_based_shoppers_buy_in_a_generated_store(template_id):
     sample = Path(__file__).resolve().parents[2] / "sample_data" / "proj_67916afd" / "runs" / "run_ab0039" / "input"
     personas = [Persona.model_validate(p) for p in json.loads((sample / "personas.json").read_text())]
     cfg = apply_options(local_config(), RunOptions(engine_type=EngineType.RULE_BASED, seed=1))
-    store = generate_store(template_id, seed=1)
-    agg, _, _ = asyncio.run(run_simulation(cfg, store, subsample_personas(personas, 200, 1)))
+    store = generate_store(template_id, seed=1, options=LayoutOptions(entrance="left", exit_position="right"))
+    agg, customers, _ = asyncio.run(run_simulation(cfg, store, subsample_personas(personas, 200, 1)))
     assert agg.summary.conversion_rate > 0.5 and agg.summary.units_sold > 100
+    assert customers and all(customer.timeline for customer in customers)
+    assert all((c.timeline[0].x, c.timeline[0].y) == store.entrances[0].position for c in customers)
+    assert all(c.timeline[-1].action == "exit" and (c.timeline[-1].x, c.timeline[-1].y) == store.exits[0].position
+               for c in customers)
 
 
 @pytest.mark.parametrize("template_id", [t.id for t in TEMPLATES])

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
-    BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
+    BuildingLayoutRequest, CheckoutPlacement, EntrancePosition, ExitPosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
     SeatingZone, ShelfDirection, StoreDesign, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
@@ -55,6 +55,7 @@ def preview(
     width: int | None = Query(default=None, ge=8, le=40),
     height: int | None = Query(default=None, ge=6, le=40),
     density: LayoutDensity = "balanced", entrance: EntrancePosition = "left",
+    exit_position: ExitPosition = "shared",
     shelf_direction: ShelfDirection = "horizontal",
     checkouts: int = Query(default=1, ge=1, le=4), fixture_design: FixtureDesign = "mixed",
     design_theme: StoreDesign | None = None,
@@ -64,7 +65,7 @@ def preview(
 ) -> Store:
     options = LayoutOptions(style=style, width=width, height=height, density=density,
                             shelf_direction=shelf_direction,
-                            entrance=entrance, checkouts=checkouts, fixture_design=fixture_design,
+                            entrance=entrance, exit_position=exit_position, checkouts=checkouts, fixture_design=fixture_design,
                             design_theme=design_theme, dining_tables=dining_tables, table_clearance=table_clearance,
                             seating_zone=seating_zone, checkout_placement=checkout_placement)
     return _preview_store(template_id, seed, currency, options)

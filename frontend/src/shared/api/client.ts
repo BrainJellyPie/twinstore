@@ -1332,6 +1332,7 @@ export interface LayoutOptions {
   density?: "spacious" | "balanced" | "dense";
   shelf_direction?: "horizontal" | "vertical";
   entrance?: "left" | "center" | "right";
+  exit_position?: "shared" | "left" | "center" | "right";
   checkouts?: number;
   checkout_placement?: "auto" | "near_entrance" | "away_from_entrance";
   fixture_design?: "mixed" | "a" | "b" | "c";
