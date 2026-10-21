@@ -672,10 +672,12 @@ use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
 Garden-center terracotta pots use the hollow pot from Rico Cilliers' CC0 scan,
-with diameter-aware proportions, two detail levels and PBR maps. Sources and
+with diameter-aware proportions, two detail levels and PBR maps. Plain croissants
+use Dario Barresi and Greg Zaal's CC0 Poly Haven scan with the same instanced detail
+levels and single-layer display. Sources and
 rebuild instructions are in [`frontend/public/assets/products/`](./frontend/public/assets/products/README.md).
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
-avatars under MIT: six appearances with textured faces and clothing, normal maps,
+avatars under MIT: eight appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
 alpha-tested hair, authored eyelid blinks and small gaze shifts, and retargeted breathing, varied standing, walking and browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in

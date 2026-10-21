@@ -29,3 +29,26 @@ blender --background --python scripts/convert_terracotta_pot.py -- \
   --source-dir /path/to/potted-plant-01 \
   --output frontend/public/assets/products/terracotta-pot.glb
 ```
+
+`croissant.glb` uses **Croissant**, scanned by **Dario Barresi** and processed by
+**Greg Zaal**, published by [Poly Haven](https://polyhaven.com/a/croissant) under
+the same CC0 license. `croissant-sources.json` records all source and output hashes.
+The 1,990-triangle source becomes 300/1,500-triangle LODs with the original 1K JPEG
+color, OpenGL normal and packed roughness maps. The bundled file is 2,095,144 bytes.
+
+Plain or butter croissants use the scan, retaining its approximately
+20.0 × 6.2 × 7.6 cm dimensions before the usual product readability scale.
+Both shelves and display tables keep pastries in one layer and preserve their
+proportions when fitting a small slot. Filled croissants, sandwiches and explicit
+multipacks retain their package geometry. Medium uses color and constant roughness;
+High adds the normal and roughness maps. A tapered pastry fallback stays visible
+while loading or if the scan fails. Only layouts with croissants request the model.
+
+Download and verify the croissant manifest, preserving paths and renaming
+`croissant_1k.gltf` to `croissant.gltf`, then run:
+
+```sh
+blender --background --python scripts/convert_croissant.py -- \
+  --source-dir /path/to/croissant \
+  --output frontend/public/assets/products/croissant.glb
+```
