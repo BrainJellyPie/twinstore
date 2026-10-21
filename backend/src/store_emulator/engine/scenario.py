@@ -86,6 +86,25 @@ class ScenarioEffects:
     situation: str = ""
     # Ratio of the share of trips that need each category (ScenarioPriors.need_ratio), 1 = unchanged.
     need: dict[str, float] = field(default_factory=dict[str, float])
+    # Per part of the day ("morning", "evening"): demand multipliers and need ratios, applied per shopper
+    # by arrival hour (ScenarioPriors.hour_demand, need_ratio "hour:…").
+    hour_demand: dict[str, dict[str, float]] = field(default_factory=dict[str, dict[str, float]])
+    hour_need: dict[str, dict[str, float]] = field(default_factory=dict[str, dict[str, float]])
+
+    def hour_for(self, hour: int, categories: set[str]) -> float:
+        """Demand multiplier of the visit's part of the day, clipped to [0.2, 3]."""
+        table = self.hour_demand.get(part_of_day(hour))
+        if not table:
+            return 1.0
+        m = 1.0
+        for cat in categories:
+            m *= table.get(cat, 1.0)
+        return min(3.0, max(0.2, m))
+
+    def hour_need_for(self, hour: int, categories: set[str]) -> float:
+        table = self.hour_need.get(part_of_day(hour))
+        ratios = [table[c] for c in categories if c in table] if table else []
+        return max(ratios, key=lambda r: abs(math.log(r)) if r > 0 else 0.0) if ratios else 1.0
 
     def need_for(self, categories: set[str]) -> float:
         """The strongest of the categories' need ratios (a label can name two: "flavored water")."""
@@ -101,6 +120,18 @@ class ScenarioEffects:
         for cat in categories:
             m *= self.demand.get(cat, 1.0)
         return min(3.0, max(0.2, m))
+
+
+def part_of_day(hour: int) -> str:
+    return "morning" if hour < 12 else "evening" if hour >= 17 else "midday"
+
+
+def hour_effects(p: ScenarioPriors, fx: ScenarioEffects | None = None) -> ScenarioEffects:
+    """The part-of-day tables of a format's priors, on `fx` (a fresh ScenarioEffects without one)."""
+    fx = fx or ScenarioEffects()
+    fx.hour_demand = {k: dict(v) for k, v in p.hour_demand.items()}
+    fx.hour_need = {k.removeprefix("hour:"): dict(v) for k, v in p.need_ratio.items() if k.startswith("hour:")}
+    return fx
 
 
 def _mul(target: dict[str, float], updates: dict[str, float], power: float = 1.0) -> None:
@@ -169,7 +200,7 @@ def compile_scenario(scenario: Scenario, priors: ScenarioPriors | None = None) -
     keys += [(f"event:{e.kind.value}", e.intensity) for e in scenario.events]
     for key, power in keys:
         _mul(fx.need, p.need_ratio.get(key, {}), power=power)
-    return fx
+    return hour_effects(p, fx)
 
 
 def _apply_event(fx: ScenarioEffects, event: LocalEvent, p: ScenarioPriors) -> None:
