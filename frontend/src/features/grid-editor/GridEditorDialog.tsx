@@ -69,6 +69,7 @@ export function GridEditorDialog({
 
   const [selectedCell, setSelectedCell] = useState<Position | null>(null);
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null);
+  const [placing, setPlacing] = useState(false);
   const [legacyDismissed, setLegacyDismissed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -108,6 +109,13 @@ export function GridEditorDialog({
 
   const onCellClick = useCallback(
     (pos: Position) => {
+      if (placing && selectedRack) {
+        const offset: Position = [pos[0] - selectedRack.position[0], pos[1] - selectedRack.position[1]];
+        const error = editor.moveRacks(selectedCellRacks.map((rack) => rack.id), offset);
+        setSaveError(error);
+        if (!error) { setSelectedCell(pos); setPlacing(false); }
+        return;
+      }
       const existing = editor.racks.find(
         (r) => rackCells(r).some(([x, y]) => x === pos[0] && y === pos[1]),
       );
@@ -117,7 +125,7 @@ export function GridEditorDialog({
       setSelectedRackId(existing?.id ?? null);
       setSaveError(null);
     },
-    [editor],
+    [editor, placing, selectedRack, selectedCellRacks],
   );
 
   const onMove = (offset: Position) => {
@@ -129,6 +137,7 @@ export function GridEditorDialog({
 
   const onRackChange = useCallback(
     (patch: Partial<EditorRack> | null) => {
+      setPlacing(false);
       // No selectedRack yet (empty cell) — create the draft on the first Type selection.
       if (selectedRack == null) {
         if (patch == null || selectedCell == null) return;
@@ -156,6 +165,7 @@ export function GridEditorDialog({
   // with the requested gate(s).
   const onGateConfigChange = useCallback(
     (config: "entrance" | "exit" | "both") => {
+      setPlacing(false);
       if (selectedCell == null) return;
       const cellRacks = editor.racks.filter(
         (r) => rackCells(r).some(([x, y]) => x === selectedCell[0] && y === selectedCell[1]),
@@ -297,6 +307,7 @@ export function GridEditorDialog({
     if (!open) {
       setSelectedCell(null);
       setSelectedRackId(null);
+      setPlacing(false);
       setSaveError(null);
     }
   }, [open]);
@@ -316,6 +327,9 @@ export function GridEditorDialog({
       <DialogContent
         className="flex max-h-[92dvh] w-[calc(100vw-2rem)] min-w-0 flex-col sm:max-w-[min(92vw,1440px)]"
         data-testid="grid-editor-dialog"
+        onEscapeKeyDown={(event) => {
+          if (placing) { event.preventDefault(); setPlacing(false); setSaveError(null); }
+        }}
       >
         <DialogHeader>
           <DialogTitle>Floor Configuration</DialogTitle>
@@ -349,6 +363,7 @@ export function GridEditorDialog({
                   blockedFaces={editor.blockedFaces}
                   onCellClick={onCellClick}
                   selectedCell={selectedCell}
+                  placing={placing}
                 />
               </div>
               <div className="min-w-0">
@@ -360,6 +375,8 @@ export function GridEditorDialog({
                   onChange={onRackChange}
                   onGateConfigChange={onGateConfigChange}
                   onMove={onMove}
+                  placing={placing}
+                  onPlacementChange={(next) => { setPlacing(next); setSaveError(null); }}
                 />
               </div>
             </div>
@@ -401,7 +418,7 @@ export function GridEditorDialog({
               onClick={() => {
                 void onSave();
               }}
-              disabled={saving || isBlockingLegacy}
+              disabled={saving || isBlockingLegacy || placing}
               data-testid="grid-save-button"
             >
               {saving ? "Saving…" : "Save"}
