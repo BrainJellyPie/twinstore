@@ -4,6 +4,8 @@ import { pitchCsvUrl, type PitchReport, type PitchComparison } from "@/shared/ap
 import { Button } from "@/shared/components/ui/button";
 import { formatMoney } from "@/shared/utils/money";
 
+import { StudyReading } from "./StudyReading";
+
 const labels: Record<PitchComparison["metric"], string> = { purchase_intent: "Purchase intent", trust: "Trust", pressure: "Pressure" };
 const signed = (x: number) => `${x > 0 ? "+" : ""}${x.toFixed(2)}`;
 
@@ -18,6 +20,8 @@ export function StaffPitchReportView({ projectId, report: r }: { projectId: stri
       <p className="text-sm">{r.pairs} complete pairs / {r.attempted} attempted · {r.excluded} excluded · seed {r.request.seed}</p>
       <p className="text-xs text-muted-foreground">These are hypothetical 1–5 ratings, not observed purchase conversion or a sales forecast.</p>
     </section>
+    <StudyReading projectId={projectId} study="staff-pitches" jobId={r.pitch_id}
+      answers={r.answers.reduce((n, a) => n + (a.a ? 1 : 0) + (a.b ? 1 : 0), 0)} />
     <section className="space-y-3 rounded-2xl border bg-card p-4">
       <h3 className="font-semibold">Paired comparison</h3>
       <p className="text-xs text-muted-foreground">B minus A, in scale points. Higher purchase intent and trust are favorable; lower pressure is favorable. Intervals describe the synthetic panel only.</p>

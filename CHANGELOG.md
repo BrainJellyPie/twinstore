@@ -17,6 +17,13 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Failed model calls in interviews say what to do ("the provider rejected the API key…", "the model's reply was
   not in the expected form. Try again, or pick another model.") instead of a raw provider error, and a shopper's
   answer gets one more retry when the model puts it outside the expected JSON.
+- **Read the answers** on concept, shelf, conjoint and staff-script results: a model groups the reasons respondents
+  gave into themes (for paired studies, each arm's share of its own reasons) and writes a short commentary on the
+  numbers that ties the two together. It is kept with the study, can be rewritten with another model or removed, and
+  appears (labelled as model-written) in the print-ready report. API: `POST/GET/DELETE
+  .../{surveys|shelf-tests|conjoints|staff-pitches}/{id}/reading`.
+- Theme coding no longer fails when a model returns more than six themes: the smallest fold into "Other". This also
+  fixes group interviews that lost their themes this way.
 
 ### Conjoint studies
 - New **Conjoint** tab in the Market page: a choice-based conjoint on the project's personas. Define a product's

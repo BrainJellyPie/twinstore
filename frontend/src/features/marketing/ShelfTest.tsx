@@ -27,6 +27,7 @@ import { formatMoney, minorUnitDivisor } from "@/shared/utils/money";
 import { LiftChart } from "./charts";
 import { usePackages } from "./hooks";
 import { toMinor } from "./products";
+import { StudyReading } from "./StudyReading";
 
 const PROMOS = ["", "NEW", "SALE", "1+1", "-20%"];
 const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
@@ -220,6 +221,7 @@ export function ShelfTestReportView({ projectId, report: r }: { projectId: strin
           </figure>
         ))}
       </div>
+      <StudyReading projectId={projectId} study="shelf-tests" jobId={r.test_id} answers={r.choices.filter((c) => c.why && !c.error).length} />
       <section className="rounded-2xl border bg-card p-4">
         <h3 className="text-sm font-semibold">{r.target_name}: test vs control</h3>
         <p className="mb-3 text-xs text-muted-foreground">Same {r.respondents} respondents on both shelves; dot = paired difference, bar = 95 % bootstrap interval.</p>

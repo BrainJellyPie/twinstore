@@ -13,6 +13,7 @@ import { formatMoney } from "@/shared/utils/money";
 
 import { ShareBars } from "./charts";
 import { defaultLineup, shareCurve, shares, type SimProduct } from "./conjoint";
+import { StudyReading } from "./StudyReading";
 
 const LETTERS = "ABCD";
 const CURVE_CONFIG = { share: { label: "Share of A", color: "var(--viz-1)" } } satisfies ChartConfig;
@@ -57,6 +58,8 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
           </div>
         </div>
       </div>
+
+      <StudyReading projectId={projectId} study="conjoints" jobId={r.conjoint_id} answers={r.answers.filter((a) => a.why && !a.error).length} />
 
       <section className="rounded-2xl border bg-card p-4">
         <h3 className="mb-3 text-sm font-semibold">Part-worths <span className="font-normal text-muted-foreground">· utility centred within each attribute, one shared scale; bar = 95 % interval; willingness to pay over the first level</span></h3>

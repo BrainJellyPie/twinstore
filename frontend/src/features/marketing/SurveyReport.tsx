@@ -11,6 +11,7 @@ import { formatMoney } from "@/shared/utils/money";
 
 import { LikertBar, LikertLegend, ShareBars, VanWestendorpChart } from "./charts";
 import { QUESTIONS } from "./questions";
+import { StudyReading } from "./StudyReading";
 
 const LETTERS = "ABCD";
 const SCALE_ENDS: Record<ScaleKind, [string, string]> = {
@@ -61,6 +62,8 @@ export function SurveyReportView({ projectId, report: r }: { projectId: string; 
           </div>
         </div>
       </div>
+
+      <StudyReading projectId={projectId} study="surveys" jobId={r.survey_id} answers={r.answers.filter((a) => a.why && !a.error).length} />
 
       {scales.length > 0 && (
         <section className="rounded-2xl border bg-card p-4">

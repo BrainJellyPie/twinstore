@@ -8,7 +8,7 @@ import { StaffPitchBuilder } from "../StaffPitchBuilder";
 import { StaffPitchReportView } from "../StaffPitchReport";
 
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), getModels: vi.fn().mockResolvedValue([]) }));
-vi.mock("@/shared/api/marketing", async (original) => ({ ...await original<typeof import("@/shared/api/marketing")>(), startPitch: vi.fn() }));
+vi.mock("@/shared/api/marketing", async (original) => ({ ...await original<typeof import("@/shared/api/marketing")>(), startPitch: vi.fn(), getStudyReading: vi.fn().mockResolvedValue(null) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 beforeEach(() => { vi.mocked(startPitch).mockResolvedValue({ job_id: "pit_test", kind: "pitch", status: "pending", name: "Test", stage: "queued", progress: 0, error: "", created_at: "", finished_at: "" }); });
 
@@ -83,7 +83,7 @@ it("reports synthetic units, incomplete pairs, signed differences and saved stim
     answers: [{ respondent: "p0", age_group: "30s", gender: "Female", first_arm: "A", a: null, b: null, error_a: "Unavailable", error_b: "Unavailable" }],
     notes: ["Synthetic screening only."],
   };
-  render(<StaffPitchReportView projectId="p" report={report} />);
+  render(<StaffPitchReportView projectId="p" report={report} />, { wrapper });
   expect(screen.getByText(/19 complete pairs \/ 25 attempted/)).toBeTruthy();
   expect(screen.getByText("Insufficient pairs")).toBeTruthy();
   expect(screen.getByText("-0.50")).toBeTruthy();
