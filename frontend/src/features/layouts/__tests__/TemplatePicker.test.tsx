@@ -958,3 +958,26 @@ it("retains custom size when selecting another format from the simple view", asy
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ template_id: "community_pharmacy", width: 24 }), expect.any(AbortSignal)));
   expect(screen.getByRole("button", { name: "Customize layout" }).getAttribute("aria-expanded")).toBe("false");
 });
+
+it.each(["near_entrance", "away_from_entrance"])("preserves entrance-based seating %s through gate edits and zero tables, then resets with a priority", async (zone) => {
+  mount(); fireEvent.click(await screen.findByRole("radio", { name: /Family restaurant/ }));
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "3" } });
+  fireEvent.change(screen.getByLabelText("Seating starts near"), { target: { value: zone } });
+  fireEvent.change(screen.getByLabelText("Entrance wall"), { target: { value: "right" } });
+  fireEvent.change(screen.getByLabelText("Entrance position"), { target: { value: "center" } });
+  fireEvent.change(screen.getByLabelText("Table rotation"), { target: { value: "90" } });
+  expect(screen.getByText("Follows the entrance wall and position. Larger table counts spread into the remaining floor.")).toBeTruthy();
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ seating_zone: zone, gate_wall: "right", entrance: "center", table_rotation: 90 }), expect.any(AbortSignal)));
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "0" } });
+  expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).value).toBe(zone);
+  fireEvent.change(screen.getByLabelText("Dining tables (4 seats each)"), { target: { value: "3" } });
+  expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).disabled).toBe(false);
+  fireEvent.click(screen.getByText("Apply a layout priority"));
+  fireEvent.change(screen.getByLabelText("Layout priority"), { target: { value: "family_dining" } });
+  fireEvent.click(screen.getByRole("button", { name: "Apply priority" }));
+  expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).value).toBe("center");
+  fireEvent.change(screen.getByLabelText("Seating starts near"), { target: { value: zone } });
+  fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
+  expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).value).toBe("auto");
+});

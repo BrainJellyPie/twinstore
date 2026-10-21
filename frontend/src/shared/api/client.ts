@@ -1362,7 +1362,7 @@ export interface LayoutOptions {
   table_clearance?: number;
   table_clearance_x?: number | null;
   table_clearance_y?: number | null;
-  seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
+  seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center" | "near_entrance" | "away_from_entrance";
   reserved_areas?: ReservedArea[];
   excluded_categories?: string[];
   products_per_category?: number | null;

@@ -822,6 +822,10 @@ def generate_store(
             table_positions.sort(key=lambda p: (-p[0], p[1]))
         elif seating_zone == "center":
             table_positions.sort(key=lambda p: (p[0] + (table_width - 1) / 2 - (w - 1) / 2) ** 2 + (p[1] + (table_depth - 1) / 2 - (h - 1) / 2) ** 2)
+        elif seating_zone in ("near_entrance", "away_from_entrance"):
+            distance_direction = 1 if seating_zone == "near_entrance" else -1
+            table_positions.sort(key=lambda p: distance_direction * (
+                abs(p[0] + (table_width - 1) / 2 - entrance_x) + abs(p[1] + (table_depth - 1) / 2 - entrance_y)))
         placed = 0
         for x, y in table_positions:
             if placed == target:

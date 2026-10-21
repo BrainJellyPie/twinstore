@@ -11,7 +11,7 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const weekly_hours = Array.from({ length: 7 }, (_, index) => ({ day: index + 1, is_open: index < 5, open_hour: index < 5 ? 8 : 10, close_hour: index < 5 ? 20 : 16 }));
 const value: TemplateChoice = { ...DEFAULT_TEMPLATE_CHOICE, templateId: "community_pharmacy", sourceSetupId: "setup_old",
-  weekly_hours, table_clearance_x: 4, table_clearance_y: 1, width: 24, height: 20, currency: "JPY", style: "cross", seed: 7, aisle_width: 3, max_shelf_run: 2, design_theme: "terracotta", design_colors: { wall: "#123456", floor: "#abcdef", accent: null }, checkout_wall: "right",
+  weekly_hours, seating_zone: "near_entrance", table_clearance_x: 4, table_clearance_y: 1, width: 24, height: 20, currency: "JPY", style: "cross", seed: 7, aisle_width: 3, max_shelf_run: 2, design_theme: "terracotta", design_colors: { wall: "#123456", floor: "#abcdef", accent: null }, checkout_wall: "right",
   reserved_areas: [{ label: "Consultation", x: 2, y: 2, width: 3, height: 3 }], requirements: "Keep signs readable.", excluded_categories: ["wellness"], products_per_category: 3, category_product_limits: { pharmacy_care: 1, wellness: 12 }, gate_wall: "right", exit_position: "center", exit_wall: "back" };
 
 function upload(source: string) {
@@ -38,7 +38,7 @@ it("exports portable settings and brief without source links or submitting the f
   });
   const exported = JSON.parse(source) as api.LayoutPreset;
   expect(exported).toMatchObject({ format: "twinstore-layout-options", version: 1, layout: {
-    weekly_hours, table_clearance_x: 4, table_clearance_y: 1, template_id: "community_pharmacy", currency: "JPY", seed: 7, style: "cross", width: 24, height: 20,
+    weekly_hours, seating_zone: "near_entrance", table_clearance_x: 4, table_clearance_y: 1, template_id: "community_pharmacy", currency: "JPY", seed: 7, style: "cross", width: 24, height: 20,
     aisle_width: 3, max_shelf_run: 2, design_theme: "terracotta", design_colors: { wall: "#123456", floor: "#abcdef", accent: null }, reserved_areas: value.reserved_areas,
     requirements: "Keep signs readable.", excluded_categories: ["wellness"], checkout_wall: "right", products_per_category: 3, category_product_limits: { pharmacy_care: 1, wellness: 12 }, gate_wall: "right", exit_position: "center", exit_wall: "back",
   } });
@@ -50,13 +50,13 @@ it("exports portable settings and brief without source links or submitting the f
 it("applies server-normalized options and clears values inherited from the previous floor", async () => {
   const onChange = vi.fn();
   vi.mocked(api.validateLayoutPreset).mockResolvedValue({ format: "twinstore-layout-options", version: 1,
-    layout: { template_id: "specialty_cafe", seed: 3, currency: "KRW", width: 18 } });
+    layout: { template_id: "specialty_cafe", seed: 3, currency: "KRW", width: 18, seating_zone: "away_from_entrance" } });
   render(<GenerationOptionsFile kind="layout" value={value} onChange={onChange} canExport />);
   upload('\uFEFF{"format":"twinstore-layout-options","version":1,"layout":{"template_id":"specialty_cafe","width":"18"}}');
   await waitFor(() => expect(onChange).toHaveBeenCalledOnce());
   expect(api.validateLayoutPreset).toHaveBeenCalledWith(expect.objectContaining({ layout: { template_id: "specialty_cafe", width: "18" } }), expect.any(AbortSignal));
   const imported = onChange.mock.calls[0]?.[0] as TemplateChoice;
-  expect(imported).toMatchObject({ templateId: "specialty_cafe", seed: 3, currency: "KRW", width: 18, reserved_areas: [], style: null, design_theme: null });
+  expect(imported).toMatchObject({ templateId: "specialty_cafe", seed: 3, currency: "KRW", width: 18, seating_zone: "away_from_entrance", reserved_areas: [], style: null, design_theme: null });
   expect(imported.sourceSetupId).toBeUndefined();
   expect(imported.height).toBeUndefined();
   expect(imported.requirements).toBeUndefined();
