@@ -661,7 +661,7 @@ Garden-center terracotta pots use the hollow pot from Rico Cilliers' CC0 scan,
 with diameter-aware proportions, two detail levels and PBR maps. Sources and
 rebuild instructions are in [`frontend/public/assets/products/`](./frontend/public/assets/products/README.md).
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
-avatars under MIT: six appearances with textured faces and clothing, normal maps,
+avatars under MIT: eight appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
 alpha-tested hair, authored eyelid blinks and small gaze shifts, and retargeted breathing, varied standing, walking and browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
