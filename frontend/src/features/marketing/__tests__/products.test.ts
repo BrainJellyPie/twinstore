@@ -38,4 +38,16 @@ describe("marketing products", () => {
     expect(toMinor("1,500", 1)).toBe(1500);
     expect(toMinor("", 100)).toBeNull();
   });
+
+  it.each(["-1.99", "−1.99", "abc", "$", "1e3", "1,23", "1.2.3", "1$2", "9".repeat(309), "9007199254740992"])(
+    "rejects malformed or unsafe prices: %s", (text) => {
+      expect(toMinor(text, 100)).toBeNull();
+    },
+  );
+
+  it.each([["0", 0], ["$0.00", 0], [".50", 50], ["  € 1,234.56  ", 123456], ["2.", 200]])(
+    "preserves valid nonnegative prices: %s", (text, expected) => {
+      expect(toMinor(String(text), 100)).toBe(expected);
+    },
+  );
 });

@@ -44,7 +44,8 @@ export function storeCategories(store: Store | null | undefined): string[] {
 }
 
 export function toMinor(text: string, divisor: number): number | null {
-  const v = Number(text.replace(/[^0-9.]/g, ""));
-  if (!text.trim() || Number.isNaN(v)) return null;
-  return Math.round(v * divisor);
+  const amount = text.trim().replace(/^[$€£¥₩]\s*|\s*[$€£¥₩]$/g, "");
+  if (!/^(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d*)?|\.\d+)$/.test(amount)) return null;
+  const minor = Math.round(Number(amount.replace(/,/g, "")) * divisor);
+  return Number.isSafeInteger(minor) && minor >= 0 ? minor : null;
 }

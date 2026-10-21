@@ -44,11 +44,13 @@ export function SurveyBuilder({ projectId, personaCount, onStarted }: { projectI
   const pickStimulus = (id: string) => setStimuli((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length < 4 ? [...s, id] : s));
   const label = (id: string) => names[id] ?? packages.find((p) => p.asset_id === id)?.name ?? id;
   const asked = questions.filter((q) => q !== "preference" || stimuli.length > 1);
+  const referencePrice = toMinor(price, minorUnitDivisor(currency));
+  const invalidPrice = price.trim().length > 0 && referencePrice === null;
 
   const run = useMutation({
     mutationFn: () => startSurvey(projectId, {
       name: name.trim(), stimuli, stimulus_names: stimuli.map(label), questions: asked, context: context.trim(), currency,
-      reference_price: toMinor(price, minorUnitDivisor(currency)), panel, age_groups: ages, genders, model,
+      reference_price: referencePrice, panel, age_groups: ages, genders, model,
     }),
     onSuccess: async (job) => {
       await qc.invalidateQueries({ queryKey: marketingKeys.surveys(projectId) });
@@ -116,12 +118,14 @@ export function SurveyBuilder({ projectId, personaCount, onStarted }: { projectI
           <div className="flex items-end gap-2">
             <label className="flex flex-1 flex-col gap-1">
               <span className="text-xs text-muted-foreground">Shelf price shown with A (optional)</span>
-              <Input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder="1.99" className="num h-9" />
+              <Input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder="1.99" className="num h-9"
+                aria-invalid={invalidPrice} aria-describedby={invalidPrice ? "survey-price-error" : undefined} />
             </label>
             <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="h-9 rounded-xl border bg-card/60 px-2 text-sm" aria-label="Currency">
               <option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="KRW">KRW</option><option value="JPY">JPY</option>
             </select>
           </div>
+          {invalidPrice && <p id="survey-price-error" className="text-xs text-destructive">Enter a valid nonnegative price, or leave it blank.</p>}
           <div>
             <div className="flex items-baseline justify-between text-xs text-muted-foreground">
               <span>Panel size · from {personaCount.toLocaleString()} personas</span>
@@ -142,7 +146,7 @@ export function SurveyBuilder({ projectId, personaCount, onStarted }: { projectI
       <div className="flex flex-wrap items-center justify-end gap-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Test name (optional)" maxLength={80} className="mr-auto h-10 max-w-xs" />
         {run.error && <p className="text-sm text-destructive">{run.error.message}</p>}
-        <Button size="lg" disabled={stimuli.length === 0 || asked.length === 0 || run.isPending} onClick={() => run.mutate()}>
+        <Button size="lg" disabled={stimuli.length === 0 || asked.length === 0 || invalidPrice || run.isPending} onClick={() => run.mutate()}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <ClipboardList className="size-4" />}
           Field the survey
         </Button>

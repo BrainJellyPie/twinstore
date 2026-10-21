@@ -353,7 +353,8 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
         )}
         {c.kind === "price" && (
           <Input value={priceText} inputMode="decimal" placeholder={product ? `now ${formatMoney(product.price, currency)}` : "Price"} className="num h-8 w-28 text-xs"
-            onChange={(e) => { setPriceText(e.target.value); onPatch({ price: toMinor(e.target.value, divisor) }); }} aria-label="New price" />
+            onChange={(e) => { setPriceText(e.target.value); onPatch({ price: toMinor(e.target.value, divisor) }); }} aria-label="New price"
+            aria-invalid={priceText.trim().length > 0 && c.price == null} />
         )}
         {(c.kind === "discount" || c.kind === "category_price") && (
           <div className="flex items-center gap-1">
