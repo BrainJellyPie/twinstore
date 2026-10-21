@@ -1,0 +1,68 @@
+{
+  "asset": "Terracotta pot from Poly Haven Potted Plant 01",
+  "author": "Rico Cilliers",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "asset_url": "https://polyhaven.com/a/potted_plant_01",
+  "conversion": "Blender 4.3.2; scripts/convert_terracotta_pot.py; isolated hollow pot, 5440 to 299/1500 triangle LODs; bottom-centred unit box; original 1K JPEG color, OpenGL normal and roughness maps retained.",
+  "files": [
+    {
+      "file": "textures/potted_plant_01_pot_rough_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_pot_rough_1k.jpg",
+      "bytes": 173192,
+      "sha256": "1256199fe3a88a0534bcd4c8bf141cfa9a28b68fce3f286193d0713796fd8561"
+    },
+    {
+      "file": "textures/potted_plant_01_leaves_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_leaves_nor_gl_1k.jpg",
+      "bytes": 177105,
+      "sha256": "2faa756e0ee2b8341c752b283b93599157bf56f4083a9f61b825cdfa0c7138ff"
+    },
+    {
+      "file": "textures/potted_plant_01_pot_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_pot_diff_1k.jpg",
+      "bytes": 204900,
+      "sha256": "51c9d80e8abe585bd3dbcebe7cba1d3ed1a22b137c7cb66baf0e462c08dca312"
+    },
+    {
+      "file": "potted_plant_01.bin",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/potted_plant_01/potted_plant_01.bin",
+      "bytes": 5345188,
+      "sha256": "a8dd1f7ce75f50dc25bbedc20809da02ee4193815c155b883a329925fa5548f7"
+    },
+    {
+      "file": "textures/potted_plant_01_leaves_rough_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_leaves_rough_1k.jpg",
+      "bytes": 91706,
+      "sha256": "765e3bd1bfdad39dd0d1cd755eafd1f9f1d46cbbb6013988cbfd1197de27a1f9"
+    },
+    {
+      "file": "textures/potted_plant_01_pot_nor_gl_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_pot_nor_gl_1k.jpg",
+      "bytes": 200349,
+      "sha256": "ec02e51751e0822d229d48bea1373b06e2675c3725ff04fd1f87ac516719e620"
+    },
+    {
+      "file": "textures/potted_plant_01_leaves_diff_1k.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/potted_plant_01/potted_plant_01_leaves_diff_1k.jpg",
+      "bytes": 124730,
+      "sha256": "b73891a0a606e139d0fcdd9e6fe503cd1210be3fc9c55fbd033941288231ccaa"
+    },
+    {
+      "file": "potted_plant_01.gltf",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/potted_plant_01/potted_plant_01_1k.gltf",
+      "bytes": 7969,
+      "sha256": "23b30294407684b02f14800d6685bd8938da5d2111e17753ac8dd3c37d8c88a0"
+    }
+  ],
+  "output": {
+    "file": "terracotta-pot.glb",
+    "bytes": 638872,
+    "sha256": "daa1d2c004648d66e7bec5421a82afebcecbca08746974e91bdfcfda4563ca60"
+  },
+  "authored_dimensions_metres": {
+    "width": 0.46620506048202515,
+    "height": 0.53143310546875,
+    "depth": 0.46620500087738037
+  }
+}
