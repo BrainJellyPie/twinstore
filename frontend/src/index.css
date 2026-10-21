@@ -1,8 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/instrument-sans";
-@import "@fontsource-variable/bricolage-grotesque/opsz.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -29,14 +31,23 @@ html {
 
 body {
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "ss01", "cv11";
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "ss02", "cv11";
   text-rendering: optimizeLegibility;
 }
 
 @theme inline {
-  --font-heading: 'Bricolage Grotesque Variable', 'Pretendard Variable', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-  --font-sans: 'Instrument Sans Variable', 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-heading: 'Geist Variable', 'Pretendard Variable', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-sans: 'Geist Variable', 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-serif: 'Instrument Serif', 'Pretendard Variable', Georgia, serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
   --color-tag: var(--tag);
+  --color-glass-border: var(--glass-border);
+  --color-volt: var(--volt);
+  --color-volt-foreground: var(--volt-foreground);
+  --color-aurora-1: var(--heat-1);
+  --color-aurora-2: var(--heat-2);
+  --color-aurora-3: var(--heat-3);
   --color-heat-1: var(--heat-1);
   --color-heat-2: var(--heat-2);
   --color-heat-3: var(--heat-3);
@@ -82,108 +93,135 @@ body {
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --animate-aurora: aurora-drift 26s ease-in-out infinite alternate;
+  --animate-aurora-slow: aurora-drift 38s ease-in-out infinite alternate-reverse;
+  --animate-float: float-y 7s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-rise: rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-pulse-ring: pulse-ring 2.2s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  --animate-spin-slow: spin 14s linear infinite;
 }
 
 /*
-  Parastore palette — "day shift" (light) and "night shift" (dark).
-  Signature: the foot-traffic heat ramp (violet → magenta → amber), used sparingly for the brand
-  mark, the active place in navigation, primary actions and the one number that matters.
-  Price-tag yellow marks selections and highlights; mint / coral carry up / down.
+  Parastore "Aurora" palette.
+  Night (dark) is the signature: obsidian surfaces, one electric action colour — volt — and an
+  aurora ramp (cyan → violet → magenta) for light, data and the foot-traffic heat.
+  Day (light) keeps the same structure on porcelain: ink for actions, volt for highlights.
 */
 :root {
-  --background: #f3f4f9;
-  --foreground: #0a1633;
+  --background: #f3f4f7;
+  --foreground: #0a0b0e;
   --surface: #ffffff;
   --rail: #ffffff;
   --card: #ffffff;
-  --card-foreground: #0a1633;
+  --card-foreground: #0a0b0e;
   --popover: #ffffff;
-  --popover-foreground: #0a1633;
-  --primary: #4b2bff;
+  --popover-foreground: #0a0b0e;
+  --primary: #0b0c10;
   --primary-foreground: #ffffff;
-  --secondary: #eef0ff;
-  --secondary-foreground: #1d1a66;
-  --muted: #eceef6;
-  --muted-foreground: #4f5a7a;
-  --accent: #efecff;
-  --accent-foreground: #23178f;
-  --destructive: #e0304a;
-  --border: #e0e3ee;
-  --input: #d3d8e8;
-  --ring: #6a55ff;
-  --chart-1: #4b2bff;
-  --chart-2: #c2309e;
-  --chart-3: #ff9f1c;
-  --chart-4: #12b886;
-  --chart-5: #2f80ed;
-  --radius: 0.75rem;
-  --heat-1: #4b2bff;
-  --heat-2: #c2309e;
-  --heat-3: #ff9f1c;
-  --tag: #ffd43b;
-  --positive: #0f9f74;
-  --negative: #e0304a;
-  --glass: rgb(255 255 255 / 0.82);
-  --glass-border: rgb(10 22 51 / 0.09);
-  --shadow-float: 0 1px 2px rgb(10 22 51 / 0.06), 0 12px 32px -12px rgb(40 30 120 / 0.22);
-  --scene: #e8ebf4;
-  --scene-floor: #f6f7fb;
+  --secondary: #eceef2;
+  --secondary-foreground: #14161b;
+  --muted: #eef0f3;
+  --muted-foreground: #565d6d;
+  --accent: #e9ebf0;
+  --accent-foreground: #0a0b0e;
+  --destructive: #e1253f;
+  --border: #e1e4ea;
+  --input: #d5d9e1;
+  --ring: #6b4dff;
+  --chart-1: #6b4dff;
+  --chart-2: #0a9cc0;
+  --chart-3: #df3f98;
+  --chart-4: #5a9a0d;
+  --chart-5: #ec8a00;
+  --radius: 0.8rem;
+  --volt: #c6ff3a;
+  --volt-foreground: #0a0b0e;
+  --heat-1: #0aa2c6;
+  --heat-2: #6b4dff;
+  --heat-3: #e0429b;
+  --tag: #c6ff3a;
+  --positive: #0d9768;
+  --negative: #e1253f;
+  --glass: rgb(255 255 255 / 0.74);
+  --glass-strong: rgb(255 255 255 / 0.9);
+  --glass-border: rgb(10 11 14 / 0.08);
+  --highlight: rgb(255 255 255 / 0.9);
+  --shadow-float: 0 1px 2px rgb(10 11 14 / 0.05), 0 22px 48px -22px rgb(24 22 60 / 0.28);
+  --shadow-lift: 0 2px 4px rgb(10 11 14 / 0.04), 0 30px 70px -28px rgb(24 22 60 / 0.38);
+  --scene: #eceef2;
+  --scene-floor: #f7f8fa;
+  --backdrop-a: rgb(107 77 255 / 0.18);
+  --backdrop-b: rgb(10 162 198 / 0.14);
+  --backdrop-c: rgb(198 255 58 / 0.22);
+  --grid-dot: rgb(10 11 14 / 0.07);
+  --grain-opacity: 0.035;
   --sidebar: #ffffff;
-  --sidebar-foreground: #0a1633;
-  --sidebar-primary: #4b2bff;
+  --sidebar-foreground: #0a0b0e;
+  --sidebar-primary: #0b0c10;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #efecff;
-  --sidebar-accent-foreground: #23178f;
-  --sidebar-border: #e0e3ee;
-  --sidebar-ring: #6a55ff;
+  --sidebar-accent: #e9ebf0;
+  --sidebar-accent-foreground: #0a0b0e;
+  --sidebar-border: #e1e4ea;
+  --sidebar-ring: #6b4dff;
   color-scheme: light;
 }
 
 .dark {
-  --background: #060a1a;
-  --foreground: #edf0ff;
-  --surface: #0c1230;
-  --rail: #080d22;
-  --card: #0d1330;
-  --card-foreground: #edf0ff;
-  --popover: #10173a;
-  --popover-foreground: #edf0ff;
-  --primary: #6e5bff;
-  --primary-foreground: #ffffff;
-  --secondary: #18204a;
-  --secondary-foreground: #dce0ff;
-  --muted: #141b3f;
-  --muted-foreground: #a3add0;
-  --accent: #1c2358;
-  --accent-foreground: #edf0ff;
-  --destructive: #ff5a6e;
-  --border: #1f2856;
-  --input: #2a3470;
-  --ring: #8e82ff;
-  --chart-1: #8e82ff;
-  --chart-2: #ef5fbf;
-  --chart-3: #ffb547;
-  --chart-4: #34d39f;
-  --chart-5: #5aa2ff;
-  --heat-1: #7b6cff;
-  --heat-2: #e0479f;
-  --heat-3: #ffad33;
-  --tag: #ffd43b;
-  --positive: #34d39f;
-  --negative: #ff6b7d;
-  --glass: rgb(12 18 48 / 0.78);
-  --glass-border: rgb(160 170 255 / 0.14);
-  --shadow-float: 0 1px 2px rgb(0 0 0 / 0.4), 0 18px 40px -14px rgb(0 0 0 / 0.75);
-  --scene: #0a1028;
-  --scene-floor: #131a3d;
-  --sidebar: #080d22;
-  --sidebar-foreground: #edf0ff;
-  --sidebar-primary: #8e82ff;
-  --sidebar-primary-foreground: #0a0a23;
-  --sidebar-accent: #1c2358;
-  --sidebar-accent-foreground: #edf0ff;
-  --sidebar-border: #1f2856;
-  --sidebar-ring: #8e82ff;
+  --background: #050609;
+  --foreground: #f4f5f8;
+  --surface: #0b0d12;
+  --rail: #08090d;
+  --card: #0d0f15;
+  --card-foreground: #f4f5f8;
+  --popover: #101319;
+  --popover-foreground: #f4f5f8;
+  --primary: #c6ff3a;
+  --primary-foreground: #0a0b0d;
+  --secondary: #161922;
+  --secondary-foreground: #e9ebf1;
+  --muted: #13161d;
+  --muted-foreground: #9ca2b4;
+  --accent: #191d27;
+  --accent-foreground: #f4f5f8;
+  --destructive: #ff5c70;
+  --border: #1c2029;
+  --input: #272c38;
+  --ring: #c6ff3a;
+  --chart-1: #c6ff3a;
+  --chart-2: #3fdfff;
+  --chart-3: #a586ff;
+  --chart-4: #ff5fc6;
+  --chart-5: #ffb547;
+  --volt: #c6ff3a;
+  --volt-foreground: #0a0b0d;
+  --heat-1: #3fdfff;
+  --heat-2: #a586ff;
+  --heat-3: #ff5fc6;
+  --tag: #c6ff3a;
+  --positive: #3fe3a0;
+  --negative: #ff5c7a;
+  --glass: rgb(13 15 21 / 0.6);
+  --glass-strong: rgb(13 15 21 / 0.86);
+  --glass-border: rgb(255 255 255 / 0.085);
+  --highlight: rgb(255 255 255 / 0.07);
+  --shadow-float: 0 0 0 1px rgb(255 255 255 / 0.015), 0 24px 60px -24px rgb(0 0 0 / 0.85);
+  --shadow-lift: 0 0 0 1px rgb(255 255 255 / 0.02), 0 40px 90px -30px rgb(0 0 0 / 0.95);
+  --scene: #07080c;
+  --scene-floor: #11141b;
+  --backdrop-a: rgb(165 134 255 / 0.2);
+  --backdrop-b: rgb(63 223 255 / 0.13);
+  --backdrop-c: rgb(198 255 58 / 0.09);
+  --grid-dot: rgb(255 255 255 / 0.055);
+  --grain-opacity: 0.06;
+  --sidebar: #08090d;
+  --sidebar-foreground: #f4f5f8;
+  --sidebar-primary: #c6ff3a;
+  --sidebar-primary-foreground: #0a0b0d;
+  --sidebar-accent: #191d27;
+  --sidebar-accent-foreground: #f4f5f8;
+  --sidebar-border: #1c2029;
+  --sidebar-ring: #c6ff3a;
   color-scheme: dark;
 }
 
@@ -201,44 +239,149 @@ body {
 
 /* ── Parastore utilities ──────────────────────────────────────────────────── */
 
+/* Frosted surface floating over the scene or the backdrop. */
 @utility glass {
   background: var(--glass);
-  backdrop-filter: blur(18px) saturate(1.5);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
   border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-float);
+  box-shadow: inset 0 1px 0 var(--highlight), var(--shadow-float);
+}
+
+/* A docked panel: denser glass with a lit top edge. */
+@utility panel {
+  background: var(--glass-strong);
+  backdrop-filter: blur(28px) saturate(1.5);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--highlight), var(--shadow-lift);
 }
 
 @utility shadow-float {
   box-shadow: var(--shadow-float);
 }
 
+@utility shadow-lift {
+  box-shadow: var(--shadow-lift);
+}
+
 @utility heat-gradient {
-  background-image: linear-gradient(100deg, var(--heat-1) 0%, var(--heat-2) 55%, var(--heat-3) 100%);
+  background-image: linear-gradient(100deg, var(--heat-1) 0%, var(--heat-2) 50%, var(--heat-3) 100%);
+}
+
+@utility aurora-gradient {
+  background-image: linear-gradient(100deg, var(--heat-1) 0%, var(--heat-2) 50%, var(--heat-3) 100%);
 }
 
 @utility heat-text {
-  background-image: linear-gradient(100deg, var(--heat-1) 0%, var(--heat-2) 55%, var(--heat-3) 100%);
+  background-image: linear-gradient(100deg, var(--heat-1) 0%, var(--heat-2) 50%, var(--heat-3) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
+/* Animated aurora sheen through text — for the one phrase on a page that should glow. */
+@utility aurora-text {
+  background-image: linear-gradient(100deg, var(--heat-1), var(--heat-2), var(--heat-3), var(--heat-1));
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: aurora-pan 9s ease-in-out infinite alternate;
+}
+
 @utility font-display {
   font-family: var(--font-heading);
-  font-optical-sizing: auto;
-  letter-spacing: -0.025em;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+
+/* Editorial italic accent set in Instrument Serif. */
+@utility font-accent {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Numbers: mono, tabular, slightly tight. */
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Small caps-style label above a value or section. */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* The electric glow behind volt actions. */
+@utility volt-glow {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--volt) 60%, transparent), 0 10px 34px -10px color-mix(in oklab, var(--volt) 70%, transparent);
+}
+
+/* Gradient hairline border (aurora) drawn with a mask, for highlighted cards. */
+@utility ring-aurora {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(130deg, var(--heat-1), var(--heat-2) 45%, var(--heat-3) 75%, var(--volt));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* Cursor spotlight: set --mx / --my on the element (see useSpotlight). */
+@utility spotlight {
+  position: relative;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, -20%), color-mix(in oklab, var(--heat-2) 16%, transparent), transparent 55%);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+    z-index: -1;
+  }
+  &:hover::after {
+    opacity: 1;
+  }
+}
+
+@utility dot-grid {
+  background-image: radial-gradient(var(--grid-dot) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+@utility shimmer {
+  background-image: linear-gradient(90deg, transparent, color-mix(in oklab, var(--foreground) 9%, transparent), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite;
 }
 
 @layer base {
   h1, h2, h3 {
     font-family: var(--font-heading);
-    font-optical-sizing: auto;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
   }
   ::selection {
-    background: color-mix(in srgb, var(--tag) 70%, transparent);
-    color: #0a1633;
+    background: color-mix(in srgb, var(--tag) 80%, transparent);
+    color: #0a0b0e;
   }
   :focus-visible {
     outline: 2px solid var(--ring);
@@ -246,7 +389,7 @@ body {
   }
   * {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
+    scrollbar-color: color-mix(in srgb, var(--muted-foreground) 32%, transparent) transparent;
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -257,73 +400,121 @@ body {
   }
 }
 
+@keyframes aurora-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate3d(6%, -4%, 0) scale(1.12) rotate(8deg); }
+  100% { transform: translate3d(-5%, 5%, 0) scale(0.95) rotate(-6deg); }
+}
+@keyframes aurora-pan {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes rise {
+  0% { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--volt) 55%, transparent); }
+  80%, 100% { box-shadow: 0 0 0 10px transparent; }
+}
+
+/* App backdrop: aurora light, dot grid and film grain behind every page. */
+.app-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.app-backdrop .blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  will-change: transform;
+}
+.app-backdrop .grain {
+  position: absolute;
+  inset: -50%;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
 /* Home hero illustration colors, per theme. */
 :root {
   --hero-floor: #ffffff;
-  --hero-line: #e3e6f0;
-  --hero-wall: #e9ebf5;
-  --hero-wall-side: #dfe2ef;
-  --hero-shelf-top: #f6f7fb;
-  --hero-shelf-left: #c9cee3;
-  --hero-shelf-right: #b4bad6;
-  --hero-fridge-top: #eef0f8;
-  --hero-fridge-left: #d7dcef;
-  --hero-fridge-right: #c3c9e3;
-  --hero-fridge-glow: #bfe6ff;
-  --hero-counter-top: #4b2bff;
-  --hero-counter-left: #3418d9;
-  --hero-counter-right: #2a12b5;
+  --hero-line: #e4e7ee;
+  --hero-wall: #eceef3;
+  --hero-wall-side: #e2e5ec;
+  --hero-shelf-top: #f8f9fb;
+  --hero-shelf-left: #d3d7e1;
+  --hero-shelf-right: #bfc4d1;
+  --hero-fridge-top: #f0f2f6;
+  --hero-fridge-left: #dde1ea;
+  --hero-fridge-right: #cbd0dc;
+  --hero-fridge-glow: #7ce8ff;
+  --hero-counter-top: #0b0c10;
+  --hero-counter-left: #24272f;
+  --hero-counter-right: #16181e;
   --hero-skin: #f1c7a5;
 }
 .dark {
-  --hero-floor: #10173a;
-  --hero-line: #1c2452;
-  --hero-wall: #0c1230;
-  --hero-wall-side: #0a0f28;
-  --hero-shelf-top: #2a3369;
-  --hero-shelf-left: #1b2251;
-  --hero-shelf-right: #151b42;
-  --hero-fridge-top: #1f2757;
-  --hero-fridge-left: #141a40;
-  --hero-fridge-right: #10163a;
-  --hero-fridge-glow: #3fa7ff;
-  --hero-counter-top: #7b6cff;
-  --hero-counter-left: #5a48e6;
-  --hero-counter-right: #4836c9;
+  --hero-floor: #11141b;
+  --hero-line: #1c2029;
+  --hero-wall: #0c0e14;
+  --hero-wall-side: #090b10;
+  --hero-shelf-top: #2a2f3c;
+  --hero-shelf-left: #1b1f29;
+  --hero-shelf-right: #151821;
+  --hero-fridge-top: #1f2430;
+  --hero-fridge-left: #151922;
+  --hero-fridge-right: #10131a;
+  --hero-fridge-glow: #3fdfff;
+  --hero-counter-top: #c6ff3a;
+  --hero-counter-left: #9ed61c;
+  --hero-counter-right: #7fb10e;
   --hero-skin: #e5b892;
 }
 
 .hero-glow {
   background:
-    radial-gradient(60% 70% at 85% 30%, color-mix(in oklab, var(--heat-1) 16%, transparent), transparent 70%),
-    radial-gradient(40% 50% at 70% 85%, color-mix(in oklab, var(--heat-2) 12%, transparent), transparent 70%),
-    radial-gradient(30% 40% at 5% 0%, color-mix(in oklab, var(--heat-3) 10%, transparent), transparent 70%);
+    radial-gradient(55% 70% at 80% 30%, color-mix(in oklab, var(--heat-2) 20%, transparent), transparent 70%),
+    radial-gradient(40% 55% at 65% 90%, color-mix(in oklab, var(--heat-1) 14%, transparent), transparent 70%),
+    radial-gradient(30% 40% at 10% 5%, color-mix(in oklab, var(--volt) 12%, transparent), transparent 70%);
 }
 
 @utility section-title {
   font-family: var(--font-heading);
   font-size: 0.98rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 620;
+  letter-spacing: -0.015em;
   color: var(--foreground);
 }
 
 /* Neighborhood map: daylight paper map / night city. */
 :root {
-  --map-ground: #eef0f6;
-  --map-road: #d2d7e6;
-  --map-road-minor: #e2e6f0;
-  --map-building-stroke: #64748b;
+  --map-ground: #eff1f5;
+  --map-road: #d4d8e2;
+  --map-road-minor: #e3e6ed;
+  --map-building-stroke: #646b7d;
   --map-building-alpha: 1;
-  --map-focal: #4b2bff;
+  --map-focal: #6b4dff;
 }
 .dark {
-  --map-ground: #070b1f;
-  --map-road: #1d2552;
-  --map-road-minor: #141b40;
-  --map-building-stroke: #8090c0;
+  --map-ground: #07080c;
+  --map-road: #1e222d;
+  --map-road-minor: #15181f;
+  --map-building-stroke: #8a92a8;
   --map-building-alpha: 0.78;
-  --map-focal: #8e82ff;
+  --map-focal: #c6ff3a;
 }
 
 @theme inline {
@@ -352,3 +543,53 @@ body {
 :root { color-scheme: light; }
 .dark { color-scheme: dark; }
 input[type="checkbox"], input[type="radio"], input[type="range"], progress { accent-color: var(--primary); }
+
+/* Native range inputs (used across panels): slim aurora track, glowing thumb. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--muted-foreground) 25%, transparent);
+}
+input[type="range"]::-moz-range-track {
+  height: 5px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--muted-foreground) 25%, transparent);
+}
+input[type="range"]::-moz-range-progress {
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -6px;
+  width: 17px;
+  height: 17px;
+  border-radius: 9999px;
+  background: var(--primary);
+  border: 3px solid var(--background);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 60%, transparent), 0 4px 14px -2px color-mix(in oklab, var(--primary) 60%, transparent);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 9999px;
+  background: var(--primary);
+  border: 3px solid var(--background);
+}
+
+/* Native selects get the same field treatment as inputs. */
+select {
+  border-radius: 0.75rem;
+}
+
+.app-backdrop[data-calm] .blob {
+  animation: none;
+}

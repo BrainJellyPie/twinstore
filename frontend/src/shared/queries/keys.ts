@@ -1,6 +1,7 @@
 // Array-shaped keys so invalidateQueries can match by prefix
 // (e.g. invalidating queryKeys.project(pid) invalidates everything under that project).
 export const queryKeys = {
+  health: () => ["health"] as const,
   projects: () => ["projects"] as const,
   project: (projectId: string) => ["projects", projectId] as const,
   setups: (projectId: string) => ["projects", projectId, "setups"] as const,

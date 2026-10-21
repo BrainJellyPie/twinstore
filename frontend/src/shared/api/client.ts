@@ -68,6 +68,10 @@ export interface ProjectDetail {
   personasLocked: boolean;
 }
 
+export function getHealth(signal?: AbortSignal): Promise<{ status: string }> {
+  return fetchJson("/api/health", { signal });
+}
+
 export function getProjects(signal?: AbortSignal): Promise<ProjectListItem[]> {
   return fetchJson("/api/projects", { signal });
 }

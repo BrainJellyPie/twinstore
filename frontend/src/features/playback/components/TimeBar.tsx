@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { Play, Pause, SkipForward, RotateCcw, ChevronLeft, ChevronRight, Layers, BarChart3, Box, Eye } from "lucide-react";
+import { cn } from "@/shared/utils/cn";
 import { Button } from "@/shared/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { usePlaybackControlStore, type PlaybackSpeed } from "@/stores/playbackControlStore";
@@ -70,166 +72,193 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
     seek(minTime);
   };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.code !== "Space" || disabled || finished) return;
+      if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(el.tagName))) return;
+      e.preventDefault();
+      togglePlay();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [disabled, finished, togglePlay]);
+
+  const progress = disabled ? 0 : finished ? 1 : Math.min(1, Math.max(0, (currentMinute - minTime) / (maxTime - minTime)));
+
   return (
-    <div className="glass absolute top-4 right-4 z-20 w-[392px] rounded-2xl p-4 text-foreground shadow-float">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-2.5">
+    <div className="glass absolute top-4 right-4 z-20 w-[25rem] overflow-hidden rounded-[1.4rem] text-foreground">
+      <div className="flex items-center justify-between gap-3 px-5 pt-4">
+        <div className="min-w-0">
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="size-5 p-0"
-              disabled={isFirst}
-              onClick={prevDay}
-            >
-              <ChevronLeft className="size-3" />
+            <Button variant="ghost" size="icon-xs" className="-ml-1.5 rounded-full" disabled={isFirst} onClick={prevDay} aria-label="Previous day">
+              <ChevronLeft />
             </Button>
-            <span className="text-[0.8rem] font-medium text-muted-foreground">
-              Day {dayIdx + 1} ({weekdayLabel})
+            <span className="eyebrow">
+              Day {dayIdx + 1} · {weekdayLabel}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="size-5 p-0"
-              disabled={isLast}
-              onClick={nextDay}
-            >
-              <ChevronRight className="size-3" />
+            <Button variant="ghost" size="icon-xs" className="rounded-full" disabled={isLast} onClick={nextDay} aria-label="Next day">
+              <ChevronRight />
             </Button>
           </div>
-          <div className="font-display text-3xl font-semibold tabular-nums leading-none">
-            {finished ? "End" : formatClock12h(currentMinute)}
+          <div className="num mt-1 text-[2.6rem] leading-none font-medium tracking-[-0.06em]">
+            {finished ? "Closed" : formatClock12h(currentMinute)}
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-2">
           {finished ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1 text-[0.8rem]"
-              onClick={handleReset}
-            >
-              <RotateCcw className="size-3" />
-              Reset
+            <Button variant="outline" className="h-11 gap-1.5 rounded-full px-4" onClick={handleReset}>
+              <RotateCcw className="size-4" />
+              Replay
             </Button>
           ) : (
             <>
               <Button
                 variant="outline"
-                size="sm"
-                className="h-8 gap-1 text-[0.8rem]"
+                size="icon-lg"
+                className="rounded-full"
                 disabled={disabled}
                 onClick={() => seek(maxTime)}
+                title="Skip to closing time"
+                aria-label="Skip to closing time"
               >
-                <SkipForward className="size-3" />
-                Skip
+                <SkipForward className="size-4" />
               </Button>
-              <Button
-                size="sm"
-                className="h-8 gap-1 px-3 text-[0.8rem]"
+              <button
+                type="button"
                 disabled={disabled}
                 onClick={togglePlay}
+                title={playing ? "Pause (Space)" : "Play (Space)"}
+                aria-label={playing ? "Pause" : "Play"}
+                className={cn(
+                  "grid size-14 place-items-center rounded-full bg-primary text-primary-foreground transition-[transform,box-shadow] duration-200 hover:scale-105 active:scale-95 disabled:opacity-40",
+                  "shadow-[inset_0_1px_0_rgb(255_255_255/0.35),0_0_0_6px_color-mix(in_oklab,var(--primary)_14%,transparent),0_14px_36px_-10px_var(--primary)]",
+                  !playing && !disabled && "animate-pulse-ring",
+                )}
               >
-                {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
-                {playing ? "Pause" : "Play"}
-              </Button>
+                {playing ? <Pause className="size-5" fill="currentColor" /> : <Play className="ml-0.5 size-5" fill="currentColor" />}
+              </button>
             </>
           )}
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <span className="text-[0.8rem] text-muted-foreground">Speed</span>
+      <div className="px-5 pt-4 pb-1">
+        <input
+          type="range"
+          min={minTime}
+          max={maxTime}
+          step={60}
+          value={finished ? maxTime : Math.min(Math.max(currentMinute, minTime), maxTime)}
+          disabled={disabled}
+          onChange={(e) => seek(Number(e.target.value))}
+          className="w-full"
+          style={{ background: "transparent" }}
+          aria-label="Scrub through the day"
+        />
+        <div className="num -mt-0.5 flex justify-between text-[0.68rem] text-muted-foreground">
+          <span>{formatClock12h(minTime)}</span>
+          <span>{Math.round(progress * 100)}%</span>
+          <span>{formatClock12h(maxTime)}</span>
+        </div>
+      </div>
+
+      <div className="mt-2 space-y-3 border-t border-glass-border bg-foreground/[0.02] px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="eyebrow w-14">Speed</span>
           <ToggleGroup
             type="single"
             value={String(speed)}
             onValueChange={(v) => v && setSpeed(Number(v) as PlaybackSpeed)}
-            variant="outline"
             size="sm"
             disabled={disabled}
+            className="flex-1 rounded-xl bg-foreground/[0.05] p-0.5"
           >
             {SPEED_VALUES.map((s) => (
-              <ToggleGroupItem
-                key={s}
-                value={String(s)}
-                className="h-7 px-2.5 text-[0.8rem]"
-              >
+              <ToggleGroupItem key={s} value={String(s)} className="h-7 flex-1 rounded-[0.6rem] text-[0.8rem]">
                 {SPEED_LABEL[s]}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
         </div>
-        <Button
-          variant={rackOverlayOn ? "default" : "outline"}
-          size="sm"
-          className="h-7 gap-1 px-2 text-[0.8rem]"
-          onClick={toggleRackOverlay}
-          disabled={!hasRackStats}
-          title={hasRackStats ? "Revenue and stop→buy rate per rack" : "Re-run to get rack KPIs"}
-        >
-          <BarChart3 className="size-3" />
-          Rack KPIs
-        </Button>
-      </div>
-      <div className="mt-3 flex items-center gap-2 border-t pt-3">
-        <Layers className="size-3 shrink-0 text-muted-foreground" aria-hidden />
-        <ToggleGroup
-          type="single"
-          value={heatmapMode}
-          onValueChange={(v) => v && setHeatmapMode(v as HeatmapMode)}
-          variant="outline"
-          size="sm"
-          aria-label="Heatmap layer"
-        >
-          {HEATMAP_LAYERS.map((l) => (
-            <ToggleGroupItem
-              key={l.value}
-              value={l.value}
-              title={l.hint}
-              disabled={l.value === "dwell" && !hasDwell}
-              className="h-7 px-2 text-[0.8rem]"
-            >
-              {l.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <div className="flex items-center justify-between gap-3">
+          <span className="eyebrow flex w-14 items-center gap-1">
+            <Layers className="size-3" aria-hidden />
+            Layer
+          </span>
+          <ToggleGroup
+            type="single"
+            value={heatmapMode}
+            onValueChange={(v) => v && setHeatmapMode(v as HeatmapMode)}
+            size="sm"
+            aria-label="Heatmap layer"
+            className="flex-1 rounded-xl bg-foreground/[0.05] p-0.5"
+          >
+            {HEATMAP_LAYERS.map((l) => (
+              <ToggleGroupItem
+                key={l.value}
+                value={l.value}
+                title={l.hint}
+                disabled={l.value === "dwell" && !hasDwell}
+                className="h-7 flex-1 rounded-[0.6rem] text-[0.8rem]"
+              >
+                {l.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
         {heatmapMode !== "off" && (
-          <div className="ml-auto flex items-center gap-1 text-[0.8rem] text-muted-foreground">
+          <div className="flex items-center gap-2 pl-[4.25rem] text-[0.72rem] text-muted-foreground">
             low
-            <span className="h-2 w-14 rounded-full" style={{ background: paletteGradient(heatmapMode) }} />
+            <span className="h-1.5 flex-1 rounded-full" style={{ background: paletteGradient(heatmapMode) }} />
             high
           </div>
         )}
-      </div>
-      <div className="mt-3 flex items-center gap-2 border-t pt-3">
-        <Box className="size-3 shrink-0 text-muted-foreground" aria-hidden />
-        <ToggleGroup
-          type="single"
-          value={graphicsMode}
-          onValueChange={(v) => v && setGraphicsMode(v as GraphicsMode)}
-          variant="outline"
-          size="sm"
-          aria-label="Graphics"
-        >
-          <ToggleGroupItem value="classic" className="h-7 px-2 text-[0.8rem]" title="Low-poly look">
-            Classic
-          </ToggleGroupItem>
-          <ToggleGroupItem value="realistic" className="h-7 px-2 text-[0.8rem]" title="Lit store interior with stocked shelves">
-            Realistic
-          </ToggleGroupItem>
-        </ToggleGroup>
-        <Button
-          variant={shopperView ? "default" : "outline"}
-          size="sm"
-          className="ml-auto h-7 gap-1 px-2 text-[0.8rem]"
-          onClick={() => setShopperView(!shopperView)}
-          title="First-person view from a shopper's eyes"
-        >
-          <Eye className="size-3" />
-          Shopper view
-        </Button>
+        <div className="flex items-center justify-between gap-3">
+          <span className="eyebrow flex w-14 items-center gap-1">
+            <Box className="size-3" aria-hidden />
+            View
+          </span>
+          <ToggleGroup
+            type="single"
+            value={graphicsMode}
+            onValueChange={(v) => v && setGraphicsMode(v as GraphicsMode)}
+            size="sm"
+            aria-label="Graphics"
+            className="rounded-xl bg-foreground/[0.05] p-0.5"
+          >
+            <ToggleGroupItem value="classic" className="h-7 rounded-[0.6rem] px-2.5 text-[0.8rem]" title="Low-poly look">
+              Classic
+            </ToggleGroupItem>
+            <ToggleGroupItem value="realistic" className="h-7 rounded-[0.6rem] px-2.5 text-[0.8rem]" title="Lit store interior with stocked shelves">
+              Realistic
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <div className="ml-auto flex items-center gap-1">
+            <Button
+              variant={shopperView ? "default" : "ghost"}
+              size="icon-sm"
+              onClick={() => setShopperView(!shopperView)}
+              title="Shopper view — first person, from a shopper's eyes"
+              aria-label="Shopper view"
+              aria-pressed={shopperView}
+            >
+              <Eye />
+            </Button>
+            <Button
+              variant={rackOverlayOn ? "default" : "ghost"}
+              size="icon-sm"
+              onClick={toggleRackOverlay}
+              disabled={!hasRackStats}
+              title={hasRackStats ? "Rack KPIs — revenue and stop→buy rate per rack" : "Re-run to get rack KPIs"}
+              aria-label="Rack KPIs"
+              aria-pressed={rackOverlayOn}
+            >
+              <BarChart3 />
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
