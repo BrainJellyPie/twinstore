@@ -549,12 +549,12 @@ def generate_store(
                       rotation=90 if layout_style == "perimeter" or vertical else 0,
                       variant="b" if (y // 3) % 2 else "a")
 
-    if options.excluded_categories and not any(rack.slots for rack in b.racks):
-        raise ValueError("The selected product categories have no display space. Reduce the checkout count, enlarge the floor or restore more categories.")
     if not any(slot.items for rack in b.racks for slot in rack.slots):
+        # Both branches added this check; one message serves both callers' wording.
         raise ValueError(
-            "No products from the included categories fit this layout. Increase the grid size, "
-            "reduce aisle width, choose another layout pattern, or include more categories."
+            "No products from the included categories fit this layout: the selected product categories have "
+            "no display space. Increase the grid size, reduce aisle width or the checkout count, choose another "
+            "layout pattern, or include more categories."
         )
 
     format_design: dict[str, StoreDesign] = {
