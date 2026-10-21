@@ -29,6 +29,8 @@ export function WeeklyScheduleField({
         type="single"
         variant="outline"
         size="sm"
+        spacing={1}
+        className="w-full flex-wrap"
         value={value}
         onValueChange={(v) => {
           if (v) onChange(v as WorkingDayPreset);

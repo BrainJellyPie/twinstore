@@ -52,7 +52,7 @@ export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", 
   return <section className="space-y-2 rounded-md border p-2" aria-label="Reserved floor areas">
     <p className="text-xs font-medium">Keep areas clear</p>
     <div className="flex flex-wrap items-end gap-2">
-      <div className="min-w-0 flex-1 space-y-1 text-xs"><label htmlFor={`${id}-starting-point`}>Area starting point</label>
+      <div className="min-w-0 flex-1 basis-full space-y-1 text-xs sm:basis-0"><label htmlFor={`${id}-starting-point`}>Area starting point</label>
         <select id={`${id}-starting-point`} className={controlClass} value={startingPoint} onChange={(event) => setStartingPoint(event.target.value)}>
           {STARTING_POINTS.map((point) => <option key={point.id} value={point.id}>{point.label}</option>)}
         </select>

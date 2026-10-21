@@ -56,3 +56,34 @@ it("does not advance with invalid template dimensions", () => {
   expect((screen.getByRole("button", { name: "Next" }) as HTMLButtonElement).disabled).toBe(true);
   expect(create).not.toHaveBeenCalled();
 });
+
+it.each([
+  ["Weekday (Mon-Fri)", [1, 2, 3, 4, 5]],
+  ["Weekend (Sat-Sun)", [6, 7]],
+  ["7 Days", [1, 2, 3, 4, 5, 6, 7]],
+])("preserves the %s schedule through back navigation", async (label, days) => {
+  render(<CreateStoreWizard />); fillStore();
+  fireEvent.click(screen.getByLabelText(label));
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  fireEvent.change(screen.getByLabelText("Customer profile & behavior"), { target: { value: "Local residents" } });
+  fireEvent.click(screen.getByRole("button", { name: "Back" }));
+  expect((screen.getByLabelText("Store name") as HTMLInputElement).value).toBe("My Pharmacy");
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  expect((screen.getByLabelText("Customer profile & behavior") as HTMLTextAreaElement).value).toBe("Local residents");
+  fireEvent.click(screen.getByRole("button", { name: "Create new store" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Generate" }));
+  await waitFor(() => expect(create).toHaveBeenCalledOnce());
+  const request = create.mock.calls[0]![0] as { meta: { weekly_schedule: { day: number; is_open: boolean }[] } };
+  expect(request.meta.weekly_schedule.filter((day) => day.is_open).map((day) => day.day)).toEqual(days);
+});
+
+it("allows an empty layout without losing invalid template settings on reselect", () => {
+  render(<CreateStoreWizard />); fillStore();
+  fireEvent.click(screen.getByRole("button", { name: "Invalid size" }));
+  expect((screen.getByRole("button", { name: "Next" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Start with a furnished store template" }));
+  expect((screen.getByRole("button", { name: "Next" }) as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Start with a furnished store template" }));
+  expect((screen.getByRole("button", { name: "Next" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(create).not.toHaveBeenCalled();
+});

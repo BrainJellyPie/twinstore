@@ -1,3 +1,5 @@
+import { ChevronDown } from "lucide-react";
+import { useI18n } from "@/shared/i18n/i18n";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { cloneElement, useId, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -14,7 +16,7 @@ import { CompareFloorPlans } from "./CompareFloorPlans";
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, sharedDesign, sharedCurrency, sharedHours = false, showOperatingHours = true }: {
+export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, sharedDesign, sharedCurrency, sharedHours = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
   value: TemplateChoice;
   onChange: (v: TemplateChoice) => void;
   onTemplateSelected?: (template: api.StoreTemplate) => void;
@@ -26,7 +28,11 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   sharedCurrency?: string;
   sharedHours?: boolean;
   showOperatingHours?: boolean;
+  defaultCustomizationOpen?: boolean;
 }) {
+  const { t } = useI18n();
+  const customizationId = useId();
+  const [customizationOpen, setCustomizationOpen] = useState(defaultCustomizationOpen);
   const [search, setSearch] = useState("");
   const [storeType, setStoreType] = useState("");
   const [size, setSize] = useState("all");
@@ -86,13 +92,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
 
   return (
     <div className="space-y-3">
-      <GenerationOptionsFile kind="layout" value={value} canExport={validTemplateChoice(value) && preview.isSuccess} onChange={(choice) => {
-        onChange(choice);
-        setSearch(""); setStoreType(""); setSize("all"); setSeating("all"); setSort("default");
-        const imported = templates.find((template) => template.id === choice.templateId);
-        if (imported) onTemplateSelected?.(imported);
-      }} />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
         <label className="space-y-1 text-xs">Find a store format
           <input className={controlClass} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pharmacy, café, large store…" />
         </label>
@@ -139,7 +139,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
       </div>
       {templatesQuery.isSuccess && !filtered.length && <p className="text-xs text-muted-foreground">No matching formats. Try another search or category.</p>}
       {value.templateId && <>
-        <div className="grid gap-3 sm:grid-cols-[170px_1fr]">
+        <div className="grid gap-3 sm:grid-cols-[170px_minmax(0,1fr)]">
           <div className="space-y-1.5">
             {preview.isSuccess && validTemplateChoice(value) ? <>
               <FloorPlanPreview store={preview.data} areas={value.reserved_areas ?? []} />
@@ -156,6 +156,31 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           <div className="space-y-2">
             <p className="text-xs"><strong>{selected?.name}</strong></p>
             <p className="text-xs text-muted-foreground">{selected?.description}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Width (8–40 cells)"><input type="number" className={controlClass} min={8} max={40} step={1} placeholder={String(selected?.grid[0] ?? 12)} value={value.width ?? ""} onChange={(e) => update({ width: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
+              <Field label="Depth (6–40 cells)"><input type="number" className={controlClass} min={6} max={40} step={1} placeholder={String(selected?.grid[1] ?? 10)} value={value.height ?? ""} onChange={(e) => update({ height: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
+              <div className="col-span-2 space-y-1"><Field label="Price currency"><select className={controlClass} value={value.currency} onChange={(e) => update({ currency: e.target.value })}>
+                <option value="USD">USD · $</option><option value="KRW">KRW · ₩</option><option value="JPY">JPY · ¥</option>
+              </select></Field>
+                {onApplyCurrencyToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={sharedCurrency === value.currency}
+                  onClick={() => onApplyCurrencyToAll(value.currency)}>{sharedCurrency === value.currency ? "Currency used on all floors" : "Apply currency to all floors"}</button>}
+              </div>
+            </div>
+            <button type="button" className="flex w-full items-center justify-between gap-2 rounded-md border p-2 text-left text-xs font-medium hover:bg-muted"
+              aria-expanded={customizationOpen} aria-controls={`${customizationId}-main ${customizationId}-more`}
+              onClick={() => setCustomizationOpen((open) => !open)}>
+              {t(customizationOpen ? "hideLayoutCustomization" : "customizeLayout")}
+              <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", customizationOpen && "rotate-180")} aria-hidden />
+            </button>
+            {!customizationOpen && <p className="text-[11px] text-muted-foreground">{t("layoutCustomizationHint")}</p>}
+            {!customizationOpen && !validTemplateChoice(value) && <p role="alert" className="text-xs text-destructive">{t("layoutCustomizationError")}</p>}
+            <div id={`${customizationId}-main`} hidden={!customizationOpen} className="space-y-2">
+              <GenerationOptionsFile kind="layout" value={value} canExport={validTemplateChoice(value) && preview.isSuccess} onChange={(choice) => {
+                onChange(choice);
+                setSearch(""); setStoreType(""); setSize("all"); setSeating("all"); setSort("default");
+                const imported = templates.find((template) => template.id === choice.templateId);
+                if (imported) onTemplateSelected?.(imported);
+              }} />
             <details className="space-y-2 rounded border p-2 text-xs">
               <summary className="cursor-pointer">Apply a layout priority</summary>
               <Field label="Layout priority"><select className={controlClass} value={priority.id} onChange={(event) => setPriorityId(event.target.value)}>
@@ -195,8 +220,6 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               </select></Field>
                 <p className="text-[10px] text-muted-foreground">Maximum adjacent display cells before a cross aisle. Patterns and reserved areas may shorten each run.</p>
               </div>
-              <Field label="Width (8–40 cells)"><input type="number" className={controlClass} min={8} max={40} step={1} placeholder={String(selected?.grid[0] ?? 12)} value={value.width ?? ""} onChange={(e) => update({ width: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
-              <Field label="Depth (6–40 cells)"><input type="number" className={controlClass} min={6} max={40} step={1} placeholder={String(selected?.grid[1] ?? 10)} value={value.height ?? ""} onChange={(e) => update({ height: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               <Field label="Entrance wall"><select className={controlClass} value={value.gate_wall ?? "front"} onChange={(e) => update({ gate_wall: e.target.value as TemplateChoice["gate_wall"] })}>
                 <option value="front">Front wall</option><option value="back">Back wall</option><option value="left">Left wall</option><option value="right">Right wall</option>
               </select></Field>
@@ -240,12 +263,6 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <Field label="Shelf design"><select className={controlClass} value={value.fixture_design ?? "mixed"} onChange={(e) => update({ fixture_design: e.target.value as TemplateChoice["fixture_design"] })}>
                 <option value="mixed">Mixed displays</option><option value="a">Open rack A</option><option value="b">Open rack B</option><option value="c">Wall-end rack C</option>
               </select></Field>
-              <div className="space-y-1"><Field label="Price currency"><select className={controlClass} value={value.currency} onChange={(e) => update({ currency: e.target.value })}>
-                <option value="USD">USD · $</option><option value="KRW">KRW · ₩</option><option value="JPY">JPY · ¥</option>
-              </select></Field>
-                {onApplyCurrencyToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={sharedCurrency === value.currency}
-                  onClick={() => onApplyCurrencyToAll(value.currency)}>{sharedCurrency === value.currency ? "Currency used on all floors" : "Apply currency to all floors"}</button>}
-              </div>
               <div className="space-y-1"><Field label={tableMix ? "Dining tables (mixed sizes)" : `Dining tables (${value.dining_seats ?? 4} seats each)`}><input type="number" min={0} max={48} step={1} className={controlClass}
                 disabled={!!tableMix} placeholder={`Format default (${selected?.default_dining_tables ?? 0})`} value={tableMix ? tableCount : value.dining_tables ?? ""}
                 onChange={(e) => update({ dining_tables: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
@@ -292,8 +309,10 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, open_hour: null, close_hour: null, closed_days: null, seed: 0 })}>Reset layout options</button>
             </div>
+            </div>
           </div>
         </div>
+        <div id={`${customizationId}-more`} hidden={!customizationOpen} className="space-y-3">
         {showOperatingHours && <details className="space-y-2 rounded border p-2 text-xs">
           <summary className="cursor-pointer">Operating hours · {7 - closedDays.length} open days</summary>
           <div className="grid grid-cols-2 gap-2">
@@ -348,8 +367,9 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
         <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })}
           grid={[value.width ?? selected?.grid[0] ?? 12, value.height ?? selected?.grid[1] ?? 10]} entrance={value.entrance} gateWall={value.gate_wall} />
         <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: use warm task lighting in the consultation corner or seasonal signs near the entrance." /></Field>
+        </div>
         {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
-        <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction and aisle gap apply to interior rows and cross-aisles; wall spacing and seating clearance are separate. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>
+        {customizationOpen && <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction and aisle gap apply to interior rows and cross-aisles; wall spacing and seating clearance are separate. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>}
       </>}
     </div>
   );

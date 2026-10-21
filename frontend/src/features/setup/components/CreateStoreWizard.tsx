@@ -110,11 +110,11 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   return (
     <div className="relative flex-1 overflow-y-auto">
       <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 h-[32rem] [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden />
-      <div className="relative mx-auto grid w-full max-w-6xl gap-10 px-6 py-10 lg:grid-cols-[22rem_1fr] lg:py-14">
-        <aside className="lg:sticky lg:top-10 lg:self-start">
+      <div className="relative mx-auto grid w-full min-w-0 max-w-6xl grid-cols-1 gap-10 px-6 py-10 lg:grid-cols-[22rem_1fr] lg:py-14">
+        <aside className="min-w-0 lg:sticky lg:top-10 lg:self-start">
           <WizardHeader title="New store" steps={STEPS} activeIndex={step} />
         </aside>
-        <div className="panel animate-rise space-y-8 rounded-[2rem] p-8 sm:p-10">
+        <div className="panel min-w-0 animate-rise space-y-8 rounded-[2rem] p-5 sm:p-10">
 
         {step === 1 && (
           <>
@@ -125,7 +125,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
                 <input type="checkbox" checked={withTemplate} onChange={(e) => setWithTemplate(e.target.checked)} />
                 Start with a furnished store template
               </label>
-              {withTemplate ? <TemplatePicker value={template} onChange={setTemplate} showOperatingHours={false}
+              {withTemplate ? <TemplatePicker value={template} onChange={setTemplate} showOperatingHours={false} defaultCustomizationOpen={false}
                 onTemplateSelected={(format) => onChange("storeType", format.store_type)} />
                 : <p className="text-xs text-muted-foreground">Start with an empty layout to draw or import your own floor plan.</p>}
               <p className="text-xs text-muted-foreground">Your store name, type and opening hours above apply to the initial layout. More layouts and multi-floor stores can be added from the project.</p>
@@ -142,7 +142,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
         )}
 
         {errMessage && step === 2 && (
-          <p className="text-sm text-destructive">{errMessage}</p>
+          <p role="alert" className="text-sm text-destructive">{errMessage}</p>
         )}
 
         <div className="flex items-center justify-between">
