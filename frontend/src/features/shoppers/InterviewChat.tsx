@@ -49,15 +49,16 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
   // conversation moves on. Without a model (or on error) the trip-based templates stay.
   const stored = transcript.data?.suggested_after === messages.length ? transcript.data.suggestions ?? [] : [];
   const ideas = useQuery({
-    queryKey: interviewKeys.suggestions(projectId, runId, sid, messages.length, model),
+    queryKey: interviewKeys.suggestions(projectId, runId, sid, messages, model),
     queryFn: ({ signal }) => suggestQuestions(projectId, runId, sid, model, signal),
     enabled: transcript.isSuccess && !stored.length && !busy,
     staleTime: Infinity,
     retry: false,
   });
   const written = stored.length ? stored
-    : ideas.data?.suggested_after === messages.length ? ideas.data.suggestions ?? [] : [];
-  const chips = written.length ? written : messages.length === 0 || ideas.isError ? suggestedQuestions(journey) : [];
+    : ideas.data?.suggested_after === messages.length && JSON.stringify(ideas.data.messages) === JSON.stringify(messages)
+      ? ideas.data.suggestions ?? [] : [];
+  const chips = written.length ? written : messages.length === 0 || ideas.isError || ideas.isSuccess ? suggestedQuestions(journey) : [];
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "nearest" });

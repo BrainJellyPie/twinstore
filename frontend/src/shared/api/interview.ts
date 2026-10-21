@@ -121,6 +121,6 @@ export const interviewKeys = {
   groups: (pid: string, runId: string) => ["projects", pid, "runs", runId, "group-interviews"] as const,
   journey: (pid: string, runId: string, sid: string) => ["projects", pid, "runs", runId, "shoppers", sid, "journey"] as const,
   interview: (pid: string, runId: string, sid: string) => ["projects", pid, "runs", runId, "shoppers", sid, "interview"] as const,
-  suggestions: (pid: string, runId: string, sid: string, after: number, model: string) =>
-    ["projects", pid, "runs", runId, "shoppers", sid, "interview", "suggestions", after, model] as const,
+  suggestions: (pid: string, runId: string, sid: string, messages: readonly InterviewMessage[], model: string) =>
+    ["projects", pid, "runs", runId, "shoppers", sid, "interview", "suggestions", messages, model] as const,
 };

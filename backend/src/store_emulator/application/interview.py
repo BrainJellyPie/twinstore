@@ -196,7 +196,7 @@ def suggest_questions(pid: str, run_id: str, persona_id: str, req: SuggestionReq
     try:
         with lock:
             current = get_interview(pid, run_id, persona_id)
-            if len(current.messages) != len(transcript.messages):
+            if current.messages != transcript.messages:
                 return current
             current.suggestions, current.suggested_after = questions, len(current.messages)
             if questions:
