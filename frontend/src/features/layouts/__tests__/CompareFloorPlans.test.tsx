@@ -23,6 +23,16 @@ const current: Store = { ...baseline, id: "current", grid_size: [24, 18], design
 const areas = [{ label: "Pickup", x: 2, y: 14, width: 3, height: 2 }];
 beforeEach(() => { vi.mocked(api.previewStoreTemplate).mockResolvedValue(baseline); });
 
+it.each([2, 6])("compares actual %s-seat furniture with the format default", async (seats) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><CompareFloorPlans
+    store={{ ...current, racks: [{ ...rack, type: "table", slots: [], shape: Array.from({ length: 2 }, () => Array<number>(seats / 2).fill(1)) }] }}
+    areas={[]} templateId="specialty_cafe" currency="USD" /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Compare with default" }));
+  const row = await screen.findByRole("row", { name: `Dining tables / seats 0 / 0 1 / ${seats}` });
+  expect(within(row).getByText(`1 / ${seats}`)).toBeTruthy();
+});
+
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const submit = vi.fn();

@@ -1346,6 +1346,7 @@ export interface LayoutOptions {
   fixture_design?: "mixed" | "a" | "b" | "c";
   design_theme?: StoreDesign | null;
   dining_tables?: number | null;
+  dining_seats?: 2 | 4 | 6;
   table_clearance?: number;
   seating_zone?: "auto" | "front" | "back" | "left" | "right" | "center";
   reserved_areas?: ReservedArea[];
