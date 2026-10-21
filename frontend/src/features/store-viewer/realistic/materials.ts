@@ -38,6 +38,7 @@ export function createShellMaterials(
   pavementMaps: ScannedMaterialMaps | null = null,
   counterMaps: ScannedMaterialMaps | null = null,
   designColors: InteriorColors | null = null,
+  displayTexture: THREE.Texture | null = null,
 ): ShellMaterials {
   // Material-owned clones keep hook cleanup and shell rebuilds independent.
   const wood = woodMaps?.map.clone() ?? canvasTexture(createWoodCanvas(), { anisotropy: 1 });
@@ -77,6 +78,7 @@ export function createShellMaterials(
     envMapIntensity: 0.25,
   });
 
+  const display = displayTexture?.clone() ?? null;
   const palette = resolveInteriorPalette(designTheme, designColors);
   const mats: ShellMaterials = {
     wall: std(palette.wall, 0.92, 0, {
@@ -141,7 +143,9 @@ export function createShellMaterials(
       : std(palette.counter, 0.32),
     // Terminal housings and coated grilles have a dielectric outer surface.
     black: std("#17191c", 0.45),
-    screen: emissive("#4f8fe8", 0.9),
+    screen: display
+      ? std("#ffffff", 0.24, 0, { map: display, emissiveMap: display, emissive: "#ffffff", emissiveIntensity: 0.55 })
+      : emissive("#4f8fe8", 0.9),
     mat: std("#2f3337", 0.98),
     aluminum: std(metalMaps ? "#ffffff" : "#b7bdc4", metalMaps ? 1 : 0.32, metalMaps ? 1 : 0.85, {
       map: metalMaps?.map.clone() ?? null,

@@ -3,6 +3,8 @@ import * as THREE from "three";
 import type { Rack } from "@/shared/types/domain";
 import { buildStore } from "../buildStore";
 import { COUNTER_DIMS, frameFor, planFixture } from "../fixtureSpecs";
+import { CHECKOUT_DISPLAY_GRID } from "../checkoutDisplay";
+import { cellPixel } from "../atlasLayout";
 
 // These tests inspect real merged geometry; no canvas or GPU is needed.
 vi.mock("../canvasArt", async (importOriginal) => ({
@@ -26,6 +28,38 @@ function dispose(built: ReturnType<typeof buildStore>) {
 }
 
 describe("checkout screen mounting", () => {
+  it.each(cases)("keeps three distinct, upright display cells: bevel $beveled, rotation $rotation, width $width", ({ beveled, rotation, width }) => {
+    const built = buildStore(12, 12, [rackFor(rotation, width)], beveled);
+    try {
+      const uv = built.geometries.get("screen")!.getAttribute("uv");
+      const grid = CHECKOUT_DISPLAY_GRID;
+      for (let cell = 0; cell < 3; cell++) {
+        const [x, y] = cellPixel(grid, cell);
+        const expected = [[x + 2, y + 2], [x + grid.cellW - 2, y + 2], [x + 2, y + grid.cellH - 2], [x + grid.cellW - 2, y + grid.cellH - 2]];
+        expected.forEach(([px, py], corner) => {
+          expect(uv.getX(cell * 4 + corner) * grid.width).toBeCloseTo(px!, 4);
+          expect((1 - uv.getY(cell * 4 + corner)) * grid.height).toBeCloseTo(py!, 4);
+        });
+      }
+    } finally { dispose(built); }
+  });
+
+  it("shares display artwork across several counters and omits display geometry without one", () => {
+    const empty = buildStore(12, 12, [], false);
+    const several = buildStore(12, 12, [0, 90, 180, 270].map((rotation, i) => ({
+      ...rackFor(rotation as Rack["rotation"], 1), id: `checkout-${i}`, position: [2 + i * 2, 4] as [number, number],
+    })), true);
+    try {
+      expect(empty.geometries.has("screen")).toBe(false);
+      const uv = several.geometries.get("screen")!.getAttribute("uv");
+      expect(uv.count).toBe(48);
+      for (let i = 12; i < uv.count; i++) {
+        expect(uv.getX(i)).toBe(uv.getX(i % 12));
+        expect(uv.getY(i)).toBe(uv.getY(i % 12));
+      }
+    } finally { dispose(empty); dispose(several); }
+  });
+
   it.each(cases)("keeps every screen just outside its housing: bevel $beveled, rotation $rotation, width $width", ({ beveled, rotation, width }) => {
     const built = buildStore(12, 12, [rackFor(rotation, width)], beveled);
     const material = new THREE.MeshBasicMaterial();
