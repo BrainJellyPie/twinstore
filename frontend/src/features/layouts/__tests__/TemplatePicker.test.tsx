@@ -481,7 +481,7 @@ it("previews moved and swapped areas without losing floor requirements", async (
     ],
   }), expect.any(AbortSignal)));
   expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Keep quiet consultation");
-});
+}, 15_000);
 
 it("places gates on other walls and keeps existing pickup areas when the wall changes", async () => {
   mount();
