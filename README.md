@@ -169,6 +169,13 @@ default palette; each building floor can use a different one. The preview uses t
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
+Choose **Expand floor plan** to inspect the current preview at a larger size,
+with numbered rows and columns, a cell grid, seating and checkout counts, and a
+list of reserved areas. Zoom up to 400% and scroll to inspect individual cells,
+or choose **Fit floor plan** to see the whole floor again. Close it or press Escape to return to the same settings.
+The creation dialog keeps its title and action buttons visible while the options
+scroll, including on smaller screens.
+
 Interior shelf rows can run left to right or front to back. This rotates the
 interior pattern and its product-facing sides while keeping the entrance,
 checkouts, wall fixtures, seating and reserved areas in their chosen locations.
