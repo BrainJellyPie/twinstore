@@ -560,6 +560,36 @@ TEMPLATES: list[StoreTemplate] = [
         style="loop", open_hours=(9, 21), closed_days=(1,), dining_tables=6,
         seating_zone="back", checkouts=2, design_theme="botanical", checkout_placement="near_entrance",
     ),
+    StoreTemplate(
+        id="pet_superstore", name="Pet supplies superstore", description="A 36×28 industrial store with pet-food and care aisles, carriers, beds, walking and grooming accessories, and five checkout counters. Open 9–21 daily; animal care services are not simulated.",
+        store_type="pets", grid=(36, 28), fridges=[],
+        wall_shelves=["pet_care", "pet_accessories"] * 7,
+        gondolas=["pet_care", "pet_accessories", "pet_care", "pet_accessories"],
+        near_counter=["pet_care", "pet_accessories"], style="aisles", open_hours=(9, 21),
+        checkouts=5, design_theme="industrial",
+    ),
+    StoreTemplate(
+        id="sports_outlet", name="Sports & camping outlet", description="A 34×26 Nordic store with a browsing loop for sports, camping equipment, outdoor accessories, apparel and footwear. Four checkouts; open 10–21 daily.",
+        store_type="sports", grid=(34, 26), fridges=["water_sports"],
+        wall_shelves=["sports", "outdoor_gear", "apparel", "footwear"] * 3,
+        gondolas=["outdoor_gear", "sports", "footwear", "apparel"],
+        near_counter=["sports", "outdoor_gear"], style="loop", open_hours=(10, 21),
+        checkouts=4, design_theme="nordic",
+    ),
+    StoreTemplate(
+        id="thai_kitchen", name="Thai kitchen & tea", description="Twelve noodle, curry, rice, side and drink choices on a 24×20 botanical floor with perimeter displays, eight four-seat tables and three ordering counters. Open 11–22, closed Wednesdays; models counter purchases.",
+        store_type="restaurant", grid=(24, 20), fridges=["water_sports", "soft_drinks"],
+        wall_shelves=["thai_menu"] * 5, gondolas=["thai_menu", "desserts"], near_counter=["thai_menu"],
+        style="perimeter", open_hours=(11, 22), closed_days=(3,), dining_tables=8,
+        seating_zone="center", checkouts=3, design_theme="botanical", checkout_placement="near_entrance",
+    ),
+    StoreTemplate(
+        id="turkish_cafe", name="Turkish café & bakery", description="Twelve doner, flatbread, soup, sweet and drink choices on a 22×20 terracotta showroom floor with six four-seat tables and two counters. Open 8–22 daily; kitchen preparation and table service are not simulated.",
+        store_type="cafe", grid=(22, 20), fridges=["water_sports", "soft_drinks"],
+        wall_shelves=["turkish_menu"] * 4, gondolas=["turkish_menu", "desserts"], near_counter=["turkish_menu"],
+        style="showroom", open_hours=(8, 22), dining_tables=6, seating_zone="back",
+        checkouts=2, design_theme="terracotta", checkout_placement="near_entrance",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
