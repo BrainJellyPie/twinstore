@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
 import re
 import shutil
 import threading
@@ -21,6 +22,8 @@ from store_emulator.domain.types import RESOURCE_ID_PATTERN
 from .io import DATA_DIR, read_json, write_json
 from .setups import metadata_path
 
+
+logger = logging.getLogger(__name__)
 
 MAX_IMAGE_BYTES: Final[int] = 2 * 1024 * 1024  # 2MB
 _ALLOWED_FORMATS: Final[dict[str, tuple[str, str]]] = {
@@ -143,13 +146,39 @@ def save_image(
         fname = f"{_sku_hash(sku)}.{ext}"
         target = pdir / fname
         tmp = target.with_suffix(target.suffix + f".tmp-{uuid.uuid4().hex[:8]}")
-        tmp.write_bytes(data)
-        tmp.replace(target)
-
+        backup = target.with_suffix(target.suffix + f".backup-{uuid.uuid4().hex[:8]}")
+        had_original = target.exists()
+        backup_ready = False
+        committed = False
         version = hashlib.sha256(data).hexdigest()[:8]
-        manifest = load_manifest(project_id)
-        manifest[sku] = {"path": str(target), "mime": mime, "ext": ext, "version": version}
-        _save_manifest(project_id, manifest)
+        try:
+            if had_original:
+                shutil.copyfile(target, backup, follow_symlinks=False)
+                backup_ready = True
+            tmp.write_bytes(data)
+            tmp.replace(target)
+
+            manifest = load_manifest(project_id)
+            manifest[sku] = {"path": str(target), "mime": mime, "ext": ext, "version": version}
+            _save_manifest(project_id, manifest)
+            committed = True
+        except OSError:
+            if backup_ready:
+                backup.replace(target)
+                backup_ready = False
+            elif not had_original:
+                target.unlink(missing_ok=True)
+            raise
+        finally:
+            cleanup = [tmp]
+            # Keep the backup available for recovery if restoring it also failed.
+            if committed or not backup_ready:
+                cleanup.append(backup)
+            for path in cleanup:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("Could not remove temporary image file %s", path, exc_info=True)
 
     return ImageEntry(sku=sku, path=str(target), mime=mime, ext=ext, version=version)
 
