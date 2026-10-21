@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as api from "@/shared/api/client";
 import { DEFAULT_TEMPLATE_CHOICE, templateRequest, type BuildingFloorChoice, type TemplateChoice } from "../templateOptions";
 
+const INVALID_SEED = "This options file has a seed outside the supported whole-number range. Current settings were kept.";
+
 type Props = { canExport: boolean } & (
   { kind: "layout"; value: TemplateChoice; onChange: (value: TemplateChoice) => void }
   | { kind: "building"; value: BuildingFloorChoice[]; onChange: (value: BuildingFloorChoice[]) => void }
@@ -14,7 +16,7 @@ function portableLayout(value: TemplateChoice): api.GenerateLayoutRequest {
 
 function importedChoice({ template_id, source_setup_id: _source, name: _name, ...options }: api.GenerateLayoutRequest): TemplateChoice {
   const choice = { ...DEFAULT_TEMPLATE_CHOICE, ...options, templateId: template_id };
-  if (!Number.isSafeInteger(choice.seed)) throw new Error("This options file has a seed outside the supported whole-number range. Current settings were kept.");
+  if (!Number.isSafeInteger(choice.seed)) throw new Error(INVALID_SEED);
   return choice;
 }
 
@@ -49,7 +51,26 @@ export function GenerationOptionsFile(props: Props) {
     setError(null);
     try {
       if (file.size > sizeLimit * 1024) throw new Error(`Choose an options file smaller than ${sizeLimit} KB.`);
-      const contents: unknown = JSON.parse((await file.text()).replace(/^\uFEFF/, ""));
+      const source = (await file.text()).replace(/^\uFEFF/, "");
+      const contents: unknown = JSON.parse(source);
+      // JSON.parse can round a fractional seed to a safe integer, or underflow it to zero.
+      // Read numeric seed tokens as decimals before sending the parsed object for validation.
+      const tokens = source.match(/"(?:\\.|[^"\\])*"|[{}[\],:]|[^\s{}[\],:]+/g) ?? [];
+      for (let index = 0; index + 2 < tokens.length; index++) {
+        const key = tokens[index]!;
+        if (!key.startsWith('"') || tokens[index + 1] !== ":" || JSON.parse(key) !== "seed") continue;
+        const parts = /^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(tokens[index + 2]!);
+        if (!parts) continue;
+        const digits = `${parts[2]}${parts[3] ?? ""}`.replace(/^0+/, "");
+        if (!digits) continue;
+        const shift = Number(parts[4] ?? "0") - (parts[3]?.length ?? 0);
+        const end = digits.length + shift;
+        if (!Number.isFinite(end) || end < 1 || end > 16 ||
+          (shift < 0 && /[1-9]/.test(digits.slice(end))) ||
+          !Number.isSafeInteger(Number(`${parts[1]}${digits.slice(0, end).padEnd(end, "0")}`))) {
+          throw new Error(INVALID_SEED);
+        }
+      }
       if (controller.signal.aborted) return;
       if (props.kind === "building") {
         const preset = await api.validateBuildingPreset(contents, controller.signal);
