@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 
+import { TemplatePicker } from "@/features/layouts/components/TemplatePicker";
+import { DEFAULT_TEMPLATE_CHOICE, templateRequest, validTemplateChoice } from "@/features/layouts/templateOptions";
 import { Button } from "@/shared/components/ui/button";
 import {
   AlertDialog,
@@ -37,7 +39,10 @@ const STEPS = [
 
 export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   const [step, setStep] = useState<1 | 2>(1);
-  const [values, setValues] = useState<WizardValues>(DEFAULT_VALUES);
+  const [values, setValues] = useState<WizardValues>({ ...DEFAULT_VALUES, storeType: "convenience" });
+  const [withTemplate, setWithTemplate] = useState(true);
+  const [template, setTemplate] = useState(DEFAULT_TEMPLATE_CHOICE);
+  const layoutValid = !withTemplate || validTemplateChoice(template);
   const [step1Errors, setStep1Errors] = useState<Step1Errors | null>(null);
   const [step2Errors, setStep2Errors] = useState<Step2Errors | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -51,6 +56,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   );
 
   const handleNext = useCallback(() => {
+    if (!layoutValid) return;
     const r = validateStep1(values);
     if (!r.ok) {
       setStep1Errors(r.errors);
@@ -58,18 +64,18 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
     }
     setStep1Errors(null);
     setStep(2);
-  }, [values]);
+  }, [values, layoutValid]);
 
   const handleSubmitClick = useCallback(() => {
     const r1 = validateStep1(values);
     const r2 = validateStep2(values);
     if (!r1.ok) setStep1Errors(r1.errors);
     if (!r2.ok) setStep2Errors(r2.errors);
-    if (!r1.ok || !r2.ok) return;
+    if (!r1.ok || !r2.ok || !layoutValid) return;
     setStep1Errors(null);
     setStep2Errors(null);
     setConfirmOpen(true);
-  }, [values]);
+  }, [values, layoutValid]);
 
   const handleConfirmedSubmit = useCallback(async () => {
     setConfirmOpen(false);
@@ -82,6 +88,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
           store_type: values.storeType.trim(),
           customer_profile: values.customerProfile.trim(),
           weekly_schedule: buildWeeklySchedule(values),
+          layout: withTemplate ? templateRequest(template) : null,
         },
         supplemental: values.supplementalFile,
       });
@@ -89,9 +96,9 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
     } catch {
       // create.error → rendered below
     }
-  }, [values, create, onCreated]);
+  }, [values, create, onCreated, withTemplate, template]);
 
-  const step1Ok = validateStep1(values).ok;
+  const step1Ok = validateStep1(values).ok && layoutValid;
   const step2Ok = validateStep2(values).ok;
   const errMessage = create.error instanceof Error
     ? create.error.message
@@ -108,12 +115,20 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
         <div className="panel animate-rise space-y-8 rounded-[2rem] p-8 sm:p-10">
 
         {step === 1 && (
-          <Step1Fields
-            values={values}
-            errors={step1Errors ?? undefined}
-            disabled={isPending}
-            onChange={onChange}
-          />
+          <>
+            <Step1Fields values={values} errors={step1Errors ?? undefined} disabled={isPending} onChange={onChange} />
+            <fieldset className="space-y-3 rounded-xl border p-4" disabled={isPending}>
+              <legend className="px-1 text-sm font-medium">Starting layout</legend>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={withTemplate} onChange={(e) => setWithTemplate(e.target.checked)} />
+                Start with a furnished store template
+              </label>
+              {withTemplate ? <TemplatePicker value={template} onChange={setTemplate}
+                onTemplateSelected={(format) => onChange("storeType", format.store_type)} />
+                : <p className="text-xs text-muted-foreground">Start with an empty layout to draw or import your own floor plan.</p>}
+              <p className="text-xs text-muted-foreground">Your store name, type and opening hours above apply to the initial layout. More layouts and multi-floor stores can be added from the project.</p>
+            </fieldset>
+          </>
         )}
         {step === 2 && (
           <Step2Fields

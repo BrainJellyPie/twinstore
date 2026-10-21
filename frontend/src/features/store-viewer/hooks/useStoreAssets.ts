@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { Store, Rack } from "@/shared/types/domain";
 
 export interface StoreAssets {
+  designTheme: Store["design_theme"];
   width: number;
   depth: number;
   racks: Rack[];
@@ -32,6 +33,7 @@ export function useStoreAssets(store: Store): StoreAssets {
     const availableDays = days.length > 0 ? days : [1];
 
     return {
+      designTheme: store.design_theme,
       width,
       depth,
       racks,
