@@ -268,6 +268,18 @@ Run through this before triggering generation or simulation:
   visitor-share gaps, persists only aggregate data in `output/movement.json`, and
   leaves simulator parameters unchanged. Use the gaps to select regions for a
   calibration experiment; partial camera coverage is not evidence of low demand.
+- **Restocking priorities.** Shelf Lab's completed compliance audit includes a
+  planner for missing SKUs. Set the recovery horizon in trading days, blended
+  contribution margin and extra handling/delivery overhead per SKU (minor units).
+  The initial 1 day / 30% / zero overhead values are editable planning assumptions.
+  Net contribution is `isolated daily revenue effect × days × margin − overhead`;
+  confidence limits use the same transformation. Items with positive lower bounds
+  appear first, and unestimated items remain visible. Missing levels of one SKU
+  share one action. **Locate** highlights the photo region; **Export restocking CSV**
+  includes source audit IDs, assumptions and uncertainty for a task sheet.
+  The estimates assume constant demand and exclude operational uncertainty.
+  Do not add SKU effects: the audit evaluates each stockout against the otherwise
+  stocked reference, so joint recovery can differ because of substitution.
 - **All run artifacts live in `backend/.data/`**, which is gitignored.
   Persona files, simulation results, and generated metadata never leave
   the local machine unless the user copies them out.
