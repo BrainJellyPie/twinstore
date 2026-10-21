@@ -1313,6 +1313,7 @@ export interface StoreTemplate {
   default_style: NonNullable<LayoutOptions["style"]>;
   default_design: StoreDesign;
   default_dining_tables: number;
+  default_checkouts?: number;
   default_seating_zone?: LayoutOptions["seating_zone"];
   default_checkout_placement?: LayoutOptions["checkout_placement"];
 }
@@ -1332,7 +1333,8 @@ export interface LayoutOptions {
   density?: "spacious" | "balanced" | "dense";
   shelf_direction?: "horizontal" | "vertical";
   entrance?: "left" | "center" | "right";
-  checkouts?: number;
+  exit_position?: "shared" | "left" | "center" | "right";
+  checkouts?: number | null;
   checkout_placement?: "auto" | "near_entrance" | "away_from_entrance";
   fixture_design?: "mixed" | "a" | "b" | "c";
   design_theme?: StoreDesign | null;
