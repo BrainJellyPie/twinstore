@@ -27,7 +27,7 @@ export const Route = createFileRoute("/projects/$pid")({
 
 function SimulationPage() {
   const { pid } = Route.useParams();
-  return <SimulationPageInner pid={pid} />;
+  return <SimulationPageInner key={pid} pid={pid} />;
 }
 
 function SimulationPageInner({ pid }: { pid: string }) {
@@ -36,12 +36,15 @@ function SimulationPageInner({ pid }: { pid: string }) {
   const layouts = layoutsQuery.data;
   const selectedSetupId = useSimulationStore((s) => s.selectedSetupId);
   const switchLayout = useSwitchLayout();
+  const effectiveSetupId = layouts?.some((layout) => layout.id === selectedSetupId)
+    ? selectedSetupId
+    : layouts?.[0]?.id;
 
   useEffect(() => {
-    if (!selectedSetupId && layouts && layouts.length > 0) {
-      switchLayout(layouts[0]!.id);
+    if (effectiveSetupId && selectedSetupId !== effectiveSetupId) {
+      switchLayout(effectiveSetupId);
     }
-  }, [selectedSetupId, layouts, switchLayout]);
+  }, [selectedSetupId, effectiveSetupId, switchLayout]);
 
   useEffect(() => {
     return () => {
@@ -51,7 +54,6 @@ function SimulationPageInner({ pid }: { pid: string }) {
     };
   }, []);
 
-  const effectiveSetupId = selectedSetupId ?? layouts?.[0]?.id;
   const [addLayoutOpen, setAddLayoutOpen] = useState(false);
 
   if (!effectiveSetupId || !layouts) {

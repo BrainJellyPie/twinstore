@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createSetup, generateBuilding, generateLayout, importFloorPlan, type SetupSummaryShort } from "@/shared/api/client";
+import { useEffect, useRef } from "react";
+import { createSetup, generateBuilding, generateLayout, importFloorPlan, type SetupSummary, type SetupSummaryShort } from "@/shared/api/client";
 import { templateRequest, type BuildingFloorChoice, type TemplateChoice } from "../templateOptions";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
@@ -22,6 +23,11 @@ interface Params {
 export function useCreateLayout() {
   const qc = useQueryClient();
   const setSelected = useSimulationStore((s) => s.setSelectedSetupId);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   return useMutation<SetupSummaryShort, Error, Params>({
     mutationFn: ({ projectId, name, source }) =>
@@ -38,10 +44,15 @@ export function useCreateLayout() {
             source_setup_id: source.kind === "import" ? source.parentSetupId : null,
             name,
           }),
-    onSuccess: (newSetup, vars) => {
+    onSuccess: async (newSetup, vars) => {
+      // A list request started before creation must not erase the new selection.
+      await qc.cancelQueries({ queryKey: queryKeys.setups(vars.projectId) });
+      qc.setQueryData<SetupSummary[]>(queryKeys.setups(vars.projectId), (current = []) =>
+        [...current.filter((setup) => setup.id !== newSetup.id), newSetup],
+      );
       qc.invalidateQueries({ queryKey: queryKeys.setups(vars.projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.project(vars.projectId) });
-      setSelected(newSetup.id);
+      if (mounted.current) setSelected(newSetup.id);
     },
   });
 }
