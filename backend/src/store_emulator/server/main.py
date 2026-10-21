@@ -1,11 +1,14 @@
 import logging
+import math
 import os
 from pathlib import Path
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -83,6 +86,15 @@ app = FastAPI(
         {"name": "system", "description": "System status check."},
     ],
 )
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_response(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    # Python's JSON parser accepts nonfinite numbers; echoed validation inputs must still be valid JSON.
+    detail = jsonable_encoder(exc.errors(), custom_encoder={
+        float: lambda value: value if math.isfinite(value) else str(value),
+    })
+    return JSONResponse(status_code=422, content={"detail": detail})
+
 
 app.add_middleware(
     CORSMiddleware,
