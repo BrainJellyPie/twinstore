@@ -39,7 +39,7 @@ export interface CompareDialogProps {
 export function CompareDialog(props: CompareDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[920px]">
+      <DialogContent className="max-h-[92dvh] w-[95vw] overflow-y-auto sm:max-w-[920px]">
         <CompareBody {...props} />
       </DialogContent>
     </Dialog>
@@ -63,7 +63,7 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <DialogHeader>
         <DialogTitle>Compare runs</DialogTitle>
         <DialogDescription>
@@ -114,7 +114,8 @@ function CompareTable({ report }: { report: ComparisonReport }) {
   return (
     <div className="space-y-3">
       {spend && <Headline m={spend} />}
-      <table className="w-full text-xs">
+      <div className="overflow-x-auto" role="region" aria-label="Run comparison metrics" tabIndex={0}>
+      <table className="w-full min-w-[640px] text-xs">
         <thead className="text-muted-foreground">
           <tr className="border-b">
             <th className="py-1.5 text-left font-medium">Metric</th>
@@ -142,6 +143,7 @@ function CompareTable({ report }: { report: ComparisonReport }) {
           ))}
         </tbody>
       </table>
+      </div>
       <p className="text-xs text-muted-foreground">
         {report.paired_customers.toLocaleString()} paired customers · {report.n_bootstrap.toLocaleString()} bootstrap draws.
         Spend values are in the currency's minor unit.

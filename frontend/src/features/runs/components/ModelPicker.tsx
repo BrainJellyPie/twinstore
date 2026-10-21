@@ -176,7 +176,7 @@ export function ModelPicker({
                       onChange={(e) => setWeight(m.ref, e.target.value)}
                       aria-invalid={!Number.isFinite(w) || w <= 0}
                       aria-describedby="run-model-error"
-                      className="h-6 w-16 text-xs"
+                      className="h-6 w-16 px-1.5 text-xs"
                       aria-label={t("modelWeight", { model: m.label })}
                     />
                   )}
