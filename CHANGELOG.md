@@ -40,8 +40,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - **Draft the test** in the A/B builder: write the question ("would eye level or a 2+1 sign sell more ice cream?")
   and the text model drafts variants from the builder's own changes (price, discount, sign, move, new package,
   category price) on the layout's products, shelves and product images, with the products to track, the engine and a
-  rationale. Changes that point at nothing are left out and listed, as are changes that would do nothing.
-  API: `POST /api/projects/{pid}/experiments/design`.
+  rationale. When the layout has a final run, each product is listed with its units sold there, so "the best seller"
+  is found rather than assumed. Changes that point at nothing are left out and listed, as are changes that would do
+  nothing. API: `POST /api/projects/{pid}/experiments/design`.
 - Drafting prompts list the products a question names first and share the rest across shelves, so a long catalogue
   is no longer cut off at whichever shelves come last.
 - **Draft the study** in the conjoint builder: write the question the study should answer and the text model drafts

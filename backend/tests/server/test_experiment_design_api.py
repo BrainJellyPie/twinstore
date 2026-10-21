@@ -62,6 +62,7 @@ def test_a_question_becomes_variants_on_the_layouts_products(client, monkeypatch
     assert any("Ghost" in w and "left out" in w for w in d["warnings"])
     system, user = fake.calls[0]
     assert "major units of USD" in system and "Products: " in user and "Shelves: " in user
+    assert "sold in the last run" in user  # the sample layout has a final run, so sales are listed
     # The draft is a valid request as it stands.
     from store_emulator.domain.marketing import ExperimentRequest
     ExperimentRequest.model_validate({"setup_id": SETUP, "name": d["name"], "variants": d["variants"],

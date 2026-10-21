@@ -58,6 +58,23 @@ class ExperimentDesignRequest(BaseModel):
     model: str = Field(default="", description='model reference; "" = the app text model')
 
 
+def _last_run_units(pid: str, setup_id: str) -> dict[str, int]:
+    """Units sold per SKU in the layout's final run, when it has one (so "the best seller" means something)."""
+    from .interview import _load  # pyright: ignore[reportPrivateUsage]
+    from .storage.setups import read_setup
+
+    try:
+        run_id = str(read_setup(pid, setup_id).get("runId") or "")
+        customers = _load(pid, run_id)[0] if run_id else {}
+    except (FileNotFoundError, AppError):
+        return {}
+    units: dict[str, int] = {}
+    for c in customers.values():
+        for e in c.purchases:
+            units[e.product_sku] = units.get(e.product_sku, 0) + e.quantity
+    return units
+
+
 def design_ab(pid: str, req: ExperimentDesignRequest, config: SimulationConfig) -> ExperimentDesign:
     """Variants drafted by the text model from the question, using only the layout's products, shelves and the
     project's product images; changes that point at nothing are dropped and listed in `warnings`."""
@@ -76,7 +93,7 @@ def design_ab(pid: str, req: ExperimentDesignRequest, config: SimulationConfig) 
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
-        return asyncio.run(design_experiment(llm, req.question, store, currency, packages))
+        return asyncio.run(design_experiment(llm, req.question, store, currency, packages, _last_run_units(pid, req.setup_id)))
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[design] A/B draft failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The test could not be drafted"), 502) from e

@@ -5,7 +5,7 @@ discount, promo sign, move, new package, category price) on products and shelves
 only fills the builder; changes that point at nothing are dropped and reported.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
@@ -74,13 +74,15 @@ in focus_products, choose engine "vlm" only when the test needs shoppers to see 
 rationale. Write in English."""
 
 
-def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], question: str = "") -> str:
+def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], question: str = "",
+             sold: Mapping[str, int] | None = None) -> str:
     items: dict[str, tuple[str, str, str]] = {}
     for rack in store.product_racks:
         for slot in rack.slots:
             for item in slot.items:
+                units = f", {sold.get(item.sku, 0)} sold in the last run" if sold else ""
                 items.setdefault(item.name, (rack.rack_name, item.name,
-                                             f"{item.name} {display_price(item.price, currency)} ({rack.rack_name}, level {slot.level})"))
+                                             f"{item.name} {display_price(item.price, currency)} ({rack.rack_name}, level {slot.level}{units})"))
     shown = relevant_first(list(items.values()), question, MAX_LISTED)
     shelves = list(dict.fromkeys(r.rack_name for r in store.product_racks if r.rack_name))
     lines = [f"Products: {'; '.join(shown)}", f"Shelves: {', '.join(shelves)}"]
@@ -159,9 +161,11 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
 
 async def design_experiment(
     llm: StructuredLLM, question: str, store: Store, currency: str, packages: Sequence[tuple[str, str]],
+    sold: Mapping[str, int] | None = None,
 ) -> ExperimentDesign:
+    """`sold`: units per SKU in the layout's last run, listed with each product so "the best seller" can be found."""
     draft = await llm.generate_structured_async(
         _Draft, DESIGN_PROMPT.format(currency=currency.upper()),
-        f"{_listing(store, currency, packages, question)}\n\nQuestion: {question.strip()}", max_retries=2, seed=0,
+        f"{_listing(store, currency, packages, question, sold)}\n\nQuestion: {question.strip()}", max_retries=2, seed=0,
     )
     return to_design(draft, store, currency, packages)
