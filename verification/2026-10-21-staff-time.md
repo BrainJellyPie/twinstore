@@ -76,6 +76,31 @@ and successful repeats. An early frontend test-file creation used the wrong work
 was corrected before the basic test; root-directory `uv` invocations were likewise corrected and are not
 counted as verification passes.
 
+## Final upstream integration and repeat verification
+
+While the first full suite was running, new upstream commits arrived. After it passed, committed the feature
+as `c70fe22a`, then merged `origin/main` at `7196f5c1` into `55ab81f3`. This also includes `b7a4ac5a`'s
+conjoint profile uniqueness fix and 216 additional regression cases. The other upstream changes clean up
+study-specific references in comments/changelog and one settings paragraph. No feature conflicts or lost
+local changes occurred. All inspected main, edge-case and store-scenario heads are ancestors of this snapshot.
+
+Repeated every required check on the final integrated code at `55ab81f3`:
+
+| Check | Actual final result |
+| --- | --- |
+| Backend strict pyright | 0 errors, 0 warnings |
+| App import boot | OK |
+| Backend full pytest | **6,025 passed, 1 skipped; 269.01 s** |
+| pnpm 10.33.0 build | Passed TypeScript + Vite; Vite 24.80 s |
+| pnpm 10.33.0 lint | **0 errors, 19 existing warnings**; no warning paths intersect changes |
+| pnpm 10.33.0 test | **508 passed, 73 files; 61.26 s** |
+| Diff whitespace check | Passed |
+
+Final logs use the `integrated-*.log` prefix in the same local verification directory. The only subsequent
+change is this verification record. `/workspace/parastore` remains clean and synchronized with its old
+remote; `twinstore`'s origin is `https://github.com/BrainJellyPie/twinstore.git`. The existing recurring task
+was read back and confirmed enabled with the new repository, broad candidate research and boundary-fix phase.
+
 ## Limits
 
 All added test measurements are explicit offline fixtures. No live store, operator interviews, real POS/timing
