@@ -140,7 +140,10 @@ The limit keeps display positions and seating unchanged, with repeated facings
 of the selected products. **Shuffle assortment** picks a reproducible mix;
 the same seed and category keep their selection across floor sizes and currencies.
 
-**Entrance & exit wall** places both gates on the front, back, left or right wall.
+**Entrance wall** places the entrance on the front, back, left or right wall.
+For a separate exit position, **Exit wall** can follow the entrance wall or use
+another wall, such as a front entrance with a back exit. **Share entrance** keeps
+both gates together regardless of any separate-exit wall in imported options.
 On side walls, entrance and exit positions run from back to front. Back and side
 gates stay one cell inside the corners so their wall is unambiguous in 3D; front
 gates retain the existing positions. Near/away checkout placement uses the actual
@@ -350,9 +353,9 @@ for the only included product categories, choose fewer counters or restore more
 categories. Wall choices also travel with exported layout and building options.
 
 The exit can share the entrance or occupy a separate left, center or right cell
-on the front row. Checkout counters and impulse displays leave both gates clear.
+on the chosen wall. Checkout counters and impulse displays leave both gates clear.
 This supports separate arrival and departure routes; shoppers use the selected
-exit after shopping. Choosing the same position as the entrance keeps a shared
+exit after shopping. Choosing the same wall and position as the entrance keeps a shared
 gate. Exit settings are included in previews, saved layouts and reused options.
 
 Large formats now start with multiple checkout counters: six for the hypermarket,
@@ -703,7 +706,7 @@ High also replaces the entrance's simple planters with a reduced Poly Haven
 Potted Plant 01 model by Rico Cilliers (CC0), with textured leaves and terracotta.
 Sources and rebuild instructions are in [`frontend/public/assets/props/`](./frontend/public/assets/props/README.md).
 Fresh bananas use Alexander Shulha's CC0 Poly Haven scan; single and paired apples
-use Oliver Harries' CC0 Food Apple 01 scan. Both use shared instancing,
+and whole avocados use Oliver Harries' CC0 food scans. These use shared instancing,
 two geometry detail levels, and photographic PBR maps. Source records and rebuild
 instructions are in [`frontend/public/assets/produce/`](./frontend/public/assets/produce/README.md).
 Individual fruit instances have stable variations in orientation, size and subtle

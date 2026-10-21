@@ -9,7 +9,6 @@ import asyncio
 import io
 import logging
 import re
-from collections import Counter
 from pathlib import Path
 
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -147,9 +146,6 @@ def read_receipts(
     if llm is None:
         raise AppError("reading receipts needs a vision model", 400)
     products, currency = _receipt_target(pid, setup_id, run_id, config)
-    # A shared display name is ambiguous; the reviewer must choose its SKU explicitly.
-    name_counts = Counter(products.values())
-    names = {name: sku for sku, name in products.items() if name_counts[name] == 1}
     readings: list[ReceiptReading] = []
     for k, data in enumerate(photos):
         img = _photo(data)
@@ -158,7 +154,7 @@ def read_receipts(
         except Exception as e:  # noqa: BLE001 — one unreadable receipt must not fail the batch
             readings.append(ReceiptReading(receipt_id=f"r{k + 1:03d}", notes=[f"could not read: {type(e).__name__}: {e}"[:200]]))
             continue
-        readings.append(match_lines(reading, names) if names else reading)
+        readings.append(match_lines(reading, products))
     matched = sum(1 for r in readings for line in r.lines if line.matched)
     total = sum(len(r.lines) for r in readings)
     return ReceiptsResult(receipts=readings, matched_lines=matched, unmatched_lines=total - matched,

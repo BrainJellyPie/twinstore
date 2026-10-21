@@ -24,7 +24,7 @@ def test_import_normalizes_options_without_writes_and_can_generate_in_another_pr
                   dining_tables=2, table_clearance=2, seating_zone="back", exit_position="right",
                   reserved_areas=[{"label": " Consultation ", "x": 2, "y": 2, "width": 3, "height": 3}],
                   requirements="Keep consultation signs readable.", source_setup_id="setup_other_project",
-                  name="Old project floor", products_per_category=3, gate_wall="right")
+                  name="Old project floor", products_per_category=3, gate_wall="right", exit_wall="back")
     response = client.post("/api/store-templates/preset/validate", json=body)
     assert response.status_code == 200, response.text
     assert list(tmp_path.iterdir()) == []
@@ -51,6 +51,7 @@ def test_import_normalizes_options_without_writes_and_can_generate_in_another_pr
     assert saved["generation"]["requirements"] == layout["requirements"]
     assert saved["generation"]["products_per_category"] == layout["products_per_category"] == 3
     assert saved["generation"]["gate_wall"] == layout["gate_wall"] == "right"
+    assert saved["generation"]["exit_wall"] == layout["exit_wall"] == "back"
 
 
 @pytest.mark.parametrize("body,status", [
@@ -71,7 +72,7 @@ def test_invalid_files_do_not_create_any_files(client, tmp_path, body, status):
 
 def test_building_file_keeps_floor_order_and_settings_without_source_links(client, tmp_path):
     floors = [
-        {"label": " Ground · Pharmacy ", "layout": preset(currency="KRW", source_setup_id="old_pharmacy", excluded_categories=["wellness"], checkout_wall="left", products_per_category=2)["layout"]},
+        {"label": " Ground · Pharmacy ", "layout": preset(currency="KRW", source_setup_id="old_pharmacy", excluded_categories=["wellness"], checkout_wall="left", products_per_category=2, gate_wall="left", exit_position="right", exit_wall="back")["layout"]},
         {"label": "Upstairs · Tea", "layout": preset(template_id="tea_lounge", dining_tables=4, design_theme="coastal",
             requirements="Quiet seating by the windows.", name="Old tea floor", currency="JPY", products_per_category=6)["layout"]},
     ]
@@ -85,6 +86,7 @@ def test_building_file_keeps_floor_order_and_settings_without_source_links(clien
     assert [f["layout"]["currency"] for f in validated] == ["KRW", "JPY"]
     assert validated[0]["layout"]["excluded_categories"] == ["wellness"]
     assert validated[0]["layout"]["checkout_wall"] == "left"
+    assert validated[0]["layout"]["exit_wall"] == "back"
     assert all("source_setup_id" not in f["layout"] and "name" not in f["layout"] for f in validated)
     assert validated[1]["layout"]["requirements"] == "Quiet seating by the windows."
     write_json(tmp_path / ".data" / "proj_building" / "metadata.json", {"currency": "KRW", "name": "New building"})
@@ -98,6 +100,7 @@ def test_building_file_keeps_floor_order_and_settings_without_source_links(clien
         assert saved["store"]["currency"] == validated[index]["layout"]["currency"]
         assert saved["generation"]["excluded_categories"] == validated[index]["layout"]["excluded_categories"]
         assert saved["generation"]["checkout_wall"] == validated[index]["layout"]["checkout_wall"]
+        assert saved["generation"]["exit_wall"] == validated[index]["layout"].get("exit_wall")
         assert saved["generation"]["products_per_category"] == validated[index]["layout"]["products_per_category"] == [2, 6][index]
 
 

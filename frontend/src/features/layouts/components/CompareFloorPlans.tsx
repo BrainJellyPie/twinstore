@@ -54,7 +54,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
               <FloorPlanPreview store={plan.store} areas={plan.areas} previewFrame={frame} />
             </section>)}
           </div>
-          <p className="text-xs text-muted-foreground">Blue: cold · Amber: display · Green: entry / exit · Slate: checkout · Purple: seating</p>
+          <p className="text-xs text-muted-foreground">Blue: cold · Amber: display · Green IN: entrance · Rose OUT: exit · Split IN/OUT: shared gate · Slate: checkout · Purple: seating</p>
           <table className="w-full table-fixed text-left text-xs" aria-label="Floor plan comparison">
             <thead><tr><th scope="col" className="w-[36%] p-2">Layout details</th>{plans.map((plan) => <th scope="col" key={plan.label} className="p-2">{plan.label}</th>)}</tr></thead>
             <tbody>{metrics.map((metric) => <tr key={metric.label} className="border-t">

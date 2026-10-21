@@ -478,15 +478,16 @@ def generate_store(
         "back": {"left": (1, 0), "center": (w // 2, 0), "right": (w - 2, 0)},
         "left": {"left": (0, 1), "center": (0, h // 2), "right": (0, h - 2)},
         "right": {"left": (w - 1, 1), "center": (w - 1, h // 2), "right": (w - 1, h - 2)},
-    }[options.gate_wall]
-    entrance_position = gate_positions[options.entrance]
-    exit_position = entrance_position if options.exit_position == "shared" else gate_positions[options.exit_position]
+    }
+    entrance_position = gate_positions[options.gate_wall][options.entrance]
+    exit_wall = options.gate_wall if options.exit_position == "shared" else options.exit_wall or options.gate_wall
+    exit_position = entrance_position if options.exit_position == "shared" else gate_positions[exit_wall][options.exit_position]
     entrance_x, entrance_y = entrance_position
     gate_rotations: dict[str, Literal[0, 90, 180, 270]] = {"front": 0, "back": 180, "left": 90, "right": 270}
     gate_rotation = gate_rotations[options.gate_wall]
     b.add(RackType.ENTRANCE, *entrance_position, rotation=gate_rotation)
     b.racks.append(Rack(id="r_exit", type=RackType.EXIT, shape=[[1]], position=exit_position,
-                       rotation=gate_rotation))
+                       rotation=gate_rotations[exit_wall]))
     b.taken.add(exit_position)
     wall = options.checkout_wall
     if wall in ("front", "back"):

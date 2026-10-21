@@ -50,3 +50,26 @@ Download and verify the apple manifest sources, renaming the source
 blender --background --python scripts/convert_apples.py -- \
   --source-dir /path/to/apples --output frontend/public/assets/produce/apples.glb
 ```
+
+`avocado.glb` uses **Food Avocado 01** by **Oliver Harries**, published by
+[Poly Haven](https://polyhaven.com/a/food_avocado_01) under CC0.
+`avocado-sources.json` records the five verified source files and output checksum.
+The 7,743-triangle source becomes 200/999-triangle LODs sharing the original
+1K JPEG color, OpenGL normal and roughness maps; the bundled file is 441,080 bytes.
+Instances restore the authored proportions of approximately 9.52 × 14.32 × 9.46 cm.
+
+Whole fresh and Hass avocado names use the scan. Oils, spreads, chips, halves,
+explicit green varieties and multiple packs keep their existing package rules.
+Shelf and table displays use one layer. Stable size, half-turn and brightness
+variation keeps each fruit within its display footprint. Medium uses color with
+flat roughness, while High retains the normal and roughness maps. A tapered
+procedural fruit remains visible during loading or if the model is unavailable;
+layouts without avocados make no request for this asset.
+
+Download and verify the avocado manifest sources, renaming
+`food_avocado_01_1k.gltf` to `food_avocado_01.gltf`, then run:
+
+```sh
+blender --background --python scripts/convert_avocado.py -- \
+  --source-dir /path/to/avocados --output frontend/public/assets/produce/avocado.glb
+```

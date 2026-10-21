@@ -1338,6 +1338,7 @@ export interface LayoutOptions {
   entrance?: "left" | "center" | "right";
   gate_wall?: "front" | "back" | "left" | "right";
   exit_position?: "shared" | "left" | "center" | "right";
+  exit_wall?: "front" | "back" | "left" | "right" | null;
   checkouts?: number | null;
   checkout_placement?: "auto" | "near_entrance" | "away_from_entrance";
   checkout_wall?: "front" | "back" | "left" | "right";

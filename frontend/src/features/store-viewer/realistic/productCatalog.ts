@@ -2,7 +2,7 @@
 // size, colours and label text. No three.js / DOM dependencies so they can be
 // unit-tested and reused by an offline renderer.
 
-export type PackageKind = "bottle" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "pot" | "croissant" | "wateringCan";
+export type PackageKind = "bottle" | "can" | "cup" | "pint" | "jar" | "tube" | "box" | "bag" | "banana" | "apple" | "applePair" | "avocado" | "pot" | "croissant" | "wateringCan";
 
 export type ProductCategory =
   | "drink"
@@ -173,7 +173,9 @@ const RULES: Rule[] = [
   [/pasta sides|knorr|rice-a-roni/, () => spec("bag", 0.13, 0.18, 0.04, "pantry")],
   [/sugar|flour/, () => spec("bag", 0.12, 0.18, 0.06, "pantry")],
   [/pasta\b|penne|spaghetti|macaroni|mac & cheese|\brice\b/, () => spec("box", 0.14, 0.23, 0.05, "pantry")],
-  // Fresh bunches only: banana-flavoured packaged foods keep their package rules.
+  // Whole fresh produce only: flavored foods and packaged formats keep their rules.
+  [/^(?:(?:fresh|organic|ripe|hass)\s+)*avocados?(?:\s+(?:loose|each|\d+(?:\.\d+)?\s*(?:kg|g|lb|lbs)))?$/,
+    () => spec("avocado", 0.09518591, 0.14323448, 0.09456679, "produce")],
   [/^(?:(?:fresh|organic|ripe|yellow|cavendish)\s+)*bananas?(?:\s+(?:bunch|loose|each|\d+(?:\.\d+)?\s*(?:kg|g|lb|lbs)))?$/,
     () => spec("banana", 0.134, 0.179, 0.223, "produce")],
   [/^(?:(?:fresh|organic|red|gala|fuji|braeburn|pink lady|red delicious)\s+)*apples?\s+(?:2\s?(?:pk|pack)|2-pack)$/,
@@ -214,6 +216,7 @@ const KEYWORD_COLORS: [RegExp, string][] = [
   [/\bcroissants?\b/, "#c88741"],
   [/^(?:terracotta|terra cotta|clay) (?:plant )?(?:pot|planter)\b/, "#b26e4e"],
   [/\bapples?\b/, "#a8342a"],
+  [/\bavocados?\b/, "#344025"],
   [/water|smartwater|aquafina|dasani|evian|fiji|essentia|pure life/, "#8fc3ea"],
   [/diet|zero|sugarfree|sugar free/, "#c3c9d0"],
   [/mint/, "#53bf9d"],
