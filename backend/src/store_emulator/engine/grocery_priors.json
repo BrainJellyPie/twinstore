@@ -293,26 +293,26 @@
    "meals": 0.836
   },
   "hour:evening": {
-   "cold_drinks": 0.992,
-   "water": 0.971,
-   "ice_cream": 1.368,
-   "hot_food": 0.983,
-   "caffeine": 0.988,
-   "snacks": 1.03,
-   "alcohol": 1.454,
-   "desserts": 1.031,
-   "meals": 1.077
+   "cold_drinks": 0.917,
+   "water": 0.763,
+   "ice_cream": 1.813,
+   "hot_food": 0.878,
+   "caffeine": 0.906,
+   "snacks": 0.965,
+   "alcohol": 1.829,
+   "desserts": 1.001,
+   "meals": 1.016
   },
   "hour:morning": {
-   "cold_drinks": 1.008,
-   "water": 1.03,
-   "ice_cream": 0.731,
-   "hot_food": 1.017,
-   "caffeine": 1.012,
-   "snacks": 0.971,
-   "alcohol": 0.688,
-   "desserts": 0.97,
-   "meals": 0.928
+   "cold_drinks": 1.09,
+   "water": 1.31,
+   "ice_cream": 0.551,
+   "hot_food": 1.139,
+   "caffeine": 1.103,
+   "snacks": 1.036,
+   "alcohol": 0.547,
+   "desserts": 0.999,
+   "meals": 0.984
   }
  },
  "hour_demand": {

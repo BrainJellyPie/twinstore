@@ -66,3 +66,16 @@ def test_optional_unknown_hours_remain_optional(hour):
 def test_numeric_pos_cells_support_weighed_items_refunds_and_grouped_prices():
     lines = parse_pos_csv(b'receipt_id,sku,quantity,unit_price\nsale,item,0.5,"1,250"\nrefund,item,-1,250\n')
     assert [(line.quantity, line.unit_price) for line in lines] == [(0.5, 1250), (-1, 250)]
+
+
+@pytest.mark.parametrize("price,expected", [("", 250), ("  ", 250), ("0", 0), ("125", 125)])
+def test_line_total_fills_missing_unit_prices_without_replacing_explicit_zero(price, expected):
+    data = f"receipt_id,sku,quantity,unit_price,line_total\nr1,tea,2,{price},500\n".encode()
+    lines = parse_pos_csv(data)
+    assert lines[0].unit_price == expected
+
+
+def test_price_fallback_is_per_row_and_supports_weighed_goods():
+    data = b"receipt_id,sku,quantity,unit_price,line_total\nr1,tea,2,125,250\nr2,tea,0.5,,125\n"
+    lines = parse_pos_csv(data)
+    assert [line.unit_price for line in lines] == [125, 250]
