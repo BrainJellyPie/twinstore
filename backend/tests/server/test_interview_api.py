@@ -110,3 +110,37 @@ def test_model_errors_are_reported(client, monkeypatch):
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview", json={"question": "Hello?"})
     assert r.status_code == 502 and "TimeoutError" in r.json()["detail"]
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview").json()["messages"] == []
+
+
+class _Group:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def generate_structured_async[T: BaseModel](
+        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+    ) -> T:
+        self.calls += 1
+        if "themes" in response_model.model_fields:
+            n = user_prompt.count("\n") - 2
+            return response_model.model_validate({"themes": ["Nothing I needed", "Too expensive"], "assignments": [i % 2 for i in range(n - 1)] + [7]})
+        return response_model.model_validate({"answer": "Nothing caught my eye.", "steps": [1]})
+
+
+def test_group_interview_codes_themes(client, monkeypatch):
+    from store_emulator.application import interview
+    fake = _Group()
+    monkeypatch.setattr(interview, "build_client", lambda *a, **k: fake)
+    empty = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews",
+                        json={"question": "Why did you leave without buying?", "segment": "empty_handed", "size": 6}).json()
+    assert empty["answers"] and all(a["units"] == 0 for a in empty["answers"])
+    r = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews", json={"question": "What did you think of the store?", "size": 6})
+    assert r.status_code == 200, r.text
+    g = r.json()
+    assert len(g["answers"]) == 6 and g["errors"] == 0
+    labels = [t["label"] for t in g["themes"]]
+    assert labels[:2] == ["Nothing I needed", "Too expensive"] and labels[-1] == "Other"   # the misnumbered answer
+    assert sum(t["count"] for t in g["themes"]) == 6 and all(0 <= a["theme"] < len(labels) for a in g["answers"])
+    assert {x["group_id"] for x in client.get(f"/api/projects/{PID}/runs/{RUN}/group-interviews").json()} == {g["group_id"], empty["group_id"]}
+    picked = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews", json={"question": "Hi?", "persona_ids": ["NOBODY"]})
+    assert picked.status_code == 404
+    assert client.delete(f"/api/projects/{PID}/runs/{RUN}/group-interviews/{g['group_id']}").status_code == 204

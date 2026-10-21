@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from store_emulator.application import projects as project_service
 from store_emulator.application.errors import AppError
@@ -28,6 +28,16 @@ class UpdateMetadataRequest(BaseModel):
 class SavePersonasRequest(BaseModel):
     """Persona save request."""
     personas: list[Persona]
+
+    @field_validator("personas")
+    @classmethod
+    def validate_identifiers(cls, personas: list[Persona]) -> list[Persona]:
+        ids = [persona.id for persona in personas]
+        if any(not identifier.strip() for identifier in ids):
+            raise ValueError("Persona IDs must not be blank.")
+        if len(ids) != len(set(ids)):
+            raise ValueError("Persona IDs must be unique.")
+        return personas
 
 
 @router.get("", summary="List projects")

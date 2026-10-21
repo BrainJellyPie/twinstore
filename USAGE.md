@@ -90,6 +90,7 @@ concept_test_calls              = panel                             # one struct
 ```
 
 shopper_interview_calls         = 1 per question               # text model, from the run's trip log
+group_interview_calls           = shoppers + 1                 # one answer each, then theme coding
 
 A concept test with the default 60 respondents is 60 vision calls (cached, so re-running it costs
 nothing); an A/B test with three variants on 300 vision shoppers is roughly 1,200–1,800. Run the

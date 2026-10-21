@@ -68,7 +68,44 @@ export const askShopper = (pid: string, runId: string, sid: string, question: st
 export const clearInterview = (pid: string, runId: string, sid: string) =>
   fetchJson<void>(`${base(pid, runId, sid)}/interview`, { method: "DELETE" });
 
+export type GroupSegment = "all" | "empty_handed" | "buyers" | "impulse" | "top_spenders";
+
+export interface GroupAnswer {
+  persona_id: string;
+  identity: string;
+  age_group: string;
+  gender: string;
+  spent: number;
+  units: number;
+  answer: string;
+  steps: number[];
+  theme: number;
+  error: string;
+}
+
+export interface Theme { label: string; count: number; share: number }
+
+export interface GroupInterview {
+  group_id: string;
+  run_id: string;
+  question: string;
+  segment: GroupSegment;
+  model: string;
+  created_at: string;
+  answers: GroupAnswer[];
+  themes: Theme[];
+  errors: number;
+}
+
+export const askGroup = (pid: string, runId: string, body: { question: string; segment: GroupSegment; size: number; model: string; persona_ids?: string[] }) =>
+  fetchJson<GroupInterview>(`/api/projects/${pid}/runs/${runId}/group-interviews`, { method: "POST", body: JSON.stringify(body) });
+export const listGroups = (pid: string, runId: string, signal?: AbortSignal) =>
+  fetchJson<GroupInterview[]>(`/api/projects/${pid}/runs/${runId}/group-interviews`, { signal });
+export const deleteGroup = (pid: string, runId: string, gid: string) =>
+  fetchJson<void>(`/api/projects/${pid}/runs/${runId}/group-interviews/${gid}`, { method: "DELETE" });
+
 export const interviewKeys = {
+  groups: (pid: string, runId: string) => ["projects", pid, "runs", runId, "group-interviews"] as const,
   journey: (pid: string, runId: string, sid: string) => ["projects", pid, "runs", runId, "shoppers", sid, "journey"] as const,
   interview: (pid: string, runId: string, sid: string) => ["projects", pid, "runs", runId, "shoppers", sid, "interview"] as const,
 };
