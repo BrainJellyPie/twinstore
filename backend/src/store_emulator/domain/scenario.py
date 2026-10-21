@@ -9,7 +9,7 @@ be calibrated against POS data (see `ScenarioPriors`).
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Weather(StrEnum):
@@ -112,6 +112,8 @@ class Scenario(BaseModel):
 
 class ScenarioPriors(BaseModel):
     """Every effect size used below, so calibration can override any of them."""
+    model_config = ConfigDict(allow_inf_nan=False)
+
     weather_traffic: dict[str, float] = {
         "clear": 1.0, "cloudy": 0.97, "rain": 0.85, "heavy_rain": 0.65, "snow": 0.7, "heatwave": 0.92,
         "cold_snap": 0.82, "fine_dust": 0.87, "typhoon": 0.4,
