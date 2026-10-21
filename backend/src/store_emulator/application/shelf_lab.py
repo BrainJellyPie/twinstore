@@ -61,7 +61,7 @@ from .town import get_town, save_town
 
 logger = logging.getLogger(__name__)
 
-_SAFE_ID = re.compile(r"[a-z0-9_]+")
+_SAFE_ID = re.compile(RESOURCE_ID_PATTERN)
 MAX_PACKAGE_BYTES = 10 * 1024 * 1024
 
 

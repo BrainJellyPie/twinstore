@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.floorplan import FloorPlanReading, PlanReader
 from store_emulator.domain.store import DaySchedule
+from store_emulator.domain.types import RESOURCE_ID_PATTERN
 from store_emulator.engine.floorplan import classic_read, plan_to_store, vlm_read
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.validation import validate
@@ -39,7 +40,7 @@ MAX_PLAN_BYTES = 25 * 1024 * 1024
 MAX_PLAN_SIDE = 2400
 MAX_IMAGE_PIXELS = 25_000_000
 _PDF_LOCK = Lock()  # PDFium native operations must not overlap across request threads.
-_SAFE_ID = re.compile(r"[a-z0-9_]+")
+_SAFE_ID = re.compile(RESOURCE_ID_PATTERN)
 
 
 class FloorPlanImport(BaseModel):

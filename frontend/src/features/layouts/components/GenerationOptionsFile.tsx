@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as api from "@/shared/api/client";
 import { DEFAULT_TEMPLATE_CHOICE, templateRequest, type BuildingFloorChoice, type TemplateChoice } from "../templateOptions";
 
@@ -19,8 +19,10 @@ function importedChoice({ template_id, source_setup_id: _source, name: _name, ..
 export function GenerationOptionsFile(props: Props) {
   const input = useRef<HTMLInputElement>(null);
   const request = useRef<AbortController | null>(null);
+  const latestProps = useRef(props);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useLayoutEffect(() => { latestProps.current = props; }, [props]);
   useEffect(() => () => request.current?.abort(), []);
   const building = props.kind === "building";
   const sizeLimit = building ? 256 : 64;
@@ -50,11 +52,13 @@ export function GenerationOptionsFile(props: Props) {
       if (props.kind === "building") {
         const preset = await api.validateBuildingPreset(contents, controller.signal);
         if (controller.signal.aborted) return;
-        props.onChange(preset.floors.map((floor) => ({ label: floor.label, choice: importedChoice(floor.layout) })));
+        const current = latestProps.current;
+        if (current.kind === "building") current.onChange(preset.floors.map((floor) => ({ label: floor.label, choice: importedChoice(floor.layout) })));
       } else {
         const preset = await api.validateLayoutPreset(contents, controller.signal);
         if (controller.signal.aborted) return;
-        props.onChange(importedChoice(preset.layout));
+        const current = latestProps.current;
+        if (current.kind === "layout") current.onChange(importedChoice(preset.layout));
       }
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof SyntaxError

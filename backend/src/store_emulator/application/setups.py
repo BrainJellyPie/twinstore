@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 from store_emulator.domain.rack import RACK_LEVELS, Face, Slot, SlotItem
 from store_emulator.domain.store import Store
+from store_emulator.domain.types import RESOURCE_ID_PATTERN
 from store_emulator.engine.validation import (
     BlockedFaceDetail, ClearedSlot, Issue, clear_blocked_slots,
     list_blocked_faces, validate,
@@ -28,7 +29,7 @@ from store_emulator.application.storage.setups import (
 )
 
 
-_SAFE_ID = re.compile(r"[a-z0-9_]+")
+_SAFE_ID = re.compile(RESOURCE_ID_PATTERN)
 
 
 def _lock_path(project_id: str, setup_id: str) -> Path:
