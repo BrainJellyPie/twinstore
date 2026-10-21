@@ -256,12 +256,15 @@ class VLMGlanceEngine(RuleBasedEngine):
         """The persona's usual products grouped by the rack (category) that holds them, in their order."""
         if not products:
             return {}
-        rack_of = {item.name.lower(): rack.rack_name for rack, _, item, _, _ in self._catalog_for(store) if rack.rack_name}
+        racks_of: dict[str, set[str]] = {}
+        for rack, _, item, _, _ in self._catalog_for(store):
+            if rack.rack_name:
+                racks_of.setdefault(item.name.lower(), set()).add(rack.rack_name)
         out: dict[str, list[str]] = {}
         for name in products:
-            cat = rack_of.get(name.lower())
-            if cat and name not in out.setdefault(cat, []):
-                out[cat].append(name)
+            for cat in sorted(racks_of.get(name.lower(), set())):
+                if name not in out.setdefault(cat, []):
+                    out[cat].append(name)
         return out
 
     async def _ask_plan(

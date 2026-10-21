@@ -61,7 +61,7 @@ def preview(
     shelf_direction: ShelfDirection = "horizontal",
     checkouts: int | None = Query(default=None, ge=1, le=12), fixture_design: FixtureDesign = "mixed",
     design_theme: StoreDesign | None = None,
-    dining_tables: int | None = Query(default=None, ge=0, le=12),
+    dining_tables: int | None = Query(default=None, ge=0, le=48),
     table_clearance: int = Query(default=1, ge=1, le=3),
     seating_zone: SeatingZone = "auto", checkout_placement: CheckoutPlacement = "auto",
 ) -> Store:

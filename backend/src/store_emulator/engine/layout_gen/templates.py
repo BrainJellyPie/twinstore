@@ -179,6 +179,14 @@ TEMPLATES: list[StoreTemplate] = [
         gondolas=["apparel", "souvenirs"], near_counter=["apparel"], style="free_flow", open_hours=(10, 21),
     ),
     StoreTemplate(
+        id="campus_dining_hall", name="Campus dining hall", description="A large weekday dining floor with 24 four-seat tables, perimeter meal displays and four checkout counters. Models counter purchases; kitchen and table service are not simulated.",
+        store_type="restaurant", grid=(32, 24), fridges=["water_sports", "soft_drinks", "dairy"] * 2,
+        wall_shelves=["restaurant_menu", "bakery", "desserts"] * 3,
+        gondolas=["restaurant_menu", "fresh_meals", "bakery"], near_counter=["cafe_menu", "desserts"],
+        style="perimeter", open_hours=(7, 21), closed_days=(6, 7), dining_tables=24, checkouts=4,
+        seating_zone="center", design_theme="minimal",
+    ),
+    StoreTemplate(
         id="design_showroom", name="Home & design showroom", description="Separated homeware display groups with wide sightlines and perimeter collections.",
         store_type="home", grid=(24, 20), fridges=[], wall_shelves=["home_design"] * 8,
         gondolas=["home_design", "home_design", "flowers"], near_counter=["home_design"], style="showroom", open_hours=(10, 20),
@@ -264,6 +272,25 @@ TEMPLATES: list[StoreTemplate] = [
         store_type="toys", grid=(20, 16), fridges=[], wall_shelves=["toys_hobbies", "books", "stationery"] * 2,
         gondolas=["toys_hobbies", "toys_hobbies", "stationery"], near_counter=["toys_hobbies"],
         style="free_flow", open_hours=(10, 21), design_theme="minimal",
+    ),
+    StoreTemplate(
+        id="shoe_boutique", name="Footwear boutique", description="Footwear collections, shoe-care accessories and apparel arranged in showroom groups with charcoal and brass finishes.",
+        store_type="fashion", grid=(22, 16), fridges=[], wall_shelves=["footwear", "footwear", "apparel"] * 2,
+        gondolas=["footwear", "footwear", "sports"], near_counter=["footwear"], style="showroom",
+        open_hours=(10, 21), checkouts=2, checkout_placement="away_from_entrance", design_theme="luxury",
+    ),
+    StoreTemplate(
+        id="baby_family_store", name="Baby & family store", description="Baby essentials, clothing, books and family gifts along a central spine with warm wood finishes and two checkout counters.",
+        store_type="baby", grid=(24, 18), fridges=[], wall_shelves=["baby_supplies", "apparel", "books"] * 3,
+        gondolas=["baby_supplies", "baby_supplies", "toys_hobbies"], near_counter=["baby_supplies", "toys_hobbies"],
+        style="spine", open_hours=(9, 21), checkouts=2, design_theme="warm",
+    ),
+    StoreTemplate(
+        id="travel_essentials", name="Travel essentials shop", description="Travel bags, packing accessories, chargers and personal-care supplies in compact aisles with checkout near the entrance.",
+        store_type="travel", grid=(18, 12), fridges=["water_sports", "soft_drinks"],
+        wall_shelves=["travel_gear", "electronics", "health_beauty"] * 2,
+        gondolas=["travel_gear", "travel_gear", "electronics"], near_counter=["travel_gear", "health_beauty"],
+        open_hours=(6, 23), checkouts=2, checkout_placement="near_entrance", design_theme="industrial",
     ),
 ]
 

@@ -381,3 +381,22 @@ def test_a_needed_category_names_the_households_usual_products_there():
     named = next(n for n in needs[0] if n.startswith(rack.rack_name))
     assert named == f"{rack.rack_name} (they usually take {items[0]} or {items[1]})"
     assert "Nothing here" in needs[0]                       # no usual product there: the bare category
+
+
+@pytest.mark.parametrize("reverse_racks", [False, True])
+def test_usual_product_is_named_for_every_needed_category_that_stocks_it(reverse_racks):
+    store = _store()
+    source = next(r for r in store.product_racks if r.rack_name and any(s.items for s in r.slots))
+    target = next(r for r in store.product_racks if r.rack_name and r.rack_name != source.rack_name and r.slots)
+    item = next(i for s in source.slots for i in s.items)
+    target.slots[0].items = [item.model_copy(deep=True)]
+    if reverse_racks:
+        store.racks.reverse()
+    persona = _personas()[0].model_copy(update={
+        "category_rates": {source.rack_name: 1.0, target.rack_name: 1.0}, "usual_products": [item.name],
+    })
+    engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=_config())
+    needs = engine._needs(_context(store, persona, seed=1))
+    assert needs is not None
+    assert f"{source.rack_name} (they usually take {item.name})" in needs[0]
+    assert f"{target.rack_name} (they usually take {item.name})" in needs[0]
