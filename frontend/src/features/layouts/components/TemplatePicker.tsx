@@ -369,6 +369,19 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 onChange={(e) => update({ table_clearance: Number(e.target.value) })}>
                 <option value={1}>1 cell · Standard</option><option value={2}>2 cells · More room</option><option value={3}>3 cells · Open seating</option>
               </select></Field></div>
+              <div className="col-span-2 space-y-2 rounded border p-2 text-xs">
+                <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+                  {([["table_clearance_x", "Left–right table gap"], ["table_clearance_y", "Back–front table gap"]] as const).map(([key, label]) =>
+                    <Field key={key} label={label}><select className={controlClass} value={value[key] ?? ""} disabled={tableCount === 0}
+                      onChange={(event) => update({ [key]: event.target.value === "" ? null : Number(event.target.value) })}>
+                      <option value="">Shared</option>
+                      {[1, 2, 3, 4].map((gap) => <option key={gap} value={gap}>{gap} {gap === 1 ? "cell" : "cells"}</option>)}
+                    </select></Field>)}
+                </div>
+                <p className="text-muted-foreground">Current gaps (cells): {value.table_clearance_x ?? value.table_clearance ?? 1} left–right · {value.table_clearance_y ?? value.table_clearance ?? 1} back–front. Shared uses the setting above. Directions follow the floor even when tables rotate.</p>
+                {(value.table_clearance_x != null || value.table_clearance_y != null) && <button type="button" className="underline"
+                  onClick={() => update({ table_clearance_x: null, table_clearance_y: null })}>Use shared table gaps</button>}
+              </div>
             </div>
             <InteriorColorControls design={activeDesign} colors={value.design_colors} onChange={(design_colors) => update({ design_colors })} />
             <details className="space-y-2 rounded border p-2 text-xs">
@@ -387,7 +400,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </details>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, category_product_limits: {}, open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, table_clearance_x: null, table_clearance_y: null, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, category_product_limits: {}, open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, seed: 0 })}>Reset layout options</button>
             </div>
             </div>
           </div>
