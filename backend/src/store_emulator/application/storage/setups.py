@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from store_emulator.application.storage.io import (
     DATA_DIR, read_json, write_json, now_iso, generate_setup_id,
@@ -61,7 +61,15 @@ def read_setup(project_id: str, setup_id: str) -> dict[str, Any]:
     path = setup_path(project_id, setup_id)
     if not path.exists():
         raise FileNotFoundError(f"Setup not found: {setup_id}")
-    return read_json(path)
+    data: dict[str, object] = read_json(path)
+    store, generation = data.get("store"), data.get("generation")
+    # Earlier template layouts recorded their currency only in generation provenance.
+    if isinstance(store, dict) and isinstance(generation, dict):
+        store_fields = cast(dict[str, object], store)
+        currency = cast(dict[str, object], generation).get("currency")
+        if store_fields.get("currency") is None and isinstance(currency, str) and currency in {"USD", "KRW", "JPY"}:
+            store_fields["currency"] = currency
+    return data
 
 
 def write_setup(project_id: str, setup_id: str, data: dict[str, Any]) -> None:

@@ -7,13 +7,13 @@ import { buildingPreset, type TemplateChoice } from "../templateOptions";
 
 vi.mock("../components/TemplatePicker", () => ({
   TemplatePicker: ({ value, onChange }: { value: TemplateChoice; onChange: (v: TemplateChoice) => void }) =>
-    <div><span>{value.templateId} / width {value.width ?? "default"}</span><button type="button" onClick={() => onChange({ ...value, width: 30 })}>Set floor width</button></div>,
+    <div><span>{value.templateId} / width {value.width ?? "default"}</span><span data-testid="floor-currency">{value.currency}</span><button type="button" onClick={() => onChange({ ...value, width: 30 })}>Set floor width</button></div>,
 }));
 afterEach(cleanup);
 
-function Building() {
-  const [floors, setFloors] = useState(() => buildingPreset("wellness"));
-  return <BuildingPicker floors={floors} onChange={setFloors} />;
+function Building({ currency = "USD" }: { currency?: string }) {
+  const [floors, setFloors] = useState(() => buildingPreset("wellness", currency));
+  return <BuildingPicker floors={floors} onChange={setFloors} defaultCurrency={currency} />;
 }
 
 it("keeps each floor's options when switching and editing", () => {
@@ -38,4 +38,14 @@ it("bounds floor count and flags duplicate labels", () => {
   expect((screen.getByRole("button", { name: "Add floor" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Remove floor" }));
   expect((screen.getByRole("button", { name: "Add floor" }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it("keeps the project's currency when choosing a preset or adding a floor", () => {
+  render(<Building currency="KRW" />);
+  expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
+  fireEvent.click(screen.getByRole("button", { name: "Department store" }));
+  fireEvent.click(screen.getByRole("button", { name: /4F/ }));
+  expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
+  fireEvent.click(screen.getByRole("button", { name: "Add floor" }));
+  expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
 });

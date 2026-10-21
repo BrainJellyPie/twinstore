@@ -47,6 +47,7 @@ export interface AddLayoutDialogProps {
   projectId: string;
   parentSetupId: string;
   layouts: Layout[];
+  defaultCurrency?: string;
 }
 
 function resolveDefaultParent(parentSetupId: string, layouts: Layout[]): string {
@@ -60,6 +61,7 @@ export function AddLayoutDialog({
   projectId,
   parentSetupId,
   layouts,
+  defaultCurrency = "USD",
 }: AddLayoutDialogProps) {
   const createLayout = useCreateLayout();
 
@@ -68,8 +70,8 @@ export function AddLayoutDialog({
   const [selectedParentId, setSelectedParentId] = useState<string>(() =>
     resolveDefaultParent(parentSetupId, layouts),
   );
-  const [template, setTemplate] = useState<TemplateChoice>(DEFAULT_TEMPLATE_CHOICE);
-  const [floors, setFloors] = useState(() => buildingPreset("department"));
+  const [template, setTemplate] = useState<TemplateChoice>({ ...DEFAULT_TEMPLATE_CHOICE, currency: defaultCurrency });
+  const [floors, setFloors] = useState(() => buildingPreset("department", defaultCurrency));
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [planReader, setPlanReader] = useState<"auto" | "classic">("auto");
   const [planPage, setPlanPage] = useState(1);
@@ -92,6 +94,8 @@ export function AddLayoutDialog({
       setPlanPage(1);
       setPlanRotation(0);
       setSelectedParentId(resolveDefaultParent(parentSetupId, layouts));
+      setTemplate((current) => ({ ...current, currency: defaultCurrency }));
+      setFloors((current) => current.map((floor) => ({ ...floor, choice: { ...floor.choice, currency: defaultCurrency } })));
       createLayout.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -222,14 +226,14 @@ export function AddLayoutDialog({
                   />
                   Generate a store from a template
                 </label>
-                {approach === "template" && <TemplatePicker value={template} onChange={setTemplate} />}
+                {approach === "template" && <TemplatePicker value={template} budgetCurrency={defaultCurrency} onChange={setTemplate} />}
               </div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm" htmlFor="add-layout-approach-building">
                   <RadioGroupItem id="add-layout-approach-building" value="building" disabled={createLayout.isPending} />
                   Multi-floor store
                 </label>
-                {approach === "building" && <BuildingPicker floors={floors} onChange={setFloors} />}
+                {approach === "building" && <BuildingPicker floors={floors} defaultCurrency={defaultCurrency} onChange={setFloors} />}
               </div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm" htmlFor="add-layout-approach-plan">

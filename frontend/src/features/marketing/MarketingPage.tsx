@@ -60,7 +60,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   });
   const products = useMemo(() => storeProducts(setup.data?.store), [setup.data?.store]);
   const info = useQuery({ queryKey: marketingKeys.info(projectId), queryFn: ({ signal }) => getMarketingInfo(projectId, signal), staleTime: 60_000 });
-  const currency = info.data?.currency ?? "USD";
+  const currency = setup.data?.store?.currency ?? project.data?.metadata.currency ?? info.data?.currency ?? "USD";
   const packages = usePackages(projectId).data ?? [];
 
   const experiments = useQuery({

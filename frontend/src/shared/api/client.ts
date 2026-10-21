@@ -51,6 +51,7 @@ export interface ProjectMetadata {
   name: string;
   description: string;
   store_type: string;
+  currency?: string | null;
   grid_size: [number, number] | null;
   weekly_schedule: DaySchedule[];
   address: string;

@@ -5,6 +5,7 @@ import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescri
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
 import { RackDetailView } from "./RackDetailView";
+import { currencyCode } from "@/shared/utils/money";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -120,6 +121,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
     ["Store name", store.name || "—"],
     ["Address", location || "—"],
     ["Store type", store.type || "—"],
+    ["Price currency", currencyCode(summary?.currency ?? store.currency ?? undefined)],
     ["Opening hours", formatSchedule(store.weekly_schedule)],
   ];
 

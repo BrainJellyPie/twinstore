@@ -46,9 +46,9 @@ export const BUILDING_PRESETS = [
   { id: "dining", name: "Restaurant & coffee", floors: [["Ground · Restaurant", "quick_service"], ["Level 2 · Café", "specialty_cafe"]] },
 ] as const;
 
-export function buildingPreset(id: string): BuildingFloorChoice[] {
+export function buildingPreset(id: string, currency = "USD"): BuildingFloorChoice[] {
   const preset = BUILDING_PRESETS.find((p) => p.id === id) ?? BUILDING_PRESETS[0];
-  return preset.floors.map(([label, templateId]) => ({ label, choice: { ...DEFAULT_TEMPLATE_CHOICE, templateId } }));
+  return preset.floors.map(([label, templateId]) => ({ label, choice: { ...DEFAULT_TEMPLATE_CHOICE, templateId, currency } }));
 }
 
 export function validBuildingFloors(floors: BuildingFloorChoice[]): boolean {

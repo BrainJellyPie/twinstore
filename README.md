@@ -135,6 +135,12 @@ formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
 
+USD, KRW and JPY prices keep their currency with the saved layout and simulation
+results. New-project shopper budgets use the chosen currency, and additional
+layouts default to that project currency. Existing shopper budgets are not
+converted when a different template currency is chosen; use matching currency
+for a simulation, or start a separate project for that market.
+
 Combine six patterns (parallel aisles, racetrack, central spine, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
 three display densities, left/center/right entry, one to four checkouts and shelf

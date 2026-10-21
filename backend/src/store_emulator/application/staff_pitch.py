@@ -6,6 +6,7 @@ import io
 import time
 
 from store_emulator.application.errors import AppError
+from store_emulator.application.currencies import simulation_currency
 from store_emulator.application.async_executor import executor
 from store_emulator.application.marketing import (
     _finish, _job_dir, _new_job, _status, _write_status,  # pyright: ignore[reportPrivateUsage]
@@ -24,13 +25,14 @@ def start_pitch(pid: str, req: PitchRequest, config: SimulationConfig) -> JobSta
     _check_id(pid, "project id")
     _check_id(req.setup_id, "setup id")
     store = _load_store(pid, req.setup_id)
+    currency = simulation_currency(pid, store, config.currency)
     products = [p for rack in store.racks for slot in rack.slots for p in slot.items if p.sku == req.sku]
     if not products:
         raise AppError("Choose a product present in this layout", 400)
     if len({(p.name, p.price, p.promo) for p in products}) > 1:
         raise AppError("This SKU has conflicting names, prices or offers across shelves; resolve them before testing", 400)
     product = PitchProduct(sku=req.sku, name=products[0].name, price=products[0].price,
-                           currency=config.currency, promo=products[0].promo)
+                           currency=currency, promo=products[0].promo)
     personas = _personas(pid)
     ids = [p.id.strip() for p in personas]
     if any(not pid for pid in ids) or len(set(ids)) != len(ids):

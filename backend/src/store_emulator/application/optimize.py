@@ -25,6 +25,7 @@ from store_emulator.engine.simulation.factory import build_engine
 
 from .async_executor import executor
 from .errors import AppError
+from .currencies import simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
 from .scenarios import get_preset
@@ -125,6 +126,7 @@ def start_optimization(
         raise AppError(f"unknown scenario preset: {scenario_id}", 400)
     run_config = config.model_copy(update={
         "engine_type": EngineType.RULE_BASED,
+        "currency": simulation_currency(pid, store, config.currency),
         "scenario": None if scenario is None or scenario.id == "baseline" else scenario,
     })
     vlm_config: SimulationConfig | None = None

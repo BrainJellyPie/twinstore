@@ -34,6 +34,8 @@ class Store(BaseModel):
     name: str
     type: str
     design_theme: StoreDesign = "classic"
+    # Legacy stores inherit the server/run currency until explicitly recorded.
+    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
     grid_size: Position  # (width, height)
     weekly_schedule: list[DaySchedule] = []
     racks: list[Rack] = []

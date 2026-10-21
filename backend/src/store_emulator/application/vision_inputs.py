@@ -118,6 +118,8 @@ def _receipt_target(pid: str, setup_id: str | None, run_id: str | None, config: 
         except FileNotFoundError:
             raise AppError(f"setup not found: {setup_id}", 404) from None
         store = Store.model_validate(data) if data else None
+        if store is not None:
+            currency = store.currency or currency
     if store is None:
         return {}, currency
     return {item.sku: item.name for _, slot in store.all_slots for item in slot.items}, currency
