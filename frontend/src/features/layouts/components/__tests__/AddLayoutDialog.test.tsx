@@ -213,3 +213,11 @@ it.each(LOCALES)("explains creation failures in the selected language and retain
   useLocale.getState().setLocale(code); mutation.isError = true; mutation.error = new Error("Store could not be copied"); show();
   const alert = screen.getByRole("alert"); expect(alert.textContent).toContain(translate(code, "createLayoutFailed")); expect(alert.textContent).toContain("Store could not be copied");
 });
+
+it.each(LOCALES)("starts an empty project with a blank layout in $code", ({ code }) => {
+  useLocale.getState().setLocale(code); show({ parentSetupId: "foreign-layout", layouts: [] });
+  expect((screen.getByLabelText(translate(code, "buildLayoutFromScratch")) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByTestId("add-layout-submit") as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByTestId("add-layout-submit"));
+  expect(mutation.mutate).toHaveBeenCalledWith(expect.objectContaining({ projectId: "raw-project", source: { kind: "empty" } }), expect.any(Object));
+});

@@ -70,7 +70,7 @@ export function AddLayoutDialog({
   const opener = useRef<HTMLElement | null>(null);
 
   const [name, setName] = useState<string>(() => t("layoutDefaultName", { number: layouts.length + 1 }));
-  const [approach, setApproach] = useState<Approach>("import");
+  const [approach, setApproach] = useState<Approach>(layouts.length ? "import" : "empty");
   const [selectedParentId, setSelectedParentId] = useState<string>(() =>
     resolveDefaultParent(parentSetupId, layouts),
   );
@@ -93,7 +93,7 @@ export function AddLayoutDialog({
   useEffect(() => {
     if (open) {
       setName(t("layoutDefaultName", { number: layouts.length + 1 }));
-      setApproach("import");
+      setApproach(layouts.length ? "import" : "empty");
       setPlanFile(null);
       setPlanPage(1);
       setPlanRotation(0);
