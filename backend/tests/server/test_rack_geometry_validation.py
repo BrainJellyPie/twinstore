@@ -59,3 +59,35 @@ def test_rotated_multicell_shape_and_valid_block_round_trip(layout):
     rack = client.get(url).json()["store"]["racks"][2]
     assert rack["shape"] == [[1, 1], [1, 0]] and rack["rotation"] == 90
     assert rack["locked_faces"] == [{"block": 2, "face": "S"}]
+
+
+def test_duplicate_fixture_id_is_rejected_without_writing(layout):
+    client, url, store, path = layout
+    before = read_json(path)
+    store["racks"][2]["id"] = store["racks"][0]["id"]
+    response = client.put(url, json={"setup": {"store": store}})
+    assert response.status_code == 422, response.text
+    assert read_json(path) == before
+
+
+def test_duplicate_shelf_slot_is_rejected_without_writing(layout):
+    client, url, store, path = layout
+    before = read_json(path)
+    store["racks"][2]["slots"] = [
+        {"block": 0, "face": "N", "level": 1, "items": [{"sku": sku, "name": sku, "price": 100}]}
+        for sku in ("A", "B")
+    ]
+    response = client.put(url, json={"setup": {"store": store}})
+    assert response.status_code == 422, response.text
+    assert read_json(path) == before
+
+
+def test_one_sku_on_distinct_levels_is_valid(layout):
+    client, url, store, _ = layout
+    store["racks"][2]["slots"] = [
+        {"block": 0, "face": "N", "level": level, "items": [{"sku": "A", "name": "Tea", "price": 100}]}
+        for level in (1, 2)
+    ]
+    response = client.put(url, json={"setup": {"store": store}})
+    assert response.status_code == 200, response.text
+    assert len(client.get(url).json()["store"]["racks"][2]["slots"]) == 2
