@@ -257,6 +257,48 @@ identifiers are prefixed with an apostrophe. A stale revision must be reloaded i
 API: `GET /api/projects/{pid}/staff-pilots/{id}/sensitivity?revision={revision}` and the same path with
 `sensitivity.csv` for export. No extra persisted fields are required for existing saved pilots.
 
+In the same completed, locked pilot, **Staff-script cost scenario** checks whether the conversion difference
+could cover extra staff time **under your explicit assumptions**. Enter all five values; none is inferred from
+the product price, synthetic ratings or POS records:
+
+- **Contribution per converted encounter:** a common net contribution from the target product for a buyer in
+  either arm, after product costs, discounts and returns, before staff time entered here. Use currency minor
+  units (USD cents, KRW won). It is not selling price, basket revenue or per-unit margin unless one unit per
+  buyer is justified. A different contribution per buyer in A and B is outside this model.
+- **Loaded labor cost per hour:** the assumed cost of staff time in the same currency's minor units. Avoid
+  counting the same labor cost both here and in contribution.
+- **Average staff seconds per assigned encounter, A and B:** whole-second assumptions across all eligible
+  assigned encounters, including refusal and non-delivery, not just buyers or delivered scripts.
+- **Assumed eligible encounters per day:** the daily scenario volume for the same eligible population and
+  staff/shift mix. This is not measured footfall or a staff-capacity calculation.
+
+Blank means unknown; enter zero explicitly if justified. Money inputs are bounded at 1,000,000,000 minor units,
+time at 3,600 seconds per encounter and daily volume at 1,000,000. Let `m` be contribution per buyer, `h` hourly
+labor cost, `tA/tB` the average seconds and `d` the full-plan B-minus-A conversion difference. Incremental labor
+per encounter is `c = (tB - tA) × h / 3600`; incremental contribution is `d × m - c`. The break-even difference
+is `c / m`, shown in percentage points without clipping. A threshold outside −100 to +100 pp is disclosed.
+At zero contribution the threshold is undefined and only the assumed labor difference remains. A cheaper B
+can have a negative threshold. Expectations can be fractional minor units; they are not rounded to whole cents
+or won in the CSV. The screen also uses minor units and preserves small nonzero values.
+
+**Calculate cost scenario** transforms the original conservative fixed-sample 95% conversion interval by the
+same `× m - c` formula. This is a range for mean incremental contribution **conditional on fixed costs**; it
+does not include uncertainty in contribution, labor, time or traffic. Daily values multiply each bound and
+estimate by the entered eligible volume. They are not prediction intervals for realized daily profit. Product
+mix, other basket effects, fixed implementation costs, capacity changes and future demand are excluded. Reusing
+the pilot with different cost inputs creates scenarios, not new evidence or independent tests; do not select
+favorable assumptions to claim a confirmed profit effect. The original stopping rule and full-plan result remain.
+
+The same complete fixed assignments and known purchase/delivery records are required; no unused or missing rows
+are dropped, and non-delivery stays in its assigned arm. The calculation does not repair clustering, repeated
+shoppers, confounding or a changed offer. No observation, design, history or closure state is modified. Scenarios
+are not persisted: **Export cost scenario CSV** retains the exact successful input snapshot, source revision,
+currency, formulas' inputs and outputs. Conversion differences use proportions in CSV (multiply by 100 for pp);
+an undefined threshold is blank. Editing any input clears the old result/export. Both preview and export reject
+stale revisions. API: `POST /api/projects/{pid}/staff-pilots/{id}/economics` and `economics.csv`, JSON with
+`revision`, `currency`, `contribution_per_conversion_minor`, `labor_per_hour_minor`, `seconds_per_encounter_a`,
+`seconds_per_encounter_b` and `eligible_encounters_per_day`. No live model call is made.
+
 For observed POS evidence, open **Observations and results → Reconcile POS purchases**. Prepare a UTF-8 CSV with
 the following columns (each exactly once, any column order):
 

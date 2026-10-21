@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 from store_emulator.application import field_pilot
 from store_emulator.application.errors import AppError
 from store_emulator.domain.field_sensitivity import PilotSensitivityReport
+from store_emulator.domain.field_economics import PilotEconomicsReport, PilotEconomicsRequest
 from store_emulator.domain.field_pilot import PilotRequest, PilotRevision, PilotSummary, PilotView
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
 from store_emulator.domain.field_observations import ObservationImportAudit, ObservationPreview
@@ -118,3 +119,15 @@ def export_sensitivity_report(pid: str, pilot_id: str, revision: Annotated[int, 
     text = _call(lambda: field_pilot.export_sensitivity(pid, pilot_id, revision))
     return PlainTextResponse(text, media_type="text/csv",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-sensitivity-r{revision}.csv"'})
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/economics", response_model=PilotEconomicsReport, summary="Calculate a conditional staff-script cost scenario after fixed-plan closure")
+def preview_economics(pid: str, pilot_id: str, req: PilotEconomicsRequest) -> PilotEconomicsReport:
+    return _call(lambda: field_pilot.preview_economics(pid, pilot_id, req))
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/economics.csv", summary="Export a staff-script cost scenario and its explicit assumptions")
+def export_economics(pid: str, pilot_id: str, req: PilotEconomicsRequest) -> PlainTextResponse:
+    text = _call(lambda: field_pilot.export_economics(pid, pilot_id, req))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-cost-scenario-r{req.revision}.csv"'})

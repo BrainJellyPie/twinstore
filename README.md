@@ -229,9 +229,12 @@ For brand managers, category teams and research agencies (**Market** in the comm
   encounters and purchases (with a reviewed change history), check collection gaps, and reconcile POS purchases to the
   assignments. A complete planned sample gets a conservative 95 % conversion-difference interval; missing
   transactions never become non-purchases.
-  **Staff and shift sensitivity** leaves out each staff alias, shift ID and staff/shift block in turn, with the
-  original planned weights renormalized. Completed, locked pilots only; all deletion estimates are exported
-  without additional hypothesis tests or staff performance rankings.
+  **Staff and shift sensitivity** checks completed, locked pilots by leaving out each staff alias, shift ID
+  and staff/shift block in turn, with the original planned weights renormalized. It exports all deletion
+  estimates and flags opposite signs without producing new hypothesis tests or staff performance rankings.
+  **Staff-script cost scenario** applies explicit contribution, staff-time, hourly labor cost and traffic
+  assumptions to the locked conversion result. It shows break-even lift and conditional contribution ranges,
+  with CSV export; these are cost scenarios, not realized profit or daily sales forecasts.
 - **Products** — drop packshots or phone photos of packs (the background is cut out), name them, tag the brand and link
   each to the shelf product it replaces. Shelf Lab and the vision shoppers use the same images.
 

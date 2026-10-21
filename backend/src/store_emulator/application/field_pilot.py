@@ -18,6 +18,8 @@ from store_emulator.domain.field_observations import ObservationImportAudit, Obs
 from store_emulator.domain.field_collection import PilotCollectionReport
 from store_emulator.domain.field_pos import PilotPosPreview
 from store_emulator.domain.field_sensitivity import PilotSensitivityReport
+from store_emulator.domain.field_economics import PilotEconomicsReport, PilotEconomicsRequest
+from store_emulator.engine.marketing.field_economics import economics_csv, pilot_economics
 from store_emulator.engine.marketing.field_sensitivity import analyze_sensitivity, sensitivity_csv
 from store_emulator.engine.marketing.field_pos import reconcile_pos
 from store_emulator.engine.marketing.field_collection import check_collection, collection_tasks_csv
@@ -95,6 +97,20 @@ def get_sensitivity(pid: str, pilot_id: str, revision: int) -> PilotSensitivityR
 
 def export_sensitivity(pid: str, pilot_id: str, revision: int) -> str:
     return sensitivity_csv(get_sensitivity(pid, pilot_id, revision))
+
+
+def preview_economics(pid: str, pilot_id: str, request: PilotEconomicsRequest) -> PilotEconomicsReport:
+    pilot = FieldPilot.model_validate(read_json(_path(pid, pilot_id)))
+    if pilot.pilot_id != pilot_id:
+        raise AppError("The saved pilot does not match this request", 409)
+    try:
+        return pilot_economics(pilot, request)
+    except ValueError as exc:
+        raise AppError(str(exc), 409) from exc
+
+
+def export_economics(pid: str, pilot_id: str, request: PilotEconomicsRequest) -> str:
+    return economics_csv(preview_economics(pid, pilot_id, request))
 
 
 def export_collection_tasks(pid: str, pilot_id: str) -> str:

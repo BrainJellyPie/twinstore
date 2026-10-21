@@ -378,3 +378,51 @@ def test_sensitivity_rejects_corrupted_saved_assignments_without_touching_histor
     write_json(path, data); before = path.read_bytes()
     assert client.get(f"{ROOT}/staff-pilots/{pid}/sensitivity?revision=2").status_code == 409
     assert path.read_bytes() == before
+
+
+def economics_request(**changes):
+    return {"revision": 2, "currency": "KRW", "contribution_per_conversion_minor": 1000,
+            "labor_per_hour_minor": 3600, "seconds_per_encounter_a": 0, "seconds_per_encounter_b": 60,
+            "eligible_encounters_per_day": 100, **changes}
+
+
+def test_cost_scenario_preview_and_csv_use_closed_revision_without_saving(client, tmp_path):
+    pid = create(client)["pilot"]["pilot_id"]
+    endpoint = f"{ROOT}/staff-pilots/{pid}/economics"
+    assert client.post(endpoint, json=economics_request(revision=0)).status_code == 409
+    assert upload(client, pid, sheet(client, pid, complete=True)).status_code == 200
+    assert client.post(endpoint, json=economics_request(revision=1)).status_code == 409
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 1}).status_code == 200
+    root = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid
+    before = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+    response = client.post(endpoint, json=economics_request())
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["per_encounter"]["estimate_minor"] == 940 and data["per_day"]["estimate_minor"] == 94000
+    assert data["break_even_difference"] == 0.06
+    exported = client.post(endpoint + ".csv", json=economics_request())
+    assert exported.status_code == 200 and "cost-scenario-r2.csv" in exported.headers["content-disposition"]
+    assert list(csv.DictReader(io.StringIO(exported.text)))[0]["per_day_estimate_minor"] == "94000.0"
+    assert {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
+    assert client.delete(f"{ROOT}/staff-pitches/pit_test").status_code == 204
+    assert client.post(endpoint, json=economics_request()).json() == data
+
+
+def test_cost_scenarios_reject_stale_invalid_and_unavailable_inputs(client, tmp_path):
+    pid = create(client)["pilot"]["pilot_id"]
+    assert upload(client, pid, sheet(client, pid, complete=True)).status_code == 200
+    assert client.post(f"{ROOT}/staff-pilots/{pid}/close", json={"revision": 1}).status_code == 200
+    endpoint = f"{ROOT}/staff-pilots/{pid}/economics"
+    for suffix in ("", ".csv"):
+        assert client.post(endpoint + suffix, json=economics_request(revision=1)).status_code == 409
+        assert client.post(endpoint + suffix, json=economics_request(currency="USD")).status_code == 409
+        for changes in ({"seconds_per_encounter_a": True}, {"contribution_per_conversion_minor": -1}, {"labor_per_hour_minor": "100"}):
+            assert client.post(endpoint + suffix, json=economics_request(**changes)).status_code == 422
+        assert client.post(endpoint + suffix, json={}).status_code == 422
+        assert client.post(endpoint.replace(pid, "missing") + suffix, json=economics_request()).status_code == 404
+        assert client.post(endpoint.replace(PID, "missing") + suffix, json=economics_request()).status_code == 404
+    path = tmp_path / ".data" / PID / "marketing" / "field-pilots" / pid / "pilot.json"
+    saved = read_json(path); saved["assignments"][0]["enrolled"] = False
+    write_json(path, saved); before = path.read_bytes()
+    assert client.post(endpoint, json=economics_request()).status_code == 409
+    assert path.read_bytes() == before
