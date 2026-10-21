@@ -134,6 +134,12 @@ In a project, choose **New layout → Generate a store from a template**. Search
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
+Search matches names, descriptions and categories, ignores accents (`cafe` also
+finds `café`), and accepts words in any order. **More format filters** narrows the
+starting layouts by cell count and dining seating, or sorts by name, floor size
+or seat count. **Clear format filters** restores the catalog without changing
+the selected format or your layout settings. Size and seating filters describe
+defaults; the selected layout can still be customized.
 
 Restaurant and café starting points include a family restaurant, neighborhood
 bistro, takeaway coffee kiosk, tea lounge and artisan bakery. Vintage boutiques,
@@ -373,24 +379,31 @@ Synthetic respondents are for screening and direction; calibrate against a real 
 
 <img src="./research/validation/figures/fig_validation_evidence.png" alt="Fig. 4 — Evidence that the twin's shoppers shop like real ones, on held-out households of public datasets">
 
-**Fig. 4 — Validation.** TwinStore's own engines shop for the households of six public datasets, and the simulated
+**Fig. 4 — Validation.** TwinStore's own engines shop for the households of public datasets, and the simulated
 trips are compared with real trips they never saw. The main test uses dunnhumby's *The Complete Journey*: 150
-households and 14 weeks, held out, with Claude Haiku 5.5, Qwen 3.8 Flash and GPT-6 Luna as decision models. Every
-failure the data exposed changed the simulator:
+households and 14 weeks, held out (replicated on a second panel), with Claude Haiku 5.5, Qwen 3.8 Flash and GPT-6
+Luna as decision models, alone and mixed into one population. Every failure the data exposed changed the simulator:
 - visit times and trip size;
 - silent fallbacks;
 - shelf prices and price response;
-- walking speed;
-- trips that repeat the same staples.
+- walking speed and time at the shelf;
+- trips that repeat the same staples, and habits within a category;
+- situations (weekend, season, holidays, a big match, the time of day) from convenience-store guesses to effects
+  measured on real receipts.
 
 | Check (held out) | Simulated | Real reference |
 | :--- | :--- | :--- |
-| Category mix of the population (JSD) | `0.017–0.018` | `0.012` (a household's own earlier receipts) |
+| Category mix of the population (JSD) | `0.009–0.018` (two panels) | `0.006–0.012` (a household's own earlier receipts) |
 | Per-household hit vs the store's best-sellers | `+0.027 to +0.035` (95 % CIs above 0) | – |
-| Classifier AUC, real vs simulated receipt | `0.56–0.62` | `0.52` (own earlier receipt vs later one) |
+| Demographic differences in category mix, told only who the household is | `r 0.27` (p 0.006) | `0.30` (one own earlier receipt) |
+| Repeat purchases (share of a trip's products bought before) | `0.56–0.72` | `0.73` |
+| Classifier AUC, real vs simulated receipt | `0.55–0.62` | `0.46–0.52` (own earlier receipt vs later one) |
 | Own-price elasticity | `−0.78 to −1.60` | `−0.70` (M5) to `−2.62` (meta-analysis) |
+| Situation effects (weekend, match, seasons, holidays), correlation with real | `0.80–0.89` | ignoring them: error `0.109`, simulated `0.046–0.111` |
+| Evening vs morning: beer, ice cream | `1.4–2.2×`, `1.3–1.8×` | `2.1×`, `1.9×` |
 | Bigger trips from farther away (Ta-Feng) | `1.25–1.36×` | `1.33×` |
 | Walking speed (13,159 tracks) | `1.12 m/s` | `1.13 m/s` |
+| Seconds at the shelf per unplanned purchase (eye tracking) | `7–9` (median) | `8.2` |
 
 What failed, what was fixed, the limits and the reproduction steps are in
 [`research/validation`](./research/validation). Every number there is recomputed from the saved trips.
@@ -590,8 +603,9 @@ recorded run inputs and simulation results are not rewritten.
 
 - The original Classic market, character and ghost assets are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
   [Mini Characters](https://kenney.nl/assets/mini-characters), [Graveyard Kit](https://kenney.nl/assets/graveyard-kit).
-- Validation uses dunnhumby *The Complete Journey*, X5 RetailHero, Ta-Feng, Instacart, Favorita, M5 and the ATC
-  pedestrian tracks; the capture benchmark's real-photo check uses ShelfWise "SKUs on shelves PL" (CC BY 4.0). None of
+- Validation uses dunnhumby *The Complete Journey* and *Breakfast at the Frat*, X5 RetailHero, Ta-Feng, Instacart,
+  Favorita, M5, Rossmann, Walmart's sales in stormy weather, a supermarket eye-tracking study and the ATC pedestrian
+  tracks; the capture benchmark's real-photo check uses ShelfWise "SKUs on shelves PL" (CC BY 4.0). None of
   these datasets are redistributed here.
 - Figures and the film are generated from HTML in [`.github/assets/src`](./.github/assets/src)
   (`render.mjs`, `render-video.mjs`).

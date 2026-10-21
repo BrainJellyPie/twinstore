@@ -18,6 +18,9 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
 }) {
   const [search, setSearch] = useState("");
   const [storeType, setStoreType] = useState("");
+  const [size, setSize] = useState("all");
+  const [seating, setSeating] = useState("all");
+  const [sort, setSort] = useState("default");
   const templatesQuery = useQuery({
     queryKey: ["store-templates"], queryFn: ({ signal }) => api.getStoreTemplates(signal), staleTime: Infinity,
   });
@@ -30,8 +33,24 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   });
   const selected = templates.find((t) => t.id === value.templateId);
   const densityGap = { spacious: 3, balanced: 2, dense: 1 }[value.density ?? "balanced"];
-  const filtered = templates.filter((t) => (!storeType || t.store_type === storeType) &&
-    `${t.name} ${t.description}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const terms = search.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const filtered = templates.filter((t) => {
+    if (storeType && t.store_type !== storeType) return false;
+    const cells = t.grid[0] * t.grid[1];
+    if (size === "compact" && cells > 144) return false;
+    if (size === "medium" && (cells <= 144 || cells > 480)) return false;
+    if (size === "large" && cells <= 480) return false;
+    if (seating === "with" && t.default_dining_tables === 0) return false;
+    if (seating === "without" && t.default_dining_tables > 0) return false;
+    const text = `${t.name} ${t.description} ${t.store_type} ${t.id.replace(/_/g, " ")}`.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+    return terms.every((term) => text.includes(term));
+  }).sort((a, b) => {
+    if (sort === "name") return a.name.localeCompare(b.name);
+    if (sort === "smallest") return a.grid[0] * a.grid[1] - b.grid[0] * b.grid[1] || a.name.localeCompare(b.name);
+    if (sort === "largest") return b.grid[0] * b.grid[1] - a.grid[0] * a.grid[1] || a.name.localeCompare(b.name);
+    if (sort === "seats") return b.default_dining_tables - a.default_dining_tables || a.name.localeCompare(b.name);
+    return 0;
+  });
   const update = (patch: Partial<TemplateChoice>) => onChange({ ...value, ...patch });
 
   return (
@@ -47,6 +66,28 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           </select>
         </label>
       </div>
+      <details className="space-y-2 rounded border px-2 py-1.5 text-xs">
+        <summary className="cursor-pointer">More format filters</summary>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Field label="Default floor size"><select className={controlClass} value={size} onChange={(e) => setSize(e.target.value)}>
+            <option value="all">Any size</option><option value="compact">Compact · up to 144 cells</option>
+            <option value="medium">Medium · 145–480 cells</option><option value="large">Large · over 480 cells</option>
+          </select></Field>
+          <Field label="Default seating"><select className={controlClass} value={seating} onChange={(e) => setSeating(e.target.value)}>
+            <option value="all">Any seating</option><option value="with">With dining tables</option><option value="without">Without dining tables</option>
+          </select></Field>
+          <Field label="Sort formats"><select className={controlClass} value={sort} onChange={(e) => setSort(e.target.value)}>
+            <option value="default">Format order</option><option value="name">Name · A–Z</option>
+            <option value="smallest">Smallest floor first</option><option value="largest">Largest floor first</option><option value="seats">Most seats first</option>
+          </select></Field>
+        </div>
+        <p className="text-muted-foreground">Size and seating describe each starting layout. You can customize them after selecting a format.</p>
+      </details>
+      {templatesQuery.isSuccess && <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <p className="text-muted-foreground" aria-live="polite">{filtered.length} of {templates.length} formats</p>
+        {(search || storeType || size !== "all" || seating !== "all" || sort !== "default") && <button type="button" className="underline"
+          onClick={() => { setSearch(""); setStoreType(""); setSize("all"); setSeating("all"); setSort("default"); }}>Clear format filters</button>}
+      </div>}
       {templatesQuery.isPending && <p role="status" className="text-xs">Loading store formats…</p>}
       {templatesQuery.isError && <p role="alert" className="text-xs text-destructive">Could not load store formats. <button type="button" className="underline" onClick={() => void templatesQuery.refetch()}>Retry</button></p>}
       <div className="grid max-h-48 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2" aria-label="Store formats">

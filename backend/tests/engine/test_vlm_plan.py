@@ -400,3 +400,18 @@ def test_usual_product_is_named_for_every_needed_category_that_stocks_it(reverse
     assert needs is not None
     assert f"{source.rack_name} (they usually take {item.name})" in needs[0]
     assert f"{target.rack_name} (they usually take {item.name})" in needs[0]
+
+
+def test_a_needed_category_keeps_its_place_under_the_breadth_limit():
+    store = _store()
+    plan = {"enter": True, "mission": "stock up", "reason": "weekly",
+            "items": [{"category": "Drink", "product": "Pepsi 20oz", "qty": 1},
+                      {"category": "Snacks", "product": "", "qty": 1},
+                      {"category": "Ice cream", "product": "", "qty": 1},
+                      {"category": "Frozen food", "product": "", "qty": 1}]}
+    engine = VLMGlanceEngine(llm=_FakeVLM(plan), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    persona = _personas()[0].model_copy(update={"basket_size": 4, "basket_kinds": 2, "category_rates": {"Ice cream": 1.0}})
+    decision = asyncio.run(engine.decide_actions(_context(store, persona, seed=3)))
+    rack_of = {i.sku: r.rack_name.rsplit(" ", 1)[0] for r in store.product_racks for s in r.slots for i in s.items}
+    # ran out of ice cream: it stays in the trip; the model's first other category fills the second place
+    assert {rack_of[sku] for sku, _ in _buys(decision.actions)} == {"Ice cream", "Drink"}
