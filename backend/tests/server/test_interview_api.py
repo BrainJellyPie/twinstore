@@ -203,3 +203,30 @@ def test_follow_up_failure_is_a_502_and_saves_nothing(client, monkeypatch):
     r = client.post(f"{url}/suggestions", json={})
     assert r.status_code == 502 and "provider down" in r.text
     assert client.get(url).json()["suggested_after"] == -1
+
+
+def test_group_questions_are_read_off_the_run(client, monkeypatch):
+    from store_emulator.application import interview
+
+    class _Planner:
+        def __init__(self) -> None:
+            self.prompt = ""
+
+        async def generate_structured_async[T: BaseModel](
+            self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+        ) -> T:
+            self.prompt = user_prompt
+            return response_model.model_validate({"questions": [
+                {"question": "Why did you stop at the snacks but not buy", "segment": "empty_handed", "why": "many stops, few buys"},
+                {"question": "Why did you stop at the snacks but not buy?", "segment": "all"},
+                {"question": "What made you grab the jerky?", "segment": "impulse", "why": "top impulse pick"},
+            ]})
+
+    fake = _Planner()
+    monkeypatch.setattr(interview, "build_client", lambda *a, **k: fake)
+    r = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews/suggestions", json={})
+    assert r.status_code == 200, r.text
+    ideas = r.json()
+    assert [(i["question"], i["segment"]) for i in ideas] == [
+        ("Why did you stop at the snacks but not buy?", "empty_handed"), ("What made you grab the jerky?", "impulse")]
+    assert fake.prompt.startswith("Shoppers: ") and "Shelves where shoppers stopped (stopped / bought there):" in fake.prompt

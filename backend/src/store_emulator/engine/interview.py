@@ -11,7 +11,7 @@ import re
 from collections import Counter
 from collections.abc import Sequence
 from datetime import datetime, timedelta
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -192,6 +192,70 @@ async def suggest_follow_ups(
 
 def _norm(text: str) -> str:
     return re.sub(r"[^a-z0-9 ]", "", text.casefold()).strip()
+
+
+RUN_QUESTIONS_PROMPT = """You are a qualitative market researcher planning group interviews with the shoppers of one
+simulated store day. From the run's numbers below, suggest the three group questions that would explain the most
+important things in it (a shelf many people stopped at without buying, a product bought on impulse, people who left
+empty-handed, a price that may have put people off). For each: the question (at most 18 words, open, neutral, one
+question), the group to ask (one of: empty_handed, impulse, top_spenders, buyers, all) and in a few words why the run
+suggests it. Name shelves and products as listed. Write in English."""
+
+GroupSegmentName = Literal["empty_handed", "impulse", "top_spenders", "buyers", "all"]
+
+
+class GroupQuestion(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    question: str = Field(min_length=5, max_length=200)
+    segment: GroupSegmentName = "all"
+    why: str = Field(default="", max_length=160)
+
+
+class _GroupQuestions(BaseModel):
+    questions: list[GroupQuestion] = Field(min_length=1, max_length=6)
+
+
+def run_text(customers: Sequence[CustomerResult], store: Store, currency: str) -> str:
+    """The run in numbers a researcher would look at: who bought, where people stopped without buying, impulse picks."""
+    racks = {r.id: r.rack_name for r in store.racks}
+    n = len(customers)
+    buyers = [c for c in customers if c.purchases]
+    stopped: dict[str, int] = {}
+    bought_at: dict[str, int] = {}
+    impulse: dict[str, int] = {}
+    for c in customers:
+        browsed = {e.target_rack for e in c.timeline if e.action == Action.BROWSE and e.target_rack}
+        bought = {e.target_rack for e in c.purchases if e.target_rack}
+        for rack in browsed:
+            stopped[rack] = stopped.get(rack, 0) + 1
+            if rack in bought:
+                bought_at[rack] = bought_at.get(rack, 0) + 1
+        for e in c.purchases:
+            if e.origin == "impulse" and e.product_name:
+                impulse[e.product_name] = impulse.get(e.product_name, 0) + e.quantity
+    empty = sum(1 for c in customers if not c.purchases and any(e.action == Action.BROWSE for e in c.timeline))
+    average = display_price(round(sum(c.total_spent for c in buyers) / max(1, len(buyers))), currency)
+    lines = [(f"Shoppers: {n}; bought something: {len(buyers)} ({len(buyers) / max(1, n):.0%}); "
+              f"stopped at a shelf but left empty-handed: {empty}; average spend of buyers: {average}.")]
+    shelves = sorted(stopped, key=lambda r: -stopped[r])[:8]
+    if shelves:
+        lines.append("Shelves where shoppers stopped (stopped / bought there): " + "; ".join(
+            f"{racks.get(r, r)} {stopped[r]} / {bought_at.get(r, 0)}" for r in shelves))
+    if impulse:
+        top = sorted(impulse, key=lambda k: -impulse[k])[:6]
+        lines.append("Bought on impulse (units): " + "; ".join(f"{k} {impulse[k]}" for k in top))
+    return "\n".join(lines)
+
+
+async def suggest_group_questions(llm: StructuredLLM, summary: str) -> list[GroupQuestion]:
+    ideas = await llm.generate_structured_async(_GroupQuestions, RUN_QUESTIONS_PROMPT, summary, max_retries=2, seed=0)
+    out: list[GroupQuestion] = []
+    for q in ideas.questions:
+        text = " ".join(q.question.split())
+        if text and _norm(text) not in {_norm(o.question) for o in out}:
+            out.append(q.model_copy(update={"question": text if text.endswith("?") else f"{text}?"}))
+    return out[:3]
 
 
 THEMES_PROMPT = """You code open-ended answers from shopper interviews into themes, as a qualitative researcher would.

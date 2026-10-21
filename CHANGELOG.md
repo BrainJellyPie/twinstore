@@ -14,6 +14,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   they put back, the shelf they skipped, something in the last answer), refreshed after every answer and reused
   until the conversation moves on. Without a working model the trip-based questions stay.
   API: `POST .../shoppers/{id}/interview/suggestions`.
+- **Suggest questions from this run** in group interviews: the model reads the run's numbers (shelves where shoppers
+  stopped without buying, impulse picks, empty-handed visits) and proposes three questions, each with the group to
+  ask and why. API: `POST .../runs/{run_id}/group-interviews/suggestions`.
 - Failed model calls in interviews say what to do ("the provider rejected the API key…", "the model's reply was
   not in the expected form. Try again, or pick another model.") instead of a raw provider error, and a shopper's
   answer gets one more retry when the model puts it outside the expected JSON.

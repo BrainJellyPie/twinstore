@@ -34,10 +34,15 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, Face
 from store_emulator.engine.interview import (
+    GroupQuestion,
     ask_shopper,
     build_journey,
     code_themes,
+    run_text,
     suggest_follow_ups,
+)
+from store_emulator.engine.interview import (
+    suggest_group_questions as engine_group_questions,
 )
 from store_emulator.engine.perception.shelf_render import render_face
 
@@ -293,6 +298,22 @@ def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: S
     folder.mkdir(parents=True, exist_ok=True)
     write_json(folder / f"{group.group_id}.json", group.model_dump(mode="json"))
     return group
+
+
+def suggest_group_questions(pid: str, run_id: str, req: SuggestionRequest, config: SimulationConfig) -> list[GroupQuestion]:
+    """Three group questions the model reads off this run's numbers (where shoppers stopped without buying, impulse
+    picks, empty-handed visits), each with the group to ask."""
+    customers, _, store, currency = _load(pid, run_id)
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.4, "max_tokens": 700})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        return asyncio.run(engine_group_questions(llm, run_text(list(customers.values()), store, currency)))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[interview] group questions {pid}/{run_id}: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "No questions could be suggested"), 502) from e
 
 
 def list_group_interviews(pid: str, run_id: str) -> list[GroupInterview]:

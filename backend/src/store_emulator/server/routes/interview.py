@@ -16,6 +16,8 @@ from store_emulator.domain.interview import (
     SuggestionRequest,
 )
 
+from store_emulator.engine.interview import GroupQuestion
+
 from ..deps import get_config
 
 router = APIRouter(prefix="/api/projects", tags=["shopper interviews"])
@@ -74,6 +76,13 @@ async def group_interview(pid: str, run_id: str, req: GroupInterviewRequest) -> 
     """Shoppers of a segment (all, empty-handed, buyers, impulse buyers, top spenders) or the given ids each answer from
     their own trip; the answers are then coded into themes (counts come from per-answer assignments)."""
     return await run_in_threadpool(_call, lambda: service.group_interview(pid, run_id, req, get_config()))
+
+
+@router.post("/{pid}/runs/{run_id}/group-interviews/suggestions", summary="Suggest group questions from the run",
+             response_model=list[GroupQuestion])
+async def suggest_group_questions(pid: str, run_id: str, req: SuggestionRequest) -> list[GroupQuestion]:
+    """Three questions the model reads off this run's numbers, each with the group of shoppers to ask."""
+    return await run_in_threadpool(_call, lambda: service.suggest_group_questions(pid, run_id, req, get_config()))
 
 
 @router.get("/{pid}/runs/{run_id}/group-interviews", summary="Group interviews of a run", response_model=list[GroupInterview])
