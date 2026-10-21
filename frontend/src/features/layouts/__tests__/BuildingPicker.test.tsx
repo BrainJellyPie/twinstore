@@ -24,6 +24,8 @@ afterEach(() => { cleanup(); vi.resetAllMocks(); });
 it.each([
   ["Commuter shopping & lunch", "station_food_market", "2F · Level 2 · Office cafeteria", "office_cafeteria"],
   ["Weekend shopping & snacks", "weekend_farmers_market", "3F · Level 3 · Cinema snacks", "cinema_snack_shop"],
+  ["Neighborhood care center", "compact_pharmacy", "2F · Level 2 · Care supplies", "care_supply_store"],
+  ["Mediterranean & Mexican dining", "mediterranean_deli", "2F · Level 2 · Mexican cantina", "mexican_cantina"],
   ["Market & design commons", "community_market_hall", "2F · Level 2 · Creative design", "creative_design_hall"],
 ])("starts %s with independent floor settings and the project currency", (preset, first, lastLabel, last) => {
   render(<Building currency="JPY" />);
