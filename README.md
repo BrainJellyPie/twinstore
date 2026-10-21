@@ -232,6 +232,9 @@ or choose **Fit floor plan** to see the whole floor again. Close it or press Esc
 fixture colors and reserved-area markers. The file contains the store name,
 counts, color legend and reserved-area descriptions as accessible SVG metadata;
 it uses no external fonts or images and can be opened independently.
+Entrances have green **IN** markers, exits have rose **OUT** markers, and a shared
+gate shows both labels in a split marker. These appear in thumbnails, expanded
+plans and SVG exports, including gates placed on the back or side walls.
 The creation dialog keeps its title and action buttons visible while the options
 scroll, including on smaller screens.
 

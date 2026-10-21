@@ -6,8 +6,9 @@ import type { Store } from "@/shared/types/domain";
 import { rackCells } from "@/shared/utils/grid";
 
 const RACK_COLORS: Record<string, string> = {
-  fridge: "#38bdf8", shelf: "#f59e0b", counter: "#475569", entrance: "#22c55e", exit: "#22c55e", table: "#a78bfa",
+  fridge: "#38bdf8", shelf: "#f59e0b", counter: "#475569", entrance: "#22c55e", exit: "#fb7185", table: "#a78bfa",
 };
+const FLOOR_LEGEND = "Blue: cold · Amber: display · Green IN: entrance · Rose OUT: exit · Split IN/OUT: shared gate · Slate: checkout · Purple: seating";
 
 export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store; areas: ReservedArea[]; previewFrame?: [number, number] }) {
   const [zoom, setZoom] = useState(1);
@@ -27,7 +28,7 @@ export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store;
     const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
     title.textContent = `${store.name} — ${store.grid_size.join("×")} cells`;
     const description = document.createElementNS("http://www.w3.org/2000/svg", "desc");
-    description.textContent = `${tables} dining tables, ${tables * 4} seats, ${store.racks.filter((rack) => rack.type === "counter").length} checkout counters. Blue: cold; amber: display; green: entry / exit; slate: checkout; purple: seating. ${areas.map((area, index) => `Area ${index + 1}: ${area.label}, ${area.width}×${area.height} cells at column ${area.x + 1}, row ${area.y + 1}.`).join(" ")}`;
+    description.textContent = `${tables} dining tables, ${tables * 4} seats, ${store.racks.filter((rack) => rack.type === "counter").length} checkout counters. ${FLOOR_LEGEND}. ${areas.map((area, index) => `Area ${index + 1}: ${area.label}, ${area.width}×${area.height} cells at column ${area.x + 1}, row ${area.y + 1}.`).join(" ")}`;
     exported.prepend(title, description);
     const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(exported)], { type: "image/svg+xml;charset=utf-8" }));
     const link = document.createElement("a");
@@ -58,7 +59,7 @@ export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store;
         </div>
         <div className="space-y-1.5 text-xs">
           <p>{store.racks.filter((rack) => rack.slots.length).length} displays · {tables} dining tables · {tables * 4} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
-          <p className="text-muted-foreground">Blue: cold · Amber: display · Green: entry / exit · Slate: checkout · Purple: seating</p>
+          <p className="text-muted-foreground">{FLOOR_LEGEND}</p>
           {!!areas.length && <ol className="max-h-24 list-decimal space-y-1 overflow-y-auto pl-5" aria-label="Reserved areas in this floor plan">
             {areas.map((area, index) => <li key={index}>{area.label} · {area.width}×{area.height} cells · column {area.x + 1}, row {area.y + 1}</li>)}
           </ol>}
@@ -73,6 +74,16 @@ function FloorPlan({ store, areas, detailed = false, zoom = 1, ref, previewFrame
   const [w, h] = store.grid_size;
   const [frameWidth, frameHeight] = previewFrame ?? store.grid_size;
   const palette = INTERIOR_DESIGNS[store.design_theme ?? "classic"];
+  const gates = new Map<string, { x: number; y: number; entrances: string[]; exits: string[] }>();
+  for (const rack of store.racks) {
+    if (rack.type !== "entrance" && rack.type !== "exit") continue;
+    for (const [x, y] of rackCells(rack)) {
+      const key = `${x},${y}`;
+      const gate = gates.get(key) ?? { x, y, entrances: [], exits: [] };
+      (rack.type === "entrance" ? gate.entrances : gate.exits).push(rack.rack_name || rack.type);
+      gates.set(key, gate);
+    }
+  }
   return <svg ref={ref} viewBox={detailed ? `-1.2 -1.2 ${w + 1.4} ${h + 1.4}` : `-0.2 -0.2 ${frameWidth + 0.4} ${frameHeight + 0.4}`}
     className={detailed ? "h-full w-full" : "max-h-48 w-full rounded border"}
     style={{ backgroundColor: palette.floor, transform: zoom === 1 ? undefined : `scale(${zoom})`, transformOrigin: "top left" }} role="img" aria-label={detailed ? "Detailed floor plan" : "Floor plan preview"}>
@@ -86,7 +97,7 @@ function FloorPlan({ store, areas, detailed = false, zoom = 1, ref, previewFrame
       {Array.from({ length: h }, (_, y) => <text key={`y-${y}`} x={-0.35} y={y + 0.7} textAnchor="end" fontSize={0.55} fill="#475569">{y + 1}</text>)}
     </>}
     <rect x={0} y={0} width={w} height={h} fill="none" stroke="#94a3b8" strokeWidth={0.12} />
-    {store.racks.flatMap((rack) => rackCells(rack).map(([x, y]) => <rect key={`${rack.id}-${x}-${y}`} x={x + 0.08} y={y + 0.08} width={0.84} height={0.84} rx={0.12} fill={RACK_COLORS[rack.type] ?? "#cbd5e1"}>
+    {store.racks.filter((rack) => rack.type !== "entrance" && rack.type !== "exit").flatMap((rack) => rackCells(rack).map(([x, y]) => <rect key={`${rack.id}-${x}-${y}`} x={x + 0.08} y={y + 0.08} width={0.84} height={0.84} rx={0.12} fill={RACK_COLORS[rack.type] ?? "#cbd5e1"}>
       <title>{rack.rack_name || rack.type}</title>
     </rect>))}
     {areas.map((area, index) => <g key={index}>
@@ -96,5 +107,22 @@ function FloorPlan({ store, areas, detailed = false, zoom = 1, ref, previewFrame
       </rect>
       <text x={area.x + 0.15} y={area.y + 0.65} fontSize={0.6} fill="#115e59">{index + 1}</text>
     </g>)}
+    {[...gates.entries()].map(([key, gate]) => {
+      const shared = gate.entrances.length > 0 && gate.exits.length > 0;
+      const kind = shared ? "shared" : gate.entrances.length ? "entrance" : "exit";
+      const label = shared ? "Entrance and exit" : kind === "entrance" ? "Entrance" : "Exit";
+      return <g key={key} data-gate-kind={kind}>
+        <title>{label}: {[...gate.entrances, ...gate.exits].join(" / ")} · column {gate.x + 1}, row {gate.y + 1}</title>
+        {shared ? <>
+          <rect x={gate.x + 0.08} y={gate.y + 0.08} width={0.84} height={0.42} rx={0.08} fill={RACK_COLORS.entrance} />
+          <rect x={gate.x + 0.08} y={gate.y + 0.5} width={0.84} height={0.42} rx={0.08} fill={RACK_COLORS.exit} />
+          <text x={gate.x + 0.5} y={gate.y + 0.38} textAnchor="middle" fontSize={0.28} fontWeight="bold" fill="#0f172a">IN</text>
+          <text x={gate.x + 0.5} y={gate.y + 0.8} textAnchor="middle" fontSize={0.28} fontWeight="bold" fill="#0f172a">OUT</text>
+        </> : <>
+          <rect x={gate.x + 0.08} y={gate.y + 0.08} width={0.84} height={0.84} rx={0.12} fill={RACK_COLORS[kind]} />
+          <text x={gate.x + 0.5} y={gate.y + 0.61} textAnchor="middle" fontSize={kind === "entrance" ? 0.34 : 0.29} fontWeight="bold" fill="#0f172a">{kind === "entrance" ? "IN" : "OUT"}</text>
+        </>}
+      </g>;
+    })}
   </svg>;
 }
