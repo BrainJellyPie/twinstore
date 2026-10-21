@@ -42,6 +42,45 @@ describe("manufactured fixture edges", () => {
     geometry.dispose();
   });
 
+  it.each([0, Math.PI / 2, Math.PI, 3 * Math.PI / 2].flatMap(yaw => [
+    { part: "monitor", w: 0.3, h: 0.21, d: 0.03, tilt: -0.25 },
+    { part: "base", w: 0.36, h: 0.1, d: 0.34, tilt: 0 },
+    { part: "customer display", w: 0.13, h: 0.08, d: 0.02, tilt: 0.2 },
+    { part: "card reader", w: 0.08, h: 0.04, d: 0.14, tilt: 0.35 },
+    { part: "printer", w: 0.12, h: 0.1, d: 0.14, tilt: 0 },
+  ].map(part => ({ yaw, ...part }))))("rounds the $part at yaw $yaw within its authored footprint", ({ yaw, w, h, d, tilt }) => {
+    const build = (rounded: boolean) => {
+      const builder = new StaticBuilder(rounded);
+      builder.setFrame(3, -2, yaw).box("black", w, h, d, 0.1, 0.9, 0.2, tilt);
+      return builder.build().get("black")!;
+    };
+    const rounded = build(true), plain = build(false);
+    expect(plain.index!.count / 3).toBe(12);
+    expect(rounded.index!.count / 3).toBeGreaterThan(12);
+    expect(rounded.index!.count / 3).toBeLessThanOrEqual(108);
+    const expected = plain.boundingBox!.clone().expandByScalar(0.00001);
+    expect(expected.containsBox(rounded.boundingBox!)).toBe(true);
+    const center = rounded.boundingBox!.getCenter(new THREE.Vector3());
+    expect(center.distanceTo(plain.boundingBox!.getCenter(new THREE.Vector3()))).toBeLessThan(0.00001);
+    const normal = rounded.getAttribute("normal");
+    let maxError = 0;
+    for (let i = 0; i < normal.count; i++) maxError = Math.max(maxError, Math.abs(Math.hypot(normal.getX(i), normal.getY(i), normal.getZ(i)) - 1));
+    expect(maxError).toBeLessThan(0.00001);
+    rounded.dispose();
+    plain.dispose();
+  });
+
+  it("merges rounded hardware with thin refrigerator vents without expanding the vents", () => {
+    const builder = new StaticBuilder(true);
+    for (let i = 0; i < 6; i++) builder.box("black", 0.68, 0.005, 0.002, 0, i * 0.014, 0);
+    builder.box("black", 0.12, 0.1, 0.14, 0, 0.8, 0);
+    const geometry = builder.build().get("black")!;
+    expect(geometry.index!.count / 3).toBe(6 * 12 + 108);
+    expect(Array.from(geometry.getAttribute("position").array).every(Number.isFinite)).toBe(true);
+    expect(Array.from(geometry.getAttribute("uv").array).every(Number.isFinite)).toBe(true);
+    geometry.dispose();
+  });
+
   it.each(["wall", "metalGrey", "aluminum"] as const)("keeps %s density and UV continuity across differently sized segments", (material) => {
     const builder = new StaticBuilder();
     builder.span(material, 0, 0, 0, 1, 2, 0.1);

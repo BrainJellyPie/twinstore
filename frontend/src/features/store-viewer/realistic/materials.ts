@@ -138,7 +138,8 @@ export function createShellMaterials(
         clearcoatRoughness: 0.2,
       })
       : std(palette.counter, 0.32),
-    black: std("#17191c", 0.45, 0.2),
+    // Terminal housings and coated grilles have a dielectric outer surface.
+    black: std("#17191c", 0.45),
     screen: emissive("#4f8fe8", 0.9),
     mat: std("#2f3337", 0.98),
     aluminum: std(metalMaps ? "#ffffff" : "#b7bdc4", metalMaps ? 1 : 0.32, metalMaps ? 1 : 0.85, {
