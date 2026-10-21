@@ -273,7 +273,7 @@ photo sets its price index, and a vision check rates the synergy with the shop n
 
 ## Marketing studio
 
-For brand managers, category teams, store operators and research agencies (**Market** in the command bar). Ten tabs:
+For brand managers, category teams, store operators and research agencies (**Market** in the command bar). Eleven tabs:
 
 - **A/B tests** — a variant is a list of changes to a saved layout: a new price, a discount with the was-price on the
   tag, a promotion sign (1+1, SALE, −30 %), a move to eye level or another fixture, a new pack, or a category re-price
@@ -320,6 +320,7 @@ For brand managers, category teams, store operators and research agencies (**Mar
   **Observed staff time** reviews an anonymous assignment/time CSV from a completed, locked pilot. It
   checks staff/shift coverage, withholds averages until all times are recorded, and exports a source-bound
   audit to inform explicit labor-cost assumptions without inferring profit or staff performance.
+- **Price checks** — reconcile supplied shelf-label and checkout observations by check ID, retaining unmatched and noncomparable pairs. Review signed price differences by currency and export both sources with exclusions; no legal or sales-loss verdict.
 - **Protocols** — record original research plans and reasoned amendments, with declared data visibility, complete snapshots, field differences and head-bound JSON/CSV exports. Local history is not external preregistration or proof that results were unseen.
 - **Unit prices** — compare operator-supplied competitor offers across pack quantities, with explicit date, stock and purchase-condition exclusions. Separate currencies and quantity dimensions; export exact-rate audit data. No live prices, price write-back or inferred sales effects.
 - **Inventory** — upload observed period stock, movements, net sales, COGS and inventory values at cost.

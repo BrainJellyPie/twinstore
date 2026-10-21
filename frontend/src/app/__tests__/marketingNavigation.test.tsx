@@ -179,3 +179,14 @@ it("clears the selection without another layout request when a refresh removes e
   expect((screen.getByRole("combobox", { name: "Layout" }) as HTMLSelectElement).value).toBe("");
   expect(api.getSetup).not.toHaveBeenCalled();
 });
+
+it("opens price checks in Market and resets the draft on project navigation", async () => {
+  const { go } = await mount();
+  fireEvent.click(screen.getByRole("tab", { name: /Price checks/ }));
+  await screen.findByRole("region", { name: "Shelf and checkout price checks" });
+  fireEvent.change(screen.getByLabelText("Store reference"), { target: { value: "alpha-store" } });
+  await go();
+  fireEvent.click(screen.getByRole("tab", { name: /Price checks/ }));
+  expect((await screen.findByLabelText("Store reference") as HTMLInputElement).value).toBe("");
+  expectOwnedRequests();
+});
