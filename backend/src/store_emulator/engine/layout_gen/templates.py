@@ -13,8 +13,6 @@ assortment depth. The generator lays the store out the way such shops usually ar
 The result always passes `engine.validation.validate` without errors (checked by tests).
 """
 
-import hashlib
-import json
 import random
 from dataclasses import dataclass, field, replace
 from typing import Literal
@@ -24,7 +22,7 @@ from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotIt
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Face, Weekday, stable_seed
 
-from .catalog import CATALOG, CatalogItem, category_label, localized
+from .catalog import CATALOG, CatalogItem, category_label, catalog_slot_item
 
 @dataclass(frozen=True)
 class StoreTemplate:
@@ -634,11 +632,8 @@ class _Builder:
         order = pool[(start * 5) % len(pool):] + pool[: (start * 5) % len(pool)]
         items: list[SlotItem] = []
         for item in order:
-            name, price = localized(item, self.currency)
-            if item not in self.by_product:  # a product shown on several faces is one SKU with more facings
-                identity = json.dumps([item.en, item.ko, item.usd_cents], ensure_ascii=False, separators=(",", ":"))
-                sku = f"g_{hashlib.sha256(identity.encode('utf-8')).hexdigest()[:32]}"
-                self.by_product[item] = SlotItem(sku=sku, name=name, price=price)
+            if item not in self.by_product:
+                self.by_product[item] = catalog_slot_item(item, self.currency)
             items.append(self.by_product[item])
         return items
 

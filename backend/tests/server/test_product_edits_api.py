@@ -150,12 +150,12 @@ def test_concurrent_saves_and_changed_payload_replay(workflow):
 
 
 def test_generation_and_interrupted_write_are_explicit(workflow, monkeypatch):
-    from store_emulator.application import product_edits
+    from store_emulator.application import product_edits, product_sources
     client, source = workflow
     body = {**request(client), "request_id": "e" * 32}
-    monkeypatch.setattr(product_edits, "find_active_generation", lambda *args: {"running": True})
+    monkeypatch.setattr(product_sources, "find_active_generation", lambda *args: {"running": True})
     assert client.post(URL + "/save", json=body).status_code == 409
-    monkeypatch.setattr(product_edits, "find_active_generation", lambda *args: None)
+    monkeypatch.setattr(product_sources, "find_active_generation", lambda *args: None)
     original = product_edits.write_json
     def fail_draft(path, data):
         if path.name.startswith("setup_products_"): raise OSError("disk full")

@@ -21,7 +21,7 @@ from store_emulator.application.marketing import recover_running_jobs
 from store_emulator.application.local_vlm import manager as local_vlm
 from store_emulator.application.providers import cloud_providers_with_key
 from .deps import validate_resource_paths
-from .routes import assist, simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing, interview, field_pilot, inventory_review, unit_prices, protocols, price_checks, product_edits
+from .routes import assist, simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing, interview, field_pilot, inventory_review, unit_prices, protocols, price_checks, product_edits, starter_fill
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 # Silence noisy third-party loggers (raw request/response, completion calls, etc.).
@@ -113,6 +113,7 @@ app.include_router(simulate.engines_router)
 app.include_router(projects.router)
 app.include_router(setups.router)
 app.include_router(product_edits.router)
+app.include_router(starter_fill.router)
 app.include_router(util.router)
 app.include_router(images.router)
 app.include_router(providers.router)
