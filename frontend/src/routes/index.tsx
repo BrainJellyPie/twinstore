@@ -1,11 +1,14 @@
 import { useState, type CSSProperties } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, CloudSun, Eye, KeyRound, Map, Search, Sparkles, Wand2 } from "lucide-react";
+import { Aperture, ArrowRight, CloudSun, Eye, KeyRound, Megaphone, MessagesSquare, Search, Sparkles, Wand2 } from "lucide-react";
 
 import { MOD_KEY } from "@/app/commandPalette";
 import { HeroStore } from "@/features/home/HeroStore";
 import { NewStoreTile, StoreTile, StoreTileSkeleton } from "@/features/home/StoreTile";
 import { Button } from "@/shared/components/ui/button";
+import * as api from "@/shared/api/client";
+import { queryKeys } from "@/shared/queries/keys";
 import { useProjects } from "@/shared/queries/useProjects";
 
 export const Route = createFileRoute("/")({
@@ -14,8 +17,10 @@ export const Route = createFileRoute("/")({
 
 const CAPABILITIES = [
   { icon: Eye, label: "Vision shoppers" },
-  { icon: CloudSun, label: "19 situations" },
-  { icon: Map, label: "Real neighborhoods" },
+  { icon: CloudSun, label: "Situations" },
+  { icon: Megaphone, label: "Marketing studio" },
+  { icon: MessagesSquare, label: "Shopper interviews" },
+  { icon: Aperture, label: "Photo mode" },
   { icon: Wand2, label: "Layout optimizer" },
 ];
 
@@ -33,6 +38,10 @@ function HomePage() {
   const { data: projects, isLoading, error, refetch } = useProjects();
   const [filter, setFilter] = useState("");
   const newStore = () => navigate({ to: "/projects/new" });
+  const templates = useQuery({ queryKey: ["store-templates"], queryFn: ({ signal }) => api.getStoreTemplates(signal), staleTime: Infinity });
+  const scenarios = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios(signal), staleTime: Infinity });
+  const counted = (label: string) =>
+    label === "Situations" && scenarios.data ? `${scenarios.data.length} situations` : label;
 
   const shown = (projects ?? []).filter((p) =>
     `${p.name} ${p.store_type} ${p.description}`.toLowerCase().includes(filter.trim().toLowerCase()),
@@ -45,7 +54,7 @@ function HomePage() {
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 pt-12 pb-14 lg:grid-cols-[1.1fr_1fr] lg:pt-14">
           <div className="max-w-[44rem]">
             <div className="glass inline-flex animate-rise items-center gap-2 rounded-full py-1 pr-3 pl-1 text-xs font-medium">
-              <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[0.68rem] font-semibold text-primary-foreground">v0.3</span>
+              <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[0.68rem] font-semibold text-primary-foreground">v0.4</span>
               <Sparkles className="size-3.5 text-heat-2" aria-hidden />
               Vision-language shoppers decide every move
             </div>
@@ -77,7 +86,7 @@ function HomePage() {
               {CAPABILITIES.map(({ icon: Icon, label }) => (
                 <span key={label} className="inline-flex items-center gap-2 rounded-full border border-glass-border bg-card/40 px-3 py-1.5 text-sm text-muted-foreground backdrop-blur">
                   <Icon className="size-4 text-foreground/80" aria-hidden />
-                  {label}
+                  {counted(label)}
                 </span>
               ))}
             </div>
@@ -96,9 +105,9 @@ function HomePage() {
                 <HeroStore />
               </div>
             </div>
-            <FloatingChip className="-top-7 -left-7 hidden md:block" eyebrow="Store formats" value="10 ready-made" />
+            <FloatingChip className="-top-7 -left-7 hidden md:block" eyebrow="Store formats" value={templates.data ? `${templates.data.length} ready-made` : "Ready-made"} />
             <FloatingChip className="-right-3 bottom-16 hidden md:block" eyebrow="Any vision model" value="Cloud or on-device" style={{ animationDelay: "1.4s" }} />
-            <FloatingChip className="-bottom-6 left-10 hidden md:block" eyebrow="Paired A/B" value="With confidence intervals" style={{ animationDelay: "2.6s" }} />
+            <FloatingChip className="-bottom-6 left-10 hidden md:block" eyebrow="Paired A/B" value="Intervals and a report" style={{ animationDelay: "2.6s" }} />
           </div>
         </div>
       </section>
