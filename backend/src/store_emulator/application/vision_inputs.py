@@ -97,7 +97,7 @@ def rate_storefront(pid: str, venue_id: str, data: bytes, *, model: str, config:
             appeal = appeal.model_copy(update={"reasons": f"vision model unavailable ({type(e).__name__}); {appeal.reasons}"})
     previous = venue.attractiveness
     venues = [v.model_copy(update={"attractiveness": appeal.attractiveness}) if v.id == venue_id else v for v in town.venues]
-    saved = save_town(pid, town.model_copy(update={"venues": venues}))
+    saved = save_town(pid, town.model_copy(update={"venues": venues}), expected=town)
     return StorefrontResult(venue_id=venue_id, appeal=appeal, previous_attractiveness=previous, town=saved)
 
 

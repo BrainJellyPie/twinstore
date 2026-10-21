@@ -539,6 +539,6 @@ def compare_rival_capture(pid: str, cid: str, req: RivalRequest, *, default_curr
         if req.apply and comparison.suggested_pull_factor is not None:
             new = round(min(3.0, max(0.2, venue.attractiveness * comparison.suggested_pull_factor)), 3)
             save_town(pid, town.model_copy(update={"venues": [
-                v.model_copy(update={"attractiveness": new}) if v.id == venue.id else v for v in town.venues]}))
+                v.model_copy(update={"attractiveness": new}) if v.id == venue.id else v for v in town.venues]}), expected=town)
             report.attractiveness = new
     return report
