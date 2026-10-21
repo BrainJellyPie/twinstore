@@ -342,7 +342,7 @@ async def optimize(
     relative = _relative(spec, baseline.score, best.score)
     if best is baseline:
         notes.append("No candidate beat the baseline on the search customers; the baseline is returned.")
-    elif relative < spec.constraints.min_improvement:
+    elif baseline.score != 0 and relative < spec.constraints.min_improvement:
         notes.append(
             f"The best candidate improved the objective by {relative:.2%}, below min_improvement"
             f" {spec.constraints.min_improvement:.2%}; the baseline is returned."
@@ -365,23 +365,26 @@ async def optimize(
         metric = next((m for m in report.metrics if m.metric == metric_name), None)
         if metric is not None:
             maximize = spec.objective.maximize
-            validation_relative = round(metric.rel_diff if maximize else -metric.rel_diff, 6)
+            gain = metric.diff if maximize else -metric.diff
+            validation_relative = round(metric.rel_diff if maximize else -metric.rel_diff, 6) if metric.mean_a else None
+            change = (f"{validation_relative:+.2%}" if validation_relative is not None
+                      else f"{gain:+.2f} (absolute change from zero)")
             validation_prob = metric.prob_b_greater if maximize else metric.prob_b_less
             excludes_zero = metric.ci_low > 0 if maximize else metric.ci_high < 0
-            if validation_relative <= 0:
+            if gain <= 0:
                 notes.append(
                     f"On {report.paired_customers} validation customers with fresh randomness the best layout was"
-                    f" not better than the baseline ({metric_name}: {validation_relative:+.2%} improvement);"
+                    f" not better than the baseline ({metric_name}: {change} improvement);"
                     " the search gain is likely noise."
                 )
             elif excludes_zero:
                 notes.append(
                     f"Validation on {report.paired_customers} customers with fresh randomness confirms the gain:"
-                    f" {metric_name} {validation_relative:+.2%} better than the baseline, 95% interval excludes zero."
+                    f" {metric_name} {change} better than the baseline, 95% interval excludes zero."
                 )
             else:
                 notes.append(
-                    f"Validation on {report.paired_customers} customers: {metric_name} {validation_relative:+.2%}"
+                    f"Validation on {report.paired_customers} customers: {metric_name} {change}"
                     " better than the baseline, but the 95% interval includes zero; validate with more customers"
                     " before acting on it."
                 )
@@ -396,9 +399,10 @@ async def optimize(
                                        moves=list(pruned_descriptions), store=pruned_store.model_copy(deep=True)))
 
     seconds = round(time.perf_counter() - started, 3)
+    change = f"{relative:+.2%}" if baseline.score else f"{best.score - baseline.score:+.2f} from zero"
     logger.info(
         f"[optimize] done in {seconds}s: {search.evaluations} evaluations, best {best.score}"
-        f" ({relative:+.2%}), {len(moves)} moves"
+        f" ({change}), {len(moves)} moves"
     )
     return OptimizeResult(
         spec=spec,

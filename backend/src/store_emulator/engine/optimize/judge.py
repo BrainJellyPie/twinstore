@@ -308,7 +308,7 @@ async def judge_layout_search(
     # Winner: best VLM objective; ties go to the baseline (no change), then to the surrogate's order.
     winner = min(judged, key=lambda c: (-(c.vlm_score or 0.0) if maximize else (c.vlm_score or 0.0),
                                         c.iteration != 0, c.surrogate_rank))
-    if winner.label != "baseline" and (winner.relative_improvement or 0.0) < spec.constraints.min_improvement:
+    if winner.label != "baseline" and base_score != 0 and (winner.relative_improvement or 0.0) < spec.constraints.min_improvement:
         notes.append(f"The VLM winner {winner.label} improved the objective by {winner.relative_improvement:.2%},"
                      f" below min_improvement {spec.constraints.min_improvement:.2%}; the baseline is kept.")
         winner = judged[0]
@@ -321,8 +321,10 @@ async def judge_layout_search(
         notes.append(f"No judged candidate beat the baseline for the VLM shoppers on {len(vlm_personas)} customers;"
                      " the baseline is returned.")
     else:
+        change = (f"{winner.relative_improvement:+.2%}" if base_score
+                  else f"{(winner.vlm_score or 0.0) - base_score:+.2f} (absolute change from zero)")
         notes.append(
-            f"The VLM shoppers picked {winner.label} ({winner.relative_improvement:+.2%} {spec.objective.value}"
+            f"The VLM shoppers picked {winner.label} ({change} {spec.objective.value}"
             f" vs baseline on {len(vlm_personas)} paired customers, P(better) {winner.prob_better})."
         )
         if winner.delta_ci_low is not None and winner.delta_ci_high is not None and \
@@ -358,7 +360,7 @@ async def judge_layout_search(
         "validation": validation,
         "validation_metric": metric_name if validation is not None else "",
         "validation_relative_improvement": (round(metric.rel_diff if maximize else -metric.rel_diff, 6)
-                                            if metric is not None else None),
+                                            if metric is not None and metric.mean_a else None),
         "validation_prob_better": winner.prob_better if validation is not None else None,
         "notes": [*result.notes, *notes],
         "judge": report,
