@@ -64,6 +64,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   card, a vision model reads the name, brand and size printed on the pack instead of using the file name, and links
   the image to the layout's product when it is an exact match and the image was not linked yet. With the local
   vision model off, a cloud vision model that has a key is used. API: `POST .../lab/packages/{id}/read`.
+- Persona generation is grounded in the project's neighborhood model when there is one: the prompt carries who
+  comes on a weekday and at the weekend (students, office workers, residents, commuters, linked trips), the busiest
+  hours and how far people walk. It also uses a model that has an API key when the app's text model has none.
 - **Describe the area** in the neighborhood generator: "a busy campus street, two rival stores nearby, a café next
   door" sets the archetype, size, density, rivals and neighbors; generating stays a separate step.
   API: `POST /api/projects/{pid}/town/describe`.
