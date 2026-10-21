@@ -15,9 +15,9 @@ export const WALL_THICKNESS = 0.12;
 export const CEILING_HEIGHT = 2.28;
 export const FLOOR_SLAB = 0.22;
 
-// Persona GLBs are authored ~0.6 units tall for the classic look. Realistic mode
-// scales them to adult height relative to the 1.25 m tile.
-export const PERSONA_SCALE = 2.05;
+// Scale the persona group and its labels for adult proportions. Photographic
+// bodies compensate for this parent scale and keep their authored metric height.
+export const PERSONA_SCALE = 2.35;
 
 // Eye height of the shopper-view camera, per graphics mode (classic personas are small).
 export const EYE_HEIGHT = { realistic: 1.24, classic: 0.52 } as const;

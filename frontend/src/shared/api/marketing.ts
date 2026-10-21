@@ -207,6 +207,7 @@ export const listSurveys = (pid: string, signal?: AbortSignal) => fetchJson<JobS
 export const getSurvey = (pid: string, sid: string, signal?: AbortSignal) => fetchJson<SurveyView>(`${root(pid)}/surveys/${sid}`, { signal });
 export const deleteSurvey = (pid: string, sid: string) => fetchJson<void>(`${root(pid)}/surveys/${sid}`, { method: "DELETE" });
 export const surveyBoardUrl = (pid: string, sid: string) => `${BASE}${root(pid)}/surveys/${sid}/board.jpg`;
+export const surveyReportUrl = (pid: string, sid: string) => `${BASE}${root(pid)}/surveys/${sid}/report.html`;
 export const surveyCsvUrl = (pid: string, sid: string) => `${BASE}${root(pid)}/surveys/${sid}/export.csv`;
 
 export const marketingKeys = {

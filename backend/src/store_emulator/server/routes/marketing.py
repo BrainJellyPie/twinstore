@@ -100,6 +100,11 @@ def survey_board(pid: str, sid: str) -> FileResponse:
     return FileResponse(_call(lambda: mk.survey_board_path(pid, sid)), media_type="image/jpeg")
 
 
+@router.get("/{pid}/surveys/{sid}/report.html", summary="Concept test report (print-ready HTML)", response_class=HTMLResponse)
+def survey_report(pid: str, sid: str) -> HTMLResponse:
+    return HTMLResponse(_call(lambda: mk.survey_report(pid, sid)))
+
+
 @router.get("/{pid}/surveys/{sid}/export.csv", summary="Respondent-level answers as CSV")
 def survey_csv(pid: str, sid: str) -> PlainTextResponse:
     text = _call(lambda: mk.survey_csv(pid, sid))

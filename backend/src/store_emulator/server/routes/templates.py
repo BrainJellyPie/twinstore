@@ -9,7 +9,7 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
     BuildingLayoutRequest, EntrancePosition, FixtureDesign, LayoutDensity, LayoutOptions, LayoutStyle,
-    TemplateLayoutRequest,
+    StoreDesign, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
 
@@ -25,6 +25,7 @@ class TemplateInfo(BaseModel):
     racks: int
     skus: int
     open_hours: tuple[int, int]
+    default_design: StoreDesign
     default_style: LayoutStyle
 
 
@@ -36,7 +37,7 @@ def list_templates() -> list[TemplateInfo]:
         out.append(TemplateInfo(
             id=t.id, name=t.name, description=t.description, store_type=t.store_type, grid=t.grid,
             racks=sum(1 for r in s.racks if r.slots), skus=len({i.sku for r in s.racks for sl in r.slots for i in sl.items}),
-            open_hours=t.open_hours, default_style=t.style,
+            open_hours=t.open_hours, default_style=t.style, default_design=s.design_theme,
         ))
     return out
 
@@ -49,11 +50,12 @@ def preview(
     height: int | None = Query(default=None, ge=6, le=40),
     density: LayoutDensity = "balanced", entrance: EntrancePosition = "left",
     checkouts: int = Query(default=1, ge=1, le=4), fixture_design: FixtureDesign = "mixed",
+    design_theme: StoreDesign | None = None,
 ) -> dict[str, Any]:
     if get_template(template_id) is None:
         raise HTTPException(404, f"unknown template: {template_id}")
     options = LayoutOptions(style=style, width=width, height=height, density=density,
-                            entrance=entrance, checkouts=checkouts, fixture_design=fixture_design)
+                            entrance=entrance, checkouts=checkouts, fixture_design=fixture_design, design_theme=design_theme)
     return generate_store(template_id, seed=seed, currency=currency, options=options).model_dump(mode="json")
 
 

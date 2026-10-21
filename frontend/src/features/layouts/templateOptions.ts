@@ -9,7 +9,7 @@ export interface TemplateChoice extends LayoutOptions {
 
 export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {
   templateId: "urban_cvs", seed: 0, currency: "USD", style: null,
-  density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed",
+  density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed", design_theme: null,
 };
 
 export const LAYOUT_STYLES = [
@@ -28,7 +28,7 @@ export function templateRequest(value: TemplateChoice): GenerateLayoutRequest {
   return {
     template_id: value.templateId, seed: value.seed, currency: value.currency, style: value.style,
     width: value.width, height: value.height, density: value.density, entrance: value.entrance,
-    checkouts: value.checkouts, fixture_design: value.fixture_design, requirements: value.requirements,
+    checkouts: value.checkouts, fixture_design: value.fixture_design, design_theme: value.design_theme, requirements: value.requirements,
   };
 }
 

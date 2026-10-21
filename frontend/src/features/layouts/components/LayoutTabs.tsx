@@ -4,6 +4,7 @@
 // blocks both the tabs and the Add button together.
 
 import { Plus } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import { cn } from "@/shared/utils/cn";
 
@@ -18,6 +19,10 @@ export interface LayoutTabsProps {
 }
 
 export function LayoutTabs({ layouts, selectedId, onSelect, onAddNew, disabled = false }: LayoutTabsProps) {
+  const selectedTab = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    selectedTab.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [selectedId]);
   return (
     <div className="glass flex max-w-full items-center gap-1 rounded-xl border p-1 shadow-float">
       <div className="flex min-w-0 items-center gap-1 overflow-x-auto" role="tablist" aria-label="Layouts">
@@ -28,6 +33,7 @@ export function LayoutTabs({ layouts, selectedId, onSelect, onAddNew, disabled =
             key={layout.id}
             type="button"
             role="tab"
+            ref={selected ? selectedTab : undefined}
             aria-selected={selected}
             title={layout.building ? `${layout.building.name}: ${layout.building.label} (${layout.building.level}/${layout.building.floor_count} floors)` : layout.name}
             disabled={disabled}

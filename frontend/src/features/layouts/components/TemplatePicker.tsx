@@ -1,6 +1,7 @@
 import { cloneElement, useId, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import type { Store } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
@@ -11,7 +12,11 @@ const RACK_COLORS: Record<string, string> = {
 };
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
 
-export function TemplatePicker({ value, onChange }: { value: TemplateChoice; onChange: (v: TemplateChoice) => void }) {
+export function TemplatePicker({ value, onChange, onTemplateSelected }: {
+  value: TemplateChoice;
+  onChange: (v: TemplateChoice) => void;
+  onTemplateSelected?: (template: api.StoreTemplate) => void;
+}) {
   const [search, setSearch] = useState("");
   const [storeType, setStoreType] = useState("");
   const templatesQuery = useQuery({
@@ -47,7 +52,7 @@ export function TemplatePicker({ value, onChange }: { value: TemplateChoice; onC
       <div className="grid max-h-48 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2" aria-label="Store formats">
         {filtered.map((t) => (
           <button key={t.id} type="button" aria-pressed={value.templateId === t.id}
-            onClick={() => update({ templateId: t.id })}
+            onClick={() => { update({ templateId: t.id }); onTemplateSelected?.(t); }}
             className={cn("rounded-md border p-2 text-left text-xs transition-colors", value.templateId === t.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
             <div className="font-medium">{t.name}</div>
             <div className="text-muted-foreground">{t.grid[0]}×{t.grid[1]} · {t.racks} displays · {t.skus} products by default</div>
@@ -86,6 +91,10 @@ export function TemplatePicker({ value, onChange }: { value: TemplateChoice; onC
               <Field label="Checkout counters"><select className={controlClass} value={value.checkouts ?? 1} onChange={(e) => update({ checkouts: Number(e.target.value) })}>
                 {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
               </select></Field>
+              <Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
+                <option value="">Format default{selected ? ` (${INTERIOR_DESIGNS[selected.default_design]?.label ?? "Classic retail"})` : ""}</option>
+                {Object.entries(INTERIOR_DESIGNS).map(([id, palette]) => <option key={id} value={id}>{palette.label}</option>)}
+              </select></Field>
               <Field label="Shelf design"><select className={controlClass} value={value.fixture_design ?? "mixed"} onChange={(e) => update({ fixture_design: e.target.value as TemplateChoice["fixture_design"] })}>
                 <option value="mixed">Mixed displays</option><option value="a">Open rack A</option><option value="b">Open rack B</option><option value="c">Wall-end rack C</option>
               </select></Field>
@@ -95,7 +104,7 @@ export function TemplatePicker({ value, onChange }: { value: TemplateChoice; onC
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ seed: value.seed + 1 })}>Shuffle assortment (#{value.seed})</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed", seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", entrance: "left", checkouts: 1, fixture_design: "mixed", design_theme: null, seed: 0 })}>Reset layout options</button>
             </div>
           </div>
         </div>
@@ -113,7 +122,8 @@ function Field({ label, children }: { label: string; children: ReactElement<{ id
 
 function FloorPlan({ store }: { store: Store }) {
   const [w, h] = store.grid_size;
-  return <svg viewBox={`-0.2 -0.2 ${w + 0.4} ${h + 0.4}`} className="max-h-48 w-full rounded border bg-[#f4f1ea]" role="img" aria-label="Floor plan preview">
+  const palette = INTERIOR_DESIGNS[store.design_theme ?? "classic"];
+  return <svg viewBox={`-0.2 -0.2 ${w + 0.4} ${h + 0.4}`} className="max-h-48 w-full rounded border" style={{ backgroundColor: palette.floor }} role="img" aria-label="Floor plan preview">
     <rect x={0} y={0} width={w} height={h} fill="none" stroke="#94a3b8" strokeWidth={0.12} />
     {store.racks.map((r) => <rect key={r.id} x={r.position[0] + 0.08} y={r.position[1] + 0.08} width={0.84} height={0.84} rx={0.12} fill={RACK_COLORS[r.type] ?? "#cbd5e1"}>
       <title>{r.rack_name || r.type}</title>

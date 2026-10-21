@@ -116,7 +116,7 @@ async def create_store(
     meta: str = Form(..., description="JSON-encoded CreateStoreRequest"),
     supplemental: UploadFile | None = File(None, description="Optional supplemental data (csv/xlsx, ≤10MB)"),
 ) -> dict[str, Any]:
-    """Wizard endpoint. No image; persona generation kicks off after empty-setup creation."""
+    """Wizard endpoint. Optional template layout; persona generation starts after setup creation."""
     try:
         meta_dict = json.loads(meta)
     except json.JSONDecodeError as exc:
@@ -138,14 +138,18 @@ async def create_store(
         if len(supplemental_bytes) > SUPPLEMENTAL_MAX_BYTES:
             raise HTTPException(413, "Supplemental file is too large (max 10MB).")
 
-    return project_service.create_project_without_layout(
-        config=get_config(),
-        name=req.name.strip(),
-        description=req.description,
-        store_type=req.store_type.strip(),
-        address=req.address.strip(),
-        customer_profile=req.customer_profile.strip(),
-        weekly_schedule=req.weekly_schedule,
-        supplemental_bytes=supplemental_bytes,
-        supplemental_filename=(supplemental.filename or "") if supplemental else "",
-    )
+    try:
+        return project_service.create_project_without_layout(
+            config=get_config(),
+            name=req.name.strip(),
+            description=req.description,
+            store_type=req.store_type.strip(),
+            address=req.address.strip(),
+            customer_profile=req.customer_profile.strip(),
+            weekly_schedule=req.weekly_schedule,
+            supplemental_bytes=supplemental_bytes,
+            supplemental_filename=(supplemental.filename or "") if supplemental else "",
+            layout=req.layout,
+        )
+    except AppError as exc:
+        raise HTTPException(exc.status_code, str(exc)) from exc

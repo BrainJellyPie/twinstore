@@ -119,6 +119,11 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 
 ### Generate a store layout
 
+The **New store** wizard can start with a furnished template or an empty layout.
+The initial layout uses your store name, type and opening hours, and is ready to
+edit as soon as the project is created. Persona generation follows the existing
+wizard flow; choosing a template does not make an LLM layout-generation call.
+
 In a project, choose **New layout → Generate a store from a template**. Search 28
 formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants,
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
@@ -127,7 +132,10 @@ Each format includes its own generic product assortment.
 Combine six patterns (parallel aisles, racetrack, central spine, free-flow islands,
 open-center perimeter and showroom groups) with a custom grid up to 40×40 cells,
 three display densities, left/center/right entry, one to four checkouts and shelf
-variants. The preview uses the same options as the saved layout. Shuffle changes
+variants. Six saved interior palettes—classic retail, warm wood, minimal white,
+industrial graphite, botanical sage and charcoal/brass—change walls, shelving,
+counters and floor tint in Realistic view and Photo mode. Formats choose a suitable
+default palette; each building floor can use a different one. The preview uses the same options as the saved layout. Shuffle changes
 the assortment reproducibly; reset restores the format's layout defaults.
 Additional design briefs are saved as editable notes, not interpreted as commands.
 
@@ -402,6 +410,11 @@ with procedural fallbacks. Authors, source URLs and checksums are in
 [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 High also uses [ambientCG Plaster 001](https://ambientcg.com/a/Plaster001), licensed CC0,
 with consistent texture scale across wall lengths, corners and rotated sections.
+Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
+avatars under MIT: textured faces and clothing, normal maps, alpha-tested hair, and
+retargeted idle/walking animations. They pause with playback and keep adult proportions
+when highlighted. Sources and conversion instructions are in
+[`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
 for photographic indoor lighting and reflections; attribution and file provenance are in
 [`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).
