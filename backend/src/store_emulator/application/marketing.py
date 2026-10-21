@@ -51,7 +51,14 @@ from store_emulator.engine.marketing import (
     survey_panel,
     van_westendorp,
 )
-from store_emulator.engine.marketing.report import ReportNarrative, report_html, report_markdown, survey_report_html, write_narrative
+from store_emulator.engine.marketing.report import (
+    ReportNarrative,
+    report_html,
+    report_markdown,
+    shelf_report_html,
+    survey_report_html,
+    write_narrative,
+)
 from store_emulator.engine.marketing.shelf_test import compare_shelves, pick_shares, shelf_panel
 from store_emulator.engine.perception.shelf_render import render_face
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
@@ -571,3 +578,10 @@ def shelf_test_image(pid: str, tid: str, arm: Literal["control", "test"]) -> byt
     if not path.exists():
         raise AppError("This shelf test has no saved image; tests created before image snapshots cannot reproduce the original shelf.", 404)
     return path.read_bytes()
+
+
+def shelf_test_report(pid: str, tid: str) -> str:
+    view = get_shelf_test(pid, tid)
+    if view.report is None:
+        raise AppError("the shelf test has no results yet", 409)
+    return shelf_report_html(view.report, shelf_test_image(pid, tid, "control"), shelf_test_image(pid, tid, "test"))

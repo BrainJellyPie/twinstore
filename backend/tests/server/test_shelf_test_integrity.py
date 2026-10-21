@@ -109,6 +109,9 @@ def test_completed_shelf_images_survive_source_layout_changes(client, change):
         image = client.get(f"{url}/{arm}.png")
         assert image.status_code == 200
         assert image.content == original
+    report = client.get(f"{url}/report.html")
+    assert report.status_code == 200
+    assert "data:image/png;base64," in report.text
 
 
 @pytest.mark.parametrize("invalid", ["target", "face"])

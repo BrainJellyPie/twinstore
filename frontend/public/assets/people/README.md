@@ -8,7 +8,9 @@ the pinned source revision and SHA-256 records in `sources.json`.
 - `male-01.glb`: Male_Adult_01, 7,440 triangles.
 - `female-14.glb`: Female_Adult_14, cardigan and boots.
 - `male-14.glb`: Male_Adult_14, shirt and trousers.
-- Each includes `idle` and `walk` clips. Independent skeletons and motion phases animate each shopper. Authored metric heights are preserved.
+- Each includes captured `idle`, `walk`, and `browse` clips. Browsing shoppers
+  turn their head and shoulders to look around the shelf. Independent skeletons
+  and motion phases animate each shopper. Authored metric heights are preserved.
 - Textures are resized to 1024 px: JPEG for opaque color, PNG for normal maps
   and hair alpha. Skin and cloth retain different roughness values.
 - The original FBX skeletons use different rest poses for each motion. Bone
