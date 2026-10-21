@@ -42,7 +42,7 @@ from store_emulator.engine.marketing import (
     survey_panel,
     van_westendorp,
 )
-from store_emulator.engine.marketing.report import ReportNarrative, report_html, report_markdown, write_narrative
+from store_emulator.engine.marketing.report import ReportNarrative, report_html, report_markdown, survey_report_html, write_narrative
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.prompting import display_price
@@ -386,6 +386,14 @@ def get_survey(pid: str, sid: str) -> SurveyView:
     return SurveyView(**status.model_dump(), report=report)
 
 
+def survey_report(pid: str, sid: str) -> str:
+    view = get_survey(pid, sid)
+    if view.report is None:
+        raise AppError("the concept test has no answers yet", 409)
+    board = _job_dir(pid, "survey", sid) / "board.jpg"
+    return survey_report_html(view.report, board.read_bytes() if board.exists() else None)
+
+
 def survey_board_path(pid: str, sid: str) -> Path:
     path = _job_dir(pid, "survey", sid) / "board.jpg"
     if not path.exists():
@@ -420,7 +428,7 @@ def survey_csv(pid: str, sid: str) -> str:
                 vals = cast(list[int], getattr(a, q))
                 row += [vals[i] if i < len(vals) else "" for i in range(k)]
         if "price_vw" in r.questions:
-            row += [a.too_cheap or "", a.cheap or "", a.expensive or "", a.too_expensive or ""]
+            row += [value if value is not None else "" for value in (a.too_cheap, a.cheap, a.expensive, a.too_expensive)]
         if "preference" in r.questions:
             row.append(LETTERS[a.preferred] if a.preferred is not None else "")
         if "open" in r.questions:
