@@ -201,7 +201,7 @@ class SimulationConfig(BaseModel):
     route_ordering: RouteOrdering = "planned"
     perception: PerceptionConfig = PerceptionConfig()
     # Impulse buys are dropped (latest first) once spend exceeds budget_max × tolerance. None disables.
-    budget_tolerance: float | None = 1.5
+    budget_tolerance: float | None = Field(default=1.5, ge=0, allow_inf_nan=False)
     # Scales every behavior pattern's product cap (max_products). The presets are sized for convenience
     # stores; supermarket trips are larger. Calibrated from POS lines per trip (see engine.calibration).
     basket_scale: float = Field(default=1.0, ge=0.1, le=10.0)
