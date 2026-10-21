@@ -7,6 +7,7 @@ citing the steps it refers to — so "why didn't you buy the green tea?" is answ
 shopper actually saw and did, and "I didn't notice it" is a valid answer.
 """
 
+import re
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Protocol
@@ -14,7 +15,12 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.domain.customer import CustomerResult
-from store_emulator.domain.interview import InterviewMessage, Journey, JourneyStep, ShelfItem
+from store_emulator.domain.interview import (
+    InterviewMessage,
+    Journey,
+    JourneyStep,
+    ShelfItem,
+)
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, stable_seed
@@ -96,26 +102,28 @@ class ShopperReply(BaseModel):
     steps: list[int] = Field(default_factory=list[int], max_length=12)
 
 
-def trip_text(journey: Journey, store: Store) -> str:
+def trip_text(journey: Journey, store: Store, *, observer: bool = False) -> str:
+    """The trip as the shopper remembers it ("you"), or as a researcher reads it (`observer`, "they")."""
     p = journey.persona
     cur = journey.currency
     racks = {r.id: r for r in store.racks}
+    you, your = ("they", "their") if observer else ("you", "your")
     budget = f"{display_price(p.budget_min, cur)}–{display_price(p.budget_max, cur)}" if p.budget_max else "not fixed"
     lines = [
-        f"Who you are: {p.identity}, {p.age_group}, {p.gender}. {p.description}",
-        f"Why you came: {p.purpose or p.intent}. Budget for this trip: {budget}.",
+        f"{'The shopper' if observer else 'Who you are'}: {p.identity}, {p.age_group}, {p.gender}. {p.description}",
+        f"Why {you} came: {p.purpose or p.intent}. Budget for this trip: {budget}.",
         f"Habits: {p.behavior_tendency}" if p.behavior_tendency else "",
-        f"Products you usually buy: {', '.join(p.usual_products[:8])}." if p.usual_products else "",
-        f"Your trip ({journey.arrival_time} to {journey.leave_time}):",
+        f"Products {you} usually buy: {', '.join(p.usual_products[:8])}." if p.usual_products else "",
+        f"{your.capitalize()} trip ({journey.arrival_time} to {journey.leave_time}):",
     ]
     for s in journey.steps:
         where = f" at {s.rack}{f' ({s.face} side)' if s.face else ''}" if s.rack else ""
         what = f" {s.product_name} ×{s.quantity} for {display_price(s.price, cur)} ({s.origin})" if s.product_name else ""
         thought = f' — thinking: "{s.thought}"' if s.thought else ""
         lines.append(f"[{s.index}] {s.time} {s.action.value}{where}{what}{thought}")
-    lines.append(f"You spent {display_price(journey.total_spent, cur)} on {journey.units} item(s).")
+    lines.append(f"{you.capitalize()} spent {display_price(journey.total_spent, cur)} on {journey.units} item(s).")
     if journey.shelves:
-        lines.append("Shelves you stopped at:")
+        lines.append(f"Shelves {you} stopped at:")
         for rid, items in journey.shelves.items():
             name = racks[rid].rack_name if rid in racks else rid
             listed = "; ".join(
@@ -133,12 +141,56 @@ async def ask_shopper(
 ) -> ShopperReply:
     convo = "\n".join(f"{'Researcher' if m.role == 'interviewer' else 'You'}: {m.text}" for m in history[-12:])
     user = f"{trip_text(journey, store)}\n\n{('Conversation so far:\n' + convo + '\n\n') if convo else ''}Researcher: {question}"
-    reply = await llm.generate_structured_async(
-        ShopperReply, INTERVIEW_PROMPT, user, max_retries=1,
+    reply = await llm.generate_structured_async(  # a second retry: models now and then put the answer outside the JSON
+        ShopperReply, INTERVIEW_PROMPT, user, max_retries=2,
         seed=stable_seed("interview", journey.run_id, journey.persona.id, len(history)),
     )
     valid = {s.index for s in journey.steps}
     return reply.model_copy(update={"answer": reply.answer.strip(), "steps": [s for s in reply.steps if s in valid]})
+
+
+FOLLOW_UP_PROMPT = """You are an experienced qualitative market researcher interviewing a shopper right after their
+store trip. You see the shopper's profile, every step of the trip with what went through their mind, the shelves they
+stopped at and the conversation so far. Suggest the three questions you would ask next.
+
+Good questions:
+- dig into something specific: a product they bought or put back, a shelf they stopped at without buying, a price or
+  promotion they saw, a reason or feeling in their last answer, a gap between their plan and what they did;
+- name the product, shelf or price they are about, in plain words;
+- are short (at most 14 words), open, neutral and not leading: one question each, never two joined by "and";
+- do not repeat or rephrase anything already asked.
+With no conversation yet, open with the most revealing moments of the trip. Write in English."""
+
+
+class FollowUps(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    questions: list[str] = Field(min_length=1, max_length=6)
+
+
+async def suggest_follow_ups(
+    llm: StructuredLLM, journey: Journey, store: Store, history: Sequence[InterviewMessage],
+) -> list[str]:
+    """Questions a researcher would ask next, written for this trip and this conversation (deduplicated, at most
+    three, none already asked)."""
+    convo = "\n".join(f"{'Researcher' if m.role == 'interviewer' else 'Shopper'}: {m.text}" for m in history[-12:])
+    user = f"{trip_text(journey, store, observer=True)}\n\n{'Conversation so far:' + chr(10) + convo if convo else 'No questions asked yet.'}"
+    ideas = await llm.generate_structured_async(
+        FollowUps, FOLLOW_UP_PROMPT, user, max_retries=1,
+        seed=stable_seed("follow-ups", journey.run_id, journey.persona.id, len(history)),
+    )
+    asked = {_norm(m.text) for m in history if m.role == "interviewer"}
+    out: list[str] = []
+    for q in ideas.questions:
+        q = " ".join(q.split()).strip(" -•\"'")
+        if not q or len(q) > 200 or _norm(q) in asked or _norm(q) in {_norm(o) for o in out}:
+            continue
+        out.append(q if q.endswith("?") else f"{q}?")
+    return out[:3]
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"[^a-z0-9 ]", "", text.casefold()).strip()
 
 
 THEMES_PROMPT = """You code open-ended answers from shopper interviews into themes, as a qualitative researcher would.

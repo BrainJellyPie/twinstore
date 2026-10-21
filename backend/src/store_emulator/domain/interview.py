@@ -64,6 +64,16 @@ class Interview(BaseModel):
     persona_id: str
     model: str = ""
     messages: list[InterviewMessage] = []
+    # Model-written questions a researcher could ask next, and the number of messages they were written after
+    # (stale once the conversation has moved on; -1 = none yet).
+    suggestions: list[str] = []
+    suggested_after: int = -1
+
+
+class SuggestionRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    model: str = Field(default="", description='model reference; "" = the app text model')
 
 
 class InterviewQuestion(BaseModel):

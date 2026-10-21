@@ -3,10 +3,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, RotateCcw, Send } from "lucide-react";
+import { Loader2, RotateCcw, Send, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { askShopper, clearInterview, getInterview, interviewKeys, type Journey } from "@/shared/api/interview";
+import { askShopper, clearInterview, getInterview, interviewKeys, suggestQuestions, type Journey } from "@/shared/api/interview";
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
@@ -45,6 +45,19 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
   const busy = ask.isPending || reset.isPending;
   const messages = transcript.data?.messages ?? [];
   const first = journey.persona.identity.split(/[,(]/)[0]?.trim() || "the shopper";
+  // Next questions written by the model for this trip and this conversation; stored ones are reused until the
+  // conversation moves on. Without a model (or on error) the trip-based templates stay.
+  const stored = transcript.data?.suggested_after === messages.length ? transcript.data.suggestions ?? [] : [];
+  const ideas = useQuery({
+    queryKey: interviewKeys.suggestions(projectId, runId, sid, messages.length, model),
+    queryFn: ({ signal }) => suggestQuestions(projectId, runId, sid, model, signal),
+    enabled: transcript.isSuccess && !stored.length && !busy,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const written = stored.length ? stored
+    : ideas.data?.suggested_after === messages.length ? ideas.data.suggestions ?? [] : [];
+  const chips = written.length ? written : messages.length === 0 || ideas.isError ? suggestedQuestions(journey) : [];
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "nearest" });
@@ -90,13 +103,23 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
         {reset.error && <p role="alert" className="text-[0.75rem] text-destructive">{reset.error.message}</p>}
         <div ref={end} />
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {suggestedQuestions(journey).map((q) => (
+      {written.length > 0 && (
+        <p className="flex items-center gap-1 text-[0.7rem] text-muted-foreground" aria-label="Written for this trip">
+          <Sparkles className="size-3 text-primary/80" /> Follow-ups for this trip
+        </p>
+      )}
+      <div className="-mt-0.5 flex flex-wrap items-center gap-1.5" aria-label="Suggested questions">
+        {chips.map((q) => (
           <button key={q} type="button" onClick={() => send(q)} disabled={busy}
             className="rounded-full border px-2.5 py-1 text-left text-[0.72rem] text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground disabled:opacity-50">
             {q}
           </button>
         ))}
+        {!written.length && ideas.isFetching && messages.length > 0 && (
+          <span className="inline-flex items-center gap-1 text-[0.72rem] text-muted-foreground">
+            <Loader2 className="size-3 animate-spin" /> Thinking of follow-ups…
+          </span>
+        )}
       </div>
       <form className="flex items-end gap-1.5" onSubmit={(e) => { e.preventDefault(); send(text); }}>
         <textarea

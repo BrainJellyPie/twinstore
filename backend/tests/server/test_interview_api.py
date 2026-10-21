@@ -112,7 +112,7 @@ def test_model_errors_are_reported(client, monkeypatch):
     from store_emulator.application import interview
     monkeypatch.setattr(interview, "build_client", lambda *a, **k: _Broken())
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview", json={"question": "Hello?"})
-    assert r.status_code == 502 and "TimeoutError" in r.json()["detail"]
+    assert r.status_code == 502 and r.json()["detail"] == "The shopper could not answer: the model took too long to reply. Try again."
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview").json()["messages"] == []
 
 
@@ -148,3 +148,58 @@ def test_group_interview_codes_themes(client, monkeypatch):
     picked = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews", json={"question": "Hi?", "persona_ids": ["NOBODY"]})
     assert picked.status_code == 404
     assert client.delete(f"/api/projects/{PID}/runs/{RUN}/group-interviews/{g['group_id']}").status_code == 204
+
+
+class _Ideas:
+    def __init__(self, questions: list[str]) -> None:
+        self.questions = questions
+        self.calls: list[str] = []
+
+    async def generate_structured_async[T: BaseModel](
+        self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+    ) -> T:
+        self.calls.append(user_prompt)
+        if response_model.__name__ == "FollowUps":
+            return response_model.model_validate({"questions": self.questions})
+        return response_model.model_validate({"answer": "The nuts were on offer.", "steps": [2]})
+
+
+def test_follow_up_questions_are_written_for_the_trip_and_kept_until_the_conversation_moves(client, monkeypatch):
+    from store_emulator.application import interview
+    sid = _shopper(client)
+    url = f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview"
+    fake = _Ideas(["What drew you to the nuts", "What drew you to the nuts?", "  ", "Did the price tag matter?",
+                   "Would you buy them again?", "One more?"])
+    monkeypatch.setattr(interview, "build_client", lambda *a, **k: fake)
+    r = client.post(f"{url}/suggestions", json={})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    # Duplicates and blanks dropped, a question mark added, three at most; written in the observer's voice.
+    assert body["suggestions"] == ["What drew you to the nuts?", "Did the price tag matter?", "Would you buy them again?"]
+    assert body["suggested_after"] == 0 and body["messages"] == []
+    assert "The shopper:" in fake.calls[0] and "Their trip" in fake.calls[0] and "No questions asked yet." in fake.calls[0]
+    # Stored: asking again for the same conversation costs no model call.
+    assert client.post(f"{url}/suggestions", json={}).json()["suggestions"] == body["suggestions"] and len(fake.calls) == 1
+    assert client.get(url).json()["suggested_after"] == 0
+    # A new turn makes them stale; the next suggestions see the conversation and skip what was already asked.
+    fake.questions = ["Did the price tag matter?", "Was the offer the reason?"]
+    turn = client.post(url, json={"question": "Did the price tag matter?"}).json()
+    assert len(turn["messages"]) == 2 and turn["suggested_after"] == 0
+    after = client.post(f"{url}/suggestions", json={}).json()
+    assert after["suggestions"] == ["Was the offer the reason?"] and after["suggested_after"] == 2
+    assert "Researcher: Did the price tag matter?" in fake.calls[-1] and "Shopper: The nuts were on offer." in fake.calls[-1]
+
+
+def test_follow_up_failure_is_a_502_and_saves_nothing(client, monkeypatch):
+    from store_emulator.application import interview
+
+    class _Broken:
+        async def generate_structured_async(self, *a, **k):
+            raise RuntimeError("provider down")
+
+    sid = _shopper(client)
+    monkeypatch.setattr(interview, "build_client", lambda *a, **k: _Broken())
+    url = f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview"
+    r = client.post(f"{url}/suggestions", json={})
+    assert r.status_code == 502 and "provider down" in r.text
+    assert client.get(url).json()["suggested_after"] == -1

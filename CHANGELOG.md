@@ -10,6 +10,13 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Vision shoppers now say what they came for: the model's own mission and reason become the first step of each
   journey and the speech bubble at the door ("a cold soda and something salty (thirsty)"); a shopper who turns
   away says why ("turns away: queue").
+- Interviews suggest follow-up questions written by the model for this trip and this conversation (the product
+  they put back, the shelf they skipped, something in the last answer), refreshed after every answer and reused
+  until the conversation moves on. Without a working model the trip-based questions stay.
+  API: `POST .../shoppers/{id}/interview/suggestions`.
+- Failed model calls in interviews say what to do ("the provider rejected the API key…", "the model's reply was
+  not in the expected form. Try again, or pick another model.") instead of a raw provider error, and a shopper's
+  answer gets one more retry when the model puts it outside the expected JSON.
 
 ### Conjoint studies
 - New **Conjoint** tab in the Market page: a choice-based conjoint on the project's personas. Define a product's

@@ -60,3 +60,24 @@ class AppError(Exception):
             self.message = message
             self.details = details if details is not None else {}
         super().__init__(self.message)
+
+
+_MODEL_FAILURES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("authenticationerror", "api key not valid", "invalid api key", "incorrect api key", "invalid x-api-key"),
+     "the provider rejected the API key. Check it in Settings → Model providers, or pick another model."),
+    (("ratelimiterror", "rate limit", "too many requests"),
+     "the provider is limiting requests right now. Wait a moment and try again."),
+    (("timeout", "timed out"), "the model took too long to reply. Try again."),
+    (("notfounderror", "model not found", "does not exist"), "the provider does not offer this model. Pick another one."),
+    (("validation error", "instructorretryexception", "jsondecodeerror"),
+     "the model's reply was not in the expected form. Try again, or pick another model."),
+)
+
+
+def model_failure(error: BaseException, what: str) -> str:
+    """A failed model call in words a user can act on; the raw error belongs in the server log."""
+    text = f"{type(error).__name__}: {error}".casefold()
+    for needles, hint in _MODEL_FAILURES:
+        if any(n in text for n in needles):
+            return f"{what}: {hint}"
+    return f"{what} ({type(error).__name__}): {str(error)[:200]}"
