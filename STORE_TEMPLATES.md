@@ -24,6 +24,11 @@ for each layout or building floor. Blank hours and **Use format operating hours*
 format defaults, including its regular days off. Set 0–24 for all-day opening, keep at least
 one weekday open, and use a closing hour later than opening; overnight schedules are not supported.
 These settings are saved, reused and included in exported layout and building options files.
+In a building, **Apply operating hours to all floors** copies the current floor's effective
+opening, closing and closed weekdays to every floor, including resolved format defaults.
+The preview beside the button shows the hours and number of open days before applying.
+Hours that do not resolve to a valid schedule cannot be shared. Each floor can then be adjusted independently;
+**Use format operating hours** restores only the current floor's own defaults.
 
 **Apply a layout priority** combines common requirements: **Wide circulation** uses cross aisles,
 3-cell gaps, short shelf runs and more room around tables; **More display space** uses dense parallel

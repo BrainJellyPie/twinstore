@@ -1,4 +1,4 @@
-import type { GenerateLayoutRequest, LayoutOptions } from "@/shared/api/client";
+import type { GenerateLayoutRequest, LayoutOptions, StoreTemplate } from "@/shared/api/client";
 import type { Layout } from "./hooks/useLayouts";
 
 export interface TemplateChoice extends LayoutOptions {
@@ -7,6 +7,25 @@ export interface TemplateChoice extends LayoutOptions {
   seed: number;
   currency: string;
   requirements?: string;
+}
+
+export interface OperatingHours {
+  open_hour: number;
+  close_hour: number;
+  closed_days: number[];
+}
+
+export function resolveOperatingHours(value: Pick<LayoutOptions, "open_hour" | "close_hour" | "closed_days">,
+  template: Pick<StoreTemplate, "open_hours" | "closed_days"> | undefined): OperatingHours | null {
+  if (!template) return null;
+  const open_hour = value.open_hour ?? template.open_hours[0];
+  const close_hour = value.close_hour ?? template.open_hours[1];
+  const closed_days = value.closed_days ?? template.closed_days ?? [];
+  if (!Number.isInteger(open_hour) || open_hour < 0 || open_hour > 23 ||
+    !Number.isInteger(close_hour) || close_hour < 1 || close_hour > 24 || open_hour >= close_hour ||
+    closed_days.length >= 7 || new Set(closed_days).size !== closed_days.length ||
+    closed_days.some((day) => !Number.isInteger(day) || day < 1 || day > 7)) return null;
+  return { open_hour, close_hour, closed_days: [...closed_days].sort((a, b) => a - b) };
 }
 
 export const DEFAULT_TEMPLATE_CHOICE: TemplateChoice = {

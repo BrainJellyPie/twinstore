@@ -99,6 +99,11 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
         onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))}
         onApplyDesignToAll={(design_theme) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, design_theme } })))}
         onApplyCurrencyToAll={(currency) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, currency } })))}
+        onApplyHoursToAll={(hours) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, ...hours, closed_days: [...hours.closed_days] } })))}
+        sharedHours={floor.choice.open_hour != null && floor.choice.close_hour != null && floor.choice.closed_days != null &&
+          floors.every((f) => f.choice.open_hour === floor.choice.open_hour && f.choice.close_hour === floor.choice.close_hour &&
+            f.choice.closed_days?.length === floor.choice.closed_days?.length &&
+            f.choice.closed_days?.every((day) => floor.choice.closed_days?.includes(day)))}
         sharedDesign={floors.every((f) => f.choice.design_theme === floor.choice.design_theme) ? floor.choice.design_theme ?? undefined : undefined}
         sharedCurrency={floors.every((f) => f.choice.currency === floor.choice.currency) ? floor.choice.currency : undefined} />
     </>}
