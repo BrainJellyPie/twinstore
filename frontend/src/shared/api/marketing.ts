@@ -63,6 +63,7 @@ export interface SkuSales { sku: string; name: string; units: number; revenue: n
 
 export interface VariantResult {
   name: string;
+  customers?: number | null;
   applied: string[];
   warnings: string[];
   revenue_per_visitor: number;
