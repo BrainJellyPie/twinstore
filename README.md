@@ -370,6 +370,14 @@ For longer moves, choose **Move to a cell** and click the new top-left position
 on the grid. Occupied or out-of-bounds targets leave the fixture in place so you
 can pick another location; **Cancel placement** or Escape cancels the move.
 
+The 3D view fits the floor to the available screen when it opens or resizes,
+including large 40×40 stores on a small screen. **Fit store view** restores the
+whole-floor view after panning or zooming in Classic and Realistic modes.
+Returning from shopper view or Photo preserves the previous framing; fitting
+is available again after leaving those views.
+On phones, the store view sits above the results and settings panel; scroll down
+to reach the panel without squeezing the floor into a narrow side column.
+
 Choose **Multi-floor store** to create 2–6 linked layouts in one operation. Start
 with a department store, shop with upstairs café, pharmacy/wellness building or
 restaurant/café, then select each floor to change its format and options. Floor

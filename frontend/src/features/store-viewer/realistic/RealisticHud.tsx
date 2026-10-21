@@ -1,4 +1,4 @@
-import { Aperture, ChevronLeft, ChevronRight, Download, Eye, Loader2, X } from "lucide-react";
+import { Aperture, ChevronLeft, ChevronRight, Download, Eye, Loader2, Scan, X } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { useSimulationStore, type GraphicsMode } from "@/stores/simulationStore";
@@ -11,11 +11,13 @@ interface Props {
   // Outside playback the TimeBar (which carries the Classic/Realistic switch) is
   // hidden, so the HUD offers it instead.
   showModeSwitch: boolean;
+  shopperViewActive: boolean;
+  onFitStore: () => void;
 }
 
 // Small overlay in the canvas' bottom-right corner: render quality, and the
 // shopper picker while the shopper view is on.
-export function RealisticHud({ personaNames, showModeSwitch }: Props) {
+export function RealisticHud({ personaNames, showModeSwitch, shopperViewActive, onFitStore }: Props) {
   const graphicsMode = useSimulationStore((s) => s.graphicsMode);
   const setGraphicsMode = useSimulationStore((s) => s.setGraphicsMode);
   const shopperView = useSimulationStore((s) => s.shopperView);
@@ -28,7 +30,6 @@ export function RealisticHud({ personaNames, showModeSwitch }: Props) {
 
   const photo = usePhotoMode();
   const realistic = graphicsMode === "realistic";
-  if (!realistic && !showModeSwitch) return null;
 
   const current = followPersonaId && ids.includes(followPersonaId) ? followPersonaId : (ids[0] ?? null);
   const idx = current ? ids.indexOf(current) : -1;
@@ -39,7 +40,7 @@ export function RealisticHud({ personaNames, showModeSwitch }: Props) {
   };
 
   return (
-    <div className="pointer-events-auto absolute right-4 bottom-4 z-10 flex flex-col items-end gap-2">
+    <div className="pointer-events-none absolute right-4 bottom-4 left-4 z-10 flex flex-col items-end gap-2 [&>*]:pointer-events-auto">
       {realistic && !ready && (
         <div className="glass flex items-center gap-2 rounded-xl px-3 py-1.5 text-[0.8rem] text-muted-foreground" role="status">
           <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -61,7 +62,10 @@ export function RealisticHud({ personaNames, showModeSwitch }: Props) {
           </Button>
         </div>
       )}
-      <div className="flex items-center gap-2 glass rounded-xl px-2 py-1.5 text-foreground">
+      <Button variant="outline" size="sm" className="glass gap-1.5" disabled={shopperViewActive || photo.status !== "off"} onClick={onFitStore}>
+        <Scan className="size-3.5" aria-hidden /> Fit store view
+      </Button>
+      {(realistic || showModeSwitch) && <div className="flex flex-wrap justify-end items-center gap-2 glass rounded-xl px-2 py-1.5 text-foreground">
         {showModeSwitch && (
           <ToggleGroup
             type="single"
@@ -105,7 +109,7 @@ export function RealisticHud({ personaNames, showModeSwitch }: Props) {
             </Button>
           </>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

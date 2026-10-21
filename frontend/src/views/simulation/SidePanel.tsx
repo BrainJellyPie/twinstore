@@ -64,7 +64,7 @@ export function SidePanel({
   runStatus,
 }: SidePanelProps) {
   return (
-    <aside className="panel m-3 flex w-[24rem] shrink-0 flex-col overflow-y-auto rounded-[1.6rem]">
+    <aside className="panel m-3 flex w-auto min-w-0 shrink-0 flex-col overflow-y-auto rounded-[1.6rem] md:w-[24rem]">
       <Tabs value={activeTab === "shoppers" && mode !== "playback" ? "dashboard" : activeTab} onValueChange={(v) => setActiveTab(v as DashboardTab)} className="gap-0">
         <div className="sticky top-0 z-10 border-b border-glass-border bg-[var(--glass-strong)] px-3 pt-3 pb-2.5 backdrop-blur-xl">
           <TabsList className="h-11 w-full rounded-xl">
