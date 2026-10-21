@@ -719,6 +719,7 @@ rebuild instructions are in [`frontend/public/assets/products/`](./frontend/publ
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: eight appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
+separate face/body normal-map strengths for soft skin and clearer fabric detail,
 alpha-tested hair, authored eyelid blinks and small gaze shifts, and retargeted breathing, varied standing, walking and browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
 [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
