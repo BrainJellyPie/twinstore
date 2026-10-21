@@ -1349,6 +1349,7 @@ export interface LayoutOptions {
   checkouts?: number | null;
   checkout_placement?: "auto" | "near_entrance" | "away_from_entrance";
   checkout_wall?: "front" | "back" | "left" | "right";
+  checkout_clearance?: number;
   fixture_design?: "mixed" | "a" | "b" | "c";
   design_theme?: StoreDesign | null;
   dining_tables?: number | null;

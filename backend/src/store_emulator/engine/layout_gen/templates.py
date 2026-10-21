@@ -571,14 +571,26 @@ def generate_store(
         counter_positions.sort(key=lambda p: abs(p[0] - entrance_x) + abs(p[1] - entrance_y))
     elif checkout_placement == "away_from_entrance":
         counter_positions.sort(key=lambda p: -(abs(p[0] - entrance_x) + abs(p[1] - entrance_y)))
+    if options.checkout_clearance:
+        spaced_positions: list[tuple[int, int]] = []
+        for x, y in counter_positions:
+            if all(abs(x - cx) + abs(y - cy) > options.checkout_clearance for cx, cy in spaced_positions):
+                spaced_positions.append((x, y))
+        counter_positions = spaced_positions
     checkout_count = min(t.checkouts, len(counter_positions)) if options.checkouts is None else options.checkouts
     if checkout_count > len(counter_positions):
+        if options.checkout_clearance:
+            raise ValueError(f"This checkout arrangement can place {len(counter_positions)} counters on the {wall} wall with {options.checkout_clearance}-cell spacing. Reduce the counter count or spacing, change placement or wall, or enlarge the floor.")
         raise ValueError(f"This {w}×{h} grid fits at most {len(counter_positions)} checkout counters on the {wall} wall with the selected gates and placement. Reduce the counter count, choose another wall or enlarge the floor.")
     counter_positions = counter_positions[:checkout_count]
     rotation = {"front": 0, "back": 180, "left": 90, "right": 270}[wall]
     face = {"front": Face.N, "back": Face.S, "left": Face.E, "right": Face.W}[wall]
     for i, (x, y) in enumerate(counter_positions):
         b.add(RackType.COUNTER, x, y, name=f"Counter {i + 1}", variant="b", rotation=rotation)
+    if options.checkout_clearance:
+        # Keep spacing open when the remaining wall displays are populated.
+        b.taken.update((x, y) for x, y in wall_positions
+                       if any(abs(x - cx) + abs(y - cy) <= options.checkout_clearance for cx, cy in counter_positions))
     stock_positions = [p for p in wall_positions if b.free(*p)]
     if wall != "front":
         stock_positions.sort(key=lambda p: min(abs(p[0] - cx) + abs(p[1] - cy) for cx, cy in counter_positions))

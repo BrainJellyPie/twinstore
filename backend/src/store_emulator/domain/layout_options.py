@@ -64,6 +64,7 @@ class LayoutOptions(BaseModel):
     exit_position: ExitPosition = "shared"
     exit_wall: GateWall | None = None
     checkouts: int | None = Field(default=None, ge=1, le=12)
+    checkout_clearance: int = Field(default=0, strict=True, ge=0, le=3)
     checkout_placement: CheckoutPlacement = "auto"
     checkout_wall: CheckoutWall = "front"
     fixture_design: FixtureDesign = "mixed"
