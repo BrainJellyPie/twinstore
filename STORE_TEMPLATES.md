@@ -215,6 +215,14 @@ Formats can supply their own seating zone, checkout placement and palette; every
 default can be adjusted before saving. Multi-floor starting points also include a
 family shopping center and a vintage shop with an upstairs tea lounge.
 
+Under **Seating starts near**, choose **Entrance** to place the first tables
+closest to the entrance, or **Farthest area** to start away from it. Both options
+follow the entrance's wall and position when you move it. They work with mixed
+table sizes, rotation, independent table gaps and reserved areas. As the table
+count grows, seating spreads into the remaining available floor. Circulation
+space is still preserved; table counts that cannot fit return an adjustment
+message. Each floor keeps its own choice in saved layouts and options files.
+
 **Neighborhood pizzeria**, **Sushi & roll shop**, **Noodle & ramen bar** and
 **Juice & smoothie bar** each have a dedicated twelve-item menu. Their defaults
 range from a compact botanical juice bar with two tables to a terracotta pizza
