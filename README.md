@@ -597,7 +597,9 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
   fallback align with ceiling lights at a consistent physical scale. Checkout tops in High use ambientCG's CC0
   Marble 012 color, roughness and normal maps, with consistent pattern scale across counter sizes and rotations.
   These maps load only when a checkout is present. High also rounds the edges of checkout hardware;
-  plastic housings and coated grilles use a nonmetallic finish. Authors, source URLs and checksums are in
+  plastic housings and coated grilles use a nonmetallic finish. Cashier, customer and card-reader displays
+  have distinct idle artwork in one shared 512 × 256 texture, retained in Photo mode. These decorative
+  screens do not show simulation orders or payment totals. Authors, source URLs and checksums are in
   [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
 - **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
   ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;

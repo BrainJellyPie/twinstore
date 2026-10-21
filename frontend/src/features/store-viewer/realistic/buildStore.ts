@@ -20,6 +20,7 @@ import { StaticBuilder, type MatKey } from "./staticBuilder";
 import { createSignAtlas, signKey, signText, type Atlas, type SignStyle } from "./canvasArt";
 import { cellUv } from "./atlasLayout";
 import { diningTableParts } from "./diningTable";
+import { checkoutDisplayUv } from "./checkoutDisplay";
 
 export interface DoorSpec {
   key: string;
@@ -539,16 +540,16 @@ function buildCounter(ctx: Ctx, plan: FixturePlan) {
   const customerFace = 0.02 / 2 + 0.001;
   b.cylinder("black", 0.025, 0.04, 0.16, -0.12, H + 0.08, -0.05, 10);
   b.box("black", 0.3, 0.21, 0.03, -0.12, H + 0.25, -0.06, posTilt);
-  b.quad("screen", 0.27, 0.18, -0.12, H + 0.25 + posFace * Math.sin(posTilt), -0.06 - posFace * Math.cos(posTilt), Math.PI, posTilt);
+  b.quad("screen", 0.27, 0.18, -0.12, H + 0.25 + posFace * Math.sin(posTilt), -0.06 - posFace * Math.cos(posTilt), Math.PI, posTilt, checkoutDisplayUv(0));
   b.box("black", 0.36, 0.1, 0.34, -0.12, H + 0.05, -0.12 + 0.02);
   b.box("black", 0.13, 0.08, 0.02, -0.12, H + 0.38, 0.0, customerTilt);
-  b.quad("screen", 0.11, 0.06, -0.12, H + 0.38 - customerFace * Math.sin(customerTilt), customerFace * Math.cos(customerTilt), 0, customerTilt);
+  b.quad("screen", 0.11, 0.06, -0.12, H + 0.38 - customerFace * Math.sin(customerTilt), customerFace * Math.cos(customerTilt), 0, customerTilt, checkoutDisplayUv(1));
   // Card terminal and receipt printer.
   const cardTilt = 0.35;
   const cardY = H + 0.02 * Math.cos(cardTilt) + 0.07 * Math.sin(cardTilt);
   const cardFace = 0.02 + 0.001;
   b.box("black", 0.08, 0.04, 0.14, 0.14, cardY, 0.14, cardTilt);
-  b.quad("screen", 0.06, 0.05, 0.14, cardY + cardFace * Math.cos(cardTilt) + 0.015 * Math.sin(cardTilt), 0.14 + cardFace * Math.sin(cardTilt) - 0.015 * Math.cos(cardTilt), 0, -Math.PI / 2 + cardTilt);
+  b.quad("screen", 0.06, 0.05, 0.14, cardY + cardFace * Math.cos(cardTilt) + 0.015 * Math.sin(cardTilt), 0.14 + cardFace * Math.sin(cardTilt) - 0.015 * Math.cos(cardTilt), 0, -Math.PI / 2 + cardTilt, checkoutDisplayUv(2));
   b.box("black", 0.12, 0.1, 0.14, 0.32, H + 0.05, -0.12);
   // Impulse rack on the customer side.
   b.span("wire", 0.24, H, 0.06, 0.44, H + 0.008, 0.26);
