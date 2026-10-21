@@ -40,9 +40,9 @@ def _lock_path(project_id: str, setup_id: str) -> Path:
     """
     if not _SAFE_ID.fullmatch(project_id) or not _SAFE_ID.fullmatch(setup_id):
         raise ValueError(f"unsafe pid/sid: {project_id}/{setup_id}")
-    lock_dir = Path(DATA_DIR) / "locks"
+    lock_dir = Path(DATA_DIR) / "locks" / project_id
     lock_dir.mkdir(parents=True, exist_ok=True)
-    return lock_dir / f"setup_{project_id}_{setup_id}.lock"
+    return lock_dir / f"setup_{setup_id}.lock"
 
 
 def get_setups(project_id: str) -> list[dict[str, Any]]:
