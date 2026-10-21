@@ -6,18 +6,20 @@ import hashlib
 import io
 import json
 import re
+import shutil
 import threading
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
-from urllib.parse import quote
+from urllib.parse import urlencode
 
 from PIL import Image, UnidentifiedImageError
 
 from store_emulator.domain.types import RESOURCE_ID_PATTERN
 
 from .io import DATA_DIR, read_json, write_json
+from .setups import metadata_path
 
 
 MAX_IMAGE_BYTES: Final[int] = 2 * 1024 * 1024  # 2MB
@@ -135,6 +137,8 @@ def save_image(
     # tmp-file collisions for the same SKU.
     with _project_lock(project_id):
         pdir = _project_dir(project_id)
+        if not metadata_path(project_id).is_file():
+            raise FileNotFoundError(f"Project not found: {project_id}")
         pdir.mkdir(parents=True, exist_ok=True)
         fname = f"{_sku_hash(sku)}.{ext}"
         target = pdir / fname
@@ -148,6 +152,14 @@ def save_image(
         _save_manifest(project_id, manifest)
 
     return ImageEntry(sku=sku, path=str(target), mime=mime, ext=ext, version=version)
+
+
+def delete_project_images(project_id: str) -> None:
+    """Finish any in-flight upload before removing a deleted project's photos."""
+    with _project_lock(project_id):
+        pdir = _project_dir(project_id)
+        if pdir.exists():
+            shutil.rmtree(pdir)
 
 
 def resolve_image(project_id: str, sku: str) -> tuple[Path, str] | None:
@@ -181,6 +193,7 @@ def image_url_for(
     if entry is None:
         return None
     version = entry.get("version", "")
-    suffix = f"?v={version}" if version else ""
-    encoded_sku = quote(sku, safe="")
-    return f"/api/projects/{project_id}/images/{encoded_sku}{suffix}"
+    query = {"sku": sku}
+    if version:
+        query["v"] = version
+    return f"/api/projects/{project_id}/images?{urlencode(query)}"
