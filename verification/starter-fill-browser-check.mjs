@@ -14,7 +14,7 @@ try {
   await page.locator(`[data-layout-id="${sid}"]`).click();
   await page.getByRole('button', { name: 'Fill empty shelves', exact: true }).click();
   assert(await page.getByLabel('Select rack stocked', { exact: true }).isDisabled());
-  await page.getByLabel('Category to apply', { exact: true }).selectOption('water_sports');
+  await page.getByRole('combobox', { name: 'Category to apply', exact: true }).selectOption('water_sports');
   await page.getByRole('button', { name: 'Select shown empty racks', exact: true }).click();
   await page.getByRole('button', { name: 'Preview starter products', exact: true }).click();
   const save = page.getByRole('button', { name: 'Save stocked layout', exact: true });
@@ -31,6 +31,7 @@ try {
     const d = await page.getByRole('dialog').boundingBox(); assert(d);
     await page.mouse.move(d.x + d.width - 15, Math.min(viewport.height - 30, d.y + d.height - 25));
     for (let n = 0; n < 15 && !await reachable(); n++) { await page.mouse.wheel(0, 1200); await page.waitForTimeout(150); }
+    console.log(JSON.stringify({ viewport, save: await save.boundingBox(), dialog: await page.getByRole('dialog').evaluate(el => ({ scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, rect: el.getBoundingClientRect().toJSON() })) }));
     await page.screenshot({ path: `starter-${viewport.width}x${viewport.height}.png`, timeout: 15000 });
     assert(await reachable(), `Save reachable at ${viewport.width} x ${viewport.height}`);
   }

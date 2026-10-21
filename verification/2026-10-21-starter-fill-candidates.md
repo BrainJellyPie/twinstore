@@ -13,6 +13,7 @@ Public sources retrieved with HTTP 200 this cycle:
 - [NN/g recognition and recall](https://www.nngroup.com/articles/recognition-and-recall/): show available choices instead of requiring users to remember category identifiers.
 - [NN/g user control and freedom](https://www.nngroup.com/articles/user-control-and-freedom/): recoverable changes and user control.
 - [W3C form instructions](https://www.w3.org/WAI/tutorials/forms/instructions/): communicate input requirements and limits.
+- [MDN File System API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API): the photo-resume alternative needs browser-support, secure-context and storage lifecycle decisions; file handles can be stored in IndexedDB.
 
 | Candidate / users | Input and actions | Data/model, feasibility and existing coverage | Validation |
 | --- | --- | --- | --- |
