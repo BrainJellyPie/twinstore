@@ -210,7 +210,9 @@ class VLMGlanceEngine(RuleBasedEngine):
                 rng=plan.rng,
             ) if match.candidates else None
             if entry is None:
-                how = match.how if not match.candidates else "duplicate"
+                how = match.how
+                if match.candidates:
+                    how = "unavailable" if any(e[2].sku not in plan.chosen for e in match.candidates) else "duplicate"
                 if how == "unresolved":
                     logger.info(f"[vlm_glance] {persona.id}: could not resolve planned item {label!r}")
                 resolved.append((label, "", how, ""))

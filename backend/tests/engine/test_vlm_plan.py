@@ -511,3 +511,21 @@ def test_a_needed_category_keeps_its_place_under_the_breadth_limit():
     rack_of = {i.sku: r.rack_name.rsplit(" ", 1)[0] for r in store.product_racks for s in r.slots for i in s.items}
     # ran out of ice cream: it stays in the trip; the model's first other category fills the second place
     assert {rack_of[sku] for sku, _ in _buys(decision.actions)} == {"Ice cream", "Drink"}
+
+
+@pytest.mark.parametrize("cause", ["promotion", "attention"])
+def test_zero_weight_plan_items_are_skipped_without_failing_or_claiming_duplicates(cause):
+    store = _store()
+    config = _config()
+    if cause == "promotion":
+        config.engines.rule_based.promo_multiplier = 0
+        for rack in store.product_racks:
+            for slot in rack.slots:
+                for item in slot.items:
+                    item.promo = "Special offer"
+    else:
+        config.perception.level_attention = {1: 0, 2: 0, 3: 0, 4: 0}
+    engine = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=config)
+    plan = asyncio.run(engine._vlm_plan(_context(store, _personas()[0], seed=0)))
+    assert plan.entered and not plan.buys
+    assert [entry[2] for entry in engine.plan_log[-1].resolved] == ["unavailable", "unavailable", "unresolved"]

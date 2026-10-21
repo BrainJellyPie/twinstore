@@ -385,9 +385,12 @@ class RuleBasedEngine:
             if item.sku in chosen or not (words & rack_words or words & item_words):
                 continue
             fit = 1.0 if item.price <= remaining else 0.15
+            weight = (attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0)
+                      * self._fx.demand_for(item_categories(rack, item)) * self._price_factor(item))
+            if weight <= 0:
+                continue
             candidates.append((rack, slot, item))
-            weights.append(attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0)
-                           * self._fx.demand_for(item_categories(rack, item)) * self._price_factor(item))
+            weights.append(weight)
         if not candidates:
             return None
         habit = self._config.engines.rule_based.habit_prob
