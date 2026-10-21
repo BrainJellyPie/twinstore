@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import * as api from "@/shared/api/client";
 import { TownPage } from "../TownPage";
+import { useAssistStore } from "@/stores/assistStore";
 
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), getTown: vi.fn(), getTownDemand: vi.fn(), getScenarios: vi.fn(), describeTown: vi.fn(), generateTown: vi.fn(),
@@ -19,7 +20,7 @@ beforeEach(() => {
   vi.mocked(api.getTownDemand).mockImplementation(() => new Promise(() => {}));
   vi.mocked(api.getScenarios).mockResolvedValue([]);
 });
-afterEach(() => { cleanup(); clients.splice(0).forEach((client) => client.clear()); vi.resetAllMocks(); vi.restoreAllMocks(); });
+afterEach(() => { useAssistStore.setState({ pending: null }); cleanup(); clients.splice(0).forEach((client) => client.clear()); vi.resetAllMocks(); vi.restoreAllMocks(); });
 const RESULT = { spec: { archetype: "university" as const, size_m: 650, density: 0.8, n_competitors: 2, neighbor_categories: ["bank" as const], seed: 1, name: "Campus" }, rationale: "Old area rationale" };
 function deferred<T>() {
   let resolve!: (value: T) => void; let reject!: (reason: Error) => void;
@@ -52,6 +53,19 @@ const values = () => Array.from(document.querySelectorAll('select, input, textar
 it.each(EDITS)("preserves a newer %s when a description finishes late", async (kind) => {
   const request = deferred<typeof RESULT>(); vi.mocked(api.describeTown).mockReturnValue(request.promise);
   await mount(); begin(); await waitFor(() => expect(api.describeTown).toHaveBeenCalledTimes(1));
+  edit(kind); const expected = values();
+  await act(async () => { request.resolve(RESULT); await request.promise; });
+  expect(values()).toEqual(expected); expect(screen.queryByText(/Old area rationale/)).toBeNull();
+  expect(api.generateTown).not.toHaveBeenCalled();
+});
+
+it.each(["description", "density"] as const)("preserves a newer %s after a routed description finishes late", async (kind) => {
+  const request = deferred<typeof RESULT>(); vi.mocked(api.describeTown).mockReturnValue(request.promise);
+  const text = "a".repeat(799) + "🛒x";
+  useAssistStore.getState().send({ projectId: "alpha", destination: "area", text });
+  await mount();
+  await waitFor(() => expect(api.describeTown).toHaveBeenCalledTimes(1));
+  expect(api.describeTown).toHaveBeenCalledWith("alpha", { text: "a".repeat(799) + "🛒", seed: 1 });
   edit(kind); const expected = values();
   await act(async () => { request.resolve(RESULT); await request.promise; });
   expect(values()).toEqual(expected); expect(screen.queryByText(/Old area rationale/)).toBeNull();

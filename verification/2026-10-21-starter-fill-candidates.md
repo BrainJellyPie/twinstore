@@ -31,3 +31,6 @@ claim is made. This complements the last cycle's editing of already placed produ
 Started clean at operator `3fa41ef6`. Integrated main `dcc48c34` and AI UX `6178cc7c`, resolving CHANGELOG
 and route import conflicts by keeping both sides; integrated baseline `e0a23693`. Existing photo workflows,
 operator modules and remote assistive features are preserved. UI remains English in this Step 2 feature.
+
+Final integration cutoff: main `0f6b7bb0` and AI UX `4f378798` were also merged after the first full checks.
+Routed requests retain late-response guards; final integration checks are recorded in the review.

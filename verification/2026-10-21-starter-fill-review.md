@@ -7,6 +7,15 @@ Integrated main `dcc48c34` (`073d8e58`) and AI UX `6178cc7c` (`e0a23693`). Confl
 the route import list were resolved by keeping both features; both `assist` and `product_edits` routes
 remain registered. The prior `parastore` workspace was not changed. Implementation: `e22dd324`.
 
+The pre-push remote review also found main `0f6b7bb0` and AI UX `4f378798`; these were merged as
+`ee426b88` and `4a45ab21`. This is the integration cutoff for this cycle. Route imports and CHANGELOG
+entries retain both sides. Run-analysis recovery and routed questions coexist; routed town descriptions
+use the existing late-response ownership guard and preserve complete Unicode characters. Two integration
+regressions cover routed replies after newer description/density edits; the focused integration run passed
+88 tests in 7 files (26.52 s). Later unrelated branch work is left for the next cycle; the destination branch
+was checked again after all checks: origin/operator remained `3fa41ef6`, an ancestor of this work.
+The non-forced push preserves that history.
+
 The [candidate comparison](2026-10-21-starter-fill-candidates.md) records the user scenarios, source
 URLs, current repository workflow and alternative candidates. These are documentation-based hypotheses,
 not user interviews, market validation or measured task times. The last cycle edited already stocked
@@ -58,7 +67,7 @@ Checked boundaries include:
 Execution logs: `/workspace/.verification/twinstore-starter-fill/`. Fixtures and reference products are
 synthetic scenario inputs, not observed store inventory, real prices or sales effects.
 
-## Required checks on the integrated implementation
+## Required checks before the final remote integration
 
 Frontend uses pinned pnpm **10.33.0** through `npm exec --yes --package=pnpm@10.33.0 -- pnpm ...`.
 Tests use one frontend worker because the preceding cycle observed a default-worker 5 s timeout in an
@@ -74,6 +83,18 @@ existing assortment UI test. Test timeouts/assertions are unchanged.
 | `cd frontend && pnpm test --maxWorkers=1` | 3,134 passed in 170 files, 490.21 s |
 
 Build also reports non-failing chunk-size and plugin-time warnings. No costly full simulation was launched.
+The skipped case is the existing optional live detector test in `tests/engine/test_capture.py`.
+
+## Revalidation after the final remote integration
+
+| Command | Result |
+| --- | --- |
+| `cd backend && uv run pyright src/` | 0 errors, 0 warnings |
+| Backend application import | `OK` |
+| `cd backend && uv run pytest --basetemp=/workspace/.verification/twinstore-starter-fill/pytest-integrated` | 15,113 passed, 1 skipped, 586.88 s |
+| `cd frontend && pnpm build` | Passed including TypeScript, Vite 24.05 s |
+| `cd frontend && pnpm lint` | 0 errors, existing 19 warnings |
+| `cd frontend && pnpm test --maxWorkers=1` | 3,181 passed in 176 files, 416.63 s |
 
 ## Browser integration
 
@@ -86,12 +107,23 @@ synthetic blue 16×16 image, an entrance/exit and a counter. The browser enters 
 reviews the 40 planned placements, checks Save access with ordinary wheel scrolling at 1280×900,
 1280×640 and 390×844, and injects one lost save response after the real API has written the draft. It then
 retries, opens that draft in the existing product editor, and checks the original, geometry, existing SKU
-values and image links through the API. Final browser result: pending.
+values and image links through the API. The feature browser run passed: 40 new placements, six placements reusing the existing custom SKU/image,
+original and non-target racks preserved, and zero page errors. The accepted request and retry returned the
+same child layout. All three viewport screenshots were inspected. A replay against the final merged build
+also passed with the same checks: `browser-integrated.log` records child
+`setup_starter_fc4a3c3cdd9d4e66b7c9db9a02d1393b`, 40 additions, six preserved-SKU placements and
+zero page errors. The temporary API server was stopped after verification.
 
 The first browser attempt stopped at a harness locator: Playwright's exact `getByLabel` did not
 match the wrapping label/select, while the browser accessibility tree correctly exposed the combobox
 as "Category to apply". The check now selects by that exact combobox role/name; no product behavior
 was changed for this harness correction.
+
+A second browser failure initially looked like a short-screen scrolling defect. Geometry logs showed
+`scrollTop=300` while the available maximum was 534; the pointer near the animated bottom edge was not
+reliably delivering wheel events to the dialog. Targeting its side padding at mid-height reached 534 and
+made Save visible at 1280×640; 390×844 passed as well. This required a harness coordinate correction,
+not a product CSS change. The original viewport and hit-test assertions remain unchanged.
 
 ## Limits and next candidate
 
@@ -111,3 +143,8 @@ was changed for this harness correction.
 - Next candidate from a different workflow: **resume interrupted/unsent photo work safely**. Inspect current
   queue persistence and browser file-retention requirements before implementing; do not duplicate the
   existing batch upload and combined-capture placement features.
+
+Next-candidate repository evidence: `CaptureUploadQueue.tsx` holds `File` objects and stable request IDs
+only in component state/refs and explicitly tells users unsent files are not retained after reload.
+A future resume feature must preserve request identity for uncertain uploads and define storage limits,
+file reconnection and removal, while reusing the existing 20-photo/100 MB queue and accepted-capture flow.

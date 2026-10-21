@@ -29,7 +29,8 @@ try {
   for (const viewport of [{ width: 1280, height: 900 }, { width: 1280, height: 640 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport); await page.waitForTimeout(300);
     const d = await page.getByRole('dialog').boundingBox(); assert(d);
-    await page.mouse.move(d.x + d.width - 15, Math.min(viewport.height - 30, d.y + d.height - 25));
+    // Use the side padding, away from the rounded corner and changing bottom edge.
+    await page.mouse.move(d.x + d.width - 15, d.y + d.height / 2);
     for (let n = 0; n < 15 && !await reachable(); n++) { await page.mouse.wheel(0, 1200); await page.waitForTimeout(150); }
     console.log(JSON.stringify({ viewport, save: await save.boundingBox(), dialog: await page.getByRole('dialog').evaluate(el => ({ scrollTop: el.scrollTop, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, rect: el.getBoundingClientRect().toJSON() })) }));
     await page.screenshot({ path: `starter-${viewport.width}x${viewport.height}.png`, timeout: 15000 });
