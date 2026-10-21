@@ -16,6 +16,7 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal, cast
 
@@ -448,6 +449,11 @@ def survey_board_path(pid: str, sid: str) -> Path:
     return path
 
 
+def _csv_cells(row: Sequence[object]) -> list[object]:
+    return ["'" + value if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")) else value
+            for value in row]
+
+
 def survey_csv(pid: str, sid: str) -> str:
     view = get_survey(pid, sid)
     if view.report is None:
@@ -481,7 +487,7 @@ def survey_csv(pid: str, sid: str) -> str:
         if "open" in r.questions:
             row.append(a.why)
         row.append(a.error)
-        w.writerow(row)
+        w.writerow(_csv_cells(row))
     return buf.getvalue()
 
 
@@ -691,8 +697,8 @@ def conjoint_csv(pid: str, cid: str) -> str:
     r = view.report
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["respondent", "age_group", "gender", "task", "option", *[a.name for a in r.attributes],
-                *(["price"] if r.prices else []), "chosen"])
+    w.writerow(_csv_cells(["respondent", "age_group", "gender", "task", "option", *[a.name for a in r.attributes],
+                           *(["price"] if r.prices else []), "chosen"]))
     for a in r.answers:
         if a.error:
             continue
@@ -700,8 +706,8 @@ def conjoint_csv(pid: str, cid: str) -> str:
             for o, profile in enumerate(task.profiles):
                 levels = [r.attributes[i].levels[profile[i]] for i in range(len(r.attributes))]
                 price = [r.prices[profile[len(r.attributes)]]] if r.prices else []
-                w.writerow([a.respondent, a.age_group, a.gender, t, LETTERS[o], *levels, *price, int(task.choice == o)])
+                w.writerow(_csv_cells([a.respondent, a.age_group, a.gender, t, LETTERS[o], *levels, *price, int(task.choice == o)]))
             if r.none_option:
-                w.writerow([a.respondent, a.age_group, a.gender, t, "none", *([""] * len(r.attributes)),
-                            *([""] if r.prices else []), int(task.choice is None)])
+                w.writerow(_csv_cells([a.respondent, a.age_group, a.gender, t, "none", *([""] * len(r.attributes)),
+                                       *([""] if r.prices else []), int(task.choice is None)]))
     return buf.getvalue()
