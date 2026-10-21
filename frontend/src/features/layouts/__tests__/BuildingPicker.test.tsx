@@ -142,6 +142,20 @@ it("combines eyewear, jewelry, music and coffee as independently configurable fl
   expect(screen.getByText("optical_shop / width 30")).toBeTruthy();
 });
 
+it("starts a dining house with independent juice, noodle, sushi and pizza floors", () => {
+  render(<Building currency="KRW" />);
+  fireEvent.click(screen.getByRole("button", { name: "Dining house" }));
+  expect(screen.getByText("juice_bar / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));
+  for (const [label, templateId] of [["2F · Level 2 · Noodles", "noodle_bar"], ["3F · Level 3 · Sushi", "sushi_shop"], ["4F · Level 4 · Pizza", "pizzeria"]]) {
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    expect(screen.getByText(`${templateId} / width default`)).toBeTruthy();
+    expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
+  }
+  fireEvent.click(screen.getByRole("button", { name: "1F · Ground · Juice bar" }));
+  expect(screen.getByText("juice_bar / width 30")).toBeTruthy();
+});
+
 it("moves and duplicates a customized floor without losing its settings", () => {
   render(<Building />);
   fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));

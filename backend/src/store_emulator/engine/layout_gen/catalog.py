@@ -135,6 +135,30 @@ CATEGORY_LABELS: dict[str, tuple[str, str]] = {
 # Specialty assortments use generic English labels in both price modes.
 # Pharmacy entries are OTC retail goods; no prescription or dispensing simulation.
 _SPECIALTY: dict[str, list[tuple[str, int]]] = {
+    "pizza_menu": [
+        ("Margherita Pizza", 1299), ("Pepperoni Pizza", 1499), ("Roasted Vegetable Pizza", 1399),
+        ("Four Cheese Pizza", 1599), ("Mushroom Pizza", 1399), ("Chicken Pesto Pizza", 1699),
+        ("Margherita Slice", 399), ("Pepperoni Slice", 449), ("Garlic Bread", 499),
+        ("Mixed Leaf Side Salad", 599), ("Tomato Mozzarella Salad", 799), ("Pizza & Drink Lunch Set", 1199),
+    ],
+    "sushi_menu": [
+        ("Salmon Nigiri 2pc", 599), ("Tuna Nigiri 2pc", 699), ("Avocado Maki 6pc", 649),
+        ("Cucumber Maki 6pc", 549), ("California Roll 8pc", 1099), ("Spicy Tuna Roll 8pc", 1199),
+        ("Vegetable Sushi Set", 1399), ("Mixed Nigiri Set", 1899), ("Salmon Rice Bowl", 1599),
+        ("Miso Soup Cup", 349), ("Edamame Cup", 449), ("Seaweed Side Salad", 499),
+    ],
+    "noodle_menu": [
+        ("Shoyu Ramen", 1299), ("Miso Ramen", 1399), ("Vegetable Ramen", 1199),
+        ("Spicy Sesame Noodles", 1299), ("Chicken Udon", 1399), ("Mushroom Udon", 1299),
+        ("Chilled Soba", 1199), ("Vegetable Stir-Fried Noodles", 1299), ("Beef Noodle Soup", 1499),
+        ("Vegetable Dumplings 5pc", 599), ("Steamed Rice Side", 299), ("Noodle & Dumpling Set", 1699),
+    ],
+    "juice_menu": [
+        ("Orange Juice 350ml", 549), ("Apple Juice 350ml", 499), ("Carrot Ginger Juice 350ml", 599),
+        ("Green Vegetable Juice 350ml", 649), ("Pineapple Mint Juice 350ml", 599), ("Watermelon Juice 350ml", 549),
+        ("Berry Banana Smoothie", 699), ("Mango Yogurt Smoothie", 749), ("Oat Banana Smoothie", 649),
+        ("Strawberry Yogurt Smoothie", 699), ("Tropical Fruit Cup", 499), ("Berry Granola Bowl", 899),
+    ],
     "pharmacy_care": [("Adhesive Bandages 30pk", 399), ("Sterile Gauze Pads", 549), ("Digital Thermometer", 1299), ("Saline Nasal Spray", 699), ("Antiseptic Wipes 20pk", 449), ("First Aid Kit", 1899), ("Elastic Support Bandage", 799), ("Reusable Cold Pack", 649)],
     "wellness": [("Vitamin C Tablets 60pk", 999), ("Multivitamin Tablets 30pk", 1299), ("Electrolyte Sachets 6pk", 749), ("Hand Sanitizer 100ml", 299), ("Face Masks 10pk", 499), ("Lip Balm", 349), ("Sensitive Toothpaste", 599), ("Sunscreen SPF50", 1499)],
     "pantry": [("Long Grain Rice 2kg", 599), ("Rolled Oats 1kg", 449), ("Pasta 500g", 229), ("Tomato Sauce 400g", 299), ("Olive Oil 500ml", 899), ("Canned Chickpeas 400g", 179), ("All Purpose Flour 1kg", 249), ("Ground Coffee 250g", 799)],

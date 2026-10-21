@@ -330,6 +330,30 @@ TEMPLATES: list[StoreTemplate] = [
         gondolas=["apparel", "apparel", "footwear", "travel_gear"], near_counter=["apparel", "footwear"],
         style="loop", open_hours=(10, 22), checkouts=4, design_theme="coastal",
     ),
+    StoreTemplate(
+        id="pizzeria", name="Neighborhood pizzeria", description="Pizza, slices and sides around a terracotta dining floor with eight four-seat tables and two ordering counters. Models counter purchases.",
+        store_type="restaurant", grid=(22, 18), fridges=["soft_drinks", "water_sports", "dairy"],
+        wall_shelves=["pizza_menu"] * 5, gondolas=["pizza_menu", "desserts"], near_counter=["pizza_menu", "desserts"],
+        style="perimeter", open_hours=(11, 23), dining_tables=8, checkouts=2, seating_zone="center", design_theme="terracotta",
+    ),
+    StoreTemplate(
+        id="sushi_shop", name="Sushi & roll shop", description="Sushi sets, rolls and sides in a minimal showroom layout with four four-seat tables and two counters. Models counter purchases.",
+        store_type="restaurant", grid=(18, 14), fridges=["sushi_menu", "sushi_menu", "water_sports", "soft_drinks"],
+        wall_shelves=["sushi_menu", "tea_menu", "sushi_menu"], gondolas=["sushi_menu"], near_counter=["sushi_menu", "tea_menu"],
+        style="showroom", open_hours=(11, 22), dining_tables=4, checkouts=2, seating_zone="back", design_theme="minimal",
+    ),
+    StoreTemplate(
+        id="noodle_bar", name="Noodle & ramen bar", description="Noodle bowls and side dishes along a warm perimeter with six four-seat tables and two ordering counters. Models counter purchases.",
+        store_type="restaurant", grid=(20, 16), fridges=["soft_drinks", "water_sports", "dairy"],
+        wall_shelves=["noodle_menu"] * 4, gondolas=["noodle_menu"], near_counter=["noodle_menu", "tea_menu"],
+        style="perimeter", open_hours=(11, 23), dining_tables=6, checkouts=2, seating_zone="left", design_theme="warm",
+    ),
+    StoreTemplate(
+        id="juice_bar", name="Juice & smoothie bar", description="Fruit juices, smoothies and fruit bowls in a compact botanical café with two four-seat tables. Models counter purchases.",
+        store_type="cafe", grid=(12, 10), fridges=["juice_menu", "juice_menu", "water_sports"],
+        wall_shelves=["juice_menu", "fresh_produce"], gondolas=["juice_menu"], near_counter=["juice_menu"],
+        style="perimeter", open_hours=(7, 20), dining_tables=2, seating_zone="right", checkout_placement="near_entrance", design_theme="botanical",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
