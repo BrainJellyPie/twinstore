@@ -18,6 +18,15 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Print-ready HTML report and a long-format CSV (one row per option shown) for re-estimation elsewhere.
   API: `POST/GET /api/projects/{pid}/conjoints`, `GET .../conjoints/{id}`, `.../report.html`, `.../export.csv`.
 
+### Inventory performance review
+- New **Market → Inventory** worksheet reconciles observed SKU movements, then calculates explicitly defined
+  period net unit sell-through, turnover and GMROI from operator-supplied cost records. Missing/duplicate inputs
+  are rejected; stock/value conflicts withhold ratios without silently dropping rows from totals.
+- Export source inputs, period, source SHA-256 and review flags. No model calls, annualization, invented costs,
+  automatic orders or causal sales claims. Reviews are read-only and are not saved in the project.
+- Boundary testing caught a missing reason for unavailable portfolio turnover in return-heavy periods;
+  negative net COGS is now explained in both the UI and audit CSV.
+
 ### Observed staff time
 - Review anonymous timing CSVs against locked fixed staff-script plans, including refusals and non-delivery.
   Missing time remains unknown; arm averages and differences require complete coverage. Staff/shift counts,
@@ -84,8 +93,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - **Staff-script cost scenarios**: apply explicit per-buyer contribution, per-assignment staff time, hourly labor
   cost and daily eligible traffic to a completed, locked pilot. Show break-even conversion difference and
   conditional contribution ranges with snapshot CSV export; no inferred costs or realized-profit claims.
-- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with seven tabs: A/B tests,
-  shelf tests, concept tests, conjoint, staff scripts, field pilots and products.
+- New **Market** page (`/marketing/<project>`) for marketers and research agencies, with eight tabs: A/B tests,
+  shelf tests, concept tests, conjoint, staff scripts, field pilots, inventory and products.
 - **Staff scripts**: independent A/B exposures on the same synthetic personas, with purchase intent,
   trust and pressure ratings, complete-pair bootstrap intervals, exploratory segments and customer replies.
   Saved product/persona snapshots and exact-script CSV support review; missing responses, restart recovery
