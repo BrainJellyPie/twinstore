@@ -137,6 +137,9 @@ Español and Français**. It follows your browser language on first use and reme
 selection. Home, navigation, the command palette, store cards, search, the model notice, simulation launcher and
 new-store forms and preparation screens are localized, including validation, file selection,
 generation review and failure recovery.
+If preparation progress cannot be loaded, **Reload progress** checks the existing task
+without starting another generation. Generation is available after the initial progress check,
+and a failed customer task can be restarted explicitly.
 Template search and filters use the same languages. Search also accepts translated categories,
 accent and full-width variants, and template IDs; format names and descriptions remain in English.
 The command palette also searches original and translated command names. Use the arrow keys
@@ -586,7 +589,7 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
 ## Credits
 
 - **Shoppers.** Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
-  avatars under MIT: twelve appearances with textured faces and clothing, normal maps, varying surface roughness adapted
+  avatars under MIT: fourteen appearances with textured faces and clothing, normal maps, varying surface roughness adapted
   from the original specular textures, separate face/body normal-map strengths for soft skin and clearer fabric
   detail, alpha-tested hair, authored eyelid blinks with varied timing and small gaze shifts, and retargeted breathing, varied standing,
   walking and browsing animations. They pause with playback and keep adult proportions when highlighted. Sources and

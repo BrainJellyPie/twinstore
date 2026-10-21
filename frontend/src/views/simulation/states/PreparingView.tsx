@@ -22,7 +22,7 @@ const confirmationActionStyle = { whiteSpace: "normal", height: "auto", maxWidth
 
 export function PreparingView({ generation, contextKind, projectName, layouts, selectedSetupId, onLayoutSelect, onBackToStores, onAbandonProject }: Props) {
   const { t } = useI18n();
-  const { phase, kind, error, retry, retrying } = generation;
+  const { phase, kind, error, retry, retrying, loadingStatus, errorSource } = generation;
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -32,15 +32,28 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
   const backButton = useRef<HTMLButtonElement>(null);
   const deleteNotice = useRef<HTMLParagraphElement>(null);
   const deleteErrorNotice = useRef<HTMLParagraphElement>(null);
+  const headingNotice = useRef<HTMLHeadingElement>(null);
+  const reloadButton = useRef<HTMLButtonElement>(null);
+  const focusAfterRead = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { if (deleteError !== null) deleteErrorNotice.current?.focus(); }, [deleteError]);
 
-  const isLayoutFailed = phase === "failed" && (kind === "layout" || (kind === null && contextKind === "layout"));
+  const statusUnavailable = errorSource === "status";
+  useEffect(() => {
+    if (!focusAfterRead.current || loadingStatus || retrying) return;
+    focusAfterRead.current = false;
+    if (document.activeElement === document.body || document.activeElement === reloadButton.current) {
+      (reloadButton.current ?? headingNotice.current)?.focus();
+    }
+  }, [statusUnavailable, loadingStatus, retrying]);
+  const isGenerationFailed = phase === "failed" && !statusUnavailable && !loadingStatus;
+  const isLayoutFailed = isGenerationFailed && (kind === "layout" || (kind === null && contextKind === "layout"));
   useEffect(() => { if (!isLayoutFailed) setConfirmOpen(false); }, [isLayoutFailed]);
-  const isPersonaFailed = phase === "failed" && !isLayoutFailed;
-  const canGenerate = phase === "idle" && contextKind === "persona";
-  const failed = isLayoutFailed || isPersonaFailed;
-  const heading = isLayoutFailed ? t("layoutAnalysisFailed") : isPersonaFailed ? t("personaGenerationFailed")
+  const isPersonaFailed = isGenerationFailed && !isLayoutFailed;
+  const canGenerate = phase === "idle" && contextKind === "persona" && !loadingStatus;
+  const failed = isLayoutFailed || isPersonaFailed || (statusUnavailable && !loadingStatus);
+  const heading = loadingStatus ? t("checkingGenerationStatus") : statusUnavailable ? t("generationStatusUnavailable")
+    : isLayoutFailed ? t("layoutAnalysisFailed") : isPersonaFailed ? t("personaGenerationFailed")
     : canGenerate ? t("personasNotGenerated") : phase === "layout" ? t("analyzingLayout")
     : phase === "persona" ? t("generatingPersonas") : contextKind === "layout" ? t("preparingLayoutAnalysis") : t("preparingPersonaGeneration");
 
@@ -68,17 +81,24 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
             : failed ? <AlertCircle className="mx-auto size-8 text-destructive" aria-hidden />
             : canGenerate ? <Users className="mx-auto size-8 text-muted-foreground" aria-hidden />
             : <Loader2 className="mx-auto size-8 animate-spin text-muted-foreground" aria-hidden />}
-          <h2 className={failed && !deleting ? "text-lg font-semibold text-destructive" : "text-lg font-semibold"}>{deleting ? t("deletingStore") : heading}</h2>
+          <h2 ref={headingNotice} tabIndex={-1} className={failed && !deleting ? "text-lg font-semibold text-destructive outline-none" : "text-lg font-semibold outline-none"}>{deleting ? t("deletingStore") : heading}</h2>
           {deleting && <p ref={deleteNotice} role="status" aria-label={t("deletingStore")} tabIndex={-1} className="text-sm text-muted-foreground outline-none">{t("generationContinueHint")}</p>}
-          {!deleting && failed && <p role="alert" className="text-sm text-muted-foreground">{error || t(isLayoutFailed ? "layoutErrorFallback" : "personaErrorFallback")}</p>}
+          {!deleting && failed && <p role="alert" className="text-sm text-muted-foreground">{error || t(statusUnavailable ? "generationStatusUnavailable" : isLayoutFailed ? "layoutErrorFallback" : "personaErrorFallback")}</p>}
           {!deleting && isLayoutFailed && <p className="text-sm text-muted-foreground">{t("layoutFailureHint")}</p>}
           {!deleting && (isPersonaFailed || canGenerate) && <p className="text-sm text-muted-foreground">{t("generatePersonasHint")}</p>}
-          {!deleting && !failed && !canGenerate && <p role="status" className="text-sm text-muted-foreground">{t("generationContinueHint")}</p>}
+          {!deleting && (statusUnavailable || loadingStatus) && <p role={loadingStatus ? "status" : undefined} className="text-sm text-muted-foreground">{t("generationStatusReadHint")}</p>}
+          {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && <p role="status" className="text-sm text-muted-foreground">{t("generationContinueHint")}</p>}
           {deleteError !== null && <p ref={deleteErrorNotice} role="alert" tabIndex={-1} className="space-y-1 rounded-lg border border-destructive/30 p-3 text-sm text-destructive outline-none">
             <span className="block">{t("deleteStoreFailed")}</span>{deleteError && <span className="block text-xs">{deleteError}</span>}
           </p>}
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+          {!deleting && statusUnavailable && <Button ref={reloadButton} className={actionClass} onClick={(event) => {
+            if (!retrying && !loadingStatus) { focusAfterRead.current = document.activeElement === event.currentTarget; retry(); }
+          }} disabled={retrying || loadingStatus}>
+            <RefreshCw className={retrying ? "size-4 shrink-0 animate-spin" : "size-4 shrink-0"} aria-hidden />
+            {retrying ? t("checkingGenerationStatus") : t("reloadGenerationStatus")}
+          </Button>}
           {!deleting && (isPersonaFailed || canGenerate) && <Button className={actionClass} onClick={() => { if (!retrying) retry(); }} disabled={retrying}>
             <RefreshCw className={retrying ? "size-4 shrink-0 animate-spin" : "size-4 shrink-0"} aria-hidden />
             {retrying ? t("tryingAgain") : canGenerate ? t("generate") : t("tryAgain")}
