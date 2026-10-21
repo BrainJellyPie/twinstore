@@ -108,7 +108,7 @@ export interface JobStatus {
   finished_at: string;
 }
 
-export interface ExperimentView extends JobStatus { report: ExperimentReport | null }
+export interface ExperimentView extends JobStatus { report: ExperimentReport | null; request?: ExperimentRequest | null }
 
 export type QuestionKind = "purchase_intent" | "appeal" | "value" | "uniqueness" | "price_vw" | "preference" | "open";
 export type ScaleKind = "purchase_intent" | "appeal" | "value" | "uniqueness";
@@ -189,7 +189,7 @@ export interface SurveyReport {
   seconds: number;
 }
 
-export interface SurveyView extends JobStatus { report: SurveyReport | null }
+export interface SurveyView extends JobStatus { report: SurveyReport | null; request?: SurveyRequest | null }
 
 const root = (pid: string) => `/api/projects/${pid}`;
 

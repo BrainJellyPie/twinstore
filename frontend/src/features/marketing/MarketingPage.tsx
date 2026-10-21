@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, FlaskConical, Images, Loader2, MessagesSquare, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { ClipboardList, Copy, FlaskConical, Images, Loader2, MessagesSquare, Plus, Trash2, TriangleAlert } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import {
@@ -18,7 +18,9 @@ import {
   listExperiments,
   listSurveys,
   marketingKeys,
+  type ExperimentRequest,
   type JobStatus,
+  type SurveyRequest,
 } from "@/shared/api/marketing";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
@@ -79,6 +81,18 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   const jobs = useMemo(() => (tab === "ab" ? experiments.data ?? [] : tab === "survey" ? surveys.data ?? [] : tab === "pitch" ? pitches.data ?? [] : []), [tab, experiments.data, surveys.data, pitches.data]);
   const current = tab === "products" ? null : selected[tab];
   const select = (id: string | null) => tab !== "products" && setSelected((s) => ({ ...s, [tab]: id }));
+  // "Duplicate and edit": the builder opens pre-filled with a finished test's request.
+  const [abDraft, setAbDraft] = useState<{ key: number; req: ExperimentRequest } | null>(null);
+  const [surveyDraft, setSurveyDraft] = useState<{ key: number; req: SurveyRequest } | null>(null);
+  const duplicateExperiment = (req: ExperimentRequest) => {
+    if (setups.some((s) => s.id === req.setup_id)) setSetupId(req.setup_id);
+    setAbDraft({ key: Date.now(), req });
+    select("");
+  };
+  const duplicateSurvey = (req: SurveyRequest) => {
+    setSurveyDraft({ key: Date.now(), req });
+    select("");
+  };
 
   useEffect(() => {
     if (tab === "products" || selected[tab] !== null || !jobs.length) return;
@@ -126,12 +140,14 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             {jobs.map((j) => <JobItem key={j.job_id} projectId={projectId} job={j} active={current === j.job_id} onSelect={() => select(j.job_id)} onDeleted={() => select("")} />)}
           </aside>
           <main className="min-h-0 overflow-y-auto pr-1">
-            {tab === "ab" && (current ? <ExperimentJob projectId={projectId} id={current} setups={setups} /> : setup.data?.store ? (
-              <ExperimentBuilder key={activeSetup} projectId={projectId} setupId={activeSetup} products={products} store={setup.data.store} currency={currency}
-                onStarted={(j) => select(j.job_id)} />
+            {tab === "ab" && (current ? <ExperimentJob projectId={projectId} id={current} setups={setups} onDuplicate={duplicateExperiment} /> : setup.data?.store ? (
+              <ExperimentBuilder key={`${activeSetup}:${abDraft?.key ?? 0}`} projectId={projectId} setupId={activeSetup} products={products}
+                store={setup.data.store} currency={currency} initial={abDraft?.req}
+                onStarted={(j) => { setAbDraft(null); select(j.job_id); }} />
             ) : <Loading />)}
-            {tab === "survey" && (current ? <SurveyJob projectId={projectId} id={current} /> : (
-              <SurveyBuilder projectId={projectId} personaCount={project.data?.personas.length ?? 0} onStarted={(j) => select(j.job_id)} />
+            {tab === "survey" && (current ? <SurveyJob projectId={projectId} id={current} onDuplicate={duplicateSurvey} /> : (
+              <SurveyBuilder key={surveyDraft?.key ?? 0} projectId={projectId} personaCount={project.data?.personas.length ?? 0} initial={surveyDraft?.req}
+                onStarted={(j) => { setSurveyDraft(null); select(j.job_id); }} />
             ))}
             {tab === "pitch" && (current ? <PitchJob projectId={projectId} id={current} /> : setup.data?.store ? (
               <StaffPitchBuilder key={activeSetup} projectId={projectId} setupId={activeSetup} products={products} currency={currency}
@@ -190,7 +206,20 @@ function JobState({ job }: { job: JobStatus }) {
   );
 }
 
-function ExperimentJob({ projectId, id, setups }: { projectId: string; id: string; setups: api.SetupSummary[] }) {
+function DuplicateBar({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <div className="mb-2 flex justify-end">
+      <button type="button" onClick={onClick}
+        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-foreground/[0.05] hover:text-foreground">
+        <Copy className="size-3.5" /> {label}
+      </button>
+    </div>
+  );
+}
+
+function ExperimentJob({ projectId, id, setups, onDuplicate }: {
+  projectId: string; id: string; setups: api.SetupSummary[]; onDuplicate: (req: ExperimentRequest) => void;
+}) {
   const view = useQuery({
     queryKey: marketingKeys.experiment(projectId, id),
     queryFn: ({ signal }) => getExperiment(projectId, id, signal),
@@ -198,17 +227,29 @@ function ExperimentJob({ projectId, id, setups }: { projectId: string; id: strin
   });
   if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
   const report = view.data.report;
-  return report ? <ExperimentReportView projectId={projectId} report={report} layoutName={setups.find((s) => s.id === report.setup_id)?.name} /> : <JobState job={view.data} />;
+  const request = view.data.request;
+  return (
+    <>
+      {request && <DuplicateBar label="Duplicate and edit" onClick={() => onDuplicate(request)} />}
+      {report ? <ExperimentReportView projectId={projectId} report={report} layoutName={setups.find((s) => s.id === report.setup_id)?.name} /> : <JobState job={view.data} />}
+    </>
+  );
 }
 
-function SurveyJob({ projectId, id }: { projectId: string; id: string }) {
+function SurveyJob({ projectId, id, onDuplicate }: { projectId: string; id: string; onDuplicate: (req: SurveyRequest) => void }) {
   const view = useQuery({
     queryKey: marketingKeys.survey(projectId, id),
     queryFn: ({ signal }) => getSurvey(projectId, id, signal),
     refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
   });
   if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
-  return view.data.report ? <SurveyReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />;
+  const request = view.data.request;
+  return (
+    <>
+      {request && <DuplicateBar label="Duplicate and edit" onClick={() => onDuplicate(request)} />}
+      {view.data.report ? <SurveyReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />}
+    </>
+  );
 }
 
 function PitchJob({ projectId, id }: { projectId: string; id: string }) {

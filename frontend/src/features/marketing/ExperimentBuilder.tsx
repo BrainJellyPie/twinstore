@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, BadgePercent, Copy, Eye, FlaskConical, Loader2, Package, Plus, Sparkles, Tag, Tags, Trash2, Wand2, X } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { marketingKeys, startExperiment, type ChangeKind, type ExperimentEngine, type JobStatus, type VariantChange } from "@/shared/api/marketing";
+import { marketingKeys, startExperiment, type ChangeKind, type ExperimentEngine, type ExperimentRequest, type JobStatus, type VariantChange } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
@@ -57,8 +57,10 @@ function ready(c: VariantChange): boolean {
   }
 }
 
-export function ExperimentBuilder({ projectId, setupId, products, store, currency, onStarted }: {
+export function ExperimentBuilder({ projectId, setupId, products, store, currency, initial, onStarted }: {
   projectId: string; setupId: string; products: Product[]; store: Parameters<typeof storeFixtures>[0]; currency: string;
+  /** A finished test to start from ("duplicate and edit"). */
+  initial?: ExperimentRequest | null;
   onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
@@ -69,13 +71,18 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   const packages = usePackages(projectId).data ?? [];
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
 
-  const [name, setName] = useState("");
-  const [hero, setHero] = useState("");
-  const [variants, setVariants] = useState<DraftVariant[]>([{ id: uid(), name: "Variant B", changes: [] }]);
-  const [engine, setEngine] = useState<ExperimentEngine>("rule");
-  const [model, setModel] = useState("");
-  const [panel, setPanel] = useState(300);
-  const [extraFocus, setExtraFocus] = useState<string[]>([]);
+  const [name, setName] = useState(initial?.name ? `${initial.name} (copy)`.slice(0, 80) : "");
+  const [hero, setHero] = useState(initial?.variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).find(Boolean) ?? "");
+  const [variants, setVariants] = useState<DraftVariant[]>(() => initial?.variants.length
+    ? initial.variants.map((v) => ({ id: uid(), name: v.name, changes: v.changes.map((c) => ({ ...c, id: uid() })) }))
+    : [{ id: uid(), name: "Variant B", changes: [] }]);
+  const [engine, setEngine] = useState<ExperimentEngine>(initial?.engine ?? "rule");
+  const [model, setModel] = useState(initial?.model ?? "");
+  const [panel, setPanel] = useState(initial?.panel ?? 300);
+  const [extraFocus, setExtraFocus] = useState<string[]>(() => {
+    const changed = new Set(initial?.variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")) ?? []);
+    return (initial?.focus_skus ?? []).filter((s) => !changed.has(s));
+  });
 
   const usesPackage = variants.some((v) => v.changes.some((c) => c.kind === "package"));
   const focus = [...new Set([...variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).filter(Boolean), ...extraFocus])].slice(0, 20);
@@ -342,7 +349,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
   currency: string; summary: string; onPatch: (p: Partial<VariantChange>) => void; onRemove: () => void;
 }) {
   const divisor = minorUnitDivisor(currency);
-  const [priceText, setPriceText] = useState(c.price != null ? String(c.price / divisor) : "");
+  const [priceText, setPriceText] = useState(c.price != null ? (c.price / divisor).toFixed(divisor === 1 ? 0 : 2) : "");
   const meta = KINDS.find((k) => k.kind === c.kind)!;
   const Icon = meta.icon;
   const product = products.find((p) => p.sku === c.sku);
