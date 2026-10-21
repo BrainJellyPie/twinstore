@@ -173,7 +173,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      {tab === "protocols" ? <div className="min-h-0 flex-1 overflow-y-auto pr-1"><Protocols key={projectId} projectId={projectId} /></div> : tab === "prices" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
+      {tab === "protocols" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><Protocols key={projectId} projectId={projectId} /></div> : tab === "prices" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><UnitPrices key={projectId} projectId={projectId} /></div> : tab === "inventory" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><InventoryReview key={projectId} projectId={projectId} /></div> : tab === "pilot" ? <div className="min-h-64 flex-1 overflow-y-auto pr-1"><FieldPilots projectId={projectId} /></div> : tab === "products" ? (
         <div className="min-h-64 flex-1 overflow-y-auto pr-1"><ProductLibrary projectId={projectId} products={products} /></div>
       ) : (
         <div className="grid min-h-64 flex-1 gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
