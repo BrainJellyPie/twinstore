@@ -1394,3 +1394,285 @@ export async function deleteCapture(projectId: string, captureId: string): Promi
   const res = await fetch(`${BASE}/api/projects/${projectId}/captures/${captureId}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Delete failed (HTTP ${res.status})`);
 }
+
+// ── Shelf Lab (counterfactual edits, sim2real, compliance audit) ─────────────
+
+export type EditKind = "swap" | "remove" | "replace" | "price" | "promo" | "duplicate";
+export type Sim2RealCondition = "render" | "photo" | "photo_raw";
+
+export interface PhotoEdit {
+  kind: EditKind;
+  item_id: string;
+  other_id?: string;
+  price?: number | null;
+  promo?: string;
+  name?: string;
+  brand?: string;
+  category?: string;
+  asset_id?: string;
+}
+
+export interface EditChange { kind: EditKind; item_id: string; box: CaptureBox; before: string; after: string }
+
+export interface EditedShelf {
+  edit_id: string;
+  capture_id: string;
+  edits: PhotoEdit[];
+  changes: EditChange[];
+  result: CaptureResult;
+  promos: Record<string, string>;
+  image_size: [number, number];
+  created_at: string;
+}
+
+export interface PackageAsset { asset_id: string; name: string; width: number; height: number }
+
+export interface LabJobStatus {
+  job_id: string;
+  kind: "sim2real" | "audit";
+  capture_id: string;
+  status: "pending" | "running" | "completed" | "failed";
+  progress: number;
+  stage: string;
+  error: string;
+  created_at: string;
+  finished_at: string;
+}
+
+export interface GlanceAnswer {
+  persona_id: string;
+  condition: Sim2RealCondition;
+  sku: string;
+  name: string;
+  level: number;
+  interest: number;
+  resolved_by: string;
+  reason: string;
+  error: string;
+}
+
+export interface ConditionStats {
+  condition: Sim2RealCondition;
+  answers: number;
+  errors: number;
+  none_rate: number;
+  mean_interest: number;
+  level_share: Record<string, number>;
+  picks: Record<string, number>;
+}
+
+export interface Agreement {
+  condition: Sim2RealCondition;
+  pairs: number;
+  same_pick: number;
+  ci_low: number;
+  ci_high: number;
+  interest_spearman: number | null;
+}
+
+export interface Sim2RealReport {
+  job_id: string;
+  capture_id: string;
+  edit_id: string;
+  model: string;
+  personas: number;
+  conditions: Sim2RealCondition[];
+  products: Record<string, string>;
+  stats: ConditionStats[];
+  agreement: Agreement[];
+  answers: GlanceAnswer[];
+  notes: string[];
+  seconds: number;
+}
+
+export interface AuditFinding {
+  kind: "missing" | "unexpected" | "misplaced" | "facings" | "price" | "gap";
+  level: number;
+  sku: string;
+  name: string;
+  expected: string;
+  found: string;
+  box: CaptureBox | null;
+  loss_per_day: number | null;
+  loss_ci: [number, number] | null;
+}
+
+export interface LevelCompliance { level: number; expected_facings: number; found_facings: number; matched_facings: number; score: number }
+
+export interface AuditReport {
+  job_id: string;
+  capture_id: string;
+  setup_id: string;
+  rack_id: string;
+  face: string;
+  currency: string;
+  compliance: number;
+  levels: LevelCompliance[];
+  findings: AuditFinding[];
+  impact: MetricComparison | null;
+  visitors_per_day: number;
+  revenue_delta_per_day: number | null;
+  revenue_delta_ci: [number, number] | null;
+  panel_size: number;
+  notes: string[];
+  seconds: number;
+}
+
+export interface LabJobView { status: LabJobStatus; sim2real: Sim2RealReport | null; audit: AuditReport | null }
+
+export async function uploadPackage(projectId: string, file: File): Promise<PackageAsset> {
+  const form = new FormData();
+  form.append("image", file);
+  const res = await fetch(`${BASE}/api/projects/${projectId}/lab/packages`, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text().catch(() => "")}`);
+  return res.json() as Promise<PackageAsset>;
+}
+
+export function listPackages(projectId: string, signal?: AbortSignal): Promise<PackageAsset[]> {
+  return fetchJson(`/api/projects/${projectId}/lab/packages`, { signal });
+}
+
+export function packageUrl(projectId: string, assetId: string): string {
+  return `${BASE}/api/projects/${projectId}/lab/packages/${assetId}`;
+}
+
+export function createEdit(projectId: string, captureId: string, edits: PhotoEdit[]): Promise<EditedShelf> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}/edits`, { method: "POST", body: JSON.stringify({ edits }) });
+}
+
+export function listEdits(projectId: string, captureId: string, signal?: AbortSignal): Promise<EditedShelf[]> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}/edits`, { signal });
+}
+
+export function editFileUrl(projectId: string, captureId: string, editId: string, kind: "image" | "mask"): string {
+  return `${BASE}/api/projects/${projectId}/captures/${captureId}/edits/${editId}/${kind}`;
+}
+
+export async function deleteEdit(projectId: string, captureId: string, editId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/projects/${projectId}/captures/${captureId}/edits/${editId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Delete failed (HTTP ${res.status})`);
+}
+
+export function startSim2Real(
+  projectId: string, captureId: string,
+  body: { conditions?: Sim2RealCondition[]; personas?: number; model?: string; edit_id?: string; seed?: number; situation?: string },
+): Promise<LabJobStatus> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}/sim2real`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export function startAudit(
+  projectId: string, captureId: string,
+  body: { setup_id: string; rack_id: string; face?: string | null; edit_id?: string; panel?: number; max_stockouts?: number },
+): Promise<LabJobStatus> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}/audit`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export function listLabJobs(projectId: string, captureId: string, signal?: AbortSignal): Promise<LabJobStatus[]> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}/lab/jobs`, { signal });
+}
+
+export function getLabJob(projectId: string, captureId: string, jobId: string, signal?: AbortSignal): Promise<LabJobView> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}/lab/jobs/${jobId}`, { signal });
+}
+
+// ── Floor plan import (sketch / CAD / PDF page → new layout) ─────────────────
+
+export interface FloorPlanImport {
+  setup_id: string;
+  setup: SetupSummaryShort;
+  reading: { width_m: number; depth_m: number; reader: string; fixtures: { kind: string; label: string }[]; notes: string[] };
+  grid_size: [number, number];
+  racks: number;
+  notes: string[];
+  warnings: string[];
+}
+
+export async function importFloorPlan(
+  projectId: string, file: File, opts: { reader: "auto" | "classic" | "vlm"; model?: string; name?: string },
+): Promise<FloorPlanImport> {
+  const form = new FormData();
+  form.append("plan", file);
+  form.append("reader", opts.reader);
+  form.append("model", opts.model ?? "");
+  form.append("name", opts.name ?? "");
+  const res = await fetch(`${BASE}/api/projects/${projectId}/floorplan`, { method: "POST", body: form });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    let detail = body;
+    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
+    throw new Error(detail || `Import failed (HTTP ${res.status})`);
+  }
+  return res.json() as Promise<FloorPlanImport>;
+}
+
+// ── Photo inputs (storefront appeal, receipts) ───────────────────────────────
+
+export interface StorefrontAppeal {
+  method: "vlm" | "image_stats";
+  model: string;
+  signage: number;
+  entrance: number;
+  window: number;
+  upkeep: number;
+  overall: number;
+  attractiveness: number;
+  reasons: string;
+}
+
+export interface StorefrontResult { venue_id: string; appeal: StorefrontAppeal; previous_attractiveness: number; town: Town }
+
+export interface ReceiptLine { name: string; quantity: number; unit_price: number | null; line_total: number | null; sku: string; matched: boolean }
+export interface ReceiptReading { receipt_id: string; store: string; timestamp: string; currency: string; lines: ReceiptLine[]; total: number | null; notes: string[] }
+export interface ReceiptsResult { receipts: ReceiptReading[]; matched_lines: number; unmatched_lines: number; csv: string }
+
+async function postForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    let detail = body;
+    try { detail = (JSON.parse(body) as { detail?: string }).detail ?? body; } catch { /* plain text */ }
+    throw new Error(detail || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export function rateStorefront(projectId: string, venueId: string, photo: File, model = ""): Promise<StorefrontResult> {
+  const form = new FormData();
+  form.append("photo", photo);
+  form.append("model", model);
+  return postForm(`/api/projects/${projectId}/town/venues/${venueId}/storefront`, form);
+}
+
+export function readReceipts(projectId: string, photos: File[], target: { setupId?: string; runId?: string }, model = ""): Promise<ReceiptsResult> {
+  const form = new FormData();
+  for (const p of photos) form.append("photos", p);
+  form.append("setup_id", target.setupId ?? "");
+  form.append("run_id", target.runId ?? "");
+  form.append("model", model);
+  return postForm(`/api/projects/${projectId}/receipts`, form);
+}
+
+export interface RivalComparison {
+  matched: number;
+  rival_products: number;
+  our_products_in_categories: number;
+  price_index: number | null;
+  overlap: number;
+  only_rival: string[];
+  only_ours: string[];
+  prices: { name: string; rival_price: number; our_price: number; ratio: number }[];
+  suggested_pull_factor: number | null;
+}
+
+export interface RivalReport {
+  comparison: RivalComparison;
+  venue_id: string;
+  previous_attractiveness: number | null;
+  attractiveness: number | null;
+}
+
+export function compareRival(
+  projectId: string, captureId: string, body: { setup_id: string; venue_id?: string; apply?: boolean },
+): Promise<RivalReport> {
+  return fetchJson(`/api/projects/${projectId}/captures/${captureId}/rival`, { method: "POST", body: JSON.stringify(body) });
+}

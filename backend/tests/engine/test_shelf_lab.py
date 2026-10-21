@@ -246,3 +246,65 @@ def _evaluator(panel: list[Persona]) -> LayoutEvaluator:
 
     return LayoutEvaluator(SimulationConfig(seed=5), panel, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(),
                            OptimizeObjective.REVENUE_PER_VISITOR)
+
+
+# ── benchmark ──────────────────────────────────────────────────────────────────
+
+def test_benchmark_writes_triples_with_exact_masks(tmp_path: Path) -> None:
+    from store_emulator.engine.shelf_lab.bench import synthetic_shelves, write_bench
+
+    counts = write_bench(tmp_path, synthetic_shelves(templates=["urban_cvs"], per_template=2, severities=["mild"]),
+                         kinds=["swap", "remove", "price"], per_kind=1, seed=3)
+    assert counts["shelves"] == 2 and counts["swap"] == counts["remove"] == counts["price"] == 2
+    records = [json.loads(line) for line in (tmp_path / "index.jsonl").read_text().splitlines()]
+    assert len(records) == 6
+    for rec in records:
+        files = {k: tmp_path / v for k, v in rec["files"].items()}
+        original = Image.open(files["original"])
+        edited = Image.open(files["counterfactual"])
+        mask = np.asarray(Image.open(files["mask"])) > 0
+        diff = np.any(np.asarray(original.convert("RGB"), dtype=np.int16) != np.asarray(edited.convert("RGB"), dtype=np.int16), axis=2)
+        assert diff.any() and not (diff & ~mask).any()  # every changed pixel is inside the ground-truth mask
+
+
+def test_levers_measure_the_pick_shift(tmp_path: Path, personas: list[Persona]) -> None:
+    from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
+    from store_emulator.engine.shelf_lab.bench import synthetic_shelves, write_bench
+    from store_emulator.engine.shelf_lab.levers import (
+        load_counterfactuals,
+        run_lever,
+        summarize_levers,
+    )
+
+    write_bench(tmp_path, synthetic_shelves(templates=["urban_cvs"], per_template=1, severities=["clean"]),
+                kinds=["remove", "price"], per_kind=1, seed=5)
+    cfs = load_counterfactuals(tmp_path)
+    panel = select_personas(personas, 4, seed=0)
+    outcomes = []
+    for cf in cfs:
+        target = next(i for i in cf.before.items if i.id == cf.edit.item_id)
+        outcomes.append(asyncio.run(run_lever(_FavouriteVLM(target.name), cf, panel, cue_sampler=_cue, patterns=BEHAVIOR_PATTERNS)))
+    by_kind = {o.kind: o for o in outcomes}
+    assert by_kind["price"].picked_before == by_kind["price"].picked_after == 1.0
+    assert by_kind["remove"].picked_before == 1.0 and by_kind["remove"].picked_after == 0.0  # the product is gone
+    summary = {s.kind: s for s in summarize_levers(outcomes)}
+    assert summary["remove"].delta_picked == -1.0 and summary["price"].delta_picked == 0.0
+
+
+# ── rival shelf ────────────────────────────────────────────────────────────────
+
+def test_rival_shelf_price_index_and_overlap(store: Store) -> None:
+    from store_emulator.engine.shelf_lab.rival import compare_rival
+
+    rack = next(r for r in store.racks if r.id == DRINK_1)
+    scene = make_scene(rack, Face.S, currency="USD", seed=21, severity="clean", gap_rate=0.0)
+    reference = _reference_store(store, scene)
+    rival = _gt_capture(scene)
+    cheaper = rival.model_copy(update={"items": [i.model_copy(update={"price": round((i.price or 0) * 0.9)}) for i in rival.items]})
+    report = compare_rival(reference, cheaper)
+    assert report.matched == len({i.name for i in rival.items}) and report.only_rival == []
+    assert report.price_index == pytest.approx(0.9, abs=0.01)
+    assert report.suggested_pull_factor == pytest.approx(1 / 0.9, abs=0.02)
+    assert 0 < report.overlap <= 1
+    newcomer = cheaper.model_copy(update={"items": [*cheaper.items, cheaper.items[0].model_copy(update={"id": "x1", "name": "Rival Own Brand Cola", "sku": "x"})]})
+    assert compare_rival(reference, newcomer).only_rival == ["Rival Own Brand Cola"]

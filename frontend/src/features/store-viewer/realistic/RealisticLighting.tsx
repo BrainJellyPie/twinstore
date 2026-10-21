@@ -13,7 +13,7 @@ interface Props {
   dark: boolean;
 }
 
-// Store lighting: procedural indoor environment (RoomEnvironment → PMREM, no
+// Store lighting: procedural store interior (storeEnvironment → PMREM, no
 // HDR downloads) for reflections and soft fill, a high key light standing in for
 // the ceiling panels (soft PCF shadows), and a warm/cool hemisphere bounce.
 // On "medium" the environment is applied only to small metal/glass parts
@@ -34,7 +34,8 @@ export function RealisticLighting({ width, depth, quality, dark }: Props) {
       exposure: gl.toneMappingExposure,
       toneMapping: gl.toneMapping,
     };
-    gl.toneMapping = THREE.ACESFilmicToneMapping;
+    // Khronos PBR Neutral keeps package colours true (ACES shifts reds to orange and blues to cyan).
+    gl.toneMapping = THREE.NeutralToneMapping;
     return () => {
       scene.environment = prev.environment;
       scene.environmentIntensity = prev.intensity;
@@ -49,7 +50,7 @@ export function RealisticLighting({ width, depth, quality, dark }: Props) {
     const { gl, scene } = get();
     scene.environment = fullEnv ? env : null;
     scene.environmentIntensity = dark ? 0.5 : 0.62;
-    gl.toneMappingExposure = dark ? 0.98 : 1.08;
+    gl.toneMappingExposure = dark ? 0.9 : 0.98;
   }, [get, dark, env, fullEnv]);
 
   // Shadow-map throttling: the store is static, so the map is redrawn only

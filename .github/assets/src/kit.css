@@ -1,0 +1,101 @@
+/* TwinStore diagram kit: white canvas, glass cards, aurora connectors. Used by the figure pages in
+   this folder; render.mjs turns each page into a PNG for the README. */
+@font-face { font-family: "Geist"; src: url("../../../frontend/node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Geist Mono"; src: url("../../../frontend/node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Instrument Serif"; src: url("../../../frontend/node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2") format("woff2"); font-style: normal; }
+@font-face { font-family: "Instrument Serif"; src: url("../../../frontend/node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2") format("woff2"); font-style: italic; }
+
+:root {
+  --ink: #0b0c10; --ink-2: #2a2e3a; --muted: #6b7183; --faint: #a3a8b8; --line: #e6e8ef; --line-2: #d6dae6;
+  --c1: #0aa2c6; --c2: #6b4dff; --c3: #e0429b; --volt: #b5f21a; --volt-ink: #3d5600;
+  --c1-soft: #e3f7fc; --c2-soft: #efebff; --c3-soft: #fde9f3; --volt-soft: #f2fbd9; --amber-soft: #fff4dd;
+  --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, monospace;
+  --serif: "Instrument Serif", Georgia, serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #fff; color: var(--ink); font: 14px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
+.canvas { position: relative; width: 1600px; padding: 64px 72px 56px; overflow: hidden; background:
+  radial-gradient(circle at 1px 1px, #e4e7ef 1px, transparent 1.2px) 0 0 / 22px 22px, #fff; }
+.canvas::before, .canvas::after { content: ""; position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.45; pointer-events: none; z-index: 0; }
+.canvas::before { width: 620px; height: 420px; right: -160px; top: -200px; background: radial-gradient(closest-side, #d9f4ff, transparent); }
+.canvas::after { width: 680px; height: 460px; left: -220px; bottom: -260px; background: radial-gradient(closest-side, #f6e3ff, transparent); }
+.canvas > * { position: relative; z-index: 1; }
+
+/* title block */
+.title { display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; margin-bottom: 40px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+.eyebrow::before { content: ""; width: 26px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3)); }
+h1 { margin: 14px 0 8px; font: 400 64px/0.98 var(--serif); letter-spacing: -0.015em; }
+h1 em { font-style: italic; background: linear-gradient(95deg, var(--c1), var(--c2) 55%, var(--c3)); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: 4px; }
+.lede { max-width: 760px; font-size: 17px; color: var(--muted); }
+.stamp { text-align: right; font: 12px/1.6 var(--mono); color: var(--faint); white-space: nowrap; }
+.stamp b { color: var(--ink-2); font-weight: 600; }
+
+/* zones */
+.zone { position: relative; border: 1.5px dashed var(--line-2); border-radius: 28px; padding: 34px 18px 18px; background: rgb(255 255 255 / 0.55); }
+.zone > .tag { position: absolute; top: -12px; left: 20px; padding: 4px 11px; border-radius: 99px; background: #fff; border: 1px solid var(--line-2); font: 600 11px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
+.zone > .tag i { font-style: normal; color: var(--faint); font-weight: 500; }
+.zone.solid { border-style: solid; border-color: var(--line); background: linear-gradient(180deg, rgb(250 251 253 / 0.9), rgb(255 255 255 / 0.7)); }
+
+/* nodes */
+.node { position: relative; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 15px 13px;
+  box-shadow: 0 1px 0 #fff inset, 0 1px 2px rgb(16 20 36 / 0.04), 0 14px 34px -18px rgb(16 20 36 / 0.22); }
+.node + .node { margin-top: 12px; }
+.node .hd { display: flex; align-items: center; gap: 10px; }
+.node .ic { width: 30px; height: 30px; flex: none; border-radius: 9px; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--c1), var(--c2)); box-shadow: 0 6px 14px -6px rgb(107 77 255 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.35); }
+.node .ic svg { width: 17px; height: 17px; }
+.node .ic.c3 { background: linear-gradient(135deg, var(--c2), var(--c3)); box-shadow: 0 6px 14px -6px rgb(224 66 155 / 0.6); }
+.node .ic.c1 { background: linear-gradient(135deg, #22c3e6, var(--c1)); box-shadow: 0 6px 14px -6px rgb(10 162 198 / 0.6); }
+.node .ic.v { background: linear-gradient(135deg, #d6ff5c, #8fd400); color: #1d2a00; box-shadow: 0 6px 14px -6px rgb(143 212 0 / 0.7); }
+.node .ic.k { background: linear-gradient(135deg, #2b2f3b, #0b0c10); }
+.node h3 { margin: 0; font-size: 15px; font-weight: 620; letter-spacing: -0.01em; }
+.node .sub { font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+.node p { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+.node .num { position: absolute; top: -10px; right: -10px; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font: 600 12px var(--mono); box-shadow: 0 4px 10px -4px rgb(0 0 0 / 0.5); }
+
+/* dark core node */
+.core { position: relative; border-radius: 24px; padding: 20px; color: #f3f4f8; background: radial-gradient(120% 90% at 20% 0%, #1d2030, #0b0c10 60%); isolation: isolate;
+  box-shadow: 0 30px 70px -30px rgb(107 77 255 / 0.55), 0 18px 40px -20px rgb(0 0 0 / 0.45); }
+.core::before { content: ""; position: absolute; inset: -2px; border-radius: 26px; z-index: -2; background: conic-gradient(from 200deg, #3fdfff, #a586ff, #ff5fc6, #c6ff3a, #3fdfff); }
+.core::after { content: ""; position: absolute; inset: 1px; border-radius: 23px; z-index: -1; background: radial-gradient(120% 90% at 20% 0%, #1b1e2c, #0b0c10 60%); }
+.core h2 { margin: 0 0 2px; font: 400 30px/1 var(--serif); }
+.core h2 em { font-style: italic; background: linear-gradient(90deg, #3fdfff, #a586ff, #ff5fc6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.core .sub { color: #9aa0b4; font-size: 12.5px; }
+.core .cell { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgb(255 255 255 / 0.05); border: 1px solid rgb(255 255 255 / 0.08); }
+.core .cell b { display: block; font-size: 13.5px; font-weight: 600; }
+.core .cell span { font-size: 12px; color: #a6abbe; }
+.core .chip { background: rgb(255 255 255 / 0.07); border-color: rgb(255 255 255 / 0.12); color: #dfe2ec; }
+
+/* chips */
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line); background: #f7f8fb; font: 500 11px/1.25 var(--mono); color: var(--ink-2); white-space: nowrap; }
+.chip.c1 { background: var(--c1-soft); border-color: #bfe9f4; color: #05637a; }
+.chip.c2 { background: var(--c2-soft); border-color: #d9d0ff; color: #4a2fd0; }
+.chip.c3 { background: var(--c3-soft); border-color: #f7cbe1; color: #a8206c; }
+.chip.v { background: var(--volt-soft); border-color: #dbf2a2; color: var(--volt-ink); }
+.chip.a { background: var(--amber-soft); border-color: #f7dfae; color: #8a5a00; }
+.chip.k { background: var(--ink); border-color: var(--ink); color: #fff; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* small text helpers */
+.mono { font-family: var(--mono); }
+.label { font: 600 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin-top: 8px; font: 11.5px/1.4 var(--mono); }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; color: var(--ink); text-align: right; }
+
+/* connectors are drawn by kit.js into this layer */
+svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible; }
+.wire-label { position: absolute; z-index: 2; transform: translate(-50%, -50%); padding: 3px 9px; border-radius: 99px; background: #fff; border: 1px solid var(--line-2); font: 500 11px/1.2 var(--mono); color: var(--ink-2); white-space: nowrap; box-shadow: 0 4px 12px -6px rgb(16 20 36 / 0.25); }
+
+/* footer */
+.foot { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--line); font: 12px var(--mono); color: var(--faint); }
+.legend { display: flex; gap: 18px; align-items: center; }
+.legend span { display: inline-flex; gap: 7px; align-items: center; }
+.legend .ln { width: 26px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3)); }
+.legend .ln.dash { background: repeating-linear-gradient(90deg, var(--c3) 0 6px, transparent 6px 10px); }
+.legend .ln.volt { background: var(--volt); }
+.brand { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); font-weight: 600; }
+.brand img { width: 22px; height: 22px; border-radius: 6px; }

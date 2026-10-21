@@ -17,9 +17,10 @@ export function PlaybackStatus({ minTime, maxTime }: Props) {
   return (
     <div className="px-3 pt-1 pb-3">
       <div className="mb-1.5 flex items-center justify-between text-sm">
-        <span className={finished ? "font-medium text-primary" : "text-muted-foreground"}>{label}</span>
+        <span className={finished ? "font-medium text-foreground" : "text-muted-foreground"}>{label}</span>
+        <span className="num text-xs text-muted-foreground">{Math.round(pct)}%</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
+      <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
         <div className="heat-gradient h-full rounded-full transition-[width] duration-300" style={{ width: `${pct}%` }} />
       </div>
     </div>

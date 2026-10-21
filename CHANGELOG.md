@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.4.0 — TwinStore: the store's digital twin, from photos, in one click
+
+The project is now **TwinStore**, built on intellicia's open-source Parastore (MIT). User-facing
+text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
+variables, storage keys, the Python package, the `parastore` CLI) keep working.
+
+### One icon, every OS
+- `launcher/`: one Go source → `TwinStore.exe` (Windows, icon embedded, no console window),
+  `TwinStore.app` (macOS universal, app files inside the bundle) and `twinstore` (Linux, adds
+  itself to the app menu). Double-click → a live boot screen at `127.0.0.1:8000` → the app at the
+  same address. uv is fetched into the launcher's own folder when missing; a second click reopens
+  the running app; ⌘K → **Quit TwinStore** stops everything.
+- Release workflow builds one archive per OS and smoke-tests the packaged Linux launcher.
+
+### Shelf Lab — real photos as experiments
+- Counterfactual edits on shelf photos (swap, stock-out, new package, price tag, promotion) with
+  exact ground-truth masks: pixels outside the changed boxes are untouched.
+- Sim2real: the same personas and seeds on the render, the tagged photo and the raw photo;
+  decision agreement with confidence intervals, attention by shelf level, interest rank agreement.
+- Compliance audit against the layout's reference face; stock-outs priced in revenue per day by
+  paired simulation. Benchmark generator (`lab_cli bench`) and lever experiments.
+- Rival shelf comparison: price index, assortment overlap, the rival's price-adjusted pull.
+
+### Photos in, twin out
+- Floor-plan images (sketch, scan, PDF page) → walls, racks and doors on the grid, or read by a
+  vision model.
+- Storefront photos → appeal score → the venue's pull in the neighborhood model.
+- Receipt photos → POS lines matched to the store's products → fidelity report.
+
+### A new interface
+- Aurora design system (Geist, Instrument Serif), command bar and ⌘K palette, redesigned home,
+  workspace, wizard, neighborhood, capture and settings pages; photoreal 3D by default with a
+  store environment map and lens effects; the playback bar folds away in the shopper's-eye view.
+
+### Docs
+- README rewritten around the twin, with system, vision-shopper, Shelf Lab, validation and
+  launcher figures and a short film, all generated from HTML in `.github/assets/src`.
+- License: TwinStore License 1.0 — free for research and non-commercial use, free for
+  organizations with annual revenue up to US$1M, a separate license otherwise. The Parastore MIT
+  notice is kept in full.
+
 ## 0.3.0 — vision shoppers in a living neighborhood
 
 v0.2 made the simulator an experiment tool. v0.3 widens what can be simulated and

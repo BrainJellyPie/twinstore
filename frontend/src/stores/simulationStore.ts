@@ -7,15 +7,16 @@ export type DashboardTab = "dashboard" | "settings";
 // traffic = model-predicted shortest-path load between racks (layout only).
 export type HeatmapMode = "off" | "footfall" | "dwell" | "traffic";
 
-// 3D look of the store viewer. Persisted locally; survives reset().
+// 3D look of the store viewer. Persisted locally; survives reset(). Realistic unless the viewer
+// chose classic (realistic "medium" is tuned to run under software GL too).
 export type GraphicsMode = "classic" | "realistic";
 const GRAPHICS_KEY = "parastore.graphicsMode";
 
 function readGraphicsMode(): GraphicsMode {
   try {
-    return localStorage.getItem(GRAPHICS_KEY) === "realistic" ? "realistic" : "classic";
+    return localStorage.getItem(GRAPHICS_KEY) === "classic" ? "classic" : "realistic";
   } catch {
-    return "classic";
+    return "realistic";
   }
 }
 

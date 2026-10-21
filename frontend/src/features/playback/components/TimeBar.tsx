@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Play, Pause, SkipForward, RotateCcw, ChevronLeft, ChevronRight, Layers, BarChart3, Box, Eye } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Play, Pause, SkipForward, RotateCcw, ChevronDown, ChevronLeft, ChevronRight, Layers, BarChart3, Box, Eye } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { Button } from "@/shared/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
@@ -85,9 +85,12 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
   }, [disabled, finished, togglePlay]);
 
   const progress = disabled ? 0 : finished ? 1 : Math.min(1, Math.max(0, (currentMinute - minTime) / (maxTime - minTime)));
+  // The controls fold away in the shopper's-eye view (the view needs the screen) unless reopened there.
+  const [pref, setPref] = useState<{ view: boolean; collapsed: boolean } | null>(null);
+  const collapsed = pref && pref.view === shopperView ? pref.collapsed : shopperView;
 
   return (
-    <div className="glass absolute top-4 right-4 z-20 w-[25rem] overflow-hidden rounded-[1.4rem] text-foreground">
+    <div className={cn("glass absolute top-4 right-4 z-20 overflow-hidden rounded-[1.4rem] text-foreground transition-[width] duration-300", collapsed ? "w-[21rem]" : "w-[25rem]")}>
       <div className="flex items-center justify-between gap-3 px-5 pt-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1">
@@ -101,7 +104,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               <ChevronRight />
             </Button>
           </div>
-          <div className="num mt-1 text-[2.6rem] leading-none font-medium tracking-[-0.06em]">
+          <div className={cn("num mt-1 leading-none font-medium tracking-[-0.06em] transition-[font-size]", collapsed ? "text-[2rem]" : "text-[2.6rem]")}>
             {finished ? "Closed" : formatClock12h(currentMinute)}
           </div>
         </div>
@@ -159,11 +162,29 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
         />
         <div className="num -mt-0.5 flex justify-between text-[0.68rem] text-muted-foreground">
           <span>{formatClock12h(minTime)}</span>
-          <span>{Math.round(progress * 100)}%</span>
+          <button
+            type="button"
+            onClick={() => setPref({ view: shopperView, collapsed: !collapsed })}
+            className="flex items-center gap-1 rounded-full px-2 text-muted-foreground transition-colors hover:text-foreground"
+            aria-expanded={!collapsed}
+          >
+            {Math.round(progress * 100)}% · {collapsed ? "controls" : "less"}
+            <ChevronDown className={cn("size-3 transition-transform", !collapsed && "rotate-180")} />
+          </button>
           <span>{formatClock12h(maxTime)}</span>
         </div>
       </div>
 
+      {collapsed ? (
+        shopperView && (
+          <div className="flex items-center justify-between border-t border-glass-border px-5 py-2.5 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><Eye className="size-3.5" /> Shopper's-eye view</span>
+            <button type="button" onClick={() => setShopperView(false)} className="rounded-full px-2 py-0.5 font-medium text-foreground hover:bg-foreground/[0.06]">
+              Exit
+            </button>
+          </div>
+        )
+      ) : (
       <div className="mt-2 space-y-3 border-t border-glass-border bg-foreground/[0.02] px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <span className="eyebrow w-14">Speed</span>
@@ -260,6 +281,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-# USAGE.md — Parastore
+# USAGE.md — TwinStore
 
 Operational guide for AI coding assistants (Claude Code, Cursor, Codex,
 Aider, …) helping an **end user** run the parastore app — set up a store,

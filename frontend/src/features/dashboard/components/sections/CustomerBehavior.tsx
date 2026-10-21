@@ -7,20 +7,22 @@ export function CustomerBehavior() {
   const conversionRate = entered > 0 ? Math.round((paidCount / entered) * 100) : 0;
 
   return (
-    <div className="border-t px-3 py-3">
-      <div className="section-title mb-2">Customer behavior</div>
-      <dl className="flex flex-col gap-1.5 text-sm">
-        <div className="flex justify-between">
-          <dt className="text-muted-foreground">Total visitors</dt>
-          <dd className="tabular-nums">{entered}</dd>
+    <div className="px-3 pb-3">
+      <dl className="grid grid-cols-3 gap-2">
+        <div className="rounded-2xl border border-glass-border bg-foreground/[0.02] p-3">
+          <dt className="eyebrow">Visitors</dt>
+          <dd className="num mt-1 text-xl font-medium tracking-[-0.04em]">{entered}</dd>
         </div>
-        <div className="flex justify-between">
-          <dt className="text-muted-foreground">Conversion rate</dt>
-          <dd className="tabular-nums">{conversionRate}%</dd>
+        <div className="rounded-2xl border border-glass-border bg-foreground/[0.02] p-3">
+          <dt className="eyebrow">Converted</dt>
+          <dd className="num mt-1 text-xl font-medium tracking-[-0.04em]">{conversionRate}%</dd>
         </div>
-        <div className="flex justify-between">
-          <dt className="text-muted-foreground">In store now</dt>
-          <dd className="tabular-nums">{inStore}</dd>
+        <div className="rounded-2xl border border-glass-border bg-foreground/[0.02] p-3">
+          <dt className="eyebrow flex items-center gap-1.5">
+            <span className={inStore > 0 ? "size-1.5 animate-pulse-ring rounded-full bg-volt" : "size-1.5 rounded-full bg-muted-foreground/40"} aria-hidden />
+            In store
+          </dt>
+          <dd className="num mt-1 text-xl font-medium tracking-[-0.04em]">{inStore}</dd>
         </div>
       </dl>
     </div>

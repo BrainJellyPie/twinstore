@@ -1,3 +1,86 @@
+TwinStore License 1.0
+
+Copyright (c) 2026 BrainJellyPie and the TwinStore contributors
+
+TwinStore is built on Parastore (https://github.com/intellicia-public/parastore),
+Copyright (c) 2026 intellicia, released under the MIT License. That notice is reproduced
+in full at the end of this file and must be kept with every copy. Code that came from
+Parastore remains available under the MIT License on its own; this license governs
+TwinStore as a whole and every change and addition made in this repository.
+
+1. Definitions
+
+   "Software" means the source code, binaries, documentation, data, images and other
+   material in this repository and in its releases.
+
+   "Research use" means academic or scientific research, experiments, evaluation and
+   benchmarking, including inside a company, and publishing results obtained with the
+   Software, as long as the Software is not deployed in production or used to provide a
+   product or service to others.
+
+   "Non-commercial use" means use that is not intended for, or directed toward,
+   commercial advantage or monetary compensation: personal use, teaching and learning,
+   and use by non-profit organizations, schools, universities, public research
+   institutes and government bodies for their non-commercial purposes.
+
+   "Commercial use" means any use that is neither Research use nor Non-commercial use,
+   including using the Software in a business, building it into a product or service,
+   or offering its results as a paid service.
+
+   "Annual revenue" means the total gross revenue of an organization together with every
+   entity that controls it, is controlled by it, or is under common control with it, in
+   its most recently completed fiscal year, in US dollars or the equivalent.
+
+2. Research and non-commercial use — unlimited
+
+   Permission is hereby granted, free of charge, to any person or organization to use,
+   copy, modify, merge, publish and distribute the Software and works based on it, for
+   Research use and Non-commercial use, without limitation, subject to section 4.
+
+3. Commercial use — free for small organizations
+
+   The permission in section 2 also covers Commercial use by an individual, or by an
+   organization whose Annual revenue does not exceed US$1,000,000 (one million US
+   dollars), subject to section 4. If an organization's Annual revenue later exceeds that
+   amount, this permission for Commercial use ends 90 days after the end of the fiscal
+   year in which it was exceeded, unless a separate license has been agreed by then.
+
+4. Conditions
+
+   a. Keep this license, the copyright notices above and the Parastore MIT notice below
+      in all copies or substantial portions of the Software.
+   b. Works based on the Software that you distribute must carry a notice that you
+      changed them, and the TwinStore parts must stay under this license; you may not
+      grant anyone broader rights to them than this license gives.
+   c. The name "TwinStore" and the names of its contributors may not be used to endorse
+      or promote products derived from the Software without prior written permission.
+
+5. Everything else — contact us
+
+   Commercial use by an organization whose Annual revenue exceeds US$1,000,000, and any
+   use not covered by sections 2 and 3, requires a separate written license. To ask for
+   one, open an issue at https://github.com/BrainJellyPie/parastore/issues or use the
+   contact listed on the repository owner's GitHub profile.
+
+6. Citation (a request, not a condition)
+
+   If the Software helps your research, please cite the repository.
+
+7. No warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+   INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+   PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+   HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+   CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Third-party components keep their own licenses (LICENSES-BACKEND.md, LICENSES-FRONTEND.txt).
+
+--------------------------------------------------------------------------------------
+Parastore notice (applies to the code TwinStore is built on)
+--------------------------------------------------------------------------------------
+
 MIT License
 
 Copyright (c) 2026 intellicia

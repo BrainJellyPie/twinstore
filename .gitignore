@@ -43,3 +43,8 @@ frontend/.tanstack/
 research/validation/data/
 research/validation/prep/
 research/validation/results/.cache/
+
+# TwinStore launcher build output
+launcher/dist/
+launcher/icon/png/
+launcher/*.syso

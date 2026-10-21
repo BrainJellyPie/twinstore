@@ -1,9 +1,9 @@
-// One prefiltered RoomEnvironment per renderer, created on first use so the
-// lighting and the materials that sample it get the same texture in the same
-// render (no material rebuild once the environment "arrives").
+// One prefiltered store environment per renderer (see storeEnvironment.ts), created on first use so
+// the lighting and the materials that sample it get the same texture in the same render (no
+// material rebuild once the environment "arrives").
 
 import * as THREE from "three";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { createStoreEnvironmentScene, disposeScene } from "./storeEnvironment";
 
 interface Entry {
   texture: THREE.Texture;
@@ -16,16 +16,10 @@ export function acquireRoomEnvironment(gl: THREE.WebGLRenderer): THREE.Texture {
   let entry = cache.get(gl);
   if (!entry) {
     const pmrem = new THREE.PMREMGenerator(gl);
-    const room = new RoomEnvironment();
-    const texture = pmrem.fromScene(room, 0.035).texture;
+    const room = createStoreEnvironmentScene();
+    const texture = pmrem.fromScene(room, 0.025).texture;
     pmrem.dispose();
-    room.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (m.isMesh) {
-        m.geometry.dispose();
-        (m.material as THREE.Material).dispose();
-      }
-    });
+    disposeScene(room);
     entry = { texture, users: 0 };
     cache.set(gl, entry);
   }

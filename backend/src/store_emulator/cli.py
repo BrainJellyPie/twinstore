@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="parastore", description="Parastore headless experiments")
+    parser = argparse.ArgumentParser(prog="twinstore", description="TwinStore headless experiments")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sim = sub.add_parser("simulate", help="run one store layout (optionally several replicates)")

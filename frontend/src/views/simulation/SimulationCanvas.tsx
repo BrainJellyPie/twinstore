@@ -207,6 +207,7 @@ export function SimulationCanvas(props: SimulationCanvasProps) {
         />
         <StoreCameraControls disabled={shopperView} maxZoom={realistic ? 420 : 140} />
       </Canvas>
+      {realistic && <div className="realistic-lens" data-shopper={shopperView || undefined} aria-hidden />}
       <RealisticHud personaNames={props.personaNames} showModeSwitch={props.customers === null} />
     </>
   );

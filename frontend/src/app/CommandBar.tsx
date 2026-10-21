@@ -139,9 +139,11 @@ export function CommandBar() {
   return (
     <header className="relative z-30 grid h-[4.25rem] shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-[linear-gradient(90deg,transparent,var(--border)_20%,var(--border)_80%,transparent)]">
       <div className="flex min-w-0 items-center gap-3">
-        <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-xl" aria-label="Parastore home">
+        <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-xl" aria-label="TwinStore home">
           <BrandMark />
-          <span className="hidden font-display text-[1.08rem] tracking-[-0.045em] xl:block">parastore</span>
+          <span className="hidden font-display text-[1.08rem] tracking-[-0.045em] xl:block">
+            <span className="aurora-text">twin</span>store
+          </span>
         </Link>
         {(pid || pageTitle) && (
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">

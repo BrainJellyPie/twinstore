@@ -24,7 +24,7 @@ export function ProjectShell({
 }: ProjectShellProps) {
   return (
     <>
-      <div className="relative flex-1">
+      <div className="relative m-3 mr-0 flex-1 overflow-hidden rounded-[1.6rem] border border-glass-border shadow-[var(--shadow-lift)]">
         {layouts.length > 0 && (
           <div className="pointer-events-auto absolute left-3 top-3 z-10">
             <LayoutTabs

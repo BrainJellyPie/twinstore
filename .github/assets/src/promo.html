@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TwinStore — promo</title>
+<!-- Motion piece for the README. Every frame is a pure function of time: seek(t) sets the whole
+     stage, so render-video.mjs can step through it frame by frame. Open with ?t=12 to inspect a
+     moment, or ?play to watch it in real time. -->
+<style>
+  @font-face { font-family: "Geist"; src: url("../../../frontend/node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "Geist Mono"; src: url("../../../frontend/node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+  @font-face { font-family: "Instrument Serif"; src: url("../../../frontend/node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Instrument Serif"; src: url("../../../frontend/node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2") format("woff2"); font-style: italic; }
+  :root { --c1: #3fdfff; --c2: #a586ff; --c3: #ff5fc6; --volt: #c6ff3a; --d1: #0aa2c6; --d2: #6b4dff; --d3: #e0429b;
+    --sans: "Geist", system-ui, sans-serif; --mono: "Geist Mono", monospace; --serif: "Instrument Serif", Georgia, serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #000; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #05060a; color: #f4f5f8; font-family: var(--sans); }
+  .scene { position: absolute; inset: 0; overflow: hidden; visibility: hidden; }
+  .dark { background: radial-gradient(120% 90% at 50% 0%, #121522, #05060a 65%); }
+  .light { background: radial-gradient(110% 80% at 70% 0%, #eef6ff, #ffffff 55%), #fff; color: #0b0c10; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(110px); mix-blend-mode: screen; will-change: transform; }
+  .light .blob { mix-blend-mode: multiply; filter: blur(120px); }
+  .eyebrow { font: 500 20px/1 var(--mono); letter-spacing: 0.24em; text-transform: uppercase; color: #9aa0b4; display: flex; align-items: center; gap: 14px; }
+  .eyebrow::before { content: ""; width: 40px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3)); }
+  .light .eyebrow { color: #6b7183; }
+  .head { font: 400 92px/0.98 var(--serif); letter-spacing: -0.015em; margin: 18px 0 0; }
+  .head em, .grad { font-style: italic; background: linear-gradient(95deg, var(--c1), var(--c2) 55%, var(--c3)); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: 6px; }
+  .light .head em, .light .grad { background-image: linear-gradient(95deg, var(--d1), var(--d2) 55%, var(--d3)); }
+  .copy { position: absolute; left: 120px; bottom: 110px; max-width: 900px; }
+  .chip { display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 99px; font: 500 22px/1 var(--mono); white-space: nowrap;
+    background: rgb(255 255 255 / 0.08); border: 1px solid rgb(255 255 255 / 0.16); color: #eef0f7; backdrop-filter: blur(14px); box-shadow: 0 20px 40px -20px rgb(0 0 0 / 0.6); }
+  .light .chip { background: rgb(255 255 255 / 0.86); border-color: #e3e6ee; color: #1d2130; box-shadow: 0 24px 50px -26px rgb(16 20 36 / 0.45); }
+  .chip i { width: 10px; height: 10px; border-radius: 50%; background: var(--volt); box-shadow: 0 0 14px var(--volt); }
+  .frame { position: absolute; border-radius: 26px; overflow: hidden; background: #fff; box-shadow: 0 60px 120px -50px rgb(0 0 0 / 0.65), 0 0 0 1px rgb(255 255 255 / 0.12); }
+  .frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .bar { display: flex; align-items: center; gap: 9px; height: 46px; padding: 0 18px; background: #f3f4f7; border-bottom: 1px solid #e3e6ee; }
+  .bar i { width: 13px; height: 13px; border-radius: 50%; display: block; }
+  .bar .url { margin-left: 14px; padding: 6px 16px; border-radius: 99px; background: #fff; border: 1px solid #e3e6ee; font: 15px var(--mono); color: #2a2e3a; }
+  .wordmark { font: 400 200px/1 var(--serif); letter-spacing: -0.02em; display: flex; }
+  .wordmark span { display: inline-block; will-change: transform, filter, opacity; }
+  .wordmark .s { font-style: italic; background: linear-gradient(95deg, var(--c1), var(--c2) 55%, var(--c3)); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: 8px; }
+  .icon { position: relative; width: 300px; height: 300px; }
+  .icon img { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .ring { position: absolute; inset: -40px; border-radius: 50%; background: conic-gradient(from 0deg, var(--c1), var(--c2), var(--c3), var(--volt), var(--c1)); filter: blur(60px); opacity: 0.55; }
+  .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .lines { position: absolute; left: 140px; top: 210px; }
+  .line { overflow: hidden; padding-bottom: 8px; }
+  .line > div { font: 400 150px/1.02 var(--serif); letter-spacing: -0.02em; will-change: transform; }
+  .grid-floor { position: absolute; left: -50%; right: -50%; bottom: -12%; height: 70%; transform: perspective(700px) rotateX(64deg); transform-origin: bottom;
+    background-image: linear-gradient(rgb(165 134 255 / 0.35) 2px, transparent 2px), linear-gradient(90deg, rgb(63 223 255 / 0.35) 2px, transparent 2px); background-size: 90px 90px;
+    -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 85%); mask-image: linear-gradient(to top, #000 10%, transparent 85%); }
+  .glass { position: absolute; padding: 26px 30px; border-radius: 26px; background: rgb(255 255 255 / 0.72); border: 1px solid rgb(255 255 255 / 0.9); backdrop-filter: blur(20px) saturate(1.4); box-shadow: 0 40px 80px -40px rgb(16 20 36 / 0.5); color: #0b0c10; }
+  .glass.dk { background: rgb(14 16 24 / 0.72); border-color: rgb(255 255 255 / 0.12); color: #f4f5f8; }
+  .label { font: 600 16px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: #8a90a3; }
+  .money { font: 500 64px/1 var(--mono); letter-spacing: -0.03em; margin-top: 12px; }
+  .code { position: absolute; padding: 26px 30px; border-radius: 22px; background: #0b0c10; border: 1px solid rgb(255 255 255 / 0.1); font: 24px/1.6 var(--mono); color: #d9dcea; white-space: pre; box-shadow: 0 40px 80px -40px rgb(0 0 0 / 0.8); }
+  .code .k { color: #8fe3ff; } .code .s { color: #d6ff5c; } .code .n { color: #ff9ad5; } .code .c { color: #6f7590; }
+  .reticle { position: absolute; border: 4px solid var(--c3); border-radius: 14px; box-shadow: 0 0 0 8px rgb(255 95 198 / 0.18), 0 0 40px rgb(255 95 198 / 0.6); }
+  .reticle b { position: absolute; left: -4px; top: -44px; padding: 6px 12px; border-radius: 10px; background: var(--c3); color: #fff; font: 600 20px var(--mono); white-space: nowrap; }
+  .pbar { height: 16px; border-radius: 16px; background: rgb(255 255 255 / 0.1); overflow: hidden; }
+  .pbar > div { height: 100%; border-radius: 16px; background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3)); box-shadow: 0 0 20px rgb(165 134 255 / 0.8); }
+  .mask { position: absolute; border: 4px solid; border-radius: 10px; }
+  .handle { position: absolute; top: -20px; bottom: -20px; width: 4px; border-radius: 4px; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.1), 0 0 30px rgb(107 77 255 / 0.9); }
+  .handle::after { content: "⇆"; position: absolute; top: 50%; left: 50%; width: 54px; height: 54px; margin: -27px; border-radius: 50%; background: #fff; display: grid; place-items: center; font: 600 26px var(--sans); color: #6b4dff; box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.5); }
+  .list { position: absolute; display: flex; flex-direction: column; gap: 16px; }
+  .item { display: flex; align-items: center; gap: 16px; font: 500 30px var(--sans); color: #1d2130; }
+  .item .tick { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; font: 700 22px var(--sans); }
+  .pulse { position: absolute; border-radius: 50%; border: 3px solid var(--volt); }
+  .big { font: 400 170px/1 var(--serif); letter-spacing: -0.03em; }
+  .os { position: absolute; width: 330px; padding: 30px; border-radius: 34px; background: rgb(255 255 255 / 0.06); border: 1px solid rgb(255 255 255 / 0.14); backdrop-filter: blur(16px); text-align: center; box-shadow: 0 40px 80px -40px rgb(0 0 0 / 0.8); }
+  .os img { width: 170px; height: 170px; }
+  .os b { display: block; margin-top: 14px; font: 600 28px var(--mono); }
+  .os span { display: block; margin-top: 6px; font: 20px var(--sans); color: #a6abbe; }
+  .cursor { position: absolute; width: 44px; height: 44px; }
+  .ripple { position: absolute; border-radius: 50%; border: 4px solid var(--volt); }
+  .sweep { position: absolute; top: -20%; bottom: -20%; width: 260px; background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.16), transparent); transform: skewX(-18deg); }
+  .vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 100% at 50% 50%, transparent 60%, rgb(0 0 0 / 0.35)); }
+  .grain { position: absolute; inset: 0; pointer-events: none; opacity: 0.05; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 1 · logo reveal -->
+  <section class="scene dark" id="s1">
+    <div class="blob" id="s1b1" style="width:900px;height:900px;background:var(--c1);opacity:.35"></div>
+    <div class="blob" id="s1b2" style="width:900px;height:900px;background:var(--c2);opacity:.35"></div>
+    <div class="blob" id="s1b3" style="width:800px;height:800px;background:var(--c3);opacity:.28"></div>
+    <div class="center">
+      <div class="icon" id="s1icon"><div class="ring" id="s1ring"></div><img src="../../../launcher/icon/twinstore-mac.png" alt=""></div>
+      <div class="wordmark" id="s1word" style="margin-top:20px"><span>T</span><span>w</span><span>i</span><span>n</span><span class="s">S</span><span class="s">t</span><span class="s">o</span><span class="s">r</span><span class="s">e</span></div>
+      <div id="s1tag" style="font: 400 40px var(--sans); color:#b9bdcc; margin-top: 6px">The digital twin of your store.</div>
+    </div>
+    <div class="sweep" id="s1sweep"></div>
+  </section>
+
+  <!-- 2 · kinetic type -->
+  <section class="scene dark" id="s2">
+    <div class="grid-floor" id="s2floor"></div>
+    <div class="lines" id="s2lines">
+      <div class="line"><div>Walk a thousand</div></div>
+      <div class="line"><div>synthetic shoppers</div></div>
+      <div class="line"><div>through your store —</div></div>
+      <div class="line"><div class="grad">before you move a shelf.</div></div>
+    </div>
+  </section>
+
+  <!-- 3 · the twin -->
+  <section class="scene light" id="s3">
+    <div class="blob" id="s3b1" style="width:900px;height:700px;background:#bdeeff;opacity:.7"></div>
+    <div class="blob" id="s3b2" style="width:900px;height:700px;background:#e9d9ff;opacity:.7"></div>
+    <div id="s3persp" style="position:absolute; inset:0; perspective: 2200px">
+      <div class="frame" id="s3frame" style="left:470px; top:70px; width:1340px; height:883px">
+        <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="url">127.0.0.1:8000 · Sample store</span></div>
+        <img src="../twinstore/screens/floor-light.jpg" alt="" style="height:calc(100% - 46px)">
+      </div>
+    </div>
+    <div class="glass" id="s3money" style="left:120px; top:150px; width:420px"><div class="label">Revenue so far</div><div class="money" id="s3m">$0.00</div><div style="margin-top:10px;font:20px var(--sans);color:#6b7183">211 visitors · 98 % converted</div></div>
+    <div class="chip" id="s3c1" style="position:absolute; left:120px; top:400px"><i></i>Vision-language shoppers</div>
+    <div class="chip" id="s3c2" style="position:absolute; left:120px; top:470px"><i></i>Photoreal 3D twin</div>
+    <div class="chip" id="s3c3" style="position:absolute; left:120px; top:540px"><i></i>19 situations · promos · stock-outs</div>
+    <div class="chip" id="s3c4" style="position:absolute; left:120px; top:610px"><i></i>Seeded A/B · same shoppers</div>
+    <div class="copy" id="s3copy" style="bottom:90px"><div class="eyebrow">01 — The twin</div><div class="head">Your store, <em>alive.</em></div></div>
+  </section>
+
+  <!-- 4 · vision shoppers -->
+  <section class="scene dark" id="s4">
+    <div class="frame" id="s4eye" style="left:100px; top:60px; width:1020px; height:640px; background:#000"><img src="../twinstore/screens/shopper-dark.jpg" alt="" id="s4eyeimg" style="object-position: 30% 50%"></div>
+    <div class="frame" id="s4shelf" style="left:1210px; top:60px; width:560px; height:538px; background:#fff"><img src="../twinstore/media/shelf-tagged.jpg" alt="" style="object-fit:cover;object-position:top"></div>
+    <div class="reticle" id="s4ret" style="left:1600px; top:196px; width:128px; height:112px"><b>#4 · interest 8</b></div>
+    <div class="code" id="s4code" style="left:1180px; top:630px; width:620px; height:196px; font-size:21px"></div>
+    <div class="glass dk" id="s4draw" style="left:1180px; top:850px; width:620px; padding:22px 26px"><div class="label">Seeded draw · P(buy)</div><div style="display:flex;align-items:center;gap:18px;margin-top:14px"><div class="pbar" style="flex:1"><div id="s4p" style="width:0%"></div></div><b id="s4pv" style="font:600 30px var(--mono)">0.00</b></div></div>
+    <div class="copy" id="s4copy" style="left:100px; bottom:80px; max-width:1040px"><div class="eyebrow">02 — Vision shoppers</div><div class="head" style="font-size:84px">They look. They read tags.<br><em>They decide.</em></div></div>
+  </section>
+
+  <!-- 5 · shelf lab -->
+  <section class="scene light" id="s5">
+    <div class="blob" id="s5b1" style="width:800px;height:700px;background:#ffd9ef;opacity:.6"></div>
+    <div class="blob" id="s5b2" style="width:800px;height:700px;background:#d6f4ff;opacity:.6"></div>
+    <div class="frame" id="s5frame" style="left:150px; top:110px; width:700px; height:810px; background:#fff">
+      <img src="../twinstore/media/lab-before.jpg" alt="" style="position:absolute;inset:0">
+      <img src="../twinstore/media/lab-after.jpg" alt="" id="s5after" style="position:absolute;inset:0">
+      <div class="mask" id="s5m1" style="left:4%; top:14.6%; width:20%; height:15.5%; border-color:#0aa2c6"></div>
+      <div class="mask" id="s5m2" style="left:71%; top:31%; width:21%; height:15%; border-color:#0aa2c6"></div>
+      <div class="mask" id="s5m3" style="left:21.5%; top:49%; width:20%; height:15%; border-color:#e0429b"></div>
+      <div class="mask" id="s5m4" style="left:4%; top:67%; width:58%; height:15.5%; border-color:#6b4dff"></div>
+      <div class="mask" id="s5m5" style="left:73%; top:86.5%; width:17%; height:4.5%; border-color:#e7a400"></div>
+      <div class="handle" id="s5handle" style="left:0"></div>
+    </div>
+    <div class="list" id="s5list" style="left:960px; top:200px">
+      <div class="item"><span class="tick" style="background:#0aa2c6">✓</span>Swap two products</div>
+      <div class="item"><span class="tick" style="background:#e0429b">✓</span>Empty a run — stock-out</div>
+      <div class="item"><span class="tick" style="background:#6b4dff">✓</span>Inpaint a new package</div>
+      <div class="item"><span class="tick" style="background:#e7a400">✓</span>Reprint a price tag</div>
+      <div class="item"><span class="tick" style="background:#86c400">✓</span>Hang a 1+1 promotion</div>
+    </div>
+    <div class="chip" id="s5gt" style="position:absolute; left:960px; top:560px"><i></i>Pixels outside the boxes: byte-identical</div>
+    <div class="copy" id="s5copy" style="left:960px; bottom:110px; max-width:860px"><div class="eyebrow">03 — Shelf Lab</div><div class="head" style="font-size:84px">Counterfactual photos. <em>Exact ground truth.</em></div></div>
+  </section>
+
+  <!-- 6 · neighborhood -->
+  <section class="scene dark" id="s6">
+    <div class="frame" id="s6frame" style="left:0; top:0; width:1920px; height:1200px; border-radius:0; background:#000"><img src="../twinstore/screens/town-dark.jpg" alt="" style="object-fit:cover"></div>
+    <div style="position:absolute;inset:0;background:linear-gradient(90deg, rgb(5 6 10 / .92) 0%, rgb(5 6 10 / .55) 45%, rgb(5 6 10 / .1) 75%)"></div>
+    <div class="pulse" id="s6p1"></div><div class="pulse" id="s6p2"></div><div class="pulse" id="s6p3"></div>
+    <div class="chip" id="s6c1" style="position:absolute; left:120px; top:330px"><i></i>Storefront photo → appeal → foot traffic</div>
+    <div class="chip" id="s6c2" style="position:absolute; left:120px; top:400px"><i></i>Rival shelf → price index</div>
+    <div class="chip" id="s6c3" style="position:absolute; left:120px; top:470px"><i></i>Huff demand · synergy</div>
+    <div class="copy" id="s6copy"><div class="eyebrow">04 — Neighborhood</div><div class="head">Every store has <em>neighbors.</em></div></div>
+  </section>
+
+  <!-- 7 · validated -->
+  <section class="scene light" id="s7">
+    <div class="blob" id="s7b1" style="width:900px;height:800px;background:#e2f7ff;opacity:.8"></div>
+    <div class="blob" id="s7b2" style="width:900px;height:800px;background:#f1e6ff;opacity:.8"></div>
+    <div style="position:absolute; left:120px; top:150px">
+      <div class="label">Category divergence · calibration loop</div>
+      <div class="big" id="s7n1">0.113</div>
+      <div style="font:26px var(--sans); color:#6b7183">first iteration → final, on real households' baskets</div>
+    </div>
+    <div style="position:absolute; left:1010px; top:150px">
+      <div class="label">Per-trip hit · held-out households</div>
+      <div class="big"><span id="s7n2">0.00</span><span style="font-size:70px;color:#a3a8b8"> vs 0.31</span></div>
+      <div style="font:26px var(--sans); color:#6b7183">vision shoppers vs store popularity</div>
+    </div>
+    <div class="chip" id="s7c1" style="position:absolute; left:120px; top:560px"><i></i>dunnhumby · 801 households · 1.47 M lines</div>
+    <div class="chip" id="s7c2" style="position:absolute; left:760px; top:560px"><i></i>frozen config · weeks 40–53</div>
+    <div class="copy" id="s7copy"><div class="eyebrow">05 — Validated</div><div class="head">Checked against <em>real baskets.</em></div></div>
+  </section>
+
+  <!-- 8 · one icon -->
+  <section class="scene dark" id="s8">
+    <div class="blob" id="s8b1" style="width:900px;height:900px;background:var(--c2);opacity:.3"></div>
+    <div class="blob" id="s8b2" style="width:800px;height:800px;background:var(--c1);opacity:.25"></div>
+    <div class="os" id="s8w" style="left:335px; top:250px"><img src="../../../launcher/icon/twinstore.png" alt=""><b>TwinStore.exe</b><span>Windows</span></div>
+    <div class="os" id="s8m" style="left:795px; top:250px"><img src="../../../launcher/icon/twinstore-mac.png" alt="" style="transform:scale(1.18)"><b>TwinStore.app</b><span>macOS</span></div>
+    <div class="os" id="s8l" style="left:1255px; top:250px"><img src="../../../launcher/icon/twinstore.png" alt=""><b>twinstore</b><span>Linux</span></div>
+    <div class="ripple" id="s8rip"></div>
+    <svg class="cursor" id="s8cur" viewBox="0 0 24 24"><path d="M4 2 20 12l-7 1.6L9.6 21Z" fill="#fff" stroke="#0b0c10" stroke-width="1.4" stroke-linejoin="round"/></svg>
+    <div class="frame" id="s8boot" style="left:260px; top:90px; width:1400px; height:900px; background:#05060a"><img src="../twinstore/media/boot-1.jpg" alt="" id="s8bootimg"><img src="../twinstore/media/boot.jpg" alt="" class="bootstep" style="position:absolute;inset:0;opacity:0"><img src="../twinstore/media/boot-3.jpg" alt="" class="bootstep" style="position:absolute;inset:0;opacity:0"><img src="../twinstore/media/boot-4.jpg" alt="" class="bootstep" style="position:absolute;inset:0;opacity:0"><img src="../twinstore/screens/home-dark.jpg" alt="" id="s8home" style="position:absolute;inset:0;opacity:0"></div>
+    <div class="copy" id="s8copy" style="bottom:70px"><div class="eyebrow">06 — One click</div><div class="head">One icon. <em>Every OS.</em></div></div>
+  </section>
+
+  <!-- 9 · end card -->
+  <section class="scene dark" id="s9">
+    <div class="blob" id="s9b1" style="width:1000px;height:1000px;background:var(--c1);opacity:.3"></div>
+    <div class="blob" id="s9b2" style="width:1000px;height:1000px;background:var(--c3);opacity:.25"></div>
+    <div class="center">
+      <div class="icon" id="s9icon" style="width:220px;height:220px"><div class="ring" id="s9ring"></div><img src="../../../launcher/icon/twinstore-mac.png" alt=""></div>
+      <div class="wordmark" id="s9word" style="font-size:150px;margin-top:10px">Twin<span class="s">Store</span></div>
+      <div id="s9tag" style="font: 400 36px var(--sans); color:#b9bdcc">The digital twin of your store, shopped by synthetic customers.</div>
+      <div id="s9chips" style="display:flex; gap:16px; margin-top:44px"><span class="chip"><i></i>Free for research &amp; non-commercial use</span><span class="chip"><i></i>Free for companies up to US$1M revenue</span></div>
+      <div id="s9url" style="margin-top:40px; font: 500 30px var(--mono); color:#eef0f7">github.com/BrainJellyPie/parastore</div>
+      <div id="s9base" style="margin-top:14px; font: 20px var(--sans); color:#7d8296">Built on Parastore by intellicia (MIT)</div>
+    </div>
+  </section>
+
+  <div class="vignette"></div>
+  <div class="grain" id="grain"></div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const E = {
+    out: (x) => 1 - Math.pow(1 - x, 3),
+    out5: (x) => 1 - Math.pow(1 - x, 5),
+    inOut: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
+    back: (x) => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); },
+    lin: (x) => x,
+  };
+  const P = (t, a, b, e = E.out) => e(clamp((t - a) / (b - a)));
+  const L = (a, b, k) => a + (b - a) * k;
+  const set = (el, css) => { for (const k in css) el.style[k] = css[k]; };
+
+  // scenes: [id, start, end]; neighbours overlap by the cross-fade
+  const SCENES = [["s1", 0, 4.4], ["s2", 4.0, 9.2], ["s3", 8.8, 15.4], ["s4", 15.0, 21.2], ["s5", 20.8, 27.0], ["s6", 26.6, 32.2], ["s7", 31.8, 37.4], ["s8", 37.0, 44.0], ["s9", 43.6, 49]];
+  const DURATION = 49;
+
+  function sceneOpacity(t, a, b) {
+    const fade = 0.45;
+    return Math.min(a === 0 ? 1 : P(t, a, a + fade, E.inOut), b >= DURATION ? 1 : 1 - P(t, b - fade, b, E.inOut));
+  }
+  function blob(el, t, cx, cy, rx, ry, speed, phase) {
+    el.style.transform = `translate(${cx + Math.cos(t * speed + phase) * rx - el.offsetWidth / 2}px, ${cy + Math.sin(t * speed * 0.8 + phase) * ry - el.offsetHeight / 2}px)`;
+  }
+  function typeText(el, html, k) {
+    // reveal an HTML string character by character, keeping its tags
+    const plain = html.replace(/<[^>]+>/g, "");
+    let n = Math.round(plain.length * k), out = "", i = 0;
+    for (const part of html.split(/(<[^>]+>)/)) {
+      if (part.startsWith("<")) { out += part; continue; }
+      const take = Math.max(0, Math.min(part.length, n - i));
+      out += part.slice(0, take); i += part.length;
+    }
+    el.innerHTML = out.replace(/<span class="[a-z]+">(<\/span>)/g, "$1") + (k < 1 ? '<span style="color:var(--volt)">▍</span>' : "");
+  }
+  const CODE = '<span class="c">// ShelfGlance — example output</span>\n{ <span class="k">"product"</span>: <span class="s">"Zero Cola 500ml"</span>,\n  <span class="k">"number"</span>: <span class="n">4</span>, <span class="k">"interest"</span>: <span class="n">8</span>,\n  <span class="k">"reason"</span>: <span class="s">"cold, eye level, fair price"</span> }';
+
+  function seek(t) {
+    for (const [id, a, b] of SCENES) {
+      const k = t >= a - 0.01 && t <= b + 0.01 ? sceneOpacity(t, a, b) : 0;
+      const el = $(id);
+      el.style.opacity = k; el.style.visibility = k > 0.001 ? "visible" : "hidden";
+    }
+    $("grain").style.transform = `translate(${(Math.floor(t * 24) % 7) * 7 - 21}px, ${(Math.floor(t * 24) % 5) * 9 - 18}px)`;
+
+    // 1 · logo
+    if (t < 4.6) {
+      blob($("s1b1"), t, 560, 380, 160, 90, 0.7, 0); blob($("s1b2"), t, 1380, 520, 140, 120, 0.6, 2); blob($("s1b3"), t, 960, 900, 220, 60, 0.5, 4);
+      const ic = P(t, 0.15, 1.3, E.back);
+      set($("s1icon"), { transform: `scale(${L(0.4, 1, ic)}) rotate(${L(-14, 0, P(t, 0.15, 1.4))}deg)`, opacity: P(t, 0.15, 0.6) });
+      $("s1ring").style.transform = `rotate(${t * 70}deg)`;
+      $("s1ring").style.opacity = 0.35 + 0.25 * Math.sin(t * 3);
+      [...$("s1word").children].forEach((sp, i) => {
+        const k = P(t, 1.0 + i * 0.07, 1.7 + i * 0.07, E.out5);
+        set(sp, { opacity: k, transform: `translateY(${L(70, 0, k)}px) rotate(${L(8, 0, k)}deg)`, filter: `blur(${L(18, 0, k)}px)` });
+      });
+      const tg = P(t, 2.1, 2.9);
+      set($("s1tag"), { opacity: tg, transform: `translateY(${L(24, 0, tg)}px)`, letterSpacing: `${L(0.3, 0, tg)}em` });
+      set($("s1sweep"), { left: `${L(-400, 2200, P(t, 2.6, 3.8, E.inOut))}px` });
+      const out = P(t, 3.6, 4.4, E.inOut);
+      $("s1").querySelector(".center").style.transform = `scale(${L(1, 1.25, out)})`;
+      $("s1").querySelector(".center").style.filter = `blur(${L(0, 14, out)}px)`;
+    }
+
+    // 2 · kinetic type
+    if (t > 3.9 && t < 9.4) {
+      const lt = t - 4.0;
+      $("s2floor").style.backgroundPosition = `0 ${lt * 60}px, 0 0`;
+      [...$("s2lines").children].forEach((line, i) => {
+        const k = P(lt, 0.25 + i * 0.42, 1.05 + i * 0.42, E.out5);
+        set(line.firstElementChild, { transform: `translateY(${L(110, 0, k)}%) skewY(${L(6, 0, k)}deg)` });
+      });
+      const out = P(lt, 4.3, 5.2, E.inOut);
+      set($("s2lines"), { transform: `translateX(${L(0, -140, out)}px) scale(${L(1, 0.94, out)})`, filter: `blur(${L(0, 12, out)}px)`, opacity: 1 - out });
+    }
+
+    // 3 · the twin
+    if (t > 8.7 && t < 15.6) {
+      const lt = t - 8.8;
+      blob($("s3b1"), lt, 400, 200, 120, 80, 0.5, 0); blob($("s3b2"), lt, 1500, 900, 120, 80, 0.5, 2);
+      const tilt = P(lt, 0, 3.2, E.out);
+      const drift = lt / 6.6;
+      set($("s3frame"), { transform: `rotateY(${L(-24, -7, tilt) + drift * 2}deg) rotateX(${L(16, 4, tilt)}deg) translateZ(${L(-260, 0, tilt)}px) scale(${1 + drift * 0.04})`, opacity: P(lt, 0, 0.6) });
+      const mk = P(lt, 0.8, 1.6, E.back);
+      set($("s3money"), { opacity: P(lt, 0.8, 1.2), transform: `translateY(${L(40, 0, mk)}px) scale(${L(0.9, 1, mk)})` });
+      $("s3m").textContent = "$" + (1827.9 * P(lt, 1.0, 3.6, E.out)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      ["s3c1", "s3c2", "s3c3", "s3c4"].forEach((id, i) => {
+        const k = P(lt, 1.8 + i * 0.28, 2.5 + i * 0.28, E.back);
+        set($(id), { opacity: P(lt, 1.8 + i * 0.28, 2.1 + i * 0.28), transform: `translateX(${L(-60, 0, k)}px) scale(${L(0.85, 1, k)})` });
+      });
+      const ck = P(lt, 2.6, 3.4, E.out5);
+      set($("s3copy"), { opacity: ck, transform: `translateY(${L(40, 0, ck)}px)` });
+    }
+
+    // 4 · vision shoppers
+    if (t > 14.9 && t < 21.4) {
+      const lt = t - 15.0;
+      const e = P(lt, 0, 1.0, E.out5);
+      set($("s4eye"), { opacity: P(lt, 0, 0.5), transform: `translateX(${L(-80, 0, e)}px) scale(${L(0.94, 1, e)})` });
+      $("s4eyeimg").style.transform = `scale(${1 + lt * 0.025}) translateX(${-lt * 6}px)`;
+      const s = P(lt, 0.6, 1.6, E.back);
+      set($("s4shelf"), { opacity: P(lt, 0.6, 1.0), transform: `translateX(${L(140, 0, s)}px) rotate(${L(6, 0, s)}deg)` });
+      const r = P(lt, 1.7, 2.3, E.back);
+      set($("s4ret"), { opacity: P(lt, 1.7, 1.9), transform: `scale(${L(1.6, 1, r)})` });
+      $("s4code").style.opacity = P(lt, 2.1, 2.4);
+      typeText($("s4code"), CODE, P(lt, 2.3, 4.2, E.lin));
+      const d = P(lt, 0.9, 1.4);
+      set($("s4draw"), { opacity: d, transform: `translateY(${L(30, 0, d)}px)` });
+      const pv = 0.72 * P(lt, 3.6, 4.6, E.out);
+      $("s4p").style.width = `${pv * 100}%`; $("s4pv").textContent = pv.toFixed(2);
+      const ck = P(lt, 1.2, 2.0, E.out5);
+      set($("s4copy"), { opacity: ck, transform: `translateY(${L(40, 0, ck)}px)` });
+    }
+
+    // 5 · shelf lab
+    if (t > 20.7 && t < 27.2) {
+      const lt = t - 20.8;
+      blob($("s5b1"), lt, 1500, 250, 100, 60, 0.6, 0); blob($("s5b2"), lt, 300, 900, 100, 60, 0.6, 3);
+      const f = P(lt, 0, 0.9, E.out5);
+      set($("s5frame"), { opacity: P(lt, 0, 0.5), transform: `translateY(${L(60, 0, f)}px) rotate(${L(-3, 0, f)}deg)` });
+      const w = P(lt, 1.0, 2.8, E.inOut);
+      $("s5after").style.clipPath = `inset(0 ${100 - w * 100}% 0 0)`;
+      $("s5handle").style.left = `${w * 100}%`;
+      $("s5handle").style.opacity = w > 0.001 && w < 0.999 ? 1 : 0;
+      [1, 2, 3, 4, 5].forEach((n, i) => {
+        const k = P(lt, 2.9 + i * 0.22, 3.4 + i * 0.22, E.back);
+        set($("s5m" + n), { opacity: P(lt, 2.9 + i * 0.22, 3.1 + i * 0.22), transform: `scale(${L(1.5, 1, k)})` });
+      });
+      [...$("s5list").children].forEach((it, i) => {
+        const k = P(lt, 1.2 + i * 0.3, 1.9 + i * 0.3, E.out5);
+        set(it, { opacity: k, transform: `translateX(${L(60, 0, k)}px)` });
+      });
+      const g = P(lt, 3.4, 4.0, E.back);
+      set($("s5gt"), { opacity: P(lt, 3.4, 3.7), transform: `scale(${L(0.8, 1, g)})` });
+      const ck = P(lt, 2.2, 3.0, E.out5);
+      set($("s5copy"), { opacity: ck, transform: `translateY(${L(40, 0, ck)}px)` });
+    }
+
+    // 6 · neighborhood
+    if (t > 26.5 && t < 32.4) {
+      const lt = t - 26.6;
+      $("s6frame").style.transform = `scale(${1.12 - lt * 0.012}) translate(${-lt * 10}px, ${-lt * 6}px)`;
+      [1, 2, 3].forEach((n, i) => {
+        const ph = ((lt + i * 0.8) % 2.4) / 2.4;
+        const size = L(40, 520, ph);
+        set($("s6p" + n), { width: `${size}px`, height: `${size}px`, left: `${1340 - size / 2}px`, top: `${600 - size / 2}px`, opacity: (1 - ph) * P(lt, 0.4, 1.0) });
+      });
+      ["s6c1", "s6c2", "s6c3"].forEach((id, i) => {
+        const k = P(lt, 1.2 + i * 0.3, 1.9 + i * 0.3, E.back);
+        set($(id), { opacity: P(lt, 1.2 + i * 0.3, 1.5 + i * 0.3), transform: `translateX(${L(-60, 0, k)}px)` });
+      });
+      const ck = P(lt, 0.4, 1.2, E.out5);
+      set($("s6copy"), { opacity: ck, transform: `translateY(${L(40, 0, ck)}px)` });
+    }
+
+    // 7 · validated
+    if (t > 31.7 && t < 37.6) {
+      const lt = t - 31.8;
+      blob($("s7b1"), lt, 400, 300, 120, 80, 0.5, 1); blob($("s7b2"), lt, 1500, 700, 120, 80, 0.5, 3);
+      const n1 = P(lt, 0.6, 2.4, E.inOut);
+      $("s7n1").innerHTML = `${n1 < 0.02 ? "0.113" : "0.113 → "}<span class="grad">${n1 < 0.02 ? "" : L(0.113, 0.018, n1).toFixed(3)}</span>`;
+      $("s7n2").innerHTML = `<span class="grad">${(0.34 * P(lt, 1.2, 2.8, E.out)).toFixed(2)}</span>`;
+      ["s7c1", "s7c2"].forEach((id, i) => {
+        const k = P(lt, 2.4 + i * 0.3, 3.0 + i * 0.3, E.back);
+        set($(id), { opacity: P(lt, 2.4 + i * 0.3, 2.7 + i * 0.3), transform: `scale(${L(0.85, 1, k)})` });
+      });
+      const ck = P(lt, 0.3, 1.1, E.out5);
+      set($("s7copy"), { opacity: ck, transform: `translateY(${L(40, 0, ck)}px)` });
+    }
+
+    // 8 · one icon
+    if (t > 36.9 && t < 44.2) {
+      const lt = t - 37.0;
+      blob($("s8b1"), lt, 960, 300, 200, 80, 0.6, 0); blob($("s8b2"), lt, 600, 900, 200, 80, 0.6, 2);
+      ["s8w", "s8m", "s8l"].forEach((id, i) => {
+        const k = P(lt, 0.2 + i * 0.18, 1.1 + i * 0.18, E.back);
+        const pressed = id === "s8m" ? 1 - 0.06 * Math.sin(Math.PI * P(lt, 2.0, 2.3, E.lin)) : 1;
+        set($(id), { opacity: P(lt, 0.2 + i * 0.18, 0.5 + i * 0.18) * (1 - P(lt, 2.5, 3.0)), transform: `translateY(${L(120, 0, k)}px) scale(${L(0.8, 1, k) * pressed})` });
+      });
+      const cx = L(1500, 960, P(lt, 1.0, 2.0, E.inOut)), cy = L(900, 420, P(lt, 1.0, 2.0, E.inOut));
+      set($("s8cur"), { left: `${cx}px`, top: `${cy}px`, opacity: P(lt, 0.9, 1.1) * (1 - P(lt, 2.5, 2.8)) });
+      const rp = P(lt, 2.05, 2.8, E.out);
+      set($("s8rip"), { width: `${rp * 300}px`, height: `${rp * 300}px`, left: `${960 - rp * 150}px`, top: `${420 - rp * 150}px`, opacity: (1 - rp) * (lt > 2.05 ? 1 : 0) });
+      const b = P(lt, 2.4, 3.3, E.out5);
+      set($("s8boot"), { opacity: P(lt, 2.4, 2.7), transform: `translate(${L(0, 0, b)}px, ${L(-120, 0, b)}px) scale(${L(0.2, 1, b)})`, transformOrigin: "50% 37%" });
+      [...document.querySelectorAll(".bootstep")].forEach((im, i) => { im.style.opacity = P(lt, 3.5 + i * 0.4, 3.62 + i * 0.4, E.lin); });
+      $("s8home").style.opacity = P(lt, 4.9, 5.4, E.inOut);
+      const ck = P(lt, 0.4, 1.2, E.out5);
+      set($("s8copy"), { opacity: ck * (1 - P(lt, 2.4, 2.8)), transform: `translateY(${L(40, 0, ck)}px)` });
+    }
+
+    // 9 · end card
+    if (t > 43.5) {
+      const lt = t - 43.6;
+      blob($("s9b1"), lt, 500, 400, 140, 90, 0.5, 0); blob($("s9b2"), lt, 1450, 700, 140, 90, 0.5, 2);
+      const ic = P(lt, 0.2, 1.2, E.back);
+      set($("s9icon"), { opacity: P(lt, 0.2, 0.5), transform: `scale(${L(0.5, 1, ic)})` });
+      $("s9ring").style.transform = `rotate(${lt * 60}deg)`;
+      [["s9word", 0.6], ["s9tag", 1.0], ["s9chips", 1.4], ["s9url", 1.8], ["s9base", 2.1]].forEach(([id, a]) => {
+        const k = P(lt, a, a + 0.8, E.out5);
+        set($(id), { opacity: k, transform: `translateY(${L(30, 0, k)}px)`, filter: `blur(${L(10, 0, k)}px)` });
+      });
+    }
+  }
+
+  window.DURATION = DURATION;
+  window.seek = seek;
+  const q = new URLSearchParams(location.search);
+  (document.fonts?.ready ?? Promise.resolve()).then(() => {
+    if (q.has("play")) {
+      const t0 = performance.now();
+      const loop = () => { seek(((performance.now() - t0) / 1000) % DURATION); requestAnimationFrame(loop); };
+      loop();
+    } else {
+      seek(Number(q.get("t") || 0));
+    }
+    window.promoReady = true;
+  });
+</script>
+</body>
+</html>
