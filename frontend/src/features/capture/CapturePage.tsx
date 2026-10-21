@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { Camera, Check, Eye, EyeOff, FlaskConical, ImagePlus, ListChecks, Loader2, Minus, Plus, Save, Trash2, Upload, Wand2 } from "lucide-react";
 
 import * as api from "@/shared/api/client";
@@ -441,6 +441,12 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
 function ApplyPanel({ projectId, captureId, result }: { projectId: string; captureId: string; result: CaptureResult }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const router = useRouter();
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const setSelectedSetupId = useSimulationStore((s) => s.setSelectedSetupId);
   const currentSetup = useSimulationStore((s) => s.selectedSetupId);
   const { data: setups = [] } = useQuery({ queryKey: queryKeys.setups(projectId), queryFn: ({ signal }) => api.getSetups(projectId, signal) });
@@ -460,6 +466,7 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
       // Captured SKU photos also decorate cached run playback.
       await qc.invalidateQueries({ queryKey: queryKeys.project(projectId) });
       await qc.invalidateQueries({ queryKey: capturesKey(projectId) });
+      if (!mounted.current || router.state.location.pathname !== `/capture/${projectId}`) return;
       setSelectedSetupId(r.setup_id);
       void navigate({ to: "/projects/$pid", params: { pid: projectId } });
     },
