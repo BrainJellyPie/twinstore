@@ -18,6 +18,7 @@ beforeEach(() => {
   vi.mocked(api.getStoreTemplates).mockResolvedValue([
     { id: "urban_cvs", name: "City store", description: "Daily groceries", store_type: "convenience", grid: [12, 10], racks: 10, skus: 40, open_hours: [0, 24], default_style: "aisles", default_design: "classic", default_dining_tables: 0 },
     { id: "community_pharmacy", name: "Community pharmacy", description: "First aid and wellness", store_type: "pharmacy", grid: [14, 12], racks: 12, skus: 50, open_hours: [9, 21], default_style: "spine", default_design: "minimal", default_dining_tables: 0 },
+    { id: "family_restaurant", name: "Family restaurant", description: "Central dining", store_type: "restaurant", grid: [24, 20], racks: 20, skus: 40, open_hours: [11, 22], default_style: "perimeter", default_design: "warm", default_dining_tables: 8, default_seating_zone: "center", default_checkout_placement: "near_entrance" },
   ]);
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Preview", type: "convenience", grid_size: [12, 10], weekly_schedule: [], racks: [] });
 });
@@ -82,4 +83,19 @@ it("makes a different budget currency explicit while still allowing a price prev
   expect(screen.getByText(/This project uses USD shopper budgets/)).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Price currency"), { target: { value: "USD" } });
   expect(screen.queryByText(/Existing budgets are not converted/)).toBeNull();
+});
+
+it("shows each format's seating and checkout defaults without replacing explicit user choices", async () => {
+  mount();
+  await screen.findByRole("button", { name: /Family restaurant/ });
+  fireEvent.click(screen.getByRole("button", { name: /Family restaurant/ }));
+  expect(screen.getByRole("option", { name: "Format default (center)" })).toBeTruthy();
+  expect(screen.getByRole("option", { name: "Format default (near entrance)" })).toBeTruthy();
+  expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).disabled).toBe(false);
+  fireEvent.change(screen.getByLabelText("Seating starts near"), { target: { value: "front" } });
+  fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "away_from_entrance" } });
+  fireEvent.click(screen.getByRole("button", { name: /Community pharmacy/ }));
+  await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
+    template_id: "community_pharmacy", seating_zone: "front", checkout_placement: "away_from_entrance",
+  }), expect.any(AbortSignal)));
 });

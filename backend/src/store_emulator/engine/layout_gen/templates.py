@@ -16,7 +16,7 @@ The result always passes `engine.validation.validate` without errors (checked by
 import random
 from dataclasses import dataclass, field
 
-from store_emulator.domain.layout_options import LayoutOptions, LayoutStyle, StoreDesign
+from store_emulator.domain.layout_options import CheckoutPlacement, LayoutOptions, LayoutStyle, SeatingZone, StoreDesign
 from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.types import Face, Weekday, stable_seed
@@ -39,6 +39,9 @@ class StoreTemplate:
     closed_days: tuple[int, ...] = ()
     style: LayoutStyle = "aisles"
     dining_tables: int = 0
+    seating_zone: SeatingZone = "auto"
+    checkout_placement: CheckoutPlacement = "auto"
+    design_theme: StoreDesign | None = None
 
 
 TEMPLATES: list[StoreTemplate] = [
@@ -209,6 +212,58 @@ TEMPLATES: list[StoreTemplate] = [
         store_type="flowers", grid=(12, 10), fridges=[], wall_shelves=["flowers", "home_design", "souvenirs"],
         gondolas=["flowers"], near_counter=["flowers"], style="perimeter", open_hours=(9, 20),
     ),
+    StoreTemplate(
+        id="family_restaurant", name="Family restaurant", description="A broad dining floor with eight central tables, perimeter menu displays and a checkout near the entrance. Counter purchases are modeled; table service is not.",
+        store_type="restaurant", grid=(24, 20), fridges=["soft_drinks", "water_sports", "dairy", "desserts"],
+        wall_shelves=["restaurant_menu", "desserts", "cafe_menu"] * 2, gondolas=["restaurant_menu"],
+        near_counter=["restaurant_menu", "desserts"], style="perimeter", open_hours=(11, 22), dining_tables=8,
+        seating_zone="center", checkout_placement="near_entrance", design_theme="warm",
+    ),
+    StoreTemplate(
+        id="neighborhood_bistro", name="Neighborhood bistro", description="Six tables toward the back of a compact dining room, with charcoal-and-brass finishes and menu displays. No kitchen or table-service simulation.",
+        store_type="restaurant", grid=(16, 14), fridges=["soft_drinks", "desserts"],
+        wall_shelves=["restaurant_menu", "restaurant_menu", "cafe_menu"], gondolas=["restaurant_menu"],
+        near_counter=["restaurant_menu", "desserts"], style="perimeter", open_hours=(11, 23), closed_days=(1,),
+        dining_tables=6, seating_zone="back", design_theme="luxury",
+    ),
+    StoreTemplate(
+        id="takeaway_coffee", name="Takeaway coffee kiosk", description="A compact coffee stop with no seating, an entrance-side checkout, industrial finishes and pastry displays.",
+        store_type="cafe", grid=(10, 8), fridges=["dairy", "soft_drinks"],
+        wall_shelves=["cafe_menu", "bakery", "desserts"], gondolas=["cafe_menu", "bakery"],
+        near_counter=["cafe_menu", "desserts"], style="perimeter", open_hours=(6, 19),
+        checkout_placement="near_entrance", design_theme="industrial",
+    ),
+    StoreTemplate(
+        id="tea_lounge", name="Tea lounge & gift shop", description="Six tables along the right side, botanical finishes, tea menus and small tea gifts on browsing islands.",
+        store_type="cafe", grid=(18, 16), fridges=["soft_drinks", "desserts"],
+        wall_shelves=["tea_menu", "tea_menu", "home_design", "desserts"], gondolas=["tea_menu", "home_design"],
+        near_counter=["tea_menu", "desserts"], style="free_flow", open_hours=(10, 22), dining_tables=6,
+        seating_zone="right", design_theme="botanical",
+    ),
+    StoreTemplate(
+        id="artisan_bakery", name="Artisan bakery", description="Warm bread and pastry displays on a browsing loop, with two small dining groups near the front.",
+        store_type="bakery", grid=(16, 12), fridges=["dairy", "soft_drinks", "desserts"],
+        wall_shelves=["bakery", "bakery", "desserts"], gondolas=["bakery", "desserts"],
+        near_counter=["cafe_menu", "bakery"], style="loop", open_hours=(6, 20), dining_tables=2,
+        seating_zone="front", design_theme="warm",
+    ),
+    StoreTemplate(
+        id="vintage_boutique", name="Vintage-inspired boutique", description="Warm wood, apparel, accessories and gift displays on a free-flow floor, with checkout away from the entrance.",
+        store_type="fashion", grid=(16, 14), fridges=[], wall_shelves=["apparel", "souvenirs", "apparel", "apparel"],
+        gondolas=["apparel", "souvenirs"], near_counter=["apparel"], style="free_flow", open_hours=(11, 20),
+        checkout_placement="away_from_entrance", design_theme="warm",
+    ),
+    StoreTemplate(
+        id="hardware_store", name="Hardware & home repair store", description="Tool and home-repair aisles with industrial finishes, household essentials and an accessory wall.",
+        store_type="hardware", grid=(24, 18), fridges=[], wall_shelves=["hardware", "household", "electronics"] * 3,
+        gondolas=["hardware", "hardware", "household"], near_counter=["hardware"], open_hours=(7, 21), design_theme="industrial",
+    ),
+    StoreTemplate(
+        id="toy_hobby_store", name="Toy & hobby store", description="Games, puzzles, craft supplies and books on a free-flow discovery floor with bright minimal finishes.",
+        store_type="toys", grid=(20, 16), fridges=[], wall_shelves=["toys_hobbies", "books", "stationery"] * 2,
+        gondolas=["toys_hobbies", "toys_hobbies", "stationery"], near_counter=["toys_hobbies"],
+        style="free_flow", open_hours=(10, 21), design_theme="minimal",
+    ),
 ]
 
 _BY_ID = {t.id: t for t in TEMPLATES}
@@ -289,15 +344,17 @@ def generate_store(
     b = _Builder(t, currency, rng, options)
     w, h = b.w, b.h
     layout_style = style or options.style or t.style
+    checkout_placement = t.checkout_placement if options.checkout_placement == "auto" else options.checkout_placement
+    seating_zone = t.seating_zone if options.seating_zone == "auto" else options.seating_zone
 
     # Reserve the door before allocating checkout counters along the front wall.
     entrance_x = {"left": 0, "center": w // 2, "right": w - 1}[options.entrance]
     b.add(RackType.ENTRANCE, entrance_x, h - 1)
     b.racks.append(Rack(id="r_exit", type=RackType.EXIT, shape=[[1]], position=(entrance_x, h - 1)))
-    counter_xs = [x for x in range(2 if options.checkout_placement == "auto" else 1, w - 1) if x != entrance_x]
-    if options.checkout_placement == "near_entrance":
+    counter_xs = [x for x in range(2 if checkout_placement == "auto" else 1, w - 1) if x != entrance_x]
+    if checkout_placement == "near_entrance":
         counter_xs.sort(key=lambda x: abs(x - entrance_x))
-    elif options.checkout_placement == "away_from_entrance":
+    elif checkout_placement == "away_from_entrance":
         counter_xs.sort(key=lambda x: -abs(x - entrance_x))
     counter_xs = counter_xs[:options.checkouts]
     for i, x in enumerate(counter_xs):
@@ -321,15 +378,15 @@ def generate_store(
     table_positions = [(x, y) for y in range(2, h - 3, 3) for x in range(2, w - 3, 3)]
     # Rank safe seating positions without changing the table footprint or clearance.
     # As the count grows, seating extends into neighboring parts of the floor.
-    if options.seating_zone == "front":
+    if seating_zone == "front":
         table_positions.sort(key=lambda p: (-p[1], abs(p[0] + 0.5 - entrance_x)))
-    elif options.seating_zone == "back":
+    elif seating_zone == "back":
         table_positions.sort(key=lambda p: (p[1], abs(p[0] + 0.5 - (w - 1) / 2)))
-    elif options.seating_zone == "left":
+    elif seating_zone == "left":
         table_positions.sort(key=lambda p: (p[0], p[1]))
-    elif options.seating_zone == "right":
+    elif seating_zone == "right":
         table_positions.sort(key=lambda p: (-p[0], p[1]))
-    elif options.seating_zone == "center":
+    elif seating_zone == "center":
         table_positions.sort(key=lambda p: (p[0] + 0.5 - (w - 1) / 2) ** 2 + (p[1] + 0.5 - (h - 1) / 2) ** 2)
     table_count = min(t.dining_tables, len(table_positions)) if options.dining_tables is None else options.dining_tables
     if table_count > len(table_positions):
@@ -385,6 +442,6 @@ def generate_store(
     return Store(
         id=store_id or f"store_{template_id}_{seed}", name=name or t.name, type=t.store_type,
         grid_size=(w, h), weekly_schedule=days, racks=b.racks,
-        design_theme=options.design_theme or format_design.get(t.store_type, "classic"),
+        design_theme=options.design_theme or t.design_theme or format_design.get(t.store_type, "classic"),
         currency=currency.upper(),
     )

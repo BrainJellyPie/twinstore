@@ -20,6 +20,11 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     templates = {t["id"]: t for t in response.json()}
     assert {"hypermarket", "community_pharmacy", "specialty_cafe", "quick_service", "design_showroom"} <= templates.keys()
     assert templates["hypermarket"]["grid"] == [32, 26]
+    assert {"family_restaurant", "neighborhood_bistro", "takeaway_coffee", "tea_lounge", "artisan_bakery",
+            "vintage_boutique", "hardware_store", "toy_hobby_store"} <= templates.keys()
+    assert templates["family_restaurant"]["default_seating_zone"] == "center"
+    assert templates["takeaway_coffee"]["default_checkout_placement"] == "near_entrance"
+    assert templates["vintage_boutique"]["default_design"] == "warm"
     assert all(t["default_style"] and t["skus"] > 0 for t in templates.values())
 
 

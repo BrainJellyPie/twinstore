@@ -96,7 +96,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               </select></Field>
               <Field label="Checkout placement"><select className={controlClass} value={value.checkout_placement ?? "auto"}
                 onChange={(e) => update({ checkout_placement: e.target.value as TemplateChoice["checkout_placement"] })}>
-                <option value="auto">Default front counters</option><option value="near_entrance">Near the entrance</option>
+                <option value="auto">Format default{selected?.default_checkout_placement === "near_entrance" ? " (near entrance)" : selected?.default_checkout_placement === "away_from_entrance" ? " (away from entrance)" : " (front counters)"}</option><option value="near_entrance">Near the entrance</option>
                 <option value="away_from_entrance">Away from the entrance</option>
               </select></Field>
               <Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
@@ -116,7 +116,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
                 disabled={(value.dining_tables ?? selected?.default_dining_tables ?? 0) === 0}
                 onChange={(e) => update({ seating_zone: e.target.value as TemplateChoice["seating_zone"] })}>
-                <option value="auto">Format default</option><option value="front">Front / entrance side</option>
+                <option value="auto">Format default{selected?.default_seating_zone && selected.default_seating_zone !== "auto" ? ` (${selected.default_seating_zone})` : ""}</option><option value="front">Front / entrance side</option>
                 <option value="back">Back wall</option><option value="left">Left side</option>
                 <option value="right">Right side</option><option value="center">Center</option>
               </select></Field>
