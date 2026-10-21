@@ -1,12 +1,13 @@
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html, useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import type { TimelineEvent } from "@/shared/types/domain";
-import { characterAssetFor, ALL_CHARACTER_ASSETS } from "@/shared/utils/assetMap";
+import { characterAssetFor, realisticCharacterAssetFor, ALL_CHARACTER_ASSETS } from "@/shared/utils/assetMap";
 import { useGlbModel } from "@/shared/hooks/useGlbModel";
 import { formatMoney } from "@/shared/utils/money";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 
 ALL_CHARACTER_ASSETS.forEach((url) => useGLTF.preload(url));
 
@@ -72,27 +73,52 @@ interface AssetPersonaProps {
 interface CharacterMeshProps {
   url: string;
   animName: string;
+  realistic: boolean;
 }
 
-function CharacterMesh({ url, animName }: CharacterMeshProps) {
+function CharacterMesh({ url, animName, realistic }: CharacterMeshProps) {
   const { clone, bbox, offset, animations } = useGlbModel(url, {
     skinned: true,
     castShadow: true,
-    receiveShadow: false,
+    receiveShadow: realistic,
   });
   const rawH = bbox.size.y > 0.001 ? bbox.size.y : 1;
   const scale = CHARACTER_TARGET_HEIGHT / rawH;
 
-  const { actions } = useAnimations(animations, clone);
+  const { actions, mixer } = useAnimations(animations, clone);
+  const previousAction = useRef<THREE.AnimationAction | null>(null);
+  const playing = usePlaybackControlStore((s) => s.playing);
+
+  useEffect(() => {
+    mixer.timeScale = realistic && !playing ? 0 : 1;
+  }, [mixer, playing, realistic]);
+
+  useEffect(() => () => {
+    mixer.stopAllAction();
+    mixer.uncacheRoot(clone);
+    const skeletons = new Set<THREE.Skeleton>();
+    clone.traverse((object) => {
+      if (object instanceof THREE.SkinnedMesh) skeletons.add(object.skeleton);
+    });
+    // SkeletonUtils gives each shopper their own GPU bone texture. The cached
+    // model still owns the geometry and PBR textures shared by the crowd.
+    for (const skeleton of skeletons) skeleton.dispose();
+  }, [clone, mixer]);
 
   useEffect(() => {
     const action = actions[animName];
     if (!action) return;
-    action.reset().fadeIn(0.15).play();
-    return () => {
-      action.fadeOut(0.15);
-    };
-  }, [animName, actions]);
+    const previous = previousAction.current;
+    action.reset().stopFading().setEffectiveWeight(1).play();
+    if (previous && previous !== action) {
+      if (!realistic || usePlaybackControlStore.getState().playing) action.crossFadeFrom(previous, 0.15, false);
+      else previous.stop();
+    }
+    // A paused mixer cannot advance a fade from zero weight. Apply the first
+    // pose immediately so newly loaded shoppers never remain in their bind pose.
+    mixer.update(0);
+    previousAction.current = action;
+  }, [animName, actions, mixer, realistic]);
 
   return (
     <group scale={scale}>
@@ -112,10 +138,11 @@ export function AssetPersona({
   highlighted,
   dimmed,
 }: AssetPersonaProps) {
-  const url = characterAssetFor(personaId, gender);
-  const scale = highlighted ? 1.2 : 1;
-  const animName = animationFor(isMoving, event);
-  const isPaying = event?.action === "pay";
+  const realistic = useSimulationStore((s) => s.graphicsMode === "realistic");
+  const url = realistic ? realisticCharacterAssetFor(personaId, gender) : characterAssetFor(personaId, gender);
+  const scale = highlighted && !realistic ? 1.2 : 1;
+  const animName = realistic ? (isMoving ? "walk" : "idle") : animationFor(isMoving, event);
+  const isPaying = !realistic && event?.action === "pay";
 
   const bounceRef = useRef<THREE.Group>(null);
   useFrame(() => {
@@ -132,7 +159,9 @@ export function AssetPersona({
     <group scale={scale}>
       <group ref={bounceRef}>
       <group rotation={[0, facing, 0]}>
-        <CharacterMesh url={url} animName={animName} />
+        <Suspense fallback={null}>
+          <CharacterMesh key={url} url={url} animName={animName} realistic={realistic} />
+        </Suspense>
       </group>
       {highlighted && (
         <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>

@@ -71,6 +71,12 @@ export function characterAssetFor(personaId: string, gender?: string): string {
   return `${CHARACTERS}/${pool[idx]}`;
 }
 
+// MIT-licensed Microsoft Rocketbox avatars, converted and bundled locally.
+export function realisticCharacterAssetFor(personaId: string, gender?: string): string {
+  const female = gender === "Female" || (gender !== "Male" && hashString(personaId) % 2 === 0);
+  return `/assets/people/${female ? "female" : "male"}-01.glb`;
+}
+
 export const ALL_MARKET_ASSETS = [
   `${MARKET}/freezer.glb`,
   `${MARKET}/freezers-standing.glb`,
