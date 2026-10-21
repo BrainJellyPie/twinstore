@@ -7,13 +7,14 @@ use the same paired percentile bootstrap over shoppers.
 """
 
 from collections.abc import Callable
+from typing import Literal
 
 import math
 
 import numpy as np
 
 from store_emulator.domain.customer import CustomerResult
-from store_emulator.domain.marketing import FocusOutcome, PricePoint, PriceResponse, SkuSales, VariantResult
+from store_emulator.domain.marketing import FocusOutcome, PricePoint, PriceResponse, SegmentLift, SkuSales, VariantResult
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.engine.analysis.compare import compare_runs
@@ -135,6 +136,42 @@ def price_response(control: VariantResult, variants: list[VariantResult]) -> Pri
     return None
 
 
+MIN_SEGMENT = 20
+
+
+def segment_lifts(
+    control: list[CustomerResult], variant: list[CustomerResult], panel: list[Persona], focus_skus: list[str],
+    *, n_bootstrap: int = 1000, seed: int = 0,
+) -> list[SegmentLift]:
+    """Paired differences within each age group and gender of the panel (segments under 20 shoppers skipped)."""
+    a = {r.persona_id: r for r in control}
+    b = {r.persona_id: r for r in variant}
+    groups: dict[str, list[str]] = {}
+    for p in panel:
+        if p.id in a and p.id in b:
+            groups.setdefault(f"age {p.age_group}", []).append(p.id)
+            groups.setdefault(f"gender {p.gender}", []).append(p.id)
+    focus = set(focus_skus)
+    metrics: list[tuple[Literal["spend", "focus_units"], Callable[[CustomerResult], float]]] = [("spend", lambda r: float(r.total_spent))]
+    if focus:
+        metrics.append(("focus_units", lambda r: float(sum(e.quantity for e in r.purchases if e.product_sku in focus))))
+    rng = np.random.default_rng(seed)
+    out: list[SegmentLift] = []
+    for segment in sorted(groups):
+        ids = groups[segment]
+        if len(ids) < MIN_SEGMENT:
+            continue
+        idx = rng.integers(0, len(ids), size=(n_bootstrap, len(ids)))
+        for metric, value in metrics:
+            xa = np.array([value(a[i]) for i in ids])
+            xb = np.array([value(b[i]) for i in ids])
+            boot = (xb - xa)[idx].mean(axis=1)
+            out.append(SegmentLift(segment=segment, n=len(ids), metric=metric, control=round(float(xa.mean()), 6),
+                                   variant=round(float(xb.mean()), 6), diff=round(float(xb.mean() - xa.mean()), 6),
+                                   ci_low=round(float(np.percentile(boot, 2.5)), 6), ci_high=round(float(np.percentile(boot, 97.5)), 6)))
+    return out
+
+
 def _summary(name: str, results: list[CustomerResult]) -> VariantResult:
     n = max(1, len(results))
     return VariantResult(
@@ -177,6 +214,7 @@ async def run_experiment(
         out = _summary(name, res)
         out.applied, out.warnings = applied, warnings
         out.prices = _prices(store, focus_skus)
+        out.segments = segment_lifts(base, res, panel, focus_skus, seed=seed)
         out.vs_control = compare_runs(base, res, run_a="Control", run_b=name, seed=seed).metrics
         out.focus = focus_outcomes(base, res, focus_skus, names, seed=seed)
         out.top_skus = sku_sales(res, keep=focus_skus)

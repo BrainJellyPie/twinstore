@@ -57,6 +57,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   arms and the revenue-maximising tested price (in the app and the report). Rule shoppers react to
   price relative to the usual price, so a new everyday price without a reference gets a note.
 - **Duplicate and edit**: open any finished A/B or concept test as a pre-filled new one.
+- **By segment**: every A/B variant also reports its paired difference to control within each age
+  group and gender (20+ shoppers) for revenue per visitor and tracked-product units, with 95 %
+  intervals, in the app and the report.
 - **Automatic report** for every finished A/B test: a summary with a rule-based recommendation
   (roll out the winner with its daily and monthly revenue range, flag variants that lose, call out
   product-only lifts, the panel size needed to see a 5 % change), the test design, results with

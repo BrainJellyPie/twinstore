@@ -110,6 +110,9 @@ def test_discount_sells_more_of_the_product_on_the_same_shoppers(store: Store, p
     units = next(f for f in r.focus if f.sku == "A0017" and f.metric == "units")
     assert units.variant >= units.control and units.ci_low <= units.diff <= units.ci_high
     assert any(s.sku == "A0017" for s in r.top_skus)
+    segs = {(s.segment, s.metric) for s in r.segments}
+    assert ("gender Female", "spend") in segs and ("gender Male", "focus_units") in segs
+    assert all(s.n >= 20 and s.ci_low <= s.diff <= s.ci_high for s in r.segments)
 
 
 class _Fake:
