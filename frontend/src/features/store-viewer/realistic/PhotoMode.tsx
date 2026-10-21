@@ -22,7 +22,7 @@ function download(url: string) {
 }
 
 export function PhotoMode({ width, depth }: { width: number; depth: number }) {
-  const active = usePhotoMode((s) => s.status !== "off");
+  const active = usePhotoMode((s) => s.status !== "off" && s.status !== "error");
   const get = useThree((s) => s.get);
 
   useEffect(() => {
@@ -72,21 +72,22 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
         disposeDenoise = () => denoise.dispose();
         pt.renderToCanvasCallback = (target, renderer, quad) => {
           const autoClear = renderer.autoClear;
-          renderer.autoClear = false;
-          const { denoise: on } = usePhotoMode.getState();
-          if (on && pt.samples >= 1) {
-            const blit = quad.material;
-            denoise.map = target.texture;
-            // Few samples: noise exceeds a small edge threshold and would be kept as detail.
-            denoise.sigma = pt.samples < 32 ? 5 : pt.samples < 128 ? 4 : 2.5;
-            denoise.threshold = pt.samples < 32 ? 0.18 : pt.samples < 128 ? 0.1 : 0.05;
-            quad.material = denoise;
+          const blit = quad.material;
+          try {
+            renderer.autoClear = false;
+            const { denoise: on } = usePhotoMode.getState();
+            if (on && pt.samples >= 1) {
+              denoise.map = target.texture;
+              // Few samples: noise exceeds a small edge threshold and would be kept as detail.
+              denoise.sigma = pt.samples < 32 ? 5 : pt.samples < 128 ? 4 : 2.5;
+              denoise.threshold = pt.samples < 32 ? 0.18 : pt.samples < 128 ? 0.1 : 0.05;
+              quad.material = denoise;
+            }
             quad.render(renderer);
+          } finally {
             quad.material = blit;
-          } else {
-            quad.render(renderer);
+            renderer.autoClear = autoClear;
           }
-          renderer.autoClear = autoClear;
         };
         usePhotoMode.setState({ triangles: photo.triangles });
         await pt.setSceneAsync(photo.scene, get().camera, { onProgress: (p) => { if (alive) usePhotoMode.setState({ progress: p }); } });
@@ -97,11 +98,11 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
         lens.apertureBlades = 6;
         const ray = new THREE.Raycaster();
         const centre = new THREE.Vector2(0, 0);
-        renderPhoto = () => {
+        const drawPhoto = () => {
           // Zustand changes synchronously; React's effect cleanup can run after
           // the next frame. A queued draw must not resurrect a stopped photo.
           const state = usePhotoMode.getState();
-          if (!alive || state.status === "off") return;
+          if (!alive || state.status === "off" || state.status === "error") return;
           const camera = get().camera;
           const live = camera as THREE.PerspectiveCamera;
           const perspective = live.isPerspectiveCamera === true;
@@ -146,6 +147,18 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
           if (state.saveRequest !== saved) {
             saved = state.saveRequest;
             download(gl.domElement.toDataURL("image/png"));
+          }
+        };
+        renderPhoto = () => {
+          try {
+            drawPhoto();
+          } catch (e) {
+            // A failed draw must not escape into R3F and stop its animation loop.
+            // The error state releases photo resources and leaves the live view usable.
+            if (frameGate.photoRenderer === renderPhoto) frameGate.photoRenderer = null;
+            if (alive && usePhotoMode.getState().status !== "off") {
+              usePhotoMode.setState({ status: "error", error: e instanceof Error ? e.message : String(e) });
+            }
           }
         };
         frameGate.photoRenderer = renderPhoto;
