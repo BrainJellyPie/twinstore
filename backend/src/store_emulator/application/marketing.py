@@ -5,6 +5,8 @@ Files per project (`.data/<pid>/`):
 - marketing/experiments/<eid>/            request.json, status.json, report.json
 - marketing/surveys/<sid>/                request.json, status.json, report.json, board.jpg
 """
+# pyright: reportPrivateUsage=false
+# (reuses Shelf Lab's private store and persona helpers)
 
 import asyncio
 import csv

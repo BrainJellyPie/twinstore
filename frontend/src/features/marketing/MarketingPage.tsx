@@ -153,10 +153,10 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
         </span>
         {busy(job.status) && <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-foreground/[0.08]"><span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.max(4, job.progress * 100)}%` }} /></span>}
       </button>
-      <button type="button" onClick={() => del.mutate()} aria-label={`Delete ${job.name}`}
+      {!busy(job.status) && <button type="button" onClick={() => del.mutate()} aria-label={`Delete ${job.name}`}
         className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100">
         <Trash2 className="size-3.5" />
-      </button>
+      </button>}
     </div>
   );
 }
