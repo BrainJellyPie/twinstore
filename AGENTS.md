@@ -116,14 +116,17 @@ that has all the imports I need?" and put it there.
 
 ## i18n policy
 
-User-facing surfaces (frontend UI, backend logs and errors, FastAPI OpenAPI
-metadata) are **English-only**. Do not introduce new Korean string literals
-at the frontend/backend contract boundary (dict keys, `===` comparisons,
-route params) — they break silently at runtime even when the build passes.
+Frontend display text can be localized through `frontend/src/shared/i18n/`. The language
+picker supports English, Korean, Chinese, Japanese, Spanish and French; currently the home,
+main navigation, store gallery and model notice use it. Add translations in all six columns
+when extending these surfaces. Use the selected locale for dates and numbers.
 
-Korean strings that remain in the codebase are intentional and confined to
-LLM-internal sites; they never cross into the dashboard or any API
-response. The categories are:
+Backend logs, errors and FastAPI OpenAPI metadata remain English. Keep API identifiers,
+status values, dict keys, `===` comparisons and route params unchanged when translating display
+text. Localized labels must never become frontend/backend contract values.
+
+Apart from the frontend translation catalog and its tests, Korean strings are intentional
+and confined to LLM-internal sites or compatibility values. The categories are:
 
 - **Prompt bodies / prompt-composing fragments** — the prompts were tuned
   in Korean by native speakers; rewriting them risks behavior regressions.

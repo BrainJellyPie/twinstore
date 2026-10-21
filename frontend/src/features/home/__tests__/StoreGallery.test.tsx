@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import type { ComponentProps } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ProjectListItem } from "@/shared/api/client";
+import { useLocale, translate } from "@/shared/i18n/i18n";
+import { LOCALES } from "@/shared/i18n/messages";
 import { StoreGallery } from "../StoreGallery";
 
 vi.mock("../StoreTile", () => ({
@@ -10,7 +12,7 @@ vi.mock("../StoreTile", () => ({
   NewStoreTile: ({ onClick }: { onClick: () => void }) => <button onClick={onClick}>New store</button>,
   StoreTileSkeleton: () => <span>Skeleton</span>,
 }));
-afterEach(cleanup);
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); });
 
 const base: ProjectListItem = { project_id: "a", name: "Morning Coffee", description: "Office workers", store_type: "coffee_shop", grid_size: [8, 8], weekly_schedule: [], created_at: "", updated_at: "", status: "Ready" };
 const projects = [base, { ...base, project_id: "b", name: "Night Market", store_type: "supermarket", description: "Late-night snacks" }];
@@ -113,4 +115,12 @@ it("opens the selected store and still allows creation after an unmatched search
   expect(props.onOpen).toHaveBeenCalledWith("a");
   filter("missing"); fireEvent.click(screen.getByRole("button", { name: "New store" }));
   expect(props.onCreate).toHaveBeenCalledOnce();
+});
+
+it.each(LOCALES)("searches translated store types in $code without altering IDs", ({ code }) => {
+  show({ projects: [{ ...base, store_type: "cafe" }] });
+  act(() => useLocale.getState().setLocale(code));
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: translate(code, "cafe") } });
+  expect(screen.getByRole("status").textContent).toBe(translate(code, "filteredOneStore", { shown: 1, total: 1 }));
+  expect(screen.getByRole("button", { name: base.name })).toBeTruthy();
 });

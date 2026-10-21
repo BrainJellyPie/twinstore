@@ -4,54 +4,38 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, CalendarDays, Camera, Clock, Map, Megaphone, Plus, Ruler, Store } from "lucide-react";
 
+import { translate, useI18n } from "@/shared/i18n/i18n";
+import type { Locale, MessageKey } from "@/shared/i18n/messages";
+import { storeTypeLabel } from "./storeLabels";
 import type { ProjectListItem } from "@/shared/api/client";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { spotlightHandler } from "@/shared/utils/spotlight";
 import { cn } from "@/shared/utils/cn";
 
-const STATUS_STYLE: Record<string, { dot: string; label: string; tone: string }> = {
-  "Setting up": { dot: "bg-warn", label: "Setting up", tone: "tone-warn" },
-  Ready: { dot: "bg-heat-1", label: "Ready to simulate", tone: "border-heat-1/40 bg-heat-1/10 text-foreground" },
-  Simulated: { dot: "bg-positive", label: "Simulated", tone: "tone-good" },
+const STATUS_STYLE: Record<string, { dot: string; label: MessageKey; tone: string }> = {
+  "Setting up": { dot: "bg-warn", label: "settingUp", tone: "tone-warn" },
+  Ready: { dot: "bg-heat-1", label: "readyToSimulate", tone: "border-heat-1/40 bg-heat-1/10 text-foreground" },
+  Simulated: { dot: "bg-positive", label: "simulated", tone: "tone-good" },
 };
-
-const STORE_TYPE_LABELS: Record<string, string> = {
-  convenience: "Convenience store",
-  cafe: "Café",
-  bakery: "Bakery",
-  supermarket: "Supermarket",
-  cosmetics: "Cosmetics",
-  clothing: "Clothing",
-  electronics: "Electronics",
-  pharmacy: "Pharmacy",
-};
-
-/** Labels for the formats above; any other format id reads as words ("pizza_shop" → "Pizza shop"). */
-function storeTypeLabel(type: string): string {
-  const known = Object.prototype.hasOwnProperty.call(STORE_TYPE_LABELS, type) ? STORE_TYPE_LABELS[type] : undefined;
-  if (known) return known;
-  const words = type.replace(/[_-]+/g, " ").trim();
-  return words ? words[0]!.toUpperCase() + words.slice(1) : "Store";
-}
 
 const QUICK_LINKS = [
-  { to: "/projects/$pid", label: "Floor", icon: Store },
-  { to: "/marketing/$pid", label: "Market", icon: Megaphone },
-  { to: "/capture/$pid", label: "Capture", icon: Camera },
-  { to: "/town/$pid", label: "Area", icon: Map },
+  { to: "/projects/$pid", label: "floor", icon: Store },
+  { to: "/marketing/$pid", label: "market", icon: Megaphone },
+  { to: "/capture/$pid", label: "capture", icon: Camera },
+  { to: "/town/$pid", label: "area", icon: Map },
 ] as const;
 
-function relativeTime(iso: string): string | null {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null;
-  const minutes = Math.round((Date.now() - t) / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.round(hours / 24);
-  if (days < 30) return `${days} d ago`;
-  return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+function relativeTime(iso: string, locale: Locale): string | null {
+  const time = Date.parse(iso);
+  if (Number.isNaN(time)) return null;
+  const seconds = (time - Date.now()) / 1000;
+  const absolute = Math.abs(seconds);
+  if (absolute < 60) return translate(locale, "justNow");
+  const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  if (absolute < 3600) return relative.format(Math.round(seconds / 60), "minute");
+  if (absolute < 86400) return relative.format(Math.round(seconds / 3600), "hour");
+  if (absolute < 30 * 86400) return relative.format(Math.round(seconds / 86400), "day");
+  return new Date(time).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function Footprint({ grid }: { grid: [number, number] | null }) {
@@ -88,10 +72,12 @@ function Footprint({ grid }: { grid: [number, number] | null }) {
 }
 
 export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectListItem; onOpen: () => void; index?: number }) {
-  const status = STATUS_STYLE[project.status] ?? { dot: "bg-muted-foreground", label: project.status, tone: "border-border bg-card/60" };
-  const typeLabel = storeTypeLabel(project.store_type);
+  const { locale, t } = useI18n();
+  const knownStatus = Object.prototype.hasOwnProperty.call(STATUS_STYLE, project.status) ? STATUS_STYLE[project.status] : undefined;
+  const status = knownStatus ? { ...knownStatus, label: t(knownStatus.label) } : { dot: "bg-muted-foreground", label: project.status, tone: "border-border bg-card/60" };
+  const typeLabel = storeTypeLabel(project.store_type, locale);
   const openDays = project.weekly_schedule?.filter((d) => d.is_open).length ?? 0;
-  const updated = relativeTime(project.updated_at);
+  const updated = relativeTime(project.updated_at, locale);
 
   return (
     <div
@@ -119,7 +105,7 @@ export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectList
       </div>
       <div className="flex flex-1 flex-col gap-1.5 border-t border-glass-border px-5 pt-4 pb-5">
         <span className="eyebrow">{typeLabel}</span>
-        <h3 className="font-display text-[1.35rem] leading-tight">{project.name || "Untitled store"}</h3>
+        <h3 className="font-display text-[1.35rem] leading-tight">{project.name || t("untitledStore")}</h3>
         {project.description && <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{project.description}</p>}
         <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-3 text-[0.8rem] text-muted-foreground">
           {project.grid_size && (
@@ -131,7 +117,7 @@ export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectList
           {openDays > 0 && (
             <span className="flex items-center gap-1.5">
               <CalendarDays className="size-3.5" aria-hidden />
-              <span className="num">{openDays}</span> days open
+              {t("daysOpen", { count: openDays })}
             </span>
           )}
           {updated && (
@@ -143,11 +129,11 @@ export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectList
         </div>
       </div>
     </button>
-      <nav className="flex border-t border-glass-border" aria-label={`Open ${project.name || "store"} in`}>
+      <nav className="flex border-t border-glass-border" aria-label={t("openStoreIn", { name: project.name || t("store") })}>
         {QUICK_LINKS.map(({ to, label, icon: Icon }) => (
           <Link key={label} to={to} params={{ pid: project.project_id }}
             className="flex flex-1 items-center justify-center gap-1.5 py-2.5 text-[0.75rem] text-muted-foreground transition-colors hover:bg-foreground/[0.04] hover:text-foreground">
-            <Icon className="size-3.5" aria-hidden /> {label}
+            <Icon className="size-3.5" aria-hidden /> {t(label)}
           </Link>
         ))}
       </nav>
@@ -156,6 +142,7 @@ export function StoreTile({ project, onOpen, index = 0 }: { project: ProjectList
 }
 
 export function NewStoreTile({ onClick }: { onClick: () => void }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -170,8 +157,8 @@ export function NewStoreTile({ onClick }: { onClick: () => void }) {
         </span>
       </span>
       <span className="text-center">
-        <span className="block font-display text-lg text-foreground">New store</span>
-        <span className="text-sm">Pick a format — the floor lays itself out</span>
+        <span className="block font-display text-lg text-foreground">{t("newStore")}</span>
+        <span className="text-sm">{t("templateTagline")}</span>
       </span>
     </button>
   );
