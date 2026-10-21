@@ -111,13 +111,15 @@ async def vlm_basket_synergy(
     effects = compile_scenario(scenario) if scenario is not None else None
     traffic = effects.base_traffic if effects is not None else 1.0
     hourly = (effects.traffic_by_hour or None) if effects is not None else None
+    day = Weekday(scenario.only_days[0]) if scenario is not None and scenario.only_days else _DAY_FOR[day_type]
+    if store.weekly_schedule:
+        hourly = {hour: (hourly or {}).get(hour, 1.0) if store.is_open_at(day, hour) else 0.0 for hour in range(24)}
     without = town.model_copy(update={"venues": [v for v in town.venues if v.id != venue_id]})
     demand_with = estimate_demand(town, day_type=day_type, traffic_multiplier=traffic, hourly_multiplier=hourly)
     demand_without = estimate_demand(without, day_type=day_type, traffic_multiplier=traffic, hourly_multiplier=hourly)
     linked = sum(t.expected_visitors for t in demand_with.linked_trips if t.from_venue_id == venue_id)
 
     # One day of visitors with the venue, each with both trip contexts.
-    day = Weekday(scenario.only_days[0]) if scenario is not None and scenario.only_days else _DAY_FOR[day_type]
     seed = stable_seed(config.seed, "vlm-synergy", venue_id)
     visitors, arrivals = plan_arrivals(pool, demand_with, town, seed=seed, scale=1.0, day=day)
     contexts: dict[str, tuple[str, str]] = {}

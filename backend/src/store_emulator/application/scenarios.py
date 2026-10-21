@@ -83,13 +83,14 @@ def get_preset(scenario_id: str) -> Scenario | None:
 def prepare_inputs(
     config: SimulationConfig, store: Store, personas: list[Persona], *, traffic_applied: bool = False,
 ) -> tuple[Store, list[Persona]]:
-    """Apply the run's scenario: promotions/stock-outs to the store, day filter, traffic and
-    budgets to the visitors. Identity when the run has no scenario. `traffic_applied` skips the
+    """Apply operating hours and the run's scenario: promotions/stock-outs, day filter, traffic and
+    visitor budgets. `traffic_applied` skips the
     traffic scaling when the visitors already came from a demand model that included it."""
     scenario = config.scenario
-    if scenario is None:
-        return store, personas
-    effects = compile_scenario(scenario, priors_for(store.type, config.scenario_priors))
-    store, _ = apply_to_store(store, scenario)
-    personas = apply_to_personas(personas, scenario, effects, seed=config.seed, scale_traffic=not traffic_applied)
+    if scenario is not None:
+        effects = compile_scenario(scenario, priors_for(store.type, config.scenario_priors))
+        store, _ = apply_to_store(store, scenario)
+        personas = apply_to_personas(personas, scenario, effects, seed=config.seed, scale_traffic=not traffic_applied)
+    if store.weekly_schedule:
+        personas = [person for person in personas if store.is_open_at(person.day, person.arrival_hour)]
     return store, personas

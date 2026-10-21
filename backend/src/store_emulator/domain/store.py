@@ -60,6 +60,13 @@ class Store(BaseModel):
                 return s
         return None
 
+    def is_open_at(self, day: Weekday, hour: int) -> bool:
+        """Admit arrivals in open windows; legacy layouts without a schedule impose no restriction."""
+        if not self.weekly_schedule:
+            return True
+        schedule = self.schedule_for(day)
+        return schedule is not None and schedule.is_open and schedule.open_hour <= hour < schedule.close_hour
+
     @property
     def open_days(self) -> list[DaySchedule]:
         return [s for s in self.weekly_schedule if s.is_open]

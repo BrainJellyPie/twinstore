@@ -111,9 +111,11 @@ class PerCustomerSimulationRunner:
 
         heatmap = compute_pathcalc_heatmap(store)
         customers = generate_customers(personas, seed=self.run_seed)
+        if store.weekly_schedule:
+            customers = [entry for entry in customers if store.is_open_at(entry.day, entry.hour)]
         persona_map = {p.id: p for p in personas}
         entries = [(e, persona_map[e.persona_id]) for e in customers if e.persona_id in persona_map]
-        hourly_counts: Counter[int] = Counter(p.arrival_hour for p in personas)
+        hourly_counts: Counter[int] = Counter(entry.hour for entry, _ in entries)
         return heatmap, entries, hourly_counts
 
     async def run(

@@ -11,9 +11,9 @@ from pydantic import BaseModel
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.persona import Persona
-from store_emulator.domain.store import Store
+from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.town import Town, TownArrival, TownSpec, VenueCategory
-from store_emulator.domain.types import TokenUsage
+from store_emulator.domain.types import TokenUsage, Weekday
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.engines.vlm_glance import VLMGlanceEngine
 from store_emulator.engine.simulation.engines.vlm_glance.prompt import EntryDecision
@@ -25,8 +25,36 @@ from store_emulator.engine.town import (
     town_context_text,
 )
 from store_emulator.engine.town.vlm_synergy import vlm_basket_synergy
+from tests.engine.test_reproducibility import _RecordingEngine
 
 SAMPLE = Path(__file__).resolve().parents[2] / "sample_data" / "proj_67916afd" / "runs" / "run_ab0039" / "input"
+
+
+@pytest.mark.parametrize("opening", [0, 9, 23])
+@pytest.mark.parametrize("is_open", [False, True])
+def test_synergy_flow_panels_and_progress_use_the_store_open_window(town, opening, is_open):
+    store = Store.model_validate(json.loads((SAMPLE / "store.json").read_text()))
+    store.weekly_schedule = [DaySchedule(day=Weekday.WED, is_open=is_open, open_hour=opening, close_hour=opening + 1)]
+    pool = [Persona.model_validate(p) for p in json.loads((SAMPLE / "personas.json").read_text())][:300]
+    baseline = estimate_demand(town)
+    before = town.model_dump()
+    engine = _RecordingEngine()
+    progress = []
+    result = asyncio.run(vlm_basket_synergy(
+        town, "cafe-next-door", store, pool, config=SimulationConfig(seed=5), engine=engine,
+        pathfinder=AStarPathFinder(), cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS,
+        customers=12, model_label="fake", on_progress=lambda *args: progress.append(args),
+    ))
+    assert result.visitors_with == pytest.approx(baseline.hourly_totals[opening] if is_open else 0, abs=0.01)
+    assert result.panel_customers == len(engine.contexts)
+    assert all(context.day == Weekday.WED and context.arrival_hour == opening for context in engine.contexts.values())
+    total = result.panel_customers + result.affected_customers
+    assert progress[-1][1:] == (total, total)
+    if not is_open:
+        assert not engine.contexts and result.visitors_without == result.delta_revenue_per_day == 0
+    if result.affected_comparison is not None:
+        assert result.affected_comparison.paired_customers == result.affected_customers
+    assert town.model_dump() == before
 
 
 class CafeLoverVLM:
