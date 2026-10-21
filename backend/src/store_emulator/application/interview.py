@@ -1,21 +1,34 @@
 """Shopper journeys and interviews for a finished run.
 
-Transcripts live next to the run: `.data/<pid>/runs/<run_id>/interviews/<persona_id>.json`.
+Transcripts live next to the run: `.data/<pid>/runs/<run_id>/interviews/<persona_id>.json`, group
+interviews in `.../group_interviews/<group_id>.json`.
 """
 
 import asyncio
 import logging
+import random
 import re
+import uuid
 from functools import lru_cache
 from pathlib import Path
 from typing import cast
 
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.customer import CustomerResult
-from store_emulator.domain.interview import Interview, InterviewMessage, InterviewQuestion, Journey
+from store_emulator.domain.interview import (
+    GroupAnswer,
+    GroupInterview,
+    GroupInterviewRequest,
+    Interview,
+    InterviewMessage,
+    InterviewQuestion,
+    Journey,
+    Theme,
+)
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
-from store_emulator.engine.interview import ask_shopper, build_journey
+from store_emulator.domain.types import Action
+from store_emulator.engine.interview import ask_shopper, build_journey, code_themes
 
 from .errors import AppError
 from .providers import build_client
@@ -109,3 +122,104 @@ def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, conf
     path.parent.mkdir(parents=True, exist_ok=True)
     write_json(path, transcript.model_dump(mode="json"))
     return transcript
+
+
+# ── group interviews ────────────────────────────────────────────────────────────
+
+def _segment(customers: dict[str, CustomerResult], req: GroupInterviewRequest) -> list[str]:
+    if req.persona_ids:
+        missing = [p for p in req.persona_ids if p not in customers]
+        if missing:
+            raise AppError(f"shoppers not in this run: {', '.join(missing[:5])}", 404)
+        return list(dict.fromkeys(req.persona_ids))
+    buys = {k: [e for e in c.timeline if e.action == Action.BUY] for k, c in customers.items()}
+    browsed = {k for k, c in customers.items() if any(e.action == Action.BROWSE for e in c.timeline)}
+    match req.segment:
+        case "empty_handed":
+            pool = [k for k in customers if not buys[k] and k in browsed]
+        case "buyers":
+            pool = [k for k in customers if buys[k]]
+        case "impulse":
+            pool = [k for k in customers if any(e.origin == "impulse" for e in buys[k])]
+        case "top_spenders":
+            return sorted(customers, key=lambda k: -customers[k].total_spent)[: req.size]
+        case "all":
+            pool = list(customers)
+    if not pool:
+        raise AppError(f"no shopper in this run matches '{req.segment}'", 400)
+    pool.sort()
+    return random.Random(req.seed).sample(pool, min(req.size, len(pool)))
+
+
+def _groups_dir(pid: str, run_id: str) -> Path:
+    return _run_dir(pid, run_id) / "group_interviews"
+
+
+def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: SimulationConfig) -> GroupInterview:
+    """The same question to every selected shopper (each answers from their own trip), then themes."""
+    customers, personas, store, currency = _load(pid, run_id)
+    ids = [i for i in _segment(customers, req) if i in personas]
+    journeys = [build_journey(run_id, customers[i], personas[i], store, currency) for i in ids]
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
+    try:
+        llm = build_client(llm_config, None, model_ref=req.model.strip() or None)
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    question = req.question.strip()
+
+    async def run() -> tuple[list[GroupAnswer], list[str], list[int]]:
+        sem = asyncio.Semaphore(6)
+
+        async def one(j: Journey) -> GroupAnswer:
+            p = j.persona
+            base = GroupAnswer(persona_id=p.id, identity=p.identity, age_group=str(p.age_group), gender=str(p.gender),
+                               spent=j.total_spent, units=j.units)
+            async with sem:
+                try:
+                    reply = await ask_shopper(llm, j, store, [], question)
+                except Exception as e:  # one shopper failing must not sink the group
+                    return base.model_copy(update={"error": f"{type(e).__name__}: {str(e)[:160]}"})
+            return base.model_copy(update={"answer": reply.answer, "steps": reply.steps})
+
+        answers = list(await asyncio.gather(*(one(j) for j in journeys)))
+        ok = [a for a in answers if a.answer]
+        if len(ok) < 2:
+            return answers, [], []
+        try:
+            themes, coded = await code_themes(llm, question, [a.answer for a in ok])
+        except Exception as e:  # answers are still worth showing without themes
+            logger.warning(f"[interview] theme coding failed: {type(e).__name__}: {e}")
+            return answers, [], []
+        return answers, themes, coded
+
+    answers, labels, coded = asyncio.run(run())
+    ok = [a for a in answers if a.answer]
+    if not ok:
+        raise AppError(f"no shopper could answer: {answers[0].error if answers else 'nobody selected'}", 502)
+    for a, k in zip(ok, coded):
+        a.theme = k
+    themes = [Theme(label=t, count=sum(1 for k in coded if k == i), share=round(sum(1 for k in coded if k == i) / len(ok), 4))
+              for i, t in enumerate(labels)]
+    group = GroupInterview(
+        group_id=f"grp_{uuid.uuid4().hex[:6]}", run_id=run_id, question=question, segment=req.segment if not req.persona_ids else "all",
+        model=req.model.strip() or llm_config.model, created_at=now_iso(), answers=answers, themes=themes,
+        errors=sum(1 for a in answers if a.error),
+    )
+    folder = _groups_dir(pid, run_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    write_json(folder / f"{group.group_id}.json", group.model_dump(mode="json"))
+    return group
+
+
+def list_group_interviews(pid: str, run_id: str) -> list[GroupInterview]:
+    folder = _groups_dir(pid, run_id)
+    groups = [GroupInterview.model_validate(read_json(p)) for p in folder.glob("grp_*.json")] if folder.exists() else []
+    return sorted(groups, key=lambda g: g.created_at, reverse=True)
+
+
+def delete_group_interview(pid: str, run_id: str, group_id: str) -> None:
+    _check_id(group_id, "group id")
+    path = _groups_dir(pid, run_id) / f"{group_id}.json"
+    if not path.exists():
+        raise AppError(f"group interview not found: {group_id}", 404)
+    path.unlink()

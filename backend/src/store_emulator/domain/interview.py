@@ -68,3 +68,48 @@ class Interview(BaseModel):
 class InterviewQuestion(BaseModel):
     question: str = Field(min_length=1, max_length=600)
     model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+# ── group interviews ────────────────────────────────────────────────────────────
+
+type GroupSegment = Literal["all", "empty_handed", "buyers", "impulse", "top_spenders"]
+
+
+class GroupInterviewRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=600)
+    segment: GroupSegment = "all"
+    persona_ids: list[str] = Field(default_factory=list[str], max_length=40, description="ask exactly these shoppers instead")
+    size: int = Field(default=12, ge=2, le=40)
+    model: str = Field(default="", description='model reference; "" = the app text model')
+    seed: int = 0
+
+
+class GroupAnswer(BaseModel):
+    persona_id: str
+    identity: str
+    age_group: str
+    gender: str
+    spent: int
+    units: int
+    answer: str = ""
+    steps: list[int] = []
+    theme: int = -1                   # index into GroupInterview.themes, -1 = not coded
+    error: str = ""
+
+
+class Theme(BaseModel):
+    label: str
+    count: int
+    share: float
+
+
+class GroupInterview(BaseModel):
+    group_id: str
+    run_id: str
+    question: str
+    segment: GroupSegment
+    model: str = ""
+    created_at: str = ""
+    answers: list[GroupAnswer] = []
+    themes: list[Theme] = []
+    errors: int = 0

@@ -15,6 +15,11 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   answers in the first person from the persona, the trip and the shelves they stopped at only, says
   so when they did not notice something, and cites the steps it means (hover to highlight them).
   Suggested questions come from the trip. Transcripts are kept per run.
+- **Group interview**: one question to many shoppers at once — everyone who left empty-handed,
+  impulse buyers, top spenders, buyers or a random sample (4–40). Each answers from their own trip;
+  the answers are then coded into two to six themes, with counts computed from per-answer
+  assignments (misnumbered answers go to "Other"). Click an answer to open that shopper.
+  API: `POST/GET .../runs/{run}/group-interviews`, `DELETE .../group-interviews/{id}`.
   API: `GET .../runs/{run}/shoppers/{id}/journey`, `GET/POST/DELETE .../shoppers/{id}/interview`.
 
 ### Photo mode (path-traced stills)
