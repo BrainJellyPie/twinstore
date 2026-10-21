@@ -1,7 +1,7 @@
 {
   "name": "parastore-fe",
   "version": "0.1.0",
-  "description": "Isometric 3D store-layout simulator with LLM-driven virtual personas.",
+  "description": "TwinStore web app: store digital twin with LLM/VLM-driven synthetic shoppers (built on Parastore).",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -30,15 +30,15 @@
       "email": "dg.goo@intellicia.co"
     }
   ],
-  "license": "MIT",
+  "license": "SEE LICENSE IN ../LICENSE",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/intellicia-public/parastore.git"
+    "url": "git+https://github.com/BrainJellyPie/parastore.git"
   },
   "bugs": {
-    "url": "https://github.com/intellicia-public/parastore/issues"
+    "url": "https://github.com/BrainJellyPie/parastore/issues"
   },
-  "homepage": "https://github.com/intellicia-public/parastore#readme",
+  "homepage": "https://github.com/BrainJellyPie/parastore#readme",
   "packageManager": "pnpm@10.33.0",
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",

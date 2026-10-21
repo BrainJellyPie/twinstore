@@ -1,8 +1,8 @@
 [project]
 name = "store-emulator"
 version = "0.2.0"
-description = "Isometric 3D store-layout simulator with LLM-driven virtual personas."
-license = "MIT"
+description = "TwinStore backend: store digital twin with LLM/VLM-driven synthetic shoppers (built on Parastore)."
+license = { text = "TwinStore License 1.0 (see LICENSE at the repository root); Parastore-derived code MIT" }
 requires-python = ">=3.13"
 authors = [
     { name = "intellicia", email = "dev@intellicia.co" },
@@ -39,9 +39,9 @@ parastore = "store_emulator.cli:main"
 parastore-app = "store_emulator.launcher:main"
 
 [project.urls]
-Homepage = "https://github.com/intellicia-public/parastore"
-Repository = "https://github.com/intellicia-public/parastore"
-Issues = "https://github.com/intellicia-public/parastore/issues"
+Homepage = "https://github.com/BrainJellyPie/parastore"
+Repository = "https://github.com/BrainJellyPie/parastore"
+Issues = "https://github.com/BrainJellyPie/parastore/issues"
 
 [build-system]
 requires = ["hatchling"]
