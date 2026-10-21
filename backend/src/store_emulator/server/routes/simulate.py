@@ -14,6 +14,7 @@ from store_emulator.domain.config import EngineType, ExposureModel, PlanPolicy, 
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.scenario import Scenario
+from store_emulator.domain.store import Store
 from store_emulator.domain.types import RESOURCE_ID_PATTERN, ResourceId
 from store_emulator.server.schemas import EngineInfo, SimulationStartResponse
 from ..deps import get_config
@@ -276,11 +277,11 @@ async def get_timeline(pid: str, run_id: str) -> Any:
         return []
 
 
-@router.get("/{pid}/runs/{run_id}/store", summary="Store at simulation time")
-async def get_run_store(pid: str, run_id: str) -> dict[str, Any]:
-    """Store layout (Store object) at the time of the simulation run."""
+@router.get("/{pid}/runs/{run_id}/store", summary="Store at simulation time", response_model=Store)
+async def get_run_store(pid: str, run_id: str) -> Store:
+    """Recorded layout, enriched with current SKU photos where the snapshot has none."""
     try:
-        return sim_service.get_run_input(pid, run_id, "store.json")
+        return sim_service.get_run_store_view(pid, run_id)
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
 

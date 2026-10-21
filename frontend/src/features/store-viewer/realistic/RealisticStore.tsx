@@ -118,6 +118,7 @@ export function RealisticStore({ width, depth, racks, currency, quality }: Props
     [built, signTexture],
   );
   useEffect(() => () => disposeMaterials(materials), [materials]);
+  useEffect(() => products.loadPhotos(), [products]);
   useEffect(() => () => products.dispose(), [products]);
 
   // Compile every program off the main thread (KHR_parallel_shader_compile)

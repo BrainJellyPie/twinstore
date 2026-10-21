@@ -1,6 +1,6 @@
 // Procedural canvas art for Realistic mode: product label atlas, price tags,
 // shelf talkers, signage, floor/ceiling/pavement textures and soft AO decals.
-// Everything is generated at runtime — no image assets, no brand artwork.
+// Product photos, when available, are layered onto the placeholder label atlas.
 
 import { formatMoney } from "@/shared/utils/money";
 import { atlasGrid, cellPixel, LABEL_U0, type AtlasGrid } from "./atlasLayout";
@@ -212,17 +212,17 @@ export interface Atlas {
   redraw: () => void;
 }
 
-export function createLabelAtlas(names: string[], cellPx = 128): Atlas {
-  const unique = [...new Set(names)];
+export function createLabelAtlas(labels: { key: string; name: string }[], cellPx = 128): Atlas {
+  const unique = [...new Map(labels.map((label) => [label.key, label])).values()];
   const grid = atlasGrid(unique.length, cellPx, cellPx);
   const [canvas, ctx] = makeCanvas(grid.width, grid.height);
   const index = new Map<string, number>();
-  unique.forEach((n, i) => index.set(n, i));
+  unique.forEach((label, i) => index.set(label.key, i));
   const redraw = () => {
     ctx.clearRect(0, 0, grid.width, grid.height);
-    unique.forEach((n, i) => {
+    unique.forEach((label, i) => {
       const [px, py] = cellPixel(grid, i);
-      drawLabelCell(ctx, px, py, grid.cellW, grid.cellH, n);
+      drawLabelCell(ctx, px, py, grid.cellW, grid.cellH, label.name);
     });
   };
   redraw();

@@ -367,6 +367,12 @@ with procedural fallbacks. Authors, source URLs and checksums are in
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)
 for photographic indoor lighting and reflections; attribution and file provenance are in
 [`frontend/public/assets/environments/`](./frontend/public/assets/environments/LICENSE.txt).
+Uploaded SKU photos and product crops from Capture also appear on 3D packages. Photos
+are shared across facings, with separate atlas cells for different image versions;
+missing images retain generated labels. Cylindrical packages use the central label
+band of the front photo, so this is an approximation rather than a full package scan.
+Playback fills missing photo references from the current project image library;
+recorded run inputs and simulation results are not rewritten.
 
 - 3D assets in `frontend/public/assets/` are from [Kenney](https://kenney.nl), CC0 1.0 — [Mini Market](https://kenney.nl/assets/mini-market),
   [Mini Characters](https://kenney.nl/assets/mini-characters), [Graveyard Kit](https://kenney.nl/assets/graveyard-kit).

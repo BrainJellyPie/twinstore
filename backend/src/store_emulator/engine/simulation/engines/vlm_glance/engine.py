@@ -228,7 +228,8 @@ class VLMGlanceEngine(RuleBasedEngine):
     def _needs(self, context: PerCustomerContext) -> tuple[list[str], list[str]] | None:
         """Which usual categories the household has run out of this trip: one seeded draw per category
         at its rate (Persona.category_rates), most frequent first, times the situation's measured need
-        ratio for that kind of product (summer: more water; a big match: more beer). The model then
+        ratio for that kind of product (summer: more water; a big match: more beer) and, when the format's
+        profile has one, the part of the day's (evening: more beer and ice cream). The model then
         plans the trip; the draw only sets what is missing at home, as a seeded draw sets impulse
         purchases."""
         rates = context.persona.category_rates
@@ -237,8 +238,13 @@ class VLMGlanceEngine(RuleBasedEngine):
         rng = random.Random(stable_seed(context.seed, "needs"))
         out: list[str] = []
         stocked: list[str] = []
+        fx, hour = self._fx, context.arrival_hour
         for category, rate in sorted(rates.items(), key=lambda kv: (-kv[1], kv[0])):
-            p = min(0.98, rate * self._fx.need_for(words_categories(category))) if self._fx.need else rate
+            p = rate
+            if fx.need or fx.hour_need:
+                cats = words_categories(category)
+                m = (fx.need_for(cats) if fx.need else 1.0) * (fx.hour_need_for(hour, cats) if fx.hour_need else 1.0)
+                p = min(0.98, rate * m)
             (out if rng.random() < p else stocked).append(category)
         return out, stocked[:_STOCKED_SHOWN]
 
