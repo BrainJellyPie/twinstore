@@ -82,6 +82,9 @@ def findings(r: ExperimentReport) -> Finding:
             if other is not v:
                 rec.append(f"{other.name} also beats the control ({money(om.diff, cur, signed=True)} per visitor); "
                            f"compare it with {v.name} head to head before choosing.")
+    elif losses:
+        headline = (f"Revenue per visitor falls for {', '.join(v.name for v in losses)} "
+                    f"beyond the noise of {r.panel_size} shoppers.")
     else:
         headline = f"No variant changes revenue per visitor beyond the noise of {r.panel_size} shoppers."
     for v, u in product_only:
@@ -214,7 +217,7 @@ def _forest(rows: list[tuple[str, str, float, float, float]], fmt: str, currency
         return left + (v / span + 1) / 2 * plot
 
     def label(v: float) -> str:
-        return money(v, currency, signed=True) if fmt == "money" else f"{v:+.1f}"
+        return escape(money(v, currency, signed=True) if fmt == "money" else f"{v:+.1f}")
 
     parts = [f'<svg viewBox="0 0 {w} {h}" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">',
              f'<line x1="{x(0):.1f}" y1="6" x2="{x(0):.1f}" y2="{h - 26}" stroke="#9aa0a6" stroke-width="1"/>']
@@ -261,7 +264,7 @@ def report_html(r: ExperimentReport, layout: str = "", narrative: ReportNarrativ
     f = findings(r)
     cur = r.currency
     e = escape
-    best = max(r.variants, key=lambda v: v.revenue_per_visitor, default=None)
+    best = max([r.control, *r.variants], key=lambda v: v.revenue_per_visitor)
     spend_rows = [(v.name, f"{pct(m.rel_diff)} vs control", m.diff, m.ci_low, m.ci_high)
                   for v in r.variants if (m := _metric(v, "spend")) is not None]
     focus_blocks: list[str] = []
@@ -287,9 +290,8 @@ def report_html(r: ExperimentReport, layout: str = "", narrative: ReportNarrativ
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     engine = f"Vision shoppers{f' ({r.model})' if r.model else ''}" if r.engine == "vlm" else "Rule shoppers"
     kpis = "".join([
-        f"<div class='kpi'><span>Control revenue / visitor</span><b>{money(r.control.revenue_per_visitor, cur)}</b></div>",
-        f"<div class='kpi'><span>Highest revenue / visitor{'' if best and best.name == r.winner else ' (within noise)'}</span>"
-        f"<b>{e(best.name) if best else '–'}</b></div>",
+        f"<div class='kpi'><span>Control revenue / visitor</span><b>{e(money(r.control.revenue_per_visitor, cur))}</b></div>",
+        f"<div class='kpi'><span>Highest observed revenue / visitor</span><b>{e(best.name)}</b></div>",
         f"<div class='kpi'><span>Shoppers per arm</span><b>{r.panel_size:,}</b></div>",
         f"<div class='kpi'><span>Visitors a day</span><b>{r.visitors_per_day:,.0f}</b></div>",
     ])
