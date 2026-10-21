@@ -3,12 +3,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, FlaskConical, Images, Loader2, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { ClipboardList, FlaskConical, Images, Loader2, MessagesSquare, Plus, Trash2, TriangleAlert } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import {
   deleteExperiment,
   deleteSurvey,
+  deletePitch,
+  getPitch,
+  listPitches,
   getExperiment,
   getMarketingInfo,
   getSurvey,
@@ -27,12 +30,15 @@ import { ProductLibrary } from "./ProductLibrary";
 import { storeProducts } from "./products";
 import { SurveyBuilder } from "./SurveyBuilder";
 import { SurveyReportView } from "./SurveyReport";
+import { StaffPitchBuilder } from "./StaffPitchBuilder";
+import { StaffPitchReportView } from "./StaffPitchReport";
 
-type Tab = "ab" | "survey" | "products";
+type Tab = "ab" | "survey" | "pitch" | "products";
 
 const TABS: { id: Tab; label: string; icon: typeof FlaskConical; blurb: string }[] = [
   { id: "ab", label: "A/B tests", icon: FlaskConical, blurb: "Price, discount, promotion, placement and packaging on the same shoppers" },
   { id: "survey", label: "Concept tests", icon: ClipboardList, blurb: "Synthetic respondents rate packs, prices and preference" },
+  { id: "pitch", label: "Staff scripts", icon: MessagesSquare, blurb: "Compare wording with paired intent, trust and pressure ratings" },
   { id: "products", label: "Products", icon: Images, blurb: "Package images, brands and the shelf products they show" },
 ];
 
@@ -40,7 +46,7 @@ const busy = (s: JobStatus["status"]) => s === "pending" || s === "running";
 
 export function MarketingPage({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<Tab>("ab");
-  const [selected, setSelected] = useState<Record<"ab" | "survey", string | null>>({ ab: null, survey: null });
+  const [selected, setSelected] = useState<Record<"ab" | "survey" | "pitch", string | null>>({ ab: null, survey: null, pitch: null });
   const project = useQuery({ queryKey: queryKeys.project(projectId), queryFn: ({ signal }) => api.getProject(projectId, signal) });
   const setups = project.data?.setups ?? [];
   const [setupId, setSetupId] = useState("");
@@ -65,7 +71,12 @@ export function MarketingPage({ projectId }: { projectId: string }) {
     queryFn: ({ signal }) => listSurveys(projectId, signal),
     refetchInterval: (q) => (q.state.data?.some((j) => busy(j.status)) ? 1500 : false),
   });
-  const jobs = useMemo(() => (tab === "ab" ? experiments.data ?? [] : tab === "survey" ? surveys.data ?? [] : []), [tab, experiments.data, surveys.data]);
+  const pitches = useQuery({
+    queryKey: marketingKeys.pitches(projectId),
+    queryFn: ({ signal }) => listPitches(projectId, signal),
+    refetchInterval: (q) => (q.state.data?.some((j) => busy(j.status)) ? 1500 : false),
+  });
+  const jobs = useMemo(() => (tab === "ab" ? experiments.data ?? [] : tab === "survey" ? surveys.data ?? [] : tab === "pitch" ? pitches.data ?? [] : []), [tab, experiments.data, surveys.data, pitches.data]);
   const current = tab === "products" ? null : selected[tab];
   const select = (id: string | null) => tab !== "products" && setSelected((s) => ({ ...s, [tab]: id }));
 
@@ -89,7 +100,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
               {setups.map((s) => <option key={s.id} value={s.id}>{s.name || s.id}</option>)}
             </select>
           </label>
-          <div className="flex rounded-xl bg-foreground/[0.055] p-1" role="tablist">
+          <div className="flex flex-wrap rounded-xl bg-foreground/[0.055] p-1" role="tablist">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
                 className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
@@ -110,7 +121,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             <button type="button" onClick={() => select("")}
               className={cn("flex items-center gap-2 rounded-2xl border-2 border-dashed px-3 py-3 text-sm transition-colors",
                 current === "" ? "border-primary text-foreground" : "border-foreground/15 text-muted-foreground hover:border-primary/60 hover:text-foreground")}>
-              <Plus className="size-4" /> New {tab === "ab" ? "A/B test" : "concept test"}
+              <Plus className="size-4" /> New {tab === "ab" ? "A/B test" : tab === "pitch" ? "staff script test" : "concept test"}
             </button>
             {jobs.map((j) => <JobItem key={j.job_id} projectId={projectId} job={j} active={current === j.job_id} onSelect={() => select(j.job_id)} onDeleted={() => select("")} />)}
           </aside>
@@ -122,6 +133,10 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             {tab === "survey" && (current ? <SurveyJob projectId={projectId} id={current} /> : (
               <SurveyBuilder projectId={projectId} personaCount={project.data?.personas.length ?? 0} onStarted={(j) => select(j.job_id)} />
             ))}
+            {tab === "pitch" && (current ? <PitchJob projectId={projectId} id={current} /> : setup.data?.store ? (
+              <StaffPitchBuilder key={activeSetup} projectId={projectId} setupId={activeSetup} products={products} currency={currency}
+                personaCount={project.data?.personas.length ?? 0} onStarted={(j) => select(j.job_id)} />
+            ) : <Loading />)}
           </main>
         </div>
       )}
@@ -136,9 +151,9 @@ function Loading() {
 function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: string; job: JobStatus; active: boolean; onSelect: () => void; onDeleted: () => void }) {
   const qc = useQueryClient();
   const del = useMutation({
-    mutationFn: () => (job.kind === "experiment" ? deleteExperiment(projectId, job.job_id) : deleteSurvey(projectId, job.job_id)),
+    mutationFn: () => (job.kind === "experiment" ? deleteExperiment(projectId, job.job_id) : job.kind === "pitch" ? deletePitch(projectId, job.job_id) : deleteSurvey(projectId, job.job_id)),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: job.kind === "experiment" ? marketingKeys.experiments(projectId) : marketingKeys.surveys(projectId) });
+      await qc.invalidateQueries({ queryKey: job.kind === "experiment" ? marketingKeys.experiments(projectId) : job.kind === "pitch" ? marketingKeys.pitches(projectId) : marketingKeys.surveys(projectId) });
       if (active) onDeleted();
     },
   });
@@ -194,4 +209,14 @@ function SurveyJob({ projectId, id }: { projectId: string; id: string }) {
   });
   if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
   return view.data.report ? <SurveyReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />;
+}
+
+function PitchJob({ projectId, id }: { projectId: string; id: string }) {
+  const view = useQuery({
+    queryKey: marketingKeys.pitch(projectId, id),
+    queryFn: ({ signal }) => getPitch(projectId, id, signal),
+    refetchInterval: (q) => (q.state.data && !busy(q.state.data.status) ? false : 1500),
+  });
+  if (!view.data) return view.error ? <p className="text-sm text-destructive">{view.error.message}</p> : <Loading />;
+  return view.data.report ? <StaffPitchReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />;
 }
