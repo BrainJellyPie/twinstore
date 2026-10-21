@@ -79,6 +79,7 @@ gender = "f" if name.startswith("Female") else "m"
 clips = [
     ("idle", "all_animations_max_motextr_static", gender + "_idle_breathe_01.max.fbx"),
     ("walk", "all_animations_max_motextr_xy", gender + "_walk_neutral.max.fbx"),
+    ("browse", "all_animations_max_motextr_static", gender + "_idle_look_around_01.max.fbx"),
 ]
 owned = set(bpy.data.objects)
 start_root = rig.location.copy()
@@ -139,9 +140,9 @@ for clip, folder, filename in clips:
         bpy.data.actions.remove(source_action)
     print("CLIP", clip, start, end, flush=True)
 for action in list(bpy.data.actions):
-    if action.name not in {"idle", "walk"}:
+    if action.name not in {clip for clip, _, _ in clips}:
         bpy.data.actions.remove(action)
-# Default pose is the first idle frame; both named NLA tracks export independently.
+# Default pose is the first idle frame; named NLA tracks export independently.
 for track in rig.animation_data.nla_tracks:
     track.mute = True
 rig.animation_data.action = bpy.data.actions.get("idle")

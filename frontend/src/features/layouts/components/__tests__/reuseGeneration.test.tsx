@@ -52,3 +52,23 @@ it("clears an old source link when the dialog is reopened", () => {
   fireEvent.click(screen.getByLabelText("Generate a store from a template"));
   expect(JSON.parse(screen.getByTestId("settings").textContent!)).not.toHaveProperty("sourceSetupId");
 });
+
+it("submits a separate building whose floors retain their individual source links", () => {
+  const ground: Layout = { ...source, id: "ground", name: "Garden shop", generation: { template_id: "florist", seed: 0, currency: "JPY" },
+    building: { id: "building", name: "Garden house", level: 1, label: "Shop", floor_count: 2 } };
+  const upper: Layout = { ...source, building: { ...ground.building!, level: 2, label: "Café" } };
+  render(<AddLayoutDialog open onOpenChange={vi.fn()} projectId="p" parentSetupId={upper.id} layouts={[ground, upper]} defaultCurrency="JPY" />, { wrapper });
+  fireEvent.click(screen.getByLabelText("Multi-floor store"));
+  fireEvent.click(screen.getByRole("button", { name: "Reuse building options from Garden house" }));
+  expect((screen.getByLabelText("Building name") as HTMLInputElement).value).toBe("Garden house alternative");
+  fireEvent.click(screen.getByRole("button", { name: /2F · Café/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Use five tables" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move to lower level" }));
+  fireEvent.click(screen.getByTestId("add-layout-submit"));
+  expect(mutation.mutate).toHaveBeenCalledWith(expect.objectContaining({ name: "Garden house alternative",
+    source: { kind: "building", floors: [
+      { label: "Café", choice: expect.objectContaining({ sourceSetupId: upper.id, dining_tables: 5, requirements: "Quiet reading corner" }) },
+      { label: "Shop", choice: expect.objectContaining({ sourceSetupId: ground.id, templateId: "florist" }) },
+    ] },
+  }), expect.any(Object));
+});

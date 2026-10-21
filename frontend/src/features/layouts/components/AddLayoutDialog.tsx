@@ -34,7 +34,7 @@ import { cn } from "@/shared/utils/cn";
 import { useCreateLayout } from "../hooks/useCreateLayout";
 import { BuildingPicker } from "./BuildingPicker";
 import { TemplatePicker } from "./TemplatePicker";
-import { DEFAULT_TEMPLATE_CHOICE, buildingPreset, choiceFromGeneration, validBuildingFloors, validTemplateChoice, type TemplateChoice } from "../templateOptions";
+import { DEFAULT_TEMPLATE_CHOICE, buildingPreset, choiceFromGeneration, savedBuildingFloors, validBuildingFloors, validTemplateChoice, type TemplateChoice } from "../templateOptions";
 import type { Layout } from "../hooks/useLayouts";
 
 type Approach = "import" | "empty" | "template" | "plan" | "building";
@@ -95,7 +95,7 @@ export function AddLayoutDialog({
       setPlanRotation(0);
       setSelectedParentId(resolveDefaultParent(parentSetupId, layouts));
       setTemplate((current) => ({ ...current, currency: defaultCurrency, sourceSetupId: undefined }));
-      setFloors((current) => current.map((floor) => ({ ...floor, choice: { ...floor.choice, currency: defaultCurrency } })));
+      setFloors((current) => current.map((floor) => ({ ...floor, choice: { ...floor.choice, currency: defaultCurrency, sourceSetupId: undefined } })));
       createLayout.reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,6 +103,9 @@ export function AddLayoutDialog({
 
   const trimmed = name.trim();
   const sourceLayout = layouts.find((layout) => layout.id === parentSetupId);
+  const savedFloors = savedBuildingFloors(layouts, sourceLayout);
+  const buildingSources = sourceLayout?.building
+    ? layouts.filter((layout) => layout.building?.id === sourceLayout.building!.id && layout.generation) : [];
   const canSubmit =
     trimmed.length > 0 &&
     !createLayout.isPending &&
@@ -243,7 +246,20 @@ export function AddLayoutDialog({
                   <RadioGroupItem id="add-layout-approach-building" value="building" disabled={createLayout.isPending} />
                   Multi-floor store
                 </label>
-                {approach === "building" && <BuildingPicker floors={floors} defaultCurrency={defaultCurrency} onChange={setFloors} />}
+                {approach === "building" && <>
+                  {sourceLayout?.building && <div className="space-y-1 rounded-md border p-3 text-xs">
+                    <button type="button" disabled={!savedFloors} className="font-medium text-primary underline disabled:opacity-40"
+                      onClick={() => {
+                        if (!savedFloors) return;
+                        setFloors(savedFloors);
+                        setName(`${sourceLayout.building!.name.slice(0, 148)} alternative`);
+                      }}>Reuse building options from {sourceLayout.building.name}</button>
+                    <p className="text-muted-foreground">Start with the selected floor and the newest saved version of each other floor. Choose a different saved version per floor, then reorder, duplicate or edit them. This creates a separate building linked to its source floors.</p>
+                    <p className="text-muted-foreground">Fixtures are regenerated from saved options. Use the import option for manual fixture edits and uploaded products.</p>
+                    {!savedFloors && <p>Saved template settings are needed for every floor before reusing this building.</p>}
+                  </div>}
+                  <BuildingPicker floors={floors} defaultCurrency={defaultCurrency} onChange={setFloors} sourceLayouts={buildingSources} />
+                </>}
               </div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm" htmlFor="add-layout-approach-plan">

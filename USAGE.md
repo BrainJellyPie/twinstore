@@ -129,7 +129,52 @@ All-model failures are failed jobs; a server restart marks interrupted jobs fail
 Before claiming a sales effect, run a real field pilot: randomize eligible encounters within staff/shift blocks,
 record every assigned encounter (including refusals) and purchase, hold the offer constant, and decide the sample
 size and stopping rule before reviewing results. This module does not simulate staff availability, spoken tone,
-queue time, or store traffic, and does not yet import observed field conversions.
+queue time, or store traffic, and does not itself measure real purchases. Use the separate field-pilot workflow below for observed conversions.
+
+### Observed staff-script field pilots
+
+From a completed **Staff scripts** report, open **Prepare a field pilot from these scripts**. Define eligibility
+before exposing the assigned script and specify the target-SKU purchase window (for example, this store visit).
+Use anonymous staff IDs and distinct shift IDs. Each staff/shift block has an even 4–2,000 planned encounters;
+the complete plan has 40–10,000. This is a fixed sample target chosen by the operator, not a power calculation.
+The product, price, scripts, context, eligibility, window, seed and allocations are saved and cannot be edited.
+No model calls are needed to create or analyze a field pilot from a saved screening report.
+
+Download **Observation sheet CSV**. Within each staff/shift, enroll the next eligible customer before revealing
+that row's script; follow sequence order without choosing customers by arm. Do not reuse customers or swap
+assignments. Keep the offer and observation process the same in both arms. Edit only these columns:
+
+| Column | 1 | 0 | Blank |
+| --- | --- | --- | --- |
+| `enrolled` | An eligible encounter received this assignment | This slot was never used | Slot status not recorded yet |
+| `delivered` | Assigned script was delivered | Script was not delivered or was refused | Delivery not recorded yet |
+| `purchased` | Target SKU bought within the saved window | Target SKU not bought within that window | Purchase outcome unknown |
+
+For unused or unrecorded slots, leave delivery and purchase blank. An enrolled customer remains in their assigned
+arm even if delivery is 0 (intention to treat). No customer names, video or receipt details are collected here.
+
+Upload the **full** UTF-8 CSV (up to 2 MB), retaining every row and assignment column. Uploads replace the previous
+observation sheet atomically; invalid rows, changed assignments, duplicates and omitted rows reject the whole file.
+Revision checks and file locks reject overlapping updates; reload before retrying a stale upload. Downloading the
+sheet again returns the current observations, so corrections can be made before closing.
+
+During collection, the dashboard shows recorded rates and worst/best missing-outcome bounds over enrolled
+encounters. These bounds are **not confidence intervals**. Unknown purchases do not become nonbuyers. Staff/shift
+rows expose uneven enrollment; non-delivery counts remain visible. No treatment-effect interval is shown while open.
+
+Once every slot is marked enrolled or unused and every enrolled outcome and delivery status is known, **Close and
+lock pilot** ends collection. This cannot be reopened or overwritten. If any planned slot was unused, the closed
+report stays descriptive. When the entire target is completed, B minus A is weighted by precommitted staff/shift
+sample sizes. Its conservative 95% Hoeffding interval remains nonzero at all-zero or all-one outcomes. It assumes
+independent encounters, no repeat shoppers or interference, and a fixed stopping rule; it does not account for
+unmodeled clustering, repeated peeking, or selecting the best of multiple experiments. It is intentionally wider
+than common asymptotic intervals. A positive interval is evidence for the measured conversion outcome under those
+assumptions, not a store-wide sales or profit forecast.
+
+All saved pilots are accessible under **Market → Field pilots**, even if their source synthetic test is later
+removed. Plans and observations are stored in `marketing/field-pilots/<id>/pilot.json`. They contain observed records
+only; no synthetic responses are mixed into the conversion counts. The implementation is verified with offline
+fixtures; operators must supply real records to evaluate a real store.
 
 ## Step 1 — Store info
 

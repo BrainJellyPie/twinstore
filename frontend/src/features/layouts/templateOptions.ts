@@ -1,4 +1,5 @@
 import type { GenerateLayoutRequest, LayoutOptions } from "@/shared/api/client";
+import type { Layout } from "./hooks/useLayouts";
 
 export interface TemplateChoice extends LayoutOptions {
   templateId: string;
@@ -43,6 +44,21 @@ export function choiceFromGeneration(request: GenerateLayoutRequest, sourceSetup
 export interface BuildingFloorChoice {
   label: string;
   choice: TemplateChoice;
+}
+
+export function savedBuildingFloors(layouts: Layout[], selected: Layout | undefined): BuildingFloorChoice[] | null {
+  const building = selected?.building;
+  if (!selected?.generation || !building || building.floor_count < 2 || building.floor_count > 6) return null;
+  const candidates = layouts.filter((layout) => layout.building?.id === building.id && layout.generation)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+  const floors: BuildingFloorChoice[] = [];
+  for (let level = 1; level <= building.floor_count; level++) {
+    const source = selected.generation && building.level === level
+      ? selected : candidates.find((layout) => layout.building?.level === level);
+    if (!source?.generation || !source.building) return null;
+    floors.push({ label: source.building.label, choice: choiceFromGeneration(source.generation, source.id) });
+  }
+  return floors;
 }
 
 export const BUILDING_PRESETS = [
