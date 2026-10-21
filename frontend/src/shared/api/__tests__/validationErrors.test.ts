@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-import { createCapture, importFloorPlan, readReceipts } from "../client";
+import { createCapture, createStore, importFloorPlan, readReceipts } from "../client";
 import { askShopper } from "../interview";
 import { previewShelf } from "../marketing";
 
@@ -8,6 +8,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const file = new File(["photo"], "photo.png", { type: "image/png" });
 const requests = [
+  { name: "store creation", run: () => createStore({ name: "Test shop", description: "", address: "12 Market Street", store_type: "convenience", customer_profile: "Local residents", weekly_schedule: [] }, null) },
   { name: "shopper interview", run: () => askShopper("project", "run", "shopper", "", "") },
   { name: "shelf preview", run: () => previewShelf("project", { setup_id: "setup", rack_id: "rack", target_sku: "tea", changes: [] }) },
   { name: "capture upload", run: () => createCapture("project", file, { detector: "classic", model: "none", currency: "USD", rack_type: "shelf" }) },
@@ -33,4 +34,15 @@ it.each([
 ])("keeps useful errors and falls back safely for %s", async (body, expected) => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body, { status: 503, statusText: "Service Unavailable" })));
   await expect(askShopper("project", "run", "shopper", "Question", "")).rejects.toThrow(expected);
+});
+
+it.each([
+  [JSON.stringify({ detail: "Store creation is temporarily unavailable" }), "Store creation is temporarily unavailable"],
+  ["Service unavailable", "Service unavailable"],
+  ["", "Failed to create store (HTTP 503)"],
+  ["null", "Failed to create store (HTTP 503)"],
+  [JSON.stringify({ detail: {} }), "Failed to create store (HTTP 503)"],
+])("keeps store-creation errors readable for %j", async (body, expected) => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body, { status: 503 })));
+  await expect(createStore({ name: "Test shop", description: "", address: "12 Market Street", store_type: "convenience", customer_profile: "Local residents", weekly_schedule: [] }, null)).rejects.toThrow(expected);
 });
