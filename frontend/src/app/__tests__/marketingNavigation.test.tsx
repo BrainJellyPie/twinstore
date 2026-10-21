@@ -113,3 +113,69 @@ it("preserves the chosen job and layout during a same-project refresh", async ()
   expect(screen.getByText("Loaded alpha/exp_a2")).toBeTruthy();
   expect((screen.getByRole("combobox", { name: "Layout" }) as HTMLSelectElement).value).toBe("alpha_2");
 });
+
+it("falls back to an owned layout when the saved active layout no longer exists", async () => {
+  projects.alpha!.state.activeSetupId = "removed_layout";
+  await mount();
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "alpha_1", expect.any(AbortSignal)));
+  expectOwnedRequests();
+});
+
+it("does not load a stale active layout when the project has no layouts", async () => {
+  projects.alpha!.setups = [];
+  await mount();
+  expect(vi.mocked(api.getSetup).mock.calls.filter(([pid]) => pid === "alpha")).toEqual([]);
+});
+
+it("loads the current layout after a refresh removes the explicitly selected layout", async () => {
+  const { client } = await mount();
+  fireEvent.change(screen.getByRole("combobox", { name: "Layout" }), { target: { value: "alpha_2" } });
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "alpha_2", expect.any(AbortSignal)));
+  projects.alpha = { ...projects.alpha!, state: { activeSetupId: "alpha_3", runningSetups: [] }, setups: [setup("alpha_3")] };
+  await act(async () => { client.setQueryData(queryKeys.project("alpha"), projects.alpha); });
+  await waitFor(() => expect(screen.queryByRole("option", { name: "alpha_2" })).toBeNull());
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "alpha_3", expect.any(AbortSignal)));
+});
+
+it("keeps a valid explicit choice when another session changes the saved active layout", async () => {
+  const { client } = await mount();
+  fireEvent.change(screen.getByRole("combobox", { name: "Layout" }), { target: { value: "alpha_2" } });
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "alpha_2", expect.any(AbortSignal)));
+  vi.mocked(api.getSetup).mockClear();
+  projects.alpha = { ...projects.alpha!, state: { activeSetupId: "alpha_3", runningSetups: [] }, setups: [...projects.alpha!.setups, setup("alpha_3")] };
+  await act(async () => { client.setQueryData(queryKeys.project("alpha"), projects.alpha); });
+  expect((screen.getByRole("combobox", { name: "Layout" }) as HTMLSelectElement).value).toBe("alpha_2");
+  expect(api.getSetup).not.toHaveBeenCalled();
+});
+
+it("prefers a valid saved active layout over the first owned layout", async () => {
+  projects.alpha!.state.activeSetupId = "alpha_2";
+  await mount();
+  expect((screen.getByRole("combobox", { name: "Layout" }) as HTMLSelectElement).value).toBe("alpha_2");
+  expect(api.getSetup).toHaveBeenCalledWith("alpha", "alpha_2", expect.any(AbortSignal));
+  expectOwnedRequests();
+});
+
+it.each(["removed_layout", ""])("falls back to the first remaining layout after both choices disappear (%s)", async (activeSetupId) => {
+  const { client } = await mount();
+  fireEvent.change(screen.getByRole("combobox", { name: "Layout" }), { target: { value: "alpha_2" } });
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "alpha_2", expect.any(AbortSignal)));
+  vi.mocked(api.getSetup).mockClear();
+  projects.alpha = { ...projects.alpha!, state: { activeSetupId, runningSetups: [] }, setups: [setup("alpha_3")] };
+  await act(async () => { client.setQueryData(queryKeys.project("alpha"), projects.alpha); });
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "alpha_3", expect.any(AbortSignal)));
+  expect((screen.getByRole("combobox", { name: "Layout" }) as HTMLSelectElement).value).toBe("alpha_3");
+  expectOwnedRequests();
+});
+
+it("clears the selection without another layout request when a refresh removes every layout", async () => {
+  const { client } = await mount();
+  fireEvent.change(screen.getByRole("combobox", { name: "Layout" }), { target: { value: "alpha_2" } });
+  await waitFor(() => expect(api.getSetup).toHaveBeenCalledWith("alpha", "alpha_2", expect.any(AbortSignal)));
+  vi.mocked(api.getSetup).mockClear();
+  projects.alpha = { ...projects.alpha!, setups: [] };
+  await act(async () => { client.setQueryData(queryKeys.project("alpha"), projects.alpha); });
+  await waitFor(() => expect(screen.queryByRole("option", { name: "alpha_2" })).toBeNull());
+  expect((screen.getByRole("combobox", { name: "Layout" }) as HTMLSelectElement).value).toBe("");
+  expect(api.getSetup).not.toHaveBeenCalled();
+});
