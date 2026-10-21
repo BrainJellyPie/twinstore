@@ -18,6 +18,7 @@ def test_branching_preserves_parent_when_generated_uuids_share_a_prefix(tmp_path
     sequence = count(1)
     monkeypatch.setattr(io.uuid, "uuid4", lambda: UUID(int=(0xABCD << 112) + next(sequence)))
 
+    io.write_json(tmp_path / ".data" / "proj_test" / "metadata.json", {"name": "Test"})
     root = create_initial_setup("proj_test")
     original = read_setup("proj_test", root["id"])
     branch = setups.create_setup_from_source("proj_test", root["id"], "empty", name="Branch")
