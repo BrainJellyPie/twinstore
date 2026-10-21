@@ -7,7 +7,7 @@ import { ALL_REALISTIC_CHARACTER_ASSETS, characterAnimationPhase } from "@/share
 
 interface Model {
   animations: { name: string; channels: { target: { node: number; path: string }; sampler: number }[]; samplers: { output: number }[] }[];
-  accessors: { bufferView: number; byteOffset?: number; count: number; componentType: number; type: string }[];
+  accessors: { bufferView: number; byteOffset?: number; count: number; componentType: number; type: string; min?: number[]; max?: number[] }[];
   bufferViews: { byteOffset: number; byteStride?: number }[];
   materials: {
     name: string; alphaMode?: string; alphaCutoff?: number; normalTexture?: object;
@@ -15,6 +15,7 @@ interface Model {
   }[];
   textures: { source: number }[];
   images: { bufferView: number; mimeType: string }[];
+  meshes: { extras: { targetNames: string[] }; primitives: { material: number; targets: { POSITION: number; NORMAL: number }[] }[] }[];
   nodes: { name?: string }[];
   skins: { joints: number[] }[];
 }
@@ -36,6 +37,15 @@ describe("bundled shopper models", () => {
       }
 
       const binaryStart = 20 + jsonLength + 8;
+      for (const mesh of model.meshes) expect(mesh.extras.targetNames).toEqual(["blink"]);
+      const headPrimitive = model.meshes.flatMap((mesh) => mesh.primitives).find((p) => model.materials[p.material]!.name.includes("head"))!;
+      expect(headPrimitive.targets).toHaveLength(1);
+      const eyelids = model.accessors[headPrimitive.targets[0]!.POSITION]!;
+      const deformation = Math.max(...[...eyelids.min!, ...eyelids.max!].map(Math.abs));
+      expect(deformation).toBeGreaterThan(0.001);
+      expect(deformation).toBeLessThan(0.05);
+      // Constant morph keys in body clips would silently overwrite runtime blinking.
+      expect(model.animations.flatMap((a) => a.channels).some((c) => c.target.path === "weights")).toBe(false);
       // Confirm the conversion embedded actual maps; an unbaked Blender node
       // graph can otherwise silently export the same flat roughness as before.
       const mapped = model.materials.filter((m) => m.pbrMetallicRoughness.metallicRoughnessTexture);

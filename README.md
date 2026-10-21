@@ -503,7 +503,7 @@ world-space texture coordinates preserving its 2.12 m coverage across store size
 Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
 avatars under MIT: six appearances with textured faces and clothing, normal maps,
 varying surface roughness adapted from the original specular textures,
-alpha-tested hair, and retargeted idle/walking/browsing animations. They pause with playback and keep adult proportions
+alpha-tested hair, authored eyelid blinks, and retargeted idle/walking/browsing animations. They pause with playback and keep adult proportions
 when highlighted. Sources and conversion instructions are in
 [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
 High quality also uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)

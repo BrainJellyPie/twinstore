@@ -50,4 +50,38 @@ describe("photo scene snapshots", () => {
     }
     photo.dispose();
   });
+
+  it("bakes a shopper's current eyelid deformation without changing its live morph state", () => {
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    const count = geometry.getAttribute("position").count;
+    const deltas = new Float32Array(count * 3);
+    const weights = new Float32Array(count * 4);
+    for (let i = 0; i < count; i++) { deltas[i * 3 + 1] = -0.02; weights[i * 4] = 1; }
+    geometry.morphAttributes.position = [new THREE.BufferAttribute(deltas, 3)];
+    geometry.morphTargetsRelative = true;
+    geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(new Uint16Array(count * 4), 4));
+    geometry.setAttribute("skinWeight", new THREE.BufferAttribute(weights, 4));
+    const material = new THREE.MeshStandardMaterial();
+    const mesh = new THREE.SkinnedMesh(geometry, material);
+    const bone = new THREE.Bone();
+    mesh.add(bone);
+    mesh.bind(new THREE.Skeleton([bone]));
+    mesh.position.set(2, 3, -1);
+    mesh.morphTargetInfluences![0] = 0.75;
+    const live = new THREE.Scene();
+    live.add(mesh);
+    live.updateMatrixWorld(true);
+    mesh.skeleton.update();
+    const expected = mesh.getVertexPosition(0, new THREE.Vector3()).applyMatrix4(mesh.matrixWorld);
+    const photo = buildPhotoScene(live, { width: 4, depth: 5, background: null });
+    const baked = photo.scene.children.find((o) => o instanceof THREE.Mesh) as THREE.Mesh;
+    const vertex = new THREE.Vector3().fromBufferAttribute(baked.geometry.getAttribute("position"), 0);
+    expect(vertex.distanceTo(expected)).toBeLessThan(1e-6);
+    expect(mesh.morphTargetInfluences![0]).toBe(0.75);
+    expect(geometry.getAttribute("position").getY(0)).toBe(0.5);
+    photo.dispose();
+    geometry.dispose();
+    material.dispose();
+    mesh.skeleton.dispose();
+  });
 });
