@@ -85,3 +85,25 @@ it.each(shapes)("preserves the cursor's world point at both zoom limits in a $na
     expect(place).toHaveBeenLastCalledWith(200, 600);
   }
 });
+
+it.each(shapes.flatMap((shape) => [-100, 100].map((deltaY) => ({ ...shape, deltaY }))))("consumes vertical wheel input without scrolling the page in a $name viewport ($deltaY)", ({ width, height, x, y, deltaY }) => {
+  const { svg } = mount(width, height);
+  const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, clientX: x, clientY: y, deltaY });
+  fireEvent(svg, event);
+  expect(event.defaultPrevented).toBe(true);
+  expect(Number(svg.getAttribute("viewBox")!.split(" ")[2])).not.toBe(800);
+});
+
+it.each(shapes)("does not zoom for a horizontal wheel gesture in a $name viewport", ({ width, height, x, y }) => {
+  const { svg } = mount(width, height);
+  fireEvent.wheel(svg, { clientX: x, clientY: y, deltaX: 100, deltaY: 0 });
+  expect(svg.getAttribute("viewBox")).toBe("0 0 800 800");
+});
+
+it("stops intercepting wheel input after the map is unmounted", () => {
+  const { svg } = mount(200, 200);
+  cleanup();
+  const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 100 });
+  fireEvent(svg, event);
+  expect(event.defaultPrevented).toBe(false);
+});

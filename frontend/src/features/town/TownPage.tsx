@@ -55,8 +55,8 @@ export function TownPage({ projectId }: { projectId: string }) {
   const analyze = useMutation({ mutationFn: () => api.getTownSynergy(projectId, dayType), onSuccess: setSynergy, onError });
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="relative m-3 mr-0 min-w-0 flex-1 overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--map-ground)] shadow-[var(--shadow-lift)]">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row">
+      <div className="relative m-3 h-[28rem] min-w-0 shrink-0 overflow-hidden rounded-[1.6rem] border border-glass-border bg-[var(--map-ground)] shadow-[var(--shadow-lift)] lg:mr-0 lg:h-auto lg:min-h-64 lg:flex-1">
         {town ? (
           <>
             <TownMap
@@ -93,7 +93,7 @@ export function TownPage({ projectId }: { projectId: string }) {
         )}
       </div>
 
-      <aside className="panel m-3 flex w-[400px] shrink-0 flex-col gap-4 overflow-y-auto rounded-[1.6rem] p-4 text-sm">
+      <aside className="panel m-3 mt-0 flex min-w-0 shrink-0 flex-col gap-4 rounded-[1.6rem] p-4 text-sm lg:mt-3 lg:w-[400px] lg:overflow-y-auto">
         <Link to="/projects/$pid" params={{ pid: projectId }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3" /> Back to store
         </Link>
@@ -156,11 +156,11 @@ function MapToolbar({
     </button>
   );
   return (
-    <div className="absolute left-6 top-6 flex items-center gap-1 glass rounded-xl border p-1 text-sm shadow-float">
+    <div className="absolute left-3 right-3 top-3 flex flex-wrap items-center gap-1 glass rounded-xl border p-1 text-sm shadow-float lg:left-6 lg:right-auto lg:top-6 lg:max-w-[calc(100%-3rem)]">
       {btn("inspect", MousePointer2, "Explore")}
       {btn("place", MapPinPlus, "Open venue")}
       {mode === "place" && (
-        <select className="h-7 rounded border bg-background px-1" value={category} onChange={(e) => setCategory(e.target.value as VenueCategory)} aria-label="Venue type">
+        <select className="h-7 max-w-full rounded border bg-background px-1" value={category} onChange={(e) => setCategory(e.target.value as VenueCategory)} aria-label="Venue type">
           {(Object.keys(VENUE_LABELS) as VenueCategory[]).map((c) => <option key={c} value={c}>{VENUE_LABELS[c]}</option>)}
         </select>
       )}
@@ -173,7 +173,7 @@ function MapToolbar({
 function Legend() {
   const venues: VenueCategory[] = ["convenience", "cafe", "bakery", "pharmacy", "gym", "academy", "restaurant", "supermarket"];
   return (
-    <div className="absolute bottom-6 left-6 max-w-[560px] glass rounded-xl border p-2.5 text-xs shadow-float">
+    <div className="absolute bottom-3 left-3 right-3 max-w-[560px] glass rounded-xl border p-2.5 text-xs shadow-float lg:bottom-6 lg:left-6 lg:right-6">
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         <span className="flex items-center gap-1"><span className="size-3 rounded-full bg-[var(--map-focal)] ring-2 ring-background" /> Our store</span>
         {venues.map((c) => (
