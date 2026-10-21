@@ -110,6 +110,12 @@ key — or a local vLLM / Ollama / llama.cpp server — under **Models** for lan
 <b>Concept tests.</b> Drop pack images; personas rate intent, appeal, value, price range and preference.</td>
 </tr>
 <tr>
+<td><img src="./.github/assets/twinstore/screens/shoppers-light.jpg" alt="One shopper's journey with thoughts"><br>
+<b>Follow one shopper, then ask why.</b> Their path, stops and thoughts step by step; interview them afterwards, alone or as a group.</td>
+<td><img src="./.github/assets/twinstore/screens/market-sweep-light.jpg" alt="Price sweep: demand curve"><br>
+<b>Price sweeps.</b> A product at five prices on the same shoppers: demand curve, elasticity, revenue-maximising price.</td>
+</tr>
+<tr>
 <td><img src="./.github/assets/twinstore/screens/home-dark.jpg" alt="Home, night theme"><br>
 <b>Day and night.</b> A command bar, <kbd>⌘K</kbd> palette for everything, light and dark themes.</td>
 <td><img src="./.github/assets/twinstore/screens/settings-dark.jpg" alt="Model providers"><br>
