@@ -89,10 +89,12 @@ function PersonaBody({ id, frameMapRef, highlighted, dimmed, initial }: PersonaB
 
   const [facing, setFacing] = useState(initial.facing);
   const [isMoving, setIsMoving] = useState(initial.isMoving);
+  const [walkSpeed, setWalkSpeed] = useState(initial.walkSpeed);
   const [currentEvent, setCurrentEvent] = useState<TimelineEvent | null>(initial.currentEvent);
 
   const lastFacingRef = useRef(initial.facing);
   const lastMovingRef = useRef(initial.isMoving);
+  const lastSpeedRef = useRef(initial.walkSpeed);
   const lastEventRef = useRef<TimelineEvent | null>(initial.currentEvent);
 
   useFrame(() => {
@@ -111,6 +113,10 @@ function PersonaBody({ id, frameMapRef, highlighted, dimmed, initial }: PersonaB
       lastMovingRef.current = frame.isMoving;
       setIsMoving(frame.isMoving);
     }
+    if (frame.walkSpeed !== lastSpeedRef.current) {
+      lastSpeedRef.current = frame.walkSpeed;
+      setWalkSpeed(frame.walkSpeed);
+    }
     if (frame.currentEvent !== lastEventRef.current) {
       lastEventRef.current = frame.currentEvent;
       setCurrentEvent(frame.currentEvent);
@@ -124,6 +130,7 @@ function PersonaBody({ id, frameMapRef, highlighted, dimmed, initial }: PersonaB
         gender={initial.gender}
         facing={facing}
         isMoving={isMoving}
+        walkSpeed={walkSpeed}
         color={initial.color}
         label={initial.label}
         event={currentEvent}
