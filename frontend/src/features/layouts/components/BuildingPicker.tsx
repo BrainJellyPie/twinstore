@@ -93,7 +93,12 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
           {sourceLayouts.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
         </select>
       </div>}
-      <TemplatePicker key={`${index}-${pickerVersion}`} value={floor.choice} budgetCurrency={defaultCurrency} onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))} />
+      <TemplatePicker key={`${index}-${pickerVersion}`} value={floor.choice} budgetCurrency={defaultCurrency}
+        onChange={(choice) => onChange(floors.map((f, i) => i === index ? { ...f, choice } : f))}
+        onApplyDesignToAll={(design_theme) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, design_theme } })))}
+        onApplyCurrencyToAll={(currency) => onChange(floors.map((f) => ({ ...f, choice: { ...f.choice, currency } })))}
+        sharedDesign={floors.every((f) => f.choice.design_theme === floor.choice.design_theme) ? floor.choice.design_theme ?? undefined : undefined}
+        sharedCurrency={floors.every((f) => f.choice.currency === floor.choice.currency) ? floor.choice.currency : undefined} />
     </>}
     {!validBuildingFloors(floors) && <p role="alert" className="text-xs text-destructive">Each floor needs a unique label and valid grid dimensions.</p>}
   </div>;

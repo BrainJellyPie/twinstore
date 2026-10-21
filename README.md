@@ -265,6 +265,15 @@ list; an invalid floor leaves your configuration intact. The new building keeps
 the name entered in the form and receives new floor identities when saved.
 Single-floor and whole-building files have separate import controls.
 
+While configuring a building floor, **Apply design to all floors** copies its
+current interior palette across the building, including the resolved palette
+when the selected floor uses its format default. **Apply currency to all floors**
+uses that floor's price currency for every generated floor. Each action changes
+only its named setting; floor labels, layouts, seating, reservations and briefs
+remain independent. You can customize an individual floor again afterward.
+These controls update the building being prepared; existing shopper budgets are
+not converted.
+
 Add up to 48 dining tables (192 seats, four chairs each) to any format. Enter any
 whole count from 0–48, or leave the field blank for the format default. Café and restaurant
 defaults include seating; small grids reduce the default count to fit. An explicit
