@@ -67,6 +67,14 @@ export const LAYOUT_PRIORITIES: {
     options: { style: "perimeter", density: "balanced", dining_tables: 0, aisle_width: null, max_shelf_run: null } },
   { id: "takeaway", name: "Takeaway service", description: "Perimeter displays, balanced density, no dining tables and two counters near the entrance on its wall. Restores density-based aisle gaps and shelf runs.",
     options: { style: "perimeter", density: "balanced", dining_tables: 0, checkouts: 2, checkout_placement: "near_entrance", aisle_width: null, max_shelf_run: null }, checkoutAtEntrance: true },
+  { id: "compact_cafe", name: "Compact café seating", description: "Four two-seat tables toward the back, standard 1-cell table clearance and one counter near the entrance. Uses perimeter displays and balanced density; restores density-based aisle gaps and shelf runs.",
+    options: { style: "perimeter", density: "balanced", dining_tables: 4, dining_seats: 2, table_mix: null, table_clearance: 1, seating_zone: "back", checkouts: 1, checkout_clearance: 0, checkout_placement: "near_entrance", aisle_width: null, max_shelf_run: null }, checkoutAtEntrance: true },
+  { id: "family_dining", name: "Family dining", description: "Six six-seat tables toward the center with 2-cell circulation, plus two counters with 1-cell spacing near the entrance. Uses perimeter displays and balanced density; restores density-based aisle gaps and shelf runs.",
+    options: { style: "perimeter", density: "balanced", dining_tables: 6, dining_seats: 6, table_mix: null, table_clearance: 2, seating_zone: "center", checkouts: 2, checkout_clearance: 1, checkout_placement: "near_entrance", aisle_width: null, max_shelf_run: null }, checkoutAtEntrance: true },
+  { id: "mixed_parties", name: "Mixed party sizes", description: "Two tables of each size (2, 4 and 6 seats), centered with 1-cell circulation, plus two counters with 1-cell spacing near the entrance. Uses perimeter displays and balanced density; restores density-based aisle gaps and shelf runs.",
+    options: { style: "perimeter", density: "balanced", dining_tables: 6, dining_seats: 4, table_mix: { two_seat: 2, four_seat: 2, six_seat: 2 }, table_clearance: 1, seating_zone: "center", checkouts: 2, checkout_clearance: 1, checkout_placement: "near_entrance", aisle_width: null, max_shelf_run: null }, checkoutAtEntrance: true },
+  { id: "service_points", name: "Separated service counters", description: "Three counters with 2-cell spacing near the entrance, a spacious central spine, 3-cell aisle gaps and shelf runs up to 3 cells. Removes dining tables.",
+    options: { style: "spine", density: "spacious", dining_tables: 0, checkouts: 3, checkout_clearance: 2, checkout_placement: "near_entrance", aisle_width: 3, max_shelf_run: 3 }, checkoutAtEntrance: true },
 ];
 
 export function validTemplateChoice(value: TemplateChoice): boolean {

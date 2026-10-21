@@ -49,6 +49,15 @@ Hours that do not resolve to a valid schedule cannot be shared. Each floor can t
 3-cell gaps, short shelf runs and more room around tables; **More display space** uses dense parallel
 aisles with 1-cell gaps and longer runs; **Open center, no seating** removes dining tables and uses
 perimeter displays; **Takeaway service** also places two counters near the entrance on its wall.
+**Compact café seating** adds four two-seat tables near the back and one ordering counter.
+**Family dining** uses six six-seat tables (36 seats), 2-cell table clearance and two separated
+counters. **Mixed party sizes** uses two tables of each size (24 seats in total), standard table
+clearance and two separated counters. **Separated service counters** removes seating and uses
+three counters with 2-cell spacing, a spacious central spine and short shelf runs.
+These four choices place counters on the entrance wall. The café and family choices switch to
+uniform table sizes; the mixed choice supplies its own counts. Current table rotation is retained.
+Fixed table and counter counts need enough space: if the preview cannot fit, enlarge the floor
+or adjust the counts and spacing. Choosing a priority changes nothing until **Apply priority**.
 Review the listed changes before applying. Dimensions, product settings, design, operating hours and reserved
 areas keep their current values. The preview checks capacity, and every applied field remains editable.
 
