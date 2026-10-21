@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/
 import type { Store } from "@/shared/types/domain";
 import { FloorPlanPreview } from "../components/FloorPlanPreview";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const store: Store = { id: "preview", name: "Dining floor", type: "restaurant", grid_size: [40, 40], weekly_schedule: [], racks: [{
   id: "table", type: "table", position: [10, 10], shape: [[1, 1], [1, 1]], rotation: 0,
@@ -40,4 +40,37 @@ it("opens a detailed plan without submitting and returns to the unchanged creati
   expect(submit).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Create layout" }));
   expect(submit).toHaveBeenCalledOnce();
+});
+
+it("downloads the full floor at any zoom and safely preserves custom names", async () => {
+  const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:floor-plan");
+  const revokeObjectURL = vi.fn();
+  vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  render(<FloorPlanPreview store={{ ...store, name: "Tea & <Books>" }} areas={[{ label: "A & <B>", x: 2, y: 3, width: 4, height: 5 }]} />);
+  fireEvent.click(screen.getByRole("button", { name: "Expand floor plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "Zoom in floor plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "Download SVG" }));
+  expect(screen.getByText("150%")).toBeTruthy();
+  expect(click).toHaveBeenCalledOnce();
+  expect((click.mock.instances[0] as HTMLAnchorElement).download).toBe("twinstore-40x40-floor-plan.svg");
+  const blob = createObjectURL.mock.calls[0]?.[0];
+  if (!blob) throw new Error("No download was created");
+  const source = await new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.readAsText(blob);
+  });
+  const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
+  expect(parsed.querySelector("parsererror")).toBeNull();
+  const root = parsed.documentElement;
+  expect(root.namespaceURI).toBe("http://www.w3.org/2000/svg");
+  expect(root.getAttribute("viewBox")).toBe("-1.2 -1.2 41.4 41.4");
+  expect(root.getAttribute("width")).toBe("1600");
+  expect(root.getAttribute("height")).toBe("1600");
+  expect(root.getAttribute("style")).toBeNull();
+  expect(root.querySelector("title")?.textContent).toBe("Tea & <Books> — 40×40 cells");
+  expect(root.querySelector("desc")?.textContent).toContain("Area 1: A & <B>, 4×5 cells at column 3, row 4.");
+  expect(root.querySelector("image, script, foreignObject")).toBeNull();
+  await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith("blob:floor-plan"));
 });
