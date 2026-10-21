@@ -1,0 +1,2 @@
+patchedDependencies:
+  three-gpu-pathtracer@0.0.24: patches/three-gpu-pathtracer@0.0.24.patch
