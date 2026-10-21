@@ -22,11 +22,17 @@ import { cn } from "@/shared/utils/cn";
 
 const GROUP_TONE = ["bg-primary", "bg-primary/35"];
 
-export function StudyReading({ projectId, study, jobId, answers }: {
+type StudyReadingProps = {
   projectId: string; study: StudyPath; jobId: string;
   /** Open answers the study collected; the panel explains what it will read. */
   answers: number;
-}) {
+};
+
+export function StudyReading(props: StudyReadingProps) {
+  return <StudyReadingContent key={JSON.stringify([props.projectId, props.study, props.jobId])} {...props} />;
+}
+
+function StudyReadingContent({ projectId, study, jobId, answers }: StudyReadingProps) {
   const qc = useQueryClient();
   const key = studyReadingKey(projectId, study, jobId);
   const reading = useQuery({ queryKey: key, queryFn: ({ signal }) => getStudyReading(projectId, study, jobId, signal) });
@@ -34,14 +40,28 @@ export function StudyReading({ projectId, study, jobId, answers }: {
   const [model, setModel] = useState("");
   const write = useMutation({
     mutationFn: () => writeStudyReading(projectId, study, jobId, model),
-    onSuccess: (r) => qc.setQueryData(key, r),
+    onSuccess: async (r) => {
+      await qc.cancelQueries({ queryKey: key, exact: true });
+      qc.setQueryData(key, r);
+    },
   });
   const remove = useMutation({
     mutationFn: () => deleteStudyReading(projectId, study, jobId),
-    onSuccess: () => qc.setQueryData(key, null),
+    onSuccess: async () => {
+      await qc.cancelQueries({ queryKey: key, exact: true });
+      qc.setQueryData(key, null);
+    },
   });
   const r = reading.data;
   const busy = write.isPending || remove.isPending;
+  const loadError = reading.error ? (
+    <div role="alert" className="space-y-2 rounded-xl border border-destructive/30 p-3 text-sm [overflow-wrap:anywhere]">
+      <p>Could not load the saved reading. {reading.error.message}</p>
+      <Button size="sm" variant="outline" disabled={reading.isFetching} onClick={() => void reading.refetch()}>
+        Retry loading reading
+      </Button>
+    </div>
+  ) : null;
 
   const picker = (
     <select value={model} onChange={(e) => setModel(e.target.value)} disabled={busy}
@@ -52,6 +72,7 @@ export function StudyReading({ projectId, study, jobId, answers }: {
   );
 
   if (reading.isPending) return null;
+  if (!r && loadError) return loadError;
   if (!r) {
     return (
       <section className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed bg-card/60 px-4 py-3">
@@ -76,6 +97,7 @@ export function StudyReading({ projectId, study, jobId, answers }: {
 
   return (
     <section className="rounded-2xl border bg-card p-4" aria-label="Model's reading">
+      {loadError}
       <header className="mb-3 flex flex-wrap items-center gap-2">
         <h3 className="mr-auto flex items-center gap-1.5 text-sm font-semibold">
           <Sparkles className="size-4 text-primary" aria-hidden /> What the answers say
