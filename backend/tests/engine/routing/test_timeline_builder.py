@@ -1,3 +1,5 @@
+import pytest
+
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.types import Action, Face, Weekday
 from store_emulator.engine.routing.route_builder import JourneyStep
@@ -103,3 +105,25 @@ def test_browse_without_face_falls_back_to_first_match(collision_store):
     )
     browses = _browse_events(_run(collision_store, action))
     assert browses[0].target_rack == "A"
+
+@pytest.mark.parametrize("browse_face, buy_face, expected_pick", [
+    (Face.W, Face.W, 2), (Face.E, Face.W, 12), (Face.E, None, 12),
+])
+def test_shelf_dwell_uses_resolved_rack_and_only_continues_the_same_shelf(
+    collision_store, browse_face, buy_face, expected_pick,
+):
+    store = collision_store.model_copy(deep=True)
+    for rack in store.racks:
+        rack.dwell_min = 12 if rack.id == "B" else 5
+    journey = [
+        JourneyStep(path=[(1, 0)], action=CustomerAction(
+            nav="path", action=Action.BROWSE, target=(1, 0), face=browse_face, dwell=2,
+        )),
+        JourneyStep(path=[(1, 0)], action=CustomerAction(
+            nav="path", action=Action.BUY, target=(1, 0), face=buy_face, product_sku="sku-b", dwell=2,
+        )),
+    ]
+    result = build_timeline("p1", Weekday.FRI, "10:00:00", journey, store)
+    browse, buy = _browse_events(result)[0], _buy_events(result)[0]
+    assert browse.duration == (12 if browse_face == Face.W else 5)
+    assert buy.target_rack == "B" and buy.duration == expected_pick

@@ -89,15 +89,9 @@ def build_timeline(
 
         target = step.action.target
         face = step.action.face
-        # Taking the product after looking at the same shelf continues that stop: the rack's minimum
-        # applies to the stop, not again to the pick.
-        last = timeline[-1]
-        continues = (action_type == Action.BUY and last.action == Action.BROWSE and len(step.path) <= 1
-                     and (last.x, last.y) == current_pos)
-        dwell = _resolve_dwell(step, store, floor=not continues)
         te = TimelineEvent(
             elapsed_sec=round(t), x=current_pos[0], y=current_pos[1],
-            action=action_type, duration=dwell,
+            action=action_type,
             target_rack=rack_id_at(store, target, face) if target else "",
             face=face,
             description=step.action.description,
@@ -125,6 +119,14 @@ def build_timeline(
                 te.target_rack = rack.id
                 te.face = slot.face
 
+        # A pick continues a stop only at the same resolved rack and face. Adjacent shelves can
+        # share an access tile, and the SKU may correct an ambiguous coordinate-based rack guess.
+        last = timeline[-1]
+        continues = (action_type == Action.BUY and last.action == Action.BROWSE and len(step.path) <= 1
+                     and (last.x, last.y) == current_pos and bool(te.target_rack)
+                     and last.target_rack == te.target_rack and last.face == te.face)
+        dwell = _resolve_dwell(step, store, floor=not continues, rack_id=te.target_rack)
+        te.duration = dwell
         timeline.append(te)
         t += dwell
 
@@ -165,17 +167,17 @@ _WANDER_GLANCE_MIN = 2  # Min rack-front pause (seconds).
 _WANDER_GLANCE_MAX = 4  # Max rack-front pause (seconds).
 
 
-def _resolve_dwell(step: JourneyStep, store: Store, *, floor: bool = True) -> int:
+def _resolve_dwell(step: JourneyStep, store: Store, *, floor: bool = True, rack_id: str = "") -> int:
     dwell = step.action.dwell
     target = step.action.target
-    if target is None:
-        return max(1, min(_GLOBAL_MAX_DWELL, dwell))
-    rack = store.rack_at(target[0], target[1])
-    if rack is None:
-        for f in store.racks:
-            if target in f.access_tiles(store.grid_size):
-                rack = f
-                break
+    rack = next((r for r in store.racks if r.id == rack_id), None) if rack_id else None
+    if rack is None and target is not None:
+        rack = store.rack_at(target[0], target[1])
+        if rack is None:
+            for f in store.racks:
+                if target in f.access_tiles(store.grid_size):
+                    rack = f
+                    break
     if rack:
         dwell = max(rack.dwell_min if floor else 1, min(rack.dwell_max, dwell))
     else:
