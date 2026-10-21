@@ -84,6 +84,11 @@ function Body({ projectId, venue, dayType, scenarioId }: { projectId: string; ve
         </div>
       )}
 
+      {jobId && job.isPending && <p role="status" className="text-xs text-muted-foreground">Loading shopper status…</p>}
+      {jobId && job.isError && <div className="space-y-2">
+        <p role="alert" className="text-xs text-destructive">{job.error instanceof Error ? job.error.message : "Could not load the shopper status. Please try again."}</p>
+        <Button variant="outline" disabled={job.isFetching} onClick={() => void job.refetch()}>Retry status</Button>
+      </div>}
       {jobId && job.data && !job.data.result && (
         <div className="space-y-3 py-6 text-center">
           {job.data.status.status === "failed" ? (
