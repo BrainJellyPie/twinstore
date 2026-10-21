@@ -4,6 +4,7 @@ from typing import Annotated, Self
 
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
+from store_emulator.domain.field_observations import ObservationImportRecord
 from store_emulator.domain.field_planning import PilotPlanningAssumptions, PilotPlanningResult
 from store_emulator.domain.staff_pitch import Arm, PitchProduct, PitchVariant
 
@@ -60,6 +61,8 @@ class FieldPilot(BaseModel):
     product_facts: str
     assignments: list[PilotAssignment]
     planning: PilotPlanningResult | None = None
+    history_start_revision: int | None = None
+    import_history: list[ObservationImportRecord] = Field(default_factory=list[ObservationImportRecord])
 
 
 class PilotArmSummary(BaseModel):

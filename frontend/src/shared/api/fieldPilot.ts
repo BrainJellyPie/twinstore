@@ -25,7 +25,24 @@ export interface FieldPilot {
   design: PilotRequest; product: { sku: string; name: string; price: number; currency: string; promo: string };
   variants: [PitchVariant, PitchVariant]; context: string; product_facts: string; assignments: PilotAssignment[];
   planning?: PilotPlanningResult | null;
+  history_start_revision?: number | null;
+  import_history?: ObservationImportRecord[];
 }
+export interface ObservationChange {
+  assignment_id: string; staff_id: string; shift_id: string; sequence: number; arm: "A" | "B";
+  field: "enrolled" | "delivered" | "purchased"; before: boolean | null; after: boolean | null;
+}
+export interface ObservationDiff {
+  changed_assignments: number; changed_fields: number; new_values: number; corrected_values: number;
+  cleared_values: number; removed_enrollments: number; purchase_reversals: number;
+}
+export interface ObservationPreview {
+  pilot_id: string; revision: number; review_token: string; summary: ObservationDiff; changes: ObservationChange[];
+}
+export interface ObservationImportRecord {
+  revision: number; imported_at: string; reason: string; source_sha256: string; summary: ObservationDiff;
+}
+export interface ObservationImportAudit { record: ObservationImportRecord; changes: ObservationChange[] }
 export interface PilotArm {
   arm: "A" | "B"; planned: number; enrolled: number; unused: number; unrecorded: number;
   observed: number; purchases: number; missing_outcomes: number; not_delivered: number; delivery_unknown: number;
@@ -62,10 +79,17 @@ export const createPilot = (pid: string, pitch: string, request: PilotRequest) =
   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request),
 });
 export const pilotCsvUrl = (pid: string, id: string) => `${root(pid)}/${id}/observations.csv`;
-export async function importPilot(pid: string, id: string, file: File, revision: number): Promise<PilotView> {
+export async function previewPilotImport(pid: string, id: string, file: File, revision: number): Promise<ObservationPreview> {
   const form = new FormData(); form.append("file", file); form.append("revision", String(revision));
+  return json<ObservationPreview>(`${root(pid)}/${id}/observations/preview`, { method: "POST", body: form });
+}
+export async function importPilot(pid: string, id: string, file: File, revision: number, reviewToken: string, reason: string): Promise<PilotView> {
+  const form = new FormData(); form.append("file", file); form.append("revision", String(revision));
+  form.append("review_token", reviewToken); form.append("reason", reason);
   return json<PilotView>(`${root(pid)}/${id}/observations`, { method: "PUT", body: form });
 }
+export const getPilotImport = (pid: string, id: string, revision: number, signal?: AbortSignal) => json<ObservationImportAudit>(`${root(pid)}/${id}/imports/${revision}`, { signal });
+export const pilotHistoryCsvUrl = (pid: string, id: string) => `${root(pid)}/${id}/imports.csv`;
 export const closePilot = (pid: string, id: string, revision: number) => json<PilotView>(`${root(pid)}/${id}/close`, {
   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision }),
 });

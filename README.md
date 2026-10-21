@@ -335,6 +335,8 @@ For brand managers, category teams and research agencies (**Market** in the comm
   Before saving, **Plan sample size and duration** compares your minimum worthwhile conversion difference and
   daily eligible traffic with conservative sample requirements. It flags capacity/time shortfalls and saves the
   assumptions with the fixed plan, without using virtual shoppers as a conversion baseline.
+  Observation imports show changes before applying them, flag cleared values and reversed purchase outcomes,
+  and retain correction reasons and before/after records with a CSV history export.
 
 - **Shopper interviews** — in playback, the **Shoppers** tab follows one shopper's path and thoughts step by step,
   then lets you ask that shopper why ("why didn't you buy anything at the snack shelf?"); answers come from their

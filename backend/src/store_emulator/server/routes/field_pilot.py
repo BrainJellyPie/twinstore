@@ -10,6 +10,7 @@ from store_emulator.application import field_pilot
 from store_emulator.application.errors import AppError
 from store_emulator.domain.field_pilot import PilotRequest, PilotRevision, PilotSummary, PilotView
 from store_emulator.domain.field_planning import PilotPlanningRequest, PilotPlanningResult
+from store_emulator.domain.field_observations import ObservationImportAudit, ObservationPreview
 
 router = APIRouter(prefix="/api/projects", tags=["field pilots"])
 
@@ -49,11 +50,33 @@ def export_observations(pid: str, pilot_id: str) -> PlainTextResponse:
 
 
 @router.put("/{pid}/staff-pilots/{pilot_id}/observations", response_model=PilotView, summary="Replace observations from the complete CSV sheet")
-async def import_observations(pid: str, pilot_id: str, file: UploadFile = File(...), revision: int = Form(..., ge=0)) -> PilotView:
+async def import_observations(pid: str, pilot_id: str, file: UploadFile = File(...), revision: int = Form(..., ge=0),
+                              review_token: str = Form(..., pattern=r"^[0-9a-f]{64}$"),
+                              reason: str = Form(..., min_length=1, max_length=300)) -> PilotView:
     data = await file.read(2 * 1024 * 1024 + 1)
     if len(data) > 2 * 1024 * 1024:
         raise HTTPException(413, "Observation CSV exceeds 2 MB")
-    return await run_in_threadpool(_call, lambda: field_pilot.import_observations(pid, pilot_id, data, revision))
+    return await run_in_threadpool(_call, lambda: field_pilot.import_observations(pid, pilot_id, data, revision, review_token, reason))
+
+
+@router.post("/{pid}/staff-pilots/{pilot_id}/observations/preview", response_model=ObservationPreview, summary="Review a full observation sheet without saving it")
+async def review_observations(pid: str, pilot_id: str, file: UploadFile = File(...), revision: int = Form(..., ge=0)) -> ObservationPreview:
+    data = await file.read(2 * 1024 * 1024 + 1)
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(413, "Observation CSV exceeds 2 MB")
+    return await run_in_threadpool(_call, lambda: field_pilot.review_observations(pid, pilot_id, data, revision))
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/imports.csv", summary="Export committed observation changes")
+def export_import_history(pid: str, pilot_id: str) -> PlainTextResponse:
+    text = _call(lambda: field_pilot.export_import_history(pid, pilot_id))
+    return PlainTextResponse(text, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{pilot_id}-import-history.csv"'})
+
+
+@router.get("/{pid}/staff-pilots/{pilot_id}/imports/{revision}", response_model=ObservationImportAudit, summary="Read the recorded changes in one import")
+def get_import_audit(pid: str, pilot_id: str, revision: int) -> ObservationImportAudit:
+    return _call(lambda: field_pilot.get_import_audit(pid, pilot_id, revision))
 
 
 @router.post("/{pid}/staff-pilots/{pilot_id}/close", response_model=PilotView, summary="Close collection and lock the field results")
