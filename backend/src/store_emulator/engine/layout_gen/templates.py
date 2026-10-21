@@ -179,6 +179,14 @@ TEMPLATES: list[StoreTemplate] = [
         gondolas=["apparel", "souvenirs"], near_counter=["apparel"], style="free_flow", open_hours=(10, 21),
     ),
     StoreTemplate(
+        id="campus_dining_hall", name="Campus dining hall", description="A large weekday dining floor with 24 four-seat tables, perimeter meal displays and four checkout counters. Models counter purchases; kitchen and table service are not simulated.",
+        store_type="restaurant", grid=(32, 24), fridges=["water_sports", "soft_drinks", "dairy"] * 2,
+        wall_shelves=["restaurant_menu", "bakery", "desserts"] * 3,
+        gondolas=["restaurant_menu", "fresh_meals", "bakery"], near_counter=["cafe_menu", "desserts"],
+        style="perimeter", open_hours=(7, 21), closed_days=(6, 7), dining_tables=24, checkouts=4,
+        seating_zone="center", design_theme="minimal",
+    ),
+    StoreTemplate(
         id="design_showroom", name="Home & design showroom", description="Separated homeware display groups with wide sightlines and perimeter collections.",
         store_type="home", grid=(24, 20), fridges=[], wall_shelves=["home_design"] * 8,
         gondolas=["home_design", "home_design", "flowers"], near_counter=["home_design"], style="showroom", open_hours=(10, 20),

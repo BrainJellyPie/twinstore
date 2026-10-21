@@ -51,6 +51,17 @@ it("keeps the project's currency when choosing a preset or adding a floor", () =
   expect(screen.getByTestId("floor-currency").textContent).toBe("KRW");
 });
 
+it("starts a campus hub with three distinct store, book and dining floors", () => {
+  render(<Building currency="JPY" />);
+  fireEvent.click(screen.getByRole("button", { name: "Campus hub" }));
+  expect(screen.getByText("campus_cvs / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /2F · Level 2 · Bookstore/ }));
+  expect(screen.getByText("bookstore / width default")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /3F · Level 3 · Dining hall/ }));
+  expect(screen.getByText("campus_dining_hall / width default")).toBeTruthy();
+  expect(screen.getByTestId("floor-currency").textContent).toBe("JPY");
+});
+
 it("moves and duplicates a customized floor without losing its settings", () => {
   render(<Building />);
   fireEvent.click(screen.getByRole("button", { name: "Set floor width" }));

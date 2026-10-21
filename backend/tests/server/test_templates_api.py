@@ -23,6 +23,8 @@ def test_catalog_contains_specialty_formats_and_defaults(client):
     assert templates["hypermarket"]["default_checkouts"] == 6
     assert templates["warehouse_club"]["default_checkouts"] == 8
     assert templates["food_hall"]["default_checkouts"] == 4
+    assert templates["campus_dining_hall"]["default_dining_tables"] == 24
+    assert templates["campus_dining_hall"]["grid"] == [32, 24]
     assert {"family_restaurant", "neighborhood_bistro", "takeaway_coffee", "tea_lounge", "artisan_bakery",
             "vintage_boutique", "hardware_store", "toy_hobby_store"} <= templates.keys()
     assert templates["family_restaurant"]["default_seating_zone"] == "center"
@@ -62,7 +64,7 @@ def test_preview_matches_saved_custom_store(client):
     {"width": 7}, {"width": 41}, {"height": 5}, {"height": 41}, {"checkouts": 0},
     {"checkouts": 13}, {"style": "unknown"}, {"density": "unknown"}, {"currency": "INVALID"},
     {"entrance": "roof"}, {"exit_position": "roof"}, {"fixture_design": "unknown"}, {"design_theme": "unknown"},
-    {"dining_tables": -1}, {"dining_tables": 13}, {"table_clearance": 0}, {"table_clearance": 4},
+    {"dining_tables": -1}, {"dining_tables": 49}, {"table_clearance": 0}, {"table_clearance": 4},
     {"seating_zone": "roof"}, {"checkout_placement": "outside"}, {"shelf_direction": "diagonal"},
 ])
 def test_invalid_options_rejected_for_preview_and_save(client, patch):
@@ -143,6 +145,31 @@ def test_building_floors_are_linked_but_keep_independent_layouts(client):
     assert floors[1]["store"]["grid_size"] == [16, 12]
     assert client.get(f"/api/projects/{PID}").json()["state"]["activeSetupId"] == floors[0]["id"]
     assert "no travel between floors" in floors[0]["memo"]
+
+
+def test_campus_building_can_save_and_reuse_a_48_table_dining_floor(client):
+    layout = {"template_id": "campus_dining_hall", "width": 40, "height": 40,
+              "dining_tables": 48, "table_clearance": 3}
+    preview = client.post("/api/store-templates/preview", json=layout)
+    assert preview.status_code == 200, preview.text
+    body = {"name": "Campus hub", "floors": [
+        {"label": "Store", "layout": {"template_id": "campus_cvs"}},
+        {"label": "Books", "layout": {"template_id": "bookstore"}},
+        {"label": "Dining", "layout": layout},
+    ]}
+    response = client.post(f"/api/projects/{PID}/setups/generate-building", json=body)
+    assert response.status_code == 200, response.text
+    floor = response.json()["setups"][2]
+    source = client.get(f"/api/projects/{PID}/setups/{floor['id']}").json()
+    assert source["store"]["racks"] == preview.json()["racks"]
+    assert sum(r["type"] == "table" for r in source["store"]["racks"]) == 48
+    alternative = client.post(f"/api/projects/{PID}/setups/generate", json={
+        **source["generation"], "source_setup_id": floor["id"], "name": "Dining alternative",
+    })
+    assert alternative.status_code == 200, alternative.text
+    saved = client.get(f"/api/projects/{PID}/setups/{alternative.json()['id']}").json()
+    assert saved["store"]["racks"] == source["store"]["racks"]
+    assert saved["building"] == source["building"]
 
 
 def test_unknown_upper_floor_leaves_no_partial_building(client):

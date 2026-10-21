@@ -20,6 +20,7 @@ beforeEach(() => {
     { id: "community_pharmacy", name: "Community pharmacy", description: "First aid and wellness", store_type: "pharmacy", grid: [14, 12], racks: 12, skus: 50, open_hours: [9, 21], default_style: "spine", default_design: "minimal", default_dining_tables: 0 },
     { id: "family_restaurant", name: "Family restaurant", description: "Central dining", store_type: "restaurant", grid: [24, 20], racks: 20, skus: 40, open_hours: [11, 22], default_style: "perimeter", default_design: "warm", default_dining_tables: 8, default_seating_zone: "center", default_checkout_placement: "near_entrance" },
     { id: "warehouse_club", name: "Warehouse club", description: "Bulk groceries", store_type: "supermarket", grid: [36, 28], racks: 60, skus: 80, open_hours: [9, 21], default_style: "spine", default_design: "classic", default_dining_tables: 0, default_checkouts: 8 },
+    { id: "campus_dining_hall", name: "Campus dining hall", description: "Weekday dining", store_type: "restaurant", grid: [32, 24], racks: 40, skus: 80, open_hours: [7, 21], default_style: "perimeter", default_design: "minimal", default_dining_tables: 24, default_checkouts: 4 },
   ]);
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Preview", type: "convenience", grid_size: [12, 10], weekly_schedule: [], racks: [] });
 });
@@ -152,4 +153,25 @@ it("offers large checkout counts and resets to the selected format's default", a
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ checkouts: 12 }), expect.any(AbortSignal)));
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ checkouts: null }), expect.any(AbortSignal)));
+});
+
+it("accepts any whole dining count through 48, rejects invalid counts, and restores automatic seating when cleared", async () => {
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: /Campus dining hall/ }));
+  const input = screen.getByLabelText("Dining tables (4 seats each)") as HTMLInputElement;
+  expect(input.placeholder).toBe("Format default (24)");
+  for (const count of [13, 48]) {
+    fireEvent.change(input, { target: { value: String(count) } });
+    await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ dining_tables: count }), expect.any(AbortSignal)));
+  }
+  const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
+  for (const value of ["49", "-1", "1.5"]) {
+    fireEvent.change(input, { target: { value } });
+    expect(screen.getByRole("status").textContent).toContain("table count");
+    expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
+  }
+  fireEvent.change(input, { target: { value: "" } });
+  await screen.findByRole("img", { name: "Floor plan preview" });
+  expect(input.value).toBe("");
+  expect((screen.getByLabelText("Space around dining tables") as HTMLSelectElement).disabled).toBe(false);
 });
