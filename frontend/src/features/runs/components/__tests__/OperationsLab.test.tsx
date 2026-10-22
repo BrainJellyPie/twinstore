@@ -158,7 +158,7 @@ it("starts a run whose shoppers had the store alone from the default store", asy
   fireEvent.click(lab.getByRole("button", { name: "Replay" }));
   await waitFor(() => expect(api.replayOperations).toHaveBeenCalledWith("p", "r", {
     operations: { stock_per_facing: 12, restock_every_min: 120, open_counters: null, patience_sec: 300, crowd_limit: 4,
-      backroom_per_product: null, daily_delivery: true, till_schedule: {}, stock_overrides: {} },
+      backroom_per_product: null, daily_delivery: true, crew: null, till_schedule: {}, stock_overrides: {}, crew_schedule: {} },
     costs: { till_hour: 0, restock_round: 0, stock_unit_day: 5 },
   }));
   // The replayed hours can then be staffed one by one.
@@ -172,3 +172,61 @@ it.each(LOCALES)("reads in $code", ({ code }) => {
     expect(lab.getAllByText(translate(code, key)).length).toBeGreaterThan(0);
   }
 });
+
+it("staffs a crew hour by hour, costs a staff hour and plans the crew", async () => {
+  const crewed = { config: { ...config, crew: 2, crew_schedule: { "17": 1 }, refill_at: 0.5 }, hours } as unknown as api.OperationsReport;
+  vi.mocked(api.replayOperations).mockResolvedValue({ planned_revenue: 100000, outcome: { ...outcome(90000, 44100), crew_hours: 30 }, report: crewed });
+  vi.mocked(api.planOperations).mockResolvedValue({
+    current_config: crewed.config, current: { ...outcome(90000, 44100), crew_hours: 30 },
+    config: { ...crewed.config, crew: 2, crew_schedule: { "18": 3 }, refill_at: 0.25 },
+    best: { ...outcome(95000, 50000), crew_hours: 31 }, replays: 120, raised_skus: [],
+  });
+  const lab = show({ report: crewed });
+  expect((lab.getByLabelText("Crew on duty (tills and shelves)") as HTMLInputElement).value).toBe("2");
+  expect(lab.queryByLabelText("Tills open")).toBeNull();
+  expect((lab.getByLabelText("Crew at 17:00") as HTMLInputElement).value).toBe("1");
+  fireEvent.change(lab.getByLabelText("Crew at 18:00"), { target: { value: "3" } });
+  fireEvent.change(lab.getByLabelText("One staff member for an hour"), { target: { value: "12" } });
+  fireEvent.click(lab.getByRole("button", { name: "Replay" }));
+  await waitFor(() => expect(api.replayOperations).toHaveBeenCalledWith("p", "r", expect.objectContaining({
+    operations: expect.objectContaining({ crew: 2, refill_at: 0.5, crew_schedule: { "17": 1, "18": 3 } }),
+    costs: { till_hour: 1200, restock_round: 0, stock_unit_day: 0 },
+  })));
+  expect(await lab.findByRole("rowheader", { name: "Staff hours" })).toBeTruthy();
+  expect(lab.queryByRole("rowheader", { name: "Till hours" })).toBeNull();
+  expect(lab.getByRole("rowheader", { name: "Shelves refilled" })).toBeTruthy();
+  expect(lab.queryByRole("rowheader", { name: "Shelf refills" })).toBeNull();
+  fireEvent.click(lab.getByRole("button", { name: "Find the best plan" }));
+  expect(await lab.findByText("Crew on duty: 2 · Crew by hour: 18:00 3")).toBeTruthy();
+  expect(lab.getByText(/Refill: at 25% of full/)).toBeTruthy();
+  fireEvent.click(lab.getByRole("button", { name: "Use this plan" }));
+  expect((lab.getByLabelText("Crew at 18:00") as HTMLInputElement).value).toBe("3");
+  expect((lab.getByLabelText("Crew at 17:00") as HTMLInputElement).value).toBe("");
+  // Clearing the crew goes back to tills on their own: no crew hours are sent.
+  fireEvent.change(lab.getByLabelText("Crew on duty (tills and shelves)"), { target: { value: "" } });
+  fireEvent.click(lab.getByRole("button", { name: "Replay" }));
+  await waitFor(() => expect(api.replayOperations).toHaveBeenLastCalledWith("p", "r", expect.objectContaining({
+    operations: expect.objectContaining({ crew: null, crew_schedule: {} }),
+  })));
+});
+
+
+it.each(LOCALES.flatMap(({ code }) => ["replay", "plan", "mixed"].map(mode => ({ code, mode }))))(
+  "keeps zero-hour crew results visible in $code ($mode)", async ({ code, mode }) => {
+    useLocale.getState().setLocale(code);
+    const crewConfig = { ...config, crew: 2, crew_schedule: { "17": 0, "18": 0 } };
+    const crewReport = { ...report, config: crewConfig, crew_hours: 0, face_refills: 0 };
+    const zero = { ...outcome(0, 0), crew_hours: 0, face_refills: 0, till_hours: 0, restocks: 0 };
+    vi.mocked(api.replayOperations).mockResolvedValue({ planned_revenue: 100000, outcome: zero, report: crewReport });
+    vi.mocked(api.planOperations).mockResolvedValue({
+      current_config: mode === "mixed" ? config : crewConfig, current: zero,
+      config: crewConfig, best: zero, replays: 1, raised_skus: [],
+    });
+    const lab = show({ report: crewReport });
+    fireEvent.click(lab.getByRole("button", { name: translate(code, mode === "replay" ? "labReplay" : "labFindPlan") }));
+    await lab.findByRole("columnheader", { name: translate(code, mode === "replay" ? "labReplayCol" : "labPlanCol") });
+    expect(lab.getByRole("rowheader", { name: translate(code, "opsCrewHours") })).toBeTruthy();
+    expect(lab.getByRole("rowheader", { name: translate(code, "opsFaceRefills") })).toBeTruthy();
+    expect(Boolean(lab.queryByRole("rowheader", { name: translate(code, "labTillHours") }))).toBe(mode === "mixed");
+    expect(Boolean(lab.queryByRole("rowheader", { name: translate(code, "labRefills") }))).toBe(mode === "mixed");
+  });

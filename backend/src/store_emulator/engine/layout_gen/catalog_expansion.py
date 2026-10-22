@@ -1426,6 +1426,30 @@ PACKSHOT_SHEETS = {
         "Pastel Craft Cardstock A5 20pk", "Smooth Paper Bone Folder", "Slotted Paper Quilling Tool", "Round Paper Craft Punch 25mm",
         "Window Cake Gift Box 20cm", "Four Cupcake Carrier Box", "Glassine Cookie Gift Bags 20pk", "Cotton Bakers Twine Spool 50m",
     ],
+    "starter-75": [
+        "Pet Treat Training Waist Pouch", "Pet Waste Bag Refill Rolls 4pk", "Dog Lead Traffic Handle Short", "Pet Collar Identification Capsule",
+        "Pet Walking Clip Light Rechargeable", "Soft Pet Paw Cleaning Mitt", "Pet Walking Rain Cape Small", "Dog Lead Wall Storage Hook",
+        "Soft Car Vent Detailing Brush", "Car Wheel Cleaning Brush Long", "Car Glass Cleaning Cloth Pair", "Car Interior Detail Spray 300ml",
+        "Car Tire Dressing Applicator Block", "Car Wash Bucket Grit Guard", "Soft Detailing Brush Set 3pc", "Car Detailing Tool Organizer Bag",
+    ],
+    "starter-76": [
+        "Compost Temperature Probe 30cm", "Garden Compost Sieve Round", "Compost Scoop with Deep Bowl", "Worm Bin Moisture Mat",
+        "Compost Sorting Reminder Magnet", "Compost Aeration Tube Short", "Coir Compost Cover Disc 25cm", "Compost Caddy Replacement Handle",
+        "Terracotta Watering Spike Pair", "Drip Line Support Stakes 10pk", "Mechanical Garden Water Timer", "Garden Hose Shutoff Valve",
+        "Watering Can Rose Replacement", "Indoor Watering Bottle Spout", "Garden Water Connector Washer Set", "Drip Irrigation Tee Connector Set",
+    ],
+    "starter-77": [
+        "Embroidery Needle Pack 12pc", "Water Erasable Fabric Marking Pen", "Small Stork Embroidery Scissors", "Embroidery Thread Bobbins 20pk",
+        "Embroidery Hoop Stand Tabletop", "Embroidery Transfer Paper 5pk", "Metal Embroidery Needle Threader", "Embroidery Project Zipper Pouch",
+        "Wooden Yarn Bowl Small", "Knitting Needle Gauge Ruler", "Knitting Cable Needle Set 3pc", "Silicone Knitting Needle Stopper Pair",
+        "Cotton Crochet Cord 100m", "Knitting Stitch Holder Pair", "Blunt Yarn Finishing Needles 4pc", "Knitting Project Drawstring Bag",
+    ],
+    "starter-78": [
+        "Paper Quilling Strip Pack 100pc", "Craft Scoring Board Mini", "Double Sided Craft Tape 10m", "Precision Paper Craft Tweezers",
+        "Decorative Corner Paper Punch", "Paper Craft Glue Pen", "Origami Pattern Paper 50pk", "Paper Craft Embossing Stylus Pair",
+        "Kraft Bakery Gift Labels 24pk", "Food Gift Tin Rectangular", "Chocolate Gift Divider Box", "Clear Bakery Treat Boxes 6pk",
+        "Parchment Food Gift Wrap Sheets 20pk", "Mini Loaf Gift Tray Pair", "Bakery Box Carry Handle Set", "Food Gift Sealing Sticker Roll",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

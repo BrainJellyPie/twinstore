@@ -266,3 +266,8 @@ it("keeps pet walking, garden, craft, vehicle and food packaging tools out of fo
   for (const sheet of [73, 74]) for (let index = 0; index < 16; index++)
     expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
 });
+
+it("keeps all remaining pet, garden and craft photos classified as non-food after renaming", () => {
+  for (const sheet of [75, 76, 77, 78]) for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
+});

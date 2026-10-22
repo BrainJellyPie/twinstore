@@ -12,10 +12,13 @@ export interface SharedStoreChoice {
   crowd: string;      // shoppers at one shelf that feel crowded; "" = crowding has no effect
   backroom: string;   // units per product behind the shelves; "" = endless
   delivery: boolean;  // a delivery tops the backroom up each morning
+  crew: string;       // staff who serve at the tills and refill shelves; "" = tills staffed on their own
+  refillAt: string;   // with a crew: refill a shelf once down to this % of full
 }
 
 export const DEFAULT_SHARED_STORE: SharedStoreChoice = {
   enabled: true, stock: "12", restock: "120", tills: "", patience: "5", crowd: "4", backroom: "", delivery: true,
+  crew: "", refillAt: "50",
 };
 
 export function wholeIn(text: string, min: number, max: number): number | null {
@@ -34,9 +37,12 @@ export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig 
   const patienceOk = choice.patience.trim() !== "" && Number.isFinite(patience) && patience >= 0.5 && patience <= 120;
   const crowd = choice.crowd.trim() === "" ? null : wholeIn(choice.crowd, 2, 50);
   const backroom = choice.backroom.trim() === "" ? null : wholeIn(choice.backroom, 0, 1_000_000);
+  const crew = choice.crew.trim() === "" ? null : wholeIn(choice.crew, 1, 100);
+  const refillAt = wholeIn(choice.refillAt, 0, 95);
   if (stock === null || (choice.restock.trim() !== "" && restock === null)
       || (choice.tills.trim() !== "" && tills === null) || !patienceOk || (choice.crowd.trim() !== "" && crowd === null)
-      || (choice.backroom.trim() !== "" && backroom === null)) {
+      || (choice.backroom.trim() !== "" && backroom === null) || (choice.crew.trim() !== "" && crew === null)
+      || (crew !== null && refillAt === null)) {
     return "invalid";
   }
   return {
@@ -47,6 +53,8 @@ export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig 
     crowd_limit: crowd,
     backroom_per_product: backroom,
     daily_delivery: choice.delivery,
+    crew,
+    ...(crew !== null && refillAt !== null ? { refill_at: refillAt / 100 } : {}),
   };
 }
 
@@ -62,5 +70,7 @@ export function choiceFromConfig(config: OperationsConfig): SharedStoreChoice {
     crowd: config.crowd_limit == null ? "" : String(config.crowd_limit),
     backroom: config.backroom_per_product == null ? "" : String(config.backroom_per_product),
     delivery: config.daily_delivery ?? true,
+    crew: config.crew == null ? "" : String(config.crew),
+    refillAt: String(Math.round((config.refill_at ?? 0.5) * 100)),
   };
 }

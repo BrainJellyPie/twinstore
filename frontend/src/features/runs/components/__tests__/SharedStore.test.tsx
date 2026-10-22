@@ -49,14 +49,14 @@ describe("the run option", () => {
   it("shares the store by default, refilling every two hours with every till open", () => {
     expect(sharedStoreOptions(DEFAULT_SHARED_STORE)).toEqual({
       stock_per_facing: 12, restock_every_min: 120, open_counters: null, patience_sec: 300, crowd_limit: 4,
-      backroom_per_product: null, daily_delivery: true,
+      backroom_per_product: null, daily_delivery: true, crew: null,
     });
   });
 
   it("reads blank refill and tills as overnight and every till, and turning it off sends nothing", () => {
     expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, restock: " ", tills: "", patience: "1.5", crowd: "" }))
       .toEqual({ stock_per_facing: 12, restock_every_min: null, open_counters: null, patience_sec: 90, crowd_limit: null,
-        backroom_per_product: null, daily_delivery: true });
+        backroom_per_product: null, daily_delivery: true, crew: null });
     expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, enabled: false, stock: "nonsense" })).toBeUndefined();
   });
 
@@ -116,7 +116,7 @@ describe("the run dialog", () => {
     await submit();
     await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({
       operations: { stock_per_facing: 4, restock_every_min: 120, open_counters: 2, patience_sec: 300, crowd_limit: 4,
-        backroom_per_product: null, daily_delivery: true },
+        backroom_per_product: null, daily_delivery: true, crew: null, crew_schedule: {} },
     })));
   });
 
@@ -268,4 +268,81 @@ describe("empty backroom reporting", () => {
       expect(screen.getByText(translate(code, "opsRefillShort"))).toBeTruthy();
       expect(screen.getByText(translate(code, "opsBackroomSetup", { units: "0", deliveries: "0" }))).toBeTruthy();
     });
+});
+
+describe("the crew", () => {
+  it("is off unless given a number; with one, a shelf is refilled at a share of full", () => {
+    expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, crew: "2", refillAt: "25" }))
+      .toEqual(expect.objectContaining({ crew: 2, refill_at: 0.25 }));
+    expect(sharedStoreOptions(DEFAULT_SHARED_STORE)).not.toHaveProperty("refill_at");
+    // The refill point only counts with a crew.
+    expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, refillAt: "nonsense" })).not.toBe("invalid");
+  });
+
+  it.each([{ crew: "0" }, { crew: "101" }, { crew: "1.5" }, { crew: "2", refillAt: "96" }, { crew: "2", refillAt: "" },
+    { crew: "2", refillAt: "-5" }])("refuses %o", (patch) => {
+    expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, ...patch })).toBe("invalid");
+  });
+
+  it("replaces refill rounds and tills in the run dialog", async () => {
+    showDialog();
+    fireEvent.change(screen.getByLabelText("Crew on duty (tills and shelves)"), { target: { value: "3" } });
+    expect(screen.queryByLabelText("Refill shelves every (minutes)")).toBeNull();
+    expect(screen.queryByLabelText("Tills open")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Refill a shelf once down to (% of full)"), { target: { value: "0" } });
+    await submit();
+    await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({
+      operations: expect.objectContaining({ crew: 3, refill_at: 0 }),
+    })));
+  });
+
+  const crewReport: api.OperationsReport = {
+    ...report, config: { ...report.config, crew: 2, crew_schedule: { "18": 3 }, refill_at: 0.5 },
+    crew_hours: 29, crew_till_hours: 4.2, crew_refill_hours: 6.75, face_refills: 41, refill_wait_min: 12.5,
+    refills_unfinished: 3, hours: report.hours.map((h) => ({ ...h, crew_on_duty: h.hour === "18" ? 3 : 2 })),
+  };
+
+  it("shows who did what, how long shelves waited and what was left at closing", () => {
+    render(<OperationsReportView report={crewReport} currency="USD_CENTS" />);
+    expect(screen.getByText("Crew on duty: 2 · Units per shelf level: 12 · Refill at: 50% of full")).toBeTruthy();
+    expect(screen.getByText("Staff hours")).toBeTruthy();
+    expect(screen.getByText("At the tills: 4.2 h · refilling: 6.8 h")).toBeTruthy();
+    expect(screen.getByText("Average wait for a refill: 12.5 min")).toBeTruthy();
+    expect(screen.getByText("Shelves still waiting for a refill at closing: 3")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Crew" })).toBeTruthy();
+    expect(screen.getAllByRole("row")[2]?.textContent).toContain("3");
+  });
+
+  it.each(LOCALES)("reads in $code", ({ code }) => {
+    useLocale.getState().setLocale(code);
+    render(<OperationsReportView report={crewReport} currency="USD_CENTS" />);
+    for (const key of ["opsCrewHours", "opsFaceRefills", "opsCrewCol"] as const) {
+      expect(screen.getByText(translate(code, key))).toBeTruthy();
+    }
+  });
+});
+
+describe("a layout's crew", () => {
+  it("comes along hour by hour, and clearing the crew drops its hours", async () => {
+    vi.mocked(api.getLayoutOperations).mockResolvedValue({ operations: { ...report.config, crew: 2, crew_schedule: { "18": 4 }, refill_at: 0.25 } });
+    showDialog();
+    expect(await screen.findByText("Starting from this layout's saved operations.")).toBeTruthy();
+    expect((screen.getByLabelText("Crew on duty (tills and shelves)") as HTMLInputElement).value).toBe("2");
+    expect((screen.getByLabelText("Refill a shelf once down to (% of full)") as HTMLInputElement).value).toBe("25");
+    await submit();
+    await waitFor(() => expect(api.startRun).toHaveBeenLastCalledWith("p", "s", expect.objectContaining({
+      operations: expect.objectContaining({ crew: 2, refill_at: 0.25, crew_schedule: { "18": 4 } }),
+    })));
+  });
+
+  it("is dropped with its hours when the crew is cleared", async () => {
+    vi.mocked(api.getLayoutOperations).mockResolvedValue({ operations: { ...report.config, crew: 2, crew_schedule: { "18": 4 } } });
+    showDialog();
+    expect(await screen.findByText("Starting from this layout's saved operations.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Crew on duty (tills and shelves)"), { target: { value: "" } });
+    await submit();
+    await waitFor(() => expect(api.startRun).toHaveBeenLastCalledWith("p", "s", expect.objectContaining({
+      operations: expect.objectContaining({ crew: null, crew_schedule: {} }),
+    })));
+  });
 });

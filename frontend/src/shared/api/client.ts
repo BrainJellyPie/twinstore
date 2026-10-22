@@ -413,6 +413,13 @@ export interface OperationsConfig {
   // With this many shoppers at one shelf (null: never), an unplanned pick there is skipped with crowd_skip chance.
   crowd_limit?: number | null;
   crowd_skip?: number;
+  // One crew for the tills and the shelves (null: tills staffed on their own, refills in rounds), by hour too; a
+  // shelf is refilled once down to refill_at of full, taking refill_face_sec plus refill_unit_sec per unit.
+  crew?: number | null;
+  crew_schedule?: Record<string, number>;
+  refill_at?: number;
+  refill_face_sec?: number;
+  refill_unit_sec?: number;
   checkout_base_sec?: number;
   checkout_item_sec?: number;
   patience_sec?: number;
@@ -464,12 +471,16 @@ export interface QueueHour {
   max_wait_sec: number;
   abandoned: number;
   counters_open?: number;
+  crew_on_duty?: number;
   counters_needed: number;
 }
 
+type CrewSettings = "crew" | "crew_schedule" | "refill_at" | "refill_face_sec" | "refill_unit_sec";
+
 /** What sharing the store did to a run (GET /runs/{rid}/operations; 404 = each shopper had the store alone). */
 export interface OperationsReport {
-  config: Required<Omit<OperationsConfig, "stock_overrides">> & { stock_overrides: Record<string, number> };
+  config: Required<Omit<OperationsConfig, "stock_overrides" | CrewSettings>> & { stock_overrides: Record<string, number> }
+    & Pick<OperationsConfig, CrewSettings>;
   days: number;
   counters: number;
   counters_in_layout: number;
@@ -496,6 +507,15 @@ export interface OperationsReport {
   counter_utilization: number;
   till_hours?: number;
   counters_needed: number;
+  // With a crew: staff hours on duty, at the tills and refilling; shelves refilled, how long they waited (minutes,
+  // on average), the most waiting at once and those still waiting at closing.
+  crew_hours?: number;
+  crew_till_hours?: number;
+  crew_refill_hours?: number;
+  face_refills?: number;
+  refill_wait_min?: number;
+  refill_backlog_max?: number;
+  refills_unfinished?: number;
   hours: QueueHour[];
   stockouts: StockoutStats[];
   empty_spells?: EmptySpell[];
@@ -531,7 +551,9 @@ export interface OperationsOutcome {
   avg_wait_sec: number;
   p90_wait_sec: number;
   till_hours: number;
+  crew_hours?: number;
   restocks: number;
+  face_refills?: number;
   stock_units: number;
   labor_cost: number;
   restock_cost: number;
@@ -607,7 +629,8 @@ export function replayOperations(
 
 /** The best stock, refill and till plan found for the run's shoppers under these costs. */
 export function planOperations(
-  projectId: string, runId: string, body: { costs: OperationsCosts; operations?: OperationsConfig; memory?: MemoryConfig },
+  projectId: string, runId: string,
+  body: { costs: OperationsCosts; operations?: OperationsConfig; memory?: MemoryConfig; max_crew?: number },
   signal?: AbortSignal,
 ): Promise<OperationsPlan> {
   return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations/plan`, {

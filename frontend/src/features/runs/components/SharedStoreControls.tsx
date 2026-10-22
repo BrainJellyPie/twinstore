@@ -19,6 +19,8 @@ export function SharedStoreControls({ value, onChange, tillsInLayout, fieldsOnly
   const set = (patch: Partial<SharedStoreChoice>) => onChange({ ...value, ...patch });
   const id = useId();
   const invalid = sharedStoreOptions(value) === "invalid";
+  // With a crew the same staff work the tills and refill the shelves: no refill rounds or separate tills to set.
+  const crew = value.crew.trim() !== "";
   const field = "space-y-1";
   return (
     <div className={fieldsOnly ? "space-y-2 text-xs" : "space-y-2 rounded-md border p-3 text-xs"}>
@@ -39,6 +41,22 @@ export function SharedStoreControls({ value, onChange, tillsInLayout, fieldsOnly
               onChange={(e) => set({ stock: e.target.value })} aria-invalid={wholeIn(value.stock, 1, 10_000) === null} />
           </div>
           <div className={field}>
+            <label className="block font-medium" htmlFor={`${id}-crew`}>{t("opsCrew")}</label>
+            <Input id={`${id}-crew`} type="number" min={1} max={100} step={1} className="h-7" value={value.crew}
+              onChange={(e) => set({ crew: e.target.value })} aria-describedby={`${id}-crew-hint`}
+              aria-invalid={value.crew.trim() !== "" && wholeIn(value.crew, 1, 100) === null} />
+            <p id={`${id}-crew-hint`} className="text-muted-foreground">{t("opsCrewHint")}</p>
+          </div>
+          {crew ? (
+            <div className={field}>
+              <label className="block font-medium" htmlFor={`${id}-refill-at`}>{t("opsRefillAt")}</label>
+              <Input id={`${id}-refill-at`} type="number" min={0} max={95} step={5} className="h-7" value={value.refillAt}
+                onChange={(e) => set({ refillAt: e.target.value })} aria-describedby={`${id}-refill-at-hint`}
+                aria-invalid={wholeIn(value.refillAt, 0, 95) === null} />
+              <p id={`${id}-refill-at-hint`} className="text-muted-foreground">{t("opsRefillAtHint")}</p>
+            </div>
+          ) : <>
+          <div className={field}>
             <label className="block font-medium" htmlFor={`${id}-restock`}>{t("opsRestockEvery")}</label>
             <Input id={`${id}-restock`} type="number" min={5} max={1440} step={5} className="h-7" value={value.restock}
               onChange={(e) => set({ restock: e.target.value })} aria-describedby={`${id}-restock-hint`}
@@ -53,6 +71,7 @@ export function SharedStoreControls({ value, onChange, tillsInLayout, fieldsOnly
               aria-invalid={value.tills.trim() !== "" && wholeIn(value.tills, 1, 50) === null} />
             <p id={`${id}-tills-hint`} className="text-muted-foreground">{t("opsTillsBlank")}</p>
           </div>
+          </>}
           <div className={field}>
             <label className="block font-medium" htmlFor={`${id}-patience`}>{t("opsPatience")}</label>
             <Input id={`${id}-patience`} type="number" min={0.5} max={120} step={0.5} className="h-7" value={value.patience}

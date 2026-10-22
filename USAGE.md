@@ -121,6 +121,13 @@ export preserves the exact names, floor order and area coordinates.
   **Delivery every morning** (on) tops it up to that level before each later day. With a backroom, shelves are
   not emptied overnight: they keep what was left and are filled from the backroom before opening. Coach users
   running a week to set it — a backroom is what makes Saturday's stock-outs depend on Monday's sales.
+- **Crew on duty (tills and shelves)** (blank = tills staffed on their own, refills in instant rounds): the same
+  staff serve at the tills and refill shelves, so a refill takes someone away from the tills. With a crew, the
+  refill interval and tills fields give way to **Refill a shelf once down to (% of full)**; the crew can be set hour
+  by hour in **Try other stock and staffing**. Coach small-format users (one or two people on duty) to try it: it is
+  where a lone cashier refilling the drinks fridge makes the line grow, which separate tills cannot show. The refill
+  times (30 s per shelf plus 4 s per unit) are assumptions — ask for their own time study before trusting the
+  staff-hour split. Costs: the till-hour cost then counts each crew member's hour.
 - **Shoppers at one shelf that feel crowded** (default 4; blank = no effect): with that many stopped at one shelf at
   once, each unplanned pick there is skipped with a 35 % chance (`crowd_skip`). Planned buys are always made.
 
@@ -1213,7 +1220,7 @@ barista tools and party supplies add another 96 products. Kitchen and baking too
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
 woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
-educational toys, puzzles, model building and miniature painting add another 96. Skincare, makeup and grooming tools, tea brewing, cake decorating, pantry organization and shoe care add 96 more. Yoga, running, fishing, leathercraft, seed starting, plant propagation, candle care and camping repairs add another 96. Pet walking, car detailing, composting, watering, embroidery, knitting, paper crafts and food gift packaging add 96 more. One thousand one hundred eighty-four generated
+educational toys, puzzles, model building and miniature painting add another 96. Skincare, makeup and grooming tools, tea brewing, cake decorating, pantry organization and shoe care add 96 more. Yoga, running, fishing, leathercraft, seed starting, plant propagation, candle care and camping repairs add another 96. Pet walking, car detailing, composting, watering, embroidery, knitting, paper crafts and food gift packaging add 96 more. One thousand two hundred forty-eight generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 The 82 default map templates also include the expanded products in suitable departments. For example, toy
 shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and

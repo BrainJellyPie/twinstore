@@ -4,9 +4,9 @@ The shoppers' visits — what each meant to buy, where and when — were decided
 Stock, refills and tills only decide what of it happens, so any other operations plan replays in milliseconds on the
 same shoppers, with no model call: the same shoppers, the same patience, only the store run differently.
 
-The search maximises revenue less the cost of staffed till hours, refill rounds and units kept on the shelves — over
-the weeks that follow when shoppers remember their visits (customer_memory.py). Ties go to the plan using less (fewer
-refills, fewer units, fewer till hours)."""
+The search maximises revenue less the cost of staffed till hours (or crew hours, with a crew), refill rounds and units
+kept on the shelves — over the weeks that follow when shoppers remember their visits (customer_memory.py). Ties go to
+the plan using less (fewer refills, fewer units, fewer till and crew hours)."""
 
 import logging
 import time
@@ -18,12 +18,13 @@ from store_emulator.domain.operations import (
 )
 from store_emulator.domain.store import Store
 
-from .shared_store import resolve_shared_store, shelf_stock
+from .shared_store import open_hours, resolve_shared_store, shelf_stock
 
 logger = logging.getLogger(__name__)
 
 _REFILLS: tuple[int | None, ...] = (None, 30, 60, 90, 120, 180, 240, 360)
 _STOCKS: tuple[int, ...] = (2, 3, 4, 6, 8, 12, 16, 24, 32, 48)
+_REFILL_POINTS: tuple[float, ...] = (0.0, 0.25, 0.5, 0.75)   # with a crew: refill a face once down to this share
 _RAISED = 30            # products, by revenue lost, whose own shelf stock the search tries to raise
 _MAX_REPLAYS = 600
 _TIME_BUDGET_SEC = 25.0   # a large run answers with the best plan found so far instead of keeping the page waiting
@@ -41,14 +42,15 @@ def outcome(
     costs: OperationsCosts,
 ) -> OperationsOutcome:
     units = sum(p.full for p in shelf_stock(store, config).values()) + report.backroom_units
-    labor = round(report.till_hours * costs.till_hour)
+    labor = round((report.crew_hours if config.crew is not None else report.till_hours) * costs.till_hour)
     refills = report.restocks * costs.restock_round
     holding = units * max(1, report.days) * costs.stock_unit_day
     revenue = sum(r.total_spent for r in results)
     return OperationsOutcome(
         revenue=revenue, lost_revenue=report.lost_revenue, abandoned_revenue=report.abandoned_revenue,
         abandoned=report.abandoned, avg_wait_sec=report.avg_wait_sec, p90_wait_sec=report.p90_wait_sec,
-        till_hours=report.till_hours, restocks=report.restocks, stock_units=units,
+        till_hours=report.till_hours, crew_hours=report.crew_hours, restocks=report.restocks,
+        face_refills=report.face_refills, stock_units=units,
         labor_cost=labor, restock_cost=refills, holding_cost=holding, net=revenue - labor - refills - holding,
     )
 
@@ -60,15 +62,18 @@ def _better(a: _Tried, b: _Tried) -> bool:
     """Whether plan a beats plan b: more net money (over the weeks, when shoppers remember), then less used."""
     def key(tried: _Tried) -> tuple[float, ...]:
         day, _, weeks = tried
-        return (weeks.net if weeks is not None else day.net, -day.restocks, -day.stock_units, -day.till_hours)
+        return (weeks.net if weeks is not None else day.net, -day.restocks, -day.stock_units, -day.crew_hours,
+                -day.till_hours)
     return key(a) > key(b)
 
 
 def plan_operations(
     store: Store, planned: list[CustomerResult], current: OperationsConfig, costs: OperationsCosts, *, seed: int,
     max_tills: int | None = None, time_budget_sec: float = _TIME_BUDGET_SEC, memory: MemoryConfig | None = None,
+    max_crew: int | None = None,
 ) -> OperationsPlan:
-    """The best refill interval, shelf stock, per-product stock and hourly tills found for these shoppers."""
+    """The best refill interval, shelf stock, per-product stock and hourly tills found for these shoppers — with a
+    crew, the best refill point, shelf stock, per-product stock and crew hour by hour."""
     from .customer_memory import simulate_weeks   # builds on this module's outcome()
 
     deadline = time.monotonic() + time_budget_sec
@@ -101,12 +106,19 @@ def plan_operations(
             if _better(result, best_tried):
                 best_config, best_tried = candidate, result
 
-    # 1. Refill interval and shelf stock together (they trade off against each other).
-    consider(
-        current.model_copy(update={"restock_every_min": refill, "stock_per_facing": stock})
-        for refill in sorted(set(_REFILLS) | {current.restock_every_min}, key=lambda r: (r is None, r or 0))
-        for stock in sorted(set(_STOCKS) | {current.stock_per_facing})
-    )
+    # 1. Refill interval (with a crew, refill point) and shelf stock together: they trade off against each other.
+    if current.crew is not None:
+        consider(
+            current.model_copy(update={"refill_at": point, "stock_per_facing": stock})
+            for point in sorted(set(_REFILL_POINTS) | {current.refill_at})
+            for stock in sorted(set(_STOCKS) | {current.stock_per_facing})
+        )
+    else:
+        consider(
+            current.model_copy(update={"restock_every_min": refill, "stock_per_facing": stock})
+            for refill in sorted(set(_REFILLS) | {current.restock_every_min}, key=lambda r: (r is None, r or 0))
+            for stock in sorted(set(_STOCKS) | {current.stock_per_facing})
+        )
 
     # 2. A backroom kept at another level (when the store has one): fewer refills come up short, more units held.
     if best_config.backroom_per_product is not None:
@@ -127,8 +139,26 @@ def plan_operations(
         if best_config is not before:
             raised.append(stats.sku)
 
-    # 4. Tills hour by hour, twice over (an hour's line spills into the next).
-    hours = [h.hour for h in best_tried[1].hours]
+    # 4. Crew (or tills) hour by hour, twice over (an hour's line or refill backlog spills into the next).
+    if current.crew is not None:
+        largest = max([current.crew, *current.crew_schedule.values()])
+        crew_limit = min(100, max_crew if max_crew is not None else max(largest, tills) + 2)
+        for _ in range(2):
+            for hour in open_hours(store, planned):
+                consider(
+                    best_config.model_copy(update={"crew_schedule": {**best_config.crew_schedule, hour: n}})
+                    for n in range(1, crew_limit + 1)
+                )
+        # The most common positive crew becomes the default; unstaffed hours stay explicit — if that plays the same.
+        if best_config.crew is not None and best_config.crew_schedule:
+            staffed = [best_config.crew_schedule.get(hour, best_config.crew) for hour in open_hours(store, planned)]
+            common = min((n for n in set(staffed) if n > 0),
+                         key=lambda n: (-staffed.count(n), n), default=best_config.crew)
+            tidy = best_config.model_copy(update={"crew": common, "crew_schedule": {
+                hour: n for hour, n in best_config.crew_schedule.items() if n != common}})
+            if tidy != best_config and run(tidy)[0] == best_tried[0]:
+                best_config = tidy
+    hours = [h.hour for h in best_tried[1].hours] if current.crew is None else []
     if limit > 0 and hours:
         for _ in range(2):
             for hour in hours:

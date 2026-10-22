@@ -36,7 +36,9 @@ const ROWS: { key: keyof OperationsOutcome; label: MessageKey; kind: "money" | "
   { key: "abandoned_revenue", label: "labAbandoned", kind: "money" },
   { key: "avg_wait_sec", label: "labWait", kind: "wait" },
   { key: "till_hours", label: "labTillHours", kind: "hours" },
+  { key: "crew_hours", label: "opsCrewHours", kind: "hours" },
   { key: "restocks", label: "labRefills", kind: "count" },
+  { key: "face_refills", label: "opsFaceRefills", kind: "count" },
   { key: "stock_units", label: "labUnits", kind: "count" },
   { key: "labor_cost", label: "labLaborCost", kind: "money" },
   { key: "restock_cost", label: "labRefillCost", kind: "money" },
@@ -60,6 +62,8 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
   const [choice, setChoice] = useState<SharedStoreChoice>(() => report ? choiceFromConfig(report.config) : DEFAULT_SHARED_STORE);
   const [hourTills, setHourTills] = useState<Record<string, string>>(() =>
     Object.fromEntries(Object.entries(report?.config.till_schedule ?? {}).map(([hour, n]) => [hour, String(n)])));
+  const [hourCrew, setHourCrew] = useState<Record<string, string>>(() =>
+    Object.fromEntries(Object.entries(report?.config.crew_schedule ?? {}).map(([hour, n]) => [hour, String(n)])));
   const [overrides, setOverrides] = useState<Record<string, number>>(() => report?.config.stock_overrides ?? {});
   const [costs, setCosts] = useState<CostText>({ till: "", refill: "", unit: "" });
   const [remember, setRemember] = useState(false);
@@ -73,10 +77,16 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
   });
   const busy = replay.isPending || plan.isPending;
 
+  // With a crew the hours staff the crew (tills and shelves); without one, the tills.
+  const crewMode = choice.crew.trim() !== "";
+  const byHour = crewMode ? hourCrew : hourTills;
+  const setByHour = crewMode ? setHourCrew : setHourTills;
+  const hourMax = crewMode ? 100 : 50;
   const hours = [...new Set([...(report?.hours ?? []), ...(replay.data?.report.hours ?? [])].map((h) => h.hour)
-    .concat(Object.keys(hourTills)))].sort();
+    .concat(Object.keys(byHour)))].sort();
   const base = sharedStoreOptions({ ...choice, enabled: true });
-  const scheduleValid = Object.values(hourTills).every((v) => v.trim() === "" || wholeIn(v, 0, 50) !== null);
+  const scheduleValid = Object.values(hourTills).every((v) => v.trim() === "" || wholeIn(v, 0, 50) !== null)
+    && (!crewMode || Object.values(hourCrew).every((v) => v.trim() === "" || wholeIn(v, 0, 100) !== null));
   const money = (text: string) => text.trim() === "" ? 0 : toMinor(text, divisor);
   const costValues = { till_hour: money(costs.till), restock_round: money(costs.refill), stock_unit_day: money(costs.unit) };
   const costsValid = Object.values(costValues).every((v) => v !== null);
@@ -87,9 +97,12 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
 
   const request = () => {
     if (base === "invalid" || base === undefined || !costsValid) return null;
-    const schedule = Object.fromEntries(Object.entries(hourTills)
+    const numbers = (text: Record<string, string>) => Object.fromEntries(Object.entries(text)
       .filter(([, v]) => v.trim() !== "").map(([hour, v]) => [hour, Number(v)]));
-    const operations: OperationsConfig = { ...(report?.config ?? {}), ...base, till_schedule: schedule, stock_overrides: overrides };
+    const operations: OperationsConfig = {
+      ...(report?.config ?? {}), ...base, till_schedule: numbers(hourTills), stock_overrides: overrides,
+      crew_schedule: crewMode ? numbers(hourCrew) : {},
+    };
     const [missing, line, wait, churn] = chances;
     const memory: MemoryConfig | undefined = remember && weeks !== null && missing != null && line != null && wait != null && churn != null
       ? { weeks, leave_per_missing_unit: missing, leave_after_line: line, leave_per_wait_minute: wait, weekly_churn: churn }
@@ -104,17 +117,23 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
   const applyPlan = (config: OperationsReport["config"]) => {
     setChoice(choiceFromConfig(config));
     setHourTills(Object.fromEntries(Object.entries(config.till_schedule).map(([hour, n]) => [hour, String(n)])));
+    setHourCrew(Object.fromEntries(Object.entries(config.crew_schedule ?? {}).map(([hour, n]) => [hour, String(n)])));
     setOverrides(config.stock_overrides);
   };
 
   const shown = (value: number, kind: (typeof ROWS)[number]["kind"]) => kind === "money" ? formatMoney(value, code, { locale })
     : kind === "wait" ? (value < 90 ? t("opsSeconds", { seconds: Math.round(value) }) : t("opsMinutes", { minutes: (value / 60).toLocaleString(locale, { maximumFractionDigits: 1 }) }))
     : kind === "hours" ? value.toLocaleString(locale, { maximumFractionDigits: 1 }) : value.toLocaleString(locale);
-  const columns: { label: MessageKey; outcome: OperationsOutcome; weeksNet?: number }[] = [
-    ...(plan.data ? [{ label: "labNowCol" as const, outcome: plan.data.current, weeksNet: plan.data.current_weeks?.net }] : []),
-    ...(replay.data ? [{ label: "labReplayCol" as const, outcome: replay.data.outcome, weeksNet: replay.data.weeks?.net }] : []),
-    ...(plan.data ? [{ label: "labPlanCol" as const, outcome: plan.data.best, weeksNet: plan.data.best_weeks?.net }] : []),
+  const columns: { label: MessageKey; outcome: OperationsOutcome; crew: boolean; weeksNet?: number }[] = [
+    ...(plan.data ? [{ label: "labNowCol" as const, outcome: plan.data.current, crew: plan.data.current_config.crew != null, weeksNet: plan.data.current_weeks?.net }] : []),
+    ...(replay.data ? [{ label: "labReplayCol" as const, outcome: replay.data.outcome, crew: replay.data.report.config.crew != null, weeksNet: replay.data.weeks?.net }] : []),
+    ...(plan.data ? [{ label: "labPlanCol" as const, outcome: plan.data.best, crew: plan.data.config.crew != null, weeksNet: plan.data.best_weeks?.net }] : []),
   ];
+  // Crew hours and shelves refilled only where a column had a crew; till hours and refill rounds unless every column
+  // had one.
+  const crewed = (c: (typeof columns)[number]) => c.crew;
+  const rows = ROWS.filter((row) => row.key === "crew_hours" || row.key === "face_refills" ? columns.some(crewed)
+    : row.key === "till_hours" || row.key === "restocks" ? !columns.every(crewed) : true);
   const memoryField = (key: keyof MemoryText, label: MessageKey) => (
     <div className="space-y-1">
       <label className="block font-medium" htmlFor={`${id}-mem-${key}`}>{t(label)}</label>
@@ -142,25 +161,25 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
         <SharedStoreControls value={{ ...choice, enabled: true }} onChange={setChoice} fieldsOnly />
         {hours.length > 0 && (
           <fieldset className="space-y-1">
-            <legend className="font-medium">{t("opsHoursTitle")}</legend>
-            <div className="grid grid-cols-3 gap-1.5 min-[400px]:grid-cols-4">
+            <legend className="font-medium">{t(crewMode ? "labCrewByHourTitle" : "opsHoursTitle")}</legend>
+            <div className="grid grid-cols-2 gap-1.5 min-[400px]:grid-cols-3">
               {hours.map((hour) => (
                 <label key={hour} className="flex items-center gap-1">
                   <span className="w-10 shrink-0 tabular-nums text-muted-foreground">{t("opsHourLabel", { hour })}</span>
-                  <Input type="number" min={0} max={50} step={1} className="h-7" value={hourTills[hour] ?? ""}
-                    aria-label={t("labTillsAt", { hour: t("opsHourLabel", { hour }) })}
-                    aria-invalid={(hourTills[hour] ?? "").trim() !== "" && wholeIn(hourTills[hour] ?? "", 0, 50) === null}
-                    onChange={(e) => setHourTills({ ...hourTills, [hour]: e.target.value })} />
+                  <Input type="number" min={0} max={hourMax} step={1} className="h-7" value={byHour[hour] ?? ""}
+                    aria-label={t(crewMode ? "labCrewAt" : "labTillsAt", { hour: t("opsHourLabel", { hour }) })}
+                    aria-invalid={(byHour[hour] ?? "").trim() !== "" && wholeIn(byHour[hour] ?? "", 0, hourMax) === null}
+                    onChange={(e) => setByHour({ ...byHour, [hour]: e.target.value })} />
                 </label>
               ))}
             </div>
-            <p className="text-muted-foreground">{t("labTillsByHourHint")}</p>
+            <p className="text-muted-foreground">{t(crewMode ? "labCrewByHourHint" : "labTillsByHourHint")}</p>
           </fieldset>
         )}
         <fieldset className="space-y-1.5">
           <legend className="font-medium">{t("labCosts", { currency: code })}</legend>
           <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-3">
-            {costField("till", "labTillHourCost")}
+            {costField("till", crewMode ? "labCrewHourCost" : "labTillHourCost")}
             {costField("refill", "labRestockCost")}
             {costField("unit", "labUnitDayCost")}
           </div>
@@ -218,10 +237,10 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
               </tr>
             </thead>
             <tbody>
-              {ROWS.map((row) => (
+              {rows.map((row) => (
                 <tr key={row.key} className={row.key === "net" ? "border-t font-semibold" : "border-t"}>
                   <th scope="row" className="py-1 text-left font-normal">{t(row.label)}</th>
-                  {columns.map((c) => <td key={c.label} className="py-1 text-right">{shown(c.outcome[row.key], row.kind)}</td>)}
+                  {columns.map((c) => <td key={c.label} className="py-1 text-right">{shown(c.outcome[row.key] ?? 0, row.kind)}</td>)}
                 </tr>
               ))}
               {columns.some((c) => c.weeksNet != null) && (
@@ -248,11 +267,21 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
             })()}</p>
             <p className="text-muted-foreground">{t("labPlanSummary", {
               stock: plan.data.config.stock_per_facing.toLocaleString(locale),
-              refill: plan.data.config.restock_every_min == null ? t("labRefillNever") : t("labRefillEvery", { minutes: plan.data.config.restock_every_min }),
+              refill: plan.data.config.crew != null
+                ? t("labRefillAtPoint", { percent: formatPercent(plan.data.config.refill_at ?? 0.5, 0) })
+                : plan.data.config.restock_every_min == null ? t("labRefillNever") : t("labRefillEvery", { minutes: plan.data.config.restock_every_min }),
               raised: plan.data.raised_skus.length.toLocaleString(locale),
               tried: plan.data.replays.toLocaleString(locale),
             })}</p>
-            {Object.keys(plan.data.config.till_schedule).length > 0 && (
+            {plan.data.config.crew != null && (
+              <p className="text-muted-foreground">{t("labPlanCrew", { crew: plan.data.config.crew.toLocaleString(locale) })}
+                {Object.keys(plan.data.config.crew_schedule ?? {}).length > 0 && <> · {t("labPlanCrewHours", {
+                  hours: Object.entries(plan.data.config.crew_schedule ?? {})
+                    .map(([hour, crew]) => t("labPlanCrewHour", { hour: t("opsHourLabel", { hour }), crew })).join(" · "),
+                })}</>}
+              </p>
+            )}
+            {plan.data.config.crew == null && Object.keys(plan.data.config.till_schedule).length > 0 && (
               <p className="text-muted-foreground">{t("labPlanTills", {
                 hours: Object.entries(plan.data.config.till_schedule)
                   .map(([hour, tills]) => t("labPlanTillsHour", { hour: t("opsHourLabel", { hour }), tills })).join(" · "),

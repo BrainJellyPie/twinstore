@@ -52,12 +52,16 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
     (best, hour) => (best === null || hour.counters_needed > best.counters_needed
       || (hour.counters_needed === best.counters_needed && hour.avg_wait_sec > best.avg_wait_sec) ? hour : best), null);
   const maxWait = Math.max(1, ...report.hours.map((h) => h.avg_wait_sec));
+  const crew = report.config.crew ?? null;
+  const hoursOf = (value: number | undefined) => (value ?? 0).toLocaleString(locale, { maximumFractionDigits: 1 });
 
   return (
     <section className="border-t px-3 py-3" aria-labelledby="operations-title">
       <div id="operations-title" className="section-title mb-1">{t("opsTitle")}</div>
       <p className="mb-2 text-xs text-muted-foreground">
-        {t("opsSetup", { counters: count(report.counters), stock: count(report.config.stock_per_facing), restocks: count(report.restocks) })}
+        {crew != null
+          ? t("opsSetupCrew", { crew: count(crew), stock: count(report.config.stock_per_facing), percent: formatPercent(report.config.refill_at ?? 0.5, 0) })
+          : t("opsSetup", { counters: count(report.counters), stock: count(report.config.stock_per_facing), restocks: count(report.restocks) })}
       </p>
       <div className="grid grid-cols-2 gap-2">
         <Tile label={t("opsLostSales")} value={money(report.lost_revenue)}
@@ -70,6 +74,19 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
         <Tile label={t("opsLeftLine")} value={t("opsLeftLineValue", { count: count(report.abandoned), amount: money(report.abandoned_revenue) })}
           hint={report.counters > 0 ? `${t("opsUtilization")}: ${formatPercent(report.counter_utilization, 0)}` : undefined} />
       </div>
+      {crew != null && (
+        <div className="mt-2 space-y-1">
+          <div className="grid grid-cols-2 gap-2">
+            <Tile label={t("opsCrewHours")} value={hoursOf(report.crew_hours)}
+              hint={t("opsCrewSplit", { tills: hoursOf(report.crew_till_hours), shelves: hoursOf(report.crew_refill_hours) })} />
+            <Tile label={t("opsFaceRefills")} value={count(report.face_refills ?? 0)}
+              hint={t("opsRefillWait", { minutes: duration((report.refill_wait_min ?? 0) * 60) })} />
+          </div>
+          {(report.refills_unfinished ?? 0) > 0 && (
+            <p className="text-xs text-destructive">{t("opsRefillsUnfinished", { count: count(report.refills_unfinished ?? 0) })}</p>
+          )}
+        </div>
+      )}
       {(report.config.backroom_per_product != null
         || Object.keys(report.config.backroom_overrides ?? {}).length > 0
         || (report.backroom_units ?? 0) > 0 || (report.refill_short_units ?? 0) > 0) && (
@@ -101,7 +118,8 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
               <tr>
                 <th scope="col" className="py-0.5 text-left font-normal">{t("opsHour")}</th>
                 <th scope="col" className="py-0.5 text-right font-normal">{t("opsAtTills")}</th>
-                <th scope="col" className="w-2/5 py-0.5 text-left font-normal">{t("opsWaitCol")}</th>
+                {crew != null && <th scope="col" className="py-0.5 pl-2 text-right font-normal">{t("opsCrewCol")}</th>}
+                <th scope="col" className={crew != null ? "w-1/3 py-0.5 pl-2 text-left font-normal" : "w-2/5 py-0.5 text-left font-normal"}>{t("opsWaitCol")}</th>
                 <th scope="col" className="py-0.5 text-right font-normal">{t("opsLeftCol")}</th>
                 <th scope="col" className="py-0.5 text-right font-normal">{t("opsNeededCol")}</th>
               </tr>
@@ -111,6 +129,7 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
                 <tr key={hour.hour} className="border-t">
                   <th scope="row" className="py-1 text-left font-normal">{t("opsHourLabel", { hour: hour.hour })}</th>
                   <td className="py-1 text-right">{count(hour.arrivals)}</td>
+                  {crew != null && <td className="py-1 pl-2 text-right">{count(hour.crew_on_duty ?? crew)}</td>}
                   <td className="py-1 pl-2">
                     <div className="flex items-center gap-1.5">
                       <div className="h-1.5 flex-1 rounded-full bg-muted">
