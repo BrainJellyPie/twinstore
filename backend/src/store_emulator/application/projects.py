@@ -17,7 +17,7 @@ from store_emulator.application.storage.io import DATA_DIR, write_json, read_jso
 from store_emulator.application.storage.setups import (
     metadata_path, personas_path,
     read_setup, list_setups, create_initial_setup,
-    read_state, write_state, setup_path,
+    read_state, write_state, setup_path, final_runs, has_run_history,
 )
 
 
@@ -99,7 +99,7 @@ def list_projects() -> list[dict[str, Any]]:
             # One damaged file (a crash mid-write) must not hide every other store.
             logger.warning(f"[projects] skipping {pid}: unreadable ({type(e).__name__}: {e})")
             continue
-        has_run = any(s.get("runId") for s in setups)
+        has_run = any(s.get("runId") for s in setups) or bool(final_runs(pid))
         state = read_state(pid)
         active_sid = state.get("activeSetupId")
         has_store = False
@@ -137,7 +137,7 @@ def load_project(project_id: str) -> dict[str, Any]:
         "personas": read_json(p_file) if p_file.exists() else [],
         "state": read_state(project_id),
         "setups": setups,
-        "personasLocked": any(s.get("runId") for s in setups),
+        "personasLocked": any(s.get("runId") for s in setups) or bool(final_runs(project_id)),
     }
 
 
@@ -152,7 +152,7 @@ def save_project_personas(
     setups = list_setups(project_id)
     if any(s.get("status") == "running" for s in setups):
         raise AppError("personas cannot be modified while a simulation is running.", 409)
-    if any(s.get("runId") for s in setups):
+    if has_run_history(project_id):
         raise AppError("personas cannot be modified because the project has simulation history. Create a new project.", 409)
     if find_active_generation(project_id, kind="persona"):
         raise AppError("personas cannot be modified while persona generation is in progress.", 409)
