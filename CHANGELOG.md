@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.7 — Marketing studio results you can trust
 
 ### Marketing studio results you can trust
 - A vision-shopper A/B test whose model calls failed finished "completed" with rule-shopper results labelled as
