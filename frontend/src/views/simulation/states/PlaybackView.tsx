@@ -78,6 +78,7 @@ export function PlaybackView({
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           projectId={pid}
+          setupId={selectedSetupId}
           runId={runId}
         />
       }

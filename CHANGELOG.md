@@ -6,6 +6,13 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Change a layout in words
+- **Change it in words** under Store, Layout: "put the green tea at eye level and 10 % off all ice cream" becomes
+  the same edits the A/B builder makes (price, discount, sign, move, category price) on this layout's own products and
+  shelves, shown in words after they are applied to a copy. "The best seller" uses the layout's last run. **Save as a
+  new layout** keeps the result as a new layout that opens next; the original stays as it is. Package changes stay
+  test-only. API: `POST /api/projects/{pid}/setups/{sid}/edit/draft`, `POST .../edit`.
+
 ### Concept tests and shelf tests drafted from a question
 - **Draft the test** in Concept tests: from "which of our two labels looks more premium to people in their
   twenties?" the text model picks the product images to show from the library (by name, with the shelf product and
