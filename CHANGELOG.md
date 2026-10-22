@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.9 — Shoppers in each other's way; shoppers remember the weeks after a run
+
 ### Shoppers in each other's way, and the shared store in 3D
 - Crowding: when four or more shoppers stand at one shelf at once, an unplanned pick there is given up with a 35 %
   chance (crowded shoppers buy less on impulse — Harrell, Hutt & Anderson 1980; Machleit, Eroglu & Mantel 2000;
