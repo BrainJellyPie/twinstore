@@ -162,6 +162,20 @@ def test_lists_and_the_store_page_survive_damaged_files(tmp_path: Path, client: 
 
 
 @pytest.mark.parametrize("damage", DAMAGE.values(), ids=DAMAGE.keys())
+def test_a_store_whose_settings_file_is_damaged_is_still_listed(tmp_path: Path, client: TestClient, damage: bytes):
+    data = _old_data(tmp_path, damage)
+    (data / OTHER / "metadata.json").write_bytes(damage)
+    listed = {p["project_id"]: p for p in client.get("/api/projects").json()}
+    assert set(listed) == {PID, OTHER}
+    assert listed[OTHER]["name"] == "Edited by old"                  # its open layout's store
+    assert "metadata.json) is damaged" in listed[OTHER]["description"]
+    assert listed[OTHER]["status"] == "Ready" and listed[OTHER]["footprint"]["grid"] == [12, 10]
+    opened = client.get(f"/api/projects/{OTHER}")
+    assert opened.status_code == 500 and f"{OTHER}/metadata.json is damaged" in opened.json()["detail"]
+    assert (data / OTHER / "metadata.json").read_bytes() == damage
+
+
+@pytest.mark.parametrize("damage", DAMAGE.values(), ids=DAMAGE.keys())
 @pytest.mark.parametrize(("path", "file"), [
     ("runs/run_4ee863/status", "runs/run_4ee863/status.json"),
     ("runs/run_aa0001/summary", "runs/run_aa0001/output/summary.json"),

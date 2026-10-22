@@ -17,6 +17,7 @@ const FIXTURE_LABELS = new Map<string, MessageKey>([
   ["table", "planTable"], ["entrance", "planEntrance"], ["exit", "planExit"],
 ]);
 
+/** `name` titles the plan in the details dialog (the store's name unless given, e.g. a translated format name). */
 export function FloorPlanPreview({ store, areas, previewFrame, name = store.name }: { store: Store; areas: ReservedArea[]; previewFrame?: [number, number]; name?: string }) {
   const { t, locale } = useI18n();
   const legend = t("planLegend", { inLabel: t("planIn"), outLabel: t("planOut") });

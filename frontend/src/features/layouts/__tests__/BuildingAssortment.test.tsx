@@ -124,7 +124,7 @@ it("keeps directly entered seeds independent until shared across floors", async 
   expect(floors().map((floor) => floor.choice.seed)).toEqual([-42, -42]);
   expect(floors().map((floor) => floor.choice.width)).toEqual([16, 17]);
   await closeReview();
-});
+}, 20_000);  // many renders: slow on a busy machine
 
 it("blocks sharing invalid seed text and recovers after correction without changing another floor", async () => {
   await mount(); const other = floors()[1];

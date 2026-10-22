@@ -82,6 +82,9 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
     ? { text: preset.local ? t("providerOff") : t("providerDisabled"), cls: "bg-muted text-muted-foreground" }
     : status.key_rejected
       ? { text: t("providerKeyRejected"), cls: "tone-bad" }
+      : status.ready && status.answers === false
+        // An address saved earlier with nothing listening there now (a server stopped, or an older version's).
+        ? { text: t("providerNotRunning"), cls: "tone-warn" }
       : status.ready
         ? { text: t("providerReady"), cls: "tone-good" }
         : preset.local

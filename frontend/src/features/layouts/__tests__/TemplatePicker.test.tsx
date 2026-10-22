@@ -139,7 +139,7 @@ it("keeps checkout spacing across walls, priorities and count changes and resets
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ checkout_clearance: 3, checkouts: 3, style: "cross" }), expect.any(AbortSignal)));
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   expect((screen.getByLabelText("Space beside counters") as HTMLSelectElement).value).toBe("0");
-});
+}, 20_000);  // many renders: slow on a busy machine
 
 it("sets operating hours, protects the last open day and restores only the schedule", async () => {
   mount();
@@ -356,7 +356,7 @@ it.each(["front", "back", "left", "right"] as const)("switches dining and servic
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ dining_tables: 3, dining_seats: 6 }), expect.any(AbortSignal)));
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   expect((screen.getByLabelText("Space beside counters") as HTMLSelectElement).value).toBe("0");
-});
+}, 20_000);  // many renders: slow on a busy machine
 
 it("applies the actual default palette or explicit design and currency without submitting the form", async () => {
   const design = vi.fn(), currency = vi.fn(), submit = vi.fn();

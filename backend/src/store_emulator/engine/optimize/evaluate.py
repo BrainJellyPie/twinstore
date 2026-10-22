@@ -126,6 +126,16 @@ class LayoutEvaluator:
         config = self.config if replicate == self.config.replicate else self.config.model_copy(update={"replicate": replicate})
         return PerCustomerSimulationRunner(config, self._engine, self._pathfinder, self._cue_sampler, self._patterns)
 
+    @staticmethod
+    def _check_someone_shopped(aggregated: AggregatedResult, customers: list[CustomerResult]) -> None:
+        """A layout every shopper failed on has no value (a model that never answers): it would score 0, or compare
+        two empty arms, as if it were a result."""
+        failed = aggregated.diagnostics.failed_customers
+        if customers or not failed:
+            return
+        tried = [f for f in failed if not f.reason.startswith("not tried:")] or failed
+        raise RuntimeError(f"Every shopper failed ({len(failed)}), so nothing was simulated: {tried[0].reason}")
+
     async def evaluate(self, store: Store) -> tuple[float, SimulationSummary]:
         """Objective value and run summary of `store` on the evaluator's personas.
 
@@ -137,9 +147,10 @@ class LayoutEvaluator:
             self._cache.move_to_end(key)
             self.cache_hits += 1
             return hit
-        aggregated, _ = await self._runner(self.config.replicate).run(
+        aggregated, customers = await self._runner(self.config.replicate).run(
             self._walked(store), self.personas, max_concurrent=self._max_concurrent, path_heatmap=False,
         )
+        self._check_someone_shopped(aggregated, customers)
         self.evaluations += 1
         entry = (objective_value(self.objective, aggregated.summary), aggregated.summary)
         self._cache[key] = entry
@@ -156,9 +167,10 @@ class LayoutEvaluator:
         (still shared between the layouts compared with that same replicate).
         """
         rep = self.config.replicate if replicate is None else replicate
-        _, customers = await self._runner(rep).run(
+        aggregated, customers = await self._runner(rep).run(
             self._walked(store), personas, max_concurrent=self._max_concurrent, path_heatmap=False,
         )
+        self._check_someone_shopped(aggregated, customers)
         return customers
 
     async def simulate(self, store: Store) -> tuple[float, AggregatedResult, list[CustomerResult]]:
@@ -167,6 +179,7 @@ class LayoutEvaluator:
         aggregated, customers = await self._runner(self.config.replicate).run(
             self._walked(store), self.personas, max_concurrent=self._max_concurrent,
         )
+        self._check_someone_shopped(aggregated, customers)
         self.evaluations += 1
         return objective_value(self.objective, aggregated.summary), aggregated, customers
 

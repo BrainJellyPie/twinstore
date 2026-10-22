@@ -147,7 +147,7 @@ it.each(LOCALES)("keeps nested preview state, values and requests stable across 
   const table = await screen.findByRole("table", { name: translate(code, "planCompareTable") });
   const row = within(table).getByRole("row", { name: `${translate(code, "planCompareProducts")} 1 1` });
   expect(within(row).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["1", "1"]);
-  expect(within(table).getByRole("cell", { name: translate(code, "planDesignCoastal") })).toBeTruthy();
+  expect(within(table).getByRole("cell", { name: translate(code, "layDesign_coastal") })).toBeTruthy();
   const legend = translate(code, "planLegend", { inLabel: translate(code, "planIn"), outLabel: translate(code, "planOut") });
   expect(screen.getByText(legend)).toBeTruthy();
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(1);
@@ -176,7 +176,7 @@ it("retranslates a pending request and conflict recovery, then shows custom colo
   expect(error.textContent).toContain(translate("fr", "requestConflict"));
   fireEvent.click(screen.getByRole("button", { name: translate("fr", "planCompareRetry") }));
   const table = await screen.findByRole("table", { name: translate("fr", "planCompareTable") });
-  expect(within(table).getByRole("cell", { name: translate("fr", "planCustomColors", { design: translate("fr", "planDesignCoastal") }) })).toBeTruthy();
+  expect(within(table).getByRole("cell", { name: translate("fr", "layDesignCustomColors", { design: translate("fr", "layDesign_coastal") }) })).toBeTruthy();
   expect(JSON.stringify(options)).toBe(before);
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(2);
   expect(vi.mocked(api.previewStoreTemplate).mock.calls[0]![0]).toEqual(vi.mocked(api.previewStoreTemplate).mock.calls[1]![0]);

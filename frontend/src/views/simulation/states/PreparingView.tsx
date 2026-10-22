@@ -92,7 +92,8 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
           {!deleting && failed && <p role="alert" className="text-sm text-muted-foreground">{error || t(statusUnavailable ? "generationStatusUnavailable" : isLayoutFailed ? "layoutErrorFallback" : "personaErrorFallback")}</p>}
           {!deleting && isLayoutFailed && <p className="text-sm text-muted-foreground">{t("layoutFailureHint")}</p>}
           {!deleting && canGenerate && <p className="text-sm text-muted-foreground">{t("generatePersonasHint")}</p>}
-          {!deleting && (isPersonaFailed || canGenerate) && <NeedsModel />}
+          {/* After a failure the screen has its own Model settings button. */}
+          {!deleting && (isPersonaFailed || canGenerate) && <NeedsModel settings={!isPersonaFailed} />}
           {!deleting && (statusUnavailable || loadingStatus) && <p role={loadingStatus ? "status" : undefined} className="text-sm text-muted-foreground">{t("generationStatusReadHint")}</p>}
           {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && note && <div role="status" className="space-y-1 rounded-lg border p-3 text-sm">
             <p>{t("generationWaitsForLocalModel")}</p><p className="text-xs text-muted-foreground">{note}</p>

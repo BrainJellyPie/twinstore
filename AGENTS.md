@@ -122,7 +122,11 @@ must use this catalog, including explanations, accessibility names, validation a
 Existing coverage includes the home,
 main navigation, command palette, store gallery, model notice, simulation launcher, new-store forms,
 preparation/recovery screens, layout navigation/finder, basic layout-creation forms, floor-plan import and template
-search/filter controls, reviewed library-photo reuse, product bulk editing, shelf-product reuse and automatic/manual starter filling (including catalog categories), and floor-plan previews/comparisons with localized SVG exports. Store-category labels are shared between the gallery and template picker.
+search/filter controls, reviewed library-photo reuse, product bulk editing, shelf-product reuse and automatic/manual starter filling (including catalog categories), and floor-plan previews/comparisons with localized SVG exports (shared `plan*` catalog keys). Store-category labels are shared between the gallery and template picker. The layout
+customization panel (patterns, entrances, counters, seating, design and colors, hours, categories, reserved areas,
+options files) and building floors and presets use keys in `messages/layout.ts`; option ids stay unchanged and
+preset floor labels are ordinary editable text. Persona age groups and genders read through
+`shared/i18n/personaLabels.ts` everywhere (the values `40s`, `Female` are unchanged).
 The marketing studio (every tab, builder and report), shelf capture with Shelf Lab and the neighborhood
 (area) page are localized too, with keys in `messages/studio.ts`. Their server-generated notes, warnings,
 rationale and audit/CSV exports stay English, and persona quota values (`10s`, `Female`) and the A/B control arm

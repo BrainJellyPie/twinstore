@@ -42,6 +42,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
     { label: "planCompareSeating", value: (plan) => { const tables = plan.store.racks.filter((rack) => rack.type === "table").length; return `${number(tables)} / ${number(plan.store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0))}`; } },
     { label: "planCompareCounters", value: (plan) => plan.store.racks.filter((rack) => rack.type === "counter").length },
     { label: "planCompareAreas", value: (plan) => plan.areas.length },
+    // The same names as the customization panel's design choices.
     { label: "planCompareDesign", value: (plan) => paletteLabel(plan.store.design_theme, plan.store.design_colors, t) },
     { label: "planCompareHours", value: (plan) => formatWeeklyHours(plan.store.weekly_schedule, locale) },
   ];

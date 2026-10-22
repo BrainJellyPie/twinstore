@@ -14,7 +14,7 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.generation_async import start_persona_generation
 from store_emulator.application.storage.generations import find_active_generation
 from store_emulator.application.storage.images import delete_project_images
-from store_emulator.application.storage.io import DATA_DIR, write_json, read_json, now_iso
+from store_emulator.application.storage.io import DATA_DIR, DamagedFile, write_json, read_json, now_iso
 from store_emulator.application.storage.setups import (
     metadata_path, personas_path,
     read_setup, list_setups, create_initial_setup,
@@ -92,12 +92,22 @@ def list_projects() -> list[dict[str, Any]]:
             continue
         pid = d.name
         try:
-            meta: dict[str, Any] = read_json(meta_file)
+            raw: object = read_json(meta_file)
             setups = list_setups(pid)
+        except DamagedFile as e:
+            # Listed with the reason and the name of its layout: left out, the store looked lost after an update.
+            logger.warning(f"[projects] {pid}: {e}")
+            raw, setups = None, list_setups(pid)
         except (OSError, ValueError) as e:
-            # One damaged file (a crash mid-write) must not hide every other store.
+            # One unreadable file must not hide every other store.
             logger.warning(f"[projects] skipping {pid}: unreadable ({type(e).__name__}: {e})")
             continue
+        damaged = not isinstance(raw, dict)
+        meta: dict[str, Any] = cast(dict[str, Any], raw) if isinstance(raw, dict) else {
+            "project_id": pid, "name": "", "store_type": "", "grid_size": None, "weekly_schedule": [],
+            "created_at": "", "updated_at": "",
+            "description": "The store's settings file (metadata.json) is damaged and cannot be read; its layouts and runs "
+                           "are kept."}
         p_file = personas_path(pid)
         try:
             has_personas = p_file.exists() and len(read_json(p_file)) > 0
@@ -114,6 +124,9 @@ def list_projects() -> list[dict[str, Any]]:
                 has_store = active.get("store") is not None
                 if has_store:
                     meta["footprint"] = _footprint(cast(dict[str, Any], active["store"]))
+                    store = active["store"]
+                    if damaged and isinstance(store, dict):
+                        meta["name"] = str(cast(dict[str, object], store).get("name") or "")
             except FileNotFoundError:
                 pass
             except ValueError as e:   # the layout last open is damaged; the others still are listed

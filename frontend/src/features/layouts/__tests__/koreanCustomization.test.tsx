@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
-import { useLocale } from "@/shared/i18n/i18n";
+import { translate, useLocale } from "@/shared/i18n/i18n";
 import type { Store } from "@/shared/types/domain";
 import { BuildingPicker } from "../components/BuildingPicker";
 import { buildingPreset } from "../templateOptions";
@@ -56,6 +56,7 @@ afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMo
 
 it("shows the new-store layout customization panel, its building floors and floor-plan dialogs in Korean", async () => {
   useLocale.getState().setLocale("ko");
+  const ko = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate("ko", key, params);
   const { container } = render(<Building />);
   expect(screen.getByRole("button", { name: "1층 · 1층 · 뷰티 플래그십 스토어" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "백화점" })).toBeTruthy();
@@ -78,21 +79,22 @@ it("shows the new-store layout customization panel, its building floors and floo
   expect(screen.getByRole("button", { name: "2층 · 1층 · 뷰티 플래그십 스토어 사본 1" })).toBeTruthy();
   expect(englishLeft(container)).toEqual([]);
 
-  fireEvent.click(await screen.findByRole("button", { name: "평면도 확대 보기" }));
-  const details = await screen.findByRole("dialog", { name: "평면도 자세히 보기" });
+  fireEvent.click(await screen.findByRole("button", { name: ko("planExpand") }));
+  const details = await screen.findByRole("dialog", { name: ko("planDetails") });
   expect(details.textContent).toContain("뷰티 플래그십 스토어 · 12×10칸");
-  expect(details.textContent).toContain("진열대 0개 · 식탁 0개 · 좌석 0석 · 계산대 0개");
+  expect(details.textContent).toContain(ko("planCounts", { displays: 0, tables: 0, seats: 0, counters: 0 }));
   expect(details.textContent).toContain("영업시간: 월: 10:00–22:00; 화–일: 휴무");
-  expect(within(details).getByRole("button", { name: "화면에 맞추기" })).toBeTruthy();
-  expect(within(details).getByRole("button", { name: "SVG 다운로드" })).toBeTruthy();
+  expect(within(details).getByRole("button", { name: ko("planFit") })).toBeTruthy();
+  expect(within(details).getByRole("button", { name: ko("planDownload") })).toBeTruthy();
   expect(englishLeft(details)).toEqual([]);
   act(() => fireEvent.keyDown(details, { key: "Escape" }));
 
-  fireEvent.click(await screen.findByRole("button", { name: "기본 배치와 비교" }));
-  const compare = await screen.findByRole("dialog", { name: "평면도 비교" });
-  const table = await within(compare).findByRole("table", { name: "평면도 비교표" });
-  for (const row of ["매장 크기(칸)", "상품 진열대", "상품 종류 수", "식탁 / 좌석", "계산대", "비워 둘 구역", "인테리어 디자인", "영업시간"]) {
-    expect(within(table).getByRole("rowheader", { name: row })).toBeTruthy();
+  fireEvent.click(await screen.findByRole("button", { name: ko("compareWithDefault") }));
+  const compare = await screen.findByRole("dialog", { name: ko("planCompareTitle") });
+  const table = await within(compare).findByRole("table", { name: ko("planCompareTable") });
+  for (const row of ["planCompareSize", "planCompareDisplays", "planCompareProducts", "planCompareSeating", "planCompareCounters",
+    "planCompareAreas", "planCompareDesign", "planCompareHours"] as const) {
+    expect(within(table).getByRole("rowheader", { name: ko(row) })).toBeTruthy();
   }
   expect(within(table).getAllByText("차콜·브라스").length).toBeGreaterThan(0);
   expect(englishLeft(compare)).toEqual([]);

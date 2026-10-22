@@ -14,6 +14,38 @@
   puzzle, model building and miniature painting products. Add 64 local images, reaching
   512 photos; they appear on the matching default maps and in image-aware VLM grids.
 
+### Fixes
+- A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
+  previous version). It now reloads once into the new version.
+
+## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
+
+### Safe updates
+- The stores of an earlier version are always brought over, from any folder (OneDrive included), and one unreadable
+  file no longer stops the app from starting. Details under Fixes.
+- A file left empty or cut short by a version before 0.4.3 (it was stopped, or the computer lost power, while saving)
+  showed "Internal Server Error" instead of the store gallery, a store, its layouts or its run history. The rest now
+  opens: a store whose customers file is damaged opens without customers, a damaged run shows as failed, damaged
+  captures, studies and optimizations are left out of their lists, and opening a damaged item names its file. A
+  store whose settings file is damaged was left out of the gallery as if lost; it is listed, saying so.
+- The local model's llama.cpp program, downloaded by a version before 0.4.3, did not count as downloaded: a newer
+  version deleted it and fetched it again. A complete earlier download is now kept, and it comes along when the
+  stores are brought over from an earlier app folder, so a local model you already have starts without a download.
+- Settings showed a local server (llama.cpp, Ollama, …) as Ready at an address an earlier version or session left
+  behind, with nothing running there. It now says Not running.
+- Compare paired different people when the customers had been written again between the two runs, which versions
+  before 0.4.7 allowed once the earlier run's layout was deleted (the new customers reuse the ids M1001, F1003, …).
+  Such customers are now left out, and the comparison says how many.
+
+### Nothing downloaded or spent unasked
+- The local model downloads only when you press Start; screens that need a model say so and offer a key or the
+  download. Details under Fixes.
+
+### Starter catalog, photos and translations
+- Add 64 hardware, music, gardening, pantry, produce, bakery, dairy, prepared-food and
+  personal-care photos, reaching 416 local product images for the 1,400-item catalog.
+  Extend six-language category labels to all 123 categories, including the newest home and hobby assortments.
+
 - Complete starter-fill localization in six languages: automatic/manual guidance, catalog
   category labels, eligibility reasons, reviewed prices and retry states. Category language
   follows the selected interface language. Detect duplicate translation keys.
@@ -64,6 +96,12 @@
   Nothing is downloaded now until you press Start for the local model, and the button says how large the download
   is. After that it comes back by itself when the app opens, until you press Stop. A model an earlier version already
   downloaded still starts with no key, without downloading anything.
+- A vision run, optimization or venue check whose model never answered (a key turned down, no credit, a server that
+  is down) still finished, with every shopper quietly on the rule-based plan and labelled as vision shoppers. Until
+  the model has answered once, a failed call now fails that shopper, so such a run stops with the model's error.
+- With no API key, creating a store failed: it chose starter products with a text model by default. The format's own
+  products are now the default until a model is set up, and the new-store form and the customer-writing screen say
+  that writing customers needs a model, with buttons to add a key or download the local model (showing its size).
 - After an update, a browser that kept the previous version's page could show a blank screen or the old app. The page
   is now fetched fresh on every visit.
 - A sample store you deleted came back the next time the app started. It now stays deleted; a new sample store that
