@@ -8,6 +8,7 @@ The search maximises revenue less the cost of staffed till hours, refill rounds 
 go to the plan using less (fewer refills, fewer units, fewer till hours)."""
 
 import logging
+import time
 from collections.abc import Iterable
 
 from store_emulator.domain.customer import CustomerResult
@@ -24,6 +25,7 @@ _REFILLS: tuple[int | None, ...] = (None, 30, 60, 90, 120, 180, 240, 360)
 _STOCKS: tuple[int, ...] = (2, 3, 4, 6, 8, 12, 16, 24, 32, 48)
 _RAISED = 30            # products, by revenue lost, whose own shelf stock the search tries to raise
 _MAX_REPLAYS = 600
+_TIME_BUDGET_SEC = 25.0   # a large run answers with the best plan found so far instead of keeping the page waiting
 
 
 def replay(
@@ -57,9 +59,11 @@ def _better(a: OperationsOutcome, b: OperationsOutcome) -> bool:
 
 def plan_operations(
     store: Store, planned: list[CustomerResult], current: OperationsConfig, costs: OperationsCosts, *, seed: int,
-    max_tills: int | None = None,
+    max_tills: int | None = None, time_budget_sec: float = _TIME_BUDGET_SEC,
 ) -> OperationsPlan:
     """The best refill interval, shelf stock, per-product stock and hourly tills found for these shoppers."""
+    deadline = time.monotonic() + time_budget_sec
+    stopped = False
     tills = len(store.counters)
     limit = min(tills, max_tills) if max_tills is not None else tills
     tried = 0
@@ -78,9 +82,10 @@ def plan_operations(
     best_config, (best, best_report) = current, (now, now_report)
 
     def consider(candidates: Iterable[OperationsConfig]) -> None:
-        nonlocal best_config, best, best_report
+        nonlocal best_config, best, best_report, stopped
         for candidate in candidates:
-            if tried >= _MAX_REPLAYS:
+            if tried >= _MAX_REPLAYS or time.monotonic() > deadline:
+                stopped = True
                 return
             result, report = run(candidate)
             if _better(result, best):
@@ -117,4 +122,4 @@ def plan_operations(
 
     logger.info(f"[operations plan] {tried} plans tried; net {now.net} → {best.net}")
     return OperationsPlan(current_config=current, current=now, config=best_config, best=best, replays=tried,
-                          raised_skus=sorted(set(raised)))
+                          raised_skus=sorted(set(raised)), complete=not stopped)

@@ -147,3 +147,4 @@ class OperationsPlan(BaseModel):
     best: OperationsOutcome = OperationsOutcome()
     replays: int = 0               # plans tried
     raised_skus: list[str] = []    # products given more units per shelf level than the rest
+    complete: bool = True          # False: the search stopped at its time or size limit with the best found so far

@@ -142,5 +142,6 @@ export const operationsMessages = {
   labPlanTillsHour: ["{hour} {tills}", "{hour} {tills}대", "{hour} {tills} 个", "{hour} {tills}台", "{hour}: {tills}", "{hour} : {tills}"],
   labNetGain: ["The plan leaves {amount} more after costs.", "이 운영안이 비용을 뺀 금액을 {amount} 늘립니다.", "此方案扣除成本后多出 {amount}。", "この案ではコスト差し引き後の金額が{amount}増えます。", "El plan deja {amount} más tras los costes.", "Le plan laisse {amount} de plus après les coûts."],
   labNoBetter: ["No plan tried leaves more after costs than the current one.", "비교한 운영안 중 현재보다 나은 것은 없었습니다.", "所比较的方案都不比当前方案更好。", "比較した案の中に、現在より良いものはありませんでした。", "Ningún plan probado deja más tras los costes que el actual.", "Aucun plan essayé ne laisse plus après les coûts que l’actuel."],
+  labPartial: ["The search stopped at its time limit; this is the best plan it found.", "시간 제한에 걸려 비교를 멈췄습니다. 그때까지 찾은 가장 좋은 운영안입니다.", "比较因时间限制而停止；这是目前找到的最佳方案。", "時間の上限で比較を打ち切りました。それまでに見つかった最良の案です。", "La búsqueda se detuvo por tiempo; este es el mejor plan encontrado.", "La recherche s’est arrêtée faute de temps ; voici le meilleur plan trouvé."],
   labUsePlan: ["Use this plan", "이 운영안 사용", "使用此方案", "この案を使う", "Usar este plan", "Utiliser ce plan"],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;

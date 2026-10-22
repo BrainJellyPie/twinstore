@@ -503,6 +503,8 @@ export interface OperationsPlan {
   best: OperationsOutcome;
   replays: number;
   raised_skus: string[];
+  // False: the search stopped at its time limit with the best plan found so far.
+  complete?: boolean;
 }
 
 /** The run's shoppers, decisions unchanged, in a store run another way (no model call). */

@@ -75,6 +75,17 @@ it("finds a plan, explains it and puts it in the form", async () => {
   })));
 });
 
+it("says when the plan search stopped at its time limit", async () => {
+  vi.mocked(api.planOperations).mockResolvedValue({
+    current_config: config, current: outcome(90000, 44100), config, best: outcome(90000, 44100), replays: 40,
+    raised_skus: [], complete: false,
+  });
+  const lab = show();
+  fireEvent.click(lab.getByRole("button", { name: "Find the best plan" }));
+  expect(await lab.findByText("The search stopped at its time limit; this is the best plan it found.")).toBeTruthy();
+  expect(lab.getByText("No plan tried leaves more after costs than the current one.")).toBeTruthy();
+});
+
 it("refuses a cost that is not an amount of money", () => {
   const lab = show();
   fireEvent.change(lab.getByLabelText("One round of refilling the shelves"), { target: { value: "-3" } });

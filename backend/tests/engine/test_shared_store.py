@@ -296,3 +296,12 @@ def test_a_plan_never_does_worse_than_the_current_one_and_counts_its_costs():
     assert plan.best.net == plan.best.revenue - plan.best.labor_cost - plan.best.restock_cost - plan.best.holding_cost
     free = plan_operations(store, customers, current, OperationsCosts(), seed=_SEED)
     assert free.best.lost_revenue <= free.current.lost_revenue and free.best.revenue >= free.current.revenue
+
+
+def test_a_plan_out_of_time_answers_with_the_best_found_so_far():
+    from store_emulator.engine.simulation.operations_plan import plan_operations
+    store = generate_store("urban_cvs")
+    _, customers = _run(store, _crowd(40), None)
+    plan = plan_operations(store, customers, OperationsConfig(), OperationsCosts(), seed=_SEED, time_budget_sec=0)
+    assert not plan.complete and plan.replays == 1 and plan.config == OperationsConfig()
+    assert plan_operations(store, customers, OperationsConfig(), OperationsCosts(), seed=_SEED).complete

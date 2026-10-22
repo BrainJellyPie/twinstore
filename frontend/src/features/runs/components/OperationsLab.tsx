@@ -182,6 +182,7 @@ export function OperationsLab({ projectId, runId, report, currency }: {
                   .map(([hour, tills]) => t("labPlanTillsHour", { hour: t("opsHourLabel", { hour }), tills })).join(" · "),
               })}</p>
             )}
+            {plan.data.complete === false && <p className="text-muted-foreground">{t("labPartial")}</p>}
             <Button size="sm" variant="outline" onClick={() => applyPlan(plan.data.config)}>{t("labUsePlan")}</Button>
           </div>
         )}
