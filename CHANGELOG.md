@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Shoppers in each other's way, and the shared store in 3D
+- Crowding: when four or more shoppers stand at one shelf at once, an unplanned pick there is given up with a 35 %
+  chance (crowded shoppers buy less on impulse — Harrell, Hutt & Anderson 1980; Machleit, Eroglu & Mantel 2000;
+  assumed values to set from observation). Planned buys are made however crowded. **Run simulation** has the
+  setting (blank turns crowding off); **Store operations** shows the impulse sales lost in crowds, and journeys say
+  "too crowded at the shelf".
+- Playback shows the shared store: shelves standing empty get a red floor mark and a "Sold out: …" label while they
+  are empty, and shoppers waiting for a till stand in a line behind it, earliest first, instead of on one spot.
+  The operations report carries when each face stood empty (`empty_spells`).
+
+### Shoppers remember: the weeks after a run
+- A bad visit used to cost only that visit. **Try other stock and staffing → Shoppers remember** repeats the run's
+  week: after each week, a shopper may stop coming, the likelier the more products they found gone (and did
+  without), the longer they waited at the tills, and if they gave up in the line; everyone else comes again and
+  makes the same visits. A store that runs out loses customers, the next weeks are less crowded and stock and tills
+  stretch further — the loop one day cannot show.
+- Each week is shown next to an ideal store (endless stock, no line) that loses only the weekly churn, with the
+  same leave-or-stay draw per shopper in both and in every plan: the gap is what operations cost through customers'
+  memory, and shoppers who left are counted by reason (stock or tills). **Find the best plan** then judges plans by
+  their money over all the weeks, so a plan that costs more today can win by keeping customers.
+- The chances (3 % per missing unit, 25 % after giving up in the line, 1 % per minute waited, 1 % weekly churn) are
+  assumptions to set from your own loyalty or survey data, not fitted values. API: `memory` on
+  `POST /runs/{rid}/operations/replay` and `/plan`; no model call.
+
 ### Fixes
 - Compare did not say when one run's shoppers shared the store (stock and tills, new in 0.4.8) and the other's had it
   alone, as every run before 0.4.8 did, or when the two runs used different store operations: the difference

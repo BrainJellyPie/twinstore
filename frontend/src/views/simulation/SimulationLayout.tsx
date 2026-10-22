@@ -5,7 +5,7 @@ import { TimeBar } from "@/features/playback/components/TimeBar";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 import type { CustomerResult, Rack } from "@/shared/types/domain";
-import type { RackStats } from "@/shared/api/client";
+import type { EmptySpell, RackStats } from "@/shared/api/client";
 import type { RunHeatmaps } from "@/shared/queries/useRun";
 import type { StoreAssets } from "@/features/store-viewer/hooks/useStoreAssets";
 import { CanvasErrorBoundary } from "@/app/providers/CanvasErrorBoundary";
@@ -59,6 +59,8 @@ interface Props {
   customers: CustomerResult[] | null;
   heatmaps: RunHeatmaps | null;
   rackStats?: RackStats[] | null;
+  // Shared-store runs: when each shelf face stood empty (shown on the floor during playback).
+  emptySpells?: EmptySpell[] | null;
   mode: "ready" | "running" | "playback";
   // Extra controls floating over the canvas.
   overlay?: ReactNode;
@@ -67,7 +69,7 @@ interface Props {
 }
 
 export function SimulationLayout({
-  storeId, assets, personaNames, personaGenders, customers, heatmaps, rackStats, mode, overlay, onAskAboutRack,
+  storeId, assets, personaNames, personaGenders, customers, heatmaps, rackStats, emptySpells, mode, overlay, onAskAboutRack,
 }: Props) {
   const heatmapMode = useSimulationStore((s) => s.heatmapMode);
   const rackOverlayOn = useSimulationStore((s) => s.rackOverlayOn);
@@ -108,6 +110,7 @@ export function SimulationLayout({
           heatmapData={heatmapData}
           heatmapPalette={layer}
           rackStats={showPlayback && rackOverlayOn ? rackStats ?? null : null}
+          emptySpells={showPlayback ? emptySpells ?? null : null}
           currency={currency}
           customers={showPlayback ? customers : null}
           personaNames={personaNames}

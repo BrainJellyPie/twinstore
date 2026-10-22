@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -9,9 +9,11 @@ import { SolidFloor } from "@/features/store-viewer/components/SolidFloor";
 import { HeatmapOverlay } from "@/features/store-viewer/components/HeatmapOverlay";
 import type { HeatmapPalette } from "@/features/store-viewer/utils/heatmapPalette";
 import { RackPerformanceLayer } from "@/features/store-viewer/components/RackPerformanceLayer";
+import { StockoutLayer } from "@/features/store-viewer/components/StockoutLayer";
 import { PlaybackScene } from "@/features/playback/components/PlaybackScene";
 import type { Rack, StoreDesign, InteriorColors, CustomerResult } from "@/shared/types/domain";
-import type { RackStats } from "@/shared/api/client";
+import type { EmptySpell, RackStats } from "@/shared/api/client";
+import { rackWorldCenter } from "@/shared/utils/grid";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { ALL_CLASSIC_ASSETS } from "@/shared/utils/assetMap";
 import { RealisticStore } from "@/features/store-viewer/realistic/RealisticStore";
@@ -51,6 +53,8 @@ interface StoreSceneProps {
   heatmapData: number[][] | null;
   heatmapPalette: HeatmapPalette | null; // null → heatmap hidden
   rackStats: RackStats[] | null; // non-null → rack KPI overlay shown
+  // Shared-store runs in playback: when each shelf face stood empty (non-null → sold-out marks shown).
+  emptySpells?: EmptySpell[] | null;
   currency: string;
   customers: CustomerResult[] | null;
   personaNames: Map<string, string>;
@@ -109,9 +113,14 @@ interface SceneMode {
 
 function StoreScene({
   width, depth, racks, doors, items, designTheme, designColors,
-  heatmapData, heatmapPalette, rackStats, currency, customers, personaNames, personaGenders, minTime, maxTime,
+  heatmapData, heatmapPalette, rackStats, emptySpells, currency, customers, personaNames, personaGenders, minTime, maxTime,
   availableDays, variationTexture, realistic, quality, hideCompass,
 }: StoreSceneProps & SceneMode) {
+  // Till centres in shopper coordinates (a shopper on tile x stands at x + 0.5): waiting shoppers line up away from them.
+  const counters = useMemo(() => racks.filter((r) => r.type === "counter").map((r) => {
+    const [cx, , cz] = rackWorldCenter(r);
+    return { x: cx - 0.5, y: cz - 0.5 };
+  }), [racks]);
   return (
     <group position={[-width / 2, 0, -depth / 2]}>
       {realistic ? (
@@ -128,6 +137,7 @@ function StoreScene({
         <HeatmapOverlay data={heatmapData} palette={heatmapPalette} width={width} depth={depth} />
       )}
       {rackStats && <RackPerformanceLayer racks={items} stats={rackStats} currency={currency} />}
+      {customers && emptySpells && emptySpells.length > 0 && <StockoutLayer racks={racks} spells={emptySpells} />}
       <Suspense fallback={<LoadingOverlay />}>
         {!realistic && <AssetRug doors={doors} />}
         {!realistic &&
@@ -141,6 +151,7 @@ function StoreScene({
             minTime={minTime}
             maxTime={maxTime}
             availableDays={availableDays}
+            counters={counters}
           />
         </PersonaRig>
       </Suspense>

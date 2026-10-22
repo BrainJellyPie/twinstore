@@ -9,9 +9,10 @@ export interface SharedStoreChoice {
   restock: string;    // minutes; "" = only overnight
   tills: string;      // tills open; "" = every till
   patience: string;   // minutes
+  crowd: string;      // shoppers at one shelf that feel crowded; "" = crowding has no effect
 }
 
-export const DEFAULT_SHARED_STORE: SharedStoreChoice = { enabled: true, stock: "12", restock: "120", tills: "", patience: "5" };
+export const DEFAULT_SHARED_STORE: SharedStoreChoice = { enabled: true, stock: "12", restock: "120", tills: "", patience: "5", crowd: "4" };
 
 export function wholeIn(text: string, min: number, max: number): number | null {
   const value = Number(text.trim());
@@ -27,8 +28,9 @@ export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig 
   const tills = choice.tills.trim() === "" ? null : wholeIn(choice.tills, 1, 50);
   const patience = Number(choice.patience.trim());
   const patienceOk = choice.patience.trim() !== "" && Number.isFinite(patience) && patience >= 0.5 && patience <= 120;
+  const crowd = choice.crowd.trim() === "" ? null : wholeIn(choice.crowd, 2, 50);
   if (stock === null || (choice.restock.trim() !== "" && restock === null)
-      || (choice.tills.trim() !== "" && tills === null) || !patienceOk) {
+      || (choice.tills.trim() !== "" && tills === null) || !patienceOk || (choice.crowd.trim() !== "" && crowd === null)) {
     return "invalid";
   }
   return {
@@ -36,6 +38,7 @@ export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig 
     restock_every_min: restock,
     open_counters: tills,
     patience_sec: Math.round(patience * 60),
+    crowd_limit: crowd,
   };
 }
 
@@ -47,5 +50,7 @@ export function choiceFromConfig(config: OperationsConfig): SharedStoreChoice {
     restock: config.restock_every_min == null ? "" : String(config.restock_every_min),
     tills: config.open_counters == null ? "" : String(config.open_counters),
     patience: String(Math.round(((config.patience_sec ?? 300) / 60) * 10) / 10),
+    // Reports from before crowding have no setting: crowding had no effect then.
+    crowd: config.crowd_limit == null ? "" : String(config.crowd_limit),
   };
 }

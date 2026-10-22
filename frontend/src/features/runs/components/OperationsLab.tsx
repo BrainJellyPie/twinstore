@@ -6,7 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import { FlaskConical, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import type { OperationsConfig, OperationsCosts, OperationsOutcome, OperationsReport } from "@/shared/api/client";
+import type { MemoryConfig, OperationsConfig, OperationsCosts, OperationsOutcome, OperationsReport } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { RequestError } from "@/shared/components/RequestError";
@@ -16,8 +16,18 @@ import { currencyCode, formatMoney, formatPercent, minorUnitDivisor, toMinor } f
 
 import { choiceFromConfig, DEFAULT_SHARED_STORE, sharedStoreOptions, wholeIn, type SharedStoreChoice } from "../sharedStore";
 import { SharedStoreControls } from "./SharedStoreControls";
+import { WeeksView } from "./WeeksView";
 
 type CostText = { till: string; refill: string; unit: string };
+type MemoryText = { weeks: string; missing: string; line: string; wait: string; churn: string };
+type LabRequest = { operations: OperationsConfig; costs: OperationsCosts; memory?: MemoryConfig };
+
+const MEMORY_DEFAULT: MemoryText = { weeks: "8", missing: "3", line: "25", wait: "1", churn: "1" };
+
+function chance(text: string): number | null {
+  const value = Number(text.trim());
+  return text.trim() !== "" && Number.isFinite(value) && value >= 0 && value <= 100 ? value / 100 : null;
+}
 
 const ROWS: { key: keyof OperationsOutcome; label: MessageKey; kind: "money" | "wait" | "count" | "hours" }[] = [
   { key: "revenue", label: "labRevenue", kind: "money" },
@@ -49,8 +59,10 @@ export function OperationsLab({ projectId, runId, report, currency }: {
     Object.fromEntries(Object.entries(report?.config.till_schedule ?? {}).map(([hour, n]) => [hour, String(n)])));
   const [overrides, setOverrides] = useState<Record<string, number>>(() => report?.config.stock_overrides ?? {});
   const [costs, setCosts] = useState<CostText>({ till: "", refill: "", unit: "" });
-  const replay = useMutation({ mutationFn: (body: { operations: OperationsConfig; costs: OperationsCosts }) => api.replayOperations(projectId, runId, body) });
-  const plan = useMutation({ mutationFn: (body: { operations: OperationsConfig; costs: OperationsCosts }) => api.planOperations(projectId, runId, body) });
+  const [remember, setRemember] = useState(false);
+  const [memoryText, setMemoryText] = useState<MemoryText>(MEMORY_DEFAULT);
+  const replay = useMutation({ mutationFn: (body: LabRequest) => api.replayOperations(projectId, runId, body) });
+  const plan = useMutation({ mutationFn: (body: LabRequest) => api.planOperations(projectId, runId, body) });
   const busy = replay.isPending || plan.isPending;
 
   const hours = [...new Set([...(report?.hours ?? []), ...(replay.data?.report.hours ?? [])].map((h) => h.hour)
@@ -60,14 +72,21 @@ export function OperationsLab({ projectId, runId, report, currency }: {
   const money = (text: string) => text.trim() === "" ? 0 : toMinor(text, divisor);
   const costValues = { till_hour: money(costs.till), restock_round: money(costs.refill), stock_unit_day: money(costs.unit) };
   const costsValid = Object.values(costValues).every((v) => v !== null);
-  const valid = base !== "invalid" && base !== undefined && scheduleValid && costsValid;
+  const weeks = wholeIn(memoryText.weeks, 2, 52);
+  const chances = [chance(memoryText.missing), chance(memoryText.line), chance(memoryText.wait), chance(memoryText.churn)];
+  const memoryValid = !remember || (weeks !== null && chances.every((c) => c !== null));
+  const valid = base !== "invalid" && base !== undefined && scheduleValid && costsValid && memoryValid;
 
   const request = () => {
     if (base === "invalid" || base === undefined || !costsValid) return null;
     const schedule = Object.fromEntries(Object.entries(hourTills)
       .filter(([, v]) => v.trim() !== "").map(([hour, v]) => [hour, Number(v)]));
     const operations: OperationsConfig = { ...(report?.config ?? {}), ...base, till_schedule: schedule, stock_overrides: overrides };
-    return { operations, costs: costValues as OperationsCosts };
+    const [missing, line, wait, churn] = chances;
+    const memory: MemoryConfig | undefined = remember && weeks !== null && missing != null && line != null && wait != null && churn != null
+      ? { weeks, leave_per_missing_unit: missing, leave_after_line: line, leave_per_wait_minute: wait, weekly_churn: churn }
+      : undefined;
+    return { operations, costs: costValues as OperationsCosts, ...(memory ? { memory } : {}) };
   };
   const run = (which: "replay" | "plan") => {
     const body = request();
@@ -83,11 +102,20 @@ export function OperationsLab({ projectId, runId, report, currency }: {
   const shown = (value: number, kind: (typeof ROWS)[number]["kind"]) => kind === "money" ? formatMoney(value, code, { locale })
     : kind === "wait" ? (value < 90 ? t("opsSeconds", { seconds: Math.round(value) }) : t("opsMinutes", { minutes: (value / 60).toLocaleString(locale, { maximumFractionDigits: 1 }) }))
     : kind === "hours" ? value.toLocaleString(locale, { maximumFractionDigits: 1 }) : value.toLocaleString(locale);
-  const columns: { label: MessageKey; outcome: OperationsOutcome }[] = [
-    ...(plan.data ? [{ label: "labNowCol" as const, outcome: plan.data.current }] : []),
-    ...(replay.data ? [{ label: "labReplayCol" as const, outcome: replay.data.outcome }] : []),
-    ...(plan.data ? [{ label: "labPlanCol" as const, outcome: plan.data.best }] : []),
+  const columns: { label: MessageKey; outcome: OperationsOutcome; weeksNet?: number }[] = [
+    ...(plan.data ? [{ label: "labNowCol" as const, outcome: plan.data.current, weeksNet: plan.data.current_weeks?.net }] : []),
+    ...(replay.data ? [{ label: "labReplayCol" as const, outcome: replay.data.outcome, weeksNet: replay.data.weeks?.net }] : []),
+    ...(plan.data ? [{ label: "labPlanCol" as const, outcome: plan.data.best, weeksNet: plan.data.best_weeks?.net }] : []),
   ];
+  const memoryField = (key: keyof MemoryText, label: MessageKey) => (
+    <div className="space-y-1">
+      <label className="block font-medium" htmlFor={`${id}-mem-${key}`}>{t(label)}</label>
+      <Input id={`${id}-mem-${key}`} type="number" min={key === "weeks" ? 2 : 0} max={key === "weeks" ? 52 : 100}
+        step={key === "weeks" ? 1 : 0.5} className="h-7" value={memoryText[key]}
+        onChange={(e) => setMemoryText({ ...memoryText, [key]: e.target.value })}
+        aria-invalid={key === "weeks" ? weeks === null : chance(memoryText[key]) === null} />
+    </div>
+  );
   const costField = (key: keyof CostText, label: MessageKey) => (
     <div className="space-y-1">
       <label className="block font-medium" htmlFor={`${id}-${key}`}>{t(label)}</label>
@@ -130,6 +158,24 @@ export function OperationsLab({ projectId, runId, report, currency }: {
           </div>
           {!costsValid && <p role="alert" className="text-destructive">{t("labInvalidCost")}</p>}
         </fieldset>
+        <fieldset className="space-y-1.5">
+          <label className="flex items-start gap-2 font-medium" htmlFor={`${id}-remember`}>
+            <input id={`${id}-remember`} type="checkbox" className="mt-0.5 size-4 accent-primary" checked={remember}
+              onChange={(e) => setRemember(e.target.checked)} aria-describedby={`${id}-remember-hint`} />
+            {t("memTitle")}
+          </label>
+          <p id={`${id}-remember-hint`} className="text-muted-foreground">{t("memHint")}</p>
+          {remember && (
+            <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+              {memoryField("weeks", "memWeeks")}
+              {memoryField("missing", "memMissing")}
+              {memoryField("line", "memLine")}
+              {memoryField("wait", "memWait")}
+              {memoryField("churn", "memChurn")}
+            </div>
+          )}
+          {!memoryValid && <p role="alert" className="text-destructive">{t("memInvalid")}</p>}
+        </fieldset>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" disabled={!valid || busy} onClick={() => run("replay")}>
             {replay.isPending ? t("labReplaying") : t("labReplay")}
@@ -162,14 +208,27 @@ export function OperationsLab({ projectId, runId, report, currency }: {
                   {columns.map((c) => <td key={c.label} className="py-1 text-right">{shown(c.outcome[row.key], row.kind)}</td>)}
                 </tr>
               ))}
+              {columns.some((c) => c.weeksNet != null) && (
+                <tr className="border-t font-semibold">
+                  <th scope="row" className="py-1 text-left font-normal">{t("memNet")}</th>
+                  {columns.map((c) => <td key={c.label} className="py-1 text-right">{c.weeksNet == null ? "—" : shown(c.weeksNet, "money")}</td>)}
+                </tr>
+              )}
             </tbody>
           </table>
         )}
+        {plan.data?.current_weeks && plan.data.best_weeks ? (
+          <WeeksView code={code} series={[{ label: "labNowCol", report: plan.data.current_weeks }, { label: "labPlanCol", report: plan.data.best_weeks }]} />
+        ) : replay.data?.weeks ? (
+          <WeeksView code={code} series={[{ label: "labReplayCol", report: replay.data.weeks }]} />
+        ) : null}
         {plan.data && (
           <div className="space-y-1 rounded-md border bg-muted/30 p-2">
-            <p className="font-medium">{plan.data.best.net > plan.data.current.net
-              ? t("labNetGain", { amount: formatMoney(plan.data.best.net - plan.data.current.net, code, { locale }) })
-              : t("labNoBetter")}</p>
+            <p className="font-medium">{(() => {
+              const now = plan.data.current_weeks?.net ?? plan.data.current.net;
+              const best = plan.data.best_weeks?.net ?? plan.data.best.net;
+              return best > now ? t("labNetGain", { amount: formatMoney(best - now, code, { locale }) }) : t("labNoBetter");
+            })()}</p>
             <p className="text-muted-foreground">{t("labPlanSummary", {
               stock: plan.data.config.stock_per_facing.toLocaleString(locale),
               refill: plan.data.config.restock_every_min == null ? t("labRefillNever") : t("labRefillEvery", { minutes: plan.data.config.restock_every_min }),
