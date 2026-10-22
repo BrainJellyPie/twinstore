@@ -39,6 +39,9 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Test release tag handling
+        run: python3 .github/tests/test_release_workflow.py
+
       - uses: pnpm/action-setup@v4
         with:
           version: 10.33.0
@@ -120,7 +123,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$RELEASE_TAG" out/* --target "$GITHUB_SHA" --title "TwinStore $RELEASE_TAG" --notes-file - <<'NOTES'
+          release_commit="$(git rev-parse HEAD)"
+          tag_ref="refs/tags/$RELEASE_TAG"
+          remote_refs="$(git ls-remote origin "$tag_ref" "$tag_ref^{}")"
+          remote_commit="$(printf '%s\n' "$remote_refs" | awk -v ref="$tag_ref" '$2 == ref {plain=$1} $2 == (ref "^{}") {peeled=$1} END {print peeled ? peeled : plain}')"
+          if [ -z "$remote_commit" ]; then
+            # A competing tag must make this push fail; never replace another release's tag.
+            git push origin "$release_commit:$tag_ref"
+          elif [ "$remote_commit" != "$release_commit" ]; then
+            echo "::error::Tag $RELEASE_TAG points to $remote_commit, but these artifacts were built from $release_commit. Choose a new version."
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" out/* --verify-tag --target "$release_commit" --title "TwinStore $RELEASE_TAG" --notes-file - <<'NOTES'
           Download the file for your computer, unpack it, and double-click **TwinStore**.
 
           | Computer | Download | Double-click |
