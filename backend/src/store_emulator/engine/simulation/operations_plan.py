@@ -4,8 +4,9 @@ The shoppers' visits — what each meant to buy, where and when — were decided
 Stock, refills and tills only decide what of it happens, so any other operations plan replays in milliseconds on the
 same shoppers, with no model call: the same shoppers, the same patience, only the store run differently.
 
-The search maximises revenue less the cost of staffed till hours, refill rounds and units kept on the shelves. Ties
-go to the plan using less (fewer refills, fewer units, fewer till hours)."""
+The search maximises revenue less the cost of staffed till hours, refill rounds and units kept on the shelves — over
+the weeks that follow when shoppers remember their visits (customer_memory.py). Ties go to the plan using less (fewer
+refills, fewer units, fewer till hours)."""
 
 import logging
 import time
@@ -13,7 +14,7 @@ from collections.abc import Iterable
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.operations import (
-    OperationsConfig, OperationsCosts, OperationsOutcome, OperationsPlan, OperationsReport,
+    MemoryConfig, OperationsConfig, OperationsCosts, OperationsOutcome, OperationsPlan, OperationsReport, WeeksReport,
 )
 from store_emulator.domain.store import Store
 
@@ -52,44 +53,53 @@ def outcome(
     )
 
 
-def _better(a: OperationsOutcome, b: OperationsOutcome) -> bool:
-    """Whether plan a beats plan b: more net money, then less of everything used."""
-    return (a.net, -a.restocks, -a.stock_units, -a.till_hours) > (b.net, -b.restocks, -b.stock_units, -b.till_hours)
+type _Tried = tuple[OperationsOutcome, OperationsReport, WeeksReport | None]
+
+
+def _better(a: _Tried, b: _Tried) -> bool:
+    """Whether plan a beats plan b: more net money (over the weeks, when shoppers remember), then less used."""
+    def key(tried: _Tried) -> tuple[float, ...]:
+        day, _, weeks = tried
+        return (weeks.net if weeks is not None else day.net, -day.restocks, -day.stock_units, -day.till_hours)
+    return key(a) > key(b)
 
 
 def plan_operations(
     store: Store, planned: list[CustomerResult], current: OperationsConfig, costs: OperationsCosts, *, seed: int,
-    max_tills: int | None = None, time_budget_sec: float = _TIME_BUDGET_SEC,
+    max_tills: int | None = None, time_budget_sec: float = _TIME_BUDGET_SEC, memory: MemoryConfig | None = None,
 ) -> OperationsPlan:
     """The best refill interval, shelf stock, per-product stock and hourly tills found for these shoppers."""
+    from .customer_memory import simulate_weeks   # builds on this module's outcome()
+
     deadline = time.monotonic() + time_budget_sec
     stopped = False
     tills = len(store.counters)
     limit = min(tills, max_tills) if max_tills is not None else tills
     tried = 0
-    cache: dict[str, tuple[OperationsOutcome, OperationsReport]] = {}
+    cache: dict[str, _Tried] = {}
 
-    def run(config: OperationsConfig) -> tuple[OperationsOutcome, OperationsReport]:
+    def run(config: OperationsConfig) -> _Tried:
         nonlocal tried
         key = config.model_dump_json()
         if key not in cache:
             tried += 1
             result, report, _ = replay(store, planned, config, costs, seed=seed)
-            cache[key] = (result, report)
+            weeks = simulate_weeks(store, planned, config, memory, costs, seed=seed) if memory is not None else None
+            cache[key] = (result, report, weeks)
         return cache[key]
 
-    now, now_report = run(current)
-    best_config, (best, best_report) = current, (now, now_report)
+    now_tried = run(current)
+    best_config, best_tried = current, now_tried
 
     def consider(candidates: Iterable[OperationsConfig]) -> None:
-        nonlocal best_config, best, best_report, stopped
+        nonlocal best_config, best_tried, stopped
         for candidate in candidates:
             if tried >= _MAX_REPLAYS or time.monotonic() > deadline:
                 stopped = True
                 return
-            result, report = run(candidate)
-            if _better(result, best):
-                best_config, best, best_report = candidate, result, report
+            result = run(candidate)
+            if _better(result, best_tried):
+                best_config, best_tried = candidate, result
 
     # 1. Refill interval and shelf stock together (they trade off against each other).
     consider(
@@ -100,7 +110,7 @@ def plan_operations(
 
     # 2. More units for the products that still run out and lose money.
     raised: list[str] = []
-    for stats in [s for s in best_report.stockouts if s.lost_revenue > 0][:_RAISED]:
+    for stats in [s for s in best_tried[1].stockouts if s.lost_revenue > 0][:_RAISED]:
         base = best_config.stock_overrides.get(stats.sku, best_config.stock_per_facing)
         candidates = (1, 2, 3, 4) if base == 0 else (base * 2, base * 3, base * 4)
         before = best_config
@@ -112,7 +122,7 @@ def plan_operations(
             raised.append(stats.sku)
 
     # 3. Tills hour by hour, twice over (an hour's line spills into the next).
-    hours = [h.hour for h in best_report.hours]
+    hours = [h.hour for h in best_tried[1].hours]
     if limit > 0 and hours:
         for _ in range(2):
             for hour in hours:
@@ -121,6 +131,7 @@ def plan_operations(
                     for n in range(1, limit + 1)
                 )
 
-    logger.info(f"[operations plan] {tried} plans tried; net {now.net} → {best.net}")
-    return OperationsPlan(current_config=current, current=now, config=best_config, best=best, replays=tried,
-                          raised_skus=sorted(set(raised)), complete=not stopped)
+    logger.info(f"[operations plan] {tried} plans tried; net {now_tried[0].net} → {best_tried[0].net}")
+    return OperationsPlan(current_config=current, current=now_tried[0], config=best_config, best=best_tried[0],
+                          replays=tried, raised_skus=sorted(set(raised)), complete=not stopped,
+                          current_weeks=now_tried[2], best_weeks=best_tried[2])

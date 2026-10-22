@@ -524,18 +524,38 @@ def compare_project_runs(
     if others:
         report.unpaired_a += len(others)
         report.unpaired_b += len(others)
-        report.notes.insert(0, f"{len(others)} customers have the same id in both runs but are different people (the "
-                            "customers were written again between the runs); they are left out of the comparison.")
+        report.note("rewritten_customers", f"{len(others)} customers have the same id in both runs but are different "
+                    "people (the customers were written again between the runs); they are left out of the comparison.",
+                    {"count": len(others)}, first=True)
     report.currency = currencies[0]
     ma, mb = _manifest_or_empty(pid, run_a), _manifest_or_empty(pid, run_b)
     if ma and mb and (ma.get("seed"), ma.get("replicate")) != (mb.get("seed"), mb.get("replicate")):
-        report.notes.append(
-            "Runs used different seed/replicate, so customers do not share random draws; "
-            "intervals include run-to-run noise. Re-run with equal seeds for a sharper paired test."
-        )
+        report.note("seed_differs", "Runs used different seed/replicate, so customers do not share random draws; "
+                    "intervals include run-to-run noise. Re-run with equal seeds for a sharper paired test.")
     if ma and mb and ma.get("engine_type") != mb.get("engine_type"):
-        report.notes.append("Runs used different engines; the difference mixes engine and layout effects.")
+        report.note("engines_differ", "Runs used different engines; the difference mixes engine and layout effects.")
+    ops_a, ops_b = _operations(base_a), _operations(base_b)
+    if (ops_a is None) != (ops_b is None):
+        alone = run_a if ops_a is None else run_b
+        report.note("store_alone",
+                    f"In {alone} each shopper had the store alone (endless stock, no line at the tills: runs before 0.4.8, "
+                    "or with the shared store turned off); in the other they shared it. The difference mixes that with "
+                    "the layout's effect.", {"run": alone})
+    elif ops_a != ops_b:
+        report.note("operations_differ", "Runs used different store operations (stock, refills or tills); the "
+                    "difference mixes operations and layout effects.")
     return report
+
+
+def _operations(base: Path) -> dict[str, object] | None:
+    """The shared store's settings a run used (None: each shopper had the store alone, as before 0.4.8)."""
+    path = base / "input" / "config.json"
+    try:
+        saved: object = read_json(path) if path.exists() else {}
+    except ValueError:
+        return None
+    value = cast(dict[str, object], saved).get("operations") if isinstance(saved, dict) else None
+    return cast(dict[str, object], value) if isinstance(value, dict) else None
 
 
 _PERSON_FIELDS = ("identity", "age_group", "gender", "purpose", "intent")   # as a situation or the neighborhood leave them

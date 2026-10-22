@@ -404,6 +404,9 @@ export interface OperationsConfig {
   open_counters?: number | null;
   // Tills staffed in single hours ("18" → 3); 0 closes the tills for that hour.
   till_schedule?: Record<string, number>;
+  // With this many shoppers at one shelf (null: never), an unplanned pick there is skipped with crowd_skip chance.
+  crowd_limit?: number | null;
+  crowd_skip?: number;
   checkout_base_sec?: number;
   checkout_item_sec?: number;
   patience_sec?: number;
@@ -424,6 +427,17 @@ export interface StockoutStats {
   shoppers_missed: number;
   first_out: string;
   minutes_out: number;
+}
+
+/** A time one product's shelf face stood empty (clock seconds of the day). */
+export interface EmptySpell {
+  day: number;
+  rack_id: string;
+  face: string;
+  sku: string;
+  name: string;
+  start: number;
+  end: number;
 }
 
 export interface QueueHour {
@@ -449,6 +463,8 @@ export interface OperationsReport {
   substituted_units: number;
   substituted_revenue: number;
   restocks: number;
+  crowd_skipped_units?: number;
+  crowd_skipped_revenue?: number;
   queued: number;
   avg_wait_sec: number;
   p90_wait_sec: number;
@@ -461,6 +477,7 @@ export interface OperationsReport {
   counters_needed: number;
   hours: QueueHour[];
   stockouts: StockoutStats[];
+  empty_spells?: EmptySpell[];
 }
 
 export function getRunOperations(projectId: string, runId: string, signal?: AbortSignal): Promise<OperationsReport> {
@@ -490,10 +507,46 @@ export interface OperationsOutcome {
   net: number;
 }
 
+/** Shoppers who remember: the run's week repeated, with the shoppers a bad visit put off staying away. */
+export interface MemoryConfig {
+  weeks?: number;
+  leave_per_missing_unit?: number;
+  leave_after_line?: number;
+  leave_per_wait_minute?: number;
+  weekly_churn?: number;
+}
+
+export interface WeekStats {
+  week: number;
+  shoppers: number;
+  revenue: number;
+  lost_revenue: number;
+  abandoned: number;
+  avg_wait_sec: number;
+  net: number;
+  left_for_stock: number;
+  left_for_tills: number;
+  left_anyway: number;
+  ideal_shoppers: number;
+  ideal_revenue: number;
+}
+
+export interface WeeksReport {
+  memory: Required<MemoryConfig>;
+  weeks: WeekStats[];
+  shoppers_first: number;
+  shoppers_last: number;
+  revenue: number;
+  net: number;
+  ideal_revenue: number;
+  lost_to_memory: number;
+}
+
 export interface OperationsReplay {
   planned_revenue: number;
   outcome: OperationsOutcome;
   report: OperationsReport;
+  weeks?: WeeksReport | null;
 }
 
 export interface OperationsPlan {
@@ -505,11 +558,15 @@ export interface OperationsPlan {
   raised_skus: string[];
   // False: the search stopped at its time limit with the best plan found so far.
   complete?: boolean;
+  // With shoppers who remember: the weeks under the current plan and the best one.
+  current_weeks?: WeeksReport | null;
+  best_weeks?: WeeksReport | null;
 }
 
 /** The run's shoppers, decisions unchanged, in a store run another way (no model call). */
 export function replayOperations(
-  projectId: string, runId: string, body: { operations: OperationsConfig; costs: OperationsCosts }, signal?: AbortSignal,
+  projectId: string, runId: string, body: { operations: OperationsConfig; costs: OperationsCosts; memory?: MemoryConfig },
+  signal?: AbortSignal,
 ): Promise<OperationsReplay> {
   return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations/replay`, {
     method: "POST", body: JSON.stringify(body), signal,
@@ -518,7 +575,8 @@ export function replayOperations(
 
 /** The best stock, refill and till plan found for the run's shoppers under these costs. */
 export function planOperations(
-  projectId: string, runId: string, body: { costs: OperationsCosts; operations?: OperationsConfig }, signal?: AbortSignal,
+  projectId: string, runId: string, body: { costs: OperationsCosts; operations?: OperationsConfig; memory?: MemoryConfig },
+  signal?: AbortSignal,
 ): Promise<OperationsPlan> {
   return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations/plan`, {
     method: "POST", body: JSON.stringify(body), signal,
@@ -839,6 +897,8 @@ export interface ComparisonReport {
   confidence: number;
   metrics: MetricComparison[];
   notes: string[];
+  /** One per note, same order: its kind and values, to say it in the user's language. Absent from older servers. */
+  note_codes?: { code: string; params: Record<string, string | number> }[];
 }
 
 /** Why run B differs from run A, read by the text model from the comparison and both runs' fact sheets. */

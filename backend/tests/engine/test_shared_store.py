@@ -34,14 +34,14 @@ def _store(counters: int = 1) -> Store:
 
 
 def _shopper(pid: str, arrival: str, buys: list[tuple[str, int]], *, pay: bool = True,
-             day: Weekday = Weekday.MON) -> CustomerResult:
+             day: Weekday = Weekday.MON, origin: str = "planned") -> CustomerResult:
     prices = {"chips": 300, "nuts": 350, "caviar": 9000}
     timeline = [TimelineEvent(elapsed_sec=0, x=1, y=5, action=Action.ENTER)]
     t = 10
     for sku, quantity in buys:
         timeline.append(TimelineEvent(elapsed_sec=t, x=1, y=0, action=Action.BUY, target_rack="A", face=Face.E,
                                       product_sku=sku, product_name=sku.title(), price=prices[sku],
-                                      quantity=quantity, duration=5, origin="planned"))
+                                      quantity=quantity, duration=5, origin=origin))
         t += 5
     if pay:
         timeline.append(TimelineEvent(elapsed_sec=t + 10, x=4, y=1, action=Action.PAY, target_rack="C0", duration=20))
@@ -258,7 +258,7 @@ def test_plenty_of_stock_and_tills_leave_the_day_as_it_was():
     people = _crowd(20)
     alone, alone_customers = _run(store, people, None)
     shared, customers = _run(store, people, OperationsConfig(stock_per_facing=1000, checkout_base_sec=0,
-                                                             checkout_item_sec=0, open_counters=50))
+                                                             checkout_item_sec=0, open_counters=50, crowd_limit=None))
     assert shared.summary.total_revenue == alone.summary.total_revenue
     assert [c.total_spent for c in customers] == [c.total_spent for c in alone_customers]
     assert shared.operations is not None and shared.operations.lost_units == 0
@@ -359,3 +359,48 @@ def test_a_plan_out_of_time_answers_with_the_best_found_so_far():
     plan = plan_operations(store, customers, OperationsConfig(), OperationsCosts(), seed=_SEED, time_budget_sec=0)
     assert not plan.complete and plan.replays == 1 and plan.config == OperationsConfig()
     assert plan_operations(store, customers, OperationsConfig(), OperationsCosts(), seed=_SEED).complete
+
+
+def test_a_crowded_shelf_puts_shoppers_off_their_unplanned_picks():
+    crowd = [_shopper(f"p{i}", "10:00:00", [("chips", 1)], origin="impulse") for i in range(5)]
+    config = OperationsConfig(stock_per_facing=50, crowd_limit=4, crowd_skip=1.0, **_NO_LINE)
+    results, report = resolve_shared_store(_store(), crowd, config, seed=1)
+    assert all(r.total_spent == 0 for r in results)
+    assert "too crowded" in results[0].timeline[1].description
+    assert (report.crowd_skipped_units, report.crowd_skipped_revenue) == (5, 1500)
+    # Planned picks are made however crowded; a quieter shelf keeps the impulse ones; crowding can be off.
+    planned = [_shopper(f"p{i}", "10:00:00", [("chips", 1)]) for i in range(5)]
+    assert all(r.total_spent == 300 for r in resolve_shared_store(_store(), planned, config, seed=1)[0])
+    quiet = crowd[:3]
+    assert all(r.total_spent == 300 for r in resolve_shared_store(_store(), quiet, config, seed=1)[0])
+    off = config.model_copy(update={"crowd_limit": None})
+    assert resolve_shared_store(_store(), crowd, off, seed=1)[1].crowd_skipped_units == 0
+
+
+@pytest.mark.parametrize("duration, arrival, crowded", [
+    (600, "10:10:10", False), (610, "10:10:10", False),
+    (611, "10:10:10", True), (1200, "10:10:10", True),
+    (20, "10:00:19", True), (20, "10:00:20", False), (20, "10:00:21", False),
+])
+def test_crowding_counts_long_browsing_stops_until_their_end(duration, arrival, crowded):
+    observer = _shopper("observer", "10:00:00", [], pay=False)
+    observer.timeline.insert(1, TimelineEvent(elapsed_sec=10, x=1, y=0, action=Action.BROWSE,
+                                             target_rack="A", face=Face.E, duration=duration))
+    observer.timeline[-1].elapsed_sec = duration + 20
+    buyer = _shopper("buyer", arrival, [("chips", 1)], origin="impulse")
+    before = [r.model_dump() for r in [observer, buyer]]
+    config = OperationsConfig(stock_per_facing=10, crowd_limit=2, crowd_skip=1, **_NO_LINE)
+    results, report = resolve_shared_store(_store(), [observer, buyer], config, seed=1)
+    assert report.crowd_skipped_units == int(crowded)
+    assert results[1].total_spent == (0 if crowded else 300)
+    assert [r.model_dump() for r in [observer, buyer]] == before
+
+
+def test_the_report_says_when_each_face_stood_empty():
+    shoppers = [_shopper("p0", "10:00:00", [("chips", 1)]), _shopper("p2", "10:31:00", [("chips", 1)])]
+    config = OperationsConfig(stock_per_facing=1, substitute_share=0.0, restock_every_min=30,
+                              checkout_base_sec=1, checkout_item_sec=0)
+    _, report = resolve_shared_store(_store(), shoppers, config, seed=1)
+    assert [(s.rack_id, s.face, s.sku, s.start, s.end) for s in report.empty_spells] == [
+        ("A", "E", "chips", 36010, 37800), ("A", "E", "chips", 37870, 79200)]
+    assert report.empty_spells[0].name == "Chips" and report.empty_spells[0].day == 1

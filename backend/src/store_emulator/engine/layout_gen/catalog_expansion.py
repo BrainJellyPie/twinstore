@@ -1130,6 +1130,30 @@ PACKSHOT_SHEETS = {
         "Two Tier Spice Shelf Riser", "Rotating Pantry Turntable 25cm", "Color Coded Food Bag Clips 6pk", "Clear Can Dispenser Rack",
         "Neutral Shoe Polish Tin 50ml", "Suede Shoe Cleaning Block", "Long Handle Shoe Horn 40cm", "Cedar Shoe Tree Pair",
     ],
+    "starter-63": [
+        "Micellar Cleansing Water 250ml", "Cream Facial Moisturizer 60ml", "Overnight Moisture Mask 60g", "Rosewater Facial Mist 100ml",
+        "Unscented Lip Balm 10g", "Silicone Face Cleansing Pad", "Soft Facial Cleansing Cloth Pair", "Reusable Cotton Face Rounds 8pk",
+        "Angled Eyebrow Brush and Spoolie", "Soft Powder Puff Pair", "Silicone Makeup Brush Washing Mat", "Standing Makeup Brush Drying Rack",
+        "Travel Cosmetic Tube Set 3pk", "Cotton Makeup Headband", "Zip Top Cosmetic Pouch Small", "Stainless Cosmetic Mixing Palette",
+    ],
+    "starter-64": [
+        "Soft Toe Separator Pair", "Wooden Cuticle Sticks 10pk", "Rounded Cuticle Pusher", "Reusable Nail Soaking Bowl",
+        "Lint Free Nail Wipes 100pk", "Travel Manicure Case Empty", "Nail Tool Cleaning Brush", "Hand and Nail Cream 50ml",
+        "Razor Cartridge Refill 4pk", "Unscented After Shave Balm 100ml", "Wooden Beard Comb", "Soft Beard Grooming Brush",
+        "Beard Conditioning Oil 30ml", "Chrome Shaving Brush Stand", "Travel Razor Cover", "Shaving Soap Refill 100g",
+    ],
+    "starter-65": [
+        "Tea Leaf Scoop Bamboo", "Empty Tea Storage Tin 100g", "Glass Tea Tasting Cup Pair", "Three Minute Tea Sand Timer",
+        "Tea Pot Spout Cleaning Brush", "Cotton Drawstring Tea Filter Bags 4pk", "Ceramic Tea Pet Bird", "Cork Tea Pot Trivet 16cm",
+        "Fondant Smoothing Tool", "Flower Shaping Fondant Mat", "Cake Decorating Comb Trio", "Round Cake Boards 20cm 5pk",
+        "Reusable Cake Stencil Trio", "Letter Cookie Stamp Set", "Silicone Fondant Rolling Mat 40cm", "Cake Transport Box with Handle",
+    ],
+    "starter-66": [
+        "Pantry Shelf Divider Pair", "Stackable Bottle Storage Rack", "Wire Pantry Basket with Handles", "Reusable Pantry Label Set 24pk",
+        "Non Slip Shelf Liner Roll 1m", "Narrow Pull Out Pantry Bin", "Collapsible Pantry Filling Funnel", "Under Shelf Pantry Hanging Basket",
+        "Sneaker Cleaning Foam 150ml", "Microfiber Shoe Polishing Cloth Pair", "Boot Shape Support Inserts Pair", "Shoe Storage Dust Bag Pair",
+        "Cotton Flat Shoelaces White 120cm", "Shoe Deodorizing Charcoal Pouch Pair", "Rubber Sole Cleaning Brush", "Travel Shoe Care Tin Empty",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

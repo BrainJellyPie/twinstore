@@ -14,6 +14,7 @@ import { parseTimeToSeconds } from "../utils/playback";
 import { colorForCustomer } from "@/shared/utils/hashColor";
 import { facingForEvent, positionBetweenEvents } from "@/features/store-viewer/realistic/shopperPose";
 import { livePlaybackClock } from "@/features/store-viewer/realistic/playbackClock";
+import { lineUp, waitingAt, type Point, type Waiting } from "../utils/queueLine";
 
 export interface PersonaFrame {
   id: string;
@@ -46,9 +47,13 @@ interface LoopOptions {
   minTime: number;
   maxTime: number;
   availableDays: number[];
+  // Checkout counters' centres (in shopper coordinates): shoppers waiting at a till line up away from them.
+  counters?: Point[];
 }
 
-export function useSimulationLoop({ customers, personaNames, personaGenders, minTime, maxTime, availableDays }: LoopOptions) {
+const NO_COUNTERS: Point[] = [];
+
+export function useSimulationLoop({ customers, personaNames, personaGenders, minTime, maxTime, availableDays, counters = NO_COUNTERS }: LoopOptions) {
   const playbackTimeRef = useRef(minTime);
   const lastMinuteRef = useRef(-1);
   const eventIndexRef = useRef(0);
@@ -220,6 +225,7 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
 
     const dayCustomers = customersByDay.get(currentDay) ?? [];
     const frames: PersonaFrame[] = [];
+    const waiting: Waiting[] = [];
     const states = customerStatesRef.current;
     for (const c of dayCustomers) {
       const arrivalSec = parseTimeToSeconds(c.arrival_time);
@@ -272,6 +278,9 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
         outTrail.push({ x, y });
       }
 
+      const wait = waitingAt(c, rel);
+      if (wait !== null) waiting.push({ ...wait, id: c.persona_id, since: arrivalSec + wait.since });
+
       const label = personaNames.get(c.persona_id) ?? c.persona_id;
       const gender = personaGenders.get(c.persona_id) ?? "";
       const currentEvent = prev;
@@ -285,6 +294,19 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
         trail: outTrail,
         currentEvent,
       });
+    }
+
+    if (waiting.length) {
+      // Waiting shoppers stand in line behind the till instead of on top of each other.
+      const spots = lineUp(waiting, counters);
+      for (const frame of frames) {
+        const spot = spots.get(frame.id);
+        if (spot) {
+          frame.x = spot.x;
+          frame.y = spot.y;
+          frame.isMoving = false;
+        }
+      }
     }
 
     personaFramesRef.current = frames;

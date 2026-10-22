@@ -35,6 +35,11 @@ class OperationsConfig(BaseModel):
     patience_sd: float = Field(default=0.5, ge=0.0, le=2.0)
     # The longest average wait the till recommendation accepts in an hour (seconds).
     target_wait_sec: float = Field(default=120.0, ge=0.0, le=3600.0)
+    # Crowding: with this many shoppers stopped at one shelf at once (the shopper included), an unplanned pick there
+    # is skipped with crowd_skip chance — crowded shoppers buy less on impulse and leave sooner (Harrell, Hutt &
+    # Anderson 1980; Machleit, Eroglu & Mantel 2000). None = no crowding. Assumed values, to set from observation.
+    crowd_limit: int | None = Field(default=4, ge=2, le=50)
+    crowd_skip: float = Field(default=0.35, ge=0.0, le=1.0)
 
     @field_validator("till_schedule")
     @classmethod
@@ -63,6 +68,17 @@ class StockoutStats(BaseModel):
     minutes_out: float = 0.0       # time empty while the store was serving shoppers, all days
 
 
+class EmptySpell(BaseModel):
+    """A time a product's shelf face stood empty (clock seconds of the day)."""
+    day: int
+    rack_id: str
+    face: str
+    sku: str
+    name: str = ""
+    start: int
+    end: int
+
+
 class QueueHour(BaseModel):
     """The tills in one hour of the day (all simulated days together)."""
     hour: str                      # "HH" — the hour shoppers reached the tills
@@ -88,6 +104,8 @@ class OperationsReport(BaseModel):
     substituted_units: int = 0
     substituted_revenue: int = 0
     restocks: int = 0              # rounds of shelf filling during the day(s)
+    crowd_skipped_units: int = 0   # unplanned picks given up at a crowded shelf
+    crowd_skipped_revenue: int = 0
     # Tills
     queued: int = 0                # shoppers who reached the tills with something to pay
     avg_wait_sec: float = 0.0
@@ -101,6 +119,7 @@ class OperationsReport(BaseModel):
     counters_needed: int = 0       # the busiest hour's recommendation
     hours: list[QueueHour] = []
     stockouts: list[StockoutStats] = []   # by lost revenue, the largest first
+    empty_spells: list[EmptySpell] = []   # when each face stood empty, for playback (the first few thousand)
 
 
 class OperationsCosts(BaseModel):
@@ -132,6 +151,7 @@ class OperationsReplay(BaseModel):
     planned_revenue: int = 0       # what the shoppers meant to buy (endless stock, no line)
     outcome: OperationsOutcome = OperationsOutcome()
     report: OperationsReport = OperationsReport()
+    weeks: "WeeksReport | None" = None   # with shoppers who remember (MemoryConfig), the weeks that follow
 
 
 class OperationsPlan(BaseModel):
@@ -143,3 +163,53 @@ class OperationsPlan(BaseModel):
     replays: int = 0               # plans tried
     raised_skus: list[str] = []    # products given more units per shelf level than the rest
     complete: bool = True          # False: the search stopped at its time or size limit with the best found so far
+    # With shoppers who remember: the plans were judged by their money over the weeks, shown here.
+    current_weeks: "WeeksReport | None" = None
+    best_weeks: "WeeksReport | None" = None
+
+
+class MemoryConfig(BaseModel):
+    """Shoppers who remember: the run's week repeated, with the shoppers a bad visit put off staying away.
+
+    The chances are assumptions to set from your own data (loyalty-card lapses, exit surveys), not fitted values:
+    research finds that stock-outs and waits at the tills lower satisfaction and repeat visits, but not one rate."""
+    weeks: int = Field(default=8, ge=2, le=52)
+    # Chance a shopper stops coming, for each unit they wanted and found gone (not replaced).
+    leave_per_missing_unit: float = Field(default=0.03, ge=0.0, le=1.0)
+    # … for leaving the line at the tills without paying.
+    leave_after_line: float = Field(default=0.25, ge=0.0, le=1.0)
+    # … for each minute waited at the tills before paying.
+    leave_per_wait_minute: float = Field(default=0.01, ge=0.0, le=1.0)
+    # Shoppers who stop coming anyway each week (moving away, other stores) — in a perfectly run store too.
+    weekly_churn: float = Field(default=0.01, ge=0.0, le=1.0)
+
+
+class WeekStats(BaseModel):
+    week: int                      # 1 = the run's own week
+    shoppers: int = 0
+    revenue: int = 0
+    lost_revenue: int = 0
+    abandoned: int = 0
+    avg_wait_sec: float = 0.0
+    net: int = 0                   # revenue less the week's operations costs
+    left_for_stock: int = 0        # shoppers who stopped coming after this week, mostly over missing products
+    left_for_tills: int = 0        # … mostly over the tills
+    left_anyway: int = 0           # … for the weekly churn alone
+    ideal_shoppers: int = 0        # with endless stock and no line (the weekly churn only)
+    ideal_revenue: int = 0
+
+
+class WeeksReport(BaseModel):
+    """The run's week repeated under one operations plan, with shoppers who remember."""
+    memory: MemoryConfig = MemoryConfig()
+    weeks: list[WeekStats] = []
+    shoppers_first: int = 0
+    shoppers_last: int = 0
+    revenue: int = 0               # all weeks
+    net: int = 0
+    ideal_revenue: int = 0         # all weeks with endless stock and no line
+    lost_to_memory: int = 0        # revenue of shoppers who stayed away because of a visit (not the weekly churn)
+
+
+OperationsReplay.model_rebuild()
+OperationsPlan.model_rebuild()

@@ -11,7 +11,7 @@ vi.mock("@/shared/api/client", () => ({ replayOperations: vi.fn(), planOperation
 
 const config: api.OperationsReport["config"] = {
   stock_per_facing: 8, stock_overrides: {}, till_schedule: {}, restock_every_min: 60, substitute_share: 0.45,
-  open_counters: 2, checkout_base_sec: 25, checkout_item_sec: 3, patience_sec: 240, patience_sd: 0.5, target_wait_sec: 120,
+  open_counters: 2, checkout_base_sec: 25, checkout_item_sec: 3, patience_sec: 240, patience_sd: 0.5, target_wait_sec: 120, crowd_limit: 4, crowd_skip: 0.35,
 };
 const hours: api.QueueHour[] = [
   { hour: "17", arrivals: 30, avg_wait_sec: 40, max_wait_sec: 90, abandoned: 0, counters_needed: 1 },
@@ -23,7 +23,15 @@ const outcome = (revenue: number, net: number): api.OperationsOutcome => ({
   till_hours: 28, restocks: 6, stock_units: 900, labor_cost: 42000, restock_cost: 3000, holding_cost: 900, net,
 });
 
+const weeks = (shoppers: number[], net: number): api.WeeksReport => ({
+  memory: { weeks: shoppers.length, leave_per_missing_unit: 0.03, leave_after_line: 0.25, leave_per_wait_minute: 0.01, weekly_churn: 0.01 },
+  weeks: shoppers.map((n, i) => ({ week: i + 1, shoppers: n, revenue: n * 100, lost_revenue: 0, abandoned: 0, avg_wait_sec: 0,
+    net: n * 50, left_for_stock: i === 0 ? 3 : 0, left_for_tills: i === 0 ? 1 : 0, left_anyway: 1, ideal_shoppers: 100 - i, ideal_revenue: (100 - i) * 100 })),
+  shoppers_first: shoppers[0] ?? 0, shoppers_last: shoppers[shoppers.length - 1] ?? 0, revenue: 29000, net, ideal_revenue: 29700, lost_to_memory: 650,
+});
+
 beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.replayOperations).mockResolvedValue({ planned_revenue: 100000, outcome: outcome(90000, 44100), report: report });
   vi.mocked(api.planOperations).mockResolvedValue({
     current_config: config, current: outcome(90000, 44100),
@@ -31,7 +39,7 @@ beforeEach(() => {
     best: outcome(97000, 52000), replays: 214, raised_skus: ["cola"],
   });
 });
-afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); });
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); vi.unstubAllGlobals(); });
 
 function show(props: Partial<Parameters<typeof OperationsLab>[0]> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -86,6 +94,39 @@ it("says when the plan search stopped at its time limit", async () => {
   expect(lab.getByText("No plan tried leaves more after costs than the current one.")).toBeTruthy();
 });
 
+it("follows the weeks after with shoppers who remember", async () => {
+  vi.mocked(api.replayOperations).mockResolvedValue({ planned_revenue: 100000, outcome: outcome(90000, 44100), report, weeks: weeks([100, 95, 94], 14500) });
+  const lab = show();
+  expect(lab.queryByLabelText("Weeks")).toBeNull();
+  fireEvent.click(lab.getByLabelText("Shoppers remember: follow the weeks after"));
+  fireEvent.change(lab.getByLabelText("Weeks"), { target: { value: "3" } });
+  fireEvent.change(lab.getByLabelText("Stay away per unit found gone (%)"), { target: { value: "10" } });
+  fireEvent.click(lab.getByRole("button", { name: "Replay" }));
+  await waitFor(() => expect(api.replayOperations).toHaveBeenCalledWith("p", "r", expect.objectContaining({
+    memory: { weeks: 3, leave_per_missing_unit: 0.1, leave_after_line: 0.25, leave_per_wait_minute: 0.01, weekly_churn: 0.01 },
+  })));
+  expect(await lab.findByText("Over 3 weeks: revenue $290.00 (ideal store: $297.00); shoppers who stayed away after a visit cost $6.50. Shoppers in week 1: 100; in week 3: 94.")).toBeTruthy();
+  expect(lab.getByRole("rowheader", { name: "Week 2" })).toBeTruthy();
+  expect(lab.getByRole("rowheader", { name: "Left after costs, all weeks" })).toBeTruthy();
+  fireEvent.change(lab.getByLabelText("Weeks"), { target: { value: "1" } });
+  expect(lab.getByRole("alert").textContent).toBe("Weeks are 2–52 and chances 0–100 %.");
+  expect((lab.getByRole("button", { name: "Replay" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("judges a plan by its money over the weeks when shoppers remember", async () => {
+  vi.mocked(api.planOperations).mockResolvedValue({
+    current_config: config, current: outcome(90000, 44100), config: { ...config, stock_per_facing: 16 },
+    best: outcome(90000, 40000), replays: 80, raised_skus: [], complete: true,
+    current_weeks: weeks([100, 90, 80], 12000), best_weeks: weeks([100, 98, 97], 15000),
+  });
+  const lab = show();
+  fireEvent.click(lab.getByLabelText("Shoppers remember: follow the weeks after"));
+  fireEvent.click(lab.getByRole("button", { name: "Find the best plan" }));
+  // Less on the first day, more over the weeks: the weeks decide.
+  expect(await lab.findByText("The plan leaves $30.00 more after costs.")).toBeTruthy();
+  expect(lab.getAllByRole("rowheader", { name: "Week 3" })).toHaveLength(1);
+});
+
 it("refuses a cost that is not an amount of money", () => {
   const lab = show();
   fireEvent.change(lab.getByLabelText("One round of refilling the shelves"), { target: { value: "-3" } });
@@ -101,7 +142,7 @@ it("starts a run whose shoppers had the store alone from the default store", asy
   fireEvent.change(lab.getByLabelText("One unit kept on the shelves for a day"), { target: { value: "5" } });
   fireEvent.click(lab.getByRole("button", { name: "Replay" }));
   await waitFor(() => expect(api.replayOperations).toHaveBeenCalledWith("p", "r", {
-    operations: { stock_per_facing: 12, restock_every_min: 120, open_counters: null, patience_sec: 300, till_schedule: {}, stock_overrides: {} },
+    operations: { stock_per_facing: 12, restock_every_min: 120, open_counters: null, patience_sec: 300, crowd_limit: 4, till_schedule: {}, stock_overrides: {} },
     costs: { till_hour: 0, restock_round: 0, stock_unit_day: 5 },
   }));
   // The replayed hours can then be staffed one by one.

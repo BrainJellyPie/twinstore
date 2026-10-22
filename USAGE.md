@@ -117,6 +117,9 @@ export preserves the exact names, floor order and area coordinates.
 - **Patience in line (minutes)** (default 5): the wait a typical shopper accepts; each shopper's own patience varies
   around it (seeded, so it is the same shopper in both layouts of an A/B pair).
 
+- **Shoppers at one shelf that feel crowded** (default 4; blank = no effect): with that many stopped at one shelf at
+  once, each unplanned pick there is skipped with a 35 % chance (`crowd_skip`). Planned buys are always made.
+
 A shopper who finds a product gone takes another from the same shelf face at the closest price (45 % of them) or
 does without; one who finds fewer units than wanted takes what is left. A shopper with nothing left to buy skips the
 tills. Time at a till is 25 s plus 3 s per unit. The model calls do not change: the engines still decide each visit
@@ -141,8 +144,16 @@ layout or assortment ones; run the simulation again for those. Runs whose shoppe
 too. A shared-store run made before replays existed cannot replay (it did not keep its shoppers' planned visits) and
 says so: run it again.
 
-API: `POST /api/projects/{pid}/runs/{rid}/operations/replay` with `{operations, costs}` and
-`POST …/operations/plan` with `{costs, operations?, max_tills?}`; costs are in the currency's minor unit.
+**Shoppers remember: follow the weeks after** repeats the run's week (2–52 weeks). After each week a shopper stops
+coming with a chance built from: each unit they wanted and found gone, giving up in the line, each minute waited
+at the tills, and a weekly churn that applies in any store. The result shows shoppers per week against an ideal
+store (endless stock, no line), who left for stock or for the tills, revenue over the weeks and what customers'
+memory cost; plans are then judged by their money over the weeks. Coach users to treat the default chances as
+placeholders and set them from their loyalty data (lapse rates after a stock-out or a long wait) before relying
+on the totals.
+
+API: `POST /api/projects/{pid}/runs/{rid}/operations/replay` with `{operations, costs, memory?}` and
+`POST …/operations/plan` with `{costs, operations?, max_tills?, memory?}`; costs are in the currency's minor unit.
 
 ## LLM call count (static analysis)
 
@@ -1193,7 +1204,7 @@ barista tools and party supplies add another 96 products. Kitchen and baking too
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
 woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
-educational toys, puzzles, model building and miniature painting add another 96. Skincare, makeup and grooming tools, tea brewing, cake decorating, pantry organization and shoe care add 96 more. Nine hundred ninety-two generated
+educational toys, puzzles, model building and miniature painting add another 96. Skincare, makeup and grooming tools, tea brewing, cake decorating, pantry organization and shoe care add 96 more. One thousand fifty-six generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 The 82 default map templates also include the expanded products in suitable departments. For example, toy
 shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and

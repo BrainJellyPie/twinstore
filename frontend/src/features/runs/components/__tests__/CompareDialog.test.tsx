@@ -114,3 +114,26 @@ it("cuts long run names with an ellipsis, keeps the full name as a tooltip and p
   // Only the metrics the server sent are listed (an older run without purchase origins has no impulse row).
   expect(region.querySelectorAll("tbody tr")).toHaveLength(1);
 });
+
+it("says the server's notes in the user's language, and keeps unknown ones as sent", async () => {
+  const { useLocale } = await import("@/shared/i18n/i18n");
+  useLocale.getState().setLocale("ko");
+  try {
+    show();
+    state.report = {
+      ...state.report!,
+      notes: ["In run_a each shopper had the store alone …", "A note this version does not know"],
+      note_codes: [{ code: "store_alone", params: { run: "run_a" } }, { code: "something_new", params: {} }],
+    };
+    cleanup();
+    render(<QueryClientProvider client={new QueryClient()}>
+      <CompareDialog open onOpenChange={() => {}} projectId="p" layouts={[]} defaultRunId="run_b" />
+    </QueryClientProvider>);
+    const text = screen.getByRole("dialog").textContent ?? "";
+    expect(text).toContain("run_a에서는 고객마다 매장을 혼자 썼습니다");
+    expect(text).toContain("A note this version does not know");
+    expect(text).not.toContain("each shopper had the store alone");
+  } finally {
+    useLocale.getState().setLocale("en");
+  }
+});

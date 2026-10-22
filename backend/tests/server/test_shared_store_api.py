@@ -44,6 +44,10 @@ def test_a_shared_store_run_reports_its_stock_and_tills(client):
     report = response.json()
     assert report["config"]["stock_per_facing"] == 1 and report["counters"] == 1
     assert report["queued"] > 0 and report["hours"]
+    spells = report["empty_spells"]
+    assert spells and all(s["start"] < s["end"] for s in spells)
+    assert {(s["rack_id"], s["sku"]) for s in spells} >= {(s["rack_id"], s["sku"]) for s in report["stockouts"]
+                                                         if s["first_out"]}
     customers = client.get(f"/api/projects/{PID}/runs/{shared}/timeline").json()
     summary = client.get(f"/api/projects/{PID}/runs/{shared}/summary").json()["summary"]
     assert summary["total_revenue"] == sum(c["total_spent"] for c in customers)
@@ -160,3 +164,36 @@ def test_noncanonical_till_hours_are_rejected_before_loading_a_run(client, hour)
         response = client.post(f"/api/projects/{PID}/runs/run_missing/operations/{action}",
                                json={"operations": {"till_schedule": {hour: 1}}})
         assert response.status_code == 422
+
+
+def test_a_replay_and_a_plan_follow_the_weeks_when_shoppers_remember(client):
+    rid = _run(client, _layout(client))
+    memory = {"weeks": 4, "leave_per_missing_unit": 0.2}
+    replay = client.post(f"/api/projects/{PID}/runs/{rid}/operations/replay",
+                         json={"operations": {"stock_per_facing": 1, "restock_every_min": None}, "memory": memory}).json()
+    weeks = replay["weeks"]
+    assert [w["week"] for w in weeks["weeks"]] == [1, 2, 3, 4]
+    assert weeks["weeks"][0]["revenue"] == replay["outcome"]["revenue"]
+    assert all(w["shoppers"] <= w["ideal_shoppers"] for w in weeks["weeks"])
+    assert client.post(f"/api/projects/{PID}/runs/{rid}/operations/replay", json={}).json()["weeks"] is None
+    plan = client.post(f"/api/projects/{PID}/runs/{rid}/operations/plan",
+                       json={"operations": {"stock_per_facing": 1, "restock_every_min": None}, "memory": memory}).json()
+    assert plan["best_weeks"]["net"] >= plan["current_weeks"]["net"]
+
+
+@pytest.mark.parametrize("memory", [{"weeks": 1}, {"weekly_churn": 2}])
+def test_impossible_memory_settings_are_refused_by_the_api(client, memory):
+    assert client.post(f"/api/projects/{PID}/runs/run_x/operations/replay", json={"memory": memory}).status_code == 422
+
+
+def test_a_run_made_before_crowding_replays_without_it(client):
+    rid = _run(client, _layout(client), operations={"stock_per_facing": 2, "open_counters": 1, "crowd_limit": None})
+    path = Path(f".data/{PID}/runs/{rid}/output/operations.json")
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    for key in ("crowd_limit", "crowd_skip"):
+        del saved["config"][key]
+    path.write_text(json.dumps(saved), encoding="utf-8")
+    summary = client.get(f"/api/projects/{PID}/runs/{rid}/summary").json()["summary"]
+    plan = client.post(f"/api/projects/{PID}/runs/{rid}/operations/plan", json={}).json()
+    assert plan["current_config"]["crowd_limit"] is None
+    assert plan["current"]["revenue"] == summary["total_revenue"]

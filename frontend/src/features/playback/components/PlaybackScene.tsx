@@ -4,6 +4,7 @@ import type { CustomerResult } from "@/shared/types/domain";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { useSimulationLoop, type PersonaFrame } from "../hooks/useSimulationLoop";
 import { PersonaView } from "./PersonaView";
+import type { Point } from "../utils/queueLine";
 
 interface Props {
   customers: CustomerResult[] | null;
@@ -12,11 +13,12 @@ interface Props {
   minTime: number;
   maxTime: number;
   availableDays: number[];
+  counters?: Point[];
 }
 
-export function PlaybackScene({ customers, personaNames, personaGenders, minTime, maxTime, availableDays }: Props) {
+export function PlaybackScene({ customers, personaNames, personaGenders, minTime, maxTime, availableDays, counters }: Props) {
   const highlightId = useSimulationStore((s) => s.highlightId);
-  const { personaFramesRef } = useSimulationLoop({ customers, personaNames, personaGenders, minTime, maxTime, availableDays });
+  const { personaFramesRef } = useSimulationLoop({ customers, personaNames, personaGenders, minTime, maxTime, availableDays, counters });
 
   const frameMapRef = useRef<Map<string, PersonaFrame>>(new Map());
   const prevIdsRef = useRef<string[]>([]);

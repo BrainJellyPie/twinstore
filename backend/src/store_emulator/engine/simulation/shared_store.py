@@ -9,6 +9,7 @@ tills runs past their patience leaves the line and the basket goes back to the s
 Every draw here is keyed by (run seed, shopper, day, step), never by the layout, so two layouts run on the same seed
 still face the same shoppers with the same patience (common random numbers)."""
 
+import bisect
 import heapq
 import logging
 import math
@@ -18,7 +19,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from store_emulator.domain.customer import CustomerResult, TimelineEvent
-from store_emulator.domain.operations import OperationsConfig, OperationsReport, QueueHour, StockoutStats
+from store_emulator.domain.operations import EmptySpell, OperationsConfig, OperationsReport, QueueHour, StockoutStats
 from store_emulator.domain.rack import SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, Face, Weekday, stable_seed
@@ -31,6 +32,7 @@ type FaceKey = tuple[str, Face, str]   # rack id, shelf face, SKU
 _RESTOCK, _PUT_BACK, _PICK, _PAY = 0, 1, 2, 3
 _MAX_COUNTERS_ADVISED = 30
 _STOCKOUTS_REPORTED = 60
+_SPELLS_REPORTED = 3000
 
 
 @dataclass
@@ -56,8 +58,13 @@ class _Checkout:
 
 @dataclass
 class _Day:
+    day: int = 0
     stock: dict[FaceKey, int] = field(default_factory=dict[FaceKey, int])
     empty_since: dict[FaceKey, float] = field(default_factory=dict[FaceKey, float])
+    spells: list[EmptySpell] = field(default_factory=list[EmptySpell])
+    # Each shelf's stops (start, end, shopper), sorted: who stands at a shelf when someone else picks there.
+    stops: dict[str, list[tuple[float, float, int]]] = field(default_factory=dict[str, list[tuple[float, float, int]]])
+    longest_stop: int = 1
 
 
 def _clock(hms: str) -> int:
@@ -165,7 +172,10 @@ def _play_day(
     """One day in clock order. Returns each shopper's checkout, and the tills' open and serving seconds.
 
     The tills share one line (first come, first served): a shopper takes the first till that is free and staffed."""
-    state = _Day(stock={key: product.full for key, product in products.items()})
+    if not indexes:
+        return {}, 0.0, 0.0
+    day = results[indexes[0]].day
+    state = _Day(day=int(day), stock={key: product.full for key, product in products.items()})
     heap: list[tuple[float, int, int, int]] = []   # (clock second, kind, shopper, timeline index)
     start = math.inf
     end = 0.0
@@ -175,13 +185,17 @@ def _play_day(
         start = min(start, arrival)
         end = max(end, arrival + result.duration_sec)
         for k, event in enumerate(result.timeline):
+            if event.action in (Action.BUY, Action.BROWSE) and event.target_rack:
+                at = arrival + event.elapsed_sec
+                duration = max(1, event.duration)
+                state.longest_stop = max(state.longest_stop, duration)
+                state.stops.setdefault(event.target_rack, []).append((at, at + duration, index))
             if event.action == Action.BUY:
                 heapq.heappush(heap, (arrival + event.elapsed_sec, _PICK, index, k))
             elif event.action == Action.PAY:
                 heapq.heappush(heap, (arrival + event.elapsed_sec, _PAY, index, k))
-    if not indexes:
-        return {}, 0.0, 0.0
-    day = results[indexes[0]].day
+    for stops in state.stops.values():
+        stops.sort()
     schedule = store.schedule_for(day)
     opening = schedule.open_hour * 3600 if schedule is not None and schedule.is_open else start // 3600 * 3600
     for key, product in products.items():
@@ -248,8 +262,10 @@ def _play_day(
             busy += service
     closing = schedule.close_hour * 3600 if schedule is not None and schedule.is_open else max(end, last)
     closing = max(closing, last)
-    for key, since in list(state.empty_since.items()):
-        products[key].stats.minutes_out += max(0.0, closing - since) / 60.0
+    for key in list(state.empty_since):
+        _refilled(state, key, products[key], closing)
+    room = _SPELLS_REPORTED - len(report.empty_spells)
+    report.empty_spells.extend(sorted(state.spells, key=lambda s: (s.start, s.rack_id, s.sku))[:max(0, room)])
     open_seconds = 0.0
     hour = float(opening)
     while hour < closing:
@@ -283,6 +299,18 @@ def _refilled(state: _Day, key: FaceKey, product: _Product, moment: float) -> No
     since = state.empty_since.pop(key, None)
     if since is not None:
         product.stats.minutes_out += max(0.0, moment - since) / 60.0
+        if moment > since:
+            state.spells.append(EmptySpell(day=state.day, rack_id=key[0], face=str(key[1]), sku=key[2],
+                                           name=product.item.name, start=round(since), end=round(moment)))
+
+
+def _crowd(state: _Day, rack: str, moment: float, index: int) -> int:
+    """Shoppers stopped at the shelf at that moment, this one included."""
+    stops = state.stops.get(rack, [])
+    first = bisect.bisect_left(stops, (moment - state.longest_stop,))
+    last = bisect.bisect_right(stops, (moment, math.inf, math.inf))
+    others = {shopper for began, ends, shopper in stops[first:last] if began <= moment < ends and shopper != index}
+    return len(others) + 1
 
 
 def _pick(
@@ -305,6 +333,17 @@ def _pick(
     key = (event.target_rack, event.face, event.product_sku)
     product = products.get(key)
     if product is None:
+        return
+    if (config.crowd_limit is not None and event.origin == "impulse"
+            and _crowd(state, event.target_rack, moment, index) >= config.crowd_limit
+            and random.Random(stable_seed(seed, result.persona_id, int(result.day), event.product_sku, "crowded"))
+            .random() < config.crowd_skip):
+        # Too many people at the shelf: the shopper moves on without the unplanned pick.
+        event = copies.event(result.timeline, k)
+        report.crowd_skipped_units += event.quantity
+        report.crowd_skipped_revenue += event.quantity * event.price
+        event.action = Action.BROWSE
+        event.description = _join(event.description, "too crowded at the shelf: moved on")
         return
     wanted = max(1, event.quantity)
     have = state.stock[key]
