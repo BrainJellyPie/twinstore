@@ -2,6 +2,10 @@ package main
 
 import (
 	"bufio"
+	"cmp"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 )
@@ -67,7 +72,14 @@ func (a *app) holdData() bool {
 		return true
 	}
 	a.status.activate("data", "Making sure no other TwinStore uses your stores")
-	return a.useClaim(claimData(a.home, a.dataHome(), a.root, 20*time.Second))
+	return a.useClaim(claimData(a.home, a.dataHome(), a.root, claimWait))
+}
+
+// holdForSmoke keeps the data home --smoke took (nil when another launcher holds it) until releaseData.
+func (a *app) holdForSmoke(unlock func()) {
+	a.mu.Lock()
+	a.held = unlock
+	a.mu.Unlock()
 }
 
 // releaseData lets the next launcher use the data home.
@@ -84,8 +96,14 @@ func (a *app) releaseData() {
 
 // pythonEnv is the Python environment, also in the per-user folder, so an update installs only what changed. 0.4.2
 // kept environments for long Windows app folder paths in venv\<hash>; uv will not use a folder that holds files but
-// is not an environment, so with those there it goes beside them.
-func pythonEnv(home string) string {
+// is not an environment, so with those there it goes beside them. A data folder the user chose gets an environment of
+// its own (venv-<hash>): the lock is per data folder, so a launcher on it may run beside one on the per-user folder,
+// and two versions syncing one environment would change it under each other's running server.
+func pythonEnv(home, data string) string {
+	if data != home {
+		sum := sha256.Sum256([]byte(folderKey(data)))
+		return filepath.Join(home, "venv-"+hex.EncodeToString(sum[:4]))
+	}
 	dir := filepath.Join(home, "venv")
 	if entries, _ := os.ReadDir(dir); len(entries) > 0 && !fileExists(filepath.Join(dir, "pyvenv.cfg")) {
 		return filepath.Join(dir, "app")
@@ -93,17 +111,39 @@ func pythonEnv(home string) string {
 	return dir
 }
 
+// folderKey is a folder as the file system compares it: Windows ignores case.
+func folderKey(dir string) string {
+	key := filepath.Clean(dir)
+	if runtime.GOOS == "windows" {
+		key = strings.ToLower(key)
+	}
+	return key
+}
+
 // bringStoresOver copies the stores of an earlier version into the per-user data folder, on the first start that
 // finds none there: earlier launchers kept them in the app folder (backend/.data), so a new version unpacked into a
 // new folder seemed to have lost them. It copies rather than moves, as the earlier version must keep working. When
-// none is found the server adds the sample stores itself; a data folder the user chose is left to them.
+// none is found the server adds the sample stores itself; a data folder the user chose is left to them. A folder that
+// may hold stores but cannot be read stops the start (the sample stores would otherwise take their place for good),
+// and so does a copy that fails, until the user chooses to start without them.
 func (a *app) bringStoresOver() error {
 	dest := a.dataFolder()
 	if _, err := os.Stat(dest); !errors.Is(err, fs.ErrNotExist) || a.dataHome() != a.home {
+		if a.dataHome() == a.home {
+			forgetEarlierData(a.home)
+		}
 		a.status.done("data", "ready")
 		return nil
 	}
-	src, stores := newestStores(a.earlierData())
+	if a.skipData.Load() {
+		a.log.Printf("Starting without bringing your stores over, as chosen; they stay where they are")
+		a.status.done("data", "started without them")
+		return nil
+	}
+	src, stores, err := newestStores(a.earlierData())
+	if err != nil {
+		return err
+	}
 	if src == "" {
 		a.status.done("data", "starting with the sample stores")
 		return nil
@@ -115,19 +155,93 @@ func (a *app) bringStoresOver() error {
 	if err != nil {
 		return fmt.Errorf("from %s: %w", from, err)
 	}
-	a.log.Printf("Brought %d stores over into %s: %d files copied (%.1f MB), %d hard-linked (%.1f MB), %d left out",
-		stores, dest, st.copied, float64(st.copiedBytes)/1e6, st.linked, float64(st.linkedBytes)/1e6, st.skipped)
-	a.status.done("data", fmt.Sprintf("%d brought over from %s", stores, from))
+	forgetEarlierData(a.home)
+	a.log.Printf("Brought %d stores over into %s: %d files copied (%.1f MB), %d hard-linked (%.1f MB), %d left out, "+
+		"%d could not be read", stores, dest, st.copied, float64(st.copiedBytes)/1e6, st.linked,
+		float64(st.linkedBytes)/1e6, st.skipped, len(st.unreadable))
+	for i, problem := range st.unreadable {
+		if i == 50 {
+			a.log.Printf("… and %d more", len(st.unreadable)-i)
+			break
+		}
+		a.log.Printf("Could not read %s", problem)
+	}
+	detail := fmt.Sprintf("%d brought over from %s", stores, from)
+	if n := len(st.unreadable); n > 0 {
+		detail += fmt.Sprintf("; %d files could not be read (see the log)", n)
+	}
+	a.status.done("data", detail)
 	return nil
 }
 
+// earlierDataNote holds the data folders earlier launchers' logs named, noted before a log turned over.
+func earlierDataNote(home string) string { return filepath.Join(home, "earlier-data.json") }
+
+// rememberEarlierData notes the data folders the logs name, before this launcher's log turns them over. Until the
+// per-user data folder exists the note keeps them, however often the logs turn over before the stores are brought
+// over (a start quit early, or one on a data folder of the user's choosing).
+func rememberEarlierData(home string) {
+	note := earlierDataNote(home)
+	if _, err := os.Stat(filepath.Join(home, ".data")); !errors.Is(err, fs.ErrNotExist) {
+		forgetEarlierData(home)
+		return
+	}
+	known := notedEarlierData(note)
+	all := uniqueFolders(append(slices.Clone(known), loggedDataIn(filepath.Join(home, "logs"))...))
+	if len(all) > 64 {
+		all = all[len(all)-64:]
+	}
+	if slices.Equal(all, known) {
+		return
+	}
+	raw, _ := json.Marshal(all)
+	tmp := fmt.Sprintf("%s.%d.tmp", note, os.Getpid())
+	if os.WriteFile(tmp, raw, 0o644) != nil || os.Rename(tmp, note) != nil {
+		_ = os.Remove(tmp)
+	}
+}
+
+func forgetEarlierData(home string) { _ = os.Remove(earlierDataNote(home)) }
+
+func notedEarlierData(note string) []string {
+	raw, err := os.ReadFile(note)
+	if err != nil {
+		return nil
+	}
+	var dirs []string
+	if json.Unmarshal(raw, &dirs) != nil {
+		return nil
+	}
+	return dirs
+}
+
+func uniqueFolders(dirs []string) []string {
+	seen := map[string]bool{}
+	var unique []string
+	for _, d := range dirs {
+		if key := folderKey(d); d != "" && !seen[key] {
+			seen[key] = true
+			unique = append(unique, d)
+		}
+	}
+	return unique
+}
+
 // earlierData lists the data folders earlier launchers used: this app folder's backend/.data (a new version
-// unpacked over the old one), then those the last two launcher logs name (log.go keeps the previous run's).
+// unpacked over the old one), then those noted from the logs before they turned over, then those the logs name now.
 func (a *app) earlierData() []string {
 	found := []string{filepath.Join(a.root, "backend", ".data")}
-	logs := filepath.Dir(a.log.path)
-	for _, name := range []string{"launcher.log", "launcher.prev.log"} {
-		found = append(found, loggedData(filepath.Join(logs, name))...)
+	found = append(found, notedEarlierData(earlierDataNote(a.home))...)
+	return append(found, loggedDataIn(filepath.Join(a.home, "logs"))...)
+}
+
+// loggedDataIn returns the data folders the launcher logs in dir name.
+func loggedDataIn(dir string) []string {
+	logs, _ := filepath.Glob(filepath.Join(dir, "launcher*.log"))
+	slices.Sort(logs)
+	var found []string
+	for _, log := range logs {
+		found = append(found, loggedData(log)...)
 	}
 	return found
 }
@@ -173,36 +287,50 @@ func dataNamedIn(line string) string {
 }
 
 // newestStores returns, of the data folders that hold a store, the one whose stores changed last, and how many
-// stores it holds; "" when none does.
-func newestStores(dirs []string) (dir string, stores int) {
+// stores it holds; "" when none does. A folder that is there but cannot be read may hold the newest stores: with no
+// other to bring over, it is an error rather than a start with the sample stores.
+func newestStores(dirs []string) (dir string, stores int, err error) {
 	var newest time.Time
-	seen := map[string]bool{}
-	for _, d := range dirs {
-		key := filepath.Clean(d)
-		if runtime.GOOS == "windows" {
-			key = strings.ToLower(key)
-		}
-		if seen[key] {
+	var unreadable error
+	for _, d := range uniqueFolders(dirs) {
+		n, changed, err := storesIn(d)
+		if err != nil {
+			unreadable = cmp.Or(unreadable, fmt.Errorf("from %s (it cannot be read): %w", appFolderOf(d), err))
 			continue
 		}
-		seen[key] = true
-		if n, changed := storesIn(d); n > 0 && (dir == "" || changed.After(newest)) {
+		if n > 0 && (dir == "" || changed.After(newest)) {
 			dir, stores, newest = d, n, changed
 		}
 	}
-	return dir, stores
+	if dir == "" {
+		return "", 0, unreadable
+	}
+	return dir, stores, nil
 }
 
-// storesIn counts the stores in a data folder (its folders holding metadata.json) and returns when anything in them
-// last changed: a run or an edit changes files deep inside, not the folders above.
-func storesIn(data string) (n int, changed time.Time) {
-	entries, _ := os.ReadDir(data)
+// storesIn counts the stores in a data folder (its folders, or links to folders, holding metadata.json) and returns
+// when anything in them last changed: a run or an edit changes files deep inside, not the folders above. A folder
+// that is not there holds none.
+func storesIn(data string) (n int, changed time.Time, err error) {
+	if st, err := os.Stat(data); err != nil || !st.IsDir() {
+		if err == nil || errors.Is(err, fs.ErrNotExist) {
+			err = nil
+		}
+		return 0, changed, err
+	}
+	entries, err := os.ReadDir(data)
+	if err != nil {
+		return 0, changed, err
+	}
 	for _, e := range entries {
 		store := filepath.Join(data, e.Name())
-		if !e.IsDir() || !fileExists(filepath.Join(store, "metadata.json")) {
+		if !fileExists(filepath.Join(store, "metadata.json")) { // follows a link to a store moved elsewhere
 			continue
 		}
 		n++
+		if resolved, err := filepath.EvalSymlinks(store); err == nil {
+			store = resolved
+		}
 		_ = filepath.WalkDir(store, func(_ string, d fs.DirEntry, err error) error {
 			if err == nil {
 				if info, err := d.Info(); err == nil && info.ModTime().After(changed) {
@@ -212,7 +340,7 @@ func storesIn(data string) (n int, changed time.Time) {
 			return nil
 		})
 	}
-	return n, changed
+	return n, changed, nil
 }
 
 // appFolderOf names a data folder by the app folder it is in (…/app for …/app/backend/.data), as the user knows it.
@@ -223,17 +351,20 @@ func appFolderOf(data string) string {
 	return data
 }
 
-// Files from linkFrom up (the local model, hundreds of MB to GBs) are hard-linked when the earlier folder is on the
-// same volume: no time, no space. Such files are only ever replaced whole, so neither version changes the other's;
-// smaller ones are copied, and so is a large one that cannot be linked (another volume, a file system without links).
+// Files from linkFrom up in local_vlm (the local model, hundreds of MB to GBs) are hard-linked when the earlier folder
+// is on the same volume: no time, no space. The model files are only ever replaced whole, so neither version changes
+// the other's; everything else is copied (a store's files may be rewritten in place), and so is a model file that
+// cannot be linked (another volume, a file system without links).
 var (
-	linkFrom = int64(64 << 20)
-	linkFile = os.Link
+	linkFrom   = int64(64 << 20)
+	linkFile   = os.Link
+	openSource = os.Open
 )
 
 type copyStats struct {
 	copied, linked, skipped  int
 	copiedBytes, linkedBytes int64
+	unreadable               []string // files (and folders) that could not be read, left out: "<path>: <error>"
 }
 
 // copyData copies the data folder src to dest through dest.migrating, renamed into place once complete: a copy cut
@@ -246,77 +377,177 @@ func copyData(src, dest string) (copyStats, error) {
 	if err := os.RemoveAll(part); err != nil {
 		return copyStats{}, err
 	}
-	st, err := copyTree(src, part)
+	c := copier{entered: map[string]bool{folderKey(src): true}}
+	err := c.tree(src, part, "")
 	if err == nil {
 		err = renameDir(part, dest)
 	}
 	if err != nil {
 		_ = os.RemoveAll(part)
 	}
-	return st, err
+	return c.st, err
 }
 
-func copyTree(src, dst string) (copyStats, error) {
-	var st copyStats
-	err := filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+type copier struct {
+	st      copyStats
+	entered map[string]bool // folders walked, so a link to a folder above is not followed round
+}
+
+// readError is a failure to read the earlier folder, as opposed to one writing the copy (a full disk).
+type readError struct{ err error }
+
+func (e readError) Error() string { return e.err.Error() }
+func (e readError) Unwrap() error { return e.err }
+
+// tree copies src to dst; rel is src's place in the data folder being copied. A file that cannot be read is left out
+// and reported, unless it is a store's metadata.json (without it the store is not there at all); the stores' own
+// folders and the data folder must be readable. Links are followed: a store moved to another disk and linked back.
+func (c *copier) tree(src, dst, rel string) error {
+	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		inner, rerr := filepath.Rel(src, path)
+		if rerr != nil {
+			return rerr
 		}
-		rel, err := filepath.Rel(src, path)
+		sub := filepath.Join(rel, inner) // its place in the data folder
 		if err != nil {
-			return err
-		}
-		if leftOut(rel, d) {
-			st.skipped++
-			if d.IsDir() {
+			if !optional(sub, true) {
+				return err
+			}
+			c.unreadable(sub, err)
+			if d != nil && d.IsDir() {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		info, err := d.Info()
-		if err != nil {
-			return err
+		return c.entry(path, filepath.Join(dst, inner), sub, d)
+	})
+}
+
+func splitRel(rel string) []string {
+	if rel == "" || rel == "." {
+		return nil
+	}
+	return strings.Split(rel, string(filepath.Separator))
+}
+
+func (c *copier) entry(path, target, rel string, d fs.DirEntry) error {
+	if leftOut(rel, d) {
+		c.st.skipped++
+		if d.IsDir() {
+			return filepath.SkipDir
 		}
-		target := filepath.Join(dst, rel)
-		switch {
-		case d.IsDir():
-			return os.MkdirAll(target, info.Mode().Perm()|0o700)
-		case info.Size() >= linkFrom && linkFile(path, target) == nil:
-			st.linked++
-			st.linkedBytes += info.Size()
+		return nil
+	}
+	if d.Type()&fs.ModeSymlink != 0 {
+		return c.link(path, target, rel)
+	}
+	info, err := d.Info()
+	if err != nil { // gone since the folder was read (the earlier version still runs)
+		return c.unreadableOr(rel, d.IsDir(), err)
+	}
+	if d.IsDir() {
+		return os.MkdirAll(target, info.Mode().Perm()|0o700)
+	}
+	return c.file(path, target, rel, info)
+}
+
+// link copies what a link points to, a file or a folder; a link to nothing is left out.
+func (c *copier) link(path, target, rel string) error {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		c.st.skipped++
+		return nil
+	}
+	info, err := os.Stat(resolved)
+	if err != nil {
+		return c.unreadableOr(rel, false, err)
+	}
+	if !info.IsDir() {
+		if !info.Mode().IsRegular() {
+			c.st.skipped++
 			return nil
 		}
-		st.copied++
-		st.copiedBytes += info.Size()
-		return copyFile(path, target, info)
-	})
-	return st, err
+		return c.file(resolved, target, rel, info)
+	}
+	key := folderKey(resolved)
+	if c.entered[key] {
+		c.st.skipped++
+		return nil
+	}
+	c.entered[key] = true
+	return c.tree(resolved, target, rel)
+}
+
+func (c *copier) file(path, target, rel string, info fs.FileInfo) error {
+	if info.Size() >= linkFrom && strings.HasPrefix(filepath.ToSlash(rel), "local_vlm/") && linkFile(path, target) == nil {
+		c.st.linked++
+		c.st.linkedBytes += info.Size()
+		return nil
+	}
+	if err := copyFile(path, target, info); err != nil {
+		var unreadable readError
+		if !errors.As(err, &unreadable) {
+			return err
+		}
+		_ = os.Remove(target)
+		return c.unreadableOr(rel, false, unreadable.err)
+	}
+	c.st.copied++
+	c.st.copiedBytes += info.Size()
+	return nil
+}
+
+func (c *copier) unreadableOr(rel string, dir bool, err error) error {
+	if !optional(rel, dir) {
+		return err
+	}
+	c.unreadable(rel, err)
+	return nil
+}
+
+func (c *copier) unreadable(rel string, err error) {
+	c.st.unreadable = append(c.st.unreadable, fmt.Sprintf("%s: %v", filepath.ToSlash(rel), err))
+}
+
+// optional reports whether the copy goes on without rel when it cannot be read: not the data folder itself, a
+// store's folder (directly in it) or any metadata.json.
+func optional(rel string, dir bool) bool {
+	parts := splitRel(rel)
+	switch {
+	case len(parts) == 0:
+		return false
+	case dir && len(parts) == 1:
+		return false
+	}
+	return filepath.Base(rel) != "metadata.json"
 }
 
 // leftOut is what the copy skips: the llama.cpp runtime (this version fetches its own), downloads cut short (*.part),
-// files caught mid-write (*.tmp-*) and anything that is not a plain file or folder.
+// files caught mid-write (*.tmp-*) and devices, pipes and sockets. Other files Windows marks as special, such as
+// files OneDrive keeps in the cloud (Go reports them as irregular), are read like any file.
 func leftOut(rel string, d fs.DirEntry) bool {
 	if d.IsDir() {
 		return filepath.ToSlash(rel) == "local_vlm/bin"
 	}
 	name := d.Name()
-	return !d.Type().IsRegular() || strings.HasSuffix(name, ".part") || strings.Contains(name, ".tmp-")
+	return d.Type()&(fs.ModeDevice|fs.ModeCharDevice|fs.ModeNamedPipe|fs.ModeSocket) != 0 ||
+		strings.HasSuffix(name, ".part") || strings.Contains(name, ".tmp-")
 }
 
 // copyFile keeps the file's permissions (settings/providers.json holds API keys, readable by its owner only) and
 // modification time, and has it on disk before the folder is renamed into place: after a power cut the rename could
 // otherwise survive files left empty, and the copy would not be made again.
 func copyFile(src, dst string, info fs.FileInfo) error {
-	in, err := os.Open(src)
+	in, err := openSource(src)
 	if err != nil {
-		return err
+		return readError{err}
 	}
 	defer in.Close()
 	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode().Perm()|0o600)
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(out, in)
+	_, err = io.Copy(out, sourceReader{in})
 	if err == nil {
 		err = out.Sync()
 	}
@@ -327,6 +558,17 @@ func copyFile(src, dst string, info fs.FileInfo) error {
 		return err
 	}
 	return os.Chtimes(dst, info.ModTime(), info.ModTime())
+}
+
+// sourceReader tells a failure reading the earlier folder from one writing the copy.
+type sourceReader struct{ r io.Reader }
+
+func (s sourceReader) Read(p []byte) (int, error) {
+	n, err := s.r.Read(p)
+	if err != nil && err != io.EOF {
+		err = readError{err}
+	}
+	return n, err
 }
 
 // renameDir renames a folder just written. On Windows the antivirus opens new files for a moment to scan them, and a

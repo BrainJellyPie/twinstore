@@ -95,6 +95,32 @@
   and the message says the local model is turned off and what to do instead (also for shelf capture).
 - Compare no longer shows an impulse-spend drop to 0 against a run made before impulse buys were recorded; it says
   why that row is missing. The note about minor units is gone (amounts are shown as money).
+- Other websites open in your browser can no longer use TwinStore while it runs. Before, any page could quit it,
+  read or change your stores, or point a model provider's address elsewhere and so send your API key there.
+  TwinStore now answers only its own pages.
+- After an update, your stores could go missing: if TwinStore was once started without bringing them over (for
+  example from inside the downloaded zip), a later start no longer knew where the earlier version kept them and began
+  with the sample stores. It now remembers that folder until the stores are brought over.
+- Stores in a folder OneDrive keeps in sync arrived empty after an update; their files are now copied.
+- One file that could not be read (or a full disk) kept TwinStore from starting at all, and Try again could not get
+  past it. Files that cannot be read are now left out and named in the log; if the copy still fails, **Start without
+  them** starts TwinStore and leaves the stores where they are. A store kept on another disk through a link is now
+  brought over too.
+- Clicking the TwinStore icon right after Quit opened the TwinStore that was closing, and then nothing ran. The click
+  now waits for it to close and starts TwinStore.
+- Clicking a new version twice while an older one was running opened a second tab saying the older one was still
+  running. The second click now shows the new one.
+- When another TwinStore held your stores without answering, a click did nothing for 20 seconds and then gave up
+  silently. The start screen now says so, with Try again.
+- On Windows, a new version could not update its copy of uv while an older TwinStore was still running, and fell
+  back to the old one. On a slow connection the uv download no longer gives up after five minutes; it stops only when
+  nothing arrives for a minute.
+- On Windows, starting a second TwinStore emptied the log of the one already running; each now keeps its own log.
+- Try again no longer shows when the app files are missing (there is nothing to try again), and the start screen no
+  longer cuts Korean text in the middle of a character.
+- On Linux, the application-menu entry now works from a folder whose name holds `$`, `"`, `%` or a backslash.
+- A data folder chosen with `PARASTORE_DATA_HOME` now gets its own Python environment, so a TwinStore using it
+  can run beside the usual one without the two changing each other's packages.
 
 
 ## 0.4.7 — Marketing studio results you can trust

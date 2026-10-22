@@ -37,12 +37,12 @@ Type=Application
 Name=TwinStore
 GenericName=Store layout lab
 Comment=Store layout simulator with synthetic shoppers
-Exec="%s"
+Exec=%s
 Icon=%s
 Terminal=false
 Categories=Science;Office;
 StartupNotify=false
-`, exe, icon)
+`, desktopExec(exe), desktopString(icon))
 	path := filepath.Join(apps, "twinstore.desktop")
 	if old, err := os.ReadFile(path); err == nil && string(old) == entry {
 		return
@@ -51,4 +51,25 @@ StartupNotify=false
 		return
 	}
 	logs.Printf("Added TwinStore to the application menu (%s)", path)
+}
+
+// desktopExec quotes a program path for Exec= as the Desktop Entry specification asks: in double quotes, with ",
+// `, $ and \ escaped by a backslash and % doubled; then the value's own escaping doubles every backslash.
+func desktopExec(path string) string {
+	var quoted strings.Builder
+	for _, r := range path {
+		switch r {
+		case '"', '`', '$', '\\':
+			quoted.WriteByte('\\')
+		case '%':
+			quoted.WriteByte('%')
+		}
+		quoted.WriteRune(r)
+	}
+	return desktopString(`"` + quoted.String() + `"`)
+}
+
+// desktopString escapes a value of type string: backslashes, and the line breaks and tabs a path could hold.
+func desktopString(s string) string {
+	return strings.NewReplacer(`\`, `\\`, "\n", `\n`, "\t", `\t`, "\r", `\r`).Replace(s)
 }

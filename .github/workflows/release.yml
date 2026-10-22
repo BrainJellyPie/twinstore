@@ -28,6 +28,7 @@ permissions:
 jobs:
   bundle:
     runs-on: ubuntu-latest
+    timeout-minutes: 60 # the Linux first start below; a launcher that hangs must not hold the runner for hours
     env:
       RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
     outputs:
@@ -120,7 +121,7 @@ jobs:
             cp "launcher/dist/twinstore-linux-$arch" lin/TwinStore/twinstore && chmod +x lin/TwinStore/twinstore
             cp -r payload lin/TwinStore/app
             tar -C lin -czf "out/TwinStore-$VERSION-linux-$arch.tar.gz" TwinStore
-            if [ "$arch" = x64 ]; then launcher_smoke lin/TwinStore/twinstore; fi  # after packing: it creates .venv and .data
+            if [ "$arch" = x64 ]; then launcher_smoke lin/TwinStore/twinstore; fi  # after packing: Python may write compiled files beside the app files
           done
           ls -lh out
 
@@ -179,6 +180,7 @@ jobs:
   publish:
     needs: [bundle, smoke-windows, smoke-macos]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
     steps:

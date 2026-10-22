@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"cmp"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -150,6 +151,13 @@ func uvAsset() (string, error) {
 	return "", fmt.Errorf("no uv build for %s", runtime.GOOS)
 }
 
+var (
+	uvReleases = "https://github.com/astral-sh/uv/releases/latest/download/"
+	// uvStall ends a download that has received nothing for this long. There is no limit on the whole download: a
+	// slow connection that keeps going finishes.
+	uvStall = time.Minute
+)
+
 // installUV downloads the uv release for this machine into <home>/bin. Nothing outside that
 // folder changes (no shell profile edits, no admin rights).
 func installUV(home string, say func(string, ...any)) (string, error) {
@@ -157,10 +165,20 @@ func installUV(home string, say func(string, ...any)) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	url := "https://github.com/astral-sh/uv/releases/latest/download/" + asset
+	removeStale(filepath.Join(home, "uv-download-*")) // left by a download the launcher quit during
+	bin := filepath.Join(home, "bin")
+	removeStale(filepath.Join(bin, "*.old-*")) // a uv set aside while it ran (see replaceExecutable)
+	url := uvReleases + asset
 	say("Downloading uv (one time) from %s", url)
-	client := http.Client{Timeout: 5 * time.Minute}
-	resp, err := client.Get(url)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = uvStall
+	resp, err := (&http.Client{Transport: transport}).Do(req)
 	if err != nil {
 		return "", fmt.Errorf("download failed — check the internet connection (%w)", err)
 	}
@@ -173,13 +191,17 @@ func installUV(home string, say func(string, ...any)) (string, error) {
 		return "", err
 	}
 	defer os.Remove(tmp.Name())
-	if _, err := io.Copy(tmp, resp.Body); err != nil {
-		tmp.Close()
+	stalled := time.AfterFunc(uvStall, cancel)
+	_, err = io.Copy(tmp, progress{resp.Body, func() { stalled.Reset(uvStall) }})
+	stalled.Stop()
+	tmp.Close()
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("nothing received for %s", uvStall)
+		}
 		return "", fmt.Errorf("download interrupted: %w", err)
 	}
-	tmp.Close()
 
-	bin := filepath.Join(home, "bin")
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		return "", err
 	}
@@ -250,18 +272,70 @@ func unzip(archive, dest string, want map[string]bool) error {
 	return nil
 }
 
+// progress calls more each time something arrives.
+type progress struct {
+	r    io.Reader
+	more func()
+}
+
+func (p progress) Read(b []byte) (int, error) {
+	n, err := p.r.Read(b)
+	if n > 0 {
+		p.more()
+	}
+	return n, err
+}
+
+// removeStale removes files matching pattern that are more than an hour old (newer ones may be another launcher's
+// download in progress; one still in use on Windows stays).
+func removeStale(pattern string) {
+	found, _ := filepath.Glob(pattern)
+	for _, path := range found {
+		if st, err := os.Stat(path); err == nil && time.Since(st.ModTime()) > time.Hour {
+			_ = os.Remove(path)
+		}
+	}
+}
+
 func writeExecutable(target string, r io.Reader) error {
-	tmp := target + ".part"
-	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
+	out, err := os.CreateTemp(filepath.Dir(target), filepath.Base(target)+".part-*") // another launcher may write one too
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(out, r); err != nil {
-		out.Close()
+	tmp := out.Name()
+	_, err = io.Copy(out, r)
+	if cerr := out.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Chmod(tmp, 0o755)
+	}
+	if err == nil {
+		err = replaceExecutable(tmp, target)
+	}
+	if err != nil {
+		_ = os.Remove(tmp)
+	}
+	return err
+}
+
+var renameFile = os.Rename
+
+// replaceExecutable moves tmp to target. Windows cannot replace a program that is running (an earlier TwinStore may
+// still run this uv), but it can rename it: the running one is set aside, to be removed by a later install.
+func replaceExecutable(tmp, target string) error {
+	err := renameFile(tmp, target)
+	if err == nil || !fileExists(target) {
 		return err
 	}
-	if err := out.Close(); err != nil {
+	aside := fmt.Sprintf("%s.old-%d", target, time.Now().UnixNano())
+	if renameFile(target, aside) != nil {
 		return err
 	}
-	return os.Rename(tmp, target)
+	if err := renameFile(tmp, target); err != nil {
+		_ = renameFile(aside, target)
+		return err
+	}
+	_ = os.Remove(aside) // fails while it runs
+	return nil
 }

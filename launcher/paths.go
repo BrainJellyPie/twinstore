@@ -111,11 +111,14 @@ type instance struct {
 	URL  string `json:"url"`
 	Root string `json:"root"`
 	PID  int    `json:"pid"`
+	// From its ping, not the note:
+	Version  string `json:"-"`
+	Stopping bool   `json:"-"` // Quit was asked for; it lets go of the data home within quitWait
 }
 
-// One launcher at a time uses a data home: every version shares the stores and the Python environment, which two
-// servers would change under each other. That launcher holds running.lock there until it ends, however it ends, and
-// notes its address in launcher.json beside it. Launchers before the lock noted theirs in <home>/running.json.
+// One launcher at a time uses a data home: every version shares the stores, which two servers would change under
+// each other. That launcher holds running.lock there until it ends, however it ends, and notes its address in
+// launcher.json beside it. Launchers before the lock noted theirs in <home>/running.json.
 func dataLock(data string) string     { return filepath.Join(data, "running.lock") }
 func instancePath(data string) string { return filepath.Join(data, "launcher.json") }
 func olderNote(home string) string    { return filepath.Join(home, "running.json") }
@@ -130,30 +133,44 @@ func noted(path string) (instance, bool) {
 	if json.Unmarshal(raw, &inst) != nil || inst.URL == "" {
 		return instance{}, false
 	}
-	inst.Root, err = pingLauncher(inst.URL)
+	ping, err := pingLauncher(inst.URL)
+	inst.Root, inst.Version, inst.Stopping = ping.Root, ping.Version, ping.Stopping
 	return inst, err == nil
 }
 
-func pingLauncher(url string) (root string, err error) {
+type ping struct {
+	App      string `json:"app"`
+	Root     string `json:"root"`
+	Version  string `json:"version"`
+	Stopping bool   `json:"stopping"`
+}
+
+func pingLauncher(url string) (ping, error) {
 	client := http.Client{Timeout: 1500 * time.Millisecond}
 	resp, err := client.Get(url + "/__twinstore/ping")
 	if err != nil {
-		return "", err
+		return ping{}, err
 	}
 	defer resp.Body.Close()
-	var ping struct {
-		App  string `json:"app"`
-		Root string `json:"root"`
+	var p ping
+	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil || p.App != "twinstore-launcher" {
+		return ping{}, fmt.Errorf("no TwinStore launcher at %s", url)
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&ping); err != nil || ping.App != "twinstore-launcher" {
-		return "", fmt.Errorf("no TwinStore launcher at %s", url)
-	}
-	return ping.Root, nil
+	return p, nil
 }
 
 // sameRoot compares two app folders as the file system does: Windows ignores case.
 func sameRoot(goos, a, b string) bool {
 	return a == b || goos == "windows" && strings.EqualFold(a, b)
+}
+
+// sameApp reports whether the launcher found runs these app files. macOS runs a downloaded app that Finder has not
+// moved from a random read-only copy (App Translocation), which may be another one at each start: two such copies of
+// the same version count as the same app, so a second click shows the running one instead of quitting it.
+func sameApp(goos string, holder instance, root, ver string) bool {
+	const translocated = "/AppTranslocation/"
+	return sameRoot(goos, holder.Root, root) || goos == "darwin" && holder.Version == ver &&
+		strings.Contains(holder.Root, translocated) && strings.Contains(root, translocated)
 }
 
 // claim is what claimData found. All empty: a launcher holds the data home but has not answered.
@@ -164,42 +181,74 @@ type claim struct {
 	other   string // the app folder of another version that uses it and did not quit
 }
 
-// quitWait is how long another version has to quit: its server takes up to ten seconds to stop.
-var quitWait = 30 * time.Second
+var (
+	// quitWait is how long another version has to quit: its server takes up to ten seconds to stop.
+	quitWait = 30 * time.Second
+	// claimWait is how long a launcher that holds the data home but has not noted its address is awaited.
+	claimWait = 20 * time.Second
+)
 
 // claimData makes this launcher the one that uses the data home. A launcher holding it is awaited until it answers,
-// up to wait (it may have only just started). One for these app files is shown instead, as a second click should;
-// one for other app files, another version, is asked to quit, as this one has to use the stores now.
+// up to wait (it may have only just started), and one that is quitting until it has let go. One for these app files
+// is shown instead, as a second click should; one for other app files, another version, is asked to quit, as this one
+// has to use the stores now.
 func claimData(home, data, root string, wait time.Duration) claim {
 	lock := dataLock(data)
 	_ = os.MkdirAll(data, 0o755) // a data home the user chose may not exist yet
 	var holder instance
-	for deadline := time.Now().Add(wait); ; {
+	for start := time.Now(); ; {
 		unlock, busy := tryLock(lock)
 		if !busy {
 			return olderLauncher(home, data, root, unlock)
 		}
 		var answers bool
-		if holder, answers = noted(instancePath(data)); answers {
+		if holder, answers = noted(instancePath(data)); answers && !holder.Stopping {
 			break
 		}
-		if time.Now().After(deadline) {
+		limit := wait
+		if answers { // quitting (Quit, then a click on the icon at once): it lets go in a moment
+			limit += quitWait
+		}
+		if time.Since(start) > limit {
 			return claim{}
 		}
 		time.Sleep(250 * time.Millisecond)
 	}
-	if sameRoot(runtime.GOOS, holder.Root, root) {
+	if sameApp(runtime.GOOS, holder, root, version) {
 		return claim{url: holder.URL}
 	}
+	// While it quits, another launcher may take the data home first: a second click on this version's icon. The
+	// stores are then that one's, and waiting longer for them would only end in "still running".
 	var unlock func()
+	took := false
 	if askToQuit(holder.URL, func() bool {
 		var busy bool
-		unlock, busy = tryLock(lock)
-		return !busy
-	}) {
+		if unlock, busy = tryLock(lock); !busy {
+			return true
+		}
+		now, answers := noted(instancePath(data))
+		another := now.PID != holder.PID || now.URL != holder.URL || !sameRoot(runtime.GOOS, now.Root, holder.Root)
+		if answers && !now.Stopping && another {
+			holder, took = now, true
+			return true
+		}
+		return false
+	}) && !took {
 		return claim{unlock: unlock, stopped: holder.Root}
 	}
+	if took && sameApp(runtime.GOOS, holder, root, version) {
+		return claim{url: holder.URL}
+	}
 	return claim{other: holder.Root}
+}
+
+// smokeClaim takes the data home for --smoke when no launcher holds it, without waiting or asking anyone to quit.
+func smokeClaim(data string) claim {
+	_ = os.MkdirAll(data, 0o755)
+	if unlock, busy := tryLock(dataLock(data)); !busy {
+		return claim{unlock: unlock}
+	}
+	return claim{}
 }
 
 // olderLauncher checks for a launcher from before the lock, once this one holds it. One for these app files is
