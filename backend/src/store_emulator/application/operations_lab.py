@@ -58,7 +58,10 @@ def _load(pid: str, run_id: str) -> tuple[Store, list[CustomerResult], int, Oper
             planned_path = output / "timeline_planned.json"
         else:
             planned_path = output / "timeline.json"
-        planned = [CustomerResult.model_validate(c) for c in read_json(planned_path)]
+        visits = read_json(planned_path)
+        if not isinstance(visits, list):
+            raise ValueError("the saved shopper visits must be a list")
+        planned = [CustomerResult.model_validate(c) for c in cast(list[object], visits)]
         config = read_json(base / "input" / "config.json")
         store = load_run_store(base)
     except (ValueError, OSError) as error:   # cut short or damaged on disk

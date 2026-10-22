@@ -241,3 +241,8 @@ it("keeps household, book and garden photos distinct from food after renaming", 
   expect(classifyProduct("Hand warmer", "/api/catalog-images/starter-57/15.webp").category).toBe("drink");
   expect(classifyProduct("Books", "/api/catalog-images/starter-58/2.webp").category).toBe("bakery");
 });
+
+it("keeps skincare, tea tools, baking tools and shoe care out of food categories after renaming", () => {
+  for (const sheet of [61, 62]) for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
+});

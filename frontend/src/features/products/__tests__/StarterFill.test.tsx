@@ -9,6 +9,7 @@ import { LOCALES } from "@/shared/i18n/messages";
 import { formatMoney } from "@/shared/utils/money";
 import { StarterFill } from "../StarterFill";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { queryKeys } from "@/shared/queries/keys";
 vi.mock("@/shared/api/starterFill", () => ({ getStarterCatalog: vi.fn(), previewStarterFill: vi.fn(), saveStarterFill: vi.fn(), autoSelectStarterProducts: vi.fn() }));
 const product = { sku: "A", name: "Example water", price: 100, regular_price: 0, promo: "", image_url: null };
 const catalog: api.StarterCatalog = { source_sha256: "a".repeat(64), currency: "USD", categories: [{ key: "water", label: "Water", products: [product] }], racks: [
@@ -55,6 +56,35 @@ it("defaults to automatic selection, previews exact selected SKUs and saves only
   fireEvent.click(screen.getByRole("button", { name: "Save stocked layout" }));
   await screen.findByRole("button", { name: "Open stocked layout" });
   expect(vi.mocked(api.saveStarterFill).mock.lastCall?.[2]).toMatchObject(automatic);
+});
+
+it("waits for the new layout to be listed before offering to open it", async () => {
+  let refreshed!: () => void;
+  const refresh = new Promise<void>((resolve) => { refreshed = resolve; });
+  const invalidate = vi.spyOn(qc, "invalidateQueries").mockReturnValueOnce(refresh);
+  await open();
+  await preview();
+  fireEvent.click(screen.getByRole("button", { name: "Save stocked layout" }));
+  await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.setups("p") }, { throwOnError: true }));
+  expect(screen.queryByRole("button", { name: "Open stocked layout" })).toBeNull();
+  expect(useSimulationStore.getState().selectedSetupId).toBeNull();
+  await act(async () => { refreshed(); await refresh; });
+  fireEvent.click(await screen.findByRole("button", { name: "Open stocked layout" }));
+  expect(useSimulationStore.getState().selectedSetupId).toBe("setup_stocked");
+});
+
+it("retries the same saved draft if refreshing the layout list fails", async () => {
+  vi.spyOn(qc, "invalidateQueries").mockRejectedValueOnce(new Error("Layout list unavailable"));
+  await open();
+  await preview();
+  fireEvent.click(screen.getByRole("button", { name: "Save stocked layout" }));
+  const retry = await screen.findByRole("button", { name: "Retry saving starter draft" });
+  expect(screen.queryByRole("button", { name: "Open stocked layout" })).toBeNull();
+  expect(useSimulationStore.getState().selectedSetupId).toBeNull();
+  fireEvent.click(retry);
+  await screen.findByRole("button", { name: "Open stocked layout" });
+  expect(api.saveStarterFill).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(api.saveStarterFill).mock.calls[0]![2]).toEqual(vi.mocked(api.saveStarterFill).mock.calls[1]![2]);
 });
 
 it("keeps a failed model selection recoverable through manual selection", async () => {

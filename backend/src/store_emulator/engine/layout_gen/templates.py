@@ -86,7 +86,7 @@ TEMPLATES: list[StoreTemplate] = [
         id="drugstore", name="Health & beauty drugstore", description="Beauty and health aisles with a small drinks fridge.",
         store_type="pharmacy", grid=(12, 10),
         fridges=["water_sports", "energy_coffee", "dairy"],
-        wall_shelves=["bath_body", "hair_care", "oral_care"],
+        wall_shelves=["bath_body", "hair_care", "oral_care", "facial_skincare", "makeup_accessories", "nail_grooming"],
         gondolas=["health_beauty", "first_aid_tools", "nutrition_supplements", "baby_care", "household", "hair_accessories"],
         open_hours=(9, 22),
     ),
@@ -127,10 +127,7 @@ TEMPLATES: list[StoreTemplate] = [
             "craft_refreshments", "dairy", "fresh_produce", "fresh_meals", "soft_drinks", "water_sports",
             "beer_alcohol"
         ],
-        freezers=["ice_cream", "frozen_meals", "ice_cream", "frozen_meals"], wall_shelves=[
-            "household", "pet_care", "health_beauty", "baby_care", "home_storage", "laundry_care",
-            "kitchen_tools", "food_storage", "home_linen", "dinnerware", "bath_body", "oral_care"
-        ],
+        freezers=["ice_cream", "frozen_meals", "ice_cream", "frozen_meals"], wall_shelves=["household", "pet_care", "health_beauty", "baby_care", "home_storage", "laundry_care", "kitchen_tools", "food_storage", "home_linen", "dinnerware", "bath_body", "oral_care", "pantry_organization", "shoe_care", "facial_skincare"],
         gondolas=[
             "pantry", "breakfast_spreads", "baking_ingredients", "global_sauces", "mediterranean_pantry",
             "korean_pantry", "japanese_pantry", "spice_blends", "instant_food", "chips", "sweets",
@@ -160,17 +157,17 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="wellness_pharmacy", name="Wellness & care pharmacy", description="Spacious care departments connected by a clear central spine; first aid, personal care and wellness.",
         store_type="pharmacy", grid=(20, 16), fridges=["water_sports", "dairy"],
-        wall_shelves=["pharmacy_care", "wellness", "health_beauty", "first_aid_tools", "nutrition_supplements", "oral_care"], gondolas=["wellness", "care_supplies", "bath_body", "baby_care", "hair_care"],
+        wall_shelves=["pharmacy_care", "wellness", "health_beauty", "first_aid_tools", "nutrition_supplements", "oral_care", "facial_skincare", "nail_grooming", "shaving_grooming"], gondolas=["wellness", "care_supplies", "bath_body", "baby_care", "hair_care"],
         near_counter=["wellness"], style="spine", open_hours=(8, 22), checkouts=2,
     ),
     StoreTemplate(
         id="specialty_cafe", name="Specialty coffee bar", description="Coffee menu and pastry displays with an open center. Models counter purchases; seating service is not simulated.",
-        store_type="cafe", grid=(12, 10), fridges=["dairy", "soft_drinks"], wall_shelves=["home_coffee_tea", "barista_tools", "bakery"],
+        store_type="cafe", grid=(12, 10), fridges=["dairy", "soft_drinks"], wall_shelves=["home_coffee_tea", "barista_tools", "bakery", "tea_brewing_tools"],
         gondolas=["desserts", "cafe_menu"], near_counter=["cafe_menu", "desserts"], style="perimeter", open_hours=(7, 20), dining_tables=4,
     ),
     StoreTemplate(
         id="book_cafe", name="Bookshop café", description="Browsing islands for books and stationery plus a coffee and cake counter.",
-        store_type="cafe", grid=(18, 14), fridges=["dairy", "soft_drinks"], wall_shelves=["books", "stationery", "home_coffee_tea"],
+        store_type="cafe", grid=(18, 14), fridges=["dairy", "soft_drinks"], wall_shelves=["books", "stationery", "home_coffee_tea", "tea_brewing_tools"],
         gondolas=["books", "tabletop_games", "puzzle_games", "stationery"], near_counter=["cafe_menu", "desserts"], style="free_flow", open_hours=(9, 22), dining_tables=4,
     ),
     StoreTemplate(
@@ -204,12 +201,12 @@ TEMPLATES: list[StoreTemplate] = [
     ),
     StoreTemplate(
         id="design_showroom", name="Home & design showroom", description="Separated homeware display groups with wide sightlines and perimeter collections.",
-        store_type="home", grid=(24, 20), fridges=[], wall_shelves=["home_design", "home_linen", "dinnerware", "home_lighting", "bathroom_accessories", "kitchen_tools", "food_storage", "home_storage"],
+        store_type="home", grid=(24, 20), fridges=[], wall_shelves=["home_design", "home_linen", "dinnerware", "home_lighting", "bathroom_accessories", "kitchen_tools", "food_storage", "home_storage", "pantry_organization"],
         gondolas=["home_design", "indoor_plants", "ceramic_craft_supplies"], near_counter=["home_design", "gift_wrapping"], style="showroom", open_hours=(10, 20),
     ),
     StoreTemplate(
         id="beauty_flagship", name="Beauty flagship", description="Beauty collections and wellness stations along a spacious discovery loop.",
-        store_type="beauty", grid=(22, 18), fridges=[], wall_shelves=["health_beauty", "bath_body", "hair_care", "oral_care", "fragrances", "hair_accessories", "wellness", "nutrition_supplements"],
+        store_type="beauty", grid=(22, 18), fridges=[], wall_shelves=["health_beauty", "bath_body", "hair_care", "oral_care", "fragrances", "hair_accessories", "wellness", "nutrition_supplements", "facial_skincare", "makeup_accessories", "nail_grooming", "shaving_grooming"],
         gondolas=["health_beauty", "bath_body", "hair_care"], near_counter=["hair_accessories"], style="loop", open_hours=(10, 22),
     ),
     StoreTemplate(
@@ -261,14 +258,14 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="tea_lounge", name="Tea lounge & gift shop", description="Six tables along the right side, botanical finishes, tea menus and small tea gifts on browsing islands.",
         store_type="cafe", grid=(18, 16), fridges=["soft_drinks", "desserts"],
-        wall_shelves=["tea_menu", "home_coffee_tea", "dinnerware", "gift_confectionery"], gondolas=["tea_menu", "dinnerware", "home_coffee_tea"],
+        wall_shelves=["tea_menu", "home_coffee_tea", "dinnerware", "gift_confectionery", "tea_brewing_tools"], gondolas=["tea_menu", "dinnerware", "home_coffee_tea"],
         near_counter=["tea_menu", "desserts"], style="free_flow", open_hours=(10, 22), dining_tables=6,
         seating_zone="right", design_theme="botanical",
     ),
     StoreTemplate(
         id="artisan_bakery", name="Artisan bakery", description="Warm bread and pastry displays on a browsing loop, with two small dining groups near the front.",
         store_type="bakery", grid=(16, 12), fridges=["dairy", "soft_drinks", "desserts"],
-        wall_shelves=["bakery", "baking_ingredients", "breakfast_spreads"], gondolas=["bakery", "desserts", "baking_equipment"],
+        wall_shelves=["bakery", "baking_ingredients", "breakfast_spreads", "baking_decorating"], gondolas=["bakery", "desserts", "baking_equipment"],
         near_counter=["cafe_menu", "bakery"], style="loop", open_hours=(6, 20), dining_tables=2,
         seating_zone="front", design_theme="warm",
     ),
@@ -294,7 +291,7 @@ TEMPLATES: list[StoreTemplate] = [
     ),
     StoreTemplate(
         id="shoe_boutique", name="Footwear boutique", description="Footwear collections, shoe-care accessories and apparel arranged in showroom groups with charcoal and brass finishes.",
-        store_type="fashion", grid=(22, 16), fridges=[], wall_shelves=["footwear", "footwear", "apparel", "footwear", "sports", "travel_essentials"],
+        store_type="fashion", grid=(22, 16), fridges=[], wall_shelves=["footwear", "footwear", "apparel", "footwear", "sports", "travel_essentials", "shoe_care"],
         gondolas=["footwear", "footwear", "sports"], near_counter=["footwear"], style="showroom",
         open_hours=(10, 21), checkouts=2, checkout_placement="away_from_entrance", design_theme="luxury",
     ),
@@ -410,10 +407,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="refill_market", name="Refill & bulk grocery", description="A large 28×22 market for refill packs, pantry staples and reusable containers with broad cross aisles. Products use fixed pack prices; bulk weighing is not simulated.",
         store_type="supermarket", grid=(28, 22), fridges=["dairy", "fresh_produce", "water_sports"] * 3,
-        wall_shelves=[
-            "refill_goods", "pantry", "food_storage", "zero_waste_cleaning", "laundry_care", "kitchen_tools",
-            "picnic_reusables", "bathroom_accessories", "home_storage"
-        ], gondolas=["refill_goods", "pantry", "baking_ingredients", "spice_blends"],
+        wall_shelves=["refill_goods", "pantry", "food_storage", "zero_waste_cleaning", "laundry_care", "kitchen_tools", "picnic_reusables", "bathroom_accessories", "home_storage", "pantry_organization"], gondolas=["refill_goods", "pantry", "baking_ingredients", "spice_blends"],
         near_counter=["refill_goods"], style="cross", open_hours=(8, 21), checkouts=4, design_theme="botanical",
     ),
     StoreTemplate(
@@ -637,11 +631,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="sports_outlet", name="Sports & camping outlet", description="A 34×26 Nordic store with a browsing loop for sports, camping equipment, outdoor accessories, apparel and footwear. Four checkouts; open 10–21 daily.",
         store_type="sports", grid=(34, 26), fridges=["water_sports"],
-        wall_shelves=[
-            "sports", "outdoor_gear", "apparel", "footwear", "bicycle_accessories", "cycling_maintenance",
-            "swimming_gear", "climbing_accessories", "outdoor_cooking", "picnic_reusables", "sports",
-            "outdoor_gear"
-        ],
+        wall_shelves=["sports", "outdoor_gear", "apparel", "footwear", "bicycle_accessories", "cycling_maintenance", "swimming_gear", "climbing_accessories", "outdoor_cooking", "picnic_reusables", "sports", "outdoor_gear", "shoe_care"],
         gondolas=[
             "outdoor_gear", "sports", "footwear", "apparel", "bicycle_accessories", "cycling_maintenance",
             "swimming_gear", "climbing_accessories", "outdoor_cooking"

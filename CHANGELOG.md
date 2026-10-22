@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### The backroom: refills come from somewhere
+- Refills used to fill every shelf from nowhere. A store can now keep a backroom: units of each product behind the
+  shelves (one number for all, or per product) that refills draw from, until it runs dry. Shelves keep last
+  night's stock and are filled from the backroom before opening; a delivery each morning tops the backroom up to
+  its level (an order-up-to policy), or, turned off, what was there has to last the simulated days — so a week-long
+  run shows a popular product's backroom running out on Saturday and the shelf staying empty.
+- **Store operations** shows the refills that came up short, the backroom at opening and the deliveries, and for
+  each product whose backroom ran dry, when. Units in the backroom are held at the stock-holding cost, and
+  **Find the best plan** also tries other backroom levels. API: `backroom_per_product`, `backroom_overrides` and
+  `daily_delivery` in `operations`; blank (null) keeps the endless backroom of earlier versions.
+
+### Catalog and fixes
+- Add 96 skincare, makeup, nail, shaving, tea, cake-decorating, pantry-organization and shoe-care products, with 32
+  photos and six-language category labels. Twelve matching default maps stock the added departments. The catalog
+  now includes 1,592 products in 139 categories and 992 local images.
+- Operations planning can stock a product that starts sold out (0 units) when that pays; till hours must be written
+  "00"–"23" in ASCII digits; a damaged saved shopper list is reported (422) instead of a server error.
+- Wait for the saved starter layout to appear in navigation before opening it, and recover failed list refreshes
+  through the same idempotent save request. Wide operations comparisons scroll within their panel.
+
 ### Fixes
 - A run saved by an older version, the bundled sample store's runs included, said "re-run it to see conversion,
   basket and impulse KPIs". Its conversion, revenue per visitor, basket, units, visit length and segment figures are

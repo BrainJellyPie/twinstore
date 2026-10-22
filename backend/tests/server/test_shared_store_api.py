@@ -174,3 +174,40 @@ def test_a_run_made_before_crowding_replays_without_it(client):
     plan = client.post(f"/api/projects/{PID}/runs/{rid}/operations/plan", json={}).json()
     assert plan["current_config"]["crowd_limit"] is None
     assert plan["current"]["revenue"] == summary["total_revenue"]
+
+
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("damaged", [None, 0, True, {}, {"shoppers": []}, "", [None]])
+def test_damaged_saved_visits_are_reported_without_changing_the_run(client, shared, damaged):
+    rid = _run(client, _layout(client), **({"operations": {}} if shared else {}))
+    output = Path(f".data/{PID}/runs/{rid}/output")
+    path = output / ("timeline_planned.json" if shared else "timeline.json")
+    path.write_text(json.dumps(damaged), encoding="utf-8")
+    before = {p.name: p.read_bytes() for p in output.iterdir() if p.is_file()}
+    for action in ("replay", "plan"):
+        response = client.post(f"/api/projects/{PID}/runs/{rid}/operations/{action}", json={})
+        assert response.status_code == 422
+        assert "saved files cannot be read" in response.json()["detail"]
+    assert {p.name: p.read_bytes() for p in output.iterdir() if p.is_file()} == before
+
+
+@pytest.mark.parametrize("hour", ["０１", "٠١", " 1", "+1", "-1", "24"])
+def test_noncanonical_till_hours_are_rejected_before_loading_a_run(client, hour):
+    for action in ("replay", "plan"):
+        response = client.post(f"/api/projects/{PID}/runs/run_missing/operations/{action}",
+                               json={"operations": {"till_schedule": {hour: 1}}})
+        assert response.status_code == 422
+
+
+def test_a_backroom_limits_refills_in_runs_and_replays(client):
+    rid = _run(client, _layout(client),
+               operations={"stock_per_facing": 1, "backroom_per_product": 0, "restock_every_min": 30})
+    saved = client.get(f"/api/projects/{PID}/runs/{rid}/operations").json()
+    assert saved["config"]["backroom_per_product"] == 0 and saved["refill_short_units"] > 0
+    assert saved["backroom"] and all(b["level"] == 0 and b["refilled"] == 0 for b in saved["backroom"])
+    url = f"/api/projects/{PID}/runs/{rid}/operations/replay"
+    same = client.post(url, json={"operations": saved["config"]}).json()
+    endless = client.post(url, json={"operations": {**saved["config"], "backroom_per_product": None}}).json()
+    assert same["report"] == saved
+    assert endless["report"]["refill_short_units"] == 0 and endless["report"]["backroom"] == []
+    assert endless["outcome"]["revenue"] >= same["outcome"]["revenue"]

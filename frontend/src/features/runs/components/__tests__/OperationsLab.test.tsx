@@ -11,7 +11,7 @@ vi.mock("@/shared/api/client", () => ({ replayOperations: vi.fn(), planOperation
 
 const config: api.OperationsReport["config"] = {
   stock_per_facing: 8, stock_overrides: {}, till_schedule: {}, restock_every_min: 60, substitute_share: 0.45,
-  open_counters: 2, checkout_base_sec: 25, checkout_item_sec: 3, patience_sec: 240, patience_sd: 0.5, target_wait_sec: 120, crowd_limit: 4, crowd_skip: 0.35,
+  open_counters: 2, checkout_base_sec: 25, checkout_item_sec: 3, patience_sec: 240, patience_sd: 0.5, target_wait_sec: 120, crowd_limit: 4, crowd_skip: 0.35, backroom_per_product: null, backroom_overrides: {}, daily_delivery: true,
 };
 const hours: api.QueueHour[] = [
   { hour: "17", arrivals: 30, avg_wait_sec: 40, max_wait_sec: 90, abandoned: 0, counters_needed: 1 },
@@ -157,7 +157,8 @@ it("starts a run whose shoppers had the store alone from the default store", asy
   fireEvent.change(lab.getByLabelText("One unit kept on the shelves for a day"), { target: { value: "5" } });
   fireEvent.click(lab.getByRole("button", { name: "Replay" }));
   await waitFor(() => expect(api.replayOperations).toHaveBeenCalledWith("p", "r", {
-    operations: { stock_per_facing: 12, restock_every_min: 120, open_counters: null, patience_sec: 300, crowd_limit: 4, till_schedule: {}, stock_overrides: {} },
+    operations: { stock_per_facing: 12, restock_every_min: 120, open_counters: null, patience_sec: 300, crowd_limit: 4,
+      backroom_per_product: null, daily_delivery: true, till_schedule: {}, stock_overrides: {} },
     costs: { till_hour: 0, restock_round: 0, stock_unit_day: 5 },
   }));
   // The replayed hours can then be staffed one by one.
