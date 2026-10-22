@@ -28,6 +28,18 @@ function changeWidth(value: string) {
   fireEvent.blur(width);
 }
 
+it("describes the dialog for assistive technology without a console warning", () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  render(<GridEditorDialog open pid="p" sid="s" initialSetup={setup([shelf])} onClose={vi.fn()} onSaved={vi.fn()} />);
+  const dialog = screen.getByTestId("grid-editor-dialog");
+  const description = document.getElementById(dialog.getAttribute("aria-describedby") ?? "");
+  expect(description?.textContent).toBe("Arrange fixtures on the floor grid, then save.");
+  const logged = [...warn.mock.calls, ...error.mock.calls].flat().join(" ");
+  warn.mockRestore(); error.mockRestore();
+  expect(logged).not.toMatch(/Missing `Description`|aria-describedby/);
+});
+
 it("closes at once when nothing changed, including after an edit is undone", () => {
   const onClose = vi.fn();
   render(<GridEditorDialog open pid="p" sid="s" initialSetup={setup([shelf])} onClose={onClose} onSaved={vi.fn()} />);
@@ -38,13 +50,16 @@ it("closes at once when nothing changed, including after an edit is undone", () 
   expect(onClose).toHaveBeenCalledOnce();
 });
 
-it("keeps unsaved edits on Escape and asks before Cancel or the close button discard them", async () => {
+it("asks before Escape, Cancel or the close button discard unsaved edits", async () => {
   const onClose = vi.fn();
   render(<GridEditorDialog open pid="p" sid="s" initialSetup={setup([shelf])} onClose={onClose} onSaved={vi.fn()} />);
   changeWidth("10");
   fireEvent.keyDown(screen.getByTestId("grid-editor-dialog"), { key: "Escape" });
   expect(onClose).not.toHaveBeenCalled();
-  expect(screen.queryByTestId("grid-discard-confirm")).toBeNull();
+  expect(screen.getByTestId("grid-discard-confirm").textContent).toContain("Discard unsaved changes?");
+  fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+  await waitFor(() => expect(screen.queryByTestId("grid-discard-confirm")).toBeNull());
+  expect((screen.getByRole("spinbutton", { name: "Width" }) as HTMLInputElement).value).toBe("10");
 
   fireEvent.click(screen.getByTestId("grid-cancel-button"));
   expect(screen.getByTestId("grid-discard-confirm").textContent).toContain("Discard unsaved changes?");
