@@ -559,9 +559,15 @@ def _usable_hourly(hourly: list[HourlyProfile], profile: TradeAreaProfile, sched
                    cap: int) -> list[HourlyProfile]:
     """Hours the persona step can use. Small models sometimes answer an open day with no visitors at all, or with
     visitors but no customer types; both left the day without customers. Hours without types get every identity
-    of the trade area; a day without visitors gets a plain convenience-store day of `cap` visitors."""
+    of the trade area (at most 10 an hour, as the schema allows, taking turns so every identity comes); a day
+    without visitors gets a plain convenience-store day of `cap` visitors."""
     identities = list(profile.identities) or ["shopper"]
-    fixed = [h if h.person_types or h.visitor_count <= 0 else h.model_copy(update={"person_types": identities})
+    per_hour = min(10, len(identities))
+
+    def types_for(hour: int) -> list[str]:
+        return [identities[(hour * per_hour + k) % len(identities)] for k in range(per_hour)]
+
+    fixed = [h if h.person_types or h.visitor_count <= 0 else h.model_copy(update={"person_types": types_for(h.hour)})
              for h in hourly]
     if sum(h.visitor_count for h in fixed) > 0:
         return fixed
@@ -573,7 +579,7 @@ def _usable_hourly(hourly: list[HourlyProfile], profile: TradeAreaProfile, sched
     weights = {h: _PLAIN_DAY.get(h, 2) for h in hours}
     total_w = sum(weights.values())
     counts = {h: max(1, round(cap * w / total_w)) for h, w in weights.items()}
-    return [HourlyProfile(hour=h, visitor_count=n, person_types=identities) for h, n in counts.items()]
+    return [HourlyProfile(hour=h, visitor_count=n, person_types=types_for(h)) for h, n in counts.items()]
 
 
 def _apply_traffic(hourly: list[HourlyProfile], traffic: TrafficProfile, schedule: DaySchedule) -> list[HourlyProfile]:

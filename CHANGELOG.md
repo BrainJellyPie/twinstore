@@ -34,6 +34,9 @@
   shoppers to finish (minutes on a local model, billed calls on a cloud one).
 - A key saved in Settings at the moment the local model became ready could be lost (two writes of the settings file
   at once); they now take turns.
+- Customer generation on a small model failed with "List should have at most 10 items" when the model listed many
+  customer types but gave a day no visitors (the plain day put every type in each hour); each hour now takes ten of
+  them in turn.
 - Optimized layouts and "Edited products" drafts stay on their building floor.
 - Every CSV download opens in Excel with Korean (and other non-English) text intact; customers.csv says the unit of
   its money columns (e.g. "USD cents").
