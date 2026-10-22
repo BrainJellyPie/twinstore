@@ -14,8 +14,9 @@ from pydantic import BaseModel
 
 from store_emulator.domain.capture import CaptureResult
 from store_emulator.domain.store import Store
-from store_emulator.engine.capture.catalog_match import normalize_text
+from store_emulator.engine.capture.catalog_match import match_category, normalize_text
 from store_emulator.engine.capture.planogram import display_name
+from store_emulator.engine.layout_gen.catalog import CATALOG
 
 
 class PriceComparison(BaseModel):
@@ -35,6 +36,15 @@ class RivalComparison(BaseModel):
     only_ours: list[str]
     prices: list[PriceComparison]
     suggested_pull_factor: float | None
+
+
+def _category_of(rack_desc: str, rack_name: str, product: str, rack_type: str) -> str:
+    """Our product's catalog category, as the rival's products have one: a template rack's description is the
+    category key; any other layout (the sample, model-made or hand-built) gets it from the rack's and the product's
+    names. Only template racks had one, so every other layout counted no products in the rival's categories."""
+    if rack_desc in CATALOG:
+        return rack_desc
+    return match_category(f"{rack_name} {rack_desc}".strip(), product, rack_type=rack_type)
 
 
 def _product_key(name: str) -> str:
@@ -64,7 +74,9 @@ def compare_rival(
     ours: dict[str, tuple[str, int, str]] = {}          # normalized name → (name, price, category)
     for rack, slot in store.all_slots:
         for item in slot.items:
-            ours.setdefault(_product_key(item.name), (item.name, item.price, rack.rack_desc))
+            key = _product_key(item.name)
+            if key not in ours:
+                ours[key] = (item.name, item.price, _category_of(rack.rack_desc, rack.rack_name, item.name, rack.type))
     categories = {i.category for i in rival.items if i.category}
     ours_here = {k: v for k, v in ours.items() if not categories or v[2] in categories}
     keys = [key for key in ours if not key.startswith("symbol:")]

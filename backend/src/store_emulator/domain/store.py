@@ -29,6 +29,10 @@ class DaySchedule(BaseModel):
         return self
 
 
+# Tiles a side a store may have (the limit product fills and copies already had; 320 m at 1.25 m a tile).
+MAX_GRID_SIDE = 256
+
+
 class Store(BaseModel):
     id: str
     name: str
@@ -46,6 +50,9 @@ class Store(BaseModel):
     def _positive_grid_size(cls, size: Position) -> Position:
         if any(side <= 0 for side in size):
             raise ValueError("store grid dimensions must be positive")
+        if any(side > MAX_GRID_SIDE for side in size):
+            # The editor stops at 40 and templates at 36; a 100,000-tile side hung the save holding the layout's lock.
+            raise ValueError(f"store grid dimensions must be at most {MAX_GRID_SIDE} tiles a side")
         return size
 
     @field_validator("racks")

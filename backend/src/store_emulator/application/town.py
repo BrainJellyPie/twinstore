@@ -1,12 +1,15 @@
 """Project neighborhoods: storage, generation / OSM import, what-if edits, demand, synergy, visitors."""
 
 import logging
+import re
 from pathlib import Path
 
 from filelock import FileLock, Timeout
 
 from store_emulator.domain.persona import Persona
-from store_emulator.domain.scenario import Scenario
+from store_emulator.domain.scenario import DayType as ScenarioDayType
+from store_emulator.domain.scenario import Scenario, ScenarioPriors
+from store_emulator.domain.store import Store
 from store_emulator.domain.town import (
     DayType,
     SynergyRow,
@@ -16,9 +19,10 @@ from store_emulator.domain.town import (
     TownSpec,
     VenueCategory,
 )
-from store_emulator.domain.types import Weekday, stable_seed
-from store_emulator.engine.scenario import compile_scenario
+from store_emulator.domain.types import RESOURCE_ID_PATTERN, Weekday, stable_seed
+from store_emulator.engine.scenario import compile_scenario, priors_for
 from store_emulator.engine.town import (
+    TYPICAL_DAY,
     day_type_for,
     estimate_demand,
     fetch_overpass,
@@ -30,10 +34,12 @@ from store_emulator.engine.town import (
     synergy_analysis,
     town_context_text,
     town_from_overpass,
+    with_store_hours,
 )
 
 from .errors import AppError
 from .storage.io import DATA_DIR, read_json, write_json
+from .storage.setups import read_setup, read_state
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +59,15 @@ def require_town(pid: str) -> Town:
     town = get_town(pid)
     if town is None:
         raise AppError("this project has no neighborhood yet — generate one or import a real map first", 404)
+    return town
+
+
+def town_for_run(pid: str) -> Town:
+    """The neighborhood a run with neighborhood visitors draws them from (409 without one)."""
+    town = get_town(pid)
+    if town is None:
+        raise AppError("This project has no neighborhood yet — generate one or import a map on the Area page, or "
+                       "turn off neighborhood visitors.", 409)
     return town
 
 
@@ -117,38 +132,93 @@ def delete_venue(pid: str, venue_id: str) -> Town:
         raise AppError(str(e), 400) from e
 
 
-def _scenario_traffic(scenario: Scenario | None) -> tuple[float, dict[int, float] | None]:
+# The neighborhood's own profile for a scenario's day type (weekday and school vacation have none of their own).
+_TOWN_DAY_TYPES: dict[ScenarioDayType, DayType] = {
+    ScenarioDayType.WEEKEND: "weekend", ScenarioDayType.PUBLIC_HOLIDAY: "holiday", ScenarioDayType.HOLIDAY_SEASON: "holiday",
+}
+
+
+def _scenario_traffic(
+    scenario: Scenario | None, store: Store | None, scenario_priors: ScenarioPriors | None, *,
+    profile: DayType | None = None,
+) -> tuple[float, dict[int, float] | None]:
+    """The scenario's traffic with the effect sizes of the store's format (or the calibrated override). `profile`:
+    the neighborhood day type the demand is modeled on."""
     if scenario is None:
         return 1.0, None
-    fx = compile_scenario(scenario)
+    if profile is not None and _TOWN_DAY_TYPES.get(scenario.day_type) == profile:
+        # The neighborhood's own weekend or holiday profile already carries that day's traffic (who comes, when):
+        # the scenario's day-type effect on top would count it twice.
+        scenario = scenario.model_copy(update={"day_type": ScenarioDayType.WEEKDAY})
+    fx = compile_scenario(scenario, priors_for(store.type if store is not None else "", scenario_priors))
     return fx.base_traffic, (fx.traffic_by_hour or None)
 
 
-def demand(pid: str, day_type: DayType = "weekday", scenario: Scenario | None = None) -> TownDemand:
-    traffic, hourly = _scenario_traffic(scenario)
-    return estimate_demand(require_town(pid), day_type=day_type, traffic_multiplier=traffic, hourly_multiplier=hourly)
+def _layout_store(pid: str, town: Town) -> Store | None:
+    """The layout the neighborhood panel describes: the project's active layout, else the one our venue maps to
+    (None without a usable one)."""
+    setup_id = read_state(pid).get("activeSetupId")
+    if not isinstance(setup_id, str) or not setup_id:
+        focal = town.get_venue(town.focal_venue_id)
+        setup_id = focal.setup_id if focal is not None else None
+    if not setup_id or not re.fullmatch(RESOURCE_ID_PATTERN, setup_id):
+        return None
+    try:
+        data = read_setup(pid, setup_id).get("store")
+        return Store.model_validate(data) if data else None
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def demand(
+    pid: str, day_type: DayType = "weekday", scenario: Scenario | None = None, *,
+    scenario_priors: ScenarioPriors | None = None,
+) -> TownDemand:
+    """Our store's visitors on a day of `day_type`, in the hours the active layout opens on such a day."""
+    town = require_town(pid)
+    store = _layout_store(pid, town)
+    traffic, hourly = _scenario_traffic(scenario, store, scenario_priors, profile=day_type)
+    town, hours = with_store_hours(town, store, TYPICAL_DAY[day_type])
+    return estimate_demand(town, day_type=day_type, hours=hours, traffic_multiplier=traffic, hourly_multiplier=hourly)
 
 
 def synergy(pid: str, day_type: DayType = "weekday") -> list[SynergyRow]:
-    return synergy_analysis(require_town(pid), day_type=day_type)
+    town = require_town(pid)
+    town, hours = with_store_hours(town, _layout_store(pid, town), TYPICAL_DAY[day_type])
+    return synergy_analysis(town, day_type=day_type, hours=hours)
+
+
+def _day_type(day: Weekday, scenario: Scenario | None) -> DayType:
+    """The neighborhood's day type for a simulated day: the scenario's holiday or weekend, else the weekday's."""
+    kind = scenario.day_type if scenario is not None else ScenarioDayType.WEEKDAY
+    if kind == ScenarioDayType.WEEKEND:
+        return "weekend"
+    return day_type_for(day, holiday=kind in (ScenarioDayType.PUBLIC_HOLIDAY, ScenarioDayType.HOLIDAY_SEASON))
 
 
 def town_visitors(
-    town: Town, pool: list[Persona], *, seed: int, scale: float, scenario: Scenario | None,
+    town: Town, pool: list[Persona], *, seed: int, scale: float, scenario: Scenario | None, store: Store | None,
+    scenario_priors: ScenarioPriors | None = None,
 ) -> tuple[list[Persona], list[TownArrival]]:
-    """Visitors for every simulated weekday of the pool, drawn from the neighborhood demand.
+    """Visitors for every simulated weekday of the pool, drawn from the neighborhood demand in the hours the
+    store's layout opens that day, under the scenario's traffic (with the store format's effect sizes, or the
+    calibrated `scenario_priors`) and day type.
 
     Each visitor is a clone of a pool persona (matching age and hour) whose description gains
     one line about where they came from, so LLM/VLM shoppers know it ("walked 320 m from an
     apartment block; came straight from the café next door").
     """
-    traffic, hourly = _scenario_traffic(scenario)
     visitors: list[Persona] = []
     arrivals: list[TownArrival] = []
     days = sorted({p.day for p in pool}) or [Weekday.MON]
     for day in days:
-        day_demand = estimate_demand(town, day_type=day_type_for(day), traffic_multiplier=traffic, hourly_multiplier=hourly)
-        people, notes = plan_arrivals(pool, day_demand, town, seed=stable_seed(seed, "town", int(day)), scale=scale, day=day)
+        town_day, hours = with_store_hours(town, store, day)
+        profile = _day_type(day, scenario)
+        traffic, hourly = _scenario_traffic(scenario, store, scenario_priors, profile=profile)
+        day_demand = estimate_demand(town_day, day_type=profile, hours=hours,
+                                     traffic_multiplier=traffic, hourly_multiplier=hourly)
+        people, notes = plan_arrivals(pool, day_demand, town_day, seed=stable_seed(seed, "town", int(day)), scale=scale,
+                                      day=day)
         for person, note in zip(people, notes, strict=True):
             context = town_context_text(note, town)
             visitors.append(person.model_copy(update={"description": f"{person.description} {context}".strip()}))

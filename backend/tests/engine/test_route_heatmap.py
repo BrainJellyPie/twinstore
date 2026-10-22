@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from store_emulator.domain.config import SimulationConfig
+from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.optimize import OptimizeObjective
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
@@ -84,3 +84,24 @@ def test_optimizer_candidates_do_not_build_a_route_map(monkeypatch: pytest.Monke
     score, _ = asyncio.run(evaluator.evaluate(store))
     assert score >= 0
     assert asyncio.run(evaluator.evaluate_customers(store, panel))
+
+
+def test_the_dwell_map_holds_every_second_of_every_visit():
+    from store_emulator.application.presets.behavior import (
+        BEHAVIOR_PATTERNS,
+        sample_cue,
+    )
+    from store_emulator.engine.simulation.factory import build_engine
+    from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunner
+
+    store = Store.model_validate(json.loads((SAMPLE / "store.json").read_text()))
+    personas = select_personas([Persona.model_validate(p) for p in json.loads((SAMPLE / "personas.json").read_text())], 120, seed=3)
+    config = SimulationConfig(seed=3, engine_type=EngineType.RULE_BASED)
+    pathfinder = AStarPathFinder(diagonal=config.diagonal_moves)
+    runner = PerCustomerSimulationRunner(config, build_engine(config, pathfinder=pathfinder), pathfinder, sample_cue,
+                                         BEHAVIOR_PATTERNS)
+    aggregated, customers = asyncio.run(runner.run(store, personas, max_concurrent=8, path_heatmap=False))
+    held = sum(map(sum, aggregated.dwell_heatmap))
+    visits = sum(c.duration_sec + c.timeline[-1].duration for c in customers)
+    assert customers and held == pytest.approx(visits)   # a fixed seconds-per-step left ~10% of it off the map
+

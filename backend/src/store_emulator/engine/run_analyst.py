@@ -196,7 +196,7 @@ def comparison_text(metrics: Sequence[tuple[str, float, float, float, float, flo
         if metric == "visit_sec":
             return f"{sign}{v:.0f} s"
         if metric == "path_tiles":
-            return f"{sign}{v:.1f} m"
+            return f"{sign}{v:.1f} tiles"   # steps on the grid (1.25 m each), not metres
         return f"{sign}{v:.2f}"
 
     return "\n".join(

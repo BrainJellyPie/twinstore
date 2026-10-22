@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+### Neighborhood visitors
+- A scenario run with neighborhood visitors could not be compared with its baseline: changing one hour's count
+  renamed every later visitor, so "lunch rush" paired 164 of 533 shoppers. Visitors are now named by their demand
+  row, and every visitor of an unchanged hour keeps their name.
+- Neighborhood traffic used the convenience store's scenario effects for every format (a supermarket's "Holiday
+  season" ×0.80 instead of ×1.16) and never used the neighborhood's holiday profile; weekend and holiday scenarios now
+  use the weekend or holiday profile, without counting the day twice.
+- Visitors come in the hours the layout opens each day: a 24-hour store had none before 7 am, and an 8–20 store's
+  panel counted a quarter of its visitors at closed hours (market share 54.5 % instead of 42.9 %).
+- A visitor has the age of the shopper they were made from (a 40-year-old "walked from school" before).
+- Running with neighborhood visitors on a project without a neighborhood says so instead of running without them;
+  an unknown situation on the Area page is refused; basket synergy reports walking distances like the synergy table.
+
+### Fixes
+- Applying a rival shelf's prices to its pull in the neighborhood compounded on every apply (0.82 → 1.03 → 1.28 →
+  1.61 for the same photo); it now replaces the earlier adjustment.
+- The rival comparison found none of our products in the rival's categories on layouts not made from a template (the
+  sample, model-made, hand-built), so overlap read 100 %; our products now get their category from their names.
+- A shelf audit of a rack side with nothing planned on it scored 100 % compliant; it is refused, naming the sides
+  that have products.
+- A wide shelf photo added as new racks on a north or east wall read right to left from the aisle.
+- A POS export whose product codes match nothing on the shelves scored 0 on every measure and replaced the run's
+  earlier report; it is refused with what to fix.
+- The run analyst called the walking path "metres"; it is grid tiles (1.25 m each).
+- A store larger than 256 tiles a side is refused (a huge size hung the save).
+- A capture cannot be deleted while a Shelf Lab job on it is running (the job wrote its results back under it), and
+  an interview with a shopper who is not in the run is "not found" instead of an empty transcript.
+- The dwell map counts each shopper's own walking pace, diagonal steps, the time at the entrance and wandering; it
+  left about a tenth of the visit time off the map, most of it around the entrance.
+
 ## 0.4.5 — every visitor a day, with a warning before long or costly work
 
 ### Every visitor a day, with a warning before long or costly work
