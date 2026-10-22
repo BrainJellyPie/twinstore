@@ -430,6 +430,18 @@ PACKSHOT_SHEETS = {
         "Car Air Freshener", "Microfiber Cloth", "Engine Oil 1L", "Phone Car Mount",
         "Mint Gum", "Breath Mints", "Keychain", "Fridge Magnet",
     ],
+    "starter-13": [
+        "Beef Bulgogi Rice Bowl", "Kimchi Fried Rice", "Tofu Kimchi Stew", "Steamed Mandu 6pc",
+        "Pepperoni Pizza", "Four Cheese Pizza", "Avocado Maki 6pc", "California Roll 8pc",
+        "Shoyu Ramen", "Miso Ramen", "Chicken Burrito", "Beef Burrito Bowl",
+        "Hummus & Pita Plate", "Palak Paneer Bowl", "Grilled Pork Banh Mi", "Thai Green Curry Bowl",
+    ],
+    "starter-14": [
+        "Sterile Gauze Pads", "Digital Thermometer", "Saline Nasal Spray", "Antiseptic Wipes 20pk",
+        "Reusable Cold Pack", "Soft Knee Support", "Non-Slip Bath Mat", "Large-Grip Cutlery Set",
+        "Oat Body Wash 400ml", "Unscented Body Lotion 250ml", "Shea Hand Cream 50ml", "Lavender Bath Salts 300g",
+        "Fluoride Toothpaste 100ml", "Waxed Dental Floss 50m", "Gentle Daily Shampoo 400ml", "Argan Hair Oil 50ml",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

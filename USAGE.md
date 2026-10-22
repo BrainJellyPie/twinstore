@@ -1078,14 +1078,14 @@ assignments are rejected. Review the products, prices and available images, then
 Automatic selection supports 1–100 empty accessible racks. A failed model call leaves the layout unchanged;
 retry or switch to **Choose categories manually**, which needs no model or spreadsheet.
 
-The bundled catalog now includes 1,016 products in 91 categories. New examples cover plant-based foods,
+The bundled catalog now includes 1,208 products in 107 categories. New examples cover plant-based foods,
 breakfast spreads, home coffee/tea, bath/body care, first-aid tools, supplements, indoor plants, digital
 accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Further assortments cover
 baking ingredients, global sauces, fresh herbs, frozen and takeaway meals, gift confectionery, baby and oral
 care, hair care, travel essentials, sewing, fine art, bicycle accessories, storage, tabletop games and
 refill cleaning. Mediterranean, Korean and Japanese pantry staples, spice blends, deli cheeses, fresh seafood,
 barista tools and party supplies add another 96 products. Kitchen and baking tools, laundry care, aquarium and small-pet supplies, computer peripherals, camera accessories
-and outdoor cookware add another 96 products. One hundred ninety-two generated
+and outdoor cookware add another 96 products. Two hundred twenty-four generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 Automatic selection sees which products have photos and prefers them only when they fit the store and
 requirements equally well. Products without photos remain available.
@@ -1096,6 +1096,8 @@ photos. Wide assortments wrap within labeled shelf levels so each product stays 
 corrupt pictures retain text cards. Shelf-test previews and interview shelf views use the same rendering.
 Previously saved starter products also receive newly bundled photos by their exact catalog SKU when no custom
 photo is set. Names and prices are preserved, and reading the layout does not rewrite its saved data.
+Starter placement previews show these photos too, including current uploads for reused products.
+Saving a child layout preserves the reused products’ original labels, prices and stored photo references.
 Images are resolved from local project assets; external image URLs are not fetched by the vision renderer.
 
 For manual selection:

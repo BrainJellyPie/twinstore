@@ -89,3 +89,12 @@ it("keeps pet food, cooking tools and detergent out of human-food departments", 
   for (let index = 0; index < 16; index++)
     expect(classifyProduct("지역 상품", `/api/catalog-images/starter-12/${index}.webp`).category).toBe(index === 12 || index === 13 ? "candy" : "other");
 });
+
+it("keeps meal photos separate from personal-care packaging after renaming", () => {
+  for (let index = 0; index < 16; index++) {
+    expect(classifyProduct("지역 상품", `/api/catalog-images/starter-13/${index}.webp`).category).toBe("pantry");
+    expect(classifyProduct("Milk Tea", `/api/catalog-images/starter-14/${index}.webp`).category).toBe("other");
+  }
+  expect(classifyProduct("상품", "/api/catalog-images/starter-14/11.webp").kind).toBe("jar");
+  expect(classifyProduct("상품", "/api/catalog-images/starter-14/12.webp").kind).toBe("tube");
+});

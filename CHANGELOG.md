@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add 32 prepared-food, pharmacy and personal-care photos, bringing the collection to 224.
+  Starter placement previews show current uploaded or bundled photos for reused products without
+  rewriting their saved values. Empty product names retain their SKU label in vision grids.
+
 - Translate shelf-product reuse into six languages, including eligibility reasons, section review,
   price formatting, save/retry and accessibility text. Keep selections and request identities across
   language changes, support translated fixture searches, and retain legacy API reason compatibility.

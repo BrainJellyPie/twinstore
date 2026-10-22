@@ -74,12 +74,19 @@ def test_transparency_and_exif_orientation_are_preserved():
     assert rotated is not None and rotated.size == (20, 40)
 
 
-def test_missing_file_and_empty_name_do_not_break_the_grid(tmp_path):
-    item = SlotItem(sku='no-label', name='', price=0, image_url=(tmp_path / 'missing.png').as_uri())
-    assert render_face(rack_with([item]), Face.S).items[0].item.sku == 'no-label'
-    photo = Image.new('RGB', (100, 1), 'red')
-    view = render_face(rack_with([item]), Face.S, image_loader=lambda item: photo)
-    assert view.png
+@pytest.mark.parametrize("has_photo", [False, True])
+def test_missing_file_and_empty_name_keep_a_visible_sku_label(tmp_path, monkeypatch, has_photo):
+    labels = []
+    original = ImageDraw.ImageDraw.text
+    def text(self, xy, text, *args, **kwargs):
+        labels.append(text)
+        return original(self, xy, text, *args, **kwargs)
+    monkeypatch.setattr(ImageDraw.ImageDraw, "text", text)
+    item = SlotItem(sku="no-label", name="", price=0, image_url=(tmp_path / "missing.png").as_uri())
+    photo = Image.new("RGB", (100, 1), "red")
+    view = render_face(rack_with([item]), Face.S, image_loader=(lambda item: photo) if has_photo else None)
+    assert view.png and view.items[0].item.sku == "no-label"
+    assert "no-label" in labels
 
 
 def test_bundled_product_itself_is_large_enough_to_see_in_the_vlm_grid(monkeypatch):
