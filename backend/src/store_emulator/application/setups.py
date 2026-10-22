@@ -117,8 +117,6 @@ def _resolve_slot_images(project_id: str, setup: dict[str, object]) -> None:
         return
     store_dict = cast(dict[str, object], store_obj)
     manifest = image_storage.load_manifest(project_id)
-    if not manifest:
-        return
     racks_obj = store_dict.get("racks")
     if not isinstance(racks_obj, list):
         return

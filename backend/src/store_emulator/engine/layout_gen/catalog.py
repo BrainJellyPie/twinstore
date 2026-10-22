@@ -359,3 +359,12 @@ def catalog_slot_item(item: CatalogItem, currency: str) -> SlotItem:
     name, price = localized(item, currency)
     image = PACKSHOT_URLS.get(item.en)
     return SlotItem(sku=f"g_{hashlib.sha256(identity.encode('utf-8')).hexdigest()[:32]}", name=name, price=price, image_url=image)
+
+
+# Saved layouts keep stable catalog SKUs even when their version had no bundled picture yet.
+CATALOG_IMAGE_URLS: dict[str, str] = {}
+for _entries in CATALOG.values():
+    for _entry in _entries:
+        _slot_item = catalog_slot_item(_entry, "USD")
+        if _slot_item.image_url:
+            CATALOG_IMAGE_URLS[_slot_item.sku] = _slot_item.image_url

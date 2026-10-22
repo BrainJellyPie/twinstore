@@ -82,3 +82,10 @@ it("preserves grocery departments and non-food merchandise after localized renam
   for (let index = 0; index < 16; index++)
     expect(classifyProduct("Coffee", `/api/catalog-images/starter-10/${index}.webp`).category).toBe("other");
 });
+
+it("keeps pet food, cooking tools and detergent out of human-food departments", () => {
+  for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Coffee", `/api/catalog-images/starter-11/${index}.webp`).category).toBe("other");
+  for (let index = 0; index < 16; index++)
+    expect(classifyProduct("지역 상품", `/api/catalog-images/starter-12/${index}.webp`).category).toBe(index === 12 || index === 13 ? "candy" : "other");
+});

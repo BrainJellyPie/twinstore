@@ -9,6 +9,7 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageOps
 
 from store_emulator.domain.rack import SlotItem
+from store_emulator.engine.layout_gen.catalog import CATALOG_IMAGE_URLS
 from store_emulator.engine.perception.catalog_images import packshot
 
 type ProductImageLoader = Callable[[SlotItem], Image.Image | None]
@@ -63,7 +64,7 @@ def bundled_product_image(url: str) -> Image.Image | None:
 
 
 def default_product_image(item: SlotItem) -> Image.Image | None:
-    url = item.image_url
+    url = item.image_url or CATALOG_IMAGE_URLS.get(item.sku)
     if not url:
         return None
     if url.startswith("file://"):
