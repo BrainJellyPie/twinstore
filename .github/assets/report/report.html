@@ -122,7 +122,7 @@
 <p>TwinStore runs as soon as you unpack the download and double-click the icon. Parastore needed developer tools and typed commands, which kept it out of reach without IT support.</p>
 <ul>
   <li>One icon of the same design starts it on Windows, macOS and Linux</li>
-  <li>On first launch it fetches everything it needs by itself and shows each step on a start screen</li>
+  <li>On first launch it fetches only what it needs by itself and shows each step on a start screen; when everything is ready, a large “Open TwinStore” button appears</li>
   <li>From the second launch on, it opens in seconds</li>
   <li>The built-in sample store works right away, with no AI service account required</li>
 </ul>
@@ -198,7 +198,9 @@
   <li>Recognized products are corrected right in the list, with empty slots and facing counts shown</li>
   <li>Product photos also appear on the packages in the 3D store, so the store on screen looks like the real one</li>
   <li>Several shelf photos can be uploaded at once and read in turn; up to 20 reviewed photos are combined into one store layout</li>
+  <li>The list of photos waiting to be read can be saved in the browser and picked up again after the window is closed</li>
   <li>Names, prices and promotion text of placed products are searched and changed several at a time, and the result is saved as a new layout while the original stays as it was</li>
+  <li>A shelf whose products are finished can be copied to empty shelves of the same kind in one step and saved as a new layout</li>
 </ul>
 <figure><img src="figs/f10_rack.jpg" alt=""><figcaption>Figure 11. Shelf data: a table of products (left) and shelf data read from a shelf photo (right)</figcaption></figure>
 
@@ -401,15 +403,18 @@
 <h3>12. An AI assistant you can talk to</h3>
 <p>TwinStore turns a sentence about what you want to do into the right screen and a first draft. Nothing runs on its own: drafts are checked and edited before they run.</p>
 <ul>
-  <li><b>Ask in a sentence</b>: type "Would a 1+1 sign on cola sell more than a 20% cut?" into the command window, and TwinStore opens the right place — an A/B test, a conjoint study, a staff script, the neighborhood, or a question about the last run — and drafts from the same words</li>
+  <li><b>Ask in a sentence</b>: inside a store, the command window shows what it can take; type "Would a 1+1 sign on cola sell more than a 20% cut?", and TwinStore opens the right place — an A/B test, a conjoint study, a staff script, a layout change, an optimization goal, a search for shoppers, the neighborhood, or a question about the last run — and drafts from the same words</li>
   <li><b>Draft the test</b>: for an A/B test or a conjoint study, write the question it should answer and get the variants, attributes and price levels, and the products to track; the last run's sales are used to find the real best seller</li>
   <li><b>Describe instead of filling in</b>: "rainy Friday evening, the game next door at 7, 1+1 on Pepsi, out of ice cream" becomes the weather, weekday, event, promotion and stock-out of the day; "a busy campus street, two rival stores nearby, a café next door" sets up the neighborhood</li>
-  <li><b>Help with writing</b>: the new-store form writes the customer profile — who comes, when and why — from the store details, and a staff-script test writes script B from script A</li>
-  <li><b>Ask about a run</b>: in the results, ask "which shelf converts worst, and why might that be?" and get an answer built only from that run's numbers, with the figures it used; when two runs are compared, it explains what changed, on which shelves, products, hours or groups, and what lies within noise</li>
+  <li><b>Help with writing</b>: describe the store in one sentence on the new-store page and the form fills itself in, to be checked field by field; the form also writes the customer profile — who comes, when and why — and a staff-script test writes script B from script A</li>
+  <li><b>Change the store in words</b>: in the Store tab, write “put the cola at eye level, 10 % off all ice cream and a SALE sign on the chips” and see the edits listed; once checked, they are saved as a new layout and the current one stays as it was. When a new layout is generated from a format, a design brief such as “wide aisles for strollers, checkout by the door” is read into the aisle width, checkout position and other settings</li>
+  <li><b>Goals and shoppers in words</b>: in the layout optimizer, “more revenue per visitor, keep the fridges where they are, at most six changes” sets the goal, what may move and the limits; in the shopper list, “women in their 20s who stopped at ice cream but bought nothing” finds those shoppers, ready for a group interview</li>
+  <li><b>Ask about a run</b>: in the results, pick one of the questions suggested from the run's own numbers or ask your own, such as "which shelf converts worst, and why might that be?", or pick a shelf on the floor and ask about it; the answer is built only from that run's numbers and shows the figures it used; when two runs are compared, it explains what changed, on which shelves, products, hours or groups, and what lies within noise</li>
   <li><b>Read the answers</b>: on concept, shelf, conjoint and staff-script results, respondents' reasons are grouped into themes with a short commentary on the numbers, marked as AI-written in the report</li>
   <li><b>Questions for interviews</b>: follow-up questions fitted to a shopper's trip and the conversation so far, and for group interviews, questions and the group to ask drawn from the run's numbers</li>
 </ul>
 <figure><img src="figs/f35_assist.jpg" alt=""><figcaption>Figure 35. A request typed into the command window (left) and "Ask about this run" in the results (right)</figcaption></figure>
+<figure><img src="figs/f36_words.jpg" alt=""><figcaption>Figure 36. Working in words across TwinStore: describing a new store, changing a layout, setting an optimization goal and finding shoppers</figcaption></figure>
 
 <h2 class="section">V. Use cases</h2>
 <p class="lead">With TwinStore, the people who run stores and the people who sell products answer their own questions with the same tool.</p>
