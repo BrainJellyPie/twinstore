@@ -27,7 +27,9 @@ from .routes import assist, simulate, projects, setups, util, images, providers,
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 # Silence noisy third-party loggers (raw request/response, completion calls, etc.).
-for _lib in ("LiteLLM", "litellm", "instructor", "httpx", "httpcore"):
+# The OpenAI SDK (used for local and OpenAI-compatible servers) logs every request body at DEBUG, images included.
+for _lib in ("LiteLLM", "litellm", "instructor", "httpx", "httpcore", "openai", "anthropic", "PIL", "urllib3",
+             "multipart", "python_multipart", "aiohttp"):
     logging.getLogger(_lib).setLevel(logging.WARNING)
 
 

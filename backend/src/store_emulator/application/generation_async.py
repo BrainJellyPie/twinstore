@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Any, cast
 
 from store_emulator.application.async_executor import executor
-from store_emulator.application.errors import AppError
+from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.storage.generations import (
     find_active_generation, init_generation, write_status,
 )
@@ -123,7 +123,19 @@ def _run_persona_background(
         logger.info(f"[persona generation done] {project_id}/{setup_id} ({len(personas)} personas, gen={gen_id})")
     except Exception as exc:
         logger.exception("[persona generation failed]")
-        write_status(project_id, gen_id, "failed", error=str(exc))
+        write_status(project_id, gen_id, "failed", error=_failure_text(exc))
+
+
+def _failure_text(exc: Exception) -> str:
+    """What the preparing screen says: our own messages as they are; a provider's error in words a user can act on
+    (the raw one, retries and all, is in the server log)."""
+    if isinstance(exc, (ValueError, AppError)):
+        return str(exc)
+    if isinstance(exc, gen_persona.TooManyBatchesFailed):
+        tally = exc.tally
+        return model_failure(tally.first_error or exc,
+                             f"Customer generation failed ({tally.failed} of {tally.requested} requests to the model)")
+    return model_failure(exc, "Customer generation failed")
 
 
 async def _run_async_pipeline(
@@ -262,7 +274,7 @@ async def _generate_personas_impl(
     logger.info(f"[persona generation] {len(all_personas)} personas done | {usage.total_tokens} tokens")
     if not all_personas and any(s.is_open for s in schedules):
         # Every batch failed or came back empty: say so instead of finishing with a store nobody visits.
-        raise RuntimeError(f"No customers were generated: every request to {getattr(llm, 'model', 'the model')} failed "
+        raise ValueError(f"No customers were generated: every request to {getattr(llm, 'model', 'the model')} failed "
                            "or came back empty (see the server log). Try again, or pick another model in Settings → "
                            "Model providers.")
     return all_personas

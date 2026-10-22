@@ -39,7 +39,7 @@ from store_emulator.application.storage import images as image_storage
 from store_emulator.engine.analysis.compare import compare_runs, customer_metrics
 from store_emulator.engine.analysis.fidelity import fidelity_report
 
-from store_emulator.application.errors import AppError
+from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.currencies import simulation_currency
 from store_emulator.application.shelf_views import views_dir
 
@@ -268,6 +268,10 @@ def run_simulation_background(
                                                scenario=config.scenario)
         personas = subsample_personas(personas, options.max_customers, config.seed)
         store, personas = prepare_inputs(config, store, personas, traffic_applied=town is not None)
+        if not personas:
+            # Finishing "completed" with nobody would lock the layout and the customers for good.
+            raise ValueError("No shoppers come on this scenario's days and opening hours, so there is nothing to "
+                             "simulate. Pick another scenario, or change the layout's opening hours.")
         write_status(
             pid, run_id, "running", total_customers=len(personas), completed_customers=0,
             failed_customers=0, engine_type=config.engine_type.value, seed=config.seed,
@@ -289,6 +293,12 @@ def run_simulation_background(
                            address=address, customer_profile=customer_profile,
                            on_progress=on_progress),
         )
+        failed = aggregated.diagnostics.failed_customers
+        if not customers and failed:
+            # Every shopper failed (a key turned down, a model that is not there): a "completed" run of nobody would
+            # lock the layout and the customers. Say what went wrong instead.
+            raise RuntimeError(model_failure(RuntimeError(failed[0].reason),
+                                             f"All {len(failed)} shoppers failed, so nothing was simulated"))
         run_dir = save_run(
             DATA_DIR, pid, run_id,
             aggregated, customers, store, personas, config,

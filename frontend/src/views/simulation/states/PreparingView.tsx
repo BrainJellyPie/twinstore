@@ -48,8 +48,10 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
   }, [statusUnavailable, loadingStatus, retrying]);
   const isGenerationFailed = phase === "failed" && !statusUnavailable && !loadingStatus;
   const isLayoutFailed = isGenerationFailed && (kind === "layout" || (kind === null && contextKind === "layout"));
-  useEffect(() => { if (!isLayoutFailed) setConfirmOpen(false); }, [isLayoutFailed]);
   const isPersonaFailed = isGenerationFailed && !isLayoutFailed;
+  // A store whose layout or customers keep failing can always be deleted and started over.
+  const canDelete = isLayoutFailed || isPersonaFailed;
+  useEffect(() => { if (!canDelete) setConfirmOpen(false); }, [canDelete]);
   const canGenerate = phase === "idle" && contextKind === "persona" && !loadingStatus;
   const failed = isLayoutFailed || isPersonaFailed || (statusUnavailable && !loadingStatus);
   const heading = loadingStatus ? t("checkingGenerationStatus") : statusUnavailable ? t("generationStatusUnavailable")
@@ -107,11 +109,11 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
             {retrying ? t("tryingAgain") : canGenerate ? t("generate") : t("tryAgain")}
           </Button>}
           <Button ref={backButton} variant="outline" className={actionClass} onClick={onBackToStores}>{t("backToStores")}</Button>
-          {!deleting && isLayoutFailed && <Button ref={deleteButton} variant="destructive" className={actionClass}
+          {!deleting && canDelete && <Button ref={deleteButton} variant="destructive" className={actionClass}
             onClick={() => { setDeleteError(null); setConfirmOpen(true); }}>{t("deleteStoreAndStartOver")}</Button>}
         </div>
       </div>
-      {isLayoutFailed && <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      {canDelete && <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="max-h-[92dvh] grid-cols-1 overflow-y-auto [overflow-wrap:anywhere] data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-lg"
           onCloseAutoFocus={(event) => {
             event.preventDefault();

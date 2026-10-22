@@ -128,3 +128,27 @@ def test_hardware_probe_output_in_another_code_page_does_not_end_detection():
 
     out = _run([sys.executable, "-c", "import sys; sys.stdout.buffer.write(b'NVIDIA \\xc7\\xd1\\xb1\\xdb GPU')"])
     assert out.startswith("NVIDIA ") and out.endswith(" GPU")
+
+
+def test_product_photos_saved_on_windows_are_found_elsewhere(tmp_path, monkeypatch):
+    """The manifest keeps the path as the saving computer wrote it; only its file name is used to find the photo."""
+    import json
+
+    from store_emulator.application.storage import images
+    from store_emulator.application.storage.setups import metadata_path
+
+    monkeypatch.chdir(tmp_path)
+    pid = "proj_photos"
+    metadata_path(pid).parent.mkdir(parents=True)
+    metadata_path(pid).write_text("{}", encoding="utf-8")
+    pdir = images._project_dir(pid)  # pyright: ignore[reportPrivateUsage]
+    pdir.mkdir(parents=True)
+    (pdir / "abc123.png").write_bytes(b"png")
+    manifest = {"A0001": {"path": ".data\\images\\proj_photos\\abc123.png", "mime": "image/png", "ext": "png", "version": "1"}}
+    images._save_manifest(pid, manifest)  # pyright: ignore[reportPrivateUsage]
+    found = images.resolve_image(pid, "A0001")
+    assert found is not None and found[0].name == "abc123.png" and found[1] == "image/png"
+    manifest["A0001"]["path"] = "..\\..\\etc\\passwd"
+    images._save_manifest(pid, manifest)  # pyright: ignore[reportPrivateUsage]
+    assert images.resolve_image(pid, "A0001") is None
+    assert json.loads(json.dumps(manifest))  # stays plain JSON

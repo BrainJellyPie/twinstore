@@ -310,9 +310,12 @@ def list_providers() -> list[ProviderStatus]:
 def available_models() -> list[dict[str, object]]:
     """Model references usable right now (provider ready), for model pickers."""
     out: list[dict[str, object]] = []
+    settings = load_settings()
     for status in list_providers():
         if not status.ready:
             continue
+        if status.preset.kind == ProviderKind.LLAMACPP and not _local_text_ready(settings):
+            continue   # its settings outlive the server (a stopped local model, a port from last time)
         ids = [m.id for m in status.preset.models]
         if status.default_model and status.default_model not in ids:
             ids.insert(0, status.default_model)
@@ -338,7 +341,7 @@ def resolve_model(
     base = base or LLMConfig()
     parsed = ModelRef.parse(ref)
     if parsed is None:
-        resolved = base.model_copy(update={"model": ref})
+        resolved = _on_local_server(base.model_copy(update={"model": ref}))
         kind = _PLAIN_PREFIX.get(ref.partition("/")[0])
         if kind is None or base.api_base is not None or base.api_key is not None:
             return resolved
@@ -366,6 +369,21 @@ def resolve_model(
         "api_key": SecretStr(key) if key else None,
         "max_parallel": parallel or base.max_parallel,
     })
+
+
+def _on_local_server(config: LLMConfig) -> LLMConfig:
+    """A model at the local model's usual address (the default vision model, `openai/local-vlm` at port 8081) goes
+    where TwinStore's own server runs now — another port when 8081 was taken — with its request limit."""
+    usual = (PRESETS[ProviderKind.LLAMACPP].default_api_base or "").rstrip("/")
+    if not config.api_base or config.api_base.rstrip("/") != usual:
+        return config
+    from .local_vlm import manager  # late import: local_vlm imports this module
+
+    status = manager().status()
+    if status.state != "ready" or not status.api_base:
+        return config
+    return config.model_copy(update={"api_base": status.api_base,
+                                     "max_parallel": config.max_parallel or status.slots or None})
 
 
 def _local_slots(api_base: str | None) -> int | None:
@@ -414,7 +432,8 @@ def _local_text_ready(settings: dict[ProviderKind, ProviderSettings]) -> bool:
     status = provider_status(ProviderKind.LLAMACPP, settings)
     if not status.ready:
         return False
-    from .local_vlm import manager, server_answers  # late import: local_vlm imports this module
+    # late import: local_vlm imports this module
+    from .local_vlm import manager, server_answers
 
     state = manager().status().state
     if state == "ready":
@@ -692,20 +711,26 @@ def _ensure_plain_key(ref: str, settings: dict[ProviderKind, ProviderSettings]) 
 
 
 def _ensure_local_ready(api_base: str) -> None:
-    """A run on the local model while TwinStore is still fetching or starting it would only fail."""
-    from .local_vlm import manager  # late import: local_vlm imports this module
+    """A run on a server on this computer that is not up would only fail — and vision shoppers whose every call fails
+    fall back to rule-based decisions, so the run would even look fine."""
+    # late import: local_vlm imports this module
+    from .local_vlm import manager, server_answers
 
+    requested = urlsplit(api_base)
+    loopback = {"127.0.0.1", "localhost", "::1"}
+    if requested.hostname not in loopback:
+        return
     status = manager().status()
     if status.state in ("preparing", "downloading", "starting"):
-        requested = urlsplit(api_base)
         managed = urlsplit(status.api_base or PRESETS[ProviderKind.LLAMACPP].default_api_base or "")
-        loopback = {"127.0.0.1", "localhost", "::1"}
-        if (requested.hostname not in loopback or managed.hostname not in loopback
-                or requested.scheme != managed.scheme or requested.port != managed.port):
-            return
-        done = f" ({status.progress:.0%})" if status.progress is not None else ""
-        raise ValueError(f"The local vision model is not ready yet: {status.message}{done}. "
-                         "Try again in a moment, or add an API key in Settings → Model providers.")
+        if (managed.hostname in loopback and requested.scheme == managed.scheme
+                and requested.port == managed.port):
+            done = f" ({status.progress:.0%})" if status.progress is not None else ""
+            raise ValueError(f"The local vision model is not ready yet: {status.message}{done}. "
+                             "Try again in a moment, or add an API key in Settings → Model providers.")
+    if not server_answers(api_base):
+        raise ValueError(f"No model server answers at {api_base}: the local model is not running. Start it in "
+                         "Settings → Model providers, or pick a cloud model for this run.")
 
 
 class _Pong(BaseModel):

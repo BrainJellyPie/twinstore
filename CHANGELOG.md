@@ -1,5 +1,53 @@
 # Changelog
 
+## Unreleased
+
+### Runs and customers that fail now say so
+- A run in which every shopper failed (a key turned down, a model that is not there), or in which no shopper comes on
+  the scenario's days and opening hours, finished "completed" and locked the layout and the store's customers for
+  good. It now fails with a sentence saying why, and the layout stays editable.
+- Customer generation fails with a plain reason when more than half of its requests to the model fail, instead of
+  finishing with a fraction of the customers; all days now share one limit of requests at once (seven days of ten
+  each were enough to hit rate limits). Provider errors read as advice ("the provider is limiting requests right
+  now…") instead of a dump of retries.
+- A failed run stays visible on its own layout after leaving the page or reloading (it was kept only in the tab that
+  watched it, and showed on every layout); the whole message is shown, not just its first line.
+- One failed progress poll during a run no longer replaces the page with an error screen: the last progress stays,
+  with "Reconnecting…", and polling continues.
+- A store whose customer generation keeps failing can be deleted from its preparing screen.
+- "Try again" while another tab is already generating customers follows that job instead of failing.
+- Errors with a code and a message from the server show the message instead of "409 Conflict".
+
+### The local model
+- The default vision model (`openai/local-vlm` at port 8081) now goes wherever TwinStore's own model server runs —
+  another port when 8081 was taken — and waits for its free slots instead of timing out in its queue; shelf capture
+  uses the same address.
+- A run on a model server on this computer that does not answer is refused before it starts ("start the local model
+  in Settings…"): vision shoppers whose every call failed fell back to rule-based decisions and the run looked fine.
+  A stopped local model is no longer offered in model pickers.
+- An NVIDIA card whose driver is older than every llama.cpp CUDA build got the CPU build with a GPU-sized model; it
+  now gets the CPU plan. A build whose download stopped half-way (or lost a DLL to an antivirus) is fetched again
+  instead of being reused forever, and TwinStore's own build is preferred to an older `llama-server` on the PATH.
+- The local model's download or start can be stopped from Settings while it runs; the run dialog notices a new key
+  or a started local model without waiting five minutes.
+- An interrupted model download (a dropped connection, a sleeping laptop, a restart) continues where it stopped
+  instead of starting again from zero.
+
+### Windows, macOS and company networks
+- Behind a company proxy or HTTPS inspection: the first start trusts the system's certificates (uv was given its
+  own), the proxy set in Windows' Internet Settings is used for the downloads, and requests to the local model no
+  longer go to the proxy (on Windows and macOS every call to 127.0.0.1 did, so the local model never answered).
+- A system-wide `PYTHONHOME` or `PYTHONPATH` (left by GIS software or old installers) no longer breaks the start.
+- An old `uv` on the PATH (from `pip install uv`) is not used; the launcher's own is.
+- A second launch while the first is still starting opens the running app instead of starting another one on the
+  same data.
+- On macOS and Linux the local model server stops when the app's server stops unexpectedly (it kept gigabytes of
+  memory, and "Try again" reused it).
+- One damaged file (a power cut mid-save) no longer hides every store: that store is skipped and logged, and saves
+  reach the disk before they replace the old file.
+- Product photos are found after the data folder moves to another computer or OS.
+- The log no longer records every request to the model, images included (it grew by hundreds of MB in a run).
+
 ## 0.4.2 — the local model when no key works, and a Quit button
 
 ### Downloads

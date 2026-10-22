@@ -36,7 +36,7 @@ from typing import IO, Literal, cast
 
 from pydantic import BaseModel
 
-from store_emulator.engine.files import replace_file
+from store_emulator.engine.files import remove_tree, replace_file
 
 from .hardware import (
     MODEL_BY_KEY,
@@ -158,6 +158,15 @@ class _StartCancelled(Exception):
     """The user stopped this startup before the model was ready."""
 
 
+class _NoGpuBuild(Exception):
+    """The newest llama.cpp releases have no build for this GPU (or its driver): the CPU plan applies."""
+
+
+# Written into bin/<backend> once every archive of a build is unpacked; a build without it (an interrupted download, a
+# full disk, a DLL removed by antivirus) is fetched again rather than reused forever.
+_COMPLETE = ".complete"
+
+
 class LocalVLMManager:
     def __init__(self, home: Path | None = None, *, opener: Callable[[urllib.request.Request], IO[bytes]] | None = None,
                  hardware: Callable[[], HardwareProfile] = detect_hardware) -> None:
@@ -250,12 +259,21 @@ class LocalVLMManager:
                 self._ready(f"http://127.0.0.1:{DEFAULT_PORT}/v1", managed=False, runtime="already running")
                 return
             self._check_cancelled()
-            server = self._runtime(hw, plan)
+            try:
+                server = self._runtime(hw, plan)
+            except _NoGpuBuild:
+                # A GPU-sized model on a CPU build would load (so nothing falls back) and crawl.
+                logger.warning(f"[local_vlm] no llama.cpp {plan.backend} build for this computer; using the CPU plan")
+                plan = downgrade(plan, hw)
+                self._set(plan=plan)
+                server = self._runtime(hw, plan)
             self._check_cancelled()
             files = [self._download_model(plan.model.repo, f) for f in (plan.model.file, plan.model.mmproj)]
             self._check_cancelled()
             try:
                 self._serve(server, files[0], files[1], plan)
+            except _NoGpuBuild:
+                raise
             except RuntimeError as e:
                 self._check_cancelled()
                 if plan.backend == "cpu":
@@ -290,18 +308,24 @@ class LocalVLMManager:
             self._set(runtime=own)
             return Path(own)
         target = self.home / "bin" / plan.backend
-        found = _find_server(target) if target.exists() else None
-        if found is None and shutil.which("llama-server"):   # installed by the user (brew, winget, a build)
-            found = Path(str(shutil.which("llama-server")))
+        found = _find_server(target) if (target / _COMPLETE).is_file() else None
         if found is not None:
             self._set(runtime=str(found))
             return found
+        if target.exists():
+            remove_tree(target)        # a build left half-installed
         self._set(state="downloading", message=f"Getting llama.cpp for {plan.backend.upper()}")
         try:
             with self._open(urllib.request.Request(RELEASES_URL, headers={"Accept": "application/vnd.github+json",
                                                                           "User-Agent": "TwinStore"})) as r:
                 listed: object = json.loads(r.read().decode())
         except OSError as e:
+            # Offline: a llama-server the user installed (brew, winget, a build) is better than none. It comes after
+            # TwinStore's own build, since an old one may not take the options TwinStore passes.
+            installed = shutil.which("llama-server")
+            if installed:
+                self._set(runtime=installed)
+                return Path(installed)
             raise RuntimeError(
                 f"could not reach GitHub to download llama.cpp ({e}). Install llama.cpp (e.g. `brew install llama.cpp`, "
                 "`winget install llama.cpp`) so that `llama-server` is on the PATH, or set TWINSTORE_LLAMA_SERVER "
@@ -316,19 +340,25 @@ class LocalVLMManager:
                 "(e.g. `winget install llama.cpp`, `brew install llama.cpp`) so that `llama-server` is on the PATH, or "
                 "set TWINSTORE_LLAMA_SERVER to its path, then start the local model again")
         tag, names, assets = chosen
+        if plan.backend in ("cuda", "vulkan") and f"-{plan.backend}-" not in names[0]:
+            raise _NoGpuBuild
         target.mkdir(parents=True, exist_ok=True)
         for name in names:
             archive = self._download(assets[name], target / name, label=f"llama.cpp {tag}")
             self._check_cancelled()
             _safe_extract(archive, target)
-            archive.unlink(missing_ok=True)
+            try:
+                archive.unlink(missing_ok=True)
+            except OSError:            # an antivirus still reading it; it goes with the next clean-up
+                logger.info(f"[local_vlm] could not remove {archive.name} yet")
         found = _find_server(target)
         if found is None:
-            raise RuntimeError("llama-server not found in the downloaded build")
+            raise RuntimeError("llama-server not found in the downloaded build (an antivirus may have removed it)")
         if os.name != "nt":
             for exe in found.parent.iterdir():
                 if exe.is_file() and not exe.suffix:
                     exe.chmod(exe.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        (target / _COMPLETE).write_text(f"{tag} {' '.join(names)}\n", encoding="utf-8")
         self._set(runtime=f"{tag} {names[0]}")
         return found
 
@@ -340,30 +370,43 @@ class LocalVLMManager:
         return self._download(HF_URL.format(repo=repo, file=file), path, label=file)
 
     def _download(self, url: str, path: Path, *, label: str) -> Path:
+        """Download to `<path>.part`, then move it into place. A `.part` left by a dropped connection, a sleeping laptop
+        or a restart is continued where it stopped (HTTP range request) rather than fetched again from zero."""
         self._check_cancelled()
         path.parent.mkdir(parents=True, exist_ok=True)
         part = path.with_name(path.name + ".part")
-        self._set(state="downloading", message=f"Downloading {label}", progress=0.0, downloaded_mb=0.0, total_mb=0.0)
+        have = part.stat().st_size if part.is_file() else 0
+        self._set(state="downloading", message=f"Downloading {label}", progress=0.0, downloaded_mb=round(have / 1e6, 1),
+                  total_mb=0.0)
+        headers = {"User-Agent": "TwinStore"} | ({"Range": f"bytes={have}-"} if have else {})
+        keep_part = True
         try:
-            with self._open(urllib.request.Request(url, headers={"User-Agent": "TwinStore"})) as r, part.open("wb") as out:
+            with self._open(urllib.request.Request(url, headers=headers)) as r:
+                resumed = have > 0 and getattr(r, "status", 200) == 206
+                done = have if resumed else 0
                 length = getattr(r, "headers", {}).get("Content-Length")
-                total = int(length) if length is not None else None
-                done = 0
+                total = done + int(length) if length is not None else None
                 last = 0.0
-                while chunk := r.read(1 << 20):
-                    self._check_cancelled()
-                    out.write(chunk)
-                    done += len(chunk)
-                    if time.monotonic() - last > 0.5:
-                        last = time.monotonic()
-                        self._set(progress=min(done / total, 1.0) if total else None, downloaded_mb=round(done / 1e6, 1),
-                                  total_mb=round(total / 1e6, 1) if total else 0.0)
+                with part.open("ab" if resumed else "wb") as out:
+                    while chunk := r.read(1 << 20):
+                        self._check_cancelled()
+                        out.write(chunk)
+                        done += len(chunk)
+                        if time.monotonic() - last > 0.5:
+                            last = time.monotonic()
+                            self._set(progress=min(done / total, 1.0) if total else None,
+                                      downloaded_mb=round(done / 1e6, 1), total_mb=round(total / 1e6, 1) if total else 0.0)
             self._check_cancelled()
             if done == 0 or (total is not None and done != total):
+                keep_part = total is not None and done < total     # a short read can go on next time
                 raise RuntimeError(f"Download of {label} is incomplete: received {done} bytes, expected {total if total is not None else 'a nonempty file'}")
             replace_file(part, path)
+        except _StartCancelled:
+            keep_part = False                                         # the user stopped it: start clean next time
+            raise
         finally:
-            part.unlink(missing_ok=True)
+            if not keep_part or path.is_file():
+                part.unlink(missing_ok=True)
         self._set(progress=1.0, downloaded_mb=round(done / 1e6, 1))
         return path
 

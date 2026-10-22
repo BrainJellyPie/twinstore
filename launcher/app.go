@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"cmp"
 	"errors"
 	"fmt"
 	"hash/crc32"
@@ -14,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -104,20 +106,28 @@ func (a *app) start() {
 	}
 	a.status.reset()
 	a.status.done("files", a.root)
-	uv := findUV(a.home)
-	if uv == "" {
+	uv, version := findUV(a.home)
+	if !uvAtLeast(version, minUV) {
+		if uv != "" {
+			a.log.Printf("%s is too old (%s); fetching a current uv", uv, cmp.Or(version, "no version"))
+		}
 		a.status.activate("uv", "Downloading uv — one time, about 20 MB")
-		var err error
-		if uv, err = installUV(a.home, a.log.Printf); err != nil {
+		fetched, err := installUV(a.home, a.log.Printf)
+		switch {
+		case err == nil:
+			uv, version = fetched, uvVersion(fetched)
+		case version != "": // offline: the older uv may still do
+			a.log.Printf("uv: %v; trying %s", err, uv)
+		default:
 			a.log.Printf("uv: %v", err)
 			a.status.fail("uv", "Could not fetch uv: "+err.Error())
 			a.smokeFail()
 			return
 		}
 	}
-	a.status.done("uv", uvVersion(uv))
+	a.status.done("uv", version)
 	a.log.Printf("Using %s", uv)
-	if err := a.launch(uv); err != nil {
+	if err := a.launch(uv, version); err != nil {
 		a.log.Printf("start failed: %v", err)
 		a.status.fail("python", "Could not start the app: "+err.Error())
 		a.smokeFail()
@@ -143,7 +153,40 @@ func freePort() (int, error) {
 	return ln.Addr().(*net.TCPAddr).Port, nil
 }
 
-func (a *app) launch(uv string) error {
+// pythonOverrides are settings another Python leaves system-wide (ArcGIS, QGIS, old installers on Windows): they
+// point the server's Python at that installation's standard library or packages, or run its startup script first.
+var pythonOverrides = []string{"PYTHONHOME", "PYTHONPATH", "PYTHONSTARTUP"}
+
+// serverEnv is the environment uv and the server run with: environ without pythonOverrides, plus extra.
+func serverEnv(goos string, environ []string, uvVer string, extra ...string) []string {
+	env := make([]string, 0, len(environ)+len(extra)+1)
+	for _, kv := range environ {
+		if !slices.ContainsFunc(pythonOverrides, func(name string) bool { return setsEnv(goos, kv, name) }) {
+			env = append(env, kv)
+		}
+	}
+	// uv checks certificates against its own list, so behind a network that inspects HTTPS it fails with
+	// "invalid peer certificate: UnknownIssuer" where Go, which trusts the system's list, fetched uv fine. uv 0.11
+	// renamed UV_NATIVE_TLS and warns on every run when it is set; a choice the user made either way stands.
+	tls := "UV_SYSTEM_CERTS"
+	if uvRelease.MatchString(uvVer) && !uvAtLeast(uvVer, [2]int{0, 11}) {
+		tls = "UV_NATIVE_TLS"
+	}
+	if !slices.ContainsFunc(env, func(kv string) bool {
+		return setsEnv(goos, kv, "UV_SYSTEM_CERTS") || setsEnv(goos, kv, "UV_NATIVE_TLS")
+	}) {
+		env = append(env, tls+"=1")
+	}
+	return append(env, extra...)
+}
+
+// setsEnv reports whether kv ("NAME=value") sets the variable name; Windows names ignore case.
+func setsEnv(goos, kv, name string) bool {
+	k, _, _ := strings.Cut(kv, "=")
+	return k == name || goos == "windows" && strings.EqualFold(k, name)
+}
+
+func (a *app) launch(uv, version string) error {
 	port, err := freePort()
 	if err != nil {
 		return err
@@ -165,8 +208,8 @@ func (a *app) launch(uv string) error {
 	// UV_COMPILE_BYTECODE: compile the packages in parallel while they install, shown as its own step, instead of one
 	// file at a time during the server's first import (minutes on a computer that scans every new file).
 	// PYTHONUTF8: files are read and written as UTF-8 whatever the Windows code page (cp949, cp1252, …).
-	cmd.Env = append(os.Environ(), "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONUTF8=1", "UV_NO_PROGRESS=1",
-		"NO_COLOR=1", "UV_COMPILE_BYTECODE=1")
+	cmd.Env = serverEnv(runtime.GOOS, os.Environ(), version, "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONUTF8=1",
+		"UV_NO_PROGRESS=1", "NO_COLOR=1", "UV_COMPILE_BYTECODE=1")
 	if data := a.dataHome(); data != "" {
 		cmd.Env = append(cmd.Env, "PARASTORE_DATA_HOME="+data, "UV_PROJECT_ENVIRONMENT="+filepath.Join(data, "venv"), "PYTHONDONTWRITEBYTECODE=1")
 		a.log.Printf("Data folder: %s", filepath.Join(data, ".data"))
@@ -194,6 +237,9 @@ func (a *app) launch(uv string) error {
 	go a.readOutput(pr, exited)
 	go func() {
 		err := cmd.Wait()
+		// What the server started in its process group ends with it: left running, llama-server keeps gigabytes of
+		// memory, Try again takes it for a model server started outside the app, and Quit never stops it.
+		killGroup(cmd)
 		pw.Close()
 		a.mu.Lock()
 		defer a.mu.Unlock()

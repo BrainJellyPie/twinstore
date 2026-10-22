@@ -30,8 +30,6 @@ interface SimulationState {
   selectedSetupId: string | null;
   // Run shown in playback. null → the resolver picks the latest finalized run.
   viewRunId: string | null;
-  // Message of the last run that failed, shown in the ready view instead of crashing.
-  lastRunError: string | null;
   // ISO currency of the run being viewed (prices are integers in its minor unit).
   currency: string;
 
@@ -50,7 +48,6 @@ interface SimulationState {
   setActiveTab: (tab: DashboardTab) => void;
   setSelectedSetupId: (id: string | null) => void;
   setViewRunId: (id: string | null) => void;
-  setLastRunError: (msg: string | null) => void;
   setCurrency: (code: string) => void;
   setHoveredRackId: (id: string | null) => void;
   setSelectedRackId: (id: string | null) => void;
@@ -67,7 +64,6 @@ const INITIAL = {
   activeTab: "dashboard" as DashboardTab,
   selectedSetupId: null,
   viewRunId: null,
-  lastRunError: null,
   currency: "USD",
   hoveredRackId: null,
   selectedRackId: null,
@@ -85,7 +81,6 @@ export const useSimulationStore = create<SimulationState>((set) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSelectedSetupId: (id) => set({ selectedSetupId: id, viewRunId: null }),
   setViewRunId: (id) => set({ viewRunId: id }),
-  setLastRunError: (msg) => set({ lastRunError: msg }),
   setCurrency: (code) => set({ currency: code }),
   setHoveredRackId: (id) => set({ hoveredRackId: id }),
   setSelectedRackId: (id) => set({ selectedRackId: id }),

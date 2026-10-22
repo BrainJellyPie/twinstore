@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGenerationStatus, getSetupGenerations, regeneratePersona } from "@/shared/api/client";
+import { ApiError } from "@/shared/api/errors";
 import type { GenerationKind, GenerationStatus } from "@/shared/types/domain";
 import { queryKeys } from "@/shared/queries/keys";
 
@@ -68,7 +69,8 @@ export function useSetupGeneration(projectId: string, setupId: string, initialGe
         schedule(genId, fromHistory ? 0 : POLL_INTERVAL_MS);
       }
     };
-    async function readStatus(genId: string | null) {
+    // conflict: why a start was refused (409); shown only when this layout has no newer job to follow.
+    async function readStatus(genId: string | null, conflict?: string) {
       if (!active || busy) return;
       busy = true;
       try {
@@ -79,7 +81,9 @@ export function useSetupGeneration(projectId: string, setupId: string, initialGe
           const list = await getSetupGenerations(projectId, setupId, { active_only: false });
           if (!active) return;
           const latest = list[0];
-          if (latest) acceptStatus(latest, latest.gen_id, true);
+          if (conflict !== undefined && (!latest || (latest.status === "failed" && latest.gen_id === state.currentGenId))) {
+            publish({ phase: "failed", kind: "persona", errorSource: "generation", error: conflict });
+          } else if (latest) acceptStatus(latest, latest.gen_id, true);
           else publish({ phase: "idle", kind: null, currentGenId: null, error: null, errorSource: null });
         }
       } catch (cause) {
@@ -103,17 +107,21 @@ export function useSetupGeneration(projectId: string, setupId: string, initialGe
       busy = true;
       publish({ retrying: true, error: null });
       void (async () => {
+        let conflict: string | undefined;
         try {
           const { gen_id } = await regeneratePersona(projectId, setupId);
           if (!active) return;
           publish({ currentGenId: gen_id, kind: "persona", phase: "persona", errorSource: null });
           schedule(gen_id, 0);
         } catch (cause) {
-          publish({ phase: "failed", kind: "persona", errorSource: "generation", error: cause instanceof Error ? cause.message : String(cause) });
+          // 409: another tab (or the layout chain) already started one — follow it instead of failing.
+          if (cause instanceof ApiError && cause.status === 409) conflict = cause.message;
+          else publish({ phase: "failed", kind: "persona", errorSource: "generation", error: cause instanceof Error ? cause.message : String(cause) });
         } finally {
           busy = false;
-          publish({ retrying: false });
+          if (conflict === undefined) publish({ retrying: false });
         }
+        if (conflict !== undefined) void readStatus(null, conflict);
       })();
     };
     setSnapshot(state);

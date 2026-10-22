@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,6 +20,9 @@ import (
 
 // A copy of this test executable stands in for uv. It never starts Python or downloads anything.
 func TestMain(m *testing.M) {
+	if dir := os.Getenv("TWINSTORE_TEST_MODEL_DIR"); dir != "" {
+		serveModel(dir)
+	}
 	if dir := os.Getenv("TWINSTORE_TEST_UV_DIR"); dir != "" {
 		kind := "run"
 		if len(os.Args) > 1 && os.Args[1] == "--version" {
@@ -29,8 +36,11 @@ func TestMain(m *testing.M) {
 			for !fileExists(filepath.Join(dir, "release")) && time.Now().Before(deadline) {
 				time.Sleep(5 * time.Millisecond)
 			}
-			fmt.Println("uv test")
+			fmt.Println("uv 0.99.0 (launcher test)")
 		} else if fileExists(filepath.Join(dir, "fail-run")) {
+			if fileExists(filepath.Join(dir, "with-model-server")) {
+				startModel(dir)
+			}
 			os.Exit(3)
 		} else {
 			done := make(chan struct{})
@@ -46,6 +56,37 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
+}
+
+// startModel starts a stand-in for llama-server, as the server does, and returns once it holds its port.
+func startModel(dir string) {
+	executable, err := os.Executable()
+	if err != nil {
+		os.Exit(2)
+	}
+	model := exec.Command(executable)
+	model.Env = append(os.Environ(), "TWINSTORE_TEST_MODEL_DIR="+dir)
+	if model.Start() != nil {
+		os.Exit(2)
+	}
+	for deadline := time.Now().Add(5 * time.Second); markerCount(dir, "model") == 0 && time.Now().Before(deadline); {
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// serveModel holds a port until it is ended, and notes the port in model-<pid>.
+func serveModel(dir string) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		os.Exit(2)
+	}
+	partial := filepath.Join(dir, "partial")
+	if os.WriteFile(partial, []byte(strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)), 0o600) != nil ||
+		os.Rename(partial, filepath.Join(dir, fmt.Sprintf("model-%d", os.Getpid()))) != nil {
+		os.Exit(2)
+	}
+	time.Sleep(30 * time.Second)
+	os.Exit(0)
 }
 
 func testLauncher(t *testing.T) (*app, string) {
@@ -77,11 +118,13 @@ func testLauncher(t *testing.T) (*app, string) {
 		_ = os.WriteFile(filepath.Join(dir, "release"), nil, 0o600)
 		a.stopBackend(time.Second)
 		// Failed assertions must also clean up extra processes launched by the regression.
-		files, _ := filepath.Glob(filepath.Join(dir, "run-*"))
-		for _, file := range files {
-			pid, _ := strconv.Atoi(strings.TrimPrefix(filepath.Base(file), "run-"))
-			if process, err := os.FindProcess(pid); err == nil {
-				_ = process.Kill()
+		for _, kind := range []string{"run", "model"} {
+			files, _ := filepath.Glob(filepath.Join(dir, kind+"-*"))
+			for _, file := range files {
+				pid, _ := strconv.Atoi(strings.TrimPrefix(filepath.Base(file), kind+"-"))
+				if process, err := os.FindProcess(pid); err == nil {
+					_ = process.Kill()
+				}
 			}
 		}
 		logs.Close()
@@ -236,5 +279,148 @@ func TestLongWindowsAppFoldersGetAShortPythonEnvironment(t *testing.T) {
 	}
 	if got := shortVenvFor("linux", long, home); got != "" {
 		t.Errorf("non-Windows folder moved its environment to %q", got)
+	}
+}
+
+func TestAnOldUVIsPassedOverForANewerOne(t *testing.T) {
+	dir := t.TempDir()
+	uv := func(name string) string {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, nil, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	managed, onPath, local, missing := uv("managed"), uv("path"), uv("local"), filepath.Join(dir, "missing")
+	versions := map[string]string{managed: "uv 0.11.2 (5c6a6c2 2026-03-31)", onPath: "uv 0.4.18", local: "uv 0.12.0"}
+	asked := 0
+	versionOf := func(path string) string { asked++; return versions[path] }
+	if got, version := pickUV([]string{missing, managed, onPath}, versionOf); got != managed || version != versions[managed] || asked != 1 {
+		t.Errorf("current managed uv: got %s (%s) after %d version checks", got, version, asked)
+	}
+	versions[managed] = "uv 0.5.0"
+	if got, _ := pickUV([]string{managed, onPath, onPath, local}, versionOf); got != local {
+		t.Errorf("old managed and PATH uv: got %s; want the recent one in a standard folder", got)
+	}
+	versions[local] = "" // does not answer
+	if got, version := pickUV([]string{managed, onPath, local}, versionOf); got != managed || version != "uv 0.5.0" {
+		t.Errorf("only old uvs: fallback %s (%s); want the first found", got, version)
+	}
+	if got, _ := pickUV([]string{missing}, versionOf); got != "" {
+		t.Errorf("no uv: got %s", got)
+	}
+	for version, want := range map[string]bool{"uv 0.11.0": true, "uv 0.11.32 (x86_64-unknown-linux-gnu)": true,
+		"uv 1.0.0": true, "uv 0.10.9": false, "uv 0.8.0": false, "uv 0.4.18": false, "": false, "uv test": false} {
+		if uvAtLeast(version, minUV) != want {
+			t.Errorf("uvAtLeast(%q) = %v", version, !want)
+		}
+	}
+}
+
+func TestServerEnvironmentLeavesOutAnotherPython(t *testing.T) {
+	environ := []string{"PATH=/bin", `PYTHONHOME=C:\ArcGIS\Python`, `PythonPath=C:\QGIS\python`, "PYTHONSTARTUP=s.py",
+		"PYTHONUTF8=0", `=C:=C:\`}
+	got := serverEnv("windows", environ, "uv 0.11.2", "PYTHONUTF8=1")
+	want := []string{"PATH=/bin", "PYTHONUTF8=0", `=C:=C:\`, "UV_SYSTEM_CERTS=1", "PYTHONUTF8=1"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Windows environment:\n got %q\nwant %q", got, want)
+	}
+	got = serverEnv("linux", environ, "uv 0.9.5", "PYTHONUTF8=1")
+	if slices.Contains(got, "PYTHONSTARTUP=s.py") || !slices.Contains(got, `PythonPath=C:\QGIS\python`) {
+		t.Errorf("Unix names keep their case: %q", got)
+	}
+	if !slices.Contains(got, "UV_NATIVE_TLS=1") || slices.Contains(got, "UV_SYSTEM_CERTS=1") {
+		t.Errorf("uv before 0.11 needs UV_NATIVE_TLS: %q", got)
+	}
+	for _, set := range []string{"UV_NATIVE_TLS=0", "uv_system_certs=false"} {
+		got = serverEnv("windows", append(environ, set), "uv 0.11.2")
+		if slices.Contains(got, "UV_SYSTEM_CERTS=1") || slices.Contains(got, "UV_NATIVE_TLS=1") {
+			t.Errorf("the user's %s was overridden: %q", set, got)
+		}
+	}
+}
+
+func TestWindowsProxySettingsBecomeProxyVariables(t *testing.T) {
+	env := func(vars ...string) func(string) string {
+		return func(name string) string {
+			for _, kv := range vars {
+				if k, v, _ := strings.Cut(kv, "="); k == name {
+					return v
+				}
+			}
+			return ""
+		}
+	}
+	direct := "NO_PROXY=127.0.0.1,localhost,::1"
+	for _, c := range []struct {
+		environ          []string
+		server, override string
+		want             []string
+	}{
+		{nil, "proxy.corp:8080", "<local>;*.corp.example;10.*;intranet",
+			[]string{"HTTPS_PROXY=http://proxy.corp:8080", "HTTP_PROXY=http://proxy.corp:8080", direct + ",.corp.example,intranet"}},
+		{nil, "http=web:80;https=secure:443;ftp=files:21", "",
+			[]string{"HTTPS_PROXY=http://secure:443", "HTTP_PROXY=http://web:80", direct}},
+		{[]string{"NO_PROXY=.internal"}, "http=web:80", "",
+			[]string{"HTTP_PROXY=http://web:80", direct + ",.internal"}},
+		{nil, "socks=socks:1080", "", nil},
+		{nil, "", "", nil},
+		{[]string{"HTTPS_PROXY=http://mine:3128"}, "proxy.corp:8080", "", nil},
+	} {
+		if got := proxyEnv(env(c.environ...), c.server, c.override); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("proxyEnv(%q, %q, %q):\n got %q\nwant %q", c.environ, c.server, c.override, got, c.want)
+		}
+	}
+}
+
+func TestASecondLaunchShowsTheFirstInsteadOfStarting(t *testing.T) {
+	home := t.TempDir()
+	root := filepath.Join(home, "app files")
+	unlock, url := claimInstance(home, root, time.Second)
+	if unlock == nil || url != "" {
+		t.Fatalf("first launch: unlock=%v url=%q", unlock != nil, url)
+	}
+	if again, url := claimInstance(home, root, 300*time.Millisecond); again != nil || url != "" {
+		t.Fatal("a second launch claimed the app files while the first had not noted its address yet")
+	}
+	if other, _ := claimInstance(home, filepath.Join(home, "other app files"), time.Second); other == nil {
+		t.Error("other app files waited for this launcher")
+	} else {
+		other()
+	}
+	first := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]string{"app": "twinstore-launcher", "root": root})
+	}))
+	defer first.Close()
+	found := make(chan string, 1)
+	go func() {
+		again, url := claimInstance(home, root, 5*time.Second)
+		if again != nil {
+			again()
+			url = "claimed"
+		}
+		found <- url
+	}()
+	time.Sleep(100 * time.Millisecond)
+	saveInstance(home, root, first.URL)
+	if url := <-found; url != first.URL {
+		t.Errorf("waiting second launch got %q; want the first launcher at %s", url, first.URL)
+	}
+	clearInstance(home, first.URL)
+	unlock()
+	if again, _ := claimInstance(home, root, time.Second); again == nil {
+		t.Error("the lock outlived its launcher")
+	} else {
+		again()
+	}
+}
+
+func TestAppFoldersCompareAsTheFileSystemDoes(t *testing.T) {
+	a, b := `C:\Users\Me\TwinStore\app`, `c:\users\me\twinstore\APP`
+	if !sameRoot("windows", a, b) || sameRoot("windows", a, a+"2") {
+		t.Error("Windows folders compare ignoring case only")
+	}
+	if sameRoot("linux", "/home/me/App", "/home/me/app") || !sameRoot("linux", "/home/me/app", "/home/me/app") {
+		t.Error("Unix folders compare exactly")
 	}
 }

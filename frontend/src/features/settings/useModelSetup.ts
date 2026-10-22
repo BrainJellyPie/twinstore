@@ -13,9 +13,18 @@ export function isPreparing(setup: ModelSetup | undefined): boolean {
 }
 
 export function useModelSetup() {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: queryKeys.modelSetup(),
-    queryFn: ({ signal }) => api.getModelSetup(signal),
+    queryFn: async ({ signal }) => {
+      const before = qc.getQueryData<ModelSetup>(queryKeys.modelSetup());
+      const setup = await api.getModelSetup(signal);
+      // The run dialog's engine readiness depends on whether the local model is up.
+      if (before && (before.local.state === "ready") !== (setup.local.state === "ready")) {
+        void qc.invalidateQueries({ queryKey: queryKeys.engines() });
+      }
+      return setup;
+    },
     refetchInterval: (query) => (isPreparing(query.state.data) ? 2_000 : 60_000),
     retry: false,
   });
@@ -27,6 +36,7 @@ export function useLocalModelControl() {
     void qc.invalidateQueries({ queryKey: queryKeys.modelSetup() });
     void qc.invalidateQueries({ queryKey: queryKeys.providers() });
     void qc.invalidateQueries({ queryKey: queryKeys.models() });
+    void qc.invalidateQueries({ queryKey: queryKeys.engines() });
   };
   const start = useMutation({ mutationFn: api.startLocalModel, onSettled: refresh });
   const stop = useMutation({ mutationFn: api.stopLocalModel, onSettled: refresh });

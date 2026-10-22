@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"hash/crc32"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -121,7 +123,7 @@ func runningInstance(home, root string) (string, bool) {
 		return "", false
 	}
 	var inst instance
-	if json.Unmarshal(raw, &inst) != nil || inst.Root != root || inst.URL == "" {
+	if json.Unmarshal(raw, &inst) != nil || !sameRoot(runtime.GOOS, inst.Root, root) || inst.URL == "" {
 		return "", false
 	}
 	client := http.Client{Timeout: 1500 * time.Millisecond}
@@ -134,10 +136,42 @@ func runningInstance(home, root string) (string, bool) {
 		App  string `json:"app"`
 		Root string `json:"root"`
 	}
-	if json.NewDecoder(resp.Body).Decode(&ping) != nil || ping.App != "twinstore-launcher" || ping.Root != root {
+	if json.NewDecoder(resp.Body).Decode(&ping) != nil || ping.App != "twinstore-launcher" || !sameRoot(runtime.GOOS, ping.Root, root) {
 		return "", false
 	}
 	return inst.URL, true
+}
+
+// sameRoot compares two app folders as the file system does: Windows ignores case.
+func sameRoot(goos, a, b string) bool {
+	return a == b || goos == "windows" && strings.EqualFold(a, b)
+}
+
+// claimInstance makes this launcher the one for these app files, or returns the address of the launcher that is.
+// A lock taken before the running-instance check, held until this launcher ends, keeps a second click from starting
+// a second server on the same data while the first launcher has not noted its address yet. A launcher holding the
+// lock is awaited until it answers, up to wait; after that neither unlock nor an address comes back.
+func claimInstance(home, root string, wait time.Duration) (unlock func(), url string) {
+	key := root
+	if runtime.GOOS == "windows" {
+		key = strings.ToLower(key)
+	}
+	lock := filepath.Join(home, fmt.Sprintf("running-%08x.lock", crc32.ChecksumIEEE([]byte(key))))
+	deadline := time.Now().Add(wait)
+	for {
+		unlock, busy := tryLock(lock)
+		if url, ok := runningInstance(home, root); ok { // also one from a launcher older than the lock
+			unlock()
+			return nil, url
+		}
+		if !busy {
+			return unlock, ""
+		}
+		if time.Now().After(deadline) {
+			return nil, ""
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
 }
 
 func saveInstance(home, root, url string) {

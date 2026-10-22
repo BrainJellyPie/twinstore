@@ -26,6 +26,32 @@ func killTree(cmd *exec.Cmd) {
 	_ = syscall.Kill(pgid, syscall.SIGKILL)
 }
 
+// killGroup ends what is left of the server's process group once the server itself has exited: the processes it
+// started in its group, such as llama-server.
+func killGroup(cmd *exec.Cmd) {
+	if cmd.Process != nil {
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
+}
+
+// tryLock takes an exclusive lock on path, which the system drops when this launcher ends, however it ends.
+// busy: another launcher holds it. Where locks are not supported, unlock does nothing, as before the lock.
+func tryLock(path string) (unlock func(), busy bool) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
+	if err != nil {
+		return func() {}, false
+	}
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		f.Close()
+		return func() {}, err == syscall.EWOULDBLOCK
+	}
+	return func() { f.Close() }, false
+}
+
+// systemProxy is the proxy set in the system settings, read only on Windows: elsewhere desktop settings reach
+// programs as the proxy variables.
+func systemProxy() (server, override string) { return "", "" }
+
 func openBrowser(url string) {
 	if runtime.GOOS == "darwin" {
 		_ = exec.Command("open", url).Start()

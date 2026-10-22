@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,6 +23,10 @@ def write_json(path: Path, data: object) -> None:
     try:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+            # On disk before the rename: a power cut or crash right after it could otherwise leave the file empty or
+            # full of NUL bytes (NTFS and ext4 both reorder the two).
+            f.flush()
+            os.fsync(f.fileno())
         replace_file(tmp, path)
     finally:
         try:

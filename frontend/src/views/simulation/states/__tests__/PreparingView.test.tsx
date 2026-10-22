@@ -110,10 +110,28 @@ it("ignores a late deletion failure after the user leaves", async () => {
 });
 
 it("offers customer retry when the known generation kind disagrees with stale layout context", () => {
-  const retry = vi.fn(); show({ ...failedLayout, kind: "persona", retry });
+  const retry = vi.fn(); const { props } = show({ ...failedLayout, kind: "persona", retry });
   expect(screen.getByRole("heading", { name: "Customer generation failed" })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Delete store and start over" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Try again" })); expect(retry).toHaveBeenCalledOnce();
+  expect(screen.getByRole("button", { name: "Delete store and start over" })).toBeTruthy(); expect(props.onAbandonProject).not.toHaveBeenCalled();
+});
+
+it.each(LOCALES)("lets a store whose customer generation keeps failing be deleted after confirmation in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code); const retry = vi.fn();
+  const { props } = show({ ...failedLayout, kind: "persona", error: "Customer model unavailable", retry });
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "deleteStoreAndStartOver") }));
+  const dialog = screen.getByRole("alertdialog", { name: translate(code, "deleteStoreTitle") });
+  expect(dialog.textContent).toContain(props.projectName); expect(props.onAbandonProject).not.toHaveBeenCalled();
+  fireEvent.click(within(dialog).getByRole("button", { name: translate(code, "deleteStoreAndStartOver") }));
+  await waitFor(() => expect(props.onAbandonProject).toHaveBeenCalledOnce()); expect(retry).not.toHaveBeenCalled();
+});
+
+it("keeps deletion out of customer progress and idle states", () => {
+  const { props, rerender } = show({ ...failedLayout, phase: "persona", kind: "persona", error: null });
+  rerender(<PreparingView {...props} contextKind="persona" />);
+  expect(screen.queryByRole("button", { name: "Delete store and start over" })).toBeNull();
+  rerender(<PreparingView {...props} contextKind="persona" generation={{ ...props.generation, phase: "idle", kind: null }} />);
+  expect(screen.queryByRole("button", { name: "Delete store and start over" })).toBeNull();
 });
 
 it("uses layout recovery for a known layout failure even when the context has moved to customers", () => {

@@ -26,6 +26,7 @@ def starting_manager(tmp_path, monkeypatch):
 ])
 def test_unrelated_local_or_remote_servers_are_not_blocked(starting_manager, monkeypatch, ref, settings):
     monkeypatch.setattr(providers, "load_settings", lambda: settings)
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: True)   # they are up
     config = apply_options(SimulationConfig(), RunOptions(engine_type=EngineType.VLM_GLANCE, model=ref))
     providers.ensure_resolvable(config)
 

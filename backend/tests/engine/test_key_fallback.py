@@ -397,7 +397,7 @@ def test_customer_generation_fails_clearly_when_no_customer_comes_back(monkeypat
             return TokenUsage()
 
     monkeypatch.setattr(generation_async.gen_persona, "generate_batched", none)
-    with pytest.raises(RuntimeError, match=r"No customers were generated: every request to openai/local-model failed"):
+    with pytest.raises(ValueError, match=r"No customers were generated: every request to openai/local-model failed"):
         asyncio.run(generation_async._generate_personas_impl(  # pyright: ignore[reportPrivateUsage]
             _Client(), "addr", "profile", [DaySchedule(day=1, is_open=True, open_hour=8, close_hour=20)]))  # type: ignore[arg-type]
     closed = [DaySchedule(day=1, is_open=False, open_hour=8, close_hour=20)]
@@ -513,3 +513,65 @@ def test_the_wait_note_is_cleared_once_the_local_model_answers(monkeypatch):
         config=SimulationConfig(), project_id="p", meta={}, schedules=[], custom_instruction="",
         supplemental_bytes=None, supplemental_filename="", gen_id="g"))
     assert writes == [{"note": "waiting for the local model: Downloading (40%)"}, {}]
+
+
+def test_most_customer_requests_failing_fails_generation_with_a_plain_reason(monkeypatch):
+    from store_emulator.application import generation_async
+    from store_emulator.domain.store import DaySchedule
+    from store_emulator.engine.generators import persona as gen
+
+    async def analyze_location(*a, **k):
+        return gen.TradeAreaProfile(keywords=["k"], identities=["student"], purposes=["snack"])
+
+    async def analyze_daily_traffic(*a, **k):
+        return [gen.HourlyProfile(hour=h, visitor_count=10, person_types=["student"]) for h in range(8, 18)]
+
+    calls = [0]
+    in_flight, peak = [0], [0]
+
+    class _LLM:
+        async def generate_structured_async(self, model, system, user, **k):
+            calls[0] += 1
+            n = calls[0]
+            in_flight[0] += 1
+            peak[0] = max(peak[0], in_flight[0])
+            await asyncio.sleep(0)
+            in_flight[0] -= 1
+            if n % 4:                   # three of every four requests are refused
+                raise litellm.RateLimitError("Too many requests", llm_provider="anthropic", model="m")
+            return gen.PersonaBatch(personas=[])
+
+    monkeypatch.setattr(gen, "analyze_location", analyze_location)
+    monkeypatch.setattr(gen, "analyze_daily_traffic", analyze_daily_traffic)
+    week = [DaySchedule(day=d, is_open=True, open_hour=8, close_hour=18) for d in range(1, 8)]
+    with pytest.raises(gen.TooManyBatchesFailed) as failed:
+        asyncio.run(gen.generate_batched(_LLM(), "addr", "profile", week))  # type: ignore[arg-type]
+    assert failed.value.tally.requested == 70 and failed.value.tally.failed > 35
+    assert peak[0] <= 20                 # one limit for the whole week, not 10 a day
+    text = generation_async._failure_text(failed.value)  # pyright: ignore[reportPrivateUsage]
+    assert text.startswith("Customer generation failed (") and "requests to the model): the provider is limiting" in text
+    assert generation_async._failure_text(ValueError("No API key for X")) == "No API key for X"  # pyright: ignore[reportPrivateUsage]
+
+
+def test_the_default_vision_endpoint_follows_the_local_server_and_dead_ones_leave_the_pickers(monkeypatch):
+    from store_emulator.application import capture
+    from store_emulator.domain.config import SimulationConfig
+
+    ready = LocalVLMStatus(state="ready", api_base="http://127.0.0.1:53303/v1", slots=1, managed=True)
+    monkeypatch.setattr(local_vlm, "manager", lambda: type("M", (), {"status": lambda self: ready})())
+    vision = SimulationConfig().engines.vlm_glance.llm          # openai/local-vlm at 127.0.0.1:8081
+    resolved = providers.resolve_model(vision.model, base=vision)
+    assert resolved.api_base == "http://127.0.0.1:53303/v1" and resolved.max_parallel == 1
+    own = vision.model_copy(update={"api_base": "http://gpu-box:8081/v1"})
+    assert providers.resolve_model(own.model, base=own).api_base == "http://gpu-box:8081/v1"
+    captured = capture.capture_llm_config(SimulationConfig(), "")
+    assert captured is not None and captured.api_base == "http://127.0.0.1:53303/v1" and captured.max_parallel == 1
+
+    # A llama.cpp server that is not up is not offered in model pickers.
+    providers.use_local_server("http://127.0.0.1:8081/v1")
+    stopped = LocalVLMStatus(state="off")
+    monkeypatch.setattr(local_vlm, "manager", lambda: type("M", (), {"status": lambda self: stopped})())
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: False)
+    assert not any(m["ref"] == "llamacpp:local" for m in providers.available_models())
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: True)
+    assert any(m["ref"] == "llamacpp:local" for m in providers.available_models())

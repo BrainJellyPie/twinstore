@@ -212,7 +212,9 @@ def resolve_image(project_id: str, sku: str) -> tuple[Path, str] | None:
     mime = entry.get("mime")
     if not isinstance(path_str, str) or not isinstance(mime, str):
         return None
-    p = Path(path_str).resolve()
+    # Only the file name counts: the stored path was written on whatever computer saved the photo (".data\\images\\…"
+    # on Windows), and a project copied to another computer or data folder must still find its photos.
+    p = (pdir / path_str.replace("\\", "/").rsplit("/", 1)[-1]).resolve()
     try:
         p.relative_to(pdir)
     except ValueError:

@@ -60,6 +60,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
       setKey("");
       void qc.invalidateQueries({ queryKey: queryKeys.providers() });
       void qc.invalidateQueries({ queryKey: queryKeys.models() });
+      void qc.invalidateQueries({ queryKey: queryKeys.engines() });
     },
   });
   const test = useMutation({

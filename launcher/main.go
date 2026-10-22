@@ -47,6 +47,7 @@ func main() {
 }
 
 func run(opt options) int {
+	proxy := useSystemProxy() // before any web request: Go reads the proxy variables once
 	home, err := appHome()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "TwinStore:", err)
@@ -54,7 +55,12 @@ func run(opt options) int {
 	}
 	root, rootErr := findRoot()
 	if rootErr == nil && !opt.smoke {
-		if url, ok := runningInstance(home, root); ok { // already running: just show it
+		unlock, url := claimInstance(home, root, 20*time.Second)
+		if unlock == nil { // already running: just show it
+			if url == "" {
+				fmt.Fprintln(os.Stderr, "TwinStore: another launcher for these app files is starting but does not answer")
+				return 1
+			}
 			if isTerminal() {
 				fmt.Println("TwinStore is already running at", url)
 			}
@@ -63,10 +69,14 @@ func run(opt options) int {
 			}
 			return 0
 		}
+		defer unlock()
 	}
 	logs := newLog(filepath.Join(home, "logs"), isTerminal())
 	defer logs.Close()
 	logs.Printf("TwinStore launcher %s", version)
+	if proxy != "" {
+		logs.Printf("Using the proxy set in Windows: %s", proxy)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

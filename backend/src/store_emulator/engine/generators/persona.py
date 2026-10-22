@@ -56,6 +56,22 @@ class PersonaBatch(BaseModel):
     personas: list[GeneratedPersona] = Field(max_length=12)
 
 
+@dataclass
+class BatchTally:
+    """Persona requests across all days: how many were sent, how many failed, and the first failure."""
+    requested: int = 0
+    failed: int = 0
+    first_error: BaseException | None = None
+
+
+class TooManyBatchesFailed(RuntimeError):
+    """Most persona requests failed: the customers that came back would not represent the store."""
+
+    def __init__(self, tally: BatchTally) -> None:
+        super().__init__(f"{tally.failed} of {tally.requested} customer requests failed; last error: {tally.first_error}")
+        self.tally = tally
+
+
 @dataclass(frozen=True)
 class Pace:
     """How much to ask of the model that answers: customers a day, and customers per request."""
@@ -210,6 +226,9 @@ async def generate_personas_for_day(
     max_concurrent: int = 10,
     categories: list[str] | None = None,
     currency: str = "USD",
+    *,
+    semaphore: asyncio.Semaphore | None = None,
+    tally: BatchTally | None = None,
 ) -> list[Persona]:
     system_prompt = persona_prompt(currency)
     # Local stream per day: days are generated concurrently, so seeding the global
@@ -221,11 +240,11 @@ async def generate_personas_for_day(
     identity_list = "\n".join(f"  - {i}" for i in profile.identities)
     purpose_list = "\n".join(f"  - {p}" for p in profile.purposes)
 
-    semaphore = asyncio.Semaphore(max_concurrent)
-    tasks: list[tuple[int, asyncio.Task[PersonaBatch]]] = []
+    limit = semaphore or asyncio.Semaphore(max_concurrent)
+    tasks: list[tuple[int, int, asyncio.Task[PersonaBatch]]] = []
 
     async def _generate_batch(prompt: str) -> PersonaBatch:
-        async with semaphore:
+        async with limit:
             return await llm.generate_structured_async(PersonaBatch, system_prompt, prompt, max_retries=3)
 
     for hour, hp in sorted(profiles_map.items()):
@@ -261,17 +280,22 @@ async def generate_personas_for_day(
                 persona_input += f"\n\n추가 지시: {custom_instruction}"
 
             task = asyncio.create_task(_generate_batch(persona_input))
-            tasks.append((hour, task))
+            tasks.append((hour, current_size, task))
 
     all_personas: list[Persona] = []
-    for hour, task in tasks:
+    for hour, size, task in tasks:
+        if tally is not None:
+            tally.requested += 1
         try:
             batch = await task
         except Exception as e:
             logger.error(f"[persona] {day_label} hour {hour} batch generation failed: {e}")
+            if tally is not None:
+                tally.failed += 1
+                tally.first_error = tally.first_error or e
             continue
 
-        for generated in batch.personas:
+        for generated in batch.personas[:size]:   # small models may add a few: the hour asked for `size`
             persona = Persona.model_validate(generated.model_dump())
             prefix = "F" if persona.gender == "Female" else "M"
             seq = len([p for p in all_personas if p.gender == persona.gender]) + 1
@@ -316,6 +340,10 @@ async def generate_batched(
     daily_cap_now, batch_size = max(1, settled.daily_cap), max(1, settled.batch_size)
     open_days = [s for s in schedules if s.is_open]
 
+    # One limit for all days (they run together): 10 requests a day at once came to 70, enough to hit rate limits.
+    shared = asyncio.Semaphore(max(max_concurrent, 20))
+    tally = BatchTally()
+
     async def _process_day(schedule: DaySchedule) -> list[Persona]:
         hourly = await analyze_daily_traffic(
             llm, address, customer_profile, profile,
@@ -329,11 +357,15 @@ async def generate_batched(
             llm, address, profile, schedule.day, hourly,
             seed=seed, custom_instruction=custom_instruction,
             batch_size=batch_size, max_concurrent=max_concurrent,
-            categories=categories, currency=currency,
+            categories=categories, currency=currency, semaphore=shared, tally=tally,
         )
 
     day_results = await asyncio.gather(*[_process_day(s) for s in open_days])
     all_personas: list[Persona] = [p for personas in day_results for p in personas]
+    if tally.failed * 2 > tally.requested:
+        raise TooManyBatchesFailed(tally)
+    if tally.failed:
+        logger.warning(f"[persona] {tally.failed} of {tally.requested} requests failed; keeping the rest")
 
     logger.info(f"[persona] generated {len(all_personas)} personas total across {len(open_days)} days")
     return all_personas

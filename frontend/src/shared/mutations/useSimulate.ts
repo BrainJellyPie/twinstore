@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { startRun, type RunOptions } from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
-import { useSimulationStore } from "@/stores/simulationStore";
 
 interface SimulateArgs {
   projectId: string;
@@ -17,9 +16,6 @@ export function useSimulate() {
   return useMutation({
     mutationFn: ({ projectId, setupId, options }: SimulateArgs) =>
       startRun(projectId, setupId, options ?? {}),
-    onMutate: () => {
-      useSimulationStore.getState().setLastRunError(null);
-    },
     onSuccess: (_run, { projectId, setupId }) => {
       void qc.invalidateQueries({ queryKey: queryKeys.runs(projectId, setupId) });
       void qc.invalidateQueries({ queryKey: queryKeys.projectRuns(projectId) });

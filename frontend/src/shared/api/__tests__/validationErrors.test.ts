@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-import { createCapture, createStore, importFloorPlan, readReceipts } from "../client";
+import { createCapture, createStore, importFloorPlan, readReceipts, regeneratePersona } from "../client";
+import { ApiError } from "../errors";
 import { askShopper } from "../interview";
 import { previewShelf } from "../marketing";
 
@@ -45,4 +46,21 @@ it.each([
 ])("keeps store-creation errors readable for %j", async (body, expected) => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body, { status: 503 })));
   await expect(createStore({ name: "Test shop", description: "", address: "12 Market Street", store_type: "convenience", customer_profile: "Local residents", weekly_schedule: [] }, null)).rejects.toThrow(expected);
+});
+
+it.each([
+  [{ detail: { code: "setup_running", reason: "running", message: "This layout is running a simulation; wait for it to finish.", details: {} } }, "This layout is running a simulation; wait for it to finish."],
+  [{ detail: { code: "setup_running", message: "  " } }, "409 Conflict"],
+  [{ detail: { code: "setup_running", message: 3 } }, "409 Conflict"],
+])("shows the message of structured setup errors and keeps the status for %j", async (body, expected) => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status: 409, statusText: "Conflict" })));
+  const error: unknown = await regeneratePersona("project", "setup").catch((cause: unknown) => cause);
+  expect(error).toBeInstanceOf(ApiError);
+  expect((error as ApiError).message).toBe(expected);
+  expect((error as ApiError).status).toBe(409);
+});
+
+it("reads structured messages in the interview client too", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: { code: "not_found", message: "Shopper left the store" } }), { status: 404, statusText: "Not Found" })));
+  await expect(askShopper("project", "run", "shopper", "Question", "")).rejects.toThrow("Shopper left the store");
 });

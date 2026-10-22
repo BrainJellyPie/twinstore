@@ -113,6 +113,7 @@ def test_manager_downloads_the_model_serves_it_and_points_the_provider_at_it(no_
     script.chmod(0o755)
     monkeypatch.setenv("TWINSTORE_LLAMA_SERVER", str(script))
     monkeypatch.delenv("TWINSTORE_LOCAL_VLM", raising=False)
+    monkeypatch.setattr(local_vlm, "DEFAULT_PORT", local_vlm._free_port())  # pyright: ignore[reportPrivateUsage]  # not a llama.cpp server running here
     fetched: list[str] = []
 
     def opener(req: urllib.request.Request):   # downloads only; health checks go to the real server
@@ -154,7 +155,8 @@ def test_incomplete_model_download_is_not_cached_and_can_be_retried(tmp_path, pa
         mgr._download_model("test/model", "model.gguf")
 
     assert not path.exists()
-    assert not path.with_name(path.name + ".part").exists()
+    # A short read is kept to be continued; nothing, or more than announced, is thrown away.
+    assert path.with_name(path.name + ".part").exists() == (0 < len(payload) < advertised_size)
     assert mgr._download_model("test/model", "model.gguf").read_bytes() == b"complete-model"
     assert responses == []
 
@@ -255,3 +257,65 @@ def test_runtime_download_skips_a_release_without_binaries(tmp_path, monkeypatch
     assert server.name == "llama-server" and server.is_file()
     assert fetched == [local_vlm.RELEASES_URL, "https://github.com/ggml-org/llama.cpp/releases/download/x/llama-b11804-bin-ubuntu-x64.tar.gz"]
     assert mgr.status().runtime == "b11804 llama-b11804-bin-ubuntu-x64.tar.gz"
+
+
+def test_a_half_installed_build_is_fetched_again_and_a_gpu_plan_without_a_gpu_build_drops_to_the_cpu(no_keys, monkeypatch):
+    from store_emulator.application.hardware import downgrade
+
+    home = no_keys / "local_vlm"
+    leftover = home / "bin" / "cuda" / "build" / "bin"
+    leftover.mkdir(parents=True)
+    (leftover / "llama-server").write_text("")          # the cudart download never finished: no marker
+    monkeypatch.setattr(local_vlm.shutil, "which", lambda name: None)
+    releases = [{"tag_name": "b9001", "assets": [{"name": n, "browser_download_url": f"https://x/{n}"} for n in RELEASE]}]
+    fetched: list[str] = []
+
+    def opener(req: urllib.request.Request):
+        fetched.append(req.full_url)
+        return _Resp(json.dumps(releases).encode())
+
+    mgr = LocalVLMManager(home, opener=opener, hardware=lambda: _hw(cores=4, ram_free_gb=8))
+    gpu = _hw(cores=4, ram_free_gb=8)
+    cuda_plan = local_vlm.recommend(gpu).model_copy(update={"backend": "cuda"})
+    # An old driver: the newest releases have only the CPU build for it.
+    monkeypatch.setattr(local_vlm, "pick_release", lambda *a, **k: ("b9001", ["llama-b9001-bin-ubuntu-x64.tar.gz"], {}))
+    with pytest.raises(local_vlm._NoGpuBuild):  # pyright: ignore[reportPrivateUsage]
+        mgr._runtime(gpu, cuda_plan)  # pyright: ignore[reportPrivateUsage]
+    assert not (home / "bin" / "cuda").exists()          # the half-installed build is gone
+    assert downgrade(cuda_plan, gpu).backend == "cpu"
+
+
+def test_an_interrupted_download_continues_where_it_stopped(no_keys):
+    data = bytes(range(256)) * 40
+    ranges: list[str | None] = []
+
+    class _Dropped(io.BytesIO):
+        """Sends the first 3000 bytes, then the connection drops."""
+        def __init__(self) -> None:
+            super().__init__(data[:3000])
+            self.headers = {"Content-Length": str(len(data))}
+            self.status = 200
+
+        def read(self, n: int = -1) -> bytes:
+            chunk = super().read(n)
+            if not chunk:
+                raise OSError("connection reset")
+            return chunk
+
+    def opener(req: urllib.request.Request):
+        ranges.append(req.get_header("Range"))
+        if len(ranges) == 1:
+            return _Dropped()
+        start = int(str(req.get_header("Range")).removeprefix("bytes=").removesuffix("-"))
+        resp = _Resp(data[start:])
+        resp.status = 206
+        return resp
+
+    mgr = LocalVLMManager(no_keys / "local_vlm", opener=opener, hardware=lambda: _hw())
+    target = no_keys / "model.gguf"
+    with pytest.raises(OSError, match="connection reset"):
+        mgr._download("https://x/model.gguf", target, label="model")  # pyright: ignore[reportPrivateUsage]
+    assert (no_keys / "model.gguf.part").stat().st_size == 3000 and not target.exists()
+    mgr._download("https://x/model.gguf", target, label="model")  # pyright: ignore[reportPrivateUsage]
+    assert target.read_bytes() == data and not (no_keys / "model.gguf.part").exists()
+    assert ranges == [None, "bytes=3000-"]

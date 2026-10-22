@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { useI18n } from "@/shared/i18n/i18n";
 import { useRunStatus } from "@/shared/queries/useRunStatus";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
@@ -25,6 +26,7 @@ export function RunningView({
   onLayoutSelect,
   onAddLayout,
 }: ViewCommon & { setupId: string; runId: string } & LayoutTabProps) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const statusQuery = useRunStatus(pid, runId);
   const status = statusQuery.data;
@@ -33,23 +35,19 @@ export function RunningView({
   const activeTab = useSimulationStore((s) => s.activeTab);
   const setActiveTab = useSimulationStore((s) => s.setActiveTab);
 
-  // Completion → show the new run. Failure → back to the previous view with the error
-  // surfaced inline (instead of crashing into the route error boundary).
+  // Completion → show the new run. Failure → back to the previous view, which shows the
+  // failure from this layout's run list (instead of crashing into the route error boundary).
   useEffect(() => {
     const s = status?.status;
     if (s !== "completed" && s !== "failed") return;
-    const store = useSimulationStore.getState();
-    if (s === "completed") {
-      store.setViewRunId(runId);
-    } else {
-      store.setLastRunError(status?.error || "Simulation failed");
-    }
+    if (s === "completed") useSimulationStore.getState().setViewRunId(runId);
     void qc.invalidateQueries({ queryKey: queryKeys.runs(pid, setupId) });
     void qc.invalidateQueries({ queryKey: queryKeys.projectRuns(pid) });
     void qc.invalidateQueries({ queryKey: queryKeys.setup(pid, setupId) });
-  }, [status?.status, status?.error, qc, pid, setupId, runId]);
+  }, [status?.status, qc, pid, setupId, runId]);
 
-  if (statusQuery.error) {
+  // A failed poll after the first answer keeps the last progress and keeps polling.
+  if (statusQuery.error && !status) {
     throw statusQuery.error;
   }
 
@@ -71,6 +69,11 @@ export function RunningView({
           customers={null}
           heatmaps={null}
           mode="running"
+          overlay={statusQuery.error ? (
+            <p role="status" className="glass pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border px-3 py-1 text-xs text-muted-foreground shadow-float">
+              {t("reconnecting")}
+            </p>
+          ) : null}
         />
       }
       sidePanelSlot={

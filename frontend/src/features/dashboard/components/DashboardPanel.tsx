@@ -13,6 +13,7 @@ import { FidelitySection } from "@/features/runs/components/FidelitySection";
 import { MovementSection } from "@/features/runs/components/MovementSection";
 import { VisionGlancesSection } from "@/features/runs/components/VisionGlancesSection";
 import { PreviewRunsList } from "@/features/runs/components/PreviewRunsList";
+import { LastRunFailure } from "@/features/runs/components/LastRunFailure";
 import { FloorConfigurationPanel } from "@/features/grid-editor/FloorConfigurationPanel";
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
 import { ProductBulkEditor } from "@/features/products/ProductBulkEditor";
@@ -37,7 +38,6 @@ interface ReadyProps {
   onBusyChange?: (busy: boolean) => void;
   onSimulate?: () => void;
   simulating?: boolean;
-  simulateError?: Error | null;
   availability?: Availability;
 }
 
@@ -106,7 +106,6 @@ function ReadyContent({
   onBusyChange,
   onSimulate,
   simulating,
-  simulateError,
   availability,
 }: ReadyProps) {
   const { t } = useI18n();
@@ -177,13 +176,7 @@ function ReadyContent({
                 })}
               </ul>
             )}
-            {simulateError && (
-              <p className="text-xs text-destructive">
-                {simulateError instanceof Error
-                  ? simulateError.message
-                  : "Simulation run failed"}
-              </p>
-            )}
+            <LastRunFailure projectId={pid} setupId={sid} className="text-xs text-destructive" />
                     </div>
         </section>
       )}

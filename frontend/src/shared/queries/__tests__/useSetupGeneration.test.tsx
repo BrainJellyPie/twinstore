@@ -4,6 +4,7 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import * as api from "@/shared/api/client";
+import { ApiError } from "@/shared/api/errors";
 import type { GenerationListItem, GenerationStatus } from "@/shared/types/domain";
 import { useSetupGeneration } from "../useSetupGeneration";
 import { queryKeys } from "../keys";
@@ -143,4 +144,30 @@ it("polls at the normal interval without overlapping an unresolved status reques
     expect(api.getGenerationStatus).toHaveBeenCalledTimes(2); expect(api.regeneratePersona).not.toHaveBeenCalled();
     await act(async () => pending.resolve(job({ status: "completed", error: null }))); expect(result.current.phase).toBe("completed");
   } finally { vi.useRealTimers(); }
+});
+
+it("follows the job another tab already started when Try again is refused with a 409", async () => {
+  const reread = deferred<GenerationListItem[]>();
+  vi.mocked(api.getSetupGenerations).mockResolvedValueOnce([job()]).mockReturnValueOnce(reread.promise);
+  vi.mocked(api.regeneratePersona).mockRejectedValueOnce(new ApiError("Persona generation is already in progress", 409));
+  vi.mocked(api.getGenerationStatus).mockReturnValue(new Promise(() => {}));
+  const { result } = mount(); await waitFor(() => expect(result.current.phase).toBe("failed"));
+  act(() => result.current.retry());
+  await waitFor(() => expect(api.getSetupGenerations).toHaveBeenCalledTimes(2));
+  expect(result.current.retrying).toBe(true); expect(result.current.error).toBeNull();
+  await act(async () => reread.resolve([job({ gen_id: "other-tab", status: "running", error: null }), job()]));
+  expect(result.current.phase).toBe("persona"); expect(result.current.currentGenId).toBe("other-tab");
+  expect(result.current.error).toBeNull(); expect(result.current.retrying).toBe(false);
+  await waitFor(() => expect(api.getGenerationStatus).toHaveBeenCalledWith("raw-project", "raw-layout", "other-tab"));
+  expect(api.regeneratePersona).toHaveBeenCalledOnce();
+});
+
+it("shows why a start was refused when the layout has no newer job to follow", async () => {
+  vi.mocked(api.getSetupGenerations).mockResolvedValue([job()]);
+  vi.mocked(api.regeneratePersona).mockRejectedValueOnce(new ApiError("Customer generation is running for another layout", 409));
+  const { result } = mount(); await waitFor(() => expect(result.current.phase).toBe("failed"));
+  act(() => result.current.retry());
+  await waitFor(() => expect(result.current.error).toBe("Customer generation is running for another layout"));
+  expect(result.current.errorSource).toBe("generation"); expect(result.current.retrying).toBe(false);
+  expect(api.getSetupGenerations).toHaveBeenCalledTimes(2); expect(api.getGenerationStatus).not.toHaveBeenCalled();
 });

@@ -49,7 +49,7 @@ def test_an_explicit_config_key_keeps_the_apps_model(keys, primary, alternative_
     assert assistive_model('', config) == primary
 
 
-def test_a_run_on_a_model_without_a_key_is_refused_before_it_starts(keys):
+def test_a_run_on_a_model_without_a_key_is_refused_before_it_starts(keys, monkeypatch):
     from store_emulator.application.providers import ensure_resolvable
     from store_emulator.domain.config import EngineType, SimulationConfig
 
@@ -63,6 +63,10 @@ def test_a_run_on_a_model_without_a_key_is_refused_before_it_starts(keys):
     ensure_resolvable(config)
     custom = SimulationConfig(engine_type=EngineType.PATTERN_INTENT_IMPULSE,
                               llm=LLMConfig(model="openai/served-model", api_base="http://127.0.0.1:9000/v1"))
+    from store_emulator.application import local_vlm
+    with pytest.raises(ValueError, match=r"No model server answers at http://127.0.0.1:9000/v1"):
+        ensure_resolvable(custom)  # nothing runs there: every shopper would fail
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: True)
     ensure_resolvable(custom)  # a self-hosted endpoint needs no cloud key
 
 

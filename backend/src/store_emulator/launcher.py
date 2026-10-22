@@ -137,6 +137,21 @@ def _open_when_ready(url: str, open_browser: bool) -> None:
         webbrowser.open(url)
 
 
+def keep_local_requests_direct() -> None:
+    """Requests to servers on this computer (the local model, a llama.cpp/Ollama/vLLM server) must not go through a
+    proxy. On Windows and macOS Python picks up the system proxy, and httpx (under LiteLLM and the OpenAI SDK) does not
+    honour its bypass list, so every call to 127.0.0.1 went to a company proxy and failed. The system proxy is copied
+    into the environment (any proxy variable makes Python ignore the system settings), and loopback is exempted."""
+    proxies = urllib.request.getproxies()
+    for scheme in ("http", "https"):
+        if proxies.get(scheme) and not (os.environ.get(f"{scheme}_proxy") or os.environ.get(f"{scheme.upper()}_PROXY")):
+            os.environ[f"{scheme}_proxy"] = proxies[scheme]
+    current = os.environ.get("no_proxy") or os.environ.get("NO_PROXY") or ""
+    hosts = [h.strip() for h in current.split(",") if h.strip()]
+    hosts += [h for h in ("127.0.0.1", "localhost", "::1") if h not in hosts]
+    os.environ["no_proxy"] = os.environ["NO_PROXY"] = ",".join(hosts)
+
+
 def _exit_when_stdin_closes() -> None:
     """The app launcher keeps a pipe open to our stdin; end of input means it is gone or asked us to stop."""
     if sys.platform == "win32":
@@ -165,6 +180,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.exit_with_stdin:
         threading.Thread(target=_exit_when_stdin_closes, daemon=True).start()
+    keep_local_requests_direct()
     home = Path(os.environ.get("PARASTORE_DATA_HOME") or BACKEND)  # `.data` lives here
     home.mkdir(parents=True, exist_ok=True)
     os.chdir(home)

@@ -25,7 +25,6 @@ export function ReadyView({
   onAddLayout,
 }: ViewCommon & { setupId: string } & LayoutTabProps) {
   const [launcherOpen, setLauncherOpen] = useState(false);
-  const lastRunError = useSimulationStore((s) => s.lastRunError);
   const availability = computeSimulationAvailability(setup.readiness);
   const assets = useStoreAssets(setup.store);
   const { personaNames, personaGenders } = usePersonaData(personas);
@@ -98,7 +97,6 @@ export function ReadyView({
           location={location}
           onSimulate={onSimulate}
           simulating={false}
-          simulateError={lastRunError ? new Error(`Last run failed: ${lastRunError.split("\n")[0]}`) : null}
           availability={availability}
           projectId={pid}
           setupId={setupId}

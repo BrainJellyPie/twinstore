@@ -86,7 +86,11 @@ def list_setups(project_id: str, *, include_store: bool = False) -> list[dict[st
     for f in d.iterdir():
         if not f.suffix == ".json":
             continue
-        data = read_json(f)
+        try:
+            data = read_json(f)
+        except (OSError, ValueError) as e:   # a damaged layout file must not hide the others
+            logger.warning(f"[setups] skipping {f.name} of {project_id}: unreadable ({type(e).__name__}: {e})")
+            continue
         summary = {k: v for k, v in data.items() if include_store or k != "store"}
         results.append(summary)
     results.sort(key=lambda s: str(s.get("updated_at", "")), reverse=True)

@@ -21,6 +21,7 @@ import { useSimulationStore } from "@/stores/simulationStore";
 
 import { runLabel } from "../labels";
 import { CompareDialog } from "./CompareDialog";
+import { LastRunFailure } from "./LastRunFailure";
 import { OptimizeDialog } from "./OptimizeDialog";
 import { RunLauncherDialog } from "./RunLauncherDialog";
 
@@ -39,7 +40,6 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
     .filter((r) => r.status === "completed")
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
   const setViewRunId = useSimulationStore((s) => s.setViewRunId);
-  const lastRunError = useSimulationStore((s) => s.lastRunError);
   const [launchOpen, setLaunchOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [optimizeOpen, setOptimizeOpen] = useState(false);
@@ -58,11 +58,8 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
 
   return (
     <div className="relative z-10 flex min-w-0 shrink-0 flex-col gap-2" role="region" aria-label="Run actions">
-      {lastRunError && (
-        <p className="glass rounded-xl border border-destructive/40 px-3 py-1.5 text-sm text-destructive shadow-float">
-          Last run failed: {lastRunError.split("\n")[0]}
-        </p>
-      )}
+      <LastRunFailure projectId={projectId} setupId={setupId}
+        className="glass rounded-xl border border-destructive/40 px-3 py-1.5 text-sm text-destructive shadow-float" />
       <div className="glass flex flex-wrap items-center gap-1 rounded-2xl border p-1.5 shadow-float">
         <Select value={runId} onValueChange={setViewRunId}>
           <SelectTrigger className="h-9 w-[270px] max-w-full rounded-xl text-sm" aria-label="Run shown">

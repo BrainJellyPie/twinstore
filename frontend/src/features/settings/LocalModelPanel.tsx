@@ -48,14 +48,14 @@ export function LocalModelPanel() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {local.state === "ready" && local.managed ? (
+          {/* Stop also cancels a download or start in progress. */}
+          {busy || (local.state === "ready" && local.managed) ? (
             <Button size="sm" variant="outline" onClick={() => stop.mutate()} disabled={stop.isPending}>
               <Square className="size-3.5" aria-hidden /> Stop
             </Button>
           ) : (
-            <Button size="sm" onClick={() => start.mutate()} disabled={busy || start.isPending || local.state === "disabled" || local.state === "ready"}>
-              {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
-              {busy ? "Setting up…" : `Start ${plan.model.label}`}
+            <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending || local.state === "disabled" || local.state === "ready"}>
+              <Play className="size-3.5" aria-hidden /> Start {plan.model.label}
             </Button>
           )}
         </div>

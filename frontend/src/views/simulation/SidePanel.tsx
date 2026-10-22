@@ -22,7 +22,6 @@ export interface SidePanelProps {
   location: string;
   onSimulate?: () => void;
   simulating?: boolean;
-  simulateError?: Error | null;
   availability?: Availability;
   projectId?: string;
   setupId?: string;
@@ -50,7 +49,6 @@ export function SidePanel({
   location,
   onSimulate,
   simulating,
-  simulateError,
   availability,
   projectId,
   setupId,
@@ -100,7 +98,6 @@ export function SidePanel({
                 onBusyChange={onBusyChange}
                 onSimulate={onSimulate}
                 simulating={simulating}
-                simulateError={simulateError}
                 availability={availability}
               />
             ) : null

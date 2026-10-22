@@ -1,3 +1,4 @@
+import logging
 import math
 import uuid
 from pathlib import Path
@@ -21,6 +22,7 @@ from store_emulator.application.storage.setups import (
 
 
 _data = Path(DATA_DIR)
+logger = logging.getLogger(__name__)
 
 
 _DRAWN = {"shelf", "fridge", "counter", "table"}
@@ -87,11 +89,16 @@ def list_projects() -> list[dict[str, Any]]:
         meta_file = d / "metadata.json"
         if not d.is_dir() or not meta_file.exists():
             continue
-        meta: dict[str, Any] = read_json(meta_file)
         pid = d.name
-        p_file = personas_path(pid)
-        has_personas = p_file.exists() and len(read_json(p_file)) > 0
-        setups = list_setups(pid)
+        try:
+            meta: dict[str, Any] = read_json(meta_file)
+            p_file = personas_path(pid)
+            has_personas = p_file.exists() and len(read_json(p_file)) > 0
+            setups = list_setups(pid)
+        except (OSError, ValueError) as e:
+            # One damaged file (a crash mid-write) must not hide every other store.
+            logger.warning(f"[projects] skipping {pid}: unreadable ({type(e).__name__}: {e})")
+            continue
         has_run = any(s.get("runId") for s in setups)
         state = read_state(pid)
         active_sid = state.get("activeSetupId")

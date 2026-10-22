@@ -164,10 +164,10 @@ def capture_llm_config(config: SimulationConfig, model: str) -> LLMConfig | None
         except ValueError as e:
             raise AppError(str(e), 400) from e
     vlm = config.engines.vlm_glance.llm
-    return base.model_copy(update={
-        "model": vlm.model, "api_base": vlm.api_base, "structured_output": vlm.structured_output,
-        "api_key": vlm.api_key,
-    })
+    # Through resolve_model: the default local endpoint follows TwinStore's own server (port, request limit).
+    return resolve_model(vlm.model, base=base.model_copy(update={
+        "api_base": vlm.api_base, "structured_output": vlm.structured_output, "api_key": vlm.api_key,
+    }))
 
 
 def model_has_vision(model: str) -> bool:

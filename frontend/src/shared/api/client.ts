@@ -1,6 +1,6 @@
 // Response types mirror backend schemas.py 1:1 — keep in sync.
 
-import { apiErrorMessage } from "./errors";
+import { ApiError, apiErrorMessage } from "./errors";
 
 import type {
   Face,
@@ -33,7 +33,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(apiErrorMessage(body, `${res.status} ${res.statusText}`));
+    throw new ApiError(apiErrorMessage(body, `${res.status} ${res.statusText}`), res.status);
   }
   return res.json() as Promise<T>;
 }
@@ -324,6 +324,8 @@ export interface RunListItem {
   project_id: string;
   setup_id: string;
   status: string;
+  // Failed runs: the message, then a newline and the Python traceback.
+  error?: string;
   created_at: string;
   total_customers: number;
   completed_customers?: number;

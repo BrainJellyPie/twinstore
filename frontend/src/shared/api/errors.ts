@@ -1,4 +1,14 @@
-/** Read FastAPI's string and field-validation errors without exposing echoed input values. */
+/** A non-2xx API response; `status` lets callers react to a specific code such as 409. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+/** Read FastAPI's string, structured ({code, message}) and field-validation errors without exposing echoed input values. */
 export function apiErrorMessage(body: string, fallback: string): string {
   let parsed: unknown;
   try { parsed = JSON.parse(body); } catch { return body.trim() || fallback; }
@@ -6,6 +16,9 @@ export function apiErrorMessage(body: string, fallback: string): string {
   if (!parsed || typeof parsed !== "object" || !("detail" in parsed)) return fallback;
   const detail = parsed.detail;
   if (typeof detail === "string") return detail.trim() || fallback;
+  if (detail && typeof detail === "object" && "message" in detail && typeof detail.message === "string") {
+    return detail.message.trim() || fallback;
+  }
   if (!Array.isArray(detail)) return fallback;
 
   const messages: string[] = [];
