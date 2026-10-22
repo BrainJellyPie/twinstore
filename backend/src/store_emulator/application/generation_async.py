@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from pathlib import Path
 from collections.abc import Callable
 from typing import Any, cast
 
@@ -11,6 +12,7 @@ from store_emulator.application.storage.generations import (
     find_active_generation, init_generation, write_status,
 )
 from store_emulator.application.storage.io import read_json, write_json
+from store_emulator.engine.files import remove_tree
 from store_emulator.application.storage.setups import (
     metadata_path, personas_path, read_setup,
 )
@@ -78,6 +80,12 @@ def start_persona_generation(
     if any(s.get("runId") for s in setups):
         raise AppError("personas cannot be regenerated because the project has simulation history.", 409)
 
+    if supplemental_bytes is not None:
+        _keep_upload(project_id, supplemental_bytes, supplemental_filename)
+    else:
+        kept = _kept_upload(project_id)
+        if kept is not None:
+            supplemental_bytes, supplemental_filename = kept
     gen_id = init_generation(project_id, setup_id, "persona")
     executor.submit(
         _run_persona_background,
@@ -86,6 +94,40 @@ def start_persona_generation(
         supplemental_filename=supplemental_filename,
     )
     return gen_id
+
+
+def _upload_dir(project_id: str) -> Path:
+    return metadata_path(project_id).parent / "supplemental"
+
+
+def _keep_upload(project_id: str, data: bytes, filename: str) -> None:
+    """The customer data uploaded with a new store, kept on disk: it lived only in memory, so a first generation that
+    failed (no key yet, a restart) lost it, and "Try again" generated customers without it, saying nothing."""
+    folder = _upload_dir(project_id)
+    try:
+        if folder.exists():
+            remove_tree(folder)
+        folder.mkdir(parents=True)
+        suffix = Path(filename).suffix.lower()[:10] or ".csv"
+        (folder / f"upload{suffix}").write_bytes(data)
+        write_json(folder / "upload.json", {"filename": filename})
+    except OSError:
+        logger.warning("[supplemental] could not keep the uploaded file", exc_info=True)
+
+
+def _kept_upload(project_id: str) -> tuple[bytes, str] | None:
+    """The kept upload, while its summary has not been made yet (later generations reuse the stored summary)."""
+    folder = _upload_dir(project_id)
+    try:
+        meta = cast(dict[str, object], read_json(metadata_path(project_id)))
+        if str(meta.get("supplemental_summary", "") or "") or not (folder / "upload.json").is_file():
+            return None
+        name = str(cast(dict[str, object], read_json(folder / "upload.json")).get("filename", ""))
+        files = [f for f in folder.iterdir() if f.name.startswith("upload.") and f.suffix != ".json"]
+        return (files[0].read_bytes(), name) if files else None
+    except (OSError, ValueError):
+        logger.warning("[supplemental] could not read the kept upload", exc_info=True)
+        return None
 
 
 def _run_persona_background(

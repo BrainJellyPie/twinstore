@@ -44,7 +44,10 @@ def test_vlm_judged_optimization_applies_the_vlm_winner(client, monkeypatch):
     from store_emulator.application import optimize as opt_service
     from tests.engine.test_vlm_judge import FakeShopperVLM
 
+    from store_emulator.application import local_vlm
+
     monkeypatch.setattr(opt_service, "build_client", lambda *args, **kwargs: FakeShopperVLM())
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: True)   # the local model is up
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     spec = {"objective": "revenue_per_visitor", "scope": "planogram", "budget": 6, "eval_customers": 40, "seed": 2}
     started = client.post(f"/api/projects/{PID}/setups/setup_7d6d/optimize", json={

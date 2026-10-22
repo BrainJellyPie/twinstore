@@ -575,3 +575,30 @@ def test_the_default_vision_endpoint_follows_the_local_server_and_dead_ones_leav
     assert not any(m["ref"] == "llamacpp:local" for m in providers.available_models())
     monkeypatch.setattr(local_vlm, "server_answers", lambda base: True)
     assert any(m["ref"] == "llamacpp:local" for m in providers.available_models())
+
+
+def test_the_uploaded_customer_data_is_kept_until_its_summary_is_made(tmp_path, monkeypatch):
+    from store_emulator.application import generation_async
+    from store_emulator.application.storage.io import write_json
+    from store_emulator.application.storage.setups import metadata_path
+
+    monkeypatch.chdir(tmp_path)
+    write_json(metadata_path("proj_up"), {"supplemental_summary": ""})
+    generation_async._keep_upload("proj_up", b"day,hour\n1,9\n", "고객 데이터.CSV")  # pyright: ignore[reportPrivateUsage]
+    assert generation_async._kept_upload("proj_up") == (b"day,hour\n1,9\n", "고객 데이터.CSV")  # pyright: ignore[reportPrivateUsage]
+    assert (metadata_path("proj_up").parent / "supplemental" / "upload.csv").is_file()
+    write_json(metadata_path("proj_up"), {"supplemental_summary": "students at lunch"})
+    assert generation_async._kept_upload("proj_up") is None  # pyright: ignore[reportPrivateUsage]
+
+    # "Try again" without a file picks the kept one up.
+    write_json(metadata_path("proj_up"), {"supplemental_summary": ""})
+    submitted: list[dict[str, object]] = []
+    monkeypatch.setattr(generation_async, "read_setup", lambda pid, sid: {"id": sid})
+    monkeypatch.setattr(generation_async, "find_active_generation", lambda *a, **k: None)
+    monkeypatch.setattr(generation_async, "init_generation", lambda *a: "gen_1")
+    monkeypatch.setattr(generation_async.executor, "submit", lambda fn, *a, **k: submitted.append(k))
+    from store_emulator.application.storage import setups as setup_store
+    monkeypatch.setattr(setup_store, "list_setups", lambda pid: [])
+    from store_emulator.domain.config import SimulationConfig
+    generation_async.start_persona_generation(SimulationConfig(), "proj_up", "setup_1")
+    assert submitted[0]["supplemental_bytes"] == b"day,hour\n1,9\n" and submitted[0]["supplemental_filename"] == "고객 데이터.CSV"

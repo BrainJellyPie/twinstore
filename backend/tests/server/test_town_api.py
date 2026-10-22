@@ -68,7 +68,10 @@ def test_vlm_synergy_job(client, monkeypatch):
     from store_emulator.application import town_synergy
     from tests.engine.test_vlm_synergy import CafeLoverVLM
 
+    from store_emulator.application import local_vlm
+
     monkeypatch.setattr(town_synergy, "build_client", lambda *args, **kwargs: CafeLoverVLM())
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: True)   # the local model is up
     town = client.post(f"/api/projects/{PID}/town/generate",
                        json={"archetype": "residential", "seed": 4, "size_m": 400, "n_competitors": 1,
                              "venue_density": 0.0}).json()

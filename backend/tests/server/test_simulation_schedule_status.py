@@ -24,6 +24,9 @@ def test_background_run_keeps_saved_inputs_and_completed_counts_in_sync(tmp_path
                               SimulationConfig(engine_type=EngineType.RULE_BASED), options=RunOptions(preview=True))
     root = tmp_path / '.data' / 'proj_schedule' / 'runs' / 'run_schedule'
     status = json.loads((root / 'status.json').read_text())
+    if not open_monday:   # nobody can come: the run says so instead of finishing with nobody
+        assert status['status'] == 'failed' and status['error'].startswith('No shoppers come on')
+        return
     assert status['status'] == 'completed', status.get('error')
     expected = int(open_monday)
     assert status['total_customers'] == status['completed_customers'] == expected

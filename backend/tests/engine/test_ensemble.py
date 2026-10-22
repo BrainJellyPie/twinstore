@@ -75,6 +75,8 @@ def test_local_and_openai_compatible_providers_resolve_without_keys(settings_dir
     assert "qwen:qwen3.7-plus" in refs and not any(r.startswith("openai:") for r in refs)
     assert "llamacpp:local" not in refs  # local servers are opt-in
     providers.update_provider(ProviderKind.LLAMACPP, ProviderUpdate(enabled=True))
+    from store_emulator.application import local_vlm
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: True)   # a server answers there
     assert "llamacpp:local" in {m["ref"] for m in providers.available_models()}
     assert not providers.provider_status(ProviderKind.CUSTOM).ready  # no endpoint yet
 

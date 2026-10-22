@@ -15,6 +15,8 @@
 - One failed progress poll during a run no longer replaces the page with an error screen: the last progress stays,
   with "Reconnecting…", and polling continues.
 - A store whose customer generation keeps failing can be deleted from its preparing screen.
+- The customer data uploaded with a new store (CSV/XLSX) is kept with the store: it lived only in memory, so when the
+  first customer generation failed (no key yet, a restart), "Try again" generated customers without it and said nothing.
 - "Try again" while another tab is already generating customers follows that job instead of failing.
 - Errors with a code and a message from the server show the message instead of "409 Conflict".
 
