@@ -33,6 +33,7 @@ export function CapturePage({ projectId }: { projectId: string }) {
   });
   const captures = useMemo(() => list.data ?? [], [list.data]);
   const [chosenNew, setChosenNew] = useState(false);
+  const [hasSavedQueue, setHasSavedQueue] = useState(false);
   useEffect(() => {
     if (!selected && !chosenNew && captures.length > 0) setSelected(captures[0]!.capture_id);
   }, [captures, selected, chosenNew]);
@@ -42,8 +43,9 @@ export function CapturePage({ projectId }: { projectId: string }) {
     <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto">
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:min-h-0">
         <CaptureStrip projectId={projectId} captures={captures} selected={selected} onSelect={select} />
+        {selected && hasSavedQueue && <Button variant="outline" onClick={() => select(null)}>Continue saved photo queue</Button>}
         {captures.length > 0 && <CaptureBatch key={projectId} projectId={projectId} captures={captures} onReview={select} />}
-        <div hidden={!!selected} className="min-h-64 shrink-0 md:flex-1"><CaptureUploadQueue key={projectId} visible={!selected} projectId={projectId} onAccepted={() => setChosenNew(true)} onReview={select} /></div>
+        <div hidden={!!selected} className="min-h-64 shrink-0 md:flex-1"><CaptureUploadQueue key={projectId} visible={!selected} projectId={projectId} onAccepted={() => setChosenNew(true)} onReview={select} onRecoveryAvailable={setHasSavedQueue} /></div>
         {selected && (
           <CaptureWorkspace key={selected} projectId={projectId} captureId={selected} onDeleted={() => select(null)} />
         )}

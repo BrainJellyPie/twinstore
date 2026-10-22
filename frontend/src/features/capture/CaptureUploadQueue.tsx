@@ -8,6 +8,8 @@ import {
   type CaptureUploadOptions,
 } from "@/services/mutations/captureUpload";
 import { Button } from "@/shared/components/ui/button";
+import { checkRecoveryRevision, forgetRecovery, queueIntent, readRecovery, recoveryErrorMessage, restoreRecovery, saveRecovery,
+  type RecoveryCopy, type RecoveryOptions } from "./queueRecovery";
 import {
   fileDigest,
   fileProblem,
@@ -36,12 +38,14 @@ export function CaptureUploadQueue({
   projectId,
   onAccepted,
   onReview,
+  onRecoveryAvailable,
   visible = true,
 }: {
   visible?: boolean;
   projectId: string;
   onAccepted: () => void;
   onReview: (id: string) => void;
+  onRecoveryAvailable?: (available: boolean) => void;
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const entriesRef = useRef<Entry[]>([]);
@@ -53,6 +57,14 @@ export function CaptureUploadQueue({
   const [model, setModel] = useState("");
   const [chosenCurrency, setCurrency] = useState<string | null>(null);
   const [rackType, setRackType] = useState<"shelf" | "fridge">("shelf");
+  const [saved, setSaved] = useState<RecoveryCopy | null>(null);
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryMessage, setRecoveryMessage] = useState("");
+  const [savedIntent, setSavedIntent] = useState<string | null>(null);
+  const recoverySession = useRef<{ revision: string; intent: string } | null>(null);
+  const recoveryBusy = useRef(false);
+  const recoveryEpoch = useRef(0);
+  useEffect(() => { onRecoveryAvailable?.(!!saved); }, [saved, onRecoveryAvailable]);
   const input = useRef<HTMLInputElement>(null);
   const alive = useRef(true);
   const busy = useRef(false);
@@ -72,16 +84,22 @@ export function CaptureUploadQueue({
     enabled: visible,
   });
   const currency = chosenCurrency ?? project.data?.metadata.currency ?? "USD";
-  const locked = entries.length > 0 || picking || working;
-  const canPick = !picking && !working && !!project.data && !project.isError;
+  const locked = entries.length > 0 || picking || working || recovering;
+  const canPick = !picking && !working && !recovering && !!project.data && !project.isError;
   useEffect(() => {
     alive.current = true;
+    let current = true;
+    const epoch = recoveryEpoch.current;
+    void readRecovery(projectId).then((copy) => {
+      if (current && epoch === recoveryEpoch.current) setSaved(copy);
+    }).catch((error: Error) => { if (current && epoch === recoveryEpoch.current) setRecoveryMessage(error.message); });
     return () => {
+      current = false;
       alive.current = false;
       pause.current = true;
       controller.current?.abort();
     };
-  }, []);
+  }, [projectId]);
   const commit = (next: Entry[]) => {
     entriesRef.current = next;
     if (alive.current) setEntries(next);
@@ -94,8 +112,58 @@ export function CaptureUploadQueue({
     void qc.invalidateQueries({
       queryKey: ["projects", projectId, "captures"],
     });
+  const recoveryOptions: RecoveryOptions = { detector, model, currency, rack_type: rackType };
+  const checkpoint = async () => {
+    const photos = entriesRef.current, intent = queueIntent(photos, recoveryOptions);
+    const session = recoverySession.current;
+    if (session?.intent === intent) {
+      await checkRecoveryRevision(projectId, session.revision);
+      return;
+    }
+    const copy = await saveRecovery(projectId, session?.revision ?? null, photos, recoveryOptions);
+    recoverySession.current = { revision: copy.revision, intent };
+    if (alive.current) { setSaved(copy); setSavedIntent(intent); }
+  };
+  const recoveryAction = async (action: "save" | "restore" | "forget" | "clear") => {
+    if (recoveryBusy.current || busy.current || picking) return;
+    recoveryEpoch.current += 1;
+    recoveryBusy.current = true; setRecovering(true); setRecoveryMessage("");
+    try {
+      if (action === "save") {
+        await checkpoint();
+        if (alive.current) setRecoveryMessage("Recovery copy saved in this browser. Upload starts only when you resume.");
+      } else if (action === "restore") {
+        const copy = await readRecovery(projectId);
+        if (!copy) throw new Error("The browser copy is no longer available. It may have been cleared or evicted.");
+        const photos = await restoreRecovery(copy);
+        await checkRecoveryRevision(projectId, copy.revision);
+        if (!alive.current) return;
+        setDetector(copy.options.detector); setModel(copy.options.model); setCurrency(copy.options.currency); setRackType(copy.options.rack_type);
+        const intent = queueIntent(photos, copy.options);
+        recoverySession.current = { revision: copy.revision, intent };
+        setSaved(copy); setSavedIntent(intent);
+        commit(photos.map(p => ({ ...p, stage: "queued", detail: "Restored — resume to recover accepted photos or upload unsent files" })));
+        pause.current = true; setPaused(true); setMessages([]);
+        setRecoveryMessage("Queue restored and paused. Resume checks existing request IDs before starting new recognition.");
+      } else {
+        const revision = recoverySession.current?.revision ?? saved?.revision;
+        if (revision) await forgetRecovery(projectId, revision);
+        recoverySession.current = null;
+        if (alive.current) {
+          setSaved(null); setSavedIntent(null);
+          if (action === "clear") { commit([]); setMessages([]); }
+          setRecoveryMessage("Browser recovery copy removed. Uploaded photos were not deleted.");
+        }
+      }
+    } catch (error) {
+      if (alive.current) setRecoveryMessage(`${recoveryErrorMessage(error)} Keep this page open; your live queue was not replaced.`);
+    } finally {
+      recoveryBusy.current = false;
+      if (alive.current) setRecovering(false);
+    }
+  };
   const pick = async (files: File[]) => {
-    if (!canPick) return;
+    if (!canPick || recoveryBusy.current) return;
     setPicking(true);
     const notices: string[] = [];
     const next = [...entriesRef.current];
@@ -145,6 +213,7 @@ export function CaptureUploadQueue({
   const run = async () => {
     if (
       busy.current ||
+      recoveryBusy.current ||
       picking ||
       entriesRef.current.some(
         (entry) => entry.stage === "upload_error" || entry.stage === "poll_error",
@@ -171,7 +240,10 @@ export function CaptureUploadQueue({
         let cid = entry.captureId;
         try {
           if (!cid) {
-            update(entry.id, { stage: "uploading", detail: "Uploading…" });
+            update(entry.id, { stage: "uploading", detail: "Checking recovery and uploading…" });
+            // A newly generated retry ID must reach durable storage before the upload can be accepted.
+            if (recoverySession.current) await checkpoint();
+            if (!alive.current) break;
             const accepted = await upload.mutateAsync({
               file: entry.file,
               options: { ...options, request_id: entry.requestId },
@@ -223,7 +295,7 @@ export function CaptureUploadQueue({
           update(entry.id, {
             stage: cid ? "poll_error" : "upload_error",
             captureId: cid,
-            detail: error instanceof Error ? error.message : "Request failed",
+            detail: recoveryErrorMessage(error),
           });
           pause.current = true;
           setPaused(true);
@@ -285,6 +357,7 @@ export function CaptureUploadQueue({
                 </option>
               ))}
             <option value="none">Don't read (typical prices)</option>
+            {model && model !== "none" && !models.some(m => m.vision && m.ref === model) && <option value={model}>Saved model: {model}</option>}
           </select>
         </label>
         <label>
@@ -320,6 +393,20 @@ export function CaptureUploadQueue({
         model for each photo. This queue waits for one photo to finish before
         sending the next.
       </p>
+      <section aria-label="Queue recovery" className="space-y-2 rounded border p-3">
+        <h3 className="font-semibold">Continue after leaving this page</h3>
+        <p>Save a recovery copy to keep these photos, settings and request IDs in this browser. Photos stay on this device until you start uploads. This is not a cloud backup; clearing browser data or storage eviction removes the copy.</p>
+        {saved && <p>{saved.photos.length} photos saved for this store. Restore pauses the queue; it does not call a model.</p>}
+        {savedIntent && <p>{savedIntent === queueIntent(entries, recoveryOptions) ? "Current upload choices are saved." : "Queue changes are not saved yet. Save them now, or resume to save before the next upload."}</p>}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" disabled={working || picking || recovering || !entries.length} onClick={() => void recoveryAction("save")}>Save queue on this browser</Button>
+          <Button variant="outline" disabled={working || picking || recovering} onClick={() => void recoveryAction("restore")}>{entries.length ? "Replace local queue from saved copy" : "Restore saved queue"}</Button>
+          <Button variant="outline" disabled={working || picking || recovering || !saved} onClick={() => void recoveryAction("forget")}>Forget saved copy</Button>
+        </div>
+        <p>Restoring replaces local choices only after the saved photos pass validation. Uploaded photos stay unchanged.</p>
+        {recovering && <p role="status">Checking browser recovery…</p>}
+        {recoveryMessage && <p role="status" className="break-words">{recoveryMessage}</p>}
+      </section>
       <button
         type="button"
         disabled={!canPick}
@@ -367,6 +454,7 @@ export function CaptureUploadQueue({
           disabled={
             working ||
             picking ||
+            recovering ||
             unresolved ||
             !entries.some((e) => e.stage === "queued")
           }
@@ -386,13 +474,13 @@ export function CaptureUploadQueue({
         </Button>
         <Button
           variant="outline"
-          disabled={working || picking || !entries.length}
+          disabled={working || picking || recovering || !entries.length}
           onClick={() => {
-            commit([]);
-            setMessages([]);
+            if (recoverySession.current) void recoveryAction("clear");
+            else { commit([]); setMessages([]); }
           }}
         >
-          Clear local queue
+          {savedIntent ? "Clear queue and saved copy" : "Clear local queue"}
         </Button>
       </div>
       <p>
@@ -404,8 +492,7 @@ export function CaptureUploadQueue({
             : "Processing queue…"
           : "Queue stopped."}{" "}
         Accepted recognition continues on the server when you pause or leave.
-        Keep this page open for unsent files; local files are not retained after
-        reload.
+        Save a browser recovery copy before leaving if you want to retain unsent files. Restored copies recover progress when resumed.
       </p>
       <ol className="space-y-2">
         {entries.map((e) => (
@@ -430,7 +517,7 @@ export function CaptureUploadQueue({
                 <Button
                   size="sm"
                   disabled={
-                    working || picking || (e.stage === "recognition_error" && unresolved)
+                    working || picking || recovering || (e.stage === "recognition_error" && unresolved)
                   }
                   onClick={() => {
                     update(e.id, {
@@ -455,7 +542,7 @@ export function CaptureUploadQueue({
                 <Button
                   size="sm"
                   variant="ghost"
-                  disabled={picking}
+                  disabled={picking || recovering}
                   onClick={() =>
                     commit(
                       entriesRef.current.filter((item) => item.id !== e.id),
