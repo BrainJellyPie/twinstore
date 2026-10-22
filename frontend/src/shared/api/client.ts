@@ -839,6 +839,8 @@ export interface ComparisonReport {
   confidence: number;
   metrics: MetricComparison[];
   notes: string[];
+  /** One per note, same order: its kind and values, to say it in the user's language. Absent from older servers. */
+  note_codes?: { code: string; params: Record<string, string | number> }[];
 }
 
 /** Why run B differs from run A, read by the text model from the comparison and both runs' fact sheets. */

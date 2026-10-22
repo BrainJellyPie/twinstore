@@ -60,20 +60,22 @@ def compare_runs(
     a = {r.persona_id: customer_metrics(r) for r in results_a}
     b = {r.persona_id: customer_metrics(r) for r in results_b}
     ids = sorted(set(a) & set(b))
-    notes: list[str] = []
+    notes: list[tuple[str, str, dict[str, str | int]]] = []
     if len(ids) < len(a) or len(ids) < len(b):
-        notes.append(
-            f"{len(a) - len(ids)} customers only in {run_a} and {len(b) - len(ids)} only in {run_b} "
-            "were excluded (failed or different persona sets)."
-        )
+        only_a, only_b = len(a) - len(ids), len(b) - len(ids)
+        notes.append(("unpaired", f"{only_a} customers only in {run_a} and {only_b} only in {run_b} "
+                      "were excluded (failed or different persona sets).",
+                      {"onlyA": only_a, "runA": run_a, "onlyB": only_b, "runB": run_b}))
     if len(ids) < 30:
-        notes.append("Fewer than 30 paired customers: intervals are unreliable.")
+        notes.append(("few_paired", "Fewer than 30 paired customers: intervals are unreliable.", {}))
 
     # A run made before purchases recorded their origin has no impulse spend to compare (it read as a drop to 0).
     unrecorded = [run for run, results in ((run_a, results_a), (run_b, results_b)) if not _records_origin(results)]
     if unrecorded:
-        notes.append(f"Impulse spend is not compared: {' and '.join(unrecorded)} was made by an older version that did "
-                     "not record which purchases were impulse buys. Re-run it to compare impulse spend.")
+        notes.append(("impulse_unrecorded",
+                      f"Impulse spend is not compared: {' and '.join(unrecorded)} was made by an older version that did "
+                      "not record which purchases were impulse buys. Re-run it to compare impulse spend.",
+                      {"runs": ", ".join(unrecorded)}))
 
     rng = np.random.default_rng(abs(seed))
     n = len(ids)
@@ -103,12 +105,14 @@ def compare_runs(
             sd_paired_diff=round(sd, 6),
             n_for_5pct_effect=required_n(sd, mean_a),
         ))
-    return ComparisonReport(
+    report = ComparisonReport(
         run_a=run_a, run_b=run_b, paired_customers=n,
         unpaired_a=len(a) - n, unpaired_b=len(b) - n,
-        n_bootstrap=n_bootstrap, confidence=confidence,
-        metrics=metrics, notes=notes,
+        n_bootstrap=n_bootstrap, confidence=confidence, metrics=metrics,
     )
+    for code, text, params in notes:
+        report.note(code, text, params)
+    return report
 
 
 def _bootstrap_means(d: np.ndarray, n_bootstrap: int, rng: np.random.Generator) -> np.ndarray:
