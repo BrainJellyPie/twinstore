@@ -47,6 +47,24 @@
 - Testing a model provider's key says "OpenAI turned this key down (Incorrect API key)…" instead of a raw library
   error; with no key anywhere, messages say so instead of naming the default model's provider.
 
+### In the app
+- Opening the floor editor no longer removes a layout's products: they are removed only when a changed floor is saved
+  (and put back if the save is refused). Cancel and Esc leave the layout as it was; Esc with unsaved changes asks,
+  like Cancel.
+- "Delete store and start over" opens the new-store form, as it says, instead of a page of the deleted store.
+- Totals say the period they cover ("Totals over 7 days: 3,640 shoppers, ≈520 a day"), and A/B and Shelf Lab reports
+  say how many visitors a day were simulated of how many estimated.
+- On a phone the store page opens at the top (it scrolled down to the run analyst).
+- Testing a provider's key updates its badge at once ("Key turned down"), and the message wraps instead of being cut.
+- The sample store's older run shows "—" for conversion and impulse share instead of 100% and 0%, and empty rack and
+  product lists say they fill in as shoppers pay.
+- The playback panel starts folded on screens up to 960 px tall and no longer lets the compass show through; speech
+  bubbles go when the store closes.
+- Compare shows spend as money ("$8.45 → $8.62") instead of cents.
+- Korean text wraps between words, and the wizard heading's last syllable is no longer cut off.
+- The breadcrumb and the run picker no longer cut names and times short on wide screens.
+- With the local model turned off by TWINSTORE_LOCAL_VLM, Settings says so and how to turn it on.
+
 ### Releases
 - Each release now starts on clean Windows and macOS machines before it is published (the launcher's first start:
   uv, Python, every package, the server answering), and the macOS bundle's signature is verified there.
