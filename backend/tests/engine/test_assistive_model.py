@@ -87,6 +87,26 @@ def test_the_engine_list_says_when_a_default_model_has_no_key(keys, monkeypatch)
         keys("ANTHROPIC_API_KEY")
         llm = {e["engine_type"]: e for e in client.get("/api/engines").json()}["pattern_intent_impulse"]
         assert llm["model_ready"] is True and llm["suggested_model"] == ""
+        # The vision default is the model on this computer: ready only when its server answers.
+        from store_emulator.application import local_vlm
+        monkeypatch.setattr(local_vlm, "server_answers", lambda base: False)
+        assert {e["engine_type"]: e for e in client.get("/api/engines").json()}["vlm_glance"]["model_ready"] is False
+        monkeypatch.setattr(local_vlm, "server_answers", lambda base: True)
+        assert {e["engine_type"]: e for e in client.get("/api/engines").json()}["vlm_glance"]["model_ready"] is True
+
+
+def test_a_run_on_the_local_model_when_it_is_turned_off_says_so(monkeypatch):
+    from store_emulator.application import local_vlm, providers
+
+    class _Off:
+        def status(self):
+            return local_vlm.LocalVLMStatus(state="disabled", message="turned off by TWINSTORE_LOCAL_VLM")
+
+    monkeypatch.setattr(local_vlm, "manager", lambda: _Off())
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: False)
+    with pytest.raises(ValueError, match=r"turned off \(TWINSTORE_LOCAL_VLM\)\. Add an API key") as raised:
+        providers.ensure_local_ready("http://127.0.0.1:8081/v1")
+    assert "Start it in Settings" not in str(raised.value)
 
 
 def test_prompt_listings_put_products_the_question_names_first_and_share_the_rest():

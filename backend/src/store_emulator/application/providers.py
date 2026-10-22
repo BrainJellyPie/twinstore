@@ -751,6 +751,16 @@ def _ensure_plain_key(ref: str, settings: dict[ProviderKind, ProviderSettings]) 
     raise ValueError(f"{problem}. {hint}, or {fix} in Settings → Model providers.")
 
 
+def local_model_answers(api_base: str) -> bool:
+    """Whether a model at this address can be used now: any address not on this computer counts (the provider says),
+    a server on this computer must answer."""
+    from .local_vlm import server_answers  # late import: local_vlm imports this module
+
+    if urlsplit(api_base).hostname not in {"127.0.0.1", "localhost", "::1"}:
+        return True
+    return server_answers(api_base)
+
+
 def ensure_local_ready(api_base: str) -> None:
     """A run on a server on this computer that is not up would only fail — and vision shoppers whose every call fails
     fall back to rule-based decisions, so the run would even look fine."""
@@ -770,6 +780,11 @@ def ensure_local_ready(api_base: str) -> None:
             raise ValueError(f"The local vision model is not ready yet: {status.message}{done}. "
                              "Try again in a moment, or add an API key in Settings → Model providers.")
     if not server_answers(api_base):
+        if status.state == "disabled":
+            # "Start it in Settings" cannot help: Settings says it is turned off and offers no Start.
+            raise ValueError(f"No model server answers at {api_base}, and the local model on this computer is turned "
+                             "off (TWINSTORE_LOCAL_VLM). Add an API key in Settings → Model providers and pick that "
+                             "model for this run, or use rule-based shoppers.")
         raise ValueError(f"No model server answers at {api_base}: the local model is not running. Start it in "
                          "Settings → Model providers, or pick a cloud model for this run.")
 

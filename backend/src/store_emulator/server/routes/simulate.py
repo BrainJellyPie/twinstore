@@ -11,7 +11,14 @@ from store_emulator.application import town as town_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
 from store_emulator.application.movement import MAX_TRACK_BYTES
-from store_emulator.application.providers import ensure_resolvable, load_settings, missing_key, text_model_fallback
+from store_emulator.application.providers import (
+    ensure_resolvable,
+    load_settings,
+    local_model_answers,
+    missing_key,
+    resolve_model,
+    text_model_fallback,
+)
 from store_emulator.application.run_estimate import RunEstimate, estimate_run
 from store_emulator.application.simulation import RunOptions
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
@@ -62,14 +69,30 @@ class SimulateRequest(BaseModel):
 
 @engines_router.get("/engines", summary="Available simulation engines", response_model=list[EngineInfo])
 async def list_engines() -> list[EngineInfo]:
-    """Engines selectable per run, with the server's current defaults."""
+    """Engines selectable per run, with the server's current defaults. `model_ready` is false for a model on this
+    computer whose server does not answer (the local model off or not started), as for a cloud model without a key."""
+    return await run_in_threadpool(_engines)
+
+
+def _engines() -> list[EngineInfo]:
     config = get_config()
     llm = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE)
     vlm = config.llm_for(EngineType.VLM_GLANCE)
     settings = load_settings()
 
     def ready(model: LLMConfig) -> bool:
-        return model.api_base is not None or model.api_key is not None or missing_key(model.model, settings) is None
+        if model.api_base is not None:
+            return local_model_answers(model.api_base)
+        if model.api_key is not None:
+            return True
+        if missing_key(model.model, settings) is not None:
+            return False
+        try:
+            resolved = resolve_model(model.model, base=model)
+        except ValueError:
+            return False
+        # e.g. llamacpp:local resolves to a server on this computer, which must answer
+        return resolved.api_base is None or local_model_answers(resolved.api_base)
 
     def suggested(model: LLMConfig) -> str:
         return "" if ready(model) else text_model_fallback(model.model, settings) or ""
