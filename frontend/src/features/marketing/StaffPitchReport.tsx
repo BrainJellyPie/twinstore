@@ -6,7 +6,7 @@ import { formatMoney } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
-import { personaLabel, segmentLabel } from "./labels";
+import { personaLabel, segmentLabel } from "@/shared/i18n/personaLabels";
 import { StudyReading } from "./StudyReading";
 
 const labels: Record<PitchComparison["metric"], MessageKey> = { purchase_intent: "mkMetricIntent", trust: "mkMetricTrust", pressure: "mkMetricPressure" };

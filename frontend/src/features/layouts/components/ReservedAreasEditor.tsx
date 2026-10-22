@@ -1,15 +1,18 @@
 import { useId, useState } from "react";
 import type { LayoutOptions, ReservedArea } from "@/shared/api/client";
+import { useI18n } from "@/shared/i18n/i18n";
+import { AREA_POSITION_LABELS } from "../optionLabels";
 import { AREA_POSITIONS, moveReservedArea, swapReservedAreaDimensions } from "../reservedAreaPlacement";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
+// Each starting point's label and default area name are translated; the area name is ordinary editable text.
 const STARTING_POINTS = [
-  { id: "custom", label: "Custom area", name: "Reserved area", width: 3, height: 3, zone: "back_left" },
-  { id: "consultation", label: "Consultation corner", name: "Consultation", width: 4, height: 3, zone: "back_right" },
-  { id: "pickup", label: "Pickup near the entrance", name: "Pickup", width: 3, height: 2, zone: "front_entry" },
-  { id: "fitting", label: "Fitting area", name: "Fitting area", width: 3, height: 3, zone: "back_left" },
-  { id: "demo", label: "Central demonstration area", name: "Demonstration", width: 4, height: 4, zone: "center" },
-  { id: "event", label: "Central event space", name: "Event space", width: 6, height: 4, zone: "center" },
+  { id: "custom", label: "layAreaStart_custom", name: "layAreaName_custom", width: 3, height: 3, zone: "back_left" },
+  { id: "consultation", label: "layAreaStart_consultation", name: "layAreaName_consultation", width: 4, height: 3, zone: "back_right" },
+  { id: "pickup", label: "layAreaStart_pickup", name: "layAreaName_pickup", width: 3, height: 2, zone: "front_entry" },
+  { id: "fitting", label: "layAreaStart_fitting", name: "layAreaName_fitting", width: 3, height: 3, zone: "back_left" },
+  { id: "demo", label: "layAreaStart_demo", name: "layAreaName_demo", width: 4, height: 4, zone: "center" },
+  { id: "event", label: "layAreaStart_event", name: "layAreaName_event", width: 6, height: 4, zone: "center" },
 ] as const;
 
 export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", gateWall = "front" }: {
@@ -19,6 +22,7 @@ export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", 
   entrance?: LayoutOptions["entrance"];
   gateWall?: LayoutOptions["gate_wall"];
 }) {
+  const { locale, t } = useI18n();
   const id = useId();
   const [startingPoint, setStartingPoint] = useState("custom");
   const validGrid = Number.isInteger(grid[0]) && grid[0] >= 8 && grid[0] <= 40 &&
@@ -44,66 +48,68 @@ export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", 
     }
     x = Math.max(1, Math.min(x, grid[0] - width - 1));
     y = Math.max(1, Math.min(y, grid[1] - height - 1));
+    const name = t(point.name);
     let sequence = point.id === "custom" ? areas.length + 1 : 1;
-    let label = sequence === 1 && point.id !== "custom" ? point.name : `${point.name} ${sequence}`;
-    while (areas.some((area) => area.label.trim().toLowerCase() === label.toLowerCase())) label = `${point.name} ${++sequence}`;
+    let label = sequence === 1 && point.id !== "custom" ? name : `${name} ${sequence}`;
+    while (areas.some((area) => area.label.trim().toLowerCase() === label.toLowerCase())) label = `${name} ${++sequence}`;
     onChange([...areas, { label, x, y, width, height }]);
   }
 
-  return <section className="space-y-2 rounded-md border p-2" aria-label="Reserved floor areas">
-    <p className="text-xs font-medium">Keep areas clear</p>
+  return <section className="space-y-2 rounded-md border p-2" aria-label={t("layReservedAreasRegion")}>
+    <p className="text-xs font-medium">{t("layKeepAreasClear")}</p>
     <div className="flex flex-wrap items-end gap-2">
-      <div className="min-w-0 flex-1 basis-full space-y-1 text-xs sm:basis-0"><label htmlFor={`${id}-starting-point`}>Area starting point</label>
+      <div className="min-w-0 flex-1 basis-full space-y-1 text-xs sm:basis-0"><label htmlFor={`${id}-starting-point`}>{t("layAreaStartingPoint")}</label>
         <select id={`${id}-starting-point`} className={controlClass} value={startingPoint} onChange={(event) => setStartingPoint(event.target.value)}>
-          {STARTING_POINTS.map((point) => <option key={point.id} value={point.id}>{point.label}</option>)}
+          {STARTING_POINTS.map((point) => <option key={point.id} value={point.id}>{t(point.label)}</option>)}
         </select>
       </div>
       <button type="button" className="rounded border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
-        disabled={areas.length >= 8 || !validGrid} onClick={addArea}>Add reserved area</button>
+        disabled={areas.length >= 8 || !validGrid} onClick={addArea}>{t("layAddReservedArea")}</button>
     </div>
-    <p className="text-[11px] text-muted-foreground">Starting points fit the current floor and remain editable. They can overlap; adjust positions if you need separate areas.</p>
-    <p className="text-[11px] text-muted-foreground">Reserve open space for consultation, pickup, events or later editing. Columns start at 1 on the left; rows start at 1 at the back wall. Keep rectangles inside the outer wall cells.</p>
+    <p className="text-[11px] text-muted-foreground">{t("layStartingPointsHint")}</p>
+    <p className="text-[11px] text-muted-foreground">{t("layReserveHint")}</p>
     {areas.map((area, index) => <fieldset key={index} className="space-y-2 rounded border p-2">
-      <legend className="px-1 text-xs">Area {index + 1}</legend>
+      <legend className="px-1 text-xs">{t("layAreaNumber", { number: index + 1 })}</legend>
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1 space-y-1 text-xs">
-          <label htmlFor={`${id}-${index}-label`}>Area {index + 1} name</label>
+          <label htmlFor={`${id}-${index}-label`}>{t("layAreaNameLabel", { number: index + 1 })}</label>
           <input id={`${id}-${index}-label`} className={controlClass} value={area.label} maxLength={80}
             onChange={(e) => update(index, { label: e.target.value })} />
         </div>
         <button type="button" className="rounded border px-2 py-1.5 text-xs hover:bg-muted"
-          aria-label={`Remove area ${index + 1}`} onClick={() => onChange(areas.filter((_, i) => i !== index))}>Remove</button>
+          aria-label={t("layRemoveArea", { number: index + 1 })} onClick={() => onChange(areas.filter((_, i) => i !== index))}>{t("remove")}</button>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {([
-          ["x", "Start column", 1], ["y", "Start row", 1], ["width", "Width", 0], ["height", "Depth", 0],
+          ["x", "layAreaStartColumn", 1], ["y", "layAreaStartRow", 1], ["width", "layWidth", 0], ["height", "layDepth", 0],
         ] as const).map(([key, label, offset]) => <div key={key} className="space-y-1 text-xs">
-          <label htmlFor={`${id}-${index}-${key}`}>{label}</label>
-          <input id={`${id}-${index}-${key}`} aria-label={`Area ${index + 1} ${label.toLowerCase()}`}
+          <label htmlFor={`${id}-${index}-${key}`}>{t(label)}</label>
+          <input id={`${id}-${index}-${key}`} aria-label={t("layAreaField", { number: index + 1, field: t(label).toLocaleLowerCase(locale) })}
             className={controlClass} type="number" min={1 + offset} max={38 + offset} step={1}
             value={Number.isFinite(area[key]) ? area[key] + offset : ""}
             onChange={(e) => update(index, { [key]: e.target.value === "" ? NaN : Number(e.target.value) - offset })} />
         </div>)}
       </div>
       <div className="space-y-1 text-xs">
-        <p>Move area to</p>
+        <p>{t("layMoveAreaTo")}</p>
         <div className="flex flex-wrap gap-1.5">
-          {AREA_POSITIONS.map(([position, label]) => {
+          {AREA_POSITIONS.map(([position]) => {
             const moved = moveReservedArea(area, grid, position);
-            return <button key={position} type="button" aria-label={`Move area ${index + 1} to ${label.toLowerCase()}`}
+            const label = t(AREA_POSITION_LABELS[position]);
+            return <button key={position} type="button" aria-label={t("layMoveAreaToPosition", { number: index + 1, position: label.toLocaleLowerCase(locale) })}
               className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-40" disabled={!moved}
               onClick={() => { if (moved) update(index, moved); }}>{label}</button>;
           })}
-          <button type="button" aria-label={`Swap area ${index + 1} width and depth`}
+          <button type="button" aria-label={t("laySwapAreaDims", { number: index + 1 })}
             className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-40"
             disabled={!swapReservedAreaDimensions(area, grid)} onClick={() => {
               const swapped = swapReservedAreaDimensions(area, grid);
               if (swapped) update(index, swapped);
-            }}>Swap width and depth</button>
+            }}>{t("laySwapWidthDepth")}</button>
         </div>
-        <p className="text-[11px] text-muted-foreground">Moves keep the size and leave the outer wall cells clear. Swapping keeps the start column and row; both dimensions must fit there. Later floor resizing does not move the area.</p>
+        <p className="text-[11px] text-muted-foreground">{t("layMoveAreaHint")}</p>
       </div>
     </fieldset>)}
-    {areas.length > 0 && <p className="text-[11px] text-muted-foreground">Dashed outlines mark these areas in the preview. They stay walkable; walls, rooms and service behavior are not added. Manual floor edits can use this space later.</p>}
+    {areas.length > 0 && <p className="text-[11px] text-muted-foreground">{t("layDashedHint")}</p>}
   </section>;
 }

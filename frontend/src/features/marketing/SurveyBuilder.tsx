@@ -17,7 +17,7 @@ import { majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 
 import { usePackages } from "./hooks";
-import { AGE_GROUPS as AGES, GENDERS, personaLabel } from "./labels";
+import { AGE_GROUPS as AGES, GENDERS, personaLabel } from "@/shared/i18n/personaLabels";
 import { ProductDrop } from "./ProductLibrary";
 import { toMinor } from "./products";
 import { QUESTIONS } from "./questions";

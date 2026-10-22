@@ -25,6 +25,9 @@ import { CaptureUploadQueue } from "./CaptureUploadQueue";
 import { BeforeAfter, ShelfLabPanel } from "./ShelfLab";
 import { STAGES } from "./stages";
 
+// Detectors a finished capture reports it used; "gdino" reads as its product name and unknown names as they are.
+const DETECTORS: Record<string, MessageKey> = { classic: "capDetectorClassicName", vlm: "capDetectorVlmName" };
+
 const capturesKey = (pid: string) => ["projects", pid, "captures"] as const;
 
 export function CapturePage({ projectId }: { projectId: string }) {
@@ -78,7 +81,7 @@ function CaptureStrip({ projectId, captures, selected, onSelect }: {
           title={c.image_name}>
           <img src={api.captureImageUrl(projectId, c.capture_id)} alt="" className="h-full w-full object-cover" />
           <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-0.5 text-left text-[0.68rem] text-white">
-            {c.status === "completed" ? t("capStripProducts", { count: c.items }) : c.status === "failed" ? t("capStripFailed") : `${Math.round(c.progress * 100)} %`}
+            {c.status === "completed" ? t("capStripProducts", { count: c.items }) : c.status === "failed" ? t("capStripFailed") : `${Math.round(c.progress * 100)}%`}
           </span>
         </button>
       ))}
@@ -154,7 +157,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
           <span className="truncate">
             {status.image_name}
             {result ? t("capSummary", { products: result.items.length, facings: result.items.reduce((a, i) => a + i.facings, 0), shelves: result.bands.length, gaps: result.gaps.length })
-              + ` · ${result.detector}${result.model ? ` + ${result.model}` : ""}` : ""}
+              + ` · ${Object.prototype.hasOwnProperty.call(DETECTORS, result.detector) ? t(DETECTORS[result.detector]!) : result.detector === "gdino" ? "Grounding DINO" : result.detector}${result.model ? ` + ${result.model}` : ""}` : ""}
           </span>
           {!processing && (
             <button type="button" className="flex items-center gap-1 hover:text-destructive disabled:opacity-50" disabled={del.isPending} onClick={() => del.mutate()}>

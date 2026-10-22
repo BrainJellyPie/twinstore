@@ -99,3 +99,18 @@ it("explains the difference on request, with the figures it used", async () => {
   expect(explainComparison).toHaveBeenCalledWith("p", "run_a", "run_b");
   expect(screen.getByRole("list", { name: "Figures used" }).textContent).toContain("Drink 3 1027 / 917");
 });
+
+it("cuts long run names with an ellipsis, keeps the full name as a tooltip and points to the hidden columns", () => {
+  show();
+  for (const name of ["Baseline run (A)", "Variant run (B)"]) {
+    const trigger = screen.getByRole("combobox", { name });
+    const full = trigger.getAttribute("title");
+    expect(full).toMatch(/^s1 — /);
+    expect(trigger.querySelector(".truncate")?.textContent).toBe(full);
+  }
+  expect(screen.getByText("Scroll sideways for the interval, change, P and n columns.")).toBeTruthy();
+  const region = screen.getByRole("region", { name: "Run comparison metrics" });
+  expect(region.querySelector("tbody td")!.className).toContain("sticky");
+  // Only the metrics the server sent are listed (an older run without purchase origins has no impulse row).
+  expect(region.querySelectorAll("tbody tr")).toHaveLength(1);
+});

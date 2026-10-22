@@ -65,7 +65,7 @@ export function AddLayoutDialog({
   defaultCurrency = "USD",
   isCurrentProject,
 }: AddLayoutDialogProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const createLayout = useCreateLayout({ active: open, projectId, canSelect: isCurrentProject });
   const creating = useRef(false);
   const planInput = useRef<HTMLInputElement>(null);
@@ -78,7 +78,7 @@ export function AddLayoutDialog({
     resolveDefaultParent(parentSetupId, layouts),
   );
   const [template, setTemplate] = useState<TemplateChoice>({ ...DEFAULT_TEMPLATE_CHOICE, currency: defaultCurrency });
-  const [floors, setFloors] = useState(() => buildingPreset("department", defaultCurrency));
+  const [floors, setFloors] = useState(() => buildingPreset("department", defaultCurrency, locale));
   const [planFile, setPlanFile] = useState<File | null>(null);
   const [planReader, setPlanReader] = useState<"auto" | "classic">("auto");
   const [planPage, setPlanPage] = useState(1);

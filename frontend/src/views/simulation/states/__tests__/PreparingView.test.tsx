@@ -10,7 +10,7 @@ afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); });
 const failedLayout: SetupGenerationState = { phase: "failed", kind: "layout", currentGenId: "layout_generation", error: "Invalid image", retry: vi.fn(), retrying: false };
 function show(generation: SetupGenerationState = failedLayout) {
   const props = { generation, contextKind: "layout" as "layout" | "persona", onAbandonProject: vi.fn<() => void | Promise<void>>(),
-    onBackToStores: vi.fn(), projectName: "우리商店 Café", layouts: [{ id: "failed_layout", name: "Failed floor" }, { id: "ready_layout", name: "Good floor" }], selectedSetupId: "failed_layout", onLayoutSelect: vi.fn() };
+    onBackToStores: vi.fn(), onOpenSettings: vi.fn(), projectName: "우리商店 Café", layouts: [{ id: "failed_layout", name: "Failed floor" }, { id: "ready_layout", name: "Good floor" }], selectedSetupId: "failed_layout", onLayoutSelect: vi.fn() };
   return { ...render(<PreparingView {...props} />), props };
 }
 
@@ -201,4 +201,21 @@ it("says customer generation is waiting for the local model and why", () => {
   cleanup();
   show({ phase: "persona", kind: "persona", currentGenId: "persona_generation", error: null, note: null, retry: vi.fn(), retrying: false, loadingStatus: false });
   expect(screen.queryByText(translate("en", "generationWaitsForLocalModel"))).toBeNull();
+});
+
+it.each(LOCALES)("points a failed customer generation to model settings without the pre-generation cost hint in $code", ({ code }) => {
+  useLocale.getState().setLocale(code);
+  const { props } = show({ ...failedLayout, kind: "persona", error: "No model API key is set." });
+  expect(screen.getByRole("heading", { name: translate(code, "personaGenerationFailed") })).toBeTruthy();
+  expect(screen.queryByText(translate(code, "generatePersonasHint"))).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "modelSettings") }));
+  expect(props.onOpenSettings).toHaveBeenCalledOnce();
+  expect(props.onAbandonProject).not.toHaveBeenCalled();
+});
+
+it("keeps the cost hint before generation and offers model settings only after a failure", () => {
+  const { props, rerender } = show({ ...failedLayout, phase: "idle", kind: null, error: null });
+  rerender(<PreparingView {...props} contextKind="persona" />);
+  expect(screen.getByText(translate("en", "generatePersonasHint"))).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Model settings" })).toBeNull();
 });

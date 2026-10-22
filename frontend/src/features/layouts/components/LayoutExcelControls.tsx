@@ -8,6 +8,7 @@ import { parseLayoutWorkbook } from "@/features/layouts/excel/parseLayoutWorkboo
 import { extractSkuImages } from "@/features/layouts/excel/extractSkuImages";
 import { uploadSkuImages } from "@/shared/api/images";
 import type { Store } from "@/shared/types/domain";
+import { useI18n } from "@/shared/i18n/i18n";
 
 interface LayoutExcelControlsProps {
   store: Store;
@@ -23,6 +24,7 @@ export function LayoutExcelControls({
   setupId,
   mode = "full",
 }: LayoutExcelControlsProps) {
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -117,7 +119,7 @@ export function LayoutExcelControls({
             disabled={replace.isPending}
           >
             {replace.isPending ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Upload className="mr-1 size-3" />}
-            Upload
+            {t("excelUpload")}
           </Button>
         )}
         <Button
@@ -129,7 +131,7 @@ export function LayoutExcelControls({
           disabled={downloading}
         >
           {downloading ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Download className="mr-1 size-3" />}
-          Download
+          {t("excelDownload")}
         </Button>
       </div>
       {mode === "full" && (
@@ -148,8 +150,9 @@ export function LayoutExcelControls({
       {mode === "full" && uploadInfo && currentItemCount > 0 && (
         <>
           <p className="text-xs text-muted-foreground">
-            File uploaded ({uploadInfo.count} items
-            {uploadInfo.clearedCount > 0 && `, ${uploadInfo.clearedCount} auto-removed`})
+            {uploadInfo.clearedCount > 0
+              ? t("excelUploadedCleared", { count: uploadInfo.count, cleared: uploadInfo.clearedCount })
+              : t("excelUploaded", { count: uploadInfo.count })}
           </p>
           {uploadInfo.imageWarning && (
             <p className="text-xs text-warn">{uploadInfo.imageWarning}</p>

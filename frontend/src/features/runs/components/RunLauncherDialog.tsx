@@ -14,6 +14,8 @@ import { Bot, Camera, ChevronDown, Eye, FlaskConical, Map as MapIcon, SlidersHor
 import { keepPreviousData, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
+import { isPreparing, useModelSetup } from "@/features/settings/useModelSetup";
 import { Button } from "@/shared/components/ui/button";
 import {
   AlertDialog,
@@ -70,7 +72,8 @@ export function RunLauncherDialog(props: RunLauncherDialogProps) {
   );
 }
 
-const SAMPLE_DEFAULT = 300;
+// LLM shoppers cost about 3 model calls each; this sample stays under the cost warning on typical models.
+const SAMPLE_DEFAULT = 150;
 const VISION_SAMPLE_DEFAULT = 30;
 const ESTIMATE_DEBOUNCE_MS = 400;
 const ESTIMATE_STALE_MS = 30_000;
@@ -89,9 +92,17 @@ function LauncherForm({
   const qc = useQueryClient();
   const simulate = useSimulate();
   const engines = useEngines().data;
+  const modelSetup = useModelSetup().data;
   const serverDefault = engines?.find((e) => e.default)?.engine_type;
+  // An engine whose model is not ready (no key, or the local model not answering) and has no keyed alternative cannot
+  // run, so the dialog opens on the rule-based preview instead.
+  const canRun = (type: EngineType) => {
+    const info = engines?.find((e) => e.engine_type === type);
+    return !info?.uses_llm || info.model_ready !== false || !!info.suggested_model;
+  };
+  const preferredEngine = defaultEngine ?? serverDefault;
   const [selectedEngine, setEngine] = useState<EngineType>();
-  const engine = selectedEngine ?? defaultEngine ?? serverDefault ?? "rule_based";
+  const engine = selectedEngine ?? (preferredEngine && canRun(preferredEngine) ? preferredEngine : "rule_based");
   const recommendedSample = Math.min(engine === "vlm_glance" ? VISION_SAMPLE_DEFAULT : SAMPLE_DEFAULT, personaCount);
   const [selectedSampleMode, setSampleMode] = useState<"all" | "sample" | null>(null);
   const sampleMode = selectedSampleMode ?? (engine !== "rule_based" && personaCount > recommendedSample ? "sample" : "all");
@@ -137,8 +148,12 @@ function LauncherForm({
     ? engineInfo.suggested_model : null;
   const modelChoice: ModelChoice = pickedModel.kind === "default" && suggested ? { kind: "single", model: suggested } : pickedModel;
   const setModelChoice = setPickedModel;
+  const localState = modelSetup?.local.state;
+  const notReadyMessage: MessageKey = localState === "disabled" ? "modelNotReadyLocalOff"
+    : isPreparing(modelSetup) ? "modelNotReadyLocalPreparing"
+    : localState === "off" || localState === "error" ? "modelNotReadyLocalStopped" : "modelNotReadyNoKey";
   let modelError: string | null = null;
-  if (usesLlm && noKey && modelChoice.kind === "default" && available) modelError = t("defaultModelNoKeyNoAlternative", { model: engineInfo?.model ?? "" });
+  if (usesLlm && noKey && modelChoice.kind === "default" && available) modelError = t(notReadyMessage, { model: engineInfo?.model ?? "" });
   if (usesLlm && modelChoice.kind !== "default") {
     if (!available) modelError = models.isError ? t("modelListError") : t("loadingModels");
     else if (modelChoice.kind === "single") {
@@ -459,20 +474,19 @@ function LauncherForm({
         </details>
 
         <p className="text-xs text-muted-foreground" aria-live="polite">
-          {isPreview ? t("previewSummary") : t("finalSummary")}
+          {locked ? t("previewLockedSummary") : isPreview ? t("previewSummary") : t("finalSummary")}
           {" · "}{scenario?.name ?? t("baselineSituation")}
           {usesLlm && ` · ${modelChoice.kind === "single" ? modelChoice.model ?? t("chooseModel") : modelChoice.kind === "ensemble" ? t("modelEnsemble") : modelOf(engine) || t("serverDefaultModel")}`}
           {town && useTown && ` · ${t("neighborSummary", { percent: Math.round(townScale * 100) })}`}
           {withPhotos && ` · ${t("shelfViewPhoto")}`}
         </p>
 
-        {!noEstimate && <div className={cn("rounded-md border px-3 py-2 text-xs", shownEstimate?.warn && estimateCurrent ? "tone-warn" : "bg-muted/40")}
+        {/* The server's estimate, or a short wait for it; nothing while the form is invalid or the estimate failed. */}
+        {!noEstimate && (shownEstimate || (valid && !estimate.isError)) && <div className={cn("rounded-md border px-3 py-2 text-xs", shownEstimate?.warn && estimateCurrent ? "tone-warn" : "bg-muted/40")}
           aria-live="polite" aria-busy={!estimateCurrent || estimate.isFetching}>
           {shownEstimate
             ? <span className={cn(!estimateCurrent && "opacity-60")}>{runEstimateText(locale, shownEstimate)}</span>
-            : engine === "vlm_glance"
-              ? t("visionCallEstimate", { min: customers, max: customers * 3, count: customers })
-              : usesLlm ? t("llmCallEstimate", { calls: customers * 3, count: customers }) : t("ruleCallEstimate", { count: customers })}
+            : <span className="text-muted-foreground">{t("checkingEstimate")}</span>}
         </div>}
 
       </fieldset>

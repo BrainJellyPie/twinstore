@@ -2,6 +2,7 @@
 // foot-traffic heat behind them — what TwinStore simulates, shown instead of told.
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/shared/i18n/i18n";
 
 const TILE_W = 30;
 const TILE_H = 15;
@@ -28,6 +29,7 @@ const ROUTES: [number, number][][] = [
 const SHOPPER_COLORS = ["var(--heat-1)", "var(--heat-2)", "var(--heat-3)"];
 
 export function HeroStore() {
+  const { t } = useI18n();
   const [animate, setAnimate] = useState(true);
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -44,7 +46,7 @@ export function HeroStore() {
   const fridge = { top: "var(--hero-fridge-top)", left: "var(--hero-fridge-left)", right: "var(--hero-fridge-right)" };
 
   return (
-    <svg viewBox="-230 -60 560 330" className="hero-store h-full w-full" role="img" aria-label="Shoppers walking through a store">
+    <svg viewBox="-230 -60 560 330" className="hero-store h-full w-full" role="img" aria-label={t("heroStoreAlt")}>
       <defs>
         <filter id="heat-blur" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="7" />

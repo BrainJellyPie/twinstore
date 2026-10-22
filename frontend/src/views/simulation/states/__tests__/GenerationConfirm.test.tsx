@@ -31,7 +31,7 @@ const status = (patch: Partial<GenerationStatus> = {}): GenerationStatus => {
 function Harness() {
   const generation = useSetupGeneration("p", "s");
   return <PreparingView generation={generation} contextKind="persona" projectName="Corner store" layouts={[{ id: "s", name: "Floor" }]}
-    selectedSetupId="s" onLayoutSelect={vi.fn()} onBackToStores={vi.fn()} onAbandonProject={vi.fn()} />;
+    selectedSetupId="s" onLayoutSelect={vi.fn()} onBackToStores={vi.fn()} onOpenSettings={vi.fn()} onAbandonProject={vi.fn()} />;
 }
 function show() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
