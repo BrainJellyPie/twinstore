@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
-import { translate, useLocale } from "@/shared/i18n/i18n";
+import { useLocale } from "@/shared/i18n/i18n";
 import type { Store } from "@/shared/types/domain";
 import { BuildingPicker } from "../components/BuildingPicker";
 import { buildingPreset } from "../templateOptions";
