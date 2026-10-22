@@ -59,8 +59,8 @@ it("keeps added areas editable, avoids duplicate names and enforces the eight-ar
   fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
   expect(savedAreas().map((area) => area.label)).toEqual(["Consultation", "Consultation 2"]);
   fireEvent.change(screen.getByLabelText("Area 1 name"), { target: { value: "Private advice" } });
-  fireEvent.change(screen.getByLabelText("Area 1 start column"), { target: { value: "4" } });
-  fireEvent.change(screen.getByLabelText("Area 1 width"), { target: { value: "5" } });
+  fireEvent.change(screen.getByLabelText("Area 1: Start column"), { target: { value: "4" } });
+  fireEvent.change(screen.getByLabelText("Area 1: Width"), { target: { value: "5" } });
   expect(savedAreas()[0]).toMatchObject({ label: "Private advice", x: 3, width: 5 });
   for (let index = 2; index < 8; index++) fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
   expect(new Set(savedAreas().map((area) => area.label)).size).toBe(8);
@@ -82,10 +82,10 @@ it("moves and swaps one existing area without changing other areas or submitting
   const first = { label: "Consultation", x: 2, y: 3, width: 4, height: 3 };
   const second = { label: "Pickup", x: 5, y: 6, width: 2, height: 2 };
   render(<form onSubmit={submit}><Editor grid={[24, 18]} initial={[first, second]} /></form>);
-  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to front right" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1: Front right" }));
   expect(savedAreas()).toEqual([{ ...first, x: 19, y: 14 }, second]);
   expect((screen.getByRole("button", { name: "Swap area 1 width and depth" }) as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to center" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1: Center" }));
   fireEvent.click(screen.getByRole("button", { name: "Swap area 1 width and depth" }));
   expect(savedAreas()).toEqual([{ ...first, x: 10, y: 7, width: 3, height: 4 }, second]);
   fireEvent.click(screen.getByRole("button", { name: "Swap area 1 width and depth" }));
@@ -97,15 +97,15 @@ it("uses current grid dimensions, recovers missing coordinates and holds invalid
   const first = { label: "Consultation", x: 2, y: 2, width: 4, height: 3 };
   const view = render(<Editor grid={[24, 18]} initial={[first]} />);
   view.rerender(<Editor grid={[8, 6]} initial={[first]} />);
-  fireEvent.change(screen.getByLabelText("Area 1 start column"), { target: { value: "" } });
-  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to back right" }));
+  fireEvent.change(screen.getByLabelText("Area 1: Start column"), { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1: Back right" }));
   expect(savedAreas()[0]).toEqual({ ...first, x: 3, y: 1 });
-  expect((screen.getByLabelText("Area 1 start column") as HTMLInputElement).value).toBe("4");
-  fireEvent.change(screen.getByLabelText("Area 1 width"), { target: { value: "" } });
-  expect((screen.getByRole("button", { name: "Move area 1 to center" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByLabelText("Area 1: Start column") as HTMLInputElement).value).toBe("4");
+  fireEvent.change(screen.getByLabelText("Area 1: Width"), { target: { value: "" } });
+  expect((screen.getByRole("button", { name: "Move area 1: Center" }) as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByRole("button", { name: "Swap area 1 width and depth" }) as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.change(screen.getByLabelText("Area 1 width"), { target: { value: "3" } });
-  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to front left" }));
+  fireEvent.change(screen.getByLabelText("Area 1: Width"), { target: { value: "3" } });
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1: Front left" }));
   expect(savedAreas()[0]).toEqual({ ...first, x: 1, y: 2, width: 3 });
 });
 

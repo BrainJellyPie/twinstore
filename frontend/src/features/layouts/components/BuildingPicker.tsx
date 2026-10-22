@@ -63,7 +63,7 @@ export function BuildingPicker({ floors, onChange, defaultCurrency = "USD", sour
     <div className="flex flex-wrap gap-1.5" aria-label={t("buildingFloors")}>
       {floors.map((f, i) => <button key={i} type="button" aria-pressed={i === index}
         className={cn("rounded border px-2 py-1 text-xs", i === index ? "border-primary bg-primary/10" : "hover:bg-muted")}
-        onClick={() => setActive(i)}>{i + 1}F · {f.label || t("layUnnamedFloor")}</button>)}
+        onClick={() => setActive(i)}>{t("layNamedFloor", { number: i + 1, name: f.label || t("layUnnamedFloor") })}</button>)}
       <button type="button" disabled={floors.length >= 6} onClick={addFloor} className="rounded border px-2 py-1 text-xs disabled:opacity-40">{t("layAddFloor")}</button>
     </div>
     <ReviewBuildingFloors floors={floors} onEdit={setActive} open={reviewOpen} onOpenChange={setReviewOpen} />

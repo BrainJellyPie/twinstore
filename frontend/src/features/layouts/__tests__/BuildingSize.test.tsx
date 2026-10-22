@@ -48,14 +48,14 @@ it("copies effective source dimensions, preserves other choices and opens review
   fireEvent.click(screen.getByRole("button", { name: "Hide layout settings" }));
   fireEvent.click(apply());
   expect(floors()).toEqual(initial.map((f) => ({ ...f, choice: { ...f.choice, width: 30, height: 24 } })));
-  expect(await screen.findByText("2 of 2 floor previews ready")).toBeTruthy();
+  expect(await screen.findByText("Floor previews ready: 2/2")).toBeTruthy();
   await closeReview();
   expect((screen.getByRole("button", { name: "Size used on all floors" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "2F · Dining" }));
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "32" } });
   expect(floors().map((f) => f.choice.width)).toEqual([30, 32]);
   fireEvent.click(apply());
-  await screen.findByText("2 of 2 floor previews ready");
+  await screen.findByText("Floor previews ready: 2/2");
   expect(floors().map((f) => f.choice.width)).toEqual([32, 32]);
 });
 
@@ -72,7 +72,7 @@ it("shows a later floor's capacity error and lets the user edit that floor witho
   fireEvent.change(screen.getByLabelText("Depth (6–40 cells)"), { target: { value: "26" } });
   expect(floors()[0]!.choice.width).toBe(8);
   fireEvent.click(apply());
-  expect(await screen.findByText("2 of 2 floor previews ready")).toBeTruthy();
+  expect(await screen.findByText("Floor previews ready: 2/2")).toBeTruthy();
   expect(floors().every((f) => f.choice.width === 32 && f.choice.height === 26)).toBe(true);
 });
 
@@ -88,6 +88,6 @@ it("shares partial dimensions with all six floors and keeps added floors indepen
   for (let count = 2; count < 6; count++) fireEvent.click(screen.getByRole("button", { name: "Add floor" }));
   fireEvent.click(screen.getByRole("button", { name: "1F · Shopping" }));
   fireEvent.click(apply());
-  expect(await screen.findByText("6 of 6 floor previews ready")).toBeTruthy();
+  expect(await screen.findByText("Floor previews ready: 6/6")).toBeTruthy();
   expect(floors().every((f) => f.choice.width === 40 && f.choice.height === 24)).toBe(true);
 });

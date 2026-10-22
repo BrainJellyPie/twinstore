@@ -20,7 +20,23 @@
   the customer export has each shopper's wait, whether they left the line, and units lost or replaced. API:
   `operations` on `POST /runs`, `GET /runs/{rid}/operations`. Runs without it work as before.
 
+### Catalog, photos, translations and fixes
+- Keep the model-provider list available when a saved local address has malformed IPv6 syntax.
+
+- Add 64 Korean, Mediterranean, Mexican, Vietnamese, pharmacy and care-product photos,
+  reaching 768 locally bundled images. All 18 menu assortments and six pharmacy/care
+  departments now have pictures for every existing product in their default maps.
+
 - Keep translated template headings in downloaded SVG titles without changing stored names.
+
+- The local model's llama.cpp program, downloaded by a version before 0.4.3, did not count as downloaded: a newer
+  version deleted it and fetched it again. A complete earlier download is now kept, and it comes along when the
+  stores are brought over from an earlier app folder, so a local model you already have starts without a download.
+- Settings showed a local server (llama.cpp, Ollama, …) as Ready at an address an earlier version or session left
+  behind, with nothing running there. It now says Not running.
+- Compare paired different people when the customers had been written again between the two runs, which versions
+  before 0.4.7 allowed once the earlier run's layout was deleted (the new customers reuse the ids M1001, F1003, …).
+  Such customers are now left out, and the comparison says how many.
 
 - Add 64 pizza, salad, juice, Indian, Thai, Turkish, Mexican and ice-cream menu
   photos, reaching 704 local images. Seven more menu assortments now have pictures
@@ -32,6 +48,9 @@
   photos, reaching 640 locally bundled images. Tea, burger, noodle, sushi,
   restaurant and bubble-tea menus now have a photo for every product in their
   matching default maps.
+- Rewrite open-area and floor-review guidance in six languages, including complete move labels,
+  localized floor badges and count summaries. Preserve user names and coordinates during language
+  changes; show translated recovery guidance when a floor preview fails.
 
 - Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
   ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,

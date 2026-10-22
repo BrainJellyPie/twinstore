@@ -50,7 +50,7 @@ it("applies the selected priority only on request, follows every entrance wall a
   await mount(); select("mixed_parties");
   expect(floors()).toEqual(initial);
   expect(screen.queryByRole("dialog", { name: "Review building floors" })).toBeNull();
-  apply(); await screen.findByText("4 of 4 floor previews ready");
+  apply(); await screen.findByText("Floor previews ready: 4/4");
   floors().forEach((floor, i) => {
     const before = initial[i]!;
     expect(floor.label).toBe(before.label);
@@ -67,9 +67,9 @@ it("applies the selected priority only on request, follows every entrance wall a
 });
 
 it("switches all mixed floors to no seating and then uniform family tables", async () => {
-  await mount(); select("service_points"); apply(); await screen.findByText("4 of 4 floor previews ready");
+  await mount(); select("service_points"); apply(); await screen.findByText("Floor previews ready: 4/4");
   expect(floors().every((floor) => floor.choice.dining_tables === 0 && floor.choice.table_mix?.two_seat === 0 && floor.choice.table_mix?.four_seat === 0 && floor.choice.table_mix?.six_seat === 0)).toBe(true);
-  await closeReview(); select("family_dining"); apply(); await screen.findByText("4 of 4 floor previews ready");
+  await closeReview(); select("family_dining"); apply(); await screen.findByText("Floor previews ready: 4/4");
   expect(floors().every((floor) => floor.choice.dining_tables === 6 && floor.choice.dining_seats === 6 && floor.choice.table_mix === null)).toBe(true);
   expect(floors().map((floor) => floor.choice.table_rotation)).toEqual([0, 90, 0, 90]);
 });
@@ -86,7 +86,7 @@ it("shows a small upper floor's capacity error and supports independent recovery
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "30" } });
   fireEvent.change(screen.getByLabelText("Depth (6–40 cells)"), { target: { value: "28" } });
   fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
-  await screen.findByText("2 of 2 floor previews ready");
+  await screen.findByText("Floor previews ready: 2/2");
   expect(floors().map((floor) => floor.choice.width)).toEqual([32, 30]);
 });
 
@@ -96,14 +96,14 @@ it("applies to six floors while keeping the single-floor action independent", as
   fireEvent.click(screen.getByRole("button", { name: "Apply priority" }));
   expect(floors()[0]!.choice.style).toBe("cross"); expect(floors().slice(1)).toEqual(six.slice(1));
   expect(screen.queryByRole("dialog", { name: "Review building floors" })).toBeNull();
-  apply(); await screen.findByText("6 of 6 floor previews ready");
+  apply(); await screen.findByText("Floor previews ready: 6/6");
   expect(floors().every((floor) => floor.choice.style === "cross" && floor.choice.aisle_width === 3)).toBe(true);
   expect(floors().every((floor) => floor.choice.dining_tables === 3 && floor.choice.checkout_wall === "right")).toBe(true);
 });
 
 it("does not hide invalid dimensions on another floor when applying a priority", async () => {
   await mount([initial[0]!, { ...initial[1]!, choice: { ...initial[1]!.choice, width: 7 } }]);
-  select("open"); apply(); await screen.findByText("1 of 2 floor previews ready");
+  select("open"); apply(); await screen.findByText("Floor previews ready: 1/2");
   expect(within(screen.getByRole("dialog", { name: "Review building floors" })).getByText(/Enter valid grid dimensions/)).toBeTruthy();
   expect(floors()[1]!.choice.width).toBe(7);
 });

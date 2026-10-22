@@ -910,6 +910,30 @@ PACKSHOT_SHEETS = {
         "Coconut Iced Coffee", "Bean & Rice Burrito", "Grilled Vegetable Bowl", "Chicken Tacos 3pc",
         "Mushroom Tacos 3pc", "Cheese Quesadilla", "Chicken Quesadilla", "Loaded Nachos",
     ],
+    "starter-45": [
+        "Spicy Pork Rice Bowl", "Soybean Paste Stew", "Cold Buckwheat Noodles", "Vegetable Gimbap",
+        "Spicy Rice Cakes", "Kimchi Pancake", "Seasonal Banchan Set", "Grilled Chicken Pita",
+        "Roasted Vegetable Pita", "Baba Ganoush & Pita Plate", "Greek Salad Bowl", "Tabbouleh Salad Bowl",
+        "Lentil & Herb Bowl", "Chicken Rice Plate", "Stuffed Vine Leaves 6pc", "Olive & Feta Side",
+    ],
+    "starter-46": [
+        "Baklava 2pc", "Guacamole & Tortilla Chips", "Corn & Lime Side", "Cinnamon Churros 3pc",
+        "Chicken Pho Noodle Bowl", "Vegetable Pho Noodle Bowl", "Tofu Banh Mi", "Lemongrass Chicken Rice Bowl",
+        "Tofu Vermicelli Bowl", "Fresh Summer Rolls 2pc", "Crispy Spring Rolls 3pc", "Vietnamese Iced Coffee",
+        "Lemongrass Iced Tea", "Coconut Rice Pudding Cup", "Sterile Gauze Pads 10pk", "Medical Paper Tape Roll",
+    ],
+    "starter-47": [
+        "Elastic Support Bandage", "Reusable Hot Cold Pack", "First Aid Scissors", "Precision Tweezers",
+        "Pocket First Aid Pouch", "Nitrile Gloves 10pk", "Saline Wound Wash 100ml", "Digital Timer for Care",
+        "Daily Multivitamin 30ct", "Vitamin D Tablets 60ct", "Magnesium Tablets 30ct", "Plant Protein Powder 500g",
+        "Whey Protein Powder 500g", "Electrolyte Sachets 10pk", "Fiber Powder 200g", "Probiotic Capsules 30ct",
+    ],
+    "starter-48": [
+        "Omega 3 Capsules 60ct", "Collagen Powder 200g", "Protein Snack Bites 100g", "Soft Bristle Toothbrush 2pk",
+        "Sensitive Toothpaste 75ml", "Denture Cleaning Tablets 30ct", "Electric Toothbrush Heads 2pk", "Kids Soft Toothbrush 2pk",
+        "Folding Walking Frame", "Long-Handled Reaching Aid", "Bedside Storage Caddy", "Large-Print Medication Log",
+        "Bamboo Cotton Swabs 200pk", "Reusable Cotton Rounds 8pk", "Soft Bath Towel", "First Aid Kit",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

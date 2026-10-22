@@ -192,3 +192,16 @@ it("distinguishes hot restaurant meals, bakery food and drinks from frozen packa
   expect(classifyProduct("Juice", "/api/catalog-images/starter-43/3.webp").category).toBe("produce");
   expect(classifyProduct("Tea", "/api/catalog-images/starter-43/15.webp").category).toBe("noodle");
 });
+
+it("keeps pharmacy and mobility photos out of food classification after renaming", () => {
+  for (const sheet of ["starter-47", "starter-48"])
+    for (let index = 0; index < 16; index++) {
+      const item = classifyProduct("Milk Tea", `/api/catalog-images/${sheet}/${index}.webp`);
+      expect(item.category).toBe(sheet === "starter-48" && index === 2 ? "snack" : "other");
+      expect(item.lieFlatInChest).toBe(false);
+    }
+  for (const index of [14, 15])
+    expect(classifyProduct("Noodles", `/api/catalog-images/starter-46/${index}.webp`).category).toBe("other");
+  for (const index of [11, 12])
+    expect(classifyProduct("Medicine", `/api/catalog-images/starter-46/${index}.webp`).category).toBe("drink");
+});
