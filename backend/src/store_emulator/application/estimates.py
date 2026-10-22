@@ -7,6 +7,7 @@ been made; prices come from LiteLLM's model price table (None when the model is 
 
 import ipaddress
 import logging
+from typing import cast
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -38,12 +39,42 @@ def effective_parallel(local: bool, slots: int | None = None) -> float:
     return 1.0 + 0.5 * max(0, (slots or 1) - 1)
 
 
+# LiteLLM's prices (USD per input and output token) for the preset models its bundled table lacks, as its online table
+# listed them on 2026-10-23. LiteLLM downloads that table when the app starts; offline, or when the download fails, it
+# falls back to the bundled one, and the default models would have no price: no cost in the warning before a run.
+# A price the download brought always wins over these.
+_PRESET_PRICES: dict[str, tuple[float, float, str]] = {
+    "gpt-6-luna": (1e-07, 5e-07, "openai"),
+    "gpt-6-sol": (2e-06, 1e-05, "openai"),
+    "gpt-5.6-luna": (2e-07, 1.2e-06, "openai"),
+    "claude-haiku-5-5": (1e-07, 5e-07, "anthropic"),
+    "claude-sonnet-5-5": (2e-06, 1e-05, "anthropic"),
+    "claude-opus-5-5": (4e-06, 2e-05, "anthropic"),
+    "gemini/gemini-3.8-flash": (7.5e-07, 3.75e-06, "gemini"),
+    "gemini/gemini-3.5-flash-lite": (3e-07, 2.5e-06, "gemini"),
+    "gemini/gemini-4-argon": (2e-06, 1e-05, "gemini"),
+}
+
+
+def _ensure_preset_prices() -> None:
+    import litellm
+
+    priced = cast(dict[str, object], getattr(litellm, "model_cost", {}))
+    missing = {name: {"input_cost_per_token": prompt, "output_cost_per_token": completion,
+                      "litellm_provider": provider, "mode": "chat"}
+               for name, (prompt, completion, provider) in _PRESET_PRICES.items() if name not in priced}
+    if missing:
+        litellm.register_model(missing)
+
+
 def cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> float | None:
     """What the tokens cost on `model` by LiteLLM's price table; None when the model is not priced there."""
     if not model:
         return None
     try:
         import litellm
+
+        _ensure_preset_prices()
 
         prompt, completion = litellm.cost_per_token(
             model=model, prompt_tokens=max(0, prompt_tokens), completion_tokens=max(0, completion_tokens),
