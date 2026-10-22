@@ -62,6 +62,8 @@ jobs:
           touch dist/.prebuilt
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
 
       - name: Backend smoke test
         working-directory: backend
