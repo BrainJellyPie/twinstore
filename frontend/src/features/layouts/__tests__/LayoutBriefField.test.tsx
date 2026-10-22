@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import * as api from "@/shared/api/client";
 import { LayoutBriefField } from "../components/LayoutBriefField";
@@ -14,7 +14,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 let latest: TemplateChoice = DEFAULT_TEMPLATE_CHOICE;
 function Harness() {
   const [value, setValue] = useState<TemplateChoice>({ ...DEFAULT_TEMPLATE_CHOICE, density: "dense" });
-  latest = value;
+  useLayoutEffect(() => { latest = value; }, [value]);
   return <LayoutBriefField value={value} onApply={(patch) => setValue((v) => ({ ...v, ...patch }))}
     onBriefChange={(requirements) => setValue((v) => ({ ...v, requirements }))} />;
 }

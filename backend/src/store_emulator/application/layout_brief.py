@@ -2,11 +2,11 @@
 
 import asyncio
 import logging
-from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
 from store_emulator.domain.config import EngineType, SimulationConfig
+from store_emulator.domain.layout_options import LayoutOptions
 from store_emulator.engine.layout_brief import BriefReading, read_brief
 from store_emulator.engine.layout_gen import get_template
 from store_emulator.engine.layout_gen.catalog import category_label
@@ -21,8 +21,15 @@ class BriefRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     brief: str = Field(min_length=5, max_length=2000)
-    options: dict[str, Any] = Field(default_factory=dict[str, Any], description="the options chosen so far")
+    options: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue], description="the options chosen so far")
     model: str = Field(default="", description='model reference; "" = the app text model')
+
+    @field_validator("options")
+    @classmethod
+    def valid_options(cls, value: dict[str, JsonValue]) -> dict[str, JsonValue]:
+        # Older clients also sent template/seed metadata; validate the generator fields before any model call.
+        chosen = {key: v for key, v in value.items() if key in LayoutOptions.model_fields}
+        return LayoutOptions.model_validate(chosen).model_dump(mode="json", exclude_unset=True)
 
 
 def read(template_id: str, req: BriefRequest, config: SimulationConfig) -> BriefReading:
@@ -30,7 +37,7 @@ def read(template_id: str, req: BriefRequest, config: SimulationConfig) -> Brief
     if t is None:
         raise AppError(f"unknown store format: {template_id}", 404)
     categories = [(c, category_label(c, "USD")) for c in sorted(set(t.fridges + t.freezers + t.wall_shelves + t.gondolas + t.near_counter))]
-    info = {"name": t.name, "store_type": t.store_type, "description": t.description, "grid": t.grid, "style": t.style,
+    info: dict[str, JsonValue] = {"name": t.name, "store_type": t.store_type, "description": t.description, "grid": list(t.grid), "style": t.style,
             "checkouts": t.checkouts, "dining_tables": t.dining_tables}
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 1200})
     try:

@@ -7,6 +7,8 @@ run's own records, so every shopper listed really fits it.
 """
 
 from collections.abc import Callable, Mapping, Sequence
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
+import re
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
@@ -47,10 +49,10 @@ class _Filter(BaseModel):
                                         description="listed products they did not buy")
     arrived_after: str = Field(default="", description="HH:MM, inclusive")
     arrived_before: str = Field(default="", description="HH:MM, exclusive")
-    min_spent: float | None = Field(default=None, ge=0, description="major units")
-    max_spent: float | None = Field(default=None, ge=0, description="major units")
-    min_minutes: float | None = Field(default=None, ge=0)
-    max_minutes: float | None = Field(default=None, ge=0)
+    min_spent: float | None = Field(default=None, ge=0, allow_inf_nan=False, description="major units")
+    max_spent: float | None = Field(default=None, ge=0, allow_inf_nan=False, description="major units")
+    min_minutes: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    max_minutes: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     sort: ShopperSort = "spent"
 
 
@@ -82,11 +84,13 @@ Write in English."""
 
 
 def _clock(text: str) -> int | None:
-    parts = text.strip().split(":")
-    if len(parts) < 2 or not all(p.isdigit() for p in parts[:2]):
+    match = re.fullmatch(r"([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?", text.strip())
+    if match is None:
         return None
-    h, m = int(parts[0]), int(parts[1])
-    return h * 60 + m if 0 <= h <= 24 and 0 <= m < 60 else None
+    h, m, s = int(match[1]), int(match[2]), int(match[3] or 0)
+    if h > 24 or m >= 60 or s >= 60 or (h == 24 and (m or s)):
+        return None
+    return h * 3600 + m * 60 + s
 
 
 def _listing(store: Store, currency: str) -> str:
@@ -129,8 +133,10 @@ def apply_filter(
     if f.arrived_before and before is None:
         warnings.append(f'"{f.arrived_before}" is not a time; the arrival condition was left out.')
     scale = 1 if currency.upper() in ZERO_DECIMAL else 100
-    min_spent = None if f.min_spent is None else round(f.min_spent * scale)
-    max_spent = None if f.max_spent is None else round(f.max_spent * scale)
+    # Inclusive inequalities use the next/previous representable minor unit,
+    # not nearest-price rounding (at least $1.005 means at least 101 cents).
+    min_spent = None if f.min_spent is None else int((Decimal(str(f.min_spent)) * scale).to_integral_value(rounding=ROUND_CEILING))
+    max_spent = None if f.max_spent is None else int((Decimal(str(f.max_spent)) * scale).to_integral_value(rounding=ROUND_FLOOR))
     words = [w.strip().casefold() for w in f.persona_words if w.strip()]
     trip_nothing = f.bought == "no"
     if trip_nothing and f.bought_there == "no" and stops:
@@ -179,11 +185,11 @@ def apply_filter(
     for name, ids in skipped:
         conds.append((f"Did not buy {name}", lambda _pid, c, ids=ids: not (ids & {e.product_sku for e in c.purchases})))
     if after is not None:
-        conds.append((f"Arrived at or after {f.arrived_after.strip()[:5]}",
-                      lambda _pid, c: (t := _clock(c.arrival_time)) is None or t >= after))
+        conds.append((f"Arrived at or after {f.arrived_after.strip()}",
+                      lambda _pid, c: (t := _clock(c.arrival_time)) is not None and t >= after))
     if before is not None:
-        conds.append((f"Arrived before {f.arrived_before.strip()[:5]}",
-                      lambda _pid, c: (t := _clock(c.arrival_time)) is None or t < before))
+        conds.append((f"Arrived before {f.arrived_before.strip()}",
+                      lambda _pid, c: (t := _clock(c.arrival_time)) is not None and t < before))
     if min_spent is not None:
         conds.append((f"Spent at least {display_price(min_spent, currency)}", lambda _pid, c: c.total_spent >= min_spent))
     if max_spent is not None:
