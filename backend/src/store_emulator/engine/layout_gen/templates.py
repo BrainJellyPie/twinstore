@@ -201,7 +201,7 @@ TEMPLATES: list[StoreTemplate] = [
     ),
     StoreTemplate(
         id="design_showroom", name="Home & design showroom", description="Separated homeware display groups with wide sightlines and perimeter collections.",
-        store_type="home", grid=(24, 20), fridges=[], wall_shelves=["home_design", "home_linen", "dinnerware", "home_lighting", "bathroom_accessories", "kitchen_tools", "food_storage", "home_storage", "pantry_organization"],
+        store_type="home", grid=(24, 20), fridges=[], wall_shelves=["home_design", "home_linen", "dinnerware", "home_lighting", "bathroom_accessories", "kitchen_tools", "food_storage", "home_storage", "pantry_organization", "candle_care"],
         gondolas=["home_design", "indoor_plants", "ceramic_craft_supplies"], near_counter=["home_design", "gift_wrapping"], style="showroom", open_hours=(10, 20),
     ),
     StoreTemplate(
@@ -226,12 +226,12 @@ TEMPLATES: list[StoreTemplate] = [
     ),
     StoreTemplate(
         id="sports_store", name="Sports & outdoor store", description="Fitness accessories and apparel departments along a racetrack route.",
-        store_type="sports", grid=(22, 18), fridges=["water_sports"], wall_shelves=["sports", "apparel", "outdoor_gear", "bicycle_accessories", "cycling_maintenance", "swimming_gear", "climbing_accessories", "footwear"],
+        store_type="sports", grid=(22, 18), fridges=["water_sports"], wall_shelves=["sports", "apparel", "outdoor_gear", "bicycle_accessories", "cycling_maintenance", "swimming_gear", "climbing_accessories", "footwear", "yoga_pilates", "running_accessories"],
         gondolas=["sports", "outdoor_cooking", "apparel", "picnic_reusables"], near_counter=["sports"], style="loop", open_hours=(10, 21),
     ),
     StoreTemplate(
         id="florist", name="Flower & gift studio", description="Compact seasonal flower and gift displays with an open browsing center.",
-        store_type="flowers", grid=(12, 10), fridges=[], wall_shelves=["flowers", "indoor_plants", "home_design", "gift_wrapping"],
+        store_type="flowers", grid=(12, 10), fridges=[], wall_shelves=["flowers", "indoor_plants", "home_design", "gift_wrapping", "plant_propagation"],
         gondolas=["flowers"], near_counter=["flowers", "gift_wrapping"], style="perimeter", open_hours=(9, 20),
     ),
     StoreTemplate(
@@ -277,10 +277,7 @@ TEMPLATES: list[StoreTemplate] = [
     ),
     StoreTemplate(
         id="hardware_store", name="Hardware & home repair store", description="Tool and home-repair aisles with industrial finishes, household essentials and an accessory wall.",
-        store_type="hardware", grid=(24, 18), fridges=[], wall_shelves=[
-            "hardware", "home_lighting", "bathroom_accessories", "woodcraft_supplies", "household",
-            "electronics", "home_storage", "kitchen_tools", "cycling_maintenance"
-        ],
+        store_type="hardware", grid=(24, 18), fridges=[], wall_shelves=["hardware", "home_lighting", "bathroom_accessories", "woodcraft_supplies", "household", "electronics", "home_storage", "kitchen_tools", "cycling_maintenance", "camp_repair"],
         gondolas=["hardware", "household", "zero_waste_cleaning"], near_counter=["hardware"], open_hours=(7, 21), design_theme="industrial",
     ),
     StoreTemplate(
@@ -310,19 +307,13 @@ TEMPLATES: list[StoreTemplate] = [
     ),
     StoreTemplate(
         id="garden_center", name="Garden & outdoor center", description="Plants, growing supplies and garden tools on a large botanical floor with clear central cross aisles and four checkout counters.",
-        store_type="garden", grid=(32, 26), fridges=[], wall_shelves=[
-            "garden_supplies", "flowers", "indoor_plants", "home_design", "outdoor_cooking", "picnic_reusables",
-            "garden_supplies", "flowers", "indoor_plants", "home_lighting", "garden_supplies", "home_storage"
-        ],
+        store_type="garden", grid=(32, 26), fridges=[], wall_shelves=["garden_supplies", "flowers", "indoor_plants", "home_design", "outdoor_cooking", "picnic_reusables", "garden_supplies", "flowers", "indoor_plants", "home_lighting", "garden_supplies", "home_storage", "seed_starting", "plant_propagation"],
         gondolas=["garden_supplies", "flowers", "indoor_plants", "outdoor_cooking"], near_counter=["garden_supplies", "flowers"],
         style="cross", open_hours=(8, 20), checkouts=4, design_theme="botanical",
     ),
     StoreTemplate(
         id="art_craft_store", name="Art & craft supply store", description="Painting, drawing and craft materials around intersecting central aisles, with stationery and books along warm wood walls.",
-        store_type="crafts", grid=(22, 18), fridges=[], wall_shelves=[
-            "art_craft", "fine_art_supplies", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies",
-            "model_building_supplies", "miniature_painting", "stationery", "books"
-        ],
+        store_type="crafts", grid=(22, 18), fridges=[], wall_shelves=["art_craft", "fine_art_supplies", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies", "miniature_painting", "stationery", "books", "leathercraft", "candle_care"],
         gondolas=["art_craft", "fine_art_supplies", "sewing_textiles"], near_counter=["art_craft", "gift_wrapping"],
         style="cross", open_hours=(10, 21), checkouts=2, design_theme="warm",
     ),
@@ -419,7 +410,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="fragrance_boutique", name="Fragrance concept boutique", description="Perfumes, discovery sets and home scents in a luxury showroom with two checkout counters and open display groups.",
         store_type="beauty", grid=(16, 14), fridges=[],
-        wall_shelves=["fragrances", "bath_body", "health_beauty", "gift_wrapping"], gondolas=["fragrances", "fragrances", "health_beauty"],
+        wall_shelves=["fragrances", "bath_body", "health_beauty", "gift_wrapping", "candle_care"], gondolas=["fragrances", "fragrances", "health_beauty"],
         near_counter=["fragrances"], style="showroom", open_hours=(10, 21), checkouts=2, design_theme="luxury",
     ),
     StoreTemplate(
@@ -528,11 +519,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="creative_design_hall", name="Creative design hall", description="A 30×24 Nordic concept store with homeware, art materials, books, jewelry and plant gifts around an open central plaza. Three checkout counters; open 10–20 with Tuesdays closed.",
         store_type="home", grid=(30, 24), fridges=[],
-        wall_shelves=[
-            "home_design", "fine_art_supplies", "books", "jewelry", "flowers", "home_linen", "dinnerware",
-            "home_lighting", "indoor_plants", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies",
-            "art_craft", "stationery", "gift_wrapping"
-        ],
+        wall_shelves=["home_design", "fine_art_supplies", "books", "jewelry", "flowers", "home_linen", "dinnerware", "home_lighting", "indoor_plants", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "art_craft", "stationery", "gift_wrapping", "leathercraft"],
         gondolas=["home_design", "art_craft", "books", "jewelry", "flowers", "desk_organization"],
         near_counter=["souvenirs", "stationery"], style="plaza", open_hours=(10, 20), closed_days=(2,),
         checkouts=3, checkout_placement="away_from_entrance", design_theme="nordic",
@@ -571,13 +558,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="art_supply_warehouse", name="Art supply warehouse", description="A 36×28 industrial store with long art-material and stationery aisles, books, hobby kits and basic tools. Five checkout counters; open 9–20 daily.",
         store_type="crafts", grid=(36, 28), fridges=[],
-        wall_shelves=[
-            "art_craft", "stationery", "books", "hardware", "toys_hobbies", "fine_art_supplies",
-            "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies",
-            "miniature_painting", "desk_organization", "gift_wrapping", "fine_art_supplies", "art_craft",
-            "stationery", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies",
-            "model_building_supplies"
-        ],
+        wall_shelves=["art_craft", "stationery", "books", "hardware", "toys_hobbies", "fine_art_supplies", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies", "miniature_painting", "desk_organization", "gift_wrapping", "fine_art_supplies", "art_craft", "stationery", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies", "leathercraft", "candle_care"],
         gondolas=[
             "art_craft", "fine_art_supplies", "stationery", "model_building_supplies", "miniature_painting",
             "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies"
@@ -631,7 +612,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="sports_outlet", name="Sports & camping outlet", description="A 34×26 Nordic store with a browsing loop for sports, camping equipment, outdoor accessories, apparel and footwear. Four checkouts; open 10–21 daily.",
         store_type="sports", grid=(34, 26), fridges=["water_sports"],
-        wall_shelves=["sports", "outdoor_gear", "apparel", "footwear", "bicycle_accessories", "cycling_maintenance", "swimming_gear", "climbing_accessories", "outdoor_cooking", "picnic_reusables", "sports", "outdoor_gear", "shoe_care"],
+        wall_shelves=["sports", "outdoor_gear", "apparel", "footwear", "bicycle_accessories", "cycling_maintenance", "swimming_gear", "climbing_accessories", "outdoor_cooking", "picnic_reusables", "sports", "outdoor_gear", "shoe_care", "yoga_pilates", "running_accessories", "fishing_tackle", "camp_repair"],
         gondolas=[
             "outdoor_gear", "sports", "footwear", "apparel", "bicycle_accessories", "cycling_maintenance",
             "swimming_gear", "climbing_accessories", "outdoor_cooking"

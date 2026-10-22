@@ -9,7 +9,7 @@ import { useLocale, translate } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { RunLauncherDialog } from "../RunLauncherDialog";
 
-vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getScenarios: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getLayoutOperations: vi.fn(), getTown: vi.fn(), getScenarios: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ to, children, ...props }: { to: string; children: ReactNode }) => <a href={to} {...props}>{children}</a> }));
 const models: api.ModelOption[] = [
   { ref: "provider:text", provider: "A", label: "Text model", vision: false, local: false },
@@ -19,6 +19,7 @@ const models: api.ModelOption[] = [
 const clients: QueryClient[] = [];
 const quick: api.RunEstimate = { customers: 1000, days: 7, per_day: 143, engine: "rule_based", model: "", local: false, model_calls: 0, minutes: 1, cost_usd: null, warn: false };
 beforeEach(() => {
+  vi.mocked(api.getLayoutOperations).mockResolvedValue({ operations: null });
   vi.mocked(api.estimateRun).mockResolvedValue(quick);
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.getEngines).mockResolvedValue([]);
@@ -34,7 +35,10 @@ function show(engine: api.EngineType = "pattern_intent_impulse") {
   const details = document.querySelector("details")!; details.open = true;
   return client;
 }
-async function submit() { await act(async () => { fireEvent.submit(document.querySelector("form")!); }); }
+async function submit() {
+  await waitFor(() => expect(screen.queryByText(translate(useLocale.getState().locale, "opsLayoutLoading"))).toBeNull());
+  await act(async () => { fireEvent.submit(document.querySelector("form")!); });
+}
 
 it("does not silently use the default after choosing one model before the list arrives", async () => {
   let resolve!: (models: api.ModelOption[]) => void;

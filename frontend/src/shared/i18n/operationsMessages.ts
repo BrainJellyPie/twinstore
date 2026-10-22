@@ -180,6 +180,7 @@ export const operationsMessages = {
   memLeftTills: ["Left over tills", "계산대로 이탈", "因收银流失", "レジで離脱", "Se fueron por las cajas", "Partis (caisses)"],
   memNet: ["Left after costs, all weeks", "모든 주 비용을 뺀 금액", "所有周扣除成本后", "全週のコスト差し引き後", "Queda tras los costes, todas las semanas", "Reste après les coûts, toutes semaines"],
   opsLayoutSaved: ["Starting from this layout's saved operations.", "이 배치에 저장된 운영 설정으로 시작합니다.", "以该布局保存的运营设置为起点。", "このレイアウトに保存した運営設定から始めます。", "Se parte de la operación guardada para este plano.", "Départ des réglages de fonctionnement enregistrés pour ce plan."],
+  opsLayoutLoading: ["Loading this layout's store settings…", "이 배치의 매장 운영 설정을 불러오는 중…", "正在加载此布局的店铺运营设置…", "このレイアウトの店舗運営設定を読み込み中…", "Cargando la configuración de la tienda para este plano…", "Chargement des réglages de la boutique pour ce plan…"],
   labSaveForLayout: ["Save for this layout", "이 배치에 저장", "保存到此布局", "このレイアウトに保存", "Guardar para este plano", "Enregistrer pour ce plan"],
   labSaving: ["Saving…", "저장하는 중…", "正在保存…", "保存中…", "Guardando…", "Enregistrement…"],
   labSavedForLayout: [

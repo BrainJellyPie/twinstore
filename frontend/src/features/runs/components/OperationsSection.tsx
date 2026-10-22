@@ -87,7 +87,9 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
           )}
         </div>
       )}
-      {(report.backroom_units ?? 0) > 0 && (
+      {/* A finite backroom, even one holding nothing (0 units: refills always come up short). */}
+      {(report.config.backroom_per_product != null || Object.keys(report.config.backroom_overrides ?? {}).length > 0
+        || (report.backroom_units ?? 0) > 0 || (report.refill_short_units ?? 0) > 0) && (
         <div className="mt-2 space-y-1">
           <Tile label={t("opsRefillShort")} value={t("opsUnits", { units: count(report.refill_short_units ?? 0) })}
             hint={t("opsBackroomSetup", { units: count(report.backroom_units ?? 0), deliveries: count(report.deliveries ?? 0) })} />

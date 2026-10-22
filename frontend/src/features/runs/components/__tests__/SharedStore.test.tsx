@@ -39,7 +39,11 @@ function client() {
 function showDialog() {
   render(<QueryClientProvider client={client()}><RunLauncherDialog open onOpenChange={vi.fn()} projectId="p" setupId="s" personaCount={100} defaultEngine="rule_based" /></QueryClientProvider>);
 }
-async function submit() { await act(async () => { fireEvent.submit(document.querySelector("form")!); }); }
+async function submitNow() { await act(async () => { fireEvent.submit(document.querySelector("form")!); }); }
+async function submit() {
+  await waitFor(() => expect(screen.queryByText(translate(useLocale.getState().locale, "opsLayoutLoading"))).toBeNull());
+  await submitNow();
+}
 
 describe("the run option", () => {
   it("shares the store by default, refilling every two hours with every till open", () => {
@@ -73,6 +77,37 @@ describe("the run option", () => {
 });
 
 describe("the run dialog", () => {
+  it.each([false, true])("waits for the layout settings before starting (saved=%s)", async saved => {
+    let finish!: (value: { operations: api.OperationsReport["config"] | null }) => void;
+    vi.mocked(api.getLayoutOperations).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    showDialog();
+    await submitNow();
+    expect(api.startRun).not.toHaveBeenCalled();
+    await act(async () => { finish({ operations: saved ? { ...report.config, stock_per_facing: 7,
+      stock_overrides: { cola: 0 }, till_schedule: { "18": 0 } } : null }); });
+    await waitFor(() => expect((screen.getByLabelText("Units of each product per shelf level") as HTMLInputElement).value).toBe(saved ? "7" : "12"));
+    await submit();
+    await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({
+      operations: expect.objectContaining(saved ? { stock_per_facing: 7, stock_overrides: { cola: 0 }, till_schedule: { "18": 0 } }
+        : { stock_per_facing: 12 }),
+    })));
+  });
+
+  it("retries unreadable layout settings before starting with the saved plan", async () => {
+    vi.mocked(api.getLayoutOperations).mockRejectedValueOnce(new Error("Connection interrupted"))
+      .mockResolvedValue({ operations: { ...report.config, stock_per_facing: 7 } });
+    showDialog();
+    await waitFor(() => expect(api.getLayoutOperations).toHaveBeenCalledTimes(1));
+    await submit();
+    expect(api.startRun).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    await screen.findByText("Starting from this layout's saved operations.");
+    await submit();
+    await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({
+      operations: expect.objectContaining({ stock_per_facing: 7 }),
+    })));
+  });
+
   it("starts a run whose shoppers share the store", async () => {
     showDialog();
     expect((screen.getByLabelText("Shoppers share the store") as HTMLInputElement).checked).toBe(true);
@@ -286,10 +321,28 @@ describe("a layout's crew", () => {
   it("is dropped with its hours when the crew is cleared", async () => {
     vi.mocked(api.getLayoutOperations).mockResolvedValue({ operations: { ...report.config, crew: 2, crew_schedule: { "18": 4 } } });
     showDialog();
-    fireEvent.change(await screen.findByLabelText("Crew on duty (tills and shelves)"), { target: { value: "" } });
+    await screen.findByText("Starting from this layout's saved operations.");
+    fireEvent.change(screen.getByLabelText("Crew on duty (tills and shelves)"), { target: { value: "" } });
     await submit();
     await waitFor(() => expect(api.startRun).toHaveBeenLastCalledWith("p", "s", expect.objectContaining({
       operations: expect.objectContaining({ crew: null, crew_schedule: {} }),
     })));
   });
+});
+
+
+describe("empty backroom reporting", () => {
+  it.each(LOCALES.flatMap(({ code }) => ["all", "override", "no-shortfall"].map(source => ({ code, source }))))(
+    "shows zero opening stock in $code ($source)", ({ code, source }) => {
+      useLocale.getState().setLocale(code);
+      render(<OperationsReportView currency="USD_CENTS" report={{ ...report,
+        config: { ...report.config, backroom_per_product: source === "override" ? null : 0,
+          backroom_overrides: source === "override" ? { cola: 0 } : {} },
+        backroom_units: 0, refill_short_units: source === "no-shortfall" ? 0 : 17, deliveries: 0,
+        backroom: source === "no-shortfall" ? [] : [{ sku: "cola", name: "Cola", level: 0, refilled: 0,
+          short_units: 17, dry_day: 6, dry_at: "16:30:00" }],
+      }} />);
+      expect(screen.getByText(translate(code, "opsRefillShort"))).toBeTruthy();
+      expect(screen.getByText(translate(code, "opsBackroomSetup", { units: "0", deliveries: "0" }))).toBeTruthy();
+    });
 });

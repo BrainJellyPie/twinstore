@@ -14,7 +14,7 @@ formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
 
-The default maps collectively stock the full catalog across 139 categories, including the
+The default maps collectively stock the full catalog across 147 categories, including the
 new products and their available local photos. Departments are matched to each format:
 
 | Format | Examples of included departments |
@@ -29,6 +29,9 @@ new products and their available local photos. Departments are matched to each f
 | Beauty stores and larger pharmacies | Facial skincare, makeup tools, nail care and shaving supplies |
 | Tea shops and bakeries | Tea brewing tools and cake decorating equipment |
 | Home stores and footwear shops | Pantry organization and shoe care, matched to the store |
+| Sports and outdoor stores | Yoga, running, fishing and camping repairs, matched to the store |
+| Garden centers and florists | Seed starting and plant propagation, matched to the store |
+| Art, craft and fragrance stores | Leathercraft and candle tools, matched to the store |
 
 The product categories shown in the template picker control these same stocked departments.
 Available photos stay attached when previewing, saving and reusing a generated layout.

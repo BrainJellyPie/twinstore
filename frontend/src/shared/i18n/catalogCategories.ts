@@ -140,7 +140,15 @@ const categories: Record<string, MessageKey> = {
   "tea_brewing_tools": "starterCategory_tea_brewing_tools",
   "baking_decorating": "starterCategory_baking_decorating",
   "pantry_organization": "starterCategory_pantry_organization",
-  "shoe_care": "starterCategory_shoe_care"
+  "shoe_care": "starterCategory_shoe_care",
+  "yoga_pilates": "starterCategory_yoga_pilates",
+  "running_accessories": "starterCategory_running_accessories",
+  "fishing_tackle": "starterCategory_fishing_tackle",
+  "leathercraft": "starterCategory_leathercraft",
+  "seed_starting": "starterCategory_seed_starting",
+  "plant_propagation": "starterCategory_plant_propagation",
+  "candle_care": "starterCategory_candle_care",
+  "camp_repair": "starterCategory_camp_repair"
 };
 
 export function starterCategoryLabel(key: string, original: string, locale: Locale): string {

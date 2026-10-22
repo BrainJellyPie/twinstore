@@ -6,7 +6,7 @@ import * as api from "@/shared/api/client";
 import { photographShelves } from "../../shelfPhotos";
 import { RunLauncherDialog } from "../RunLauncherDialog";
 
-vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getLayoutOperations: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
 vi.mock("../../shelfPhotos", () => ({ photographShelves: vi.fn() }));
 vi.mock("../ScenarioEditor", () => ({ ScenarioEditor: () => <div>Situation editor</div> }));
 vi.mock("../ModelPicker", () => ({ ModelPicker: () => null }));
@@ -17,6 +17,7 @@ const engines: api.EngineInfo[] = [
 ];
 const quick: api.RunEstimate = { customers: 40, days: 7, per_day: 6, engine: "rule_based", model: "", local: false, model_calls: 0, minutes: 1, cost_usd: null, warn: false };
 beforeEach(() => {
+  vi.mocked(api.getLayoutOperations).mockResolvedValue({ operations: null });
   vi.mocked(api.estimateRun).mockResolvedValue(quick);
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.getEngines).mockResolvedValue(engines);
@@ -35,7 +36,10 @@ function show() {
   fireEvent(details, new Event("toggle"));
   return { onOpenChange };
 }
-async function submit() { await act(async () => { fireEvent.submit(document.querySelector("form")!); }); }
+async function submit() {
+  await waitFor(() => expect(screen.queryByText("Loading this layout's store settings…")).toBeNull());
+  await act(async () => { fireEvent.submit(document.querySelector("form")!); });
+}
 
 it("runs on the chart by default without photographing anything", async () => {
   show();

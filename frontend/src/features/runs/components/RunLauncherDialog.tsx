@@ -17,6 +17,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { isPreparing, useModelSetup } from "@/features/settings/useModelSetup";
 import { Button } from "@/shared/components/ui/button";
+import { RequestError } from "@/shared/components/RequestError";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -122,7 +123,9 @@ function LauncherForm({
   const [shelfView, setShelfView] = useState<ShelfViewMode>("chart");
   // The layout's saved operations are the starting point; settings without a field here (hourly tills, per-product
   // stock) come along unchanged.
-  const layoutOperations = useLayoutOperations(projectId, setupId).data;
+  // A run waits for them: starting before they load would quietly run the default store instead.
+  const layoutOperationsQuery = useLayoutOperations(projectId, setupId);
+  const layoutOperations = layoutOperationsQuery.data;
   const [pickedStore, setSharedStore] = useState<SharedStoreChoice | null>(null);
   const sharedStore = pickedStore ?? (layoutOperations ? choiceFromConfig(layoutOperations) : DEFAULT_SHARED_STORE);
   const fields = sharedStoreOptions(sharedStore);
@@ -177,7 +180,8 @@ function LauncherForm({
       else if (members.some((member) => !Number.isFinite(member.weight) || member.weight <= 0)) modelError = t("invalidWeights");
     }
   }
-  const valid = personaCount > 0 && validSample && validSeed && validReplicate && modelError === null && operations !== "invalid";
+  const valid = layoutOperationsQuery.isSuccess && personaCount > 0 && validSample && validSeed && validReplicate
+    && modelError === null && operations !== "invalid";
 
   const chooseEngine = (next: EngineType) => {
     setEngine(next);
@@ -379,7 +383,14 @@ function LauncherForm({
           </RadioGroup>
         </div>
 
-        <SharedStoreControls value={sharedStore} onChange={setSharedStore} />
+        <fieldset disabled={!layoutOperationsQuery.isSuccess}>
+          <SharedStoreControls value={sharedStore} onChange={setSharedStore} />
+        </fieldset>
+        {layoutOperationsQuery.isPending && <p role="status" className="text-xs text-muted-foreground">{t("opsLayoutLoading")}</p>}
+        <RequestError error={layoutOperationsQuery.error}>
+          <Button type="button" size="sm" variant="outline" disabled={layoutOperationsQuery.isFetching}
+            onClick={() => void layoutOperationsQuery.refetch()}>{t("tryAgain")}</Button>
+        </RequestError>
         {layoutOperations && <p className="-mt-1 text-xs text-muted-foreground">{t("opsLayoutSaved")}</p>}
 
         <details className="group rounded-xl border">
