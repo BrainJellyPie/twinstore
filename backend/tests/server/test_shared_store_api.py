@@ -211,3 +211,24 @@ def test_a_backroom_limits_refills_in_runs_and_replays(client):
     assert same["report"] == saved
     assert endless["report"]["refill_short_units"] == 0 and endless["report"]["backroom"] == []
     assert endless["outcome"]["revenue"] >= same["outcome"]["revenue"]
+
+
+def test_a_crew_runs_the_tills_and_the_shelves_through_the_api(client):
+    rid = _run(client, _layout(client), operations={"crew": 1, "stock_per_facing": 2, "refill_face_sec": 60})
+    saved = client.get(f"/api/projects/{PID}/runs/{rid}/operations").json()
+    assert saved["config"]["crew"] == 1 and saved["crew_hours"] > 0 and saved["face_refills"] > 0
+    assert all(h["crew_on_duty"] == 1 for h in saved["hours"])
+    url = f"/api/projects/{PID}/runs/{rid}/operations"
+    two = client.post(f"{url}/replay", json={"operations": {**saved["config"], "crew": 2},
+                                             "costs": {"till_hour": 1000}}).json()
+    assert two["report"]["crew_hours"] == 2 * saved["crew_hours"]
+    assert two["outcome"]["labor_cost"] == round(two["outcome"]["crew_hours"] * 1000)
+    assert two["outcome"]["avg_wait_sec"] <= saved["avg_wait_sec"]
+    plan = client.post(f"{url}/plan", json={"costs": {"till_hour": 1000}, "max_crew": 2}).json()
+    assert plan["config"]["crew"] is not None and plan["best"]["net"] >= plan["current"]["net"]
+    assert all(n <= 2 for n in plan["config"]["crew_schedule"].values()) and plan["config"]["crew"] <= 2
+
+
+@pytest.mark.parametrize("bad", [{"max_crew": 0}, {"max_crew": 101}, {"operations": {"crew_schedule": {"10": 1}}}])
+def test_impossible_crew_plan_requests_are_refused(client, bad):
+    assert client.post(f"/api/projects/{PID}/runs/run_x/operations/plan", json=bad).status_code == 422

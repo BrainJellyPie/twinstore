@@ -30,8 +30,9 @@ logger = logging.getLogger(__name__)
 
 type FaceKey = tuple[str, Face, str]   # rack id, shelf face, SKU
 
-# Events of the same second: shelves are filled first, put-back baskets land next, then picks, then the tills.
-_RESTOCK, _PUT_BACK, _PICK, _PAY = 0, 1, 2, 3
+# Events of the same second: shelves are filled first, put-back baskets land next, then picks, then the tills, and
+# last the crew picks up its next refill (so a shopper reaching the tills that second is served first).
+_RESTOCK, _FACE_DONE, _PUT_BACK, _PICK, _PAY, _CREW = 0, 1, 2, 3, 4, 5
 _MAX_COUNTERS_ADVISED = 30
 _STOCKOUTS_REPORTED = 60
 _SPELLS_REPORTED = 3000
@@ -67,6 +68,7 @@ class _Day:
     spells: list[EmptySpell] = field(default_factory=list[EmptySpell])
     # Each shelf's stops (start, end, shopper), sorted: who stands at a shelf when someone else picks there.
     stops: dict[str, list[tuple[float, float, int]]] = field(default_factory=dict[str, list[tuple[float, float, int]]])
+    touched: list[FaceKey] | None = None   # with a crew: faces a pick took units from, for the crew to look at
 
 
 @dataclass
@@ -102,6 +104,71 @@ def _backroom(config: OperationsConfig, products: dict[FaceKey, "_Product"]) -> 
         return None
     return _Backroom(units=dict(levels), levels=levels,
                      stats={sku: BackroomStats(sku=sku, name=names[sku], level=level) for sku, level in levels.items()})
+
+
+@dataclass
+class _Crew:
+    """With OperationsConfig.crew: when each staff member is next free, and the shelf faces waiting for a refill."""
+    config: OperationsConfig
+    tills: int
+    keys: list[FaceKey]
+    free: list[float]
+    waiting: dict[FaceKey, float] = field(default_factory=dict[FaceKey, float])     # face → since (refill point)
+    working: dict[FaceKey, float] = field(default_factory=dict[FaceKey, float])     # face being refilled → since
+    dry: set[FaceKey] = field(default_factory=set[FaceKey])   # faces the backroom has nothing more for today
+    queue: list[tuple[int, float, int]] = field(default_factory=list[tuple[int, float, int]])   # (low, since, face)
+    serving: float = 0.0
+    refilling: float = 0.0
+    refills: int = 0
+    waited: float = 0.0
+    backlog: int = 0
+
+    def low(self, stock: int, full: int) -> bool:
+        return full > 0 and stock <= full * self.config.refill_at
+
+    def note(self, key: FaceKey, face: int, stock: int, full: int, moment: float) -> None:
+        """A face lost units: once it is down to its refill point it waits for whoever is free first."""
+        if key in self.working or key in self.dry or not self.low(stock, full):
+            return
+        if key not in self.waiting:
+            self.waiting[key] = moment
+            self.backlog = max(self.backlog, len(self.waiting))
+            heapq.heappush(self.queue, (int(stock > 0), moment, face))
+        elif stock == 0:
+            heapq.heappush(self.queue, (0, self.waiting[key], face))   # now empty: it goes before the low ones
+
+    def dispatch(
+        self, moment: float, on_duty: int, state: "_Day", products: dict[FaceKey, "_Product"],
+        backroom: "_Backroom | None", heap: list[tuple[float, int, int, int]],
+    ) -> None:
+        """Free staff on duty take the next faces to refill: refill-only staff first, the till staff last (the first
+        of them only when alone on duty)."""
+        for member in range(min(on_duty, len(self.free)) - 1, -1, -1):
+            if self.free[member] > moment or (member == 0 and on_duty > 1 and self.tills > 0):
+                continue
+            while self.queue:
+                _, since, face = heapq.heappop(self.queue)
+                key = self.keys[face]
+                if self.waiting.get(key) != since:
+                    continue   # already refilled, or a stale entry for a face that has since emptied
+                product = products[key]
+                if not self.low(state.stock[key], product.full):
+                    del self.waiting[key]   # a basket put back lifted it over its refill point
+                    continue
+                wanted = product.full - state.stock[key]
+                units = wanted if backroom is None or key[2] not in backroom.units else min(wanted, backroom.units[key[2]])
+                del self.waiting[key]
+                if units == 0:
+                    if backroom is not None:
+                        backroom.take(key[2], wanted, state.day, moment)   # counted short: nothing to bring out
+                    self.dry.add(key)
+                    continue
+                work = self.config.refill_face_sec + self.config.refill_unit_sec * units
+                self.working[key] = since
+                self.free[member] = moment + work
+                self.refilling += work
+                heapq.heappush(heap, (moment + work, _FACE_DONE, member, face))
+                break
 
 
 def _clock(hms: str) -> int:
@@ -146,7 +213,10 @@ def resolve_shared_store(
     for key in products:
         faces[(key[0], key[1])].append(key)
     tills = len(store.counters)
-    counters = min(config.open_counters, tills) if config.open_counters is not None and tills else tills
+    if config.crew is not None:
+        counters = min(tills, config.crew)
+    else:
+        counters = min(config.open_counters, tills) if config.open_counters is not None and tills else tills
     report = OperationsReport(config=config, counters=counters, counters_in_layout=tills)
 
     days: dict[Weekday, list[int]] = defaultdict(list)
@@ -194,6 +264,11 @@ def resolve_shared_store(
     for stats in report.stockouts:
         stats.minutes_out = round(stats.minutes_out, 1)
     report.till_hours = round(open_seconds / 3600, 2)
+    if config.crew is not None:
+        report.crew_hours = round(report.crew_hours, 2)
+        report.crew_till_hours = round(report.crew_till_hours, 2)
+        report.crew_refill_hours = round(report.crew_refill_hours, 2)
+        report.refill_wait_min = round(report.refill_wait_min / report.face_refills, 1) if report.face_refills else 0.0
     _queue_summary(report, results, checkouts, config, tills, counters, open_seconds, busy_seconds)
     logger.info(
         f"[shared store] {report.days} day(s), {report.counters} till(s): {report.stockout_faces} faces ran out, "
@@ -256,7 +331,21 @@ def _play_day(
     for key in products:
         if state.stock[key] == 0:   # stocked at zero, or not refilled overnight: out from opening
             _emptied(state, key, products[key], opening)
-    if config.restock_every_min is not None:
+    crew: _Crew | None = None
+    ids: dict[FaceKey, int] = {}
+    close_at = schedule.close_hour * 3600 if schedule is not None and schedule.is_open else end
+    if config.crew is not None:
+        size = max([config.crew, *config.crew_schedule.values()])
+        crew = _Crew(config=config, tills=tills, keys=list(products), free=[float(opening)] * size)
+        ids = {key: face for face, key in enumerate(crew.keys)}
+        state.touched = []
+        for key, product in products.items():
+            crew.note(key, ids[key], state.stock[key], product.full, opening)
+        hour = float(opening)
+        while hour < close_at:
+            heapq.heappush(heap, (hour, _CREW, -1, -1))   # shifts change on the hour
+            hour += 3600
+    elif config.restock_every_min is not None:
         step = config.restock_every_min * 60
         moment = opening + step
         while moment < end:
@@ -266,7 +355,11 @@ def _play_day(
     def staffed(moment: float) -> int:
         return tills_open(config, tills, counters, int(moment) // 3600 % 24)
 
-    free = [float(opening)] * tills
+    def dispatch(moment: float) -> None:
+        if crew is not None and opening <= moment < close_at:
+            crew.dispatch(moment, crew_on_duty(config, int(moment) // 3600 % 24), state, products, backroom, heap)
+
+    free = crew.free if crew is not None else [float(opening)] * tills
     busy = 0.0
     checkouts: dict[int, _Checkout] = {}
     last = 0.0
@@ -285,10 +378,32 @@ def _play_day(
                         _refilled(state, key, product, moment)
             if refilled:
                 report.restocks += 1
+        elif kind == _FACE_DONE and crew is not None:
+            key = crew.keys[k]
+            since = crew.working.pop(key)
+            product = products[key]
+            wanted = product.full - state.stock[key]
+            moved = backroom.take(key[2], wanted, int(day), moment) if backroom is not None else wanted
+            if moved > 0:
+                state.stock[key] += moved
+                _refilled(state, key, product, moment)
+            crew.refills += 1
+            crew.waited += moment - since
+            if backroom is not None and backroom.units.get(key[2], 1) == 0:
+                crew.dry.add(key)   # the backroom ran out with this face: nothing more to bring out today
+            crew.note(key, k, state.stock[key], product.full, moment)
+            dispatch(moment)
+        elif kind == _CREW:
+            dispatch(moment)
         elif kind == _PUT_BACK:
             _put_back(results[index], state, products, moment, copies)
         elif kind == _PICK:
             _pick(results[index], index, k, moment, state, products, faces, config, report, hit, seed, copies)
+            if crew is not None and state.touched:
+                for key in state.touched:
+                    crew.note(key, ids[key], state.stock[key], products[key].full, moment)
+                state.touched.clear()
+                dispatch(moment)
         else:
             result = results[index]
             units = sum(e.quantity for e in result.timeline if e.action == Action.BUY)
@@ -302,7 +417,7 @@ def _play_day(
                 continue
             service = config.checkout_base_sec + config.checkout_item_sec * units
             till, begins = -1, math.inf
-            for c in range(tills):
+            for c in range(min(tills, len(free))):
                 starts = _till_starts(c, max(moment, free[c]), staffed)
                 if starts < begins:
                     till, begins = c, starts
@@ -318,6 +433,9 @@ def _play_day(
             checkout.service = service
             free[till] = begins + service
             busy += service
+            if crew is not None:
+                crew.serving += service
+                heapq.heappush(heap, (begins + service, _CREW, till, -1))   # free again: back to the shelves
     closing = schedule.close_hour * 3600 if schedule is not None and schedule.is_open else max(end, last)
     closing = max(closing, last)
     if backroom is not None:
@@ -330,12 +448,45 @@ def _play_day(
     hour = float(opening)
     while hour < closing:
         open_seconds += staffed(hour) * (min(closing, hour + 3600) - hour)
+        if crew is not None:
+            report.crew_hours += crew_on_duty(config, int(hour) // 3600 % 24) * (min(closing, hour + 3600) - hour) / 3600
         hour += 3600
+    if crew is not None:
+        report.crew_till_hours += crew.serving / 3600
+        report.crew_refill_hours += crew.refilling / 3600
+        report.face_refills += crew.refills
+        report.refill_wait_min += crew.waited / 60   # a total until resolve_shared_store averages it
+        report.refill_backlog_max = max(report.refill_backlog_max, crew.backlog)
+        report.refills_unfinished += len(crew.waiting)
     return checkouts, open_seconds, busy
 
 
+def open_hours(store: Store, results: list[CustomerResult]) -> list[str]:
+    """The hours ("HH") the store is open on the simulated days, or that shoppers were in it when it keeps no hours."""
+    hours: set[int] = set()
+    for day in {r.day for r in results}:
+        schedule = store.schedule_for(day)
+        if schedule is not None and schedule.is_open:
+            hours.update(range(schedule.open_hour, schedule.close_hour))
+    if not hours:
+        for result in results:
+            arrival = _clock(result.arrival_time)
+            hours.update(range(arrival // 3600, min(24, (arrival + result.duration_sec) // 3600 + 1)))
+    return [f"{hour:02d}" for hour in sorted(hours)]
+
+
+def crew_on_duty(config: OperationsConfig, hour: int) -> int:
+    """Crew on duty in an hour of the day: the hour's own number, else the run's (0 without a crew)."""
+    if config.crew is None:
+        return 0
+    return config.crew_schedule.get(f"{hour:02d}", config.crew)
+
+
 def tills_open(config: OperationsConfig, tills: int, counters: int, hour: int) -> int:
-    """Tills staffed in an hour of the day: the hour's own number, else the run's, never more than the layout has."""
+    """Tills staffed in an hour of the day: the hour's own number, else the run's, never more than the layout has.
+    With a crew, as many tills as there is crew on duty."""
+    if config.crew is not None:
+        return min(tills, crew_on_duty(config, hour))
     return min(tills, config.till_schedule.get(f"{hour:02d}", counters))
 
 
@@ -407,6 +558,8 @@ def _pick(
         return
     wanted = max(1, event.quantity)
     have = state.stock[key]
+    if state.touched is not None:
+        state.touched.append(key)
     if have >= wanted:
         state.stock[key] = have - wanted
         product.stats.sold_units += wanted
@@ -438,6 +591,8 @@ def _pick(
             substitute = products[choice]
             taken = min(wanted, state.stock[choice])
             state.stock[choice] -= taken
+            if state.touched is not None:
+                state.touched.append(choice)
             substitute.stats.sold_units += taken
             if state.stock[choice] == 0:
                 _emptied(state, choice, substitute, moment)
@@ -588,6 +743,7 @@ def _queue_summary(
     for hour, stats in hours.items():
         stats.counters_needed = needed.get(hour, 1)
         stats.counters_open = tills_open(config, tills, counters, int(hour))
+        stats.crew_on_duty = crew_on_duty(config, int(hour))
     report.hours = [hours[h] for h in sorted(hours)]
     report.counters_needed = max((h.counters_needed for h in report.hours), default=0)
 

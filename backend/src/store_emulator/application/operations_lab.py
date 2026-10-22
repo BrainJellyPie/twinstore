@@ -33,6 +33,7 @@ class PlanRequest(BaseModel):
     # The plan starts from these settings (patience, checkout speed …); None = the run's own, or the defaults.
     operations: OperationsConfig | None = None
     max_tills: int | None = Field(default=None, ge=1, le=50)
+    max_crew: int | None = Field(default=None, ge=1, le=100)   # with a crew: the most staff tried in an hour
     # Judge plans by their money over the weeks that follow, with shoppers who remember their visits.
     memory: MemoryConfig | None = None
 
@@ -85,4 +86,4 @@ def plan_run(pid: str, run_id: str, request: PlanRequest) -> OperationsPlan:
     store, planned, seed, own = _load(pid, run_id)
     start = request.operations or own or OperationsConfig()
     return plan_operations(store, planned, start, request.costs, seed=seed, max_tills=request.max_tills,
-                           memory=request.memory)
+                           memory=request.memory, max_crew=request.max_crew)

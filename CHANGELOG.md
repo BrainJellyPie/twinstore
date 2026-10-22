@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### One crew for the tills and the shelves
+- Tills and refills used to be staffed separately: refill rounds were instant and cost nothing at the tills. A store
+  can now have a crew — **Crew on duty (tills and shelves)** — who serve at the tills when shoppers wait and refill
+  shelves when free, so a refill takes someone away from the tills. A shelf is refilled once it is down to a share
+  of its full stock (**Refill a shelf once down to**, 50 % by default; 0 = only when empty), by whoever is free
+  first, taking 30 s plus 4 s per unit (assumed times to set from your own time studies). The first crew member
+  stays at the tills while anyone else is on duty; a lone crew member does both, and shoppers wait while they refill.
+- The crew can change hour by hour (`crew_schedule`). **Store operations** shows the staff hours and how they split
+  between the tills and the shelves, the shelves refilled, how long a shelf waited for its refill on average and
+  the shelves still waiting at closing; the hourly table shows the crew on duty.
+- In **Try other stock and staffing**, a staffed hour costs one crew member for an hour, and **Find the best plan**
+  tries refill points with shelf stock and the crew hour by hour (up to two more than the tills, or `max_crew`).
+- API: `crew`, `crew_schedule`, `refill_at`, `refill_face_sec` and `refill_unit_sec` in `operations`; blank (null)
+  keeps tills staffed on their own with refill rounds, as before. With a crew, `restock_every_min`,
+  `open_counters` and `till_schedule` are not used.
+
 ### The backroom: refills come from somewhere
 - Refills used to fill every shelf from nowhere. A store can now keep a backroom: units of each product behind the
   shelves (one number for all, or per product) that refills draw from, until it runs dry. Shelves keep last

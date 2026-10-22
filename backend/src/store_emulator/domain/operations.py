@@ -4,7 +4,7 @@ Without it every shopper walks an empty store with endless stock. With it, what 
 next, staff top the shelves up on a schedule, and shoppers who reach the tills wait for one to come free — and some
 give up and leave their basket behind."""
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class OperationsConfig(BaseModel):
@@ -46,6 +46,17 @@ class OperationsConfig(BaseModel):
     # Anderson 1980; Machleit, Eroglu & Mantel 2000). None = no crowding. Assumed values, to set from observation.
     crowd_limit: int | None = Field(default=4, ge=2, le=50)
     crowd_skip: float = Field(default=0.35, ge=0.0, le=1.0)
+    # One crew for the tills and the shelves: this many staff on duty, each serving at a till when shoppers wait and
+    # refilling shelves when free, so a refill takes someone away from the tills. None = the tills are staffed on
+    # their own (open_counters, till_schedule) and refill rounds are instant (restock_every_min). With a crew those
+    # three are not used: crew member n works till n, the first stays at the tills while anyone else is on duty, and
+    # a shelf face is refilled once it is down to refill_at of its full stock, by whoever is free first, taking
+    # refill_face_sec plus refill_unit_sec per unit. The times are assumptions, to set from your own time studies.
+    crew: int | None = Field(default=None, ge=1, le=100)
+    crew_schedule: dict[str, int] = Field(default_factory=dict[str, int])   # "HH" → crew on duty that hour, 0–100
+    refill_at: float = Field(default=0.5, ge=0.0, le=0.95)
+    refill_face_sec: float = Field(default=30.0, ge=0.0, le=1800.0)
+    refill_unit_sec: float = Field(default=4.0, ge=0.0, le=600.0)
 
     @field_validator("till_schedule")
     @classmethod
@@ -56,6 +67,22 @@ class OperationsConfig(BaseModel):
             if not 0 <= tills <= 50:
                 raise ValueError(f"till_schedule[{hour!r}] must be 0–50 tills")
         return dict(sorted(schedule.items()))
+
+    @field_validator("crew_schedule")
+    @classmethod
+    def _crew_hours(cls, schedule: dict[str, int]) -> dict[str, int]:
+        for hour, crew in schedule.items():
+            if len(hour) != 2 or not hour.isascii() or not hour.isdigit() or int(hour) > 23:
+                raise ValueError(f"crew_schedule hours are \"00\"–\"23\", not {hour!r}")
+            if not 0 <= crew <= 100:
+                raise ValueError(f"crew_schedule[{hour!r}] must be 0–100 staff")
+        return dict(sorted(schedule.items()))
+
+    @model_validator(mode="after")
+    def _crew_first(self) -> "OperationsConfig":
+        if self.crew_schedule and self.crew is None:
+            raise ValueError("crew_schedule needs crew (the staff on duty in the other hours)")
+        return self
 
     @field_validator("backroom_overrides")
     @classmethod
@@ -118,6 +145,7 @@ class QueueHour(BaseModel):
     max_wait_sec: float = 0.0
     abandoned: int = 0
     counters_open: int = 0         # tills staffed in the hour
+    crew_on_duty: int = 0          # with a crew: staff on duty in the hour (at the tills or the shelves)
     counters_needed: int = 0       # fewest tills keeping this hour's average wait within the target
 
 
@@ -152,6 +180,14 @@ class OperationsReport(BaseModel):
     counter_utilization: float = 0.0   # share of the tills' open time spent serving
     till_hours: float = 0.0        # hours of staffed tills while the store served shoppers, all days
     counters_needed: int = 0       # the busiest hour's recommendation
+    # Crew (OperationsConfig.crew): who did what while the store was open, all days
+    crew_hours: float = 0.0        # staff hours on duty
+    crew_till_hours: float = 0.0   # … serving at the tills
+    crew_refill_hours: float = 0.0   # … refilling shelves
+    face_refills: int = 0          # shelf faces refilled
+    refill_wait_min: float = 0.0   # average minutes a face waited, from its refill point to being refilled
+    refill_backlog_max: int = 0    # most faces waiting for a refill at once
+    refills_unfinished: int = 0    # faces still waiting at closing
     hours: list[QueueHour] = []
     stockouts: list[StockoutStats] = []   # by lost revenue, the largest first
     empty_spells: list[EmptySpell] = []   # when each face stood empty, for playback (the first few thousand)
@@ -159,7 +195,7 @@ class OperationsReport(BaseModel):
 
 class OperationsCosts(BaseModel):
     """What running the store costs, in the currency's minor unit, for comparing plans."""
-    till_hour: int = Field(default=0, ge=0, le=10**9)          # one staffed till for an hour
+    till_hour: int = Field(default=0, ge=0, le=10**9)          # one staffed till (or crew member) for an hour
     restock_round: int = Field(default=0, ge=0, le=10**9)      # one round of refilling the shelves
     stock_unit_day: int = Field(default=0, ge=0, le=10**9)     # keeping one unit on the shelves for a day
 
@@ -173,6 +209,7 @@ class OperationsOutcome(BaseModel):
     avg_wait_sec: float = 0.0
     p90_wait_sec: float = 0.0
     till_hours: float = 0.0
+    crew_hours: float = 0.0        # with a crew: staff hours on duty (what labor_cost counts instead of till hours)
     restocks: int = 0
     stock_units: int = 0           # units on the shelves and in finite backrooms at opening, each day
     labor_cost: int = 0

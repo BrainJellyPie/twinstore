@@ -126,8 +126,9 @@ function LauncherForm({
   const [pickedStore, setSharedStore] = useState<SharedStoreChoice | null>(null);
   const sharedStore = pickedStore ?? (layoutOperations ? choiceFromConfig(layoutOperations) : DEFAULT_SHARED_STORE);
   const fields = sharedStoreOptions(sharedStore);
+  // Clearing the crew here also drops the layout's crew hour by hour (it only applies with a crew).
   const operations: OperationsConfig | undefined | "invalid" = fields === "invalid" || fields === undefined
-    ? fields : { ...(layoutOperations ?? {}), ...fields };
+    ? fields : { ...(layoutOperations ?? {}), ...fields, ...(fields.crew == null ? { crew_schedule: {} } : {}) };
   const [photos, setPhotos] = useState<{ done: number; total: number } | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photographing = useRef<AbortController | null>(null);
