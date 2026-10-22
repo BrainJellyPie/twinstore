@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Translate product bulk editing end to end in six languages, including validation, mixed values,
+  undo, preview and saving. Preserve edits and retry identities when switching languages, format
+  reviewed prices by locale, and keep long buttons inside mobile dialogs. Product workflow clients
+  retain HTTP status so conflict and invalid-input guidance can be localized correctly.
+
 - Translate the complete reviewed library-photo workflow into all six interface languages, including
   explanations, selection and preview counts, accessibility names, validation and save/retry states.
   Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated

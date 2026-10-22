@@ -1,3 +1,4 @@
+import { bulkMessages } from "./bulkMessages";
 import { productMessages } from "./productMessages";
 import { feedbackMessages } from "./feedbackMessages";
 
@@ -10,6 +11,7 @@ export type Locale = typeof LOCALES[number]["code"];
 // Columns follow LOCALES: English, Korean, Chinese, Japanese, Spanish, French.
 export const messages = {
   ...productMessages,
+  ...bulkMessages,
   ...feedbackMessages,
   language: ["Language", "언어", "语言", "言語", "Idioma", "Langue"],
   main: ["Main", "주요 메뉴", "主菜单", "メイン", "Principal", "Navigation principale"],
