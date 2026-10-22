@@ -4,7 +4,7 @@ import { RequestError } from "@/shared/components/RequestError";
 import { formatMoney } from "@/shared/utils/money";
 import { searchText } from "@/shared/utils/searchText";
 import { fixtureLabel, fixtureSearchLabels } from "./rackCopyLabels";
-import { starterCategoryLabel } from "./starterCategoryLabels";
+import { starterCategoryLabel } from "@/shared/i18n/catalogCategories";
 import { starterRackReason } from "./starterRackReason";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

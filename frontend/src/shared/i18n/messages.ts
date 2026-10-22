@@ -1,3 +1,5 @@
+import { optionsFileMessages } from "./optionsFileMessages";
+import { templateStockHoursMessages } from "./templateStockHoursMessages";
 import { floorCompareMessages } from "./floorCompareMessages";
 import { floorPlanMessages } from "./floorPlanMessages";
 import { starterMessages } from "./starterMessages";
@@ -18,6 +20,8 @@ export type Locale = typeof LOCALES[number]["code"];
 // Columns follow LOCALES: English, Korean, Chinese, Japanese, Spanish, French.
 export const messages = {
   ...productMessages,
+  ...optionsFileMessages,
+  ...templateStockHoursMessages,
   ...floorCompareMessages,
   ...floorPlanMessages,
   ...rackCopyMessages,
@@ -516,9 +520,9 @@ export const messages = {
   leaveNewStoreTitle: ["Leave without creating the store?", "매장을 만들지 않고 나갈까요?", "不创建门店就离开吗？", "店舗を作成せずに移動しますか？", "¿Salir sin crear la tienda?", "Quitter sans créer le magasin ?"],
   leaveNewStoreDescription: ["Everything you entered for this new store will be lost.", "새 매장에 입력한 내용이 모두 사라집니다.", "为新门店输入的所有内容都将丢失。", "新しい店舗に入力した内容はすべて失われます。", "Se perderá todo lo que introdujiste para esta nueva tienda.", "Tout ce que vous avez saisi pour ce nouveau magasin sera perdu."],
   leaveNewStore: ["Leave", "나가기", "离开", "移動する", "Salir", "Quitter"],
-  templatePreviewSize: ["{width}×{height} cells · {displays} displays · {products} products", "{width}×{height}칸 · 진열대 {displays}개 · 상품 {products}개", "{width}×{height} 格 · {displays} 个货架 · {products} 种商品", "{width}×{height}マス・棚 {displays} 台・{products} 商品", "{width}×{height} celdas · {displays} expositores · {products} productos", "{width}×{height} cellules · {displays} présentoirs · {products} produits"],
-  templatePreviewSeating: ["{tables} dining tables · {seats} seats", "식사 테이블 {tables}개 · 좌석 {seats}개", "{tables} 张餐桌 · {seats} 个座位", "テーブル {tables} 台・{seats} 席", "{tables} mesas · {seats} asientos", "{tables} tables · {seats} places assises"],
-  templatePreviewCounters: ["{counters} checkout counters", "계산대 {counters}개", "{counters} 个收银台", "レジ {counters} 台", "{counters} cajas de pago", "{counters} caisses"],
+  templatePreviewSize: ["{width}×{height} cells · Displays: {displays} · Products: {products}", "{width}×{height}칸 · 진열대 {displays}개 · 상품 {products}종", "{width}×{height} 格 · {displays} 个货架 · {products} 种商品", "{width}×{height}マス · 陳列台{displays}台 · 商品{products}種類", "{width}×{height} celdas · Expositores: {displays} · Productos: {products}", "{width}×{height} cases · Présentoirs : {displays} · Produits : {products}"],
+  templatePreviewSeating: ["Dining tables: {tables} · Seats: {seats}", "식사 테이블 {tables}개 · 좌석 {seats}개", "{tables} 张餐桌 · {seats} 个座位", "テーブル {tables} 台・{seats} 席", "Mesas: {tables} · Asientos: {seats}", "Tables : {tables} · Places : {seats}"],
+  templatePreviewCounters: ["Checkout counters: {counters}", "계산대 {counters}개", "{counters} 个收银台", "レジ {counters} 台", "Cajas: {counters}", "Caisses : {counters}"],
   floorPlanLegend: ["Blue: cold · Amber: display · Green IN: entrance · Rose OUT: exit · Split IN/OUT: shared gate · Slate: checkout · Purple: seating", "파랑: 냉장 · 호박색: 진열 · 초록 IN: 입구 · 장미색 OUT: 출구 · 반반 IN/OUT: 공용 출입구 · 회색: 계산대 · 보라: 좌석", "蓝色：冷藏 · 琥珀色：陈列 · 绿色 IN：入口 · 玫红 OUT：出口 · 双色 IN/OUT：共用出入口 · 石板灰：收银 · 紫色：座位", "青：冷蔵・琥珀：陳列・緑 IN：入口・ローズ OUT：出口・半々 IN/OUT：共用ゲート・灰：レジ・紫：席", "Azul: frío · Ámbar: exposición · Verde IN: entrada · Rosa OUT: salida · IN/OUT dividido: acceso compartido · Pizarra: caja · Morado: asientos", "Bleu : froid · Ambre : présentoir · Vert IN : entrée · Rose OUT : sortie · IN/OUT partagé : accès commun · Ardoise : caisse · Violet : places assises"],
   templatePreviewInvalid: ["Enter valid grid dimensions, product and table counts, operating hours and reserved-area values. Keep at least one open weekday.", "올바른 매장 크기, 상품·테이블 수, 영업시간, 예약 공간 값을 입력하세요. 영업일은 최소 하루 이상이어야 합니다.", "请输入有效的网格尺寸、商品和餐桌数量、营业时间及预留区域数值，并至少保留一个营业日。", "有効なグリッドサイズ、商品数・テーブル数、営業時間、予約エリアの値を入力してください。営業日は少なくとも1日必要です。", "Introduce dimensiones de cuadrícula, cantidades de productos y mesas, horario y áreas reservadas válidos. Deja al menos un día de apertura.", "Saisissez des dimensions de grille, des nombres de produits et de tables, des horaires et des zones réservées valides. Gardez au moins un jour d’ouverture."],
   templatePreviewUnavailable: ["Preview unavailable.", "미리보기를 표시할 수 없습니다.", "无法显示预览。", "プレビューを表示できません。", "Vista previa no disponible.", "Aperçu indisponible."],

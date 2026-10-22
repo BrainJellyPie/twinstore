@@ -6,7 +6,7 @@ import { webcrypto } from "node:crypto";
 import * as api from "@/shared/api/starterFill";
 import { ApiError } from "@/shared/api/errors";
 import { StarterFill } from "../StarterFill";
-import { starterCategoryLabel } from "../starterCategoryLabels";
+import { starterCategoryLabel } from "@/shared/i18n/catalogCategories";
 import { starterRackReason } from "../starterRackReason";
 import { LOCALES, type Locale, type MessageKey } from "@/shared/i18n/messages";
 import { useLocale, translate } from "@/shared/i18n/i18n";

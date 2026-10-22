@@ -95,4 +95,12 @@ export const starterCategoryMessages = {
   "starterCategory_bird_supplies": ["Bird Supplies", "새 용품", "鸟类用品", "鳥用品", "Artículos para aves", "Articles pour oiseaux"],
   "starterCategory_home_lighting": ["Home Lighting", "가정용 조명", "家居照明", "家庭用照明", "Iluminación del hogar", "Éclairage de la maison"],
   "starterCategory_bathroom_accessories": ["Bathroom Accessories", "욕실 소품", "浴室配件", "浴室用品", "Accesorios de baño", "Accessoires de salle de bain"],
+  "starterCategory_home_linen": ["Home Linen", "가정용 패브릭", "家用纺织品", "ホームリネン", "Ropa de hogar", "Linge de maison"],
+  "starterCategory_dinnerware": ["Dinnerware", "식기", "餐具", "食器", "Vajilla", "Vaisselle"],
+  "starterCategory_food_storage": ["Food Storage", "식품 보관 용품", "食品储存用品", "食品保存用品", "Conservación de alimentos", "Conservation des aliments"],
+  "starterCategory_pet_grooming": ["Pet Grooming", "반려동물 미용 용품", "宠物美容用品", "ペットのグルーミング", "Aseo de mascotas", "Toilettage des animaux"],
+  "starterCategory_hair_accessories": ["Hair Accessories", "헤어 액세서리", "发饰", "ヘアアクセサリー", "Accesorios para el pelo", "Accessoires pour cheveux"],
+  "starterCategory_woodcraft_supplies": ["Woodcraft Supplies", "목공예 용품", "木工艺用品", "木工芸用品", "Materiales de artesanía en madera", "Fournitures de travail du bois"],
+  "starterCategory_ceramic_craft_supplies": ["Ceramic Craft Supplies", "도예 용품", "陶艺用品", "陶芸用品", "Materiales de cerámica", "Fournitures de céramique"],
+  "starterCategory_gift_wrapping": ["Gift Wrapping", "선물 포장 용품", "礼品包装", "ギフト包装", "Envoltorio de regalos", "Emballage cadeau"],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;

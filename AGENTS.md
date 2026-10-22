@@ -138,6 +138,10 @@ fields, model replies and errors) stays as sent. `richText()` puts bold figures 
 Coverage is still being audited; a catalog entry alone does not prove every state is localized.
 Add translations in all six columns
 when extending these surfaces. Use the selected locale for dates and numbers.
+Prefer natural task-oriented copy over word-for-word translation; follow
+[`verification/i18n-copy-style.md`](./verification/i18n-copy-style.md) for language-specific voice.
+Operating-hour, assortment-limit/seed and options-file controls also use the catalog; known product
+category labels are shared across the starter-fill and template flows.
 
 Backend logs, errors and FastAPI OpenAPI metadata remain English. Keep API identifiers,
 status values, dict keys, `===` comparisons and route params unchanged when translating display
