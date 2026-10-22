@@ -27,6 +27,8 @@ class ComparisonReport(BaseModel):
     confidence: float
     metrics: list[MetricComparison]
     notes: list[str] = []
+    # ISO code of both runs' money (spend values are in its minor unit: cents for USD, won for KRW); "" = unknown
+    currency: str = ""
 
 
 class FidelityMetric(BaseModel):

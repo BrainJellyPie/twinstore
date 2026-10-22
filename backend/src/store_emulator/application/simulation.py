@@ -497,6 +497,7 @@ def compare_project_runs(
     a = load_run_results(base_a)
     b = load_run_results(base_b)
     report = compare_runs(a, b, run_a=run_a, run_b=run_b, n_bootstrap=n_bootstrap, seed=seed)
+    report.currency = currencies[0]
     ma, mb = _manifest_or_empty(pid, run_a), _manifest_or_empty(pid, run_b)
     if ma and mb and (ma.get("seed"), ma.get("replicate")) != (mb.get("seed"), mb.get("replicate")):
         report.notes.append(
