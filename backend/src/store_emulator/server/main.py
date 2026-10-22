@@ -69,10 +69,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         logger.info(f"server start: marked {recovered_marketing} interrupted marketing jobs as failed")
     launched = os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1"   # opened from an app icon
     if not cloud_providers_with_key():
-        # Give vision shoppers (and, with no key, text features) a model that runs on this computer.
+        # The local model the user chose before, or one already on this computer: never a download nobody asked for.
         if launched:
-            local_vlm().start()
-        logger.warning("server start: no model API key set — vision shoppers use a local model (see /api/system/models)")
+            local_vlm().auto_start()
+        logger.warning("server start: no model API key set — vision shoppers need a key or the local model "
+                       "(see /api/system/models)")
     elif launched:
         threading.Thread(target=_check_keys, name="key-check", daemon=True).start()
     yield
@@ -80,8 +81,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 def _check_keys() -> None:
-    """A key a provider turns down counts as none: when that leaves no key, the local model starts right away rather
-    than after the first failed request."""
+    """A key a provider turns down counts as none: when that leaves no key, a local model the user set up starts right
+    away rather than after the first failed request."""
     try:
         turned_down = check_keys()
     except Exception:  # noqa: BLE001 — the check only saves time; requests still move on by themselves
@@ -91,7 +92,7 @@ def _check_keys() -> None:
         logger.warning(f"server start: {', '.join(turned_down)} turned the API key down (not valid or revoked); "
                        "replace it in Settings → Model providers")
         if not cloud_providers_with_key():
-            local_vlm().start()
+            local_vlm().auto_start()
 
 
 app = FastAPI(
