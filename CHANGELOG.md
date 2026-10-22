@@ -176,7 +176,8 @@
 - A file left empty or cut short by a version before 0.4.3 (it was stopped, or the computer lost power, while saving)
   showed "Internal Server Error" instead of the store gallery, a store, its layouts or its run history. The rest now
   opens: a store whose customers file is damaged opens without customers, a damaged run shows as failed, damaged
-  captures, studies and optimizations are left out of their lists, and opening a damaged item names its file.
+  captures, studies and optimizations are left out of their lists, and opening a damaged item names its file. A
+  store whose settings file is damaged was left out of the gallery as if lost; it is listed, saying so.
 
 
 ## 0.4.7 — Marketing studio results you can trust
