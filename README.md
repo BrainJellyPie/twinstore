@@ -37,6 +37,9 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 
 ---
 
+Finished one shelf? **Step 2 → Reuse shelf products** copies its reviewed assortment to compatible empty
+shelves, preserving exact product values and saving a separate layout. See [the guide](USAGE.md#reuse-a-finished-shelf-assortment).
+
 ## Why TwinStore
 
 - **A twin, not a mock-up.** Shelf photos become planograms, floor-plan sketches become the store grid, receipts and

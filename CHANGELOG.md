@@ -6,6 +6,12 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Reuse a finished shelf assortment
+- Step 2 copies exact products, prices, promotions, image links, levels and order from one stocked shelf/fridge
+  to up to 100 compatible empty racks, with a preview and a separately saved layout. No model or CSV is needed.
+- Occupied destinations and blocked/locked faces are protected; stale snapshots reject saves, and retries
+  recover the same child layout. Refreshed currencies cannot relabel an older preview.
+
 ### Resume saved photo queues
 - Capture can explicitly save original photos and recognition settings in this browser, restore paused after
   a reload or restart, and reuse stable upload identities even when an accepted upload response was lost.
