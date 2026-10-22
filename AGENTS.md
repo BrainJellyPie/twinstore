@@ -122,7 +122,7 @@ must use this catalog, including explanations, accessibility names, validation a
 Existing coverage includes the home,
 main navigation, command palette, store gallery, model notice, simulation launcher, new-store forms,
 preparation/recovery screens, layout navigation/finder, basic layout-creation forms, floor-plan import and template
-search/filter controls, reviewed library-photo reuse, product bulk editing, shelf-product reuse and automatic/manual starter filling (including catalog categories). Store-category labels are shared between the gallery and template picker.
+search/filter controls, reviewed library-photo reuse, product bulk editing, shelf-product reuse and automatic/manual starter filling (including catalog categories), and floor-plan previews/comparisons with localized SVG exports. Store-category labels are shared between the gallery and template picker.
 The marketing studio (every tab, builder and report), shelf capture with Shelf Lab and the neighborhood
 (area) page are localized too, with keys in `messages/studio.ts`. Their server-generated notes, warnings,
 rationale and audit/CSV exports stay English, and persona quota values (`10s`, `Female`) are sent unchanged.
@@ -135,6 +135,7 @@ the server's name). Sample stores whose type is an English category label (`Conv
 store-category labels. Server-written text (analyst answers, run/optimizer notes, scenario preset names, persona
 fields, model replies and errors) stays as sent. `richText()` puts bold figures or code into a translated sentence;
 `timeFormat.ts` gives weekday names and store clocks in the selected language.
+Coverage is still being audited; a catalog entry alone does not prove every state is localized.
 Add translations in all six columns
 when extending these surfaces. Use the selected locale for dates and numbers.
 

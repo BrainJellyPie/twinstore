@@ -221,10 +221,7 @@ def test_visitor_ids_follow_their_demand_row_so_a_changed_row_keeps_other_visito
     assert len(after) > len(before)
     assert {i for i, a in before.items() if a.hour != 12} == {i for i, a in after.items() if a.hour != 12}
     assert set(before) <= set(after)  # a busier noon row keeps its first visitors
-    # The same pool persona at the same hour. (Origins are drawn from the day's origin shares, which a busier
-    # noon shifts a little, so an occasional visitor starts from another building.)
-    assert all((after[i].source_persona_id, after[i].hour, after[i].segment, after[i].age_group)
-               == (a.source_persona_id, a.hour, a.segment, a.age_group) for i, a in before.items())
+    assert all(after[i] == a for i, a in before.items())  # same pool persona, same trip
     clones = {p.id: p for p in rushed}
     assert all(clones[p.id] == p for p in visitors)
     for arrival in arrivals:
@@ -233,8 +230,7 @@ def test_visitor_ids_follow_their_demand_row_so_a_changed_row_keeps_other_visito
             rf"{re.escape(arrival.source_persona_id)}~t2-{arrival.hour:02d}h-{who}-{arrival.age_group.rstrip('+')}-\d+",
             arrival.persona_id,
         )
-        # What the visitor adds to a pool id stays usable in run, journey and interview URLs.
-        assert re.fullmatch(r"~t[A-Za-z0-9_-]{1,40}", arrival.persona_id.removeprefix(arrival.source_persona_id))
+        assert re.fullmatch(r"[A-Za-z0-9_~-]{1,80}", arrival.persona_id)  # usable in run, journey and interview URLs
     monday, _ = plan_arrivals(pool, base, residential, seed=1, scale=0.3, day=Weekday.MON)
     assert not {p.id for p in monday} & set(before)  # unique across days
 
@@ -272,12 +268,10 @@ def test_store_hours_set_the_modeled_hours_and_our_venue_hours(residential: Town
     assert residential.model_dump() == before
     tuesday = estimate_demand(town, hours=hours)
     assert all(v == 0 for h, v in enumerate(tuesday.hourly_totals) if not 8 <= h < 20)
-    all_day = estimate_demand(residential)
-    assert tuesday.total_daily_visitors == pytest.approx(sum(all_day.hourly_totals[8:20]), rel=1e-3)
+    assert tuesday.total_daily_visitors == pytest.approx(sum(estimate_demand(residential).hourly_totals[8:20]), rel=1e-3)
     town, hours = with_store_hours(residential, store, Weekday.MON)
     assert hours == list(range(24)) and sum(estimate_demand(town, hours=hours).hourly_totals[:7]) > 0  # a 24-hour store
-    assert with_store_hours(residential, store, Weekday.SUN)[1] == []  # closed
-    assert with_store_hours(residential, store, Weekday.WED)[1] == []  # not on the schedule
+    assert with_store_hours(residential, store, Weekday.SUN)[1] == with_store_hours(residential, store, Weekday.WED)[1] == []
     assert with_store_hours(residential, None, Weekday.MON) == (residential, list(range(7, 24)))
     legacy = store.model_copy(update={"weekly_schedule": []})
     assert with_store_hours(residential, legacy, Weekday.MON) == (residential, list(range(7, 24)))

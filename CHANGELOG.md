@@ -19,6 +19,10 @@
   across language changes and keep legacy API reason compatibility. Stabilize seeded neighborhood
   trip assignments when demand-report ordering changes.
 
+- Translate detailed floor previews, comparison metrics, gate legends and SVG exports into all six
+  interface languages. Preserve expanded previews and zoom when changing language, retain original
+  layout/product data, and translate the eight newly added starter category labels.
+
 - Add 64 grocery, baby, pet, stationery, art, technology, travel, game and household photos,
   reaching 320 bundled product images. Preserve automatic starter selection and image previews
   when merging the six-language interface; automatic choices and recovery guidance are localized too.
@@ -109,6 +113,40 @@
   Japanese, Spanish and French, as the rest of the app was. Template names, weekdays and times follow the language
   too. Text the server writes (analyst answers, notes, errors, reports) stays English.
 
+- Complete starter-fill localization in six languages: automatic/manual guidance, all 107 catalog
+  category labels, eligibility reasons, exact reviewed prices and retry states. Category language
+  follows the selected interface language even in KRW stores; existing product identities remain intact.
+  Detect duplicate translation keys and keep price-review instructions aligned with the editor label.
+
+- Integrate the store-screen, Settings, marketing, capture and neighborhood translations from
+  the current development branch while retaining product workflow validation and automatic selection.
+
+- Add 32 prepared-food, pharmacy and personal-care photos, bringing the collection to 224.
+  Starter placement previews show current uploaded or bundled photos for reused products without
+  rewriting their saved values. Empty product names retain their SKU label in vision grids.
+
+- Translate shelf-product reuse into six languages, including eligibility reasons, section review,
+  price formatting, save/retry and accessibility text. Keep selections and request identities across
+  language changes, support translated fixture searches, and retain legacy API reason compatibility.
+
+- Translate product bulk editing end to end in six languages, including validation, mixed values,
+  undo, preview and saving. Preserve edits and retry identities when switching languages, format
+  reviewed prices by locale, and keep long buttons inside mobile dialogs. Product workflow clients
+  retain HTTP status so conflict and invalid-input guidance can be localized correctly.
+
+- Translate the complete reviewed library-photo workflow into all six interface languages, including
+  explanations, selection and preview counts, accessibility names, validation and save/retry states.
+  Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated
+  Close button and provide localized error guidance with original diagnostics available on demand.
+
+- Previously saved starter products pick up new bundled photos by exact SKU when no custom photo is set.
+  Existing uploads and explicit photos retain priority; layouts are not rewritten on read. Add 32 kitchen,
+  pet, technology and everyday-product photos, bringing the local collection to 192.
+
+- Add 96 kitchen, home, pet and technology products and 32 grocery/merchandise photos: 1,208 products,
+  107 categories and 160 local photos. Vision grids fit bundled product artwork more closely by omitting
+  empty white margins, while retaining names, prices and numbered identities.
+
 ### Neighborhood visitors
 - A scenario run with neighborhood visitors could not be compared with its baseline: changing one hour's count
   renamed every later visitor, so "lunch rush" paired 164 of 533 shoppers. Visitors are now named by their demand
@@ -123,6 +161,9 @@
   an unknown situation on the Area page is refused; basket synergy reports walking distances like the synergy table.
 
 ### Fixes
+- Resolve neighborhood label keys in controls, legends and map tooltips instead of showing the keys.
+  Keep seeded visitor trip assignments independent of demand-report list ordering so unchanged
+  demand rows remain paired when another hour's volume changes.
 - Applying a rival shelf's prices to its pull in the neighborhood compounded on every apply (0.82 → 1.03 → 1.28 →
   1.61 for the same photo); it now replaces the earlier adjustment.
 - The rival comparison found none of our products in the rival's categories on layouts not made from a template (the
@@ -138,6 +179,32 @@
   an interview with a shopper who is not in the run is "not found" instead of an empty transcript.
 - The dwell map counts each shopper's own walking pace, diagonal steps, the time at the entrance and wandering; it
   left about a tenth of the visit time off the map, most of it around the entrance.
+
+## 0.4.5 — every visitor a day, with a warning before long or costly work
+
+- Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
+  in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.
+
+- Vision shoppers now see available product photos together with names, numbered badges and prices in
+  the shelf grid. Bundled, uploaded and reviewed library photos resolve locally. Dense shelves wrap within
+  labeled levels; missing or corrupt pictures retain text cards. Shelf tests and interview previews use
+  the same renderer, including project photos. Extend the bundled photo catalog from 64 to 96 images.
+
+- Expand the starter catalog by 192 products across 16 specialty categories, reaching 1,016 products in
+  91 categories. Add 32 local photos for apparel, books, pets, hobbies and specialty merchandise (64 total).
+  Automatic selection sees image availability while retaining store requirements and exact SKU validation.
+
+- New-store creation defaults to selecting bundled catalog products with the text model. Large generated
+  floors group equivalent racks, exclusions and product limits are validated, and model failure creates no
+  partial project. Six-language controls retain the format-default alternative. Sixteen more grocery and
+  household packshots bring the bundled image collection to 32.
+
+- Starter assortment: 144 additional generic products (824 across 75 categories) and 16 locally bundled
+  generated packshots. Auto-place starter products defaults to category-aware text-model selection, validates
+  exact catalog IDs, previews before saving, and retains manual selection and retry-safe child layouts.
+
+- Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
+  before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
 ## 0.4.5 — every visitor a day, with a warning before long or costly work
 

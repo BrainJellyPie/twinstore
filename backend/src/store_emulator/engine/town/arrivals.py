@@ -75,9 +75,7 @@ def _stochastic_round(value: float, rng: random.Random) -> int:
     return base + (1 if rng.random() < value - base else 0)
 
 
-def _candidates(
-    same_age: list[Persona], same_age_any_day: list[Persona], pool: list[Persona], hour: int,
-) -> list[Persona]:
+def _candidates(same_age: list[Persona], same_age_any_day: list[Persona], pool: list[Persona], hour: int) -> list[Persona]:
     """Pool personas for a visitor: same age group at the same hour, then nearby hours, then any hour; the same age
     group on other days when the day has nobody of it; any age group only when no day has."""
     for group in (same_age, same_age_any_day, pool):
