@@ -354,7 +354,7 @@ Any finished A/B, shelf, concept or conjoint test can be **duplicated and edited
 conjoint tests have print-ready reports too. Synthetic respondents are for screening and direction; calibrate against
 a real panel before deciding.
 
-**Upload shelf photos together.** Capture’s **Add photos** panel accepts multiple files or a drop, checks duplicates and limits, and processes one photo at a time. Pause later uploads, retry an individual error, and review results before combining them. Accepted photos stay in history; unsent files require keeping the page open. [Queue details and limits](./USAGE.md#upload-several-shelf-photos-with-a-controlled-queue).
+**Upload shelf photos together.** Capture’s **Add photos** panel accepts multiple files or a drop, checks duplicates and limits, and processes one photo at a time. Pause later uploads, retry an individual error, and review results before combining them. Accepted photos stay in history. **Save queue on this browser** retains selected photos and settings; restore paused after a reload or browser restart, then resume without reselecting files. Browser storage can be cleared or evicted and is not a backup. [Queue details and limits](./USAGE.md#upload-several-shelf-photos-with-a-controlled-queue).
 
 **Combine shelf photos.** In Capture, choose **Combine reviewed shelf photos**, select completed photos,
 preview their racks together, then save and open one new draft. Original layouts and photos stay intact;

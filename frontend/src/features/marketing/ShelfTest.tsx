@@ -35,10 +35,11 @@ import { StudyReading } from "./StudyReading";
 const PROMOS = ["", "NEW", "SALE", "1+1", "-20%"];
 const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
 
-export function ShelfTestBuilder({ projectId, setupId, store, currency, initial, prefill, onStarted }: {
+export function ShelfTestBuilder({ projectId, setupId, store, currency, initial, prefill, onPrefillHandled, onStarted }: {
   projectId: string; setupId: string; store: Store; currency: string; initial?: ShelfTestRequest | null;
   /** A request routed from the command palette: fills the question and drafts the test from it. */
   prefill?: { text: string; id: number };
+  onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
@@ -113,7 +114,8 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
     const text = Array.from(prefillText).slice(0, 500).join("");
     setQuestion(text);
     queueDraft(text);
-  }, [prefillId, prefillText, queueDraft]);
+    onPrefillHandled?.(prefillId);
+  }, [prefillId, prefillText, queueDraft, onPrefillHandled]);
   const shownDraft = drafted?.question === question ? drafted.design : null;
   const promos = promo && !PROMOS.includes(promo) ? [...PROMOS, promo] : PROMOS;
 

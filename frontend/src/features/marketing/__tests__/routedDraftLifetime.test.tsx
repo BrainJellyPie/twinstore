@@ -30,6 +30,8 @@ vi.mock("@/shared/api/marketing", async (original) => ({
   designExperiment: vi.fn(),
   designConjoint: vi.fn(),
   draftPitchScript: vi.fn(),
+  designSurvey: vi.fn(), designShelfTest: vi.fn(),
+  previewShelf: vi.fn().mockResolvedValue({ face: "N", control: "control.png", test: "test.png", applied: [], warnings: [] }),
 }));
 vi.mock("../hooks", () => ({ usePackages: () => ({ data: [] }) }));
 const store = {
@@ -106,6 +108,9 @@ beforeEach(() => {
     script: "Generated greeting",
     differs_by: "Generated script rationale",
   });
+  vi.mocked(marketing.designSurvey).mockResolvedValue({ name: "Concept", stimuli: [], stimulus_names: [], questions: ["appeal"], context: "Tea", reference_price: null,
+    currency: "USD", age_groups: [], genders: [], rationale: "Generated concept rationale", warnings: [] });
+  vi.mocked(marketing.designShelfTest).mockResolvedValue({ name: "Shelf", rack_id: "r", target_sku: "tea", changes: [], age_groups: [], rationale: "Generated shelf rationale", warnings: [] });
 });
 afterEach(() => {
   cleanup();
@@ -114,6 +119,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 const targets = [
+  { destination: "concept_test", tab: "Concept tests", mock: marketing.designSurvey, rationale: "Generated concept rationale" },
+  { destination: "shelf_test", tab: "Shelf tests", mock: marketing.designShelfTest, rationale: "Generated shelf rationale" },
   {
     destination: "ab_test",
     tab: "A/B tests",
