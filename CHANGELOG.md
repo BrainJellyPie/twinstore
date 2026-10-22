@@ -6,6 +6,15 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Find shoppers in words
+- The Shoppers tab of a run takes a description ("women in their 20s who stopped at the ice cream freezers but bought
+  nothing after 3 pm"). The text model writes a filter (age and gender groups, words from the persona, bought
+  something or nothing on the trip or at given shelves, impulse buys, shelves stopped at, products bought or not,
+  arrival time, spend, visit length, order); the run's own records decide who fits, so every listed shopper really
+  matches. The filter is shown in words; when nobody fits, the panel says how many would without each condition.
+  **Interview these shoppers** opens a group interview with the found shoppers as the group.
+  API: `POST /api/projects/{pid}/runs/{run_id}/shoppers/find`.
+
 ### Design briefs that set the layout options
 - The **Additional design brief** of a generated layout used to be saved as a note only. **Apply to the options**
   now has the text model set what the brief asks for: style, density, size in grid cells, door wall and position,

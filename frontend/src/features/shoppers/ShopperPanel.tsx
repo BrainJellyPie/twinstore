@@ -2,10 +2,10 @@
 // 3D, and interview them about the trip afterwards.
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Crosshair, Loader2, MessagesSquare, Route, Search, UsersRound } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Crosshair, Loader2, MessagesSquare, Route, Search, Sparkles, UsersRound, X } from "lucide-react";
 
-import { getJourney, interviewKeys } from "@/shared/api/interview";
+import { findShoppers, getJourney, interviewKeys, type ShopperMatch } from "@/shared/api/interview";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import type { CustomerResult, Persona, Store } from "@/shared/types/domain";
@@ -36,9 +36,21 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(40);
   const rows = useMemo(() => shopperRows(customers, personas), [customers, personas]);
-  const list = useMemo(() => sortShoppers(rows, sort, query), [rows, sort, query]);
+  // Shoppers found from a sentence: the model writes the filter, the run's records decide who fits.
+  const [describe, setDescribe] = useState("");
+  const [found, setFound] = useState<ShopperMatch | null>(null);
+  const finder = useMutation({ mutationFn: (text: string) => findShoppers(projectId, runId, text.trim()), onSuccess: setFound });
+  const sorted = useMemo(() => sortShoppers(rows, sort, query), [rows, sort, query]);
+  const list = useMemo(() => {
+    if (!found) return sorted;
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const q = query.trim().toLowerCase();
+    return found.persona_ids.map((id) => byId.get(id)).filter((r): r is NonNullable<typeof r> => !!r)
+      .filter((r) => !q || r.id.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
+  }, [found, sorted, rows, query]);
   const setHighlight = useSimulationStore((s) => s.setHighlightId);
   const [group, setGroup] = useState(false);
+  const findLength = Array.from(describe.trim()).length;
 
   if (selected) {
     return <ShopperDetail projectId={projectId} runId={runId} store={store} sid={selected} customers={customers}
@@ -46,6 +58,7 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
   }
   if (group) {
     return <GroupInterviewPanel projectId={projectId} runId={runId} currency={currency}
+      preset={found && found.persona_ids.length >= 2 ? { label: found.label, personaIds: found.persona_ids } : undefined}
       onOpen={(sid) => { setSelected(sid); setHighlight(sid); }} onBack={() => setGroup(false)} />;
   }
   return (
@@ -62,7 +75,42 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${rows.length.toLocaleString()} shoppers`} className="h-9 pl-8 text-sm" />
       </div>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex items-center gap-1.5 rounded-xl bg-foreground/[0.035] p-1.5">
+        <Sparkles className="ml-1 size-3.5 shrink-0 text-primary" aria-hidden />
+        <Input value={describe} onChange={(e) => setDescribe(Array.from(e.target.value).slice(0, 400).join(""))}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && findLength >= 3 && !finder.isPending) { e.preventDefault(); finder.mutate(describe); } }}
+          placeholder="Describe shoppers, e.g. women in their 20s who stopped at ice cream but bought nothing"
+          aria-label="Describe shoppers to find" className="h-8 min-w-0 flex-1 bg-card text-[0.78rem]" />
+        <Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={findLength < 3 || finder.isPending} onClick={() => finder.mutate(describe)}>
+          {finder.isPending ? <Loader2 className="size-3.5 animate-spin" /> : "Find"}
+        </Button>
+      </div>
+      {finder.error && <p role="alert" className="text-[0.72rem] text-destructive">{finder.error.message}</p>}
+      {found && (
+        <section className="space-y-1.5 rounded-xl border border-primary/40 bg-primary/[0.04] px-2.5 py-2" aria-label="Found shoppers">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[0.78rem]"><b>{found.label}</b> <span className="num text-muted-foreground">{found.persona_ids.length.toLocaleString()} of {found.total.toLocaleString()} shoppers</span></p>
+            <button type="button" onClick={() => { setFound(null); finder.reset(); }} aria-label="Clear the found shoppers"
+              className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="size-3.5" /></button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {found.criteria.map((c) => <span key={c} className="rounded-full bg-card px-2 py-0.5 text-[0.68rem] text-muted-foreground">{c}</span>)}
+          </div>
+          {found.warnings.map((w) => <p key={w} className="text-[0.68rem] text-muted-foreground">· {w}</p>)}
+          {found.near_misses.length > 0 && (
+            <div className="text-[0.68rem] text-muted-foreground">
+              <p>No shopper fits all of these. Loosen one condition:</p>
+              <ul className="list-disc pl-4">{found.near_misses.map((m) => <li key={m}>{m}</li>)}</ul>
+            </div>
+          )}
+          {found.persona_ids.length >= 2 && (
+            <button type="button" onClick={() => setGroup(true)} className="inline-flex items-center gap-1 text-[0.72rem] text-primary hover:underline">
+              <UsersRound className="size-3" /> Interview these shoppers
+            </button>
+          )}
+        </section>
+      )}
+      <div className={cn("flex flex-wrap gap-1", found && "hidden")}>
         {SORTS.map((s) => (
           <button key={s.id} type="button" onClick={() => setSort(s.id)}
             className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", sort === s.id ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>

@@ -112,6 +112,15 @@ export interface GroupInterview {
 
 export const askGroup = (pid: string, runId: string, body: { question: string; segment: GroupSegment; size: number; model: string; persona_ids?: string[] }) =>
   fetchJson<GroupInterview>(`/api/projects/${pid}/runs/${runId}/group-interviews`, { method: "POST", body: JSON.stringify(body) });
+/** Shoppers of a run found from a sentence: the model writes the filter, the run's records decide who fits. */
+export interface ShopperMatch {
+  label: string; persona_ids: string[]; total: number; criteria: string[]; warnings: string[];
+  sort: "spent" | "nothing" | "impulse" | "longest";
+  /** When nobody fits: how many would without each blocking condition. */
+  near_misses: string[];
+}
+export const findShoppers = (pid: string, runId: string, text: string) =>
+  fetchJson<ShopperMatch>(`/api/projects/${pid}/runs/${runId}/shoppers/find`, { method: "POST", body: JSON.stringify({ text }) });
 export interface GroupQuestion { question: string; segment: GroupSegment; why: string }
 /** Three group questions the model reads off the run's numbers, each with the group to ask. */
 export const suggestGroupQuestions = (pid: string, runId: string, model: string) =>

@@ -8,6 +8,7 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import interview as service
 from store_emulator.application import run_analyst as analyst
+from store_emulator.application import shopper_search
 from store_emulator.application.errors import AppError
 from store_emulator.domain.interview import (
     AnalystQuestion,
@@ -21,6 +22,7 @@ from store_emulator.domain.interview import (
 )
 
 from store_emulator.engine.interview import GroupQuestion
+from store_emulator.engine.shopper_filter import ShopperMatch
 
 from ..deps import get_config
 
@@ -73,6 +75,13 @@ async def suggest(pid: str, run_id: str, persona_id: str, req: SuggestionRequest
 @router.delete("/{pid}/runs/{run_id}/shoppers/{persona_id}/interview", summary="Start the interview over", status_code=204)
 def clear(pid: str, run_id: str, persona_id: str) -> None:
     _call(lambda: service.clear_interview(pid, run_id, persona_id))
+
+
+@router.post("/{pid}/runs/{run_id}/shoppers/find", summary="Find shoppers from a description", response_model=ShopperMatch)
+async def find_shoppers(pid: str, run_id: str, req: shopper_search.ShopperSearchRequest) -> ShopperMatch:
+    """The text model turns "women in their 20s who stopped at the freezers but bought nothing" into a filter (groups,
+    purpose words, purchases, shelves, arrival time, spend, visit length); the run's own records decide who fits."""
+    return await run_in_threadpool(_call, lambda: shopper_search.find(pid, run_id, req, get_config()))
 
 
 @router.post("/{pid}/runs/{run_id}/group-interviews", summary="Ask many shoppers the same question", response_model=GroupInterview)
