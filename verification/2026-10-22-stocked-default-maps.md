@@ -46,3 +46,6 @@ Validation on 2026-10-22:
 
 Browser product-model and persona replies used controlled fixtures in disposable
 storage. No live provider completion or paid simulation was invoked.
+
+Follow-up: the [next cycle’s full regression run](./2026-10-22-complete-baby-toy-photos.md)
+passed 20,412 tests with one skip, including both restored departments.

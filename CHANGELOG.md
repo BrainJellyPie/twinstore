@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Complete photos for all 96 baby feeding, bath, toy vehicle, plush, educational toy,
+  puzzle, model building and miniature painting products. Add 64 local images, reaching
+  512 photos; they appear on the matching default maps and in image-aware VLM grids.
+
 - Apply the expanded product catalog to all 82 default map templates, with departments
   matched to each store format and bundled product images retained in previews and saved floors.
   The default maps collectively stock every catalog product, including all 131 categories;

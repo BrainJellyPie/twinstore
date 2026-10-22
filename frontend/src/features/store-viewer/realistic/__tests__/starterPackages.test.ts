@@ -127,7 +127,7 @@ it("distinguishes groceries from reusable baking tools and household equipment",
 });
 
 it("keeps household, pet, toy and craft photos out of food departments", () => {
-  for (const sheet of ["starter-21", "starter-22", "starter-27", "starter-28"]) {
+  for (const sheet of ["starter-21", "starter-22", "starter-27", "starter-28", "starter-29", "starter-30", "starter-31", "starter-32"]) {
     for (let index = 0; index < 16; index++) {
       const product = classifyProduct("Milk Coffee", `/api/catalog-images/${sheet}/${index}.webp`);
       expect(product.category).toBe("other");

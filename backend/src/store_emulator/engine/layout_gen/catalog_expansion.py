@@ -814,6 +814,30 @@ PACKSHOT_SHEETS = {
         "Wooden Counting Beads Frame", "Color Sorting Cups and Counters Set", "City Map Jigsaw Puzzle 300pc", "Ocean Life Floor Puzzle 48pc",
         "Model Assembly Tweezers Pair", "Model Sanding Sticks 10pk", "Miniature Painting Handle", "Small Wet Paint Palette",
     ],
+    "starter-29": [
+        "Insulated Baby Food Jar 300ml", "Baby Training Fork and Spoon Set", "Silicone Baby Food Freezer Tray", "Weighted Straw Training Cup 250ml",
+        "Travel Baby Feeding Pouch", "Washable High Chair Splash Mat", "Silicone Baby Spoon Case", "Wide Neck Baby Bottle 240ml",
+        "Floating Bath Boat Set 3pk", "Silicone Bath Animal Toy Pair", "Mesh Baby Bath Toy Organizer", "Baby Bath Water Thermometer",
+        "Soft Baby Bath Sponge Pair", "Foldable Baby Wash Basin", "Baby Bath Kneeling Pad", "Cotton Baby Bath Robe",
+    ],
+    "starter-30": [
+        "Pull-Back Toy Racing Car", "Wooden Toy Freight Train Set", "Toy Tractor with Trailer", "Mini Toy Passenger Airplane",
+        "Toy Rescue Helicopter", "Wooden Toy Sailboat", "Toy Parking Garage Play Mat", "Mini Road Sign Set 12pk",
+        "Plush White Seal 20cm", "Plush Yellow Duck 18cm", "Plush Black and White Panda 22cm", "Plush Purple Octopus 18cm",
+        "Plush Brown Hedgehog 15cm", "Plush Blue Whale 30cm", "Plush Cream Alpaca 25cm", "Plush Red Ladybug 15cm",
+    ],
+    "starter-31": [
+        "Wooden Clock Learning Puzzle", "Magnetic Letter Tiles 52pk", "Animal Picture Matching Cards 24pk", "Lacing Shapes Activity Set",
+        "Wooden Rainbow Stacking Arches", "Number Tracing Board 1 to 10", "Weather and Seasons Learning Wheel", "Geometric Pattern Blocks 60pk",
+        "Wooden Interlocking Cube Puzzle", "Metal Loop Brain Teaser Set 6pk", "Sliding Number Puzzle 15 Tiles", "Travel Word Tile Game",
+        "Wooden Peg Solitaire Board", "Color Pattern Logic Puzzle", "Jigsaw Puzzle Sorting Trays 6pk", "Roll-Up Jigsaw Puzzle Mat",
+    ],
+    "starter-32": [
+        "Water Based Model Glue 30ml", "Mini Model Parts Storage Box", "Model Decal Application Brush", "Flexible Model Sanding Pads 6pk",
+        "Small Model Display Base 15cm", "Model Assembly Holding Stand", "Precision Model File Set 5pk", "Clear Model Display Case Small",
+        "Miniature Drybrush Pair", "Acrylic Model Primer 60ml", "Water-Based Matte Model Varnish 60ml", "Miniature Basing Sand 100g",
+        "Miniature Grass Tufts 30pk", "Model Paint Mixing Balls 20pk", "Dropper Paint Bottles 10ml 6pk", "Miniature Brush Cleaning Cup",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}
