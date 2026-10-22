@@ -1452,6 +1452,15 @@ export function validateLayoutPreset(value: unknown, signal?: AbortSignal): Prom
   return fetchJson("/api/store-templates/preset/validate", { method: "POST", body: JSON.stringify(value), signal });
 }
 
+/** A design brief read into the generator's options: a patch of checked options, each in words, and what the options
+ * cannot express. Nothing is built. */
+export interface BriefReading {
+  options: Partial<LayoutOptions>; applied: string[]; not_expressible: string[]; warnings: string[]; rationale: string;
+}
+export function readLayoutBrief(templateId: string, req: { brief: string; options: Record<string, unknown> }): Promise<BriefReading> {
+  return fetchJson(`/api/store-templates/${encodeURIComponent(templateId)}/brief`, { method: "POST", ...json(req) });
+}
+
 export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]> {
   return fetchJson("/api/store-templates", { signal });
 }
