@@ -29,6 +29,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("TWINSTORE_LOCAL_VLM_AUTO", "0")
     monkeypatch.setattr(staff_pitch, "build_client", lambda *args, **kwargs: FakeLLM())
+    monkeypatch.setattr(staff_pitch, "assistive_client", lambda *args, **kwargs: FakeLLM())
     from store_emulator.server.main import app
     with TestClient(app) as c:
         yield c
@@ -103,6 +104,8 @@ def test_model_failures_are_failed_jobs_not_fake_success(client, monkeypatch, tm
             raise RuntimeError("secret in provider body")
 
     monkeypatch.setattr(staff_pitch, "build_client", lambda *args, **kwargs: Broken())
+
+    monkeypatch.setattr(staff_pitch, "assistive_client", lambda *args, **kwargs: Broken())
     jid = client.post(ROOT, json=body()).json()["job_id"]
     result = wait(client, jid)
     assert result["status"] == "failed" and result["report"] is None

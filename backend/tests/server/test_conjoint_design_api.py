@@ -42,7 +42,7 @@ DRAFT = {
 def test_a_question_becomes_a_builder_ready_conjoint_draft(client, monkeypatch):
     from store_emulator.application import study_design
     fake = _Designer(DRAFT)
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/conjoints/design",
                     json={"question": "Would people pay more for zero-sugar tea?", "setup_id": SETUP, "currency": "USD"})
     assert r.status_code == 200, r.text
@@ -59,11 +59,11 @@ def test_a_question_becomes_a_builder_ready_conjoint_draft(client, monkeypatch):
 
 def test_zero_decimal_currencies_and_errors(client, monkeypatch):
     from store_emulator.application import study_design
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: _Designer({**DRAFT, "prices": [1500, 1800]}))
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({**DRAFT, "prices": [1500, 1800]}))
     d = client.post(f"/api/projects/{PID}/conjoints/design", json={"question": "Tea at what price?", "currency": "KRW"}).json()
     assert d["prices"] == [1500, 1800] and d["currency"] == "KRW" and d["comparable"] == []
     mismatch = client.post(f"/api/projects/{PID}/conjoints/design", json={"question": "Tea at what price?", "setup_id": SETUP, "currency": "KRW"})
     assert mismatch.status_code == 422 and "USD" in mismatch.json()["detail"]
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: _Designer({**DRAFT, "attributes": [{"name": "Price", "levels": ["a", "b"]}]}))
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({**DRAFT, "attributes": [{"name": "Price", "levels": ["a", "b"]}]}))
     r = client.post(f"/api/projects/{PID}/conjoints/design", json={"question": "Tea at what price?"})
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]

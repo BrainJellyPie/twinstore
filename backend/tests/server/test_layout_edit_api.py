@@ -60,7 +60,7 @@ def test_instructions_become_checked_edits_and_a_new_layout(client, monkeypatch)
         {"kind": "price", "product": b_name, "price": 0.99},
         {"kind": "move", "product": "Imaginary soda", "shelf": b_rack, "level": 3},
     ]})
-    monkeypatch.setattr(layout_edit, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(layout_edit, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/setups/{SETUP}/edit/draft", json={"text": "SALE sign on one, 99 cents for the other"})
     assert r.status_code == 200, r.text
     d = r.json()
@@ -85,7 +85,7 @@ def test_instructions_become_checked_edits_and_a_new_layout(client, monkeypatch)
 
 def test_edits_that_fit_nothing_are_refused(client, monkeypatch):
     from store_emulator.application import layout_edit
-    monkeypatch.setattr(layout_edit, "build_client", lambda *a, **k: _Editor({"name": "x", "changes": [
+    monkeypatch.setattr(layout_edit, "assistive_client", lambda *a, **k: _Editor({"name": "x", "changes": [
         {"kind": "promo", "product": "Imaginary soda", "promo": "NEW"}]}))
     r = client.post(f"/api/projects/{PID}/setups/{SETUP}/edit/draft", json={"text": "NEW sign on the imaginary soda"})
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]
@@ -281,7 +281,7 @@ def test_a_draft_keeps_the_snapshot_it_actually_read(client, monkeypatch):
             source = read_setup(PID, SETUP); source['store']['name'] = 'Changed while the model was working'
             write_json(setup_path(PID, SETUP), source)
             return response_model.model_validate(self.draft)
-    monkeypatch.setattr(layout_edit, 'build_client', lambda *a, **k: ConcurrentEditor({'name': 'Draft', 'changes': [{'kind': 'promo', 'product': name, 'promo': 'NEW'}]}))
+    monkeypatch.setattr(layout_edit, 'assistive_client', lambda *a, **k: ConcurrentEditor({'name': 'Draft', 'changes': [{'kind': 'promo', 'product': name, 'promo': 'NEW'}]}))
     response = client.post(f'/api/projects/{PID}/setups/{SETUP}/edit/draft', json={'text': 'Put a NEW sign on the tea'})
     assert response.status_code == 200, response.text
     draft = response.json(); assert draft['source_sha256'] == digest
@@ -295,7 +295,7 @@ def test_drafting_accepts_all_twelve_supported_edit_instructions(client, monkeyp
     from store_emulator.application import layout_edit
     (name, _, _), _, _ = _two_products()
     fake = _Editor({'name': 'Several changes', 'changes': [{'kind': 'promo', 'product': name, 'promo': f'Sign {i}'} for i in range(count)]})
-    monkeypatch.setattr(layout_edit, 'build_client', lambda *a, **k: fake)
+    monkeypatch.setattr(layout_edit, 'assistive_client', lambda *a, **k: fake)
     response = client.post(f'/api/projects/{PID}/setups/{SETUP}/edit/draft', json={'text': 'Apply these changes to the tea'})
     assert response.status_code == 200, response.text
     result = response.json()

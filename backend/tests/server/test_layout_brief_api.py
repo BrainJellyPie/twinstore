@@ -41,7 +41,7 @@ def test_a_brief_becomes_checked_layout_options(client, monkeypatch):
         "excluded_categories": [cats[0]["label"], "Moon rocks"], "not_expressible": ["warm task lighting"],
         "rationale": "A calm loop with two tills by the door.",
     })
-    monkeypatch.setattr(layout_brief, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(layout_brief, "assistive_client", lambda *a, **k: fake)
     r = client.post("/api/store-templates/urban_cvs/brief", json={
         "brief": "A calm loop, 18 by 12 cells, two tills by the door, botanical, sage walls, no first category, warm lights",
         "options": {"templateId": "urban_cvs", "seed": 0, "density": "balanced", "excluded_categories": []},
@@ -64,7 +64,7 @@ def test_a_brief_becomes_checked_layout_options(client, monkeypatch):
 def test_unknown_formats_and_model_failures(client, monkeypatch):
     from store_emulator.application import layout_brief
     assert client.post("/api/store-templates/nowhere/brief", json={"brief": "a calm store"}).status_code == 404
-    monkeypatch.setattr(layout_brief, "build_client", lambda *a, **k: _Reader({"style": "zigzag"}))
+    monkeypatch.setattr(layout_brief, "assistive_client", lambda *a, **k: _Reader({"style": "zigzag"}))
     r = client.post("/api/store-templates/urban_cvs/brief", json={"brief": "a zigzag store"})
     assert r.status_code == 502 and "could not be read" in r.json()["detail"]
 
@@ -80,7 +80,7 @@ def test_invalid_current_options_are_rejected_before_calling_a_model(client, mon
     def build(*args, **kwargs):
         calls.append(1)
         return _Reader({"style":"loop", "excluded_categories":["Tea"]})
-    monkeypatch.setattr(layout_brief,"build_client",build)
+    monkeypatch.setattr(layout_brief,"assistive_client",build)
     response=client.post("/api/store-templates/urban_cvs/brief",json={"brief":"Make a spacious store","options":options})
     assert response.status_code==422, response.text
     assert not calls

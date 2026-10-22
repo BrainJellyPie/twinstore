@@ -14,7 +14,7 @@ from store_emulator.engine.generators.store_setup_writer import (
 )
 
 from .errors import AppError, model_failure
-from .providers import assistive_model, build_client
+from .providers import assistive_client
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def customer_profile(req: ProfileRequest, config: SimulationConfig) -> ProfileDr
         raise AppError("Say something about the store first (name, type, description or address).", 400)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.5, "max_tokens": 700})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
@@ -63,7 +63,7 @@ class RouteRequest(BaseModel):
 def route(req: RouteRequest, config: SimulationConfig) -> AssistRoute:
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 200})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
@@ -88,7 +88,7 @@ def store_setup(req: StoreSetupRequest, config: SimulationConfig) -> StoreSetup:
     formats = [(t.id, t.name, t.store_type, t.description) for t in TEMPLATES]
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 900})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

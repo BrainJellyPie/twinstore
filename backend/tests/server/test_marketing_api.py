@@ -90,7 +90,7 @@ def test_rule_ab_test(client, monkeypatch):
             return response_model.model_validate({"summary": "Half price moved units.", "interpretation": "Price matters.", "next_steps": "Test -30 %."})
 
     from store_emulator.application import marketing
-    monkeypatch.setattr(marketing, "build_client", lambda *a, **k: _Writer())
+    monkeypatch.setattr(marketing, "assistive_client", lambda *a, **k: _Writer())
     note = client.post(f"/api/projects/{PID}/experiments/{eid}/narrative", json={"model": "openai/gpt-4o-mini"})
     assert note.status_code == 200 and note.json()["model"] == "openai/gpt-4o-mini"
     assert "Half price moved units." in client.get(f"/api/projects/{PID}/experiments/{eid}/report.html").text

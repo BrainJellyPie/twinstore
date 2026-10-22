@@ -23,7 +23,7 @@ from store_emulator.engine.prompting import display_price
 
 from .currencies import project_currency
 from .errors import AppError, model_failure
-from .providers import assistive_model, build_client
+from .providers import assistive_client
 from .scenarios import _store_for  # pyright: ignore[reportPrivateUsage]
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ def design(pid: str, req: ConjointDesignRequest, config: SimulationConfig) -> Co
     products = [(i.name, i.price) for r in store.product_racks for s in r.slots for i in s.items] if store else []
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1200})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
@@ -95,7 +95,7 @@ def design_ab(pid: str, req: ExperimentDesignRequest, config: SimulationConfig) 
     packages = [(p.name, p.asset_id) for p in list_packages(pid)]
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1500})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
@@ -128,7 +128,7 @@ def design_concept(pid: str, req: SurveyDesignRequest, config: SimulationConfig)
     packages = [(p.name, p.asset_id, p.brand, on_shelf.get(p.sku, "")) for p in list_packages(pid)]
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1200})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
@@ -160,7 +160,7 @@ def design_shelf(pid: str, req: ShelfTestDesignRequest, config: SimulationConfig
     packages = [(p.name, p.asset_id) for p in list_packages(pid)]
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 900})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

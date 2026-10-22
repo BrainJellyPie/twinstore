@@ -70,11 +70,13 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
 
   const badge = !status.enabled
     ? { text: preset.local ? "Off" : "Disabled", cls: "bg-muted text-muted-foreground" }
-    : status.ready
-      ? { text: "Ready", cls: "tone-good" }
-      : preset.local
-        ? { text: "Needs endpoint", cls: "tone-warn" }
-        : { text: "Needs API key", cls: "tone-warn" };
+    : status.key_rejected
+      ? { text: "Key turned down", cls: "tone-bad" }
+      : status.ready
+        ? { text: "Ready", cls: "tone-good" }
+        : preset.local
+          ? { text: "Needs endpoint", cls: "tone-warn" }
+          : { text: "Needs API key", cls: "tone-warn" };
   const listId = `models-${preset.kind}`;
 
   return (
@@ -88,6 +90,12 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
             {status.key_source === "none" && (preset.api_key_env ? `or set ${preset.api_key_env}` : "")}
             {status.key_source === "not needed" && "No key needed"}
           </div>
+          {status.key_rejected && (
+            <div role="alert" className="mt-1 text-xs text-destructive">
+              {preset.label} turned this key down (not valid or revoked). Paste a new key; until then TwinStore uses
+              another provider with a key, or the local model on this computer.
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", badge.cls)}>{badge.text}</span>

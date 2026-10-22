@@ -56,6 +56,9 @@ class LLMConfig(BaseModel):
     # Resolved from provider settings / environment at run time. Excluded from every dump, so it
     # is never written to run configs, manifests or API responses.
     api_key: SecretStr | None = Field(default=None, exclude=True, repr=False)
+    # Requests the endpoint serves at once (a llama.cpp server on this computer has that many slots); more wait their
+    # turn in the client, so their time-out does not run while they queue on the server. None = no limit. Runtime only.
+    max_parallel: int | None = Field(default=None, ge=1, exclude=True)
 
 
 class DwellRange(BaseModel):

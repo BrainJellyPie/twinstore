@@ -42,7 +42,7 @@ def test_the_fact_sheet_is_the_runs_own_numbers(client):
 def test_questions_are_answered_from_the_sheet_and_kept(client, monkeypatch):
     from store_emulator.application import run_analyst
     fake = _Analyst()
-    monkeypatch.setattr(run_analyst, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(run_analyst, "assistive_client", lambda *a, **k: fake)
     url = f"/api/projects/{PID}/runs/{RUN}/analyst"
     assert client.get(url).json()["messages"] == []
     r = client.post(url, json={"question": "Which shelf converts worst?"})
@@ -67,7 +67,7 @@ def test_failures_read_as_advice(client, monkeypatch):
         async def generate_structured_async(self, *a, **k):
             raise RuntimeError("RateLimitError")
 
-    monkeypatch.setattr(run_analyst, "build_client", lambda *a, **k: _Broken())
+    monkeypatch.setattr(run_analyst, "assistive_client", lambda *a, **k: _Broken())
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/analyst", json={"question": "Busiest hour?"})
     assert r.status_code == 502 and "limiting requests" in r.json()["detail"]
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/analyst").json()["messages"] == []
@@ -89,7 +89,7 @@ def test_a_comparison_is_explained_from_both_sheets(client, monkeypatch):
                                                   "caveats": "Within noise.", "figures": ["spend per shopper: A $", "Invented 1 / 2"]})
 
     fake = _Explainer()
-    monkeypatch.setattr(run_analyst, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(run_analyst, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/compare/explain?a=run_ab0039&b={RUN}", json={})
     assert r.status_code == 200, r.text
     body = r.json()
@@ -114,7 +114,7 @@ def test_starter_questions_are_read_off_the_fact_sheet(client, monkeypatch):
                 "Why do so few who stop at Ice cream 2 buy there?", "Ok?", "Which hour brings the biggest baskets?",
                 "Do shoppers in their 60s spend less per visit?"]})
 
-    monkeypatch.setattr(run_analyst, "build_client", lambda *a, **k: _Starters())
+    monkeypatch.setattr(run_analyst, "assistive_client", lambda *a, **k: _Starters())
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/analyst/suggestions", json={})
     assert r.status_code == 200, r.text
     assert r.json() == ["Why do so few who stop at Ice cream 2 buy there?", "Which hour brings the biggest baskets?",

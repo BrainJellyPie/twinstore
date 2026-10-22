@@ -9,10 +9,15 @@ excluded from serialization).
 
 import asyncio
 import base64
+import hashlib
 import io
 import logging
 import os
+import threading
 import time
+import urllib.error
+import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 from urllib.parse import urlsplit
@@ -28,7 +33,7 @@ from store_emulator.domain.providers import (
     ProviderKind,
     ProviderPreset,
 )
-from store_emulator.engine.llm_client import LiteLLMClient
+from store_emulator.engine.llm_client import LiteLLMClient, is_auth_error
 from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
 
 from .storage.io import DATA_DIR, read_json, write_json
@@ -130,6 +135,7 @@ class ProviderStatus(BaseModel):
     has_key: bool
     key_source: str                 # "settings" | "env" | "none" | "not needed"
     key_hint: str                   # last 4 characters, or ""
+    key_rejected: bool = False      # the provider turned this key down during this session
     api_base: str | None
     default_model: str | None
     ready: bool
@@ -197,14 +203,58 @@ def update_provider(kind: ProviderKind, update: ProviderUpdate) -> ProviderStatu
     return provider_status(kind, settings)
 
 
+# Other environment variables LiteLLM reads for a provider's key, after the preset's own.
+_ENV_ALIASES: dict[ProviderKind, tuple[str, ...]] = {ProviderKind.GEMINI: ("GOOGLE_API_KEY",)}
+
+
 def _key_for(kind: ProviderKind, settings: dict[ProviderKind, ProviderSettings]) -> tuple[str | None, str]:
     s = settings.get(kind)
     if s and s.api_key and s.api_key.get_secret_value():
         return s.api_key.get_secret_value(), "settings"
-    env = PRESETS[kind].api_key_env
-    if env and os.environ.get(env):
-        return os.environ[env], "env"
+    for env in (PRESETS[kind].api_key_env, *_ENV_ALIASES.get(kind, ())):
+        if env and os.environ.get(env, "").strip():
+            return os.environ[env].strip(), "env"
     return None, "none"
+
+
+# Keys a provider turned down during this session (not valid, revoked), by fingerprint. They count as no key, so
+# assistive features move on to another provider or the local model; a new key (another fingerprint) is tried again.
+_REJECTED_KEYS: dict[ProviderKind, str] = {}
+_REJECTED_LOCK = threading.Lock()
+
+
+def _fingerprint(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()[:16]
+
+
+def reject_key(kind: ProviderKind, key: str) -> None:
+    with _REJECTED_LOCK:
+        new = _REJECTED_KEYS.get(kind) != _fingerprint(key)
+        _REJECTED_KEYS[kind] = _fingerprint(key)
+    if new:
+        logger.warning(f"[providers] {PRESETS[kind].label} turned the API key …{key[-4:]} down; "
+                       "it is set aside until it is replaced")
+
+
+def accept_key(kind: ProviderKind, key: str) -> None:
+    """The provider answered with this key (a passing connection test): it is usable again."""
+    with _REJECTED_LOCK:
+        if _REJECTED_KEYS.get(kind) == _fingerprint(key):
+            del _REJECTED_KEYS[kind]
+
+
+def _rejected(kind: ProviderKind, key: str | None) -> bool:
+    return key is not None and _REJECTED_KEYS.get(kind) == _fingerprint(key)
+
+
+def _usable_key(kind: ProviderKind, settings: dict[ProviderKind, ProviderSettings]) -> str | None:
+    key, _ = _key_for(kind, settings)
+    return None if _rejected(kind, key) else key
+
+
+def key_rejected(kind: ProviderKind, settings: dict[ProviderKind, ProviderSettings] | None = None) -> bool:
+    settings = settings if settings is not None else load_settings()
+    return _rejected(kind, _key_for(kind, settings)[0])
 
 
 def _api_base(preset: ProviderPreset, s: ProviderSettings) -> str | None:
@@ -225,19 +275,21 @@ def provider_status(kind: ProviderKind, settings: dict[ProviderKind, ProviderSet
     # server is running there, and offering it in model pickers would only produce failed runs.
     enabled = s.enabled if stored is not None else not preset.local
     api_base = _api_base(preset, s)
+    rejected = _rejected(kind, key)
     return ProviderStatus(
         preset=preset, enabled=enabled, has_key=key is not None, key_source=source,
-        key_hint=f"…{key[-4:]}" if key and len(key) >= 8 else "",
+        key_hint=f"…{key[-4:]}" if key and len(key) >= 8 else "", key_rejected=rejected,
         api_base=api_base, default_model=s.default_model,
-        ready=enabled and (key is not None or not preset.needs_key) and (api_base is not None or not preset.local),
+        ready=enabled and ((key is not None and not rejected) or not preset.needs_key)
+        and (api_base is not None or not preset.local),
     )
 
 
 def cloud_providers_with_key(settings: dict[ProviderKind, ProviderSettings] | None = None) -> list[str]:
-    """Labels of the cloud providers that have a key (settings or environment)."""
+    """Labels of the cloud providers that have a key (settings or environment) the provider has not turned down."""
     settings = settings if settings is not None else load_settings()
     return [preset.label for kind, preset in PRESETS.items()
-            if preset.needs_key and not preset.local and _key_for(kind, settings)[0] is not None]
+            if preset.needs_key and not preset.local and _usable_key(kind, settings) is not None]
 
 
 def use_local_server(api_base: str) -> ProviderStatus:
@@ -286,7 +338,14 @@ def resolve_model(
     base = base or LLMConfig()
     parsed = ModelRef.parse(ref)
     if parsed is None:
-        return base.model_copy(update={"model": ref})
+        resolved = base.model_copy(update={"model": ref})
+        kind = _PLAIN_PREFIX.get(ref.partition("/")[0])
+        if kind is None or base.api_base is not None or base.api_key is not None:
+            return resolved
+        # The key the app shows for this provider, also when it was entered in Settings rather than the environment
+        # (LiteLLM reads only the environment, and for Gemini prefers GOOGLE_API_KEY to GEMINI_API_KEY).
+        key, _ = _key_for(kind, settings if settings is not None else load_settings())
+        return resolved.model_copy(update={"api_key": SecretStr(key)}) if key else resolved
     settings = settings if settings is not None else load_settings()
     preset = PRESETS[parsed.provider]
     s = settings.get(parsed.provider, ProviderSettings(kind=parsed.provider))
@@ -296,14 +355,28 @@ def resolve_model(
             f"no API key for {preset.label}: add it in Settings → Model providers or set {preset.api_key_env}",
         )
     model_id = parsed.model
+    parallel: int | None = None
     if parsed.provider == ProviderKind.LLAMACPP and model_id == "local":
         model_id = "local-model"
+        parallel = _local_slots(_api_base(preset, s))
     return base.model_copy(update={
         "model": f"{preset.litellm_prefix}/{model_id}",
         "api_base": _api_base(preset, s),
         "structured_output": preset.structured_output,
         "api_key": SecretStr(key) if key else None,
+        "max_parallel": parallel or base.max_parallel,
     })
+
+
+def _local_slots(api_base: str | None) -> int | None:
+    """How many requests the local model server takes at once, when `api_base` is the one TwinStore uses (started by
+    it, or found already running on this computer)."""
+    from .local_vlm import manager  # late import: local_vlm imports this module
+
+    status = manager().status()
+    if status.state == "ready" and status.slots > 0 and api_base and status.api_base == api_base:
+        return status.slots
+    return None
 
 
 # Cloud providers tried, in order, when the app's text model has no key (assistive features only).
@@ -320,6 +393,10 @@ def text_model_fallback(model: str, settings: dict[ProviderKind, ProviderSetting
     kind = missing_key(model, settings)
     if kind is None:
         return None
+    return _next_text_model(kind, settings)
+
+
+def _next_text_model(kind: ProviderKind, settings: dict[ProviderKind, ProviderSettings]) -> str | None:
     for other in _FALLBACK_ORDER:
         preset = PRESETS[other]
         if other != kind and preset.models and provider_status(other, settings).ready:
@@ -332,12 +409,17 @@ def text_model_fallback(model: str, settings: dict[ProviderKind, ProviderSetting
 
 def _local_text_ready(settings: dict[ProviderKind, ProviderSettings]) -> bool:
     """The llama.cpp server is set up and answering: TwinStore's own local model once it is ready, or a server the
-    user turned on in Settings."""
-    if not provider_status(ProviderKind.LLAMACPP, settings).ready:
+    user turned on in Settings. The settings outlive the app, so with TwinStore's own model not running, the address
+    they hold (often where it ran last time) must answer now."""
+    status = provider_status(ProviderKind.LLAMACPP, settings)
+    if not status.ready:
         return False
-    from .local_vlm import manager  # late import: local_vlm imports this module
+    from .local_vlm import manager, server_answers  # late import: local_vlm imports this module
 
-    return manager().status().state not in ("preparing", "downloading", "starting", "error")
+    state = manager().status().state
+    if state == "ready":
+        return True
+    return state in ("off", "disabled") and status.api_base is not None and server_answers(status.api_base)
 
 
 def assistive_model(requested: str, config: LLMConfig) -> str:
@@ -403,6 +485,163 @@ def build_client(
     return EnsembleLLMClient(members, mode=ensemble.mode, seed=ensemble.seed)
 
 
+# ── assistive features: move on when a key is turned down ───────────────────
+
+# Local-model states worth waiting through, and those that will not come right by waiting.
+_LOCAL_COMING = ("preparing", "downloading", "starting")
+
+
+class _Fallback:
+    """The reroute an assistive client gets (engine/llm_client.py). When the provider turns the key down, the key is set
+    aside for this session and the call moves on: to a fast model of another provider with a key, else to the local
+    model on this computer, started if the app was opened from its icon and waited for up to `wait` seconds (background
+    jobs wait; a request a person is waiting on does not). `on_wait` hears what the local model is doing meanwhile."""
+
+    def __init__(self, ref: str, base: LLMConfig, *, wait: float, on_wait: Callable[[str], None] | None) -> None:
+        self.ref, self._base, self._wait, self._on_wait = ref, base, wait, on_wait
+        self._lock = threading.Lock()
+        try:
+            self.config = resolve_model(ref, base=base)
+        except ValueError:                         # a reference without any key: the first call moves on
+            self.config = base.model_copy(update={"model": ref})
+
+    def __call__(self, failed: str, error: BaseException) -> LLMConfig | None:
+        with self._lock:
+            if failed != self.config.model:        # another call already moved on
+                return self.config
+            kind = _provider_of(self.ref)
+            if kind is None or not PRESETS[kind].needs_key:
+                return None
+            if self.config.api_key is not None:
+                reject_key(kind, self.config.api_key.get_secret_value())
+            return self.move_on(kind, error)
+
+    def move_on(self, kind: ProviderKind, error: BaseException | None) -> LLMConfig:
+        nxt = _next_text_model(kind, load_settings()) or self._local(kind, error)
+        # Settings read afresh: waiting for the local model may have pointed it at another port.
+        self.ref, self.config = nxt, resolve_model(nxt, base=self._base)
+        return self.config
+
+    def _local(self, kind: ProviderKind, error: BaseException | None) -> str:
+        from .local_vlm import manager  # late import: local_vlm imports this module
+
+        label = PRESETS[kind].label
+        rejected = key_rejected(kind)
+        reason = _short_reason(error) if error is not None else "not valid or revoked"
+        problem = f"{label} turned the API key down ({reason})" if rejected else f"No API key for {label}"
+        fix = "replace the key in Settings → Model providers" if rejected else "add a key in Settings → Model providers"
+        local = manager()
+        starting = local.status().state == "off" and os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1"
+        if starting:
+            local.start()
+        deadline = time.monotonic() + self._wait
+        while True:
+            status = local.status()
+            if status.state == "ready" and _local_text_ready(load_settings()):
+                logger.warning(f"[providers] {problem}; assistive features use the local model")
+                return f"{ProviderKind.LLAMACPP.value}:local"
+            if status.state not in _LOCAL_COMING and not (starting and status.state == "off"):
+                why = f" (the local model: {status.message})" if status.state == "error" and status.message else ""
+                raise ValueError(f"{problem}{why}. {fix[0].upper()}{fix[1:]}, or add another provider's key.")
+            done = f" ({status.progress:.0%})" if status.progress is not None else ""
+            if time.monotonic() >= deadline:
+                raise ValueError(f"{problem}. The local model on this computer is getting ready ({status.message}"
+                                 f"{done}): try again once it is, or {fix}.")
+            if self._on_wait is not None:
+                self._on_wait(f"{problem}; waiting for the local model: {status.message}{done}")
+            time.sleep(2.0)
+
+
+def _short_reason(error: BaseException) -> str:
+    text = str(error)
+    for marker in ("API key not valid", "invalid x-api-key", "Incorrect API key", "invalid_api_key", "API_KEY_INVALID"):
+        if marker.lower() in text.lower():
+            return marker
+    return "authentication failed"
+
+
+def assistive_client(
+    requested: str, config: LLMConfig, *, wait: float = 0.0, on_wait: Callable[[str], None] | None = None,
+) -> LiteLLMClient:
+    """The client of an assistive feature (`assistive_model` picks its model), moving on to another model when the
+    provider turns the key down. With no usable key anywhere it starts on the local model right away, waiting up to
+    `wait` seconds for it (a background job; this call then blocks), or raises ValueError saying what to do — no
+    request is sent without a key. A model on an endpoint of the app configuration is used as it is."""
+    ref = assistive_model(requested, config)
+    fallback = _Fallback(ref, config, wait=wait, on_wait=on_wait)
+    own_endpoint = ref == config.model and (config.api_base is not None or config.api_key is not None)
+    kind = None if own_endpoint else missing_key(ref)
+    if kind is not None:
+        fallback.move_on(kind, None)
+    return LiteLLMClient(fallback.config, reroute=fallback)
+
+
+# ── key check at start ──────────────────────────────────────────────────────
+
+_KEY_CHECKS: dict[ProviderKind, tuple[str, Callable[[str], dict[str, str]]]] = {
+    ProviderKind.OPENAI: ("https://api.openai.com/v1/models", lambda k: {"Authorization": f"Bearer {k}"}),
+    ProviderKind.ANTHROPIC: ("https://api.anthropic.com/v1/models",
+                             lambda k: {"x-api-key": k, "anthropic-version": "2023-06-01"}),
+    ProviderKind.GEMINI: ("https://generativelanguage.googleapis.com/v1beta/models", lambda k: {"x-goog-api-key": k}),
+    ProviderKind.OPENROUTER: ("https://openrouter.ai/api/v1/key", lambda k: {"Authorization": f"Bearer {k}"}),
+}
+
+
+def _key_turned_down(kind: ProviderKind, key: str, settings: dict[ProviderKind, ProviderSettings],
+                     opener: Callable[[urllib.request.Request], object]) -> bool | None:
+    """True when the provider refuses the key, False when it takes it, None when it cannot tell (offline, no check)."""
+    if kind == ProviderKind.QWEN:
+        base = _api_base(PRESETS[kind], settings.get(kind, ProviderSettings(kind=kind)))
+        url, headers = (f"{base.rstrip('/')}/models", {"Authorization": f"Bearer {key}"}) if base else ("", {})
+    elif kind in _KEY_CHECKS:
+        url, make = _KEY_CHECKS[kind]
+        headers = make(key)
+    else:
+        return None
+    if not url:
+        return None
+    try:
+        opener(urllib.request.Request(url, headers=headers))
+        return False
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return True
+        if e.code == 400:
+            try:
+                body = e.read().decode("utf-8", "replace")
+            except OSError:
+                body = ""
+            return "API_KEY_INVALID" in body or "api key not valid" in body.lower()
+        return None
+    except (OSError, ValueError):
+        return None
+
+
+def _open_quietly(req: urllib.request.Request) -> object:
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return r.status
+
+
+def check_keys(opener: Callable[[urllib.request.Request], object] = _open_quietly) -> list[str]:
+    """Ask each cloud provider with a key whether it takes it (a free model listing, no tokens), and set aside the keys
+    it turns down. Returns the labels of the providers whose key was turned down."""
+    settings = load_settings()
+    turned_down: list[str] = []
+    for kind, preset in PRESETS.items():
+        if not preset.needs_key or preset.local:
+            continue
+        key, _ = _key_for(kind, settings)
+        if key is None:
+            continue
+        verdict = _key_turned_down(kind, key, settings, opener)
+        if verdict:
+            reject_key(kind, key)
+            turned_down.append(preset.label)
+        elif verdict is False:
+            accept_key(kind, key)
+    return turned_down
+
+
 def ensure_resolvable(config: SimulationConfig) -> None:
     """Raise ValueError (with a user-facing message) when a run's model references cannot be used."""
     if config.engine_type == EngineType.RULE_BASED:
@@ -418,27 +657,38 @@ def ensure_resolvable(config: SimulationConfig) -> None:
             _ensure_local_ready(resolved.api_base)
 
 
-def missing_key(ref: str, settings: dict[ProviderKind, ProviderSettings] | None = None) -> ProviderKind | None:
-    """The cloud provider of `ref` when it needs an API key and has none (plain LiteLLM strings and references)."""
-    settings = settings if settings is not None else load_settings()
+def _provider_of(ref: str) -> ProviderKind | None:
     parsed = ModelRef.parse(ref)
-    kind = parsed.provider if parsed is not None else _PLAIN_PREFIX.get(ref.partition("/")[0])
-    if kind is None or not PRESETS[kind].needs_key or _key_for(kind, settings)[0] is not None:
+    return parsed.provider if parsed is not None else _PLAIN_PREFIX.get(ref.partition("/")[0])
+
+
+def missing_key(ref: str, settings: dict[ProviderKind, ProviderSettings] | None = None) -> ProviderKind | None:
+    """The cloud provider of `ref` when it needs an API key and has none, or only one it turned down (plain LiteLLM
+    strings and references)."""
+    settings = settings if settings is not None else load_settings()
+    kind = _provider_of(ref)
+    if kind is None or not PRESETS[kind].needs_key or _usable_key(kind, settings) is not None:
         return None
     return kind
 
 
 def _ensure_plain_key(ref: str, settings: dict[ProviderKind, ProviderSettings]) -> None:
-    """A plain LiteLLM model ("gemini/…") of a cloud provider without a key would fail on every shopper; say so before
-    the run starts, and name a model that would work."""
-    kind = missing_key(ref, settings) if ModelRef.parse(ref) is None else None
+    """A model of a cloud provider without a usable key would fail on every shopper; say so before the run starts, and
+    name a model that would work. (A reference without any key is refused by resolve_model.)"""
+    kind = missing_key(ref, settings)
     if kind is None:
+        return
+    rejected = key_rejected(kind, settings)
+    if not rejected and ModelRef.parse(ref) is not None:
         return
     alternative = text_model_fallback(ref, settings)
     hint = ("Pick the local model on this computer for this run (llamacpp:local)" if alternative == "llamacpp:local"
             else f"Pick another model for this run ({alternative} has a key)" if alternative
             else "Use rule-based shoppers, wait for the local model to be ready")
-    raise ValueError(f"No API key for {PRESETS[kind].label} ({ref}). {hint}, or add a key in Settings → Model providers.")
+    problem = (f"{PRESETS[kind].label} turned the API key down (not valid or revoked) for {ref}" if rejected
+               else f"No API key for {PRESETS[kind].label} ({ref})")
+    fix = "replace the key" if rejected else "add a key"
+    raise ValueError(f"{problem}. {hint}, or {fix} in Settings → Model providers.")
 
 
 def _ensure_local_ready(api_base: str) -> None:
@@ -482,6 +732,7 @@ async def test_connection(ref: str, *, vision: bool = False) -> ConnectionTest:
     except ValueError as e:
         return ConnectionTest(ok=False, model=ref, error=str(e))
     client = LiteLLMClient(config)
+    kind = _provider_of(ref)
     started = time.perf_counter()
     try:
         if vision:
@@ -494,7 +745,11 @@ async def test_connection(ref: str, *, vision: bool = False) -> ConnectionTest:
                 _Pong, "Answer in JSON.", 'Reply with ok=true and word="pong".'), 90)
             reply, ok = pong.word, pong.ok
     except Exception as e:  # noqa: BLE001 — report any provider error to the user verbatim
+        if kind is not None and config.api_key is not None and is_auth_error(e):
+            reject_key(kind, config.api_key.get_secret_value())
         return ConnectionTest(ok=False, model=ref, error=f"{type(e).__name__}: {e}"[:500], vision=vision,
                               latency_ms=int((time.perf_counter() - started) * 1000))
+    if kind is not None and config.api_key is not None:
+        accept_key(kind, config.api_key.get_secret_value())
     return ConnectionTest(ok=ok, model=ref, reply=reply, vision=vision,
                           latency_ms=int((time.perf_counter() - started) * 1000))

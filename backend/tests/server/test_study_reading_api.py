@@ -63,7 +63,7 @@ def test_a_shelf_reading_codes_reasons_per_arm_and_writes_a_commentary(client, m
     from store_emulator.application import study_reading
     _shelf(tmp_path)
     fake = _Analyst()
-    monkeypatch.setattr(study_reading, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(study_reading, "assistive_client", lambda *a, **k: fake)
     url = f"/api/projects/{PID}/shelf-tests/slf_1/reading"
     assert client.get(url).status_code == 200 and client.get(url).json() is None
     assert client.get(f"/api/projects/{PID}/shelf-tests/slf_nope/reading").status_code == 404
@@ -92,7 +92,7 @@ def test_a_survey_reading_shows_in_the_report_and_skips_themes_for_few_answers(c
         survey_id="srv_1", name="Tea concept", model="m", stimuli=["a"], stimulus_names=["Leafy"], questions=["open"],
         currency="USD", respondents=2, errors=0, answers=answers))
     fake = _Analyst()
-    monkeypatch.setattr(study_reading, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(study_reading, "assistive_client", lambda *a, **k: fake)
     reading = client.post(f"/api/projects/{PID}/surveys/srv_1/reading", json={}).json()
     assert reading["themes"] == [] and reading["answers_coded"] == 0 and reading["summary"]
     assert [p[0] for p in fake.prompts] == ["_Commentary"]
@@ -113,7 +113,7 @@ def test_reading_errors(client, monkeypatch, tmp_path):
     assert client.post(f"/api/projects/{PID}/conjoints/nope/reading", json={}).status_code == 404
     assert client.post(f"/api/projects/{PID}/experiments/exp_1/reading", json={}).status_code == 422
     _shelf(tmp_path)
-    monkeypatch.setattr(study_reading, "build_client", lambda *a, **k: _Broken())
+    monkeypatch.setattr(study_reading, "assistive_client", lambda *a, **k: _Broken())
     r = client.post(f"/api/projects/{PID}/shelf-tests/slf_1/reading", json={})
     assert r.status_code == 502 and "took too long" in r.json()["detail"]
     assert client.get(f"/api/projects/{PID}/shelf-tests/slf_1/reading").json() is None

@@ -137,6 +137,11 @@ jobs:
             exit 1
           fi
           gh release create "$RELEASE_TAG" out/* --verify-tag --target "$release_commit" --title "TwinStore $RELEASE_TAG" --notes-file - <<'NOTES'
+          > [!NOTE]
+          > **Windows may say "Windows protected your PC".** That is normal for a new app without a code-signing
+          > certificate, not a virus warning: click **More info → Run anyway**. On a Mac, open TwinStore once, then
+          > System Settings → Privacy & Security → **Open Anyway**.
+
           Download the file for your computer, unpack it, and double-click **TwinStore**.
 
           | Computer | Download | Double-click |
@@ -146,4 +151,5 @@ jobs:
           | Linux x64 / arm64 | `TwinStore-…-linux-*.tar.gz` | `twinstore` (afterwards also in the app menu) |
 
           The first start downloads Python and the packages (a few minutes, once). See QUICKSTART.md.
+          Closing the browser tab does not stop TwinStore: use **Quit TwinStore** in the app when you are done.
           NOTES

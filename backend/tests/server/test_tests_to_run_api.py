@@ -56,7 +56,7 @@ def test_a_group_interview_becomes_test_questions(client, monkeypatch, tmp_path)
     from store_emulator.application import hypotheses
     gid = _group(tmp_path)
     fake = _Writer(TESTS)
-    monkeypatch.setattr(hypotheses, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(hypotheses, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/tests-to-run", json={"source": "group", "group_id": gid})
     assert r.status_code == 200, r.text
     assert [(t["kind"], t["question"][:20]) for t in r.json()] == [("ab_test", "Would a 20 % discoun"), ("shelf_test", "Does a SALE sign mak")]
@@ -69,7 +69,7 @@ def test_the_analyst_answer_becomes_test_questions(client, monkeypatch):
     from store_emulator.application import hypotheses
     from store_emulator.application import run_analyst as analyst
     fake = _Writer(TESTS)
-    monkeypatch.setattr(hypotheses, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(hypotheses, "assistive_client", lambda *a, **k: fake)
     empty = client.post(f"/api/projects/{PID}/runs/{RUN}/tests-to-run", json={"source": "analyst"})
     assert empty.status_code == 400 and "Ask the analyst" in empty.json()["detail"]
 
@@ -77,7 +77,7 @@ def test_the_analyst_answer_becomes_test_questions(client, monkeypatch):
         async def generate_structured_async[T: BaseModel](self, response_model: type[T], *_a: object, **_k: object) -> T:
             return response_model.model_validate({"answer": "Ice cream 2 converts worst.", "figures": [], "follow_ups": []})
 
-    monkeypatch.setattr(analyst, "build_client", lambda *a, **k: _Analyst())
+    monkeypatch.setattr(analyst, "assistive_client", lambda *a, **k: _Analyst())
     assert client.post(f"/api/projects/{PID}/runs/{RUN}/analyst", json={"question": "Which shelf converts worst?"}).status_code == 200
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/tests-to-run", json={"source": "analyst"})
     assert r.status_code == 200 and len(r.json()) == 2

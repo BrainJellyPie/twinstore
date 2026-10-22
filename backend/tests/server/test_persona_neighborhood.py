@@ -22,15 +22,15 @@ def client(tmp_path, monkeypatch):
 
 
 def _pipeline(monkeypatch) -> dict[str, object]:
-    from store_emulator.application import generation_async
+    from store_emulator.application import generation_async, providers
     seen: dict[str, object] = {}
 
     async def fake_batched(llm, address, profile, **kw):
         seen.update(kw)
-        return []
+        return ["a persona"]
 
     class _LLM:
-        def __init__(self, config: object) -> None:
+        def __init__(self, config: object, **kw: object) -> None:
             seen["model"] = getattr(config, "model", "")
 
         def get_usage(self):
@@ -38,7 +38,7 @@ def _pipeline(monkeypatch) -> dict[str, object]:
             return TokenUsage()
 
     monkeypatch.setattr(generation_async.gen_persona, "generate_batched", fake_batched)
-    monkeypatch.setattr(generation_async, "LiteLLMClient", _LLM)
+    monkeypatch.setattr(providers, "LiteLLMClient", _LLM)
     meta = read_json(metadata_path(PID))
     asyncio.run(generation_async._run_async_pipeline(  # pyright: ignore[reportPrivateUsage]
         config=SimulationConfig(), project_id=PID, meta=meta,
@@ -48,6 +48,7 @@ def _pipeline(monkeypatch) -> dict[str, object]:
 
 
 def test_personas_follow_the_neighborhood_mix(client, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")   # no request is sent without a usable key
     assert "Neighborhood model" not in str(_pipeline(monkeypatch)["supplemental_summary"])
     client.post(f"/api/projects/{PID}/town/generate", json={"archetype": "university", "seed": 1})
     summary = str(_pipeline(monkeypatch)["supplemental_summary"])

@@ -1,13 +1,18 @@
+import asyncio
 import hashlib
 import json
 import logging
 import os
 import re
 import threading
+import weakref
+from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import instructor
 import litellm
+from litellm.exceptions import AuthenticationError
 from pydantic import BaseModel
 
 from store_emulator.domain.config import LLMConfig
@@ -82,13 +87,50 @@ def _accepts(model: str, param: str) -> bool:
     return param not in _REJECTED.get(model, set())
 
 
+# A provider that turned the API key down (not valid, revoked, missing) will not take it on a retry. Assistive clients
+# get a `reroute` from the application: given the model that failed and the error, it sets the key aside and returns
+# the next model that can answer (or None, or raises with a message saying what to do).
+type Reroute = Callable[[str, BaseException], LLMConfig | None]
+_MAX_REROUTES = 3
+_AUTH_MARKERS = ("api_key_invalid", "api key not valid", "invalid x-api-key", "incorrect api key", "invalid api key",
+                 "invalid_api_key", "authentication_error", "missing anthropic api key", "api key is missing")
+
+
+def is_auth_error(error: BaseException) -> bool:
+    """Whether the provider turned the API key down, looking through the retries Instructor wraps the error in."""
+    seen: set[int] = set()
+    stack: list[BaseException] = [error]
+    while stack:
+        e = stack.pop()
+        if id(e) in seen:
+            continue
+        seen.add(id(e))
+        if isinstance(e, AuthenticationError):
+            return True
+        stack.extend(x for x in (e.__cause__, e.__context__) if x is not None)
+        attempts: object = getattr(e, "failed_attempts", None)
+        if isinstance(attempts, list):
+            for attempt in cast(list[object], attempts):
+                exc: object = getattr(attempt, "exception", None)
+                if isinstance(exc, BaseException):
+                    stack.append(exc)
+    text = str(error).lower()
+    return any(marker in text for marker in _AUTH_MARKERS)
+
+
 def _hash6(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()[:4]
 
 
 class LiteLLMClient:
 
-    def __init__(self, config: LLMConfig):
+    def __init__(self, config: LLMConfig, *, reroute: Reroute | None = None):
+        self._reroute = reroute
+        self._use(config)
+        self._usage_lock = threading.Lock()
+        self._usage = TokenUsage()
+
+    def _use(self, config: LLMConfig) -> None:
         self.model = config.model
         self.temperature = config.temperature
         self.max_tokens = config.max_tokens
@@ -97,11 +139,49 @@ class LiteLLMClient:
         self.timeout_sec = config.timeout_sec
         self.cache_dir = Path(config.cache_dir) if config.cache_dir else None
         self._api_key = config.api_key.get_secret_value() if config.api_key else None
+        self.max_parallel = config.max_parallel
+        self._slots: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = weakref.WeakKeyDictionary()
         mode = instructor.Mode.JSON_SCHEMA if config.structured_output == "json_schema" else instructor.Mode.JSON
         self._client = instructor.from_litellm(litellm.completion, mode=mode)  # type: ignore[reportUnknownMemberType]
         self._async_client = instructor.from_litellm(litellm.acompletion, mode=mode)  # type: ignore[reportUnknownMemberType]
-        self._usage_lock = threading.Lock()
-        self._usage = TokenUsage()
+
+    def _slots_here(self) -> asyncio.Semaphore | None:
+        """The request limit in this event loop (a semaphore belongs to one loop; runs may use several)."""
+        if not self.max_parallel:
+            return None
+        loop = asyncio.get_running_loop()
+        slots = self._slots.get(loop)
+        if slots is None:
+            slots = self._slots[loop] = asyncio.Semaphore(self.max_parallel)
+        return slots
+
+    def _move_on(self, tried: str, nxt: LLMConfig | None) -> bool:
+        if nxt is None or (nxt.model == tried and nxt.api_base == self.api_base):
+            return False
+        if self.model == tried:
+            logger.warning(f"{tried}: no API key the provider takes; continuing on {nxt.model}")
+            self._use(nxt)
+        return True
+
+    def _wants_reroute(self, error: BaseException, hops: int) -> bool:
+        return self._reroute is not None and hops < _MAX_REROUTES and is_auth_error(error)
+
+    def _rerouted(self, tried: str, error: BaseException, hops: int) -> bool:
+        """Whether to repeat a call the provider refused for its key: on the model another call already moved to, or on
+        the next one the application names."""
+        if not self._wants_reroute(error, hops) or self._reroute is None:
+            return False
+        if self.model != tried:
+            return True
+        return self._move_on(tried, self._reroute(tried, error))
+
+    async def _arerouted(self, tried: str, error: BaseException, hops: int) -> bool:
+        if not self._wants_reroute(error, hops) or self._reroute is None:
+            return False
+        if self.model != tried:
+            return True
+        # In a thread: finding the next model may wait for the local model to get ready.
+        return self._move_on(tried, await asyncio.to_thread(self._reroute, tried, error))
 
     def _messages(self, system_prompt: str, user_prompt: str) -> tuple[list[dict[str, str]], str]:
         rid = _hash6(system_prompt + user_prompt)
@@ -283,6 +363,50 @@ class LiteLLMClient:
                 raise
         raise AssertionError("unreachable")
 
+    def _generate[T: BaseModel](self, response_model: type[T], msgs: object, rid: str, max_retries: int,
+                                seed: int | None, max_tokens: int | None = None) -> T:
+        hops = 0
+        while True:
+            cache_path = self._cache_path(response_model, msgs, seed, max_tokens)
+            cached = self._cache_get(cache_path, response_model)
+            if cached is not None:
+                return cached
+            tried = self.model
+            try:
+                model, raw = self._create(response_model, msgs, max_retries, seed, max_tokens)
+            except Exception as e:
+                if self._rerouted(tried, e, hops):
+                    hops += 1
+                    continue
+                raise
+            self._accumulate_usage(raw, rid)
+            self._cache_put(cache_path, model)  # type: ignore[reportArgumentType]
+            return model  # type: ignore[reportReturnType]
+
+    async def _agenerate[T: BaseModel](self, response_model: type[T], msgs: object, rid: str, max_retries: int,
+                                       seed: int | None, max_tokens: int | None = None) -> T:
+        hops = 0
+        while True:
+            cache_path = self._cache_path(response_model, msgs, seed, max_tokens)
+            cached = self._cache_get(cache_path, response_model)
+            if cached is not None:
+                return cached
+            tried, slots = self.model, self._slots_here()
+            try:
+                if slots is None:
+                    model, raw = await self._acreate(response_model, msgs, max_retries, seed, max_tokens)
+                else:
+                    async with slots:
+                        model, raw = await self._acreate(response_model, msgs, max_retries, seed, max_tokens)
+            except Exception as e:
+                if await self._arerouted(tried, e, hops):
+                    hops += 1
+                    continue
+                raise
+            self._accumulate_usage(raw, rid)
+            self._cache_put(cache_path, model)  # type: ignore[reportArgumentType]
+            return model  # type: ignore[reportReturnType]
+
     def generate_structured[T: BaseModel](
         self,
         response_model: type[T],
@@ -294,14 +418,7 @@ class LiteLLMClient:
         route: str | None = None,
     ) -> T:
         msgs, rid = self._messages(system_prompt, user_prompt)
-        cache_path = self._cache_path(response_model, msgs, seed)
-        cached = self._cache_get(cache_path, response_model)
-        if cached is not None:
-            return cached
-        model, raw = self._create(response_model, msgs, max_retries, seed)
-        self._accumulate_usage(raw, rid)
-        self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
-        return model  # type: ignore[reportReturnType]
+        return self._generate(response_model, msgs, rid, max_retries, seed)
 
     async def generate_structured_async[T: BaseModel](
         self,
@@ -315,14 +432,7 @@ class LiteLLMClient:
         max_tokens: int | None = None,
     ) -> T:
         msgs, rid = self._messages(system_prompt, user_prompt)
-        cache_path = self._cache_path(response_model, msgs, seed, max_tokens)
-        cached = self._cache_get(cache_path, response_model)
-        if cached is not None:
-            return cached
-        model, raw = await self._acreate(response_model, msgs, max_retries, seed, max_tokens)
-        self._accumulate_usage(raw, rid)
-        self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
-        return model  # type: ignore[reportReturnType]
+        return await self._agenerate(response_model, msgs, rid, max_retries, seed, max_tokens)
 
     def generate_structured_with_image[T: BaseModel](
         self,
@@ -336,14 +446,7 @@ class LiteLLMClient:
         route: str | None = None,
     ) -> T:
         msgs, rid = self._messages_with_image(system_prompt, user_prompt, image_url)
-        cache_path = self._cache_path(response_model, msgs, seed)
-        cached = self._cache_get(cache_path, response_model)
-        if cached is not None:
-            return cached
-        model, raw = self._create(response_model, msgs, max_retries, seed)
-        self._accumulate_usage(raw, rid)
-        self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
-        return model  # type: ignore[reportReturnType]
+        return self._generate(response_model, msgs, rid, max_retries, seed)
 
     async def generate_structured_with_image_async[T: BaseModel](
         self,
@@ -358,14 +461,7 @@ class LiteLLMClient:
         max_tokens: int | None = None,
     ) -> T:
         msgs, rid = self._messages_with_image(system_prompt, user_prompt, image_url)
-        cache_path = self._cache_path(response_model, msgs, seed, max_tokens)
-        cached = self._cache_get(cache_path, response_model)
-        if cached is not None:
-            return cached
-        model, raw = await self._acreate(response_model, msgs, max_retries, seed, max_tokens)
-        self._accumulate_usage(raw, rid)
-        self._cache_put(cache_path, model)  # type: ignore[reportUnknownArgumentType]
-        return model  # type: ignore[reportReturnType]
+        return await self._agenerate(response_model, msgs, rid, max_retries, seed, max_tokens)
 
     async def generate_text_async(
         self,
@@ -384,15 +480,25 @@ class LiteLLMClient:
         """
         msgs, rid = self._messages(system_prompt, user_prompt)
         raw: object = None
-        for attempt in range(_ATTEMPTS):
+        attempt = hops = 0
+        while True:
             kwargs: dict[str, object] = {"messages": msgs, **self._call_kwargs(None)}
             if enable_search:
                 kwargs["tools"] = [{"google_search": {}}]
+            tried, slots = self.model, self._slots_here()
             try:
-                raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
+                if slots is None:
+                    raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
+                else:
+                    async with slots:
+                        raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
                 break
             except Exception as e:
                 if attempt < _ATTEMPTS - 1 and _should_retry_without(self.model, e, kwargs):
+                    attempt += 1
+                    continue
+                if await self._arerouted(tried, e, hops):
+                    hops += 1
                     continue
                 raise
         self._accumulate_usage(raw, rid)

@@ -46,7 +46,7 @@ def test_a_question_becomes_a_builder_ready_shelf_test(client, monkeypatch):
         shelf_lab.PackageAsset(asset_id="pkg_gold", name="Gold label", width=10, height=10)])
     fake = _Designer({"name": "Gold label on the shelf", "product": f"{item.name} ($9.99, somewhere)", "package": "gold label",
                       "price": 1.49, "promo": "sale", "age_groups": ["20s"], "rationale": "Pack, price and sign."})
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/shelf-tests/design", json={"question": "Would a gold label stand out?", "setup_id": SETUP})
     assert r.status_code == 200, r.text
     d = r.json()
@@ -61,11 +61,11 @@ def test_unknown_names_are_reported_or_refused(client, monkeypatch):
     from store_emulator.application import shelf_lab, study_design
     _, item = _layout_product()
     monkeypatch.setattr(shelf_lab, "list_packages", lambda pid: [])
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: _Designer({
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({
         "name": "x", "product": item.name, "package": "Moon pack", "price": None, "promo": ""}))
     d = client.post(f"/api/projects/{PID}/shelf-tests/design", json={"question": "Would a moon pack sell?", "setup_id": SETUP}).json()
     assert d["changes"] == [] and any("Moon pack" in w for w in d["warnings"]) and any("changes nothing" in w for w in d["warnings"])
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: _Designer({"name": "x", "product": "Imaginary soda", "promo": "NEW"}))
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({"name": "x", "product": "Imaginary soda", "promo": "NEW"}))
     r = client.post(f"/api/projects/{PID}/shelf-tests/design", json={"question": "Would a NEW sign help?", "setup_id": SETUP})
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]
 

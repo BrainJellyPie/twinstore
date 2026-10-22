@@ -30,7 +30,7 @@ def test_delayed_follow_ups_do_not_cross_a_conversation_restart(tmp_path, monkey
                 questions = ['New conversation follow-up?']
             return response_model.model_validate({'questions': questions})
 
-    monkeypatch.setattr(interview, 'build_client', lambda *args, **kwargs: Model())
+    monkeypatch.setattr(interview, 'assistive_client', lambda *args, **kwargs: Model())
     with TestClient(app) as client, ThreadPoolExecutor(max_workers=1) as pool:
         sid = client.get(f'/api/projects/{PID}/runs/{RUN}/timeline').json()[0]['persona_id']
         url = f'/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview'

@@ -2,10 +2,13 @@ import asyncio
 import logging
 import os
 import random
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Annotated
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from store_emulator.domain.persona import Persona, AGE_GROUPS, GENDERS
+from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import DaySchedule
 from store_emulator.domain.types import AsyncLLMClient, Weekday, WEEKDAY_LABELS, stable_seed
 from store_emulator.engine.generators.traffic_profile import TrafficProfile, reshape_hourly_counts
@@ -14,24 +17,50 @@ from store_emulator.engine.prompting import budget_example
 logger = logging.getLogger(__name__)
 
 
+# Upper bounds well above what the prompts ask for. Schema-constrained local models (llama.cpp) are held to them, so a
+# small model cannot repeat itself for minutes (one listed every hour four times).
 class TradeAreaProfile(BaseModel):
-    keywords: list[str]
-    identities: list[str]
-    purposes: list[str]
+    keywords: list[str] = Field(max_length=20)
+    identities: list[str] = Field(max_length=40)
+    purposes: list[str] = Field(max_length=40)
 
 
 class HourlyProfile(BaseModel):
     hour: int
     visitor_count: int
-    person_types: list[str]
+    person_types: list[str] = Field(max_length=10)
 
 
 class DailyTrafficResult(BaseModel):
-    hourly_profiles: list[HourlyProfile]
+    hourly_profiles: list[HourlyProfile] = Field(max_length=24)
+
+
+class GeneratedPersona(BaseModel):
+    """What the persona prompt asks for. The rest of a Persona (day, hour, receipt-derived fields) is filled in here:
+    asking for no more keeps answers short and gives small models nothing to invent (one filled `category_rates` with
+    percentages). Lengths are bounded well above a normal answer, so a local model cannot loop inside a string."""
+    id: str = Field(default="", max_length=40)
+    identity: str = Field(max_length=120)
+    age_group: AgeGroup
+    gender: Gender
+    description: str = Field(max_length=600)
+    intent: str = Field(max_length=400)
+    purpose: str = Field(max_length=120)
+    preferred_categories: list[Annotated[str, Field(max_length=80)]] = Field(default_factory=list[str], max_length=10)
+    budget_min: int = Field(default=0, ge=0)
+    budget_max: int = Field(default=0, ge=0)
+    behavior_tendency: str = Field(default="", max_length=300)
 
 
 class PersonaBatch(BaseModel):
-    personas: list[Persona]
+    personas: list[GeneratedPersona] = Field(max_length=12)
+
+
+@dataclass(frozen=True)
+class Pace:
+    """How much to ask of the model that answers: customers a day, and customers per request."""
+    daily_cap: int
+    batch_size: int
 
 
 PROFILE_PROMPT = """당신은 상권 분석 전문가입니다.
@@ -242,7 +271,8 @@ async def generate_personas_for_day(
             logger.error(f"[persona] {day_label} hour {hour} batch generation failed: {e}")
             continue
 
-        for persona in batch.personas:
+        for generated in batch.personas:
+            persona = Persona.model_validate(generated.model_dump())
             prefix = "F" if persona.gender == "Female" else "M"
             seq = len([p for p in all_personas if p.gender == persona.gender]) + 1
             persona.id = f"{prefix}{day.value}{seq:03d}"
@@ -268,16 +298,22 @@ async def generate_batched(
     supplemental_summary: str = "",
     currency: str = "USD",
     traffic: TrafficProfile | None = None,
+    pace: Callable[[Pace], Pace] | None = None,
 ) -> list[Persona]:
     """Personas for every open day. With `traffic` (fitted from the store's own transaction times),
     the model's hourly estimate keeps deciding who comes, but how many come each hour follows the
-    data — asked for times, models collapse onto a few stereotyped peaks."""
+    data — asked for times, models collapse onto a few stereotyped peaks.
+
+    `pace` turns the usual pace (customers a day, customers per request) into the one to use; it is asked after
+    the first call, once the model that answers is settled (a small model on this computer is asked for less)."""
     profile = await analyze_location(
         llm, address, customer_profile, custom_instruction,
         supplemental_summary=supplemental_summary,
     )
 
-    daily_cap = _persona_daily_cap_ceiling()
+    usual = Pace(daily_cap=_persona_daily_cap_ceiling(), batch_size=batch_size)
+    settled = pace(usual) if pace is not None else usual
+    daily_cap_now, batch_size = max(1, settled.daily_cap), max(1, settled.batch_size)
     open_days = [s for s in schedules if s.is_open]
 
     async def _process_day(schedule: DaySchedule) -> list[Persona]:
@@ -285,9 +321,10 @@ async def generate_batched(
             llm, address, customer_profile, profile,
             schedule.day, schedule.open_hour, schedule.close_hour,
         )
+        hourly = _usable_hourly(hourly, profile, schedule, daily_cap_now)
         if traffic is not None:
             hourly = _apply_traffic(hourly, traffic, schedule)
-        hourly = _scale_hourly(hourly, daily_cap)
+        hourly = _scale_hourly(hourly, daily_cap_now)
         return await generate_personas_for_day(
             llm, address, profile, schedule.day, hourly,
             seed=seed, custom_instruction=custom_instruction,
@@ -300,6 +337,31 @@ async def generate_batched(
 
     logger.info(f"[persona] generated {len(all_personas)} personas total across {len(open_days)} days")
     return all_personas
+
+
+# Relative visits per hour of a plain convenience-store day (morning, lunch and evening peaks; other hours 2).
+_PLAIN_DAY = {7: 4, 8: 6, 9: 4, 11: 4, 12: 7, 13: 6, 17: 5, 18: 7, 19: 6, 20: 5, 21: 4, 22: 3}
+
+
+def _usable_hourly(hourly: list[HourlyProfile], profile: TradeAreaProfile, schedule: DaySchedule,
+                   cap: int) -> list[HourlyProfile]:
+    """Hours the persona step can use. Small models sometimes answer an open day with no visitors at all, or with
+    visitors but no customer types; both left the day without customers. Hours without types get every identity
+    of the trade area; a day without visitors gets a plain convenience-store day of `cap` visitors."""
+    identities = list(profile.identities) or ["shopper"]
+    fixed = [h if h.person_types or h.visitor_count <= 0 else h.model_copy(update={"person_types": identities})
+             for h in hourly]
+    if sum(h.visitor_count for h in fixed) > 0:
+        return fixed
+    hours = list(range(schedule.open_hour, schedule.close_hour))
+    if not hours:
+        return fixed
+    logger.warning(f"[area-analysis] {WEEKDAY_LABELS[schedule.day]}: the model gave the open day no visitors; "
+                   "using a plain convenience-store day")
+    weights = {h: _PLAIN_DAY.get(h, 2) for h in hours}
+    total_w = sum(weights.values())
+    counts = {h: max(1, round(cap * w / total_w)) for h, w in weights.items()}
+    return [HourlyProfile(hour=h, visitor_count=n, person_types=identities) for h, n in counts.items()]
 
 
 def _apply_traffic(hourly: list[HourlyProfile], traffic: TrafficProfile, schedule: DaySchedule) -> list[HourlyProfile]:

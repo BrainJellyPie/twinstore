@@ -38,7 +38,7 @@ def _run():
 def _find(client, monkeypatch, f: dict[str, object], text: str = "some shoppers"):
     from store_emulator.application import shopper_search
     fake = _Finder(f)
-    monkeypatch.setattr(shopper_search, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(shopper_search, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/shoppers/find", json={"text": text})
     assert r.status_code == 200, r.text
     return r.json(), fake
@@ -76,7 +76,7 @@ def test_spend_products_and_sorting(client, monkeypatch):
 
 def test_a_failed_model_is_explained(client, monkeypatch):
     from store_emulator.application import shopper_search
-    monkeypatch.setattr(shopper_search, "build_client", lambda *a, **k: _Finder({"label": "x", "sort": "random"}))
+    monkeypatch.setattr(shopper_search, "assistive_client", lambda *a, **k: _Finder({"label": "x", "sort": "random"}))
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/shoppers/find", json={"text": "anyone"})
     assert r.status_code == 502 and "could not be found" in r.json()["detail"]
     assert client.post(f"/api/projects/{PID}/runs/run_missing/shoppers/find", json={"text": "anyone"}).status_code == 404

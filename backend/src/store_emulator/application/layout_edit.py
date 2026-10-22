@@ -18,7 +18,7 @@ from store_emulator.engine.layout_edit import (
 )
 
 from .errors import AppError, model_failure
-from .providers import assistive_model, build_client
+from .providers import assistive_client
 from .product_sources import check_product_layout, read_product_source
 from .setups import set_active_setup, setup_summary
 from .storage.io import write_json
@@ -66,7 +66,7 @@ def draft_edit(pid: str, sid: str, req: LayoutEditRequest, config: SimulationCon
     store, currency, digest = _source(pid, sid)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 1500})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

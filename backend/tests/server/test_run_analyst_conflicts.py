@@ -29,7 +29,7 @@ def test_clear_rejects_an_active_answer_then_can_be_retried(client, monkeypatch,
             seen['clear'] = client.delete(URL).status_code
             seen['preserved'] = (path.read_bytes() if path.exists() else None) == before
             return response_model.model_validate({'answer': 'One visitor bought tea.'})
-    monkeypatch.setattr(run_analyst, 'build_client', lambda *a, **k: Fake())
+    monkeypatch.setattr(run_analyst, 'assistive_client', lambda *a, **k: Fake())
     monkeypatch.setattr(run_analyst, 'facts', lambda *a: 'Visitors: 1.')
     response = client.post(URL, json={'question': 'What happened?'})
     assert response.status_code == 200, response.text

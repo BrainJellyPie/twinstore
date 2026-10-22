@@ -24,7 +24,7 @@ from .marketing import (
     get_survey,
     load_reading,
 )
-from .providers import assistive_model, build_client
+from .providers import assistive_client, assistive_model
 from .staff_pitch import get_pitch
 from .storage.io import now_iso, write_json
 
@@ -85,7 +85,7 @@ def write_reading(pid: str, kind: StudyKind, jid: str, model: str, config: Simul
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 2000})
     model = assistive_model(model, llm_config)
     try:
-        llm = build_client(llm_config, None, model_ref=model)
+        llm = assistive_client(model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

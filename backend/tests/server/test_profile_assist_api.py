@@ -24,7 +24,7 @@ def test_a_profile_is_drafted_in_the_form_language(client, monkeypatch):
             seen.append((system_prompt, user_prompt))
             return response_model.model_validate({"profile": "Office workers   buy lunch between 12 and 1.  Students come after 4."})
 
-    monkeypatch.setattr(setup_assist, "build_client", lambda *a, **k: _Writer())
+    monkeypatch.setattr(setup_assist, "assistive_client", lambda *a, **k: _Writer())
     r = client.post("/api/assist/customer-profile", json={"name": "Campus Mart", "store_type": "convenience",
                                                           "address": "84 Heukseok-ro, Seoul", "hours": "7:00–23:00", "locale": "ko"})
     assert r.status_code == 200, r.text
@@ -51,7 +51,7 @@ def test_requests_are_routed_to_a_tool(client, monkeypatch, picked, has_run, exp
             prompts.append(system_prompt)
             return response_model.model_validate({"destination": picked, "reason": "because"})
 
-    monkeypatch.setattr(setup_assist, "build_client", lambda *a, **k: _Router())
+    monkeypatch.setattr(setup_assist, "assistive_client", lambda *a, **k: _Router())
     r = client.post("/api/assist/route", json={"text": "Would a 1+1 on cola beat a 20 % cut?", "has_run": has_run})
     assert r.status_code == 200 and r.json()["destination"] == expected
     assert ("no simulated day yet" in prompts[0]) is (not has_run)
@@ -74,7 +74,7 @@ def test_the_create_store_form_is_filled_from_a_description(client, monkeypatch)
     fake = _Setup({"name": "중앙 캠퍼스 마트", "description": "학생들이 주로 찾는 캠퍼스 편의점입니다.", "address": "Chung-Ang University, Seoul",
                    "format": "University campus store (convenience)", "open_days": "weekday", "open_hour": 7, "close_hour": 23,
                    "currency": "KRW", "rationale": "A campus store open on weekdays."})
-    monkeypatch.setattr(setup_assist, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(setup_assist, "assistive_client", lambda *a, **k: fake)
     r = client.post("/api/assist/store-setup", json={"text": "중앙대 캠퍼스 편의점, 평일 7시-23시, 학생 위주", "locale": "ko"})
     assert r.status_code == 200, r.text
     d = r.json()
@@ -87,7 +87,7 @@ def test_the_create_store_form_is_filled_from_a_description(client, monkeypatch)
 
 def test_unknown_formats_and_overnight_hours_are_left_for_the_user(client, monkeypatch):
     from store_emulator.application import setup_assist
-    monkeypatch.setattr(setup_assist, "build_client", lambda *a, **k: _Setup(
+    monkeypatch.setattr(setup_assist, "assistive_client", lambda *a, **k: _Setup(
         {"name": "Night owl", "format": "Moon base", "open_hour": 22, "close_hour": 6}))
     d = client.post("/api/assist/store-setup", json={"text": "A late-night store open 10 pm to 6 am"}).json()
     assert d["template_id"] == "" and d["open_hour"] is None and d["close_hour"] is None

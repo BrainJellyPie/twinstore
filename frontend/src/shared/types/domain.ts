@@ -143,8 +143,9 @@ export interface GenerationStatus {
   kind: GenerationKind;
   setup_id: string;
   error: string | null;
-  // backend type is dict[str, object] | None; frontend only reads next_gen_id.
-  progress: { next_gen_id?: string } | null;
+  // backend type is dict[str, object] | None; frontend reads next_gen_id and, while a job waits for the local
+  // model, note (English, from the server).
+  progress: { next_gen_id?: string; note?: string } | null;
   created_at: string | null;
   updated_at: string | null;
 }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Downloads
+- The release notes and the README say up front that Windows' "Windows protected your PC" warning is expected for a
+  new app without a code-signing certificate (More info → Run anyway).
+
 ### Quitting
 - Closing the browser tab never stopped TwinStore: the server and the local model kept running in the background,
   holding memory and keeping the app from being updated or deleted. Under the launcher the top bar now has a **Quit**
@@ -15,6 +19,23 @@
   and language-model runs use the local model TwinStore runs on the computer for vision shoppers, once it is ready
   (`llamacpp:local`). A cloud provider with a key still comes first, and a run refused for a missing key now names
   the local model when it is ready.
+- A key the provider turns down (not valid or revoked) now counts as no key. Customer generation failed three times
+  over with Gemini's "API key not valid" instead of using another model: assistive features (customer generation,
+  set-up helpers, interviews, the run analyst) now set such a key aside and continue on a provider whose key works,
+  else on the local model; customer generation waits for the local model's first download and says so on the
+  preparing screen, and asks it for at most 20 customers a day so it finishes in reasonable time. Opened from the app
+  icon, TwinStore checks each key at start with a free model listing, so the local model starts downloading right
+  away when no key works. Settings → Model providers marks a turned-down key, a run on it is refused with a message
+  that says so, and a new key (or a passing connection test) is tried again.
+- Customer generation could finish "successfully" with no customers: a small model answered an open day with no
+  visitors (or with visitors of no type), and failed batches were only logged. Such a day now gets a plain
+  convenience-store day, hours without types get the trade area's customer types, a generation that brings back no
+  customer at all fails with a message saying so, and the traffic and trade-area answers are bounded in length so a
+  small local model cannot repeat itself for minutes. Requests to the local model server wait their turn in the app
+  (as many at once as the server has slots, also for a llama.cpp server found already running) instead of timing
+  out in its queue.
+- A key entered in Settings now reaches the provider for the default model names too (LiteLLM itself reads only the
+  environment), and `GOOGLE_API_KEY` counts as a Gemini key, as it does for LiteLLM.
 
 ### Fixes
 - The local vision model could not start ("no llama.cpp build for windows/x64 in release v0.7.0"): llama.cpp's latest

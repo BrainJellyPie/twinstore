@@ -13,7 +13,7 @@ from store_emulator.application.async_executor import executor
 from store_emulator.application.marketing import (
     _finish, _job_dir, _new_job, _status, _write_status,  # pyright: ignore[reportPrivateUsage]
 )
-from store_emulator.application.providers import assistive_model, build_client
+from store_emulator.application.providers import assistive_client, build_client
 from store_emulator.application.shelf_lab import _check_id, _load_store, _personas  # pyright: ignore[reportPrivateUsage]
 from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.domain.config import EngineType, SimulationConfig
@@ -140,7 +140,7 @@ def draft_pitch_script(pid: str, req: ScriptDraftRequest, config: SimulationConf
     offer = display_price(item.price, currency) + (f", promotion '{item.promo}'" if item.promo else "")
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as exc:
         raise AppError(str(exc), 400) from exc
     try:

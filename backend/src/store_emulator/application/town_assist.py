@@ -9,7 +9,7 @@ from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.engine.town_writer import DescribedTown, describe_town
 
 from .errors import AppError, model_failure
-from .providers import assistive_model, build_client
+from .providers import assistive_client
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class TownDescribeRequest(BaseModel):
 def describe(req: TownDescribeRequest, config: SimulationConfig) -> DescribedTown:
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 600})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

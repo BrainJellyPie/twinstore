@@ -10,7 +10,7 @@ from store_emulator.engine.shopper_filter import ShopperMatch, find_shoppers
 
 from .errors import AppError, model_failure
 from .interview import _load  # pyright: ignore[reportPrivateUsage]
-from .providers import assistive_model, build_client
+from .providers import assistive_client
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def find(pid: str, run_id: str, req: ShopperSearchRequest, config: SimulationCon
     customers, personas, store, currency = _load(pid, run_id)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 900})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

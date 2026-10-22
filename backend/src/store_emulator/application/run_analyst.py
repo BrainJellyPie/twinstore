@@ -25,7 +25,7 @@ from store_emulator.engine.run_analyst import (
 
 from .errors import AppError, model_failure
 from .interview import _load, _run_dir  # pyright: ignore[reportPrivateUsage]
-from .providers import assistive_model, build_client
+from .providers import assistive_client, assistive_model
 from .storage.io import now_iso, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ def ask(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> 
         llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1600})
         model = assistive_model(q.model, llm_config)
         try:
-            llm = build_client(llm_config, None, model_ref=model)
+            llm = assistive_client(model, llm_config)
         except ValueError as e:
             raise AppError(str(e), 400) from e
         try:
@@ -92,7 +92,7 @@ def suggest(pid: str, run_id: str, model: str, config: SimulationConfig) -> list
     sheet = facts(pid, run_id)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 500})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(model, llm_config))
+        llm = assistive_client(model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
@@ -115,7 +115,7 @@ def explain_comparison(pid: str, run_a: str, run_b: str, model: str, config: Sim
     rows = [(m.metric, m.mean_a, m.mean_b, m.diff, m.ci_low, m.ci_high) for m in report.metrics]
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 2500})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(model, llm_config))
+        llm = assistive_client(model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

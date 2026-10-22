@@ -12,6 +12,8 @@ export interface SetupGenerationState {
   kind: GenerationKind | null;
   currentGenId: string | null;
   error: string | null;
+  /** What a running job is waiting for (the local model getting ready), from the server. */
+  note?: string | null;
   errorSource?: "status" | "generation" | null;
   loadingStatus?: boolean;
   // Read failures retry GET; only an explicit idle/failed-persona action starts generation.
@@ -21,7 +23,7 @@ export interface SetupGenerationState {
 
 type Snapshot = Omit<SetupGenerationState, "retry"> & { context: string };
 function initialState(context: string, genId?: string | null): Snapshot {
-  return { context, phase: "idle", kind: null, currentGenId: genId ?? null, error: null, errorSource: null, loadingStatus: true, retrying: false };
+  return { context, phase: "idle", kind: null, currentGenId: genId ?? null, error: null, errorSource: null, note: null, loadingStatus: true, retrying: false };
 }
 
 export function useSetupGeneration(projectId: string, setupId: string, initialGenId?: string | null): SetupGenerationState {
@@ -49,7 +51,8 @@ export function useSetupGeneration(projectId: string, setupId: string, initialGe
       timer = setTimeout(() => { void readStatus(genId); }, delay);
     };
     const acceptStatus = (status: GenerationStatus, genId: string, fromHistory: boolean) => {
-      publish({ kind: status.kind, currentGenId: genId, error: null, errorSource: null });
+      publish({ kind: status.kind, currentGenId: genId, error: null, errorSource: null,
+        note: status.status === "running" ? status.progress?.note ?? null : null });
       if (status.status === "failed") {
         publish({ phase: "failed", error: status.error ?? "Generation failed", errorSource: "generation" });
       } else if (status.status === "completed") {

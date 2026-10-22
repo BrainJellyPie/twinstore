@@ -30,7 +30,7 @@ from store_emulator.engine.scenario import (
 from store_emulator.engine.scenario_writer import DescribedScenario, describe_scenario
 
 from .errors import AppError, model_failure
-from .providers import assistive_model, build_client
+from .providers import assistive_client
 from .storage.setups import read_setup
 
 logger = logging.getLogger(__name__)
@@ -138,7 +138,7 @@ def describe(req: DescribeRequest, config: SimulationConfig) -> DescribedScenari
     store = _store_for(req.project_id, req.setup_id)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 1200})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

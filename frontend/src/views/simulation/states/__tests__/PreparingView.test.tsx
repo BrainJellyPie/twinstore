@@ -174,3 +174,13 @@ it("does not steal focus if the user moves elsewhere during a progress reload", 
   rerender(<PreparingView {...props} generation={{ ...failedLayout, kind: "persona", errorSource: "generation" }} />);
   expect(document.activeElement).toBe(back);
 });
+
+it("says customer generation is waiting for the local model and why", () => {
+  const note = "Google Gemini turned the API key down (API key not valid); waiting for the local model: Downloading Qwen3.5-2B (40%)";
+  show({ phase: "persona", kind: "persona", currentGenId: "persona_generation", error: null, note, retry: vi.fn(), retrying: false, loadingStatus: false });
+  expect(screen.getByText(translate("en", "generationWaitsForLocalModel"))).toBeTruthy();
+  expect(screen.getByText(note)).toBeTruthy();
+  cleanup();
+  show({ phase: "persona", kind: "persona", currentGenId: "persona_generation", error: null, note: null, retry: vi.fn(), retrying: false, loadingStatus: false });
+  expect(screen.queryByText(translate("en", "generationWaitsForLocalModel"))).toBeNull();
+});

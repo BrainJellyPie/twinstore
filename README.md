@@ -60,6 +60,11 @@ unpack it and double-click the **TwinStore** icon. The browser opens a boot scre
 app when it is ready. Nothing to install beforehand — the first start fetches Python and the packages (a few minutes,
 once); later starts take seconds.
 
+> [!NOTE]
+> **Windows may say "Windows protected your PC".** That is normal for a new app without a code-signing
+> certificate, not a virus warning: click **More info → Run anyway**. On a Mac, open TwinStore once, then
+> System Settings → Privacy & Security → **Open Anyway**.
+
 <table>
 <tr>
 <td width="56%"><img src="./.github/assets/twinstore/media/boot.jpg" alt="TwinStore boot screen"></td>
@@ -82,7 +87,7 @@ First-time security prompts and details: [`QUICKSTART.md`](./QUICKSTART.md).
 
 **No API key is needed to start.** The sample store runs with the rule-based engine, and without a key TwinStore runs a
 small model on your own computer for vision shoppers and, once it is ready, for the text features too (slower and
-less capable than a cloud model). The default text model is Claude Haiku 5.5 when an Anthropic key is added. For language and vision shoppers, add an OpenAI, Anthropic, Gemini, Qwen or
+less capable than a cloud model); a key the provider turns down is treated the same way. The default text model is Claude Haiku 5.5 when an Anthropic key is added. For language and vision shoppers, add an OpenAI, Anthropic, Gemini, Qwen or
 OpenRouter key — or any OpenAI-compatible server such as vLLM, Ollama or llama.cpp — under **Models**.
 
 **Six languages.** The language control next to the theme switch offers English, 한국어, 中文, 日本語, Español and

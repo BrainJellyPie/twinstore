@@ -47,7 +47,7 @@ def test_a_question_becomes_a_builder_ready_concept_test(client, monkeypatch):
     from store_emulator.application import study_design
     _library(monkeypatch)
     fake = _Designer(DRAFT)
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/surveys/design",
                     json={"question": "Which label looks more premium to people in their twenties?", "currency": "USD"})
     assert r.status_code == 200, r.text
@@ -72,7 +72,7 @@ def test_one_image_drops_preference_and_shelf_products_are_listed(client, monkey
     item = store.product_racks[0].slots[0].items[0]
     _library(monkeypatch, sku=item.sku)
     fake = _Designer({**DRAFT, "images": ["Label Gold"], "reference_price": 1500})
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: fake)
     d = client.post(f"/api/projects/{PID}/surveys/design",
                     json={"question": "Would our gold label sell?", "setup_id": SETUP, "currency": "KRW"}).json()
     assert d["stimuli"] == ["pkg_a"] and "preference" not in d["questions"] and d["reference_price"] == 1500
@@ -82,11 +82,11 @@ def test_one_image_drops_preference_and_shelf_products_are_listed(client, monkey
 def test_an_empty_library_and_a_failing_model_are_explained(client, monkeypatch):
     from store_emulator.application import shelf_lab, study_design
     monkeypatch.setattr(shelf_lab, "list_packages", lambda pid: [])
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: _Designer({**DRAFT, "reference_price": None}))
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({**DRAFT, "reference_price": None}))
     d = client.post(f"/api/projects/{PID}/surveys/design", json={"question": "Which label is best?"}).json()
     assert d["stimuli"] == [] and d["reference_price"] is None
     assert any("no images yet" in w for w in d["warnings"])
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: _Designer({"name": "x", "questions": []}))
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({"name": "x", "questions": []}))
     r = client.post(f"/api/projects/{PID}/surveys/design", json={"question": "Which label is best?"})
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]
 
@@ -97,7 +97,7 @@ def test_question_bounds_use_trimmed_unicode_characters(client, monkeypatch, tex
     from store_emulator.application import shelf_lab, study_design
     monkeypatch.setattr(shelf_lab, 'list_packages', lambda pid: [])
     fake = _Designer(DRAFT)
-    monkeypatch.setattr(study_design, 'build_client', lambda *a, **k: fake)
+    monkeypatch.setattr(study_design, 'assistive_client', lambda *a, **k: fake)
     response = client.post(f'/api/projects/{PID}/surveys/design', json={'question': text})
     assert response.status_code == status, response.text
     assert len(fake.calls) == (1 if status == 200 else 0)
@@ -107,7 +107,7 @@ def test_question_bounds_use_trimmed_unicode_characters(client, monkeypatch, tex
 def test_model_prices_become_safe_json_minor_units(client, monkeypatch, price, expected):
     from store_emulator.application import study_design
     _library(monkeypatch)
-    monkeypatch.setattr(study_design, 'build_client', lambda *a, **k: _Designer({**DRAFT, 'reference_price': price}))
+    monkeypatch.setattr(study_design, 'assistive_client', lambda *a, **k: _Designer({**DRAFT, 'reference_price': price}))
     response = client.post(f'/api/projects/{PID}/surveys/design', json={'question': 'Which label is better value?'})
     assert response.status_code == 200, response.text
     assert response.json()['reference_price'] == expected
@@ -119,7 +119,7 @@ def test_same_name_images_are_not_silently_assigned_by_library_order(client, mon
     assets = [shelf_lab.PackageAsset(asset_id='a', name='Gold', width=10, height=10),
               shelf_lab.PackageAsset(asset_id='b', name=' gold ', width=10, height=10)]
     monkeypatch.setattr(shelf_lab, 'list_packages', lambda pid: list(reversed(assets)) if reverse else assets)
-    monkeypatch.setattr(study_design, 'build_client', lambda *a, **k: _Designer({**DRAFT, 'images': ['Gold']}))
+    monkeypatch.setattr(study_design, 'assistive_client', lambda *a, **k: _Designer({**DRAFT, 'images': ['Gold']}))
     response = client.post(f'/api/projects/{PID}/surveys/design', json={'question': 'Which gold label looks better?'})
     assert response.status_code == 200, response.text
     result = response.json()

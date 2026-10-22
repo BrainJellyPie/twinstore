@@ -775,6 +775,8 @@ export interface ProviderStatus {
   has_key: boolean;
   key_source: "settings" | "env" | "none" | "not needed";
   key_hint: string;
+  /** The provider turned this key down during this session (not valid or revoked). */
+  key_rejected?: boolean;
   api_base: string | null;
   default_model: string | null;
   ready: boolean;

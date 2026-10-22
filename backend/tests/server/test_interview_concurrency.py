@@ -27,7 +27,7 @@ def test_same_shopper_rejects_overlapping_writes(tmp_path, monkeypatch, operatio
                 assert release.wait(10), "Test did not release the fake model"
             return response_model.model_validate({"answer": "I wanted a snack.", "steps": []})
 
-    monkeypatch.setattr(interview, "build_client", lambda *args, **kwargs: Model())
+    monkeypatch.setattr(interview, "assistive_client", lambda *args, **kwargs: Model())
     with TestClient(app) as client, ThreadPoolExecutor(max_workers=1) as pool:
         shopper = client.get(f"/api/projects/{PID}/runs/{RUN}/timeline").json()[0]["persona_id"]
         url = f"/api/projects/{PID}/runs/{RUN}/shoppers/{shopper}/interview"

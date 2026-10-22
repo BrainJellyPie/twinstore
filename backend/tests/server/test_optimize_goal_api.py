@@ -39,7 +39,7 @@ def test_a_goal_becomes_the_optimizers_settings(client, monkeypatch):
     rack = next(r for r in store.racks if r.rack_name and sum(1 for o in store.racks if o.rack_name == r.rack_name) == 1)
     fake = _Reader({"objective": "impulse_revenue", "scope": "both", "max_moves": 5, "keep_fridges_on_walls": True,
                     "locked_shelves": [rack.rack_name, "Moon shelf"], "min_improvement_percent": 2, "rationale": "Impulse, few changes."})
-    monkeypatch.setattr(optimize_goal, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(optimize_goal, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/setups/{SETUP}/optimize/goal",
                     json={"text": f"More impulse sales, keep {rack.rack_name} as it is, at most 5 changes"})
     assert r.status_code == 200, r.text
@@ -51,7 +51,7 @@ def test_a_goal_becomes_the_optimizers_settings(client, monkeypatch):
 
 def test_out_of_range_limits_are_reported_and_left(client, monkeypatch):
     from store_emulator.application import optimize_goal
-    monkeypatch.setattr(optimize_goal, "build_client", lambda *a, **k: _Reader({"max_moves": 500, "min_improvement_percent": 250}))
+    monkeypatch.setattr(optimize_goal, "assistive_client", lambda *a, **k: _Reader({"max_moves": 500, "min_improvement_percent": 250}))
     d = client.post(f"/api/projects/{PID}/setups/{SETUP}/optimize/goal", json={"text": "change everything you can"}).json()
     assert d["objective"] == "revenue_per_visitor" and d["max_moves"] is None and d["min_improvement"] is None
     assert len(d["warnings"]) == 2

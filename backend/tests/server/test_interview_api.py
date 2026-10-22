@@ -56,7 +56,7 @@ def test_journey_and_interview(client, monkeypatch):
 
     from store_emulator.application import interview
     fake = _Fake()
-    monkeypatch.setattr(interview, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(interview, "assistive_client", lambda *a, **k: fake)
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview").json()["messages"] == []
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview", json={"question": "Why did you buy that?"})
     assert r.status_code == 200, r.text
@@ -90,7 +90,7 @@ def test_town_shopper_can_view_journey_and_complete_interview(client, monkeypatc
     persona["id"] = shopper_id
     write_json(output / "personas.json", {shopper_id: persona})
     from store_emulator.application import interview
-    monkeypatch.setattr(interview, "build_client", lambda *a, **k: _Fake())
+    monkeypatch.setattr(interview, "assistive_client", lambda *a, **k: _Fake())
     url = f"/api/projects/{PID}/runs/{RUN}/shoppers/{shopper_id}"
 
     journey = client.get(f"{url}/journey")
@@ -110,7 +110,7 @@ def test_model_errors_are_reported(client, monkeypatch):
             raise TimeoutError("provider timed out")
 
     from store_emulator.application import interview
-    monkeypatch.setattr(interview, "build_client", lambda *a, **k: _Broken())
+    monkeypatch.setattr(interview, "assistive_client", lambda *a, **k: _Broken())
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview", json={"question": "Hello?"})
     assert r.status_code == 502 and r.json()["detail"] == "The shopper could not answer: the model took too long to reply. Try again."
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview").json()["messages"] == []
@@ -133,7 +133,7 @@ class _Group:
 def test_group_interview_codes_themes(client, monkeypatch):
     from store_emulator.application import interview
     fake = _Group()
-    monkeypatch.setattr(interview, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(interview, "assistive_client", lambda *a, **k: fake)
     empty = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews",
                         json={"question": "Why did you leave without buying?", "segment": "empty_handed", "size": 6}).json()
     assert empty["answers"] and all(a["units"] == 0 for a in empty["answers"])
@@ -170,7 +170,7 @@ def test_follow_up_questions_are_written_for_the_trip_and_kept_until_the_convers
     url = f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview"
     fake = _Ideas(["What drew you to the nuts", "What drew you to the nuts?", "  ", "Did the price tag matter?",
                    "Would you buy them again?", "One more?"])
-    monkeypatch.setattr(interview, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(interview, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"{url}/suggestions", json={})
     assert r.status_code == 200, r.text
     body = r.json()
@@ -198,7 +198,7 @@ def test_follow_up_failure_is_a_502_and_saves_nothing(client, monkeypatch):
             raise RuntimeError("provider down")
 
     sid = _shopper(client)
-    monkeypatch.setattr(interview, "build_client", lambda *a, **k: _Broken())
+    monkeypatch.setattr(interview, "assistive_client", lambda *a, **k: _Broken())
     url = f"/api/projects/{PID}/runs/{RUN}/shoppers/{sid}/interview"
     r = client.post(f"{url}/suggestions", json={})
     assert r.status_code == 502 and "provider down" in r.text
@@ -224,7 +224,7 @@ def test_group_questions_are_read_off_the_run(client, monkeypatch):
             ]})
 
     fake = _Planner()
-    monkeypatch.setattr(interview, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(interview, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/runs/{RUN}/group-interviews/suggestions", json={})
     assert r.status_code == 200, r.text
     ideas = r.json()

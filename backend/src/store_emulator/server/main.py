@@ -2,6 +2,7 @@ import logging
 import math
 import mimetypes
 import os
+import threading
 from pathlib import Path
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -20,7 +21,7 @@ from store_emulator.application.storage.seed import seed_sample_projects
 from store_emulator.application.storage.setups import recover_running_setups
 from store_emulator.application.marketing import recover_running_jobs
 from store_emulator.application.local_vlm import manager as local_vlm
-from store_emulator.application.providers import cloud_providers_with_key
+from store_emulator.application.providers import check_keys, cloud_providers_with_key
 from .deps import validate_resource_paths
 from .routes import assist, simulate, projects, setups, util, images, providers, scenarios, town, optimize, templates, capture, shelf_lab, floorplan, vision_inputs, system, marketing, interview, field_pilot, inventory_review, unit_prices, protocols, price_checks, product_edits, starter_fill, rack_copy
 
@@ -61,13 +62,31 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     recovered_marketing = recover_running_jobs()
     if recovered_marketing > 0:
         logger.info(f"server start: marked {recovered_marketing} interrupted marketing jobs as failed")
+    launched = os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1"   # opened from an app icon
     if not cloud_providers_with_key():
-        # Launched from an app icon: give vision shoppers a model that runs on this computer.
-        if os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1":
+        # Give vision shoppers (and, with no key, text features) a model that runs on this computer.
+        if launched:
             local_vlm().start()
         logger.warning("server start: no model API key set — vision shoppers use a local model (see /api/system/models)")
+    elif launched:
+        threading.Thread(target=_check_keys, name="key-check", daemon=True).start()
     yield
     local_vlm().stop()
+
+
+def _check_keys() -> None:
+    """A key a provider turns down counts as none: when that leaves no key, the local model starts right away rather
+    than after the first failed request."""
+    try:
+        turned_down = check_keys()
+    except Exception:  # noqa: BLE001 — the check only saves time; requests still move on by themselves
+        logger.warning("server start: could not check the model API keys", exc_info=True)
+        return
+    if turned_down:
+        logger.warning(f"server start: {', '.join(turned_down)} turned the API key down (not valid or revoked); "
+                       "replace it in Settings → Model providers")
+        if not cloud_providers_with_key():
+            local_vlm().start()
 
 
 app = FastAPI(

@@ -83,7 +83,7 @@ from .capture import capture_llm_config
 from .errors import AppError, model_failure
 from .currencies import project_currency, simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
-from .providers import assistive_model, build_client
+from .providers import assistive_client, assistive_model, build_client
 from .shelf_lab import (
     _check_id,  # pyright: ignore[reportPrivateUsage]
     _load_store,  # pyright: ignore[reportPrivateUsage]
@@ -317,7 +317,7 @@ def write_experiment_narrative(pid: str, eid: str, model: str, config: Simulatio
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 1500})
     try:
         model = assistive_model(model, llm_config)
-        llm = build_client(llm_config, None, model_ref=model)
+        llm = assistive_client(model, llm_config)
         narrative = asyncio.run(write_narrative(llm, report, layout))
     except ValueError as e:
         raise AppError(str(e), 400) from e

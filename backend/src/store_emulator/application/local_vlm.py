@@ -69,6 +69,7 @@ class LocalVLMStatus(BaseModel):
     api_base: str | None = None
     model_ref: str = "llamacpp:local"
     managed: bool = False             # True: TwinStore started (and will stop) the server
+    slots: int = 0                    # requests the server answers at once (llama.cpp -np); 0 = not known
     runtime: str = ""                 # llama.cpp build in use
 
 
@@ -401,12 +402,13 @@ class LocalVLMManager:
 
         plan = self._status.plan
         label = f"{plan.model.label} on {plan.device}" if plan and managed else "the llama.cpp server on this computer"
+        slots = plan.parallel if plan and managed else _server_slots(api_base)
         with self._lock:
             self._check_cancelled()
             providers.use_local_server(api_base)
             self._status = self._status.model_copy(update={
                 "state": "ready", "message": f"Ready: {label}", "api_base": api_base, "managed": managed,
-                "runtime": runtime, "progress": None,
+                "runtime": runtime, "progress": None, "slots": slots,
             })
         logger.info(f"[local_vlm] ready at {api_base} ({label})")
 
@@ -458,6 +460,29 @@ if sys.platform == "win32":
 else:
     def _end_with_this_process(proc: subprocess.Popen[bytes]) -> None:
         """Elsewhere the app launcher stops the server's whole process group, and a closed terminal hangs it up."""
+
+
+def server_answers(api_base: str) -> bool:
+    """Whether a llama.cpp server answers at this OpenAI-style address (…/v1) right now."""
+    root = api_base.removesuffix("/").removesuffix("/v1")
+    try:
+        with _DIRECT.open(f"{root}/health", timeout=2) as r:
+            return getattr(r, "status", 200) == 200
+    except (OSError, ValueError):
+        return False
+
+
+def _server_slots(api_base: str) -> int:
+    """How many requests a llama.cpp server already running here answers at once (its /props), 1 when it does not
+    say: asking it for more only makes requests queue there, where their time-out runs."""
+    root = api_base.removesuffix("/").removesuffix("/v1")
+    try:
+        with _DIRECT.open(f"{root}/props", timeout=3) as r:
+            data: object = json.loads(r.read().decode("utf-8", "replace"))
+        slots = cast(dict[str, object], data).get("total_slots") if isinstance(data, dict) else None
+        return slots if isinstance(slots, int) and slots > 0 else 1
+    except (OSError, ValueError):
+        return 1
 
 
 def _terminate(proc: subprocess.Popen[bytes]) -> None:

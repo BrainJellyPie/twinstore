@@ -40,7 +40,7 @@ DRAFT = {
 def test_a_description_becomes_a_checked_scenario_with_its_effects(client, monkeypatch):
     from store_emulator.application import scenarios
     fake = _Writer(DRAFT)
-    monkeypatch.setattr(scenarios, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(scenarios, "assistive_client", lambda *a, **k: fake)
     text = "Rainy Friday, the game at the stadium tonight, 1+1 on Pepsi, out of Snickers"
     r = client.post("/api/scenarios/describe", json={"text": text, "project_id": PID, "setup_id": SETUP})
     assert r.status_code == 200, r.text
@@ -60,7 +60,7 @@ def test_a_description_becomes_a_checked_scenario_with_its_effects(client, monke
 
 def test_without_a_layout_targets_are_not_checked_and_errors_read_as_advice(client, monkeypatch):
     from store_emulator.application import scenarios
-    monkeypatch.setattr(scenarios, "build_client", lambda *a, **k: _Writer({**DRAFT, "events": []}))
+    monkeypatch.setattr(scenarios, "assistive_client", lambda *a, **k: _Writer({**DRAFT, "events": []}))
     body = client.post("/api/scenarios/describe", json={"text": "Rainy Friday with a deal on Zorblax"}).json()
     assert [p["target"] for p in body["scenario"]["promotions"]] == ["Pepsi", "Zorblax"] and body["warnings"] == []
     assert client.post("/api/scenarios/describe", json={"text": "x", "project_id": PID, "setup_id": SETUP}).status_code == 422
@@ -71,6 +71,6 @@ def test_without_a_layout_targets_are_not_checked_and_errors_read_as_advice(clie
         async def generate_structured_async(self, *a, **k):
             raise RuntimeError("AuthenticationError: invalid api key")
 
-    monkeypatch.setattr(scenarios, "build_client", lambda *a, **k: _Broken())
+    monkeypatch.setattr(scenarios, "assistive_client", lambda *a, **k: _Broken())
     r = client.post("/api/scenarios/describe", json={"text": "Rainy Friday"})
     assert r.status_code == 502 and "rejected the API key" in r.json()["detail"]

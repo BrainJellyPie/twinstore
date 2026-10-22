@@ -32,7 +32,7 @@ def test_a_description_becomes_a_spec_that_generates(client, monkeypatch):
     text = "A busy university street, two other convenience stores within a block, a cafe and a PC room next door"
     fake = _Writer({"name": "Campus street", "archetype": "university", "size_m": 640, "density": 0.83, "n_competitors": 2,
                     "neighbor_categories": ["cafe", "pc_room", "cafe"], "venue_density": 1.7, "rationale": "Students and rivals."})
-    monkeypatch.setattr(town_assist, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(town_assist, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/town/describe", json={"text": text, "seed": 7})
     assert r.status_code == 200, r.text
     spec = r.json()["spec"]
@@ -50,7 +50,7 @@ def test_errors_read_as_advice(client, monkeypatch):
         async def generate_structured_async(self, *a, **k):
             raise TimeoutError("read timed out")
 
-    monkeypatch.setattr(town_assist, "build_client", lambda *a, **k: _Broken())
+    monkeypatch.setattr(town_assist, "assistive_client", lambda *a, **k: _Broken())
     r = client.post(f"/api/projects/{PID}/town/describe", json={"text": "Quiet suburb"})
     assert r.status_code == 502 and "took too long" in r.json()["detail"]
     assert client.post(f"/api/projects/{PID}/town/describe", json={"text": "x"}).status_code == 422

@@ -59,7 +59,7 @@ from .async_executor import executor
 from .capture import capture_image_path, capture_llm_config, get_capture
 from .currencies import project_currency, simulation_currency
 from .errors import AppError, model_failure
-from .providers import assistive_model, assistive_vision_model, build_client
+from .providers import assistive_client, assistive_vision_model
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import metadata_path, personas_path, read_setup
@@ -598,7 +598,7 @@ def _model_matches(store: Store, result: CaptureResult, req: RivalRequest, confi
         return {}, ""
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 1500})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
         return asyncio.run(match_products(llm, missing, ours)), ""
     except Exception as e:  # noqa: BLE001 -- matching by name still works; say what was skipped
         logger.warning(f"[shelf_lab] rival model matching failed: {type(e).__name__}: {e}")

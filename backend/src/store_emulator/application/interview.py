@@ -47,7 +47,7 @@ from store_emulator.engine.interview import (
 from store_emulator.engine.perception.shelf_render import render_face
 
 from .errors import AppError, model_failure
-from .providers import assistive_model, build_client
+from .providers import assistive_client, assistive_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -156,7 +156,7 @@ def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, conf
         llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
         try:
             model = assistive_model(q.model, llm_config)
-            llm = build_client(llm_config, None, model_ref=model)
+            llm = assistive_client(model, llm_config)
         except ValueError as e:
             raise AppError(str(e), 400) from e
         try:
@@ -188,7 +188,7 @@ def suggest_questions(pid: str, run_id: str, persona_id: str, req: SuggestionReq
     _, _, store, _ = _load(pid, run_id)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.6, "max_tokens": 400})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:
@@ -251,7 +251,7 @@ def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: S
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
     model = assistive_model(req.model, llm_config)
     try:
-        llm = build_client(llm_config, None, model_ref=model)
+        llm = assistive_client(model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     question = req.question.strip()
@@ -306,7 +306,7 @@ def suggest_group_questions(pid: str, run_id: str, req: SuggestionRequest, confi
     customers, _, store, currency = _load(pid, run_id)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.4, "max_tokens": 700})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+        llm = assistive_client(req.model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

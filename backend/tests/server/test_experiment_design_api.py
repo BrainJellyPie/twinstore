@@ -48,7 +48,7 @@ def test_a_question_becomes_variants_on_the_layouts_products(client, monkeypatch
                                           {"kind": "promo", "product": "Unicorn Milk"}]},
         {"name": "Ghost", "changes": [{"kind": "move", "product": item["name"], "shelf": "Nowhere"}]},
     ]})
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: fake)
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: fake)
     r = client.post(f"/api/projects/{PID}/experiments/design", json={"question": "Does a 1+1 sign beat a 20 % cut?", "setup_id": SETUP})
     assert r.status_code == 200, r.text
     d = r.json()
@@ -71,7 +71,7 @@ def test_a_question_becomes_variants_on_the_layouts_products(client, monkeypatch
 
 def test_a_draft_with_nothing_usable_is_an_error(client, monkeypatch):
     from store_emulator.application import study_design
-    monkeypatch.setattr(study_design, "build_client", lambda *a, **k: _Designer({"name": "x", "variants": [
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({"name": "x", "variants": [
         {"name": "A", "changes": [{"kind": "promo", "product": "Unicorn Milk"}]}]}))
     r = client.post(f"/api/projects/{PID}/experiments/design", json={"question": "Unicorn milk deal?", "setup_id": SETUP})
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]

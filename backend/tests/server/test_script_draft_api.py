@@ -31,6 +31,8 @@ def test_a_script_is_drafted_with_the_offer_and_only_the_given_facts(client, mon
                                                   "differs_by": "Leads with value."})
 
     monkeypatch.setattr(staff_pitch, "build_client", lambda *a, **k: _Writer())
+
+    monkeypatch.setattr(staff_pitch, "assistive_client", lambda *a, **k: _Writer())
     r = client.post(f"/api/projects/{PID}/staff-pitches/draft-script", json={
         "setup_id": SETUP, "sku": item["sku"], "context": "Shopper at the shelf.", "product_facts": "500 ml.",
         "current": "Can I help you?", "direction": "lead with value"})

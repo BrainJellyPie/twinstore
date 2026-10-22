@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from typing import Any, cast
 
 from store_emulator.application.async_executor import executor
@@ -19,9 +20,15 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import DaySchedule
 from store_emulator.engine.generators import persona as gen_persona
 from store_emulator.engine.generators.traffic_profile import TrafficProfile
-from store_emulator.application.providers import assistive_model, resolve_model
+from store_emulator.application.providers import assistive_client
 from store_emulator.application.town import neighborhood_text
 from store_emulator.engine.llm_client import LiteLLMClient
+
+# How long customer generation waits for the local model when no provider takes a key (its first download).
+LOCAL_MODEL_WAIT_SEC = 60 * 60
+# What the small model TwinStore runs on this computer is asked for: it answers a request or two at a time (minutes
+# each on a CPU), so the usual 100 customers a day, 10 per request, would take hours there.
+LOCAL_MODEL_PACE = gen_persona.Pace(daily_cap=20, batch_size=5)
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +110,7 @@ def _run_persona_background(
         personas = asyncio.run(_run_async_pipeline(
             config=config,
             project_id=project_id,
+            gen_id=gen_id,
             meta=meta,
             schedules=schedules,
             custom_instruction=custom_instruction,
@@ -126,14 +134,25 @@ async def _run_async_pipeline(
     custom_instruction: str,
     supplemental_bytes: bytes | None,
     supplemental_filename: str,
+    gen_id: str = "",
 ) -> list[Persona]:
     """spec §4.3 — async orchestration. Summarize supplemental, then generate personas.
 
     Single LLM instance (token usage aggregated).
     Race / write failures stay isolated in effective_summary.
     """
-    # A default text model without an API key would fail every batch; use one that has a key.
-    llm = LiteLLMClient(resolve_model(assistive_model("", config.llm), base=config.llm))
+    last_note = [""]
+
+    def note(message: str) -> None:   # shown while the job waits for the local model
+        if gen_id and message != last_note[0]:
+            last_note[0] = message
+            write_status(project_id, gen_id, "running", progress={"note": message})
+
+    # A text model without a usable API key would fail every batch: the client moves on to a provider that takes its
+    # key, else to the local model on this computer, waiting for its first download if need be.
+    llm = await asyncio.to_thread(assistive_client, "", config.llm, wait=LOCAL_MODEL_WAIT_SEC, on_wait=note)
+    if last_note[0]:   # the wait is over: the preparing screen stops showing it
+        write_status(project_id, gen_id, "running", progress={})
 
     # Default to metadata's existing supplemental_summary. Even when
     # supplemental_bytes is None (manual call, restart, etc.) a previously-stored
@@ -187,6 +206,10 @@ async def _run_async_pipeline(
 
     return await _generate_personas_impl(
         llm=llm,
+        pace=lambda usual: gen_persona.Pace(
+            daily_cap=min(usual.daily_cap, LOCAL_MODEL_PACE.daily_cap),
+            batch_size=min(usual.batch_size, LOCAL_MODEL_PACE.batch_size),
+        ) if llm.max_parallel is not None else usual,
         address=str(meta.get("address", "")),
         customer_profile=str(meta.get("customer_profile", "")),
         schedules=schedules,
@@ -219,6 +242,7 @@ async def _generate_personas_impl(
     supplemental_summary: str = "",
     currency: str = "USD",
     traffic: TrafficProfile | None = None,
+    pace: Callable[[gen_persona.Pace], gen_persona.Pace] | None = None,
 ) -> list[Persona]:
     """Internal impl accepting an LLM instance, with supplemental_summary support.
 
@@ -232,7 +256,13 @@ async def _generate_personas_impl(
         supplemental_summary=supplemental_summary,
         currency=currency,
         traffic=traffic,
+        pace=pace,
     )
     usage = llm.get_usage()
     logger.info(f"[persona generation] {len(all_personas)} personas done | {usage.total_tokens} tokens")
+    if not all_personas and any(s.is_open for s in schedules):
+        # Every batch failed or came back empty: say so instead of finishing with a store nobody visits.
+        raise RuntimeError(f"No customers were generated: every request to {getattr(llm, 'model', 'the model')} failed "
+                           "or came back empty (see the server log). Try again, or pick another model in Settings → "
+                           "Model providers.")
     return all_personas

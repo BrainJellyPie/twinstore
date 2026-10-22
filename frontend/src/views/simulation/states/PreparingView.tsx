@@ -22,7 +22,7 @@ const confirmationActionStyle = { whiteSpace: "normal", height: "auto", maxWidth
 
 export function PreparingView({ generation, contextKind, projectName, layouts, selectedSetupId, onLayoutSelect, onBackToStores, onAbandonProject }: Props) {
   const { t } = useI18n();
-  const { phase, kind, error, retry, retrying, loadingStatus, errorSource } = generation;
+  const { phase, kind, error, retry, retrying, loadingStatus, errorSource, note } = generation;
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -87,6 +87,9 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
           {!deleting && isLayoutFailed && <p className="text-sm text-muted-foreground">{t("layoutFailureHint")}</p>}
           {!deleting && (isPersonaFailed || canGenerate) && <p className="text-sm text-muted-foreground">{t("generatePersonasHint")}</p>}
           {!deleting && (statusUnavailable || loadingStatus) && <p role={loadingStatus ? "status" : undefined} className="text-sm text-muted-foreground">{t("generationStatusReadHint")}</p>}
+          {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && note && <div role="status" className="space-y-1 rounded-lg border p-3 text-sm">
+            <p>{t("generationWaitsForLocalModel")}</p><p className="text-xs text-muted-foreground">{note}</p>
+          </div>}
           {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && <p role="status" className="text-sm text-muted-foreground">{t("generationContinueHint")}</p>}
           {deleteError !== null && <p ref={deleteErrorNotice} role="alert" tabIndex={-1} className="space-y-1 rounded-lg border border-destructive/30 p-3 text-sm text-destructive outline-none">
             <span className="block">{t("deleteStoreFailed")}</span>{deleteError && <span className="block text-xs">{deleteError}</span>}

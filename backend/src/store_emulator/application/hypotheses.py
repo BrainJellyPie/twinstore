@@ -22,7 +22,7 @@ from .interview import (
     _groups_dir,  # pyright: ignore[reportPrivateUsage]
     _load,  # pyright: ignore[reportPrivateUsage]
 )
-from .providers import assistive_model, build_client
+from .providers import assistive_client
 from .run_analyst import get_thread
 from .storage.io import read_json
 
@@ -55,7 +55,7 @@ def suggest(pid: str, run_id: str, req: HypothesisRequest, config: SimulationCon
 def _suggest(said: str, store: Store, model: str, config: SimulationConfig) -> list[Hypothesis]:
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 900})
     try:
-        llm = build_client(llm_config, None, model_ref=assistive_model(model, llm_config))
+        llm = assistive_client(model, llm_config)
     except ValueError as e:
         raise AppError(str(e), 400) from e
     try:

@@ -43,7 +43,7 @@ def test_blank_model_answer_is_reported_without_saving(client, monkeypatch, answ
         async def generate_structured_async[T: BaseModel](self, response_model: type[T], *args, **kwargs) -> T:
             return response_model.model_validate({"answer": answer, "steps": []})
 
-    monkeypatch.setattr(interview, "build_client", lambda *args, **kwargs: BlankModel())
+    monkeypatch.setattr(interview, "assistive_client", lambda *args, **kwargs: BlankModel())
     shopper = client.get(f"/api/projects/{PID}/runs/{RUN}/timeline").json()[0]["persona_id"]
     url = f"/api/projects/{PID}/runs/{RUN}/shoppers/{shopper}/interview"
     response = client.post(url, json={"question": "Why did you visit?"})
