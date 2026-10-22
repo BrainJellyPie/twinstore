@@ -12,6 +12,12 @@
   packages while installing them (`UV_COMPILE_BYTECODE=1`), shown on the boot screen, so the server's first import
   no longer compiles thousands of files one by one. The launcher's own health check ignores system proxies.
 
+### Reuse a finished shelf assortment
+- Step 2 copies exact products, prices, promotions, image links, levels and order from one stocked shelf/fridge
+  to up to 100 compatible empty racks, with a preview and a separately saved layout. No model or CSV is needed.
+- Occupied destinations and blocked/locked faces are protected; stale snapshots reject saves, and retries
+  recover the same child layout. Refreshed currencies cannot relabel an older preview.
+
 ### From what shoppers said to a test
 - A group interview's result and the run analyst's last answer offer **Turn this into tests**: the text model writes up
   to three test questions from the themes and answers (or the analyst's answer and figures), each with the tool that
