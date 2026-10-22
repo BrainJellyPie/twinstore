@@ -2,6 +2,7 @@
 
 import hashlib
 import hmac
+import logging
 import uuid
 from pathlib import Path
 
@@ -28,6 +29,8 @@ from store_emulator.engine.marketing.field_collection import check_collection, c
 from store_emulator.engine.marketing.field_observations import import_history_csv, preview_observations
 from store_emulator.engine.marketing.field_pilot import allocate_pilot, analyze_pilot, observations_csv, parse_observations
 from store_emulator.engine.marketing.field_planning import plan_pilot
+
+logger = logging.getLogger(__name__)
 
 
 def _root(pid: str) -> Path:
@@ -70,7 +73,11 @@ def preview_plan(pid: str, req: PilotPlanningRequest) -> PilotPlanningResult:
 def list_pilots(pid: str) -> list[PilotSummary]:
     result: list[PilotSummary] = []
     for path in _root(pid).glob("*/pilot.json"):
-        pilot = FieldPilot.model_validate(read_json(path))
+        try:
+            pilot = FieldPilot.model_validate(read_json(path))
+        except ValueError as e:   # one damaged pilot must not hide the others
+            logger.warning(f"[field_pilot] skipping {path.parent.name}: {e}")
+            continue
         result.append(PilotSummary(pilot_id=pilot.pilot_id, pitch_id=pilot.pitch_id, name=pilot.design.name,
                                    created_at=pilot.created_at, finalized_at=pilot.finalized_at,
                                    planned=len(pilot.assignments), enrolled=sum(a.enrolled is True for a in pilot.assignments)))

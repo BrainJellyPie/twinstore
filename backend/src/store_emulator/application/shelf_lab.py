@@ -238,7 +238,12 @@ def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", con
 
 def list_packages(pid: str) -> list[PackageAsset]:
     folder = package_directory(pid)
-    assets = [package_asset(png) for png in folder.glob("pkg_*.png")] if folder.exists() else []
+    assets: list[PackageAsset] = []
+    for png in folder.glob("pkg_*.png"):
+        try:
+            assets.append(package_asset(png))
+        except (OSError, ValueError) as e:   # one damaged package must not hide the others
+            logger.warning(f"[shelf_lab] skipping package {png.stem}: {e}")
     return sorted(assets, key=lambda a: a.created_at, reverse=True)
 
 
@@ -317,7 +322,12 @@ def create_edit(pid: str, cid: str, edits: list[PhotoEdit]) -> EditedShelf:
 
 def list_edits(pid: str, cid: str) -> list[EditedShelf]:
     folder = _lab_dir(pid, cid) / "edits"
-    shelves = [EditedShelf.model_validate(read_json(p)) for p in folder.glob("*/edit.json")] if folder.exists() else []
+    shelves: list[EditedShelf] = []
+    for p in folder.glob("*/edit.json"):
+        try:
+            shelves.append(EditedShelf.model_validate(read_json(p)))
+        except ValueError as e:   # one damaged edit must not hide the others
+            logger.warning(f"[shelf_lab] skipping edit {p.parent.name}: {e}")
     return sorted(shelves, key=lambda s: s.created_at, reverse=True)
 
 
@@ -386,7 +396,12 @@ def get_job(pid: str, cid: str, jid: str) -> LabJobView:
 
 def list_jobs(pid: str, cid: str) -> list[LabJobStatus]:
     folder = _lab_dir(pid, cid) / "jobs"
-    jobs = [LabJobStatus.model_validate(read_json(p)) for p in folder.glob("*/status.json")] if folder.exists() else []
+    jobs: list[LabJobStatus] = []
+    for p in folder.glob("*/status.json"):
+        try:
+            jobs.append(LabJobStatus.model_validate(read_json(p)))
+        except ValueError as e:   # one damaged job must not hide the others
+            logger.warning(f"[shelf_lab] skipping job {p.parent.name}: {e}")
     return sorted(jobs, key=lambda j: j.created_at, reverse=True)
 
 

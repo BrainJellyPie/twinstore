@@ -98,10 +98,17 @@ def list_setups(project_id: str, *, include_store: bool = False) -> list[dict[st
 
 
 def read_state(project_id: str) -> dict[str, Any]:
-    """Read state.json; returns ``{"activeSetupId": None}`` when absent."""
+    """Read state.json; returns ``{"activeSetupId": None}`` when absent or unreadable (it only remembers the layout
+    last open: a damaged one must not keep the store from opening)."""
     path = state_path(project_id)
     if path.exists():
-        return read_json(path)
+        try:
+            raw: object = read_json(path)
+        except ValueError as e:
+            logger.warning(f"[setups] ignoring the open layout of {project_id}: {e}")
+            raw = None
+        if isinstance(raw, dict):
+            return cast(dict[str, Any], raw)
     return {"activeSetupId": None}
 
 

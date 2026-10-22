@@ -92,8 +92,13 @@ def list_synergy_jobs(pid: str, venue_id: str | None = None) -> list[SynergyJobS
     base = Path(DATA_DIR) / pid / "synergy"
     if not base.is_dir():
         return []
-    jobs = [SynergyJobStatus.model_validate(read_json(p / "status.json")) for p in base.iterdir()
-            if (p / "status.json").exists()]
+    jobs: list[SynergyJobStatus] = []
+    for p in base.iterdir():
+        if (p / "status.json").exists():
+            try:
+                jobs.append(SynergyJobStatus.model_validate(read_json(p / "status.json")))
+            except ValueError as e:   # one damaged job must not hide the others
+                logger.warning(f"[synergy] skipping {pid}/{p.name}: {e}")
     return sorted((j for j in jobs if venue_id is None or j.venue_id == venue_id),
                   key=lambda j: j.created_at, reverse=True)
 
