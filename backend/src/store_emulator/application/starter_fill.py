@@ -36,7 +36,7 @@ def auto_select(pid: str, sid: str, req: StarterAutoRequest, config: SimulationC
     except ValueError as exc:
         raise AppError(str(exc), 422) from exc
     try:
-        assignments = asyncio.run(select_starter_products(llm, store, racks, req.requirements))
+        assignments = asyncio.run(select_starter_products(llm, store, racks, req.requirements, products_per_slot=req.products_per_slot))
     except Exception as exc:
         raise AppError(model_failure(exc, "Starter products could not be selected"), 502) from exc
     check_product_layout(pid, sid)

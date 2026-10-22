@@ -236,7 +236,7 @@ const RULES: Rule[] = [
 const DEFAULT_SPEC: PackageSpec = spec("box", 0.12, 0.18, 0.05, "other");
 
 // Bundled image identities remain stable when products use localized or edited names.
-const STARTER_PACKAGES: PackageSpec[] = [
+const STARTER_PACKAGES: Record<string, PackageSpec[]> = { "starter-01": [
   spec("box", 0.075, 0.23, 0.075, "drink"), spec("jar", 0.085, 0.12, 0.085, "pantry"),
   spec("bag", 0.11, 0.16, 0.03, "pantry"), spec("bag", 0.13, 0.21, 0.055, "pantry"),
   spec("bottle", 0.075, 0.19, 0.075, "other"), spec("box", 0.09, 0.12, 0.03, "other"),
@@ -244,11 +244,21 @@ const STARTER_PACKAGES: PackageSpec[] = [
   DEFAULT_SPEC, DEFAULT_SPEC, DEFAULT_SPEC, spec("cup", 0.085, 0.1, 0.085, "other"),
   spec("bag", 0.17, 0.2, 0.09, "bakery"), spec("bottle", 0.068, 0.23, 0.068, "drink"),
   spec("bag", 0.165, 0.24, 0.06, "snack"), spec("jar", 0.075, 0.1, 0.075, "pantry"),
-];
+], "starter-02": [
+  spec("bottle", 0.068, 0.23, 0.068, "drink"), spec("box", 0.075, 0.23, 0.075, "drink"),
+  spec("bag", 0.165, 0.24, 0.06, "snack"), spec("cup", 0.095, 0.11, 0.095, "noodle"),
+  spec("croissant", 0.2, 0.06199567, 0.07551152, "bakery"), spec("cup", 0.085, 0.1, 0.085, "pantry"),
+  spec("bag", 0.12, 0.16, 0.035, "bakery"), spec("can", 0.085, 0.045, 0.085, "pantry"),
+  spec("banana", 0.134, 0.179, 0.223, "produce"), spec("applePair", 0.20112, 0.08539, 0.09590, "produce"),
+  spec("box", 0.12, 0.04, 0.09, "pantry"), spec("box", 0.25, 0.07, 0.11, "pantry"),
+  spec("bottle", 0.075, 0.23, 0.075, "other"), spec("box", 0.2, 0.09, 0.11, "other"),
+  spec("tube", 0.055, 0.16, 0.035, "other"), spec("tube", 0.11, 0.23, 0.11, "other"),
+] };
 
 export function classifyProduct(name: string, imageUrl?: string | null): PackageSpec {
-  const bundled = imageUrl?.match(/^\/api\/catalog-images\/starter-01\/(\d+)\.webp$/);
-  if (bundled && STARTER_PACKAGES[Number(bundled[1])]) return STARTER_PACKAGES[Number(bundled[1])]!;
+  const bundled = imageUrl?.match(/^\/api\/catalog-images\/(starter-\d+)\/(\d+)\.webp$/);
+  const known = bundled && STARTER_PACKAGES[bundled[1]!]?.[Number(bundled[2])];
+  if (known) return known;
   const n = name.trim().toLowerCase();
   for (const [re, make] of RULES) {
     if (re.test(n)) return make(n);

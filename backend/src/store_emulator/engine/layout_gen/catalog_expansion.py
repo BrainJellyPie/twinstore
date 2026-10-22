@@ -105,3 +105,15 @@ PACKSHOTS = [
     "Terracotta Succulent Pot", "Braided Teal USB Cable 1m", "Red Rubber Dog Chew Ring", "Green Handle Camping Mug",
     "Butter Croissant Bag 2pk", "Glass Bottle Lemon Sparkling Water", "Sea Salt Sweet Potato Chips", "Strawberry Preserve 200g",
 ]
+
+PACKSHOT_SHEETS = {
+    "starter-01": PACKSHOTS,
+    "starter-02": [
+        "Cola 500ml", "Milk 1L", "Potato Chips Original", "Spicy Cup Ramen",
+        "Croissant", "Greek Yogurt Cup", "Chocolate Cookies", "Tuna Can",
+        "Bananas", "Apples 2pk", "Tofu", "Eggs 10pk",
+        "Dish Soap", "Tissues", "Sunscreen SPF50", "Paper Towels",
+    ],
+}
+PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
+                 for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

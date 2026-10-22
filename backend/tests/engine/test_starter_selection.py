@@ -90,3 +90,16 @@ def test_different_selected_products_in_same_category_keep_their_own_order():
     _, report = fill_empty_racks(store, rows, 4)
     assert [p.sku for p in report.racks[0].products] == ids[:2]
     assert [p.sku for p in report.racks[1].products] == ids[2:5]
+
+
+@pytest.mark.parametrize("per_slot", [1, 2, 3, 4])
+def test_model_selection_cannot_exceed_the_available_sections(per_slot):
+    store = empty_store()
+    rack = rack_choices(store)[0].model_copy(update={"available_slots": 1})
+    def edit(data, call):
+        if call == 2:
+            data["groups"][0]["skus"] = [catalog_slot_item(p, "USD").sku for p in CATALOG["home_coffee_tea"][:per_slot + 1]]
+    model = FakeModel(edit=edit)
+    with pytest.raises(ValueError, match="shelf capacity"):
+        asyncio.run(select_starter_products(model, store, [rack], "", products_per_slot=per_slot))
+    assert model.calls[1]["maximum_products_per_category"] == {"home_coffee_tea": per_slot}

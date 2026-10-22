@@ -23,3 +23,7 @@ it.each([
 it.each([null, undefined, "/custom.png", "/api/catalog-images/starter-01/16.webp", "/api/catalog-images/unknown/3.webp", "https://other.test/api/catalog-images/starter-01/3.webp", "/api/catalog-images/starter-01/-1.webp"])("retains ordinary classification for unrelated image %s", (url) => {
   expect(classifyProduct("Mineral Water 500ml", url)).toMatchObject({ kind: "bottle", category: "drink" });
 });
+
+it.each(["bottle", "box", "bag", "cup", "croissant", "cup", "bag", "can", "banana", "applePair", "box", "box", "bottle", "box", "tube", "tube"].map((kind, index) => [index, kind] as const))("matches grocery packshot %i after renaming", (index, kind) => {
+  expect(classifyProduct("Renamed item", `/api/catalog-images/starter-02/${index}.webp`).kind).toBe(kind);
+});

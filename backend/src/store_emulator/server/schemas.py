@@ -17,6 +17,7 @@ class CreateStoreRequest(BaseModel):
     customer_profile: str
     weekly_schedule: list[DaySchedule]
     layout: TemplateLayoutRequest | None = None
+    starter_selection: Literal["automatic", "format"] = "format"
 
     @field_validator("name", "address", "store_type", "customer_profile")
     @classmethod

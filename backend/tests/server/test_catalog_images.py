@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from store_emulator.engine.layout_gen.catalog import CATALOG, catalog_slot_item
-from store_emulator.engine.layout_gen.catalog_expansion import PACKSHOTS, PRODUCTS
+from store_emulator.engine.layout_gen.catalog_expansion import PACKSHOT_SHEETS, PRODUCTS
 
 
 @pytest.fixture
@@ -14,11 +14,11 @@ def client():
     return TestClient(app)
 
 
-@pytest.mark.parametrize("index,name", enumerate(PACKSHOTS))
-def test_bundled_packshots_are_local_decodable_and_used_in_all_currencies(client, index, name):
+@pytest.mark.parametrize("sheet,index,name", [(sheet, index, name) for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)])
+def test_bundled_packshots_are_local_decodable_and_used_in_all_currencies(client, sheet, index, name):
     product = next(p for values in CATALOG.values() for p in values if p.en == name)
     urls = {catalog_slot_item(product, currency).image_url for currency in ["USD", "KRW", "JPY"]}
-    assert urls == {f"/api/catalog-images/starter-01/{index}.webp"}
+    assert urls == {f"/api/catalog-images/{sheet}/{index}.webp"}
     result = client.get(next(iter(urls)))
     assert result.status_code == 200 and result.headers["content-type"] == "image/webp"
     assert "immutable" in result.headers["cache-control"]

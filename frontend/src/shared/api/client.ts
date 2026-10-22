@@ -125,6 +125,7 @@ export interface SetupSummaryShort {
 
 export interface CreateStoreMeta {
   layout?: GenerateLayoutRequest | null;
+  starter_selection?: "automatic" | "format";
   name: string;
   description: string;
   address: string;

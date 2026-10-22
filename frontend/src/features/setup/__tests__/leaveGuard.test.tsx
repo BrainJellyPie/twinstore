@@ -27,6 +27,17 @@ it("leaves a pristine form without asking", async () => {
   expect(router.state.location.pathname).toBe("/");
 });
 
+it("keeps an explicit automatic-product preference when the user cancels leaving", async () => {
+  const router = show();
+  const label = translate("en", "automaticStarterProducts");
+  fireEvent.click(await screen.findByLabelText(label));
+  fireEvent.click(screen.getByRole("link", { name: "Stores" }));
+  await screen.findByRole("alertdialog");
+  fireEvent.click(screen.getByRole("button", { name: translate("en", "keepEditing") }));
+  expect(router.state.location.pathname).toBe("/projects/new");
+  expect((screen.getByLabelText(label) as HTMLInputElement).checked).toBe(false);
+});
+
 it("asks before leaving entered details and stays when the user keeps editing", async () => {
   useLocale.getState().setLocale("ko");
   const router = show();

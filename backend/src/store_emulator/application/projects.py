@@ -2,13 +2,14 @@ import logging
 import math
 import uuid
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from store_emulator.engine.files import remove_tree
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.layout_options import TemplateLayoutRequest
 from store_emulator.application.template_layouts import prepare_template_layout
+from store_emulator.application.template_assortment import select_initial_assortment
 from store_emulator.application.errors import AppError
 from store_emulator.application.generation_async import start_persona_generation
 from store_emulator.application.storage.generations import find_active_generation
@@ -219,8 +220,9 @@ def create_project_without_layout(
     supplemental_bytes: bytes | None,
     supplemental_filename: str = "",
     layout: TemplateLayoutRequest | None = None,
+    starter_selection: Literal["automatic", "format"] = "format",
 ) -> dict[str, Any]:
-    """Project + optional template layout + persona kick-off. No image or LLM layout call.
+    """Project + optional template layout/catalog selection + persona kick-off.
 
     spec §4.2 / §4.5 — supplemental bytes/filename are forwarded to the
     background summarize_supplemental call. At the time of the immediate
@@ -252,6 +254,9 @@ def create_project_without_layout(
         store.name = name
         store.weekly_schedule = weekly_schedule
         store.type = store_type
+        if starter_selection == "automatic":
+            store, assignments = select_initial_assortment(config, store, layout, description)
+            initial["starter_selection"] = {"mode": "automatic", "assignments": [row.model_dump(mode="json") for row in assignments]}
         initial["store"] = store.model_dump(mode="json")
         meta["grid_size"] = list(store.grid_size)
     project_dir = _data / pid

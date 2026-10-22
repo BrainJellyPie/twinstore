@@ -25,6 +25,84 @@ def _meta():
 
 
 @pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_automatic_initial_products_use_wizard_category_before_project_and_personas_are_saved(client, monkeypatch, currency):
+    from store_emulator.application import template_assortment
+    from store_emulator.application.storage.setups import read_setup
+    from store_emulator.engine.starter_selection import CategorySelection
+    api, generation = client
+    calls = []
+    before = api.get("/api/projects").json()
+    class Model:
+        async def generate_structured_async(self, schema, system, user, **kwargs):
+            payload = json.loads(user); calls.append(payload)
+            generation.assert_not_called()
+            if schema is CategorySelection:
+                return schema.model_validate({"groups": [{"category": "first_aid_tools", "rack_ids": [r["id"] for r in payload["racks"]]}]})
+            return schema.model_validate({"groups": [{"category": "first_aid_tools", "skus": [p["sku"] for p in payload["categories"]["first_aid_tools"][:2]]}]})
+    monkeypatch.setattr(template_assortment, "assistive_client", lambda *a: Model())
+    meta = {**_meta(), "starter_selection": "automatic", "layout": {"template_id": "community_pharmacy", "currency": currency}}
+    response = api.post("/api/projects/create-store", data={"meta": json.dumps(meta)})
+    assert response.status_code == 200, response.text
+    data = response.json(); pid, sid = data["metadata"]["project_id"], data["setup"]["id"]
+    saved = read_setup(pid, sid)
+    assert saved["starter_selection"]["mode"] == "automatic"
+    assert saved["starter_selection"]["assignments"]
+    assert all(row["category"] == "first_aid_tools" and len(row["skus"]) == 2 for row in saved["starter_selection"]["assignments"])
+    assert calls[0]["store_name"] == meta["name"] and calls[0]["store_type"] == "pharmacy"
+    assert "Care and wellness" in calls[0]["requirements"]
+    assert len(calls) == 2 and len(api.get("/api/projects").json()) == len(before) + 1
+    generation.assert_called_once()
+
+
+@pytest.mark.parametrize("failure", ["timeout", "unknown_category", "unknown_sku", "excluded_category", "product_limit", "missing_model"])
+def test_model_selection_failure_creates_no_partial_project_and_format_retry_succeeds(client, monkeypatch, failure):
+    from store_emulator.application import template_assortment
+    from store_emulator.engine.starter_selection import CategorySelection
+    api, generation = client
+    class Model:
+        async def generate_structured_async(self, schema, system, user, **kwargs):
+            payload = json.loads(user)
+            if failure == "timeout": raise TimeoutError("timed out")
+            if schema is CategorySelection:
+                return schema.model_validate({"groups": [{"category": "unknown" if failure == "unknown_category" else "dairy", "rack_ids": [r["id"] for r in payload["racks"]]}]})
+            return schema.model_validate({"groups": [{"category": "dairy", "skus": ["unknown"] if failure == "unknown_sku" else [p["sku"] for p in payload["categories"]["dairy"][:2]]}]})
+    def client_factory(*args):
+        if failure == "missing_model": raise ValueError("Set up a text model")
+        return Model()
+    monkeypatch.setattr(template_assortment, "assistive_client", client_factory)
+    meta = {**_meta(), "starter_selection": "automatic", "layout": {"template_id": "community_pharmacy",
+            "excluded_categories": ["dairy"] if failure == "excluded_category" else [], "products_per_category": 1 if failure == "product_limit" else 2}}
+    before = api.get("/api/projects").json()
+    response = api.post("/api/projects/create-store", data={"meta": json.dumps(meta)})
+    assert response.status_code == 502 and "format defaults" in response.text
+    assert api.get("/api/projects").json() == before
+    generation.assert_not_called()
+    meta["starter_selection"] = "format"
+    assert api.post("/api/projects/create-store", data={"meta": json.dumps(meta)}).status_code == 200
+    generation.assert_called_once()
+
+
+@pytest.mark.parametrize("value", ["AI", "unknown", True, 1, None])
+def test_invalid_selection_mode_is_rejected_before_creation(client, value):
+    api, generation = client
+    before = api.get("/api/projects").json()
+    assert api.post("/api/projects/create-store", data={"meta": json.dumps({**_meta(), "starter_selection": value})}).status_code == 422
+    assert api.get("/api/projects").json() == before
+    generation.assert_not_called()
+
+
+def test_empty_start_does_not_call_product_model_even_when_automatic_is_requested(client, monkeypatch):
+    from store_emulator.application import template_assortment
+    api, generation = client
+    def unexpected(*args):
+        raise AssertionError("Empty layouts must not call the product model")
+    monkeypatch.setattr(template_assortment, "assistive_client", unexpected)
+    response = api.post("/api/projects/create-store", data={"meta": json.dumps({**_meta(), "starter_selection": "automatic"})})
+    assert response.status_code == 200, response.text
+    generation.assert_called_once()
+
+
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
 def test_initial_layout_respects_wizard_name_hours_and_options(client, currency):
     api, generation = client
     meta = {**_meta(), "layout": {"template_id": "community_pharmacy", "width": 22, "height": 18,

@@ -43,7 +43,7 @@ it("creates the selected initial format with the wizard metadata", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Choose pharmacy" }));
   await submit();
   await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ meta: expect.objectContaining({
-    name: "My Pharmacy", store_type: "pharmacy", layout: expect.objectContaining({ template_id: "community_pharmacy", width: 24, design_theme: "minimal", weekly_hours: null, open_hour: 0, close_hour: 24, closed_days: [] }),
+    name: "My Pharmacy", store_type: "pharmacy", starter_selection: "automatic", layout: expect.objectContaining({ template_id: "community_pharmacy", width: 24, design_theme: "minimal", weekly_hours: null, open_hour: 0, close_hour: 24, closed_days: [] }),
   }) })));
   await waitFor(() => expect(created).toHaveBeenCalledWith("proj_new"));
 });
@@ -53,7 +53,27 @@ it("preserves the empty-layout starting option", async () => {
   fillStore();
   fireEvent.click(screen.getByRole("checkbox", { name: "Start with a furnished store template" }));
   await submit();
-  await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ meta: expect.objectContaining({ layout: null }) })));
+  await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ meta: expect.objectContaining({ layout: null, starter_selection: "format" }) })));
+});
+
+it.each(LOCALES)("defaults to automatic products and keeps the explicit format choice in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  render(<CreateStoreWizard />);
+  const text = (key: Parameters<typeof translate>[1]) => translate(code, key);
+  const option = screen.getByLabelText(text("automaticStarterProducts")) as HTMLInputElement;
+  expect(option.checked).toBe(true);
+  fireEvent.click(option);
+  fireEvent.change(screen.getByLabelText(text("storeName")), { target: { value: "Local store" } });
+  fireEvent.change(screen.getByLabelText(text("address")), { target: { value: "12 Market Street" } });
+  fireEvent.click(screen.getByRole("button", { name: text("next") }));
+  fireEvent.change(screen.getByLabelText(text("customerProfile")), { target: { value: "Nearby residents" } });
+  fireEvent.click(screen.getByRole("button", { name: text("back") }));
+  expect((screen.getByLabelText(text("automaticStarterProducts")) as HTMLInputElement).checked).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: text("next") }));
+  fireEvent.click(screen.getByRole("button", { name: text("createNewStore") }));
+  expect(screen.getByRole("alertdialog").textContent).toContain(text("formatCatalogAssortment"));
+  fireEvent.click(screen.getByRole("button", { name: text("generate") }));
+  await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({ meta: expect.objectContaining({ starter_selection: "format" }) })));
 });
 
 it("does not advance with invalid template dimensions", () => {

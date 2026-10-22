@@ -40,7 +40,7 @@ const STEPS = [
 ] as const;
 
 const INITIAL_VALUES: WizardValues = { ...DEFAULT_VALUES, storeType: "convenience" };
-const INITIAL_FORM = JSON.stringify([INITIAL_VALUES, true, DEFAULT_TEMPLATE_CHOICE]);
+const INITIAL_FORM = JSON.stringify([INITIAL_VALUES, true, DEFAULT_TEMPLATE_CHOICE, true]);
 const blockLeaving = () => true;
 
 export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
@@ -49,6 +49,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   const [step, setStep] = useState<1 | 2>(1);
   const [values, setValues] = useState<WizardValues>(INITIAL_VALUES);
   const [withTemplate, setWithTemplate] = useState(true);
+  const [automaticProducts, setAutomaticProducts] = useState(true);
   const [templateOptions, setTemplate] = useState(DEFAULT_TEMPLATE_CHOICE);
   const template = useMemo(() => ({ ...templateOptions, weekly_hours: null, open_hour: values.openHour, close_hour: values.closeHour,
     closed_days: buildWeeklySchedule(values).filter((day) => !day.is_open).map((day) => day.day) }), [templateOptions, values]);
@@ -148,6 +149,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
           customer_profile: values.customerProfile.trim(),
           weekly_schedule: buildWeeklySchedule(values),
           layout: withTemplate ? templateRequest(template) : null,
+          starter_selection: withTemplate && automaticProducts ? "automatic" : "format",
         },
         supplemental: values.supplementalFile,
       });
@@ -155,14 +157,14 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
     } catch {
       // create.error → rendered below
     }
-  }, [values, create, onCreated, withTemplate, template]);
+  }, [values, create, onCreated, withTemplate, template, automaticProducts]);
 
   const errMessage = create.error instanceof Error
     ? create.error.message
     : null;
   const isPending = create.isPending;
   // Leaving loses everything typed; creating (pending or done) navigates away on purpose.
-  const dirty = JSON.stringify([values, withTemplate, templateOptions]) !== INITIAL_FORM;
+  const dirty = JSON.stringify([values, withTemplate, templateOptions, automaticProducts]) !== INITIAL_FORM;
   const leave = useBlocker({ shouldBlockFn: blockLeaving, withResolver: true, enableBeforeUnload: true,
     disabled: !dirty || isPending || create.isSuccess });
 
@@ -178,7 +180,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
         {step === 1 && (
           <>
             <DescribeStoreField disabled={isPending} onFilled={fillFromDescription}
-              formKey={JSON.stringify([values, withTemplate, templateOptions])} />
+              formKey={JSON.stringify([values, withTemplate, templateOptions, automaticProducts])} />
             <Step1Fields values={values} errors={step1Errors ?? undefined} disabled={isPending} onChange={onChange} />
             <fieldset className="space-y-3 rounded-xl border p-4" disabled={isPending}>
               <legend className="px-1 text-sm font-medium">{t("startingLayout")}</legend>
@@ -190,6 +192,10 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
                 onTemplateSelected={(format) => onChange("storeType", format.store_type)} />
                 : <p className="text-xs text-muted-foreground">{t("emptyLayoutHint")}</p>}
               <p className="text-xs text-muted-foreground">{t("initialLayoutHint")}</p>
+              {withTemplate && <div className="space-y-1 rounded-lg border p-3">
+                <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={automaticProducts} onChange={(e) => setAutomaticProducts(e.target.checked)} />{t("automaticStarterProducts")}</label>
+                <p className="text-xs text-muted-foreground">{t("automaticStarterHint")}</p>
+              </div>}
             </fieldset>
           </>
         )}
@@ -238,6 +244,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
             <div><dt className="text-xs text-muted-foreground">{t("storeName")}</dt><dd className="break-words">{values.name.trim()}</dd></div>
             <div><dt className="text-xs text-muted-foreground">{t("address")}</dt><dd className="break-words">{values.address.trim()}</dd></div>
             <div><dt className="text-xs text-muted-foreground">{t("customerProfile")}</dt><dd className="break-words whitespace-pre-wrap">{values.customerProfile.trim()}</dd></div>
+            {withTemplate && <div><dt className="text-xs text-muted-foreground">{t("initialAssortment")}</dt><dd>{t(automaticProducts ? "automaticCatalogAssortment" : "formatCatalogAssortment")}</dd></div>}
             {values.supplementalFile && <div><dt className="text-xs text-muted-foreground">{t("supplementalData")}</dt><dd className="break-all">{values.supplementalFile.name}</dd></div>}
           </dl>
           <AlertDialogFooter>

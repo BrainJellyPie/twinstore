@@ -35,9 +35,9 @@ def upload_photo(client, sku):
 
 def test_photo_does_not_attach_to_a_different_generated_product(client):
     original = generated_items(client, {"template_id": "urban_cvs"})[0]
-    upload_photo(client, original["sku"])
+    url = upload_photo(client, original["sku"])
     books = generated_items(client, {"template_id": "bookstore"})
-    assert all(item["name"] == original["name"] for item in books if item.get("image_url"))
+    assert all(item["sku"] == original["sku"] for item in books if item.get("image_url") == url)
 
 
 @pytest.mark.parametrize("options,product_name", [
@@ -53,4 +53,5 @@ def test_photo_follows_its_product_across_layout_options(client, options, produc
     revised = generated_items(client, options)
     target = next(item for item in revised if item["name"] == product_name)
     assert target["image_url"] == url
-    assert all(item["name"] == product_name for item in revised if item.get("image_url"))
+    assert all(item["sku"] == original["sku"] for item in revised if item.get("image_url") == url)
+    assert any((item.get("image_url") or "").startswith("/api/catalog-images/") for item in revised)

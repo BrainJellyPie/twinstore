@@ -282,6 +282,9 @@ and colors; download the plan as SVG. Every option and the floor editor (up to 4
 
 The new-store wizard asks for a format, size and currency, then your customers (optionally with a CSV or XLSX of up to
 10 MB) and generates personas with the configured model. Alternatives of a store live side by side as layout tabs.
+Automatic starter products are enabled by default: the text model selects existing catalog products for the store
+category before creation. Turn this option off to keep the format's preset assortment. Model-selection failures
+create no partial store. The catalog includes 824 products and 32 locally bundled product images.
 
 ### Stock and edit a layout
 

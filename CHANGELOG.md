@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- New-store creation defaults to selecting bundled catalog products with the text model. Large generated
+  floors group equivalent racks, exclusions and product limits are validated, and model failure creates no
+  partial project. Six-language controls retain the format-default alternative. Sixteen more grocery and
+  household packshots bring the bundled image collection to 32.
+
 - Starter assortment: 144 additional generic products (824 across 75 categories) and 16 locally bundled
   generated packshots. Auto-place starter products defaults to category-aware text-model selection, validates
   exact catalog IDs, previews before saving, and retains manual selection and retry-safe child layouts.

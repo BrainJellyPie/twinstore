@@ -3,6 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, field_validator
+from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import projects as project_service
 from store_emulator.application.errors import AppError
@@ -139,7 +140,7 @@ async def create_store(
             raise HTTPException(413, "Supplemental file is too large (max 10MB).")
 
     try:
-        return project_service.create_project_without_layout(
+        return await run_in_threadpool(project_service.create_project_without_layout,
             config=get_config(),
             name=req.name.strip(),
             description=req.description,
@@ -150,6 +151,7 @@ async def create_store(
             supplemental_bytes=supplemental_bytes,
             supplemental_filename=(supplemental.filename or "") if supplemental else "",
             layout=req.layout,
+            starter_selection=req.starter_selection,
         )
     except AppError as exc:
         raise HTTPException(exc.status_code, str(exc)) from exc

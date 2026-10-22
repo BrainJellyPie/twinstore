@@ -13,7 +13,12 @@ generate personas, and run simulations. This is intentionally separate from
 
 ## Pipeline mental model
 
-The wizard collects two screens of input, then kicks off an async pipeline:
+The wizard collects two screens of input, then kicks off an async pipeline. With a furnished template,
+automatic starter products are enabled by default: two text-model calls choose categories and exact products
+from the bundled catalog before project files or persona jobs are created. These calls are additional to the
+pipeline below. Turn off automatic products in Step 1 to use format defaults without these two calls. Empty
+layouts do not call the product-selection model. A model-selection failure preserves the form for retry and
+creates no partial project.
 
 ```
 Step 1: Store info  ──┐
@@ -1072,7 +1077,7 @@ retry or switch to **Choose categories manually**, which needs no model or sprea
 
 The bundled catalog now includes 824 products in 75 categories. New examples cover plant-based foods,
 breakfast spreads, home coffee/tea, bath/body care, first-aid tools, supplements, indoor plants, digital
-accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Sixteen generated
+accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Thirty-two generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 
 For manual selection:
@@ -1111,7 +1116,12 @@ API: `GET /api/projects/{pid}/setups/{sid}/starter-fill`, `POST .../auto-select`
 Auto-selection takes `source_sha256`, `currency`, optional `requirements`/`model`, and `products_per_slot`;
 it returns a preview request whose assignments contain ordered `skus` (1–16 distinct IDs from the category).
 Model-selected products are checked again before preview/save, and a changed source invalidates the selection.
-Bundled images are served at `/api/catalog-images/starter-01/{index}.webp` (indices 0–15).
+Bundled images are served at `/api/catalog-images/{sheet}/{index}.webp` (`starter-01` and `starter-02`, indices 0–15).
+The new-store wizard sends `starter_selection: "automatic"` by default; `"format"` uses the original preset
+assortment. API clients that omit this field retain the original behavior. Automatic selection groups equivalent
+generated racks for large floors, respects excluded categories and product limits, keeps fixture geometry,
+and updates shelf signs to match the selected categories. Selected SKU assignments are retained with the initial
+layout. The create-store endpoint performs selection off the event loop before creating project files.
 Preview takes `source_sha256`, `currency`, unique `assignments` of `rack_id`/`category`, and integer
 `products_per_slot` (1–4). Save also takes a stable 32-character lowercase hex `request_id`. Reuse the
 identical save body on retry. The snapshot includes the bundled catalog contents as well as the layout.
