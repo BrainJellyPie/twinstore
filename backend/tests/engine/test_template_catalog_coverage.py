@@ -122,3 +122,20 @@ def test_default_everyday_maps_stock_complete_photographed_departments(template_
                for slot in rack.slots for item in slot.items}
     assert stocked == expected
     assert all(item.image_url for item in stocked.values())
+
+
+@pytest.mark.parametrize("template_id,category", [
+    ("urban_cvs", "dairy"), ("campus_cvs", "fresh_meals"), ("specialty_cafe", "desserts"),
+    ("organic_market", "breakfast_spreads"), ("specialty_cafe", "home_coffee_tea"),
+    ("artisan_bakery", "baking_ingredients"), ("hypermarket", "frozen_meals"),
+    ("hypermarket", "fresh_seafood"), ("specialty_cafe", "barista_tools"),
+])
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_default_food_maps_stock_complete_photographed_departments(template_id, category, currency):
+    store = generate_store(template_id, currency=currency)
+    expected = {catalog_slot_item(product, currency).sku: catalog_slot_item(product, currency)
+                for product in CATALOG[category]}
+    stocked = {item.sku: item for rack in store.product_racks if rack.rack_desc == category
+               for slot in rack.slots for item in slot.items}
+    assert stocked == expected
+    assert all(item.image_url for item in stocked.values())

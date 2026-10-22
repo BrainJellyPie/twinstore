@@ -219,3 +219,15 @@ it("separates care products and pet food from grocery photos after localized ren
     expect(classifyProduct("상품", `/api/catalog-images/starter-52/${index}.webp`).category).toBe("drink");
   expect(classifyProduct("Ice Cream", "/api/catalog-images/starter-52/15.webp").category).toBe("other");
 });
+
+it("keeps frozen packs flat while distinguishing fresh seafood and empty coffee tools", () => {
+  for (let index = 5; index < 16; index++)
+    expect(classifyProduct("상품", `/api/catalog-images/starter-55/${index}.webp`)).toMatchObject({ category: "frozen", lieFlatInChest: true });
+  for (let index = 0; index < 10; index++)
+    expect(classifyProduct("Frozen Pizza", `/api/catalog-images/starter-56/${index}.webp`)).toMatchObject({ category: "pantry", lieFlatInChest: true });
+  for (let index = 10; index < 16; index++)
+    expect(classifyProduct("Coffee", `/api/catalog-images/starter-56/${index}.webp`).category).toBe("other");
+  for (const index of [9, 10, 11, 12, 13])
+    expect(classifyProduct("Milk Tea", `/api/catalog-images/starter-54/${index}.webp`).category).toBe("other");
+  expect(classifyProduct("Milk", "/api/catalog-images/starter-53/2.webp").category).toBe("pantry");
+});

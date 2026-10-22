@@ -958,6 +958,30 @@ PACKSHOT_SHEETS = {
         "Grapefruit Rosemary Soda 330ml", "Hibiscus Iced Tea 300ml", "Peach Oolong Tea 300ml", "Cucumber Mint Sparkling Water",
         "Passionfruit Soda 330ml", "Cold Brew Rooibos 300ml", "Still Water Glass Bottle 500ml", "Ice Scraper",
     ],
+    "starter-53": [
+        "Drinking Yogurt 150ml", "Soy Milk 190ml", "String Cheese 2pk", "Probiotic Drink 5pk",
+        "Lunch Box Pork Cutlet", "Lunch Box Bulgogi", "Chicken Breast Salad", "Hamburger",
+        "Lemon Tart", "Vanilla Cheesecake Slice", "Fruit Yogurt Parfait", "Chocolate Chip Muffin",
+        "Strawberry Shortcake", "Almond Cookie", "Hazelnut Cocoa Spread 200g", "Rolled Oats 500g",
+    ],
+    "starter-54": [
+        "Cranberry Granola 350g", "Wholegrain Pancake Mix 400g", "Chia Seed Pouch 200g", "Cinnamon Muesli 400g",
+        "Decaf Ground Coffee 250g", "Earl Grey Tea Bags 20pk", "Chamomile Tea Bags 20pk", "Hojicha Loose Tea 80g",
+        "Vanilla Coffee Syrup 250ml", "Paper Coffee Filters 100pk", "Glass Pour Over Dripper", "Bamboo Matcha Whisk",
+        "Reusable Tea Infuser", "Double Wall Espresso Glass", "Cake Flour 500g", "Baking Powder Tin 100g",
+    ],
+    "starter-55": [
+        "Cocoa Baking Powder 200g", "Dark Baking Chocolate 200g", "Almond Flour 250g", "Icing Sugar 500g",
+        "Parchment Baking Sheets 20pk", "Frozen Mushroom Risotto 350g", "Frozen Spinach Lasagna 400g", "Frozen Cheese Ravioli 300g",
+        "Frozen Vegetable Stir Fry 500g", "Frozen Seafood Paella 400g", "Frozen Kimchi Fried Rice 300g", "Frozen Chicken Pot Pie 250g",
+        "Frozen Sweetcorn Kernels 500g", "Frozen Mango Chunks 400g", "Frozen Berry Blend 400g", "Frozen Garlic Flatbread 2pk",
+    ],
+    "starter-56": [
+        "Cod Fillet Portion 200g", "Sea Bass Fillet 180g", "Cleaned Squid Rings 250g", "Fresh Mussels Pack 500g",
+        "Sea Scallop Meat 200g", "Smoked Salmon Slices 100g", "Trout Fillet Portion 200g", "Cooked Prawn Cocktail Pack 150g",
+        "Seafood Chowder Mix 300g", "Lemon Herb Fish Skewers 2pk", "Gooseneck Pour Over Kettle 600ml", "Portafilter Cleaning Brush",
+        "Espresso Distribution Tool 58mm", "Coffee Dosing Funnel 58mm", "Latte Art Stencil Set 4pk", "Milk Pitcher Thermometer",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

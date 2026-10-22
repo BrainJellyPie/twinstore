@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Keep one model-settings action after customer generation fails while retaining
+  the explicit local-model download/start control.
+
+- Add 64 dairy, prepared-meal, dessert, breakfast, coffee, baking, frozen-food,
+  seafood and barista-tool photos, reaching 896 local images. Nine more departments
+  have pictures for their full default-map assortments.
+
 - Add 64 everyday-care, baby, hair, pet, plant-based food, snack, refreshment and
   car-care photos, reaching 832 local images. Ten more catalog departments now have
   pictures for every existing product, including their stocked default maps.
