@@ -1,7 +1,7 @@
 // Shoppers tab of a finished run: pick one shopper, follow their path and thoughts step by step, see them in
 // 3D, and interview them about the trip afterwards.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Crosshair, Loader2, MessagesSquare, Route, Search, Sparkles, UsersRound, X } from "lucide-react";
 
@@ -29,9 +29,15 @@ const SORTS: { id: ShopperSort; label: string }[] = [
   { id: "longest", label: "Longest visits" },
 ];
 
-export function ShopperPanel({ projectId, runId, customers, personas, store }: {
+interface ShopperPanelProps {
   projectId: string; runId: string; customers: CustomerResult[]; personas: Persona[]; store: Store;
-}) {
+}
+
+export function ShopperPanel(props: ShopperPanelProps) {
+  return <RunShoppers key={JSON.stringify([props.projectId, props.runId])} {...props} />;
+}
+
+function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPanelProps) {
   const currency = useSimulationStore((s) => s.currency);
   const [selected, setSelected] = useState<string | null>(null);
   const [sort, setSort] = useState<ShopperSort>("spent");
@@ -40,19 +46,31 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
   const rows = useMemo(() => shopperRows(customers, personas), [customers, personas]);
   // Shoppers found from a sentence: the model writes the filter, the run's records decide who fits.
   const [describe, setDescribe] = useState("");
-  const [found, setFound] = useState<ShopperMatch | null>(null);
+  const scope = useMemo(() => ({ projectId, runId, currency, customers, personas, store }),
+    [projectId, runId, currency, customers, personas, store]);
+  const [accepted, setAccepted] = useState<{ scope: typeof scope; text: string; match: ShopperMatch } | null>(null);
+  const found = accepted?.scope === scope && accepted.text === describe ? accepted.match : null;
   const foundCard = useRef<HTMLElement>(null);
-  const finder = useMutation({ mutationFn: (text: string) => findShoppers(projectId, runId, text.trim()), onSuccess: setFound });
+  const finder = useMutation({ mutationFn: (text: string) => findShoppers(projectId, runId, text.trim()) });
+  const resetFinder = finder.reset;
+  useLayoutEffect(() => resetFinder(), [scope, describe, resetFinder]);
+  const requestFind = (text: string) => {
+    if (Array.from(text.trim()).length < 3) return;
+    finder.mutate(text, { onSuccess: (match) => setAccepted({ scope, text, match }) });
+  };
+  const [group, setGroup] = useState(false);
   useEffect(() => { if (found) foundCard.current?.scrollIntoView?.({ block: "nearest" }); }, [found]);
   // A description typed in the command palette and routed here is searched once the run's shoppers are open.
   const pendingAsk = useAssistStore((s) => s.pending);
   const takeAsk = useAssistStore((s) => s.take);
-  const queueFind = useQueuedStart(finder.mutate);
+  const queueFind = useQueuedStart(requestFind);
   useEffect(() => {
     if (!pendingAsk) return;
     const routed = takeAsk(projectId, ["find_shoppers"]);
     if (!routed) return;
     const text = Array.from(routed.text).slice(0, 400).join("");
+    setSelected(null);
+    setGroup(false);
     setDescribe(text);
     queueFind(text);
   }, [pendingAsk, projectId, takeAsk, queueFind]);
@@ -65,7 +83,6 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
       .filter((r) => !q || r.id.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
   }, [found, sorted, rows, query]);
   const setHighlight = useSimulationStore((s) => s.setHighlightId);
-  const [group, setGroup] = useState(false);
   const findLength = Array.from(describe.trim()).length;
 
   if (selected) {
@@ -94,10 +111,10 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
       <div className="flex items-center gap-1.5 rounded-xl bg-foreground/[0.035] p-1.5">
         <Sparkles className="ml-1 size-3.5 shrink-0 text-primary" aria-hidden />
         <Input value={describe} onChange={(e) => setDescribe(Array.from(e.target.value).slice(0, 400).join(""))}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && findLength >= 3 && !finder.isPending) { e.preventDefault(); finder.mutate(describe); } }}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && findLength >= 3 && !finder.isPending) { e.preventDefault(); requestFind(describe); } }}
           placeholder="Describe shoppers, e.g. women in their 20s who stopped at ice cream but bought nothing"
           aria-label="Describe shoppers to find" className="h-8 min-w-0 flex-1 bg-card text-[0.78rem]" />
-        <Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={findLength < 3 || finder.isPending} onClick={() => finder.mutate(describe)}>
+        <Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={findLength < 3 || finder.isPending} onClick={() => requestFind(describe)}>
           {finder.isPending ? <Loader2 className="size-3.5 animate-spin" /> : "Find"}
         </Button>
       </div>
@@ -106,7 +123,7 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
         <section ref={foundCard} className="space-y-1.5 rounded-xl border border-primary/40 bg-primary/[0.04] px-2.5 py-2" aria-label="Found shoppers">
           <div className="flex items-start justify-between gap-2">
             <p className="text-[0.78rem]"><b>{found.label}</b> <span className="num text-muted-foreground">{found.persona_ids.length.toLocaleString()} of {found.total.toLocaleString()} shoppers</span></p>
-            <button type="button" onClick={() => { setFound(null); finder.reset(); }} aria-label="Clear the found shoppers"
+            <button type="button" onClick={() => { setAccepted(null); finder.reset(); }} aria-label="Clear the found shoppers"
               className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="size-3.5" /></button>
           </div>
           <div className="flex flex-wrap gap-1">
