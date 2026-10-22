@@ -38,7 +38,7 @@ def preview(pid: str, sid: str, req: RackCopyRequest) -> RackCopyPreview:
     manifest = load_manifest(pid)
     for slot in report.slots:
         for item in slot.items:
-            item.image_url = image_url_for(pid, item.sku, manifest) or item.image_url
+            item.image_url = item.image_url or image_url_for(pid, item.sku, manifest)
     return report
 
 

@@ -1138,3 +1138,32 @@ API: `GET /api/projects/{pid}/setups/{sid}/rack-copy` lists stocked sources; opt
 lists destinations with exclusion reasons. `POST .../preview` takes `source_sha256`, `currency`,
 `source_rack_id` and 1–100 unique `target_rack_ids`. `POST .../save` additionally takes a stable
 32-character lowercase hex `request_id`. Repeat the identical save body after a lost response.
+
+### Reuse uploaded product photos on a layout
+
+In **Step 2 → Use library photos**, reuse packshots already uploaded in **Market → Products**.
+The library's SKU link was previously used for marketing variants; this action applies a reviewed
+image to every placement of that exact SKU in a **new layout**.
+
+1. Search shelf products and library photos. **Use unique links for shown products** suggests only
+   an existing single SKU link; it does not infer identity from names. Multiple links require a choice.
+   Suggestions use all library photos, while each menu shows up to 100 search results plus its selection.
+2. Select a photo for each product. Current images are protected by default; enable **Allow replacing
+   existing images in the new layout** to change them. Changing this option clears choices.
+3. **Preview product photos** shows before/after images and affected placements. Confirm identification
+   yourself, especially if a link came from optional model-assisted pack reading.
+4. **Save layout with photos**, then **Open photo layout**. Names, prices, promotions, product order,
+   geometry and the original layout remain unchanged. Return to the original to undo the variant.
+
+No upload or model call is repeated here. Uploaded reference photos are not proof of actual stock,
+price or brand identity. The action does not reconstruct shelf positions or facing counts from a photo.
+Saved images are copied into project snapshots and survive later library deletion. A project-wide SKU
+image upload does not overwrite these layout-specific images. Snapshot files are retained with the
+project, including previews that were not saved, and removed when the project is removed.
+
+Limits: 500 library photos, 100 assigned SKUs per batch, 8 MB per stored photo and 64 MB total selected
+photo bytes (counted per assignment). Product layouts support 5,000 SKUs / 50,000 placements. Search
+filters keep hidden choices. Empty/unreadable libraries give guidance instead of making up products.
+If the layout, its image manifest, or a selected photo/link changes, reload and preview again. A lost
+save response can be retried with the same request without duplicating the layout. Closing discards
+unsaved choices; an accepted save can finish after closing, so check **Layouts** before starting again.

@@ -126,7 +126,7 @@ def _lab_dir(pid: str, cid: str) -> Path:
     return Path(DATA_DIR) / pid / "captures" / cid / "lab"
 
 
-def _assets_dir(pid: str) -> Path:
+def package_directory(pid: str) -> Path:
     _check_id(pid, "project id")
     return Path(DATA_DIR) / pid / "lab_assets"
 
@@ -142,7 +142,7 @@ def _capture(pid: str, cid: str) -> tuple[Image.Image, CaptureResult]:
 
 # ── package images ──────────────────────────────────────────────────────────────
 
-def _asset(png: Path) -> PackageAsset:
+def package_asset(png: Path) -> PackageAsset:
     meta = cast(dict[str, Any], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
     with Image.open(png) as im:
         return PackageAsset(
@@ -170,7 +170,7 @@ def upload_package(
         raise AppError("not an image the server can read (use PNG, JPEG or WebP)", 400) from e
     img.thumbnail((1200, 1200))
     aid = f"pkg_{uuid.uuid4().hex[:8]}"
-    folder = _assets_dir(pid)
+    folder = package_directory(pid)
     folder.mkdir(parents=True, exist_ok=True)
     rgba = img.convert("RGBA")
     transparent = img.mode in ("RGBA", "LA", "P") and cast(tuple[int, int], rgba.getchannel("A").getextrema())[0] < 250
@@ -180,7 +180,7 @@ def upload_package(
     meta = {"name": (name.strip() or Path(filename).stem)[:80] or aid, "brand": brand.strip()[:40], "sku": sku.strip()[:80],
             "cut_out": cut, "created_at": now_iso()}
     write_json(folder / f"{aid}.json", meta)
-    return _asset(folder / f"{aid}.png")
+    return package_asset(folder / f"{aid}.png")
 
 
 class PackageRead(BaseModel):
@@ -193,7 +193,7 @@ class PackageRead(BaseModel):
 def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", config: SimulationConfig) -> PackageRead:
     """A vision model reads the pack: name, brand and size replace the file-name guess, and an exact product of the
     layout is linked when the image was not linked yet. The reading is kept with the image."""
-    with _package_edit(pid, aid) as png:
+    with package_edit(pid, aid) as png:
         before = cast(dict[str, object], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
     store = _load_store(pid, setup_id) if setup_id else None
     products = [i.name for r in store.product_racks for sl in r.slots for i in sl.items] if store else []
@@ -217,7 +217,7 @@ def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", con
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[shelf_lab] reading {aid} failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The pack could not be read"), 502) from e
-    with _package_edit(pid, aid) as png:
+    with package_edit(pid, aid) as png:
         meta = cast(dict[str, object], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
         if meta != before:
             raise AppError("The product image changed while the pack was being read. Review it before trying again.", 409)
@@ -231,40 +231,40 @@ def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", con
             meta["sku"] = next(iter(candidates))
         meta["reading"] = {**reading.model_dump(), "model": llm_config.model, "read_at": now_iso()}
         write_json(png.with_suffix(".json"), meta)
-        return PackageRead(asset=_asset(png), reading=reading, model=llm_config.model, linked=bool(linked))
+        return PackageRead(asset=package_asset(png), reading=reading, model=llm_config.model, linked=bool(linked))
 
 
 def list_packages(pid: str) -> list[PackageAsset]:
-    folder = _assets_dir(pid)
-    assets = [_asset(png) for png in folder.glob("pkg_*.png")] if folder.exists() else []
+    folder = package_directory(pid)
+    assets = [package_asset(png) for png in folder.glob("pkg_*.png")] if folder.exists() else []
     return sorted(assets, key=lambda a: a.created_at, reverse=True)
 
 
 def update_package(pid: str, aid: str, upd: PackageUpdate) -> PackageAsset:
-    with _package_edit(pid, aid) as png:
+    with package_edit(pid, aid) as png:
         meta = cast(dict[str, object], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
         for key, value in upd.model_dump(exclude_none=True).items():
             meta[key] = str(value).strip()
         write_json(png.with_suffix(".json"), meta)
-        return _asset(png)
+        return package_asset(png)
 
 
 def delete_package(pid: str, aid: str) -> None:
-    with _package_edit(pid, aid) as png:
+    with package_edit(pid, aid) as png:
         png.unlink()
         png.with_suffix(".json").unlink(missing_ok=True)
 
 
 def package_path(pid: str, aid: str) -> Path:
     _check_id(aid, "package id")
-    path = _assets_dir(pid) / f"{aid}.png"
+    path = package_directory(pid) / f"{aid}.png"
     if not path.exists():
         raise AppError(f"package image not found: {aid}", 404)
     return path
 
 
 @contextmanager
-def _package_edit(pid: str, aid: str) -> Iterator[Path]:
+def package_edit(pid: str, aid: str) -> Iterator[Path]:
     png = package_path(pid, aid)
     try:
         with FileLock(png.with_suffix(".lock"), timeout=0):

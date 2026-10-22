@@ -16,6 +16,7 @@ import { PreviewRunsList } from "@/features/runs/components/PreviewRunsList";
 import { FloorConfigurationPanel } from "@/features/grid-editor/FloorConfigurationPanel";
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
 import { ProductBulkEditor } from "@/features/products/ProductBulkEditor";
+import { LibraryPhotos } from "@/features/products/LibraryPhotos";
 import { RackCopy } from "@/features/products/RackCopy";
 import { StarterFill } from "@/features/products/StarterFill";
 import { reasonIcon, reasonLabel, type Availability } from "@/views/simulation/availability";
@@ -141,6 +142,7 @@ function ReadyContent({
           <h3 className="text-sm font-medium">Step 2: Item placement</h3>
           <StarterFill key={`starter:${pid}:${sid}`} pid={pid} sid={sid} />
           <RackCopy key={`copy:${pid}:${sid}`} pid={pid} sid={sid} />
+          <LibraryPhotos key={`photos:${pid}:${sid}`} pid={pid} sid={sid} />
           <ProductBulkEditor key={`${pid}:${sid}`} pid={pid} sid={sid} />
           <LayoutExcelControls
             store={setup.store}

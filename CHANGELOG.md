@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
+  before/after preview, immutable photo copies, source revision checks and retry-safe saving.
+
 ## 0.4.0 — TwinStore: the store's digital twin, from photos, in one click
 
 The project is now **TwinStore**, built on intellicia's open-source Parastore (MIT). User-facing
