@@ -104,3 +104,41 @@ def test_a_weekend_scenario_is_not_counted_twice_on_the_neighborhoods_weekend_pr
     # On the weekend profile only the heat is applied; on a weekday profile the weekend's effect is applied too.
     assert _scenario_traffic(weekend, store, None, profile="weekend") == _scenario_traffic(as_weekday, store, None)
     assert _scenario_traffic(weekend, store, None, profile="weekday") == _scenario_traffic(weekend, store, None)
+
+
+def test_a_study_panel_takes_written_customers_before_their_twins():
+    from store_emulator.domain.persona import Persona
+    from store_emulator.domain.types import Weekday
+    from store_emulator.engine.optimize.evaluate import select_personas
+
+    def person(i: int, twin_of: str = "") -> Persona:
+        return Persona(id=f"P{i}", day=Weekday(1), arrival_hour=9, identity="s", age_group="20s", gender="Female",  # type: ignore[arg-type]
+                       description=f"d{i % 100}", intent="i", purpose="p", twin_of=twin_of)
+
+    written = [person(i) for i in range(100)]
+    pool = written + [person(100 + i, twin_of=f"P{i % 100}") for i in range(2340)]
+    panel = select_personas(pool, 100, seed=1)
+    assert len(panel) == 100 and not any(p.twin_of for p in panel)
+    bigger = select_personas(pool, 150, seed=1)
+    assert sum(not p.twin_of for p in bigger) == 100 and len(bigger) == 150
+    # Without twins the draw is the one it always was.
+    assert select_personas(written, 30, seed=2) == select_personas(list(written), 30, seed=2)
+
+
+def test_a_saved_layouts_category_price_change_is_its_new_everyday_price():
+    """In an A/B test shoppers compare a category price change with the old price; saved as a layout ("edit in
+    words"), the new price is the everyday price and nothing is compared with it."""
+    from store_emulator.domain.marketing import VariantChange
+    from store_emulator.engine.layout_edit import apply_layout_edit
+    from store_emulator.engine.marketing.variants import apply_changes
+
+    store = generate_store("mini_mart", seed=0)
+    rack = next(r for r in store.racks if r.slots and r.rack_desc)
+    change = VariantChange(kind="category_price", category=rack.rack_desc, percent=20)
+    tested, _, _ = apply_changes(store, [change])
+    saved, applied, _ = apply_layout_edit(store, [change], "USD")
+    tested_items = [i for r in tested.racks if r.id == rack.id for s in r.slots for i in s.items]
+    saved_items = [i for r in saved.racks if r.id == rack.id for s in r.slots for i in s.items]
+    assert tested_items and all(i.regular_price > 0 for i in tested_items)
+    assert all(i.regular_price == 0 for i in saved_items) and "remember" not in " ".join(applied)
+    assert [i.price for i in saved_items] == [i.price for i in tested_items]

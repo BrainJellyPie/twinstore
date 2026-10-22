@@ -235,8 +235,10 @@ def test_conjoint_with_fake_model(client, monkeypatch):
     assert importance["Pack"] < importance["Sugar"]
     assert view["request"]["product"] == "a 500 ml iced tea"
     csv = client.get(f"/api/projects/{PID}/conjoints/{cid}/export.csv").text.removeprefix("\ufeff").splitlines()
-    assert csv[0] == "respondent,age_group,gender,task,option,Sugar,Pack,price,chosen" and len(csv) == 1 + 20 * 6 * 4
-    assert sum(int(line.rsplit(",", 1)[1]) for line in csv[1:]) == 120
+    # Prices are minor units: the currency and unit columns come after the original ones.
+    assert csv[0] == "respondent,age_group,gender,task,option,Sugar,Pack,price,chosen,currency,minor_per_major"
+    assert len(csv) == 1 + 20 * 6 * 4 and all(line.endswith(",USD,100") for line in csv[1:])
+    assert sum(int(line.split(",")[-3]) for line in csv[1:]) == 120
     page = client.get(f"/api/projects/{PID}/conjoints/{cid}/report.html").text
     assert "Conjoint report" in page and "What drives the choice" in page and "<svg" in page
     assert [j["job_id"] for j in client.get(f"/api/projects/{PID}/conjoints").json()] == [cid]

@@ -11,6 +11,7 @@ from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face
+from store_emulator.engine.validation import list_blocked_faces
 
 MAX_ITEMS_PER_SLOT = 4
 
@@ -24,11 +25,14 @@ def _name(store: Store, sku: str) -> str:
     return occ[0][1].items[occ[0][2]].name if occ else sku
 
 
-def charm_price(price: int, minor_per_major: int = 100) -> int:
-    """The price ending in .99 at or just above `price` (only for currencies with cents)."""
-    if minor_per_major <= 1:
+def charm_price(price: int, minor_per_major: int = 100, *, up: bool = False) -> int:
+    """The price ending in .99 at or just below `price` (at or just above it with `up`), for currencies with cents.
+    A price under .99 (a free product among them) stays as it is."""
+    if minor_per_major <= 1 or price < minor_per_major - 1:
         return price
-    return max(minor_per_major - 1, math.ceil((price + 1) / minor_per_major) * minor_per_major - 1)
+    if up:
+        return math.ceil((price + 1) / minor_per_major) * minor_per_major - 1
+    return (price + 1) // minor_per_major * minor_per_major - 1
 
 
 def _busiest_face(rack: Rack) -> Face | None:
@@ -38,18 +42,33 @@ def _busiest_face(rack: Rack) -> Face | None:
     return max(counts, key=lambda f: counts[f]) if counts else None
 
 
-def _target_slots(rack: Rack, face: Face, level: int) -> list[Slot]:
-    """Slots at `face` / `level` of every block that has that face, created when missing."""
+_BLOCKED = {
+    "locked": "the face is locked",
+    "out_of_bounds": "it faces the outer wall",
+    "occupied": "another fixture stands in front of it",
+    "unreachable": "no aisle leads to it",
+}
+
+
+def _target_slots(store: Store, rack: Rack, face: Face, level: int) -> tuple[list[Slot], list[str]]:
+    """Slots at `face` / `level` of every block that has that face and whose face shoppers can reach, created when
+    missing, and why the face cannot be reached on the other blocks. The simulation clears products from faces
+    nobody can reach (validation.clear_blocked_slots), so a product moved there would leave the test."""
+    blocked = {(b.block, b.face): b.reasons for b in list_blocked_faces(store) if b.rack_id == rack.id}
     out: list[Slot] = []
+    reasons: list[str] = []
     for block in range(len(rack.block_cells)):
         if face not in rack.valid_faces(block):
+            continue
+        if why := blocked.get((block, face)):
+            reasons.extend(_BLOCKED.get(r, r) for r in why if _BLOCKED.get(r, r) not in reasons)
             continue
         slot = next((s for s in rack.slots if s.block == block and s.face == face and s.level == level), None)
         if slot is None:
             slot = Slot(block=block, face=face, level=level)
             rack.slots.append(slot)
         out.append(slot)
-    return out
+    return out, reasons
 
 
 def _move(store: Store, change: VariantChange) -> tuple[str, list[str]]:
@@ -60,7 +79,10 @@ def _move(store: Store, change: VariantChange) -> tuple[str, list[str]]:
     if face is None:
         return "", [f"move: rack {rack.rack_name or rack.id} has no shelves to move to"]
     level = change.level or 3
-    targets = _target_slots(rack, face, level)
+    targets, blocked = _target_slots(store, rack, face, level)
+    if not targets and blocked:
+        return "", [(f"move: shoppers cannot reach the {face.value} face of {rack.rack_name or rack.id} ({'; '.join(blocked)}), "
+                     f"so {_name(store, change.sku)} stays where it is: pick a face along an aisle")]
     if not targets:
         return "", [f"move: rack {rack.rack_name or rack.id} has no {face.value} face"]
     moved = 0
@@ -92,8 +114,12 @@ def apply_changes(
     *,
     package_uris: Mapping[str, str] | None = None,
     minor_per_major: int = 100,
+    remember_old_prices: bool = True,
 ) -> tuple[Store, list[str], list[str]]:
     """The control with `changes` applied in order, what changed (in words) and warnings.
+
+    `remember_old_prices`: a category price change keeps the old price as the reference shoppers compare with (a
+    test of a price change); off for a layout saved with new everyday prices, which shoppers take as they are.
 
     `package_uris` maps product image ids to the URI stored on the slot item (`image_url`), which the
     vision shoppers' shelf renderer draws instead of the plain package.
@@ -112,11 +138,30 @@ def apply_changes(
             if not items:
                 warnings.append(f"category price: no products under '{change.category}'")
                 continue
+            changed: dict[str, tuple[int, int]] = {}
             for item in items:
-                new = max(0, round(item.price * (1 + change.percent / 100)))
-                item.price = charm_price(new, minor_per_major) if change.charm else new
-                item.regular_price = 0
-            applied.append(f"{change.category}: every price {change.percent:+g} %{' and ending in .99' if change.charm else ''} ({len(items)} items)")
+                old = item.price
+                new = max(0, round(old * (1 + change.percent / 100)))
+                if change.charm:
+                    charmed = charm_price(new, minor_per_major)
+                    # Rounding down must not turn a rise into a cut (or no change): a rise ends on the next .99 up.
+                    new = charm_price(new, minor_per_major, up=True) if change.percent > 0 and charmed <= old else charmed
+                if new != old and remember_old_prices:
+                    # Shoppers remember the old price, as with a discount: rule shoppers weigh the new price against
+                    # it and a cut shows it on the tag; without it a category price change looked free to them.
+                    item.regular_price = item.regular_price or old
+                elif new != old:
+                    item.regular_price = 0   # the new everyday price: nothing to compare it with
+                item.price = new
+                changed.setdefault(item.sku, (old, new))
+            actual = ""
+            if change.charm:
+                ratios = [new / old - 1 for old, new in changed.values() if old > 0]
+                if ratios:
+                    actual = f", {sum(ratios) / len(ratios) * 100:+.1f} % on average"
+            remembered = "; shoppers remember the old prices" if remember_old_prices else ""
+            applied.append(f"{change.category}: every price {change.percent:+g} %{' and ending in .99' if change.charm else ''}"
+                           f"{actual} ({len(items)} items{remembered})")
             continue
 
         occ = _occurrences(store, change.sku)

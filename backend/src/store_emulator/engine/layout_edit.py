@@ -100,5 +100,7 @@ def apply_layout_edit(store: Store, changes: list[VariantChange], currency: str)
     """The edited layout, the edits in words and what could not be applied (package changes are test-only)."""
     kept = [c for c in changes if c.kind in EDIT_KINDS]
     skipped = ["a new package is only shown in tests, not saved to a layout"] if len(kept) < len(changes) else []
-    edited, applied, problems = apply_changes(store, kept, minor_per_major=1 if currency.upper() in ZERO_DECIMAL else 100)
+    # A saved layout's category price change is its new everyday price, not a test against the old one.
+    edited, applied, problems = apply_changes(store, kept, minor_per_major=1 if currency.upper() in ZERO_DECIMAL else 100,
+                                              remember_old_prices=False)
     return edited, applied, skipped + problems

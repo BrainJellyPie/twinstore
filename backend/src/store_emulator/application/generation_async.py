@@ -16,7 +16,7 @@ from store_emulator.application.storage.generations import (
 from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.engine.files import remove_tree
 from store_emulator.application.storage.setups import (
-    metadata_path, personas_path, read_setup,
+    has_run_history, metadata_path, personas_path, read_setup,
 )
 from store_emulator.application.supplemental import summarize_supplemental, traffic_from_supplemental
 from store_emulator.domain.config import SimulationConfig
@@ -84,7 +84,7 @@ def start_persona_generation(
     setups = _list_setups(project_id)
     if any(s.get("status") == "running" for s in setups):
         raise AppError("personas cannot be regenerated while a simulation is running.", 409)
-    if any(s.get("runId") for s in setups):
+    if has_run_history(project_id):   # its layout may have been deleted since: the runs still use these customers
         raise AppError("personas cannot be regenerated because the project has simulation history.", 409)
 
     if supplemental_bytes is not None:
@@ -400,6 +400,14 @@ def visitors_per_day(project_id: str, personas: list[Persona]) -> tuple[float, f
     if len(values) != len(days) or sum(values) <= 0:
         return simulated, simulated
     return round(max(sum(values) / len(values), simulated), 1), simulated
+
+
+def visitors_per_day_coming(pid: str, everyone: list[Persona], coming: list[Persona]) -> tuple[float, float]:
+    """visitors_per_day for the shoppers who come while the layout is open (`coming`, from scenario_shoppers): the
+    run estimate's shoppers a day, with the store's estimated traffic scaled by the same share of `everyone`."""
+    estimated, simulated = visitors_per_day(pid, everyone)
+    _, coming_a_day = visitors_per_day(pid, coming)
+    return (round(estimated / simulated * coming_a_day, 1) if simulated else coming_a_day), coming_a_day
 
 
 def _stored_traffic(meta: dict[str, object]) -> TrafficProfile | None:

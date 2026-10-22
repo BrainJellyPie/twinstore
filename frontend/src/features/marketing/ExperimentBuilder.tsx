@@ -387,7 +387,7 @@ function VariantCard({ letter, variant, products, fixtures, categories, packages
     ...v,
     changes: [...v.changes, {
       id: uid(), kind, sku: kind === "category_price" ? "" : defaultSku,
-      ...(kind === "discount" ? { percent: -20 } : kind === "promo" ? { promo: "SALE" } : kind === "move" ? { level: 3 } : kind === "category_price" ? { percent: 0, charm: true } : {}),
+      ...(kind === "discount" ? { percent: -20 } : kind === "promo" ? { promo: "SALE" } : kind === "move" ? { level: 3 } : kind === "category_price" ? { percent: -10 } : {}),
     }],
   }));
   return (
