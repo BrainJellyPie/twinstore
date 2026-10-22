@@ -73,3 +73,15 @@ def test_the_server_is_guarded():
     assert client.post("/api/health", headers={"Origin": "http://localhost:5173"}).status_code == 405
     read = client.get("/api/health", headers={"Origin": EVIL})
     assert read.status_code == 200 and "access-control-allow-origin" not in read.headers
+
+
+def test_the_apps_own_page_opened_by_ip_from_another_device_still_changes(monkeypatch: pytest.MonkeyPatch):
+    client = _client(monkeypatch)
+    for address in ("192.168.0.7:8000", "[fe80::1]:8000"):
+        same = client.post("/api/thing", headers={"Origin": f"http://{address}", "Host": address})
+        assert same.status_code == 200, address
+    # A name pointed at this computer by another site is not the app's own page.
+    rebound = client.post("/api/thing", headers={"Origin": "http://evil.example:8000", "Host": "evil.example:8000"})
+    assert rebound.status_code == 403
+    other = client.post("/api/thing", headers={"Origin": "http://192.168.0.9:8000", "Host": "192.168.0.7:8000"})
+    assert other.status_code == 403

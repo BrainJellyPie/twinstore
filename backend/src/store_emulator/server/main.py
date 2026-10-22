@@ -1,6 +1,7 @@
 import logging
 import math
 import mimetypes
+import ipaddress
 import os
 import re
 import threading
@@ -8,6 +9,7 @@ from os import PathLike
 from pathlib import Path
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
@@ -136,6 +138,19 @@ LOOPBACK_ORIGIN = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?"
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
+def _same_address(origin: str, host: str | None) -> bool:
+    """The page came from this server reached by its IP address (another device on the network, with
+    `launcher.py --host 0.0.0.0`). A name is not enough: a site can point its own name at this computer."""
+    parts = urlsplit(origin)
+    if host is None or parts.netloc != host or parts.hostname is None:
+        return False
+    try:
+        ipaddress.ip_address(parts.hostname)
+    except ValueError:
+        return False
+    return True
+
+
 class RefuseOtherSites:
     """CORS only hides the answer from other pages: a POST without a body, or a form, is sent from any web page
     without asking first. A change (any method but GET, HEAD and OPTIONS) is refused when the request names an origin
@@ -150,7 +165,8 @@ class RefuseOtherSites:
             headers = Headers(scope=scope)
             origin = headers.get("origin")
             if (origin is None and headers.get("sec-fetch-site") == "cross-site") or (
-                    origin is not None and re.fullmatch(LOOPBACK_ORIGIN, origin) is None and origin not in self.extra):
+                    origin is not None and re.fullmatch(LOOPBACK_ORIGIN, origin) is None and origin not in self.extra
+                    and not _same_address(origin, headers.get("host"))):
                 refused = JSONResponse({"detail": "TwinStore accepts changes only from its own pages"}, status_code=403)
                 await refused(scope, receive, send)
                 return
