@@ -251,3 +251,40 @@ def test_new_outdoor_and_craft_default_maps_stock_fully_pictured_departments(tem
                    for slot in rack.slots for item in slot.items}
         assert stocked == expected
         assert all(item.image_url for item in stocked.values())
+
+
+NEW_PET_GARDEN_CRAFT_DEPARTMENTS = [('pet_store', ['pet_walking']), ('pet_superstore', ['pet_walking']), ('gas_station', ['car_detailing']), ('hardware_store', ['car_detailing', 'watering_irrigation']), ('garden_center', ['composting_tools', 'watering_irrigation']), ('refill_market', ['composting_tools']), ('art_craft_store', ['embroidery', 'knitting_crochet', 'paper_crafting']), ('art_supply_warehouse', ['embroidery', 'knitting_crochet']), ('creative_design_hall', ['paper_crafting']), ('artisan_bakery', ['food_gift_packaging']), ('tea_lounge', ['food_gift_packaging']), ('hypermarket', ['pet_walking', 'car_detailing'])]
+
+
+@pytest.mark.parametrize("template_id,departments", NEW_PET_GARDEN_CRAFT_DEPARTMENTS)
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+@pytest.mark.parametrize("seed", [0, 7, 42])
+def test_default_pet_garden_craft_maps_stock_added_products_and_photos(template_id, departments, currency, seed):
+    store = generate_store(template_id, currency=currency, seed=seed)
+    assert validate(store) == []
+    for category in departments:
+        expected = {catalog_slot_item(product, currency).sku: catalog_slot_item(product, currency)
+                    for product in CATALOG[category]}
+        stocked = {item.sku: item for rack in store.product_racks if rack.rack_desc == category
+                   for slot in rack.slots for item in slot.items}
+        assert len(expected) == 12
+        assert stocked == expected
+        assert sum(bool(item.image_url) for item in stocked.values()) >= 4
+
+
+@pytest.mark.parametrize("template_id,departments", NEW_PET_GARDEN_CRAFT_DEPARTMENTS)
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_added_pet_garden_craft_departments_respect_small_map_limits(template_id, departments, currency):
+    excluded = departments[0]
+    options = LayoutOptions(width=8, height=6, dining_tables=0, checkouts=1,
+                            excluded_categories=[excluded], products_per_category=1,
+                            category_product_limits={category: 2 for category in departments})
+    store = generate_store(template_id, currency=currency, options=options)
+    assert validate(store) == []
+    assert store.product_racks
+    assert excluded not in {rack.rack_desc for rack in store.product_racks}
+    for category in {rack.rack_desc for rack in store.product_racks}:
+        skus = {item.sku for rack in store.product_racks if rack.rack_desc == category
+                for slot in rack.slots for item in slot.items}
+        assert len(skus) <= (2 if category in departments else 1)
+    assert generate_store(template_id, currency=currency, options=options) == store

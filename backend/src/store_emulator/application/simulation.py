@@ -5,6 +5,7 @@ import logging
 import time
 import traceback
 import uuid
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
@@ -41,6 +42,7 @@ from store_emulator.application.storage.setups import (
 from store_emulator.application.storage.runs import load_run_results, load_run_store, save_run
 from store_emulator.application.storage import images as image_storage
 from store_emulator.engine.analysis.compare import compare_runs, customer_metrics
+from store_emulator.engine.simulation.aggregator import aggregate
 from store_emulator.engine.analysis.fidelity import fidelity_report
 
 from store_emulator.application.errors import AppError, model_failure
@@ -389,6 +391,61 @@ def get_run_output(pid: str, run_id: str, filename: str) -> Any:
     if not path.exists():
         raise FileNotFoundError(f"{filename} not found")
     return read_json(path)
+
+
+def get_run_summary(pid: str, run_id: str) -> object:
+    """The run's summary. One saved by an older version lacks the figures added since (conversion, basket, impulse
+    share, visit length, …): they are worked out from its saved shoppers, as the run itself would now, rather than
+    asking the user to run it again. What the run saved is kept as saved; nothing is written."""
+    raw: object = get_run_output(pid, run_id, "summary.json")
+    if not isinstance(raw, dict):
+        return raw
+    saved = cast(dict[str, object], raw)
+    if "conversion_rate" in saved:
+        return saved
+    base = _run_base(pid, run_id).resolve()
+    try:
+        versions: list[tuple[int, int] | None] = []
+        for name in ("output/summary.json", "output/timeline.json", "input/store.json",
+                     "output/personas.json", "output/pathcalc_heatmap.json"):
+            try:
+                info = (base / name).stat()
+            except FileNotFoundError:
+                versions.append(None)
+            else:
+                versions.append((info.st_mtime_ns, info.st_size))
+        filled = _filled_summary(str(base), tuple(versions))
+    except (OSError, ValueError, TypeError, KeyError) as e:   # pydantic's errors are ValueErrors
+        logger.warning(f"[runs] {pid}/{run_id}: the older summary could not be completed ({e})")
+        return saved
+    return {**filled, **saved}
+
+
+@lru_cache(maxsize=16)
+def _filled_summary(base: str, _stamp: tuple[tuple[int, int] | None, ...]) -> dict[str, object]:
+    root = Path(base)
+    raw_saved: object = read_json(root / "output" / "summary.json")
+    if not isinstance(raw_saved, dict):
+        raise ValueError("saved summary is not an object")
+    saved = cast(dict[str, object], raw_saved)
+    store = load_run_store(root)
+    raw_personas: object = read_json(root / "output" / "personas.json") if (root / "output" / "personas.json").exists() else []
+    if isinstance(raw_personas, dict):
+        values = list(cast(dict[str, object], raw_personas).values())
+    elif isinstance(raw_personas, list):
+        values = cast(list[object], raw_personas)
+    else:
+        raise ValueError("saved personas are not a list or object")
+    personas = [Persona.model_validate(p) for p in values]
+    heatmap_path = root / "output" / "pathcalc_heatmap.json"
+    heatmap = cast(list[list[float]], read_json(heatmap_path)) if heatmap_path.exists() else \
+        [[0.0] * store.grid_size[0] for _ in range(store.grid_size[1])]
+    currency = str(saved.get("currency") or "USD")
+    results = load_run_results(root)
+    summary: dict[str, object] = aggregate(store, results, personas, heatmap, currency=currency).summary.model_dump(mode="json")
+    if any(e for r in results for e in r.purchases) and not any(e.origin for r in results for e in r.purchases):
+        summary["impulse_revenue_share"] = None   # the run did not record which purchases were impulse buys
+    return summary
 
 
 def engine_meta_summary(pid: str, run_id: str, *, max_examples: int = 8) -> dict[str, object] | None:

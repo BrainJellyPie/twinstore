@@ -246,7 +246,7 @@ async def get_summary(pid: str, run_id: str) -> dict[str, Any]:
     `by_*` distributions depend on persona attributes — some engines may leave them empty or weakly meaningful."""
     try:
         return {
-            "summary": sim_service.get_run_output(pid, run_id, "summary.json"),
+            "summary": sim_service.get_run_summary(pid, run_id),
             "personas": sim_service.get_run_output(pid, run_id, "personas.json"),
         }
     except FileNotFoundError as e:

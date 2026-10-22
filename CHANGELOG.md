@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Refresh completed older-run summaries when any source file changes, and isolate
+  cached results by data folder; damaged sources retain the saved summary.
+
+- Add 96 pet-walking, car-detailing, composting, watering, embroidery, knitting,
+  paper-craft and food-gift-packaging products with 32 photos and six-language
+  category labels. Twelve matching default maps stock the new departments.
+  The catalog now has 1,784 entries in 155 categories and 1,184 local images.
+
 - Show backroom shortages even when opening inventory is zero, including individual
   product limits, and retain the empty-backroom summary when no refill was needed.
 
@@ -86,6 +94,12 @@
   each product whose backroom ran dry, when. Units in the backroom are held at the stock-holding cost, and
   **Find the best plan** also tries other backroom levels. API: `backroom_per_product`, `backroom_overrides` and
   `daily_delivery` in `operations`; blank (null) keeps the endless backroom of earlier versions.
+### Fixes
+- A run saved by an older version, the bundled sample store's runs included, said "re-run it to see conversion,
+  basket and impulse KPIs". Its conversion, revenue per visitor, basket, units, visit length and segment figures are
+  now worked out from its saved shoppers when it is opened (nothing is rewritten); only the impulse share, which
+  those runs did not record, stays empty.
+
 
 ### A layout knows how its store is run — runs, A/B tests and the optimizer use it
 - A layout can now keep its operations: units per shelf level (and per product), refills, tills (and by hour),

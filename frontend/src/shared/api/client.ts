@@ -795,7 +795,8 @@ export interface RunSummary {
   avg_units_per_buyer?: number;
   avg_basket_value?: number;
   revenue_per_visitor?: number;
-  impulse_revenue_share?: number;
+  /** null: the run (made by an older version) did not record which purchases were impulse buys. */
+  impulse_revenue_share?: number | null;
   impulse_unit_share?: number;
   avg_visit_sec?: number;
   avg_path_tiles?: number;

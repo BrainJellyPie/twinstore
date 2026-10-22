@@ -79,7 +79,7 @@ TEMPLATES: list[StoreTemplate] = [
         id="gas_station", name="Gas-station shop", description="Drivers' stop: coffee, energy drinks, snacks, car care and household basics.",
         store_type="convenience", grid=(10, 8),
         fridges=["soft_drinks", "energy_coffee", "water_sports", "dairy", "beer_alcohol"], freezers=["ice_cream"],
-        wall_shelves=["car_care", "travel_essentials", "household"], gondolas=["chips", "artisan_snacks", "instant_food"],
+        wall_shelves=["car_care", "travel_essentials", "household", "car_detailing"], gondolas=["chips", "artisan_snacks", "instant_food"],
         near_counter=["checkout_impulse", "coffee_station"],
     ),
     StoreTemplate(
@@ -127,7 +127,7 @@ TEMPLATES: list[StoreTemplate] = [
             "craft_refreshments", "dairy", "fresh_produce", "fresh_meals", "soft_drinks", "water_sports",
             "beer_alcohol"
         ],
-        freezers=["ice_cream", "frozen_meals", "ice_cream", "frozen_meals"], wall_shelves=["household", "pet_care", "health_beauty", "baby_care", "home_storage", "laundry_care", "kitchen_tools", "food_storage", "home_linen", "dinnerware", "bath_body", "oral_care", "pantry_organization", "shoe_care", "facial_skincare"],
+        freezers=["ice_cream", "frozen_meals", "ice_cream", "frozen_meals"], wall_shelves=["household", "pet_care", "health_beauty", "baby_care", "home_storage", "laundry_care", "kitchen_tools", "food_storage", "home_linen", "dinnerware", "bath_body", "oral_care", "pantry_organization", "shoe_care", "facial_skincare", "pet_walking", "car_detailing"],
         gondolas=[
             "pantry", "breakfast_spreads", "baking_ingredients", "global_sauces", "mediterranean_pantry",
             "korean_pantry", "japanese_pantry", "spice_blends", "instant_food", "chips", "sweets",
@@ -221,7 +221,7 @@ TEMPLATES: list[StoreTemplate] = [
     ),
     StoreTemplate(
         id="pet_store", name="Pet supplies store", description="Pet food, treats and care products with clear parallel shopping aisles.",
-        store_type="pets", grid=(16, 12), fridges=[], wall_shelves=["pet_care", "pet_accessories", "pet_enrichment", "pet_grooming", "small_pet_supplies"],
+        store_type="pets", grid=(16, 12), fridges=[], wall_shelves=["pet_care", "pet_accessories", "pet_enrichment", "pet_grooming", "small_pet_supplies", "pet_walking"],
         gondolas=["pet_care", "aquarium_supplies", "bird_supplies"], near_counter=["pet_care"], open_hours=(9, 21),
     ),
     StoreTemplate(
@@ -258,14 +258,14 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="tea_lounge", name="Tea lounge & gift shop", description="Six tables along the right side, botanical finishes, tea menus and small tea gifts on browsing islands.",
         store_type="cafe", grid=(18, 16), fridges=["soft_drinks", "desserts"],
-        wall_shelves=["tea_menu", "home_coffee_tea", "dinnerware", "gift_confectionery", "tea_brewing_tools"], gondolas=["tea_menu", "dinnerware", "home_coffee_tea"],
+        wall_shelves=["tea_menu", "home_coffee_tea", "dinnerware", "gift_confectionery", "tea_brewing_tools", "food_gift_packaging"], gondolas=["tea_menu", "dinnerware", "home_coffee_tea"],
         near_counter=["tea_menu", "desserts"], style="free_flow", open_hours=(10, 22), dining_tables=6,
         seating_zone="right", design_theme="botanical",
     ),
     StoreTemplate(
         id="artisan_bakery", name="Artisan bakery", description="Warm bread and pastry displays on a browsing loop, with two small dining groups near the front.",
         store_type="bakery", grid=(16, 12), fridges=["dairy", "soft_drinks", "desserts"],
-        wall_shelves=["bakery", "baking_ingredients", "breakfast_spreads", "baking_decorating"], gondolas=["bakery", "desserts", "baking_equipment"],
+        wall_shelves=["bakery", "baking_ingredients", "breakfast_spreads", "baking_decorating", "food_gift_packaging"], gondolas=["bakery", "desserts", "baking_equipment"],
         near_counter=["cafe_menu", "bakery"], style="loop", open_hours=(6, 20), dining_tables=2,
         seating_zone="front", design_theme="warm",
     ),
@@ -277,7 +277,7 @@ TEMPLATES: list[StoreTemplate] = [
     ),
     StoreTemplate(
         id="hardware_store", name="Hardware & home repair store", description="Tool and home-repair aisles with industrial finishes, household essentials and an accessory wall.",
-        store_type="hardware", grid=(24, 18), fridges=[], wall_shelves=["hardware", "home_lighting", "bathroom_accessories", "woodcraft_supplies", "household", "electronics", "home_storage", "kitchen_tools", "cycling_maintenance", "camp_repair"],
+        store_type="hardware", grid=(24, 18), fridges=[], wall_shelves=["hardware", "home_lighting", "bathroom_accessories", "woodcraft_supplies", "household", "electronics", "home_storage", "kitchen_tools", "cycling_maintenance", "camp_repair", "car_detailing", "watering_irrigation"],
         gondolas=["hardware", "household", "zero_waste_cleaning"], near_counter=["hardware"], open_hours=(7, 21), design_theme="industrial",
     ),
     StoreTemplate(
@@ -307,13 +307,13 @@ TEMPLATES: list[StoreTemplate] = [
     ),
     StoreTemplate(
         id="garden_center", name="Garden & outdoor center", description="Plants, growing supplies and garden tools on a large botanical floor with clear central cross aisles and four checkout counters.",
-        store_type="garden", grid=(32, 26), fridges=[], wall_shelves=["garden_supplies", "flowers", "indoor_plants", "home_design", "outdoor_cooking", "picnic_reusables", "garden_supplies", "flowers", "indoor_plants", "home_lighting", "garden_supplies", "home_storage", "seed_starting", "plant_propagation"],
+        store_type="garden", grid=(32, 26), fridges=[], wall_shelves=["garden_supplies", "flowers", "indoor_plants", "home_design", "outdoor_cooking", "picnic_reusables", "garden_supplies", "flowers", "indoor_plants", "home_lighting", "garden_supplies", "home_storage", "seed_starting", "plant_propagation", "composting_tools", "watering_irrigation"],
         gondolas=["garden_supplies", "flowers", "indoor_plants", "outdoor_cooking"], near_counter=["garden_supplies", "flowers"],
         style="cross", open_hours=(8, 20), checkouts=4, design_theme="botanical",
     ),
     StoreTemplate(
         id="art_craft_store", name="Art & craft supply store", description="Painting, drawing and craft materials around intersecting central aisles, with stationery and books along warm wood walls.",
-        store_type="crafts", grid=(22, 18), fridges=[], wall_shelves=["art_craft", "fine_art_supplies", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies", "miniature_painting", "stationery", "books", "leathercraft", "candle_care"],
+        store_type="crafts", grid=(22, 18), fridges=[], wall_shelves=["art_craft", "fine_art_supplies", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies", "miniature_painting", "stationery", "books", "leathercraft", "candle_care", "embroidery", "knitting_crochet", "paper_crafting"],
         gondolas=["art_craft", "fine_art_supplies", "sewing_textiles"], near_counter=["art_craft", "gift_wrapping"],
         style="cross", open_hours=(10, 21), checkouts=2, design_theme="warm",
     ),
@@ -398,7 +398,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="refill_market", name="Refill & bulk grocery", description="A large 28×22 market for refill packs, pantry staples and reusable containers with broad cross aisles. Products use fixed pack prices; bulk weighing is not simulated.",
         store_type="supermarket", grid=(28, 22), fridges=["dairy", "fresh_produce", "water_sports"] * 3,
-        wall_shelves=["refill_goods", "pantry", "food_storage", "zero_waste_cleaning", "laundry_care", "kitchen_tools", "picnic_reusables", "bathroom_accessories", "home_storage", "pantry_organization"], gondolas=["refill_goods", "pantry", "baking_ingredients", "spice_blends"],
+        wall_shelves=["refill_goods", "pantry", "food_storage", "zero_waste_cleaning", "laundry_care", "kitchen_tools", "picnic_reusables", "bathroom_accessories", "home_storage", "pantry_organization", "composting_tools"], gondolas=["refill_goods", "pantry", "baking_ingredients", "spice_blends"],
         near_counter=["refill_goods"], style="cross", open_hours=(8, 21), checkouts=4, design_theme="botanical",
     ),
     StoreTemplate(
@@ -519,7 +519,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="creative_design_hall", name="Creative design hall", description="A 30×24 Nordic concept store with homeware, art materials, books, jewelry and plant gifts around an open central plaza. Three checkout counters; open 10–20 with Tuesdays closed.",
         store_type="home", grid=(30, 24), fridges=[],
-        wall_shelves=["home_design", "fine_art_supplies", "books", "jewelry", "flowers", "home_linen", "dinnerware", "home_lighting", "indoor_plants", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "art_craft", "stationery", "gift_wrapping", "leathercraft"],
+        wall_shelves=["home_design", "fine_art_supplies", "books", "jewelry", "flowers", "home_linen", "dinnerware", "home_lighting", "indoor_plants", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "art_craft", "stationery", "gift_wrapping", "leathercraft", "paper_crafting"],
         gondolas=["home_design", "art_craft", "books", "jewelry", "flowers", "desk_organization"],
         near_counter=["souvenirs", "stationery"], style="plaza", open_hours=(10, 20), closed_days=(2,),
         checkouts=3, checkout_placement="away_from_entrance", design_theme="nordic",
@@ -558,7 +558,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="art_supply_warehouse", name="Art supply warehouse", description="A 36×28 industrial store with long art-material and stationery aisles, books, hobby kits and basic tools. Five checkout counters; open 9–20 daily.",
         store_type="crafts", grid=(36, 28), fridges=[],
-        wall_shelves=["art_craft", "stationery", "books", "hardware", "toys_hobbies", "fine_art_supplies", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies", "miniature_painting", "desk_organization", "gift_wrapping", "fine_art_supplies", "art_craft", "stationery", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies", "leathercraft", "candle_care"],
+        wall_shelves=["art_craft", "stationery", "books", "hardware", "toys_hobbies", "fine_art_supplies", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies", "miniature_painting", "desk_organization", "gift_wrapping", "fine_art_supplies", "art_craft", "stationery", "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies", "model_building_supplies", "leathercraft", "candle_care", "embroidery", "knitting_crochet"],
         gondolas=[
             "art_craft", "fine_art_supplies", "stationery", "model_building_supplies", "miniature_painting",
             "sewing_textiles", "woodcraft_supplies", "ceramic_craft_supplies"
@@ -597,11 +597,7 @@ TEMPLATES: list[StoreTemplate] = [
     StoreTemplate(
         id="pet_superstore", name="Pet supplies superstore", description="A 36×28 industrial store with pet-food and care aisles, carriers, beds, walking and grooming accessories, and five checkout counters. Open 9–21 daily; animal care services are not simulated.",
         store_type="pets", grid=(36, 28), fridges=[],
-        wall_shelves=[
-            "pet_care", "pet_accessories", "pet_enrichment", "pet_grooming", "aquarium_supplies",
-            "aquarium_decor", "small_pet_supplies", "bird_supplies", "pet_care", "pet_accessories",
-            "pet_enrichment", "pet_grooming", "aquarium_supplies", "bird_supplies"
-        ],
+        wall_shelves=["pet_care", "pet_accessories", "pet_enrichment", "pet_grooming", "aquarium_supplies", "aquarium_decor", "small_pet_supplies", "bird_supplies", "pet_care", "pet_accessories", "pet_enrichment", "pet_grooming", "aquarium_supplies", "bird_supplies", "pet_walking"],
         gondolas=[
             "pet_care", "pet_accessories", "pet_enrichment", "pet_grooming", "aquarium_supplies",
             "aquarium_decor", "small_pet_supplies", "bird_supplies"

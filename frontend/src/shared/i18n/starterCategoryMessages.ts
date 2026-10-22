@@ -127,4 +127,12 @@ export const starterCategoryMessages = {
   "starterCategory_plant_propagation": ["Plant propagation", "식물 번식용품", "植物繁殖用品", "挿し木用品", "Propagación de plantas", "Multiplication des plantes"],
   "starterCategory_candle_care": ["Candle tools and care", "캔들 도구·관리용품", "蜡烛工具与护理", "キャンドル用品・お手入れ", "Herramientas y cuidado de velas", "Accessoires et entretien des bougies"],
   "starterCategory_camp_repair": ["Camping gear repair", "캠핑 장비 수리용품", "露营装备修补", "キャンプ用品の補修", "Reparación de equipo de acampada", "Réparation du matériel de camping"],
+  "starterCategory_pet_walking": ["Pet walking accessories", "반려동물 산책용품", "宠物外出用品", "ペットのお散歩用品", "Accesorios para pasear mascotas", "Accessoires de promenade pour animaux"],
+  "starterCategory_car_detailing": ["Car cleaning and detailing", "차량 세차·관리용품", "汽车清洁养护", "洗車・車のお手入れ", "Limpieza y cuidado del coche", "Nettoyage et entretien automobile"],
+  "starterCategory_composting_tools": ["Composting tools", "퇴비화 도구", "堆肥工具", "コンポスト用品", "Herramientas para compostaje", "Matériel de compostage"],
+  "starterCategory_watering_irrigation": ["Watering and irrigation", "물주기·관수용품", "浇水与灌溉用品", "水やり・灌水用品", "Riego y accesorios", "Arrosage et irrigation"],
+  "starterCategory_embroidery": ["Embroidery supplies", "자수용품", "刺绣用品", "刺繍用品", "Materiales de bordado", "Fournitures de broderie"],
+  "starterCategory_knitting_crochet": ["Knitting and crochet", "대바늘·코바늘 뜨개용품", "棒针与钩针编织用品", "棒針編み・かぎ針編み", "Punto y ganchillo", "Tricot et crochet"],
+  "starterCategory_paper_crafting": ["Paper crafts", "종이 공예용품", "纸艺用品", "ペーパークラフト用品", "Manualidades con papel", "Loisirs créatifs en papier"],
+  "starterCategory_food_gift_packaging": ["Food gift packaging", "식품 선물 포장용품", "食品礼品包装", "食品ギフトの包装用品", "Envases para regalos gastronómicos", "Emballages pour cadeaux gourmands"],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;
