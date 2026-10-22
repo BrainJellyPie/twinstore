@@ -6,6 +6,12 @@
   and French, including cross-language search. Preserve custom or updated server descriptions.
   New non-English preset floor names no longer repeat the level shown by the interface.
 
+- Add 64 everyday-care, baby, hair, pet, plant-based food, snack, refreshment and
+  car-care photos, reaching 832 local images. Ten more catalog departments now have
+  pictures for every existing product, including their stocked default maps.
+
+- Keep the model-provider list available when a saved local address has malformed IPv6 syntax.
+
 ## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
 
 ### Safe updates

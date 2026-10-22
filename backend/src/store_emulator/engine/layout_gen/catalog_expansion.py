@@ -934,6 +934,30 @@ PACKSHOT_SHEETS = {
         "Folding Walking Frame", "Long-Handled Reaching Aid", "Bedside Storage Caddy", "Large-Print Medication Log",
         "Bamboo Cotton Swabs 200pk", "Reusable Cotton Rounds 8pk", "Soft Bath Towel", "First Aid Kit",
     ],
+    "starter-49": [
+        "Hand Sanitizer", "Adhesive Bandages", "Toothbrush", "Toothpaste Travel",
+        "Shampoo Travel", "Facial Cleanser", "Sheet Face Mask", "Hand Cream",
+        "Cotton Pads", "Vitamin C Tablets", "Eye Drops (artificial tears)", "Hangover Drink",
+        "Heat Packs", "Vitamin C Tablets 60pk", "Multivitamin Tablets 30pk", "Electrolyte Sachets 6pk",
+    ],
+    "starter-50": [
+        "Face Masks 10pk", "Sensitive Toothpaste", "Gentle Baby Wash 250ml", "Fragrance Free Baby Lotion 200ml",
+        "Reusable Changing Pad", "Satin Scrunchies 3pk", "Wooden Paddle Hair Brush", "Hair Claw Clips 2pk",
+        "Scalp Massage Brush", "Shower Caps 3pk", "Dry Dog Food 2kg", "Cat Treats 60g",
+        "Pet Shampoo", "Cat Litter 5L", "Rope Chew Toy", "Pet Feeding Bowl",
+    ],
+    "starter-51": [
+        "Catnip Mouse Toy 3pk", "Crinkle Cat Tunnel", "Slow Feeding Pet Mat", "Bird Foraging Toy",
+        "Rabbit Chew Sticks 10pk", "Floating Fetch Toy", "Training Clicker", "Pea Protein Drink 330ml",
+        "Plant Burger Patties 2pk", "Oat Cooking Cream 250ml", "Cashew Cheese Spread", "Chickpea Falafel Mix",
+        "Vegan Chocolate Pudding Cup", "Soy Protein Mince 200g", "Rosemary Sourdough Crackers", "Dark Chocolate Almonds 100g",
+    ],
+    "starter-52": [
+        "Dried Mango Strips 100g", "Sesame Seed Brittle 80g", "Coconut Crisps 60g", "Baked Lentil Chips 90g",
+        "Pistachio Biscotti 4pk", "Mini Olive Focaccia", "Apple Cinnamon Fruit Leather", "Smoked Paprika Chickpeas 100g",
+        "Grapefruit Rosemary Soda 330ml", "Hibiscus Iced Tea 300ml", "Peach Oolong Tea 300ml", "Cucumber Mint Sparkling Water",
+        "Passionfruit Soda 330ml", "Cold Brew Rooibos 300ml", "Still Water Glass Bottle 500ml", "Ice Scraper",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

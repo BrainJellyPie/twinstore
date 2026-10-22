@@ -94,8 +94,8 @@ try {
     assert.equal(child.building.name, name);
     assert.equal(child.building.label, preset.floors[0].label);
     assert.deepEqual(child.store.weekly_schedule, preview.weekly_schedule);
-    const withoutPhotos = racks => racks.map(r => ({ ...r, slots: r.slots.map(s => ({ ...s, items: s.items.map(({ image_url: _photo, ...item }) => item) })) }));
-    assert.deepEqual(withoutPhotos(child.store.racks), withoutPhotos(preview.racks));
+    assert(preview.racks.some(r => r.slots.some(s => s.items.some(item => item.image_url))));
+    assert.deepEqual(child.store.racks, preview.racks);
     assert.deepEqual(errors, []);
     const result = { locale, viewports: 2, setup_id: firstId, areaSettingsPreserved: true, svgLocalized: true, previewMatchesSaved: true }; results.push(result); console.log(JSON.stringify(result));
     await context.close();
