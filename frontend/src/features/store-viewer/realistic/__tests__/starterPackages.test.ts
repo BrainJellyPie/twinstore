@@ -125,3 +125,16 @@ it("distinguishes groceries from reusable baking tools and household equipment",
     }
   }
 });
+
+it("keeps empty drinkware, clay and pet grooming products out of food departments", () => {
+  for (const sheet of ["starter-21", "starter-22"]) {
+    for (let index = 0; index < 16; index++) {
+      const product = classifyProduct("Milk Coffee", `/api/catalog-images/${sheet}/${index}.webp`);
+      expect(product.category).toBe("other");
+      expect([product.w, product.h, product.d].every(n => n > 0 && Number.isFinite(n))).toBe(true);
+    }
+  }
+  expect(classifyProduct("상품", "/api/catalog-images/starter-22/1.webp").kind).toBe("bottle");
+  expect(classifyProduct("상품", "/api/catalog-images/starter-21/3.webp").kind).toBe("cup");
+  expect(classifyProduct("상품", "/api/catalog-images/starter-22/9.webp").kind).toBe("cup");
+});

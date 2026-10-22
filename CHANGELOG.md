@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add 96 home linen, dinnerware, food storage, pet grooming, hair accessory, woodcraft,
+  ceramic craft and gift wrapping products, plus 32 photos. The catalog now has 1,400
+  products in 123 categories and 352 bundled photos for automatic or manual placement.
+
 - Translate shelf-product reuse into six languages, including eligibility reasons, section review,
   price formatting, save/retry and accessibility text. Preserve selections and request identities
   across language changes and keep legacy API reason compatibility. Stabilize seeded neighborhood
