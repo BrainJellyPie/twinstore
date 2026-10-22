@@ -2,13 +2,6 @@
 
 ## Unreleased
 
-### Fixes
-- Without internet access (or when LiteLLM's online price table could not be downloaded), the warning before a run
-  or customer writing had no cost for the default models. Their prices are now built in; a downloaded price still
-  wins.
-- A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
-  previous version). It now reloads once into the new version.
-
 ## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
 
 ### Safe updates
@@ -108,6 +101,11 @@
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
 ### Fixes
+- Without internet access (or when LiteLLM's online price table could not be downloaded), the warning before a run
+  or customer writing had no cost for the default models. Their prices are now built in; a downloaded price still
+  wins.
+- A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
+  previous version). It now reloads once into the new version.
 - The first launch downloaded a local vision model (up to several GB) without asking, even with no plan to use it.
   Nothing is downloaded now until you press Start for the local model, and the button says how large the download
   is. After that it comes back by itself when the app opens, until you press Stop. A model an earlier version already
