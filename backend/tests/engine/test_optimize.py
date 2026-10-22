@@ -303,3 +303,17 @@ def test_min_improvement_keeps_the_baseline(store: Store, personas: list[Persona
     assert result.applied_moves == [] and result.validation is None
     assert store_fingerprint(result.best_store) == store_fingerprint(store)
     assert result.notes
+
+
+def test_a_layout_every_shopper_failed_on_is_an_error_not_a_score_of_zero(store, personas, pathfinder, monkeypatch):
+    evaluator = _evaluator(personas, pathfinder, 12)
+
+    async def refuse(*args, **kwargs):
+        raise RuntimeError("the vision model did not answer: 401 key turned down")
+
+    monkeypatch.setattr(evaluator._engine, "decide_actions", refuse)  # pyright: ignore[reportPrivateUsage]
+    with pytest.raises(RuntimeError, match=r"Every shopper failed \(12\), so nothing was simulated: .*401 key turned down"):
+        asyncio.run(evaluator.evaluate(store))
+    with pytest.raises(RuntimeError, match="Every shopper failed"):
+        asyncio.run(evaluator.evaluate_customers(store, evaluator.personas))
+    assert evaluator.evaluations == 0
