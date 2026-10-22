@@ -273,8 +273,8 @@ The new-store wizard asks for a format, size and currency, then your customers (
 - **Fill empty shelves** (Step 2) places reviewed starter products on empty racks and saves a separate stocked
   layout; existing products and geometry stay as they are. Reference products and prices are examples, not your
   stock. [Guide](./USAGE.md#fill-existing-empty-shelves-with-starter-products).
-- **Reuse shelf products** (Step 2) copies a finished shelf's reviewed assortment to compatible empty shelves,
-  keeping exact product values, and saves a separate layout. [Guide](./USAGE.md#reuse-a-finished-shelf-assortment).
+- **Reuse shelf products** (Step 2) copies a reviewed assortment to compatible empty shelves, preserving
+  exact product values and saving a separate layout. [Guide](./USAGE.md#reuse-a-finished-shelf-assortment).
 - **Edit products together** (Step 2) changes names, prices and promotion text of selected products with a
   before/after preview and saves a separate layout. [Guide](./USAGE.md#edit-placed-products-together-without-a-spreadsheet).
 - **Change it in words** applies price, discount, sign and placement edits from a sentence (see

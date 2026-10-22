@@ -39,7 +39,6 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
   projectId: string; setupId: string; store: Store; currency: string; initial?: ShelfTestRequest | null;
   /** A request routed from the command palette: fills the question and drafts the test from it. */
   prefill?: { text: string; id: number };
-  /** Called once the routed request has been taken, so the page can forget it. */
   onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {
