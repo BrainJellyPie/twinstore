@@ -52,3 +52,11 @@ it("still sends a failure before any status arrived to the error boundary", asyn
   show();
   expect((await screen.findByRole("alert")).textContent).toBe("Run not found");
 });
+
+it.each(["completed", "failed"] as const)("refreshes the layouts list and the store list when the run is %s", async (state) => {
+  vi.mocked(api.getRunStatus).mockResolvedValue({ status: state, error: "", total_customers: 10, completed_customers: 10 });
+  const invalidate = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+  show();
+  await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ["projects", "project", "setups"], exact: true }));
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ["projects"], exact: true });
+});

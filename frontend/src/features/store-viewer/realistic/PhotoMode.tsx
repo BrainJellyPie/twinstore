@@ -25,6 +25,9 @@ export function PhotoMode({ width, depth }: { width: number; depth: number }) {
   const active = usePhotoMode((s) => s.status !== "off" && s.status !== "error");
   const get = useThree((s) => s.get);
 
+  // Leaving the 3D view ends photo mode; the shared store would otherwise keep the HUD and camera lock on.
+  useEffect(() => () => usePhotoMode.getState().stop(), []);
+
   useEffect(() => {
     if (!active) return;
     const { gl, scene } = get();

@@ -62,3 +62,18 @@ def test_no_shopper_on_the_scenarios_days_fails_the_run(client):
     assert st["status"] == "failed" and str(st["error"]).startswith("No shoppers come on this scenario's days")
     time.sleep(0.2)
     assert json.loads(path.read_text(encoding="utf-8"))["status"] == "draft"
+
+
+def test_a_layout_being_simulated_refuses_store_changes_until_the_run_ends(client):
+    sid = _new_layout(client)
+    path = Path(f".data/{PID}/setups/{sid}.json")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    changed = json.loads(json.dumps(data["store"]))
+    changed["name"] = "Renamed during the run"
+    data["status"] = "running"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    r = client.put(f"/api/projects/{PID}/setups/{sid}", json={"setup": {"store": changed}})
+    assert r.status_code == 409 and "being simulated" in json.dumps(r.json())
+    data["status"] = "draft"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    assert client.put(f"/api/projects/{PID}/setups/{sid}", json={"setup": {"store": changed}}).status_code == 200

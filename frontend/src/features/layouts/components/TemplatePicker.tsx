@@ -211,14 +211,17 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             {preview.isSuccess && validTemplateChoice(value) ? <>
               <FloorPlanPreview store={preview.data} areas={value.reserved_areas ?? []} />
               <CompareFloorPlans store={preview.data} areas={value.reserved_areas ?? []} templateId={value.templateId} currency={value.currency} />
-              <p className="text-xs text-muted-foreground">{preview.data.grid_size.join("×")} cells · {preview.data.racks.filter((r) => r.slots.length).length} displays · {new Set(preview.data.racks.flatMap((r) => r.slots.flatMap((s) => s.items.map((i) => i.sku)))).size} products</p>
-              <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "table").length} dining tables · {preview.data.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0)} seats</p>
-              <p className="text-xs text-muted-foreground">{preview.data.racks.filter((r) => r.type === "counter").length} checkout counters</p>
-              <p className="text-[10px] text-muted-foreground">Blue: cold · Amber: display · Green IN: entrance · Rose OUT: exit · Split IN/OUT: shared gate · Slate: checkout · Purple: seating</p>
+              <p className="text-xs text-muted-foreground">{t("templatePreviewSize", { width: preview.data.grid_size[0], height: preview.data.grid_size[1],
+                displays: preview.data.racks.filter((r) => r.slots.length).length,
+                products: new Set(preview.data.racks.flatMap((r) => r.slots.flatMap((s) => s.items.map((i) => i.sku)))).size })}</p>
+              <p className="text-xs text-muted-foreground">{t("templatePreviewSeating", { tables: preview.data.racks.filter((r) => r.type === "table").length,
+                seats: preview.data.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0) })}</p>
+              <p className="text-xs text-muted-foreground">{t("templatePreviewCounters", { counters: preview.data.racks.filter((r) => r.type === "counter").length })}</p>
+              <p className="text-[10px] text-muted-foreground">{t("floorPlanLegend")}</p>
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
-              {!validTemplateChoice(value) ? "Enter valid grid dimensions, product and table counts, operating hours and reserved-area values. Keep at least one open weekday." : preview.isError ? "Preview unavailable." : "Updating preview…"}
+              {t(!validTemplateChoice(value) ? "templatePreviewInvalid" : preview.isError ? "templatePreviewUnavailable" : "templatePreviewUpdating")}
             </div>}
-            {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>Retry</button></p>}
+            {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>{t("tryAgain")}</button></p>}
           </div>
           <div className="space-y-2">
             {selected && <p className="text-xs"><span className="text-muted-foreground">{t("selectedFormat")}: </span><strong>{selected.name}</strong></p>}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useBlocker } from "@tanstack/react-router";
 
 import type { StoreSetupDraft } from "@/shared/api/client";
 import { useI18n } from "@/shared/i18n/i18n";
@@ -38,11 +39,15 @@ const STEPS = [
   { index: 2, label: "wizardShoppers", hint: "wizardShoppersHint" },
 ] as const;
 
+const INITIAL_VALUES: WizardValues = { ...DEFAULT_VALUES, storeType: "convenience" };
+const INITIAL_FORM = JSON.stringify([INITIAL_VALUES, true, DEFAULT_TEMPLATE_CHOICE]);
+const blockLeaving = () => true;
+
 export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   const { locale, t } = useI18n();
   const steps = STEPS.map((item) => ({ ...item, label: t(item.label), hint: t(item.hint) }));
   const [step, setStep] = useState<1 | 2>(1);
-  const [values, setValues] = useState<WizardValues>({ ...DEFAULT_VALUES, storeType: "convenience" });
+  const [values, setValues] = useState<WizardValues>(INITIAL_VALUES);
   const [withTemplate, setWithTemplate] = useState(true);
   const [templateOptions, setTemplate] = useState(DEFAULT_TEMPLATE_CHOICE);
   const template = useMemo(() => ({ ...templateOptions, weekly_hours: null, open_hour: values.openHour, close_hour: values.closeHour,
@@ -156,6 +161,10 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
     ? create.error.message
     : null;
   const isPending = create.isPending;
+  // Leaving loses everything typed; creating (pending or done) navigates away on purpose.
+  const dirty = JSON.stringify([values, withTemplate, templateOptions]) !== INITIAL_FORM;
+  const leave = useBlocker({ shouldBlockFn: blockLeaving, withResolver: true, enableBeforeUnload: true,
+    disabled: !dirty || isPending || create.isSuccess });
 
   return (
     <div className="relative flex-1 overflow-y-auto">
@@ -234,6 +243,18 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction disabled={isPending} onClick={handleConfirmedSubmit}>{t("generate")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={leave.status === "blocked"} onOpenChange={(open) => { if (!open) leave.reset?.(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("leaveNewStoreTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("leaveNewStoreDescription")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("keepEditing")}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => leave.proceed?.()}>{t("leaveNewStore")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

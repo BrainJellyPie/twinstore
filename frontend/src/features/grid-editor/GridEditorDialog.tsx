@@ -23,7 +23,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
 import { Button } from "@/shared/components/ui/button";
+import { useI18n } from "@/shared/i18n/i18n";
 import type { Position, Rack } from "@/shared/types/domain";
 import { GridEditor } from "./GridEditor";
 import { rackCells } from "@/shared/utils/grid";
@@ -60,6 +71,7 @@ export function GridEditorDialog({
   onSaved,
   onCreateNewSetup,
 }: GridEditorDialogProps) {
+  const { t } = useI18n();
   const editor = useGridEditor(initialSetup);
   const project = useProject(pid).data;
 
@@ -74,6 +86,9 @@ export function GridEditorDialog({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [legacyResetError, setLegacyResetError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const resettingRef = useRef(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const panelRef = useRef<RackEditPanelHandle>(null);
 
@@ -254,6 +269,8 @@ export function GridEditorDialog({
       }
       onSaved();
       onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error && error.message ? error.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -261,40 +278,49 @@ export function GridEditorDialog({
 
   // Legacy reset (2-step PUT) — same flow as GridEditorPage.
   const onLegacyReset = useCallback(async () => {
-    if (!setup.store) return;
+    if (!setup.store || resettingRef.current) return;
+    resettingRef.current = true;
+    setResetting(true);
     setLegacyResetError(null);
-    const itemsEmpty = {
-      ...setup.store,
-      racks: setup.store.racks.map((r) => ({
-        ...r,
-        slots: r.slots.map((s) => ({ ...s, items: [] })),
-      })),
-    };
-    const r1 = await saveSetup(pid, sid, { store: itemsEmpty });
-    if (!r1.ok) {
-      setLegacyResetError(r1.message || "Reset step 1 failed");
-      return;
+    try {
+      const itemsEmpty = {
+        ...setup.store,
+        racks: setup.store.racks.map((r) => ({
+          ...r,
+          slots: r.slots.map((s) => ({ ...s, items: [] })),
+        })),
+      };
+      const r1 = await saveSetup(pid, sid, { store: itemsEmpty });
+      if (!r1.ok) {
+        setLegacyResetError(r1.message || "Reset step 1 failed");
+        return;
+      }
+      const empty = {
+        ...setup.store,
+        grid_size: setup.store.grid_size,
+        racks: [],
+      };
+      const r2 = await saveSetup(pid, sid, { store: empty });
+      if (!r2.ok) {
+        setLegacyResetError(r2.message || "Reset step 2 failed");
+        return;
+      }
+      // Update local state only — backend normalisation is picked up by the parent's
+      // invalidate after the dialog closes.
+      const reset: SetupDetailWithBlocked = {
+        ...setup,
+        store: { ...setup.store, racks: [] },
+        blocked_faces: [],
+      };
+      setSetup(reset);
+      editor.reset(reset);
+      setLegacyDismissed(true);
+    } catch (error) {
+      setLegacyResetError(error instanceof Error && error.message ? error.message : "Reset failed");
+    } finally {
+      resettingRef.current = false;
+      setResetting(false);
     }
-    const empty = {
-      ...setup.store,
-      grid_size: setup.store.grid_size,
-      racks: [],
-    };
-    const r2 = await saveSetup(pid, sid, { store: empty });
-    if (!r2.ok) {
-      setLegacyResetError(r2.message || "Reset step 2 failed");
-      return;
-    }
-    // Update local state only — backend normalisation is picked up by the parent's
-    // invalidate after the dialog closes.
-    const reset: SetupDetailWithBlocked = {
-      ...setup,
-      store: { ...setup.store, racks: [] },
-      blocked_faces: [],
-    };
-    setSetup(reset);
-    editor.reset(reset);
-    setLegacyDismissed(true);
   }, [pid, sid, setup, editor]);
 
   const onLegacyCancel = useCallback(() => {
@@ -317,11 +343,17 @@ export function GridEditorDialog({
   const showLegacyModal = legacyState === "clean" && !legacyDismissed;
   const isBlockingLegacy = legacyState === "with_run";
 
+  // Cancel and the X button ask before dropping unsaved edits; Escape and outside clicks are ignored.
+  const requestClose = () => {
+    if (editor.dirty) setConfirmDiscard(true);
+    else onClose();
+  };
+
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) onClose();
+        if (!next) requestClose();
       }}
     >
       <DialogContent
@@ -329,6 +361,10 @@ export function GridEditorDialog({
         data-testid="grid-editor-dialog"
         onEscapeKeyDown={(event) => {
           if (placing) { event.preventDefault(); setPlacing(false); setSaveError(null); }
+          else if (editor.dirty) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (editor.dirty) event.preventDefault();
         }}
       >
         <DialogHeader>
@@ -388,6 +424,7 @@ export function GridEditorDialog({
                 onReset={onLegacyReset}
                 onCancel={onLegacyCancel}
                 error={legacyResetError}
+                resetting={resetting}
               />
             )}
           </div>
@@ -409,7 +446,7 @@ export function GridEditorDialog({
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
-              onClick={onClose}
+              onClick={requestClose}
               data-testid="grid-cancel-button"
             >
               Cancel
@@ -425,6 +462,18 @@ export function GridEditorDialog({
             </Button>
           </div>
         </DialogFooter>
+        <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+          <AlertDialogContent data-testid="grid-discard-confirm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("discardFloorChangesTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("discardFloorChangesDescription")}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("keepEditing")}</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={onClose}>{t("discardChanges")}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

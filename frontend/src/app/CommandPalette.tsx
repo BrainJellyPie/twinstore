@@ -3,6 +3,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   Camera,
@@ -27,6 +28,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/
 import { translate, useI18n } from "@/shared/i18n/i18n";
 import { LOCALES, type MessageKey } from "@/shared/i18n/messages";
 import { storeTypeLabel } from "@/shared/i18n/storeLabels";
+import { queryKeys } from "@/shared/queries/keys";
 import { useProjects } from "@/shared/queries/useProjects";
 import { cn } from "@/shared/utils/cn";
 import { searchText } from "@/shared/utils/searchText";
@@ -69,9 +71,19 @@ function matches(command: Command, query: string): boolean {
     .every((token) => hay.includes(token));
 }
 
+// Run questions are answered in a finished run's playback: keep the layout in view when it shows one,
+// else pick the most recently finished layout. null when no layout has a run.
+function layoutForRunQuestion(layouts: api.SetupSummary[], selectedSetupId: string | null, viewRunId: string | null): string | null {
+  const ordered = [...layouts].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const current = ordered.find((layout) => layout.id === selectedSetupId) ?? ordered[0];
+  if (current && (current.runId || (current.id === selectedSetupId && viewRunId))) return current.id;
+  return ordered.filter((layout) => layout.runId).sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]?.id ?? null;
+}
+
 function PaletteBody({ onDone }: { onDone: () => void }) {
   const { locale, t } = useI18n();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { pathname } = useLocation();
   const pid = projectIdFromPath(pathname);
   const open = useCommandPalette((s) => s.open);
@@ -154,6 +166,17 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       if (route.destination === "none") {
         setAskNote(t("commandAskNone"));
         return;
+      }
+      if (route.destination === "run_question") {
+        const layouts = await qc.ensureQueryData({ queryKey: queryKeys.setups(pid), queryFn: ({ signal }) => api.getSetups(pid, signal) });
+        if (id !== requestId.current) return;
+        const { selectedSetupId, viewRunId, setSelectedSetupId } = useSimulationStore.getState();
+        const layoutId = layoutForRunQuestion(layouts, selectedSetupId, viewRunId);
+        if (!layoutId) {
+          setAskNote(t("commandAskNoRun"));
+          return;
+        }
+        if (layoutId !== selectedSetupId) setSelectedSetupId(layoutId);
       }
       sendAsk({ projectId: pid, destination: route.destination, text });
       if (route.destination === "run_question") setActiveTab("dashboard");

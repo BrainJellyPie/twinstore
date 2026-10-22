@@ -27,8 +27,21 @@ const STATE_LABEL: Record<ModelSetup["local"]["state"], string> = {
 };
 
 export function LocalModelPanel() {
-  const { data, isLoading } = useModelSetup();
+  const { data, isLoading, error, refetch, isFetching } = useModelSetup();
   const { start, stop } = useLocalModelControl();
+  if (!data && error) {
+    return (
+      <section role="alert" className="glass flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5 text-sm">
+        <span className="min-w-0 break-words">
+          <span className="font-medium">Could not check the local vision model.</span>{" "}
+          <span className="text-muted-foreground">{error.message}</span>
+        </span>
+        <Button size="sm" variant="outline" disabled={isFetching} onClick={() => void refetch()}>
+          {isFetching && <Loader2 className="size-3.5 animate-spin" aria-hidden />} Retry
+        </Button>
+      </section>
+    );
+  }
   if (isLoading || !data) return null;
 
   const { hardware: hw, plan, local } = data;
@@ -100,6 +113,8 @@ export function LocalModelPanel() {
         )}
         {local.state === "ready" && <span className="text-xs text-muted-foreground">Pick “{local.model_ref}” in a run.</span>}
       </div>
+      {start.error && <p role="alert" className="mt-2 break-words text-xs text-destructive">Could not start the local model: {start.error.message}</p>}
+      {stop.error && <p role="alert" className="mt-2 break-words text-xs text-destructive">Could not stop the local model: {stop.error.message}</p>}
     </section>
   );
 }

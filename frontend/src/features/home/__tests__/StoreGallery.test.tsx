@@ -131,3 +131,11 @@ it.each(LOCALES)("searches translated store types in $code without altering IDs"
   expect(screen.getByRole("status").textContent).toBe(translate(code, "filteredOneStore", { shown: 1, total: 1 }));
   expect(screen.getByRole("button", { name: base.name })).toBeTruthy();
 });
+
+it.each(LOCALES)("leads a load failure with the $code message and keeps the raw detail secondary", ({ code }) => {
+  useLocale.getState().setLocale(code);
+  show({ projects: undefined, error: new TypeError("Failed to fetch") });
+  const alert = screen.getByRole("alert");
+  expect(alert.querySelector(".font-medium")!.textContent).toBe(translate(code, "loadStoresError"));
+  expect(alert.textContent).toContain("Failed to fetch");
+});

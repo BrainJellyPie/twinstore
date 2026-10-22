@@ -7,8 +7,7 @@ import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelCo
 import { RackDetailView } from "./RackDetailView";
 import { currencyCode } from "@/shared/utils/money";
 import { LayoutEditInWords } from "./LayoutEditInWords";
-
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+import { formatWeeklyHours } from "@/features/layouts/weeklyHours";
 
 type CustomerTab = "identity" | "purpose" | "age" | "gender";
 const CUSTOMER_TABS: { value: CustomerTab; label: string }[] = [
@@ -32,23 +31,6 @@ const DOT_COLORS = [
   "#84cc16", // lime-500
   "#6366f1", // indigo-500
 ];
-
-function formatSchedule(schedule?: Array<{ day: number; is_open: boolean; open_hour: number; close_hour: number }>): string {
-  if (!schedule) return "—";
-  const openDays = schedule.filter((d) => d.is_open).sort((a, b) => a.day - b.day);
-  if (openDays.length === 0) return "—";
-  const first = openDays[0]!;
-  const dayNames = openDays.map((d) => WEEKDAYS[(d.day - 1) % 7]);
-  const dayRange = dayNames.length === 7 ? "Mon-Sun"
-    : dayNames.length === 1 ? dayNames[0]!
-    : `${dayNames[0]}-${dayNames[dayNames.length - 1]}`;
-  const formatH = (h: number) => {
-    const ampm = h < 12 ? "am" : "pm";
-    const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${hh}:00 ${ampm}`;
-  };
-  return `${dayRange}, ${formatH(first.open_hour)} - ${formatH(first.close_hour)}`;
-}
 
 interface Props {
   // null is allowed so the Settings tab still renders (as a placeholder) in the
@@ -123,7 +105,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
     ["Address", location || "—"],
     ["Store type", store.type || "—"],
     ["Price currency", currencyCode(summary?.currency ?? store.currency ?? undefined)],
-    ["Opening hours", formatSchedule(store.weekly_schedule)],
+    ["Opening hours", formatWeeklyHours(store.weekly_schedule ?? [])],
   ];
 
   return (
@@ -135,7 +117,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
             {infoRows.map(([label, value]) => (
               <div key={label} className="flex items-start justify-between gap-3">
                 <dt className="shrink-0 text-xs text-muted-foreground">{label}</dt>
-                <dd className="text-right text-xs truncate">{value}</dd>
+                <dd className="min-w-0 text-right text-xs break-words">{value}</dd>
               </div>
             ))}
           </dl>

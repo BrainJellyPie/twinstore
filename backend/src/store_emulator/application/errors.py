@@ -69,6 +69,9 @@ _MODEL_FAILURES: tuple[tuple[tuple[str, ...], str], ...] = (
      "the provider is limiting requests right now. Wait a moment and try again."),
     (("timeout", "timed out"), "the model took too long to reply. Try again."),
     (("notfounderror", "model not found", "does not exist"), "the provider does not offer this model. Pick another one."),
+    (("apiconnectionerror", "connection error", "connection refused", "cannot connect", "connect call failed"),
+     ("the model could not be reached. If it is the local model, start it in Settings → Model providers; otherwise "
+      "check the connection, or pick another model.")),
     (("max_tokens length limit", "output is incomplete", "finish_reason='length'"),
      "the model's reply was cut off before it finished. Try again, or pick another model."),
     (("validation error", "instructorretryexception", "jsondecodeerror"),
@@ -83,3 +86,11 @@ def model_failure(error: BaseException, what: str) -> str:
         if any(n in text for n in needles):
             return f"{what}: {hint}"
     return f"{what} ({type(error).__name__}): {str(error)[:200]}"
+
+
+def job_failure(error: BaseException, what: str) -> str:
+    """The error a failed background job shows: the app's own messages as they are, anything else (a provider's
+    error, a library's) in words a user can act on via model_failure. The raw error belongs in the server log."""
+    if isinstance(error, (ValueError, AppError)):
+        return str(error)[:500]
+    return model_failure(error, what)[:500]

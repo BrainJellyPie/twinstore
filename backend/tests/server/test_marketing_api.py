@@ -143,7 +143,7 @@ def test_concept_test_with_fake_vision_model(client, monkeypatch):
     assert report["price"]["n"] == 12 and report["preference"][0]["name"] == "Leafy"
     assert report["segments"] and report["verbatims"][0] == "looks fresh"
     assert client.get(f"/api/projects/{PID}/surveys/{sid}/board.jpg").content[:2] == b"\xff\xd8"
-    csv = client.get(f"/api/projects/{PID}/surveys/{sid}/export.csv").text.splitlines()
+    csv = client.get(f"/api/projects/{PID}/surveys/{sid}/export.csv").text.removeprefix("\ufeff").splitlines()
     assert csv[0].startswith("respondent,age_group,gender,purchase_intent_A") and len(csv) == 13
     page = client.get(f"/api/projects/{PID}/surveys/{sid}/report.html").text
     assert "Concept test report" in page and "data:image/jpeg;base64," in page and "Price range for Leafy" in page and "<svg" in page
@@ -234,7 +234,7 @@ def test_conjoint_with_fake_model(client, monkeypatch):
     assert set(importance) == {"Sugar", "Pack", "Price"} and abs(sum(importance.values()) - 1) < 1e-3
     assert importance["Pack"] < importance["Sugar"]
     assert view["request"]["product"] == "a 500 ml iced tea"
-    csv = client.get(f"/api/projects/{PID}/conjoints/{cid}/export.csv").text.splitlines()
+    csv = client.get(f"/api/projects/{PID}/conjoints/{cid}/export.csv").text.removeprefix("\ufeff").splitlines()
     assert csv[0] == "respondent,age_group,gender,task,option,Sugar,Pack,price,chosen" and len(csv) == 1 + 20 * 6 * 4
     assert sum(int(line.rsplit(",", 1)[1]) for line in csv[1:]) == 120
     page = client.get(f"/api/projects/{PID}/conjoints/{cid}/report.html").text

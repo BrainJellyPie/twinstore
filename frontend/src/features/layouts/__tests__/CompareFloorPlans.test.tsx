@@ -6,6 +6,7 @@ import * as api from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/components/ui/dialog";
 import type { Rack, Store } from "@/shared/types/domain";
 import { CompareFloorPlans } from "../components/CompareFloorPlans";
+import { translate, useLocale } from "@/shared/i18n/i18n";
 
 vi.mock("@/shared/api/client", () => ({ previewStoreTemplate: vi.fn() }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
@@ -114,4 +115,16 @@ it("shows loading and lets a failed default preview be retried without changing 
   fireEvent.click(screen.getByRole("button", { name: "Retry comparison" }));
   await screen.findByRole("table", { name: "Floor plan comparison" });
   expect(submit).not.toHaveBeenCalled();
+});
+
+it("labels the comparison button and legend in the selected language", async () => {
+  useLocale.getState().setLocale("ja");
+  try {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><CompareFloorPlans store={current} areas={[]} templateId="specialty_cafe" currency="USD" /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole("button", { name: translate("ja", "compareWithDefault") }));
+    expect(await screen.findByText(translate("ja", "floorPlanLegend"))).toBeTruthy();
+  } finally {
+    useLocale.getState().setLocale("en");
+  }
 });

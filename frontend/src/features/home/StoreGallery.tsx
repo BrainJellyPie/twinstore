@@ -69,7 +69,10 @@ export function StoreGallery({ projects, isLoading, isFetching, error, onRetry, 
 
       {error != null && (
         <div role="alert" className="tone-bad mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 text-sm">
-          <span className="min-w-0 break-words">{error instanceof Error ? error.message : t("loadStoresError")}</span>
+          <span className="min-w-0 break-words">
+            <span className="block font-medium">{t("loadStoresError")}</span>
+            {error instanceof Error && error.message && <span className="block text-xs opacity-80">{error.message}</span>}
+          </span>
           <Button size="sm" variant="outline" onClick={onRetry} disabled={isFetching}>
             {isFetching ? t("tryingAgain") : t("tryAgain")}
           </Button>

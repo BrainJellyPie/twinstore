@@ -44,6 +44,8 @@ export function RunningView({
     void qc.invalidateQueries({ queryKey: queryKeys.runs(pid, setupId) });
     void qc.invalidateQueries({ queryKey: queryKeys.projectRuns(pid) });
     void qc.invalidateQueries({ queryKey: queryKeys.setup(pid, setupId) });
+    void qc.invalidateQueries({ queryKey: queryKeys.setups(pid), exact: true });
+    void qc.invalidateQueries({ queryKey: queryKeys.projects(), exact: true });
   }, [status?.status, qc, pid, setupId, runId]);
 
   // A failed poll after the first answer keeps the last progress and keeps polling.

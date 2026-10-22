@@ -319,3 +319,26 @@ def test_an_interrupted_download_continues_where_it_stopped(no_keys):
     mgr._download("https://x/model.gguf", target, label="model")  # pyright: ignore[reportPrivateUsage]
     assert target.read_bytes() == data and not (no_keys / "model.gguf.part").exists()
     assert ranges == [None, "bytes=3000-"]
+
+
+def test_only_a_llama_cpp_server_that_reads_images_is_taken_over(monkeypatch):
+    answers: dict[str, object] = {}
+
+    class _Open:
+        @staticmethod
+        def open(url: str, timeout: float = 0):
+            if "props" not in answers:
+                raise OSError("404")
+            return _Resp(json.dumps(answers["props"]).encode())
+
+    monkeypatch.setattr(local_vlm, "_DIRECT", _Open())
+    base = "http://127.0.0.1:8081/v1"
+    assert not local_vlm._serves_images(base)                    # pyright: ignore[reportPrivateUsage]  # another program
+    answers["props"] = {"status": "ok"}
+    assert not local_vlm._serves_images(base)                    # pyright: ignore[reportPrivateUsage]  # not llama.cpp
+    answers["props"] = {"total_slots": 2, "modalities": {"vision": False}}
+    assert not local_vlm._serves_images(base)                    # pyright: ignore[reportPrivateUsage]  # text only
+    answers["props"] = {"total_slots": 2, "modalities": {"vision": True}}
+    assert local_vlm._serves_images(base) and local_vlm._server_slots(base) == 2  # pyright: ignore[reportPrivateUsage]
+    answers["props"] = {"total_slots": 1}
+    assert local_vlm._serves_images(base)                        # pyright: ignore[reportPrivateUsage]  # older builds

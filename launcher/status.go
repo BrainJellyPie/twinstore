@@ -15,6 +15,7 @@ type stage struct {
 
 var stageLabels = [][2]string{
 	{"files", "App files"},
+	{"data", "Your stores"},
 	{"uv", "Toolchain (uv)"},
 	{"python", "Python & packages"},
 	{"ui", "Web interface"},

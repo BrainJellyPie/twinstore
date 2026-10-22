@@ -275,6 +275,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ""; }} />
           </div>
+          {upload.error && <p role="alert" className="text-xs text-destructive">{upload.error.message}</p>}
           <p className="text-[0.72rem] text-muted-foreground">A PNG with transparency works best; a photo on a plain background is cut out automatically.</p>
         </div>
       )}
@@ -364,8 +365,9 @@ function EditsGallery({ projectId, captureId, editId, onSelect }: {
           <div className="mt-2 flex gap-1.5">
             <Button variant="outline" size="xs" asChild><a href={api.editFileUrl(projectId, captureId, selected.edit_id, "image")} download={`${selected.edit_id}.jpg`}><Download /> Image</a></Button>
             <Button variant="outline" size="xs" asChild><a href={api.editFileUrl(projectId, captureId, selected.edit_id, "mask")} download={`${selected.edit_id}_mask.png`}><Download /> GT mask</a></Button>
-            <Button variant="ghost" size="xs" className="ml-auto hover:text-destructive" onClick={() => del.mutate(selected.edit_id)}><Trash2 /> Delete</Button>
+            <Button variant="ghost" size="xs" className="ml-auto hover:text-destructive" disabled={del.isPending} onClick={() => del.mutate(selected.edit_id)}><Trash2 /> Delete</Button>
           </div>
+          {del.error && <p role="alert" className="mt-2 text-destructive">{del.error.message}</p>}
         </div>
       )}
     </section>

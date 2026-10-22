@@ -54,22 +54,24 @@ func run(opt options) int {
 		return 1
 	}
 	root, rootErr := findRoot()
+	// Before the log turns over and the address is taken: a second click only shows the running app, and another
+	// version that quits for this one leaves its address free (bookmarks keep working).
+	var held claim
 	if rootErr == nil && !opt.smoke {
-		unlock, url := claimInstance(home, root, 20*time.Second)
-		if unlock == nil { // already running: just show it
-			if url == "" {
-				fmt.Fprintln(os.Stderr, "TwinStore: another launcher for these app files is starting but does not answer")
-				return 1
-			}
+		held = claimData(home, dataHomeOf(home, root), root, 20*time.Second)
+		if held.url != "" { // already running: just show it
 			if isTerminal() {
-				fmt.Println("TwinStore is already running at", url)
+				fmt.Println("TwinStore is already running at", held.url)
 			}
 			if !opt.noBrowser {
-				openBrowser(url)
+				openBrowser(held.url)
 			}
 			return 0
 		}
-		defer unlock()
+		if held.unlock == nil && held.other == "" {
+			fmt.Fprintln(os.Stderr, "TwinStore: another launcher using these stores is starting but does not answer")
+			return 1
+		}
 	}
 	logs := newLog(filepath.Join(home, "logs"), isTerminal())
 	defer logs.Close()
@@ -84,19 +86,20 @@ func run(opt options) int {
 	srv, err := app.listen(opt.port)
 	if err != nil {
 		logs.Printf("Cannot open a local port: %v", err)
-		return 1
+		return 1 // the lock goes with the process
 	}
+	defer app.releaseData() // after the server has stopped (deferred calls run last first)
 	defer srv.Close()
 	logs.Printf("Boot screen at %s", app.url)
 	if rootErr != nil {
 		app.status.fail("files", rootErr.Error())
 	} else {
-		saveInstance(home, root, app.url)
-		defer clearInstance(home, app.url)
 		if isLinux() && !opt.smoke {
 			installDesktopEntry(home, logs)
 		}
-		go app.start()
+		if opt.smoke || app.useClaim(held) { // otherwise the boot screen says who uses the stores, with Try again
+			go app.start()
+		}
 	}
 	if !opt.noBrowser {
 		openBrowser(app.url)

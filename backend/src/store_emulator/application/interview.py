@@ -47,7 +47,7 @@ from store_emulator.engine.interview import (
 from store_emulator.engine.perception.shelf_render import render_face
 
 from .errors import AppError, model_failure
-from .providers import assistive_client, assistive_model
+from .providers import answered_by, assistive_client, assistive_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -165,7 +165,7 @@ def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, conf
             logger.warning(f"[interview] {pid}/{run_id}/{persona_id}: {type(e).__name__}: {e}")
             raise AppError(model_failure(e, "The shopper could not answer"), 502) from e
         now = now_iso()
-        transcript.model = model
+        transcript.model = answered_by(llm, model)
         transcript.messages += [
             InterviewMessage(role="interviewer", text=q.question.strip(), created_at=now),
             InterviewMessage(role="shopper", text=reply.answer, steps=reply.steps, created_at=now_iso()),
@@ -291,7 +291,7 @@ def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: S
               for i, t in enumerate(labels)]
     group = GroupInterview(
         group_id=f"grp_{uuid.uuid4().hex[:6]}", run_id=run_id, question=question, segment=req.segment if not req.persona_ids else "all",
-        model=model, created_at=now_iso(), answers=answers, themes=themes,
+        model=answered_by(llm, model), created_at=now_iso(), answers=answers, themes=themes,
         errors=sum(1 for a in answers if a.error),
     )
     folder = _groups_dir(pid, run_id)

@@ -1,5 +1,7 @@
 import { Package, Users, Loader2, DoorOpen, DoorClosed, ScanLine, type LucideIcon } from "lucide-react";
 import type { Readiness, ReadinessReason } from "@/shared/types/domain";
+import { translate } from "@/shared/i18n/translate";
+import type { Locale, MessageKey } from "@/shared/i18n/messages";
 
 export interface Availability {
   canSimulate: boolean;
@@ -11,17 +13,19 @@ export function computeSimulationAvailability(readiness: Readiness | null): Avai
   return { canSimulate: readiness.ready, reasons: readiness.reasons };
 }
 
-export function reasonLabel(reason: ReadinessReason): string {
-  switch (reason) {
-    case "no_personas": return "Personas have not been generated yet";
-    case "no_items": return "No products placed on shelves";
-    case "no_layout": return "Store layout is not set up yet";
-    case "layout_pending": return "Layout analysis is in progress";
-    case "personas_pending": return "Persona generation is in progress";
-    case "no_entrance": return "Place at least one entrance";
-    case "no_exit": return "Place at least one exit";
-    case "no_counter": return "Place at least one checkout counter";
-  }
+const REASON_KEYS: Record<ReadinessReason, MessageKey> = {
+  no_personas: "readinessNoPersonas",
+  no_items: "readinessNoItems",
+  no_layout: "readinessNoLayout",
+  layout_pending: "readinessLayoutPending",
+  personas_pending: "readinessPersonasPending",
+  no_entrance: "readinessNoEntrance",
+  no_exit: "readinessNoExit",
+  no_counter: "readinessNoCounter",
+};
+
+export function reasonLabel(reason: ReadinessReason, locale: Locale): string {
+  return translate(locale, REASON_KEYS[reason]);
 }
 
 export function reasonIcon(reason: ReadinessReason): LucideIcon {

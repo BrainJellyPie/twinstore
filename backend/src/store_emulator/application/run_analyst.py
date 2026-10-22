@@ -25,7 +25,7 @@ from store_emulator.engine.run_analyst import (
 
 from .errors import AppError, model_failure
 from .interview import _load, _run_dir  # pyright: ignore[reportPrivateUsage]
-from .providers import assistive_client, assistive_model
+from .providers import answered_by, assistive_client, assistive_model
 from .storage.io import now_iso, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ def ask(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> 
             logger.warning(f"[analyst] {pid}/{run_id}: {type(e).__name__}: {e}")
             raise AppError(model_failure(e, "The question could not be answered"), 502) from e
         now = now_iso()
-        thread.model = model
+        thread.model = answered_by(llm, model)
         thread.messages += [
             AnalystMessage(role="user", text=q.question, created_at=now),
             AnalystMessage(role="analyst", text=answer.answer, figures=answer.figures, follow_ups=answer.follow_ups, created_at=now_iso()),

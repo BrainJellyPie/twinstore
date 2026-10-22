@@ -7,6 +7,7 @@ import type { Store } from "@/shared/types/domain";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { formatWeeklyHours } from "../weeklyHours";
+import { useI18n } from "@/shared/i18n/i18n";
 
 export function CompareFloorPlans({ store, areas, templateId, currency }: {
   store: Store;
@@ -14,6 +15,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
   templateId: string;
   currency: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const id = useId();
   const request = { template_id: templateId, seed: 0, currency };
@@ -41,7 +43,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
     { label: "Operating hours", value: (plan) => formatWeeklyHours(plan.store.weekly_schedule) },
   ];
   return <Dialog open={open} onOpenChange={setOpen}>
-    <DialogTrigger asChild><button type="button" className="w-full rounded-md border px-2 py-1 text-xs hover:bg-muted">Compare with default</button></DialogTrigger>
+    <DialogTrigger asChild><button type="button" className="w-full rounded-md border px-2 py-1 text-xs hover:bg-muted">{t("compareWithDefault")}</button></DialogTrigger>
     <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-[min(92vw,900px)]">
       <DialogHeader>
         <DialogTitle>Compare floor plans</DialogTitle>
@@ -57,7 +59,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
               <FloorPlanPreview store={plan.store} areas={plan.areas} previewFrame={frame} />
             </section>)}
           </div>
-          <p className="text-xs text-muted-foreground">Blue: cold · Amber: display · Green IN: entrance · Rose OUT: exit · Split IN/OUT: shared gate · Slate: checkout · Purple: seating</p>
+          <p className="text-xs text-muted-foreground">{t("floorPlanLegend")}</p>
           <table className="w-full table-fixed text-left text-xs" aria-label="Floor plan comparison">
             <thead><tr><th scope="col" className="w-[36%] p-2">Layout details</th>{plans.map((plan) => <th scope="col" key={plan.label} className="p-2">{plan.label}</th>)}</tr></thead>
             <tbody>{metrics.map((metric) => <tr key={metric.label} className="border-t">

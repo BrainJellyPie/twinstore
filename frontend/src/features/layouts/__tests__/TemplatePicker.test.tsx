@@ -981,3 +981,28 @@ it.each(["near_entrance", "away_from_entrance"])("preserves entrance-based seati
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
   expect((screen.getByLabelText("Seating starts near") as HTMLSelectElement).value).toBe("auto");
 });
+
+it.each(LOCALES)("translates the live preview summary, legend and status lines in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  const shelf = { id: "shelf", type: "shelf" as const, shape: [[1]], position: [1, 1] as [number, number], rotation: 0 as const,
+    levels: 1, dwell_min: 0, dwell_max: 0, rack_name: "Shelf", rack_desc: "", rack_decoration_desc: "", locked_faces: [],
+    slots: [{ block: 0, face: "N" as const, level: 1, items: [{ sku: "tea", name: "Tea", price: 100, promo: "" }] }] };
+  let fail = false;
+  vi.mocked(api.previewStoreTemplate).mockImplementation(async () => {
+    if (fail) throw new Error("Server busy");
+    return { id: "preview", name: "Preview", type: "convenience", grid_size: [12, 10], weekly_schedule: [], racks: [shelf, { ...shelf, id: "counter", type: "counter", slots: [] }] };
+  });
+  mount();
+  expect(await screen.findByText(translate(code, "templatePreviewSize", { width: 12, height: 10, displays: 1, products: 1 }))).toBeTruthy();
+  expect(screen.getByText(translate(code, "templatePreviewSeating", { tables: 0, seats: 0 }))).toBeTruthy();
+  expect(screen.getByText(translate(code, "templatePreviewCounters", { counters: 1 }))).toBeTruthy();
+  expect(screen.getByText(translate(code, "floorPlanLegend"))).toBeTruthy();
+  expect(screen.getByRole("button", { name: translate(code, "compareWithDefault") })).toBeTruthy();
+  fail = true;
+  fireEvent.change(screen.getByLabelText(translate(code, "widthCells")), { target: { value: "13" } });
+  expect((await screen.findByRole("alert")).textContent).toContain("Server busy");
+  expect(screen.getByText(translate(code, "templatePreviewUnavailable"))).toBeTruthy();
+  expect(screen.getByRole("button", { name: translate(code, "tryAgain") })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText(translate(code, "widthCells")), { target: { value: "99" } });
+  expect(screen.getByText(translate(code, "templatePreviewInvalid"))).toBeTruthy();
+});

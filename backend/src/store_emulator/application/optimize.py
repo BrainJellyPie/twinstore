@@ -24,7 +24,7 @@ from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
 
 from .async_executor import executor
-from .errors import AppError
+from .errors import AppError, job_failure
 from .currencies import simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
@@ -223,7 +223,7 @@ def _run_job(
     except Exception as e:
         logger.exception(f"[optimize] job {status.job_id} failed")
         status.status = "failed"
-        status.error = f"{type(e).__name__}: {e}"[:500]
+        status.error = job_failure(e, "The optimization failed")
     _cancel_requests.discard((pid, status.job_id))
     status.finished_at = now_iso()
     _write_status(pid, status)

@@ -3,10 +3,12 @@ import {
   act,
   cleanup,
   fireEvent,
-  render,
+  render as renderUi,
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
@@ -77,6 +79,10 @@ function deferred() {
   });
   return { promise, resolve, reject };
 }
+const render = (ui: ReactElement) => {
+  const client = new QueryClient();
+  return renderUi(ui, { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+};
 beforeEach(() => {
   state.pathname = "/projects/alpha";
   useLocale.getState().setLocale("en");

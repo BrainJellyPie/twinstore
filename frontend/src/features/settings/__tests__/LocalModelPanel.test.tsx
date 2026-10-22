@@ -76,3 +76,25 @@ it("refreshes engine readiness when a poll sees the local model become ready or 
   await poll(withState("error"));
   expect(invalidate).toHaveBeenCalledWith(engines);
 });
+
+it("explains a failed check and retries it instead of hiding the section", async () => {
+  vi.mocked(api.getModelSetup).mockRejectedValueOnce(new Error("Backend unavailable")).mockResolvedValue(base);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); clients.push(client);
+  render(<QueryClientProvider client={client}><LocalModelPanel /></QueryClientProvider>);
+  expect((await screen.findByRole("alert")).textContent).toContain("Backend unavailable");
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  expect(await screen.findByRole("button", { name: "Start Small model" })).toBeTruthy();
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("shows why starting or stopping the local model failed", async () => {
+  vi.mocked(api.startLocalModel).mockRejectedValue(new Error("Not enough disk space"));
+  await show(withState("off"));
+  fireEvent.click(screen.getByRole("button", { name: "Start Small model" }));
+  expect((await screen.findByRole("alert")).textContent).toBe("Could not start the local model: Not enough disk space");
+  cleanup();
+  vi.mocked(api.stopLocalModel).mockRejectedValue(new Error("Process is not responding"));
+  await show(withState("downloading"));
+  fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+  expect((await screen.findByRole("alert")).textContent).toBe("Could not stop the local model: Process is not responding");
+});

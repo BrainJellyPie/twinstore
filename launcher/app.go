@@ -5,7 +5,6 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	"hash/crc32"
 	"io"
 	"net"
 	"net/http"
@@ -41,6 +40,7 @@ type app struct {
 	smokeDone  chan int
 
 	mu       sync.Mutex
+	held     func() // releases the data home (claimData); nil while this launcher does not use it
 	cmd      *exec.Cmd
 	stdin    io.WriteCloser
 	exited   chan struct{}
@@ -75,27 +75,6 @@ func (a *app) retry() {
 	a.start()
 }
 
-// dataHome is where projects and the Python environment live when the app files cannot hold
-// them (read-only macOS bundle); "" keeps the usual backend/.data next to the app.
-func (a *app) dataHome() string {
-	if inBundle(a.root) || !writable(filepath.Join(a.root, "backend")) {
-		return a.home
-	}
-	return ""
-}
-
-// shortVenv is where the Python environment goes on Windows when the app folder's path is long: package files
-// nest deep (about 130 more characters under the environment), and past 260 characters Windows without long
-// paths enabled cannot write their bytecode or import them. "" keeps backend/.venv.
-func (a *app) shortVenv() string { return shortVenvFor(runtime.GOOS, a.root, a.home) }
-
-func shortVenvFor(goos, root, home string) string {
-	if goos != "windows" || len(root)+len(`\backend\.venv`) <= 90 {
-		return ""
-	}
-	return filepath.Join(home, "venv", fmt.Sprintf("%08x", crc32.ChecksumIEEE([]byte(strings.ToLower(root)))))
-}
-
 func (a *app) start() {
 	if !a.starting.CompareAndSwap(false, true) {
 		return
@@ -106,6 +85,19 @@ func (a *app) start() {
 	}
 	a.status.reset()
 	a.status.done("files", a.root)
+	if !a.holdData() {
+		a.smokeFail()
+		return
+	}
+	// Before the server starts: it would otherwise add the sample stores to an empty data folder, and the stores of
+	// the earlier version would never be brought over. A copy that fails stops here, to be tried again.
+	if err := a.bringStoresOver(); err != nil {
+		a.log.Printf("Could not bring your stores over %v", err)
+		a.status.fail("data", "Could not bring your stores over "+err.Error()+". They are still there; Try again "+
+			"copies them again.")
+		a.smokeFail()
+		return
+	}
 	uv, version := findUV(a.home)
 	if !uvAtLeast(version, minUV) {
 		if uv != "" {
@@ -180,6 +172,21 @@ func serverEnv(goos string, environ []string, uvVer string, extra ...string) []s
 	return append(env, extra...)
 }
 
+// backendEnv is the environment uv and the server run with. The data and the Python environment live in the
+// per-user folder, never in the app folder, which an update replaces (see dataHome).
+// UV_COMPILE_BYTECODE: compile the packages in parallel while they install, shown as its own step, instead of one
+// file at a time during the server's first import (minutes on a computer that scans every new file).
+// PYTHONUTF8: files are read and written as UTF-8 whatever the Windows code page (cp949, cp1252, …).
+func (a *app) backendEnv(uvVer string) []string {
+	extra := []string{"PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONUTF8=1", "UV_NO_PROGRESS=1", "NO_COLOR=1",
+		"UV_COMPILE_BYTECODE=1", "PARASTORE_DATA_HOME=" + a.dataHome(), "UV_PROJECT_ENVIRONMENT=" + pythonEnv(a.home)}
+	if inBundle(a.root) || !writable(filepath.Join(a.root, "backend")) {
+		// Read-only app files (the macOS bundle): Python cannot keep compiled sources beside them.
+		extra = append(extra, "PYTHONDONTWRITEBYTECODE=1")
+	}
+	return serverEnv(runtime.GOOS, os.Environ(), uvVer, extra...)
+}
+
 // setsEnv reports whether kv ("NAME=value") sets the variable name; Windows names ignore case.
 func setsEnv(goos, kv, name string) bool {
 	k, _, _ := strings.Cut(kv, "=")
@@ -205,18 +212,8 @@ func (a *app) launch(uv, version string) error {
 	}
 	cmd := exec.Command(uv, args...)
 	cmd.Dir = a.root
-	// UV_COMPILE_BYTECODE: compile the packages in parallel while they install, shown as its own step, instead of one
-	// file at a time during the server's first import (minutes on a computer that scans every new file).
-	// PYTHONUTF8: files are read and written as UTF-8 whatever the Windows code page (cp949, cp1252, …).
-	cmd.Env = serverEnv(runtime.GOOS, os.Environ(), version, "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONUTF8=1",
-		"UV_NO_PROGRESS=1", "NO_COLOR=1", "UV_COMPILE_BYTECODE=1")
-	if data := a.dataHome(); data != "" {
-		cmd.Env = append(cmd.Env, "PARASTORE_DATA_HOME="+data, "UV_PROJECT_ENVIRONMENT="+filepath.Join(data, "venv"), "PYTHONDONTWRITEBYTECODE=1")
-		a.log.Printf("Data folder: %s", filepath.Join(data, ".data"))
-	} else if venv := a.shortVenv(); venv != "" {
-		cmd.Env = append(cmd.Env, "UV_PROJECT_ENVIRONMENT="+venv)
-		a.log.Printf("Python environment: %s (the app folder's path is long)", venv)
-	}
+	cmd.Env = a.backendEnv(version)
+	a.log.Printf("Data folder: %s", a.dataFolder())
 	setupProcess(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

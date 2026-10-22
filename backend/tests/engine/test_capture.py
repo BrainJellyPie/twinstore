@@ -371,3 +371,15 @@ def test_grounding_dino_detects_rendered_facings() -> None:
         detector.close()
     preds = [(b.x1, b.y1, b.x2, b.y2) for i in run.result.items for b in i.boxes]
     assert _matches(preds, [f.box for f in scene.facings]) >= 0.7 * len(scene.facings)
+
+
+def test_a_model_that_answers_no_product_fails_the_capture() -> None:
+    from store_emulator.engine.capture.pipeline import CaptureModelFailed
+
+    class _Unreachable:
+        async def generate_structured_with_image_async(self, *a, **k):
+            raise ConnectionError("APIConnectionError: Connection error.")
+
+    scene = _scene(severity="clean", seed=21)
+    with pytest.raises(CaptureModelFailed, match="Connection error"):
+        asyncio.run(capture_shelf(scene.image, detector=ClassicDetector(), labeler=VLMLabeler(_Unreachable(), currency="USD")))  # type: ignore[arg-type]

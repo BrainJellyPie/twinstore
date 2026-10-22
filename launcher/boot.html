@@ -152,7 +152,7 @@
 <script>
   const $ = (id) => document.getElementById(id);
   const icons = { done: "✓", error: "✕", active: "", pending: "" };
-  const weight = { files: 0.04, uv: 0.12, python: 0.5, ui: 0.22, server: 0.12 };
+  const weight = { files: 0.04, data: 0.04, uv: 0.12, python: 0.46, ui: 0.22, server: 0.12 };
   let showLog = false, lastLog = "", misses = 0, finished = false;
 
   const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -180,6 +180,7 @@
       li.innerHTML = `<span class="dot">${icons[st.state]}</span><span class="label"><b></b><span class="detail"></span></span>`;
       li.querySelector("b").textContent = st.label;
       li.querySelector(".detail").textContent = st.detail || (st.state === "pending" ? "waiting" : "");
+      li.querySelector(".detail").title = st.detail || ""; // folder paths are often cut short
       return li;
     }));
     let p = 0;
@@ -200,6 +201,7 @@
     $("sub").textContent = err ? "Something stopped the start." : s.ready ? "Opening the app…" : "Preparing your store lab…";
     const active = s.stages.find((st) => st.state === "active");
     $("hint").textContent = err ? `Full log: ${s.log_file}`
+      : active && active.id === "data" ? "A one-time copy: TwinStore now keeps your stores in your user folder, where later updates find them. The earlier folder stays as it is."
       : active && (active.id === "python" || active.id === "uv") && s.elapsed > 6 ? "First start downloads Python and the packages it needs — a few minutes, once. Later starts take seconds."
       : active && active.id === "ui" ? "Building the interface from source, once. Release downloads skip this step." : "";
     if (err && !showLog) toggleLog(true);

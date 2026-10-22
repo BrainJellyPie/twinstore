@@ -186,3 +186,14 @@ it("returns to live rendering and releases photo resources when a frame fails", 
   draw(mocks.get(), 1 / 60);
   expect(live).toHaveBeenCalledOnce();
 });
+
+it("turns photo mode off when the 3D view unmounts", async () => {
+  usePhotoMode.getState().start();
+  const view = render(<PhotoMode width={4} depth={5} />);
+  await act(async () => { await vi.advanceTimersByTimeAsync(60); });
+  expect(usePhotoMode.getState().status).toBe("tracing");
+  view.unmount();
+  expect(usePhotoMode.getState().status).toBe("off");
+  expect(frameGate.photoRenderer).toBeNull();
+  expect(mocks.tracer.dispose).toHaveBeenCalledOnce();
+});

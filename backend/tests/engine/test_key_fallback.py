@@ -559,6 +559,7 @@ def test_the_default_vision_endpoint_follows_the_local_server_and_dead_ones_leav
 
     ready = LocalVLMStatus(state="ready", api_base="http://127.0.0.1:53303/v1", slots=1, managed=True)
     monkeypatch.setattr(local_vlm, "manager", lambda: type("M", (), {"status": lambda self: ready})())
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: base == "http://127.0.0.1:53303/v1")
     vision = SimulationConfig().engines.vlm_glance.llm          # openai/local-vlm at 127.0.0.1:8081
     resolved = providers.resolve_model(vision.model, base=vision)
     assert resolved.api_base == "http://127.0.0.1:53303/v1" and resolved.max_parallel == 1
@@ -602,3 +603,13 @@ def test_the_uploaded_customer_data_is_kept_until_its_summary_is_made(tmp_path, 
     from store_emulator.domain.config import SimulationConfig
     generation_async.start_persona_generation(SimulationConfig(), "proj_up", "setup_1")
     assert submitted[0]["supplemental_bytes"] == b"day,hour\n1,9\n" and submitted[0]["supplemental_filename"] == "고객 데이터.CSV"
+
+
+def test_trying_again_restarts_a_local_model_that_failed(monkeypatch, fake_calls):
+    monkeypatch.setenv("TWINSTORE_LOCAL_VLM_AUTO", "1")
+    monkeypatch.setattr(providers.time, "sleep", lambda s: None)
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: False)
+    local = _LocalModel(["error", "error", "preparing", "downloading", "ready"])
+    monkeypatch.setattr(local_vlm, "manager", lambda: local)
+    client = providers.assistive_client("", LLMConfig(model="anthropic/claude-haiku-5-5"), wait=600)
+    assert client.model == "openai/local-model" and local.started == 1

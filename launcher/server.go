@@ -65,10 +65,7 @@ func (a *app) handler() http.Handler {
 	})
 	mux.HandleFunc("GET /__twinstore/status", func(w http.ResponseWriter, r *http.Request) {
 		v := a.status.view()
-		v.Log, v.Root, v.LogFile = a.log.Tail(160), a.root, a.log.path
-		if d := a.dataHome(); d != "" {
-			v.Data = d
-		}
+		v.Log, v.Root, v.Data, v.LogFile = a.log.Tail(160), a.root, a.dataFolder(), a.log.path
 		writeJSON(w, v)
 	})
 	mux.HandleFunc("GET /__twinstore/log", func(w http.ResponseWriter, r *http.Request) {

@@ -1,7 +1,7 @@
 // Force-edit hook — when the user tries to edit a store that already has items,
 // save a single PUT with all slot items cleared and return the resulting
-// SetupDetailWithBlocked so the caller can reset() the editor state. Returns null
-// on failure; the caller surfaces the error (console / banner).
+// SetupDetailWithBlocked so the caller can reset() the editor state. On failure it
+// returns the server's message; the caller surfaces it.
 
 import { useCallback, useState } from "react";
 import { saveSetup } from "./gridEditorApi";
@@ -14,7 +14,7 @@ export function useForceEdit(pid: string, sid: string) {
   const forceEdit = useCallback(
     async (
       currentSetup: SetupDetailWithBlocked,
-    ): Promise<SetupDetailWithBlocked | null> => {
+    ): Promise<{ ok: true; setup: SetupDetailWithBlocked } | { ok: false; message: string }> => {
       setRunning(true);
       try {
         const cleared: Store | null = currentSetup.store
@@ -31,8 +31,7 @@ export function useForceEdit(pid: string, sid: string) {
           store: cleared ?? undefined,
         });
         if (!result.ok) {
-          console.error("[useForceEdit] saveSetup failed:", result);
-          return null;
+          return { ok: false, message: result.message || "Failed to save force edit." };
         }
 
         // Spread order: existing setup ← API SetupSummary ← cleared-store override.
@@ -42,7 +41,7 @@ export function useForceEdit(pid: string, sid: string) {
           store: cleared,
           blocked_faces: result.blocked_faces,
         };
-        return newSetup;
+        return { ok: true, setup: newSetup };
       } finally {
         setRunning(false);
       }

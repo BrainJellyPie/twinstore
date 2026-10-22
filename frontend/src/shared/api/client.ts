@@ -1699,7 +1699,7 @@ export function applyCapture(
 
 export async function deleteCapture(projectId: string, captureId: string): Promise<void> {
   const res = await fetch(`${BASE}/api/projects/${projectId}/captures/${captureId}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(`Delete failed (HTTP ${res.status})`);
+  if (!res.ok) throw new ApiError(apiErrorMessage(await res.text().catch(() => ""), `Delete failed (HTTP ${res.status})`), res.status);
 }
 
 // ── Shelf Lab (counterfactual edits, sim2real, compliance audit) ─────────────
@@ -1844,9 +1844,8 @@ export async function uploadPackage(
   const form = new FormData();
   form.append("image", file);
   for (const [k, v] of Object.entries(meta)) if (v !== undefined && v !== "") form.append(k, String(v));
-  const res = await fetch(`${BASE}/api/projects/${projectId}/lab/packages`, { method: "POST", body: form });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text().catch(() => "")}`);
-  return res.json() as Promise<PackageAsset>;
+  // Empty headers let the browser set the multipart boundary.
+  return fetchJson(`/api/projects/${projectId}/lab/packages`, { method: "POST", body: form, headers: {} });
 }
 
 export function listPackages(projectId: string, signal?: AbortSignal): Promise<PackageAsset[]> {
@@ -1866,7 +1865,7 @@ export function updatePackage(projectId: string, assetId: string, update: { name
 
 export async function deletePackage(projectId: string, assetId: string): Promise<void> {
   const res = await fetch(`${BASE}/api/projects/${projectId}/lab/packages/${assetId}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) throw new ApiError(apiErrorMessage(await res.text().catch(() => ""), `Delete failed (HTTP ${res.status})`), res.status);
 }
 
 export function packageUrl(projectId: string, assetId: string): string {
@@ -1887,7 +1886,7 @@ export function editFileUrl(projectId: string, captureId: string, editId: string
 
 export async function deleteEdit(projectId: string, captureId: string, editId: string): Promise<void> {
   const res = await fetch(`${BASE}/api/projects/${projectId}/captures/${captureId}/edits/${editId}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(`Delete failed (HTTP ${res.status})`);
+  if (!res.ok) throw new ApiError(apiErrorMessage(await res.text().catch(() => ""), `Delete failed (HTTP ${res.status})`), res.status);
 }
 
 export function startSim2Real(

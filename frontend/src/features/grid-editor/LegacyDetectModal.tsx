@@ -32,6 +32,7 @@ interface LegacyDetectModalProps {
   onCancel: () => void;
   // Inline reset-failure message in the state="clean" case. null/undefined hides it.
   error?: string | null;
+  resetting?: boolean;
 }
 
 export function LegacyDetectModal({
@@ -40,6 +41,7 @@ export function LegacyDetectModal({
   onReset,
   onCancel,
   error,
+  resetting = false,
 }: LegacyDetectModalProps) {
   // "with_run" is a blocking modal — no outside-click / ESC dismiss, no Cancel button.
   // The only exit is "create new setup"; otherwise the modal stays mounted.
@@ -88,17 +90,18 @@ export function LegacyDetectModal({
             </Button>
           ) : (
             <>
-              <Button variant="outline" onClick={onCancel}>
+              <Button variant="outline" disabled={resetting} onClick={onCancel}>
                 Cancel
               </Button>
               <Button
                 variant="destructive"
+                disabled={resetting}
                 onClick={() => {
                   void onReset();
                 }}
                 data-testid="legacy-reset"
               >
-                Reset and recreate
+                {resetting ? "Resetting…" : "Reset and recreate"}
               </Button>
             </>
           )}

@@ -6,6 +6,7 @@ import * as api from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
 import { CreateStoreWizard } from "../components/CreateStoreWizard";
 
+vi.mock("@tanstack/react-router", () => ({ useBlocker: () => ({ status: "idle" }) }));
 vi.mock("@/shared/api/client", () => ({ createStore: vi.fn() }));
 vi.mock("@/features/layouts/components/TemplatePicker", () => ({ TemplatePicker: () => null }));
 const response = { metadata: { project_id: "new_project" }, setup: { id: "new_setup" }, personaGenId: "new_generation" } as api.CreateStoreResponse;

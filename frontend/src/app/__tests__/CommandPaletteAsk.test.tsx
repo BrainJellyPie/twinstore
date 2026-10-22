@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render as renderUi, screen, waitFor } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
-import { useLocale } from "@/shared/i18n/i18n";
+import { translate, useLocale } from "@/shared/i18n/i18n";
 import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { queryKeys } from "@/shared/queries/keys";
 import { CommandPalette } from "../CommandPalette";
 import { useCommandPalette } from "../commandPalette";
 
@@ -19,8 +22,18 @@ vi.mock("../launcher", () => ({ useLauncher: () => false, quitLauncher: vi.fn() 
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), routeAssist: vi.fn() }));
 Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 
-beforeEach(() => { useLocale.getState().setLocale("en"); useCommandPalette.setState({ open: true }); state.pathname = "/projects/proj_cafe"; });
-afterEach(() => { cleanup(); useCommandPalette.setState({ open: false }); useAssistStore.setState({ pending: null }); vi.clearAllMocks(); });
+const queryClient = new QueryClient();
+const render = (ui: ReactElement) => renderUi(ui, { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider> });
+const layout = (id: string, runId: string | null, updated_at = "2026-10-01"): api.SetupSummary => ({ id, name: id, status: runId ? "locked" : "draft",
+  parentId: null, runId, memo: "", readiness: null, created_at: "2026-09-01", updated_at });
+beforeEach(() => {
+  useLocale.getState().setLocale("en"); useCommandPalette.setState({ open: true }); state.pathname = "/projects/proj_cafe";
+  queryClient.setQueryData(queryKeys.setups("proj_cafe"), [layout("a", "run_a")]);
+});
+afterEach(() => {
+  cleanup(); useCommandPalette.setState({ open: false }); useAssistStore.setState({ pending: null }); useSimulationStore.getState().reset();
+  queryClient.clear(); vi.clearAllMocks();
+});
 
 function type(text: string) {
   render(<CommandPalette />);
@@ -75,4 +88,39 @@ it("offers to ask only inside a store, for a sentence that names no command", ()
   state.pathname = "/projects/new";
   type("Would a 1+1 sign on cola sell more?");
   expect(screen.queryByText("Ask TwinStore")).toBeNull();
+});
+
+it("opens the most recent layout with a finished run before handing over a run question", async () => {
+  vi.mocked(api.routeAssist).mockResolvedValue({ destination: "run_question", reason: "" });
+  queryClient.setQueryData(queryKeys.setups("proj_cafe"), [layout("draft", null), layout("old", "run_old", "2026-10-02"), layout("recent", "run_new", "2026-10-09")]);
+  useSimulationStore.getState().setSelectedSetupId("draft");
+  fireEvent.keyDown(type("Why does the freezer sell so little?"), { key: "Enter" });
+  await waitFor(() => expect(state.navigate).toHaveBeenCalledWith({ to: "/projects/$pid", params: { pid: "proj_cafe" } }));
+  expect(useSimulationStore.getState().selectedSetupId).toBe("recent");
+  expect(useAssistStore.getState().pending).toMatchObject({ destination: "run_question", text: "Why does the freezer sell so little?" });
+  expect(useCommandPalette.getState().open).toBe(false);
+});
+
+it("keeps the viewed layout when it is showing a finished run", async () => {
+  vi.mocked(api.routeAssist).mockResolvedValue({ destination: "run_question", reason: "" });
+  queryClient.setQueryData(queryKeys.setups("proj_cafe"), [layout("draft", null), layout("recent", "run_new")]);
+  useSimulationStore.getState().setSelectedSetupId("draft");
+  useSimulationStore.getState().setViewRunId("preview_run");
+  fireEvent.keyDown(type("Why does the freezer sell so little?"), { key: "Enter" });
+  await waitFor(() => expect(state.navigate).toHaveBeenCalled());
+  expect(useSimulationStore.getState().selectedSetupId).toBe("draft");
+  expect(useSimulationStore.getState().viewRunId).toBe("preview_run");
+});
+
+it("keeps the palette open with a note when no layout has a finished run", async () => {
+  useLocale.getState().setLocale("fr");
+  vi.mocked(api.routeAssist).mockResolvedValue({ destination: "run_question", reason: "" });
+  queryClient.setQueryData(queryKeys.setups("proj_cafe"), [layout("draft", null), layout("other", null)]);
+  useSimulationStore.getState().setSelectedSetupId("draft");
+  fireEvent.keyDown(type("Pourquoi le congélateur vend-il si peu ?"), { key: "Enter" });
+  expect(await screen.findByText(translate("fr", "commandAskNoRun"))).toBeTruthy();
+  expect(state.navigate).not.toHaveBeenCalled();
+  expect(useAssistStore.getState().pending).toBeNull();
+  expect(useSimulationStore.getState().selectedSetupId).toBe("draft");
+  expect(useCommandPalette.getState().open).toBe(true);
 });

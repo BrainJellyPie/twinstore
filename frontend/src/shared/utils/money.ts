@@ -2,6 +2,8 @@
 // KRW → won). The run summary carries the currency ("USD_CENTS" for legacy USD
 // runs, an ISO code otherwise).
 
+import { useLocale } from "@/shared/i18n/i18n";
+
 const ZERO_DECIMAL = new Set(["KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"]);
 
 export function currencyCode(summaryCurrency: string | undefined): string {
@@ -36,34 +38,39 @@ export function toMinor(text: string, divisor: number): number | null {
 }
 
 const formatters = new Map<string, Intl.NumberFormat>();
-const fractionFormatter = new Intl.NumberFormat(undefined, {
-  minimumIntegerDigits: 2, maximumFractionDigits: 0, useGrouping: false,
-});
 
-function formatter(code: string, compact: boolean): Intl.NumberFormat {
-  const key = `${code}:${compact}`;
+function cachedFormatter(key: string, create: () => Intl.NumberFormat): Intl.NumberFormat {
   let f = formatters.get(key);
   if (!f) {
-    f = new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: code,
-      notation: compact ? "compact" : "standard",
-      maximumFractionDigits: compact ? 1 : ZERO_DECIMAL.has(code) ? 0 : 2,
-    });
+    f = create();
     formatters.set(key, f);
   }
   return f;
 }
 
-export function formatMoney(minor: number, code = "USD", opts: { compact?: boolean } = {}): string {
+function formatter(locale: string, code: string, compact: boolean): Intl.NumberFormat {
+  return cachedFormatter(`${locale}:${code}:${compact}`, () => new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: code,
+    notation: compact ? "compact" : "standard",
+    maximumFractionDigits: compact ? 1 : ZERO_DECIMAL.has(code) ? 0 : 2,
+  }));
+}
+
+/** Formats in the app's selected language unless `locale` is given. */
+export function formatMoney(minor: number, code = "USD", opts: { compact?: boolean; locale?: string } = {}): string {
+  const locale = opts.locale ?? useLocale.getState().locale;
   const value = minor / minorUnitDivisor(code);
   try {
-    const f = formatter(code, opts.compact ?? false);
+    const f = formatter(locale, code, opts.compact ?? false);
     if (!opts.compact && minorUnitDivisor(code) === 100 && Number.isSafeInteger(minor)) {
       // Dividing a large safe integer by 100 can already lose a cent. Format the
       // integer part with Intl and insert the exact minor units separately.
       const amount = BigInt(minor);
       const whole = amount / 100n;
+      const fractionFormatter = cachedFormatter(`${locale}:fraction`, () => new Intl.NumberFormat(locale, {
+        minimumIntegerDigits: 2, maximumFractionDigits: 0, useGrouping: false,
+      }));
       const fraction = fractionFormatter.format((amount < 0n ? -amount : amount) % 100n);
       return f.formatToParts(whole === 0n && (minor < 0 || Object.is(minor, -0)) ? -0 : whole)
         .map((part) => part.type === "fraction" ? fraction : part.value).join("");
@@ -71,7 +78,7 @@ export function formatMoney(minor: number, code = "USD", opts: { compact?: boole
     return f.format(value);
   } catch {
     // Unknown ISO code — fall back to a plain number with the code appended.
-    return `${value.toLocaleString()} ${code}`;
+    return `${value.toLocaleString(locale)} ${code}`;
   }
 }
 

@@ -7,6 +7,7 @@ import { useLocale } from "@/shared/i18n/i18n";
 import { CreateStoreWizard } from "../components/CreateStoreWizard";
 
 const picked = vi.hoisted(() => ({ value: null as null | { templateId: string; currency: string } }));
+vi.mock("@tanstack/react-router", () => ({ useBlocker: () => ({ status: "idle" }) }));
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), draftStoreSetup: vi.fn() }));
 vi.mock("@/shared/mutations/useCreateStore", () => ({ useCreateStore: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }) }));
 vi.mock("@/features/layouts/components/TemplatePicker", () => ({
