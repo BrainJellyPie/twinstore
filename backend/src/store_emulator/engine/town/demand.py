@@ -44,6 +44,7 @@ import numpy.typing as npt
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.persona import AGE_GROUPS, AgeGroup
+from store_emulator.domain.store import Store
 from store_emulator.domain.town import (
     TOWN_SEGMENTS,
     BuildingKind,
@@ -264,6 +265,28 @@ def day_type_for(day: Weekday, *, holiday: bool = False) -> DayType:
     return "weekend" if day in (Weekday.SAT, Weekday.SUN) else "weekday"
 
 
+# Hours modeled when the store's opening hours are unknown (no layout, or a layout without a weekly schedule).
+DEFAULT_HOURS = range(7, 24)
+# The weekday whose opening hours stand for a day type.
+TYPICAL_DAY: dict[DayType, Weekday] = {"weekday": Weekday.WED, "weekend": Weekday.SAT, "holiday": Weekday.SUN}
+
+
+def with_store_hours(town: Town, store: Store | None, day: Weekday) -> tuple[Town, list[int]]:
+    """The town with the focal store open when the layout's weekly schedule opens it on `day`, and those hours (the
+    hours to model; none on a closed day). Without a schedule: the town as it is and `DEFAULT_HOURS`."""
+    if store is None or not store.weekly_schedule:
+        return town, list(DEFAULT_HOURS)
+    schedule = store.schedule_for(day)
+    if schedule is None or not schedule.is_open:
+        return town, []
+    venues = [
+        v.model_copy(update={"open_hour": schedule.open_hour, "close_hour": schedule.close_hour})
+        if v.id == town.focal_venue_id else v
+        for v in town.venues
+    ]
+    return town.model_copy(update={"venues": venues}), list(range(schedule.open_hour, schedule.close_hour))
+
+
 def purpose_label(segment: TownSegment, hour: int, source_category: str = "") -> str:
     """Short trip-purpose label used in demand rows and persona annotations."""
     if segment == "linked":
@@ -329,7 +352,7 @@ def estimate_demand(
     town: Town,
     *,
     day_type: DayType = "weekday",
-    hours: Iterable[int] = range(7, 24),
+    hours: Iterable[int] = DEFAULT_HOURS,
     traffic_multiplier: float = 1.0,
     hourly_multiplier: dict[int, float] | None = None,
     beta: float | None = None,
@@ -566,7 +589,7 @@ def synergy_analysis(
     town: Town,
     *,
     day_type: DayType = "weekday",
-    hours: Iterable[int] = range(7, 24),
+    hours: Iterable[int] = DEFAULT_HOURS,
     traffic_multiplier: float = 1.0,
     hourly_multiplier: dict[int, float] | None = None,
     beta: float | None = None,

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { translate, useLocale } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
+import { templateName } from "@/shared/i18n/storeLabels";
 import { TemplatePicker } from "../components/TemplatePicker";
 import { DEFAULT_TEMPLATE_CHOICE, type TemplateChoice } from "../templateOptions";
 
@@ -37,10 +38,11 @@ function show({ form = false }: { form?: boolean } = {}) {
 
 it.each(LOCALES)("exposes one selected radio and preserves overrides when selecting in $code", async ({ code }) => {
   useLocale.getState().setLocale(code); show();
-  const city = await screen.findByRole("radio", { name: /^City store/ });
+  // Format names follow the selected language; the fixtures reuse real template ids.
+  const city = await screen.findByRole("radio", { name: new RegExp(`^${templateName("urban_cvs", "City store", code)}`) });
   expect(screen.getByRole("radiogroup", { name: translate(code, "storeFormats") })).toBeTruthy();
   expect(city.getAttribute("aria-checked")).toBe("true");
-  const pharmacy = screen.getByRole("radio", { name: /^Community pharmacy/ }); fireEvent.click(pharmacy);
+  const pharmacy = screen.getByRole("radio", { name: new RegExp(`^${templateName("community_pharmacy", "Community pharmacy", code)}`) }); fireEvent.click(pharmacy);
   expect(pharmacy.getAttribute("aria-checked")).toBe("true"); expect(city.getAttribute("aria-checked")).toBe("false");
   fireEvent.click(pharmacy); expect(selected).toHaveBeenCalledOnce();
   expect(selected).toHaveBeenCalledWith(expect.objectContaining({ id: "community_pharmacy", store_type: "pharmacy" }));

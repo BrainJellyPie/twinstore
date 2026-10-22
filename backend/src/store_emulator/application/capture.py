@@ -18,7 +18,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 from filelock import FileLock, Timeout
 from PIL import Image, UnidentifiedImageError
@@ -409,7 +409,21 @@ def delete_capture(pid: str, cid: str) -> None:
     status = _read_status(pid, cid)
     if status.status in ("pending", "running"):
         raise AppError("capture is still being processed", 409)
+    if _lab_job_running(_dir(pid, cid)):
+        # The job would write its results back under the deleted capture.
+        raise AppError("a Shelf Lab job on this capture is still running; delete it when the job has finished", 409)
     remove_tree(_dir(pid, cid))
+
+
+def _lab_job_running(folder: Path) -> bool:
+    for status_file in (folder / "lab" / "jobs").glob("*/status.json"):
+        try:
+            state = cast(dict[str, object], read_json(status_file)).get("status")
+        except (OSError, ValueError):
+            continue
+        if state in ("pending", "running"):
+            return True
+    return False
 
 
 def capture_image_path(pid: str, cid: str, *, overlay: bool) -> Path:

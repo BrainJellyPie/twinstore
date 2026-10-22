@@ -11,6 +11,7 @@ import type { PackageAsset } from "@/shared/api/client";
 import { marketingKeys } from "@/shared/api/marketing";
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/utils/cn";
+import { useI18n } from "@/shared/i18n/i18n";
 
 import { usePackages } from "./hooks";
 import type { Product } from "./products";
@@ -20,6 +21,7 @@ export function ProductDrop({ projectId, compact = false, onUploaded, setupId }:
   /** Layout whose products a read pack may be linked to. */
   setupId?: string;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
@@ -78,48 +80,46 @@ export function ProductDrop({ projectId, compact = false, onUploaded, setupId }:
           {upload.isPending ? <Loader2 className="size-5 animate-spin" /> : <ImagePlus className="size-5" />}
         </span>
         <span className="min-w-0">
-          <span className="block text-sm font-semibold">{upload.isPending ? (readPacks ? "Uploading and reading the packs…" : "Uploading…") : "Drop product images"}</span>
-          <span className="block text-xs text-muted-foreground">PNG, JPEG or WebP · several at once · packshots or phone photos</span>
+          <span className="block text-sm font-semibold">{upload.isPending ? (readPacks ? t("mkUploadingReading") : t("mkUploading")) : t("mkDropImages")}</span>
+          <span className="block text-xs text-muted-foreground">{t("mkDropHint")}</span>
         </span>
         <input ref={input} type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
       </button>
       <div className="flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-muted-foreground">
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={cutOut} onChange={(e) => setCutOut(e.target.checked)} />
-          Remove a plain background
+          {t("mkRemoveBackground")}
         </label>
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={readPacks} onChange={(e) => setReadPacks(e.target.checked)} />
-          Name packs from what they say
+          {t("mkNamePacks")}
         </label>
       </div>
       {upload.error && <p role="alert" className="text-xs text-destructive">{upload.error.message}</p>}
       {failures.length > 0 && !upload.isPending && (
         <div role="alert" className="px-1 text-xs text-destructive">
-          <p>{failures.length === 1 ? "1 image could not be uploaded:" : `${failures.length} images could not be uploaded:`}</p>
+          <p>{failures.length === 1 ? t("mkOneUploadFailed") : t("mkUploadsFailed", { count: failures.length })}</p>
           <ul className="list-disc pl-4">
             {failures.map((f, i) => <li key={i} className="break-words"><span className="font-medium">{f.name}</span>: {f.message}</li>)}
           </ul>
         </div>
       )}
       {unread > 0 && !upload.isPending && (
-        <p className="text-xs text-muted-foreground">{unread} pack{unread > 1 ? "s" : ""} could not be read and kept the file name; use “Read the pack” on the card to try again.</p>
+        <p className="text-xs text-muted-foreground">{t(unread > 1 ? "mkUnreadMany" : "mkUnreadOne", { count: unread })}</p>
       )}
     </div>
   );
 }
 
 export function ProductLibrary({ projectId, products, setupId }: { projectId: string; products: Product[]; setupId?: string }) {
+  const { t } = useI18n();
   const packages = usePackages(projectId);
   const list = packages.data ?? [];
   return (
     <div className="space-y-4">
       <ProductDrop projectId={projectId} setupId={setupId} />
       {list.length === 0 ? (
-        <p className="px-1 text-sm text-muted-foreground">
-          No product images yet. Add the packs you want to test — current packs, redesigns, competitor packs — then link each one to
-          the product it replaces on the shelf.
-        </p>
+        <p className="px-1 text-sm text-muted-foreground">{t("mkNoImages")}</p>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))] gap-3">
           {list.map((p) => <ProductCard key={`${projectId}:${p.asset_id}`} projectId={projectId} asset={p} products={products} setupId={setupId} />)}
@@ -130,6 +130,7 @@ export function ProductLibrary({ projectId, products, setupId }: { projectId: st
 }
 
 function ProductCard({ projectId, asset, products, setupId }: { projectId: string; asset: PackageAsset; products: Product[]; setupId?: string }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [brandDraft, setBrandDraft] = useState<string | null>(null);
@@ -158,7 +159,7 @@ function ProductCard({ projectId, asset, products, setupId }: { projectId: strin
         <img src={api.packageUrl(projectId, asset.asset_id)} alt={asset.name} className="max-h-full max-w-full object-contain drop-shadow-[0_8px_14px_rgb(0_0_0/0.22)]" />
         {asset.cut_out && (
           <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.65rem] text-white">
-            <Scissors className="size-3" /> cut out
+            <Scissors className="size-3" /> {t("mkCutOut")}
           </span>
         )}
         <button
@@ -167,42 +168,42 @@ function ProductCard({ projectId, asset, products, setupId }: { projectId: strin
           onBlur={() => setConfirm(false)}
           className={cn("absolute top-2 right-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[0.68rem] transition-opacity",
             confirm ? "bg-destructive text-white" : "bg-black/55 text-white opacity-0 group-hover:opacity-100 focus-visible:opacity-100")}
-          aria-label={`Delete ${asset.name}`}
+          aria-label={t("mkDeleteJob", { name: asset.name })}
         >
-          <Trash2 className="size-3" /> {confirm ? "Delete?" : ""}
+          <Trash2 className="size-3" /> {confirm ? t("mkDeleteConfirm") : ""}
         </button>
       </div>
       <div className="space-y-1.5 p-2.5">
         <Input value={name} onChange={(e) => setNameDraft(e.target.value === asset.name ? null : e.target.value)} onBlur={() => name.trim() && name !== asset.name && save.mutate({ name: name.trim() })}
-          className="h-8 text-sm font-medium" aria-label="Name" />
+          className="h-8 text-sm font-medium" aria-label={t("mkName")} />
         <Input value={brand} onChange={(e) => setBrandDraft(e.target.value === (asset.brand ?? "") ? null : e.target.value)} onBlur={() => brand !== (asset.brand ?? "") && save.mutate({ brand: brand.trim() })}
-          placeholder="Brand" className="h-8 text-xs" aria-label="Brand" />
+          placeholder={t("mkBrand")} className="h-8 text-xs" aria-label={t("mkBrand")} />
         <label className="flex items-center gap-1.5">
           <Link2 className={cn("size-3.5 shrink-0", linked ? "text-primary" : "text-muted-foreground")} aria-hidden />
           <select
             value={asset.sku ?? ""}
             onChange={(e) => save.mutate({ sku: e.target.value })}
             className="h-8 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5 text-xs"
-            aria-label="Shown on the shelf as"
+            aria-label={t("mkShownAs")}
           >
-            <option value="">Not on the shelf</option>
+            <option value="">{t("mkNotOnShelf")}</option>
             {products.map((p) => <option key={p.sku} value={p.sku}>{p.name} · {p.sku}</option>)}
-            {asset.sku && !linked && <option value={asset.sku}>{asset.sku} (not in this layout)</option>}
+            {asset.sku && !linked && <option value={asset.sku}>{t("mkNotInLayout", { sku: asset.sku })}</option>}
           </select>
-          {save.isSuccess && !save.isPending && <Check className="size-3.5 text-positive" aria-label="Saved" />}
+          {save.isSuccess && !save.isPending && <Check className="size-3.5 text-positive" aria-label={t("studioSaved")} />}
         </label>
         <div className="flex items-center justify-between gap-2">
           <span className="num text-[0.68rem] text-muted-foreground">{asset.width}×{asset.height}px{asset.brand ? ` · ${asset.brand}` : ""}</span>
           <button type="button" onClick={() => read.mutate()} disabled={read.isPending}
             className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.7rem] text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground disabled:opacity-50"
-            title="A vision model reads the name, brand and size printed on the pack">
-            {read.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Read the pack
+            title={t("mkReadPackTitle")}>
+            {read.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} {t("mkReadPack")}
           </button>
         </div>
         {read.data && (
           <p className="text-[0.68rem] text-muted-foreground">
             {read.data.reading.size && `${read.data.reading.size} · `}{read.data.reading.category}
-            {read.data.linked ? " · linked to the shelf product" : ""}
+            {read.data.linked ? t("mkLinkedToShelf") : ""}
           </p>
         )}
         {read.error && <p role="alert" className="text-[0.68rem] text-destructive">{read.error.message}</p>}

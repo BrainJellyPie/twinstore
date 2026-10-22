@@ -13,12 +13,14 @@ from store_emulator.engine.town.arrivals import (
     town_context_text,
 )
 from store_emulator.engine.town.demand import (
+    TYPICAL_DAY,
     CategoryPrior,
     DemandParams,
     day_type_for,
     estimate_demand,
     purpose_label,
     synergy_analysis,
+    with_store_hours,
 )
 from store_emulator.engine.town.generator import (
     DEFAULT_OPEN_HOURS,
@@ -31,6 +33,7 @@ from store_emulator.engine.town.osm import fetch_overpass, geocode, town_from_ov
 
 __all__ = [
     "DEFAULT_OPEN_HOURS",
+    "TYPICAL_DAY",
     "CategoryPrior",
     "DemandParams",
     "auto_competitor_count",
@@ -47,4 +50,5 @@ __all__ = [
     "synergy_analysis",
     "town_context_text",
     "town_from_overpass",
+    "with_store_hours",
 ]

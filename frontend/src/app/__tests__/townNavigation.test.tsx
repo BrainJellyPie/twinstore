@@ -2,10 +2,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
 import { Route } from "../../routes/town.$pid";
+
+// The route component is code-split (autoCodeSplitting), so the first router.load() would import the whole page
+// module graph inside a test's timeout. Load that chunk once here instead.
+beforeAll(async () => { await (Route.options.component as { preload?: () => Promise<void> } | undefined)?.preload?.(); }, 120_000);
 
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(),

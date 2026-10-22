@@ -30,7 +30,7 @@ from store_emulator.application.runner import build_runner
 from store_emulator.application.product_images import project_image_loader
 from store_emulator.engine.perception.product_images import ProductImageLoader
 from store_emulator.application.scenarios import get_preset, prepare_inputs, who_can_come
-from store_emulator.application.town import get_town, town_visitors
+from store_emulator.application.town import town_for_run, town_visitors
 from store_emulator.domain.town import Town, TownArrival
 from store_emulator.application.storage.io import DATA_DIR, read_json, write_json, now_iso
 from store_emulator.application.storage.setups import (
@@ -261,11 +261,12 @@ def run_shoppers(
     if config.engines.vlm_glance.shelf_view == "photo_chart":
         vlm = config.engines.vlm_glance.model_copy(update={"shelf_views_dir": str(views_dir(pid))})
         config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
-    town = get_town(pid) if options.use_town else None
+    town = town_for_run(pid) if options.use_town else None
     arrivals: list[TownArrival] = []
     if town is not None:
         personas, arrivals = town_visitors(town, personas, seed=config.seed, scale=options.town_scale,
-                                           scenario=config.scenario)
+                                           scenario=config.scenario, store=store,
+                                           scenario_priors=config.scenario_priors)
     # The cap counts shoppers who come on the scenario's days and opening hours, not ones dropped right after.
     personas = subsample_personas(who_can_come(config, store, personas), options.max_customers, config.seed)
     store, personas = prepare_inputs(config, store, personas, traffic_applied=town is not None)
@@ -508,7 +509,14 @@ def run_fidelity(pid: str, run_id: str, data: bytes, filename: str) -> FidelityR
         lines = parse_pos_csv(data, filename)
     except ValueError as e:
         raise AppError(str(e), 400)
-    report = fidelity_report(load_run_store(base), load_run_results(base), lines)
+    store = load_run_store(base)
+    skus = {i.sku for r in store.racks for slot in r.slots for i in slot.items}
+    if lines and not any(line.sku in skus for line in lines):
+        # Scored, it read 0 on every measure and replaced any earlier report of the run.
+        sample = ", ".join(sorted({line.sku for line in lines})[:3])
+        raise AppError(f"None of the {len(lines)} POS lines' SKUs ({sample}…) is on this run's shelves. Export the POS "
+                       "with the same product codes the layout uses (Store tab → products), then upload it again.", 400)
+    report = fidelity_report(store, load_run_results(base), lines)
     write_json(base / "output" / "fidelity.json", report.model_dump())
     return report
 

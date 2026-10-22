@@ -1,6 +1,9 @@
+import { starterMessages } from "./starterMessages";
 import { bulkMessages } from "./bulkMessages";
 import { productMessages } from "./productMessages";
 import { feedbackMessages } from "./feedbackMessages";
+import { storeMessages } from "./messages/store";
+import { studioMessages } from "./messages/studio";
 
 export const LOCALES = [
   { code: "en", label: "English" }, { code: "ko", label: "한국어" }, { code: "zh", label: "中文" },
@@ -11,7 +14,6 @@ export type Locale = typeof LOCALES[number]["code"];
 // Columns follow LOCALES: English, Korean, Chinese, Japanese, Spanish, French.
 export const messages = {
   ...productMessages,
-  ...bulkMessages,
   ...feedbackMessages,
   language: ["Language", "언어", "语言", "言語", "Idioma", "Langue"],
   main: ["Main", "주요 메뉴", "主菜单", "メイン", "Principal", "Navigation principale"],
@@ -522,5 +524,9 @@ export const messages = {
   readinessNoExit: ["Place at least one exit", "출구를 하나 이상 배치하세요", "请至少放置一个出口", "出口を1つ以上配置してください", "Coloca al menos una salida", "Placez au moins une sortie"],
   readinessNoCounter: ["Place at least one checkout counter", "계산대를 하나 이상 배치하세요", "请至少放置一个收银台", "レジを1台以上配置してください", "Coloca al menos una caja de pago", "Placez au moins une caisse"],
   commandAskNoRun: ["No layout of this store has a finished simulation yet. Run one, then ask again.", "이 매장에는 아직 완료된 시뮬레이션이 있는 배치가 없습니다. 시뮬레이션을 실행한 뒤 다시 질문해 주세요.", "该门店还没有完成模拟的布局。请先运行一次模拟，然后再提问。", "この店舗には完了したシミュレーションのあるレイアウトがまだありません。実行してから、もう一度質問してください。", "Ningún plano de esta tienda tiene aún una simulación terminada. Ejecuta una y vuelve a preguntar.", "Aucun plan de ce magasin n’a encore de simulation terminée. Lancez-en une, puis reposez la question."],
+  ...storeMessages,
+  ...studioMessages,
+  ...bulkMessages,
+  ...starterMessages,
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;
 export type MessageKey = keyof typeof messages;

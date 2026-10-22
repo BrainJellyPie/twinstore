@@ -11,46 +11,55 @@ import type { Crowding, DayType, EventKind, PromotionKind, Scenario, Weather } f
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
 import { BASELINE_SCENARIO } from "../scenarioDefaults";
 
-const WEATHER: { value: Weather; label: string }[] = [
-  { value: "clear", label: "☀️ Clear" },
-  { value: "cloudy", label: "☁️ Cloudy" },
-  { value: "rain", label: "🌧️ Rain" },
-  { value: "heavy_rain", label: "⛈️ Heavy rain" },
-  { value: "snow", label: "🌨️ Snow" },
-  { value: "heatwave", label: "🥵 Heatwave" },
-  { value: "cold_snap", label: "🥶 Cold snap" },
-  { value: "fine_dust", label: "😷 Fine dust" },
-  { value: "typhoon", label: "🌀 Typhoon" },
+const WEATHER: { value: Weather; icon: string; label: MessageKey }[] = [
+  { value: "clear", icon: "☀️", label: "sitClear" },
+  { value: "cloudy", icon: "☁️", label: "sitCloudy" },
+  { value: "rain", icon: "🌧️", label: "sitRain" },
+  { value: "heavy_rain", icon: "⛈️", label: "sitHeavyRain" },
+  { value: "snow", icon: "🌨️", label: "sitSnow" },
+  { value: "heatwave", icon: "🥵", label: "sitHeatwave" },
+  { value: "cold_snap", icon: "🥶", label: "sitColdSnap" },
+  { value: "fine_dust", icon: "😷", label: "sitFineDust" },
+  { value: "typhoon", icon: "🌀", label: "sitTyphoon" },
 ];
-const DAY_TYPES: { value: DayType; label: string }[] = [
-  { value: "weekday", label: "Weekday" },
-  { value: "weekend", label: "Weekend" },
-  { value: "public_holiday", label: "Public holiday" },
-  { value: "holiday_season", label: "Holiday season" },
-  { value: "school_vacation", label: "School vacation" },
+const DAY_TYPES: { value: DayType; label: MessageKey }[] = [
+  { value: "weekday", label: "sitWeekday" },
+  { value: "weekend", label: "sitWeekend" },
+  { value: "public_holiday", label: "sitPublicHoliday" },
+  { value: "holiday_season", label: "sitHolidaySeason" },
+  { value: "school_vacation", label: "sitSchoolVacation" },
 ];
-const EVENTS: { value: EventKind; label: string }[] = [
-  { value: "festival", label: "Festival" },
-  { value: "sports_match", label: "Sports match" },
-  { value: "concert", label: "Concert" },
-  { value: "exam_period", label: "Exam period" },
-  { value: "payday", label: "Payday" },
-  { value: "competitor_opening", label: "Competitor opens" },
-  { value: "competitor_closed", label: "Competitor closed" },
-  { value: "road_construction", label: "Road works" },
-  { value: "marathon", label: "Marathon" },
-  { value: "conference", label: "Conference" },
-  { value: "night_market", label: "Night market" },
+const EVENTS: { value: EventKind; label: MessageKey }[] = [
+  { value: "festival", label: "sitFestival" },
+  { value: "sports_match", label: "sitSportsMatch" },
+  { value: "concert", label: "sitConcert" },
+  { value: "exam_period", label: "sitExamPeriod" },
+  { value: "payday", label: "sitPayday" },
+  { value: "competitor_opening", label: "sitCompetitorOpens" },
+  { value: "competitor_closed", label: "sitCompetitorClosed" },
+  { value: "road_construction", label: "sitRoadWorks" },
+  { value: "marathon", label: "sitMarathon" },
+  { value: "conference", label: "sitConference" },
+  { value: "night_market", label: "sitNightMarket" },
 ];
-const CROWDING: Crowding[] = ["quiet", "normal", "busy", "packed"];
-const PROMO_KINDS: PromotionKind[] = ["discount", "1+1", "2+1", "featured"];
-const CATEGORY_LABELS: Record<string, string> = {
-  cold_drinks: "Cold drinks", water: "Water", hot_food: "Hot food", ice_cream: "Ice cream", snacks: "Snacks",
-  meals: "Meals", alcohol: "Alcohol", health: "Health", caffeine: "Caffeine", desserts: "Desserts",
+const CROWDING: { value: Crowding; label: MessageKey }[] = [
+  { value: "quiet", label: "sitQuiet" }, { value: "normal", label: "sitNormal" },
+  { value: "busy", label: "sitBusy" }, { value: "packed", label: "sitPacked" },
+];
+const PROMO_KINDS: { value: PromotionKind; label?: MessageKey }[] = [
+  { value: "discount", label: "sitDiscount" }, { value: "1+1" }, { value: "2+1" }, { value: "featured", label: "sitFeatured" },
+];
+const CATEGORY_LABELS: Record<string, MessageKey> = {
+  cold_drinks: "sitColdDrinks", water: "sitWater", hot_food: "sitHotFood", ice_cream: "sitIceCream", snacks: "sitSnacks",
+  meals: "sitMeals", alcohol: "sitAlcohol", health: "sitHealth", caffeine: "sitCaffeine", desserts: "sitDesserts",
 };
+// Stored on the run's scenario; only its display label is translated.
+const CUSTOM_NAME = "Custom situation";
 
 
 export function ScenarioEditor({
@@ -65,6 +74,7 @@ export function ScenarioEditor({
   projectId?: string;
   setupId?: string;
 }) {
+  const { t } = useI18n();
   const { data: presets = [] } = useQuery({
     queryKey: queryKeys.scenarios(projectId, setupId),
     queryFn: ({ signal }) => api.getScenarios({ projectId, setupId }, signal),
@@ -94,7 +104,7 @@ export function ScenarioEditor({
   const set = (patch: Partial<Scenario>) =>
     onChange({
       ...(scenario ?? BASELINE_SCENARIO), ...patch, id: "custom",
-      name: scenario?.id === "custom" ? scenario.name : "Custom situation",
+      name: scenario?.id === "custom" ? scenario.name : CUSTOM_NAME,
     });
 
   // "Describe the day": the text model fills in the settings; the details open so they can be checked.
@@ -124,7 +134,7 @@ export function ScenarioEditor({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-sm font-medium">
-          <CloudSun className="size-4" aria-hidden /> Situation
+          <CloudSun className="size-4" aria-hidden /> {t("optSituation")}
         </div>
         <button
           type="button"
@@ -132,7 +142,7 @@ export function ScenarioEditor({
           className="flex items-center gap-1 text-xs text-primary hover:underline"
           aria-expanded={customOpen}
         >
-          <SlidersHorizontal className="size-3" /> {customOpen ? "Hide details" : "Customize"}
+          <SlidersHorizontal className="size-3" /> {customOpen ? t("sitHideDetails") : t("sitCustomize")}
         </button>
       </div>
 
@@ -145,14 +155,14 @@ export function ScenarioEditor({
           else if (id === "custom") onChange(scenario ?? { ...BASELINE_SCENARIO });
           else onChange(presets.find((p) => p.scenario.id === id)?.scenario ?? null);
         }}
-        aria-label="Scenario preset"
+        aria-label={t("sitPreset")}
       >
         {presets.map((p) => (
           <option key={p.scenario.id} value={p.scenario.id}>
             {p.scenario.name}
           </option>
         ))}
-        <option value="custom">{scenario?.id === "custom" && scenario.name !== "Custom situation" ? scenario.name : "Custom…"}</option>
+        <option value="custom">{scenario?.id === "custom" && scenario.name !== CUSTOM_NAME ? scenario.name : t("sitCustom")}</option>
       </select>
       {scenario?.description && scenario.id !== "custom" && (
         <p className="text-xs text-muted-foreground">{scenario.description}</p>
@@ -171,8 +181,8 @@ export function ScenarioEditor({
             }
           }}
           rows={2}
-          placeholder="Or describe the day: rainy Friday, a match at the stadium tonight, 1+1 on cola…"
-          aria-label="Describe the day"
+          placeholder={t("sitDescribePlaceholder")}
+          aria-label={t("sitDescribe")}
           className="min-h-[2.4rem] flex-1 resize-none rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         />
         <button
@@ -182,12 +192,12 @@ export function ScenarioEditor({
           className="flex h-[2.4rem] shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-50"
         >
           {describe.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-          Set up
+          {t("optSetUp")}
         </button>
       </div>
       {describe.error && <p role="alert" className="text-xs text-destructive">{describe.error.message}</p>}
       {described && scenario?.description === described.scenario.description && described.warnings.length > 0 && (
-        <ul className="space-y-0.5 text-xs text-muted-foreground" aria-label="Notes on the described day">
+        <ul className="space-y-0.5 text-xs text-muted-foreground" aria-label={t("sitDescribedNotes")}>
           {described.warnings.map((w) => <li key={w}>· {w}</li>)}
         </ul>
       )}
@@ -196,23 +206,23 @@ export function ScenarioEditor({
         <div className="space-y-3 rounded-md border bg-muted/20 p-3 text-xs">
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1">
-              <span className="text-muted-foreground">Weather</span>
+              <span className="text-muted-foreground">{t("sitWeather")}</span>
               <select
                 className="h-7 rounded border bg-background px-1"
                 value={scenario?.weather ?? "clear"}
                 onChange={(e) => set({ weather: e.target.value as Weather })}
               >
-                {WEATHER.map((w) => <option key={w.value} value={w.value}>{w.label}</option>)}
+                {WEATHER.map((w) => <option key={w.value} value={w.value}>{w.icon} {t(w.label)}</option>)}
               </select>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-muted-foreground">Day</span>
+              <span className="text-muted-foreground">{t("sitDay")}</span>
               <select
                 className="h-7 rounded border bg-background px-1"
                 value={scenario?.day_type ?? "weekday"}
                 onChange={(e) => set({ day_type: e.target.value as DayType })}
               >
-                {DAY_TYPES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                {DAY_TYPES.map((d) => <option key={d.value} value={d.value}>{t(d.label)}</option>)}
               </select>
             </label>
             <label className="col-span-2 flex items-center gap-2">
@@ -221,7 +231,7 @@ export function ScenarioEditor({
                 checked={scenario?.temperature_c != null}
                 onChange={(e) => set({ temperature_c: e.target.checked ? 20 : null })}
               />
-              <span className="w-24 text-muted-foreground">Temperature</span>
+              <span className="w-24 text-muted-foreground">{t("sitTemperature")}</span>
               <input
                 type="range"
                 min={-20}
@@ -230,22 +240,22 @@ export function ScenarioEditor({
                 value={scenario?.temperature_c ?? 20}
                 onChange={(e) => set({ temperature_c: Number(e.target.value) })}
                 className="flex-1 accent-primary"
-                aria-label="Temperature"
+                aria-label={t("sitTemperature")}
               />
               <span className="w-12 text-right tabular-nums">{scenario?.temperature_c != null ? `${scenario.temperature_c}°C` : "—"}</span>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-muted-foreground">Crowding</span>
+              <span className="text-muted-foreground">{t("sitCrowding")}</span>
               <select
                 className="h-7 rounded border bg-background px-1"
                 value={scenario?.crowding ?? "normal"}
                 onChange={(e) => set({ crowding: e.target.value as Crowding })}
               >
-                {CROWDING.map((c) => <option key={c} value={c}>{c}</option>)}
+                {CROWDING.map((c) => <option key={c.value} value={c.value}>{t(c.label)}</option>)}
               </select>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-muted-foreground">Extra traffic ×</span>
+              <span className="text-muted-foreground">{t("sitExtraTraffic")}</span>
               <Input
                 type="number"
                 step={0.1}
@@ -259,7 +269,7 @@ export function ScenarioEditor({
           </div>
 
           <div>
-            <div className="mb-1 text-muted-foreground">Local events</div>
+            <div className="mb-1 text-muted-foreground">{t("sitLocalEvents")}</div>
             <div className="flex flex-wrap gap-1">
               {EVENTS.map((ev) => {
                 const active = scenario?.events.find((x) => x.kind === ev.value);
@@ -276,7 +286,7 @@ export function ScenarioEditor({
                     }
                     className={cn("rounded-full border px-2 py-0.5", active ? "border-primary bg-primary/10" : "hover:bg-muted")}
                   >
-                    {ev.label}
+                    {t(ev.label)}
                   </button>
                 );
               })}
@@ -285,7 +295,7 @@ export function ScenarioEditor({
 
           <div>
             <div className="mb-1 flex items-center justify-between text-muted-foreground">
-              Promotions
+              {t("sitPromotions")}
               <button
                 type="button"
                 className="flex items-center gap-0.5 text-primary"
@@ -293,13 +303,13 @@ export function ScenarioEditor({
                   set({ promotions: [...(scenario?.promotions ?? []), { target: "", kind: "discount", discount_pct: 20 }] })
                 }
               >
-                <Plus className="size-3" /> Add
+                <Plus className="size-3" /> {t("sitAdd")}
               </button>
             </div>
             {(scenario?.promotions ?? []).map((pr, i) => (
               <div key={i} className="mb-1 flex items-center gap-1">
                 <Input
-                  placeholder="product, word or rack"
+                  placeholder={t("sitPromotionTarget")}
                   value={pr.target}
                   onChange={(e) =>
                     set({ promotions: scenario!.promotions.map((x, j) => (j === i ? { ...x, target: e.target.value } : x)) })
@@ -313,7 +323,7 @@ export function ScenarioEditor({
                     set({ promotions: scenario!.promotions.map((x, j) => (j === i ? { ...x, kind: e.target.value as PromotionKind } : x)) })
                   }
                 >
-                  {PROMO_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+                  {PROMO_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label ? t(k.label) : k.value}</option>)}
                 </select>
                 {pr.kind === "discount" && (
                   <Input
@@ -325,13 +335,13 @@ export function ScenarioEditor({
                       set({ promotions: scenario!.promotions.map((x, j) => (j === i ? { ...x, discount_pct: Number(e.target.value) || 0 } : x)) })
                     }
                     className="h-7 w-14 text-xs"
-                    aria-label="Discount percent"
+                    aria-label={t("sitDiscountPercent")}
                   />
                 )}
                 <button
                   type="button"
                   onClick={() => set({ promotions: scenario!.promotions.filter((_, j) => j !== i) })}
-                  aria-label="Remove promotion"
+                  aria-label={t("sitRemovePromotion")}
                 >
                   <Trash2 className="size-3.5 text-muted-foreground" />
                 </button>
@@ -340,21 +350,21 @@ export function ScenarioEditor({
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">Sold out (comma-separated)</span>
+            <span className="text-muted-foreground">{t("sitSoldOut")}</span>
             <Input
               value={(scenario?.stockouts ?? []).join(", ")}
               onChange={(e) => set({ stockouts: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-              placeholder="water, ramen"
+              placeholder={t("sitSoldOutPlaceholder")}
               className="h-7 text-xs"
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">Notes for LLM/VLM shoppers</span>
+            <span className="text-muted-foreground">{t("sitNotes")}</span>
             <Input
               value={scenario?.notes ?? ""}
               maxLength={400}
               onChange={(e) => set({ notes: e.target.value })}
-              placeholder="e.g. a new bubble-tea shop opened across the street"
+              placeholder={t("sitNotesPlaceholder")}
               className="h-7 text-xs"
             />
           </label>
@@ -367,17 +377,18 @@ export function ScenarioEditor({
 }
 
 function EffectsPreview({ effects }: { effects: api.ScenarioEffects }) {
+  const { t } = useI18n();
   const demand = Object.entries(effects.demand).sort((a, b) => Math.abs(b[1] - 1) - Math.abs(a[1] - 1)).slice(0, 6);
   const hourly = Object.values(effects.traffic_by_hour);
   const peak = hourly.length ? Math.max(...hourly) : 1;
   return (
     <div className="space-y-1.5 rounded-md bg-muted/40 px-3 py-2 text-xs">
       <div className="flex flex-wrap gap-x-3 gap-y-1 tabular-nums">
-        <span>Traffic ×{effects.traffic.toFixed(2)}{peak > 1.01 ? ` (peak ×${(effects.traffic * peak).toFixed(2)})` : ""}</span>
-        {effects.dwell !== 1 && <span>Dwell ×{effects.dwell.toFixed(2)}</span>}
-        {effects.impulse !== 1 && <span>Impulse ×{effects.impulse.toFixed(2)}</span>}
-        {effects.budget !== 1 && <span>Budget ×{effects.budget.toFixed(2)}</span>}
-        {effects.walkout !== 1 && <span>Walk-outs ×{effects.walkout.toFixed(2)}</span>}
+        <span>{t("sitEffectTraffic", { value: effects.traffic.toFixed(2) })}{peak > 1.01 ? ` ${t("sitEffectPeak", { value: (effects.traffic * peak).toFixed(2) })}` : ""}</span>
+        {effects.dwell !== 1 && <span>{t("sitEffectDwell", { value: effects.dwell.toFixed(2) })}</span>}
+        {effects.impulse !== 1 && <span>{t("sitEffectImpulse", { value: effects.impulse.toFixed(2) })}</span>}
+        {effects.budget !== 1 && <span>{t("sitEffectBudget", { value: effects.budget.toFixed(2) })}</span>}
+        {effects.walkout !== 1 && <span>{t("sitEffectWalkouts", { value: effects.walkout.toFixed(2) })}</span>}
       </div>
       {demand.length > 0 && (
         <div className="flex flex-wrap gap-1">
@@ -389,12 +400,12 @@ function EffectsPreview({ effects }: { effects: api.ScenarioEffects }) {
                 m > 1 ? "tone-good" : "tone-bad",
               )}
             >
-              {m > 1 ? "▲" : "▼"} {CATEGORY_LABELS[cat] ?? cat} ×{m.toFixed(2)}
+              {m > 1 ? "▲" : "▼"} {CATEGORY_LABELS[cat] ? t(CATEGORY_LABELS[cat]) : cat} ×{m.toFixed(2)}
             </span>
           ))}
         </div>
       )}
-      {effects.situation && <p className="text-muted-foreground">Shoppers are told: “{effects.situation}”</p>}
+      {effects.situation && <p className="text-muted-foreground">{t("sitToldShoppers", { situation: effects.situation })}</p>}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { AuditReport, CaptureBox } from "@/shared/api/client";
+import { translate, useLocale } from "@/shared/i18n/i18n";
 
 export interface RestockAssumptions {
   tradingDays: number;
@@ -30,7 +31,7 @@ export function planRestocking(report: AuditReport, assumptions: RestockAssumpti
   if (!Number.isFinite(tradingDays) || tradingDays <= 0 || tradingDays > 30
       || !Number.isFinite(contributionMarginPercent) || contributionMarginPercent < 0 || contributionMarginPercent > 100
       || !Number.isSafeInteger(overheadMinor) || overheadMinor < 0) {
-    return { actions: [], error: "Use 0–100% margin, a horizon above 0 and up to 30 trading days, and a nonnegative whole-number overhead in minor units." };
+    return { actions: [], error: translate(useLocale.getState().locale, "capRestockError") };
   }
   const margin = contributionMarginPercent / 100;
   const actions: RestockAction[] = [];

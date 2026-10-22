@@ -4,6 +4,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-grou
 import type { Store } from "@/shared/types/domain";
 import { formatMoney } from "@/shared/utils/money";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { useI18n } from "@/shared/i18n/i18n";
 
 type SortKey = "revenue" | "quantity";
 const SHOW_LIMIT = 10;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function TopItems({ store }: Props) {
+  const { t } = useI18n();
   const skuSales = useSimulationMetricsStore((s) => s.skuSales);
   const finished = useSimulationMetricsStore((s) => s.finished);
   const [sortBy, setSortBy] = useState<SortKey>("revenue");
@@ -35,7 +37,7 @@ export function TopItems({ store }: Props) {
   return (
     <div className="border-t px-3 py-3">
       <div className="mb-2.5 flex items-center justify-between">
-        <div className="section-title">Top items</div>
+        <div className="section-title">{t("dashTopItems")}</div>
         <ToggleGroup
           type="single"
           value={sortBy}
@@ -47,20 +49,20 @@ export function TopItems({ store }: Props) {
             value="revenue"
             className="h-6 px-2 text-[0.72rem] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
           >
-            by Revenue
+            {t("dashByRevenue")}
           </ToggleGroupItem>
           <ToggleGroupItem
             value="quantity"
             className="h-6 px-2 text-[0.72rem] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
           >
-            by Quantity
+            {t("dashByQuantity")}
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
 
       {shown.length === 0 ? (
         <div className="py-3 text-center text-xs text-muted-foreground">
-          {finished ? "No sales in this run." : "Items fill in as shoppers pay during the day."}
+          {finished ? t("dashNoSales") : t("dashItemsFillIn")}
         </div>
       ) : (
         <>
@@ -88,7 +90,7 @@ export function TopItems({ store }: Props) {
                     <span className="shrink-0 tabular-nums text-muted-foreground">
                       {sortBy === "revenue"
                         ? formatMoney(s.revenue, currency)
-                        : `${s.quantity} sold`}
+                        : t("dashSoldCount", { count: s.quantity })}
                     </span>
                   </div>
                   <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
@@ -107,7 +109,7 @@ export function TopItems({ store }: Props) {
               onClick={() => setShowAll((v) => !v)}
               className="mt-2 text-xs text-muted-foreground hover:text-foreground"
             >
-              {showAll ? "Show less" : `View all (${totalCount})`}
+              {showAll ? t("showLess") : t("dashViewAll", { count: totalCount })}
             </button>
           )}
         </>

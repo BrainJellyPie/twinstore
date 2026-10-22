@@ -7,9 +7,14 @@ import * as api from "@/shared/api/client";
 import { TemplatePicker } from "../components/TemplatePicker";
 import { DEFAULT_TEMPLATE_CHOICE } from "../templateOptions";
 import { translate, useLocale } from "@/shared/i18n/i18n";
-import { LOCALES } from "@/shared/i18n/messages";
+import { LOCALES, type Locale } from "@/shared/i18n/messages";
+import { templateName } from "@/shared/i18n/storeLabels";
 
 vi.mock("@/shared/api/client", () => ({ getStoreTemplates: vi.fn(), previewStoreTemplate: vi.fn(), validateLayoutPreset: vi.fn() }));
+
+// Format names are shown in the selected language; the fixtures reuse real template ids.
+const pharmacy = (code: Locale) => new RegExp(`^${templateName("community_pharmacy", "Community pharmacy", code)}`);
+const garden = (code: Locale) => new RegExp(`^${templateName("garden_center", "Garden & outdoor center", code)}`);
 
 function Picker() {
   const [value, onChange] = useState(DEFAULT_TEMPLATE_CHOICE);
@@ -34,13 +39,13 @@ afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMo
 
 it.each(LOCALES)("finds translated store categories and clears search with focus in $code", async ({ code }) => {
   useLocale.getState().setLocale(code); mountCompact();
-  await screen.findByRole("radio", { name: /^Community pharmacy/ });
+  await screen.findByRole("radio", { name: pharmacy(code) });
   const search = screen.getByLabelText(translate(code, "findStoreFormat"));
   expect((screen.getByRole("combobox", { name: translate(code, "storeCategory") }) as HTMLSelectElement).value).toBe("");
   fireEvent.change(search, { target: { value: translate(code, "pharmacy") } });
   const results = within(screen.getByLabelText(translate(code, "storeFormats")));
   expect(results.getAllByRole("radio")).toHaveLength(1);
-  expect(results.getByRole("radio", { name: /^Community pharmacy/ })).toBeTruthy();
+  expect(results.getByRole("radio", { name: pharmacy(code) })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: translate(code, "clearFormatSearch") }));
   expect(document.activeElement).toBe(search);
   expect(results.getAllByRole("radio")).toHaveLength(7);
@@ -74,7 +79,7 @@ it("clears only the search on Escape and preserves filters, selection and dimens
 });
 
 it("keeps a translated search and raw category filter working after a language switch", async () => {
-  useLocale.getState().setLocale("ko"); mountCompact(); await screen.findByRole("radio", { name: /^Community pharmacy/ });
+  useLocale.getState().setLocale("ko"); mountCompact(); await screen.findByRole("radio", { name: pharmacy("ko") });
   fireEvent.change(screen.getByLabelText(translate("ko", "findStoreFormat")), { target: { value: "약국" } });
   fireEvent.change(screen.getByLabelText(translate("ko", "storeCategory")), { target: { value: "pharmacy" } });
   act(() => useLocale.getState().setLocale("fr"));
@@ -85,11 +90,11 @@ it("keeps a translated search and raw category filter working after a language s
 });
 
 it.each(LOCALES)("searches less common translated categories in $code", async ({ code }) => {
-  useLocale.getState().setLocale(code); mountCompact(); await screen.findByRole("radio", { name: /^Garden/ });
+  useLocale.getState().setLocale(code); mountCompact(); await screen.findByRole("radio", { name: garden(code) });
   fireEvent.change(screen.getByLabelText(translate(code, "findStoreFormat")), { target: { value: translate(code, "gardenShop") } });
   const results = within(screen.getByRole("radiogroup", { name: translate(code, "storeFormats") }));
   expect(results.getAllByRole("radio")).toHaveLength(1);
-  expect(results.getByRole("radio", { name: /^Garden/ })).toBeTruthy();
+  expect(results.getByRole("radio", { name: garden(code) })).toBeTruthy();
 });
 
 it.each(LOCALES)("retries a failed catalog without clearing the search in $code", async ({ code }) => {
@@ -99,7 +104,7 @@ it.each(LOCALES)("retries a failed catalog without clearing the search in $code"
   fireEvent.click(screen.getByRole("button", { name: translate(code, "tryAgain") }));
   const results = within(screen.getByRole("radiogroup", { name: translate(code, "storeFormats") }));
   await waitFor(() => expect(results.getAllByRole("radio")).toHaveLength(1));
-  expect(results.getByRole("radio", { name: /^Community pharmacy/ })).toBeTruthy();
+  expect(results.getByRole("radio", { name: pharmacy(code) })).toBeTruthy();
   expect(api.getStoreTemplates).toHaveBeenCalledTimes(2);
 });
 

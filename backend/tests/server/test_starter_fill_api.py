@@ -312,7 +312,8 @@ def test_one_hundred_racks_and_grid_limits(workflow):
     assert response.status_code == 200, response.text[:300]
     assert len(response.json()["racks"]) == 100 and response.json()["new_skus"] == 8
     source["store"]["grid_size"] = [257, 256]; write_json(setup_path(PID, SID), source)
-    assert client.get(URL).status_code == 422
+    too_large = client.get(URL)   # past the store size limit: the stored layout itself is invalid
+    assert too_large.status_code == 409 and "invalid" in too_large.json()["detail"]
 
 
 def test_small_category_avoids_duplicate_products_per_section(workflow, monkeypatch):

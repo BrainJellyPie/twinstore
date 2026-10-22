@@ -11,10 +11,12 @@ from pydantic import BaseModel
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.persona import Persona
+from store_emulator.domain.scenario import Scenario, Weather
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.town import Town, TownArrival, TownSpec, VenueCategory
 from store_emulator.domain.types import TokenUsage, Weekday
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
+from store_emulator.engine.scenario import compile_scenario, priors_for
 from store_emulator.engine.simulation.engines.vlm_glance import VLMGlanceEngine
 from store_emulator.engine.simulation.engines.vlm_glance.prompt import EntryDecision
 from store_emulator.engine.town import (
@@ -22,6 +24,7 @@ from store_emulator.engine.town import (
     estimate_demand,
     generate_town,
     place_venue,
+    synergy_analysis,
     town_context_text,
 )
 from store_emulator.engine.town.vlm_synergy import vlm_basket_synergy
@@ -36,7 +39,7 @@ def test_synergy_flow_panels_and_progress_use_the_store_open_window(town, openin
     store = Store.model_validate(json.loads((SAMPLE / "store.json").read_text()))
     store.weekly_schedule = [DaySchedule(day=Weekday.WED, is_open=is_open, open_hour=opening, close_hour=opening + 1)]
     pool = [Persona.model_validate(p) for p in json.loads((SAMPLE / "personas.json").read_text())][:300]
-    baseline = estimate_demand(town)
+    baseline = estimate_demand(town, hours=range(24))  # the store's opening hours are the modeled hours, 0h too
     before = town.model_dump()
     engine = _RecordingEngine()
     progress = []
@@ -150,6 +153,25 @@ def test_vlm_basket_synergy_pairs_the_same_visitors_with_and_without_the_venue(t
     # Unaffected visitors are simulated once: 12 with the venue + the affected ones again.
     assert phases[-1][1] == phases[-1][2] == 12 + result.affected_customers
     assert result.vlm_requests == llm.calls and result.plan_errors == 0
+
+
+@pytest.mark.parametrize("store_type", ["Convenience store", "supermarket"])
+def test_synergy_uses_the_store_formats_scenario_effects_and_the_synergy_tables_distance(town: Town, store_type: str):
+    store = Store.model_validate(json.loads((SAMPLE / "store.json").read_text()))
+    store.type = store_type
+    pool = [Persona.model_validate(p) for p in json.loads((SAMPLE / "personas.json").read_text())][:300]
+    rain = Scenario(id="rain", name="Rain", weather=Weather.RAIN)
+    traffic = compile_scenario(rain, priors_for(store_type)).base_traffic
+    assert compile_scenario(rain, priors_for("supermarket")).base_traffic != compile_scenario(rain).base_traffic
+    result = asyncio.run(vlm_basket_synergy(
+        town, "cafe-next-door", store, pool, config=SimulationConfig(seed=5, scenario=rain), engine=_RecordingEngine(),
+        pathfinder=AStarPathFinder(), cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, customers=4,
+    ))
+    # The sample layout opens 8–20 on a weekday.
+    expected = estimate_demand(town, hours=range(8, 20), traffic_multiplier=traffic).total_daily_visitors
+    assert result.visitors_with == pytest.approx(expected, abs=0.01)
+    row = next(r for r in synergy_analysis(town) if r.venue_id == "cafe-next-door")
+    assert result.distance_m == row.distance_m  # walking distance, as in the synergy table
 
 
 @pytest.mark.parametrize("currency", ["USD", "KRW", "JPY", "EUR"])

@@ -7,6 +7,7 @@ import type { Rack, Position, RackType, BlockedFaceDetail } from "@/shared/types
 import type { EditorRack, SetupDetailWithBlocked } from "./types";
 import { computeAdjacentBlocked, mergeBlockedFaces } from "./adjacentBlocked";
 import { rackCells } from "@/shared/utils/grid";
+import { translate, useLocale } from "@/shared/i18n/i18n";
 
 const DEFAULT_GRID_SIZE: [number, number] = [8, 8];
 const DEFAULT_LEVELS = 4;
@@ -95,8 +96,9 @@ export function useGridEditor(initialSetup: SetupDetailWithBlocked) {
     ));
     for (const rack of moving) {
       for (const [x, y] of rackCells(rack)) {
-        if (x < 0 || y < 0 || x >= gridSize[0] || y >= gridSize[1]) return "The entire fixture must stay inside the floor.";
-        if (occupied.has(`${x},${y}`)) return "That position overlaps another fixture. Choose a clear space.";
+        // Shown as is, so worded in the language selected when the move is tried.
+        if (x < 0 || y < 0 || x >= gridSize[0] || y >= gridSize[1]) return translate(useLocale.getState().locale, "gridMoveOutside");
+        if (occupied.has(`${x},${y}`)) return translate(useLocale.getState().locale, "gridMoveOverlap");
       }
     }
     const positions = new Map(moving.map((rack) => [rack.id, rack.position]));

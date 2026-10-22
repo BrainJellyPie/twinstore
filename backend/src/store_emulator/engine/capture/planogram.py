@@ -315,7 +315,10 @@ def _place_photo(store: Store, result: CaptureResult, k: int, report: PlacementR
         trial = store.model_copy(deep=True)
         trial_report = PlacementReport(face=face)
         ids: list[str] = []
-        for part, (x, y) in zip(parts, tiles, strict=True):
+        # Parts go left to right as a shopper facing the shelf sees it: runs list tiles by ascending x / y, which is
+        # left to right from the south and west sides but right to left from the north and east ones.
+        seen_order = tiles if face in (Face.S, Face.W) else list(reversed(tiles))
+        for part, (x, y) in zip(parts, seen_order, strict=True):
             rid = _new_rack_id(trial)
             rack = Rack(
                 id=rid, type=rack_type, shape=[[1]], position=(x, y),

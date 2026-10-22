@@ -505,13 +505,19 @@ def _face_of(store: Store, rack_id: str, face: str | None) -> Face:
     rack = next((r for r in store.racks if r.id == rack_id), None)
     if rack is None:
         raise AppError(f"rack not found: {rack_id}", 404)
-    if face:
-        return Face(face)
     counts: dict[Face, int] = {}
     for s in rack.slots:
-        counts[s.face] = counts.get(s.face, 0) + len(s.items)
+        if s.items:
+            counts[s.face] = counts.get(s.face, 0) + len(s.items)
     if not counts:
         raise AppError(f"rack {rack_id} holds no products to audit against", 400)
+    if face:
+        # A side with nothing planned would score the photo 100 % compliant with every product "unexpected".
+        if Face(face) not in counts:
+            sides = ", ".join(f.value for f in sorted(counts, key=lambda f: f.value))
+            raise AppError(f"side {face} of rack {rack_id} holds no products to audit against; sides with products: "
+                           f"{sides}", 400)
+        return Face(face)
     return max(counts, key=lambda f: counts[f])
 
 
@@ -626,8 +632,36 @@ def compare_rival_capture(
         report.previous_attractiveness = venue.attractiveness
         report.attractiveness = venue.attractiveness
         if req.apply and comparison.suggested_pull_factor is not None:
-            new = round(min(3.0, max(0.2, venue.attractiveness * comparison.suggested_pull_factor)), 3)
+            # From the venue's pull before any shelf comparison was applied: applying again (a re-run, a double
+            # click, a newer photo of the same shelf) replaces the earlier adjustment instead of compounding it
+            # (0.82 → 1.03 → 1.28 → 1.61). A pull changed by hand since then is the new starting point.
+            pulls = _rival_pulls(pid)
+            last = pulls.get(venue.id)
+            base = last["base"] if last is not None and abs(last["applied"] - venue.attractiveness) < 1e-9 else venue.attractiveness
+            new = round(min(3.0, max(0.2, base * comparison.suggested_pull_factor)), 3)
             save_town(pid, town.model_copy(update={"venues": [
                 v.model_copy(update={"attractiveness": new}) if v.id == venue.id else v for v in town.venues]}), expected=town)
+            write_json(_rival_pulls_path(pid), {**pulls, venue.id: {"base": base, "applied": new}})
+            report.previous_attractiveness = base
             report.attractiveness = new
     return report
+
+
+def _rival_pulls_path(pid: str) -> Path:
+    return metadata_path(pid).parent / "shelf_lab" / "rival_pulls.json"
+
+
+def _rival_pulls(pid: str) -> dict[str, dict[str, float]]:
+    """Venue id → {"base": its pull before shelf comparisons, "applied": the pull the last one set}."""
+    try:
+        raw: object = read_json(_rival_pulls_path(pid)) if _rival_pulls_path(pid).is_file() else {}
+    except (OSError, ValueError):
+        return {}
+    out: dict[str, dict[str, float]] = {}
+    for vid, rec in (cast(dict[str, object], raw) if isinstance(raw, dict) else {}).items():
+        if isinstance(rec, dict):
+            vals = cast(dict[str, object], rec)
+            base, applied = vals.get("base"), vals.get("applied")
+            if isinstance(base, (int, float)) and isinstance(applied, (int, float)):
+                out[vid] = {"base": float(base), "applied": float(applied)}
+    return out

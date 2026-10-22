@@ -22,9 +22,12 @@ import {
 import { explainComparison, type ComparisonReport, type MetricComparison, type RunListItem } from "@/shared/api/client";
 import type { Layout } from "@/features/layouts/hooks/useLayouts";
 import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { Locale } from "@/shared/i18n/messages";
+import { translate } from "@/shared/i18n/translate";
 
 import { useCompare, useProjectRuns } from "../hooks";
-import { METRIC_LABELS, runLabel } from "../labels";
+import { metricLabel, runLabel } from "../labels";
 
 // Metrics where "more" is unambiguously good for the store.
 const HIGHER_IS_BETTER = new Set(["spend", "units", "bought", "impulse_spend"]);
@@ -48,6 +51,7 @@ export function CompareDialog(props: CompareDialogProps) {
 }
 
 function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
+  const { locale, t } = useI18n();
   const runs = (useProjectRuns(projectId).data ?? []).filter((r) => r.status === "completed");
   const layoutName = new Map(layouts.map((l) => [l.id, l.name]));
   const otherDefault = runs.find((r) => r.run_id !== defaultRunId)?.run_id ?? null;
@@ -61,48 +65,42 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
 
   const option = (r: RunListItem) => (
     <SelectItem key={r.run_id} value={r.run_id}>
-      {layoutName.get(r.setup_id) ?? r.setup_id} — {runLabel(r)}
+      {layoutName.get(r.setup_id) ?? r.setup_id} — {runLabel(r, locale)}
     </SelectItem>
   );
 
   return (
     <div className="min-w-0 space-y-4">
       <DialogHeader>
-        <DialogTitle>Compare runs</DialogTitle>
-        <DialogDescription>
-          Customers are paired by persona, so the difference isolates the layout (or engine) change.
-          Runs with the same seed share every random draw — that gives the tightest intervals.
-        </DialogDescription>
+        <DialogTitle>{t("cmpTitle")}</DialogTitle>
+        <DialogDescription>{t("cmpDescription")}</DialogDescription>
       </DialogHeader>
 
       {runs.length < 2 ? (
-        <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
-          At least two completed runs are needed. Start a preview run on another layout (or with another
-          engine) and come back.
-        </p>
+        <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">{t("cmpNeedTwo")}</p>
       ) : (
         <>
           <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
             <Select value={a ?? undefined} onValueChange={setRunA}>
-              <SelectTrigger className="w-full min-w-0 text-xs" aria-label="Baseline run (A)">
-                <SelectValue placeholder="Baseline (A)" />
+              <SelectTrigger className="w-full min-w-0 text-xs" aria-label={t("cmpBaselineRun")}>
+                <SelectValue placeholder={t("cmpBaseline")} />
               </SelectTrigger>
               <SelectContent>{runs.map(option)}</SelectContent>
             </Select>
             <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
             <Select value={b ?? undefined} onValueChange={setRunB}>
-              <SelectTrigger className="w-full min-w-0 text-xs" aria-label="Variant run (B)">
-                <SelectValue placeholder="Variant (B)" />
+              <SelectTrigger className="w-full min-w-0 text-xs" aria-label={t("cmpVariantRun")}>
+                <SelectValue placeholder={t("cmpVariant")} />
               </SelectTrigger>
               <SelectContent>{runs.map(option)}</SelectContent>
             </Select>
           </div>
 
-          {a === b && <p className="text-xs text-muted-foreground">Pick two different runs.</p>}
-          {compare.isLoading && <p className="text-sm text-muted-foreground">Bootstrapping intervals…</p>}
+          {a === b && <p className="text-xs text-muted-foreground">{t("cmpPickTwo")}</p>}
+          {compare.isLoading && <p className="text-sm text-muted-foreground">{t("cmpBootstrapping")}</p>}
           {compare.isError && (
             <p className="text-xs text-destructive">
-              {compare.error instanceof Error ? compare.error.message : "Comparison failed"}
+              {compare.error instanceof Error ? compare.error.message : t("cmpFailed")}
             </p>
           )}
           {compare.data && <CompareTable report={compare.data} code={code} />}
@@ -115,6 +113,7 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
 
 /** The model's reading of the difference: what changed, where it came from, what is within noise. */
 function Explain({ projectId, a, b }: { projectId: string; a: string; b: string }) {
+  const { t } = useI18n();
   const explain = useMutation({ mutationFn: () => explainComparison(projectId, a, b) });
   const r = explain.data;
   if (!r) {
@@ -123,20 +122,20 @@ function Explain({ projectId, a, b }: { projectId: string; a: string; b: string 
         <button type="button" onClick={() => explain.mutate()} disabled={explain.isPending}
           className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60">
           {explain.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5 text-primary" />}
-          {explain.isPending ? "Comparing the runs…" : "Explain the difference"}
+          {explain.isPending ? t("cmpComparing") : t("cmpExplain")}
         </button>
-        <span className="text-xs text-muted-foreground">A model compares both runs shelf by shelf and hour by hour.</span>
+        <span className="text-xs text-muted-foreground">{t("cmpExplainHint")}</span>
         {explain.error && <p role="alert" className="basis-full text-xs text-destructive">{explain.error.message}</p>}
       </div>
     );
   }
   return (
-    <section className="space-y-2 rounded-xl border bg-card p-3 text-sm" aria-label="Why the runs differ">
+    <section className="space-y-2 rounded-xl border bg-card p-3 text-sm" aria-label={t("cmpWhyDiffer")}>
       <p className="font-medium">{r.summary}</p>
       {r.where && <p className="text-foreground/85">{r.where}</p>}
       {r.caveats && <p className="text-muted-foreground">{r.caveats}</p>}
       {r.figures.length > 0 && (
-        <ul className="space-y-0.5 border-l-2 border-primary/30 pl-2" aria-label="Figures used">
+        <ul className="space-y-0.5 border-l-2 border-primary/30 pl-2" aria-label={t("figuresUsed")}>
           {r.figures.map((f) => <li key={f} className="text-[0.7rem] tabular-nums text-muted-foreground">{f}</li>)}
         </ul>
       )}
@@ -145,34 +144,35 @@ function Explain({ projectId, a, b }: { projectId: string; a: string; b: string 
 }
 
 function CompareTable({ report, code }: { report: ComparisonReport; code: string }) {
+  const { locale, t } = useI18n();
   const spend = report.metrics.find((m) => m.metric === "spend");
   return (
     <div className="space-y-3">
-      {spend && <Headline m={spend} code={code} />}
-      <div className="overflow-x-auto" role="region" aria-label="Run comparison metrics" tabIndex={0}>
+      {spend && <Headline m={spend} code={code} locale={locale} />}
+      <div className="overflow-x-auto" role="region" aria-label={t("cmpMetricsRegion")} tabIndex={0}>
       <table className="w-full min-w-[640px] text-xs">
         <thead className="text-muted-foreground">
           <tr className="border-b">
-            <th className="py-1.5 text-left font-medium">Metric</th>
+            <th className="py-1.5 text-left font-medium">{t("cmpMetric")}</th>
             <th className="text-right font-medium">A</th>
             <th className="text-right font-medium">B</th>
-            <th className="w-[230px] text-center font-medium">B vs A ({Math.round(report.confidence * 100)}% CI)</th>
-            <th className="text-right font-medium">Change</th>
-            <th className="text-right font-medium" title="Share of bootstrap draws where B > A">P(B&gt;A)</th>
-            <th className="text-right font-medium" title="Customers needed to detect a 5% change with 80% power">n@5%</th>
+            <th className="w-[230px] text-center font-medium">{t("cmpBvsA", { confidence: Math.round(report.confidence * 100) })}</th>
+            <th className="text-right font-medium">{t("cmpChange")}</th>
+            <th className="text-right font-medium" title={t("cmpProbHint")}>P(B&gt;A)</th>
+            <th className="text-right font-medium" title={t("cmpNHint")}>n@5%</th>
           </tr>
         </thead>
         <tbody>
           {report.metrics.map((m) => (
             <tr key={m.metric} className="border-b last:border-0">
-              <td className="py-1.5">{METRIC_LABELS[m.metric] ?? m.metric}</td>
+              <td className="py-1.5">{metricLabel(m.metric, locale)}</td>
               <td className="text-right tabular-nums">{fmt(m, m.mean_a, code)}</td>
               <td className="text-right tabular-nums">{fmt(m, m.mean_b, code)}</td>
-              <td className="px-2"><ForestBar m={m} code={code} /></td>
+              <td className="px-2"><ForestBar m={m} code={code} locale={locale} /></td>
               <td className="text-right tabular-nums">{m.mean_a ? signed(m.rel_diff) : "—"}</td>
               <td className="text-right tabular-nums">{formatPercent(m.prob_b_greater, 0)}</td>
-              <td className="text-right tabular-nums text-muted-foreground" title={m.mean_a === 0 ? "A 5% relative change is undefined for a zero baseline." : undefined}>
-                {m.mean_a === 0 ? "—" : m.n_for_5pct_effect.toLocaleString()}
+              <td className="text-right tabular-nums text-muted-foreground" title={m.mean_a === 0 ? t("cmpZeroBaselineHint") : undefined}>
+                {m.mean_a === 0 ? "—" : m.n_for_5pct_effect.toLocaleString(locale)}
               </td>
             </tr>
           ))}
@@ -180,9 +180,7 @@ function CompareTable({ report, code }: { report: ComparisonReport; code: string
       </table>
       </div>
       <p className="text-xs text-muted-foreground">
-        {report.paired_customers.toLocaleString()} paired customers · {report.n_bootstrap.toLocaleString()} bootstrap draws.
-        With a zero baseline, intervals show absolute changes (conversion in percentage points).
-        Relative sample size estimates are unavailable for a zero baseline.
+        {t("cmpFootnote", { paired: report.paired_customers, draws: report.n_bootstrap })}
       </p>
       {report.notes.map((n) => (
         <p key={n} className="rounded-md border tone-warn px-2.5 py-1.5 text-sm">{n}</p>
@@ -191,7 +189,8 @@ function CompareTable({ report, code }: { report: ComparisonReport; code: string
   );
 }
 
-function Headline({ m, code }: { m: MetricComparison; code: string }) {
+function Headline({ m, code, locale }: { m: MetricComparison; code: string; locale: Locale }) {
+  const { t } = useI18n();
   const decisive = m.ci_low > 0 || m.ci_high < 0;
   const better = m.ci_low > 0;
   return (
@@ -201,14 +200,13 @@ function Headline({ m, code }: { m: MetricComparison; code: string }) {
         (decisive ? (better ? "tone-good" : "tone-bad") : "bg-muted/40")
       }
     >
-      <span className="font-medium">Spend per visitor: {signedChange(m, m.diff, code)}</span>{" "}
+      <span className="font-medium">{t("cmpHeadline", { change: signedChange(m, m.diff, code, locale) })}</span>{" "}
       <span className="text-muted-foreground">
-        ({signedChange(m, m.ci_low, code)} to {signedChange(m, m.ci_high, code)}) —{" "}
-        {decisive
-          ? better
-            ? "B is reliably better."
-            : "B is reliably worse."
-          : `no reliable difference yet (P(B>A) = ${formatPercent(m.prob_b_greater, 0)}).`}
+        {t("cmpRangeVerdict", {
+          low: signedChange(m, m.ci_low, code, locale),
+          high: signedChange(m, m.ci_high, code, locale),
+          verdict: decisive ? t(better ? "cmpBetter" : "cmpWorse") : t("cmpNoDiff", { prob: formatPercent(m.prob_b_greater, 0) }),
+        })}
       </span>
     </div>
   );
@@ -216,7 +214,7 @@ function Headline({ m, code }: { m: MetricComparison; code: string }) {
 
 // Each row has its own symmetric scale: what matters is whether the interval
 // crosses zero, and a shared scale would flatten small effects next to large ones.
-function ForestBar({ m, code }: { m: MetricComparison; code: string }) {
+function ForestBar({ m, code, locale }: { m: MetricComparison; code: string; locale: Locale }) {
   const W = 110;
   const baseline = m.mean_a || 1;
   const rel = m.diff / baseline;
@@ -235,7 +233,7 @@ function ForestBar({ m, code }: { m: MetricComparison; code: string }) {
         <circle cx={scale(rel)} cy={8} r={3.5} fill="white" stroke={color} strokeWidth={2} />
       </svg>
       <span className="whitespace-nowrap text-[0.72rem] tabular-nums text-muted-foreground">
-        {signedChange(m, m.ci_low, code)} … {signedChange(m, m.ci_high, code)}
+        {signedChange(m, m.ci_low, code, locale)} … {signedChange(m, m.ci_high, code, locale)}
       </span>
     </div>
   );
@@ -246,9 +244,9 @@ function signed(ratio: number): string {
   return ratio > 0 ? `+${s}` : s;
 }
 
-function signedChange(m: MetricComparison, delta: number, code: string): string {
+function signedChange(m: MetricComparison, delta: number, code: string, locale: Locale): string {
   if (m.mean_a) return signed(delta / m.mean_a);
-  const value = m.metric === "bought" ? formatPercent(delta).replace("%", " pp") : fmt(m, delta, code);
+  const value = m.metric === "bought" ? formatPercent(delta).replace("%", translate(locale, "cmpPoints")) : fmt(m, delta, code);
   return delta > 0 ? `+${value}` : value;
 }
 

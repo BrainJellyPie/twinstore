@@ -93,6 +93,12 @@ def test_preview_runs_compare_export_and_fidelity(client, tmp_path):
     saved = json.loads((tmp_path / ".data" / PID / "runs" / "prev_a" / "output" / "fidelity.json").read_text())
     assert saved == report
 
+    # A POS export in another product code matches nothing: refused, and the saved report stays.
+    foreign = b"receipt_id,sku,qty,unit_price,hour\nr1,8801234567890,1,100,12\nr2,8801234567891,2,150,13\n"
+    refused = client.post(f"/api/projects/{PID}/runs/prev_a/fidelity", files={"file": ("pos.csv", foreign, "text/csv")})
+    assert refused.status_code == 400 and "None of the 2 POS lines" in refused.json()["detail"]
+    assert json.loads((tmp_path / ".data" / PID / "runs" / "prev_a" / "output" / "fidelity.json").read_text()) == report
+
 
 def test_locked_setup_rejects_non_preview_runs(client):
     resp = client.post(f"/api/projects/{PID}/runs", json={"setup_id": "setup_7d6d", "engine_type": "rule_based"})

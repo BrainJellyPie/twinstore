@@ -10,6 +10,10 @@ import {
 import { useSimulationStore } from "@/stores/simulationStore";
 import { FloorPlanPreview } from "@/features/layouts/components/FloorPlanPreview";
 import { Button } from "@/shared/components/ui/button";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
+
+const STATUS: Record<string, MessageKey> = { completed: "capStatusCompleted", failed: "capStatusFailed", pending: "capStatusPending", running: "capStatusRunning" };
 
 export function CaptureBatch({
   projectId,
@@ -20,6 +24,7 @@ export function CaptureBatch({
   captures: api.CaptureStatus[];
   onReview: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [setupId, setSetupId] = useState("");
@@ -61,7 +66,7 @@ export function CaptureBatch({
   return (
     <section
       className="max-h-[60dvh] shrink-0 overflow-y-auto rounded-2xl border bg-card p-3 text-sm"
-      aria-label="Combine shelf photos"
+      aria-label={t("capBatchAria")}
     >
       <Button
         variant="outline"
@@ -71,18 +76,13 @@ export function CaptureBatch({
           if (!open) clear();
         }}
       >
-        Combine reviewed shelf photos
+        {t("capBatchToggle")}
       </Button>
       {open && (
         <div className="mt-3 space-y-3">
-          <p>
-            Select up to 20 completed photos, preview their shelves together,
-            then save one new draft. The original layout and photos stay
-            unchanged. Photos add racks on free floor; they do not recover room
-            geometry.
-          </p>
+          <p>{t("capBatchIntro")}</p>
           <label className="block">
-            Base layout
+            {t("capBaseLayout")}
             <select
               className="mt-1 block h-10 w-full rounded-lg border bg-background px-2"
               disabled={busy || layouts.isPending}
@@ -92,7 +92,7 @@ export function CaptureBatch({
                 setSetupId(e.target.value);
               }}
             >
-              {!base && <option value="">Choose a layout</option>}
+              {!base && <option value="">{t("capChooseLayout")}</option>}
               {setups.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name || s.id}
@@ -102,17 +102,14 @@ export function CaptureBatch({
           </label>
           {layouts.isError && (
             <div role="alert">
-              Could not load layouts.{" "}
+              {t("capLayoutsError")}{" "}
               <Button variant="outline" onClick={() => void layouts.refetch()}>
-                Retry layouts
+                {t("capRetryLayouts")}
               </Button>
             </div>
           )}
           {!layouts.isPending && !layouts.isError && !setups.length && (
-            <p>
-              Create a base layout in your store first, then return to combine
-              photos.
-            </p>
+            <p>{t("capNoLayouts")}</p>
           )}
           <div className="flex flex-wrap gap-2">
             <Button
@@ -129,7 +126,7 @@ export function CaptureBatch({
                 );
               }}
             >
-              Select first 20 ready photos
+              {t("capSelectFirst20")}
             </Button>
             <Button
               size="sm"
@@ -140,13 +137,10 @@ export function CaptureBatch({
                 setSelected([]);
               }}
             >
-              Clear selection
+              {t("capClearSelection")}
             </Button>
           </div>
-          <p>
-            {chosen.length} selected. Placement follows selection order. Review
-            each photo to correct names, quantities and prices before combining.
-          </p>
+          <p>{t("capSelectedCount", { count: chosen.length })}</p>
           <div className="grid max-h-64 gap-2 overflow-auto sm:grid-cols-2">
             {captures.map((c) => {
               const ready = c.status === "completed" && c.items > 0;
@@ -181,7 +175,7 @@ export function CaptureBatch({
                       {c.image_name}
                       <br />
                       <span className="text-xs text-muted-foreground">
-                        {c.status} · {c.items} products · {c.options.currency}
+                        {t("capBatchItemMeta", { status: STATUS[c.status] ? t(STATUS[c.status]!) : c.status, count: c.items, currency: c.options.currency })}
                       </span>
                     </span>
                   </label>
@@ -195,17 +189,14 @@ export function CaptureBatch({
                       onReview(c.capture_id);
                     }}
                   >
-                    Review
+                    {t("capReview")}
                   </Button>
                 </div>
               );
             })}
           </div>
           {chosen.length !== selected.length && (
-            <p role="alert">
-              A selected photo is no longer ready. Clear the selection and
-              choose again.
-            </p>
+            <p role="alert">{t("capSelectionStale")}</p>
           )}
           <Button
             disabled={!valid || busy}
@@ -221,13 +212,13 @@ export function CaptureBatch({
               );
             }}
           >
-            Preview combined layout
+            {t("capPreviewCombined")}
           </Button>
           {busy && (
             <p role="status">
               {save.isPending
-                ? "Saving one combined draft…"
-                : "Checking shelf placement…"}
+                ? t("capSavingCombined")
+                : t("capCheckingPlacement")}
             </p>
           )}
           {(preview.error || save.error) && (
@@ -238,19 +229,14 @@ export function CaptureBatch({
           {report && sameSelection && (
             <div className="space-y-3">
               <p>
-                {report.rack_ids.length} new racks · {report.placed_items}{" "}
-                placed product entries · {report.placed_facings} facings.
+                {t("capBatchSummary", { racks: report.rack_ids.length, items: report.placed_items, facings: report.placed_facings })}
               </p>
               <p>
-                {report.estimated_prices} product entries have estimated or
-                missing prices; {report.unrecognized_items} are not recognized.
-                These are not verified stock or prices. Exact complete product
-                names may reuse a SKU; similar names stay separate. Review the
-                resulting products.
+                {t("capBatchCaveat", { estimated: report.estimated_prices, unrecognized: report.unrecognized_items })}
               </p>
               <FloorPlanPreview store={report.store} areas={[]} />
               <p className="break-words text-xs">
-                New rack IDs: {report.rack_ids.join(", ")}
+                {t("capNewRackIds", { ids: report.rack_ids.join(", ") })}
               </p>
               {report.notes.map((note, i) => (
                 <p key={i} className="text-xs">
@@ -258,10 +244,7 @@ export function CaptureBatch({
                 </p>
               ))}
               {!!report.dropped.length && (
-                <p role="alert">
-                  Some products do not fit: {report.dropped.join(", ")}. Correct
-                  the photos or choose a roomier layout before saving.
-                </p>
+                <p role="alert">{t("capDropped", { products: report.dropped.join(", ") })}</p>
               )}
               {report.reduced_facings > 0 && (
                 <label className="block rounded-lg border p-2">
@@ -271,9 +254,7 @@ export function CaptureBatch({
                     disabled={busy || !!save.variables}
                     onChange={(e) => setAcceptReduced(e.target.checked)}
                   />{" "}
-                  Accept {report.placed_facings} facings instead of{" "}
-                  {report.requested_facings}; {report.reduced_facings} facings
-                  cannot be preserved in this grid.
+                  {t("capAcceptReduced", { placed: report.placed_facings, requested: report.requested_facings, reduced: report.reduced_facings })}
                 </label>
               )}
               {!save.data && (
@@ -305,15 +286,15 @@ export function CaptureBatch({
                   }
                 >
                   {save.error
-                    ? "Retry saving this draft"
-                    : "Save combined draft"}
+                    ? t("capRetrySaveDraft")
+                    : t("capSaveCombined")}
                 </Button>
               )}
             </div>
           )}
           {save.data && (
             <div role="status">
-              <p>Combined draft saved. Your source layout is unchanged.</p>
+              <p>{t("capCombinedSaved")}</p>
               <Button
                 onClick={() => {
                   if (save.data) {
@@ -327,7 +308,7 @@ export function CaptureBatch({
                   }
                 }}
               >
-                Open combined layout
+                {t("capOpenCombined")}
               </Button>
             </div>
           )}

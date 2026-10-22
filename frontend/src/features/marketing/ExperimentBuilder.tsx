@@ -14,20 +14,24 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney, majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
 import { usePackages } from "./hooks";
 import { storeCategories, storeFixtures, toMinor, type Fixture, type Product } from "./products";
 
-const KINDS: { kind: ChangeKind; label: string; icon: typeof Tag; hint: string }[] = [
-  { kind: "discount", label: "Discount", icon: BadgePercent, hint: "Cut the price; the tag shows the was-price" },
-  { kind: "price", label: "New price", icon: Tag, hint: "A new everyday price" },
-  { kind: "promo", label: "Promo sign", icon: Sparkles, hint: "Hang 1+1, SALE, −30 % …" },
-  { kind: "move", label: "Placement", icon: ArrowUpDown, hint: "Move to another fixture or shelf level" },
-  { kind: "package", label: "Package", icon: Package, hint: "Show a new pack (vision shoppers)" },
-  { kind: "category_price", label: "Category price", icon: Tags, hint: "Re-price a whole category" },
+const KINDS: { kind: ChangeKind; label: MessageKey; icon: typeof Tag; hint: MessageKey }[] = [
+  { kind: "discount", label: "mkKindDiscount", icon: BadgePercent, hint: "mkKindDiscountHint" },
+  { kind: "price", label: "mkKindPrice", icon: Tag, hint: "mkKindPriceHint" },
+  { kind: "promo", label: "mkKindPromo", icon: Sparkles, hint: "mkKindPromoHint" },
+  { kind: "move", label: "mkKindMove", icon: ArrowUpDown, hint: "mkKindMoveHint" },
+  { kind: "package", label: "mkKindPackage", icon: Package, hint: "mkKindPackageHint" },
+  { kind: "category_price", label: "mkKindCategoryPrice", icon: Tags, hint: "mkKindCategoryPriceHint" },
 ];
 const PROMOS = ["1+1", "2+1", "SALE", "-30%", "NEW", "LIMITED"];
-const LEVELS = ["", "Bottom", "Knee", "Eye level", "Top"];
+const LEVELS: (MessageKey | null)[] = [null, "mkLevelBottom", "mkLevelKnee", "mkLevelEye", "mkLevelTop"];
+type Translate = ReturnType<typeof useI18n>["t"];
+const levelText = (level: number, t: Translate) => { const key = LEVELS[level]; return key ? t(key) : t("mkLevelN", { level }); };
 
 interface DraftChange extends VariantChange { id: string }
 interface DraftVariant { id: string; name: string; changes: DraftChange[] }
@@ -35,15 +39,15 @@ interface DraftVariant { id: string; name: string; changes: DraftChange[] }
 let seq = 0;
 const uid = () => `c${++seq}`;
 
-function describeChange(c: VariantChange, products: Map<string, Product>, fixtures: Map<string, Fixture>, currency: string): string {
+function describeChange(c: VariantChange, products: Map<string, Product>, fixtures: Map<string, Fixture>, currency: string, t: Translate): string {
   const name = products.get(c.sku ?? "")?.name ?? c.sku ?? "";
   switch (c.kind) {
-    case "price": return `${name} at ${c.price != null ? formatMoney(c.price, currency) : "…"}`;
-    case "discount": return `${name} ${c.percent ?? "…"} %`;
-    case "promo": return `${name} with a “${c.promo || "SALE"}” sign`;
-    case "move": return `${name} → ${fixtures.get(c.rack_id ?? "")?.name ?? "…"} · ${LEVELS[c.level ?? 3] ?? `level ${c.level}`}`;
-    case "package": return `${name} in a new pack`;
-    case "category_price": return `${c.category || "…"} ${c.percent != null && c.percent >= 0 ? "+" : ""}${c.percent ?? 0} %${c.charm ? ", .99 endings" : ""}`;
+    case "price": return t("mkDescPrice", { name, price: c.price != null ? formatMoney(c.price, currency) : "…" });
+    case "discount": return t("mkDescDiscount", { name, percent: c.percent != null ? String(c.percent) : "…" });
+    case "promo": return t("mkDescPromo", { name, promo: c.promo || "SALE" });
+    case "move": return t("mkDescMove", { name, fixture: fixtures.get(c.rack_id ?? "")?.name ?? "…", level: levelText(c.level ?? 3, t) });
+    case "package": return t("mkDescPackage", { name });
+    case "category_price": return t("mkDescCategory", { category: c.category || "…", percent: `${c.percent != null && c.percent >= 0 ? "+" : ""}${c.percent ?? 0}` }) + (c.charm ? t("mkDescCharm") : "");
   }
 }
 
@@ -67,6 +71,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const fixtures = useMemo(() => storeFixtures(store), [store]);
   const categories = useMemo(() => storeCategories(store), [store]);
@@ -75,11 +80,11 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   const packages = usePackages(projectId).data ?? [];
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
 
-  const [name, setName] = useState(initial?.name ? `${initial.name} (copy)`.slice(0, 80) : "");
+  const [name, setName] = useState(initial?.name ? t("mkCopySuffix", { name: initial.name }).slice(0, 80) : "");
   const [hero, setHero] = useState(initial?.variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).find(Boolean) ?? "");
   const [variants, setVariants] = useState<DraftVariant[]>(() => initial?.variants.length
     ? initial.variants.map((v) => ({ id: uid(), name: v.name, changes: v.changes.map((c) => ({ ...c, id: uid() })) }))
-    : [{ id: uid(), name: "Variant B", changes: [] }]);
+    : [{ id: uid(), name: t("mkVariantDefault", { letter: "B" }), changes: [] }]);
   const [engine, setEngine] = useState<ExperimentEngine>(initial?.engine ?? "rule");
   const [model, setModel] = useState(initial?.model ?? "");
   const [panel, setPanel] = useState(initial?.panel ?? 300);
@@ -91,7 +96,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   const usesPackage = variants.some((v) => v.changes.some((c) => c.kind === "package"));
   const focus = [...new Set([...variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).filter(Boolean), ...extraFocus])].slice(0, 20);
   const complete = variants.length > 0 && variants.every((v) => v.name.trim() && v.changes.length > 0 && v.changes.every(ready));
-  const blocked = usesPackage && engine === "rule" ? "Packages are only visible to vision shoppers — switch the engine." : "";
+  const blocked = usesPackage && engine === "rule" ? t("mkBlockedPackages") : "";
 
   const run = useMutation({
     mutationFn: () => startExperiment(projectId, {
@@ -153,42 +158,42 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   const heroRack = fixtures.find((f) => heroProduct?.racks.includes(f.name));
   const linkedPack = packages.find((p) => p.sku === hero) ?? packages[0];
 
-  const recipes: { label: string; hint: string; build: () => DraftVariant[]; needs?: string }[] = [
+  const recipes: { label: MessageKey; hint: MessageKey; build: () => DraftVariant[]; needs?: string }[] = [
     {
-      label: "Discount ladder", hint: "−10 / −20 / −30 %",
+      label: "mkRecipeLadder", hint: "mkRecipeLadderHint",
       build: () => [-10, -20, -30].map((pct) => ({ id: uid(), name: `${pct} %`, changes: [{ id: uid(), kind: "discount" as const, sku: hero, percent: pct }] })),
     },
     {
-      label: "Discount or sign?", hint: "−20 % vs SALE vs 1+1",
+      label: "mkRecipeOrSign", hint: "mkRecipeOrSignHint",
       build: () => [
         { id: uid(), name: "−20 %", changes: [{ id: uid(), kind: "discount" as const, sku: hero, percent: -20 }] },
-        { id: uid(), name: "SALE sign", changes: [{ id: uid(), kind: "promo" as const, sku: hero, promo: "SALE" }] },
+        { id: uid(), name: t("mkSaleSign"), changes: [{ id: uid(), kind: "promo" as const, sku: hero, promo: "SALE" }] },
         { id: uid(), name: "1+1", changes: [{ id: uid(), kind: "promo" as const, sku: hero, promo: "1+1" }] },
       ],
     },
     {
-      label: "Eye level", hint: "eye level vs bottom shelf",
+      label: "mkRecipeEye", hint: "mkRecipeEyeHint",
       build: () => heroRack ? [
-        { id: uid(), name: "Eye level", changes: [{ id: uid(), kind: "move" as const, sku: hero, rack_id: heroRack.id, level: 3 }] },
-        { id: uid(), name: "Bottom shelf", changes: [{ id: uid(), kind: "move" as const, sku: hero, rack_id: heroRack.id, level: 1 }] },
+        { id: uid(), name: t("mkLevelEye"), changes: [{ id: uid(), kind: "move" as const, sku: hero, rack_id: heroRack.id, level: 3 }] },
+        { id: uid(), name: t("mkBottomShelf"), changes: [{ id: uid(), kind: "move" as const, sku: hero, rack_id: heroRack.id, level: 1 }] },
       ] : [],
     },
     {
-      label: "Price sweep", hint: "−30 % to +30 %, demand curve",
+      label: "mkRecipeSweep", hint: "mkRecipeSweepHint",
       build: () => heroProduct ? [-30, -15, 15, 30].map((pct) => ({
-        id: uid(), name: `${pct > 0 ? "+" : "−"}${Math.abs(pct)} % price`,
+        id: uid(), name: t("mkSweepName", { change: `${pct > 0 ? "+" : "−"}${Math.abs(pct)}` }),
         changes: [{ id: uid(), kind: "price" as const, sku: hero, price: Math.max(1, Math.round(heroProduct.price * (1 + pct / 100))), keep_reference: true }],
       })) : [],
     },
     {
-      label: "Price up", hint: "+10 % and +20 %",
+      label: "mkRecipeUp", hint: "mkRecipeUpHint",
       build: () => heroProduct ? [10, 20].map((pct) => ({
         id: uid(), name: `+${pct} %`, changes: [{ id: uid(), kind: "price" as const, sku: hero, price: Math.round(heroProduct.price * (1 + pct / 100)), keep_reference: true }],
       })) : [],
     },
     {
-      label: "New pack", hint: "library image on the shelf", needs: "vlm",
-      build: () => linkedPack ? [{ id: uid(), name: "New pack", changes: [{ id: uid(), kind: "package" as const, sku: hero, asset_id: linkedPack.asset_id }] }] : [],
+      label: "mkRecipePack", hint: "mkRecipePackHint", needs: "vlm",
+      build: () => linkedPack ? [{ id: uid(), name: t("mkRecipePack"), changes: [{ id: uid(), kind: "package" as const, sku: hero, asset_id: linkedPack.asset_id }] }] : [],
     },
   ];
 
@@ -199,14 +204,14 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
           <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
           <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); requestDraft(question); } }}
-            placeholder="What should the test answer? e.g. Does a 1+1 sign on cola sell more than a 20 % cut?"
-            aria-label="Question for the test" className="h-9 min-w-[14rem] flex-1 bg-card" />
+            placeholder={t("mkQuestionPlaceholder")}
+            aria-label={t("mkQuestionForTest")} className="h-9 min-w-[14rem] flex-1 bg-card" />
           <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => requestDraft(question)}>
-            {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the test
+            {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("mkDraftTest")}
           </Button>
           {designed && (
             <div className="basis-full space-y-0.5 px-1 text-xs text-muted-foreground">
-              <p>{designed.rationale} Check the variants below before running.</p>
+              <p>{designed.rationale} {t("mkCheckVariants")}</p>
               {designed.warnings.map((w) => <p key={w}>· {w}</p>)}
             </div>
           )}
@@ -214,12 +219,12 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex min-w-[15rem] flex-1 flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Product the test is about</span>
-            <ProductSelect products={products} value={hero} onChange={setHero} placeholder="Choose a product for a quick start…" />
+            <span className="text-xs text-muted-foreground">{t("mkHeroProduct")}</span>
+            <ProductSelect products={products} value={hero} onChange={setHero} placeholder={t("mkHeroPlaceholder")} />
           </label>
           <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Test name (optional)</span>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Summer price test" maxLength={80} />
+            <span className="text-xs text-muted-foreground">{t("mkTestNameOptional")}</span>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkTestNamePlaceholder")} maxLength={80} />
           </label>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -233,13 +238,13 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
                 if (built.length) {
                   setVariants(built);
                   if (r.needs === "vlm") setEngine("vlm");
-                  if (!name) setName(`${heroProduct?.name ?? hero} · ${r.label.toLowerCase()}`);
+                  if (!name) setName(`${heroProduct?.name ?? hero} · ${t(r.label).toLowerCase()}`);
                 }
               }}
               className="group flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition-colors enabled:hover:border-primary/60 disabled:opacity-45"
             >
               <Wand2 className="size-3.5 text-primary" />
-              <span><b className="block text-[0.8rem] font-semibold">{r.label}</b><span className="text-muted-foreground">{r.hint}</span></span>
+              <span><b className="block text-[0.8rem] font-semibold">{t(r.label)}</b><span className="text-muted-foreground">{t(r.hint)}</span></span>
             </button>
           ))}
         </div>
@@ -249,14 +254,14 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
         <div className="rounded-2xl border border-dashed p-4">
           <div className="mb-1 flex items-center gap-2">
             <span className="grid size-6 place-items-center rounded-md bg-foreground/[0.07] text-xs font-bold">A</span>
-            <span className="font-semibold">Control</span>
+            <span className="font-semibold">{t("mkControl")}</span>
           </div>
-          <p className="text-sm text-muted-foreground">The layout as saved: {products.length} products on {fixtures.length} fixtures. Every variant starts from it.</p>
+          <p className="text-sm text-muted-foreground">{t("mkControlDesc", { products: products.length, fixtures: fixtures.length })}</p>
           {heroProduct && (
             <div className="mt-3 rounded-xl bg-foreground/[0.035] px-3 py-2 text-sm">
               <b>{heroProduct.name}</b> · {formatMoney(heroProduct.price, currency)}
               {heroProduct.regularPrice > 0 && <span className="text-muted-foreground line-through"> {formatMoney(heroProduct.regularPrice, currency)}</span>}
-              <span className="text-muted-foreground"> · {heroProduct.facings} facing{heroProduct.facings > 1 ? "s" : ""} · {heroProduct.racks.join(", ")}</span>
+              <span className="text-muted-foreground"> · {t(heroProduct.facings > 1 ? "mkFacings" : "mkFacing", { count: heroProduct.facings })} · {heroProduct.racks.join(", ")}</span>
             </div>
           )}
         </div>
@@ -273,72 +278,72 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
             currency={currency}
             defaultSku={hero}
             onChange={(fn) => update(v.id, fn)}
-            onDuplicate={variants.length < 6 ? () => setVariants((vs) => [...vs.slice(0, i + 1), { ...v, id: uid(), name: `${v.name} copy`.slice(0, 40), changes: v.changes.map((c) => ({ ...c, id: uid() })) }, ...vs.slice(i + 1)]) : undefined}
+            onDuplicate={variants.length < 6 ? () => setVariants((vs) => [...vs.slice(0, i + 1), { ...v, id: uid(), name: t("mkVariantCopy", { name: v.name }).slice(0, 40), changes: v.changes.map((c) => ({ ...c, id: uid() })) }, ...vs.slice(i + 1)]) : undefined}
             onRemove={variants.length > 1 ? () => setVariants((vs) => vs.filter((x) => x.id !== v.id)) : undefined}
-            describe={(c) => describeChange(c, productMap, fixtureMap, currency)}
+            describe={(c) => describeChange(c, productMap, fixtureMap, currency, t)}
           />
         ))}
         {variants.length < 6 && (
-          <button type="button" onClick={() => setVariants((vs) => [...vs, { id: uid(), name: `Variant ${String.fromCharCode(66 + vs.length)}`, changes: [] }])}
+          <button type="button" onClick={() => setVariants((vs) => [...vs, { id: uid(), name: t("mkVariantDefault", { letter: String.fromCharCode(66 + vs.length) }), changes: [] }])}
             className="flex min-h-[7rem] items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-foreground/12 text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground">
-            <Plus className="size-4" /> Add a variant
+            <Plus className="size-4" /> {t("mkAddVariant")}
           </button>
         )}
       </div>
 
       <section className="glass grid gap-4 rounded-2xl p-4 lg:grid-cols-[1.2fr_1fr_1fr]">
         <div className="space-y-2">
-          <span className="text-xs text-muted-foreground">Shoppers</span>
+          <span className="text-xs text-muted-foreground">{t("mkShoppers")}</span>
           <div className="grid grid-cols-2 gap-1.5">
-            {([["rule", "Rule shoppers", "seconds, free · price & placement"], ["vlm", "Vision shoppers", "a model looks at each shelf · sees packs & signs"]] as const).map(([k, t, d]) => (
+            {([["rule", "mkRuleShoppers", "mkRuleShoppersHint"], ["vlm", "mkVisionShoppers", "mkVisionShoppersHint"]] as const).map(([k, title, hint]) => (
               <button key={k} type="button" onClick={() => { setEngine(k); setPanel(k === "vlm" ? Math.min(panel, 80) : Math.max(panel, 300)); }}
                 className={cn("rounded-xl border px-3 py-2 text-left transition-colors", engine === k ? "border-primary bg-primary/[0.07]" : "hover:border-foreground/20")}>
-                <b className="block text-sm">{t}</b>
-                <span className="text-[0.7rem] text-muted-foreground">{d}</span>
+                <b className="block text-sm">{t(title)}</b>
+                <span className="text-[0.7rem] text-muted-foreground">{t(hint)}</span>
               </button>
             ))}
           </div>
           {engine === "vlm" && (
-            <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-sm" value={model} onChange={(e) => setModel(e.target.value)} aria-label="Vision model">
-              <option value="">App's vision model</option>
+            <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-sm" value={model} onChange={(e) => setModel(e.target.value)} aria-label={t("studioVisionModel")}>
+              <option value="">{t("studioAppVisionModel")}</option>
               {models.filter((m) => m.vision).map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
             </select>
           )}
         </div>
         <div className="space-y-2">
           <div className="flex items-baseline justify-between text-xs text-muted-foreground">
-            <span>Panel (same people in every arm)</span>
+            <span>{t("mkPanelSame")}</span>
             <span className="num text-sm font-semibold text-foreground">{panel}</span>
           </div>
-          <input type="range" min={20} max={engine === "vlm" ? 600 : 3000} step={10} value={panel} onChange={(e) => setPanel(Number(e.target.value))} className="w-full" aria-label="Panel size" />
+          <input type="range" min={20} max={engine === "vlm" ? 600 : 3000} step={10} value={panel} onChange={(e) => setPanel(Number(e.target.value))} className="w-full" aria-label={t("mkPanelSize")} />
           <p className="text-[0.7rem] text-muted-foreground">
-            {(variants.length + 1) * panel} simulated trips{engine === "vlm" ? " through the model — each trip makes several model calls" : ""}.
-            {panel < 100 && " Under 100 shoppers, differences below ~5 % are noise."}
+            {t(engine === "vlm" ? "mkSimulatedTripsModel" : "mkSimulatedTrips", { count: (variants.length + 1) * panel })}
+            {panel < 100 && t("mkSmallPanel")}
           </p>
         </div>
         <div className="space-y-2">
-          <span className="text-xs text-muted-foreground">Products to track</span>
+          <span className="text-xs text-muted-foreground">{t("mkTrack")}</span>
           <div className="flex flex-wrap gap-1.5">
-            {focus.length === 0 && <span className="text-xs text-muted-foreground">Products changed in the variants are tracked automatically.</span>}
+            {focus.length === 0 && <span className="text-xs text-muted-foreground">{t("mkTrackAuto")}</span>}
             {focus.map((sku) => (
               <span key={sku} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
                 {productMap.get(sku)?.name ?? sku}
                 {extraFocus.includes(sku) && (
-                  <button type="button" onClick={() => setExtraFocus((f) => f.filter((x) => x !== sku))} aria-label={`Stop tracking ${sku}`}><X className="size-3" /></button>
+                  <button type="button" onClick={() => setExtraFocus((f) => f.filter((x) => x !== sku))} aria-label={t("mkStopTracking", { sku })}><X className="size-3" /></button>
                 )}
               </span>
             ))}
           </div>
-          <ProductSelect products={products} value="" onChange={(s) => s && setExtraFocus((f) => [...new Set([...f, s])])} placeholder="+ track another product (e.g. a rival)" small />
+          <ProductSelect products={products} value="" onChange={(s) => s && setExtraFocus((f) => [...new Set([...f, s])])} placeholder={t("mkTrackAnother")} small />
         </div>
       </section>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         {(blocked || run.error) && <p className="mr-auto text-sm text-destructive">{blocked || run.error?.message}</p>}
-        {!complete && !blocked && <p className="mr-auto text-sm text-muted-foreground">Give every variant at least one complete change.</p>}
+        {!complete && !blocked && <p className="mr-auto text-sm text-muted-foreground">{t("mkIncomplete")}</p>}
         <Button size="lg" disabled={!complete || !!blocked || run.isPending} onClick={() => run.mutate()}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}
-          Run A/B test
+          {t("mkRunAb")}
         </Button>
       </div>
     </div>
@@ -348,14 +353,16 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
 function ProductSelect({ products, value, onChange, placeholder, small = false }: {
   products: Product[]; value: string; onChange: (sku: string) => void; placeholder: string; small?: boolean;
 }) {
+  const { t, locale } = useI18n();
+  const other = t("mkOtherGroup");
   const groups = useMemo(() => {
     const g = new Map<string, Product[]>();
     for (const p of products) {
-      const k = p.racks[0] ?? "Other";
+      const k = p.racks[0] ?? other;
       g.set(k, [...(g.get(k) ?? []), p]);
     }
-    return [...g.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [products]);
+    return [...g.entries()].sort(([a], [b]) => a.localeCompare(b, locale));
+  }, [products, other, locale]);
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} className={cn("w-full min-w-0 rounded-xl border bg-card/60 px-2.5", small ? "h-8 text-xs" : "h-10 text-sm")}>
       <option value="">{placeholder}</option>
@@ -373,6 +380,7 @@ function VariantCard({ letter, variant, products, fixtures, categories, packages
   projectId: string; currency: string; defaultSku: string;
   onChange: (fn: (v: DraftVariant) => DraftVariant) => void; onDuplicate?: () => void; onRemove?: () => void; describe: (c: VariantChange) => string;
 }) {
+  const { t } = useI18n();
   const setChange = (id: string, patch: Partial<VariantChange>) =>
     onChange((v) => ({ ...v, changes: v.changes.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
   const add = (kind: ChangeKind) => onChange((v) => ({
@@ -386,9 +394,9 @@ function VariantCard({ letter, variant, products, fixtures, categories, packages
     <div className="rounded-2xl border bg-card/70 p-4 shadow-[0_18px_40px_-30px_rgb(0_0_0/0.4)]">
       <div className="mb-3 flex items-center gap-2">
         <span className="grid size-6 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground">{letter}</span>
-        <Input value={variant.name} onChange={(e) => onChange((v) => ({ ...v, name: e.target.value }))} maxLength={40} className="h-8 flex-1 font-semibold" aria-label="Variant name" />
-        {onDuplicate && <button type="button" onClick={onDuplicate} className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground" aria-label="Duplicate variant"><Copy className="size-4" /></button>}
-        {onRemove && <button type="button" onClick={onRemove} className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/[0.06] hover:text-destructive" aria-label="Remove variant"><Trash2 className="size-4" /></button>}
+        <Input value={variant.name} onChange={(e) => onChange((v) => ({ ...v, name: e.target.value }))} maxLength={40} className="h-8 flex-1 font-semibold" aria-label={t("mkVariantName")} />
+        {onDuplicate && <button type="button" onClick={onDuplicate} className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground" aria-label={t("mkDuplicateVariant")}><Copy className="size-4" /></button>}
+        {onRemove && <button type="button" onClick={onRemove} className="rounded-lg p-1.5 text-muted-foreground hover:bg-foreground/[0.06] hover:text-destructive" aria-label={t("mkRemoveVariant")}><Trash2 className="size-4" /></button>}
       </div>
       <div className="space-y-2">
         {variant.changes.map((c) => (
@@ -399,9 +407,9 @@ function VariantCard({ letter, variant, products, fixtures, categories, packages
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {KINDS.map(({ kind, label, icon: Icon, hint }) => (
-          <button key={kind} type="button" title={hint} onClick={() => add(kind)}
+          <button key={kind} type="button" title={t(hint)} onClick={() => add(kind)}
             className="inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground">
-            <Icon className="size-3.5" /> {label}
+            <Icon className="size-3.5" /> {t(label)}
           </button>
         ))}
       </div>
@@ -413,6 +421,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
   change: DraftChange; products: Product[]; fixtures: Fixture[]; categories: string[]; packages: api.PackageAsset[]; projectId: string;
   currency: string; summary: string; onPatch: (p: Partial<VariantChange>) => void; onRemove: () => void;
 }) {
+  const { t } = useI18n();
   const divisor = minorUnitDivisor(currency);
   const [priceText, setPriceText] = useState(c.price != null ? majorUnitText(c.price, currency, { fixed: true }) : "");
   const meta = KINDS.find((k) => k.kind === c.kind)!;
@@ -422,22 +431,22 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
     <div className={cn("rounded-xl border p-2.5", ready(c) ? "bg-foreground/[0.02]" : "border-warn/50 bg-warn/[0.04]")}>
       <div className="mb-2 flex items-center gap-2 text-xs">
         <Icon className="size-3.5 text-primary" />
-        <span className="font-semibold">{meta.label}</span>
+        <span className="font-semibold">{t(meta.label)}</span>
         <span className="min-w-0 flex-1 truncate text-muted-foreground">{summary}</span>
-        <button type="button" onClick={onRemove} className="rounded p-0.5 text-muted-foreground hover:text-destructive" aria-label="Remove change"><X className="size-3.5" /></button>
+        <button type="button" onClick={onRemove} className="rounded p-0.5 text-muted-foreground hover:text-destructive" aria-label={t("mkRemoveChange")}><X className="size-3.5" /></button>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {c.kind !== "category_price" && (
-          <div className="min-w-[11rem] flex-1"><ProductSelect products={products} value={c.sku ?? ""} onChange={(sku) => onPatch({ sku })} placeholder="Product…" small /></div>
+          <div className="min-w-[11rem] flex-1"><ProductSelect products={products} value={c.sku ?? ""} onChange={(sku) => onPatch({ sku })} placeholder={t("mkProductEllipsis")} small /></div>
         )}
         {c.kind === "price" && (
-          <Input value={priceText} inputMode="decimal" placeholder={product ? `now ${formatMoney(product.price, currency)}` : "Price"} className="num h-8 w-28 text-xs"
-            onChange={(e) => { setPriceText(e.target.value); onPatch({ price: toMinor(e.target.value, divisor) }); }} aria-label="New price"
+          <Input value={priceText} inputMode="decimal" placeholder={product ? t("mkNowPrice", { price: formatMoney(product.price, currency) }) : t("mkPrice")} className="num h-8 w-28 text-xs"
+            onChange={(e) => { setPriceText(e.target.value); onPatch({ price: toMinor(e.target.value, divisor) }); }} aria-label={t("mkNewPrice")}
             aria-invalid={priceText.trim().length > 0 && c.price == null} />
         )}
         {c.kind === "price" && (
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground" title="Shoppers compare the new price with the current one, as just after a change (reference price). Rule shoppers only react to price this way.">
-            <input type="checkbox" checked={!!c.keep_reference} onChange={(e) => onPatch({ keep_reference: e.target.checked })} /> shoppers remember the current price
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground" title={t("mkKeepReferenceTitle")}>
+            <input type="checkbox" checked={!!c.keep_reference} onChange={(e) => onPatch({ keep_reference: e.target.checked })} /> {t("mkKeepReference")}
           </label>
         )}
         {(c.kind === "discount" || c.kind === "category_price") && (
@@ -449,7 +458,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
               </button>
             ))}
             <Input type="number" value={c.percent ?? ""} onChange={(e) => onPatch({ percent: e.target.value === "" ? null : Number(e.target.value) })}
-              className="num h-7 w-16 text-xs" aria-label="Percent" />
+              className="num h-7 w-16 text-xs" aria-label={t("mkPercent")} />
           </div>
         )}
         {c.kind === "discount" && product && c.percent != null && c.percent < 0 && (
@@ -465,18 +474,18 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
                 {p}
               </button>
             ))}
-            <Input value={c.promo ?? ""} onChange={(e) => onPatch({ promo: e.target.value.slice(0, 24) })} className="h-7 w-20 text-xs" aria-label="Sign text" />
+            <Input value={c.promo ?? ""} onChange={(e) => onPatch({ promo: e.target.value.slice(0, 24) })} className="h-7 w-20 text-xs" aria-label={t("mkSignText")} />
           </div>
         )}
         {c.kind === "move" && (
           <>
-            <select value={c.rack_id ?? ""} onChange={(e) => onPatch({ rack_id: e.target.value })} className="h-8 min-w-[8rem] rounded-lg border bg-card/60 px-1.5 text-xs" aria-label="Fixture">
-              <option value="">Fixture…</option>
+            <select value={c.rack_id ?? ""} onChange={(e) => onPatch({ rack_id: e.target.value })} className="h-8 min-w-[8rem] rounded-lg border bg-card/60 px-1.5 text-xs" aria-label={t("mkFixture")}>
+              <option value="">{t("mkFixtureEllipsis")}</option>
               {fixtures.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4].map((l) => (
-                <button key={l} type="button" onClick={() => onPatch({ level: l })} title={LEVELS[l]}
+                <button key={l} type="button" onClick={() => onPatch({ level: l })} title={levelText(l, t)}
                   className={cn("rounded-md border px-1.5 py-0.5 text-xs", c.level === l ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/25")}>
                   {l === 3 ? <span className="inline-flex items-center gap-1"><Eye className="size-3" />3</span> : l}
                 </button>
@@ -486,7 +495,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
         )}
         {c.kind === "package" && (
           <div className="flex flex-wrap gap-1.5">
-            {packages.length === 0 && <span className="text-xs text-muted-foreground">Add images in the Products tab first.</span>}
+            {packages.length === 0 && <span className="text-xs text-muted-foreground">{t("mkAddImagesFirst")}</span>}
             {packages.map((p) => (
               <button key={p.asset_id} type="button" title={p.name} onClick={() => onPatch({ asset_id: p.asset_id })}
                 className={cn("flex size-11 items-center justify-center overflow-hidden rounded-lg border bg-white p-0.5", c.asset_id === p.asset_id ? "border-primary ring-2 ring-primary/40" : "hover:border-foreground/25")}>
@@ -497,11 +506,11 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
         )}
         {c.kind === "category_price" && (
           <>
-            <select value={c.category ?? ""} onChange={(e) => onPatch({ category: e.target.value })} className="h-8 min-w-[8rem] rounded-lg border bg-card/60 px-1.5 text-xs" aria-label="Category">
-              <option value="">Category…</option>
+            <select value={c.category ?? ""} onChange={(e) => onPatch({ category: e.target.value })} className="h-8 min-w-[8rem] rounded-lg border bg-card/60 px-1.5 text-xs" aria-label={t("mkCategory")}>
+              <option value="">{t("mkCategoryEllipsis")}</option>
               {categories.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
-            <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={!!c.charm} onChange={(e) => onPatch({ charm: e.target.checked })} /> end in .99</label>
+            <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={!!c.charm} onChange={(e) => onPatch({ charm: e.target.checked })} /> {t("mkCharm")}</label>
           </>
         )}
       </div>

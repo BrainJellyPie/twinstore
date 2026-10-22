@@ -8,6 +8,8 @@ import {
   type CaptureUploadOptions,
 } from "@/services/mutations/captureUpload";
 import { Button } from "@/shared/components/ui/button";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 import { checkRecoveryRevision, forgetRecovery, queueIntent, readRecovery, recoveryErrorMessage, restoreRecovery, saveRecovery,
   type RecoveryCopy, type RecoveryOptions } from "./queueRecovery";
 import {
@@ -16,6 +18,7 @@ import {
   MAX_QUEUE_BYTES,
   MAX_QUEUE_FILES,
 } from "./uploadFiles";
+import { STAGES } from "./stages";
 
 type Stage =
   | "queued"
@@ -25,6 +28,8 @@ type Stage =
   | "upload_error"
   | "poll_error"
   | "recognition_error";
+/** A status line kept as a message key so it follows the selected language; server text stays as sent. */
+type Detail = { key: MessageKey; values?: Record<string, string | number> } | { text: string };
 interface Entry {
   id: string;
   file: File;
@@ -32,7 +37,7 @@ interface Entry {
   requestId: string;
   stage: Stage;
   captureId?: string;
-  detail: string;
+  detail: Detail;
 }
 export function CaptureUploadQueue({
   projectId,
@@ -47,6 +52,7 @@ export function CaptureUploadQueue({
   onReview: (id: string) => void;
   onRecoveryAvailable?: (available: boolean) => void;
 }) {
+  const { t } = useI18n();
   const [entries, setEntries] = useState<Entry[]>([]);
   const entriesRef = useRef<Entry[]>([]);
   const [messages, setMessages] = useState<string[]>([]);
@@ -131,10 +137,10 @@ export function CaptureUploadQueue({
     try {
       if (action === "save") {
         await checkpoint();
-        if (alive.current) setRecoveryMessage("Recovery copy saved in this browser. Upload starts only when you resume.");
+        if (alive.current) setRecoveryMessage(t("capRecoverySaved"));
       } else if (action === "restore") {
         const copy = await readRecovery(projectId);
-        if (!copy) throw new Error("The browser copy is no longer available. It may have been cleared or evicted.");
+        if (!copy) throw new Error(t("capRecoveryGone"));
         const photos = await restoreRecovery(copy);
         await checkRecoveryRevision(projectId, copy.revision);
         if (!alive.current) return;
@@ -142,9 +148,9 @@ export function CaptureUploadQueue({
         const intent = queueIntent(photos, copy.options);
         recoverySession.current = { revision: copy.revision, intent };
         setSaved(copy); setSavedIntent(intent);
-        commit(photos.map(p => ({ ...p, stage: "queued", detail: "Restored — resume to recover accepted photos or upload unsent files" })));
+        commit(photos.map(p => ({ ...p, stage: "queued", detail: { key: "capRestoredDetail" } })));
         pause.current = true; setPaused(true); setMessages([]);
-        setRecoveryMessage("Queue restored and paused. Resume checks existing request IDs before starting new recognition.");
+        setRecoveryMessage(t("capQueueRestored"));
       } else {
         const revision = recoverySession.current?.revision ?? saved?.revision;
         if (revision) await forgetRecovery(projectId, revision);
@@ -152,11 +158,11 @@ export function CaptureUploadQueue({
         if (alive.current) {
           setSaved(null); setSavedIntent(null);
           if (action === "clear") { commit([]); setMessages([]); }
-          setRecoveryMessage("Browser recovery copy removed. Uploaded photos were not deleted.");
+          setRecoveryMessage(t("capRecoveryRemoved"));
         }
       }
     } catch (error) {
-      if (alive.current) setRecoveryMessage(`${recoveryErrorMessage(error)} Keep this page open; your live queue was not replaced.`);
+      if (alive.current) setRecoveryMessage(t("capRecoveryFailed", { error: recoveryErrorMessage(error) }));
     } finally {
       recoveryBusy.current = false;
       if (alive.current) setRecovering(false);
@@ -178,14 +184,14 @@ export function CaptureUploadQueue({
         next.length >= MAX_QUEUE_FILES ||
         bytes + file.size > MAX_QUEUE_BYTES
       ) {
-        notices.push(`${file.name}: Queue limit is 20 photos and 100 MB.`);
+        notices.push(`${file.name}: ${t("capQueueLimit")}`);
         continue;
       }
       try {
         const digest = await fileDigest(file);
         if (!alive.current) return;
         if (next.some((e) => e.digest === digest)) {
-          notices.push(`${file.name}: Identical photo already in this queue.`);
+          notices.push(`${file.name}: ${t("capDuplicatePhoto")}`);
           continue;
         }
         next.push({
@@ -194,12 +200,12 @@ export function CaptureUploadQueue({
           file,
           digest,
           stage: "queued",
-          detail: "Waiting to start",
+          detail: { key: "capWaitingToStart" },
         });
         bytes += file.size;
       } catch (error) {
         notices.push(
-          `${file.name}: ${error instanceof Error ? error.message : "Could not read file"}`,
+          `${file.name}: ${error instanceof Error ? error.message : t("capCouldNotReadFile")}`,
         );
       }
     }
@@ -240,7 +246,7 @@ export function CaptureUploadQueue({
         let cid = entry.captureId;
         try {
           if (!cid) {
-            update(entry.id, { stage: "uploading", detail: "Checking recovery and uploading…" });
+            update(entry.id, { stage: "uploading", detail: { key: "capUploading" } });
             // A newly generated retry ID must reach durable storage before the upload can be accepted.
             if (recoverySession.current) await checkpoint();
             if (!alive.current) break;
@@ -257,7 +263,7 @@ export function CaptureUploadQueue({
           }
           update(entry.id, {
             stage: "processing",
-            detail: "Recognition in progress…",
+            detail: { key: "capRecognitionInProgress" },
           });
           while (alive.current) {
             const view = await captureUploadStatus(
@@ -277,16 +283,16 @@ export function CaptureUploadQueue({
                     : "recognition_error",
                 detail:
                   view.status.status === "completed"
-                    ? `${view.status.items} products — review names, prices and facings`
-                    : view.status.error || "Recognition failed",
+                    ? { key: "capRecognitionReady", values: { count: view.status.items } }
+                    : view.status.error ? { text: view.status.error } : { key: "capRecognitionFailed" },
               });
               refresh();
               break;
             }
             update(entry.id, {
               detail: view.status.stage
-                ? `Recognition: ${view.status.stage}`
-                : "Waiting for recognition…",
+                ? STAGES[view.status.stage] ? { key: STAGES[view.status.stage]! } : { key: "capRecognitionStage", values: { stage: view.status.stage } }
+                : { key: "capWaitingRecognition" },
             });
             await new Promise((resolve) => setTimeout(resolve, 1500));
           }
@@ -295,7 +301,7 @@ export function CaptureUploadQueue({
           update(entry.id, {
             stage: cid ? "poll_error" : "upload_error",
             captureId: cid,
-            detail: recoveryErrorMessage(error),
+            detail: { text: recoveryErrorMessage(error) },
           });
           pause.current = true;
           setPaused(true);
@@ -314,41 +320,37 @@ export function CaptureUploadQueue({
   );
   return (
     <section
-      aria-label="Photo upload queue"
+      aria-label={t("capQueueAria")}
       className="min-w-0 max-h-[70dvh] space-y-3 overflow-y-auto rounded-2xl border bg-card p-4 text-sm md:max-h-full [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-2"
     >
-      <h2 className="text-lg font-semibold">Add shelf photos together</h2>
-      <p>
-        Choose or drop up to 20 JPEG, PNG or WebP photos (25 MB each, 100 MB
-        total). Review each result, then use Combine reviewed shelf photos to
-        build one layout.
-      </p>
+      <h2 className="text-lg font-semibold">{t("capQueueTitle")}</h2>
+      <p>{t("capQueueIntro")}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>label]:min-w-0">
         <label>
-          Find products with
+          {t("capFindWith")}
           <select
-            aria-label="Find products with"
+            aria-label={t("capFindWith")}
             disabled={locked}
             className="block h-10 w-full rounded border"
             value={detector}
             onChange={(e) => setDetector(e.target.value as api.CaptureDetector)}
           >
-            <option value="auto">Best available</option>
-            <option value="classic">Shelf geometry (fast)</option>
+            <option value="auto">{t("capDetectorAuto")}</option>
+            <option value="classic">{t("capDetectorClassic")}</option>
             <option value="gdino">Grounding DINO</option>
-            <option value="vlm">Vision model boxes</option>
+            <option value="vlm">{t("capDetectorVlm")}</option>
           </select>
         </label>
         <label>
-          Read products with
+          {t("capReadWith")}
           <select
-            aria-label="Read products with"
+            aria-label={t("capReadWith")}
             disabled={locked}
             className="block h-10 w-full rounded border"
             value={model}
             onChange={(e) => setModel(e.target.value)}
           >
-            <option value="">App's vision model</option>
+            <option value="">{t("studioAppVisionModel")}</option>
             {models
               .filter((m) => m.vision)
               .map((m) => (
@@ -356,14 +358,14 @@ export function CaptureUploadQueue({
                   {m.label}
                 </option>
               ))}
-            <option value="none">Don't read (typical prices)</option>
-            {model && model !== "none" && !models.some(m => m.vision && m.ref === model) && <option value={model}>Saved model: {model}</option>}
+            <option value="none">{t("capDontRead")}</option>
+            {model && model !== "none" && !models.some(m => m.vision && m.ref === model) && <option value={model}>{t("capSavedModel", { model })}</option>}
           </select>
         </label>
         <label>
-          Prices in
+          {t("capPricesInLabel")}
           <select
-            aria-label="Prices in"
+            aria-label={t("capPricesInLabel")}
             disabled={locked}
             className="block h-10 w-full rounded border"
             value={currency}
@@ -375,36 +377,32 @@ export function CaptureUploadQueue({
           </select>
         </label>
         <label>
-          Fixture
+          {t("capFixture")}
           <select
-            aria-label="Fixture"
+            aria-label={t("capFixture")}
             disabled={locked}
             className="block h-10 w-full rounded border"
             value={rackType}
             onChange={(e) => setRackType(e.target.value as "shelf" | "fridge")}
           >
-            <option value="shelf">Shelf / gondola</option>
-            <option value="fridge">Fridge</option>
+            <option value="shelf">{t("capFixtureShelf")}</option>
+            <option value="fridge">{t("capFixtureFridge")}</option>
           </select>
         </label>
       </div>
-      <p>
-        Settings stay fixed for this queue. Recognition may call the selected
-        model for each photo. This queue waits for one photo to finish before
-        sending the next.
-      </p>
-      <section aria-label="Queue recovery" className="space-y-2 rounded border p-3">
-        <h3 className="font-semibold">Continue after leaving this page</h3>
-        <p>Save a recovery copy to keep these photos, settings and request IDs in this browser. Photos stay on this device until you start uploads. This is not a cloud backup; clearing browser data or storage eviction removes the copy.</p>
-        {saved && <p>{saved.photos.length} photos saved for this store. Restore pauses the queue; it does not call a model.</p>}
-        {savedIntent && <p>{savedIntent === queueIntent(entries, recoveryOptions) ? "Current upload choices are saved." : "Queue changes are not saved yet. Save them now, or resume to save before the next upload."}</p>}
+      <p>{t("capQueueSettingsHint")}</p>
+      <section aria-label={t("capRecoveryAria")} className="space-y-2 rounded border p-3">
+        <h3 className="font-semibold">{t("capRecoveryTitle")}</h3>
+        <p>{t("capRecoveryIntro")}</p>
+        {saved && <p>{t("capRecoverySavedPhotos", { count: saved.photos.length })}</p>}
+        {savedIntent && <p>{savedIntent === queueIntent(entries, recoveryOptions) ? t("capRecoveryCurrent") : t("capRecoveryUnsaved")}</p>}
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={working || picking || recovering || !entries.length} onClick={() => void recoveryAction("save")}>Save queue on this browser</Button>
-          <Button variant="outline" disabled={working || picking || recovering} onClick={() => void recoveryAction("restore")}>{entries.length ? "Replace local queue from saved copy" : "Restore saved queue"}</Button>
-          <Button variant="outline" disabled={working || picking || recovering || !saved} onClick={() => void recoveryAction("forget")}>Forget saved copy</Button>
+          <Button variant="outline" disabled={working || picking || recovering || !entries.length} onClick={() => void recoveryAction("save")}>{t("capSaveQueue")}</Button>
+          <Button variant="outline" disabled={working || picking || recovering} onClick={() => void recoveryAction("restore")}>{entries.length ? t("capReplaceFromSaved") : t("capRestoreSaved")}</Button>
+          <Button variant="outline" disabled={working || picking || recovering || !saved} onClick={() => void recoveryAction("forget")}>{t("capForgetSaved")}</Button>
         </div>
-        <p>Restoring replaces local choices only after the saved photos pass validation. Uploaded photos stay unchanged.</p>
-        {recovering && <p role="status">Checking browser recovery…</p>}
+        <p>{t("capRestoreHint")}</p>
+        {recovering && <p role="status">{t("capCheckingRecovery")}</p>}
         {recoveryMessage && <p role="status" className="break-words">{recoveryMessage}</p>}
       </section>
       <button
@@ -418,11 +416,11 @@ export function CaptureUploadQueue({
           void pick(Array.from(e.dataTransfer.files));
         }}
       >
-        Choose photos or drop them here
+        {t("capChooseOrDrop")}
       </button>
       <input
         ref={input}
-        aria-label="Shelf photo files"
+        aria-label={t("capPhotoFiles")}
         type="file"
         multiple
         accept="image/jpeg,image/png,image/webp"
@@ -435,11 +433,11 @@ export function CaptureUploadQueue({
       />
       {project.isError && (
         <p role="alert">
-          Could not load the store currency.{" "}
-          <Button onClick={() => void project.refetch()}>Retry store</Button>
+          {t("capCurrencyError")}{" "}
+          <Button onClick={() => void project.refetch()}>{t("capRetryStore")}</Button>
         </p>
       )}
-      {picking && <p role="status">Checking selected files…</p>}
+      {picking && <p role="status">{t("capCheckingFiles")}</p>}
       {messages.length > 0 && (
         <ul role="alert" className="max-h-32 overflow-auto">
           {messages.map((m, i) => (
@@ -460,7 +458,7 @@ export function CaptureUploadQueue({
           }
           onClick={() => void run()}
         >
-          Start / resume queue
+          {t("capStartResume")}
         </Button>
         <Button
           variant="outline"
@@ -470,7 +468,7 @@ export function CaptureUploadQueue({
             setPaused(true);
           }}
         >
-          Pause after current photo
+          {t("capPauseAfter")}
         </Button>
         <Button
           variant="outline"
@@ -480,26 +478,24 @@ export function CaptureUploadQueue({
             else { commit([]); setMessages([]); }
           }}
         >
-          {savedIntent ? "Clear queue and saved copy" : "Clear local queue"}
+          {savedIntent ? t("capClearQueueAndSaved") : t("capClearLocalQueue")}
         </Button>
       </div>
       <p>
-        {entries.filter((e) => e.stage === "ready").length} of {entries.length}{" "}
-        ready.{" "}
+        {t("capReadyCount", { ready: entries.filter((e) => e.stage === "ready").length, total: entries.length })}{" "}
         {working
           ? paused
-            ? "Will pause after the current photo."
-            : "Processing queue…"
-          : "Queue stopped."}{" "}
-        Accepted recognition continues on the server when you pause or leave.
-        Save a browser recovery copy before leaving if you want to retain unsent files. Restored copies recover progress when resumed.
+            ? t("capWillPause")
+            : t("capProcessingQueue")
+          : t("capQueueStopped")}{" "}
+        {t("capQueueServerHint")}
       </p>
       <ol className="space-y-2">
         {entries.map((e) => (
           <li key={e.id} className="rounded-lg border p-3">
             <p className="break-words font-medium">{e.file.name}</p>
             <p role="status" className="break-words">
-              {e.detail}
+              {"text" in e.detail ? e.detail.text : t(e.detail.key, e.detail.values)}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {e.captureId && (
@@ -508,7 +504,7 @@ export function CaptureUploadQueue({
                   variant="outline"
                   onClick={() => onReview(e.captureId!)}
                 >
-                  Review photo
+                  {t("capReviewPhoto")}
                 </Button>
               )}
               {["upload_error", "poll_error", "recognition_error"].includes(
@@ -522,7 +518,7 @@ export function CaptureUploadQueue({
                   onClick={() => {
                     update(e.id, {
                       stage: "queued",
-                      detail: "Waiting to retry",
+                      detail: { key: "capWaitingRetry" },
                       ...(e.stage === "recognition_error"
                         ? {
                             captureId: undefined,
@@ -534,8 +530,8 @@ export function CaptureUploadQueue({
                   }}
                 >
                   {e.stage === "recognition_error"
-                    ? "Retry recognition (new attempt)"
-                    : "Retry this photo"}
+                    ? t("capRetryRecognition")
+                    : t("capRetryPhoto")}
                 </Button>
               )}
               {!["uploading", "processing"].includes(e.stage) && (
@@ -549,7 +545,7 @@ export function CaptureUploadQueue({
                     )
                   }
                 >
-                  Remove from queue
+                  {t("capRemoveFromQueue")}
                 </Button>
               )}
             </div>
@@ -557,11 +553,7 @@ export function CaptureUploadQueue({
         ))}
       </ol>
       {!!entries.length && (
-        <p>
-          Removing or clearing this list does not delete uploaded photos.
-          Missing names and typical prices need review; these are not verified
-          inventory or prices.
-        </p>
+        <p>{t("capQueueFooter")}</p>
       )}
     </section>
   );

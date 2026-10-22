@@ -10,11 +10,13 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { TestIdeas } from "@/features/assist/TestIdeas";
 import { cn } from "@/shared/utils/cn";
 import { useAssistStore } from "@/stores/assistStore";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
-const STARTERS = ["Which shelf converts worst, and why might that be?", "When is the store busiest, and does spend follow?",
-  "Which shoppers spend the most per visit?"];
+const STARTERS: MessageKey[] = ["analystStarterShelf", "analystStarterBusy", "analystStarterSpenders"];
 
 export function RunAnalystSection({ projectId, runId }: { projectId: string; runId: string }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const key = analystKey(projectId, runId);
   const thread = useQuery({ queryKey: key, queryFn: ({ signal }) => getAnalyst(projectId, runId, signal) });
@@ -24,9 +26,9 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
   const ask = useMutation({
     mutationFn: (q: string) => askAnalyst(projectId, runId, q),
     onMutate: (q) => { setPending(q); setText(""); },
-    onSuccess: async (t) => {
+    onSuccess: async (thread) => {
       await qc.cancelQueries({ queryKey: key });
-      qc.setQueryData(key, t);
+      qc.setQueryData(key, thread);
     },
     onError: (_error, question) => setText((current) => current || question),
     onSettled: () => setPending(null),
@@ -55,10 +57,10 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
   const last = [...messages].reverse().find((m) => m.role === "analyst");
   // Starters read off this run (what stands out) replace the generic ones once asked for.
   const ideas = useMutation({ mutationFn: () => suggestAnalystQuestions(projectId, runId) });
-  const starters = ideas.data && ideas.data.length > 0 ? ideas.data : STARTERS;
+  const starters = ideas.data && ideas.data.length > 0 ? ideas.data : STARTERS.map((starter) => t(starter));
   const suggestions = last ? last.follow_ups : messages.length === 0 ? starters : [];
   const busy = ask.isPending || clear.isPending;
-  const send = (q: string) => { const t = q.trim(); if (Array.from(t).length >= 2 && !busy) { clear.reset(); ask.mutate(t); } };
+  const send = (q: string) => { const question = q.trim(); if (Array.from(question).length >= 2 && !busy) { clear.reset(); ask.mutate(question); } };
   // Follow a new question or answer inside the thread's own scroll box; never scroll the page,
   // which on a phone would jump past the store as soon as the panel mounts.
   const seen = useRef<{ count: number; pending: string | null } | null>(null);
@@ -74,12 +76,12 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
   }, [messages.length, pending, thread.isFetched]);
 
   return (
-    <section ref={section} className="border-t px-3 py-3" aria-label="Ask about this run">
+    <section ref={section} className="border-t px-3 py-3" aria-label={t("analystTitle")}>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="flex items-center gap-1.5 text-xs font-medium"><MessageSquareText className="size-3.5 text-primary" aria-hidden /> Ask about this run</h3>
+        <h3 className="flex items-center gap-1.5 text-xs font-medium"><MessageSquareText className="size-3.5 text-primary" aria-hidden /> {t("analystTitle")}</h3>
         {messages.length > 0 && (
           <button type="button" onClick={() => clear.mutate()} disabled={busy} className="inline-flex items-center gap-1 text-[0.7rem] text-muted-foreground hover:text-foreground disabled:opacity-50">
-            <RotateCcw className="size-3" /> Clear
+            <RotateCcw className="size-3" /> {t("analystClear")}
           </button>
         )}
       </div>
@@ -87,7 +89,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
         <div role="alert" className="mb-2 text-[0.72rem] text-destructive">
           {thread.error.message}
           <button type="button" onClick={() => void thread.refetch()} disabled={thread.isFetching}
-            className="ml-2 underline disabled:opacity-50">Retry</button>
+            className="ml-2 underline disabled:opacity-50">{t("analystRetry")}</button>
         </div>
       )}
       <div ref={list} data-testid="analyst-thread" className="max-h-[28rem] space-y-2 overflow-y-auto overscroll-contain">
@@ -97,7 +99,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
           <div key={i} className="mr-2 space-y-1 rounded-2xl rounded-bl-md border bg-card px-3 py-2">
             <p className="text-[0.78rem] leading-snug">{m.text}</p>
             {m.figures.length > 0 && (
-              <ul className="space-y-0.5 border-l-2 border-primary/30 pl-2" aria-label="Figures used">
+              <ul className="space-y-0.5 border-l-2 border-primary/30 pl-2" aria-label={t("figuresUsed")}>
                 {m.figures.map((f) => <li key={f} className="num text-[0.68rem] text-muted-foreground">{f}</li>)}
               </ul>
             )}
@@ -106,7 +108,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
         {pending && (
           <>
             <p className="ml-6 rounded-2xl rounded-br-md bg-primary px-3 py-1.5 text-[0.78rem] text-primary-foreground opacity-80">{pending}</p>
-            <p className="flex items-center gap-1.5 text-[0.72rem] text-muted-foreground"><Loader2 className="size-3 animate-spin" /> Reading the run…</p>
+            <p className="flex items-center gap-1.5 text-[0.72rem] text-muted-foreground"><Loader2 className="size-3 animate-spin" /> {t("analystReading")}</p>
           </>
         )}
         {(ask.error || clear.error) && <p role="alert" className="text-[0.72rem] text-destructive">{(ask.error ?? clear.error)?.message}</p>}
@@ -115,7 +117,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
         <button type="button" onClick={() => ideas.mutate()} disabled={ideas.isPending}
           className="mt-2 inline-flex items-center gap-1 text-[0.7rem] text-primary hover:underline disabled:opacity-60">
           {ideas.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
-          {ideas.isPending ? "Reading the run…" : "Suggest questions from this run"}
+          {ideas.isPending ? t("analystReading") : t("analystSuggest")}
         </button>
       )}
       {ideas.error && <p role="alert" className="mt-1 text-[0.7rem] text-destructive">{ideas.error.message}</p>}
@@ -131,10 +133,10 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
         </div>
       )}
       <form className="mt-2 flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-        <input value={text} onChange={(e) => setText(Array.from(e.target.value).slice(0, 600).join(""))} placeholder="e.g. Why does the ice cream freezer sell so little?"
-          aria-label="Question about this run"
+        <input value={text} onChange={(e) => setText(Array.from(e.target.value).slice(0, 600).join(""))} placeholder={t("analystPlaceholder")}
+          aria-label={t("analystQuestion")}
           className={cn("h-8 min-w-0 flex-1 rounded-lg border bg-card/60 px-2.5 text-[0.78rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40")} />
-        <button type="submit" disabled={Array.from(text.trim()).length < 2 || busy} aria-label="Ask"
+        <button type="submit" disabled={Array.from(text.trim()).length < 2 || busy} aria-label={t("analystAsk")}
           className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50">
           {ask.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
         </button>

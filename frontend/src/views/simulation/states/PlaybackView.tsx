@@ -7,6 +7,7 @@ import { useStoreAssets } from "@/features/store-viewer/hooks/useStoreAssets";
 import { usePersonaData } from "@/features/playback/hooks/usePersonaData";
 import { RunToolbar } from "@/features/runs/components/RunToolbar";
 import { currencyCode } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
 
 import { ProjectShell } from "@/views/simulation/ProjectShell";
 import { SimulationLayout } from "@/views/simulation/SimulationLayout";
@@ -25,6 +26,7 @@ export function PlaybackView({
   onLayoutSelect,
   onAddLayout,
 }: { pid: string; runId: string; location: string; setupStatus: string; personaCount: number } & LayoutTabProps) {
+  const { t } = useI18n();
   const run = useRun(pid, runId).data;
   const assets = useStoreAssets(run.store);
   const { personaNames, personaGenders } = usePersonaData(run.personas);
@@ -56,7 +58,7 @@ export function PlaybackView({
           mode="playback"
           onAskAboutRack={(rack) => {
             sendAsk({ projectId: pid, destination: "run_question",
-              text: `Why does ${rack.rack_name || "this shelf"} sell the way it does, and what could make more of the shoppers who stop there buy?` });
+              text: rack.rack_name ? t("askAboutRack", { rack: rack.rack_name }) : t("askAboutThisShelf") });
             setActiveTab("dashboard");
           }}
         />

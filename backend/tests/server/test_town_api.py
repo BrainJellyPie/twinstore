@@ -42,6 +42,69 @@ def test_generate_edit_demand_and_synergy(client):
     assert rainy["total_daily_visitors"] < 0.6 * base["total_daily_visitors"]
 
 
+def test_demand_of_an_unknown_scenario_is_rejected(client: TestClient):
+    client.post(f"/api/projects/{PID}/town/generate", json={"archetype": "residential", "seed": 1, "size_m": 400})
+    resp = client.get(f"/api/projects/{PID}/town/demand", params={"scenario_id": "nope"})
+    assert resp.status_code == 400 and "nope" in resp.json()["detail"]
+
+
+def test_demand_and_synergy_follow_the_active_layouts_hours_and_store_format(client: TestClient):
+    from store_emulator.application.scenarios import get_preset
+    from store_emulator.application.storage.setups import (
+        read_setup,
+        read_state,
+        write_setup,
+    )
+    from store_emulator.domain.town import Town
+    from store_emulator.engine.scenario import compile_scenario, priors_for
+    from store_emulator.engine.town import estimate_demand
+    from store_emulator.server.deps import get_config
+
+    town = Town.model_validate(client.post(f"/api/projects/{PID}/town/generate",
+                                           json={"archetype": "residential", "seed": 1, "size_m": 400}).json())
+    # The sample's active layout opens 8–20 on weekdays and is closed at the weekend.
+    weekday = client.get(f"/api/projects/{PID}/town/demand").json()
+    assert weekday["total_daily_visitors"] > 0
+    assert all(v == 0 for h, v in enumerate(weekday["hourly_totals"]) if not 8 <= h < 20)
+    open_8_20 = town.model_copy(update={"venues": [
+        v.model_copy(update={"open_hour": 8, "close_hour": 20}) if v.is_focal else v for v in town.venues]})
+    expected = estimate_demand(open_8_20, hours=range(8, 20))
+    assert weekday["total_daily_visitors"] == pytest.approx(expected.total_daily_visitors)
+    assert weekday["market_share"] == pytest.approx(expected.market_share)  # rivals' trips at closed hours left out
+    assert client.get(f"/api/projects/{PID}/town/demand", params={"day_type": "weekend"}).json()[
+        "total_daily_visitors"] == 0
+    rows = client.get(f"/api/projects/{PID}/town/synergy", params={"day_type": "weekend"}).json()
+    assert rows and all(r["effect_on_focal_visitors"] == 0 for r in rows)
+
+    setup_id = read_state(PID)["activeSetupId"]
+    setup = read_setup(PID, setup_id)
+    setup["store"]["weekly_schedule"] = [{"day": d, "is_open": True, "open_hour": 0, "close_hour": 24}
+                                         for d in range(1, 8)]
+    setup["store"]["type"] = "supermarket"
+    write_setup(PID, setup_id, setup)
+    always = client.get(f"/api/projects/{PID}/town/demand").json()
+    assert sum(always["hourly_totals"][:7]) > 0  # a 24-hour store has night visitors
+    assert always["total_daily_visitors"] == pytest.approx(estimate_demand(town, hours=range(24)).total_daily_visitors)
+    rainy = client.get(f"/api/projects/{PID}/town/demand", params={"scenario_id": "rainy_commute"}).json()
+    scenario = get_preset("rainy_commute")
+    assert scenario is not None
+    traffic = compile_scenario(scenario, priors_for("supermarket", get_config().scenario_priors)).base_traffic
+    assert traffic != compile_scenario(scenario).base_traffic
+    assert rainy["total_daily_visitors"] == pytest.approx(traffic * always["total_daily_visitors"], rel=1e-3)
+
+
+def test_runs_with_neighborhood_visitors_need_a_neighborhood(client: TestClient):
+    body = {"setup_id": "setup_7d6d", "run_id": "no_town", "engine_type": "rule_based", "preview": True,
+            "max_customers": 5, "use_town": True}
+    for path in ("runs/estimate", "runs"):
+        resp = client.post(f"/api/projects/{PID}/{path}", json=body)
+        assert resp.status_code == 409, resp.text
+        assert resp.json()["detail"] == ("This project has no neighborhood yet — generate one or import a map on the "
+                                         "Area page, or turn off neighborhood visitors.")
+    assert not (Path(".data") / PID / "runs" / "no_town").exists()  # nothing was started
+    assert client.post(f"/api/projects/{PID}/runs/estimate", json={**body, "use_town": False}).status_code == 200
+
+
 def test_run_with_town_visitors_saves_arrivals(client):
     client.post(f"/api/projects/{PID}/town/generate", json={"archetype": "residential", "seed": 1})
     resp = client.post(f"/api/projects/{PID}/runs", json={

@@ -2,7 +2,7 @@ import { Check, ChevronDown, X } from "lucide-react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { useI18n } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
-import { storeTypeLabel } from "@/shared/i18n/storeLabels";
+import { storeTypeLabel, templateName } from "@/shared/i18n/storeLabels";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { cloneElement, useId, useRef, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -96,14 +96,15 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     if (size === "large" && cells <= 480) return false;
     if (seating === "with" && format.default_dining_tables === 0) return false;
     if (seating === "without" && format.default_dining_tables > 0) return false;
-    const labels = LOCALES.map(({ code }) => storeTypeLabel(format.store_type, code)).join(" ");
+    const labels = LOCALES.map(({ code }) => `${storeTypeLabel(format.store_type, code)} ${templateName(format.id, format.name, code)}`).join(" ");
     const text = searchText(`${format.name} ${format.description} ${format.store_type} ${format.id} ${labels}`);
     return terms.every((term) => text.includes(term));
   }).sort((a, b) => {
-    if (sort === "name") return a.name.localeCompare(b.name, locale);
-    if (sort === "smallest") return a.grid[0] * a.grid[1] - b.grid[0] * b.grid[1] || a.name.localeCompare(b.name, locale);
-    if (sort === "largest") return b.grid[0] * b.grid[1] - a.grid[0] * a.grid[1] || a.name.localeCompare(b.name, locale);
-    if (sort === "seats") return b.default_dining_tables - a.default_dining_tables || a.name.localeCompare(b.name, locale);
+    const byName = () => templateName(a.id, a.name, locale).localeCompare(templateName(b.id, b.name, locale), locale);
+    if (sort === "name") return byName();
+    if (sort === "smallest") return a.grid[0] * a.grid[1] - b.grid[0] * b.grid[1] || byName();
+    if (sort === "largest") return b.grid[0] * b.grid[1] - a.grid[0] * a.grid[1] || byName();
+    if (sort === "seats") return b.default_dining_tables - a.default_dining_tables || byName();
     return 0;
   });
   const update = (patch: Partial<TemplateChoice>) => onChange({ ...value, ...patch });
@@ -191,7 +192,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           <RadioGroupPrimitive.Item key={format.id} value={format.id}
             onKeyDownCapture={(event) => handleFormatKeyDown(event, index)}
             className={cn("min-w-0 rounded-md border p-2 text-left text-xs transition-colors [overflow-wrap:anywhere]", value.templateId === format.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
-            <div className="flex items-start justify-between gap-2 font-medium"><span className="min-w-0 flex-1">{format.name}</span>
+            <div className="flex items-start justify-between gap-2 font-medium"><span className="min-w-0 flex-1">{templateName(format.id, format.name, locale)}</span>
               <RadioGroupPrimitive.Indicator className="shrink-0"><Check className="size-3.5 text-primary" aria-hidden /></RadioGroupPrimitive.Indicator>
             </div>
             <div className="text-muted-foreground">{storeTypeLabel(format.store_type, locale)}</div>
@@ -224,7 +225,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>{t("tryAgain")}</button></p>}
           </div>
           <div className="space-y-2">
-            {selected && <p className="text-xs"><span className="text-muted-foreground">{t("selectedFormat")}: </span><strong>{selected.name}</strong></p>}
+            {selected && <p className="text-xs"><span className="text-muted-foreground">{t("selectedFormat")}: </span><strong>{templateName(selected.id, selected.name, locale)}</strong></p>}
             <p className="text-xs text-muted-foreground">{selected?.description}</p>
             <div className="grid grid-cols-2 gap-2">
               <Field label={t("widthCells")}><input type="number" className={controlClass} min={8} max={40} step={1} placeholder={String(selected?.grid[0] ?? 12)} value={value.width ?? ""} onChange={(e) => update({ width: e.target.value === "" ? null : Number(e.target.value) })} /></Field>

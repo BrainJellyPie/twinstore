@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/components/ui/alert-dialog";
 import { Button } from "@/shared/components/ui/button";
-import { useI18n } from "@/shared/i18n/i18n";
+import { translate, useI18n } from "@/shared/i18n/i18n";
 import type { Position, Rack } from "@/shared/types/domain";
 import { GridEditor } from "./GridEditor";
 import { rackCells } from "@/shared/utils/grid";
@@ -84,7 +84,7 @@ export function GridEditorDialog({
   onCreateNewSetup,
   clearItemsOnSave = false,
 }: GridEditorDialogProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const project = useProject(pid).data;
 
   // Local snapshot of the setup the dialog operates on. Updated after legacy reset.
@@ -258,7 +258,7 @@ export function GridEditorDialog({
     ));
     if (outside.length > 0) {
       const names = outside.slice(0, 3).map((rack) => rack.rack_name || rack.type).join(", ");
-      setSaveError(`${outside.length} fixture(s) fall outside this grid: ${names}${outside.length > 3 ? ", …" : ""}. Increase the dimensions or move/remove those fixtures before saving.`);
+      setSaveError(translate(locale, "gridOutside", { count: outside.length, names: `${names}${outside.length > 3 ? ", …" : ""}` }));
       return;
     }
     // shelf/fridge/counter require a name for identification; entrance/exit do not.
@@ -270,7 +270,7 @@ export function GridEditorDialog({
       const coords = unnamed
         .map((r) => `(${r.position[0]},${r.position[1]})`)
         .join(", ");
-      setSaveError(`Unnamed rack/counter: ${coords}`);
+      setSaveError(translate(locale, "gridUnnamed", { cells: coords }));
       return;
     }
     setSaving(true);
@@ -281,7 +281,7 @@ export function GridEditorDialog({
         // them back (finally, below) if the new floor is not saved.
         const cleared = await saveSetup(pid, sid, { store: withoutItems(productsStore) });
         if (!cleared.ok) {
-          setSaveError(cleared.message || "Save failed");
+          setSaveError(cleared.message || translate(locale, "gridSaveFailed"));
           return;
         }
         productsRemoved = true;
@@ -303,25 +303,25 @@ export function GridEditorDialog({
         },
       });
       if (!result.ok) {
-        setSaveError(result.message || "Save failed");
+        setSaveError(result.message || translate(locale, "gridSaveFailed"));
         return;
       }
       productsRemoved = false;
       onSaved();
       onClose();
     } catch (error) {
-      setSaveError(error instanceof Error && error.message ? error.message : "Save failed");
+      setSaveError(error instanceof Error && error.message ? error.message : translate(locale, "gridSaveFailed"));
     } finally {
       if (productsRemoved && productsStore) {
         const restored = await saveSetup(pid, sid, { store: productsStore }).catch(() => null);
         if (!restored?.ok) {
           setProductsStore(null);
-          setSaveError((message) => `${message ?? "Save failed"} The products on this layout were removed and could not be put back.`);
+          setSaveError((message) => `${message ?? translate(locale, "gridSaveFailed")} ${translate(locale, "gridProductsLost")}`);
         }
       }
       setSaving(false);
     }
-  }, [pid, sid, setup, productsStore, editor.gridSize, project, onSaved, onClose]);
+  }, [pid, sid, setup, productsStore, editor.gridSize, project, onSaved, onClose, locale]);
 
   // Legacy reset (2-step PUT) — same flow as GridEditorPage.
   const onLegacyReset = useCallback(async () => {
@@ -339,7 +339,7 @@ export function GridEditorDialog({
       };
       const r1 = await saveSetup(pid, sid, { store: itemsEmpty });
       if (!r1.ok) {
-        setLegacyResetError(r1.message || "Reset step 1 failed");
+        setLegacyResetError(r1.message || translate(locale, "gridResetStepFailed", { step: 1 }));
         return;
       }
       const empty = {
@@ -349,7 +349,7 @@ export function GridEditorDialog({
       };
       const r2 = await saveSetup(pid, sid, { store: empty });
       if (!r2.ok) {
-        setLegacyResetError(r2.message || "Reset step 2 failed");
+        setLegacyResetError(r2.message || translate(locale, "gridResetStepFailed", { step: 2 }));
         return;
       }
       // Update local state only — backend normalisation is picked up by the parent's
@@ -364,12 +364,12 @@ export function GridEditorDialog({
       setProductsStore(null);
       setLegacyDismissed(true);
     } catch (error) {
-      setLegacyResetError(error instanceof Error && error.message ? error.message : "Reset failed");
+      setLegacyResetError(error instanceof Error && error.message ? error.message : translate(locale, "gridResetFailed"));
     } finally {
       resettingRef.current = false;
       setResetting(false);
     }
-  }, [pid, sid, setup, editor]);
+  }, [pid, sid, setup, editor, locale]);
 
   const onLegacyCancel = useCallback(() => {
     setLegacyResetError(null);
@@ -416,7 +416,7 @@ export function GridEditorDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Floor Configuration</DialogTitle>
+          <DialogTitle>{t("gridTitle")}</DialogTitle>
           <DialogDescription className={productsStore ? "text-warn" : "sr-only"} data-testid="grid-editor-description">
             {productsStore ? t("floorEditRemovesProducts") : t("floorEditorDescription")}
           </DialogDescription>
@@ -509,7 +509,7 @@ export function GridEditorDialog({
               disabled={saving || isBlockingLegacy || placing}
               data-testid="grid-save-button"
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? t("gridSaving") : t("providerSave")}
             </Button>
           </div>
         </DialogFooter>

@@ -8,6 +8,7 @@ import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartToo
 import type { PriceRange, PriceResponse } from "@/shared/api/marketing";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
 
 // ── Lift with confidence interval ─────────────────────────────────────────
 
@@ -24,6 +25,7 @@ export interface LiftRow {
 
 /** Paired differences to control on one shared, zero-centred axis: dot = estimate, bar = 95 % CI. */
 export function LiftChart({ rows, format, axisLabel }: { rows: LiftRow[]; format: (v: number) => string; axisLabel: string }) {
+  const { t } = useI18n();
   const [hover, setHover] = useState<string | null>(null);
   const span = Math.max(1e-9, ...rows.flatMap((r) => [Math.abs(r.lo), Math.abs(r.hi), Math.abs(r.diff)])) * 1.12;
   const x = (v: number) => `${50 + (v / span) * 50}%`;
@@ -59,7 +61,7 @@ export function LiftChart({ rows, format, axisLabel }: { rows: LiftRow[]; format
               {active && (
                 <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-lg border bg-popover px-2.5 py-1.5 text-xs shadow-lg">
                   <div className="num font-semibold">{format(r.diff)}</div>
-                  <div className="text-muted-foreground">95 % CI {format(r.lo)} to {format(r.hi)}</div>
+                  <div className="text-muted-foreground">{t("studioCi95To", { low: format(r.lo), high: format(r.hi) })}</div>
                   {r.detail && <div className="text-muted-foreground">{r.detail}</div>}
                 </div>
               )}
@@ -67,7 +69,7 @@ export function LiftChart({ rows, format, axisLabel }: { rows: LiftRow[]; format
             <div className="text-right">
               <div className="num text-sm font-semibold">{format(r.diff)}</div>
               <div className={cn("text-[0.68rem]", sure === "up" ? "text-positive" : sure === "down" ? "text-negative" : "text-muted-foreground")}>
-                {sure === "up" ? "▲ clearly up" : sure === "down" ? "▼ clearly down" : "≈ within noise"}
+                {sure === "up" ? t("mkClearlyUp") : sure === "down" ? t("mkClearlyDown") : t("mkWithinNoise")}
               </div>
             </div>
           </div>
@@ -77,7 +79,7 @@ export function LiftChart({ rows, format, axisLabel }: { rows: LiftRow[]; format
         <span />
         <div className="relative h-4">
           <span className="absolute left-0">{format(-span)}</span>
-          <span className="absolute left-1/2 -translate-x-1/2">0 = control</span>
+          <span className="absolute left-1/2 -translate-x-1/2">{t("mkZeroControl")}</span>
           <span className="absolute right-0">{format(span)}</span>
         </div>
         <span className="text-right">{axisLabel}</span>
@@ -106,6 +108,7 @@ export function LikertLegend({ low, high }: { low: string; high: string }) {
 
 /** One respondent distribution as a 100 % bar; the percentage sits inside a segment only when it fits. */
 export function LikertBar({ counts }: { counts: number[] }) {
+  const { t } = useI18n();
   const [hover, setHover] = useState<number | null>(null);
   const n = counts.reduce((a, b) => a + b, 0) || 1;
   return (
@@ -128,7 +131,7 @@ export function LikertBar({ counts }: { counts: number[] }) {
             {share >= 0.09 && <span className="num">{Math.round(share * 100)}</span>}
             {hover === i && (
               <span className="pointer-events-none absolute bottom-full z-10 mb-1 whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-[0.7rem] font-normal text-popover-foreground shadow-lg">
-                <b className="num">{Math.round(share * 100)} %</b> answered {i + 1} ({c})
+                <b className="num">{Math.round(share * 100)} %</b>{t("mkLikertAnswered", { value: i + 1, count: c })}
               </span>
             )}
           </div>
@@ -141,10 +144,11 @@ export function LikertBar({ counts }: { counts: number[] }) {
 // ── Preference shares ─────────────────────────────────────────────────────
 
 export function ShareBars({ rows }: { rows: { label: string; share: number; lo: number; hi: number }[] }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-2">
       {rows.map((r) => (
-        <div key={r.label} className="grid grid-cols-[minmax(5rem,9rem)_1fr_7.5rem] items-center gap-3" title={`${r.label}: ${(r.share * 100).toFixed(0)} % (95 % CI ${(r.lo * 100).toFixed(0)}–${(r.hi * 100).toFixed(0)} %)`}>
+        <div key={r.label} className="grid grid-cols-[minmax(5rem,9rem)_1fr_7.5rem] items-center gap-3" title={t("mkShareTitle", { label: r.label, share: (r.share * 100).toFixed(0), low: (r.lo * 100).toFixed(0), high: (r.hi * 100).toFixed(0) })}>
           <span className="truncate text-sm font-medium">{r.label}</span>
           <div className="relative h-6 rounded-[4px] bg-foreground/[0.04]">
             <div className="absolute inset-y-0.5 left-0 rounded-r-[4px]" style={{ width: `${r.share * 100}%`, maxWidth: "100%", background: "var(--viz-1)" }} />
@@ -161,26 +165,28 @@ export function ShareBars({ rows }: { rows: { label: string; share: number; lo: 
 
 // ── Van Westendorp ────────────────────────────────────────────────────────
 
-const VW_CONFIG = {
-  too_cheap: { label: "Too cheap", color: "var(--viz-1)" },
-  cheap: { label: "A bargain", color: "var(--viz-2)" },
-  expensive: { label: "Getting expensive", color: "var(--viz-3)" },
-  too_expensive: { label: "Too expensive", color: "var(--viz-4)" },
-} satisfies ChartConfig;
+const VW_SERIES = ["too_cheap", "cheap", "expensive", "too_expensive"] as const;
 
 export function VanWestendorpChart({ price, currency }: { price: PriceRange; currency: string }) {
+  const { t } = useI18n();
+  const vwConfig = {
+    too_cheap: { label: t("mkVwTooCheap"), color: "var(--viz-1)" },
+    cheap: { label: t("mkVwBargain"), color: "var(--viz-2)" },
+    expensive: { label: t("mkVwExpensive"), color: "var(--viz-3)" },
+    too_expensive: { label: t("mkVwTooExpensive"), color: "var(--viz-4)" },
+  } satisfies ChartConfig;
   const data = price.curve.map(([p, tc, c, e, te]) => ({ price: p, too_cheap: tc * 100, cheap: c * 100, expensive: e * 100, too_expensive: te * 100 }));
   const money = (v: number) => formatMoney(v, currency);
   const lo = price.point_of_marginal_cheapness;
   const hi = price.point_of_marginal_expensiveness;
   return (
-    <ChartContainer config={VW_CONFIG} className="aspect-auto h-[260px] w-full">
+    <ChartContainer config={vwConfig} className="aspect-auto h-[260px] w-full">
       <LineChart data={data} margin={{ top: 18, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} stroke="var(--viz-grid)" />
         {lo != null && hi != null && <ReferenceArea x1={lo} x2={hi} fill="var(--viz-1)" fillOpacity={0.07} ifOverflow="hidden" />}
         {price.optimal_price_point != null && (
           <ReferenceLine x={price.optimal_price_point} stroke="var(--foreground)" strokeOpacity={0.55} strokeWidth={1}
-            label={{ value: `optimal ${money(price.optimal_price_point)}`, position: "top", fontSize: 11, fill: "var(--foreground)" }} />
+            label={{ value: t("mkOptimalPrice", { price: money(price.optimal_price_point) }), position: "top", fontSize: 11, fill: "var(--foreground)" }} />
         )}
         <XAxis dataKey="price" type="number" domain={["dataMin", "dataMax"]} tickFormatter={money} tickLine={false} axisLine={false}
           tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} minTickGap={28} />
@@ -189,15 +195,15 @@ export function VanWestendorpChart({ price, currency }: { price: PriceRange; cur
         <ChartTooltip cursor={{ stroke: "var(--foreground)", strokeOpacity: 0.3 }}
           content={<ChartTooltipContent indicator="line" labelFormatter={(_v, payload) => {
             const p = payload?.[0]?.payload?.price;
-            return typeof p === "number" ? `at ${money(p)}` : "";
+            return typeof p === "number" ? t("mkAtPrice", { price: money(p) }) : "";
           }} formatter={(value, name) => (
             <div className="flex w-full items-center justify-between gap-3">
-              <span className="text-muted-foreground">{VW_CONFIG[name as keyof typeof VW_CONFIG]?.label ?? String(name)}</span>
+              <span className="text-muted-foreground">{vwConfig[name as keyof typeof vwConfig]?.label ?? String(name)}</span>
               <span className="num font-semibold">{Math.round(Number(value))} %</span>
             </div>
           )} />} />
         <ChartLegend itemSorter={null} content={<ChartLegendContent />} />
-        {(Object.keys(VW_CONFIG) as (keyof typeof VW_CONFIG)[]).map((k) => (
+        {VW_SERIES.map((k) => (
           <Line key={k} dataKey={k} type="monotone" stroke={`var(--color-${k})`} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--card)" }} />
         ))}
       </LineChart>
@@ -207,16 +213,16 @@ export function VanWestendorpChart({ price, currency }: { price: PriceRange; cur
 
 // ── Demand curve (price sweep) ────────────────────────────────────────────
 
-const DEMAND_CONFIG = { units: { label: "Units / 100 visitors", color: "var(--viz-1)" } } satisfies ChartConfig;
-
 /** Units of one product per 100 visitors at each tested price, with the arms' 95 % intervals. */
 export function DemandChart({ response, currency }: { response: PriceResponse; currency: string }) {
+  const { t } = useI18n();
+  const demandConfig = { units: { label: t("mkColUnits100"), color: "var(--viz-1)" } } satisfies ChartConfig;
   const data = response.points.map((p) => ({
     price: p.price, units: p.units * 100, err: [(p.units - p.units_low) * 100, (p.units_high - p.units) * 100] as [number, number], arm: p.arm,
   }));
   const money = (v: number) => formatMoney(v, currency);
   return (
-    <ChartContainer config={DEMAND_CONFIG} className="aspect-auto h-[220px] w-full">
+    <ChartContainer config={demandConfig} className="aspect-auto h-[220px] w-full">
       <LineChart data={data} margin={{ top: 12, right: 16, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} stroke="var(--viz-grid)" />
         {response.best_price != null && <ReferenceLine x={response.best_price} stroke="var(--foreground)" strokeOpacity={0.25} />}
@@ -229,7 +235,7 @@ export function DemandChart({ response, currency }: { response: PriceResponse; c
             return d?.price != null ? `${d.arm} · ${money(d.price)}` : "";
           }} formatter={(value) => (
             <div className="flex w-full items-center justify-between gap-3">
-              <span className="text-muted-foreground">Units / 100 visitors</span>
+              <span className="text-muted-foreground">{t("mkColUnits100")}</span>
               <span className="num font-semibold">{Number(value).toFixed(1)}</span>
             </div>
           )} />} />
