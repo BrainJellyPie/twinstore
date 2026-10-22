@@ -115,7 +115,8 @@ func (a *app) launch(uv string) error {
 		return err
 	}
 	dist := filepath.Join(a.root, "frontend", "dist")
-	args := []string{"run", "--project", filepath.Join(a.root, "backend"), "--frozen"}
+	// The tested Python: uv would otherwise fetch the newest one, where some dependencies have no wheels yet.
+	args := []string{"run", "--project", filepath.Join(a.root, "backend"), "--frozen", "--python", "3.13"}
 	if !fileExists(filepath.Join(dist, ".prebuilt")) && fileExists(filepath.Join(a.root, "frontend", "package.json")) {
 		args = append(args, "--with", nodeWheel)
 	}
