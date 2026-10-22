@@ -12,6 +12,16 @@
 - API: `crew_tasks` in the operations report (day, member, till or refill, the till or shelf face, start and end in
   clock seconds; the first 3,000 are kept).
 
+### Catalog and fixes
+- Add 96 yoga, running, fishing, leathercraft, seed-starting, plant-propagation, candle-care and camping-repair
+  products with 96 photos and six-language labels; ten matching default maps stock them. The catalog now includes
+  1,688 products in 147 categories and 1,152 local images.
+- **Run simulation** waits for the layout's saved store settings before it can start (and offers to try again when
+  they cannot be loaded): a run started while they loaded used the default store instead. A backroom holding
+  nothing (0 units) is now reported too.
+
+## 0.4.10 — One crew for the tills and the shelves; a backroom behind them; older runs show their results
+
 ### One crew for the tills and the shelves
 - Tills and refills used to be staffed separately: refill rounds were instant and cost nothing at the tills. A store
   can now have a crew — **Crew on duty (tills and shelves)** — who serve at the tills when shoppers wait and refill
@@ -52,12 +62,6 @@
 - Playback orders the line at the tills by clock time (shoppers who arrived at different times queued in the wrong
   order) and puts waiting shoppers at their own till; crowding counts shelf visits longer than ten minutes until
   they end, and a visit that ends as another shopper picks no longer counts. The weeks table scrolls in its panel.
-- Add 96 yoga, running, fishing, leathercraft, seed-starting, plant-propagation, candle-care and camping-repair
-  products with 96 photos and six-language labels; ten matching default maps stock them. The catalog now includes
-  1,688 products in 147 categories and 1,152 local images.
-- **Run simulation** waits for the layout's saved store settings before it can start (and offers to try again when
-  they cannot be loaded): a run started while they loaded used the default store instead. A backroom holding
-  nothing (0 units) is now reported too.
 
 ### Fixes
 - A run saved by an older version, the bundled sample store's runs included, said "re-run it to see conversion,
@@ -121,58 +125,6 @@
 - Compare's notes were always in English. They now follow the app's language.
 
 ## 0.4.8 — Shoppers share one store, store operations; safe updates; nothing downloaded or spent unasked
-
-### The backroom: refills come from somewhere
-- Refills used to fill every shelf from nowhere. A store can now keep a backroom: units of each product behind the
-  shelves (one number for all, or per product) that refills draw from, until it runs dry. Shelves keep last
-  night's stock and are filled from the backroom before opening; a delivery each morning tops the backroom up to
-  its level (an order-up-to policy), or, turned off, what was there has to last the simulated days — so a week-long
-  run shows a popular product's backroom running out on Saturday and the shelf staying empty.
-- **Store operations** shows the refills that came up short, the backroom at opening and the deliveries, and for
-  each product whose backroom ran dry, when. Units in the backroom are held at the stock-holding cost, and
-  **Find the best plan** also tries other backroom levels. API: `backroom_per_product`, `backroom_overrides` and
-  `daily_delivery` in `operations`; blank (null) keeps the endless backroom of earlier versions.
-
-### A layout knows how its store is run — runs, A/B tests and the optimizer use it
-- A layout can now keep its operations: units per shelf level (and per product), refills, tills (and by hour),
-  patience and crowding. **Try other stock and staffing → Save for this layout** stores a plan you replayed or
-  found; a copy of the layout keeps it.
-- Everything on the layout then runs in that store unless told otherwise: **Run simulation** starts from it (and
-  keeps hourly tills and per-product stock it has no field for), **A/B tests** run every arm in it — so a promotion
-  that empties its shelf or lengthens the line pays for it, and each arm shows the units it sold out and the
-  shoppers who left the line — and the **layout optimizer** judges its candidates in it (vision judge included).
-- API: `GET/PUT /setups/{sid}/operations`; `shared_store: false` on runs, A/B tests and optimizations turns it off
-  for one request, and `operations` overrides it. A finalized layout can still change how it is run.
-
-### Shoppers in each other's way, and the shared store in 3D
-- Crowding: when four or more shoppers stand at one shelf at once, an unplanned pick there is given up with a 35 %
-  chance (crowded shoppers buy less on impulse — Harrell, Hutt & Anderson 1980; Machleit, Eroglu & Mantel 2000;
-  assumed values to set from observation). Planned buys are made however crowded. **Run simulation** has the
-  setting (blank turns crowding off); **Store operations** shows the impulse sales lost in crowds, and journeys say
-  "too crowded at the shelf".
-- Playback shows the shared store: shelves standing empty get a red floor mark and a "Sold out: …" label while they
-  are empty, and shoppers waiting for a till stand in a line behind it, earliest first, instead of on one spot.
-  The operations report carries when each face stood empty (`empty_spells`).
-
-### Shoppers remember: the weeks after a run
-- A bad visit used to cost only that visit. **Try other stock and staffing → Shoppers remember** repeats the run's
-  week: after each week, a shopper may stop coming, the likelier the more products they found gone (and did
-  without), the longer they waited at the tills, and if they gave up in the line; everyone else comes again and
-  makes the same visits. A store that runs out loses customers, the next weeks are less crowded and stock and tills
-  stretch further — the loop one day cannot show.
-- Each week is shown next to an ideal store (endless stock, no line) that loses only the weekly churn, with the
-  same leave-or-stay draw per shopper in both and in every plan: the gap is what operations cost through customers'
-  memory, and shoppers who left are counted by reason (stock or tills). **Find the best plan** then judges plans by
-  their money over all the weeks, so a plan that costs more today can win by keeping customers.
-- The chances (3 % per missing unit, 25 % after giving up in the line, 1 % per minute waited, 1 % weekly churn) are
-  assumptions to set from your own loyalty or survey data, not fitted values. API: `memory` on
-  `POST /runs/{rid}/operations/replay` and `/plan`; no model call.
-
-- Compare did not say when one run's shoppers shared the store (stock and tills, new in 0.4.8) and the other's had it
-  alone, as every run before 0.4.8 did, or when the two runs used different store operations: the difference
-  looked like the layout's. It now says so.
-- Compare's notes were always in English. They now follow the app's language.
-
 
 ### Try other stock and staffing on a finished run
 - **Store operations → Try other stock and staffing** replays a run's shoppers — the same people making the same
