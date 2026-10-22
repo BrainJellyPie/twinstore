@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Rewrite interior-design, color, floor-plan and recovery guidance in natural Korean, Chinese,
+  Japanese, Spanish and French. Share design names across setup, floor review and comparison;
+  localize color-reset accessibility labels and preview error recovery without changing stored values.
+
 - Apply the expanded product catalog to all 82 default map templates, with departments
   matched to each store format and bundled product images retained in previews and saved floors.
   The default maps collectively stock every catalog product, including all 131 categories;

@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
-import { useLocale } from "@/shared/i18n/i18n";
+import { translate, useLocale } from "@/shared/i18n/i18n";
 import { photographShelves } from "../../shelfPhotos";
 import { RunLauncherDialog, type RunLauncherDialogProps } from "../RunLauncherDialog";
 
@@ -106,7 +106,9 @@ it("does not block the run when the estimate fails", async () => {
   vi.mocked(api.estimateRun).mockRejectedValue(new Error("Estimate unavailable"));
   show();
   await waitFor(() => expect(api.estimateRun).toHaveBeenCalled());
-  expect(await screen.findByText("Instant — 140 customers, no API cost.")).toBeTruthy();
+  await waitFor(() => expect(screen.queryByText(translate("en", "checkingEstimate"))).toBeNull());
+  expect(screen.queryByText("Instant — 140 customers, no API cost.")).toBeNull();
+  expect(screen.queryByText(/shoppers over/)).toBeNull();
   await submit();
   await waitFor(() => expect(api.startRun).toHaveBeenCalledOnce());
   expect(screen.queryByRole("alertdialog")).toBeNull();

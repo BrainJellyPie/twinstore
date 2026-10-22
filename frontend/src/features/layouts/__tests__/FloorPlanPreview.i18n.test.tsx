@@ -91,3 +91,21 @@ it("renders the largest supported grid with boundary gates, missing hours and no
   expect(screen.queryByRole("list", { name: t("planAreas") })).toBeNull();
   expect(screen.getByText(t("planHours", { hours: t("hoursNotSet") }))).toBeTruthy();
 });
+
+it("uses a translated template title for display and SVG without replacing the stored name", async () => {
+  const before = JSON.stringify(store);
+  const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:named-plan");
+  vi.stubGlobal("URL", { createObjectURL, revokeObjectURL: vi.fn() });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  const view = render(<FloorPlanPreview store={store} areas={[]} name="Supérette & <modèle>" />);
+  fireEvent.click(screen.getByRole("button", { name: t("planExpand") }));
+  act(() => useLocale.getState().setLocale("ja"));
+  const name = "街角のお店 & <雛形> 🛒";
+  view.rerender(<FloorPlanPreview store={store} areas={[]} name={name} />);
+  expect(screen.getByText(t("planDescription", { name, width: 8, height: 6 }))).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: t("planDownload") }));
+  const parsed = await xml(createObjectURL.mock.calls[0]![0]);
+  expect(parsed.querySelector("title")?.textContent).toBe(t("planExportTitle", { name, width: 8, height: 6 }));
+  expect(parsed.querySelector("parsererror,script,foreignObject")).toBeNull();
+  expect(JSON.stringify(store)).toBe(before);
+});

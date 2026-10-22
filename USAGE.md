@@ -72,6 +72,13 @@ Hours, category labels, validation, import/export guidance and accessible contro
 selected interface language. Switching language preserves unsaved values and does not trigger a new
 preview request. Known catalog categories are translated; custom/unknown labels remain as supplied.
 
+The interior-design picker, color controls and floor comparison use the same translated design
+names. In **Custom interior colors**, choose wall, floor, accent or counter colors; each reset
+restores that part of the selected design, while **Reset all custom colors** restores them all.
+Changing the interface language keeps the current colors and other unsaved settings. Color codes
+and design IDs in exported options stay unchanged. A preview failure shows recovery guidance in
+the selected language, with the original diagnostic under **Technical details**.
+
 ## LLM call count (static analysis)
 
 Counted directly from the code, not measured.
