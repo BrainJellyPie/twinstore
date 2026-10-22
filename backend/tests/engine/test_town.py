@@ -252,10 +252,10 @@ def test_store_hours_set_the_modeled_hours_and_our_venue_hours(residential: Town
         DaySchedule(day=Weekday.TUE, open_hour=8, close_hour=20),
         DaySchedule(day=Weekday.SUN, is_open=False),
     ])
+    before = residential.model_dump()
     town, hours = with_store_hours(residential, store, Weekday.TUE)
-    assert hours == list(range(8, 20)) and residential.get_venue(residential.focal_venue_id) == _focal(
-        town).model_copy(update={"open_hour": 0, "close_hour": 24})
-    assert (_focal(town).open_hour, _focal(town).close_hour) == (8, 20)
+    assert hours == list(range(8, 20)) and (_focal(town).open_hour, _focal(town).close_hour) == (8, 20)
+    assert residential.model_dump() == before
     tuesday = estimate_demand(town, hours=hours)
     assert all(v == 0 for h, v in enumerate(tuesday.hourly_totals) if not 8 <= h < 20)
     assert tuesday.total_daily_visitors == pytest.approx(sum(estimate_demand(residential).hourly_totals[8:20]), rel=1e-3)
