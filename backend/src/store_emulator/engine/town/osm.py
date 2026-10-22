@@ -12,7 +12,9 @@ respect their usage policies (identify with a User-Agent, keep request rates low
 import json
 import logging
 import math
+import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -34,6 +36,16 @@ from store_emulator.engine.town.generator import DEFAULT_OPEN_HOURS
 logger = logging.getLogger(__name__)
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+# Public Overpass servers (the main one first). They are often overloaded and answer 429/502/503/504 for a while; the
+# next one is asked instead. TWINSTORE_OVERPASS_URL (comma-separated) puts other servers first.
+OVERPASS_MIRRORS = (
+    OVERPASS_URL,
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+)
+_BUSY = {429, 502, 503, 504}
+_ROUNDS = 2
+_ROUND_PAUSE_SEC = 3.0
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 USER_AGENT = "parastore/0.3"
 
@@ -492,17 +504,36 @@ def fetch_overpass(lat: float, lon: float, radius_m: float, timeout: int = 60) -
     than a JSON object.
     """
     payload = urllib.parse.urlencode({"data": build_overpass_query(lat, lon, radius_m, timeout)}).encode()
-    request = urllib.request.Request(OVERPASS_URL, data=payload, headers={"User-Agent": USER_AGENT})
-    try:
-        with urllib.request.urlopen(request, timeout=timeout + 10) as response:
-            body: bytes = response.read()
-        parsed: object = json.loads(body.decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError) as e:
-        raise RuntimeError(f"Overpass request failed: {e}") from e
-    result = _as_dict(parsed)
-    if not result:
-        raise RuntimeError("Overpass returned an empty or non-object JSON payload")
-    return result
+    own = [u.strip() for u in os.environ.get("TWINSTORE_OVERPASS_URL", "").split(",") if u.strip()]
+    servers = list(dict.fromkeys([*own, *OVERPASS_MIRRORS]))
+    failures: list[str] = []
+    for round_no in range(_ROUNDS):
+        if round_no:
+            time.sleep(_ROUND_PAUSE_SEC * round_no)
+        for url in servers:
+            host = urllib.parse.urlsplit(url).hostname or url
+            request = urllib.request.Request(url, data=payload, headers={"User-Agent": USER_AGENT})
+            try:
+                with urllib.request.urlopen(request, timeout=timeout + 10) as response:
+                    body: bytes = response.read()
+                parsed: object = json.loads(body.decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                if e.code not in _BUSY:   # the query itself was refused: another server would refuse it too
+                    raise RuntimeError(f"Overpass request failed: {e}") from e
+                failures.append(f"{host}: HTTP {e.code}")
+                logger.warning(f"[osm] {host} is busy (HTTP {e.code}); trying the next Overpass server")
+                continue
+            except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+                failures.append(f"{host}: {getattr(e, 'reason', e)}")
+                logger.warning(f"[osm] {host} failed ({e}); trying the next Overpass server")
+                continue
+            result = _as_dict(parsed)
+            if result:
+                return result
+            failures.append(f"{host}: empty answer")
+    raise RuntimeError("the map servers (Overpass) are busy or unreachable right now "
+                       f"({'; '.join(failures[-len(servers):])}). Try again in a minute or two, or generate a "
+                       "fictional neighborhood instead.")
 
 
 def geocode(address: str, timeout: int = 20) -> tuple[float, float] | None:
