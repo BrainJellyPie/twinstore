@@ -1,7 +1,7 @@
 // Concept test builder: up to four product images side by side (A–D), a short standard questionnaire, a quota of
 // the project's personas, and a vision model that answers as each of them.
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ClipboardList, Loader2, Sparkles } from "lucide-react";
 
@@ -29,7 +29,6 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   projectId: string; personaCount: number; defaultCurrency?: string; initial?: SurveyRequest | null; setupId?: string;
   /** A request routed from the command palette: fills the question and drafts the test from it. */
   prefill?: { text: string; id: number };
-  /** Called once the routed request has been taken, so the page can forget it. */
   onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {
@@ -60,25 +59,40 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   // quotas. Everything stays editable; images the library does not have are reported, not invented.
   const [question, setQuestion] = useState("");
   const questionLength = Array.from(question.trim()).length;
-  const [drafted, setDrafted] = useState<{ question: string; design: SurveyDesign } | null>(null);
+  const draftContext = JSON.stringify([projectId, setupId, defaultCurrency, packages]);
+  const form = { question, stimuli, names, questions, context, currency, price, panel, ages, genders, model, name };
+  const formKey = JSON.stringify(form);
+  const [drafted, setDrafted] = useState<{ context: string; form: string; design: SurveyDesign } | null>(null);
   const draft = useMutation({
     mutationFn: (q: string) => designSurvey(projectId, { question: q.trim(), setup_id: setupId, currency }),
-    onSuccess: (d, q) => {
-      setDrafted({ question: q, design: d });
-      if (d.stimuli.length > 0) {
-        setStimuli(d.stimuli);
-        setNames((n) => ({ ...n, ...Object.fromEntries(d.stimuli.map((id, i) => [id, d.stimulus_names[i] ?? ""]).filter(([, v]) => v)) }));
-      }
+  });
+  const { reset } = draft;
+  useLayoutEffect(() => reset(), [draftContext, formKey, reset]);
+  const requestDraft = (asked: string) => {
+    if (Array.from(asked.trim()).length < 5 || draft.isPending) return;
+    draft.mutate(asked, { onSuccess: (d) => {
+      const nextStimuli = d.stimuli.length > 0 ? d.stimuli : stimuli;
+      const nextNames = d.stimuli.length > 0
+        ? { ...names, ...Object.fromEntries(d.stimuli.map((id, i) => [id, d.stimulus_names[i] ?? ""]).filter(([, v]) => v)) }
+        : names;
+      const nextContext = d.context ? Array.from(d.context).slice(0, 300).join("") : context;
+      const nextPrice = d.reference_price != null ? String(d.reference_price / minorUnitDivisor(d.currency)) : "";
+      const nextName = name.trim() ? name : d.name;
+      setStimuli(nextStimuli);
+      setNames(nextNames);
       setQuestions(d.questions);
-      if (d.context) setContext(d.context.slice(0, 300));
+      setContext(nextContext);
       setCurrency(d.currency);
-      setPrice(d.reference_price != null ? String(d.reference_price / minorUnitDivisor(d.currency)) : "");
+      setPrice(nextPrice);
       setAges(d.age_groups);
       setGenders(d.genders);
-      setName((current) => current.trim() ? current : d.name);
-    },
-  });
-  const queueDraft = useQueuedStart(draft.mutate);
+      setName(nextName);
+      setDrafted({ context: draftContext, design: d, form: JSON.stringify({ ...form, question: asked,
+        stimuli: nextStimuli, names: nextNames, questions: d.questions, context: nextContext,
+        currency: d.currency, price: nextPrice, ages: d.age_groups, genders: d.genders, name: nextName }) });
+    } });
+  };
+  const queueDraft = useQueuedStart(requestDraft);
   const prefillId = prefill?.id;
   const prefillText = prefill?.text;
   useEffect(() => {
@@ -88,7 +102,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
     queueDraft(text);
     onPrefillHandled?.(prefillId);
   }, [prefillId, prefillText, queueDraft, onPrefillHandled]);
-  const shownDraft = drafted?.question === question ? drafted.design : null;
+  const shownDraft = drafted?.context === draftContext && drafted.form === formKey ? drafted.design : null;
 
   const run = useMutation({
     mutationFn: () => startSurvey(projectId, {
@@ -107,10 +121,10 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2">
           <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
           <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); draft.mutate(question); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); requestDraft(question); } }}
             placeholder="What should the test answer? e.g. Which of our two new labels looks more premium to people in their twenties?"
             aria-label="Question for the concept test" className="h-9 min-w-[14rem] flex-1 bg-card" />
-          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => draft.mutate(question)}>
+          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => requestDraft(question)}>
             {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the test
           </Button>
           {shownDraft && (
@@ -173,7 +187,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
         </div>
         <div className="space-y-3 rounded-2xl border bg-card p-4">
           <h3 className="text-sm font-semibold">Brief and respondents</h3>
-          <Textarea value={context} onChange={(e) => setContext(e.target.value.slice(0, 300))} rows={3}
+          <Textarea value={context} onChange={(e) => setContext(Array.from(e.target.value).slice(0, 300).join(""))} rows={3}
             placeholder="What respondents are told, e.g. “A new sparkling iced tea, 500 ml, sold next to the sodas.”" />
           <div className="flex items-end gap-2">
             <label className="flex flex-1 flex-col gap-1">

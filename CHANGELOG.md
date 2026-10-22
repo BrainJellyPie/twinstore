@@ -44,6 +44,18 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   asks about: a library pack, a new price, a sign (any short sign, shown beside the usual ones). A product that is not
   in the layout is refused, a pack that is not in the library reported. API: `POST /api/projects/{pid}/shelf-tests/design`.
 
+### Fill existing empty shelves
+- Step 2 can select empty shelves/fridges, apply built-in categories, preview starter products and save
+  a stocked child layout. Existing products and geometry remain unchanged; inaccessible faces are skipped.
+- The template catalog's SKU identities are reused, preserving existing SKU values and image links.
+  Reference prices are explicitly labelled, and changed source/catalog snapshots reject stale saves.
+
+### Edit placed products together
+- Step 2 now opens a searchable SKU editor for names, prices and promotion text. Select rows for bulk changes,
+  undo local edits, inspect mixed prior values and save a separate child layout with all placements preserved.
+- Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
+  No model call or new spreadsheet is required. See the product editor section in USAGE.md.
+
 ### Ask TwinStore from the command palette
 - Inside a store, a sentence typed in the command palette (Ctrl K) that names no command can be handed to TwinStore:
   the text model decides whether it is an A/B test ("would a 1+1 sign on cola sell more than a 20 % cut?"), a shelf
@@ -64,12 +76,6 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   metres) and both runs' fact sheets, and says what changed, which shelves, products, hours or groups it came from,
   and what is within noise, with the figures it used. API: `POST /api/projects/{pid}/compare/explain?a=…&b=…`.
 - A model reply cut off by its length limit now says so ("the model's reply was cut off before it finished").
-
-### Edit placed products together
-- Step 2 now opens a searchable SKU editor for names, prices and promotion text. Select rows for bulk changes,
-  undo local edits, inspect mixed prior values and save a separate child layout with all placements preserved.
-- Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
-  No model call or new spreadsheet is required. See the product editor section in USAGE.md.
 
 ### Model-written shopper thoughts
 - Vision shoppers now say what they came for: the model's own mission and reason become the first step of each

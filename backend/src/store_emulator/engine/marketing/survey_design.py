@@ -5,18 +5,22 @@ the project's library, by name), the questions to ask, the brief respondents rea
 panel's age and gender quotas. Images that are not in the library are dropped and reported; nothing runs.
 """
 
+import re
 from collections.abc import Sequence
+from decimal import ROUND_HALF_UP, Decimal
+from math import isfinite
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.marketing import QuestionKind
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender
-from store_emulator.engine.prompting import relevant_first, resolve_listed
+from store_emulator.engine.prompting import relevant_first
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 MAX_LISTED = 80
 MAX_STIMULI = 4
+MAX_PRICE = 9_007_199_254_740_991
 _KINDS: tuple[QuestionKind, ...] = ("purchase_intent", "appeal", "value", "uniqueness", "price_vw", "preference", "open")
 
 
@@ -81,22 +85,33 @@ def _listing(packages: Sequence[tuple[str, str, str]], question: str) -> str:
     return "Product images (write the quoted name only):\n" + "\n".join(f"- {line}" for line in shown)
 
 
+def _resolve(asked: str, ids: dict[str, dict[str, str]]) -> tuple[str, str] | None:
+    """Resolve an exact name or a uniquely longest name copied with its description."""
+    key = asked.strip().strip('"').casefold()
+    if not key:
+        return None
+    candidates = [key] if key in ids else [n for n in ids if re.search(rf"(?<!\w){re.escape(n)}(?!\w)", key)]
+    if not candidates:
+        return None
+    longest = max(map(len, candidates))
+    matches = {aid: name for n in candidates if len(n) == longest for aid, name in ids[n].items()}
+    return next(iter(matches.items())) if len(matches) == 1 else None
+
 
 def to_design(draft: _Draft, packages: Sequence[tuple[str, str]], currency: str) -> SurveyDesign:
-    """Image names resolved to library ids (an ambiguous name is not guessed; repeats once); everything else checked."""
-    by_name: dict[str, list[tuple[str, str]]] = {}
+    """Resolve unique image identities and representable minor-unit prices for the builder."""
+    ids: dict[str, dict[str, str]] = {}
     for name, aid in packages:
-        by_name.setdefault(name.strip().casefold(), []).append((aid, name))
+        if name.strip():
+            ids.setdefault(name.strip().casefold(), {})[aid] = name.strip()
     warnings: list[str] = []
     stimuli: list[str] = []
     names: list[str] = []
     for asked in draft.images:
-        found = resolve_listed(asked, by_name)
-        if found is None or len(found) != 1:
+        hit = _resolve(asked, ids)
+        if hit is None:
             warnings.append(f'No unique product image "{asked}" in the library (missing or ambiguous name); it was left out.')
-            continue
-        hit = found[0]
-        if hit[0] not in stimuli:
+        elif hit[0] not in stimuli:
             stimuli.append(hit[0])
             names.append(hit[1][:28])
     if len(stimuli) > MAX_STIMULI:
@@ -111,7 +126,20 @@ def to_design(draft: _Draft, packages: Sequence[tuple[str, str]], currency: str)
         questions = ["purchase_intent", "appeal", "open"]
     zero = currency.upper() in ZERO_DECIMAL
     price = draft.reference_price
-    reference = None if price is None or price <= 0 else (round(price) if zero else round(price * 100))
+    reference: int | None = None
+    if price is not None and price > 0:
+        if not isfinite(price):
+            warnings.append("The reference price is not finite; it was left out.")
+        else:
+            amount = Decimal(str(price)) * (1 if zero else 100)
+            if amount > MAX_PRICE:
+                warnings.append("The reference price exceeds the safe integer limit; it was left out.")
+            else:
+                rounded = int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                if rounded == 0:
+                    warnings.append(f"The reference price rounds to zero in {currency.upper()}; it was left out.")
+                else:
+                    reference = rounded
     return SurveyDesign(
         name=draft.name.strip()[:80], stimuli=stimuli, stimulus_names=names, questions=questions,
         context=draft.context.strip()[:300], reference_price=reference, currency=currency.upper(),

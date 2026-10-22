@@ -89,3 +89,39 @@ def test_an_empty_library_and_a_failing_model_are_explained(client, monkeypatch)
     monkeypatch.setattr(study_design, "build_client", lambda *a, **k: _Designer({"name": "x", "questions": []}))
     r = client.post(f"/api/projects/{PID}/surveys/design", json={"question": "Which label is best?"})
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]
+
+
+@pytest.mark.parametrize('text,status', [('🛒' * 4, 422), ('🛒' * 5, 200),
+                                        ('茶' * 500, 200), ('茶' * 501, 422), ('     ', 422)])
+def test_question_bounds_use_trimmed_unicode_characters(client, monkeypatch, text, status):
+    from store_emulator.application import shelf_lab, study_design
+    monkeypatch.setattr(shelf_lab, 'list_packages', lambda pid: [])
+    fake = _Designer(DRAFT)
+    monkeypatch.setattr(study_design, 'build_client', lambda *a, **k: fake)
+    response = client.post(f'/api/projects/{PID}/surveys/design', json={'question': text})
+    assert response.status_code == status, response.text
+    assert len(fake.calls) == (1 if status == 200 else 0)
+
+
+@pytest.mark.parametrize('price,expected', [(1.005, 101), (0.0049, None), (float('inf'), None), (1e308, None)])
+def test_model_prices_become_safe_json_minor_units(client, monkeypatch, price, expected):
+    from store_emulator.application import study_design
+    _library(monkeypatch)
+    monkeypatch.setattr(study_design, 'build_client', lambda *a, **k: _Designer({**DRAFT, 'reference_price': price}))
+    response = client.post(f'/api/projects/{PID}/surveys/design', json={'question': 'Which label is better value?'})
+    assert response.status_code == 200, response.text
+    assert response.json()['reference_price'] == expected
+
+
+@pytest.mark.parametrize('reverse', [False, True])
+def test_same_name_images_are_not_silently_assigned_by_library_order(client, monkeypatch, reverse):
+    from store_emulator.application import shelf_lab, study_design
+    assets = [shelf_lab.PackageAsset(asset_id='a', name='Gold', width=10, height=10),
+              shelf_lab.PackageAsset(asset_id='b', name=' gold ', width=10, height=10)]
+    monkeypatch.setattr(shelf_lab, 'list_packages', lambda pid: list(reversed(assets)) if reverse else assets)
+    monkeypatch.setattr(study_design, 'build_client', lambda *a, **k: _Designer({**DRAFT, 'images': ['Gold']}))
+    response = client.post(f'/api/projects/{PID}/surveys/design', json={'question': 'Which gold label looks better?'})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result['stimuli'] == [] and 'preference' not in result['questions']
+    assert any('ambiguous' in warning for warning in result['warnings'])
