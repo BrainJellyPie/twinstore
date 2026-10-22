@@ -10,6 +10,8 @@ import { HeatmapOverlay } from "@/features/store-viewer/components/HeatmapOverla
 import type { HeatmapPalette } from "@/features/store-viewer/utils/heatmapPalette";
 import { RackPerformanceLayer } from "@/features/store-viewer/components/RackPerformanceLayer";
 import { StockoutLayer } from "@/features/store-viewer/components/StockoutLayer";
+import { CrewLayer } from "@/features/store-viewer/components/CrewLayer";
+import type { CrewPlan } from "@/features/store-viewer/utils/crewAt";
 import { PlaybackScene } from "@/features/playback/components/PlaybackScene";
 import type { Rack, StoreDesign, InteriorColors, CustomerResult } from "@/shared/types/domain";
 import type { EmptySpell, RackStats } from "@/shared/api/client";
@@ -55,6 +57,8 @@ interface StoreSceneProps {
   rackStats: RackStats[] | null; // non-null → rack KPI overlay shown
   // Shared-store runs in playback: when each shelf face stood empty (non-null → sold-out marks shown).
   emptySpells?: EmptySpell[] | null;
+  // Crew runs in playback: who of the crew did what when (non-null → staff shown at tills and shelves).
+  crew?: CrewPlan | null;
   currency: string;
   customers: CustomerResult[] | null;
   personaNames: Map<string, string>;
@@ -113,7 +117,7 @@ interface SceneMode {
 
 function StoreScene({
   width, depth, racks, doors, items, designTheme, designColors,
-  heatmapData, heatmapPalette, rackStats, emptySpells, currency, customers, personaNames, personaGenders, minTime, maxTime,
+  heatmapData, heatmapPalette, rackStats, emptySpells, crew, currency, customers, personaNames, personaGenders, minTime, maxTime,
   availableDays, variationTexture, realistic, quality, hideCompass,
 }: StoreSceneProps & SceneMode) {
   // Till centres in shopper coordinates (a shopper on tile x stands at x + 0.5): waiting shoppers line up away from them.
@@ -153,6 +157,7 @@ function StoreScene({
             availableDays={availableDays}
             counters={counters}
           />
+          {customers && crew && <CrewLayer racks={racks} customers={customers} plan={crew} />}
         </PersonaRig>
       </Suspense>
       {!hideCompass && <CompassLabels width={width} depth={depth} lift={realistic ? 2.9 : COMPASS_LIFT} />}

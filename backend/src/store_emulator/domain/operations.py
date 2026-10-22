@@ -4,6 +4,8 @@ Without it every shopper walks an empty store with endless stock. With it, what 
 next, staff top the shelves up on a schedule, and shoppers who reach the tills wait for one to come free — and some
 give up and leave their basket behind."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -137,6 +139,19 @@ class EmptySpell(BaseModel):
     end: int
 
 
+class CrewTask(BaseModel):
+    """What one crew member did for a while (clock seconds of the day): serving at a till or refilling a shelf face."""
+    day: int
+    member: int                    # 0 = the first crew member (who works till 0)
+    kind: Literal["till", "refill"]
+    rack_id: str                   # the till, or the shelf refilled
+    face: str = ""                 # the shelf face refilled
+    sku: str = ""
+    name: str = ""                 # the product refilled
+    start: int
+    end: int
+
+
 class QueueHour(BaseModel):
     """The tills in one hour of the day (all simulated days together)."""
     hour: str                      # "HH" — the hour shoppers reached the tills
@@ -188,6 +203,7 @@ class OperationsReport(BaseModel):
     refill_wait_min: float = 0.0   # average minutes a face waited, from its refill point to being refilled
     refill_backlog_max: int = 0    # most faces waiting for a refill at once
     refills_unfinished: int = 0    # faces still waiting at closing
+    crew_tasks: list[CrewTask] = []   # who did what when, for playback (the first few thousand)
     hours: list[QueueHour] = []
     stockouts: list[StockoutStats] = []   # by lost revenue, the largest first
     empty_spells: list[EmptySpell] = []   # when each face stood empty, for playback (the first few thousand)

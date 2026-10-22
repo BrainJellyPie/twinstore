@@ -9,6 +9,7 @@ import { weekdayLong } from "@/shared/i18n/timeFormat";
 import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 
 import { useRunOperations } from "../hooks";
+import { CrewTimeline } from "./CrewTimeline";
 import { OperationsLab } from "./OperationsLab";
 
 const STOCKOUTS_SHOWN = 8;
@@ -85,6 +86,7 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
           {(report.refills_unfinished ?? 0) > 0 && (
             <p className="text-xs text-destructive">{t("opsRefillsUnfinished", { count: count(report.refills_unfinished ?? 0) })}</p>
           )}
+          <CrewTimeline report={report} />
         </div>
       )}
       {/* A finite backroom, even one holding nothing (0 units: refills always come up short). */}

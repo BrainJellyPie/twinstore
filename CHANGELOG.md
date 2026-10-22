@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### The crew at work, in 3D and on a timeline
+- In a crew run's playback the staff are in the store: each one on duty stands at their till while serving, at the
+  shelf they are refilling (with "Refilling …" over their head), or beside the tills waiting for work — a ring on
+  the floor tells staff from shoppers. Combined with the sold-out marks, you can watch a lone cashier leave the
+  line to refill the drinks and the line grow behind them.
+- **Store operations** shows the crew's day: a row per staff member with their time at the tills and refilling,
+  for the day the playback shows, with a mark at its clock.
+- API: `crew_tasks` in the operations report (day, member, till or refill, the till or shelf face, start and end in
+  clock seconds; the first 3,000 are kept).
+
 ### One crew for the tills and the shelves
 - Tills and refills used to be staffed separately: refill rounds were instant and cost nothing at the tills. A store
   can now have a crew — **Crew on duty (tills and shelves)** — who serve at the tills when shoppers wait and refill

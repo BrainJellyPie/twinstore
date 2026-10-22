@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 
 from store_emulator.domain.customer import CustomerResult, TimelineEvent
 from store_emulator.domain.operations import (
-    BackroomStats, EmptySpell, OperationsConfig, OperationsReport, QueueHour, StockoutStats,
+    BackroomStats, CrewTask, EmptySpell, OperationsConfig, OperationsReport, QueueHour, StockoutStats,
 )
 from store_emulator.domain.rack import SlotItem
 from store_emulator.domain.store import Store
@@ -36,6 +36,7 @@ _RESTOCK, _FACE_DONE, _PUT_BACK, _PICK, _PAY, _CREW = 0, 1, 2, 3, 4, 5
 _MAX_COUNTERS_ADVISED = 30
 _STOCKOUTS_REPORTED = 60
 _SPELLS_REPORTED = 3000
+_TASKS_REPORTED = 3000
 
 
 @dataclass
@@ -117,6 +118,9 @@ class _Crew:
     working: dict[FaceKey, float] = field(default_factory=dict[FaceKey, float])     # face being refilled → since
     dry: set[FaceKey] = field(default_factory=set[FaceKey])   # faces the backroom has nothing more for today
     queue: list[tuple[int, float, int]] = field(default_factory=list[tuple[int, float, int]])   # (low, since, face)
+    # (start, member, end, kind, rack, face, sku, name): made into CrewTask only for the few the report keeps
+    tasks: list[tuple[float, int, float, str, str, str, str, str]] = field(
+        default_factory=list[tuple[float, int, float, str, str, str, str, str]])
     serving: float = 0.0
     refilling: float = 0.0
     refills: int = 0
@@ -167,6 +171,7 @@ class _Crew:
                 self.working[key] = since
                 self.free[member] = moment + work
                 self.refilling += work
+                self.tasks.append((moment, member, moment + work, "refill", key[0], str(key[1]), key[2], product.item.name))
                 heapq.heappush(heap, (moment + work, _FACE_DONE, member, face))
                 break
 
@@ -335,6 +340,7 @@ def _play_day(
             _emptied(state, key, products[key], opening)
     crew: _Crew | None = None
     ids: dict[FaceKey, int] = {}
+    counter_ids = [counter.id for counter in store.counters]
     close_at = schedule.close_hour * 3600 if schedule is not None and schedule.is_open else end
     if config.crew is not None:
         size = max([config.crew, *config.crew_schedule.values()])
@@ -437,6 +443,7 @@ def _play_day(
             busy += service
             if crew is not None:
                 crew.serving += service
+                crew.tasks.append((begins, till, begins + service, "till", counter_ids[till], "", "", ""))
                 heapq.heappush(heap, (begins + service, _CREW, till, -1))   # free again: back to the shelves
     closing = schedule.close_hour * 3600 if schedule is not None and schedule.is_open else max(end, last)
     closing = max(closing, last)
@@ -460,6 +467,11 @@ def _play_day(
         report.refill_wait_min += crew.waited / 60   # a total until resolve_shared_store averages it
         report.refill_backlog_max = max(report.refill_backlog_max, crew.backlog)
         report.refills_unfinished += len(crew.waiting)
+        room = _TASKS_REPORTED - len(report.crew_tasks)
+        report.crew_tasks.extend(
+            CrewTask(day=int(day), member=member, kind="till" if kind == "till" else "refill", rack_id=rack, face=face,
+                     sku=sku, name=name, start=round(start), end=round(stop))
+            for start, member, stop, kind, rack, face, sku, name in sorted(crew.tasks)[:max(0, room)])
     return checkouts, open_seconds, busy
 
 

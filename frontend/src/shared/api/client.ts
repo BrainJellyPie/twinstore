@@ -477,6 +477,19 @@ export interface QueueHour {
 
 type CrewSettings = "crew" | "crew_schedule" | "refill_at" | "refill_face_sec" | "refill_unit_sec";
 
+/** What one crew member did for a while (clock seconds of the day): serving at a till or refilling a shelf face. */
+export interface CrewTask {
+  day: number;
+  member: number;
+  kind: "till" | "refill";
+  rack_id: string;
+  face: string;
+  sku: string;
+  name: string;
+  start: number;
+  end: number;
+}
+
 /** What sharing the store did to a run (GET /runs/{rid}/operations; 404 = each shopper had the store alone). */
 export interface OperationsReport {
   config: Required<Omit<OperationsConfig, "stock_overrides" | CrewSettings>> & { stock_overrides: Record<string, number> }
@@ -516,6 +529,7 @@ export interface OperationsReport {
   refill_wait_min?: number;
   refill_backlog_max?: number;
   refills_unfinished?: number;
+  crew_tasks?: CrewTask[];
   hours: QueueHour[];
   stockouts: StockoutStats[];
   empty_spells?: EmptySpell[];

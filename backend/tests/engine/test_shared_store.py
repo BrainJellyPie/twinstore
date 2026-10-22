@@ -453,6 +453,12 @@ def test_a_crew_member_refills_a_face_once_it_is_down_to_its_refill_point():
     assert report.restocks == 0 and report.crew_refill_hours == round(120 / 3600, 2)
     assert report.crew_hours == 2 * 14 and report.till_hours == 14 and report.counters == 1
     assert {h.hour: (h.counters_open, h.crew_on_duty) for h in report.hours} == {"10": (1, 2)}
+    # Who did what, for playback: the second member refilled chips twice, the first served the three at the till.
+    refills = [(c.member, c.rack_id, c.face, c.sku, c.start, c.end) for c in report.crew_tasks if c.kind == "refill"]
+    assert refills == [(1, "A", "E", "chips", 36010, 36070), (1, "A", "E", "chips", 36070, 36130)]
+    tills = [(c.member, c.rack_id, c.start) for c in report.crew_tasks if c.kind == "till"]
+    assert tills == [(0, "C0", 36025), (0, "C0", 36045), (0, "C0", 36085)]
+    assert [c.start for c in report.crew_tasks] == sorted(c.start for c in report.crew_tasks)
 
 
 @pytest.mark.parametrize("crew, wait", [(1, 105), (2, 0)])

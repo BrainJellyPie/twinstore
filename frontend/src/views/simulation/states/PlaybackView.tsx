@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useRun } from "@/shared/queries/useRun";
 import { useAssistStore } from "@/stores/assistStore";
@@ -30,6 +30,9 @@ export function PlaybackView({
   const { t } = useI18n();
   const run = useRun(pid, runId).data;
   const operations = useRunOperations(pid, runId).data;
+  const crew = useMemo(() => operations?.config.crew != null
+    ? { tasks: operations.crew_tasks ?? [], crew: operations.config.crew, schedule: operations.config.crew_schedule ?? {} }
+    : null, [operations]);
   const assets = useStoreAssets(run.store);
   const { personaNames, personaGenders } = usePersonaData(run.personas);
   const activeTab = useSimulationStore((s) => s.activeTab);
@@ -58,6 +61,7 @@ export function PlaybackView({
           heatmaps={run.heatmaps}
           rackStats={run.summary.racks ?? null}
           emptySpells={operations?.empty_spells ?? null}
+          crew={crew}
           mode="playback"
           onAskAboutRack={(rack) => {
             sendAsk({ projectId: pid, destination: "run_question",

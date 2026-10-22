@@ -346,3 +346,25 @@ describe("empty backroom reporting", () => {
       expect(screen.getByText(translate(code, "opsBackroomSetup", { units: "0", deliveries: "0" }))).toBeTruthy();
     });
 });
+
+describe("the crew's day", () => {
+  const task = (member: number, kind: "till" | "refill", start: number, end: number, day = 1): api.CrewTask =>
+    ({ day, member, kind, rack_id: kind === "till" ? "C0" : "A", face: "E", sku: "chips", name: kind === "till" ? "" : "Chips", start, end });
+  const crewed: api.OperationsReport = { ...report, config: { ...report.config, crew: 2, crew_schedule: {}, refill_at: 0.5 },
+    crew_hours: 28, crew_till_hours: 1, crew_refill_hours: 1, face_refills: 1, refill_wait_min: 1, refills_unfinished: 0,
+    crew_tasks: [task(0, "till", 36000, 36060), task(1, "refill", 36010, 36070), task(0, "till", 40000, 40030, 2)] };
+
+  it("shows each staff member's time at the tills and refilling, for the day being played", () => {
+    render(<OperationsReportView report={crewed} currency="USD_CENTS" />);
+    expect(screen.getByRole("figure", { name: "The crew's day: Monday" })).toBeTruthy();
+    const second = screen.getByTestId("crew-row-1");
+    expect(second.querySelector("[title='10:00 Refilling Chips']")).toBeTruthy();
+    expect(screen.getByTestId("crew-row-0").querySelector("[title='10:00 At the tills']")).toBeTruthy();
+    expect(screen.getAllByText("At the tills").length).toBeGreaterThan(0);
+  });
+
+  it("is left out without crew tasks", () => {
+    render(<OperationsReportView report={{ ...crewed, crew_tasks: [] }} currency="USD_CENTS" />);
+    expect(screen.queryByRole("figure")).toBeNull();
+  });
+});
