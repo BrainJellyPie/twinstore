@@ -29,6 +29,14 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   an answer that arrives after the user edited the form is dropped. Works in all six interface languages.
   API: `POST /api/assist/store-setup`.
 
+### Resume saved photo queues
+- Capture can explicitly save original photos and recognition settings in this browser, restore paused after
+  a reload or restart, and reuse stable upload identities even when an accepted upload response was lost.
+- Revision checks protect another tab's saved copy; storage failures preserve the live queue and old copy.
+  Save/restore makes no model call. Browser storage limits and eviction still apply; see USAGE.md.
+- Routed concept/shelf drafts are consumed once so returning to their tabs does not repeat drafting.
+
+
 ### Find shoppers in words
 - The Shoppers tab of a run takes a description ("women in their 20s who stopped at the ice cream freezers but bought
   nothing after 3 pm"). The text model writes a filter (age and gender groups, words from the persona, bought

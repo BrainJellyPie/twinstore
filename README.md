@@ -282,8 +282,9 @@ The new-store wizard asks for a format, size and currency, then your customers (
 ### Shelf capture and Shelf Lab
 
 A phone photo of a shelf becomes a rack face in the planogram. **Add photos** takes several files at once, checks
-duplicates and processes them one at a time, with pause and per-photo retry
-([queue details](./USAGE.md#upload-several-shelf-photos-with-a-controlled-queue)); **Combine reviewed shelf photos**
+duplicates and processes them one at a time, with pause and per-photo retry; **Save queue on this browser** keeps the
+selected photos and settings so a queue can resume after a reload or browser restart (browser storage is not a backup;
+[queue details](./USAGE.md#upload-several-shelf-photos-with-a-controlled-queue)); **Combine reviewed shelf photos**
 previews completed photos together and saves them as one new draft layout without extra model calls
 ([workflow](./USAGE.md#combine-reviewed-shelf-photos-into-one-layout)).
 

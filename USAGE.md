@@ -946,7 +946,7 @@ upload several images; each still uses the existing single-photo recognition pip
 
 If a photo or base store changes after preview, save is rejected: preview again. After an uncertain save
 failure, **Retry saving this draft** reuses the same request and returns the existing draft if it was already
-written. Keep the current preview open for this retry; the browser does not persist a work queue across
+written. Keep the current combined preview open for this retry; combined previews are not persisted across
 reloads. After reload, inspect Layouts for the saved combined draft before making another one. Crop image
 writes use the existing shared SKU image storage; a failed layout write can leave newly registered crops,
 and existing images are retained. No source layout or capture is deleted by this action.
@@ -979,8 +979,36 @@ uses geometry without a VLM and does not identify real product names or measured
 - Use **Review photo** to correct names, prices, categories and facings. Once reviewed, the existing
   **Combine reviewed shelf photos** flow previews and saves their products/crops/racks in one new layout.
 
-Keep the page open for unsent files. Browsers do not retain this queue across reloads or project navigation;
-accepted captures remain in history. A restarted single-worker server marks interrupted captures failed,
+### Save a photo queue and resume later
+
+After choosing photos and settings, select **Save queue on this browser**. This explicitly stores the original
+photo bytes, names, recognition settings and stable upload identities in this browser's IndexedDB. It does not
+upload photos or start a model. Without a saved copy, keep this page open for unsent files.
+
+1. Return to Capture in the same browser and origin. Use **Continue saved photo queue** (or **Add photos**),
+   then **Restore saved queue**. The queue restores paused, without selecting files again. Use
+   **Replace local queue from saved copy** only when you want the saved choices to replace your current list.
+2. **Start / resume queue** resends the original upload requests. The server returns already accepted captures
+   without starting recognition again; previously unsent photos create new captures. Photo bytes may be sent
+   again, but accepted jobs are not duplicated. This handles an upload accepted just before its response was
+   lost. Recognition progress comes from the server, not the saved browser copy.
+3. With recovery enabled, changed queue choices and new recognition-attempt identities are saved before the
+   next upload. When paused, use **Save queue on this browser** to retain changed choices before leaving.
+   Another tab's changed copy blocks overwriting/resuming: restore the latest copy first.
+4. **Forget saved copy** removes only browser recovery, keeping the current queue and uploaded photos.
+   **Clear queue and saved copy** removes recovery before clearing the local queue; a storage error leaves
+   both intact. Removing individual photos does not delete their accepted server captures.
+
+Recovery uses the same 20-file / 25-MiB-per-file / 100-MiB-total limits. It is local to this browser and site,
+not a backup or cross-device sync. Browser quota, eviction, private mode and clearing site data can prevent
+or remove recovery. Storage errors preserve the live queue and previous copy. An unreadable/unsupported copy
+is not overwritten; browser site-data controls can remove it if needed. Original photos are retained locally
+until explicitly forgotten or cleared by the browser. Saved settings are preserved even if project currency
+or available models change; an unavailable model may require clearing/reselecting the queue to choose another.
+The **App's vision model** choice still refers to the app's current default, which may change between sessions;
+select an explicit model before saving when that distinction matters.
+
+Accepted captures remain in history. A restarted single-worker server marks interrupted captures failed,
 rather than leaving them pending forever. A retry of a removed accepted photo returns a conflict rather than
 recreating it. Clear that local entry and select the file again if you intentionally want a new attempt.
 
