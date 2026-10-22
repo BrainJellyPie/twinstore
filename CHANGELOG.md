@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Integrate the store-screen, Settings, marketing, capture and neighborhood translations from
+  the current development branch while retaining product workflow validation and automatic selection.
+
 - Add 32 prepared-food, pharmacy and personal-care photos, bringing the collection to 224.
   Starter placement previews show current uploaded or bundled photos for reused products without
   rewriting their saved values. Empty product names retain their SKU label in vision grids.
@@ -28,6 +31,19 @@
   107 categories and 160 local photos. Vision grids fit bundled product artwork more closely by omitting
   empty white margins, while retaining names, prices and numbered identities.
 
+### Neighborhood visitors
+- A scenario run with neighborhood visitors could not be compared with its baseline: changing one hour's count
+  renamed every later visitor, so "lunch rush" paired 164 of 533 shoppers. Visitors are now named by their demand
+  row, and every visitor of an unchanged hour keeps their name.
+- Neighborhood traffic used the convenience store's scenario effects for every format (a supermarket's "Holiday
+  season" ×0.80 instead of ×1.16) and never used the neighborhood's holiday profile; weekend and holiday scenarios now
+  use the weekend or holiday profile, without counting the day twice.
+- Visitors come in the hours the layout opens each day: a 24-hour store had none before 7 am, and an 8–20 store's
+  panel counted a quarter of its visitors at closed hours (market share 54.5 % instead of 42.9 %).
+- A visitor has the age of the shopper they were made from (a 40-year-old "walked from school" before).
+- Running with neighborhood visitors on a project without a neighborhood says so instead of running without them;
+  an unknown situation on the Area page is refused; basket synergy reports walking distances like the synergy table.
+
 ### Fixes
 - Resolve neighborhood label keys in controls, legends and map tooltips instead of showing the keys.
   Keep seeded visitor trip assignments independent of demand-report list ordering so unchanged
@@ -42,7 +58,7 @@
 - A POS export whose product codes match nothing on the shelves scored 0 on every measure and replaced the run's
   earlier report; it is refused with what to fix.
 - The run analyst called the walking path "metres"; it is grid tiles (1.25 m each).
-- A store larger than 100 tiles a side is refused (a huge size hung the save).
+- A store larger than 256 tiles a side is refused (a huge size hung the save).
 - A capture cannot be deleted while a Shelf Lab job on it is running (the job wrote its results back under it), and
   an interview with a shopper who is not in the run is "not found" instead of an empty transcript.
 - The dwell map counts each shopper's own walking pace, diagonal steps, the time at the entrance and wandering; it

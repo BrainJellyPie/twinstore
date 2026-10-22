@@ -29,8 +29,8 @@ class DaySchedule(BaseModel):
         return self
 
 
-# Tiles a side a store may have (125 m at the 1.25 m tile of the realistic view).
-MAX_GRID_SIDE = 100
+# Tiles a side a store may have (the limit product fills and copies already had; 320 m at 1.25 m a tile).
+MAX_GRID_SIDE = 256
 
 
 class Store(BaseModel):

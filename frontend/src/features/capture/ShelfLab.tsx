@@ -43,35 +43,38 @@ import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 import { visitorsPerDayText } from "@/shared/utils/estimate";
+import { translate, useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 import { RestockPlanner } from "./RestockPlanner";
 import { RestockOrderPlanner } from "./RestockOrderPlanner";
 
 import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
 
-const OPS: { kind: EditKind; label: string; hint: string; icon: typeof Tag }[] = [
-  { kind: "swap", label: "Swap", hint: "Two products trade places", icon: ArrowLeftRight },
-  { kind: "remove", label: "Stock-out", hint: "Empty the product's facings", icon: PackageX },
-  { kind: "replace", label: "New package", hint: "Put a new product on the shelf", icon: PackagePlus },
-  { kind: "price", label: "Price tag", hint: "Change the shelf price", icon: Tag },
-  { kind: "promo", label: "Promo sign", hint: "Hang a 1+1 / SALE sticker", icon: BadgePercent },
-  { kind: "duplicate", label: "Extend", hint: "Copy a product over a neighbour", icon: Copy },
+const OPS: { kind: EditKind; label: MessageKey; hint: MessageKey; icon: typeof Tag }[] = [
+  { kind: "swap", label: "capLabOpSwap", hint: "capLabOpSwapHint", icon: ArrowLeftRight },
+  { kind: "remove", label: "capLabOpRemove", hint: "capLabOpRemoveHint", icon: PackageX },
+  { kind: "replace", label: "capLabOpReplace", hint: "capLabOpReplaceHint", icon: PackagePlus },
+  { kind: "price", label: "capLabOpPrice", hint: "capLabOpPriceHint", icon: Tag },
+  { kind: "promo", label: "capLabOpPromo", hint: "capLabOpPromoHint", icon: BadgePercent },
+  { kind: "duplicate", label: "capLabOpDuplicate", hint: "capLabOpDuplicateHint", icon: Copy },
 ];
+type Translate = ReturnType<typeof useI18n>["t"];
 
 const PROMOS = ["1+1", "2+1", "SALE", "-30%", "NEW"];
 
 const editsKey = (pid: string, cid: string) => ["projects", pid, "captures", cid, "edits"] as const;
 const jobsKey = (pid: string, cid: string) => ["projects", pid, "captures", cid, "lab-jobs"] as const;
 
-function describe(edit: PhotoEdit, names: Map<string, string>): string {
-  const t = names.get(edit.item_id) ?? edit.item_id;
-  const o = edit.other_id ? names.get(edit.other_id) ?? edit.other_id : "";
+function describe(edit: PhotoEdit, names: Map<string, string>, t: Translate): string {
+  const target = names.get(edit.item_id) ?? edit.item_id;
+  const other = edit.other_id ? names.get(edit.other_id) ?? edit.other_id : "";
   switch (edit.kind) {
-    case "swap": return `Swap ${t} ⇄ ${o}`;
-    case "remove": return `Stock-out: ${t}`;
-    case "replace": return `${t} → ${edit.name || "new package"}`;
-    case "price": return `Price of ${t}`;
-    case "promo": return `${edit.promo || "SALE"} on ${t}`;
-    case "duplicate": return `${t} over ${o}`;
+    case "swap": return t("capLabDescSwap", { target, other });
+    case "remove": return t("capLabDescRemove", { target });
+    case "replace": return t("capLabDescReplace", { target, name: edit.name || t("capLabNewPackage") });
+    case "price": return t("capLabDescPrice", { target });
+    case "promo": return t("capLabDescPromo", { target, promo: edit.promo || "SALE" });
+    case "duplicate": return t("capLabDescDuplicate", { target, other });
   }
 }
 
@@ -80,14 +83,15 @@ function describe(edit: PhotoEdit, names: Map<string, string>): string {
 export function BeforeAfter({ beforeUrl, afterUrl, maskUrl, size, showMask }: {
   beforeUrl: string; afterUrl: string; maskUrl: string; size: [number, number]; showMask: boolean;
 }) {
+  const { t } = useI18n();
   const [split, setSplit] = useState(50);
   const [w, h] = size;
   return (
     <div className="relative max-h-full max-w-full select-none" style={{ aspectRatio: `${w} / ${h}`, height: "100%" }}>
-      <img src={beforeUrl} alt="Original photo" className="absolute inset-0 h-full w-full rounded-lg object-contain" draggable={false} />
+      <img src={beforeUrl} alt={t("capLabOriginalPhoto")} className="absolute inset-0 h-full w-full rounded-lg object-contain" draggable={false} />
       <img
         src={afterUrl}
-        alt="Counterfactual photo"
+        alt={t("capLabCounterfactualPhoto")}
         className="absolute inset-0 h-full w-full rounded-lg object-contain"
         style={{ clipPath: `inset(0 0 0 ${split}%)` }}
         draggable={false}
@@ -105,8 +109,8 @@ export function BeforeAfter({ beforeUrl, afterUrl, maskUrl, size, showMask }: {
           <ArrowLeftRight className="size-4" />
         </div>
       </div>
-      <span className="glass absolute top-3 left-3 rounded-full px-2.5 py-1 text-xs font-medium">Original</span>
-      <span className="absolute top-3 right-3 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground">Counterfactual</span>
+      <span className="glass absolute top-3 left-3 rounded-full px-2.5 py-1 text-xs font-medium">{t("capLabOriginal")}</span>
+      <span className="absolute top-3 right-3 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground">{t("capLabCounterfactual")}</span>
       <input
         type="range"
         min={0}
@@ -114,7 +118,7 @@ export function BeforeAfter({ beforeUrl, afterUrl, maskUrl, size, showMask }: {
         value={split}
         onChange={(e) => setSplit(Number(e.target.value))}
         className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
-        aria-label="Compare original and counterfactual"
+        aria-label={t("capLabCompare")}
       />
     </div>
   );
@@ -125,6 +129,7 @@ export function BeforeAfter({ beforeUrl, afterUrl, maskUrl, size, showMask }: {
 function ProductSlot({ label, itemId, names, active, onActivate, onClear }: {
   label: string; itemId: string | null; names: Map<string, string>; active: boolean; onActivate: () => void; onClear: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -136,13 +141,13 @@ function ProductSlot({ label, itemId, names, active, onActivate, onClear }: {
     >
       <span className="eyebrow shrink-0">{label}</span>
       <span className={cn("min-w-0 flex-1 truncate font-medium", !itemId && "text-muted-foreground")}>
-        {itemId ? names.get(itemId) ?? itemId : active ? "Click it on the photo" : "Not chosen"}
+        {itemId ? names.get(itemId) ?? itemId : active ? t("capLabClickOnPhoto") : t("capLabNotChosen")}
       </span>
       {itemId && (
         <span
           role="button"
           tabIndex={0}
-          aria-label={`Clear ${label}`}
+          aria-label={t("capLabClear", { label })}
           onClick={(e) => { e.stopPropagation(); onClear(); }}
           onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onClear(); } }}
           className="rounded-md p-0.5 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
@@ -158,8 +163,9 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
   projectId: string; captureId: string; result: CaptureResult; draft: LabDraft;
   setDraft: (d: LabDraft) => void; onCreated: (shelf: EditedShelf) => void;
 }) {
+  const { t, locale } = useI18n();
   const qc = useQueryClient();
-  const names = useMemo(() => new Map(result.items.map((i) => [i.id, i.name || `Product ${i.band + 1}.${i.order + 1}`])), [result]);
+  const names = useMemo(() => new Map(result.items.map((i) => [i.id, i.name || translate(locale, "capLabProductN", { band: i.band + 1, order: i.order + 1 })])), [result, locale]);
   const [queue, setQueue] = useState<PhotoEdit[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -187,7 +193,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
       case "duplicate":
         return { ...base, other_id: draft.other ?? "" };
       case "replace":
-        return { ...base, name: name.trim() || "New product", price: parsedPrice, asset_id: assetId };
+        return { ...base, name: name.trim() || t("capLabNewProduct"), price: parsedPrice, asset_id: assetId };
       case "price": {
         const p = parsedPrice;
         return p == null ? null : { ...base, price: p };
@@ -225,17 +231,17 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
             )}
           >
             <Icon className="size-4" />
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground">{op.hint}. Click products on the photo to choose them.</p>
+      <p className="text-xs text-muted-foreground">{t("capLabOpHint", { hint: t(op.hint) })}</p>
 
       <div className="flex flex-col gap-2">
-        <ProductSlot label="Product" itemId={draft.target} names={names} active={draft.slot === "target"}
+        <ProductSlot label={t("capLabSlotProduct")} itemId={draft.target} names={names} active={draft.slot === "target"}
           onActivate={() => setDraft({ ...draft, slot: "target" })} onClear={() => setDraft({ ...draft, target: null, slot: "target" })} />
         {needsOther(draft.kind) && (
-          <ProductSlot label={draft.kind === "swap" ? "With" : "Over"} itemId={draft.other} names={names} active={draft.slot === "other"}
+          <ProductSlot label={draft.kind === "swap" ? t("capLabSlotWith") : t("capLabSlotOver")} itemId={draft.other} names={names} active={draft.slot === "other"}
             onActivate={() => setDraft({ ...draft, slot: "other" })} onClear={() => setDraft({ ...draft, other: null, slot: "other" })} />
         )}
       </div>
@@ -243,8 +249,8 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
       {draft.kind === "replace" && (
         <div className="space-y-2 rounded-xl border bg-foreground/[0.02] p-3">
           <div className="grid grid-cols-[1fr_6.5rem] gap-2">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="New product name" />
-            <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price" inputMode="decimal" className="num" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("capLabNewProductName")} />
+            <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t("capLabPrice")} inputMode="decimal" className="num" />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -252,7 +258,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
               onClick={() => setAssetId("")}
               className={cn("h-14 rounded-lg border px-3 text-xs", !assetId ? "border-primary text-foreground" : "text-muted-foreground hover:border-foreground/20")}
             >
-              Printed<br />label
+              {t("capLabPrinted1")}<br />{t("capLabPrinted2")}
             </button>
             {(packages.data ?? []).map((p) => (
               <button
@@ -271,17 +277,17 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
               className="flex h-14 items-center gap-1.5 rounded-lg border border-dashed px-3 text-xs text-muted-foreground hover:border-primary hover:text-foreground"
             >
               {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-              Package image
+              {t("capLabPackageImage")}
             </button>
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ""; }} />
           </div>
           {upload.error && <p role="alert" className="text-xs text-destructive">{upload.error.message}</p>}
-          <p className="text-[0.72rem] text-muted-foreground">A PNG with transparency works best; a photo on a plain background is cut out automatically.</p>
+          <p className="text-[0.72rem] text-muted-foreground">{t("capLabPackageHint")}</p>
         </div>
       )}
       {draft.kind === "price" && (
-        <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder={`New price (${result.currency})`} inputMode="decimal" className="num" />
+        <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t("capLabNewPrice", { currency: result.currency })} inputMode="decimal" className="num" />
       )}
       {draft.kind === "promo" && (
         <div className="flex flex-wrap gap-1.5">
@@ -300,8 +306,8 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
           {queue.map((e, i) => (
             <li key={i} className="flex items-center gap-2 rounded-lg bg-foreground/[0.04] px-2.5 py-1.5 text-xs">
               <span className="num text-muted-foreground">{i + 1}</span>
-              <span className="min-w-0 flex-1 truncate">{describe(e, names)}</span>
-              <button type="button" aria-label="Remove step" onClick={() => setQueue(queue.filter((_, k) => k !== i))} className="text-muted-foreground hover:text-destructive">
+              <span className="min-w-0 flex-1 truncate">{describe(e, names, t)}</span>
+              <button type="button" aria-label={t("capLabRemoveStep")} onClick={() => setQueue(queue.filter((_, k) => k !== i))} className="text-muted-foreground hover:text-destructive">
                 <X className="size-3.5" />
               </button>
             </li>
@@ -309,14 +315,14 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
         </ol>
       )}
       {render.error && <p className="text-xs text-destructive">{render.error instanceof Error ? render.error.message : String(render.error)}</p>}
-      {invalidPrice && <p role="alert" className="text-xs text-destructive">Enter a valid nonnegative price.</p>}
+      {invalidPrice && <p role="alert" className="text-xs text-destructive">{t("capLabInvalidPrice")}</p>}
       <div className="flex gap-2">
         <Button variant="outline" className="gap-1.5" disabled={!current} onClick={() => { if (current) { setQueue([...queue, current]); setDraft({ ...EMPTY_DRAFT, kind: draft.kind }); } }}>
-          <Plus className="size-4" /> Add step
+          <Plus className="size-4" /> {t("capLabAddStep")}
         </Button>
         <Button className="flex-1 gap-2" disabled={invalidPrice || recipe.length === 0 || render.isPending} onClick={() => render.mutate(recipe)}>
           {render.isPending ? <Loader2 className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}
-          Render counterfactual{recipe.length > 1 ? ` (${recipe.length} steps)` : ""}
+          {t("capLabRender")}{recipe.length > 1 ? t("capLabRenderSteps", { count: recipe.length }) : ""}
         </Button>
       </div>
     </section>
@@ -328,6 +334,7 @@ function Composer({ projectId, captureId, result, draft, setDraft, onCreated }: 
 function EditsGallery({ projectId, captureId, editId, onSelect }: {
   projectId: string; captureId: string; editId: string | null; onSelect: (id: string | null) => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const edits = useQuery({ queryKey: editsKey(projectId, captureId), queryFn: ({ signal }) => api.listEdits(projectId, captureId, signal) });
   const del = useMutation({
@@ -342,17 +349,17 @@ function EditsGallery({ projectId, captureId, editId, onSelect }: {
   const selected = list.find((e) => e.edit_id === editId);
   return (
     <section className="space-y-2">
-      <div className="eyebrow">Counterfactuals</div>
+      <div className="eyebrow">{t("capLabCounterfactuals")}</div>
       <div className="flex gap-2 overflow-x-auto pb-1">
         <button type="button" onClick={() => onSelect(null)}
           className={cn("grid h-16 w-20 shrink-0 place-items-center rounded-xl border text-xs", !editId ? "border-primary" : "text-muted-foreground hover:border-foreground/20")}>
-          Original
+          {t("capLabOriginal")}
         </button>
         {list.map((e) => (
           <button key={e.edit_id} type="button" onClick={() => onSelect(e.edit_id)}
             className={cn("relative h-16 w-20 shrink-0 overflow-hidden rounded-xl border-2", e.edit_id === editId ? "border-primary" : "border-transparent hover:border-foreground/20")}>
             <img src={api.editFileUrl(projectId, captureId, e.edit_id, "image")} alt="" className="h-full w-full object-cover" />
-            <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-[0.62rem] text-white">{e.edits.length} edit{e.edits.length > 1 ? "s" : ""}</span>
+            <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-[0.62rem] text-white">{t(e.edits.length > 1 ? "capLabEditsCount" : "capLabEditCount", { count: e.edits.length })}</span>
           </button>
         ))}
       </div>
@@ -360,13 +367,13 @@ function EditsGallery({ projectId, captureId, editId, onSelect }: {
         <div className="rounded-xl border bg-foreground/[0.02] p-2.5 text-xs">
           <ul className="space-y-0.5">
             {selected.changes.filter((c, i, all) => all.findIndex((x) => x.item_id === c.item_id && x.kind === c.kind) === i).map((c, i) => (
-              <li key={i} className="flex gap-1.5"><span className="font-medium capitalize">{c.kind}</span><span className="truncate text-muted-foreground">{c.before} → {c.after}</span></li>
+              <li key={i} className="flex gap-1.5"><span className="font-medium capitalize">{opLabel(c.kind, t)}</span><span className="truncate text-muted-foreground">{c.before} → {c.after}</span></li>
             ))}
           </ul>
           <div className="mt-2 flex gap-1.5">
-            <Button variant="outline" size="xs" asChild><a href={api.editFileUrl(projectId, captureId, selected.edit_id, "image")} download={`${selected.edit_id}.jpg`}><Download /> Image</a></Button>
-            <Button variant="outline" size="xs" asChild><a href={api.editFileUrl(projectId, captureId, selected.edit_id, "mask")} download={`${selected.edit_id}_mask.png`}><Download /> GT mask</a></Button>
-            <Button variant="ghost" size="xs" className="ml-auto hover:text-destructive" disabled={del.isPending} onClick={() => del.mutate(selected.edit_id)}><Trash2 /> Delete</Button>
+            <Button variant="outline" size="xs" asChild><a href={api.editFileUrl(projectId, captureId, selected.edit_id, "image")} download={`${selected.edit_id}.jpg`}><Download /> {t("capLabImage")}</a></Button>
+            <Button variant="outline" size="xs" asChild><a href={api.editFileUrl(projectId, captureId, selected.edit_id, "mask")} download={`${selected.edit_id}_mask.png`}><Download /> {t("capLabGtMask")}</a></Button>
+            <Button variant="ghost" size="xs" className="ml-auto hover:text-destructive" disabled={del.isPending} onClick={() => del.mutate(selected.edit_id)}><Trash2 /> {t("studioDelete")}</Button>
           </div>
           {del.error && <p role="alert" className="mt-2 text-destructive">{del.error.message}</p>}
         </div>
@@ -400,87 +407,90 @@ function Progress({ value, label }: { value: number; label: string }) {
 function RecentJobs({ projectId, captureId, kind, current, onPick }: {
   projectId: string; captureId: string; kind: "sim2real" | "audit"; current: string | null; onPick: (id: string) => void;
 }) {
+  const { t, locale } = useI18n();
   const jobs = useQuery({ queryKey: jobsKey(projectId, captureId), queryFn: ({ signal }) => api.listLabJobs(projectId, captureId, signal) });
   const mine = (jobs.data ?? []).filter((j) => j.kind === kind && j.status === "completed").slice(0, 6);
   if (mine.length === 0) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
-      <span className="text-muted-foreground">Earlier runs:</span>
+      <span className="text-muted-foreground">{t("capLabEarlierRuns")}</span>
       {mine.map((j) => (
         <button key={j.job_id} type="button" onClick={() => onPick(j.job_id)}
           className={cn("num rounded-full border px-2 py-0.5", current === j.job_id ? "border-primary text-foreground" : "text-muted-foreground hover:border-foreground/20")}>
-          {new Date(j.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          {new Date(j.created_at).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
         </button>
       ))}
     </div>
   );
 }
 
-const CONDITION_LABEL: Record<Sim2RealCondition, string> = { render: "Render", photo: "Photo + tags", photo_raw: "Raw photo" };
+const CONDITION_LABEL: Record<Sim2RealCondition, MessageKey> = { render: "capLabCondRender", photo: "capLabCondPhoto", photo_raw: "capLabCondRaw" };
 const LEVEL_COLORS: Record<string, string> = { "4": "var(--heat-1)", "3": "var(--volt)", "2": "var(--heat-2)", "1": "var(--heat-3)" };
 
 function Sim2RealView({ report }: { report: Sim2RealReport }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-4">
       {report.agreement.map((a) => (
         <div key={a.condition}>
           <div className="flex items-end justify-between">
             <div>
-              <div className="eyebrow">{CONDITION_LABEL[a.condition]} vs render</div>
+              <div className="eyebrow">{t("capLabVsRender", { condition: t(CONDITION_LABEL[a.condition]) })}</div>
               {a.pairs > 0
                 ? <div className="num text-3xl font-medium tracking-[-0.05em]">{Math.round(a.same_pick * 100)}%</div>
-                : <p className="mt-1 text-xs text-muted-foreground">No complete response pairs</p>}
+                : <p className="mt-1 text-xs text-muted-foreground">{t("capLabNoPairs")}</p>}
             </div>
             <div className="text-right text-xs text-muted-foreground">
-              same pick · n={a.pairs}<br />
-              interest ρ {a.interest_spearman == null ? "–" : a.interest_spearman.toFixed(2)}
+              {t("capLabSamePick", { n: a.pairs })}<br />
+              {t("capLabInterest", { value: a.interest_spearman == null ? "–" : a.interest_spearman.toFixed(2) })}
             </div>
           </div>
           {a.pairs > 0 && <div className="relative mt-2 h-2 rounded-full bg-foreground/10">
             <div className="absolute inset-y-0 left-0 rounded-full aurora-gradient" style={{ width: `${a.same_pick * 100}%` }} />
-            <div className="absolute -top-1 -bottom-1 border-x-2 border-foreground/60" style={{ left: `${a.ci_low * 100}%`, width: `${Math.max(0.5, (a.ci_high - a.ci_low) * 100)}%` }} title="95% Wilson interval" />
+            <div className="absolute -top-1 -bottom-1 border-x-2 border-foreground/60" style={{ left: `${a.ci_low * 100}%`, width: `${Math.max(0.5, (a.ci_high - a.ci_low) * 100)}%` }} title={t("capLabWilson")} />
           </div>}
         </div>
       ))}
       <div className="space-y-2">
-        <div className="eyebrow">Where the picks land (shelf level)</div>
+        <div className="eyebrow">{t("capLabPicksLand")}</div>
         {report.stats.map((s) => (
           <div key={s.condition} className="flex items-center gap-2 text-xs">
-            <span className="w-24 shrink-0 text-muted-foreground">{CONDITION_LABEL[s.condition]}</span>
+            <span className="w-24 shrink-0 text-muted-foreground">{t(CONDITION_LABEL[s.condition])}</span>
             <div className="flex h-3 flex-1 overflow-hidden rounded-full bg-foreground/10">
               {["4", "3", "2", "1"].map((lv) => (s.level_share[lv] ? (
-                <div key={lv} style={{ width: `${s.level_share[lv]! * 100}%`, background: LEVEL_COLORS[lv] }} title={`level ${lv}: ${Math.round(s.level_share[lv]! * 100)}%`} />
+                <div key={lv} style={{ width: `${s.level_share[lv]! * 100}%`, background: LEVEL_COLORS[lv] }} title={t("capLabLevelShare", { level: lv, pct: Math.round(s.level_share[lv]! * 100) })} />
               ) : null))}
             </div>
-            <span className="num w-14 text-right text-muted-foreground">{s.answers > 0 ? `${Math.round(s.none_rate * 100)}% none` : "—"}</span>
+            <span className="num w-14 text-right text-muted-foreground">{s.answers > 0 ? t("capLabNoneRate", { pct: Math.round(s.none_rate * 100) }) : "—"}</span>
           </div>
         ))}
         <div className="flex gap-3 text-[0.68rem] text-muted-foreground">
-          {[["4", "Top"], ["3", "Eye"], ["2", "Waist"], ["1", "Bottom"]].map(([lv, n]) => (
-            <span key={lv} className="flex items-center gap-1"><span className="size-2 rounded-full" style={{ background: LEVEL_COLORS[lv!] }} />{n}</span>
+          {([["4", "capLabLevelTop"], ["3", "capLabLevelEye"], ["2", "capLabLevelWaist"], ["1", "capLabLevelBottom"]] as const).map(([lv, n]) => (
+            <span key={lv} className="flex items-center gap-1"><span className="size-2 rounded-full" style={{ background: LEVEL_COLORS[lv] }} />{t(n)}</span>
           ))}
         </div>
       </div>
       <div className="grid grid-cols-1 gap-2">
         {report.stats.map((s) => (
           <div key={s.condition} className="rounded-xl border p-2.5 text-xs">
-            <div className="mb-1 font-medium">{CONDITION_LABEL[s.condition]} · top picks</div>
+            <div className="mb-1 font-medium">{t("capLabTopPicks", { condition: t(CONDITION_LABEL[s.condition]) })}</div>
             {Object.entries(s.picks).slice(0, 3).map(([sku, n]) => (
               <div key={sku} className="flex justify-between gap-2"><span className="truncate">{report.products[sku] ?? sku}</span><span className="num text-muted-foreground">{n}</span></div>
             ))}
-            {Object.keys(s.picks).length === 0 && <span className="text-muted-foreground">{s.answers > 0 ? "No picks" : "No successful responses"}</span>}
-            {s.errors > 0 && <p className="mt-1 text-destructive">{s.errors} model call{s.errors === 1 ? "" : "s"} failed</p>}
+            {Object.keys(s.picks).length === 0 && <span className="text-muted-foreground">{s.answers > 0 ? t("capLabNoPicks") : t("capLabNoResponses")}</span>}
+            {s.errors > 0 && <p className="mt-1 text-destructive">{t(s.errors === 1 ? "capLabCallFailed" : "capLabCallsFailed", { count: s.errors })}</p>}
           </div>
         ))}
       </div>
       <p className="text-[0.72rem] text-muted-foreground">
-        {report.personas} shoppers · {report.model} · {report.seconds}s{report.notes.length ? ` · ${report.notes.join("; ")}` : ""}
+        {t("capLabSimFooter", { count: report.personas, model: report.model, seconds: String(report.seconds) })}{report.notes.length ? ` · ${report.notes.join("; ")}` : ""}
       </p>
     </div>
   );
 }
 
 function AttentionToggle({ report, onAttention }: { report: Sim2RealReport; onAttention: (shares: Record<string, number> | null) => void }) {
+  const { t } = useI18n();
   const [on, setOn] = useState<Sim2RealCondition | null>(null);
   const show = (c: Sim2RealCondition | null) => {
     setOn(c);
@@ -489,11 +499,11 @@ function AttentionToggle({ report, onAttention }: { report: Sim2RealReport; onAt
   };
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
-      <span className="text-muted-foreground">Attention on the photo:</span>
+      <span className="text-muted-foreground">{t("capLabAttention")}</span>
       {report.conditions.map((c) => (
         <button key={c} type="button" onClick={() => show(on === c ? null : c)}
           className={cn("rounded-full border px-2.5 py-1", on === c ? "border-transparent bg-primary font-medium text-primary-foreground" : "hover:border-foreground/20")}>
-          {CONDITION_LABEL[c]}
+          {t(CONDITION_LABEL[c])}
         </button>
       ))}
     </div>
@@ -504,6 +514,7 @@ function Sim2RealCard({ projectId, captureId, editId, labeled, onAttention }: {
   projectId: string; captureId: string; editId: string | null; labeled: boolean;
   onAttention: (shares: Record<string, number> | null) => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [personas, setPersonas] = useState(24);
   const [raw, setRaw] = useState(true);
@@ -521,27 +532,27 @@ function Sim2RealCard({ projectId, captureId, editId, labeled, onAttention }: {
     <section className="space-y-3">
       <div className="flex items-center gap-2">
         <ScanSearch className="size-4 text-heat-1" />
-        <h3 className="section-title">Sim2real</h3>
-        <span className="ml-auto text-xs text-muted-foreground">{editId ? "on the counterfactual" : "on the original"}</span>
+        <h3 className="section-title">{t("capLabSim2real")}</h3>
+        <span className="ml-auto text-xs text-muted-foreground">{editId ? t("capLabOnCounterfactual") : t("capLabOnOriginal")}</span>
       </div>
-      <p className="text-xs text-muted-foreground">The same shoppers and seeds glance at the photo and at the simulator's render of this planogram.</p>
+      <p className="text-xs text-muted-foreground">{t("capLabSimHint")}</p>
       <label className="flex items-center gap-3 text-xs">
-        <span className="w-20 text-muted-foreground">Shoppers</span>
+        <span className="w-20 text-muted-foreground">{t("capLabShoppers")}</span>
         <input type="range" min={8} max={96} step={8} value={personas} onChange={(e) => setPersonas(Number(e.target.value))} className="flex-1" />
         <span className="num w-8 text-right">{personas}</span>
       </label>
       <label className="flex items-center gap-2 text-xs">
         <input type="checkbox" checked={raw} onChange={(e) => setRaw(e.target.checked)} />
-        Also the raw photo, without number tags (set-of-mark ablation)
+        {t("capLabRaw")}
       </label>
-      <Input value={situation} onChange={(e) => setSituation(e.target.value)} placeholder="Today (optional), e.g. heatwave, 34°C" className="h-9 text-sm" />
-      {!labeled && <p className="rounded-lg tone-warn border p-2 text-xs">Read the products with a vision model first — sim2real compares named products.</p>}
+      <Input value={situation} onChange={(e) => setSituation(e.target.value)} placeholder={t("capLabSituation")} className="h-9 text-sm" />
+      {!labeled && <p className="rounded-lg tone-warn border p-2 text-xs">{t("capLabReadFirst")}</p>}
       {start.error && <p className="text-xs text-destructive">{start.error instanceof Error ? start.error.message : String(start.error)}</p>}
       <Button className="w-full gap-2" disabled={!labeled || start.isPending || status?.status === "running" || status?.status === "pending"} onClick={() => start.mutate()}>
-        {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />} Run sim2real panel
+        {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />} {t("capLabRunSim")}
       </Button>
       <RecentJobs projectId={projectId} captureId={captureId} kind="sim2real" current={jobId} onPick={setJobId} />
-      {status && status.status !== "completed" && status.status !== "failed" && <Progress value={status.progress} label="Shoppers glancing…" />}
+      {status && status.status !== "completed" && status.status !== "failed" && <Progress value={status.progress} label={t("capLabGlancing")} />}
       {status?.status === "failed" && <p className="rounded-lg tone-bad border p-2 text-xs">{status.error}</p>}
       {job.data?.sim2real && (
         <>
@@ -555,14 +566,19 @@ function Sim2RealCard({ projectId, captureId, editId, labeled, onAttention }: {
 
 // ── Audit ─────────────────────────────────────────────────────────────────
 
-const FINDING_STYLE: Record<AuditFinding["kind"], { label: string; tone: string }> = {
-  missing: { label: "Missing", tone: "tone-bad" },
-  gap: { label: "Empty", tone: "tone-bad" },
-  unexpected: { label: "Unexpected", tone: "tone-warn" },
-  misplaced: { label: "Misplaced", tone: "tone-warn" },
-  facings: { label: "Facings", tone: "tone-warn" },
-  price: { label: "Price", tone: "tone-warn" },
+const FINDING_STYLE: Record<AuditFinding["kind"], { label: MessageKey; tone: string }> = {
+  missing: { label: "capLabFindingMissing", tone: "tone-bad" },
+  gap: { label: "capLabFindingGap", tone: "tone-bad" },
+  unexpected: { label: "capLabFindingUnexpected", tone: "tone-warn" },
+  misplaced: { label: "capLabFindingMisplaced", tone: "tone-warn" },
+  facings: { label: "capLabFindingFacings", tone: "tone-warn" },
+  price: { label: "capLabFindingPrice", tone: "tone-warn" },
 };
+
+function opLabel(kind: string, t: Translate): string {
+  const op = OPS.find((o) => o.kind === kind);
+  return op ? t(op.label) : kind;
+}
 
 function ComplianceRing({ value }: { value: number }) {
   const r = 34;
@@ -587,20 +603,21 @@ function ComplianceRing({ value }: { value: number }) {
 }
 
 function AuditView({ projectId, report, onFocus }: { projectId: string; report: AuditReport; onFocus: (box: CaptureBox | null) => void }) {
+  const { t } = useI18n();
   const delta = report.revenue_delta_per_day;
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <ComplianceRing value={report.compliance} />
         <div className="min-w-0">
-          <div className="eyebrow">Planogram compliance</div>
-          <div className="mt-1 text-sm text-muted-foreground">Revenue vs reference</div>
+          <div className="eyebrow">{t("capLabCompliance")}</div>
+          <div className="mt-1 text-sm text-muted-foreground">{t("capLabRevenueVsRef")}</div>
           <div className={cn("num text-2xl font-medium tracking-[-0.04em]", delta != null && delta < 0 ? "text-negative" : "text-positive")}>
-            {delta == null ? "–" : `${delta >= 0 ? "+" : "−"}${formatMoney(Math.abs(delta), report.currency)}`}<span className="text-sm text-muted-foreground"> /day</span>
+            {delta == null ? "–" : `${delta >= 0 ? "+" : "−"}${formatMoney(Math.abs(delta), report.currency)}`}<span className="text-sm text-muted-foreground">{t("capLabPerDaySuffix")}</span>
           </div>
           {report.revenue_delta_ci && (
             <div className="num text-[0.72rem] text-muted-foreground">
-              95% CI {formatMoney(report.revenue_delta_ci[0], report.currency)} … {formatMoney(report.revenue_delta_ci[1], report.currency)}
+              {t("studioCi95", { low: formatMoney(report.revenue_delta_ci[0], report.currency), high: formatMoney(report.revenue_delta_ci[1], report.currency) })}
             </div>
           )}
         </div>
@@ -608,7 +625,7 @@ function AuditView({ projectId, report, onFocus }: { projectId: string; report: 
       <div className="space-y-1.5">
         {report.levels.map((lv) => (
           <div key={lv.level} className="flex items-center gap-2 text-xs">
-            <span className="w-14 text-muted-foreground">Level {lv.level}</span>
+            <span className="w-14 text-muted-foreground">{t("capLabLevelLabel", { level: lv.level })}</span>
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-foreground/10">
               <div className="aurora-gradient h-full rounded-full" style={{ width: `${lv.score * 100}%` }} />
             </div>
@@ -623,24 +640,24 @@ function AuditView({ projectId, report, onFocus }: { projectId: string; report: 
             <li key={i}>
               <button type="button" onMouseEnter={() => onFocus(f.box)} onMouseLeave={() => onFocus(null)}
                 className="flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left text-xs transition-colors hover:bg-foreground/[0.03]">
-                <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold", style.tone)}>{style.label}</span>
+                <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold", style.tone)}>{t(style.label)}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{f.name || `Level ${f.level}`}</span>
-                  <span className="block truncate text-muted-foreground">expected {f.expected} · found {f.found}</span>
+                  <span className="block truncate font-medium">{f.name || t("capLabLevelLabel", { level: f.level })}</span>
+                  <span className="block truncate text-muted-foreground">{t("capLabExpectedFound", { expected: String(f.expected), found: String(f.found) })}</span>
                 </span>
                 {f.loss_per_day != null && (
-                  <span className={cn("num shrink-0 text-right", f.loss_per_day > 0 ? "text-negative" : "text-positive")} title={f.loss_ci ? `Stockout revenue loss; 95% CI ${formatMoney(f.loss_ci[0], report.currency)} … ${formatMoney(f.loss_ci[1], report.currency)}` : "Stockout revenue loss"}>
-                    {formatMoney(f.loss_per_day, report.currency)}<span className="block text-muted-foreground">loss/day</span>
+                  <span className={cn("num shrink-0 text-right", f.loss_per_day > 0 ? "text-negative" : "text-positive")} title={f.loss_ci ? t("capLabLossTitleCi", { low: formatMoney(f.loss_ci[0], report.currency), high: formatMoney(f.loss_ci[1], report.currency) }) : t("capLabLossTitle")}>
+                    {formatMoney(f.loss_per_day, report.currency)}<span className="block text-muted-foreground">{t("capLabLossPerDay")}</span>
                   </span>
                 )}
               </button>
             </li>
           );
         })}
-        {report.findings.length === 0 && <li className="rounded-xl tone-good border p-2.5 text-xs">The shelf matches the reference planogram.</li>}
+        {report.findings.length === 0 && <li className="rounded-xl tone-good border p-2.5 text-xs">{t("capLabMatches")}</li>}
       </ul>
       <p className="text-[0.72rem] text-muted-foreground">
-        Rack {report.rack_id} face {report.face} · {report.panel_size} shoppers per paired run · {visitorsPerDayText(report.visitors_per_day, report.simulated_visitors_per_day)} · {report.seconds}s
+        {t("capLabAuditFooter", { rack: report.rack_id, face: String(report.face), panel: report.panel_size, visitors: visitorsPerDayText(report.visitors_per_day, report.simulated_visitors_per_day), seconds: String(report.seconds) })}
         {report.notes.length ? ` · ${report.notes.join("; ")}` : ""}
       </p>
       <RestockPlanner key={report.job_id} report={report} onFocus={onFocus} />
@@ -652,6 +669,7 @@ function AuditView({ projectId, report, onFocus }: { projectId: string; report: 
 function AuditCard({ projectId, captureId, editId, result, onFocus }: {
   projectId: string; captureId: string; editId: string | null; result: CaptureResult; onFocus: (box: CaptureBox | null) => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const { data: setups = [] } = useQuery({ queryKey: queryKeys.setups(projectId), queryFn: ({ signal }) => api.getSetups(projectId, signal) });
   const [setupId, setSetupId] = useState("");
@@ -678,33 +696,33 @@ function AuditCard({ projectId, captureId, editId, result, onFocus }: {
     <section className="space-y-3">
       <div className="flex items-center gap-2">
         <ClipboardCheck className="size-4 text-heat-2" />
-        <h3 className="section-title">Compliance audit</h3>
-        <span className="ml-auto text-xs text-muted-foreground">{editId ? "on the counterfactual" : "on the original"}</span>
+        <h3 className="section-title">{t("capLabAuditTitle")}</h3>
+        <span className="ml-auto text-xs text-muted-foreground">{editId ? t("capLabOnCounterfactual") : t("capLabOnOriginal")}</span>
       </div>
-      <p className="text-xs text-muted-foreground">Compares this photo with the rack's reference planogram and prices each stock-out per day.</p>
+      <p className="text-xs text-muted-foreground">{t("capLabAuditHint")}</p>
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <label className="flex flex-col gap-1"><span className="text-muted-foreground">Reference layout</span>
+        <label className="flex flex-col gap-1"><span className="text-muted-foreground">{t("capLabReferenceLayout")}</span>
           <select className={field} value={base} onChange={(e) => { setSetupId(e.target.value); setRackId(""); }}>
             {setups.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
-        <label className="flex flex-col gap-1"><span className="text-muted-foreground">Rack in the photo</span>
+        <label className="flex flex-col gap-1"><span className="text-muted-foreground">{t("capLabRackInPhoto")}</span>
           <select className={field} value={rack} onChange={(e) => setRackId(e.target.value)}>
-            {racks.map((r) => <option key={r.id} value={r.id}>{r.rack_name || r.id} · {r.type}</option>)}
+            {racks.map((r) => <option key={r.id} value={r.id}>{r.rack_name || r.id} · {r.type === "fridge" ? t("capLabRackTypeFridge") : r.type === "shelf" ? t("capLabRackTypeShelf") : r.type}</option>)}
           </select>
         </label>
       </div>
       <label className="flex items-center gap-3 text-xs">
-        <span className="w-20 text-muted-foreground">Shoppers</span>
+        <span className="w-20 text-muted-foreground">{t("capLabShoppers")}</span>
         <input type="range" min={100} max={1000} step={100} value={panel} onChange={(e) => setPanel(Number(e.target.value))} className="flex-1" />
         <span className="num w-10 text-right">{panel}</span>
       </label>
       {start.error && <p className="text-xs text-destructive">{start.error instanceof Error ? start.error.message : String(start.error)}</p>}
       <Button variant="outline" className="w-full gap-2" disabled={!base || !rack || start.isPending || status?.status === "running" || status?.status === "pending"} onClick={() => start.mutate()}>
-        {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <ClipboardCheck className="size-4" />} Audit against the layout
+        {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <ClipboardCheck className="size-4" />} {t("capLabAuditRun")}
       </Button>
       <RecentJobs projectId={projectId} captureId={captureId} kind="audit" current={jobId} onPick={setJobId} />
-      {status && status.status !== "completed" && status.status !== "failed" && <Progress value={status.progress} label={status.stage === "simulating" ? "Simulating shoppers…" : "Comparing…"} />}
+      {status && status.status !== "completed" && status.status !== "failed" && <Progress value={status.progress} label={status.stage === "simulating" ? t("capLabSimulating") : t("capLabComparing")} />}
       {status?.status === "failed" && <p className="rounded-lg tone-bad border p-2 text-xs">{status.error}</p>}
       {job.data?.audit && <AuditView projectId={projectId} report={job.data.audit} onFocus={onFocus} />}
     </section>

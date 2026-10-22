@@ -19,6 +19,7 @@ const ICON: Record<JourneyAction, typeof Eye> = {
 const VERB: Record<JourneyAction, MessageKey> = {
   enter: "journeyEnter", move: "journeyMove", browse: "journeyBrowse", buy: "journeyBuy", pay: "journeyPay", wander: "journeyWander", exit: "journeyExit",
 };
+const SIDE: Record<string, MessageKey> = { N: "dirNorth", S: "dirSouth", E: "dirEast", W: "dirWest" };
 const VERB_AT: Partial<Record<JourneyAction, MessageKey>> = {
   enter: "journeyEnterAt", move: "journeyMoveAt", browse: "journeyBrowseAt", buy: "journeyBuyAt", pay: "journeyPayAt", wander: "journeyWanderAt", exit: "journeyExitAt",
 };
@@ -68,7 +69,7 @@ export function JourneyMap({ journey, store, active, onHover }: { journey: Journ
 export function JourneySteps({ projectId, journey, active, onHover }: {
   projectId: string; journey: Journey; active: Set<number>; onHover: (i: number | null) => void;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [zoom, setZoom] = useState<{ url: string; title: string } | null>(null);
   // The first browse/buy step at each shelf face shows what the shopper saw there.
   const firstAtFace = new Set<number>();
@@ -86,7 +87,8 @@ export function JourneySteps({ projectId, journey, active, onHover }: {
         {journey.steps.map((s) => (
           <Step key={s.index} step={s} currency={journey.currency} active={active.has(s.index)} onHover={onHover}
             shelf={firstAtFace.has(s.index) ? shelfFaceUrl(projectId, journey.run_id, s.rack_id, s.face) : null}
-            onZoom={(url) => setZoom({ url, title: t("journeyShelfTitle", { rack: s.rack, side: s.face, time: s.time }) })} />
+            onZoom={(url) => setZoom({ url, title: t("journeyShelfTitle", { rack: s.rack, time: s.time,
+              side: locale !== "en" && SIDE[s.face] ? t(SIDE[s.face]!) : s.face }) })} />
         ))}
       </ol>
       {zoom && <Lightbox {...zoom} onClose={() => setZoom(null)} />}

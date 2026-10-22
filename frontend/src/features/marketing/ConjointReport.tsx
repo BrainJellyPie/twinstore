@@ -10,15 +10,21 @@ import { Button } from "@/shared/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/shared/components/ui/chart";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
+import { richText } from "@/shared/i18n/richText";
 
 import { ShareBars } from "./charts";
 import { defaultLineup, shareCurve, shares, type SimProduct } from "./conjoint";
+import { segmentLabel } from "./labels";
 import { StudyReading } from "./StudyReading";
 
 const LETTERS = "ABCD";
-const CURVE_CONFIG = { share: { label: "Share of A", color: "var(--viz-1)" } } satisfies ChartConfig;
+type Translate = ReturnType<typeof useI18n>["t"];
+/** "Price" is the report's key for the price attribute; only its label is translated. */
+const attributeLabel = (name: string, t: Translate) => (name === "Price" ? t("mkPrice") : name);
 
 export function ConjointReportView({ projectId, report: r }: { projectId: string; report: Report }) {
+  const { t, locale } = useI18n();
   const money = (v: number) => formatMoney(v, r.currency);
   const ranked = [...r.importances].sort((a, b) => b.importance - a.importance);
   const levels = (attribute: string) => r.part_worths.filter((p) => p.attribute === attribute);
@@ -33,28 +39,28 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
     <div className="space-y-4">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <section className="rounded-2xl border bg-card p-4">
-          <h3 className="mb-3 text-sm font-semibold">What drives the choice <span className="font-normal text-muted-foreground">· importance with 95 % interval over respondents</span></h3>
-          <ShareBars rows={ranked.map((i) => ({ label: i.attribute, share: i.importance, lo: i.ci_low, hi: i.ci_high }))} />
+          <h3 className="mb-3 text-sm font-semibold">{t("mkDrivers")} <span className="font-normal text-muted-foreground">{t("mkDriversHint")}</span></h3>
+          <ShareBars rows={ranked.map((i) => ({ label: attributeLabel(i.attribute, t), share: i.importance, lo: i.ci_low, hi: i.ci_high }))} />
         </section>
         <div className="flex flex-col gap-2 rounded-2xl border bg-card p-4">
           <div className="grid grid-cols-4 gap-2">
-            <Stat label="Respondents" value={r.respondents.toLocaleString()} />
-            <Stat label="Choices" value={(r.fit?.choices ?? 0).toLocaleString()} />
-            <Stat label="Hit rate" value={r.fit ? `${Math.round(r.fit.hit_rate * 100)} %` : "–"} sub={r.fit ? `chance ${Math.round(r.fit.chance_rate * 100)} %` : ""} />
-            <Stat label="None" value={r.none_option ? `${Math.round(r.none_share * 100)} %` : "–"} sub={r.none_option ? "of choices" : "not offered"} />
+            <Stat label={t("mkRespondents")} value={r.respondents.toLocaleString(locale)} />
+            <Stat label={t("mkChoices")} value={(r.fit?.choices ?? 0).toLocaleString(locale)} />
+            <Stat label={t("mkHitRate")} value={r.fit ? `${Math.round(r.fit.hit_rate * 100)} %` : "–"} sub={r.fit ? t("mkChance", { pct: Math.round(r.fit.chance_rate * 100) }) : ""} />
+            <Stat label={t("mkNone")} value={r.none_option ? `${Math.round(r.none_share * 100)} %` : "–"} sub={r.none_option ? t("mkOfChoices") : t("mkNotOffered")} />
           </div>
           <ul className="mt-1 space-y-1 text-sm">
             {leads.map(({ attribute, best, base }) => (
               <li key={attribute}>
-                {attribute}: <b>{best.level}</b> preferred
-                {best.wtp != null && best.wtp > 0 && <> · worth <b className="num">{money(best.wtp)}</b> more than {base}</>}
+                {richText(t("mkPreferred"), { attribute, level: <b>{best.level}</b> })}
+                {best.wtp != null && best.wtp > 0 && richText(t("mkWorthMore"), { amount: <b className="num">{money(best.wtp)}</b>, base })}
               </li>
             ))}
-            {noSlope && <li className="text-muted-foreground">Higher prices did not lower choice consistently, so no willingness to pay is given.</li>}
+            {noSlope && <li className="text-muted-foreground">{t("mkNoSlope")}</li>}
           </ul>
           <div className="mt-auto flex flex-wrap gap-2 pt-2">
-            <Button asChild size="sm"><a href={conjointReportUrl(projectId, r.conjoint_id)} target="_blank" rel="noopener"><FileText className="size-4" /> Report</a></Button>
-            <Button asChild variant="outline" size="sm"><a href={conjointCsvUrl(projectId, r.conjoint_id)} download><Download className="size-4" /> Choices CSV</a></Button>
+            <Button asChild size="sm"><a href={conjointReportUrl(projectId, r.conjoint_id)} target="_blank" rel="noopener"><FileText className="size-4" /> {t("studioReport")}</a></Button>
+            <Button asChild variant="outline" size="sm"><a href={conjointCsvUrl(projectId, r.conjoint_id)} download><Download className="size-4" /> {t("mkChoicesCsv")}</a></Button>
           </div>
         </div>
       </div>
@@ -62,11 +68,11 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
       <StudyReading projectId={projectId} study="conjoints" jobId={r.conjoint_id} answers={r.answers.filter((a) => a.why && !a.error).length} />
 
       <section className="rounded-2xl border bg-card p-4">
-        <h3 className="mb-3 text-sm font-semibold">Part-worths <span className="font-normal text-muted-foreground">· utility centred within each attribute, one shared scale; bar = 95 % interval; willingness to pay over the first level</span></h3>
+        <h3 className="mb-3 text-sm font-semibold">{t("mkPartWorths")} <span className="font-normal text-muted-foreground">{t("mkPartWorthsHint")}</span></h3>
         <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
           {[...r.attributes.map((a) => a.name), ...(r.prices.length ? ["Price"] : [])].map((name) => (
             <div key={name}>
-              <h4 className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{name}</h4>
+              <h4 className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{attributeLabel(name, t)}</h4>
               <div className="space-y-1">{levels(name).map((p) => <PartWorthRow key={p.level} p={p} span={span} money={money} />)}</div>
             </div>
           ))}
@@ -80,9 +86,9 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
       <div className="grid gap-3 lg:grid-cols-2">
         {r.verbatims.length > 0 && <Verbatims items={r.verbatims} />}
         <section className="rounded-2xl border bg-card p-4">
-          <h3 className="mb-2 text-sm font-semibold">Read with care</h3>
+          <h3 className="mb-2 text-sm font-semibold">{t("mkReadWithCare")}</h3>
           <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">{r.notes.map((n) => <li key={n}>{n}</li>)}</ul>
-          <p className="mt-2 text-xs text-muted-foreground">{r.model} · {r.options} options per task{r.none_option ? " + none" : ""} · {r.seconds.toFixed(0)} s</p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("mkConjointFooter", { model: r.model, options: r.options })}{r.none_option ? t("mkPlusNone") : ""}{t("mkSeconds", { seconds: r.seconds.toFixed(0) })}</p>
         </section>
       </div>
     </div>
@@ -90,13 +96,14 @@ export function ConjointReportView({ projectId, report: r }: { projectId: string
 }
 
 function PartWorthRow({ p, span, money }: { p: PartWorth; span: number; money: (v: number) => string }) {
+  const { t } = useI18n();
   const x = (v: number) => `${50 + (Math.max(-span, Math.min(span, v)) / span) * 50}%`;
   const left = Math.min(0, p.utility);
   const right = Math.max(0, p.utility);
   const wtp = p.wtp != null ? `${p.wtp >= 0 ? "+" : "−"}${money(Math.abs(p.wtp))}` : "";
   return (
     <div className="grid grid-cols-[minmax(5rem,8rem)_1fr_3.2rem_5.5rem] items-center gap-2"
-      title={`${p.level}: ${p.utility.toFixed(2)} (95 % CI ${p.ci_low.toFixed(2)} to ${p.ci_high.toFixed(2)})${wtp ? ` · WTP ${wtp}` : ""}`}>
+      title={t("mkPartWorthTitle", { level: p.level, utility: p.utility.toFixed(2), low: p.ci_low.toFixed(2), high: p.ci_high.toFixed(2) }) + (wtp ? t("mkWtp", { amount: wtp }) : "")}>
       <span className="truncate text-sm">{p.level}</span>
       <div className="relative h-5 rounded-[4px] bg-foreground/[0.035]">
         <div className="absolute inset-y-0 left-1/2 w-px bg-foreground/25" />
@@ -110,6 +117,8 @@ function PartWorthRow({ p, span, money }: { p: PartWorth; span: number; money: (
 }
 
 function Simulator({ report: r }: { report: Report }) {
+  const { t } = useI18n();
+  const curveConfig = { share: { label: t("mkShareOfA"), color: "var(--viz-1)" } } satisfies ChartConfig;
   const [products, setProducts] = useState<SimProduct[]>(() => defaultLineup(r));
   const money = (v: number) => formatMoney(v, r.currency);
   const lo = r.prices.length ? Math.min(...r.prices) : 0;
@@ -117,16 +126,16 @@ function Simulator({ report: r }: { report: Report }) {
   const result = shares(r, products);
   const curve = shareCurve(r, products);
   const update = (i: number, change: Partial<SimProduct>) => setProducts((ps) => ps.map((p, j) => (j === i ? { ...p, ...change } : p)));
-  const rows = [...products.map((_, i) => `Product ${LETTERS[i]}`), ...(result.length > products.length ? ["None of these"] : [])];
+  const rows = [...products.map((_, i) => t("mkProductLetter", { letter: LETTERS[i]! })), ...(result.length > products.length ? [t("mkNoneOfThese")] : [])];
 
   return (
     <section className="rounded-2xl border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">Market simulator <span className="font-normal text-muted-foreground">· share of preference for a line-up of tested levels (logit, point estimates)</span></h3>
+        <h3 className="text-sm font-semibold">{t("mkSimulator")} <span className="font-normal text-muted-foreground">{t("mkSimulatorHint")}</span></h3>
         {products.length < 4 && (
           <button type="button" onClick={() => setProducts((ps) => [...ps, { levels: r.attributes.map(() => 0), price: lo }])}
             className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground">
-            <Plus className="size-3.5" /> Add product
+            <Plus className="size-3.5" /> {t("mkAddProduct")}
           </button>
         )}
       </div>
@@ -140,7 +149,7 @@ function Simulator({ report: r }: { report: Report }) {
                   <span className="num">{Math.round((result[i] ?? 0) * 100)} %</span>
                 </span>
                 {products.length > 1 && (
-                  <button type="button" onClick={() => setProducts((ps) => ps.filter((_, j) => j !== i))} aria-label={`Remove product ${LETTERS[i]}`}
+                  <button type="button" onClick={() => setProducts((ps) => ps.filter((_, j) => j !== i))} aria-label={t("mkRemoveProductLetter", { letter: LETTERS[i]! })}
                     className="rounded p-0.5 text-muted-foreground hover:text-destructive"><X className="size-3.5" /></button>
                 )}
               </div>
@@ -155,9 +164,9 @@ function Simulator({ report: r }: { report: Report }) {
               ))}
               {r.prices.length > 0 && (
                 <label className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 text-xs">
-                  <span className="text-muted-foreground">Price</span>
+                  <span className="text-muted-foreground">{t("mkPrice")}</span>
                   <input type="range" min={lo} max={hi} step={Math.max(1, Math.round((hi - lo) / 100))} value={p.price}
-                    onChange={(e) => update(i, { price: Number(e.target.value) })} aria-label={`Price of product ${LETTERS[i]}`} />
+                    onChange={(e) => update(i, { price: Number(e.target.value) })} aria-label={t("mkPriceOfProduct", { letter: LETTERS[i]! })} />
                   <span className="num text-right">{money(p.price)}</span>
                 </label>
               )}
@@ -178,8 +187,8 @@ function Simulator({ report: r }: { report: Report }) {
           </div>
           {curve.length > 0 && (
             <div>
-              <p className="mb-1 text-xs text-muted-foreground">Share of A as its price moves, the others held fixed</p>
-              <ChartContainer config={CURVE_CONFIG} className="aspect-auto h-[150px] w-full">
+              <p className="mb-1 text-xs text-muted-foreground">{t("mkShareCurveHint")}</p>
+              <ChartContainer config={curveConfig} className="aspect-auto h-[150px] w-full">
                 <LineChart data={curve} margin={{ top: 6, right: 12, bottom: 0, left: 0 }}>
                   <CartesianGrid vertical={false} stroke="var(--viz-grid)" />
                   <ReferenceLine x={products[0]!.price} stroke="var(--foreground)" strokeOpacity={0.3} strokeDasharray="3 3" />
@@ -193,7 +202,7 @@ function Simulator({ report: r }: { report: Report }) {
                       return d?.price != null ? money(d.price) : "";
                     }} formatter={(value) => (
                       <div className="flex w-full items-center justify-between gap-3">
-                        <span className="text-muted-foreground">Share of A</span>
+                        <span className="text-muted-foreground">{t("mkShareOfA")}</span>
                         <span className="num font-semibold">{Math.round(Number(value) * 100)} %</span>
                       </div>
                     )} />} />
@@ -209,20 +218,21 @@ function Simulator({ report: r }: { report: Report }) {
 }
 
 function Segments({ report: r }: { report: Report }) {
+  const { t } = useI18n();
   const names = r.importances.map((i) => i.attribute);
   const overall = Object.fromEntries(r.importances.map((i) => [i.attribute, i.importance]));
   return (
     <section className="rounded-2xl border bg-card p-4">
-      <h3 className="mb-2 text-sm font-semibold">By segment <span className="font-normal text-muted-foreground">· importance; blue above the whole panel, red below; groups of 15 or more</span></h3>
+      <h3 className="mb-2 text-sm font-semibold">{t("mkBySegment")} <span className="font-normal text-muted-foreground">{t("mkConjointSegmentHint")}</span></h3>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="text-left text-muted-foreground">
-            <tr><th className="py-1">Segment</th><th className="text-right">n</th>{names.map((n) => <th key={n} className="text-right">{n}</th>)}{r.none_option && <th className="text-right">None</th>}</tr>
+            <tr><th className="py-1">{t("mkColSegment")}</th><th className="text-right">n</th>{names.map((n) => <th key={n} className="text-right">{attributeLabel(n, t)}</th>)}{r.none_option && <th className="text-right">{t("mkNone")}</th>}</tr>
           </thead>
           <tbody className="num">
             {r.segments.map((s) => (
               <tr key={s.segment} className="border-t border-foreground/[0.06]">
-                <td className="py-1">{s.segment}</td><td className="text-right">{s.n}</td>
+                <td className="py-1">{segmentLabel(s.segment, t)}</td><td className="text-right">{s.n}</td>
                 {names.map((n) => {
                   const d = (s.importances[n] ?? 0) - (overall[n] ?? 0);
                   return (
@@ -244,12 +254,13 @@ function Segments({ report: r }: { report: Report }) {
 }
 
 function Verbatims({ items }: { items: string[] }) {
+  const { t } = useI18n();
   const [all, setAll] = useState(false);
   const counted = [...items.reduce((m, v) => m.set(v, (m.get(v) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1]);
   const shown = all ? counted : counted.slice(0, 6);
   return (
     <section className="rounded-2xl border bg-card p-4">
-      <h3 className="mb-2 text-sm font-semibold">What mattered to them <span className="font-normal text-muted-foreground">· {items.length}</span></h3>
+      <h3 className="mb-2 text-sm font-semibold">{t("mkWhatMattered")} <span className="font-normal text-muted-foreground">· {items.length}</span></h3>
       <div className="grid gap-2 sm:grid-cols-2">
         {shown.map(([v, k]) => (
           <blockquote key={v} className="rounded-xl bg-foreground/[0.035] px-3 py-2 text-sm">
@@ -260,7 +271,7 @@ function Verbatims({ items }: { items: string[] }) {
       </div>
       {counted.length > 6 && (
         <button type="button" onClick={() => setAll((a) => !a)} className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:underline">
-          {all ? "Show fewer" : `Show all ${counted.length}`}
+          {all ? t("studioShowFewer") : t("studioShowAll", { count: counted.length })}
         </button>
       )}
     </section>

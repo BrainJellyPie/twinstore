@@ -1,4 +1,3 @@
-import { useI18n } from "@/shared/i18n/i18n";
 // Neighborhood workspace: generate a synthetic town or import a real map, try what-ifs (open a
 // café next door, a rival store across the street), and see where our customers come from.
 
@@ -17,13 +16,17 @@ import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { useAssistStore } from "@/stores/assistStore";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
 import { TownMap, type MapMode } from "./TownMap";
-import { labelOf, ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
+import { ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, labelOf, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
 
 const NEIGHBOR_CHOICES: VenueCategory[] = ["cafe", "bakery", "pharmacy", "gym", "academy", "pc_room", "restaurant", "laundry"];
+const DAY_LABELS: Record<TownDayType, MessageKey> = { weekday: "areaDayWeekday", weekend: "areaDayWeekend", holiday: "areaDayHoliday" };
 
 export function TownPage({ projectId }: { projectId: string }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [dayType, setDayType] = useState<TownDayType>("weekday");
   const [scenarioId, setScenarioId] = useState<string | null>(null);
@@ -63,9 +66,9 @@ export function TownPage({ projectId }: { projectId: string }) {
   const analysisError = currentAnalysis ? analyze.error : null;
   const loadError = townQ.isError ? (
     <div role="alert" className="min-w-0 max-w-md space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
-      <p className="font-medium">Could not load neighborhood.</p>
+      <p className="font-medium">{t("areaLoadError")}</p>
       <p className="break-words text-muted-foreground">{townQ.error.message}</p>
-      <Button variant="outline" disabled={townQ.isFetching} onClick={() => void townQ.refetch()}>Retry</Button>
+      <Button variant="outline" disabled={townQ.isFetching} onClick={() => void townQ.refetch()}>{t("studioRetry")}</Button>
     </div>
   ) : null;
 
@@ -103,8 +106,8 @@ export function TownPage({ projectId }: { projectId: string }) {
               <rect x="101" y="63" width="18" height="18" rx="4" fill="var(--map-focal)" />
             </svg>
             <div>
-              <div className="font-display text-2xl">{townQ.isLoading ? "Loading…" : "Place the store in its neighborhood"}</div>
-              <p className="mt-1 max-w-md text-sm text-muted-foreground">Generate a town or import a real OpenStreetMap area — homes, offices, schools, stations and rivals — to see who walks in, from where and when.</p>
+              <div className="font-display text-2xl">{townQ.isLoading ? t("studioLoading") : t("areaEmptyTitle")}</div>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">{t("areaEmptyBody")}</p>
             </div>
           </div>
         )}
@@ -112,7 +115,7 @@ export function TownPage({ projectId }: { projectId: string }) {
 
       <aside className="panel m-3 mt-0 flex min-w-0 shrink-0 flex-col gap-4 rounded-[1.6rem] p-4 text-sm lg:mt-3 lg:w-[400px] lg:overflow-y-auto">
         <Link to="/projects/$pid" params={{ pid: projectId }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-3" /> Back to store
+          <ArrowLeft className="size-3" /> {t("areaBackToStore")}
         </Link>
         {town && <TownSummary town={town} />}
         {town && loadError}
@@ -126,26 +129,26 @@ export function TownPage({ projectId }: { projectId: string }) {
         {town && (
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium">Our store's customers</h3>
+              <h3 className="font-medium">{t("areaOurCustomers")}</h3>
               <div className="inline-flex rounded-md border p-0.5 text-xs">
                 {(["weekday", "weekend", "holiday"] as TownDayType[]).map((d) => (
                   <button key={d} type="button" onClick={() => { setDayType(d); setVlmVenue(null); }} className={cn("rounded px-2 py-0.5", dayType === d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
-                    {d}
+                    {t(DAY_LABELS[d])}
                   </button>
                 ))}
               </div>
             </div>
-            <select className="h-8 w-full rounded-md border bg-background px-2 text-xs" value={scenarioId ?? ""} onChange={(e) => setScenarioId(e.target.value || null)} aria-label="Situation">
-              <option value="">Ordinary day</option>
+            <select className="h-8 w-full rounded-md border bg-background px-2 text-xs" value={scenarioId ?? ""} onChange={(e) => setScenarioId(e.target.value || null)} aria-label={t("areaSituation")}>
+              <option value="">{t("areaOrdinaryDay")}</option>
               {scenarios.filter((s) => s.scenario.id !== "baseline").map((s) => (
                 <option key={s.scenario.id} value={s.scenario.id}>{s.scenario.name}</option>
               ))}
             </select>
-            {demandQ.data ? <DemandView demand={demandQ.data} /> : demandQ.isPending ? <p className="text-xs text-muted-foreground">Estimating…</p> : null}
+            {demandQ.data ? <DemandView demand={demandQ.data} /> : demandQ.isPending ? <p className="text-xs text-muted-foreground">{t("areaEstimating")}</p> : null}
             {demandQ.isError && <div role="alert" className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs">
-              <p>Could not estimate customer demand.</p>
+              <p>{t("areaDemandError")}</p>
               <p className="break-words text-muted-foreground">{demandQ.error.message}</p>
-              <Button size="sm" variant="outline" disabled={demandQ.isFetching} onClick={() => void demandQ.refetch()}>Retry estimate</Button>
+              <Button size="sm" variant="outline" disabled={demandQ.isFetching} onClick={() => void demandQ.refetch()}>{t("areaRetryEstimate")}</Button>
             </div>}
           </section>
         )}
@@ -155,14 +158,12 @@ export function TownPage({ projectId }: { projectId: string }) {
         {town && (
           <section className="space-y-2">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium">Neighbor synergy</h3>
+              <h3 className="font-medium">{t("areaSynergyTitle")}</h3>
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setVlmVenue(null); analyze.mutate({ town, dayType }); }} disabled={analysisPending}>
-                {analysisPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Analyze
+                {analysisPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} {t("areaAnalyze")}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Removes each venue in turn and re-estimates our visitors: complements bring us customers (linked trips), competitors take them.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("areaSynergyHint")}</p>
             {synergy && <SynergyTable rows={synergy} onAskShoppers={setVlmVenue} />}
           </section>
         )}
@@ -184,14 +185,14 @@ function MapToolbar({
   );
   return (
     <div className="absolute left-3 right-3 top-3 flex flex-wrap items-center gap-1 glass rounded-xl border p-1 text-sm shadow-float lg:left-6 lg:right-auto lg:top-6 lg:max-w-[calc(100%-3rem)]">
-      {btn("inspect", MousePointer2, "Explore")}
-      {btn("place", MapPinPlus, "Open venue")}
+      {btn("inspect", MousePointer2, t("areaModeExplore"))}
+      {btn("place", MapPinPlus, t("areaModeOpen"))}
       {mode === "place" && (
-        <select className="h-7 max-w-full rounded border bg-background px-1" value={category} onChange={(e) => setCategory(e.target.value as VenueCategory)} aria-label="Venue type">
-          {(Object.keys(VENUE_LABELS) as VenueCategory[]).map((c) => <option key={c} value={c}>{labelOf(VENUE_LABELS, c, t)}</option>)}
+        <select className="h-7 max-w-full rounded border bg-background px-1" value={category} onChange={(e) => setCategory(e.target.value as VenueCategory)} aria-label={t("areaVenueType")}>
+          {(Object.keys(VENUE_LABELS) as VenueCategory[]).map((c) => <option key={c} value={c}>{t(VENUE_LABELS[c])}</option>)}
         </select>
       )}
-      {btn("remove", Trash2, "Close venue")}
+      {btn("remove", Trash2, t("areaModeClose"))}
       {busy && <Loader2 className="mx-1 size-3.5 animate-spin" />}
     </div>
   );
@@ -203,23 +204,23 @@ function Legend() {
   return (
     <div className="absolute bottom-3 left-3 right-3 max-w-[560px] glass rounded-xl border p-2.5 text-xs shadow-float lg:bottom-6 lg:left-6 lg:right-6">
       <div className="flex flex-wrap gap-x-3 gap-y-1">
-        <span className="flex items-center gap-1"><span className="size-3 rounded-full bg-[var(--map-focal)] ring-2 ring-background" /> Our store</span>
+        <span className="flex items-center gap-1"><span className="size-3 rounded-full bg-[var(--map-focal)] ring-2 ring-background" /> {t("areaOurStore")}</span>
         {venues.map((c) => (
-          <span key={c} className="flex items-center gap-1"><span className="size-2.5 rounded-full" style={{ background: VENUE_COLORS[c] }} />{labelOf(VENUE_LABELS, c, t)}</span>
+          <span key={c} className="flex items-center gap-1"><span className="size-2.5 rounded-full" style={{ background: VENUE_COLORS[c] }} />{t(VENUE_LABELS[c])}</span>
         ))}
       </div>
       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
         {["apartment", "house", "studio", "office", "school", "university", "station", "park"].map((k) => (
           <span key={k} className="flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: BUILDING_COLORS[k] }} />{labelOf(BUILDING_LABELS, k, t)}</span>
         ))}
-        <span>· rings: 50 % / 80 % of customers · lines: where they come from</span>
+        <span>{t("areaLegendRings")}</span>
       </div>
     </div>
   );
 }
 
 function TownSummary({ town }: { town: Town }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const sum = (f: (b: Town["buildings"][number]) => number) => town.buildings.reduce((a, b) => a + f(b), 0);
   const rivals = town.venues.filter((v) => v.category === "convenience" && !v.is_focal).length;
   return (
@@ -228,19 +229,19 @@ function TownSummary({ town }: { town: Town }) {
         <div>
           <div className="font-medium">{town.name}</div>
           <div className="text-xs text-muted-foreground">
-            {labelOf(ARCHETYPE_LABELS, town.archetype, t)} · {Math.round(town.size_m)} m · {town.source === "osm" ? "OpenStreetMap" : "generated"}
+            {labelOf(ARCHETYPE_LABELS, town.archetype, t)} · {Math.round(town.size_m)} m · {town.source === "osm" ? "OpenStreetMap" : t("areaGenerated")}
           </div>
         </div>
         <Users className="size-4 text-muted-foreground" />
       </div>
       <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
-        {[
-          ["Residents", sum((b) => b.residents)], ["Workers", sum((b) => b.workers)], ["Students", sum((b) => b.students)],
-          ["Buildings", town.buildings.length], ["Venues", town.venues.length], ["Rival stores", rivals],
-        ].map(([k, v]) => (
-          <div key={k as string}>
-            <dt className="text-muted-foreground">{k}</dt>
-            <dd className="font-medium tabular-nums">{(v as number).toLocaleString()}</dd>
+        {([
+          ["areaResidents", sum((b) => b.residents)], ["areaWorkers", sum((b) => b.workers)], ["areaStudents", sum((b) => b.students)],
+          ["areaBuildings", town.buildings.length], ["areaVenues", town.venues.length], ["areaRivalStores", rivals],
+        ] as const).map(([k, v]) => (
+          <div key={k}>
+            <dt className="text-muted-foreground">{t(k)}</dt>
+            <dd className="font-medium tabular-nums">{v.toLocaleString(locale)}</dd>
           </div>
         ))}
       </dl>
@@ -295,54 +296,54 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
   const neighborChoices = [...new Set([...NEIGHBOR_CHOICES, ...spec.neighbor_categories])];
   return (
     <details ref={panel} className="rounded-lg border p-3" open={!hasTown}>
-      <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Sparkles className="size-4" /> Generate a neighborhood</summary>
+      <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Sparkles className="size-4" /> {t("areaGenerateTitle")}</summary>
       <div className="mt-3 space-y-2 text-xs">
         <div className="flex items-start gap-1.5">
-          <textarea value={area} onChange={(e) => setArea(Array.from(e.target.value).slice(0, 800).join(""))} rows={2} aria-label="Describe the area"
+          <textarea value={area} onChange={(e) => setArea(Array.from(e.target.value).slice(0, 800).join(""))} rows={2} aria-label={t("areaDescribeLabel")}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); requestDescription(area); } }}
-            placeholder="Describe the area: a busy campus street, two rival stores nearby, a café next door…"
+            placeholder={t("areaDescribePlaceholder")}
             className="min-h-[2.4rem] flex-1 resize-none rounded-md border bg-background px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
           <Button type="button" size="sm" variant="outline" className="h-[2.4rem] shrink-0" disabled={areaLength < 5 || describe.isPending} onClick={() => requestDescription(area)}>
-            {describe.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Set up
+            {describe.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} {t("areaSetUp")}
           </Button>
         </div>
-        {rationale && <p className="text-muted-foreground">{rationale} Check the settings, then generate.</p>}
+        {rationale && <p className="text-muted-foreground">{rationale} {t("areaCheckSettings")}</p>}
         {describe.error && <p role="alert" className="text-destructive">{describe.error.message}</p>}
-        <select className="h-8 w-full rounded-md border bg-background px-2" value={spec.archetype} onChange={(e) => setSpec({ ...spec, archetype: e.target.value as TownArchetype })} aria-label="Archetype">
+        <select className="h-8 w-full rounded-md border bg-background px-2" value={spec.archetype} onChange={(e) => setSpec({ ...spec, archetype: e.target.value as TownArchetype })} aria-label={t("areaArchetype")}>
           {Object.entries(ARCHETYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
         </select>
         <label className="flex items-center gap-2">
-          <span className="w-16 text-muted-foreground">Size</span>
+          <span className="w-16 text-muted-foreground">{t("areaSize")}</span>
           <input type="range" min={200} max={3000} step={50} value={spec.size_m} onChange={(e) => setSpec({ ...spec, size_m: Number(e.target.value) })} className="flex-1 accent-primary" />
           <span className="w-14 text-right tabular-nums">{spec.size_m} m</span>
         </label>
         <label className="flex items-center gap-2">
-          <span className="w-16 text-muted-foreground">Density</span>
+          <span className="w-16 text-muted-foreground">{t("areaDensity")}</span>
           <input type="range" min={0} max={1} step={0.01} value={spec.density} onChange={(e) => setSpec({ ...spec, density: Number(e.target.value) })} className="flex-1 accent-primary" />
           <span className="w-14 text-right tabular-nums">{Math.round(spec.density * 100)} %</span>
         </label>
         <label className="flex items-center gap-2">
-          <span className="w-16 text-muted-foreground">Rivals</span>
-          <Input type="number" min={0} max={60} placeholder="auto" value={spec.n_competitors ?? ""} onChange={(e) => setSpec({ ...spec, n_competitors: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 w-20 text-xs" />
-          <span className="w-14 text-muted-foreground">Seed</span>
+          <span className="w-16 text-muted-foreground">{t("areaRivals")}</span>
+          <Input type="number" min={0} max={60} placeholder={t("areaAuto")} value={spec.n_competitors ?? ""} onChange={(e) => setSpec({ ...spec, n_competitors: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 w-20 text-xs" />
+          <span className="w-14 text-muted-foreground">{t("areaSeed")}</span>
           <Input type="number" value={spec.seed} onChange={(e) => setSpec({ ...spec, seed: Number(e.target.value) || 0 })} className="h-7 w-20 text-xs" />
         </label>
         <div>
-          <div className="mb-1 text-muted-foreground">Right next to our store</div>
+          <div className="mb-1 text-muted-foreground">{t("areaNextToUs")}</div>
           <div className="flex flex-wrap gap-1">
             {neighborChoices.map((c) => {
               const on = spec.neighbor_categories.includes(c);
               return (
                 <button key={c} type="button" onClick={() => setSpec({ ...spec, neighbor_categories: on ? spec.neighbor_categories.filter((x) => x !== c) : [...spec.neighbor_categories, c] })}
                   className={cn("rounded-full border px-2 py-0.5", on ? "border-primary bg-primary/10" : "hover:bg-muted")}>
-                  {labelOf(VENUE_LABELS, c, t)}
+                  {t(VENUE_LABELS[c])}
                 </button>
               );
             })}
           </div>
         </div>
         <Button size="sm" className="w-full" onClick={() => gen.mutate()} disabled={gen.isPending}>
-          {gen.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} {hasTown ? "Regenerate" : "Generate"}
+          {gen.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} {hasTown ? t("areaRegenerate") : t("areaGenerate")}
         </Button>
       </div>
     </details>
@@ -350,30 +351,31 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
 }
 
 function ImportPanel({ projectId, onDone, onError }: { projectId: string; onDone: (t: Town) => void; onError: (e: unknown) => void }) {
+  const { t } = useI18n();
   const [address, setAddress] = useState("");
   const [radius, setRadius] = useState(600);
   const imp = useMutation({ mutationFn: () => api.importTownFromMap(projectId, { address, radius_m: radius }), onSuccess: onDone, onError });
   return (
     <details className="rounded-lg border p-3">
-      <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Globe2 className="size-4" /> Real map (OpenStreetMap)</summary>
+      <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Globe2 className="size-4" /> {t("areaRealMap")}</summary>
       <div className="mt-3 space-y-2 text-xs">
-        <Input placeholder="Address, e.g. 84 Heukseok-ro, Seoul" value={address} onChange={(e) => setAddress(e.target.value)} className="h-8 text-xs" />
+        <Input placeholder={t("areaAddressPlaceholder")} value={address} onChange={(e) => setAddress(e.target.value)} className="h-8 text-xs" />
         <label className="flex items-center gap-2">
-          <span className="w-16 text-muted-foreground">Radius</span>
+          <span className="w-16 text-muted-foreground">{t("areaRadius")}</span>
           <input type="range" min={200} max={1500} step={50} value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="flex-1 accent-primary" />
           <span className="w-14 text-right tabular-nums">{radius} m</span>
         </label>
         <Button size="sm" variant="outline" className="w-full" onClick={() => imp.mutate()} disabled={!address.trim() || imp.isPending}>
-          {imp.isPending ? <Loader2 className="size-3 animate-spin" /> : <Globe2 className="size-3" />} Import buildings, shops and roads
+          {imp.isPending ? <Loader2 className="size-3 animate-spin" /> : <Globe2 className="size-3" />} {t("areaImport")}
         </Button>
-        <p className="text-muted-foreground">Needs internet access. Residents are estimated from building footprint × floors.</p>
+        <p className="text-muted-foreground">{t("areaImportHint")}</p>
       </div>
     </details>
   );
 }
 
 function DemandView({ demand }: { demand: api.TownDemand }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const hours = demand.hourly_totals;
   const peak = Math.max(1, ...hours);
   const segments = Object.entries(demand.segment_totals).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
@@ -382,22 +384,22 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
   return (
     <div className="space-y-3 text-xs">
       <div className="grid grid-cols-2 gap-2">
-        <Stat label="Visitors / day" value={Math.round(demand.total_daily_visitors).toLocaleString()} hint={`${Math.round(demand.linked_visitors)} via nearby venues`} />
-        <Stat label="Market share" value={`${(demand.market_share * 100).toFixed(1)} %`} hint="of convenience trips in town" />
-        <Stat label="Half of customers within" value={`${Math.round(demand.catchment_radius_50_m)} m`} hint={`80 % within ${Math.round(demand.catchment_radius_80_m)} m`} />
-        <Stat label="Average walk" value={`${Math.round(demand.avg_walk_distance_m)} m`} hint={`≈ ${Math.max(1, Math.round(demand.avg_walk_distance_m / 80))} min`} icon={Footprints} />
+        <Stat label={t("areaVisitorsPerDay")} value={Math.round(demand.total_daily_visitors).toLocaleString(locale)} hint={t("areaViaNearby", { count: Math.round(demand.linked_visitors) })} />
+        <Stat label={t("areaMarketShare")} value={`${(demand.market_share * 100).toFixed(1)} %`} hint={t("areaShareHint")} />
+        <Stat label={t("areaHalfWithin")} value={`${Math.round(demand.catchment_radius_50_m)} m`} hint={t("areaEightyWithin", { distance: Math.round(demand.catchment_radius_80_m) })} />
+        <Stat label={t("areaAvgWalk")} value={`${Math.round(demand.avg_walk_distance_m)} m`} hint={t("areaWalkMinutes", { minutes: Math.max(1, Math.round(demand.avg_walk_distance_m / 80)) })} icon={Footprints} />
       </div>
       <div>
-        <div className="mb-1 text-muted-foreground">By hour</div>
+        <div className="mb-1 text-muted-foreground">{t("areaByHour")}</div>
         <div className="flex h-16 items-end gap-px">
           {hours.map((v, h) => (
-            <div key={h} className="flex-1 rounded-t bg-primary/70" style={{ height: `${(v / peak) * 100}%` }} title={`${h}:00 · ${Math.round(v)} visitors`} />
+            <div key={h} className="flex-1 rounded-t bg-primary/70" style={{ height: `${(v / peak) * 100}%` }} title={t("areaHourTitle", { hour: h, count: Math.round(v) })} />
           ))}
         </div>
         <div className="flex justify-between text-[0.72rem] text-muted-foreground"><span>0</span><span>6</span><span>12</span><span>18</span><span>23</span></div>
       </div>
       <div>
-        <div className="mb-1 text-muted-foreground">Who comes</div>
+        <div className="mb-1 text-muted-foreground">{t("areaWhoComes")}</div>
         {segments.map(([seg, v]) => (
           <div key={seg} className="mb-1 grid grid-cols-[110px_1fr_44px] items-center gap-2">
             <span>{labelOf(SEGMENT_LABELS, seg, t)}</span>
@@ -408,11 +410,11 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
       </div>
       {rivals.length > 0 && (
         <div>
-          <div className="mb-1 text-muted-foreground">Nearby stores competing for the same trips</div>
+          <div className="mb-1 text-muted-foreground">{t("areaRivalsTitle")}</div>
           {rivals.map((s) => (
             <div key={s.venue_id} className="flex justify-between gap-2">
               <span className="truncate">{s.name}</span>
-              <span className="shrink-0 tabular-nums text-muted-foreground">{Math.round(s.distance_m)} m · {Math.round(s.expected_visitors)}/day</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">{t("areaRivalLine", { distance: Math.round(s.distance_m), count: Math.round(s.expected_visitors) })}</span>
             </div>
           ))}
         </div>
@@ -432,12 +434,13 @@ function Stat({ label, value, hint, icon: Icon }: { label: string; value: string
 }
 
 function SynergyTable({ rows, onAskShoppers }: { rows: SynergyRow[]; onAskShoppers: (row: SynergyRow) => void }) {
+  const { t } = useI18n();
   const sorted = [...rows].sort((a, b) => Math.abs(b.effect_on_focal_visitors) - Math.abs(a.effect_on_focal_visitors));
   return (
     <div className="max-h-[22rem] overflow-y-auto pr-1">
     <table className="w-full text-xs">
       <thead className="text-muted-foreground">
-        <tr><th className="text-left font-normal">Venue</th><th className="text-right font-normal">Dist.</th><th className="text-right font-normal">Effect on us</th><th /></tr>
+        <tr><th className="text-left font-normal">{t("areaColVenue")}</th><th className="text-right font-normal">{t("areaColDistance")}</th><th className="text-right font-normal">{t("areaColEffect")}</th><th /></tr>
       </thead>
       <tbody>
         {sorted.map((r) => (
@@ -450,8 +453,8 @@ function SynergyTable({ rows, onAskShoppers }: { rows: SynergyRow[]; onAskShoppe
               {r.effect_on_focal_visitors > 0 ? "+" : ""}{Math.round(r.effect_on_focal_visitors)} ({r.effect_on_focal_pct > 0 ? "+" : ""}{r.effect_on_focal_pct.toFixed(1)} %)
             </td>
             <td className="pl-1 text-right">
-              <button type="button" onClick={() => onAskShoppers(r)} title="Ask vision shoppers how their baskets change"
-                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label={`Vision shopper check for ${r.name}`}>
+              <button type="button" onClick={() => onAskShoppers(r)} title={t("areaAskShoppers")}
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label={t("areaVisionCheckFor", { name: r.name })}>
                 <Eye className="size-3.5" />
               </button>
             </td>

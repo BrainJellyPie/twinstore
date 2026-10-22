@@ -22,8 +22,8 @@ export function storeTypeLabel(type: string, locale: Locale): string {
   return words ? words[0]!.toUpperCase() + words.slice(1) : translate(locale, "store");
 }
 
-/** Display name of a store format (template); the id stays the API value and unknown formats keep the server's name. */
+/** Display name of a store format (template): the server's English name, translated by template id otherwise. */
 export function templateName(id: string, name: string, locale: Locale): string {
   const key = `tpl_${id}`;
-  return Object.prototype.hasOwnProperty.call(messages, key) ? translate(locale, key as MessageKey) : name;
+  return locale !== "en" && Object.prototype.hasOwnProperty.call(messages, key) ? translate(locale, key as MessageKey) : name;
 }

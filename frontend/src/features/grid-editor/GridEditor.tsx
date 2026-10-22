@@ -11,6 +11,7 @@ import { Button } from "@/shared/components/ui/button";
 import { GridCell } from "./GridCell";
 import { rackCells } from "@/shared/utils/grid";
 import { cn } from "@/shared/utils/cn";
+import { useI18n } from "@/shared/i18n/i18n";
 
 interface GridEditorProps {
   racks: Rack[];
@@ -29,6 +30,7 @@ export function GridEditor({
   selectedCell,
   placing = false,
 }: GridEditorProps) {
+  const { t } = useI18n();
   const [width, height] = gridSize;
   const [cellSize, setCellSize] = useState(64);
 
@@ -83,14 +85,14 @@ export function GridEditor({
   return (
     <Card data-testid="grid-editor" className="min-w-0 gap-2 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span className="text-muted-foreground">{width} × {height} cells · Scroll to explore</span>
+        <span className="text-muted-foreground">{t("gridSizeHint", { width, height })}</span>
         <div className="flex items-center gap-1">
-          <Button type="button" variant="outline" size="icon-sm" aria-label="Zoom out grid"
+          <Button type="button" variant="outline" size="icon-sm" aria-label={t("gridZoomOut")}
             disabled={cellSize <= 40} onClick={() => setCellSize((size) => size - 8)}>
             <Minus className="size-3" />
           </Button>
-          <output aria-label="Grid zoom" className="w-12 text-center">{Math.round(cellSize / 64 * 100)}%</output>
-          <Button type="button" variant="outline" size="icon-sm" aria-label="Zoom in grid"
+          <output aria-label={t("gridZoom")} className="w-12 text-center">{Math.round(cellSize / 64 * 100)}%</output>
+          <Button type="button" variant="outline" size="icon-sm" aria-label={t("gridZoomIn")}
             disabled={cellSize >= 96} onClick={() => setCellSize((size) => size + 8)}>
             <Plus className="size-3" />
           </Button>
@@ -98,7 +100,7 @@ export function GridEditor({
       </div>
       <div
         role="region"
-        aria-label="Floor grid"
+        aria-label={t("gridRegion")}
         tabIndex={0}
         data-testid="grid-scroll-area"
         className={cn("max-h-[55vh] min-h-40 overflow-auto rounded-md border p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", placing && "[&_button]:cursor-crosshair")}
@@ -109,7 +111,7 @@ export function GridEditor({
         </div>
       </div>
       <span className="text-xs text-muted-foreground" aria-live="polite">
-        {selectedCell ? `Selected cell: column ${selectedCell[0] + 1}, row ${selectedCell[1] + 1}` : "Select a cell to edit its fixture."}
+        {selectedCell ? t("gridSelectedCell", { column: selectedCell[0] + 1, row: selectedCell[1] + 1 }) : t("gridSelectCell")}
       </span>
     </Card>
   );

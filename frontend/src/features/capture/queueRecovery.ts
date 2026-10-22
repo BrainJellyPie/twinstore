@@ -1,4 +1,6 @@
 import type { CaptureDetector } from "@/shared/api/client";
+import { translate, useLocale } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 import { fileDigest, fileProblem, MAX_FILE_BYTES, MAX_QUEUE_BYTES, MAX_QUEUE_FILES } from "./uploadFiles";
 
 export interface RecoveryOptions {
@@ -31,17 +33,18 @@ export interface RecoveryCopy {
 const DB = "twinstore-photo-recovery";
 const STORE = "queues";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const conflict = () => new Error("The saved queue changed in another tab. Restore its latest copy before saving or resuming.");
+const message = (key: MessageKey) => translate(useLocale.getState().locale, key);
+const conflict = () => new Error(message("capRecoveryConflict"));
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object";
 const text = (v: unknown, max: number): v is string => typeof v === "string" && v.length <= max;
 
 export function recoveryErrorMessage(error: unknown): string {
-  if (object(error) && error.name === "QuotaExceededError") return "Browser storage is full. Free space or forget another saved queue, then retry.";
-  return object(error) && typeof error.message === "string" ? error.message : "Browser storage failed.";
+  if (object(error) && error.name === "QuotaExceededError") return message("capStorageFull");
+  return object(error) && typeof error.message === "string" ? error.message : message("capStorageFailed");
 }
 
 export function validateRecovery(value: unknown, projectId: string): RecoveryCopy {
-  const invalid = () => new Error("The saved queue is unreadable or from an unsupported version. It was left unchanged.");
+  const invalid = () => new Error(message("capRecoveryInvalid"));
   if (!object(value) || value.version !== 1 || value.projectId !== projectId
     || typeof value.revision !== "string" || !uuid.test(value.revision)
     || typeof value.savedAt !== "string" || !Number.isFinite(Date.parse(value.savedAt))
@@ -69,12 +72,12 @@ export function validateRecovery(value: unknown, projectId: string): RecoveryCop
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (!globalThis.indexedDB) { reject(new Error("This browser does not support photo queue recovery.")); return; }
+    if (!globalThis.indexedDB) { reject(new Error(message("capRecoveryUnsupported"))); return; }
     let finished = false;
     const request = indexedDB.open(DB, 1);
     request.onupgradeneeded = () => request.result.createObjectStore(STORE, { keyPath: "projectId" });
-    request.onblocked = () => { finished = true; reject(new Error("Close other TwinStore tabs and retry browser storage.")); };
-    request.onerror = () => { finished = true; reject(request.error ?? new Error("Browser storage is unavailable.")); };
+    request.onblocked = () => { finished = true; reject(new Error(message("capRecoveryBlocked"))); };
+    request.onerror = () => { finished = true; reject(request.error ?? new Error(message("capStorageUnavailable"))); };
     request.onsuccess = () => {
       if (finished) { request.result.close(); return; }
       request.result.onversionchange = () => request.result.close();
@@ -89,7 +92,7 @@ export async function readRecovery(projectId: string): Promise<RecoveryCopy | nu
     const raw: unknown = await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, "readonly"), request = tx.objectStore(STORE).get(projectId);
       tx.oncomplete = () => resolve(request.result);
-      tx.onabort = () => reject(tx.error ?? new Error("Could not read browser storage."));
+      tx.onabort = () => reject(tx.error ?? new Error(message("capStorageReadFailed")));
     });
     return raw === undefined ? null : validateRecovery(raw, projectId);
   } finally { db.close(); }
@@ -102,7 +105,7 @@ async function replace(projectId: string, expected: string | null, next: Recover
       const tx = db.transaction(STORE, "readwrite"), store = tx.objectStore(STORE);
       let reason: Error | null = null;
       tx.oncomplete = () => resolve();
-      tx.onabort = () => reject(reason ?? tx.error ?? new Error("Could not save browser recovery. Your live queue is unchanged."));
+      tx.onabort = () => reject(reason ?? tx.error ?? new Error(message("capStorageSaveFailed")));
       const get = store.get(projectId);
       get.onsuccess = () => {
         const current: unknown = get.result;
@@ -139,7 +142,7 @@ export async function restoreRecovery(copy: RecoveryCopy): Promise<QueuePhoto[]>
   for (const p of copy.photos) {
     const file = new File([p.blob], p.name, { type: p.type, lastModified: p.lastModified });
     if (fileProblem(file) || await fileDigest(file) !== p.digest) {
-      throw new Error("A saved photo failed its integrity check. The saved copy and your live queue were left unchanged.");
+      throw new Error(message("capRecoveryIntegrity"));
     }
     photos.push({ id: p.id, requestId: p.requestId, digest: p.digest, file });
   }

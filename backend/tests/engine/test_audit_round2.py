@@ -10,9 +10,9 @@ def test_a_store_cannot_be_impossibly_large():
     from pydantic import ValidationError
 
     base = generate_store("mini_mart", seed=0).model_dump(mode="json")
-    with pytest.raises(ValidationError, match="at most 100 tiles"):
+    with pytest.raises(ValidationError, match="at most 256 tiles"):
         Store.model_validate({**base, "grid_size": [100_000, 100_000]})
-    assert Store.model_validate({**base, "grid_size": [100, 100]}).grid_size == (100, 100)
+    assert Store.model_validate({**base, "grid_size": [256, 256]}).grid_size == (256, 256)
 
 
 def test_the_analyst_sheet_counts_the_walk_in_tiles():
@@ -90,3 +90,17 @@ def test_a_wide_photo_reads_left_to_right_from_the_aisle_on_every_side(face, mon
     ordered = sorted(racks, key=lambda r: r.position[0] * dx + r.position[1] * dy)
     read = " ".join("".join(i.name[-1] for s in r.slots for i in s.items) for r in ordered)
     assert read == "ABCD EFGH IJKL"
+
+
+def test_a_weekend_scenario_is_not_counted_twice_on_the_neighborhoods_weekend_profile():
+    from store_emulator.application.scenarios import get_preset
+    from store_emulator.application.town import _scenario_traffic  # pyright: ignore[reportPrivateUsage]
+    from store_emulator.domain.scenario import DayType
+
+    store = generate_store("mini_mart", seed=0)
+    weekend = get_preset("heatwave_weekend")
+    assert weekend is not None and weekend.day_type == DayType.WEEKEND
+    as_weekday = weekend.model_copy(update={"day_type": DayType.WEEKDAY})
+    # On the weekend profile only the heat is applied; on a weekday profile the weekend's effect is applied too.
+    assert _scenario_traffic(weekend, store, None, profile="weekend") == _scenario_traffic(as_weekday, store, None)
+    assert _scenario_traffic(weekend, store, None, profile="weekday") == _scenario_traffic(weekend, store, None)

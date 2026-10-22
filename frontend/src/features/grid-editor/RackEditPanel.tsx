@@ -29,6 +29,8 @@ import { rackDiningSeats } from "@/shared/utils/dining";
 import { rackBounds } from "@/shared/utils/grid";
 import type { EditorRack } from "./types";
 import { RackPreview } from "./RackPreview";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
 // UI-only radio identifier.
 // - rack    : shelf / fridge — branched via the design dropdown
@@ -40,10 +42,10 @@ type UiKind = "gate" | "rack" | "counter" | "table";
 // A cell may legitimately hold entrance + exit racks together (backend allows it).
 export type GateConfig = "entrance" | "exit" | "both";
 
-const GATE_CONFIGS: Array<{ key: GateConfig; label: string }> = [
-  { key: "entrance", label: "Entrance only" },
-  { key: "exit", label: "Exit only" },
-  { key: "both", label: "Both" },
+const GATE_CONFIGS: Array<{ key: GateConfig; label: MessageKey }> = [
+  { key: "entrance", label: "rackEditEntranceOnly" },
+  { key: "exit", label: "rackEditExitOnly" },
+  { key: "both", label: "optScopeBoth" },
 ];
 
 type RackDesignKey = "shelf_a" | "shelf_b" | "shelf_c" | "fridge_a" | "fridge_b";
@@ -51,24 +53,24 @@ type CounterDesignKey = "counter_a" | "counter_b";
 
 interface DesignOption<K extends string> {
   key: K;
-  label: string;
+  label: MessageKey;
   type: RackType;
   design_variant: "a" | "b" | "c";
 }
 
 const RACK_DESIGNS: DesignOption<RackDesignKey>[] = [
-  { key: "shelf_a", label: "Open rack A", type: "shelf", design_variant: "a" },
-  { key: "shelf_b", label: "Open rack B", type: "shelf", design_variant: "b" },
-  { key: "shelf_c", label: "Open rack C (wall-end)", type: "shelf", design_variant: "c" },
-  { key: "fridge_a", label: "Door rack A", type: "fridge", design_variant: "a" },
-  { key: "fridge_b", label: "Door rack B", type: "fridge", design_variant: "b" },
+  { key: "shelf_a", label: "rackEditOpenA", type: "shelf", design_variant: "a" },
+  { key: "shelf_b", label: "rackEditOpenB", type: "shelf", design_variant: "b" },
+  { key: "shelf_c", label: "rackEditOpenC", type: "shelf", design_variant: "c" },
+  { key: "fridge_a", label: "rackEditDoorA", type: "fridge", design_variant: "a" },
+  { key: "fridge_b", label: "rackEditDoorB", type: "fridge", design_variant: "b" },
 ];
 
 const COUNTER_DESIGNS: DesignOption<CounterDesignKey>[] = [
-  { key: "counter_a", label: "Counter design A", type: "counter", design_variant: "a" },
+  { key: "counter_a", label: "rackEditCounterA", type: "counter", design_variant: "a" },
   {
     key: "counter_b",
-    label: "Counter design B (with ghosty clerk)",
+    label: "rackEditCounterB",
     type: "counter",
     design_variant: "b",
   },
@@ -140,6 +142,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
     { selectedCell, selectedCellRacks, selectedRack, onChange, onGateConfigChange, onMove, placing = false, onPlacementChange },
     ref,
   ) {
+    const { t } = useI18n();
     // Local state for the text input — synced when selectedRack changes.
     // Keystrokes do not emit; emission happens only on blur / Enter / flushPendingText.
     const [nameLocal, setNameLocal] = useState<string>(selectedRack?.rack_name ?? "");
@@ -243,10 +246,8 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
 
     const title =
       selectedCell == null
-        ? "No cell selected"
-        : hasAnyRack
-          ? `Edit cell (${selectedCell[0]}, ${selectedCell[1]})`
-          : `Add to cell (${selectedCell[0]}, ${selectedCell[1]})`;
+        ? t("rackEditNoCell")
+        : t(hasAnyRack ? "rackEditCell" : "rackEditAddCell", { x: String(selectedCell[0]), y: String(selectedCell[1]) });
     // In gate mode, delete is per-cell — removes both entrance and exit. Otherwise single-rack.
     const showDelete = hasAnyRack;
 
@@ -260,7 +261,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
               size="icon"
               onClick={handleDelete}
               data-testid="rack-delete-button"
-              aria-label="Remove rack"
+              aria-label={t("rackEditRemove")}
               className="text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="size-4" />
@@ -269,25 +270,25 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
         </div>
 
         {!cellSelected && (
-          <p className="text-sm text-muted-foreground">Click a cell to add a rack.</p>
+          <p className="text-sm text-muted-foreground">{t("rackEditClickCell")}</p>
         )}
         {cellSelected && !hasAnyRack && (
-          <p className="text-sm text-muted-foreground">Choose a type to add a rack.</p>
+          <p className="text-sm text-muted-foreground">{t("rackEditChooseType")}</p>
         )}
 
         {hasAnyRack && onMove && <div className="space-y-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Move one cell</span>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Move selected fixture">
+          <span className="text-xs font-medium text-muted-foreground">{t("rackEditMoveOne")}</span>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("rackEditMoveSelected")}>
             {([
-              ["left", -1, 0, ArrowLeft], ["up", 0, -1, ArrowUp],
-              ["down", 0, 1, ArrowDown], ["right", 1, 0, ArrowRight],
-            ] as const).map(([direction, dx, dy, Icon]) => <Button key={direction} type="button" variant="outline" size="icon-sm"
-              disabled={placing} aria-label={`Move fixture ${direction}`} onClick={() => onMove([dx, dy])}><Icon className="size-4" /></Button>)}
+              ["left", "rackEditMoveLeft", -1, 0, ArrowLeft], ["up", "rackEditMoveUp", 0, -1, ArrowUp],
+              ["down", "rackEditMoveDown", 0, 1, ArrowDown], ["right", "rackEditMoveRight", 1, 0, ArrowRight],
+            ] as const).map(([direction, label, dx, dy, Icon]) => <Button key={direction} type="button" variant="outline" size="icon-sm"
+              disabled={placing} aria-label={t(label)} onClick={() => onMove([dx, dy])}><Icon className="size-4" /></Button>)}
             {onPlacementChange && <Button type="button" variant={placing ? "secondary" : "outline"} size="sm"
-              onClick={() => onPlacementChange(!placing)}>{placing ? "Cancel placement" : "Move to a cell"}</Button>}
+              onClick={() => onPlacementChange(!placing)}>{placing ? t("rackEditCancelPlacement") : t("rackEditMoveToCell")}</Button>}
           </div>
-          {placing && <p role="status" className="text-xs text-primary">Click a clear grid cell for the fixture’s top-left corner. Press Escape to cancel.</p>}
-          {gateConfig === "both" && kind === "gate" && <p className="text-xs text-muted-foreground">Entrance and exit move together.</p>}
+          {placing && <p role="status" className="text-xs text-primary">{t("rackEditPlacingHint")}</p>}
+          {gateConfig === "both" && kind === "gate" && <p className="text-xs text-muted-foreground">{t("rackEditGateTogether")}</p>}
         </div>}
 
         <div
@@ -299,21 +300,21 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
         >
           {/* Type radio group — Rack / Counter / Entrance·Exit */}
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Type</span>
+            <span className="text-xs font-medium text-muted-foreground">{t("rackEditType")}</span>
             <RadioGroup
               value={kind ?? ""}
               onValueChange={(v) => handleKindChange(v as UiKind)}
               className="flex flex-wrap gap-x-4 gap-y-2"
               data-testid="rack-type-radio"
-              aria-label="Rack type"
+              aria-label={t("rackEditRackType")}
               disabled={!cellSelected}
             >
               {(
                 [
-                  { key: "rack", label: "Rack" },
-                  { key: "counter", label: "Counter" },
-                  { key: "table", label: "Dining table" },
-                  { key: "gate", label: "Entrance/Exit" },
+                  { key: "rack", label: "rackColRack" },
+                  { key: "counter", label: "rackEditCounter" },
+                  { key: "table", label: "rackEditTable" },
+                  { key: "gate", label: "rackEditGate" },
                 ] as const
               ).map(({ key, label }) => (
                 <label
@@ -325,7 +326,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                     data-testid={`rack-type-${key}`}
                     disabled={!cellSelected}
                   />
-                  <span>{label}</span>
+                  <span>{t(label)}</span>
                 </label>
               ))}
             </RadioGroup>
@@ -333,7 +334,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
 
           {showGateConfig && (
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Gate</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("rackEditGateLabel")}</span>
               <Select
                 value={gateConfig}
                 onValueChange={(v) => onGateConfigChange(v as GateConfig)}
@@ -341,7 +342,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                 <SelectTrigger
                   className="w-full"
                   data-testid="gate-config-trigger"
-                  aria-label="Gate configuration"
+                  aria-label={t("rackEditGateConfig")}
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -352,7 +353,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                       value={key}
                       data-testid={`gate-config-${key}`}
                     >
-                      {label}
+                      {t(label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -367,7 +368,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                   htmlFor="rack-name-input"
                   className="text-xs font-medium text-muted-foreground"
                 >
-                  {kind === "counter" ? "Counter name" : kind === "table" ? "Table name" : "Rack name"}
+                  {t(kind === "counter" ? "rackEditCounterName" : kind === "table" ? "rackEditTableName" : "rackEditRackName")}
                 </label>
                 <Input
                   id="rack-name-input"
@@ -375,13 +376,13 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                   onChange={(e) => setNameLocal(e.target.value)}
                   onBlur={handleNameBlur}
                   onKeyDown={handleNameKeyDown}
-                  placeholder={kind === "counter" ? "e.g. Front counter" : "e.g. Snacks"}
+                  placeholder={t(kind === "counter" ? "rackEditCounterPlaceholder" : "rackEditRackPlaceholder")}
                   data-testid="rack-name-input"
                 />
               </div>
 
-              {kind === "table" && selectedRack ? <p className="text-xs text-muted-foreground">{rackBounds(selectedRack).w}×{rackBounds(selectedRack).d} cells, including {rackDiningSeats(selectedRack)} chairs. Furniture only; table service is not simulated.</p> : <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Design</span>
+              {kind === "table" && selectedRack ? <p className="text-xs text-muted-foreground">{t("rackEditTableHint", { width: rackBounds(selectedRack).w, depth: rackBounds(selectedRack).d, chairs: rackDiningSeats(selectedRack) })}</p> : <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground">{t("rackEditDesign")}</span>
                 {kind === "rack" ? (
                   <Select
                     value={rackDesign}
@@ -390,14 +391,14 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                     <SelectTrigger
                       className="w-full"
                       data-testid="rack-design-trigger"
-                      aria-label="Design"
+                      aria-label={t("rackEditDesign")}
                     >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {RACK_DESIGNS.map((d) => (
                         <SelectItem key={d.key} value={d.key}>
-                          {d.label}
+                          {t(d.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -410,14 +411,14 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                     <SelectTrigger
                       className="w-full"
                       data-testid="counter-design-trigger"
-                      aria-label="Design"
+                      aria-label={t("rackEditDesign")}
                     >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {COUNTER_DESIGNS.map((d) => (
                         <SelectItem key={d.key} value={d.key}>
-                          {d.label}
+                          {t(d.label)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -426,7 +427,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
               </div>}
 
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Rotation</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("rackEditRotation")}</span>
                 <Select
                   value={String(rotation)}
                   onValueChange={handleRotationChange}
@@ -434,7 +435,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
                   <SelectTrigger
                     className="w-full"
                     data-testid="rack-rotation-trigger"
-                    aria-label="Rotation"
+                    aria-label={t("rackEditRotation")}
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -450,7 +451,7 @@ export const RackEditPanel = forwardRef<RackEditPanelHandle, RackEditPanelProps>
 
               {selectedRack && (
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-muted-foreground">Preview</span>
+                  <span className="text-xs font-medium text-muted-foreground">{t("rackEditPreview")}</span>
                   <RackPreview
                     type={selectedRack.type}
                     designVariant={(selectedRack.design_variant ?? "a") as "a" | "b" | "c"}

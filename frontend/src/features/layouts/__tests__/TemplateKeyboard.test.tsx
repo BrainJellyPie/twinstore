@@ -5,7 +5,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { translate, useLocale } from "@/shared/i18n/i18n";
-import { LOCALES, type MessageKey } from "@/shared/i18n/messages";
+import { LOCALES } from "@/shared/i18n/messages";
+import { templateName } from "@/shared/i18n/storeLabels";
 import { TemplatePicker } from "../components/TemplatePicker";
 import { DEFAULT_TEMPLATE_CHOICE, type TemplateChoice } from "../templateOptions";
 
@@ -15,7 +16,6 @@ const formats: api.StoreTemplate[] = [
   { id: "community_pharmacy", name: "Community pharmacy", description: "Wellness", store_type: "pharmacy", grid: [14, 12], racks: 12, skus: 50, open_hours: [9, 21], default_style: "spine", default_design: "minimal", default_dining_tables: 0 },
   { id: "specialty_cafe", name: "Specialty café", description: "Coffee", store_type: "cafe", grid: [18, 14], racks: 20, skus: 40, open_hours: [7, 22], default_style: "perimeter", default_design: "warm", default_dining_tables: 6 },
 ];
-const formatName = (key: MessageKey) => (name: string) => name.startsWith(translate(useLocale.getState().locale, key));
 const selected = vi.fn();
 const clients: QueryClient[] = [];
 beforeEach(() => {
@@ -38,10 +38,11 @@ function show({ form = false }: { form?: boolean } = {}) {
 
 it.each(LOCALES)("exposes one selected radio and preserves overrides when selecting in $code", async ({ code }) => {
   useLocale.getState().setLocale(code); show();
-  const city = await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") });
+  // Format names follow the selected language; the fixtures reuse real template ids.
+  const city = await screen.findByRole("radio", { name: new RegExp(`^${templateName("urban_cvs", "City store", code)}`) });
   expect(screen.getByRole("radiogroup", { name: translate(code, "storeFormats") })).toBeTruthy();
   expect(city.getAttribute("aria-checked")).toBe("true");
-  const pharmacy = screen.getByRole("radio", { name: formatName("tpl_community_pharmacy") }); fireEvent.click(pharmacy);
+  const pharmacy = screen.getByRole("radio", { name: new RegExp(`^${templateName("community_pharmacy", "Community pharmacy", code)}`) }); fireEvent.click(pharmacy);
   expect(pharmacy.getAttribute("aria-checked")).toBe("true"); expect(city.getAttribute("aria-checked")).toBe("false");
   fireEvent.click(pharmacy); expect(selected).toHaveBeenCalledOnce();
   expect(selected).toHaveBeenCalledWith(expect.objectContaining({ id: "community_pharmacy", store_type: "pharmacy" }));
@@ -49,8 +50,8 @@ it.each(LOCALES)("exposes one selected radio and preserves overrides when select
 });
 
 it("selects with both arrow directions and wraps without discarding custom dimensions", async () => {
-  show(); const city = await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") });
-  const pharmacy = screen.getByRole("radio", { name: formatName("tpl_community_pharmacy") }); const cafe = screen.getByRole("radio", { name: formatName("tpl_specialty_cafe") });
+  show(); const city = await screen.findByRole("radio", { name: /^City store/ });
+  const pharmacy = screen.getByRole("radio", { name: /^Community pharmacy/ }); const cafe = screen.getByRole("radio", { name: /^Specialty/ });
   city.focus();
   for (const [key, target] of [["ArrowRight", pharmacy], ["ArrowDown", cafe], ["ArrowRight", city], ["ArrowLeft", cafe], ["ArrowUp", pharmacy]] as const) {
     fireEvent.keyDown(document.activeElement!, { key });
@@ -62,7 +63,7 @@ it("selects with both arrow directions and wraps without discarding custom dimen
 });
 
 it("selects on a fast arrow press even when keyup arrives before deferred focus", async () => {
-  show(); const city = await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") }); const pharmacy = screen.getByRole("radio", { name: formatName("tpl_community_pharmacy") });
+  show(); const city = await screen.findByRole("radio", { name: /^City store/ }); const pharmacy = screen.getByRole("radio", { name: /^Community pharmacy/ });
   city.focus(); fireEvent.keyDown(city, { key: "ArrowRight" }); fireEvent.keyUp(city, { key: "ArrowRight" });
   await waitFor(() => expect(document.activeElement).toBe(pharmacy));
   expect(pharmacy.getAttribute("aria-checked")).toBe("true");
@@ -70,7 +71,7 @@ it("selects on a fast arrow press even when keyup arrives before deferred focus"
 });
 
 it("advances on consecutive fast key presses before any deferred focus work", async () => {
-  show(); const city = await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") }); const cafe = screen.getByRole("radio", { name: formatName("tpl_specialty_cafe") });
+  show(); const city = await screen.findByRole("radio", { name: /^City store/ }); const cafe = screen.getByRole("radio", { name: /^Specialty/ });
   city.focus();
   for (let i = 0; i < 2; i++) {
     fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" }); fireEvent.keyUp(document.activeElement!, { key: "ArrowRight" });
@@ -80,7 +81,7 @@ it("advances on consecutive fast key presses before any deferred focus work", as
 });
 
 it("supports Home/End focus and Enter selection without submitting a form", async () => {
-  show(); const city = await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") }); const cafe = screen.getByRole("radio", { name: formatName("tpl_specialty_cafe") });
+  show(); const city = await screen.findByRole("radio", { name: /^City store/ }); const cafe = screen.getByRole("radio", { name: /^Specialty/ });
   city.focus(); fireEvent.keyDown(city, { key: "End" }); await waitFor(() => expect(document.activeElement).toBe(cafe));
   fireEvent.keyDown(cafe, { key: "Enter" }); expect(cafe.getAttribute("aria-checked")).toBe("true");
   fireEvent.keyDown(cafe, { key: "Home" }); await waitFor(() => expect(document.activeElement).toBe(city));
@@ -89,19 +90,19 @@ it("supports Home/End focus and Enter selection without submitting a form", asyn
 });
 
 it("retains an off-list selection through filters and empty results until an explicit choice", async () => {
-  show(); await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") });
+  show(); await screen.findByRole("radio", { name: /^City store/ });
   const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
   const search = screen.getByLabelText("Find a store format"); fireEvent.change(search, { target: { value: "pharmacy" } });
-  const pharmacy = screen.getByRole("radio", { name: formatName("tpl_community_pharmacy") }); pharmacy.focus();
+  const pharmacy = screen.getByRole("radio", { name: /^Community pharmacy/ }); pharmacy.focus();
   expect(pharmacy.getAttribute("aria-checked")).toBe("false"); expect(selected).not.toHaveBeenCalled();
   fireEvent.change(search, { target: { value: "missing" } }); expect(screen.queryByRole("radio")).toBeNull();
   fireEvent.keyDown(search, { key: "Escape" });
-  expect(screen.getByRole("radio", { name: formatName("tpl_urban_cvs") }).getAttribute("aria-checked")).toBe("true");
+  expect(screen.getByRole("radio", { name: /^City store/ }).getAttribute("aria-checked")).toBe("true");
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
 });
 
 it("keeps the selected, focused template and overrides after a language switch", async () => {
-  show(); const pharmacy = await screen.findByRole("radio", { name: formatName("tpl_community_pharmacy") }); fireEvent.click(pharmacy); pharmacy.focus();
+  show(); const pharmacy = await screen.findByRole("radio", { name: /^Community pharmacy/ }); fireEvent.click(pharmacy); pharmacy.focus();
   act(() => useLocale.getState().setLocale("ja"));
   expect(document.activeElement).toBe(pharmacy); expect(pharmacy.getAttribute("aria-checked")).toBe("true");
   expect(screen.getByRole("radiogroup", { name: translate("ja", "storeFormats") })).toBeTruthy();
@@ -109,11 +110,11 @@ it("keeps the selected, focused template and overrides after a language switch",
 });
 
 it("keeps invalid custom dimensions until corrected after a keyboard choice", async () => {
-  show(); const city = await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") });
+  show(); const city = await screen.findByRole("radio", { name: /^City store/ });
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "99" } });
   const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
   city.focus(); fireEvent.keyDown(city, { key: "ArrowRight" });
-  const pharmacy = screen.getByRole("radio", { name: formatName("tpl_community_pharmacy") });
+  const pharmacy = screen.getByRole("radio", { name: /^Community pharmacy/ });
   await waitFor(() => expect(pharmacy.getAttribute("aria-checked")).toBe("true")); fireEvent.keyUp(pharmacy, { key: "ArrowRight" });
   expect((screen.getByLabelText("Width (8–40 cells)") as HTMLInputElement).value).toBe("99");
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
@@ -122,15 +123,15 @@ it("keeps invalid custom dimensions until corrected after a keyboard choice", as
 });
 
 it("does not replace a selection when the catalog removes it or becomes empty", async () => {
-  const { client } = show(); await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") });
+  const { client } = show(); await screen.findByRole("radio", { name: /^City store/ });
   act(() => client.setQueryData(["store-templates"], formats.slice(1)));
-  await waitFor(() => expect(screen.queryByRole("radio", { name: formatName("tpl_urban_cvs") })).toBeNull());
+  await waitFor(() => expect(screen.queryByRole("radio", { name: /^City store/ })).toBeNull());
   expect(screen.getAllByRole("radio").every(radio => radio.getAttribute("aria-checked") === "false")).toBe(true);
   expect(selected).not.toHaveBeenCalled();
   act(() => client.setQueryData(["store-templates"], []));
   await waitFor(() => expect(screen.queryByRole("radio")).toBeNull());
   act(() => client.setQueryData(["store-templates"], formats));
-  expect((await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") })).getAttribute("aria-checked")).toBe("true");
+  expect((await screen.findByRole("radio", { name: /^City store/ })).getAttribute("aria-checked")).toBe("true");
   expect(selected).not.toHaveBeenCalled();
 });
 
@@ -139,20 +140,20 @@ it("waits for late formats without selecting another template", async () => {
   vi.mocked(api.getStoreTemplates).mockReturnValueOnce(new Promise(done => { resolve = done; }));
   show(); expect(screen.queryByRole("radio")).toBeNull();
   await act(async () => resolve(formats));
-  expect((await screen.findByRole("radio", { name: formatName("tpl_urban_cvs") })).getAttribute("aria-checked")).toBe("true");
+  expect((await screen.findByRole("radio", { name: /^City store/ })).getAttribute("aria-checked")).toBe("true");
   expect(selected).not.toHaveBeenCalled();
 });
 
 it("selects with Enter inside a form without submitting, including repeated selection", async () => {
   const { submit } = show({ form: true });
-  const pharmacy = await screen.findByRole("radio", { name: formatName("tpl_community_pharmacy") }); pharmacy.focus();
+  const pharmacy = await screen.findByRole("radio", { name: /^Community pharmacy/ }); pharmacy.focus();
   fireEvent.keyDown(pharmacy, { key: "Enter" }); fireEvent.keyDown(pharmacy, { key: "Enter" });
   expect(pharmacy.getAttribute("aria-checked")).toBe("true");
   expect(selected).toHaveBeenCalledOnce(); expect(submit).not.toHaveBeenCalled();
 });
 
 it.each([{ isComposing: true }, { keyCode: 229 }])("does not select a format on an IME Enter event %j", async (flags) => {
-  show({ form: true }); const pharmacy = await screen.findByRole("radio", { name: formatName("tpl_community_pharmacy") }); pharmacy.focus();
+  show({ form: true }); const pharmacy = await screen.findByRole("radio", { name: /^Community pharmacy/ }); pharmacy.focus();
   fireEvent.keyDown(pharmacy, { key: "Enter", ...flags });
   expect(pharmacy.getAttribute("aria-checked")).toBe("false"); expect(selected).not.toHaveBeenCalled();
   fireEvent.keyDown(pharmacy, { key: "Enter" });

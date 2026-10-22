@@ -13,7 +13,6 @@ from store_emulator.engine.town.arrivals import (
     town_context_text,
 )
 from store_emulator.engine.town.demand import (
-    DEFAULT_HOURS,
     TYPICAL_DAY,
     CategoryPrior,
     DemandParams,
@@ -33,7 +32,6 @@ from store_emulator.engine.town.generator import (
 from store_emulator.engine.town.osm import fetch_overpass, geocode, town_from_overpass
 
 __all__ = [
-    "DEFAULT_HOURS",
     "DEFAULT_OPEN_HOURS",
     "TYPICAL_DAY",
     "CategoryPrior",

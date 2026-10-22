@@ -51,7 +51,12 @@ from store_emulator.engine.town.arrivals import (
     plan_arrivals,
     town_context_text,
 )
-from store_emulator.engine.town.demand import TYPICAL_DAY, DemandParams, estimate_demand, with_store_hours
+from store_emulator.engine.town.demand import (
+    TYPICAL_DAY,
+    DemandParams,
+    estimate_demand,
+    with_store_hours,
+)
 
 type CueSampler = Callable[[random.Random], BehaviorCue]
 type SynergyProgress = Callable[[str, int, int], None]  # (phase, customers done, customers total)
@@ -108,7 +113,8 @@ async def vlm_basket_synergy(
     if focal is None or venue.id == focal.id:
         raise ValueError("pick a venue other than our own store")
     scenario = config.scenario
-    effects = compile_scenario(scenario, priors_for(store.type, config.scenario_priors)) if scenario is not None else None
+    priors = priors_for(store.type, config.scenario_priors)  # the store format's effect sizes, as a run uses
+    effects = compile_scenario(scenario, priors) if scenario is not None else None
     traffic = effects.base_traffic if effects is not None else 1.0
     hourly = (effects.traffic_by_hour or None) if effects is not None else None
     day = Weekday(scenario.only_days[0]) if scenario is not None and scenario.only_days else TYPICAL_DAY[day_type]

@@ -33,6 +33,8 @@ import {
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { useAssistStore } from "@/stores/assistStore";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
 import { ConjointBuilder } from "./ConjointBuilder";
 import { ConjointReportView } from "./ConjointReport";
@@ -55,23 +57,25 @@ import { StaffPitchReportView } from "./StaffPitchReport";
 type Tab = "ab" | "shelf" | "survey" | "conjoint" | "pitch" | "pilot" | "products" | "inventory" | "prices" | "protocols" | "priceChecks";
 type JobTab = "ab" | "shelf" | "survey" | "conjoint" | "pitch";
 
-const TABS: { id: Tab; label: string; icon: typeof FlaskConical; blurb: string }[] = [
-  { id: "ab", label: "A/B tests", icon: FlaskConical, blurb: "Price, discount, promotion, placement and packaging on the same shoppers" },
-  { id: "shelf", label: "Shelf tests", icon: Rows3, blurb: "A new pack, price or sign on the shelf: pick share and stand-out on the same respondents" },
-  { id: "survey", label: "Concept tests", icon: ClipboardList, blurb: "Synthetic respondents rate packs, prices and preference" },
-  { id: "conjoint", label: "Conjoint", icon: Grid3x3, blurb: "Which features and prices win the choice: part-worths, willingness to pay and a market simulator" },
-  { id: "pitch", label: "Staff scripts", icon: MessagesSquare, blurb: "Compare wording with paired intent, trust and pressure ratings" },
-  { id: "pilot", label: "Field pilots", icon: ClipboardList, blurb: "Preassigned staff/shift experiments and observed purchase conversion" },
-  { id: "protocols", label: "Protocols", icon: ClipboardList, blurb: "Record original research plans and explain later amendments" },
-  { id: "priceChecks", label: "Price checks", icon: ClipboardList, blurb: "Reconcile observed shelf labels and checkout prices with explicit exclusions" },
-  { id: "prices", label: "Unit prices", icon: ClipboardList, blurb: "Compare observed competitor offers by pack quantity, date and eligibility" },
-  { id: "inventory", label: "Inventory", icon: ClipboardList, blurb: "Reconcile observed stock and review period margin, turnover and net unit sell-through" },
-  { id: "products", label: "Products", icon: Images, blurb: "Package images, brands and the shelf products they show" },
+const TABS: { id: Tab; label: MessageKey; icon: typeof FlaskConical; blurb: MessageKey }[] = [
+  { id: "ab", label: "mkTabAb", icon: FlaskConical, blurb: "mkTabAbBlurb" },
+  { id: "shelf", label: "mkTabShelf", icon: Rows3, blurb: "mkTabShelfBlurb" },
+  { id: "survey", label: "mkTabSurvey", icon: ClipboardList, blurb: "mkTabSurveyBlurb" },
+  { id: "conjoint", label: "mkTabConjoint", icon: Grid3x3, blurb: "mkTabConjointBlurb" },
+  { id: "pitch", label: "mkTabPitch", icon: MessagesSquare, blurb: "mkTabPitchBlurb" },
+  { id: "pilot", label: "mkTabPilot", icon: ClipboardList, blurb: "mkTabPilotBlurb" },
+  { id: "protocols", label: "mkTabProtocols", icon: ClipboardList, blurb: "mkTabProtocolsBlurb" },
+  { id: "priceChecks", label: "mkTabPriceChecks", icon: ClipboardList, blurb: "mkTabPriceChecksBlurb" },
+  { id: "prices", label: "mkTabPrices", icon: ClipboardList, blurb: "mkTabPricesBlurb" },
+  { id: "inventory", label: "mkTabInventory", icon: ClipboardList, blurb: "mkTabInventoryBlurb" },
+  { id: "products", label: "mkTabProducts", icon: Images, blurb: "mkTabProductsBlurb" },
 ];
+const NEW_JOB: Record<JobTab, MessageKey> = { ab: "mkNewAb", shelf: "mkNewShelf", pitch: "mkNewPitch", conjoint: "mkNewConjoint", survey: "mkNewSurvey" };
 
 const busy = (s: JobStatus["status"]) => s === "pending" || s === "running";
 
 export function MarketingPage({ projectId }: { projectId: string }) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("ab");
   const [selected, setSelected] = useState<Record<JobTab, string | null>>({ ab: null, shelf: null, survey: null, conjoint: null, pitch: null });
   // A request routed here from the command palette opens the right builder and drafts from the same words.
@@ -172,12 +176,12 @@ export function MarketingPage({ projectId }: { projectId: string }) {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
       <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[1.7rem] leading-tight tracking-[-0.04em]">Marketing <span className="font-accent aurora-text">studio</span></h1>
-          <p className="text-sm text-muted-foreground">{TABS.find((t) => t.id === tab)!.blurb}</p>
+          <h1 className="font-display text-[1.7rem] leading-tight tracking-[-0.04em]">{t("mkTitleMain")} <span className="font-accent aurora-text">{t("mkTitleAccent")}</span></h1>
+          <p className="text-sm text-muted-foreground">{t(TABS.find((item) => item.id === tab)!.blurb)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            Layout
+            {t("mkLayout")}
             <select value={activeSetup} onChange={(e) => setSetupId(e.target.value)} className="h-9 rounded-xl border bg-card/60 px-2.5 text-sm text-foreground">
               {setups.map((s) => <option key={s.id} value={s.id}>{s.name || s.id}</option>)}
             </select>
@@ -187,7 +191,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
               <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
                 className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                   tab === id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-                <Icon className="size-4" /> {label}
+                <Icon className="size-4" /> {t(label)}
                 {id === "products" && packages.length > 0 && <span className="num rounded-full bg-foreground/[0.08] px-1.5 text-[0.68rem]">{packages.length}</span>}
               </button>
             ))}
@@ -203,7 +207,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             <button type="button" onClick={() => select("")}
               className={cn("flex items-center gap-2 rounded-2xl border-2 border-dashed px-3 py-3 text-sm transition-colors",
                 current === "" ? "border-primary text-foreground" : "border-foreground/15 text-muted-foreground hover:border-primary/60 hover:text-foreground")}>
-              <Plus className="size-4" /> New {tab === "ab" ? "A/B test" : tab === "shelf" ? "shelf test" : tab === "pitch" ? "staff script test" : tab === "conjoint" ? "conjoint study" : "concept test"}
+              <Plus className="size-4" /> {t(NEW_JOB[tab as JobTab])}
             </button>
             {jobs.map((j) => <JobItem key={j.job_id} projectId={projectId} job={j} active={current === j.job_id} onSelect={() => select(j.job_id)} onDeleted={() => select("")} />)}
           </aside>
@@ -249,6 +253,7 @@ function Loading() {
 }
 
 function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: string; job: JobStatus; active: boolean; onSelect: () => void; onDeleted: () => void }) {
+  const { t, locale } = useI18n();
   const qc = useQueryClient();
   const del = useMutation({
     mutationFn: () => (job.kind === "experiment" ? deleteExperiment(projectId, job.job_id) : job.kind === "pitch" ? deletePitch(projectId, job.job_id)
@@ -261,18 +266,18 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
       if (active) onDeleted();
     },
   });
-  const when = job.created_at ? new Date(job.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  const when = job.created_at ? new Date(job.created_at).toLocaleString(locale, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   return (
     <div className={cn("group relative rounded-2xl border px-3 py-2.5 transition-colors", active ? "border-primary bg-primary/[0.06]" : "bg-card/60 hover:border-foreground/20")}>
       <button type="button" onClick={onSelect} className="block w-full text-left">
         <span className="block truncate pr-6 text-sm font-medium">{job.name || job.job_id}</span>
         <span className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
           {busy(job.status) ? <><Loader2 className="size-3 animate-spin" /> {Math.round(job.progress * 100)} % · {job.stage}</>
-            : job.status === "failed" ? <><TriangleAlert className="size-3 text-destructive" /> failed</> : when}
+            : job.status === "failed" ? <><TriangleAlert className="size-3 text-destructive" /> {t("mkJobFailed")}</> : when}
         </span>
         {busy(job.status) && <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-foreground/[0.08]"><span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.max(4, job.progress * 100)}%` }} /></span>}
       </button>
-      {!busy(job.status) && <button type="button" onClick={() => del.mutate()} aria-label={`Delete ${job.name}`}
+      {!busy(job.status) && <button type="button" onClick={() => del.mutate()} aria-label={t("mkDeleteJob", { name: job.name })}
         className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100">
         <Trash2 className="size-3.5" />
       </button>}
@@ -281,25 +286,27 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
 }
 
 function JobState({ job }: { job: JobStatus }) {
-  if (job.status === "failed") return <p className="rounded-2xl border tone-bad px-4 py-3 text-sm">{job.error || "The job failed."}</p>;
+  const { t } = useI18n();
+  if (job.status === "failed") return <p className="rounded-2xl border tone-bad px-4 py-3 text-sm">{job.error || t("mkJobFailedLong")}</p>;
   return (
     <div className="grid h-56 place-items-center rounded-2xl border bg-card/60">
       <div className="w-72 space-y-2 text-center">
         <Loader2 className="mx-auto size-6 animate-spin text-primary" />
         <p className="text-sm font-medium">{job.name}</p>
-        <p className="text-xs text-muted-foreground">{job.stage || "queued"} · {Math.round(job.progress * 100)} %</p>
+        <p className="text-xs text-muted-foreground">{job.stage || t("mkQueued")} · {Math.round(job.progress * 100)} %</p>
         <span className="block h-1.5 overflow-hidden rounded-full bg-foreground/[0.08]"><span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.max(4, job.progress * 100)}%` }} /></span>
       </div>
     </div>
   );
 }
 
-function DuplicateBar({ onClick, label }: { onClick: () => void; label: string }) {
+function DuplicateBar({ onClick }: { onClick: () => void }) {
+  const { t } = useI18n();
   return (
     <div className="mb-2 flex justify-end">
       <button type="button" onClick={onClick}
         className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-foreground/[0.05] hover:text-foreground">
-        <Copy className="size-3.5" /> {label}
+        <Copy className="size-3.5" /> {t("mkDuplicateEdit")}
       </button>
     </div>
   );
@@ -318,7 +325,7 @@ function ExperimentJob({ projectId, id, setups, onDuplicate }: {
   const request = view.data.request;
   return (
     <>
-      {request && <DuplicateBar label="Duplicate and edit" onClick={() => onDuplicate(request)} />}
+      {request && <DuplicateBar onClick={() => onDuplicate(request)} />}
       {report ? <ExperimentReportView projectId={projectId} report={report} layoutName={setups.find((s) => s.id === report.setup_id)?.name} /> : <JobState job={view.data} />}
     </>
   );
@@ -334,7 +341,7 @@ function SurveyJob({ projectId, id, onDuplicate }: { projectId: string; id: stri
   const request = view.data.request;
   return (
     <>
-      {request && <DuplicateBar label="Duplicate and edit" onClick={() => onDuplicate(request)} />}
+      {request && <DuplicateBar onClick={() => onDuplicate(request)} />}
       {view.data.report ? <SurveyReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />}
     </>
   );
@@ -350,7 +357,7 @@ function ShelfJob({ projectId, id, onDuplicate }: { projectId: string; id: strin
   const request = view.data.request;
   return (
     <>
-      {request && <DuplicateBar label="Duplicate and edit" onClick={() => onDuplicate(request)} />}
+      {request && <DuplicateBar onClick={() => onDuplicate(request)} />}
       {view.data.report ? <ShelfTestReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />}
     </>
   );
@@ -366,7 +373,7 @@ function ConjointJob({ projectId, id, onDuplicate }: { projectId: string; id: st
   const request = view.data.request;
   return (
     <>
-      {request && <DuplicateBar label="Duplicate and edit" onClick={() => onDuplicate(request)} />}
+      {request && <DuplicateBar onClick={() => onDuplicate(request)} />}
       {view.data.report ? <ConjointReportView projectId={projectId} report={view.data.report} /> : <JobState job={view.data} />}
     </>
   );

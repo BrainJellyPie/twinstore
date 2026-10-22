@@ -14,6 +14,8 @@ import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
 import { CAPTURE_CATEGORIES, categoryColor, categoryLabel } from "./categories";
 import { EMPTY_DRAFT, needsOther, type LabDraft } from "./labDraft";
@@ -21,10 +23,12 @@ import { RivalCard } from "./RivalCard";
 import { CaptureBatch } from "./CaptureBatch";
 import { CaptureUploadQueue } from "./CaptureUploadQueue";
 import { BeforeAfter, ShelfLabPanel } from "./ShelfLab";
+import { STAGES } from "./stages";
 
 const capturesKey = (pid: string) => ["projects", pid, "captures"] as const;
 
 export function CapturePage({ projectId }: { projectId: string }) {
+  const { t } = useI18n();
   const [selected, setSelected] = useState<string | null>(null);
   const list = useQuery({
     queryKey: capturesKey(projectId),
@@ -43,7 +47,7 @@ export function CapturePage({ projectId }: { projectId: string }) {
     <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto">
       <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:min-h-0">
         <CaptureStrip projectId={projectId} captures={captures} selected={selected} onSelect={select} />
-        {selected && hasSavedQueue && <Button variant="outline" onClick={() => select(null)}>Continue saved photo queue</Button>}
+        {selected && hasSavedQueue && <Button variant="outline" onClick={() => select(null)}>{t("capContinueQueue")}</Button>}
         {captures.length > 0 && <CaptureBatch key={projectId} projectId={projectId} captures={captures} onReview={select} />}
         <div hidden={!!selected} className="min-h-64 shrink-0 md:flex-1"><CaptureUploadQueue key={projectId} visible={!selected} projectId={projectId} onAccepted={() => setChosenNew(true)} onReview={select} onRecoveryAvailable={setHasSavedQueue} /></div>
         {selected && (
@@ -59,12 +63,13 @@ export function CapturePage({ projectId }: { projectId: string }) {
 function CaptureStrip({ projectId, captures, selected, onSelect }: {
   projectId: string; captures: CaptureStatus[]; selected: string | null; onSelect: (id: string | null) => void;
 }) {
+  const { t } = useI18n();
   if (captures.length === 0) return null;
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-1">
       <button type="button" onClick={() => onSelect(null)}
         className="flex h-16 w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-foreground/15 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
-        <Camera className="size-4" /> Add photos
+        <Camera className="size-4" /> {t("capAddPhotos")}
       </button>
       {captures.map((c) => (
         <button key={c.capture_id} type="button" onClick={() => onSelect(c.capture_id)}
@@ -73,7 +78,7 @@ function CaptureStrip({ projectId, captures, selected, onSelect }: {
           title={c.image_name}>
           <img src={api.captureImageUrl(projectId, c.capture_id)} alt="" className="h-full w-full object-cover" />
           <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-0.5 text-left text-[0.68rem] text-white">
-            {c.status === "completed" ? `${c.items} products` : c.status === "failed" ? "failed" : `${Math.round(c.progress * 100)} %`}
+            {c.status === "completed" ? t("capStripProducts", { count: c.items }) : c.status === "failed" ? t("capStripFailed") : `${Math.round(c.progress * 100)} %`}
           </span>
         </button>
       ))}
@@ -83,12 +88,8 @@ function CaptureStrip({ projectId, captures, selected, onSelect }: {
 
 // ── Workspace ─────────────────────────────────────────────────────────────
 
-const STAGES: Record<string, string> = {
-  queued: "Waiting…", detecting: "Finding shelves and products…", grouping: "Grouping identical facings…",
-  reading: "Reading products and price tags…", planogram: "Building the planogram…", done: "Done",
-};
-
 function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: string; captureId: string; onDeleted: () => void }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const view = useQuery({
     queryKey: [...capturesKey(projectId), captureId],
@@ -116,11 +117,11 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
 
   const loadError = view.isError ? (
     <div role="alert" className="space-y-2 rounded-xl border tone-bad p-3 text-sm">
-      <p>{view.error instanceof Error ? view.error.message : "Could not load this capture. Please try again."}</p>
-      <Button variant="outline" disabled={view.isFetching} onClick={() => void view.refetch()}>Retry capture</Button>
+      <p>{view.error instanceof Error ? view.error.message : t("capLoadError")}</p>
+      <Button variant="outline" disabled={view.isFetching} onClick={() => void view.refetch()}>{t("capRetryCapture")}</Button>
     </div>
   ) : null;
-  if (!status) return loadError ?? <div role="status" className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-6 animate-spin" />Loading capture…</div>;
+  if (!status) return loadError ?? <div role="status" className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-6 animate-spin" />{t("capLoadingCapture")}</div>;
   return (
     <>
     {loadError}
@@ -137,12 +138,12 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
           )}
           {editId && (
             <button type="button" onClick={() => setShowMask(!showMask)} className="glass absolute bottom-5 left-5 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium">
-              {showMask ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />} {showMask ? "Hide" : "Show"} changed pixels
+              {showMask ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />} {showMask ? t("capHideChanged") : t("capShowChanged")}
             </button>
           )}
           {status.status !== "completed" && status.status !== "failed" && (
             <div className="glass absolute inset-x-6 bottom-6 rounded-2xl border p-4 shadow-float">
-              <div className="mb-2 font-medium">{STAGES[status.stage] ?? status.stage}</div>
+              <div className="mb-2 font-medium">{STAGES[status.stage] ? t(STAGES[status.stage]!) : status.stage}</div>
               <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                 <div className="heat-gradient h-full transition-[width]" style={{ width: `${Math.max(4, status.progress * 100)}%` }} />
               </div>
@@ -152,12 +153,12 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span className="truncate">
             {status.image_name}
-            {result ? ` · ${result.items.length} products · ${result.items.reduce((a, i) => a + i.facings, 0)} facings · ${result.bands.length} shelves · ${result.gaps.length} gaps`
+            {result ? t("capSummary", { products: result.items.length, facings: result.items.reduce((a, i) => a + i.facings, 0), shelves: result.bands.length, gaps: result.gaps.length })
               + ` · ${result.detector}${result.model ? ` + ${result.model}` : ""}` : ""}
           </span>
           {!processing && (
             <button type="button" className="flex items-center gap-1 hover:text-destructive disabled:opacity-50" disabled={del.isPending} onClick={() => del.mutate()}>
-              {del.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} Delete
+              {del.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} {t("studioDelete")}
             </button>
           )}
         </div>
@@ -166,14 +167,14 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
       <aside className="panel flex w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-[1.6rem] md:w-[28rem]">
         <div className="flex gap-1 border-b border-glass-border p-2">
           {([
-            { id: "planogram", label: "Planogram", icon: ListChecks },
-            { id: "lab", label: "Shelf Lab", icon: FlaskConical },
+            { id: "planogram", label: t("capTabPlanogram"), icon: ListChecks },
+            { id: "lab", label: t("capTabLab"), icon: FlaskConical },
           ] as const).map(({ id, label, icon: Icon }) => (
             <button key={id} type="button" onClick={() => setTab(id)}
               className={cn("flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium transition-colors",
                 tab === id ? "bg-foreground/[0.08] text-foreground shadow-[inset_0_1px_0_var(--highlight)]" : "text-muted-foreground hover:text-foreground")}>
               <Icon className="hidden size-4 shrink-0 sm:block" /> {label}
-              {id === "lab" && <span className="hidden rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-bold text-primary-foreground sm:inline">NEW</span>}
+              {id === "lab" && <span className="hidden rounded-full bg-primary px-1.5 py-px text-[0.6rem] font-bold text-primary-foreground sm:inline">{t("capNewBadge")}</span>}
             </button>
           ))}
         </div>
@@ -186,7 +187,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
             <ShelfLabPanel projectId={projectId} captureId={captureId} result={result} draft={draft} setDraft={setDraft}
               editId={editId} onSelectEdit={setEditId} onFocus={setFocus} onAttention={setAttention} />
           )}
-          {!result && status.status !== "failed" && <p className="p-6 text-center text-sm text-muted-foreground">Reading the shelf…</p>}
+          {!result && status.status !== "failed" && <p className="p-6 text-center text-sm text-muted-foreground">{t("capReadingShelf")}</p>}
         </div>
       </aside>
     </div>
@@ -200,11 +201,12 @@ function PhotoOverlay({ projectId, captureId, result, size, hover, onHover, onPi
   onPick?: (id: string) => void; marks?: { target: string | null; other: string | null }; focus?: CaptureBox | null;
   attention?: Record<string, number> | null;
 }) {
+  const { t } = useI18n();
   const [w, h] = result?.image_size ?? size;
   if (!w || !h) return null;
   return (
     <div className="relative max-h-full max-w-full" style={{ aspectRatio: `${w} / ${h}`, height: "100%" }}>
-      <img src={api.captureImageUrl(projectId, captureId)} alt="Shelf photo" className="absolute inset-0 h-full w-full rounded-lg object-contain" />
+      <img src={api.captureImageUrl(projectId, captureId)} alt={t("capShelfPhotoAlt")} className="absolute inset-0 h-full w-full rounded-lg object-contain" />
       {result && (
         <svg viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 h-full w-full" onMouseLeave={() => onHover(null)}>
           {result.bands.map((b) => (
@@ -223,7 +225,7 @@ function PhotoOverlay({ projectId, captureId, result, size, hover, onHover, onPi
                 fill={color} fillOpacity={role ? 0.35 : hover === it.id ? 0.45 : 0.12}
                 stroke={color} strokeWidth={role || hover === it.id ? Math.max(3, w / 180) : Math.max(1.5, w / 450)}
                 onMouseEnter={() => onHover(it.id)} onClick={onPick ? () => onPick(it.id) : undefined} className="cursor-pointer">
-                <title>{it.name || "Unrecognized product"}</title>
+                <title>{it.name || t("capUnrecognized")}</title>
               </rect>
             );
           }))}
@@ -269,6 +271,7 @@ const toDraft = (it: CaptureItem, currency: string): Draft => ({
 function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
   projectId: string; captureId: string; result: CaptureResult; hover: string | null; onHover: (id: string | null) => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const initial = useMemo(() => [...result.items].sort((a, b) => b.level - a.level || a.order - b.order).map((i) => toDraft(i, result.currency)), [result]);
   const [drafts, setDrafts] = useState<Draft[]>(initial);
@@ -285,54 +288,54 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
   });
   const patch = (id: string, p: Partial<Draft>) => setDrafts((ds) => ds.map((d) => (d.id === id ? { ...d, ...p } : d)));
   const levels = [...new Set(drafts.map((d) => d.level))].sort((a, b) => b - a);
-  const levelName: Record<number, string> = { 4: "Top shelf", 3: "Eye level", 2: "Waist", 1: "Bottom shelf" };
+  const levelName: Record<number, MessageKey> = { 4: "capLevelTop", 3: "capLevelEye", 2: "capLevelWaist", 1: "capLevelBottom" };
 
   return (
     <section className="rounded-2xl border bg-card p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="section-title">Products on this shelf</h3>
+        <h3 className="section-title">{t("capProductsOnShelf")}</h3>
         <Button size="sm" disabled={!dirty || invalidPrice || save.isPending} onClick={() => save.mutate()} className="gap-1.5">
           {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : save.isSuccess && !dirty ? <Check className="size-3.5" /> : <Save className="size-3.5" />}
-          {dirty ? "Save changes" : "Saved"}
+          {dirty ? t("capSaveChanges") : t("studioSaved")}
         </Button>
       </div>
-      {invalidPrice && <p role="alert" className="mb-2 text-sm text-destructive">Enter a valid nonnegative price, or leave it blank to keep the existing price.</p>}
+      {invalidPrice && <p role="alert" className="mb-2 text-sm text-destructive">{t("capInvalidPriceKeep")}</p>}
       {save.error && <p role="alert" className="mb-2 text-sm text-destructive">{save.error instanceof Error ? save.error.message : String(save.error)}</p>}
       <div className="space-y-3">
         {levels.map((lv) => (
           <div key={lv}>
-            <div className="mb-1 text-xs font-medium text-muted-foreground">{levelName[lv] ?? `Level ${lv}`}</div>
+            <div className="mb-1 text-xs font-medium text-muted-foreground">{levelName[lv] ? t(levelName[lv]!) : t("capLevelN", { level: lv })}</div>
             <ul className="space-y-1.5">
               {drafts.filter((d) => d.level === lv).map((d) => (
                 <li key={d.id} onMouseEnter={() => onHover(d.id)} onMouseLeave={() => onHover(null)}
                   className={cn("rounded-xl border p-2 transition-colors", hover === d.id ? "border-primary bg-primary/5" : "")}>
                   <div className="flex items-center gap-2">
                     <span className="size-2.5 shrink-0 rounded-full" style={{ background: categoryColor(d.category) }} />
-                    <Input value={d.name} placeholder="Product name" onChange={(e) => patch(d.id, { name: e.target.value })} className="h-8 flex-1 text-sm" />
-                    <button type="button" aria-label="Remove product" className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                    <Input value={d.name} placeholder={t("capProductName")} onChange={(e) => patch(d.id, { name: e.target.value })} className="h-8 flex-1 text-sm" />
+                    <button type="button" aria-label={t("capRemoveProduct")} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
                       onClick={() => setDrafts((ds) => ds.filter((x) => x.id !== d.id))}>
                       <Trash2 className="size-3.5" />
                     </button>
                   </div>
                   <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_92px] items-center gap-2 text-xs sm:grid-cols-[minmax(0,1fr)_88px_92px]">
                     <select className="col-span-2 h-7 min-w-0 rounded-md border bg-background px-1 sm:col-span-1" value={d.category} onChange={(e) => patch(d.id, { category: e.target.value })}>
-                      <option value="">{categoryLabel("")}</option>
-                      {CAPTURE_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                      <option value="">{categoryLabel("", t)}</option>
+                      {CAPTURE_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{t(c.label)}</option>)}
                     </select>
                     <div className="relative">
                       <Input value={d.price} inputMode="decimal" onChange={(e) => patch(d.id, { price: e.target.value, estimated: false })}
-                        className={cn("h-7 pr-1 text-xs tabular-nums", d.estimated && "border-dashed text-muted-foreground")} placeholder="price"
-                        title={d.estimated ? "Tag unreadable — typical price for the category" : undefined} />
+                        className={cn("h-7 pr-1 text-xs tabular-nums", d.estimated && "border-dashed text-muted-foreground")} placeholder={t("capPricePlaceholder")}
+                        title={d.estimated ? t("capEstimatedPriceTitle") : undefined} />
                     </div>
                     <div className="flex items-center justify-end gap-1">
-                      <button type="button" aria-label="Fewer facings" className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: Math.max(1, d.facings - 1) })}><Minus className="size-3" /></button>
+                      <button type="button" aria-label={t("capFewerFacings")} className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: Math.max(1, d.facings - 1) })}><Minus className="size-3" /></button>
                       <span className="w-12 text-center tabular-nums">{d.facings}×</span>
-                      <button type="button" aria-label="More facings" className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: d.facings + 1 })}><Plus className="size-3" /></button>
+                      <button type="button" aria-label={t("capMoreFacings")} className="rounded-md border p-0.5 hover:bg-muted" onClick={() => patch(d.id, { facings: d.facings + 1 })}><Plus className="size-3" /></button>
                     </div>
                   </div>
                   {(d.brand || d.size || d.confidence > 0) && (
                     <div className="mt-1 truncate text-xs text-muted-foreground">
-                      {[d.brand, d.size].filter(Boolean).join(" · ")}{d.confidence > 0 ? `${d.brand || d.size ? " · " : ""}read with confidence ${d.confidence}/10` : ""}
+                      {[d.brand, d.size].filter(Boolean).join(" · ")}{d.confidence > 0 ? `${d.brand || d.size ? " · " : ""}${t("capConfidence", { value: d.confidence })}` : ""}
                     </div>
                   )}
                 </li>
@@ -343,8 +346,8 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
       </div>
       {result.notes.length > 0 && <ul className="mt-3 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">{result.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
       <p className="mt-2 text-xs text-muted-foreground">
-        Prices in {result.currency}{result.items.some((i) => i.price_estimated) ? "; dashed prices are typical prices for the category because the tag could not be read" : ""}.
-        {` Total ${result.items.length} products, ${formatMoney(result.items.reduce((a, i) => a + (i.price ?? 0), 0), result.currency)} for one of each.`}
+        {t(result.items.some((i) => i.price_estimated) ? "capPricesInDashed" : "capPricesIn", { currency: result.currency })}
+        {t("capPricesTotal", { count: result.items.length, amount: formatMoney(result.items.reduce((a, i) => a + (i.price ?? 0), 0), result.currency) })}
       </p>
     </section>
   );
@@ -353,6 +356,7 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
 // ── Apply to a layout ─────────────────────────────────────────────────────
 
 function ApplyPanel({ projectId, captureId, result }: { projectId: string; captureId: string; result: CaptureResult }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const router = useRouter();
@@ -388,17 +392,17 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
   });
   return (
     <section className="rounded-2xl border bg-card p-3 text-sm">
-      <h3 className="section-title mb-2">Put it in a layout</h3>
+      <h3 className="section-title mb-2">{t("capApplyTitle")}</h3>
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Start from</span>
+        <span className="text-xs text-muted-foreground">{t("capStartFrom")}</span>
         <select className="h-10 rounded-xl border bg-card/60 px-2.5" value={base} onChange={(e) => setSetupId(e.target.value)}>
-          {setups.map((s) => <option key={s.id} value={s.id}>{s.name}{s.status === "draft" ? " (draft)" : ""}</option>)}
+          {setups.map((s) => <option key={s.id} value={s.id}>{s.name}{s.status === "draft" ? t("capDraftSuffix") : ""}</option>)}
         </select>
       </label>
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
         {([
-          { id: "new", title: "Add as a new rack", hint: "Placed on free floor; wide photos become several racks" },
-          { id: "replace", title: "Replace a rack", hint: "Swap the contents of one existing rack face" },
+          { id: "new", title: t("capAddNewRack"), hint: t("capAddNewRackHint") },
+          { id: "replace", title: t("capReplaceRack"), hint: t("capReplaceRackHint") },
         ] as const).map((o) => (
           <button key={o.id} type="button" onClick={() => setMode(o.id)}
             className={cn("rounded-lg border p-2 text-left", mode === o.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
@@ -414,9 +418,9 @@ function ApplyPanel({ projectId, captureId, result }: { projectId: string; captu
       )}
       {apply.error && <p className="mt-2 text-xs text-destructive">{apply.error instanceof Error ? apply.error.message : String(apply.error)}</p>}
       <Button className="mt-3 h-auto min-h-10 w-full gap-2 py-2.5 whitespace-normal" size="lg" disabled={!base || apply.isPending || (mode === "replace" && !targetRackId)} onClick={() => apply.mutate()}>
-        {apply.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />} Create a layout with this shelf
+        {apply.isPending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />} {t("capCreateLayout")}
       </Button>
-      <p className="mt-2 text-xs text-muted-foreground">Saved as a new draft layout — the original stays as it is, ready for an A/B run.</p>
+      <p className="mt-2 text-xs text-muted-foreground">{t("capCreateLayoutHint")}</p>
     </section>
   );
 }
