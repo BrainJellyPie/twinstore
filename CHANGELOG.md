@@ -99,6 +99,8 @@
 - A run whose model never answered (a key turned down, no credit left, a server that is down) still tried every
   shopper twice before failing, which could take many minutes. Once the first 10 shoppers have all failed, the rest
   are not tried and the run stops with the reason.
+- With no API key, the start-up window still said a local model would be downloaded on first use. It now says that
+  rule-based shoppers work without a key, and that nothing is downloaded until you start the local model in Settings.
 - "OpenStreetMap download failed: … HTTP Error 502: Bad Gateway": the public map server is often overloaded for a
   few minutes. The download now moves to other Overpass servers and tries once more before giving up, and then says
   the map servers are busy and to try again shortly.
