@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { webcrypto } from "node:crypto";
 import * as api from "@/shared/api/starterFill";
+import { useLocale, translate } from "@/shared/i18n/i18n";
+import { LOCALES } from "@/shared/i18n/messages";
+import { formatMoney } from "@/shared/utils/money";
 import { StarterFill } from "../StarterFill";
 import { useSimulationStore } from "@/stores/simulationStore";
 vi.mock("@/shared/api/starterFill", () => ({ getStarterCatalog: vi.fn(), previewStarterFill: vi.fn(), saveStarterFill: vi.fn(), autoSelectStarterProducts: vi.fn() }));
@@ -14,6 +17,7 @@ const catalog: api.StarterCatalog = { source_sha256: "a".repeat(64), currency: "
 ] };
 let qc: QueryClient;
 beforeEach(() => {
+  useLocale.getState().setLocale("en");
   vi.stubGlobal("crypto", webcrypto);
   qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   vi.mocked(api.getStarterCatalog).mockResolvedValue(catalog);
@@ -21,7 +25,7 @@ beforeEach(() => {
     racks: [{ id: "empty", name: "Empty shelf", category: "water", slots_added: 8, placements_added: 8, products: [product], reused_skus: [] }] });
   vi.mocked(api.saveStarterFill).mockResolvedValue({ setup_id: "setup_stocked", placements_added: 8 });
 });
-afterEach(() => { cleanup(); qc.clear(); vi.resetAllMocks(); vi.unstubAllGlobals(); useSimulationStore.getState().reset(); });
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); qc.clear(); vi.resetAllMocks(); vi.unstubAllGlobals(); useSimulationStore.getState().reset(); });
 async function open() {
   render(<QueryClientProvider client={qc}><StarterFill pid="p" sid="s" /></QueryClientProvider>);
   fireEvent.click(screen.getByRole("button", { name: "Auto-place starter products" }));
@@ -200,4 +204,61 @@ it("shows a stale-layout preview error without saving or discarding choices", as
   expect((screen.getByLabelText("Select rack empty") as HTMLInputElement).checked).toBe(true);
   expect(screen.queryByRole("button", { name: "Save stocked layout" })).toBeNull();
   expect(api.saveStarterFill).not.toHaveBeenCalled();
+});
+
+it.each(LOCALES)("retains automatic selection and photos in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  const pictured = { ...product, name: "원본 상품 🌿", price: 123456, image_url: "/api/catalog-images/starter-17/0.webp" };
+  vi.mocked(api.previewStarterFill).mockResolvedValue({ placements_added: 8, new_skus: 0, reused_skus: 1,
+    racks: [{ id: "empty", name: "Empty shelf", category: "water", slots_added: 8, placements_added: 8, products: [pictured], reused_skus: ["A"] }] });
+  vi.mocked(api.autoSelectStarterProducts).mockResolvedValue(automatic);
+  render(<QueryClientProvider client={qc}><StarterFill pid="p" sid="s" /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "starterLaunch") }));
+  const auto = await screen.findByLabelText(translate(code, "starterAutomatic"));
+  expect((auto as HTMLInputElement).checked).toBe(true);
+  expect(api.autoSelectStarterProducts).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText(translate(code, "starterRequirements")), { target: { value: "유아용품, 반려동물 🌿" } });
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "starterChooseAuto") }));
+  await screen.findByRole("button", { name: translate(code, "starterSave") });
+  expect(vi.mocked(api.autoSelectStarterProducts).mock.lastCall?.[2].requirements).toBe("유아용품, 반려동물 🌿");
+  expect(api.previewStarterFill).toHaveBeenCalledWith("p", "s", automatic);
+  const image = screen.getByRole("img", { name: pictured.name, hidden: true });
+  expect(image.getAttribute("src")).toContain(pictured.image_url);
+  expect(screen.getByRole("region", { name: translate(code, "starterPreviewRegion") }).textContent).toContain(formatMoney(pictured.price, "USD", { locale: code }));
+  expect(screen.getByText(translate(code, "starterClosingAutomatic"))).toBeTruthy();
+});
+
+it("keeps pending automatic choices, preview and retry identity across language changes", async () => {
+  let resolve!: (value: api.StarterRequest) => void;
+  vi.mocked(api.autoSelectStarterProducts).mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  await openAuto();
+  fireEvent.change(screen.getByLabelText("Assortment requirements"), { target: { value: "Keep this choice" } });
+  fireEvent.click(screen.getByRole("button", { name: "Choose and preview automatically" }));
+  await screen.findByRole("button", { name: "Choosing catalog products…" });
+  act(() => useLocale.getState().setLocale("ko"));
+  expect((screen.getByLabelText(translate("ko", "starterRequirements")) as HTMLTextAreaElement).value).toBe("Keep this choice");
+  resolve(automatic);
+  await screen.findByRole("button", { name: translate("ko", "starterSave") });
+  act(() => useLocale.getState().setLocale("fr"));
+  vi.mocked(api.saveStarterFill).mockRejectedValueOnce(new Error("Connection lost"));
+  fireEvent.click(screen.getByRole("button", { name: translate("fr", "starterSave") }));
+  await screen.findByRole("button", { name: translate("fr", "starterRetrySave") });
+  act(() => useLocale.getState().setLocale("es"));
+  fireEvent.click(screen.getByRole("button", { name: translate("es", "starterRetrySave") }));
+  await screen.findByRole("button", { name: translate("es", "starterOpen") });
+  expect(api.autoSelectStarterProducts).toHaveBeenCalledTimes(1);
+  expect(api.previewStarterFill).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(api.saveStarterFill).mock.calls[0]![2]).toEqual(vi.mocked(api.saveStarterFill).mock.calls[1]![2]);
+});
+
+it("updates manual validation text when the language changes without losing selections", async () => {
+  vi.mocked(api.getStarterCatalog).mockResolvedValue({ ...catalog, racks: [{ ...catalog.racks[0]!, suggested_category: null }] });
+  await open();
+  fireEvent.click(screen.getByLabelText("Select rack empty"));
+  fireEvent.click(screen.getByRole("button", { name: "Preview starter products" }));
+  await screen.findByRole("alert");
+  act(() => useLocale.getState().setLocale("ja"));
+  expect(screen.getByRole("alert").textContent).toBe(translate("ja", "starterChooseCategoryEach"));
+  expect((screen.getByLabelText(translate("ja", "starterSelectRack", { rack: "empty" })) as HTMLInputElement).checked).toBe(true);
+  expect(api.previewStarterFill).not.toHaveBeenCalled();
 });

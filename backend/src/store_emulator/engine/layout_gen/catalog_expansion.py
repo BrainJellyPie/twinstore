@@ -518,6 +518,30 @@ PACKSHOT_SHEETS = {
         "Ceramic Aquarium Tunnel Cave", "Weighted Artificial Aquarium Plant", "Small Bird Seed Mix 500g", "Natural Wood Bird Swing",
         "Adjustable White LED Desk Lamp", "Warm White Plug-In Night Light", "Beige Ceramic Soap Dish", "Teal Ceramic Toothbrush Holder",
     ],
+    "starter-17": [
+        "Unsweetened Almond Drink 1L", "Coconut Yogurt Cup", "Smoked Tofu Slices", "Tempeh Block 200g",
+        "Crunchy Peanut Butter 340g", "Orange Marmalade 250g", "Wildflower Honey 250g", "Maple Syrup 250ml",
+        "Active Dry Yeast 7g 3pk", "Pure Vanilla Extract 50ml", "Rainbow Baking Sprinkles 80g", "Silicone Cupcake Cases 6pk",
+        "Blood Orange Soda 330ml", "Apple Ginger Juice 250ml", "Pomegranate Juice 250ml", "Yuzu Honey Drink 300ml",
+    ],
+    "starter-18": [
+        "Muslin Baby Cloths 3pk", "Silicone Baby Feeding Spoon 2pk", "Baby Nail Care Set", "Silicone Teething Ring",
+        "Cat Feather Wand", "Snuffle Mat for Dogs", "Treat Puzzle Ball", "Rope Tug Toy",
+        "Sticky Notes", "Correction Tape", "Glue Stick", "Scissors",
+        "Cold Press Watercolor Pad A5", "Graphite Sketching Pencils 6pk", "Wooden Artist Palette", "Portable Brush Roll",
+    ],
+    "starter-19": [
+        "USB C Wall Charger 20W", "Foldable Phone Stand", "Compact USB Hub 4 Port", "Felt Laptop Sleeve 13in",
+        "Passport Cover and Tag Set", "Packing Cube Trio", "Clear Toiletry Pouch", "Travel Bottle Set 4pk",
+        "Classic Playing Card Deck", "Wooden Domino Set", "Travel Magnetic Chess Set", "Wooden Stacking Blocks Game",
+        "Camera Lens Cleaning Pen", "Camera Air Blower Bulb", "Padded Lens Pouch Small", "Pocket LED Photo Light",
+    ],
+    "starter-20": [
+        "Espresso Shot Measuring Glass", "Digital Coffee Brewing Scale", "Coffee Knock Box", "Hand Coffee Grinder",
+        "Delicate Garment Wash Bag", "Wooden Clothes Pegs 24pk", "Reusable Lint Brush", "Cotton Laundry Sorting Sack",
+        "Wooden Cooking Spoon", "Stainless Ladle 90ml", "Vegetable Peeler with Guard", "Fine Mesh Kitchen Strainer 15cm",
+        "Glass Measuring Jug 500ml", "Bamboo Cutting Board 30cm", "Stainless Garlic Press", "Manual Citrus Reamer",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

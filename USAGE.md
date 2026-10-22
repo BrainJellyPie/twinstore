@@ -1086,7 +1086,7 @@ care, hair care, travel essentials, sewing, fine art, bicycle accessories, stora
 refill cleaning. Mediterranean, Korean and Japanese pantry staples, spice blends, deli cheeses, fresh seafood,
 barista tools and party supplies add another 96 products. Kitchen and baking tools, laundry care, aquarium and small-pet supplies, computer peripherals, camera accessories
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
-home lighting and bathroom accessories add 96 more. Two hundred fifty-six generated
+home lighting and bathroom accessories add 96 more. Three hundred twenty generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 Automatic selection sees which products have photos and prefers them only when they fit the store and
 requirements equally well. Products without photos remain available.

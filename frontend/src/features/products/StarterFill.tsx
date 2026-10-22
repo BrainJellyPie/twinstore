@@ -12,7 +12,7 @@ import { useSimulationStore } from "@/stores/simulationStore";
 import { useI18n } from "@/shared/i18n/i18n";
 import { RequestError } from "@/shared/components/RequestError";
 import { UserMessageError } from "@/shared/i18n/userMessage";
-import { priceText } from "./productDrafts";
+import { formatMoney } from "@/shared/utils/money";
 
 export function StarterFill({ pid, sid }: { pid: string; sid: string }) {
   const { t } = useI18n();
@@ -48,7 +48,7 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
   pid: string; sid: string; initial: StarterCatalog; refreshing: boolean; reload: () => void; close: () => void;
   mode: "auto" | "manual"; setMode: (mode: "auto" | "manual") => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [snapshot] = useState(initial);
   const [requirements, setRequirements] = useState("");
   const [search, setSearch] = useState("");
@@ -141,7 +141,7 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
         <Button variant="outline" onClick={reload}>{t("starterDiscardReload")}</Button>
       </div>
     </fieldset>
-    {sample && <details><summary>{t("starterReferenceProducts", { category: sample.label })}</summary><ul>{sample.products.map((p) => <li key={p.sku}>{p.name} — {priceText(p.price, snapshot.currency)} {snapshot.currency}</li>)}</ul></details>}
+    {sample && <details><summary>{t("starterReferenceProducts", { category: sample.label })}</summary><ul>{sample.products.map((p) => <li key={p.sku}>{p.name} — {formatMoney(p.price, snapshot.currency, { locale })}</li>)}</ul></details>}
     <div className="max-h-[35dvh] overflow-auto rounded border">
       {shown.map((rack) => <div key={rack.id} className="space-y-1 border-b p-2">
         <label><input type="checkbox" aria-label={t("starterSelectRack", { rack: rack.id })} disabled={locked || !!rack.reason} checked={selected.has(rack.id)} onChange={(e) => { const next = new Map(selected); if (e.target.checked) next.set(rack.id, category || rack.suggested_category || ""); else next.delete(rack.id); choose(next); }} /> {rack.name} · {rack.type} · {rack.id}</label>
@@ -155,7 +155,7 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
     <RequestError error={error} />
     {preview.data && <section aria-label={t("starterPreviewRegion")} className="min-w-0 space-y-2 rounded border p-3">
       <p>{t("starterPreviewSummary", { racks: preview.data.racks.length, placements: preview.data.placements_added, newSkus: preview.data.new_skus, reusedSkus: preview.data.reused_skus })}</p>
-      {preview.data.racks.map((rack) => <details key={rack.id}><summary>{t("starterRackSummary", { rack: rack.name, sections: rack.slots_added, placements: rack.placements_added })}</summary><ul>{rack.products.map((p) => <li className="flex items-center gap-2 py-1" key={p.sku}>{p.image_url && <img className="size-14 shrink-0 rounded border object-contain" loading="lazy" src={resolveImageUrl(p.image_url)} alt={p.name} />}<span>{p.name} — {priceText(p.price, snapshot.currency)} {snapshot.currency} {rack.reused_skus.includes(p.sku) ? t("starterExistingValues") : t("starterReference")}</span></li>)}</ul></details>)}
+      {preview.data.racks.map((rack) => <details key={rack.id}><summary>{t("starterRackSummary", { rack: rack.name, sections: rack.slots_added, placements: rack.placements_added })}</summary><ul>{rack.products.map((p) => <li className="flex items-center gap-2 py-1" key={p.sku}>{p.image_url && <img className="size-14 shrink-0 rounded border object-contain" loading="lazy" src={resolveImageUrl(p.image_url)} alt={p.name} />}<span>{p.name} — {formatMoney(p.price, snapshot.currency, { locale })} {rack.reused_skus.includes(p.sku) ? t("starterExistingValues") : t("starterReference")}</span></li>)}</ul></details>)}
       {prepared && !save.data && <Button disabled={busy} onClick={() => void persist()}>{save.isPending ? t("starterSaving") : save.isError ? t("starterRetrySave") : t("starterSave")}</Button>}
     </section>}
     {save.isError && <RequestError error={save.error}><p>{t("starterUncertainSave")}</p></RequestError>}

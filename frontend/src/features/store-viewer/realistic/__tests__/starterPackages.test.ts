@@ -110,3 +110,18 @@ it("keeps apparel, plants and hobby supplies out of drink and food departments",
   expect(classifyProduct("상품", "/api/catalog-images/starter-16/1.webp").kind).toBe("bottle");
   expect(classifyProduct("상품", "/api/catalog-images/starter-16/14.webp").kind).toBe("box");
 });
+
+it("distinguishes groceries from reusable baking tools and household equipment", () => {
+  for (const index of [2, 3])
+    expect(classifyProduct("지역 상품", `/api/catalog-images/starter-17/${index}.webp`)).toMatchObject({ category: "pantry", lieFlatInChest: true });
+  expect(classifyProduct("Coffee", "/api/catalog-images/starter-17/11.webp").category).toBe("other");
+  for (const index of [0, 12, 13, 14, 15])
+    expect(classifyProduct("지역 상품", `/api/catalog-images/starter-17/${index}.webp`).category).toBe("drink");
+  for (const sheet of ["starter-18", "starter-19", "starter-20"]) {
+    for (let index = 0; index < 16; index++) {
+      const product = classifyProduct("Coffee Milk", `/api/catalog-images/${sheet}/${index}.webp`);
+      expect(product.category).toBe("other");
+      expect([product.w, product.h, product.d].every(n => n > 0 && Number.isFinite(n))).toBe(true);
+    }
+  }
+});
