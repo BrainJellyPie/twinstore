@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Translate shelf-product reuse into six languages, including eligibility reasons, section review,
+  price formatting, save/retry and accessibility text. Preserve selections and request identities
+  across language changes and keep legacy API reason compatibility. Stabilize seeded neighborhood
+  trip assignments when demand-report ordering changes.
+
 - Add 64 grocery, baby, pet, stationery, art, technology, travel, game and household photos,
   reaching 320 bundled product images. Preserve automatic starter selection and image previews
   when merging the six-language interface; automatic choices and recovery guidance are localized too.

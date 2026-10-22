@@ -129,7 +129,10 @@ def plan_arrivals(
         """Direct origins of `segment` (None: every segment) weighted by their visitors of `age` (None: all)."""
         key = (segment, age)
         if key not in origin_cache:
-            options = [o for o in demand.origin_shares if segment is None or o.segment == segment]
+            # Demand reports sort by volume. A small volume change must not reorder the
+            # same origins under a seeded draw and silently change otherwise paired trips.
+            options = sorted((o for o in demand.origin_shares if segment is None or o.segment == segment),
+                             key=lambda o: (o.building_id, o.segment))
             weights = [o.expected_visitors if age is None else o.by_age.get(age, 0.0) for o in options]
             origin_cache[key] = (options, list(itertools.accumulate(weights)))
         return origin_cache[key]
@@ -138,7 +141,8 @@ def plan_arrivals(
 
     def linked_for(category: str) -> tuple[list[LinkedTrip], list[float]]:
         if category not in linked_cache:
-            options = [t for t in demand.linked_trips if t.from_category.value == category]
+            options = sorted((t for t in demand.linked_trips if t.from_category.value == category),
+                             key=lambda t: t.from_venue_id)
             linked_cache[category] = (options, list(itertools.accumulate(t.expected_visitors for t in options)))
         return linked_cache[category]
 

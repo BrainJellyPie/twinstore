@@ -6,6 +6,8 @@ import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } fr
 import * as api from "@/shared/api/client";
 import { TownPage } from "../TownPage";
 import { useAssistStore } from "@/stores/assistStore";
+import { LOCALES } from "@/shared/i18n/messages";
+import { translate, useLocale } from "@/shared/i18n/i18n";
 
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), getTown: vi.fn(), getTownDemand: vi.fn(), getScenarios: vi.fn(), describeTown: vi.fn(), generateTown: vi.fn(),
@@ -15,12 +17,13 @@ vi.mock("../StorefrontCard", () => ({ StorefrontCard: () => null }));
 vi.mock("../VlmSynergyDialog", () => ({ VlmSynergyDialog: () => null }));
 const clients: QueryClient[] = [];
 beforeEach(() => {
+  useLocale.getState().setLocale("en");
   vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   vi.mocked(api.getTown).mockResolvedValue(null);
   vi.mocked(api.getTownDemand).mockImplementation(() => new Promise(() => {}));
   vi.mocked(api.getScenarios).mockResolvedValue([]);
 });
-afterEach(() => { useAssistStore.setState({ pending: null }); cleanup(); clients.splice(0).forEach((client) => client.clear()); vi.resetAllMocks(); vi.restoreAllMocks(); });
+afterEach(() => { useAssistStore.setState({ pending: null }); cleanup(); clients.splice(0).forEach((client) => client.clear()); vi.resetAllMocks(); vi.restoreAllMocks(); useLocale.getState().setLocale("en"); });
 const RESULT = { spec: { archetype: "university" as const, size_m: 650, density: 0.8, n_competitors: 2, neighbor_categories: ["bank" as const], seed: 1, name: "Campus" }, rationale: "Old area rationale" };
 function deferred<T>() {
   let resolve!: (value: T) => void; let reject!: (reason: Error) => void;
@@ -49,6 +52,22 @@ function edit(kind: typeof EDITS[number]) {
   if (kind === "neighbors") fireEvent.click(screen.getByRole("button", { name: "Café" }));
 }
 const values = () => Array.from(document.querySelectorAll('select, input, textarea')).map((node) => (node as HTMLInputElement).value);
+
+it.each(LOCALES)("renders translated neighborhood labels rather than catalog keys in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  vi.mocked(api.generateTown).mockImplementation(() => new Promise(() => {}));
+  await mount();
+  expect(screen.getByRole("option", { name: translate(code, "areaArchetypeResidential") }).getAttribute("value")).toBe("residential");
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "areaVenuePharmacy") }));
+  const before = values();
+  act(() => useLocale.getState().setLocale("en"));
+  expect(values()).toEqual(before);
+  expect(screen.queryByText("areaVenuePharmacy")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+  await waitFor(() => expect(api.generateTown).toHaveBeenCalledWith("alpha", expect.objectContaining({
+    archetype: "residential", neighbor_categories: ["cafe", "pharmacy"],
+  })));
+});
 
 it.each(EDITS)("preserves a newer %s when a description finishes late", async (kind) => {
   const request = deferred<typeof RESULT>(); vi.mocked(api.describeTown).mockReturnValue(request.promise);

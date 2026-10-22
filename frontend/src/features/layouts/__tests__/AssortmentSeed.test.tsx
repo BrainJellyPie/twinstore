@@ -23,7 +23,7 @@ function Picker({ seed }: { seed: number }) {
 async function mount(seed = 0) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
   render(<QueryClientProvider client={client}><Picker seed={seed} /></QueryClientProvider>);
-  await screen.findByRole("radio", { name: /^City store/ });
+  await screen.findByRole("radio", { name: /^Urban convenience store/ });
   await screen.findByRole("img", { name: "Floor plan preview" });
 }
 

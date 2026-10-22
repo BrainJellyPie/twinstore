@@ -1,44 +1,60 @@
 """Exact same-footprint rack reuse; never truncate or overwrite products."""
 from store_emulator.domain.product_edits import MAX_PRICE
 from store_emulator.domain.rack import Rack, RackType
-from store_emulator.domain.rack_copy import RackCopyChoice, RackCopyPreview
+from store_emulator.domain.rack_copy import RackCopyChoice, RackCopyPreview, RackCopyReason
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face
 from store_emulator.engine.starter_fill import available_faces
+
+
+REASON_TEXT: dict[RackCopyReason, str] = {
+    "choose_stocked": "Choose a stocked shelf or fridge",
+    "source_inaccessible": "Source products include blocked, locked or unreachable faces; repair them first",
+    "source_invalid_products": "Source products need valid SKUs and safe integer prices",
+    "source_rack": "This is the source rack",
+    "occupied": "Already contains products; kept unchanged",
+    "fixture_mismatch": "Needs the same fixture type and footprint in the same orientation",
+    "target_inaccessible": "A copied product face would be blocked, locked or unreachable",
+}
 
 
 def _count(rack: Rack) -> int:
     return sum(len(slot.items) for slot in rack.slots)
 
 
-def _source_reason(rack: Rack, faces: dict[str, list[tuple[int, Face]]]) -> str | None:
+def _source_reason(rack: Rack, faces: dict[str, list[tuple[int, Face]]]) -> RackCopyReason | None:
     if rack.id not in faces or not _count(rack):
-        return "Choose a stocked shelf or fridge"
+        return "choose_stocked"
     if any((slot.block, slot.face) not in faces[rack.id] for slot in rack.slots if slot.items):
-        return "Source products include blocked, locked or unreachable faces; repair them first"
+        return "source_inaccessible"
     if any(not item.sku.strip() or item.price > MAX_PRICE or item.regular_price > MAX_PRICE
            for slot in rack.slots for item in slot.items):
-        return "Source products need valid SKUs and safe integer prices"
+        return "source_invalid_products"
     return None
 
 
-def _target_reason(source: Rack, target: Rack, faces: dict[str, list[tuple[int, Face]]]) -> str | None:
+def _target_reason(source: Rack, target: Rack, faces: dict[str, list[tuple[int, Face]]]) -> RackCopyReason | None:
     if source.id == target.id:
-        return "This is the source rack"
+        return "source_rack"
     if _count(target):
-        return "Already contains products; kept unchanged"
+        return "occupied"
     if source.type != target.type or source.rotated_shape != target.rotated_shape:
-        return "Needs the same fixture type and footprint in the same orientation"
+        return "fixture_mismatch"
     if any((slot.block, slot.face) not in faces.get(target.id, []) for slot in source.slots if slot.items):
-        return "A copied product face would be blocked, locked or unreachable"
+        return "target_inaccessible"
     return None
+
+
+def _choice(rack: Rack, placements: int, reason: RackCopyReason | None) -> RackCopyChoice:
+    return RackCopyChoice(id=rack.id, name=rack.rack_name or rack.id, type=rack.type.value,
+                          placements=placements, reason=REASON_TEXT[reason] if reason else None,
+                          reason_code=reason)
 
 
 def choices(store: Store, source_id: str | None) -> tuple[list[RackCopyChoice], list[RackCopyChoice]]:
     faces = available_faces(store)
     racks = [rack for rack in store.racks if rack.type in {RackType.SHELF, RackType.FRIDGE}]
-    sources = [RackCopyChoice(id=r.id, name=r.rack_name or r.id, type=r.type.value, placements=_count(r),
-                              reason=_source_reason(r, faces)) for r in racks if _count(r)]
+    sources = [_choice(r, _count(r), _source_reason(r, faces)) for r in racks if _count(r)]
     if source_id is None:
         return sources, []
     source = next((r for r in racks if r.id == source_id), None)
@@ -46,9 +62,8 @@ def choices(store: Store, source_id: str | None) -> tuple[list[RackCopyChoice], 
         raise ValueError("The source shelf no longer exists")
     reason = _source_reason(source, faces)
     if reason:
-        raise ValueError(reason)
-    return sources, [RackCopyChoice(id=r.id, name=r.rack_name or r.id, type=r.type.value, placements=_count(source),
-                                    reason=_target_reason(source, r, faces)) for r in racks]
+        raise ValueError(REASON_TEXT[reason])
+    return sources, [_choice(r, _count(source), _target_reason(source, r, faces)) for r in racks]
 
 
 def copy_products(store: Store, source_id: str, target_ids: list[str]) -> tuple[Store, RackCopyPreview]:
