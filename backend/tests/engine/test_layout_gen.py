@@ -246,10 +246,12 @@ def test_large_fashion_outlet_has_four_checkouts_and_combines_apparel_shoes_and_
     assert store.grid_size == (32, 24)
     assert len(store.counters) == 4
     assert store.design_theme == "coastal"
-    assert {rack.rack_desc for rack in store.product_racks} == {"apparel", "footwear", "travel_gear"}
+    assert {rack.rack_desc for rack in store.product_racks} == {
+        "apparel", "footwear", "travel_gear", "hair_accessories", "jewelry", "travel_essentials"}
     assert validate(store) == []
     restricted = generate_store("fashion_outlet", options=LayoutOptions(excluded_categories=["footwear"]))
-    assert {rack.rack_desc for rack in restricted.product_racks} == {"apparel", "travel_gear"}
+    assert {rack.rack_desc for rack in restricted.product_racks} == {
+        "apparel", "travel_gear", "hair_accessories", "jewelry", "travel_essentials"}
     assert validate(restricted) == []
 
 

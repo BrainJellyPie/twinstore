@@ -1092,7 +1092,7 @@ assignments are rejected. Review the products, prices and available images, then
 Automatic selection supports 1–100 empty accessible racks. A failed model call leaves the layout unchanged;
 retry or switch to **Choose categories manually**, which needs no model or spreadsheet.
 
-The bundled catalog now includes 1,400 products in 123 categories. New examples cover plant-based foods,
+The bundled catalog now includes 1,496 products in 131 categories. New examples cover plant-based foods,
 breakfast spreads, home coffee/tea, bath/body care, first-aid tools, supplements, indoor plants, digital
 accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Further assortments cover
 baking ingredients, global sauces, fresh herbs, frozen and takeaway meals, gift confectionery, baby and oral
@@ -1101,8 +1101,16 @@ refill cleaning. Mediterranean, Korean and Japanese pantry staples, spice blends
 barista tools and party supplies add another 96 products. Kitchen and baking tools, laundry care, aquarium and small-pet supplies, computer peripherals, camera accessories
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
-woodcraft, ceramic craft and gift wrapping add another 96. Four hundred sixteen generated
+woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
+educational toys, puzzles, model building and miniature painting add another 96. Four hundred forty-eight generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
+The 82 default map templates also include the expanded products in suitable departments. For example, toy
+shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and
+bath products; cafés include coffee and barista supplies; home stores include linens, tableware and lighting.
+Choose a template to see its stocked map, including available product images, before saving. These format
+defaults need no product-selection model call; they also apply when automatic starter products are turned off.
+Category exclusions and product-count limits apply to the new departments too.
+
 Automatic selection sees which products have photos and prefers them only when they fit the store and
 requirements equally well. Products without photos remain available.
 

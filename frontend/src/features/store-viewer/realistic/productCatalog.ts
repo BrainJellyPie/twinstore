@@ -469,6 +469,24 @@ const STARTER_PACKAGES: Record<string, PackageSpec[]> = { "starter-01": [
   spec("box", 0.2, 0.035, 0.045, "other"),    spec("box", 0.09, 0.16, 0.02, "other"),
   spec("box", 0.11, 0.04, 0.09, "other"),    spec("box", 0.045, 0.2, 0.015, "other"),
   spec("bag", 0.2, 0.08, 0.16, "other"),    spec("bag", 0.18, 0.07, 0.11, "other"),
+], "starter-27": [
+  spec("cup", 0.12, 0.065, 0.12, "other"),    spec("box", 0.2, 0.03, 0.2, "other"),
+  spec("bag", 0.2, 0.09, 0.18, "other"),    spec("box", 0.25, 0.01, 0.2, "other"),
+  spec("box", 0.18, 0.11, 0.08, "other"),    spec("box", 0.11, 0.06, 0.05, "other"),
+  spec("bag", 0.15, 0.2, 0.12, "other"),    spec("bag", 0.14, 0.25, 0.12, "other"),
+  spec("box", 0.15, 0.15, 0.15, "other"),    spec("box", 0.1, 0.14, 0.025, "other"),
+  spec("box", 0.25, 0.06, 0.18, "other"),    spec("box", 0.15, 0.025, 0.15, "other"),
+  spec("box", 0.07, 0.13, 0.02, "other"),    spec("box", 0.21, 0.297, 0.003, "other"),
+  spec("bag", 0.07, 0.2, 0.02, "other"),    spec("box", 0.16, 0.08, 0.06, "other"),
+], "starter-28": [
+  spec("box", 0.18, 0.24, 0.035, "other"),    spec("box", 0.16, 0.07, 0.12, "other"),
+  spec("cup", 0.12, 0.12, 0.09, "other"),    spec("bag", 0.16, 0.07, 0.14, "other"),
+  spec("box", 0.18, 0.09, 0.07, "other"),    spec("box", 0.16, 0.1, 0.08, "other"),
+  spec("bag", 0.14, 0.2, 0.12, "other"),    spec("bag", 0.18, 0.25, 0.12, "other"),
+  spec("box", 0.23, 0.2, 0.07, "other"),    spec("box", 0.22, 0.1, 0.16, "other"),
+  spec("box", 0.23, 0.05, 0.16, "other"),    spec("box", 0.25, 0.06, 0.2, "other"),
+  spec("box", 0.05, 0.14, 0.015, "other"),    spec("bag", 0.08, 0.18, 0.015, "other"),
+  spec("tube", 0.055, 0.1, 0.055, "other"),    spec("box", 0.17, 0.035, 0.12, "other"),
 ] };
 
 export function classifyProduct(name: string, imageUrl?: string | null): PackageSpec {

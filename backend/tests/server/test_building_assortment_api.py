@@ -47,7 +47,8 @@ def test_shared_assortment_round_trips_six_different_floors_without_replacing_ot
 
 
 def test_a_target_with_no_remaining_category_blocks_partial_save_and_recovers_independently(client):
-    shared = {"seed": 26, "excluded_categories": ["electronics"], "products_per_category": 2, "category_product_limits": {"electronics": 6}}
+    excluded = ["electronics", "digital_accessories", "computer_peripherals", "photography_accessories", "home_lighting"]
+    shared = {"seed": 26, "excluded_categories": excluded, "products_per_category": 2, "category_product_limits": {"electronics": 6}}
     good = {**shared, "template_id": "urban_cvs"}
     assert client.post(f"/api/projects/{PID}/setups/generate", json=good).status_code == 200
     before = client.get(f"/api/projects/{PID}/setups").json()
@@ -59,5 +60,5 @@ def test_a_target_with_no_remaining_category_blocks_partial_save_and_recovers_in
     fixed = client.post(f"/api/projects/{PID}/setups/generate-building", json={"name": "Fixed exclusions", "floors": floors})
     assert fixed.status_code == 200, fixed.text
     saved = [client.get(f"/api/projects/{PID}/setups/{setup['id']}").json() for setup in fixed.json()["setups"]]
-    assert [setup["generation"]["excluded_categories"] for setup in saved] == [["electronics"], []]
+    assert [setup["generation"]["excluded_categories"] for setup in saved] == [excluded, []]
     assert [setup["generation"]["category_product_limits"] for setup in saved] == [{"electronics": 6}, {"electronics": 6}]

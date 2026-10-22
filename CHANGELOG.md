@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Apply the expanded product catalog to all 82 default map templates, with departments
+  matched to each store format and bundled product images retained in previews and saved floors.
+  The default maps collectively stock every catalog product, including all 131 categories;
+  category exclusions, assortment limits and small-floor layouts remain supported.
+
+- Add 96 baby feeding, baby bath, toy vehicle, plush, educational toy, puzzle, model
+  building and miniature painting products, plus 32 photos and six-language category labels.
+  The catalog now has 1,496 products in 131 categories with 448 bundled images.
+
 - Translate detailed floor previews, comparison metrics, gate legends and SVG exports
   into all six interface languages. Preserve expanded previews and zoom when changing
   language, and retain original layout and product data.
