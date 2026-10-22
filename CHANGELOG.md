@@ -10,6 +10,9 @@
 - The local model's llama.cpp program, downloaded by a version before 0.4.3, did not count as downloaded: a newer
   version deleted it and fetched it again, and since 0.4.8 it did not start at all without Start (and without
   internet access, not even then). A complete earlier download is kept and starts as before.
+- Compare paired different people when the customers had been written again between the two runs, which versions
+  before 0.4.7 allowed once the earlier run's layout was deleted (the new customers reuse the ids M1001, F1003, …).
+  Such customers are now left out, and the comparison says how many.
 
 ## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
 
