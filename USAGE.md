@@ -128,6 +128,10 @@ export preserves the exact names, floor order and area coordinates.
   where a lone cashier refilling the drinks fridge makes the line grow, which separate tills cannot show. The refill
   times (30 s per shelf plus 4 s per unit) are assumptions — ask for their own time study before trusting the
   staff-hour split. Costs: the till-hour cost then counts each crew member's hour.
+- **Shifts** (in **Try other stock and staffing**, with a crew): a roster of shifts by weekday replaces the crew
+  number and the crew by hour. Coach users who will act on a plan to tick **Plan a roster of shifts** with their
+  shortest and longest allowed shifts: hourly numbers are the cheapest staffing in theory, the roster is the one
+  they can schedule, and the gap between the two is the price of workable shifts.
 - **Shoppers at one shelf that feel crowded** (default 4; blank = no effect): with that many stopped at one shelf at
   once, each unplanned pick there is skipped with a 35 % chance (`crowd_skip`). Planned buys are always made.
 

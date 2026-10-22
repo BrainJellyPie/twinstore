@@ -116,7 +116,7 @@ describe("the run dialog", () => {
     await submit();
     await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({
       operations: { stock_per_facing: 4, restock_every_min: 120, open_counters: 2, patience_sec: 300, crowd_limit: 4,
-        backroom_per_product: null, daily_delivery: true, crew: null, crew_schedule: {} },
+        backroom_per_product: null, daily_delivery: true, crew: null, crew_schedule: {}, crew_shifts: [] },
     })));
   });
 
@@ -366,5 +366,15 @@ describe("the crew's day", () => {
   it("is left out without crew tasks", () => {
     render(<OperationsReportView report={{ ...crewed, crew_tasks: [] }} currency="USD_CENTS" />);
     expect(screen.queryByRole("figure")).toBeNull();
+  });
+});
+
+describe("a roster", () => {
+  it("is named in the results, shift by shift", () => {
+    render(<OperationsReportView currency="USD_CENTS" report={{ ...report, config: { ...report.config, crew: 1, crew_schedule: {}, refill_at: 0.5,
+      crew_shifts: [{ start: 8, end: 16, days: [], staff: 1 }, { start: 16, end: 22, days: [6, 7], staff: 2 }] },
+      crew_hours: 30, crew_till_hours: 2, crew_refill_hours: 3, face_refills: 10, refill_wait_min: 2, refills_unfinished: 0 }} />);
+    expect(screen.getByText("Shifts: 2 · Units per shelf level: 12 · Refill at: 50% of full")).toBeTruthy();
+    expect(screen.getByText("Shifts: Every day 08:00–16:00 ×1 · Sat, Sun 16:00–22:00 ×2")).toBeTruthy();
   });
 });

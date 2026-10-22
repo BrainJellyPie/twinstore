@@ -158,7 +158,7 @@ it("starts a run whose shoppers had the store alone from the default store", asy
   fireEvent.click(lab.getByRole("button", { name: "Replay" }));
   await waitFor(() => expect(api.replayOperations).toHaveBeenCalledWith("p", "r", {
     operations: { stock_per_facing: 12, restock_every_min: 120, open_counters: null, patience_sec: 300, crowd_limit: 4,
-      backroom_per_product: null, daily_delivery: true, crew: null, till_schedule: {}, stock_overrides: {}, crew_schedule: {} },
+      backroom_per_product: null, daily_delivery: true, crew: null, till_schedule: {}, stock_overrides: {}, crew_schedule: {}, crew_shifts: [] },
     costs: { till_hour: 0, restock_round: 0, stock_unit_day: 5 },
   }));
   // The replayed hours can then be staffed one by one.
@@ -208,4 +208,41 @@ it("staffs a crew hour by hour, costs a staff hour and plans the crew", async ()
   await waitFor(() => expect(api.replayOperations).toHaveBeenLastCalledWith("p", "r", expect.objectContaining({
     operations: expect.objectContaining({ crew: null, crew_schedule: {} }),
   })));
+});
+
+it("edits a roster of shifts by weekday and plans one", async () => {
+  const crewed = { config: { ...config, crew: 2, crew_schedule: {}, refill_at: 0.5,
+    crew_shifts: [{ start: 8, end: 16, days: [], staff: 1 }] }, hours } as unknown as api.OperationsReport;
+  vi.mocked(api.planOperations).mockResolvedValue({
+    current_config: crewed.config, current: { ...outcome(90000, 44100), crew_hours: 30 },
+    config: { ...crewed.config, crew_shifts: [{ start: 8, end: 16, days: [], staff: 1 }, { start: 12, end: 20, days: [6, 7], staff: 2 }] },
+    best: { ...outcome(95000, 50000), crew_hours: 31 }, replays: 120, raised_skus: [],
+  });
+  const lab = show({ report: crewed });
+  // With shifts, the shifts decide who is on duty: no crew-by-hour fields.
+  expect(lab.queryByLabelText("Crew at 17:00")).toBeNull();
+  const first = lab.getByRole("group", { name: "Shift 1" });
+  expect((within(first).getByLabelText("From") as HTMLInputElement).value).toBe("8");
+  fireEvent.click(lab.getByRole("button", { name: "Add a shift" }));
+  const second = lab.getByRole("group", { name: "Shift 2" });
+  fireEvent.change(within(second).getByLabelText("From"), { target: { value: "16" } });
+  fireEvent.change(within(second).getByLabelText("To"), { target: { value: "22" } });
+  fireEvent.click(within(second).getByRole("button", { name: "Sat" }));
+  expect(within(second).getByRole("button", { name: "Sat" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(lab.getByRole("button", { name: "Replay" }));
+  await waitFor(() => expect(api.replayOperations).toHaveBeenCalledWith("p", "r", expect.objectContaining({
+    operations: expect.objectContaining({ crew_shifts: [{ start: 8, end: 16, days: [], staff: 1 }, { start: 16, end: 22, days: [6], staff: 1 }] }),
+  })));
+  // An impossible shift blocks replaying.
+  fireEvent.change(within(second).getByLabelText("To"), { target: { value: "15" } });
+  expect(lab.getByRole("alert").textContent).toContain("Check the shifts");
+  expect((lab.getByRole("button", { name: "Replay" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(lab.getByRole("button", { name: "Remove shift 2" }));
+  fireEvent.click(lab.getByLabelText("Plan a roster of shifts"));
+  fireEvent.change(lab.getByLabelText("Longest shift (hours)"), { target: { value: "6" } });
+  fireEvent.click(lab.getByRole("button", { name: "Find the best plan" }));
+  await waitFor(() => expect(api.planOperations).toHaveBeenCalledWith("p", "r", expect.objectContaining({ roster: { min_hours: 4, max_hours: 6 } })));
+  expect(await lab.findByText("Shifts: Every day 08:00–16:00 ×1 · Sat, Sun 12:00–20:00 ×2")).toBeTruthy();
+  fireEvent.click(lab.getByRole("button", { name: "Use this plan" }));
+  expect(lab.getByRole("group", { name: "Shift 2" })).toBeTruthy();
 });

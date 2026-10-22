@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### A roster the crew can work: shifts by weekday
+- The crew can now be set as shifts — from one hour to another, on chosen weekdays (none = every day), with a
+  number of staff — instead of numbers hour by hour. **Try other stock and staffing → Shifts** edits them; with
+  shifts, they decide who is on duty in each hour of each weekday, and the last shift of the day stays until the
+  last shopper has paid.
+- **Plan a roster of shifts** (with the shortest and longest shift, 4–8 hours by default) makes **Find the best plan**
+  answer with a roster: shifts covering what each hour needs, then trimmed shift by shift and weekday by weekday
+  while that leaves more money after costs — a rota people can work instead of hourly numbers nobody can.
+- Store operations names the roster; playback shows its staff on duty by weekday. API: `crew_shifts` in
+  `operations` (`start`, `end`, `days`, `staff`) and `roster: {min_hours, max_hours}` on `/operations/plan`.
+
 ### The crew at work, in 3D and on a timeline
 - In a crew run's playback the staff are in the store: each one on duty stands at their till while serving, at the
   shelf they are refilling (with "Refilling …" over their head), or beside the tills waiting for work — a ring on

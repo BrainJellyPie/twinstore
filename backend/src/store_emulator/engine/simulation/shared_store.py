@@ -343,7 +343,7 @@ def _play_day(
     counter_ids = [counter.id for counter in store.counters]
     close_at = schedule.close_hour * 3600 if schedule is not None and schedule.is_open else end
     if config.crew is not None:
-        size = max([config.crew, *config.crew_schedule.values()])
+        size = max(crew_on_duty(config, hour, int(day)) for hour in range(24))
         crew = _Crew(config=config, tills=tills, keys=list(products), free=[float(opening)] * size)
         ids = {key: face for face, key in enumerate(crew.keys)}
         state.touched = []
@@ -360,12 +360,18 @@ def _play_day(
             heapq.heappush(heap, (moment, _RESTOCK, -1, -1))
             moment += step
 
+    def duty_hour(moment: float) -> int:
+        # A roster's last shift stays until the last shopper has paid: after closing its hour goes on.
+        if config.crew_shifts and moment >= close_at > opening:
+            moment = close_at - 1
+        return int(moment) // 3600 % 24
+
     def staffed(moment: float) -> int:
-        return tills_open(config, tills, counters, int(moment) // 3600 % 24)
+        return tills_open(config, tills, counters, duty_hour(moment), int(day))
 
     def dispatch(moment: float) -> None:
         if crew is not None and opening <= moment < close_at:
-            crew.dispatch(moment, crew_on_duty(config, int(moment) // 3600 % 24), state, products, backroom, heap)
+            crew.dispatch(moment, crew_on_duty(config, duty_hour(moment), int(day)), state, products, backroom, heap)
 
     free = crew.free if crew is not None else [float(opening)] * tills
     busy = 0.0
@@ -458,7 +464,7 @@ def _play_day(
     while hour < closing:
         open_seconds += staffed(hour) * (min(closing, hour + 3600) - hour)
         if crew is not None:
-            report.crew_hours += crew_on_duty(config, int(hour) // 3600 % 24) * (min(closing, hour + 3600) - hour) / 3600
+            report.crew_hours += crew_on_duty(config, duty_hour(hour), int(day)) * (min(closing, hour + 3600) - hour) / 3600
         hour += 3600
     if crew is not None:
         report.crew_till_hours += crew.serving / 3600
@@ -489,18 +495,16 @@ def open_hours(store: Store, results: list[CustomerResult]) -> list[str]:
     return [f"{hour:02d}" for hour in sorted(hours)]
 
 
-def crew_on_duty(config: OperationsConfig, hour: int) -> int:
-    """Crew on duty in an hour of the day: the hour's own number, else the run's (0 without a crew)."""
-    if config.crew is None:
-        return 0
-    return config.crew_schedule.get(f"{hour:02d}", config.crew)
+def crew_on_duty(config: OperationsConfig, hour: int, day: int) -> int:
+    """Crew on duty in an hour of a weekday (0 without a crew): see OperationsConfig.crew_on_duty."""
+    return config.crew_on_duty(day, hour)
 
 
-def tills_open(config: OperationsConfig, tills: int, counters: int, hour: int) -> int:
+def tills_open(config: OperationsConfig, tills: int, counters: int, hour: int, day: int) -> int:
     """Tills staffed in an hour of the day: the hour's own number, else the run's, never more than the layout has.
     With a crew, as many tills as there is crew on duty."""
     if config.crew is not None:
-        return min(tills, crew_on_duty(config, hour))
+        return min(tills, crew_on_duty(config, hour, day))
     return min(tills, config.till_schedule.get(f"{hour:02d}", counters))
 
 
@@ -754,10 +758,12 @@ def _queue_summary(
         hours[hour].avg_wait_sec = round(sum(values) / len(values), 1)
         hours[hour].max_wait_sec = round(max(values), 1)
     needed = counters_needed([(results[index].day, c.arrived, c.units) for index, c in queued], config)
+    days = sorted({int(results[index].day) for index, _ in queued})
     for hour, stats in hours.items():
         stats.counters_needed = needed.get(hour, 1)
-        stats.counters_open = tills_open(config, tills, counters, int(hour))
-        stats.crew_on_duty = crew_on_duty(config, int(hour))
+        # A roster can staff the hour differently on each weekday: the most it does.
+        stats.counters_open = max(tills_open(config, tills, counters, int(hour), day) for day in days)
+        stats.crew_on_duty = max(crew_on_duty(config, int(hour), day) for day in days)
     report.hours = [hours[h] for h in sorted(hours)]
     report.counters_needed = max((h.counters_needed for h in report.hours), default=0)
 

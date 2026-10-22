@@ -232,3 +232,21 @@ def test_a_crew_runs_the_tills_and_the_shelves_through_the_api(client):
 @pytest.mark.parametrize("bad", [{"max_crew": 0}, {"max_crew": 101}, {"operations": {"crew_schedule": {"10": 1}}}])
 def test_impossible_crew_plan_requests_are_refused(client, bad):
     assert client.post(f"/api/projects/{PID}/runs/run_x/operations/plan", json=bad).status_code == 422
+
+
+def test_a_plan_can_answer_with_a_roster_through_the_api(client):
+    rid = _run(client, _layout(client), operations={"crew": 1, "stock_per_facing": 2})
+    plan = client.post(f"/api/projects/{PID}/runs/{rid}/operations/plan",
+                       json={"costs": {"till_hour": 1000}, "roster": {"min_hours": 3, "max_hours": 6}}).json()
+    shifts = plan["config"]["crew_shifts"]
+    assert shifts and all(3 <= s["end"] - s["start"] <= 6 and s["staff"] >= 1 for s in shifts)
+    replay = client.post(f"/api/projects/{PID}/runs/{rid}/operations/replay",
+                         json={"operations": plan["config"], "costs": {"till_hour": 1000}}).json()
+    assert replay["outcome"] == plan["best"]
+
+
+@pytest.mark.parametrize("bad", [{"roster": {"min_hours": 0}}, {"roster": {"min_hours": 6, "max_hours": 4}},
+                                 {"operations": {"crew_shifts": [{"start": 8, "end": 12}]}},
+                                 {"operations": {"crew": 1, "crew_shifts": [{"start": 9, "end": 8}]}}])
+def test_impossible_rosters_are_refused(client, bad):
+    assert client.post(f"/api/projects/{PID}/runs/run_x/operations/plan", json=bad).status_code == 422

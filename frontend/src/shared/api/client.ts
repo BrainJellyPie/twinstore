@@ -417,6 +417,8 @@ export interface OperationsConfig {
   // shelf is refilled once down to refill_at of full, taking refill_face_sec plus refill_unit_sec per unit.
   crew?: number | null;
   crew_schedule?: Record<string, number>;
+  // A roster instead: the staff of the shifts covering an hour of a weekday are on duty then.
+  crew_shifts?: CrewShift[];
   refill_at?: number;
   refill_face_sec?: number;
   refill_unit_sec?: number;
@@ -475,7 +477,21 @@ export interface QueueHour {
   counters_needed: number;
 }
 
-type CrewSettings = "crew" | "crew_schedule" | "refill_at" | "refill_face_sec" | "refill_unit_sec";
+type CrewSettings = "crew" | "crew_schedule" | "crew_shifts" | "refill_at" | "refill_face_sec" | "refill_unit_sec";
+
+/** Staff on duty from one hour to another (end: the hour they leave), on some weekdays (none = every day). */
+export interface CrewShift {
+  start: number;
+  end: number;
+  days: number[];
+  staff: number;
+}
+
+/** How long a shift may be when the plan search builds a roster. */
+export interface RosterRules {
+  min_hours?: number;
+  max_hours?: number;
+}
 
 /** What one crew member did for a while (clock seconds of the day): serving at a till or refilling a shelf face. */
 export interface CrewTask {
@@ -644,7 +660,7 @@ export function replayOperations(
 /** The best stock, refill and till plan found for the run's shoppers under these costs. */
 export function planOperations(
   projectId: string, runId: string,
-  body: { costs: OperationsCosts; operations?: OperationsConfig; memory?: MemoryConfig; max_crew?: number },
+  body: { costs: OperationsCosts; operations?: OperationsConfig; memory?: MemoryConfig; max_crew?: number; roster?: RosterRules },
   signal?: AbortSignal,
 ): Promise<OperationsPlan> {
   return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations/plan`, {

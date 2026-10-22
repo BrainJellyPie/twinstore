@@ -14,7 +14,8 @@ from collections.abc import Iterable
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.operations import (
-    MemoryConfig, OperationsConfig, OperationsCosts, OperationsOutcome, OperationsPlan, OperationsReport, WeeksReport,
+    CrewShift, MemoryConfig, OperationsConfig, OperationsCosts, OperationsOutcome, OperationsPlan, OperationsReport,
+    RosterRules, WeeksReport,
 )
 from store_emulator.domain.store import Store
 
@@ -70,7 +71,7 @@ def _better(a: _Tried, b: _Tried) -> bool:
 def plan_operations(
     store: Store, planned: list[CustomerResult], current: OperationsConfig, costs: OperationsCosts, *, seed: int,
     max_tills: int | None = None, time_budget_sec: float = _TIME_BUDGET_SEC, memory: MemoryConfig | None = None,
-    max_crew: int | None = None,
+    max_crew: int | None = None, roster: RosterRules | None = None,
 ) -> OperationsPlan:
     """The best refill interval, shelf stock, per-product stock and hourly tills found for these shoppers — with a
     crew, the best refill point, shelf stock, per-product stock and crew hour by hour."""
@@ -140,7 +141,7 @@ def plan_operations(
             raised.append(stats.sku)
 
     # 4. Crew (or tills) hour by hour, twice over (an hour's line or refill backlog spills into the next).
-    if current.crew is not None:
+    if current.crew is not None and not current.crew_shifts:
         largest = max([current.crew, *current.crew_schedule.values()])
         crew_limit = min(100, max_crew if max_crew is not None else max(largest, tills) + 2)
         for _ in range(2):
@@ -157,6 +158,26 @@ def plan_operations(
                 hour: n for hour, n in best_config.crew_schedule.items() if n != common}})
             if tidy != best_config and run(tidy)[0] == best_tried[0]:
                 best_config = tidy
+
+    # 5. A roster: shifts of a workable length that cover the hours' crew, then trimmed shift by shift and weekday by
+    #    weekday while that leaves more money.
+    if current.crew is not None and (roster is not None or current.crew_shifts):
+        rules = roster or RosterRules()
+        hours = [int(hour) for hour in open_hours(store, planned)]
+        days = sorted({int(result.day) for result in planned})
+        if not best_config.crew_shifts and hours and days:
+            need = {hour: max(best_config.crew_on_duty(day, hour) for day in days) for hour in hours}
+            covering = best_config.model_copy(update={"crew_shifts": cover(need, rules)})
+            # The roster replaces the hourly plan even when it costs more: hourly numbers are not a rota anyone works.
+            best_config, best_tried = covering, run(covering)
+        for _ in range(3):
+            before = best_config
+            for index in range(len(best_config.crew_shifts)):
+                if index >= len(best_config.crew_shifts):
+                    break
+                consider(_reshaped(best_config, index, rules, days, (min(hours), max(hours) + 1) if hours else (0, 24)))
+            if best_config is before:
+                break
     hours = [h.hour for h in best_tried[1].hours] if current.crew is None else []
     if limit > 0 and hours:
         for _ in range(2):
@@ -170,3 +191,49 @@ def plan_operations(
     return OperationsPlan(current_config=current, current=now_tried[0], config=best_config, best=best_tried[0],
                           replays=tried, raised_skus=sorted(set(raised)), complete=not stopped,
                           current_weeks=now_tried[2], best_weeks=best_tried[2])
+
+
+def cover(need: dict[int, int], rules: RosterRules) -> list[CrewShift]:
+    """Shifts of rules.min_hours to rules.max_hours that put at least `need[hour]` staff on duty in each hour, from
+    the first hour on: each new shift runs while the hours ahead still lack someone, up to the longest shift."""
+    if not need:
+        return []
+    first, last = min(need), max(need) + 1
+    covered = dict.fromkeys(range(first, last), 0)
+    spans: dict[tuple[int, int], int] = {}
+    for hour in range(first, last):
+        while covered[hour] < need.get(hour, 0):
+            end = min(last, hour + rules.min_hours)
+            while end < last and end - hour < rules.max_hours and need.get(end, 0) > covered[end]:
+                end += 1
+            start = max(first, end - rules.min_hours) if end - hour < rules.min_hours else hour
+            for covered_hour in range(start, end):
+                covered[covered_hour] += 1
+            spans[(start, end)] = spans.get((start, end), 0) + 1
+    return [CrewShift(start=start, end=end, staff=staff) for (start, end), staff in sorted(spans.items())]
+
+
+def _reshaped(
+    config: OperationsConfig, index: int, rules: RosterRules, days: list[int], day_hours: tuple[int, int],
+) -> Iterable[OperationsConfig]:
+    """The roster with shift `index` changed one step: dropped (or one fewer on it), an hour earlier or later at
+    either end within the shift lengths and opening hours, or off on one of the simulated weekdays."""
+    shifts = config.crew_shifts
+    shift = shifts[index]
+    first, last = day_hours
+
+    def with_shift(changed: CrewShift | None) -> OperationsConfig:
+        rest = [s for i, s in enumerate(shifts) if i != index]
+        return config.model_copy(update={"crew_shifts": [*rest[:index], changed, *rest[index:]] if changed else rest})
+
+    if len(shifts) > 1 or shift.staff > 1:
+        yield with_shift(shift.model_copy(update={"staff": shift.staff - 1}) if shift.staff > 1 else None)
+    for start, end in ((shift.start + 1, shift.end), (shift.start - 1, shift.end),
+                       (shift.start, shift.end - 1), (shift.start, shift.end + 1)):
+        if first <= start < end <= last and rules.min_hours <= end - start <= rules.max_hours:
+            yield with_shift(CrewShift(start=start, end=end, days=shift.days, staff=shift.staff))
+    working = shift.days or days
+    if len(working) > 1:
+        for day in working:
+            yield with_shift(CrewShift(start=shift.start, end=shift.end, staff=shift.staff,
+                                       days=[d for d in working if d != day]))

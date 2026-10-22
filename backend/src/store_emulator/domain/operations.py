@@ -9,6 +9,38 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+class CrewShift(BaseModel):
+    """Staff on duty from one hour to another, on some weekdays (none listed = every day)."""
+    start: int = Field(ge=0, le=23)          # the first hour on duty
+    end: int = Field(ge=1, le=24)            # the hour they leave
+    days: list[int] = Field(default_factory=list[int])   # weekday numbers, 1 = Monday
+    staff: int = Field(default=1, ge=1, le=100)
+
+    @model_validator(mode="after")
+    def _sensible(self) -> "CrewShift":
+        if self.end <= self.start:
+            raise ValueError(f"a shift ends after it starts, not {self.start}–{self.end}")
+        if any(not 1 <= day <= 7 for day in self.days) or len(set(self.days)) != len(self.days):
+            raise ValueError("shift days are distinct weekday numbers 1–7")
+        self.days = sorted(self.days)
+        return self
+
+    def covers(self, day: int, hour: int) -> bool:
+        return (not self.days or day in self.days) and self.start <= hour < self.end
+
+
+class RosterRules(BaseModel):
+    """How long a shift may be when the plan search builds a roster."""
+    min_hours: int = Field(default=4, ge=1, le=12)
+    max_hours: int = Field(default=8, ge=1, le=16)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> "RosterRules":
+        if self.max_hours < self.min_hours:
+            raise ValueError("a shift's longest length cannot be shorter than its shortest")
+        return self
+
+
 class OperationsConfig(BaseModel):
     """How the shared store runs during the simulated day(s). Every shelf starts full each day."""
     # Units of each product on each shelf level that carries it, at opening.
@@ -56,6 +88,9 @@ class OperationsConfig(BaseModel):
     # refill_face_sec plus refill_unit_sec per unit. The times are assumptions, to set from your own time studies.
     crew: int | None = Field(default=None, ge=1, le=100)
     crew_schedule: dict[str, int] = Field(default_factory=dict[str, int])   # "HH" → crew on duty that hour, 0–100
+    # A roster instead: at each hour of each day the staff of the shifts covering it are on duty (crew and
+    # crew_schedule are then not used for who is on duty).
+    crew_shifts: list[CrewShift] = Field(default_factory=list[CrewShift], max_length=60)
     refill_at: float = Field(default=0.5, ge=0.0, le=0.95)
     refill_face_sec: float = Field(default=30.0, ge=0.0, le=1800.0)
     refill_unit_sec: float = Field(default=4.0, ge=0.0, le=600.0)
@@ -84,7 +119,17 @@ class OperationsConfig(BaseModel):
     def _crew_first(self) -> "OperationsConfig":
         if self.crew_schedule and self.crew is None:
             raise ValueError("crew_schedule needs crew (the staff on duty in the other hours)")
+        if self.crew_shifts and self.crew is None:
+            raise ValueError("crew_shifts needs crew (set it to turn the crew on)")
         return self
+
+    def crew_on_duty(self, day: int, hour: int) -> int:
+        """Crew on duty in an hour of a weekday: the shifts covering it, else the hour's number, else the crew's."""
+        if self.crew is None:
+            return 0
+        if self.crew_shifts:
+            return sum(shift.staff for shift in self.crew_shifts if shift.covers(day, hour))
+        return self.crew_schedule.get(f"{hour:02d}", self.crew)
 
     @field_validator("backroom_overrides")
     @classmethod

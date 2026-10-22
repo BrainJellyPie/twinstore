@@ -25,3 +25,13 @@ it("follows the crew hour by hour", () => {
   expect(crewAt(index, plan, 1, 11 * 3600)).toHaveLength(3);
   expect(crewAt(index, plan, 1, 12 * 3600)).toEqual([]);
 });
+
+it("follows a roster by weekday, its last shift staying on after closing", () => {
+  const roster = { crew: 1, schedule: {}, closing: { 1: 22 },
+    shifts: [{ start: 8, end: 12, days: [], staff: 1 }, { start: 12, end: 22, days: [1], staff: 2 }] };
+  expect(crewOnDuty(roster, 9 * 3600, 2)).toBe(1);
+  expect(crewOnDuty(roster, 13 * 3600, 1)).toBe(2);
+  expect(crewOnDuty(roster, 13 * 3600, 2)).toBe(0);
+  expect(crewOnDuty(roster, 22 * 3600 + 120, 1)).toBe(2);   // after closing on Monday: the last shift stays
+  expect(crewAt(index, roster, 2, 13 * 3600)).toEqual([]);
+});

@@ -3,10 +3,10 @@
 
 import { useId, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FlaskConical, Save, Sparkles } from "lucide-react";
+import { FlaskConical, Plus, Save, Sparkles, X } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import type { MemoryConfig, OperationsConfig, OperationsCosts, OperationsOutcome, OperationsReport } from "@/shared/api/client";
+import type { MemoryConfig, OperationsConfig, OperationsCosts, OperationsOutcome, OperationsReport, RosterRules } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { RequestError } from "@/shared/components/RequestError";
@@ -14,14 +14,17 @@ import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { currencyCode, formatMoney, formatPercent, minorUnitDivisor, toMinor } from "@/shared/utils/money";
+import { weekdayShort } from "@/shared/i18n/timeFormat";
 
 import { choiceFromConfig, DEFAULT_SHARED_STORE, sharedStoreOptions, wholeIn, type SharedStoreChoice } from "../sharedStore";
+import { describeShift, NEW_SHIFT, shiftFromText, shiftText, type ShiftText } from "../shifts";
 import { SharedStoreControls } from "./SharedStoreControls";
 import { WeeksView } from "./WeeksView";
 
 type CostText = { till: string; refill: string; unit: string };
 type MemoryText = { weeks: string; missing: string; line: string; wait: string; churn: string };
-type LabRequest = { operations: OperationsConfig; costs: OperationsCosts; memory?: MemoryConfig };
+type LabRequest = { operations: OperationsConfig; costs: OperationsCosts; memory?: MemoryConfig; roster?: RosterRules };
+const WEEK = [1, 2, 3, 4, 5, 6, 7];
 
 const MEMORY_DEFAULT: MemoryText = { weeks: "8", missing: "3", line: "25", wait: "1", churn: "1" };
 
@@ -68,7 +71,10 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
   const [costs, setCosts] = useState<CostText>({ till: "", refill: "", unit: "" });
   const [remember, setRemember] = useState(false);
   const [memoryText, setMemoryText] = useState<MemoryText>(MEMORY_DEFAULT);
-  const replay = useMutation({ mutationFn: (body: LabRequest) => api.replayOperations(projectId, runId, body) });
+  const [shifts, setShifts] = useState<ShiftText[]>(() => (report?.config.crew_shifts ?? []).map(shiftText));
+  const [rosterOn, setRosterOn] = useState(false);
+  const [rosterText, setRosterText] = useState({ min: "4", max: "8" });
+  const replay = useMutation({ mutationFn: ({ roster: _, ...body }: LabRequest) => api.replayOperations(projectId, runId, body) });
   const plan = useMutation({ mutationFn: (body: LabRequest) => api.planOperations(projectId, runId, body) });
   const queryClient = useQueryClient();
   const save = useMutation({
@@ -93,7 +99,14 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
   const weeks = wholeIn(memoryText.weeks, 2, 52);
   const chances = [chance(memoryText.missing), chance(memoryText.line), chance(memoryText.wait), chance(memoryText.churn)];
   const memoryValid = !remember || (weeks !== null && chances.every((c) => c !== null));
-  const valid = base !== "invalid" && base !== undefined && scheduleValid && costsValid && memoryValid;
+  // With a crew, shifts (when there are any) decide who is on duty instead of the hours.
+  const roster = crewMode && shifts.length > 0;
+  const parsedShifts = shifts.map(shiftFromText);
+  const shiftsValid = !crewMode || parsedShifts.every((shift) => shift !== null);
+  const rosterMin = wholeIn(rosterText.min, 1, 12);
+  const rosterMax = wholeIn(rosterText.max, 1, 16);
+  const rosterValid = !crewMode || !rosterOn || (rosterMin !== null && rosterMax !== null && rosterMax >= rosterMin);
+  const valid = base !== "invalid" && base !== undefined && scheduleValid && costsValid && memoryValid && shiftsValid;
 
   const request = () => {
     if (base === "invalid" || base === undefined || !costsValid) return null;
@@ -102,12 +115,14 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
     const operations: OperationsConfig = {
       ...(report?.config ?? {}), ...base, till_schedule: numbers(hourTills), stock_overrides: overrides,
       crew_schedule: crewMode ? numbers(hourCrew) : {},
+      crew_shifts: crewMode ? parsedShifts.filter((shift) => shift !== null) : [],
     };
     const [missing, line, wait, churn] = chances;
     const memory: MemoryConfig | undefined = remember && weeks !== null && missing != null && line != null && wait != null && churn != null
       ? { weeks, leave_per_missing_unit: missing, leave_after_line: line, leave_per_wait_minute: wait, weekly_churn: churn }
       : undefined;
-    return { operations, costs: costValues as OperationsCosts, ...(memory ? { memory } : {}) };
+    const rules = crewMode && rosterOn && rosterMin !== null && rosterMax !== null ? { min_hours: rosterMin, max_hours: rosterMax } : null;
+    return { operations, costs: costValues as OperationsCosts, ...(memory ? { memory } : {}), ...(rules ? { roster: rules } : {}) };
   };
   const run = (which: "replay" | "plan") => {
     const body = request();
@@ -118,6 +133,7 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
     setChoice(choiceFromConfig(config));
     setHourTills(Object.fromEntries(Object.entries(config.till_schedule).map(([hour, n]) => [hour, String(n)])));
     setHourCrew(Object.fromEntries(Object.entries(config.crew_schedule ?? {}).map(([hour, n]) => [hour, String(n)])));
+    setShifts((config.crew_shifts ?? []).map(shiftText));
     setOverrides(config.stock_overrides);
   };
 
@@ -159,7 +175,7 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
       <div className="space-y-3 border-t p-2 text-xs">
         <p className="text-muted-foreground">{t(report ? "labIntro" : "labIntroAlone")}</p>
         <SharedStoreControls value={{ ...choice, enabled: true }} onChange={setChoice} fieldsOnly />
-        {hours.length > 0 && (
+        {hours.length > 0 && !roster && (
           <fieldset className="space-y-1">
             <legend className="font-medium">{t(crewMode ? "labCrewByHourTitle" : "opsHoursTitle")}</legend>
             <div className="grid grid-cols-2 gap-1.5 min-[400px]:grid-cols-3">
@@ -174,6 +190,72 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
               ))}
             </div>
             <p className="text-muted-foreground">{t(crewMode ? "labCrewByHourHint" : "labTillsByHourHint")}</p>
+          </fieldset>
+        )}
+        {crewMode && (
+          <fieldset className="space-y-1.5">
+            <legend className="font-medium">{t("labShiftsTitle")}</legend>
+            <p className="text-muted-foreground">{t("labShiftsHint")}</p>
+            {shifts.map((shift, index) => {
+              const set = (patch: Partial<ShiftText>) => setShifts(shifts.map((s, i) => i === index ? { ...s, ...patch } : s));
+              return (
+                <div key={index} role="group" aria-label={t("labShiftN", { n: index + 1 })} className="space-y-1 rounded-md border p-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <label className="flex items-center gap-1">{t("labShiftFrom")}
+                      <Input type="number" min={0} max={23} step={1} className="h-7 w-16" value={shift.start}
+                        aria-invalid={parsedShifts[index] === null} onChange={(e) => set({ start: e.target.value })} />
+                    </label>
+                    <label className="flex items-center gap-1">{t("labShiftTo")}
+                      <Input type="number" min={1} max={24} step={1} className="h-7 w-16" value={shift.end}
+                        aria-invalid={parsedShifts[index] === null} onChange={(e) => set({ end: e.target.value })} />
+                    </label>
+                    <label className="flex items-center gap-1">{t("labShiftStaff")}
+                      <Input type="number" min={1} max={100} step={1} className="h-7 w-16" value={shift.staff}
+                        aria-invalid={parsedShifts[index] === null} onChange={(e) => set({ staff: e.target.value })} />
+                    </label>
+                    <Button type="button" size="icon" variant="ghost" className="size-7" aria-label={t("labRemoveShift", { n: index + 1 })}
+                      onClick={() => setShifts(shifts.filter((_, i) => i !== index))}><X className="size-3.5" aria-hidden /></Button>
+                  </div>
+                  <div role="group" aria-label={t("labShiftDays")} className="flex flex-wrap gap-1">
+                    {WEEK.map((day) => {
+                      const on = shift.days.includes(day);
+                      return (
+                        <button key={day} type="button" aria-pressed={on}
+                          className={on ? "rounded border border-primary bg-primary px-1.5 py-0.5 text-primary-foreground" : "rounded border px-1.5 py-0.5"}
+                          onClick={() => set({ days: on ? shift.days.filter((d) => d !== day) : [...shift.days, day] })}>
+                          {weekdayShort(day, locale)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            <Button type="button" size="sm" variant="outline" onClick={() => setShifts([...shifts, NEW_SHIFT])}>
+              <Plus className="size-3.5" aria-hidden />{t("labAddShift")}
+            </Button>
+            {!shiftsValid && <p role="alert" className="text-destructive">{t("labShiftInvalid")}</p>}
+            <label className="flex items-start gap-2 pt-1 font-medium" htmlFor={`${id}-roster`}>
+              <input id={`${id}-roster`} type="checkbox" className="mt-0.5 size-4 accent-primary" checked={rosterOn}
+                onChange={(e) => setRosterOn(e.target.checked)} aria-describedby={`${id}-roster-hint`} />
+              {t("labPlanRoster")}
+            </label>
+            <p id={`${id}-roster-hint`} className="text-muted-foreground">{t("labPlanRosterHint")}</p>
+            {rosterOn && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="block font-medium" htmlFor={`${id}-roster-min`}>{t("labRosterMin")}</label>
+                  <Input id={`${id}-roster-min`} type="number" min={1} max={12} step={1} className="h-7" value={rosterText.min}
+                    onChange={(e) => setRosterText({ ...rosterText, min: e.target.value })} aria-invalid={rosterMin === null} />
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-medium" htmlFor={`${id}-roster-max`}>{t("labRosterMax")}</label>
+                  <Input id={`${id}-roster-max`} type="number" min={1} max={16} step={1} className="h-7" value={rosterText.max}
+                    onChange={(e) => setRosterText({ ...rosterText, max: e.target.value })} aria-invalid={rosterMax === null} />
+                </div>
+              </div>
+            )}
+            {!rosterValid && <p role="alert" className="text-destructive">{t("labRosterInvalid")}</p>}
           </fieldset>
         )}
         <fieldset className="space-y-1.5">
@@ -207,7 +289,7 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
           <Button size="sm" variant="outline" disabled={!valid || busy} onClick={() => run("replay")}>
             {replay.isPending ? t("labReplaying") : t("labReplay")}
           </Button>
-          <Button size="sm" disabled={!valid || busy} onClick={() => run("plan")}>
+          <Button size="sm" disabled={!valid || !rosterValid || busy} onClick={() => run("plan")}>
             <Sparkles className="size-3.5" aria-hidden />{plan.isPending ? t("labPlanning") : t("labFindPlan")}
           </Button>
           {setupId && (
@@ -273,7 +355,12 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
               raised: plan.data.raised_skus.length.toLocaleString(locale),
               tried: plan.data.replays.toLocaleString(locale),
             })}</p>
-            {plan.data.config.crew != null && (
+            {(plan.data.config.crew_shifts ?? []).length > 0 && (
+              <p className="text-muted-foreground">{t("labPlanShifts", {
+                shifts: (plan.data.config.crew_shifts ?? []).map((shift) => describeShift(shift, locale, t("shiftEveryDay"))).join(" · "),
+              })}</p>
+            )}
+            {plan.data.config.crew != null && (plan.data.config.crew_shifts ?? []).length === 0 && (
               <p className="text-muted-foreground">{t("labPlanCrew", { crew: plan.data.config.crew.toLocaleString(locale) })}
                 {Object.keys(plan.data.config.crew_schedule ?? {}).length > 0 && <> · {t("labPlanCrewHours", {
                   hours: Object.entries(plan.data.config.crew_schedule ?? {})

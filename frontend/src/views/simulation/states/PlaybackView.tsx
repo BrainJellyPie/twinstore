@@ -31,8 +31,10 @@ export function PlaybackView({
   const run = useRun(pid, runId).data;
   const operations = useRunOperations(pid, runId).data;
   const crew = useMemo(() => operations?.config.crew != null
-    ? { tasks: operations.crew_tasks ?? [], crew: operations.config.crew, schedule: operations.config.crew_schedule ?? {} }
-    : null, [operations]);
+    ? { tasks: operations.crew_tasks ?? [], crew: operations.config.crew, schedule: operations.config.crew_schedule ?? {},
+        shifts: operations.config.crew_shifts ?? [],
+        closing: Object.fromEntries(run.store.weekly_schedule.filter((d) => d.is_open).map((d) => [d.day, d.close_hour])) }
+    : null, [operations, run.store.weekly_schedule]);
   const assets = useStoreAssets(run.store);
   const { personaNames, personaGenders } = usePersonaData(run.personas);
   const activeTab = useSimulationStore((s) => s.activeTab);

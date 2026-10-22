@@ -13,7 +13,7 @@ from store_emulator.application.storage.io import DATA_DIR, read_json
 from store_emulator.application.storage.runs import load_run_store
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.operations import (
-    MemoryConfig, OperationsConfig, OperationsCosts, OperationsPlan, OperationsReplay, OperationsReport,
+    MemoryConfig, OperationsConfig, OperationsCosts, OperationsPlan, OperationsReplay, OperationsReport, RosterRules,
 )
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import stable_seed
@@ -34,6 +34,8 @@ class PlanRequest(BaseModel):
     operations: OperationsConfig | None = None
     max_tills: int | None = Field(default=None, ge=1, le=50)
     max_crew: int | None = Field(default=None, ge=1, le=100)   # with a crew: the most staff tried in an hour
+    # With a crew: answer with a roster of shifts this long instead of hour-by-hour numbers.
+    roster: RosterRules | None = None
     # Judge plans by their money over the weeks that follow, with shoppers who remember their visits.
     memory: MemoryConfig | None = None
 
@@ -86,4 +88,4 @@ def plan_run(pid: str, run_id: str, request: PlanRequest) -> OperationsPlan:
     store, planned, seed, own = _load(pid, run_id)
     start = request.operations or own or OperationsConfig()
     return plan_operations(store, planned, start, request.costs, seed=seed, max_tills=request.max_tills,
-                           memory=request.memory, max_crew=request.max_crew)
+                           memory=request.memory, max_crew=request.max_crew, roster=request.roster)

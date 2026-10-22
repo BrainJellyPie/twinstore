@@ -535,3 +535,71 @@ def test_crowding_counts_long_browsing_stops_until_their_end(duration, arrival, 
     assert report.crowd_skipped_units == int(crowded)
     assert results[1].total_spent == (0 if crowded else 300)
     assert [r.model_dump() for r in [observer, buyer]] == before
+
+
+# A roster of shifts.
+def test_shifts_put_their_staff_on_duty_by_weekday_and_hour():
+    from store_emulator.domain.operations import CrewShift
+    shifts = [CrewShift(start=8, end=12), CrewShift(start=12, end=22, days=[1], staff=2)]
+    config = OperationsConfig(crew=1, crew_shifts=shifts, **_CREW)
+    assert [config.crew_on_duty(1, hour) for hour in (7, 8, 11, 12, 21, 22)] == [0, 1, 1, 2, 2, 0]
+    assert config.crew_on_duty(2, 13) == 0
+    shoppers = [_shopper("mon", "13:00:00", [("chips", 1)], day=Weekday.MON),
+                _shopper("tue", "13:00:00", [("chips", 1)], day=Weekday.TUE)]
+    results, report = resolve_shared_store(_store(), shoppers, config.model_copy(update={"patience_sec": 60, "patience_sd": 0}),
+                                           seed=1)
+    assert report.crew_hours == (4 + 10 * 2) + 4
+    assert [r.left_queue for r in results] == [False, True]   # nobody on duty on Tuesday afternoon
+    assert {h.hour: h.crew_on_duty for h in report.hours} == {"13": 2}   # the most any day has
+
+
+def test_the_last_shift_stays_until_the_last_shopper_has_paid():
+    from store_emulator.domain.operations import CrewShift
+    late = _shopper("late", "21:59:50", [("chips", 1)])   # pays at 22:00:15, after closing
+    config = OperationsConfig(crew=1, crew_shifts=[CrewShift(start=8, end=22)], patience_sec=60, patience_sd=0, **_CREW)
+    results, report = resolve_shared_store(_store(), [late], config, seed=1)
+    assert not results[0].left_queue and results[0].total_spent == 300
+    assert report.crew_hours == pytest.approx(14 + 16 / 3600, abs=0.01)
+
+
+@pytest.mark.parametrize("bad", [{"start": 10, "end": 10}, {"start": 12, "end": 9}, {"start": 8, "end": 12, "days": [0]},
+                                 {"start": 8, "end": 12, "days": [1, 1]}, {"start": 8, "end": 25}, {"start": 8, "end": 12, "staff": 0}])
+def test_impossible_shifts_are_refused(bad):
+    from store_emulator.domain.operations import CrewShift
+    with pytest.raises(ValueError):
+        CrewShift(**bad)
+
+
+def test_shifts_need_a_crew():
+    from store_emulator.domain.operations import CrewShift
+    with pytest.raises(ValueError):
+        OperationsConfig(crew_shifts=[CrewShift(start=8, end=12)])
+
+
+def test_a_roster_covers_each_hours_need_with_workable_shifts():
+    from store_emulator.domain.operations import RosterRules
+    from store_emulator.engine.simulation.operations_plan import cover
+    need = {hour: 2 if 12 <= hour < 16 else 1 for hour in range(8, 22)}
+    shifts = cover(need, RosterRules(min_hours=4, max_hours=8))
+    assert [(s.start, s.end, s.staff) for s in shifts] == [(8, 16, 1), (12, 20, 1), (18, 22, 1)]
+    covered = {hour: sum(s.staff for s in shifts if s.start <= hour < s.end) for hour in need}
+    assert all(covered[hour] >= need[hour] for hour in need)
+    assert cover({}, RosterRules()) == []
+    with pytest.raises(ValueError):
+        RosterRules(min_hours=6, max_hours=4)
+
+
+def test_a_plan_answers_with_a_roster_when_asked():
+    from store_emulator.domain.operations import RosterRules
+    from store_emulator.engine.simulation.operations_plan import plan_operations
+    store = generate_store("urban_cvs")
+    config = OperationsConfig(crew=2, stock_per_facing=2, patience_sec=120)
+    shared, _ = _run(store, _crowd(80), config)
+    costs = OperationsCosts(till_hour=1500, stock_unit_day=1)
+    plan = plan_operations(store, shared.planned_customers, config, costs, seed=_SEED, roster=RosterRules(min_hours=4, max_hours=8))
+    shifts = plan.config.crew_shifts
+    assert shifts and all(4 <= s.end - s.start <= 8 for s in shifts)
+    assert plan.best.labor_cost == round(plan.best.crew_hours * 1500)
+    # Starting from that roster, the search keeps it a roster and never does worse.
+    again = plan_operations(store, shared.planned_customers, plan.config, costs, seed=_SEED)
+    assert again.config.crew_shifts and again.best.net >= again.current.net

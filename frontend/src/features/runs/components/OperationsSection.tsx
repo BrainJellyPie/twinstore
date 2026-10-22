@@ -10,6 +10,7 @@ import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 
 import { useRunOperations } from "../hooks";
 import { CrewTimeline } from "./CrewTimeline";
+import { describeShift } from "../shifts";
 import { OperationsLab } from "./OperationsLab";
 
 const STOCKOUTS_SHOWN = 8;
@@ -54,13 +55,16 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
       || (hour.counters_needed === best.counters_needed && hour.avg_wait_sec > best.avg_wait_sec) ? hour : best), null);
   const maxWait = Math.max(1, ...report.hours.map((h) => h.avg_wait_sec));
   const crew = report.config.crew ?? null;
+  const shifts = report.config.crew_shifts ?? [];
   const hoursOf = (value: number | undefined) => (value ?? 0).toLocaleString(locale, { maximumFractionDigits: 1 });
 
   return (
     <section className="border-t px-3 py-3" aria-labelledby="operations-title">
       <div id="operations-title" className="section-title mb-1">{t("opsTitle")}</div>
       <p className="mb-2 text-xs text-muted-foreground">
-        {crew != null
+        {crew != null && shifts.length > 0
+          ? t("opsSetupShifts", { count: count(shifts.length), stock: count(report.config.stock_per_facing), percent: formatPercent(report.config.refill_at ?? 0.5, 0) })
+          : crew != null
           ? t("opsSetupCrew", { crew: count(crew), stock: count(report.config.stock_per_facing), percent: formatPercent(report.config.refill_at ?? 0.5, 0) })
           : t("opsSetup", { counters: count(report.counters), stock: count(report.config.stock_per_facing), restocks: count(report.restocks) })}
       </p>
@@ -75,6 +79,11 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
         <Tile label={t("opsLeftLine")} value={t("opsLeftLineValue", { count: count(report.abandoned), amount: money(report.abandoned_revenue) })}
           hint={report.counters > 0 ? `${t("opsUtilization")}: ${formatPercent(report.counter_utilization, 0)}` : undefined} />
       </div>
+      {crew != null && shifts.length > 0 && (
+        <p className="mb-2 text-xs text-muted-foreground">
+          {t("labPlanShifts", { shifts: shifts.map((shift) => describeShift(shift, locale, t("shiftEveryDay"))).join(" · ") })}
+        </p>
+      )}
       {crew != null && (
         <div className="mt-2 space-y-1">
           <div className="grid grid-cols-2 gap-2">
