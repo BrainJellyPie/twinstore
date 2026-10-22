@@ -10,7 +10,8 @@ from typing import Literal, Protocol
 from pydantic import BaseModel, Field
 
 Destination = Literal[
-    "ab_test", "shelf_test", "conjoint", "concept_test", "staff_script", "layout_edit", "area", "run_question", "none",
+    "ab_test", "shelf_test", "conjoint", "concept_test", "staff_script", "layout_edit", "area", "run_question",
+    "find_shoppers", "none",
 ]
 
 
@@ -39,13 +40,14 @@ ROUTER_PROMPT = """You route a store manager's request to the right tool of a st
   testing it first;
 - area: the neighborhood around the store (who lives or works nearby, rivals, nearby venues);
 - run_question: a question about what happened in the last simulated day (sales, shelves, hours, shoppers);
+- find_shoppers: show or list particular shoppers of the last simulated day (e.g. "students who left empty-handed");
 - none: anything else.
 {run_note}Pick one and give a few words on why."""
 
 
 async def route_request(llm: StructuredLLM, text: str, *, has_run: bool) -> AssistRoute:
-    note = "" if has_run else "There is no simulated day yet, so run_question is not available.\n"
+    note = "" if has_run else "There is no simulated day yet, so run_question and find_shoppers are not available.\n"
     route = await llm.generate_structured_async(AssistRoute, ROUTER_PROMPT.format(run_note=note), text.strip(), max_retries=2, seed=0)
-    if route.destination == "run_question" and not has_run:
+    if route.destination in ("run_question", "find_shoppers") and not has_run:
         return route.model_copy(update={"destination": "none"})
     return route

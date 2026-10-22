@@ -1076,7 +1076,8 @@ export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
 /** Where a plain-words request belongs: an A/B test, a shelf test, a conjoint study, a concept test, a staff script, the neighborhood, a question
  * about the last run, or none of these. */
 export function routeAssist(req: { text: string; has_run: boolean }): Promise<{
-  destination: "ab_test" | "shelf_test" | "conjoint" | "concept_test" | "staff_script" | "layout_edit" | "area" | "run_question" | "none";
+  destination: "ab_test" | "shelf_test" | "conjoint" | "concept_test" | "staff_script" | "layout_edit" | "area" | "run_question"
+    | "find_shoppers" | "none";
   reason: string;
 }> {
   return fetchJson(`/api/assist/route`, { method: "POST", ...json(req) });
@@ -1450,6 +1451,15 @@ export interface LayoutPreset {
 
 export function validateLayoutPreset(value: unknown, signal?: AbortSignal): Promise<LayoutPreset> {
   return fetchJson("/api/store-templates/preset/validate", { method: "POST", body: JSON.stringify(value), signal });
+}
+
+/** A design brief read into the generator's options: a patch of checked options, each in words, and what the options
+ * cannot express. Nothing is built. */
+export interface BriefReading {
+  options: Partial<LayoutOptions>; applied: string[]; not_expressible: string[]; warnings: string[]; rationale: string;
+}
+export function readLayoutBrief(templateId: string, req: { brief: string; options: Record<string, unknown> }): Promise<BriefReading> {
+  return fetchJson(`/api/store-templates/${encodeURIComponent(templateId)}/brief`, { method: "POST", ...json(req) });
 }
 
 export function getStoreTemplates(signal?: AbortSignal): Promise<StoreTemplate[]> {

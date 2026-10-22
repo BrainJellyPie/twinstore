@@ -3,8 +3,10 @@
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
+from store_emulator.application import layout_brief
 from store_emulator.application.errors import AppError
 from store_emulator.application.template_layouts import create_building_layouts, create_template_layout
 from store_emulator.domain.layout_options import (
@@ -12,7 +14,9 @@ from store_emulator.domain.layout_options import (
     GateWall, SeatingZone, ShelfDirection, StoreDesign, TemplateCategoryId, TemplateLayoutRequest,
 )
 from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
+from store_emulator.engine.layout_brief import BriefReading
 from store_emulator.engine.layout_gen.catalog import category_label
+from store_emulator.server.deps import get_config
 from store_emulator.domain.store import Store
 
 router = APIRouter(prefix="/api", tags=["templates"])
@@ -58,6 +62,17 @@ def list_templates() -> list[TemplateInfo]:
                         for category in sorted(set(t.fridges + t.freezers + t.wall_shelves + t.gondolas + t.near_counter))],
         ))
     return out
+
+
+@router.post("/store-templates/{template_id}/brief", summary="Read a design brief into layout options", response_model=BriefReading)
+async def read_layout_brief(template_id: str, req: layout_brief.BriefRequest) -> BriefReading:
+    """The text model sets the generator's options the brief asks for (style, size, door, tills, theme, colors,
+    seating, left-out categories), each checked against the options chosen so far, and lists what the options cannot
+    express. Nothing is built; the reading fills the form."""
+    try:
+        return await run_in_threadpool(layout_brief.read, template_id, req, get_config())
+    except AppError as e:
+        raise HTTPException(e.status_code, str(e)) from e
 
 
 @router.get("/store-templates/{template_id}/preview", summary="Preview a generated store (not saved)")
