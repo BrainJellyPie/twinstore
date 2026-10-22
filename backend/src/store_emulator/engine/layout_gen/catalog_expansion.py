@@ -838,6 +838,30 @@ PACKSHOT_SHEETS = {
         "Miniature Drybrush Pair", "Acrylic Model Primer 60ml", "Water-Based Matte Model Varnish 60ml", "Miniature Basing Sand 100g",
         "Miniature Grass Tufts 30pk", "Model Paint Mixing Balls 20pk", "Dropper Paint Bottles 10ml 6pk", "Miniature Brush Cleaning Cup",
     ],
+    "starter-33": [
+        "Mineral Water 500ml", "Mineral Water 2L", "Sports Drink 600ml", "Sports Drink Lemon 600ml",
+        "Vitamin Water 500ml", "Coconut Water 330ml", "Electrolyte Drink 500ml", "Alkaline Water 1L",
+        "Energy Drink 250ml", "Energy Drink Zero 355ml", "Cold Brew Coffee 300ml", "Cafe Latte Bottle 300ml",
+        "Canned Coffee 175ml", "Vanilla Latte 300ml", "Caramel Macchiato 300ml", "Americano Bottle 400ml",
+    ],
+    "starter-34": [
+        "Lager Beer 500ml", "Lager Beer 355ml 4pk", "Craft IPA 500ml", "Wheat Beer 500ml",
+        "Soju 360ml", "Fruit Soju 360ml", "Makgeolli 750ml", "Highball Lemon 500ml",
+        "House Red Wine 750ml", "Non-alcoholic Beer 355ml", "Zero Cola 500ml", "Lemon-Lime Soda 500ml",
+        "Orange Soda 355ml", "Ginger Ale 355ml", "Grape Soda 355ml", "Sparkling Water Lemon 500ml",
+    ],
+    "starter-35": [
+        "Chocolate Cone", "Melon Bar", "Fish-shaped Ice Cream", "Strawberry Ice Bar",
+        "Mochi Ice Cream", "Ice Cream Pint Cookies", "Ice Cream Sandwich", "Shaved Ice Cup",
+        "Lemon Sorbet Cup", "Frozen Dumplings", "Frozen Pizza Slice", "Vanilla Ice Cream Cone",
+        "Chocolate Ice Cream Cone", "Strawberry Ice Cream Cup", "Matcha Gelato Cup", "Pistachio Gelato Cup",
+    ],
+    "starter-36": [
+        "Protein Shake 330ml", "Vitamin Shot 100ml", "Sparkling Water Plain 500ml", "Cola 1.5L",
+        "Lemon-Lime Soda 1.5L", "Root Beer 355ml", "Peach Iced Tea 500ml", "Lemon Iced Tea 500ml",
+        "Green Tea 500ml", "Barley Tea 500ml", "Corn Silk Tea 500ml", "Mango Sorbet Cup",
+        "Chocolate Brownie Sundae", "Banana Split", "Vanilla Milkshake", "Chocolate Milkshake",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

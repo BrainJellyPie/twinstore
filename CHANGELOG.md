@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
+  ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,
+  cafe and dessert templates display the new photos automatically.
+
 - Complete photos for all 96 baby feeding, bath, toy vehicle, plush, educational toy,
   puzzle, model building and miniature painting products. Add 64 local images, reaching
   512 photos; they appear on the matching default maps and in image-aware VLM grids.

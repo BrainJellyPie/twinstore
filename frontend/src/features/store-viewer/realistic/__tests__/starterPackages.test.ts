@@ -150,3 +150,15 @@ it("distinguishes pantry and fresh groceries from care products with similar pac
   for (const index of [2, 12, 13, 14])
     expect(classifyProduct("상품", `/api/catalog-images/starter-25/${index}.webp`).lieFlatInChest).toBe(true);
 });
+
+it("keeps renamed drink photos and frozen food photos in their proper departments", () => {
+  for (const sheet of ["starter-33", "starter-34"])
+    for (let index = 0; index < 16; index++)
+      expect(classifyProduct("Wooden Toy", `/api/catalog-images/${sheet}/${index}.webp`).category).toBe("drink");
+  for (const index of [9, 10])
+    expect(classifyProduct("Coffee", `/api/catalog-images/starter-35/${index}.webp`))
+      .toMatchObject({ category: "frozen", lieFlatInChest: true });
+  expect(classifyProduct("Water", "/api/catalog-images/starter-35/14.webp").category).toBe("icecream");
+  expect(classifyProduct("Toy", "/api/catalog-images/starter-34/1.webp").kind).toBe("box");
+  expect(classifyProduct("Toy", "/api/catalog-images/starter-33/5.webp").kind).toBe("can");
+});
