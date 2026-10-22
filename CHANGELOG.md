@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Wait for a layout's saved store settings before starting a run, and allow retry
+  when loading fails, so stock overrides and hourly till settings are preserved.
+
+- Add 96 yoga, running, fishing, leathercraft, seed-starting, plant-propagation,
+  candle-care and camping-repair products, with 32 photos and six-language labels.
+  Ten matching default maps stock the new departments. The catalog now includes
+  1,688 products in 147 categories and 1,088 local images.
+
 - Order checkout lines by clock time and anchor waiting shoppers at their till.
   Count long shelf visits until they end, and keep weekly shopper comparisons
   readable with separated columns and keyboard-accessible horizontal scrolling.
@@ -62,6 +70,16 @@
   departments now have pictures for every existing product in their default maps.
 
 
+### A layout knows how its store is run — runs, A/B tests and the optimizer use it
+- A layout can now keep its operations: units per shelf level (and per product), refills, tills (and by hour),
+  patience and crowding. **Try other stock and staffing → Save for this layout** stores a plan you replayed or
+  found; a copy of the layout keeps it.
+- Everything on the layout then runs in that store unless told otherwise: **Run simulation** starts from it (and
+  keeps hourly tills and per-product stock it has no field for), **A/B tests** run every arm in it — so a promotion
+  that empties its shelf or lengthens the line pays for it, and each arm shows the units it sold out and the
+  shoppers who left the line — and the **layout optimizer** judges its candidates in it (vision judge included).
+- API: `GET/PUT /setups/{sid}/operations`; `shared_store: false` on runs, A/B tests and optimizations turns it off
+  for one request, and `operations` overrides it. A finalized layout can still change how it is run.
 
 ### Shoppers in each other's way, and the shared store in 3D
 - Crowding: when four or more shoppers stand at one shelf at once, an unplanned pick there is given up with a 35 %

@@ -251,3 +251,8 @@ it("keeps all remaining care and home photos classified as non-food after renami
   for (const sheet of [63, 64, 65, 66]) for (let index = 0; index < 16; index++)
     expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
 });
+
+it("keeps sports, fishing, craft, plant and repair tools out of food categories after renaming", () => {
+  for (const sheet of [67, 68]) for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
+});

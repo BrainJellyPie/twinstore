@@ -119,4 +119,12 @@ export const starterCategoryMessages = {
   "starterCategory_baking_decorating": ["Cake decorating tools", "케이크 장식 도구", "蛋糕装饰工具", "ケーキデコレーション道具", "Utensilios para decorar tartas", "Ustensiles de décoration de gâteaux"],
   "starterCategory_pantry_organization": ["Pantry organization", "식재료 수납·정리", "食品储物收纳", "食品収納・整理用品", "Organización de despensa", "Rangement du garde-manger"],
   "starterCategory_shoe_care": ["Shoe care", "신발 관리", "鞋履护理", "シューズケア", "Cuidado del calzado", "Entretien des chaussures"],
+  "starterCategory_yoga_pilates": ["Yoga and Pilates", "요가·필라테스", "瑜伽与普拉提", "ヨガ・ピラティス", "Yoga y pilates", "Yoga et Pilates"],
+  "starterCategory_running_accessories": ["Running accessories", "러닝용품", "跑步配件", "ランニング用品", "Accesorios para correr", "Accessoires de course à pied"],
+  "starterCategory_fishing_tackle": ["Fishing tackle", "낚시용품", "钓鱼用具", "釣り用品", "Artículos de pesca", "Matériel de pêche"],
+  "starterCategory_leathercraft": ["Leathercraft supplies", "가죽 공예용품", "皮革手工材料", "レザークラフト用品", "Materiales para trabajar el cuero", "Matériel de travail du cuir"],
+  "starterCategory_seed_starting": ["Seed starting supplies", "파종·육묘용품", "播种育苗用品", "種まき・育苗用品", "Materiales para semilleros", "Matériel pour semis"],
+  "starterCategory_plant_propagation": ["Plant propagation", "식물 번식용품", "植物繁殖用品", "挿し木用品", "Propagación de plantas", "Multiplication des plantes"],
+  "starterCategory_candle_care": ["Candle tools and care", "캔들 도구·관리용품", "蜡烛工具与护理", "キャンドル用品・お手入れ", "Herramientas y cuidado de velas", "Accessoires et entretien des bougies"],
+  "starterCategory_camp_repair": ["Camping gear repair", "캠핑 장비 수리용품", "露营装备修补", "キャンプ用品の補修", "Reparación de equipo de acampada", "Réparation du matériel de camping"],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;

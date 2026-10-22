@@ -194,12 +194,16 @@ def segment_lifts(
 
 def _summary(name: str, results: list[CustomerResult]) -> VariantResult:
     n = max(1, len(results))
+    waits = [r.queue_wait_sec for r in results if r.queue_wait_sec or r.purchases or r.left_queue]
     return VariantResult(
         name=name,
         customers=len(results),
         revenue_per_visitor=round(sum(r.total_spent for r in results) / n, 4),
         conversion=round(sum(1 for r in results if r.purchases) / n, 4),
         units_per_visitor=round(sum(r.units_bought for r in results) / n, 4),
+        lost_units=sum(r.lost_units for r in results),
+        left_line=sum(1 for r in results if r.left_queue),
+        avg_wait_sec=round(sum(waits) / len(waits), 1) if waits else 0.0,
     )
 
 

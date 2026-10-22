@@ -7,7 +7,7 @@ import { useLocale, translate } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { RunLauncherDialog, type RunLauncherDialogProps } from "../RunLauncherDialog";
 
-vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn(), getModelSetup: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getLayoutOperations: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn(), getModelSetup: vi.fn() }));
 vi.mock("../ScenarioEditor", () => ({ ScenarioEditor: () => <div>Situation editor</div> }));
 vi.mock("../ModelPicker", () => ({ ModelPicker: ({ onChange }: { onChange: (v: { kind: "single"; model: string }) => void }) =>
   <button type="button" onClick={() => onChange({ kind: "single", model: "text-only" })}>Select text model</button> }));
@@ -25,6 +25,7 @@ const modelSetup: api.ModelSetup = {
 };
 const quick: api.RunEstimate = { customers: 1000, days: 7, per_day: 143, engine: "rule_based", model: "", local: false, model_calls: 0, minutes: 1, cost_usd: null, warn: false };
 beforeEach(() => {
+  vi.mocked(api.getLayoutOperations).mockResolvedValue({ operations: null });
   vi.mocked(api.getModelSetup).mockResolvedValue(modelSetup);
   vi.mocked(api.estimateRun).mockResolvedValue(quick);
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
@@ -42,7 +43,10 @@ function show(props: Partial<RunLauncherDialogProps> = {}) {
   return { ...view, onOpenChange, client };
 }
 function expand() { const details = document.querySelector("details")!; details.open = true; fireEvent(details, new Event("toggle")); return details; }
-async function submit() { await act(async () => { fireEvent.submit(document.querySelector("form")!); }); }
+async function submit() {
+  await waitFor(() => expect(screen.queryByText(translate(useLocale.getState().locale, "opsLayoutLoading"))).toBeNull());
+  await act(async () => { fireEvent.submit(document.querySelector("form")!); });
+}
 
 it("starts a free editable preview with the advanced controls folded", async () => {
   const { onOpenChange } = show({ defaultEngine: "rule_based" });
@@ -55,7 +59,7 @@ it("starts a free editable preview with the advanced controls folded", async () 
 it.each([0, 1, 29, 30, 31, 300, 1000])("chooses a small vision sample at the %i-persona boundary", async (personaCount) => {
   show({ defaultEngine: "vlm_glance", personaCount });
   expect((screen.getByLabelText("Sample size") as HTMLInputElement).value).toBe(String(Math.min(30, personaCount)));
-  expect((screen.getByRole("button", { name: "Run preview" }) as HTMLButtonElement).disabled).toBe(personaCount === 0);
+  await waitFor(() => expect((screen.getByRole("button", { name: "Run preview" }) as HTMLButtonElement).disabled).toBe(personaCount === 0));
   if (!personaCount) { await submit(); expect(api.startRun).not.toHaveBeenCalled(); return; }
   await submit();
   await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ max_customers: personaCount > 30 ? 30 : undefined, plan_policy: "vlm" })));
@@ -194,7 +198,7 @@ it.each(LOCALES)("preserves the finalized-layout preview restriction in $code", 
 it.each(LOCALES)("explains a zero-persona store in $code without sending a request", async ({ code }) => {
   useLocale.getState().setLocale(code);
   show({ personaCount: 0, defaultEngine: "rule_based" });
-  expect(screen.getByRole("status").textContent).toBe(translate(code, "addPersonasHint"));
+  expect(screen.getByText(translate(code, "addPersonasHint")).getAttribute("role")).toBe("status");
   await submit(); expect(api.startRun).not.toHaveBeenCalled();
 });
 

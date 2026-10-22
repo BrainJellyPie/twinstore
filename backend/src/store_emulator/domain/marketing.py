@@ -9,6 +9,7 @@ from typing import Annotated, Literal, Self
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from store_emulator.domain.analysis import MetricComparison
+from store_emulator.domain.operations import OperationsConfig
 from store_emulator.domain.types import ResourceId
 
 type ChangeKind = Literal["price", "discount", "promo", "move", "package", "category_price"]
@@ -55,6 +56,10 @@ class ExperimentRequest(BaseModel):
     model: str = Field(default="", description='vision model reference for engine "vlm"; "" = the app vision model')
     panel: int = Field(default=300, ge=20, le=3000, description="shoppers per variant (the same people in every variant)")
     seed: int = 1
+    operations: OperationsConfig | None = Field(
+        default=None, description="every arm's shoppers share the store run this way; omitted: the layout's saved "
+                                  "settings, if any (a promotion that empties its shelf then pays for it)")
+    shared_store: bool | None = Field(default=None, description="false: each shopper has the store alone")
 
     @model_validator(mode="after")
     def validate_variant_names(self) -> Self:
@@ -113,6 +118,10 @@ class VariantResult(BaseModel):
     top_skus: list[SkuSales] = []
     prices: dict[str, int] = {}       # shelf price of each tracked product in this arm (lowest facing)
     segments: list[SegmentLift] = []  # paired differences by age group and gender (segments of 20+ shoppers)
+    # Shared store: units wanted but sold out (not replaced), shoppers who left the till line, average wait there.
+    lost_units: int = 0
+    left_line: int = 0
+    avg_wait_sec: float = 0.0
 
 
 class PricePoint(BaseModel):
@@ -150,6 +159,7 @@ class ExperimentReport(BaseModel):
     price_response: PriceResponse | None = None   # when a tracked product has three or more prices across the arms
     notes: list[str] = []
     seconds: float = 0.0
+    operations: OperationsConfig | None = None   # the arms' shoppers shared a store run this way
 
 
 class MarketingInfo(BaseModel):

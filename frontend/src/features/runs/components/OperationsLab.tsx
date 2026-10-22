@@ -2,14 +2,15 @@
 // Replays and plans are server-side and take no model call.
 
 import { useId, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { FlaskConical, Sparkles } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { FlaskConical, Save, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import type { MemoryConfig, OperationsConfig, OperationsCosts, OperationsOutcome, OperationsReport } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { RequestError } from "@/shared/components/RequestError";
+import { queryKeys } from "@/shared/queries/keys";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { currencyCode, formatMoney, formatPercent, minorUnitDivisor, toMinor } from "@/shared/utils/money";
@@ -44,9 +45,11 @@ const ROWS: { key: keyof OperationsOutcome; label: MessageKey; kind: "money" | "
 ];
 
 /** `report`: the run's own shared-store report; null for a run whose shoppers each had the store alone. */
-export function OperationsLab({ projectId, runId, report, currency }: {
+export function OperationsLab({ projectId, runId, setupId, report, currency }: {
   projectId: string;
   runId: string;
+  /** The run's layout: its saved operations can be set from here. */
+  setupId?: string;
   report: OperationsReport | null;
   currency?: string;
 }) {
@@ -63,6 +66,11 @@ export function OperationsLab({ projectId, runId, report, currency }: {
   const [memoryText, setMemoryText] = useState<MemoryText>(MEMORY_DEFAULT);
   const replay = useMutation({ mutationFn: (body: LabRequest) => api.replayOperations(projectId, runId, body) });
   const plan = useMutation({ mutationFn: (body: LabRequest) => api.planOperations(projectId, runId, body) });
+  const queryClient = useQueryClient();
+  const save = useMutation({
+    mutationFn: (operations: OperationsConfig) => api.saveLayoutOperations(projectId, setupId!, operations),
+    onSuccess: (saved) => queryClient.setQueryData(queryKeys.layoutOperations(projectId, setupId!), saved.operations),
+  });
   const busy = replay.isPending || plan.isPending;
 
   const hours = [...new Set([...(report?.hours ?? []), ...(replay.data?.report.hours ?? [])].map((h) => h.hour)
@@ -183,8 +191,15 @@ export function OperationsLab({ projectId, runId, report, currency }: {
           <Button size="sm" disabled={!valid || busy} onClick={() => run("plan")}>
             <Sparkles className="size-3.5" aria-hidden />{plan.isPending ? t("labPlanning") : t("labFindPlan")}
           </Button>
+          {setupId && (
+            <Button size="sm" variant="ghost" disabled={!valid || save.isPending}
+              onClick={() => { const body = request(); if (body) save.mutate(body.operations); }}>
+              <Save className="size-3.5" aria-hidden />{save.isPending ? t("labSaving") : t("labSaveForLayout")}
+            </Button>
+          )}
         </div>
-        <RequestError error={replay.error ?? plan.error} />
+        {save.isSuccess && <p role="status" className="text-positive">{t("labSavedForLayout")}</p>}
+        <RequestError error={replay.error ?? plan.error ?? save.error} />
 
         {replay.data && (
           <p>{t("labKept", {

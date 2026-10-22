@@ -7,7 +7,7 @@ import { translate, useLocale } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { OperationsLab } from "../OperationsLab";
 
-vi.mock("@/shared/api/client", () => ({ replayOperations: vi.fn(), planOperations: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ replayOperations: vi.fn(), planOperations: vi.fn(), saveLayoutOperations: vi.fn() }));
 
 const config: api.OperationsReport["config"] = {
   stock_per_facing: 8, stock_overrides: {}, till_schedule: {}, restock_every_min: 60, substitute_share: 0.45,
@@ -125,6 +125,21 @@ it("judges a plan by its money over the weeks when shoppers remember", async () 
   // Less on the first day, more over the weeks: the weeks decide.
   expect(await lab.findByText("The plan leaves $30.00 more after costs.")).toBeTruthy();
   expect(lab.getAllByRole("rowheader", { name: "Week 3" })).toHaveLength(1);
+});
+
+it("saves the edited plan as how the run's layout is run", async () => {
+  vi.mocked(api.saveLayoutOperations).mockImplementation(async (_p, _s, operations) => ({ operations: operations as api.OperationsReport["config"] }));
+  const lab = show({ setupId: "s1" });
+  fireEvent.change(lab.getByLabelText("Units of each product per shelf level"), { target: { value: "20" } });
+  fireEvent.click(lab.getByRole("button", { name: "Save for this layout" }));
+  await waitFor(() => expect(api.saveLayoutOperations).toHaveBeenCalledWith("p", "s1", expect.objectContaining({ stock_per_facing: 20, open_counters: 2 })));
+  expect(await lab.findByRole("status")).toBeTruthy();
+  expect(lab.getByRole("status").textContent).toContain("now share the store run this way");
+});
+
+it("offers no saving without the run's layout", () => {
+  const lab = show();
+  expect(lab.queryByRole("button", { name: "Save for this layout" })).toBeNull();
 });
 
 it("refuses a cost that is not an amount of money", () => {

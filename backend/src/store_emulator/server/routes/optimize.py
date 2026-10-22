@@ -9,8 +9,10 @@ from pydantic import BaseModel, Field
 
 from store_emulator.application import optimize as opt_service
 from store_emulator.application import optimize_goal
+from store_emulator.application import setups as setup_service
 from store_emulator.application.errors import AppError
 from store_emulator.application.optimize import OptimizationStatus, OptimizationView
+from store_emulator.domain.operations import OperationsConfig
 from store_emulator.domain.optimize import JudgeSpec, OptimizeJudge, OptimizeSpec
 from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.engine.optimize.goal import OptimizeGoal
@@ -33,6 +35,9 @@ class OptimizeRequest(BaseModel):
     vlm_customers: int = Field(default=60, ge=4, le=400, description="VLM judge panel size (same people on every layout)")
     top_k: int = Field(default=4, ge=1, le=8, description="Distinct surrogate candidates judged by the VLM shoppers")
     calibrate: bool = Field(default=True, description="Fit the surrogate's impulse knobs to a VLM pilot first")
+    operations: OperationsConfig | None = Field(
+        default=None, description="Judge candidates in a shared store run this way; omitted: the layout's saved settings")
+    shared_store: bool | None = Field(default=None, description="false: each shopper has the store alone")
 
     def judge_spec(self) -> JudgeSpec:
         return JudgeSpec(judge=self.judge, model=self.model, ensemble=self.ensemble,
@@ -66,6 +71,7 @@ def start(pid: str, sid: str, req: OptimizeRequest) -> OptimizationStatus:
     Runs in the background; poll `GET /optimizations/{job_id}` (`status.phase`)."""
     return _call(lambda: opt_service.start_optimization(
         pid, sid, req.spec, get_config(), scenario_id=req.scenario_id, judge=req.judge_spec(),
+        operations=setup_service.run_operations(pid, sid, req.operations, req.shared_store),
     ))
 
 

@@ -77,6 +77,7 @@ from store_emulator.engine.prompting import display_price
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
 from store_emulator.application.product_images import project_image_loader
+from store_emulator.application.setups import run_operations
 from store_emulator.engine.files import remove_tree
 
 from .async_executor import executor
@@ -206,6 +207,9 @@ def _model_calls(meta: dict[str, object]) -> tuple[int, int, str]:
 
 def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig) -> JobStatus:
     control = _load_store(pid, req.setup_id)
+    # Every arm's shoppers share one store run the same way, so a promotion that empties its shelf pays for it.
+    operations = run_operations(pid, req.setup_id, req.operations, req.shared_store)
+    config = config.model_copy(update={"operations": operations})
     everyone = _personas(pid)
     # The simulator drops shoppers who arrive while the layout is closed: a panel drawn from everyone came out smaller
     # than asked, with a note blaming failed shoppers.
@@ -314,7 +318,7 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 simulated_visitors_per_day=simulated_per_day,
                 focus_skus=req.focus_skus, control=control_result, variants=results, winner=winner, notes=notes,
                 price_response=price_response(control_result, results, {v.name: v.changes for v in req.variants}),
-                seconds=round(time.perf_counter() - t0, 1),
+                seconds=round(time.perf_counter() - t0, 1), operations=operations,
             )
             _finish(pid, status, report)
         except Exception as e:

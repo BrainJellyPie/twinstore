@@ -144,6 +144,11 @@ layout or assortment ones; run the simulation again for those. Runs whose shoppe
 too. A shared-store run made before replays existed cannot replay (it did not keep its shoppers' planned visits) and
 says so: run it again.
 
+**Save for this layout** keeps the settings with the layout (`PUT /setups/{sid}/operations`). From then on runs,
+A/B tests and layout optimizations on that layout share the store run this way by default (`shared_store: false`
+opts one request out). Coach users comparing promotions to save operations first: a discount that sells its
+shelf out by noon then shows up as lost units and a smaller lift, instead of endless stock flattering it.
+
 **Shoppers remember: follow the weeks after** repeats the run's week (2–52 weeks). After each week a shopper stops
 coming with a chance built from: each unit they wanted and found gone, giving up in the line, each minute waited
 at the tills, and a weekly churn that applies in any store. The result shows shoppers per week against an ideal
@@ -1194,7 +1199,7 @@ assignments are rejected. Review the products, prices and available images, then
 Automatic selection supports 1–100 empty accessible racks. A failed model call leaves the layout unchanged;
 retry or switch to **Choose categories manually**, which needs no model or spreadsheet.
 
-The bundled catalog now includes 1,592 products in 139 categories. New examples cover plant-based foods,
+The bundled catalog now includes 1,688 products in 147 categories. New examples cover plant-based foods,
 breakfast spreads, home coffee/tea, bath/body care, first-aid tools, supplements, indoor plants, digital
 accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Further assortments cover
 baking ingredients, global sauces, fresh herbs, frozen and takeaway meals, gift confectionery, baby and oral
@@ -1204,7 +1209,7 @@ barista tools and party supplies add another 96 products. Kitchen and baking too
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
 woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
-educational toys, puzzles, model building and miniature painting add another 96. Skincare, makeup and grooming tools, tea brewing, cake decorating, pantry organization and shoe care add 96 more. One thousand fifty-six generated
+educational toys, puzzles, model building and miniature painting add another 96. Skincare, makeup and grooming tools, tea brewing, cake decorating, pantry organization and shoe care add 96 more. Yoga, running, fishing, leathercraft, seed starting, plant propagation, candle care and camping repairs add another 96. One thousand eighty-eight generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 The 82 default map templates also include the expanded products in suitable departments. For example, toy
 shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and

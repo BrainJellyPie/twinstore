@@ -8,7 +8,7 @@ import { translate, useLocale } from "@/shared/i18n/i18n";
 import { photographShelves } from "../../shelfPhotos";
 import { RunLauncherDialog, type RunLauncherDialogProps } from "../RunLauncherDialog";
 
-vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getLayoutOperations: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
 vi.mock("../../shelfPhotos", () => ({ photographShelves: vi.fn() }));
 vi.mock("../ScenarioEditor", () => ({ ScenarioEditor: () => <div>Situation editor</div> }));
 vi.mock("../ModelPicker", () => ({ ModelPicker: () => null }));
@@ -24,6 +24,7 @@ const costly: api.RunEstimate = {
   model_calls: 10920, minutes: 25, cost_usd: 1.8, warn: true,
 };
 beforeEach(() => {
+  vi.mocked(api.getLayoutOperations).mockResolvedValue({ operations: null });
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.getEngines).mockResolvedValue(engines);
   vi.mocked(api.getTown).mockResolvedValue(null);
@@ -39,7 +40,10 @@ function show(props: Partial<RunLauncherDialogProps> = {}) {
   render(<QueryClientProvider client={client}><RunLauncherDialog open onOpenChange={onOpenChange} projectId="p" setupId="s" personaCount={140} defaultEngine="rule_based" {...props} /></QueryClientProvider>);
   return { onOpenChange };
 }
-async function submit() { await act(async () => { fireEvent.submit(document.querySelector("form")!); }); }
+async function submit() {
+  await waitFor(() => expect(screen.queryByText(translate(useLocale.getState().locale, "opsLayoutLoading"))).toBeNull());
+  await act(async () => { fireEvent.submit(document.querySelector("form")!); });
+}
 
 it("shows the customers as a total over the days with time and cost, from the same body the run sends", async () => {
   show();

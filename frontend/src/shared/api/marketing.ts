@@ -44,6 +44,8 @@ export interface ExperimentRequest {
   model?: string;
   panel: number;
   seed?: number;
+  // false: each shopper has the store alone; omitted: the layout's saved operations, if any.
+  shared_store?: boolean;
 }
 
 export interface FocusOutcome {
@@ -74,6 +76,10 @@ export interface VariantResult {
   top_skus: SkuSales[];
   prices?: Record<string, number>;
   segments?: SegmentLift[];
+  // Shared store (reports since operations): units sold out and not replaced, shoppers who left the line, avg wait.
+  lost_units?: number;
+  left_line?: number;
+  avg_wait_sec?: number;
 }
 
 export interface SegmentLift {
@@ -109,6 +115,8 @@ export interface ExperimentReport {
   price_response?: PriceResponse | null;
   notes: string[];
   seconds: number;
+  // The arms' shoppers shared a store run this way (null: each had the store alone).
+  operations?: { stock_per_facing: number; open_counters?: number | null } | null;
 }
 
 export interface JobStatus {
