@@ -12,7 +12,8 @@ try {
   const source = await (await page.request.get(`${origin}/api/projects/${pid}/setups/${sid}`)).json();
   await page.goto(`${origin}/projects/${pid}`);
   await page.locator(`[data-layout-id="${sid}"]`).click();
-  await page.getByRole('button', { name: 'Fill empty shelves', exact: true }).click();
+  await page.getByRole('button', { name: 'Auto-place starter products', exact: true }).click();
+  await page.getByLabel('Choose categories manually', { exact: true }).check();
   assert(await page.getByLabel('Select rack stocked', { exact: true }).isDisabled());
   await page.getByRole('combobox', { name: 'Category to apply', exact: true }).selectOption('water_sports');
   await page.getByRole('button', { name: 'Select shown empty racks', exact: true }).click();

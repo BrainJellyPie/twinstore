@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Starter assortment: 144 additional generic products (824 across 75 categories) and 16 locally bundled
+  generated packshots. Auto-place starter products defaults to category-aware text-model selection, validates
+  exact catalog IDs, previews before saving, and retains manual selection and retry-safe child layouts.
+
 - Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 

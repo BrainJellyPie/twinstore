@@ -3,8 +3,7 @@
 import pytest
 
 from store_emulator.domain.layout_options import LayoutOptions
-from store_emulator.engine.layout_gen import TEMPLATES, generate_store
-from store_emulator.engine.layout_gen.catalog import CATALOG
+from store_emulator.engine.layout_gen import TEMPLATES, generate_store, get_template
 from store_emulator.engine.validation import validate
 
 
@@ -60,7 +59,11 @@ def test_side_wall_capacity_uses_depth_and_default_front_placement_is_unchanged(
 
 @pytest.mark.parametrize("wall,category,counters", [("front", "checkout_impulse", 6), ("back", "beer_alcohol", 6), ("right", "household", 4)])
 def test_a_full_bank_cannot_silently_remove_the_only_requested_product_category(wall, category, counters):
+    template = get_template("urban_cvs")
+    assert template is not None
+    categories = set(template.fridges + template.freezers + template.wall_shelves + template.gondolas + template.near_counter)
+    assert category in categories
     options = LayoutOptions(width=8, height=6, checkout_wall=wall, checkouts=counters,
-                            checkout_placement="near_entrance", excluded_categories=[key for key in CATALOG if key != category])
+                            checkout_placement="near_entrance", excluded_categories=sorted(categories - {category}))
     with pytest.raises(ValueError, match="No products from the included categories fit"):
         generate_store("urban_cvs", options=options)

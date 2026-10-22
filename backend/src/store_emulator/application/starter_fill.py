@@ -1,4 +1,5 @@
 """Preview and save starter products on empty existing racks as a separate child layout."""
+import asyncio
 import hashlib
 import json
 from filelock import FileLock, Timeout
@@ -9,11 +10,41 @@ from store_emulator.application.storage.setups import new_setup_data, setup_path
 from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.product_edits import ProductEditsReceipt
 from store_emulator.domain.starter_fill import (
-    StarterCatalog, StarterCategory, StarterFillRequest, StarterFillSave, StarterPreview, StarterRecord, StarterSaved,
+    StarterAutoRequest, StarterCatalog, StarterCategory, StarterFillRequest, StarterFillSave, StarterPreview, StarterRecord, StarterSaved,
 )
+from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.store import Store
 from store_emulator.engine.layout_gen.catalog import CATALOG, catalog_slot_item, category_label
 from store_emulator.engine.starter_fill import fill_empty_racks, rack_choices
+from store_emulator.engine.starter_selection import select_starter_products
+from store_emulator.application.providers import assistive_client
+from store_emulator.application.errors import model_failure
+
+
+def auto_select(pid: str, sid: str, req: StarterAutoRequest, config: SimulationConfig) -> StarterFillRequest:
+    check_product_layout(pid, sid)
+    store, digest = _source(pid, sid)
+    if req.source_sha256 != digest or req.currency != store.currency:
+        raise AppError("The layout, currency or starter catalog changed. Reload and try again", 409)
+    try:
+        racks = rack_choices(store)
+        eligible = [rack for rack in racks if not rack.reason and rack.available_slots > 0]
+        if not eligible or len(eligible) > 100:
+            raise ValueError("Automatic placement needs 1–100 empty accessible shelves. Use manual selection for larger layouts.")
+        llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.0, "max_tokens": 5000})
+        llm = assistive_client(req.model, llm_config)
+    except ValueError as exc:
+        raise AppError(str(exc), 422) from exc
+    try:
+        assignments = asyncio.run(select_starter_products(llm, store, racks, req.requirements))
+    except Exception as exc:
+        raise AppError(model_failure(exc, "Starter products could not be selected"), 502) from exc
+    check_product_layout(pid, sid)
+    if _source(pid, sid)[1] != digest:
+        raise AppError("The layout or starter catalog changed while selecting products. Reload and try again", 409)
+    result = StarterFillRequest(source_sha256=digest, currency=req.currency, products_per_slot=req.products_per_slot, assignments=assignments)
+    _prepare(pid, sid, result)
+    return result
 
 
 def _source(pid: str, sid: str) -> tuple[Store, str]:
@@ -21,7 +52,7 @@ def _source(pid: str, sid: str) -> tuple[Store, str]:
     if store.currency not in {"USD", "KRW", "JPY"}:
         raise AppError("Starter reference prices support USD, KRW and JPY layouts only; no live FX conversion is provided", 409)
     # A changed bundled catalog must invalidate an old preview just like a changed layout.
-    catalog_data = {key: [(p.en, p.ko, p.usd_cents) for p in values] for key, values in CATALOG.items()}
+    catalog_data = {key: [(p.en, p.ko, p.usd_cents, catalog_slot_item(p, "USD").image_url) for p in values] for key, values in CATALOG.items()}
     digest = hashlib.sha256((digest + json.dumps(catalog_data, ensure_ascii=False, sort_keys=True)).encode()).hexdigest()
     return store, digest
 

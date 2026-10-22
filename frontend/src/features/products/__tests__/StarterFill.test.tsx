@@ -6,7 +6,7 @@ import { webcrypto } from "node:crypto";
 import * as api from "@/shared/api/starterFill";
 import { StarterFill } from "../StarterFill";
 import { useSimulationStore } from "@/stores/simulationStore";
-vi.mock("@/shared/api/starterFill", () => ({ getStarterCatalog: vi.fn(), previewStarterFill: vi.fn(), saveStarterFill: vi.fn() }));
+vi.mock("@/shared/api/starterFill", () => ({ getStarterCatalog: vi.fn(), previewStarterFill: vi.fn(), saveStarterFill: vi.fn(), autoSelectStarterProducts: vi.fn() }));
 const product = { sku: "A", name: "Example water", price: 100, regular_price: 0, promo: "", image_url: null };
 const catalog: api.StarterCatalog = { source_sha256: "a".repeat(64), currency: "USD", categories: [{ key: "water", label: "Water", products: [product] }], racks: [
   { id: "empty", name: "Empty shelf", type: "shelf", available_slots: 8, suggested_category: "water", reason: null },
@@ -24,9 +24,79 @@ beforeEach(() => {
 afterEach(() => { cleanup(); qc.clear(); vi.resetAllMocks(); vi.unstubAllGlobals(); useSimulationStore.getState().reset(); });
 async function open() {
   render(<QueryClientProvider client={qc}><StarterFill pid="p" sid="s" /></QueryClientProvider>);
-  fireEvent.click(screen.getByRole("button", { name: "Fill empty shelves" }));
+  fireEvent.click(screen.getByRole("button", { name: "Auto-place starter products" }));
+  fireEvent.click(await screen.findByLabelText("Choose categories manually"));
   await screen.findByLabelText("Select rack empty");
 }
+
+async function openAuto() {
+  render(<QueryClientProvider client={qc}><StarterFill pid="p" sid="s" /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Auto-place starter products" }));
+  await screen.findByLabelText("Automatic by store category (default)");
+}
+const automatic = { source_sha256: catalog.source_sha256, currency: "USD", products_per_slot: 2,
+  assignments: [{ rack_id: "empty", category: "water", skus: ["A"] }] };
+
+it("defaults to automatic selection, previews exact selected SKUs and saves only on request", async () => {
+  vi.mocked(api.autoSelectStarterProducts).mockResolvedValue(automatic);
+  await openAuto();
+  expect((screen.getByLabelText("Automatic by store category (default)") as HTMLInputElement).checked).toBe(true);
+  expect(api.autoSelectStarterProducts).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Assortment requirements"), { target: { value: "  Cafe drinks 🌿  " } });
+  fireEvent.click(screen.getByRole("button", { name: "Choose and preview automatically" }));
+  await screen.findByRole("button", { name: "Save stocked layout" });
+  expect(api.autoSelectStarterProducts).toHaveBeenCalledWith("p", "s", { source_sha256: catalog.source_sha256, currency: "USD", products_per_slot: 2, requirements: "Cafe drinks 🌿" });
+  expect(api.previewStarterFill).toHaveBeenCalledWith("p", "s", automatic);
+  expect(api.saveStarterFill).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Save stocked layout" }));
+  await screen.findByRole("button", { name: "Open stocked layout" });
+  expect(vi.mocked(api.saveStarterFill).mock.lastCall?.[2]).toMatchObject(automatic);
+});
+
+it("keeps a failed model selection recoverable through manual selection", async () => {
+  vi.mocked(api.autoSelectStarterProducts).mockRejectedValue(new Error("Connect a text model"));
+  await openAuto();
+  fireEvent.click(screen.getByRole("button", { name: "Choose and preview automatically" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("Connect a text model");
+  expect(api.previewStarterFill).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByLabelText("Choose categories manually"));
+  await preview();
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("discards the preview when automatic requirements, density or mode changes", async () => {
+  vi.mocked(api.autoSelectStarterProducts).mockResolvedValue(automatic);
+  await openAuto();
+  for (const edit of [() => fireEvent.change(screen.getByLabelText("Assortment requirements"), { target: { value: "New assortment" } }),
+    () => fireEvent.change(screen.getByLabelText("Products per shelf section"), { target: { value: "3" } }),
+    () => fireEvent.click(screen.getByLabelText("Choose categories manually"))]) {
+    fireEvent.click(screen.getByRole("button", { name: "Choose and preview automatically" }));
+    await screen.findByRole("button", { name: "Save stocked layout" });
+    edit();
+    expect(screen.queryByRole("button", { name: "Save stocked layout" })).toBeNull();
+  }
+});
+
+it.each([0, 101])("does not call a model for %i eligible shelves", async (count) => {
+  vi.mocked(api.getStarterCatalog).mockResolvedValue({ ...catalog, racks: Array.from({ length: count }, (_, i) => ({ ...catalog.racks[0]!, id: String(i) })) });
+  await openAuto();
+  expect((screen.getByRole("button", { name: "Choose and preview automatically" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(api.autoSelectStarterProducts).not.toHaveBeenCalled();
+});
+
+it("locks edits during model selection and ignores a late selection after closing", async () => {
+  let resolve!: (value: api.StarterRequest) => void;
+  vi.mocked(api.autoSelectStarterProducts).mockReturnValue(new Promise((done) => { resolve = done; }));
+  await openAuto();
+  fireEvent.click(screen.getByRole("button", { name: "Choose and preview automatically" }));
+  await screen.findByRole("button", { name: "Choosing catalog products…" });
+  expect((screen.getByLabelText("Assortment requirements") as HTMLInputElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  resolve(automatic);
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(api.previewStarterFill).not.toHaveBeenCalled();
+  expect(api.saveStarterFill).not.toHaveBeenCalled();
+});
 it("selects empty racks, previews starter products, saves and explicitly opens a stocked child", async () => {
   await open();
   expect((screen.getByLabelText("Select rack stocked") as HTMLInputElement).disabled).toBe(true);

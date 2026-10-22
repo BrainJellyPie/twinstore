@@ -68,8 +68,8 @@ const UPRIGHT = 0.035;
 const GAP = 0.006;
 const MAX_FACINGS = 6;
 
-function worldSize(name: string) {
-  const s = classifyProduct(name);
+function worldSize(item: SlotItem) {
+  const s = classifyProduct(item.name, item.image_url);
   const k = M * PRODUCT_SCALE;
   return { spec: s, w: s.w * k, h: s.h * k, d: s.d * k };
 }
@@ -109,7 +109,7 @@ function placeOnShelf(
   const slotW = (u1 - u0) / m;
   const shelfDepth = edge.stockFront - bank.back - 0.02;
   items.forEach((item, k) => {
-    const { spec, w, h, d } = worldSize(item.name);
+    const { spec, w, h, d } = worldSize(item);
     const preserveProportions = spec.category === "produce" || spec.kind === "pot" || spec.kind === "croissant" || spec.kind === "burgerBun" || spec.kind === "wateringCan" || spec.kind === "perfumeBottle" || spec.kind === "teaCup";
     let fit = Math.min(1, (clearance - 0.012) / h);
     if (preserveProportions) fit = Math.min(fit, shelfDepth / d, (slotW - GAP) / w);
@@ -194,7 +194,7 @@ function layoutBin(out: Emit, plan: FixturePlan, frame: Frame, floorY: number, h
     const slotW = innerW / entries.length;
     const vFront = innerD / 2 - ri * rowD;
     entries.forEach(({ item, ref }, k) => {
-      const { spec, w, h, d } = worldSize(item.name);
+      const { spec, w, h, d } = worldSize(item);
       const flat = preferFlat && spec.lieFlatInChest;
       // Footprint along t (fw) and n (fd), and height above the floor (fh).
       const fw = w;

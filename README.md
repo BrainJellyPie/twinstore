@@ -283,7 +283,8 @@ The new-store wizard asks for a format, size and currency, then your customers (
 
 ### Stock and edit a layout
 
-- **Fill empty shelves** (Step 2) places reviewed starter products on empty racks and saves a separate stocked
+- **Auto-place starter products** (Step 2) uses the text model to choose existing catalog products for the store
+  category, previews their placement on empty racks and saves a separate stocked
   layout; existing products and geometry stay as they are. Reference products and prices are examples, not your
   stock. [Guide](./USAGE.md#fill-existing-empty-shelves-with-starter-products).
 - **Reuse shelf products** (Step 2) copies a finished shelf’s reviewed assortment to compatible empty racks,

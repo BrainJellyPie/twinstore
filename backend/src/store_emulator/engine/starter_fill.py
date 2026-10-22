@@ -55,7 +55,7 @@ def fill_empty_racks(store: Store, assignments: list[RackFill], per_slot: int) -
     planned = 0
     for row in assignments:
         if row.rack_id in faces and row.category in CATALOG:
-            planned += len(faces[row.rack_id]) * 4 * min(per_slot, len(set(CATALOG[row.category])))
+            planned += len(faces[row.rack_id]) * 4 * min(per_slot, len(row.skus) if row.skus is not None else len(set(CATALOG[row.category])))
     current = sum(len(slot.items) for rack in store.racks for slot in rack.slots)
     if current + planned > 50_000:
         raise ValueError("The result would exceed 50,000 product placements")
@@ -76,6 +76,11 @@ def fill_empty_racks(store: Store, assignments: list[RackFill], per_slot: int) -
         if row.category not in CATALOG or not CATALOG[row.category]:
             raise ValueError(f"Choose a known starter category: {row.category}")
         pool = list({item.sku: item for item in (catalog_slot_item(p, store.currency or "USD") for p in CATALOG[row.category])}.values())
+        if row.skus is not None:
+            indexed = {item.sku: item for item in pool}
+            if any(sku not in indexed for sku in row.skus):
+                raise ValueError(f"Choose products from the selected category: {row.category}")
+            pool = [indexed[sku] for sku in row.skus]
         used: dict[str, SlotItem] = {}
         reused_here: set[str] = set()
         slots: dict[tuple[int, Face, int], Slot] = {(s.block, s.face, s.level): s for s in targets[rack.id].slots}
@@ -84,9 +89,10 @@ def fill_empty_racks(store: Store, assignments: list[RackFill], per_slot: int) -
             for level in (3, 2, 4, 1):
                 items: list[SlotItem] = []
                 for _ in range(min(per_slot, len(pool))):
-                    offset = offsets.get(row.category, 0)
+                    pool_key = row.category + "|" + "|".join(row.skus or [])
+                    offset = offsets.get(pool_key, 0)
                     item = pool[offset % len(pool)]
-                    offsets[row.category] = offset + 1
+                    offsets[pool_key] = offset + 1
                     if item.sku in ambiguous:
                         raise ValueError(f"SKU '{item.sku}' has mixed existing values. Resolve them in Edit products together first")
                     if item.sku in existing:

@@ -235,7 +235,20 @@ const RULES: Rule[] = [
 
 const DEFAULT_SPEC: PackageSpec = spec("box", 0.12, 0.18, 0.05, "other");
 
-export function classifyProduct(name: string): PackageSpec {
+// Bundled image identities remain stable when products use localized or edited names.
+const STARTER_PACKAGES: PackageSpec[] = [
+  spec("box", 0.075, 0.23, 0.075, "drink"), spec("jar", 0.085, 0.12, 0.085, "pantry"),
+  spec("bag", 0.11, 0.16, 0.03, "pantry"), spec("bag", 0.13, 0.21, 0.055, "pantry"),
+  spec("bottle", 0.075, 0.19, 0.075, "other"), spec("box", 0.09, 0.12, 0.03, "other"),
+  spec("bottle", 0.065, 0.12, 0.065, "other"), spec("box", 0.065, 0.18, 0.025, "other"),
+  DEFAULT_SPEC, DEFAULT_SPEC, DEFAULT_SPEC, spec("cup", 0.085, 0.1, 0.085, "other"),
+  spec("bag", 0.17, 0.2, 0.09, "bakery"), spec("bottle", 0.068, 0.23, 0.068, "drink"),
+  spec("bag", 0.165, 0.24, 0.06, "snack"), spec("jar", 0.075, 0.1, 0.075, "pantry"),
+];
+
+export function classifyProduct(name: string, imageUrl?: string | null): PackageSpec {
+  const bundled = imageUrl?.match(/^\/api\/catalog-images\/starter-01\/(\d+)\.webp$/);
+  if (bundled && STARTER_PACKAGES[Number(bundled[1])]) return STARTER_PACKAGES[Number(bundled[1])]!;
   const n = name.trim().toLowerCase();
   for (const [re, make] of RULES) {
     if (re.test(n)) return make(n);

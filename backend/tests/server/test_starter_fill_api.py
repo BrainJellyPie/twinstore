@@ -11,6 +11,98 @@ PID, SID = "proj_67916afd", "setup_starter_fixture"
 URL = f"/api/projects/{PID}/setups/{SID}/starter-fill"
 
 
+def mock_auto_model(monkeypatch, during=None):
+    from store_emulator.application import starter_fill
+    from store_emulator.engine.starter_selection import CategorySelection
+    class Model:
+        calls = 0
+        async def generate_structured_async(self, schema, system, user, **kwargs):
+            import json
+            self.calls += 1
+            data = json.loads(user)
+            if during:
+                during(self.calls)
+            if schema is CategorySelection:
+                return schema.model_validate({"groups": [{"category": "home_coffee_tea", "rack_ids": [r["id"] for r in data["racks"]]}]})
+            return schema.model_validate({"groups": [{"category": "home_coffee_tea", "skus": [p["sku"] for p in data["categories"]["home_coffee_tea"][:2]]}]})
+    model = Model()
+    monkeypatch.setattr(starter_fill, "assistive_client", lambda *args: model)
+    return model
+
+
+def automatic_request(client, **patch):
+    catalog = client.get(URL).json()
+    return {"source_sha256": catalog["source_sha256"], "currency": catalog["currency"], "requirements": "Coffee and tea, no alcohol", "products_per_slot": 2, **patch}
+
+
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_auto_selected_products_keep_images_and_roundtrip_without_second_model_call(workflow, monkeypatch, currency):
+    client, source = workflow
+    source["store"]["currency"] = currency
+    write_json(setup_path(PID, SID), source)
+    model = mock_auto_model(monkeypatch)
+    result = client.post(URL + "/auto-select", json=automatic_request(client))
+    assert result.status_code == 200, result.text
+    body = result.json()
+    assert len(body["assignments"]) == 2 and all(len(r["skus"]) == 2 for r in body["assignments"])
+    report = client.post(URL + "/preview", json=body)
+    assert report.status_code == 200
+    assert all(p["image_url"].startswith("/api/catalog-images/") for r in report.json()["racks"] for p in r["products"])
+    saved = client.post(URL + "/save", json={**body, "request_id": "8" * 32})
+    assert saved.status_code == 200, saved.text
+    assert client.post(URL + "/save", json={**body, "request_id": "8" * 32}).json() == saved.json()
+    assert model.calls == 2 and read_setup(PID, SID) == source
+
+
+@pytest.mark.parametrize("patch", [{"source_sha256": "bad"}, {"currency": "usd"}, {"requirements": "x" * 2001},
+    {"model": "x" * 201}, {"products_per_slot": 0}, {"products_per_slot": 5}, {"products_per_slot": True},
+    {"products_per_slot": 1.5}, {"products_per_slot": "2"}, {"unknown": 1}])
+def test_auto_invalid_input_is_rejected_without_model_call(workflow, monkeypatch, patch):
+    client, source = workflow
+    model = mock_auto_model(monkeypatch)
+    assert client.post(URL + "/auto-select", json=automatic_request(client, **patch)).status_code == 422
+    assert model.calls == 0 and read_setup(PID, SID) == source
+
+
+@pytest.mark.parametrize("when", [0, 1, 2])
+def test_auto_rejects_stale_layout_before_or_during_selection(workflow, monkeypatch, when):
+    client, source = workflow
+    body = automatic_request(client)
+    def change(call):
+        if call == when:
+            source["store"]["name"] = "Changed while choosing"
+            write_json(setup_path(PID, SID), source)
+    model = mock_auto_model(monkeypatch, change)
+    if when == 0:
+        change(0)
+    response = client.post(URL + "/auto-select", json=body)
+    assert response.status_code == 409, response.text
+    assert model.calls == (0 if when == 0 else 2)
+    assert read_setup(PID, SID) == source
+
+
+@pytest.mark.parametrize("skus", [[], ["missing"], ["a"] * 17, ["a", "a"], [None], "a", [True]])
+def test_selected_sku_boundaries_reject_preview_and_save_without_writes(workflow, skus):
+    client, source = workflow
+    body = request(client, assignments=[{"rack_id": "empty", "category": "home_coffee_tea", "skus": skus}])
+    assert client.post(URL + "/preview", json=body).status_code == 422
+    assert client.post(URL + "/save", json={**body, "request_id": "9" * 32}).status_code == 422
+    assert read_setup(PID, SID) == source
+    assert not setup_path(PID, "setup_starter_" + "9" * 32).exists()
+
+
+def test_auto_model_failure_can_retry_and_does_not_write(workflow, monkeypatch):
+    client, source = workflow
+    def fail(call):
+        raise TimeoutError("model timeout")
+    mock_auto_model(monkeypatch, fail)
+    response = client.post(URL + "/auto-select", json=automatic_request(client))
+    assert response.status_code == 502 and "took too long" in response.text
+    assert read_setup(PID, SID) == source
+    mock_auto_model(monkeypatch)
+    assert client.post(URL + "/auto-select", json=automatic_request(client)).status_code == 200
+
+
 @pytest.fixture
 def workflow(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

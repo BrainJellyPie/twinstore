@@ -1060,9 +1060,22 @@ Keep this request unchanged for retries. Product IDs and layouts are never silen
 
 ## Fill existing empty shelves with starter products
 
-In a draft's preparation dashboard, open **Step 2: Item placement → Fill empty shelves**. This uses the
+In a draft's preparation dashboard, open **Step 2: Item placement → Auto-place starter products**. This uses the
 same generic catalog as store templates while keeping your existing floor, rack positions, signs and
-stocked racks. It makes no model call and needs no spreadsheet.
+stocked racks. **Automatic by store category** is the default. Add optional assortment requirements and
+click **Choose and preview automatically**: the configured text model first chooses categories for the
+empty racks, then selects exact existing product IDs within those categories. These are two model requests;
+no model is called merely by opening the dialog. Unknown IDs, duplicate selections and incomplete rack
+assignments are rejected. Review the products, prices and available images, then **Save stocked layout**.
+Automatic selection supports 1–100 empty accessible racks. A failed model call leaves the layout unchanged;
+retry or switch to **Choose categories manually**, which needs no model or spreadsheet.
+
+The bundled catalog now includes 824 products in 75 categories. New examples cover plant-based foods,
+breakfast spreads, home coffee/tea, bath/body care, first-aid tools, supplements, indoor plants, digital
+accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Sixteen generated
+generic packshots ship locally; they do not require a network connection or image-generation call at use time.
+
+For manual selection:
 
 1. Search shelves by name or ID. Select individual empty shelves/fridges or **Select shown empty racks**.
    Only racks with no product items anywhere are eligible; a partly stocked rack stays unchanged. Tables
@@ -1094,7 +1107,11 @@ dialog. An accepted save may finish after closing. **Retry saving starter draft*
 after an uncertain response; check Layouts before starting a new request. A deleted draft or interrupted
 write reservation is never silently recreated; intentionally start a new preview after checking Layouts.
 
-API: `GET /api/projects/{pid}/setups/{sid}/starter-fill`, `POST .../preview`, `POST .../save`.
+API: `GET /api/projects/{pid}/setups/{sid}/starter-fill`, `POST .../auto-select`, `POST .../preview`, `POST .../save`.
+Auto-selection takes `source_sha256`, `currency`, optional `requirements`/`model`, and `products_per_slot`;
+it returns a preview request whose assignments contain ordered `skus` (1–16 distinct IDs from the category).
+Model-selected products are checked again before preview/save, and a changed source invalidates the selection.
+Bundled images are served at `/api/catalog-images/starter-01/{index}.webp` (indices 0–15).
 Preview takes `source_sha256`, `currency`, unique `assignments` of `rack_id`/`category`, and integer
 `products_per_slot` (1–4). Save also takes a stable 32-character lowercase hex `request_id`. Reuse the
 identical save body on retry. The snapshot includes the bundled catalog contents as well as the layout.

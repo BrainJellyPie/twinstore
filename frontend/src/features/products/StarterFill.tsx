@@ -1,10 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/components/ui/dialog";
 import { starterCatalog } from "@/services/queries/starterFill";
 import { starterPreview, starterSave } from "@/services/mutations/starterFill";
 import type { StarterCatalog, StarterSave } from "@/shared/api/starterFill";
+import { autoSelectStarterProducts } from "@/shared/api/starterFill";
+import { resolveImageUrl } from "@/shared/api/images";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { priceText } from "./productDrafts";
@@ -12,7 +14,7 @@ import { priceText } from "./productDrafts";
 export function StarterFill({ pid, sid }: { pid: string; sid: string }) {
   const [open, setOpen] = useState(false);
   return <>
-    <Button variant="outline" onClick={() => setOpen(true)}>Fill empty shelves</Button>
+    <Button variant="outline" onClick={() => setOpen(true)}>Auto-place starter products</Button>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="flex max-h-[90dvh] flex-col overflow-y-auto p-4 sm:max-w-4xl sm:p-7">
         <DialogTitle>Fill empty shelves</DialogTitle>
@@ -24,6 +26,7 @@ export function StarterFill({ pid, sid }: { pid: string; sid: string }) {
 }
 function StarterSession({ pid, sid, close }: { pid: string; sid: string; close: () => void }) {
   const catalog = useQuery(starterCatalog(pid, sid));
+  const [mode, setMode] = useState<"auto" | "manual">("auto");
   const [revision, setRevision] = useState(0);
   const [reloading, setReloading] = useState(false);
   const reload = () => {
@@ -33,13 +36,15 @@ function StarterSession({ pid, sid, close }: { pid: string; sid: string; close: 
   return <>
     {catalog.isError && <p role="alert">{catalog.error.message}<Button className="h-auto min-h-9 max-w-full whitespace-normal py-2" disabled={reloading} onClick={reload}>{catalog.data ? "Discard choices and retry" : "Retry starter options"}</Button></p>}
     {!catalog.data && !catalog.isError && <p role="status">Loading starter options…</p>}
-    {catalog.data && <StarterForm key={revision} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} reload={reload} close={close} />}
+    {catalog.data && <StarterForm key={revision} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} reload={reload} close={close} mode={mode} setMode={setMode} />}
   </>;
 }
-function StarterForm({ pid, sid, initial, refreshing, reload, close }: {
+function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMode }: {
   pid: string; sid: string; initial: StarterCatalog; refreshing: boolean; reload: () => void; close: () => void;
+  mode: "auto" | "manual"; setMode: (mode: "auto" | "manual") => void;
 }) {
   const [snapshot] = useState(initial);
+  const [requirements, setRequirements] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [perSlot, setPerSlot] = useState(2);
@@ -47,14 +52,33 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close }: {
   const [error, setError] = useState("");
   const [prepared, setPrepared] = useState<StarterSave | null>(null);
   const pending = useRef(false);
+  const live = useRef(false);
+  useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
   const preview = useMutation(starterPreview(pid, sid));
   const save = useMutation(starterSave(pid, sid));
+  const auto = useMutation({ mutationFn: () => autoSelectStarterProducts(pid, sid, {
+    source_sha256: snapshot.source_sha256, currency: snapshot.currency, requirements: requirements.trim(), products_per_slot: perSlot,
+  }) });
   const qc = useQueryClient();
-  const busy = preview.isPending || save.isPending || refreshing;
+  const busy = preview.isPending || save.isPending || auto.isPending || refreshing;
   const locked = busy || !!save.data;
+  const eligibleCount = snapshot.racks.filter((r) => !r.reason && r.available_slots > 0).length;
   const shown = snapshot.racks.filter((r) => `${r.name} ${r.id} ${r.type}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).slice(0, 100);
   const clear = () => { setPrepared(null); preview.reset(); save.reset(); setError(""); };
   const choose = (next: Map<string, string>) => { setSelected(next); clear(); };
+  const automatic = async () => {
+    if (pending.current) return;
+    clear();
+    pending.current = true;
+    try {
+      const body = await auto.mutateAsync();
+      if (!live.current) return;
+      await preview.mutateAsync(body);
+      if (!live.current) return;
+      setPrepared({ ...body, request_id: crypto.randomUUID().replace(/-/g, "") });
+    } catch (e) { setError((e as Error).message); }
+    finally { pending.current = false; }
+  };
   const check = async () => {
     if (pending.current) return;
     clear();
@@ -82,7 +106,22 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close }: {
   const sample = snapshot.categories.find((c) => c.key === category);
   return <div className="min-w-0 space-y-3 [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-2">
     <p>Generic products and reference prices are examples, not your actual stock or shelf prices. KRW/JPY references use fixed illustrative conversions, not live FX. Review prices after saving in Edit products together.</p>
-    <p>Only completely empty racks are eligible. Geometry, signs, stocked racks and images stay unchanged. Each accessible, unlocked face receives products on four levels. Tables and checkout counters are excluded.</p>
+    <p>Only completely empty racks are eligible. Each accessible, unlocked face receives products on four levels. Tables and checkout counters are excluded.</p>
+    <fieldset disabled={locked} className="flex flex-wrap gap-4 rounded border p-3">
+      <legend>Product selection</legend>
+      <label><input type="radio" name="starter-mode" checked={mode === "auto"} onChange={() => { setMode("auto"); clear(); }} /> Automatic by store category (default)</label>
+      <label><input type="radio" name="starter-mode" checked={mode === "manual"} onChange={() => { setMode("manual"); clear(); }} /> Choose categories manually</label>
+    </fieldset>
+    {mode === "auto" && <section className="space-y-3 rounded border p-3" aria-label="Automatic product placement">
+      <p>The text model chooses categories and existing products from the bundled catalog for this store. Two model requests select the assortment; the preview places it on empty shelves. Bundled product images are included when available.</p>
+      <label className="block">Assortment requirements<textarea disabled={locked} value={requirements} onChange={(e) => { setRequirements(Array.from(e.target.value).slice(0, 2000).join("")); clear(); }} className="mt-1 block w-full rounded border p-2" placeholder="For example: a cafe with oat drinks, coffee beans and bakery snacks; no alcohol." /></label>
+      <label className="block">Products per shelf section<select disabled={locked} className="mt-1 block w-full rounded border p-2" value={perSlot} onChange={(e) => { setPerSlot(Number(e.target.value)); clear(); }}>{[1, 2, 3, 4].map((n) => <option key={n}>{n}</option>)}</select></label>
+      <p>{eligibleCount} empty racks available. Automatic selection supports 1–100 racks.</p>
+      <Button disabled={locked || eligibleCount < 1 || eligibleCount > 100} onClick={() => void automatic()}>{auto.isPending ? "Choosing catalog products…" : preview.isPending ? "Checking shelves…" : "Choose and preview automatically"}</Button>
+      <Button variant="outline" disabled={locked} onClick={reload}>Reload starter options</Button>
+      {error && <p>You can retry with the configured text model or choose categories manually.</p>}
+    </section>}
+    {mode === "manual" && <>
     <label className="block">Search shelves<input className="mt-1 block w-full min-w-0 max-w-full rounded border p-2" value={search} onChange={(e) => setSearch(e.target.value)} /></label>
     <p>{shown.length} racks shown (up to 100). {selected.size} selected across all filters.</p>
     <fieldset disabled={locked} className="min-w-0 space-y-2 rounded border p-3">
@@ -105,15 +144,16 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close }: {
       {!shown.length && <p>No matching shelves. Add shelves or fridges and an entrance in Step 1, or change the search.</p>}
     </div>
     <p>Existing exact SKUs reuse their current names, prices and images. Mixed existing values must be resolved first. Matching names alone never merge products.</p>
-    {error && <p role="alert">{error}</p>}
     <Button disabled={locked || !selected.size} onClick={() => void check()}>{preview.isPending ? "Checking shelves…" : "Preview starter products"}</Button>
+    </>}
+    {error && <p role="alert">{error}</p>}
     {preview.data && <section aria-label="Starter product preview" className="min-w-0 space-y-2 rounded border p-3">
       <p>{preview.data.racks.length} racks · {preview.data.placements_added} placements · {preview.data.new_skus} new SKUs · {preview.data.reused_skus} reused SKUs.</p>
-      {preview.data.racks.map((rack) => <details key={rack.id}><summary>{rack.name}: {rack.slots_added} sections, {rack.placements_added} placements — review products</summary><ul>{rack.products.map((p) => <li key={p.sku}>{p.name} — {priceText(p.price, snapshot.currency)} {snapshot.currency}{rack.reused_skus.includes(p.sku) ? " (existing SKU values)" : " (reference)"}</li>)}</ul></details>)}
+      {preview.data.racks.map((rack) => <details key={rack.id}><summary>{rack.name}: {rack.slots_added} sections, {rack.placements_added} placements — review products</summary><ul>{rack.products.map((p) => <li className="flex items-center gap-2 py-1" key={p.sku}>{p.image_url && <img className="size-14 shrink-0 rounded border object-contain" loading="lazy" src={resolveImageUrl(p.image_url)} alt={p.name} />}<span>{p.name} — {priceText(p.price, snapshot.currency)} {snapshot.currency}{rack.reused_skus.includes(p.sku) ? " (existing SKU values)" : " (reference)"}</span></li>)}</ul></details>)}
       {prepared && !save.data && <Button disabled={busy} onClick={() => void persist()}>{save.isPending ? "Saving starter draft…" : save.isError ? "Retry saving starter draft" : "Save stocked layout"}</Button>}
     </section>}
     {save.isError && <p role="alert">{save.error.message} An uncertain save may have completed. Retry the same request or check Layouts before starting again.</p>}
     {save.data && <div role="status"><p>Starter draft saved. The source layout is unchanged.</p><Button onClick={() => { if (save.data) { useSimulationStore.getState().setSelectedSetupId(save.data.setup_id); close(); } }}>Open stocked layout</Button></div>}
-    <p className="text-xs">Closing discards unsaved choices. An accepted save can finish after closing. Return to the original in Layouts to undo a saved variant. No model is called.</p>
+    <p className="text-xs">Closing discards unsaved choices. An accepted save can finish after closing. Return to the original in Layouts to undo a saved variant. Manual selection uses no model.</p>
   </div>;
 }
