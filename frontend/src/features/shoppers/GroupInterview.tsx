@@ -20,19 +20,29 @@ const SEGMENTS: { id: GroupSegment; label: string; question: string }[] = [
   { id: "all", label: "Anyone", question: "If you could change one thing about this store, what would it be?" },
 ];
 
-export function GroupInterviewPanel({ projectId, runId, currency, onOpen, onBack }: {
-  projectId: string; runId: string; currency: string; onOpen: (sid: string) => void; onBack: () => void;
+const FOUND_QUESTION = "Tell us about this trip: what made it go the way it did, and what would you change?";
+
+export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen, onBack }: {
+  projectId: string; runId: string; currency: string;
+  /** Shoppers found from a description, offered as the group to ask (in their found order). */
+  preset?: { label: string; personaIds: string[] };
+  onOpen: (sid: string) => void; onBack: () => void;
 }) {
   const qc = useQueryClient();
   const groups = useQuery({ queryKey: interviewKeys.groups(projectId, runId), queryFn: ({ signal }) => listGroups(projectId, runId, signal) });
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
-  const [segment, setSegment] = useState<GroupSegment>("empty_handed");
-  const [question, setQuestion] = useState(SEGMENTS[0]!.question);
-  const [size, setSize] = useState(12);
+  const [segment, setSegment] = useState<GroupSegment | "found">(preset ? "found" : "empty_handed");
+  const [question, setQuestion] = useState(preset ? FOUND_QUESTION : SEGMENTS[0]!.question);
+  const presetMax = Math.min(40, preset?.personaIds.length ?? 40);
+  const [size, setSize] = useState(Math.min(12, presetMax));
+  const maxSize = segment === "found" ? presetMax : 40;
+  const askedSize = Math.min(size, maxSize);
   const [model, setModel] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const ask = useMutation({
-    mutationFn: () => askGroup(projectId, runId, { question: question.trim(), segment, size, model }),
+    mutationFn: () => askGroup(projectId, runId, segment === "found" && preset
+      ? { question: question.trim(), segment: "all", size: askedSize, model, persona_ids: preset.personaIds.slice(0, askedSize) }
+      : { question: question.trim(), segment: segment === "found" ? "all" : segment, size: askedSize, model }),
     onSuccess: async (g) => {
       setOpen(g.group_id);
       await qc.invalidateQueries({ queryKey: interviewKeys.groups(projectId, runId) });
@@ -52,6 +62,12 @@ export function GroupInterviewPanel({ projectId, runId, currency, onOpen, onBack
       <section className="space-y-2 rounded-2xl border bg-card p-3">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold"><UsersRound className="size-4 text-primary" /> Group interview</h3>
         <div className="flex flex-wrap gap-1">
+          {preset && (
+            <button type="button" onClick={() => { setSegment("found"); setQuestion(FOUND_QUESTION); }}
+              className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", segment === "found" ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>
+              {preset.label} · {preset.personaIds.length}
+            </button>
+          )}
           {SEGMENTS.map((s) => (
             <button key={s.id} type="button" onClick={() => { setSegment(s.id); setQuestion(s.question); }}
               className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", segment === s.id ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>
@@ -79,8 +95,8 @@ export function GroupInterviewPanel({ projectId, runId, currency, onOpen, onBack
           className="w-full resize-none rounded-xl border bg-card/60 px-3 py-2 text-[0.8rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
         <div className="flex items-center gap-2 text-[0.72rem] text-muted-foreground">
           <span>Shoppers</span>
-          <input type="range" min={4} max={40} step={1} value={size} onChange={(e) => setSize(Number(e.target.value))} className="flex-1" aria-label="Group size" />
-          <span className="num w-6 text-right font-semibold text-foreground">{size}</span>
+          <input type="range" min={Math.min(4, maxSize)} max={maxSize} step={1} value={askedSize} onChange={(e) => setSize(Number(e.target.value))} className="flex-1" aria-label="Group size" />
+          <span className="num w-6 text-right font-semibold text-foreground">{askedSize}</span>
         </div>
         <div className="flex items-center gap-2">
           <select value={model} onChange={(e) => setModel(e.target.value)} className="h-8 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5 text-xs" aria-label="Model">
@@ -88,10 +104,10 @@ export function GroupInterviewPanel({ projectId, runId, currency, onOpen, onBack
             {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
           </select>
           <Button size="sm" disabled={!question.trim() || ask.isPending} onClick={() => ask.mutate()}>
-            {ask.isPending ? <Loader2 className="size-4 animate-spin" /> : <UsersRound className="size-4" />} Ask {size}
+            {ask.isPending ? <Loader2 className="size-4 animate-spin" /> : <UsersRound className="size-4" />} Ask {askedSize}
           </Button>
         </div>
-        <p className="text-[0.68rem] text-muted-foreground">{size + 1} model calls: one answer per shopper from their own trip, then theme coding.</p>
+        <p className="text-[0.68rem] text-muted-foreground">{askedSize + 1} model calls: one answer per shopper from their own trip, then theme coding.{segment === "found" ? " The first shoppers of the found list are asked." : ""}</p>
         {ask.error && <p className="text-[0.75rem] text-destructive">{ask.error.message}</p>}
       </section>
 

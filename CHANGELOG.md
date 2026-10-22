@@ -25,6 +25,32 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
   No model call or new spreadsheet is required. See the product editor section in USAGE.md.
 
+### Optimization goals in words
+- **Optimize** takes the goal in words ("sell more ice cream on impulse, don't move the fridges or touch the drinks
+  shelves, at most 6 changes"): the text model sets the objective, what may change, the move limit, whether fridges
+  stay on the walls, the shelves that stay locked (this layout's, by name; shown with **Unlock all**) and the
+  smallest gain worth keeping. Limits out of range and unknown shelves are reported, not guessed. Nothing starts until
+  the user does. The command palette sends "optimize the layout for more impulse sales" to a finished run's
+  optimizer with the goal filled in. API: `POST /api/projects/{pid}/setups/{sid}/optimize/goal`.
+
+### A new store from one description
+- The create-store form starts with **Describe the store in your own words**: "a campus convenience store at the
+  university gate, open weekdays 7 to 23, mostly students" fills the name, a short description (only what was said),
+  the address only when a place is given, the type, opening days and hours, and picks the starting store format and
+  its currency from the generator's own list. Overnight hours and unknown formats are left for the user with a note;
+  an answer that arrives after the user edited the form is dropped. Works in all six interface languages.
+  API: `POST /api/assist/store-setup`.
+
+### Find shoppers in words
+- The Shoppers tab of a run takes a description ("women in their 20s who stopped at the ice cream freezers but bought
+  nothing after 3 pm"). The text model writes a filter (age and gender groups, words from the persona, bought
+  something or nothing on the trip or at given shelves, impulse buys, shelves stopped at, products bought or not,
+  arrival time, spend, visit length, order); the run's own records decide who fits, so every listed shopper really
+  matches. The filter is shown in words; when nobody fits, the panel says how many would without each condition.
+  **Interview these shoppers** opens a group interview with the found shoppers as the group. The command palette
+  sends "show me students who left empty-handed" here.
+  API: `POST /api/projects/{pid}/runs/{run_id}/shoppers/find`.
+
 ### Design briefs that set the layout options
 - The **Additional design brief** of a generated layout used to be saved as a note only. **Apply to the options**
   now has the text model set what the brief asks for: style, density, size in grid cells, door wall and position,
@@ -68,6 +94,10 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   products, age and gender groups). Every answer lists the figures it rests on (only lines that are in the sheet are
   kept), says plainly when the run cannot answer, and offers follow-up questions; the thread is kept with the run.
   API: `GET/POST/DELETE /api/projects/{pid}/runs/{run_id}/analyst`, `GET .../analyst/facts`.
+- **Suggest questions from this run** replaces the generic starters with three questions read off the run's fact sheet
+  (the shelves, products, hours or groups that stand out). API: `POST .../analyst/suggestions`.
+- A shelf picked on the floor of a finished run offers **Ask about this shelf**, which asks the analyst why it sells the
+  way it does and what could make more of the shoppers who stop there buy.
 
 - **Explain the difference** in Compare runs: the model reads the paired comparison (in money, points, seconds and
   metres) and both runs' fact sheets, and says what changed, which shelves, products, hours or groups it came from,

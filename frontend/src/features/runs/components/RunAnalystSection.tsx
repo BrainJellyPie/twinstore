@@ -3,9 +3,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MessageSquareText, RotateCcw, Send } from "lucide-react";
+import { Loader2, MessageSquareText, RotateCcw, Send, Sparkles } from "lucide-react";
 
-import { analystKey, askAnalyst, clearAnalyst, getAnalyst } from "@/shared/api/interview";
+import { analystKey, askAnalyst, clearAnalyst, getAnalyst, suggestAnalystQuestions } from "@/shared/api/interview";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { cn } from "@/shared/utils/cn";
 import { useAssistStore } from "@/stores/assistStore";
@@ -52,7 +52,10 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
   }, [pendingAsk, projectId, takeAsk, queueAsk]);
   const messages = thread.data?.messages ?? [];
   const last = [...messages].reverse().find((m) => m.role === "analyst");
-  const suggestions = last ? last.follow_ups : messages.length === 0 ? STARTERS : [];
+  // Starters read off this run (what stands out) replace the generic ones once asked for.
+  const ideas = useMutation({ mutationFn: () => suggestAnalystQuestions(projectId, runId) });
+  const starters = ideas.data && ideas.data.length > 0 ? ideas.data : STARTERS;
+  const suggestions = last ? last.follow_ups : messages.length === 0 ? starters : [];
   const busy = ask.isPending || clear.isPending;
   const send = (q: string) => { const t = q.trim(); if (Array.from(t).length >= 2 && !busy) { clear.reset(); ask.mutate(t); } };
   useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [messages.length, pending]);
@@ -96,6 +99,14 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
         {(ask.error || clear.error) && <p role="alert" className="text-[0.72rem] text-destructive">{(ask.error ?? clear.error)?.message}</p>}
         <div ref={end} />
       </div>
+      {messages.length === 0 && !pending && !ideas.data && (
+        <button type="button" onClick={() => ideas.mutate()} disabled={ideas.isPending}
+          className="mt-2 inline-flex items-center gap-1 text-[0.7rem] text-primary hover:underline disabled:opacity-60">
+          {ideas.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+          {ideas.isPending ? "Reading the run…" : "Suggest questions from this run"}
+        </button>
+      )}
+      {ideas.error && <p role="alert" className="mt-1 text-[0.7rem] text-destructive">{ideas.error.message}</p>}
       {suggestions.length > 0 && !pending && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {suggestions.map((q) => (

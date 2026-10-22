@@ -1,7 +1,7 @@
 // Toolbar below the 3D view in playback: switch between runs of this layout,
 // start another run, compare runs, export results, return to editing.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, GitCompareArrows, Pencil, Play, Wand2 } from "lucide-react";
 
 import { useI18n } from "@/shared/i18n/i18n";
@@ -16,6 +16,7 @@ import {
 import { runExportUrl } from "@/shared/api/client";
 import { useRuns } from "@/shared/queries/useRuns";
 import type { Layout } from "@/features/layouts/hooks/useLayouts";
+import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 
 import { runLabel } from "../labels";
@@ -42,6 +43,17 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
   const [launchOpen, setLaunchOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [optimizeOpen, setOptimizeOpen] = useState(false);
+  // A goal typed in the command palette opens the optimizer with it.
+  const [goalPrefill, setGoalPrefill] = useState<{ id: number; text: string } | undefined>(undefined);
+  const pendingAsk = useAssistStore((s) => s.pending);
+  const takeAsk = useAssistStore((s) => s.take);
+  useEffect(() => {
+    if (!pendingAsk) return;
+    const routed = takeAsk(projectId, ["optimize"]);
+    if (!routed) return;
+    setGoalPrefill({ id: routed.id, text: routed.text });
+    setOptimizeOpen(true);
+  }, [pendingAsk, projectId, takeAsk]);
   const editable = setupStatus === "draft";
 
   return (
@@ -92,7 +104,8 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
         personaCount={personaCount}
         locked={!editable}
       />
-      <OptimizeDialog open={optimizeOpen} onOpenChange={setOptimizeOpen} projectId={projectId} setupId={setupId} />
+      <OptimizeDialog open={optimizeOpen} projectId={projectId} setupId={setupId} goalPrefill={goalPrefill}
+        onOpenChange={(o) => { setOptimizeOpen(o); if (!o) setGoalPrefill(undefined); }} />
       <CompareDialog
         open={compareOpen}
         onOpenChange={setCompareOpen}

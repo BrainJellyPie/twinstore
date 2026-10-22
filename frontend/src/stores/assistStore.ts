@@ -2,7 +2,8 @@ import { create } from "zustand";
 
 /** Where a request typed in the command palette was routed; the page there drafts the rest from the same words. */
 export type AssistDestination =
-  | "ab_test" | "shelf_test" | "conjoint" | "concept_test" | "staff_script" | "layout_edit" | "area" | "run_question";
+  | "ab_test" | "shelf_test" | "conjoint" | "concept_test" | "staff_script" | "layout_edit" | "area" | "run_question"
+  | "find_shoppers" | "optimize";
 
 export interface PendingAsk {
   id: number;

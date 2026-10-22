@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { StoreSetupDraft } from "@/shared/api/client";
 import { useI18n } from "@/shared/i18n/i18n";
 import { TemplatePicker } from "@/features/layouts/components/TemplatePicker";
 import { DEFAULT_TEMPLATE_CHOICE, templateRequest, validTemplateChoice } from "@/features/layouts/templateOptions";
@@ -23,6 +24,7 @@ import {
   validateStep2,
   type WizardValues,
 } from "../validate";
+import { DescribeStoreField } from "./DescribeStoreField";
 import { Step1Fields } from "./Step1Fields";
 import { Step2Fields } from "./Step2Fields";
 import { WizardHeader } from "./WizardHeader";
@@ -74,6 +76,23 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
     },
     [],
   );
+
+  // One description fills the form: only the fields it speaks to, and the starting format when one fits.
+  const fillFromDescription = useCallback((d: StoreSetupDraft) => {
+    setValues((prev) => ({
+      ...prev,
+      ...(d.name ? { name: d.name } : {}),
+      ...(d.description ? { description: d.description } : {}),
+      ...(d.address ? { address: d.address } : {}),
+      ...(d.store_type ? { storeType: d.store_type } : {}),
+      workingDayPreset: d.open_days,
+      ...(d.open_hour != null && d.close_hour != null ? { openHour: d.open_hour, closeHour: d.close_hour } : {}),
+    }));
+    if (d.template_id) {
+      setWithTemplate(true);
+      setTemplate((prev) => ({ ...prev, templateId: d.template_id, ...(d.currency ? { currency: d.currency } : {}) }));
+    }
+  }, []);
 
   const handleNext = useCallback(() => {
     if (create.isPending) return;
@@ -147,6 +166,9 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
 
         {step === 1 && (
           <>
+            <DescribeStoreField disabled={isPending} onFilled={fillFromDescription}
+              formKey={JSON.stringify([values.name, values.description, values.address, values.storeType, values.workingDayPreset,
+                values.openHour, values.closeHour, withTemplate, templateOptions.templateId, templateOptions.currency])} />
             <Step1Fields values={values} errors={step1Errors ?? undefined} disabled={isPending} onChange={onChange} />
             <fieldset className="space-y-3 rounded-xl border p-4" disabled={isPending}>
               <legend className="px-1 text-sm font-medium">{t("startingLayout")}</legend>

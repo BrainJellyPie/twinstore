@@ -5,10 +5,10 @@ the project's library, by name), the questions to ask, the brief respondents rea
 panel's age and gender quotas. Images that are not in the library are dropped and reported; nothing runs.
 """
 
-from collections.abc import Sequence
-from decimal import Decimal, ROUND_HALF_UP
-from math import isfinite
 import re
+from collections.abc import Sequence
+from decimal import ROUND_HALF_UP, Decimal
+from math import isfinite
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field

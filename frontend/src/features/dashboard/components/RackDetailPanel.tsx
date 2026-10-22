@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { X } from "lucide-react";
+import { MessageSquareText, X } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { resolveImageUrl } from "@/shared/api/images";
@@ -12,6 +12,8 @@ interface Props {
   rack: Rack;
   open: boolean;
   onClose: () => void;
+  /** When given (a finished run), offers to ask the run analyst about this shelf. */
+  onAsk?: () => void;
 }
 
 function lockedFaceSet(rack: Rack): Set<Face> {
@@ -85,7 +87,7 @@ function FaceContent({ rack, face }: { rack: Rack; face: Face }) {
   );
 }
 
-export function RackDetailPanel({ rack, open, onClose }: Props) {
+export function RackDetailPanel({ rack, open, onClose, onAsk }: Props) {
   const locked = lockedFaceSet(rack);
   const visibleFaces = FACE_ORDER.filter((f) => !locked.has(f));
   const faceCounts = itemCountByFace(rack);
@@ -112,6 +114,11 @@ export function RackDetailPanel({ rack, open, onClose }: Props) {
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold">{rack.rack_name || rack.id}</h2>
+        {onAsk && (
+          <button type="button" onClick={onAsk} className="mr-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-primary hover:bg-primary/[0.07]">
+            <MessageSquareText className="size-3.5" aria-hidden /> Ask about this shelf
+          </button>
+        )}
         <Button
           type="button"
           variant="ghost"
