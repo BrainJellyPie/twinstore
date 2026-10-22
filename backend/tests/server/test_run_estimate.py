@@ -51,3 +51,29 @@ def test_a_vision_run_on_this_computers_model_is_free_but_slow(client):
 def test_an_unknown_layout_is_not_found(client):
     resp = client.post(f"/api/projects/{PID}/runs/estimate", json={"setup_id": "setup_nope", "engine_type": "rule_based"})
     assert resp.status_code == 404
+
+
+@pytest.mark.parametrize("model", ["anthropic/claude-haiku-5-5", "openai/gpt-6-luna", "gemini/gemini-3.8-flash"])
+def test_default_models_are_priced_without_the_online_price_table(monkeypatch, model):
+    """Offline, LiteLLM keeps its bundled table, which lacks the newest models: the warning still has a price."""
+    import litellm
+
+    from store_emulator.application import estimates
+
+    bundled = {name: entry for name, entry in litellm.model_cost.items()
+               if name not in estimates._PRESET_PRICES}  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(litellm, "model_cost", bundled)
+    cost = estimates.cost_usd(model, 1_000_000, 100_000)
+    assert cost is not None and cost > 0
+
+
+def test_a_price_the_online_table_brought_is_kept(monkeypatch):
+    import litellm
+
+    from store_emulator.application import estimates
+
+    table = dict(litellm.model_cost)
+    table["claude-haiku-5-5"] = {"input_cost_per_token": 3e-06, "output_cost_per_token": 0.0,
+                                 "litellm_provider": "anthropic", "mode": "chat"}
+    monkeypatch.setattr(litellm, "model_cost", table)
+    assert estimates.cost_usd("anthropic/claude-haiku-5-5", 1_000_000, 0) == pytest.approx(3.0)

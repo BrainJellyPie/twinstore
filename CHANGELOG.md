@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Fixes
+- Without internet access (or when LiteLLM's online price table could not be downloaded), the warning before a run
+  or customer writing had no cost for the default models. Their prices are now built in; a downloaded price still
+  wins.
 - A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
   previous version). It now reloads once into the new version.
 
