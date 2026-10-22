@@ -299,3 +299,66 @@ def test_source_edit_after_snapshot_is_preserved_and_child_uses_reviewed_values(
     assert draft["rack_copy_request"]["source_sha256"] == body["source_sha256"]
     assert draft["store"]["racks"][2]["slots"][0]["items"][0]["price"] == 231
     assert draft["store"]["racks"][3]["slots"][1]["items"][0]["price"] == 231
+
+
+@pytest.mark.parametrize("currency", ["USD", "CAD", "CNY", "KRW", "JPY", "VND", "EUR", "GBP"])
+def test_currency_and_mixed_sku_placement_values_survive_save_and_replay(workflow, currency):
+    client, source = workflow
+    source["store"]["currency"] = currency
+    slots = source["store"]["racks"][2]["slots"]
+    slots[0]["items"][0].update(price=9007199254740991, regular_price=9007199254740990)
+    slots[1]["items"][0].update(sku=slots[0]["items"][0]["sku"], price=0, name="Different pack", promo="한정 ✨")
+    write_json(setup_path(PID, SID), source)
+    body = {**request(client, currency=currency), "request_id": "8" * 32}
+    wrong = client.post(URL + "/save", json={**body, "currency": "JPY" if currency != "JPY" else "USD"})
+    assert wrong.status_code == 409
+    assert not setup_path(PID, "setup_rackcopy_" + "8" * 32).exists()
+    saved = client.post(URL + "/save", json=body)
+    assert saved.status_code == 200, saved.text
+    child = read_setup(PID, saved.json()["setup_id"])
+    assert child["store"]["currency"] == currency
+    for rack in child["store"]["racks"][3:5]:
+        assert [s for s in rack["slots"] if s["items"]] == slots
+    # Recovery is about the accepted request, even when the source is now invalid.
+    changed = {**source, "store": None}
+    write_json(setup_path(PID, SID), changed)
+    assert client.post(URL + "/save", json=body).json() == saved.json()
+    assert read_setup(PID, SID) == changed
+
+
+@pytest.mark.parametrize("stage", ["before_receipt", "after_receipt", "after_child"])
+def test_write_failures_have_durable_and_unambiguous_retry_outcomes(workflow, monkeypatch, stage):
+    from store_emulator.application import rack_copy
+    client, source = workflow
+    body = {**request(client), "request_id": "9" * 32}
+    real = rack_copy.write_json
+    def fail(path, data):
+        receipt = path.parent.name == ".rack-copy"
+        if receipt and stage == "before_receipt":
+            raise OSError("No space before receipt write")
+        real(path, data)
+        if receipt and stage == "after_receipt" or not receipt and stage == "after_child":
+            raise OSError("Lost write acknowledgement")
+    monkeypatch.setattr(rack_copy, "write_json", fail)
+    assert client.post(URL + "/save", json=body).status_code == 500
+    monkeypatch.setattr(rack_copy, "write_json", real)
+    retry = client.post(URL + "/save", json=body)
+    assert retry.status_code == (409 if stage == "after_receipt" else 200), retry.text
+    children = list(setup_path(PID, SID).parent.glob("setup_rackcopy_*.json"))
+    assert len(children) == (0 if stage == "after_receipt" else 1)
+    assert read_setup(PID, SID) == source
+
+
+@pytest.mark.parametrize("field,value", [
+    ("source_sha256", "a" * 64 + "\n"), ("source_sha256", "A" * 64),
+    ("currency", "USD\n"), ("currency", "ＵＳＤ"),
+    ("request_id", "a" * 32 + "\n"), ("request_id", "../" + "a" * 29),
+    ("request_id", "a" * 31), ("request_id", "a" * 33),
+    ("request_id", "Ａ" * 32), ("target_rack_ids", [1]),
+])
+def test_malformed_request_identities_cannot_create_a_child(workflow, field, value):
+    client, source = workflow
+    body = {**request(client), "request_id": "a" * 32, field: value}
+    assert client.post(URL + "/save", json=body).status_code == 422
+    assert not list(setup_path(PID, SID).parent.glob("setup_rackcopy_*.json"))
+    assert read_setup(PID, SID) == source
