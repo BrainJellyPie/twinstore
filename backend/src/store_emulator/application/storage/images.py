@@ -17,6 +17,7 @@ from urllib.parse import urlencode
 
 from PIL import Image, UnidentifiedImageError
 
+from store_emulator.engine.files import remove_tree, replace_file
 from store_emulator.domain.types import RESOURCE_ID_PATTERN
 
 from .io import DATA_DIR, read_json, write_json
@@ -165,14 +166,14 @@ def save_image(
                 shutil.copyfile(target, backup, follow_symlinks=False)
                 backup_ready = True
             tmp.write_bytes(data)
-            tmp.replace(target)
+            replace_file(tmp, target)
 
             manifest[sku] = {"path": str(target), "mime": mime, "ext": ext, "version": version}
             _save_manifest(project_id, manifest)
             committed = True
         except OSError:
             if backup_ready:
-                backup.replace(target)
+                replace_file(backup, target)
                 backup_ready = False
             elif not had_original:
                 target.unlink(missing_ok=True)
@@ -196,7 +197,7 @@ def delete_project_images(project_id: str) -> None:
     with _project_lock(project_id):
         pdir = _project_dir(project_id)
         if pdir.exists():
-            shutil.rmtree(pdir)
+            remove_tree(pdir)
 
 
 def resolve_image(project_id: str, sku: str) -> tuple[Path, str] | None:

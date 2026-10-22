@@ -14,6 +14,7 @@ import base64
 import colorsys
 import hashlib
 import io
+import os
 import random
 from dataclasses import dataclass
 from functools import cache
@@ -27,6 +28,8 @@ from store_emulator.engine.prompting import display_price
 
 type _Font = ImageFont.FreeTypeFont | ImageFont.ImageFont
 
+# Windows need not live on C:.
+_WINDOWS_FONTS = os.environ.get("WINDIR", "C:/Windows").replace("\\", "/") + "/Fonts"
 # Fonts with Hangul coverage first, so Korean product names render too.
 _REGULAR_FONTS = (
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
@@ -34,14 +37,14 @@ _REGULAR_FONTS = (
     "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/System/Library/Fonts/AppleSDGothicNeo.ttc",
-    "C:/Windows/Fonts/malgun.ttf",
+    f"{_WINDOWS_FONTS}/malgun.ttf",
 )
 _BOLD_FONTS = (
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
     "/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc",
     "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    "C:/Windows/Fonts/malgunbd.ttf",
+    f"{_WINDOWS_FONTS}/malgunbd.ttf",
     *_REGULAR_FONTS,
 )
 

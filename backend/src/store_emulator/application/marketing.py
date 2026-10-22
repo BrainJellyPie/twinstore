@@ -76,6 +76,7 @@ from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_pers
 from store_emulator.engine.prompting import display_price
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
+from store_emulator.engine.files import remove_tree
 
 from .async_executor import executor
 from .capture import capture_llm_config
@@ -153,9 +154,7 @@ def delete_job(pid: str, kind: Kind, jid: str) -> None:
     folder = _job_dir(pid, kind, jid)
     if not folder.exists():
         raise AppError(f"{kind} not found: {jid}", 404)
-    for f in sorted(folder.rglob("*"), reverse=True):
-        f.unlink() if f.is_file() else f.rmdir()
-    folder.rmdir()
+    remove_tree(folder)
 
 
 def recover_running_jobs() -> int:

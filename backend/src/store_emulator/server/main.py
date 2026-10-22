@@ -1,5 +1,6 @@
 import logging
 import math
+import mimetypes
 import os
 from pathlib import Path
 from collections.abc import AsyncIterator
@@ -153,6 +154,13 @@ def _frontend_dist() -> Path | None:
     candidates.append(Path(__file__).resolve().parents[4] / "frontend" / "dist")
     return next((c.resolve() for c in candidates if (c / "index.html").is_file()), None)
 
+
+# Windows takes file types from the registry, where .js is sometimes "text/plain": browsers then refuse the UI's
+# module scripts and the page stays blank. The UI's own types are set here.
+for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".css", "text/css"),
+                    (".svg", "image/svg+xml"), (".json", "application/json"), (".wasm", "application/wasm"),
+                    (".woff2", "font/woff2"), (".webp", "image/webp")):
+    mimetypes.add_type(_type, _ext)
 
 _DIST = _frontend_dist()
 if _DIST is not None:

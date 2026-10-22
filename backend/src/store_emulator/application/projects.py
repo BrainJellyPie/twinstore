@@ -1,9 +1,9 @@
 import math
-import shutil
 import uuid
 from pathlib import Path
 from typing import Any, cast
 
+from store_emulator.engine.files import remove_tree
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.layout_options import TemplateLayoutRequest
@@ -197,7 +197,7 @@ def delete_project(project_id: str) -> None:
                 state = cast(dict[str, object], raw).get("status")
                 if state in ("pending", "running"):
                     raise AppError(f"cannot delete project while job '{status_path.parent.name}' is {state}. Wait until it finishes.", 409)
-    shutil.rmtree(project_dir)
+    remove_tree(project_dir)
     delete_project_images(project_id)
 
 

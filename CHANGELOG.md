@@ -21,6 +21,16 @@
   - When the app folder's path is long (an unzipped folder on a OneDrive desktop, say), the Python environment goes
     to a short folder under %LOCALAPPDATA%\TwinStore\venv, so package files stay within Windows' 260-character
     limit.
+  - The UI's scripts and styles are served with their web types whatever the Windows registry says; on machines
+    that map .js to "text/plain" the browser refused the scripts and the page stayed blank.
+  - The local model server (llama-server) ends with the TwinStore server even when that is killed outright (a closed
+    console window, Task Manager) instead of keeping its memory and port.
+  - Product photo uploads and finished model downloads use the same retrying replace, and deleting a project, a
+    capture, a pack or a study waits out files still open for a moment instead of stopping half-way.
+  - Hardware detection gives PowerShell 20 s (a cold start can take longer than 5 s), does not stop on output in
+    the console's code page, and runs once at a time; the local model's port check also needs a port it can listen
+    on (Windows reserves ranges for Hyper-V, WSL and Docker).
+  - The Korean font for shelf images is found when Windows is not on drive C:.
 
 ### Vision shoppers can see the shelf in 3D
 - The run dialog's vision settings add **What a vision shopper sees at a shelf**: **Chart** (as before: a flat

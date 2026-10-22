@@ -24,6 +24,7 @@ import shutil
 import socket
 import stat
 import subprocess
+import sys
 import tarfile
 import threading
 import time
@@ -34,6 +35,8 @@ from pathlib import Path
 from typing import IO, Literal, cast
 
 from pydantic import BaseModel
+
+from store_emulator.engine.files import replace_file
 
 from .hardware import (
     MODEL_BY_KEY,
@@ -139,6 +142,7 @@ class LocalVLMManager:
         self._hw: HardwareProfile | None = None
         self._status = LocalVLMStatus(state="disabled" if self.disabled else "off")
         self._lock = threading.Lock()
+        self._plan_lock = threading.Lock()   # one hardware probe at a time (the start thread and /api/system/models)
         self._cancel = threading.Event()
         self._stopping = False
         self._thread: threading.Thread | None = None
@@ -164,9 +168,10 @@ class LocalVLMManager:
             raise _StartCancelled
 
     def plan(self) -> tuple[HardwareProfile, LocalVLMPlan]:
-        if self._hw is None:            # detected once per process
-            self._hw = self._hardware()
-        hw = self._hw
+        with self._plan_lock:
+            if self._hw is None:            # detected once per process
+                self._hw = self._hardware()
+            hw = self._hw
         plan = recommend(hw)
         forced = os.environ.get("TWINSTORE_LOCAL_VLM_MODEL", "")
         if forced in MODEL_BY_KEY:
@@ -327,7 +332,7 @@ class LocalVLMManager:
             self._check_cancelled()
             if done == 0 or (total is not None and done != total):
                 raise RuntimeError(f"Download of {label} is incomplete: received {done} bytes, expected {total if total is not None else 'a nonempty file'}")
-            part.replace(path)
+            replace_file(part, path)
         finally:
             part.unlink(missing_ok=True)
         self._set(progress=1.0, downloaded_mb=round(done / 1e6, 1))
@@ -346,6 +351,7 @@ class LocalVLMManager:
             with (self.home / "server.log").open("ab") as log:
                 proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                                         creationflags=flags)
+            _end_with_this_process(proc)
             self._proc = proc
         deadline = time.monotonic() + 600
         while time.monotonic() < deadline:
@@ -377,6 +383,55 @@ class LocalVLMManager:
         logger.info(f"[local_vlm] ready at {api_base} ({label})")
 
 
+if sys.platform == "win32":
+    import ctypes
+    from ctypes import wintypes
+
+    class _BasicLimits(ctypes.Structure):
+        _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                    ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                    ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                    ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD), ("SchedulingClass", wintypes.DWORD)]
+
+    class _IoCounters(ctypes.Structure):
+        _fields_ = [(name, ctypes.c_uint64) for name in ("ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                                                         "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+    class _ExtendedLimits(ctypes.Structure):
+        _fields_ = [("BasicLimitInformation", _BasicLimits), ("IoInfo", _IoCounters),
+                    ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
+                    ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+    _KERNEL32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _KERNEL32.CreateJobObjectW.restype = wintypes.HANDLE
+    _KERNEL32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+    _KERNEL32.SetInformationJobObject.restype = wintypes.BOOL
+    _KERNEL32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+    _KERNEL32.AssignProcessToJobObject.restype = wintypes.BOOL
+    _KERNEL32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    _JOB: list[int] = []
+
+    def _end_with_this_process(proc: subprocess.Popen[bytes]) -> None:
+        """Windows does not end a child with its parent: when this server is killed outright (its console window
+        closed, Task Manager) the local model server would keep its memory and port. A job object that ends its
+        processes when its last handle closes, held by this process, ties the two together."""
+        try:
+            if not _JOB:
+                job = _KERNEL32.CreateJobObjectW(None, None)
+                limits = _ExtendedLimits()
+                limits.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                if not job or not _KERNEL32.SetInformationJobObject(job, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
+                    return
+                _JOB.append(job)
+            if not _KERNEL32.AssignProcessToJobObject(_JOB[0], int(proc._handle)):  # type: ignore[attr-defined]  # Popen's process handle on Windows
+                logger.info(f"[local_vlm] could not tie llama-server to this process (error {ctypes.get_last_error()})")
+        except (OSError, AttributeError, ValueError) as e:
+            logger.info(f"[local_vlm] could not tie llama-server to this process: {e}")
+else:
+    def _end_with_this_process(proc: subprocess.Popen[bytes]) -> None:
+        """Elsewhere the app launcher stops the server's whole process group, and a closed terminal hangs it up."""
+
+
 def _terminate(proc: subprocess.Popen[bytes]) -> None:
     if proc.poll() is None:
         proc.terminate()
@@ -395,8 +450,17 @@ def _urlopen(req: urllib.request.Request) -> IO[bytes]:
 
 
 def _port_free(port: int) -> bool:
+    """Nothing answers on the port and it can be listened on: Windows reserves port ranges for Hyper-V, WSL and
+    Docker that refuse connections and listening alike."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("127.0.0.1", port)) != 0
+        if s.connect_ex(("127.0.0.1", port)) == 0:
+            return False
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", port))
+    except OSError:
+        return False
+    return True
 
 
 def _free_port() -> int:

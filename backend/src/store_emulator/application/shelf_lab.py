@@ -14,7 +14,6 @@ import io
 import json
 import logging
 import re
-import shutil
 import time
 import uuid
 from collections.abc import Iterator
@@ -54,6 +53,7 @@ from store_emulator.engine.shelf_lab.audit import diff_face, match_field, price_
 from store_emulator.engine.shelf_lab.edits import cut_out
 from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival, unmatched_names
 from store_emulator.engine.shelf_lab.rival_match import match_products
+from store_emulator.engine.files import remove_tree
 
 from .async_executor import executor
 from .capture import capture_image_path, capture_llm_config, get_capture
@@ -337,7 +337,7 @@ def delete_edit(pid: str, cid: str, eid: str) -> None:
     folder = _edit_dir(pid, cid, eid)
     if not folder.exists():
         raise AppError(f"edit not found: {eid}", 404)
-    shutil.rmtree(folder)
+    remove_tree(folder)
 
 
 def _photo_and_result(pid: str, cid: str, edit_id: str) -> tuple[Image.Image, CaptureResult]:

@@ -14,7 +14,6 @@ import io
 import json
 import logging
 import re
-import shutil
 import threading
 import time
 import uuid
@@ -54,6 +53,7 @@ from store_emulator.engine.capture.frame import load_photo
 from store_emulator.engine.layout_gen.catalog import CATALOG
 from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.validation import validate
+from store_emulator.engine.files import remove_tree
 
 from .async_executor import executor
 from .currencies import project_currency
@@ -393,7 +393,7 @@ def delete_capture(pid: str, cid: str) -> None:
     status = _read_status(pid, cid)
     if status.status in ("pending", "running"):
         raise AppError("capture is still being processed", 409)
-    shutil.rmtree(_dir(pid, cid))
+    remove_tree(_dir(pid, cid))
 
 
 def capture_image_path(pid: str, cid: str, *, overlay: bool) -> Path:

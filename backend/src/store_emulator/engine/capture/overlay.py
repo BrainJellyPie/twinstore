@@ -2,6 +2,7 @@
 
 import colorsys
 import io
+import os
 from functools import cache
 from pathlib import Path
 
@@ -14,13 +15,15 @@ from .planogram import display_name
 
 type _Font = ImageFont.FreeTypeFont | ImageFont.ImageFont
 
+# Windows need not live on C:.
+_WINDOWS_FONTS = os.environ.get("WINDIR", "C:/Windows").replace("\\", "/") + "/Fonts"
 _FONTS = (
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
     "/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc",
     "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/System/Library/Fonts/AppleSDGothicNeo.ttc",
-    "C:/Windows/Fonts/malgunbd.ttf",
+    f"{_WINDOWS_FONTS}/malgunbd.ttf",
 )
 
 

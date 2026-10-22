@@ -104,13 +104,16 @@ MODEL_BY_KEY = {m.key: m for m in MODELS}
 # ── detection ───────────────────────────────────────────────────────────────
 
 def _run(cmd: list[str]) -> str:
-    """stdout of a command, or "" if it is missing, fails or takes more than 5 s."""
+    """stdout of a command, or "" if it is missing, fails or takes too long (5 s; 20 s for PowerShell, whose
+    first start on a busy Windows machine alone can take longer than 5 s)."""
     if not shutil.which(cmd[0]):
         return ""
     try:
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        # stdin from DEVNULL: an inherited pipe from the app launcher is not the probe's to read.
-        done = subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False, creationflags=flags,
+        # stdin from DEVNULL: an inherited pipe from the app launcher is not the probe's to read. Output in the
+        # console's code page (not UTF-8) must not end the detection.
+        done = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace", check=False,
+                              timeout=20 if cmd[0] == "powershell" else 5, creationflags=flags,
                               stdin=subprocess.DEVNULL)
     except (OSError, subprocess.SubprocessError):
         return ""
