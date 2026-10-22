@@ -1,23 +1,26 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { webcrypto } from "node:crypto";
 import * as api from "@/shared/api/productEdits";
 import { ProductBulkEditor } from "../ProductBulkEditor";
 import { useSimulationStore } from "@/stores/simulationStore";
 vi.mock("@/shared/api/productEdits", () => ({ getProductCatalog: vi.fn(), previewProductEdits: vi.fn(), saveProductEdits: vi.fn() }));
+import { useLocale, translate } from "@/shared/i18n/i18n";
+import { LOCALES } from "@/shared/i18n/messages";
 const row: api.ProductRow = { sku: "A", names: ["Tea", "Tea large"], prices: [101, 202], promos: [""], placements: 2, racks: ["Drinks"] };
 const catalog: api.ProductCatalog = { source_sha256: "a".repeat(64), currency: "USD", products: [row, { ...row, sku: "B", names: ["Water"], prices: [303], placements: 1 }] };
 let qc: QueryClient;
 beforeEach(() => {
+  useLocale.getState().setLocale("en");
   vi.stubGlobal("crypto", webcrypto);
   qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   vi.mocked(api.getProductCatalog).mockResolvedValue(catalog);
   vi.mocked(api.previewProductEdits).mockResolvedValue({ changed_placements: 2, changes: [{ before: row, after: { ...row, prices: [150] }, changed_placements: 2 }] });
   vi.mocked(api.saveProductEdits).mockResolvedValue({ setup_id: "setup_new", changed_placements: 2 });
 });
-afterEach(() => { cleanup(); qc.clear(); vi.resetAllMocks(); vi.unstubAllGlobals(); useSimulationStore.getState().reset(); });
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); qc.clear(); vi.resetAllMocks(); vi.unstubAllGlobals(); useSimulationStore.getState().reset(); });
 async function open() {
   const mounted = render(<QueryClientProvider client={qc}><ProductBulkEditor pid="p" sid="s" /></QueryClientProvider>);
   fireEvent.click(screen.getByRole("button", { name: "Edit products together" }));
@@ -128,4 +131,63 @@ it("disables editing while an explicit discard-and-reload is pending", async () 
     await waitFor(() => expect(api.getProductCatalog).toHaveBeenCalledTimes(2));
     expect((screen.getByLabelText("Name for A") as HTMLInputElement).disabled).toBe(true);
   } finally { resolve(catalog); }
+});
+
+// Separate localization boundary phase after the existing workflow checks.
+it.each(LOCALES)("reviews and saves bulk edits in $code with canonical prices and identifiers", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) => translate(code, key, values);
+  render(<QueryClientProvider client={qc}><ProductBulkEditor pid="p" sid="s" /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: t("bulkTitle") }));
+  fireEvent.click(await screen.findByLabelText(t("productSelectSku", { sku: "A" })));
+  fireEvent.change(screen.getByLabelText(t("bulkPrice")), { target: { value: "1.005" } });
+  fireEvent.click(screen.getByRole("button", { name: t("bulkSetPrices") }));
+  expect(screen.getByText(t("bulkDecimalHint"), { exact: false })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: t("bulkPreview") }));
+  fireEvent.click(await screen.findByRole("button", { name: t("bulkSave") }));
+  fireEvent.click(await screen.findByRole("button", { name: t("bulkOpen") }));
+  expect(vi.mocked(api.saveProductEdits).mock.lastCall?.[2]).toMatchObject({ currency: "USD", edits: [{ sku: "A", price: 101 }] });
+  expect(useSimulationStore.getState().selectedSetupId).toBe("setup_new");
+});
+it("keeps edits, selections, undo history and exact large prices while switching language", async () => {
+  await open();
+  fireEvent.click(screen.getByLabelText("Select A"));
+  const name = 'café 茶 <b>{sku}</b>';
+  fireEvent.change(screen.getByLabelText("Name for A"), { target: { value: name } });
+  fireEvent.change(screen.getByLabelText("Price for A"), { target: { value: "90071992547409.91" } });
+  act(() => useLocale.getState().setLocale("fr"));
+  expect((screen.getByLabelText("Nom de A") as HTMLInputElement).value).toBe(name);
+  expect((screen.getByLabelText("Prix de A") as HTMLInputElement).value).toBe("90071992547409.91");
+  expect((screen.getByLabelText("Sélectionner A") as HTMLInputElement).checked).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: translate("fr", "bulkPreview") }));
+  await screen.findByRole("button", { name: translate("fr", "bulkSave") });
+  expect(vi.mocked(api.previewProductEdits).mock.lastCall?.[2].edits).toEqual([{ sku: "A", name, price: Number.MAX_SAFE_INTEGER }]);
+  fireEvent.click(screen.getByRole("button", { name: translate("fr", "bulkUndo") }));
+  expect((screen.getByLabelText("Nom de A") as HTMLInputElement).value).toBe(name);
+  expect((screen.getByLabelText("Prix de A") as HTMLInputElement).value).toBe("");
+  expect(screen.queryByRole("button", { name: translate("fr", "bulkSave") })).toBeNull();
+});
+it("updates a visible validation error after a language change without changing its SKU", async () => {
+  await open();
+  fireEvent.change(screen.getByLabelText("Price for A"), { target: { value: "-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Preview product changes" }));
+  await screen.findByRole("alert");
+  act(() => useLocale.getState().setLocale("ko"));
+  expect(screen.getByRole("alert").textContent).toBe(translate("ko", "bulkInvalidPrice", { sku: "A" }));
+  expect(api.previewProductEdits).not.toHaveBeenCalled();
+});
+it("retains a pending save and its retry identity across a language change", async () => {
+  await open();
+  fireEvent.change(screen.getByLabelText("Price for A"), { target: { value: "2.50" } });
+  fireEvent.click(screen.getByRole("button", { name: "Preview product changes" }));
+  let reject!: (reason: Error) => void;
+  vi.mocked(api.saveProductEdits).mockReturnValueOnce(new Promise((_resolve, fail) => { reject = fail; }));
+  fireEvent.click(await screen.findByRole("button", { name: "Save as new product draft" }));
+  await waitFor(() => expect(api.saveProductEdits).toHaveBeenCalledTimes(1));
+  act(() => useLocale.getState().setLocale("es"));
+  expect(screen.getByRole("button", { name: translate("es", "bulkSaving") }).matches(":disabled")).toBe(true);
+  reject(new Error("Connection lost"));
+  fireEvent.click(await screen.findByRole("button", { name: translate("es", "bulkRetrySave") }));
+  await screen.findByRole("button", { name: translate("es", "bulkOpen") });
+  expect(vi.mocked(api.saveProductEdits).mock.calls[0]![2]).toEqual(vi.mocked(api.saveProductEdits).mock.calls[1]![2]);
 });

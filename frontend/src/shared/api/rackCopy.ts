@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { ApiError, apiErrorMessage } from "./errors";
 import type { StarterProduct } from "./starterFill";
 export interface RackCopyChoice { id: string; name: string; type: string; placements: number; reason: string | null }
 export interface RackCopyOptions { source_sha256: string; currency: string; source_rack_id: string | null; sources: RackCopyChoice[]; targets: RackCopyChoice[] }
@@ -10,7 +10,7 @@ export interface RackCopySaved { setup_id: string; placements_added: number }
 const url = (pid: string, sid: string) => `${BASE}/api/projects/${encodeURIComponent(pid)}/setups/${encodeURIComponent(sid)}/rack-copy`;
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init);
-  if (!response.ok) throw new Error(apiErrorMessage(await response.text(), `Request failed (${response.status})`));
+  if (!response.ok) throw new ApiError(apiErrorMessage(await response.text(), `Request failed (${response.status})`), response.status);
   return response.json() as Promise<T>;
 }
 export const getRackCopyOptions = (pid: string, sid: string, source: string, signal?: AbortSignal) => request<RackCopyOptions>(`${url(pid, sid)}${source ? `?source_rack_id=${encodeURIComponent(source)}` : ""}`, { signal });

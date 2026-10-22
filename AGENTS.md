@@ -122,7 +122,7 @@ must use this catalog, including explanations, accessibility names, validation a
 Existing coverage includes the home,
 main navigation, command palette, store gallery, model notice, simulation launcher, new-store forms,
 preparation/recovery screens, layout navigation/finder, basic layout-creation forms, floor-plan import and template
-search/filter controls and reviewed library-photo reuse. Store-category labels are shared between the gallery and template picker.
+search/filter controls, reviewed library-photo reuse and product bulk editing. Store-category labels are shared between the gallery and template picker.
 Add translations in all six columns
 when extending these surfaces. Use the selected locale for dates and numbers.
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Translate product bulk editing end to end in six languages, including validation, mixed values,
+  undo, preview and saving. Preserve edits and retry identities when switching languages, format
+  reviewed prices by locale, and keep long buttons inside mobile dialogs. Product workflow clients
+  retain HTTP status so conflict and invalid-input guidance can be localized correctly.
+
 - Add 32 prepared-food, pharmacy and personal-care photos, bringing the collection to 224.
   Starter placement previews show current uploaded or bundled photos for reused products without
   rewriting their saved values. Empty product names retain their SKU label in vision grids.

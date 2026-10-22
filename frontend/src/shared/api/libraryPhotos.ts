@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { ApiError, apiErrorMessage } from "./errors";
 export interface PhotoAsset { asset_id: string; name: string; sku: string; version: string; image_url: string }
 export interface PhotoProduct { sku: string; names: string[]; image_urls: string[]; placements: number }
 export interface PhotoOptions { source_sha256: string; assets: PhotoAsset[]; products: PhotoProduct[] }
@@ -12,7 +12,7 @@ export interface PhotoSaved { setup_id: string; changed_placements: number }
 const url = (pid: string, sid: string) => `${BASE}/api/projects/${encodeURIComponent(pid)}/setups/${encodeURIComponent(sid)}/library-photos`;
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init);
-  if (!response.ok) throw new Error(apiErrorMessage(await response.text(), `Request failed (${response.status})`));
+  if (!response.ok) throw new ApiError(apiErrorMessage(await response.text(), `Request failed (${response.status})`), response.status);
   return response.json() as Promise<T>;
 }
 export const getLibraryPhotos = (pid: string, sid: string, signal?: AbortSignal) => request<PhotoOptions>(url(pid, sid), { signal });

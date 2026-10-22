@@ -1,5 +1,5 @@
 import { BASE } from "./client";
-import { apiErrorMessage } from "./errors";
+import { ApiError, apiErrorMessage } from "./errors";
 export interface ProductRow { sku: string; names: string[]; prices: number[]; promos: string[]; placements: number; racks: string[] }
 export interface ProductCatalog { source_sha256: string; currency: string; products: ProductRow[] }
 export interface ProductEdit { sku: string; name?: string; price?: number; promo?: string }
@@ -10,7 +10,7 @@ export interface ProductEditsSaved { setup_id: string; changed_placements: numbe
 const url = (pid: string, sid: string) => `${BASE}/api/projects/${encodeURIComponent(pid)}/setups/${encodeURIComponent(sid)}/product-edits`;
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init);
-  if (!response.ok) throw new Error(apiErrorMessage(await response.text(), `Request failed (${response.status})`));
+  if (!response.ok) throw new ApiError(apiErrorMessage(await response.text(), `Request failed (${response.status})`), response.status);
   return response.json() as Promise<T>;
 }
 export const getProductCatalog = (pid: string, sid: string, signal?: AbortSignal) => request<ProductCatalog>(url(pid, sid), { signal });
