@@ -10,7 +10,8 @@
 - Before writing them all, one request is written and timed. When the rest would take about 10 minutes or more, or
   cost about $1 or more (LiteLLM's price list), the preparing screen asks first: write them all (about how long and
   how much), a quick sample (100 a day, 20 on the local model) whose twins fill the rest of each day, or cancel.
-  Writing shows its progress ("1,240 of 3,640").
+  Writing shows its progress ("1,240 of 3,640"). Each request writes customers across hours, so a quiet hour's one or
+  two customers no longer cost a request of their own (a 20-a-day sample took 14 requests a day, now 4).
 - The run dialog shows the shoppers a run will simulate (a day × days), the model requests, and about how long and how
   much; above the same limits it asks before starting. A project's last finished run with the same engine and model is
   what the estimate is measured on.
