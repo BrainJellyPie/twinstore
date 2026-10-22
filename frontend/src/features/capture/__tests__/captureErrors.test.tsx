@@ -45,6 +45,8 @@ it("hides Delete while a capture is processing and shows why a delete failed", a
   expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
   await queries.refetchQueries({ queryKey: ["projects", "project", "captures", "cap_test"] });
   fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+  expect(api.deleteCapture).not.toHaveBeenCalled();   // the first click only asks
+  fireEvent.click(screen.getByRole("button", { name: "Delete?" }));
   expect((await screen.findByRole("alert")).textContent).toBe("capture is still being processed");
 });
 
@@ -70,5 +72,9 @@ it("shows why deleting a counterfactual failed", async () => {
   vi.mocked(api.deleteEdit).mockRejectedValue(new ApiError("edit not found: e1", 404));
   showLab("e1");
   fireEvent.click(await screen.findByRole("button", { name: "Delete" }));
+  expect(api.deleteEdit).not.toHaveBeenCalled();   // the first click only asks
+  fireEvent.blur(screen.getByRole("button", { name: "Delete?" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete?" }));
   await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("edit not found: e1"));
 });

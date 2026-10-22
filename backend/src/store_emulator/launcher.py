@@ -152,6 +152,16 @@ def keep_local_requests_direct() -> None:
     os.environ["no_proxy"] = os.environ["NO_PROXY"] = ",".join(hosts)
 
 
+def no_key_notice() -> str | None:
+    """What the console says at start with no model API key. The local model is never downloaded unasked."""
+    from store_emulator.application.providers import cloud_providers_with_key
+
+    if cloud_providers_with_key():
+        return None
+    return ("No model API key is set. Rule-based shoppers work without one; for model-based shoppers add a key in "
+            "Settings → Model providers, or start the local model there (nothing is downloaded until you do).")
+
+
 def _exit_when_stdin_closes() -> None:
     """The app launcher keeps a pipe open to our stdin; end of input means it is gone or asked us to stop."""
     if sys.platform == "win32":
@@ -189,14 +199,11 @@ def main(argv: list[str] | None = None) -> int:
     url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '::') else args.host}:{port}"
     threading.Thread(target=_open_when_ready, args=(url, not args.no_browser), daemon=True).start()
 
-    # No API key: vision shoppers get a small model chosen for this computer (application/local_vlm.py).
+    # Opened from an app icon: a local model the user started before comes back by itself (application/local_vlm.py).
     os.environ.setdefault("TWINSTORE_LOCAL_VLM_AUTO", "1")
-    from store_emulator.application.providers import cloud_providers_with_key
-
-    if not cloud_providers_with_key():
-        _say("No model API key is set. Vision shoppers and, once it is ready, the text features will use a small local "
-             "model chosen for this computer (downloaded on first use); add a key in Settings → Model providers for "
-             "faster, more accurate results.")
+    notice = no_key_notice()
+    if notice:
+        _say(notice)
 
     import uvicorn
 

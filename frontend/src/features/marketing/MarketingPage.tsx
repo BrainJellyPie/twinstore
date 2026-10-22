@@ -266,6 +266,8 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
       if (active) onDeleted();
     },
   });
+  // A finished study took model calls to make: the first click asks, the second deletes; leaving the button cancels.
+  const [confirm, setConfirm] = useState(false);
   const when = job.created_at ? new Date(job.created_at).toLocaleString(locale, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   return (
     <div className={cn("group relative rounded-2xl border px-3 py-2.5 transition-colors", active ? "border-primary bg-primary/[0.06]" : "bg-card/60 hover:border-foreground/20")}>
@@ -277,9 +279,11 @@ function JobItem({ projectId, job, active, onSelect, onDeleted }: { projectId: s
         </span>
         {busy(job.status) && <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-foreground/[0.08]"><span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.max(4, job.progress * 100)}%` }} /></span>}
       </button>
-      {!busy(job.status) && <button type="button" onClick={() => del.mutate()} aria-label={t("mkDeleteJob", { name: job.name })}
-        className="absolute top-2 right-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100">
-        <Trash2 className="size-3.5" />
+      {!busy(job.status) && <button type="button" onClick={() => (confirm ? del.mutate() : setConfirm(true))} onBlur={() => setConfirm(false)}
+        disabled={del.isPending} aria-label={confirm ? t("mkDeleteConfirm") : t("mkDeleteJob", { name: job.name })}
+        className={cn("absolute top-2 right-2 inline-flex items-center gap-1 rounded-md p-1 text-[0.68rem] transition-opacity",
+          confirm ? "bg-destructive text-white opacity-100" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100")}>
+        <Trash2 className="size-3.5" /> {confirm ? t("mkDeleteConfirm") : ""}
       </button>}
     </div>
   );

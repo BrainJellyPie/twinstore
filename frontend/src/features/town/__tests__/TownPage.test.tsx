@@ -190,3 +190,36 @@ it("opens the generator and sets it up from an area described in the command pal
   expect((screen.getByLabelText("Describe the area").closest("details") as HTMLDetailsElement).open).toBe(true);
   expect(api.generateTown).not.toHaveBeenCalled();
 });
+
+it("asks before a new neighborhood replaces the current one, and replaces it on the second click", async () => {
+  vi.mocked(api.getTown).mockResolvedValue(town);
+  vi.mocked(api.generateTown).mockResolvedValue({ ...town, name: "Fresh neighborhood" });
+  await mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Regenerate" }));
+  expect(api.generateTown).not.toHaveBeenCalled();
+  expect(screen.getByRole("status").textContent).toContain("storefront ratings on the current map are lost");
+  fireEvent.click(screen.getByRole("button", { name: "Replace the current neighborhood?" }));
+  await waitFor(() => expect(api.generateTown).toHaveBeenCalledOnce());
+});
+
+it("asks before a map import replaces the current neighborhood; leaving the button cancels", async () => {
+  vi.mocked(api.getTown).mockResolvedValue(town);
+  vi.mocked(api.importTownFromMap).mockResolvedValue({ ...town, name: "Imported" });
+  await mount();
+  fireEvent.change(await screen.findByPlaceholderText("Address, e.g. 84 Heukseok-ro, Seoul"), { target: { value: "Seoul" } });
+  const importButton = screen.getByRole("button", { name: "Import buildings, shops and roads" });
+  fireEvent.click(importButton);
+  fireEvent.blur(screen.getByRole("button", { name: "Replace the current neighborhood?" }));
+  expect(screen.getByRole("button", { name: "Import buildings, shops and roads" })).toBeTruthy();
+  expect(api.importTownFromMap).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Import buildings, shops and roads" }));
+  fireEvent.click(screen.getByRole("button", { name: "Replace the current neighborhood?" }));
+  await waitFor(() => expect(api.importTownFromMap).toHaveBeenCalledWith("alpha", { address: "Seoul", radius_m: 600 }));
+});
+
+it("creates the first neighborhood without asking", async () => {
+  vi.mocked(api.generateTown).mockResolvedValue(town);
+  await mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Generate" }));
+  await waitFor(() => expect(api.generateTown).toHaveBeenCalledOnce());
+});
