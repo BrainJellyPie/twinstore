@@ -19,6 +19,11 @@
 - **Run simulation** waits for the layout's saved store settings before it can start (and offers to try again when
   they cannot be loaded): a run started while they loaded used the default store instead. A backroom holding
   nothing (0 units) is now reported too.
+- Add 96 pet-walking, car-detailing, composting, watering, embroidery, knitting, paper-craft and food-gift-packaging
+  products with 32 photos and six-language labels; twelve matching default maps stock them. The catalog now has
+  1,784 products in 155 categories and 1,184 local images.
+- An older run's worked-out summary is recomputed when any of its saved files changes (cached per data folder); a
+  damaged file keeps the saved summary.
 
 ## 0.4.10 — One crew for the tills and the shelves; a backroom behind them; older runs show their results
 

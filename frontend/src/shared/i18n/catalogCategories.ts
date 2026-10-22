@@ -148,7 +148,15 @@ const categories: Record<string, MessageKey> = {
   "seed_starting": "starterCategory_seed_starting",
   "plant_propagation": "starterCategory_plant_propagation",
   "candle_care": "starterCategory_candle_care",
-  "camp_repair": "starterCategory_camp_repair"
+  "camp_repair": "starterCategory_camp_repair",
+  "pet_walking": "starterCategory_pet_walking",
+  "car_detailing": "starterCategory_car_detailing",
+  "composting_tools": "starterCategory_composting_tools",
+  "watering_irrigation": "starterCategory_watering_irrigation",
+  "embroidery": "starterCategory_embroidery",
+  "knitting_crochet": "starterCategory_knitting_crochet",
+  "paper_crafting": "starterCategory_paper_crafting",
+  "food_gift_packaging": "starterCategory_food_gift_packaging"
 };
 
 export function starterCategoryLabel(key: string, original: string, locale: Locale): string {
