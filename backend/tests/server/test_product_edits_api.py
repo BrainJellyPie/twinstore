@@ -232,3 +232,12 @@ def test_corrupt_source_is_reported_without_a_server_crash(workflow, broken):
     response = client.get(URL)
     assert response.status_code == 409
     assert setup_path(PID, SID).read_text() == broken
+
+
+def test_the_edited_draft_stays_on_its_building_floor(workflow):
+    client, source = workflow
+    source["building"] = {"id": "building_1", "name": "Mall", "level": 2, "label": "Upper", "floor_count": 2}
+    write_json(setup_path(PID, SID), source)
+    saved = client.post(URL + "/save", json={**request(client), "request_id": "c" * 32})
+    assert saved.status_code == 200, saved.text
+    assert read_setup(PID, saved.json()["setup_id"])["building"] == source["building"]

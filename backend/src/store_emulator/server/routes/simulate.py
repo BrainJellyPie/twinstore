@@ -11,6 +11,7 @@ from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
 from store_emulator.application.movement import MAX_TRACK_BYTES
 from store_emulator.application.providers import ensure_resolvable, load_settings, missing_key, text_model_fallback
+from store_emulator.application.run_estimate import RunEstimate, estimate_run
 from store_emulator.application.simulation import RunOptions
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
 from store_emulator.domain.config import EngineType, ExposureModel, LLMConfig, PlanPolicy, RouteOrdering, ShelfViewMode
@@ -108,6 +109,16 @@ async def list_runs(
     return sim_service.list_runs(pid, setup_id)
 
 
+def _options(req: SimulateRequest) -> RunOptions:
+    return RunOptions(
+        engine_type=req.engine_type, seed=req.seed, replicate=req.replicate,
+        exposure_model=req.exposure_model, route_ordering=req.route_ordering,
+        max_customers=req.max_customers, preview=req.preview, model=req.model, ensemble=req.ensemble,
+        scenario_id=req.scenario_id, scenario=req.scenario, use_town=req.use_town, town_scale=req.town_scale,
+        plan_policy=req.plan_policy, shelf_view=req.shelf_view,
+    )
+
+
 @router.post("/{pid}/runs", summary="Start simulation", response_model=SimulationStartResponse)
 async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartResponse:
     """Run a simulation asynchronously. Returns immediately; work runs in the background.
@@ -125,13 +136,7 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
     **On failure:** the setup reverts to `draft`.
 
     **Errors:** 400 (no layout / no personas), 404 (setup not found), 409 (locked / running / readiness not met / duplicate run_id)"""
-    options = RunOptions(
-        engine_type=req.engine_type, seed=req.seed, replicate=req.replicate,
-        exposure_model=req.exposure_model, route_ordering=req.route_ordering,
-        max_customers=req.max_customers, preview=req.preview, model=req.model, ensemble=req.ensemble,
-        scenario_id=req.scenario_id, scenario=req.scenario, use_town=req.use_town, town_scale=req.town_scale,
-        plan_policy=req.plan_policy, shelf_view=req.shelf_view,
-    )
+    options = _options(req)
     config = get_config()
     try:
         ensure_resolvable(sim_service.apply_options(config, options))
@@ -151,6 +156,24 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
     )
 
     return SimulationStartResponse(project_id=pid, run_id=run_id, setup_id=req.setup_id)
+
+
+@router.post("/{pid}/runs/estimate", summary="About how long and how much a run will take",
+             response_model=RunEstimate)
+async def estimate_simulation(pid: str, req: SimulateRequest) -> RunEstimate:
+    """Shoppers the run would simulate (after the customer cap, situation and opening hours), the model requests that
+    takes, and about how many minutes and dollars (`cost_usd` null: free on this computer or the model has no listed
+    price). `warn` is true from about 10 minutes or about $1: the run dialog asks before starting such a run.
+    Starts nothing.
+
+    **Errors:** 400 (no layout or customers, unknown situation), 404 (setup not found)."""
+    options = _options(req)
+    try:
+        return await run_in_threadpool(estimate_run, pid, req.setup_id, options, get_config())
+    except AppError as e:
+        raise HTTPException(e.status_code, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
 
 
 @router.get("/{pid}/runs/{run_id}/status", summary="Get simulation status")

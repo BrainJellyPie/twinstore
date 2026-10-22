@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from pathlib import Path
 from collections.abc import Callable
 from typing import Any, cast
 
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError, model_failure
+from store_emulator.application.estimates import cost_usd, effective_parallel, is_local_base, should_warn
 from store_emulator.application.storage.generations import (
-    find_active_generation, init_generation, write_status,
+    find_active_generation, generation_dir, init_generation, read_status, write_status,
 )
 from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.engine.files import remove_tree
@@ -28,9 +30,14 @@ from store_emulator.engine.llm_client import LiteLLMClient
 
 # How long customer generation waits for the local model when no provider takes a key (its first download).
 LOCAL_MODEL_WAIT_SEC = 60 * 60
-# What the small model TwinStore runs on this computer is asked for: it answers a request or two at a time (minutes
-# each on a CPU), so the usual 100 customers a day, 10 per request, would take hours there.
-LOCAL_MODEL_PACE = gen_persona.Pace(daily_cap=20, batch_size=5)
+# What the small model TwinStore runs on this computer is asked for: every visitor like any model (it is free), but
+# 5 customers per request (its output stays short and valid), and a quick sample of 20 a day when writing them all
+# would take too long.
+LOCAL_MODEL_PACE = gen_persona.Pace(daily_cap=gen_persona.DAILY_POPULATION_CAP, batch_size=5, sample_cap=20)
+# How long a generation waits for the user to choose how many customers to write (see `_decide`).
+CHOICE_WAIT_SEC = 6 * 60 * 60
+WRITE_CHOICES = ("all", "sample", "cancel")
+_PROGRESS_INTERVAL_SEC = 2.0
 
 logger = logging.getLogger(__name__)
 
@@ -258,12 +265,28 @@ async def _run_async_pipeline(
     if neighborhood:
         effective_summary = f"{effective_summary}\n{neighborhood}".strip()
 
-    return await _generate_personas_impl(
+    estimates: dict[int, int] = {}
+    last_progress = [0.0]
+
+    def progress(done: int, total: int) -> None:   # "writing N of M customers" on the preparing screen
+        now = time.monotonic()
+        if gen_id and (done >= total or now - last_progress[0] >= _PROGRESS_INTERVAL_SEC):
+            last_progress[0] = now
+            write_status(project_id, gen_id, "running", progress={"written": done, "total": total})
+
+    async def decide(plan: gen_persona.WritePlan) -> int:
+        return await _decide(project_id, gen_id, llm, plan)
+
+    personas = await _generate_personas_impl(
         llm=llm,
+        estimates=estimates,
         pace=lambda usual: gen_persona.Pace(
             daily_cap=min(usual.daily_cap, LOCAL_MODEL_PACE.daily_cap),
             batch_size=min(usual.batch_size, LOCAL_MODEL_PACE.batch_size),
+            sample_cap=min(usual.sample_cap, LOCAL_MODEL_PACE.sample_cap),
         ) if llm.max_parallel is not None else usual,
+        decide=decide if gen_id else None,
+        on_progress=progress,
         address=str(meta.get("address", "")),
         customer_profile=str(meta.get("customer_profile", "")),
         schedules=schedules,
@@ -272,6 +295,108 @@ async def _run_async_pipeline(
         currency=str(meta.get("currency") or config.currency),
         traffic=traffic,
     )
+    if estimates:
+        try:   # the visitors each day the customers were sampled from (see visitors_per_day)
+            latest = cast(dict[str, object], read_json(metadata_path(project_id)))
+            latest["estimated_daily_visitors"] = {str(day): n for day, n in sorted(estimates.items())}
+            write_json(metadata_path(project_id), latest)
+        except (OSError, ValueError):
+            logger.warning("[persona generation] could not store the estimated daily visitors", exc_info=True)
+    return personas
+
+
+def write_estimate(llm: LiteLLMClient, plan: gen_persona.WritePlan, size: gen_persona.WriteSize) -> dict[str, object]:
+    """About how long and how much writing `size` takes from here, scaled from the timed probe request (already
+    written, so it is not counted again)."""
+    requests = max(0, size.requests - 1)
+    local = llm.max_parallel is not None or is_local_base(llm.api_base)
+    minutes = requests * plan.probe_seconds / effective_parallel(local, llm.max_parallel) / 60
+    cost: float | None = None
+    if not local:
+        probe_cost = cost_usd(llm.model, plan.probe_prompt_tokens, plan.probe_completion_tokens)
+        cost = None if probe_cost is None else round(probe_cost * requests, 4)
+    return {"per_day": size.per_day, "customers": size.customers, "requests": size.requests,
+            "minutes": round(minutes, 1), "cost_usd": cost}
+
+
+async def _decide(project_id: str, gen_id: str, llm: LiteLLMClient, plan: gen_persona.WritePlan) -> int:
+    """How many customers a day to write. Every visitor, unless that takes about WARN_MINUTES or costs about WARN_USD:
+    then the preparing screen asks (write them all, a quick sample whose twins fill each day, or cancel)."""
+    every, sample = write_estimate(llm, plan, plan.all), write_estimate(llm, plan, plan.sample)
+    cost = every["cost_usd"]
+    if not should_warn(cast(float, every["minutes"]), cost if isinstance(cost, float) else None) or not gen_id:
+        return plan.all.per_day
+    confirm: dict[str, object] = {
+        "model": llm.model, "local": llm.max_parallel is not None or is_local_base(llm.api_base),
+        "days": len(plan.visitors), "visitors_per_day": {str(day): n for day, n in sorted(plan.visitors.items())},
+        "all": every, "sample": sample,
+    }
+    logger.info(f"[persona generation] asking before writing {plan.all.customers} customers "
+                f"(about {every['minutes']} min, ${every['cost_usd']}) gen={gen_id}")
+    write_status(project_id, gen_id, "running", progress={"confirm": confirm})
+    choice = await _await_choice(project_id, gen_id)
+    logger.info(f"[persona generation] {choice} gen={gen_id}")
+    if choice == "cancel":
+        raise ValueError("You canceled writing the customers. Use Try again to choose a quick sample or write them all.")
+    chosen = plan.all if choice == "all" else plan.sample
+    write_status(project_id, gen_id, "running", progress={"written": plan.probe_customers, "total": chosen.customers})
+    return chosen.per_day
+
+
+def _choice_path(project_id: str, gen_id: str) -> Path:
+    return generation_dir(project_id, gen_id) / "choice.json"
+
+
+async def _await_choice(project_id: str, gen_id: str) -> str:
+    path = _choice_path(project_id, gen_id)
+    deadline = time.monotonic() + CHOICE_WAIT_SEC
+    while time.monotonic() < deadline:
+        if path.is_file():
+            try:
+                choice = cast(dict[str, object], read_json(path)).get("choice")
+            except (OSError, ValueError):
+                choice = None
+            path.unlink(missing_ok=True)
+            if isinstance(choice, str) and choice in WRITE_CHOICES:
+                return choice
+        await asyncio.sleep(0.5)
+    raise ValueError("Nobody chose how many customers to write, so generation stopped. Use Try again.")
+
+
+def choose_write_size(project_id: str, setup_id: str, gen_id: str, choice: str) -> dict[str, Any]:
+    """The user's answer to a generation that asks before writing: "all", "sample" or "cancel"."""
+    if choice not in WRITE_CHOICES:
+        raise AppError(f"choice must be one of {', '.join(WRITE_CHOICES)}", 422)
+    try:
+        data = read_status(project_id, gen_id)
+    except FileNotFoundError:
+        raise AppError("generation not found", 404) from None
+    if data.get("setup_id") != setup_id:
+        raise AppError("no generation found for this setup", 404)
+    progress = data.get("progress")
+    if data.get("status") != "running" or not isinstance(progress, dict) or "confirm" not in progress:
+        raise AppError("This generation is not waiting for a choice.", 409)
+    write_json(_choice_path(project_id, gen_id), {"choice": choice})
+    note = "Stopping…" if choice == "cancel" else "Writing the customers…"
+    write_status(project_id, gen_id, "running", progress={"note": note})
+    return read_status(project_id, gen_id)
+
+
+def visitors_per_day(project_id: str, personas: list[Persona]) -> tuple[float, float]:
+    """(visitors a day to scale per-visitor results by, customers simulated a day). The model writes every visitor it
+    estimated for a day (up to 1000), or a quick sample of them whose twins fill the day; per-day money in reports
+    scales by the estimate. Without one (older stores, customers from data) both are the simulated count."""
+    days = sorted({int(p.day) for p in personas}) or [1]
+    simulated = round(len(personas) / len(days), 1)
+    try:
+        raw = cast(dict[str, object], read_json(metadata_path(project_id))).get("estimated_daily_visitors")
+    except (OSError, ValueError):
+        raw = None
+    estimates = cast(dict[str, object], raw) if isinstance(raw, dict) else {}
+    values = [float(v) for d in days if isinstance(v := estimates.get(str(d)), (int, float))]
+    if len(values) != len(days) or sum(values) <= 0:
+        return simulated, simulated
+    return round(max(sum(values) / len(values), simulated), 1), simulated
 
 
 def _stored_traffic(meta: dict[str, object]) -> TrafficProfile | None:
@@ -297,6 +422,9 @@ async def _generate_personas_impl(
     currency: str = "USD",
     traffic: TrafficProfile | None = None,
     pace: Callable[[gen_persona.Pace], gen_persona.Pace] | None = None,
+    estimates: dict[int, int] | None = None,
+    decide: gen_persona.Decide | None = None,
+    on_progress: gen_persona.WriteProgress | None = None,
 ) -> list[Persona]:
     """Internal impl accepting an LLM instance, with supplemental_summary support.
 
@@ -311,6 +439,9 @@ async def _generate_personas_impl(
         currency=currency,
         traffic=traffic,
         pace=pace,
+        estimates=estimates,
+        decide=decide,
+        on_progress=on_progress,
     )
     usage = llm.get_usage()
     logger.info(f"[persona generation] {len(all_personas)} personas done | {usage.total_tokens} tokens")

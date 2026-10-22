@@ -1,5 +1,52 @@
 # Changelog
 
+## Unreleased
+
+### Every visitor a day, with a warning before long or costly work
+- A new store's customers were capped at 100 a day (20 with the local model), so a convenience store the model
+  expected to see 600 people a day was simulated with 100 (or 20) a day — 140 for a week on the local model. The model
+  now writes every visitor each day's traffic estimate expects (up to 1,000 a day; 300 when it gives no usable
+  estimate), with the local model as with any provider.
+- Before writing them all, one request is written and timed. When the rest would take about 10 minutes or more, or
+  cost about $1 or more (LiteLLM's price list), the preparing screen asks first: write them all (about how long and
+  how much), a quick sample (100 a day, 20 on the local model) whose twins fill the rest of each day, or cancel.
+  Writing shows its progress ("1,240 of 3,640").
+- The run dialog shows the shoppers a run will simulate (a day × days), the model requests, and about how long and how
+  much; above the same limits it asks before starting. A project's last finished run with the same engine and model is
+  what the estimate is measured on.
+- Per-day money in A/B tests and Shelf Lab audits ("about ₩X a day") scales by the store's estimated visitors a day,
+  and the reports say how many a day were simulated when that differs.
+
+### Faster and more faithful runs
+- The route map was rebuilt with a path search for every pair of access points on every run and every optimizer
+  candidate: minutes per run on a hypermarket or warehouse club (an optimization looked hung for hours). It is one
+  sweep per access point now (under a second) and optimizer candidates skip it.
+- "Optimize for a situation" now optimizes for it: its promotions, stock-outs, days, traffic and budgets apply to every
+  layout the optimizer's shoppers walk (they bought out-of-stock water and noodles before). The saved layout keeps the
+  regular prices.
+- A run with a customer cap samples from the shoppers who come on the situation's days and opening hours; "Payday
+  Friday" with 20 customers simulated 1 (and could fail with "no shoppers come… change the opening hours").
+- Situation previews show the effect sizes a run of that layout uses: a supermarket's "Holiday season" said traffic
+  ×0.80 while its runs used ×1.16.
+
+### Fixes
+- Stop on a vision-judged layout optimization ends the layout run in progress at once; it waited for dozens of vision
+  shoppers to finish (minutes on a local model, billed calls on a cloud one).
+- A key saved in Settings at the moment the local model became ready could be lost (two writes of the settings file
+  at once); they now take turns.
+- Optimized layouts and "Edited products" drafts stay on their building floor.
+- Every CSV download opens in Excel with Korean (and other non-English) text intact; customers.csv says the unit of
+  its money columns (e.g. "USD cents").
+- A field-pilot observation sheet saved back by Excel (staff 007 → 7, a shift date in the computer's format) imports
+  again.
+- A concept-test draft for a layout priced in another currency no longer copies its prices over as the survey's.
+- Testing a model provider's key says "OpenAI turned this key down (Incorrect API key)…" instead of a raw library
+  error; with no key anywhere, messages say so instead of naming the default model's provider.
+
+### Releases
+- Each release now starts on clean Windows and macOS machines before it is published (the launcher's first start:
+  uv, Python, every package, the server answering), and the macOS bundle's signature is verified there.
+
 ## 0.4.4 — updates keep your stores; photo and vision features check their model
 
 ### Updating keeps your stores

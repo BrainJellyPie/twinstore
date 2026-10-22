@@ -85,6 +85,7 @@ class LayoutEvaluator:
         engine: CustomerBehaviorEngine | None = None,
         cache_size: int = 256,
         max_concurrent: int = 8,
+        prepare_store: Callable[[Store], Store] | None = None,
     ) -> None:
         if not personas:
             raise ValueError("LayoutEvaluator needs at least one persona")
@@ -100,9 +101,17 @@ class LayoutEvaluator:
         self._patterns = patterns
         self._max_concurrent = max_concurrent
         self._cache_size = cache_size
+        # The run's situation applied to each layout before shoppers walk it (promotions priced, stock-outs emptied).
+        # Layouts, their fingerprints and the best one kept stay as the user's, without promotion prices.
+        self._prepare_store = prepare_store
         self._cache: OrderedDict[str, tuple[float, SimulationSummary]] = OrderedDict()
         self.evaluations = 0  # simulations actually run by `evaluate`
         self.cache_hits = 0
+
+    def _walked(self, store: Store) -> Store:
+        # The runner clears unreachable slots in place, so it gets a private copy.
+        copy = store.model_copy(deep=True)
+        return self._prepare_store(copy) if self._prepare_store is not None else copy
 
     def _runner(self, replicate: int) -> PerCustomerSimulationRunner:
         config = self.config if replicate == self.config.replicate else self.config.model_copy(update={"replicate": replicate})
@@ -119,9 +128,8 @@ class LayoutEvaluator:
             self._cache.move_to_end(key)
             self.cache_hits += 1
             return hit
-        # The runner clears unreachable slots in place, so it gets a private copy.
         aggregated, _ = await self._runner(self.config.replicate).run(
-            store.model_copy(deep=True), self.personas, max_concurrent=self._max_concurrent,
+            self._walked(store), self.personas, max_concurrent=self._max_concurrent, path_heatmap=False,
         )
         self.evaluations += 1
         entry = (objective_value(self.objective, aggregated.summary), aggregated.summary)
@@ -140,7 +148,7 @@ class LayoutEvaluator:
         """
         rep = self.config.replicate if replicate is None else replicate
         _, customers = await self._runner(rep).run(
-            store.model_copy(deep=True), personas, max_concurrent=self._max_concurrent,
+            self._walked(store), personas, max_concurrent=self._max_concurrent, path_heatmap=False,
         )
         return customers
 
@@ -148,7 +156,7 @@ class LayoutEvaluator:
         """Objective value, aggregated result and per-customer results of `store` on the evaluator's
         personas (not cached; for expensive shopper models whose every run is kept)."""
         aggregated, customers = await self._runner(self.config.replicate).run(
-            store.model_copy(deep=True), self.personas, max_concurrent=self._max_concurrent,
+            self._walked(store), self.personas, max_concurrent=self._max_concurrent,
         )
         self.evaluations += 1
         return objective_value(self.objective, aggregated.summary), aggregated, customers

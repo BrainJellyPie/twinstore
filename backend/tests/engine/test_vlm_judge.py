@@ -171,3 +171,30 @@ def test_vlm_judge_can_be_canceled(store: Store, personas: list[Persona]):
             search_personas=personas[:20], vlm_personas=personas[:4], cue_sampler=sample_cue,
             patterns=BEHAVIOR_PATTERNS, pathfinder=pf, should_stop=lambda: True,
         ))
+
+
+def test_stop_ends_a_vision_layout_run_without_waiting_for_it(store: Store, personas: list[Persona]):
+    import time as _time
+
+    class _SlowVLM(FakeShopperVLM):
+        async def generate_structured_with_image_async(self, *a, **k):  # type: ignore[override]
+            await asyncio.sleep(30)          # a slow local model: one layout run would take minutes
+            return await super().generate_structured_with_image_async(*a, **k)
+
+        async def generate_structured_async(self, *a, **k):  # type: ignore[override]
+            await asyncio.sleep(30)
+            return await super().generate_structured_async(*a, **k)
+
+    pf = AStarPathFinder()
+    vlm_config = _vlm_config()
+    started = _time.monotonic()
+    stop_at = started + 1.5
+    with pytest.raises(OptimizationCanceled, match="while judging baseline"):
+        asyncio.run(judge_layout_search(
+            store, OptimizeSpec(budget=3, eval_customers=20, seed=1), JudgeSpec(judge="vlm", vlm_customers=4, top_k=1, calibrate=True),
+            surrogate_config=vlm_config, vlm_config=vlm_config,
+            vlm_engine=VLMGlanceEngine(llm=_SlowVLM(), pathfinder=pf, config=vlm_config),
+            search_personas=personas[:20], vlm_personas=personas[:4], cue_sampler=sample_cue,
+            patterns=BEHAVIOR_PATTERNS, pathfinder=pf, should_stop=lambda: _time.monotonic() > stop_at,
+        ))
+    assert _time.monotonic() - started < 10

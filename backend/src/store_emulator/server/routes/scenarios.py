@@ -7,7 +7,7 @@ from starlette.concurrency import run_in_threadpool
 from store_emulator.application import scenarios as service
 from store_emulator.application.errors import AppError
 from store_emulator.application.scenarios import PRESETS, DescribeRequest
-from store_emulator.domain.scenario import Scenario
+from store_emulator.domain.scenario import Scenario, ScenarioPriors
 from store_emulator.engine.scenario import compile_scenario
 
 from ..deps import get_config
@@ -32,8 +32,8 @@ class ScenarioPreset(BaseModel):
     effects: ScenarioEffectsView
 
 
-def _view(scenario: Scenario) -> ScenarioEffectsView:
-    fx = compile_scenario(scenario)
+def _view(scenario: Scenario, priors: ScenarioPriors | None = None) -> ScenarioEffectsView:
+    fx = compile_scenario(scenario, priors)
     return ScenarioEffectsView(
         situation=fx.situation, traffic=round(fx.base_traffic, 3),
         traffic_by_hour={h: round(v, 3) for h, v in sorted(fx.traffic_by_hour.items())},
@@ -44,14 +44,17 @@ def _view(scenario: Scenario) -> ScenarioEffectsView:
 
 
 @router.get("/scenarios", summary="Scenario presets with their compiled effects", response_model=list[ScenarioPreset])
-async def list_scenarios() -> list[ScenarioPreset]:
-    return [ScenarioPreset(scenario=s, effects=_view(s)) for s in PRESETS]
+async def list_scenarios(project_id: str = "", setup_id: str = "") -> list[ScenarioPreset]:
+    """With a layout (`project_id` and `setup_id`), effects use its store format's effect sizes, as its runs do."""
+    priors = await run_in_threadpool(service.layout_priors, project_id, setup_id, get_config())
+    return [ScenarioPreset(scenario=s, effects=_view(s, priors)) for s in PRESETS]
 
 
 @router.post("/scenarios/preview", summary="Compile a custom scenario", response_model=ScenarioEffectsView)
-async def preview_scenario(scenario: Scenario) -> ScenarioEffectsView:
-    """Effects of a scenario without running anything (for the scenario editor)."""
-    return _view(scenario)
+async def preview_scenario(scenario: Scenario, project_id: str = "", setup_id: str = "") -> ScenarioEffectsView:
+    """Effects of a scenario without running anything (for the scenario editor); with a layout, at its effect sizes."""
+    priors = await run_in_threadpool(service.layout_priors, project_id, setup_id, get_config())
+    return _view(scenario, priors)
 
 
 class DescribedScenarioView(BaseModel):
@@ -69,6 +72,8 @@ async def describe_scenario(req: DescribeRequest) -> DescribedScenarioView:
             described = service.describe(req, get_config())
         except AppError as e:
             raise HTTPException(e.status_code, e.message) from e
-        return DescribedScenarioView(scenario=described.scenario, effects=_view(described.scenario), warnings=described.warnings)
+        priors = service.layout_priors(req.project_id, req.setup_id, get_config())
+        return DescribedScenarioView(scenario=described.scenario, effects=_view(described.scenario, priors),
+                                     warnings=described.warnings)
 
     return await run_in_threadpool(run)

@@ -5,7 +5,8 @@ from filelock import FileLock, Timeout
 from store_emulator.application.errors import AppError
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
-from store_emulator.application.storage.setups import new_setup_data, setup_path
+from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path
+from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.product_edits import (
     ProductCatalog, ProductEditsPreview, ProductEditsRecord,
     ProductEditsRequest, ProductEditsSave, ProductEditsSaved, ProductEditsReceipt,
@@ -68,6 +69,9 @@ def save(pid: str, sid: str, req: ProductEditsSave) -> ProductEditsSaved:
                 "Edited products", sid, store.model_dump(mode="json"),
                 f"Explicit edits to {len(report.changes)} SKUs / {report.changed_placements} placements. Source layout preserved.",
             )
+            building = read_setup(pid, sid).get("building")
+            if building is not None:  # the draft stays on the same building floor
+                draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
             draft["id"] = path.stem
             draft["product_edits_request"] = req.model_dump(mode="json")
             draft["product_edits_result"] = result.model_dump(mode="json")

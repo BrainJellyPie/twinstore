@@ -4,6 +4,7 @@ import csv
 import io
 import math
 import random
+from datetime import date, datetime
 
 from store_emulator.domain.field_pilot import (
     FieldPilot, PilotAnalysis, PilotArmSummary, PilotAssignment, PilotBlockSummary, PilotRequest,
@@ -57,9 +58,10 @@ def parse_observations(data: bytes, pilot: FieldPilot) -> list[PilotAssignment]:
             if aid not in expected or aid in seen:
                 raise ValueError(f"Row {line}: unknown or duplicate assignment ID")
             saved = expected[aid]
-            immutable = {"pilot_id": pilot.pilot_id, "staff_id": saved.staff_id, "shift_id": saved.shift_id,
-                         "sequence": str(saved.sequence), "arm": saved.arm}
-            if any(row[key] != value for key, value in immutable.items()):
+            immutable = {"pilot_id": pilot.pilot_id, "sequence": str(saved.sequence), "arm": saved.arm}
+            reformatted = {"staff_id": saved.staff_id, "shift_id": saved.shift_id}
+            if (any(row[key] != value for key, value in immutable.items())
+                    or not all(_same_id(row[key], value) for key, value in reformatted.items())):
                 raise ValueError(f"Row {line}: assigned pilot, staff, shift, sequence and arm cannot be changed")
             bits: dict[str, bool | None] = {}
             for key in ("enrolled", "delivered", "purchased"):
@@ -75,6 +77,31 @@ def parse_observations(data: bytes, pilot: FieldPilot) -> list[PilotAssignment]:
     if len(seen) != len(expected):
         raise ValueError("Upload the full assignment template, including blank and unused slots")
     return [seen[a.assignment_id] for a in pilot.assignments]
+
+
+_DATE_FORMATS = ("%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%d/%m/%Y", "%d.%m.%Y", "%m/%d/%y", "%d/%m/%y", "%Y. %m. %d.",
+                 "%Y.%m.%d")
+
+
+def _dates(text: str) -> set[date]:
+    found: set[date] = set()
+    for fmt in _DATE_FORMATS:
+        try:
+            found.add(datetime.strptime(text, fmt).date())  # noqa: DTZ007 — a calendar date, no time of day
+        except ValueError:
+            continue
+    return found
+
+
+def _same_id(cell: str, saved: str) -> bool:
+    """A staff or shift id as a spreadsheet saved it back: Excel drops leading zeros (007 → 7) and rewrites dates in
+    the computer's format (2026-10-22 → 10/22/2026). The assignment id still pins the row, so those count as equal."""
+    a, b = cell.strip(), saved.strip()
+    if a == b:
+        return True
+    if a.isdigit() and b.isdigit():
+        return int(a) == int(b)
+    return bool(_dates(a) & _dates(b))
 
 
 def _arm(rows: list[PilotAssignment], arm: Arm) -> PilotArmSummary:

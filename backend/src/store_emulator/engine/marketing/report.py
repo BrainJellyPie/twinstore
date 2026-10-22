@@ -59,6 +59,17 @@ class Finding:
     recommendation: list[str]
 
 
+def _sampled(r: ExperimentReport) -> bool:
+    return 0 < r.simulated_visitors_per_day < r.visitors_per_day
+
+
+def _visitors_a_day(r: ExperimentReport) -> str:
+    """Per-day money scales by the store's estimated visitors; the simulated customers are a sample of them."""
+    if _sampled(r):
+        return f"{r.visitors_per_day:,.0f} visitors a day estimated ({r.simulated_visitors_per_day:,.0f} a day simulated)"
+    return f"{r.visitors_per_day:,.0f} visitors a day"
+
+
 def findings(r: ExperimentReport) -> Finding:
     """What the numbers say, in plain sentences (no model involved)."""
     vpd = r.visitors_per_day
@@ -174,7 +185,7 @@ def report_markdown(r: ExperimentReport, layout: str = "", narrative: ReportNarr
         f"# {r.name}",
         "",
         f"A/B test on {layout or r.setup_id} · {'vision shoppers' + (f' ({r.model})' if r.model else '') if r.engine == 'vlm' else 'rule shoppers'} · "
-        f"{r.panel_size} shoppers per arm · {r.visitors_per_day:,.0f} visitors a day",
+        f"{r.panel_size} shoppers per arm · {_visitors_a_day(r)}",
         "",
         "## Summary",
         "",
@@ -400,7 +411,8 @@ def report_html(r: ExperimentReport, layout: str = "", narrative: ReportNarrativ
         f"<div class='kpi'><span>Control revenue / visitor</span><b>{e(money(r.control.revenue_per_visitor, cur))}</b></div>",
         f"<div class='kpi'><span>Highest observed revenue / visitor</span><b>{e(best.name)}</b></div>",
         f"<div class='kpi'><span>Shoppers per arm</span><b>{r.panel_size:,}</b></div>",
-        f"<div class='kpi'><span>Visitors a day</span><b>{r.visitors_per_day:,.0f}</b></div>",
+        (f"<div class='kpi'><span>Visitors a day</span><b>{r.visitors_per_day:,.0f}</b>"
+         f"{f'<small>estimated; {r.simulated_visitors_per_day:,.0f} simulated a day</small>' if _sampled(r) else ''}</div>"),
     ])
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(r.name)} · A/B test report</title><style>{_CSS}</style></head><body><main>

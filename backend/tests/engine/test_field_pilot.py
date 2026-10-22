@@ -128,3 +128,17 @@ def test_bad_observation_rows_are_rejected_as_a_whole(mutate, match):
 def test_bad_csv_envelopes(data, match):
     with pytest.raises(ValueError, match=match):
         parse_observations(data, pilot())
+
+
+def test_ids_a_spreadsheet_reformatted_still_match_their_assignment():
+    p = pilot(blocks=[{"staff_id": "007", "shift_id": "2026-10-22", "encounters": 40}])
+
+    def excel(rows):   # Excel drops leading zeros and writes dates the US way
+        for row in rows:
+            row.update(staff_id="7", shift_id="10/22/2026")
+
+    assert parse_observations(csv_bytes(p, excel), p) == p.assignments
+    with pytest.raises(ValueError, match="cannot be changed"):
+        parse_observations(csv_bytes(p, lambda rows: rows[0].update(staff_id="8")), p)
+    with pytest.raises(ValueError, match="cannot be changed"):
+        parse_observations(csv_bytes(p, lambda rows: rows[0].update(shift_id="10/23/2026")), p)

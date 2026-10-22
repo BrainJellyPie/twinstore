@@ -37,6 +37,7 @@ from store_emulator.domain.providers import (
 from store_emulator.engine.llm_client import LiteLLMClient, is_auth_error
 from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
 
+from .errors import model_failure
 from .storage.io import DATA_DIR, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -187,7 +188,17 @@ def _save_settings(settings: dict[ProviderKind, ProviderSettings]) -> None:
         pass
 
 
+# One read-change-write of the settings file at a time: a key saved in Settings while the local model became ready
+# (which points the llama.cpp provider at it) could otherwise lose one of the two changes.
+_SETTINGS_LOCK = threading.Lock()
+
+
 def update_provider(kind: ProviderKind, update: ProviderUpdate) -> ProviderStatus:
+    with _SETTINGS_LOCK:
+        return _update_provider(kind, update)
+
+
+def _update_provider(kind: ProviderKind, update: ProviderUpdate) -> ProviderStatus:
     settings = load_settings()
     current = settings.get(kind, ProviderSettings(kind=kind))
     changes: dict[str, object] = {}
@@ -295,12 +306,13 @@ def cloud_providers_with_key(settings: dict[ProviderKind, ProviderSettings] | No
 
 def use_local_server(api_base: str) -> ProviderStatus:
     """Point the llama.cpp provider at a server on this computer and turn it on (the local model)."""
-    settings = load_settings()
-    current = settings.get(ProviderKind.LLAMACPP, ProviderSettings(kind=ProviderKind.LLAMACPP))
-    settings[ProviderKind.LLAMACPP] = current.model_copy(update={
-        "enabled": True, "api_base": api_base, "default_model": current.default_model or "local"})
-    _save_settings(settings)
-    return provider_status(ProviderKind.LLAMACPP, settings)
+    with _SETTINGS_LOCK:
+        settings = load_settings()
+        current = settings.get(ProviderKind.LLAMACPP, ProviderSettings(kind=ProviderKind.LLAMACPP))
+        settings[ProviderKind.LLAMACPP] = current.model_copy(update={
+            "enabled": True, "api_base": api_base, "default_model": current.default_model or "local"})
+        _save_settings(settings)
+        return provider_status(ProviderKind.LLAMACPP, settings)
 
 
 def list_providers() -> list[ProviderStatus]:
@@ -546,10 +558,16 @@ class _Fallback:
         from .local_vlm import manager  # late import: local_vlm imports this module
 
         label = PRESETS[kind].label
-        rejected = key_rejected(kind)
+        settings = load_settings()
+        rejected = key_rejected(kind, settings)
         reason = _short_reason(error) if error is not None else "not valid or revoked"
-        problem = f"{label} turned the API key down ({reason})" if rejected else f"No API key for {label}"
-        fix = "replace the key in Settings → Model providers" if rejected else "add a key in Settings → Model providers"
+        if rejected:
+            problem, fix = f"{label} turned the API key down ({reason})", "replace the key in Settings → Model providers"
+        elif not any(_usable_key(k, settings) for k, preset in PRESETS.items() if preset.needs_key):
+            # Nobody picked a provider: naming the default model's would send them to that one for no reason.
+            problem, fix = "No model API key is set", "add a key for any provider in Settings → Model providers"
+        else:
+            problem, fix = f"No API key for {label}", "add a key in Settings → Model providers"
         local = manager()
         # Off, or failed last time (a dropped download, a server that crashed): start it again, once per request —
         # "Try again" on a failed generation would otherwise repeat the old failure without trying.
@@ -568,8 +586,12 @@ class _Fallback:
                     restarted_seen = True     # the error may be the old one, before the restart got going
                     time.sleep(1.0)
                     continue
+                if status.state == "disabled":
+                    raise ValueError(f"{problem}, and the local model on this computer is turned off "
+                                     f"(TWINSTORE_LOCAL_VLM). {fix[0].upper()}{fix[1:]}, or turn the local model on.")
                 why = f" (the local model: {status.message})" if status.state == "error" and status.message else ""
-                raise ValueError(f"{problem}{why}. {fix[0].upper()}{fix[1:]}, or add another provider's key.")
+                other = "" if problem.startswith("No model API key") else ", or add another provider's key"
+                raise ValueError(f"{problem}{why}. {fix[0].upper()}{fix[1:]}{other}.")
             done = f" ({status.progress:.0%})" if status.progress is not None else ""
             if time.monotonic() >= deadline:
                 raise ValueError(f"{problem}. The local model on this computer is getting ready ({status.message}"
@@ -788,10 +810,16 @@ async def test_connection(ref: str, *, vision: bool = False) -> ConnectionTest:
             pong = await asyncio.wait_for(client.generate_structured_async(
                 _Pong, "Answer in JSON.", 'Reply with ok=true and word="pong".'), 90)
             reply, ok = pong.word, pong.ok
-    except Exception as e:  # noqa: BLE001 — report any provider error to the user verbatim
-        if kind is not None and config.api_key is not None and is_auth_error(e):
-            reject_key(kind, config.api_key.get_secret_value())
-        return ConnectionTest(ok=False, model=ref, error=f"{type(e).__name__}: {e}"[:500], vision=vision,
+    except Exception as e:  # noqa: BLE001 — any provider error is reported, in words a user can act on
+        logger.info(f"[providers] test of {ref} failed: {type(e).__name__}: {e}"[:2000])
+        if is_auth_error(e):
+            if kind is not None and config.api_key is not None:
+                reject_key(kind, config.api_key.get_secret_value())
+            who = PRESETS[kind].label if kind is not None else "The provider"
+            message = f"{who} turned this key down ({_short_reason(e)}). Check the key, save it and test again."
+        else:
+            message = model_failure(e, "The test failed")
+        return ConnectionTest(ok=False, model=ref, error=message[:500], vision=vision,
                               latency_ms=int((time.perf_counter() - started) * 1000))
     if kind is not None and config.api_key is not None:
         accept_key(kind, config.api_key.get_secret_value())

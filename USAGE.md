@@ -679,11 +679,14 @@ Run through this before triggering generation or simulation:
   `PARASTORE_LLM_API_BASE=http://127.0.0.1:8080/v1`). Small local models
   (≤4B) tend to fail the structured stage-2 output on large catalogs; use
   `rule_based` for local-only setups.
-- **`PERSONA_DAILY_CAP` env var** (default `100`) caps the per-day slice
-  used when `max_persona_count_per_day` is supplied: the requested total
-  is divided across open days, then clamped to `[10, PERSONA_DAILY_CAP]`
-  in multiples of 10. Raise it if a single day legitimately needs more
-  than 100 personas.
+- **Customers per day.** The model writes every visitor a day's traffic
+  estimate expects, up to 1,000 (`PERSONA_DAILY_POPULATION`);
+  `PERSONA_DAILY_CAP` (default 1,000, at least 10) lowers how many it
+  writes, with twins of the written customers filling the rest of the day.
+  When writing them all would take about 10 minutes or cost about $1, the
+  app asks first (all of them, a quick sample of 100 a day — 20 on the
+  local model — or cancel); `POST …/generations/{gen_id}/confirm` answers
+  it over the API.
 - **Stage 3 is conditional.** Impulse purchases only run when a persona's
   walked route exposes at least one stocked product. With the default
   `visibility` exposure model a product counts as seen only if its rack

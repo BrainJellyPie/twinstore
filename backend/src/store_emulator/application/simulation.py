@@ -27,9 +27,9 @@ from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.movement import read_movement, score_movement
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.application.runner import build_runner
-from store_emulator.application.scenarios import get_preset, prepare_inputs
+from store_emulator.application.scenarios import get_preset, prepare_inputs, who_can_come
 from store_emulator.application.town import get_town, town_visitors
-from store_emulator.domain.town import TownArrival
+from store_emulator.domain.town import Town, TownArrival
 from store_emulator.application.storage.io import DATA_DIR, read_json, write_json, now_iso
 from store_emulator.application.storage.setups import (
     read_setup, write_setup, personas_path, metadata_path,
@@ -118,10 +118,11 @@ def with_engine_model(config: SimulationConfig, model: str) -> SimulationConfig:
 
 
 def subsample_personas(personas: list[Persona], max_customers: int | None, seed: int) -> list[Persona]:
-    """Same seed → same subset, so subsampled A/B runs stay paired."""
+    """Same seed → same subset, so subsampled A/B runs stay paired. Customers the model wrote come before their twins
+    (copies filling a day to its estimated visitors), so a sample has as many different people as it can."""
     if max_customers is None or max_customers >= len(personas):
         return personas
-    ranked = sorted(personas, key=lambda p: stable_seed(seed, "subsample", p.id))
+    ranked = sorted(personas, key=lambda p: (bool(p.twin_of), stable_seed(seed, "subsample", p.id)))
     keep = {p.id for p in ranked[:max_customers]}
     return [p for p in personas if p.id in keep]
 
@@ -246,6 +247,28 @@ def write_status(pid: str, run_id: str, status: str, error: str = "", **extra: o
     write_json(path, data)
 
 
+def run_shoppers(
+    pid: str, config: SimulationConfig, store: Store, personas: list[Persona], options: RunOptions,
+) -> tuple[SimulationConfig, Store, list[Persona], list[TownArrival], Town | None]:
+    """The run's config, the store as its situation has it, and the shoppers it simulates (neighborhood visitors,
+    the customer cap, the situation's days, traffic and budgets, opening hours) — what a run and its estimate see.
+    Also each visitor's neighborhood arrival and the neighborhood, when the run draws from one."""
+    config = apply_options(config, options)
+    config = config.model_copy(update={"currency": store.currency or config.currency})
+    if config.engines.vlm_glance.shelf_view == "photo_chart":
+        vlm = config.engines.vlm_glance.model_copy(update={"shelf_views_dir": str(views_dir(pid))})
+        config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
+    town = get_town(pid) if options.use_town else None
+    arrivals: list[TownArrival] = []
+    if town is not None:
+        personas, arrivals = town_visitors(town, personas, seed=config.seed, scale=options.town_scale,
+                                           scenario=config.scenario)
+    # The cap counts shoppers who come on the scenario's days and opening hours, not ones dropped right after.
+    personas = subsample_personas(who_can_come(config, store, personas), options.max_customers, config.seed)
+    store, personas = prepare_inputs(config, store, personas, traffic_applied=town is not None)
+    return config, store, personas, arrivals, town
+
+
 def run_simulation_background(
     pid: str, run_id: str, setup_id: str,
     store: Store, personas: list[Persona],
@@ -256,18 +279,7 @@ def run_simulation_background(
 ) -> None:
     options = options or RunOptions()
     try:
-        config = apply_options(config, options)
-        config = config.model_copy(update={"currency": store.currency or config.currency})
-        if config.engines.vlm_glance.shelf_view == "photo_chart":
-            vlm = config.engines.vlm_glance.model_copy(update={"shelf_views_dir": str(views_dir(pid))})
-            config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
-        town = get_town(pid) if options.use_town else None
-        arrivals: list[TownArrival] = []
-        if town is not None:
-            personas, arrivals = town_visitors(town, personas, seed=config.seed, scale=options.town_scale,
-                                               scenario=config.scenario)
-        personas = subsample_personas(personas, options.max_customers, config.seed)
-        store, personas = prepare_inputs(config, store, personas, traffic_applied=town is not None)
+        config, store, personas, arrivals, town = run_shoppers(pid, config, store, personas, options)
         if not personas:
             # Finishing "completed" with nobody would lock the layout and the customers for good.
             raise ValueError("No shoppers come on this scenario's days and opening hours, so there is nothing to "
@@ -506,6 +518,21 @@ def get_movement_fidelity(pid: str, run_id: str) -> MovementReport | None:
     return read_movement(_completed_run_base(pid, run_id))
 
 
+_ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}   # as the app shows money
+
+
+def _money_unit(base: Path) -> str:
+    """"USD cents", "GBP 1/100", or "KRW" (no minor unit) for a run's money columns."""
+    try:
+        raw = cast(dict[str, Any], read_json(base / "output" / "summary.json")).get("currency")
+    except (OSError, ValueError):
+        raw = None
+    code = "USD" if not isinstance(raw, str) or raw in ("", "USD_CENTS") else raw.upper()
+    if code in _ZERO_DECIMAL:
+        return code
+    return f"{code} cents" if code in ("USD", "EUR", "CAD", "AUD", "NZD") else f"{code} 1/100"
+
+
 def export_customers_csv(pid: str, run_id: str) -> str:
     """One row per simulated customer: persona attributes + outcomes, for spreadsheet analysis."""
     base = _completed_run_base(pid, run_id)
@@ -515,7 +542,11 @@ def export_customers_csv(pid: str, run_id: str) -> str:
     persona_cols = ["identity", "age_group", "gender", "purpose", "arrival_hour", "budget_min", "budget_max"]
     metric_cols = ["spend", "units", "bought", "impulse_spend", "visit_sec", "path_tiles"]
     writer = csv.writer(out)
-    writer.writerow(["persona_id", "day", "arrival_time", "leave_time", *persona_cols, *metric_cols, "products"])
+    # Money columns (budget_min, budget_max, spend, impulse_spend) are in the currency's minor unit, as the app keeps
+    # them: say so on every row, or 350 reads as $350 in a spreadsheet.
+    unit = _money_unit(base)
+    writer.writerow(["persona_id", "day", "arrival_time", "leave_time", *persona_cols, *metric_cols, "products",
+                     "money_unit"])
     for r in results:
         p = cast(dict[str, Any], personas_raw.get(r.persona_id, {}))
         m = customer_metrics(r)
@@ -524,7 +555,7 @@ def export_customers_csv(pid: str, run_id: str) -> str:
             r.persona_id, int(r.day), r.arrival_time, r.leave_time,
             *[p.get(c, "") for c in persona_cols],
             *[int(m[c]) if float(m[c]).is_integer() else m[c] for c in metric_cols],
-            products,
+            products, unit,
         ]
         writer.writerow("'" + cell if isinstance(cell, str) and cell.lstrip().startswith(("=", "+", "-", "@")) else cell
                         for cell in row)

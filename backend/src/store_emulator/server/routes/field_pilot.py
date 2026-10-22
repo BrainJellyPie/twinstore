@@ -51,7 +51,7 @@ def get_pilot(pid: str, pilot_id: str) -> PilotView:
 @router.get("/{pid}/staff-pilots/{pilot_id}/observations.csv", summary="Download the assigned observation sheet")
 def export_observations(pid: str, pilot_id: str) -> PlainTextResponse:
     text = _call(lambda: field_pilot.export_observations(pid, pilot_id))
-    return PlainTextResponse(text, media_type="text/csv",
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-observations.csv"'})
 
 
@@ -63,7 +63,7 @@ def get_collection_checks(pid: str, pilot_id: str) -> PilotCollectionReport:
 @router.get("/{pid}/staff-pilots/{pilot_id}/follow-up.csv", summary="Export the latest collection follow-up checklist")
 def export_collection_tasks(pid: str, pilot_id: str) -> PlainTextResponse:
     text = _call(lambda: field_pilot.export_collection_tasks(pid, pilot_id))
-    return PlainTextResponse(text, media_type="text/csv",
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-follow-up.csv"'})
 
 
@@ -88,7 +88,7 @@ async def review_observations(pid: str, pilot_id: str, file: UploadFile = File(.
 @router.get("/{pid}/staff-pilots/{pilot_id}/imports.csv", summary="Export committed observation changes")
 def export_import_history(pid: str, pilot_id: str) -> PlainTextResponse:
     text = _call(lambda: field_pilot.export_import_history(pid, pilot_id))
-    return PlainTextResponse(text, media_type="text/csv",
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-import-history.csv"'})
 
 
@@ -118,7 +118,7 @@ def sensitivity(pid: str, pilot_id: str, revision: Annotated[int, Query(ge=0)]) 
 @router.get("/{pid}/staff-pilots/{pilot_id}/sensitivity.csv", summary="Export all descriptive group deletion checks at a saved revision")
 def export_sensitivity_report(pid: str, pilot_id: str, revision: Annotated[int, Query(ge=0)]) -> PlainTextResponse:
     text = _call(lambda: field_pilot.export_sensitivity(pid, pilot_id, revision))
-    return PlainTextResponse(text, media_type="text/csv",
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-sensitivity-r{revision}.csv"'})
 
 
@@ -130,14 +130,14 @@ def preview_economics(pid: str, pilot_id: str, req: PilotEconomicsRequest) -> Pi
 @router.post("/{pid}/staff-pilots/{pilot_id}/economics.csv", summary="Export a staff-script cost scenario and its explicit assumptions")
 def export_economics(pid: str, pilot_id: str, req: PilotEconomicsRequest) -> PlainTextResponse:
     text = _call(lambda: field_pilot.export_economics(pid, pilot_id, req))
-    return PlainTextResponse(text, media_type="text/csv",
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-cost-scenario-r{req.revision}.csv"'})
 
 
 @router.get("/{pid}/staff-pilots/{pilot_id}/timing/template.csv", summary="Download a blank staff time sheet for a completed fixed pilot")
 def export_timing_template(pid: str, pilot_id: str, revision: Annotated[int, Query(ge=0)]) -> PlainTextResponse:
     text = _call(lambda: field_pilot.export_timing_template(pid, pilot_id, revision))
-    return PlainTextResponse(text, media_type="text/csv",
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-staff-time-template.csv"'})
 
 
@@ -155,5 +155,5 @@ async def export_timing(pid: str, pilot_id: str, file: UploadFile = File(...), r
     if len(data) > 2 * 1024 * 1024:
         raise HTTPException(413, "Staff time CSV exceeds 2 MB")
     text = await run_in_threadpool(_call, lambda: field_pilot.export_timing(pid, pilot_id, data, revision))
-    return PlainTextResponse(text, media_type="text/csv",
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="{pilot_id}-staff-time-r{revision}.csv"'})

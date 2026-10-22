@@ -21,7 +21,7 @@ def client(tmp_path, monkeypatch):
 
 
 def test_connected_preview_template_and_export_do_not_change_project(client):
-    assert client.get(ROOT + "/template.csv").text == HEADER.replace("\n", "\r\n")
+    assert client.get(ROOT + "/template.csv").text == "\ufeff" + HEADER.replace("\n", "\r\n")
     before = metadata_path(PID).read_bytes()
     response = client.post(ROOT + "/preview", files={"file": ("offers.csv", DATA)}, data=SCOPE)
     assert response.status_code == 200, response.text

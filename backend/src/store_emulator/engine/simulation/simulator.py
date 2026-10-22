@@ -96,7 +96,7 @@ class PerCustomerSimulationRunner:
         return stable_seed(self.config.seed, self.config.replicate)
 
     def _validate_and_prepare(
-        self, store: Store, personas: list[Persona],
+        self, store: Store, personas: list[Persona], *, path_heatmap: bool = True,
     ) -> tuple[list[list[float]], list[tuple[CustomerEntry, Persona]], Counter[tuple[Weekday, int]]]:
         log_cleared(logger, "[simulation]", clear_blocked_slots(store))
 
@@ -109,7 +109,7 @@ class PerCustomerSimulationRunner:
             if i.severity == "warning":
                 logger.warning(f" {i.code}: {i.message}")
 
-        heatmap = compute_pathcalc_heatmap(store)
+        heatmap = compute_pathcalc_heatmap(store) if path_heatmap else []
         customers = generate_customers(personas, seed=self.run_seed)
         if store.weekly_schedule:
             customers = [entry for entry in customers if store.is_open_at(entry.day, entry.hour)]
@@ -127,8 +127,11 @@ class PerCustomerSimulationRunner:
         address: str = "",
         customer_profile: str = "",
         on_progress: ProgressCallback | None = None,
+        path_heatmap: bool = True,
     ) -> tuple[AggregatedResult, list[CustomerResult]]:
-        pathcalc_heatmap, entries, hourly_counts = self._validate_and_prepare(store, personas)
+        """`path_heatmap=False` skips the route map for runs nobody looks at (optimizer candidates,
+        calibration points); their result carries an empty one."""
+        pathcalc_heatmap, entries, hourly_counts = self._validate_and_prepare(store, personas, path_heatmap=path_heatmap)
         priors = priors_for(store.type, self.config.scenario_priors)
         if self.config.scenario is not None:   # situation effects follow the store's format
             self._scenario = compile_scenario(self.config.scenario, priors)

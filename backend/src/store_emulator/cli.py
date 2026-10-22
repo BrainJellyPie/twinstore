@@ -24,7 +24,7 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.application.scenarios import PRESETS as SCENARIO_PRESETS
-from store_emulator.application.scenarios import prepare_inputs
+from store_emulator.application.scenarios import prepare_inputs, who_can_come
 from store_emulator.application.simulation import (
     RunOptions,
     apply_options,
@@ -240,7 +240,7 @@ def _load_inputs(run: Path | None, store: Path | None, personas: Path | None) ->
 def _simulate_replicates(
     store: Store, personas: list[Persona], config: SimulationConfig, args: argparse.Namespace, out: Path,
 ) -> None:
-    personas = subsample_personas(personas, args.max_customers, config.seed)
+    personas = subsample_personas(who_can_come(config, store, personas), args.max_customers, config.seed)
     store, personas = prepare_inputs(config, store, personas)
     for rep in range(args.replicates):
         cfg = config.model_copy(update={"replicate": rep})
