@@ -62,7 +62,8 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
         className="glass rounded-xl border border-destructive/40 px-3 py-1.5 text-sm text-destructive shadow-float" />
       <div className="glass flex flex-wrap items-center gap-1 rounded-2xl border p-1.5 shadow-float">
         <Select value={runId} onValueChange={setViewRunId}>
-          <SelectTrigger className="h-9 w-[270px] max-w-full rounded-xl text-sm" aria-label="Run shown">
+          {/* Sized to the label ("Rule-based · seed 0 · preview · 05:12 PM"), cut only when the bar is narrower. */}
+          <SelectTrigger className="h-9 w-auto min-w-[min(270px,100%)] max-w-full rounded-xl text-sm" aria-label="Run shown">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

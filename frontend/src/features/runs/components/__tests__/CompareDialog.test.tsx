@@ -6,17 +6,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { explainComparison, type ComparisonReport, type MetricComparison } from "@/shared/api/client";
 import { CompareDialog } from "../CompareDialog";
 
-const state = vi.hoisted(() => ({ report: null as ComparisonReport | null }));
+const state = vi.hoisted(() => ({ report: null as ComparisonReport | null, currency: undefined as string | undefined }));
 vi.mock("../../hooks", () => ({
   useProjectRuns: () => ({ data: ["run_a", "run_b"].map((run_id) => ({
     run_id, status: "completed", setup_id: "s1", created_at: "2026-10-21T10:00:00Z",
+    summary: state.currency ? { currency: state.currency } : undefined,
   })) }),
   useCompare: () => ({ data: state.report, isLoading: false, isError: false }),
 }));
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), explainComparison: vi.fn(),
 }));
-afterEach(cleanup);
+afterEach(() => { cleanup(); state.currency = undefined; });
 
 function show(overrides: Partial<MetricComparison> = {}) {
   state.report = {
@@ -35,12 +36,24 @@ function show(overrides: Partial<MetricComparison> = {}) {
 
 it("shows absolute spend gains and their interval when baseline spend is zero", () => {
   show();
-  expect(screen.getByText("Spend per visitor: +500 minor units")).toBeTruthy();
-  expect(screen.getByText("+200 … +800")).toBeTruthy();
+  expect(screen.getByText("Spend per visitor: +$5.00")).toBeTruthy();
+  expect(screen.getByText("+$2.00 … +$8.00")).toBeTruthy();
   const row = screen.getByText("Spend / visitor").closest("tr")!;
   const marker = row.querySelector("circle")!;
   const zero = row.querySelector("line")!;
   expect(Number(marker.getAttribute("cx"))).toBeGreaterThan(Number(zero.getAttribute("x1")));
+});
+
+it("shows spend per visitor as money in the run's currency, without a minor-unit footnote", () => {
+  show({ mean_a: 845, mean_b: 862.4, diff: 17.4, rel_diff: 17.4 / 845 });
+  const row = screen.getByText("Spend / visitor").closest("tr")!;
+  expect([...row.querySelectorAll("td")].slice(1, 3).map((cell) => cell.textContent)).toEqual(["$8.45", "$8.62"]);
+  expect(screen.getByRole("dialog").textContent).not.toMatch(/minor unit/);
+  cleanup();
+  state.currency = "KRW";
+  show({ mean_a: 4200, mean_b: 4350, diff: 150, rel_diff: 150 / 4200 });
+  const krw = screen.getByText("Spend / visitor").closest("tr")!;
+  expect([...krw.querySelectorAll("td")].slice(1, 3).map((cell) => cell.textContent)).toEqual(["₩4,200", "₩4,350"]);
 });
 
 it("keeps relative changes for a nonzero baseline", () => {
@@ -51,8 +64,8 @@ it("keeps relative changes for a nonzero baseline", () => {
 
 it("shows a zero absolute difference when neither run has purchases", () => {
   show({ mean_b: 0, diff: 0, ci_low: 0, ci_high: 0, prob_b_greater: 0 });
-  expect(screen.getByText("Spend per visitor: 0 minor units")).toBeTruthy();
-  expect(screen.getByText("0 … 0")).toBeTruthy();
+  expect(screen.getByText("Spend per visitor: $0.00")).toBeTruthy();
+  expect(screen.getByText("$0.00 … $0.00")).toBeTruthy();
   expect(screen.getByRole("dialog").textContent).not.toMatch(/NaN|Infinity/);
 });
 

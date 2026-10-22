@@ -664,3 +664,20 @@ def test_a_key_test_the_provider_turns_down_says_so_in_a_line(monkeypatch):
     result = asyncio.run(providers.test_connection("openai:gpt-6-luna"))
     assert not result.ok
     assert result.error == "OpenAI turned this key down (Incorrect API key). Check the key, save it and test again."
+
+
+def test_a_long_list_of_identities_still_fits_each_hour():
+    """A small model listed 40 customer identities and gave the day no visitors: the plain day crashed on the
+    10-types-an-hour limit. Each hour takes 10 of them in turn, so all 40 still come."""
+    from store_emulator.domain.store import DaySchedule
+    from store_emulator.engine.generators import persona as gen
+
+    identities = [f"type {i}" for i in range(40)]
+    profile = gen.TradeAreaProfile(keywords=["k"], identities=identities, purposes=["p"])
+    day = DaySchedule(day=1, is_open=True, open_hour=8, close_hour=22)
+    zeros = [gen.HourlyProfile(hour=h, visitor_count=0, person_types=[]) for h in range(24)]
+    plain = gen._usable_hourly(zeros, profile, day, 300)  # pyright: ignore[reportPrivateUsage]
+    assert all(len(h.person_types) == 10 for h in plain)
+    assert {t for h in plain for t in h.person_types} == set(identities)
+    untyped = gen._usable_hourly([gen.HourlyProfile(hour=9, visitor_count=4, person_types=[])], profile, day, 300)  # pyright: ignore[reportPrivateUsage]
+    assert len(untyped[0].person_types) == 10

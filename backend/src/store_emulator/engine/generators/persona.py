@@ -277,55 +277,54 @@ async def generate_personas_for_day(
     purpose_list = "\n".join(f"  - {p}" for p in profile.purposes)
 
     limit = semaphore or asyncio.Semaphore(max_concurrent)
-    tasks: list[tuple[int, int, asyncio.Task[PersonaBatch]]] = []
+    tasks: list[tuple[list[int], asyncio.Task[PersonaBatch]]] = []
 
     async def _generate_batch(prompt: str) -> PersonaBatch:
         async with limit:
             return await llm.generate_structured_async(PersonaBatch, system_prompt, prompt, max_retries=3)
 
+    # One spec line per customer, hour by hour; requests take `batch_size` of them in order, across hours, so a quiet
+    # hour's one or two customers do not cost a request of their own (a 20-a-day sample over 14 hours took 14).
+    specs: list[tuple[int, str]] = []
     for hour, hp in sorted(profiles_map.items()):
         if not hp.person_types or hp.visitor_count <= 0:
             continue
+        for _ in range(hp.visitor_count):
+            n_types = min(rng.choice([1, 1, 2]), len(hp.person_types))
+            types = rng.sample(hp.person_types, n_types)
+            n_kw = min(rng.randint(1, 3), len(profile.keywords))
+            kws = rng.sample(profile.keywords, n_kw)
+            specs.append((hour, f"{hour}시, {'+'.join(types)}, 키워드: {', '.join(kws)}"))
+    if specs:
+        logger.info(f"[persona] {day_label}: {len(specs)} customers in {-(-len(specs) // batch_size)} requests")
 
-        logger.info(f"[persona] {day_label} hour {hour} slot ({hp.visitor_count} visitors) LLM generation start")
-
-        for batch_start in range(0, hp.visitor_count, batch_size):
-            current_size = min(batch_size, hp.visitor_count - batch_start)
-            spec_lines: list[str] = []
-            for i in range(current_size):
-                n_types = min(rng.choice([1, 1, 2]), len(hp.person_types))
-                types = rng.sample(hp.person_types, n_types)
-                n_kw = min(rng.randint(1, 3), len(profile.keywords))
-                kws = rng.sample(profile.keywords, n_kw)
-                spec_lines.append(f"[{i}] {hour}시, {'+'.join(types)}, 키워드: {', '.join(kws)}")
-
-            category_section = ""
-            if categories:
-                cat_list = "\n".join(f"  - {c}" for c in categories)
-                category_section = f"## 카테고리 목록 (preferred_categories는 반드시 이 중에서만 선택)\n{cat_list}\n\n"
-
-            persona_input = (
-                f"매장 위치: {address}\n요일: {day_label}\n\n"
-                f"## identity 목록 (반드시 이 중 하나 선택)\n{identity_list}\n\n"
-                f"## purpose 목록 (반드시 이 중 하나 선택)\n{purpose_list}\n\n"
-                f"{category_section}"
-                f"아래 {current_size}명의 고객 페르소나를 생성하세요:\n\n"
-                + "\n".join(spec_lines)
-            )
-            if custom_instruction:
-                persona_input += f"\n\n추가 지시: {custom_instruction}"
-
-            task = asyncio.create_task(_generate_batch(persona_input))
-            tasks.append((hour, current_size, task))
+    category_section = ""
+    if categories:
+        cat_list = "\n".join(f"  - {c}" for c in categories)
+        category_section = f"## 카테고리 목록 (preferred_categories는 반드시 이 중에서만 선택)\n{cat_list}\n\n"
+    for batch_start in range(0, len(specs), batch_size):
+        chunk = specs[batch_start:batch_start + batch_size]
+        persona_input = (
+            f"매장 위치: {address}\n요일: {day_label}\n\n"
+            f"## identity 목록 (반드시 이 중 하나 선택)\n{identity_list}\n\n"
+            f"## purpose 목록 (반드시 이 중 하나 선택)\n{purpose_list}\n\n"
+            f"{category_section}"
+            f"아래 {len(chunk)}명의 고객 페르소나를 생성하세요 (순서대로):\n\n"
+            + "\n".join(f"[{i}] {line}" for i, (_, line) in enumerate(chunk))
+        )
+        if custom_instruction:
+            persona_input += f"\n\n추가 지시: {custom_instruction}"
+        tasks.append(([hour for hour, _ in chunk], asyncio.create_task(_generate_batch(persona_input))))
 
     all_personas: list[Persona] = []
-    for hour, size, task in tasks:
+    for hours, task in tasks:
+        size = len(hours)
         if tally is not None:
             tally.requested += 1
         try:
             batch = await task
         except Exception as e:
-            logger.error(f"[persona] {day_label} hour {hour} batch generation failed: {e}")
+            logger.error(f"[persona] {day_label} hours {hours[0]}–{hours[-1]} batch generation failed: {e}")
             if tally is not None:
                 tally.failed += 1
                 tally.first_error = tally.first_error or e
@@ -335,7 +334,8 @@ async def generate_personas_for_day(
         if on_written is not None:
             on_written(size)
 
-        for generated in batch.personas[:size]:   # small models may add a few: the hour asked for `size`
+        # Small models may add a few: the request asked for `size`, in the order of their hours.
+        for generated, hour in zip(batch.personas[:size], hours):
             persona = Persona.model_validate(generated.model_dump())
             prefix = "F" if persona.gender == "Female" else "M"
             seq = len([p for p in all_personas if p.gender == persona.gender]) + 1
@@ -408,9 +408,10 @@ async def generate_batched(
         for schedule, visitors in days:
             estimates[int(schedule.day)] = sum(h.visitor_count for h in visitors)
 
-    def size(cap: int) -> WriteSize:
-        hours = [h.visitor_count for _, visitors in days for h in _scale_hourly(visitors, cap) if h.person_types]
-        return WriteSize(per_day=cap, customers=sum(hours), requests=sum(-(-n // batch_size) for n in hours if n > 0))
+    def size(cap: int) -> WriteSize:   # requests take batch_size customers of a day, across its hours
+        per_day = [sum(h.visitor_count for h in _scale_hourly(visitors, cap) if h.person_types and h.visitor_count > 0)
+                   for _, visitors in days]
+        return WriteSize(per_day=cap, customers=sum(per_day), requests=sum(-(-n // batch_size) for n in per_day))
 
     total = size(daily_cap_now).customers
     done = 0
@@ -559,9 +560,15 @@ def _usable_hourly(hourly: list[HourlyProfile], profile: TradeAreaProfile, sched
                    cap: int) -> list[HourlyProfile]:
     """Hours the persona step can use. Small models sometimes answer an open day with no visitors at all, or with
     visitors but no customer types; both left the day without customers. Hours without types get every identity
-    of the trade area; a day without visitors gets a plain convenience-store day of `cap` visitors."""
+    of the trade area (at most 10 an hour, as the schema allows, taking turns so every identity comes); a day
+    without visitors gets a plain convenience-store day of `cap` visitors."""
     identities = list(profile.identities) or ["shopper"]
-    fixed = [h if h.person_types or h.visitor_count <= 0 else h.model_copy(update={"person_types": identities})
+    per_hour = min(10, len(identities))
+
+    def types_for(hour: int) -> list[str]:
+        return [identities[(hour * per_hour + k) % len(identities)] for k in range(per_hour)]
+
+    fixed = [h if h.person_types or h.visitor_count <= 0 else h.model_copy(update={"person_types": types_for(h.hour)})
              for h in hourly]
     if sum(h.visitor_count for h in fixed) > 0:
         return fixed
@@ -573,7 +580,7 @@ def _usable_hourly(hourly: list[HourlyProfile], profile: TradeAreaProfile, sched
     weights = {h: _PLAIN_DAY.get(h, 2) for h in hours}
     total_w = sum(weights.values())
     counts = {h: max(1, round(cap * w / total_w)) for h, w in weights.items()}
-    return [HourlyProfile(hour=h, visitor_count=n, person_types=identities) for h, n in counts.items()]
+    return [HourlyProfile(hour=h, visitor_count=n, person_types=types_for(h)) for h, n in counts.items()]
 
 
 def _apply_traffic(hourly: list[HourlyProfile], traffic: TrafficProfile, schedule: DaySchedule) -> list[HourlyProfile]:

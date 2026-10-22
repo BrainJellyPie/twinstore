@@ -41,7 +41,7 @@ function HomePage() {
   const { data: projects, isLoading, isFetching, error, refetch } = useProjects();
   const newStore = () => navigate({ to: "/projects/new" });
   const templates = useQuery({ queryKey: ["store-templates"], queryFn: ({ signal }) => api.getStoreTemplates(signal), staleTime: Infinity });
-  const scenarios = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios(signal), staleTime: Infinity });
+  const scenarios = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios({}, signal), staleTime: Infinity });
   const counted = (label: typeof CAPABILITIES[number]["label"]) =>
     label === "situations" && scenarios.data ? t("situationCount", { count: scenarios.data.length }) : t(label);
 

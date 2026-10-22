@@ -42,6 +42,7 @@ import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
+import { visitorsPerDayText } from "@/shared/utils/estimate";
 import { RestockPlanner } from "./RestockPlanner";
 import { RestockOrderPlanner } from "./RestockOrderPlanner";
 
@@ -639,7 +640,7 @@ function AuditView({ projectId, report, onFocus }: { projectId: string; report: 
         {report.findings.length === 0 && <li className="rounded-xl tone-good border p-2.5 text-xs">The shelf matches the reference planogram.</li>}
       </ul>
       <p className="text-[0.72rem] text-muted-foreground">
-        Rack {report.rack_id} face {report.face} · {report.panel_size} shoppers per paired run · {report.visitors_per_day} visitors/day · {report.seconds}s
+        Rack {report.rack_id} face {report.face} · {report.panel_size} shoppers per paired run · {visitorsPerDayText(report.visitors_per_day, report.simulated_visitors_per_day)} · {report.seconds}s
         {report.notes.length ? ` · ${report.notes.join("; ")}` : ""}
       </p>
       <RestockPlanner key={report.job_id} report={report} onFocus={onFocus} />

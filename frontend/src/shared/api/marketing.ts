@@ -98,7 +98,10 @@ export interface ExperimentReport {
   model: string;
   panel_size: number;
   currency: string;
+  /** Estimated visitors a day: what per-day money scales by. */
   visitors_per_day: number;
+  /** Customers simulated a day (a sample of the estimate); 0 or absent = the same as visitors_per_day. */
+  simulated_visitors_per_day?: number;
   focus_skus: string[];
   control: VariantResult;
   variants: VariantResult[];

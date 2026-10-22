@@ -377,8 +377,11 @@ def choose_write_size(project_id: str, setup_id: str, gen_id: str, choice: str) 
     if data.get("status") != "running" or not isinstance(progress, dict) or "confirm" not in progress:
         raise AppError("This generation is not waiting for a choice.", 409)
     write_json(_choice_path(project_id, gen_id), {"choice": choice})
-    note = "Stopping…" if choice == "cancel" else "Writing the customers…"
-    write_status(project_id, gen_id, "running", progress={"note": note})
+    # Writing progress straight away (the job takes the choice within a second and keeps counting from there).
+    chosen = cast(dict[str, object], progress["confirm"]).get(choice) if choice != "cancel" else None
+    total = cast(dict[str, object], chosen).get("customers") if isinstance(chosen, dict) else None
+    write_status(project_id, gen_id, "running",
+                 progress={"written": 0, "total": total} if isinstance(total, int) else {})
     return read_status(project_id, gen_id)
 
 

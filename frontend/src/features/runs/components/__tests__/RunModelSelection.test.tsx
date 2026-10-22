@@ -9,7 +9,7 @@ import { useLocale, translate } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { RunLauncherDialog } from "../RunLauncherDialog";
 
-vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getScenarios: vi.fn(), getModels: vi.fn(), startRun: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getScenarios: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ to, children, ...props }: { to: string; children: ReactNode }) => <a href={to} {...props}>{children}</a> }));
 const models: api.ModelOption[] = [
   { ref: "provider:text", provider: "A", label: "Text model", vision: false, local: false },
@@ -17,7 +17,9 @@ const models: api.ModelOption[] = [
   { ref: "other:vision", provider: "B", label: "Other vision", vision: true, local: true },
 ];
 const clients: QueryClient[] = [];
+const quick: api.RunEstimate = { customers: 1000, days: 7, per_day: 143, engine: "rule_based", model: "", local: false, model_calls: 0, minutes: 1, cost_usd: null, warn: false };
 beforeEach(() => {
+  vi.mocked(api.estimateRun).mockResolvedValue(quick);
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.getEngines).mockResolvedValue([]);
   vi.mocked(api.getTown).mockResolvedValue(null);

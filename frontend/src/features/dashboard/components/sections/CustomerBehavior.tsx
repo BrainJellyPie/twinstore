@@ -1,6 +1,7 @@
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 
-export function CustomerBehavior() {
+// legacyRun: the run predates conversion KPIs, so no conversion figure is shown.
+export function CustomerBehavior({ legacyRun = false }: { legacyRun?: boolean }) {
   const entered = useSimulationMetricsStore((s) => s.entered);
   const inStore = useSimulationMetricsStore((s) => s.inStore);
   const paidCount = useSimulationMetricsStore((s) => s.paidCount);
@@ -13,9 +14,9 @@ export function CustomerBehavior() {
           <dt className="eyebrow">Visitors</dt>
           <dd className="num mt-1 text-xl font-medium tracking-[-0.04em]">{entered}</dd>
         </div>
-        <div className="rounded-2xl border border-glass-border bg-foreground/[0.02] p-3">
+        <div className="rounded-2xl border border-glass-border bg-foreground/[0.02] p-3" title={legacyRun ? "Not recorded by this older run" : undefined}>
           <dt className="eyebrow">Converted</dt>
-          <dd className="num mt-1 text-xl font-medium tracking-[-0.04em]">{conversionRate}%</dd>
+          <dd className="num mt-1 text-xl font-medium tracking-[-0.04em]">{legacyRun ? "—" : `${conversionRate}%`}</dd>
         </div>
         <div className="rounded-2xl border border-glass-border bg-foreground/[0.02] p-3">
           <dt className="eyebrow flex items-center gap-1.5">

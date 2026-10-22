@@ -7,7 +7,7 @@ import { useLocale, translate } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { RunLauncherDialog, type RunLauncherDialogProps } from "../RunLauncherDialog";
 
-vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
 vi.mock("../ScenarioEditor", () => ({ ScenarioEditor: () => <div>Situation editor</div> }));
 vi.mock("../ModelPicker", () => ({ ModelPicker: ({ onChange }: { onChange: (v: { kind: "single"; model: string }) => void }) =>
   <button type="button" onClick={() => onChange({ kind: "single", model: "text-only" })}>Select text model</button> }));
@@ -17,7 +17,9 @@ const engines: api.EngineInfo[] = [
   { engine_type: "pattern_intent_impulse", label: "LLM", description: "", uses_llm: true, model: "text", default: false },
   { engine_type: "vlm_glance", label: "Vision", description: "", uses_llm: true, model: "vision", default: false },
 ];
+const quick: api.RunEstimate = { customers: 1000, days: 7, per_day: 143, engine: "rule_based", model: "", local: false, model_calls: 0, minutes: 1, cost_usd: null, warn: false };
 beforeEach(() => {
+  vi.mocked(api.estimateRun).mockResolvedValue(quick);
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.getEngines).mockResolvedValue(engines);
   vi.mocked(api.getTown).mockResolvedValue(null);
@@ -139,7 +141,7 @@ it.each(["-1", "0", "9007199254740991"])("accepts a safe integer seed (%s)", asy
 it("ignores an invalid inactive sample when all customers are chosen", async () => {
   show({ defaultEngine: "vlm_glance" });
   fireEvent.change(screen.getByLabelText("Sample size"), { target: { value: "" } });
-  fireEvent.click(screen.getByRole("radio", { name: "All 1,000 personas" }));
+  fireEvent.click(screen.getByRole("radio", { name: "All 1,000 customers across all days" }));
   await submit();
   expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ max_customers: undefined }));
 });

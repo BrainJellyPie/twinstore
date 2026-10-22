@@ -62,7 +62,7 @@ def test_one_request_is_timed_first_and_the_answer_sets_how_many_a_day_are_writt
     (plan,) = plans
     assert plan.visitors == {1: 200, 2: 100}
     assert plan.all == gen.WriteSize(per_day=1000, customers=300, requests=30)
-    assert plan.sample == gen.WriteSize(per_day=100, customers=200, requests=22)   # 25 an hour: 3 requests each
+    assert plan.sample == gen.WriteSize(per_day=100, customers=200, requests=20)   # 10 a request, across hours
     assert (plan.probe_customers, plan.probe_requests, plan.probe_prompt_tokens, plan.probe_completion_tokens) == (10, 1, 1000, 300)
     assert asked[0] == (1, [(8, 10)])   # the probe: one request of the busiest hour
     # Day 1 is written to the sample (100 over 4 hours) less the probe's 10; day 2 has 100 visitors, all sampled.
@@ -144,3 +144,25 @@ def test_a_long_write_waits_for_the_users_choice(monkeypatch: pytest.MonkeyPatch
     ga.choose_write_size("proj_a", "setup_a", gen_id, "cancel")
     with pytest.raises(ValueError, match="canceled"):
         asyncio.run(ga._decide("proj_a", gen_id, llm, _plan(40.0)))  # pyright: ignore[reportPrivateUsage]
+
+
+def test_a_request_takes_customers_across_quiet_hours() -> None:
+    prompts: list[str] = []
+
+    class _Writer:
+        async def generate_structured_async(self, model, system, prompt, **k):
+            prompts.append(prompt)
+            n = prompt.count("\n[")   # one spec line per customer asked for
+            return gen.PersonaBatch(personas=[
+                gen.GeneratedPersona(identity="student", age_group="20s", gender="Female", description=f"d{len(prompts)}-{i}",
+                                     intent="i", purpose="p") for i in range(n)])
+
+    profile = gen.TradeAreaProfile(keywords=["k"], identities=["student"], purposes=["p"])
+    hourly = [gen.HourlyProfile(hour=8, visitor_count=3, person_types=["student"]),
+              gen.HourlyProfile(hour=9, visitor_count=1, person_types=["student"]),
+              gen.HourlyProfile(hour=10, visitor_count=2, person_types=["student"])]
+    out = asyncio.run(gen.generate_personas_for_day(_Writer(), "addr", profile, Weekday(2), hourly,  # type: ignore[arg-type]
+                                                    seed=1, batch_size=5))
+    assert len(prompts) == 2                      # 6 customers, 5 a request — not one request per hour
+    assert [p.arrival_hour for p in out] == [8, 8, 8, 9, 10, 10]
+    assert len({p.id for p in out}) == 6 and all(p.day == Weekday(2) for p in out)

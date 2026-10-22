@@ -98,3 +98,12 @@ it("shows why starting or stopping the local model failed", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Stop" }));
   expect((await screen.findByRole("alert")).textContent).toBe("Could not stop the local model: Process is not responding");
 });
+
+it("says the model is turned off by TWINSTORE_LOCAL_VLM and how to turn it on, instead of claiming it is in use", async () => {
+  await show(withState("disabled"));
+  const heading = screen.getByRole("heading", { level: 2 }).textContent ?? "";
+  expect(heading).toContain("(turned off)");
+  expect(heading).not.toContain("in use");
+  expect(screen.getByTestId("local-model-turned-off").textContent).toMatch(/TWINSTORE_LOCAL_VLM.*restart TwinStore/s);
+  expect(screen.queryByRole("button", { name: /^Start/ })).toBeNull();
+});

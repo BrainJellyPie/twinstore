@@ -47,31 +47,42 @@ export function LocalModelPanel() {
   const { hardware: hw, plan, local } = data;
   const gpu = hw.gpus.length ? hw.gpus.map((g) => `${g.name}${g.vram_gb ? ` · ${g.vram_gb} GB` : ""}`).join(", ") : "none found";
   const busy = isPreparing(data);
+  const turnedOff = local.state === "disabled";
+  const role = turnedOff ? "(turned off)" : data.cloud_providers.length ? "(fallback)" : "(in use: no API key)";
 
   return (
     <section className="glass rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <Cpu className="size-4" aria-hidden /> Local vision model {data.cloud_providers.length ? "(fallback)" : "(in use: no API key)"}
+            <Cpu className="size-4" aria-hidden /> Local vision model {role}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Without a key, shoppers run on a small open model on this computer, chosen for its hardware. It is free and
             private but slower and less accurate than a cloud model; the published validation uses cloud models.
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Stop also cancels a download or start in progress. */}
-          {busy || (local.state === "ready" && local.managed) ? (
-            <Button size="sm" variant="outline" onClick={() => stop.mutate()} disabled={stop.isPending}>
-              <Square className="size-3.5" aria-hidden /> Stop
-            </Button>
-          ) : (
-            <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending || local.state === "disabled" || local.state === "ready"}>
-              <Play className="size-3.5" aria-hidden /> Start {plan.model.label}
-            </Button>
+          {turnedOff && (
+            <p className="mt-2 text-sm" data-testid="local-model-turned-off">
+              It is turned off on this computer by the <code className="font-mono text-xs">TWINSTORE_LOCAL_VLM</code> setting.
+              To use it, remove that setting from the environment or the backend’s <code className="font-mono text-xs">.env</code> file
+              (or set it to <code className="font-mono text-xs">on</code>), then restart TwinStore.
+            </p>
           )}
         </div>
+        {!turnedOff && (
+          <div className="flex items-center gap-2">
+            {/* Stop also cancels a download or start in progress. */}
+            {busy || (local.state === "ready" && local.managed) ? (
+              <Button size="sm" variant="outline" onClick={() => stop.mutate()} disabled={stop.isPending}>
+                <Square className="size-3.5" aria-hidden /> Stop
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending || local.state === "ready"}>
+                <Play className="size-3.5" aria-hidden /> Start {plan.model.label}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">

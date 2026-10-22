@@ -19,7 +19,7 @@ export function WizardHeader({ title, steps, activeIndex }: WizardHeaderProps) {
         <div className="eyebrow">{t("create")}</div>
         <h1 className="mt-2 font-display text-[clamp(2.4rem,4vw,3.4rem)] leading-[0.95] tracking-[-0.05em]">
           {title}
-          <span className="block font-accent text-[0.9em] tracking-[-0.01em]"><span className="aurora-text pr-1">{t("inTwoSteps")}</span></span>
+          <span className="block font-accent text-[0.9em] tracking-[-0.01em]"><span className="aurora-text pr-[0.15em]">{t("inTwoSteps")}</span></span>
         </h1>
       </div>
       <ol className="relative space-y-1">

@@ -14,7 +14,8 @@ function Tile({ label, value, hint }: { label: string; value: ReactNode; hint?: 
 }
 
 // Final KPIs of the run (from the backend summary), independent of playback position.
-export function RunKpis({ summary }: { summary: RunSummary }) {
+// days: the open days the run's shoppers came on — the totals add those days up.
+export function RunKpis({ summary, days }: { summary: RunSummary; days: number }) {
   const code = currencyCode(summary.currency);
   if (summary.conversion_rate === undefined) {
     return (
@@ -26,6 +27,13 @@ export function RunKpis({ summary }: { summary: RunSummary }) {
   return (
     <div className="border-t px-3 py-3">
       <div className="section-title mb-2">Run results</div>
+      <p className="mb-2 text-xs text-muted-foreground">
+        {days > 1 ? `Totals over ${days} days` : "Totals for one day"}:{" "}
+        <b className="tabular-nums text-foreground">{summary.total_customers.toLocaleString()}</b> shoppers
+        {days > 1 && ` (≈${Math.round(summary.total_customers / days).toLocaleString()} a day)`}
+        {" · "}<b className="tabular-nums text-foreground">{formatMoney(summary.total_revenue, code)}</b> revenue
+        {summary.units_sold !== undefined && <>{" · "}<b className="tabular-nums text-foreground">{summary.units_sold.toLocaleString()}</b> units</>}
+      </p>
       <div className="grid grid-cols-2 gap-2">
         <Tile label="Conversion" value={formatPercent(summary.conversion_rate)} hint="Visitors who bought at least one item" />
         <Tile label="Revenue / visitor" value={formatMoney(summary.revenue_per_visitor ?? 0, code)} />

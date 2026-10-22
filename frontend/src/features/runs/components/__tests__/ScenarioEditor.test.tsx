@@ -67,3 +67,12 @@ it("does not submit the run dialog's form it sits in", async () => {
   await waitFor(() => expect(api.describeScenario).toHaveBeenCalled());
   expect(outer).not.toHaveBeenCalled();
 });
+
+it("sizes presets and the live preview for this layout's store format", async () => {
+  vi.mocked(api.describeScenario).mockResolvedValue({ scenario: DESCRIBED, effects: {} as api.ScenarioEffects, warnings: [] });
+  render(<QueryClientProvider client={new QueryClient()}><Harness onChange={vi.fn()} /></QueryClientProvider>);
+  await waitFor(() => expect(api.getScenarios).toHaveBeenCalledWith({ projectId: "p", setupId: "s" }, expect.any(AbortSignal)));
+  fireEvent.change(screen.getByLabelText("Describe the day"), { target: { value: TEXT } });
+  fireEvent.click(screen.getByRole("button", { name: "Set up" }));
+  await waitFor(() => expect(api.previewScenario).toHaveBeenCalledWith(DESCRIBED, { projectId: "p", setupId: "s" }, expect.any(AbortSignal)));
+});

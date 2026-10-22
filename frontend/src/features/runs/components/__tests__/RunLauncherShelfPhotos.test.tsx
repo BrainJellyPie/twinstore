@@ -6,7 +6,7 @@ import * as api from "@/shared/api/client";
 import { photographShelves } from "../../shelfPhotos";
 import { RunLauncherDialog } from "../RunLauncherDialog";
 
-vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
 vi.mock("../../shelfPhotos", () => ({ photographShelves: vi.fn() }));
 vi.mock("../ScenarioEditor", () => ({ ScenarioEditor: () => <div>Situation editor</div> }));
 vi.mock("../ModelPicker", () => ({ ModelPicker: () => null }));
@@ -15,7 +15,9 @@ const engines: api.EngineInfo[] = [
   { engine_type: "rule_based", label: "Rules", description: "", uses_llm: false, model: "", default: false },
   { engine_type: "vlm_glance", label: "Vision", description: "", uses_llm: true, model: "vision", default: true },
 ];
+const quick: api.RunEstimate = { customers: 40, days: 7, per_day: 6, engine: "rule_based", model: "", local: false, model_calls: 0, minutes: 1, cost_usd: null, warn: false };
 beforeEach(() => {
+  vi.mocked(api.estimateRun).mockResolvedValue(quick);
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.getEngines).mockResolvedValue(engines);
   vi.mocked(api.getTown).mockResolvedValue(null);

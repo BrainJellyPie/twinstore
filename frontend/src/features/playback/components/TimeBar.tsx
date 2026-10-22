@@ -41,10 +41,13 @@ function formatClock12h(sec: number): string {
   return `${hh}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+// Phones, and laptop-height windows where the full panel would cover a large part of the store.
+const FOLDED_BY_DEFAULT = "(max-width: 1023px), (max-height: 960px)";
+
 export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = false }: Props) {
-  const [smallScreen, setSmallScreen] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
+  const [smallScreen, setSmallScreen] = useState(() => window.matchMedia(FOLDED_BY_DEFAULT).matches);
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 1023px)");
+    const media = window.matchMedia(FOLDED_BY_DEFAULT);
     const onChange = () => setSmallScreen(media.matches);
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
@@ -94,12 +97,13 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
   }, [disabled, finished, togglePlay]);
 
   const progress = disabled ? 0 : finished ? 1 : Math.min(1, Math.max(0, (currentMinute - minTime) / (maxTime - minTime)));
-  // Keep phones and the shopper's-eye view clear unless the controls are reopened.
+  // Keep phones, short windows and the shopper's-eye view clear unless the controls are reopened.
   const [pref, setPref] = useState<{ view: boolean; collapsed: boolean } | null>(null);
   const collapsed = pref && pref.view === shopperView ? pref.collapsed : shopperView || smallScreen;
 
+  // Dense panel glass: compass labels and speech bubbles behind it must not read through.
   return (
-    <div role="region" aria-label="Playback controls" className={cn("glass absolute top-16 right-4 z-20 max-h-[calc(100%-12rem)] max-w-[calc(100%-2rem)] overflow-y-auto rounded-[1.4rem] text-foreground transition-[width] duration-300 xl:top-4 xl:max-h-[calc(100%-9rem)]", collapsed ? "w-[21rem]" : "w-[25rem]")}>
+    <div role="region" aria-label="Playback controls" className={cn("panel absolute top-16 right-4 z-20 max-h-[calc(100%-12rem)] max-w-[calc(100%-2rem)] overflow-y-auto rounded-[1.4rem] text-foreground transition-[width] duration-300 xl:top-4 xl:max-h-[calc(100%-9rem)]", collapsed ? "w-[21rem]" : "w-[25rem]")}>
       <div className="flex items-center justify-between gap-2 px-3 pt-3 sm:gap-3 sm:px-5 sm:pt-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1">
