@@ -5,11 +5,6 @@
 - Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
-## 0.4.0 — TwinStore: the store's digital twin, from photos, in one click
-
-The project is now **TwinStore**, built on intellicia's open-source Parastore (MIT). User-facing
-text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
-variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
 ### Reuse a finished shelf assortment
 - Step 2 copies exact products, prices, promotions, image links, levels and order from one stocked shelf/fridge
@@ -17,24 +12,18 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Occupied destinations and blocked/locked faces are protected; stale snapshots reject saves, and retries
   recover the same child layout. Refreshed currencies cannot relabel an older preview.
 
-### Resume saved photo queues
-- Capture can explicitly save original photos and recognition settings in this browser, restore paused after
-  a reload or restart, and reuse stable upload identities even when an accepted upload response was lost.
-- Revision checks protect another tab's saved copy; storage failures preserve the live queue and old copy.
-  Save/restore makes no model call. Browser storage limits and eviction still apply; see USAGE.md.
-- Routed concept/shelf drafts are consumed once so returning to their tabs does not repeat drafting.
 
-### Fill existing empty shelves
-- Step 2 can select empty shelves/fridges, apply built-in categories, preview starter products and save
-  a stocked child layout. Existing products and geometry remain unchanged; inaccessible faces are skipped.
-- The template catalog's SKU identities are reused, preserving existing SKU values and image links.
-  Reference prices are explicitly labelled, and changed source/catalog snapshots reject stale saves.
+## 0.4.1 — a dependable first start on Windows, and more set-up in words
 
-### Edit placed products together
-- Step 2 now opens a searchable SKU editor for names, prices and promotion text. Select rows for bulk changes,
-  undo local edits, inspect mixed prior values and save a separate child layout with all placements preserved.
-- Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
-  No model call or new spreadsheet is required. See the product editor section in USAGE.md.
+### First start
+- A slow first start no longer ends in an error. On a computer that scans every new file (Windows with Microsoft
+  Defender, for example) the first import of the server can take several minutes; the launcher gave up after three
+  and never showed the app even when the server answered later. It now keeps waiting while the server runs, says
+  after 90 seconds that a first start can take a while, shows an error after 15 minutes but still opens the app if
+  the server answers, and **Try again** restarts a server that never answered (it did nothing while one was running).
+- The launcher installs only what the app needs (`uv run --no-dev`: no pytest or pyright for users) and compiles the
+  packages while installing them (`UV_COMPILE_BYTECODE=1`), shown on the boot screen, so the server's first import
+  no longer compiles thousands of files one by one. The launcher's own health check ignores system proxies.
 
 ### From what shoppers said to a test
 - A group interview's result and the run analyst's last answer offer **Turn this into tests**: the text model writes up
@@ -58,6 +47,35 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   its currency from the generator's own list. Overnight hours and unknown formats are left for the user with a note;
   an answer that arrives after the user edited the form is dropped. Works in all six interface languages.
   API: `POST /api/assist/store-setup`.
+
+### Resume saved photo queues
+- Capture can explicitly save original photos and recognition settings in this browser, restore paused after
+  a reload or restart, and reuse stable upload identities even when an accepted upload response was lost.
+- Revision checks protect another tab's saved copy; storage failures preserve the live queue and old copy.
+  Save/restore makes no model call. Browser storage limits and eviction still apply; see USAGE.md.
+- Routed concept/shelf drafts are consumed once so returning to their tabs does not repeat drafting.
+
+### Run analyst
+- **Suggest questions from this run** replaces the generic starters with three questions read off the run's fact sheet
+  (the shelves, products, hours or groups that stand out). API: `POST .../analyst/suggestions`.
+- A shelf picked on the floor of a finished run offers **Ask about this shelf**, which asks the analyst why it sells the
+  way it does and what could make more of the shoppers who stop there buy.
+
+### Fixes
+- Vision shoppers' shelf glances are now spread over the shelves their route passes equally well: ties were ranked
+  by rack id, which sent every shopper's glances to the same first racks of the store whatever the route. Each
+  shopper now draws among them with their own seed (`engines.vlm_glance.glance_order: "shuffle"`, the default), so
+  runs still repeat exactly and paired layout comparisons keep common random numbers; `"rack"` restores the old
+  order. Runs made before this change will glance at different shelves when repeated.
+- Newer Claude models (Sonnet 5.5) refuse `thinking: {"type": "disabled"}` and name the value to send instead; the
+  client now learns that value per model and retries, instead of dropping the setting and letting the model think
+  through the shopper's small answer budget.
+
+## 0.4.0 — TwinStore: the store's digital twin, from photos, in one click
+
+The project is now **TwinStore**, built on intellicia's open-source Parastore (MIT). User-facing
+text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
+variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
 ### Find shoppers in words
 - The Shoppers tab of a run takes a description ("women in their 20s who stopped at the ice cream freezers but bought
@@ -97,6 +115,18 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   asks about: a library pack, a new price, a sign (any short sign, shown beside the usual ones). A product that is not
   in the layout is refused, a pack that is not in the library reported. API: `POST /api/projects/{pid}/shelf-tests/design`.
 
+### Fill existing empty shelves
+- Step 2 can select empty shelves/fridges, apply built-in categories, preview starter products and save
+  a stocked child layout. Existing products and geometry remain unchanged; inaccessible faces are skipped.
+- The template catalog's SKU identities are reused, preserving existing SKU values and image links.
+  Reference prices are explicitly labelled, and changed source/catalog snapshots reject stale saves.
+
+### Edit placed products together
+- Step 2 now opens a searchable SKU editor for names, prices and promotion text. Select rows for bulk changes,
+  undo local edits, inspect mixed prior values and save a separate child layout with all placements preserved.
+- Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
+  No model call or new spreadsheet is required. See the product editor section in USAGE.md.
+
 ### Ask TwinStore from the command palette
 - Inside a store, a sentence typed in the command palette (Ctrl K) that names no command can be handed to TwinStore:
   the text model decides whether it is an A/B test ("would a 1+1 sign on cola sell more than a 20 % cut?"), a shelf
@@ -112,10 +142,6 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   products, age and gender groups). Every answer lists the figures it rests on (only lines that are in the sheet are
   kept), says plainly when the run cannot answer, and offers follow-up questions; the thread is kept with the run.
   API: `GET/POST/DELETE /api/projects/{pid}/runs/{run_id}/analyst`, `GET .../analyst/facts`.
-- **Suggest questions from this run** replaces the generic starters with three questions read off the run's fact sheet
-  (the shelves, products, hours or groups that stand out). API: `POST .../analyst/suggestions`.
-- A shelf picked on the floor of a finished run offers **Ask about this shelf**, which asks the analyst why it sells the
-  way it does and what could make more of the shoppers who stop there buy.
 
 - **Explain the difference** in Compare runs: the model reads the paired comparison (in money, points, seconds and
   metres) and both runs' fact sheets, and says what changed, which shelves, products, hours or groups it came from,
@@ -258,14 +284,6 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 ### Fixes
 - Realistic shoppers no longer crash the 3D view when React remounts them (development StrictMode): the
   per-shopper animation mixer is no longer uncached while its actions are still reused.
-- Vision shoppers' shelf glances are now spread over the shelves their route passes equally well: ties were ranked
-  by rack id, which sent every shopper's glances to the same first racks of the store whatever the route. Each
-  shopper now draws among them with their own seed (`engines.vlm_glance.glance_order: "shuffle"`, the default), so
-  runs still repeat exactly and paired layout comparisons keep common random numbers; `"rack"` restores the old
-  order. Runs made before this change will glance at different shelves when repeated.
-- Newer Claude models (Sonnet 5.5) refuse `thinking: {"type": "disabled"}` and name the value to send instead; the
-  client now learns that value per model and retries, instead of dropping the setting and letting the model think
-  through the shopper's small answer budget.
 
 ### Shopper journeys and interviews
 - Playback has a **Shoppers** tab: rank the run's shoppers (top spenders, left empty-handed, impulse

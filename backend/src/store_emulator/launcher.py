@@ -99,13 +99,17 @@ def free_port(start: int, host: str) -> int:
 
 
 def _open_when_ready(url: str, open_browser: bool) -> None:
-    for _ in range(240):
+    # No time limit: a first start can import for minutes while the computer scans the new files. The health check
+    # skips any system proxy, which may not pass 127.0.0.1 through.
+    direct = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    while True:
         try:
-            with urllib.request.urlopen(f"{url}/api/health", timeout=2) as r:
+            with direct.open(f"{url}/api/health", timeout=2) as r:
                 if r.status == 200:
                     break
         except OSError:
-            time.sleep(0.5)
+            pass
+        time.sleep(0.5)
     _say(f"TwinStore is running at {url}  (close this window or press Ctrl+C to stop)")
     if open_browser:
         webbrowser.open(url)

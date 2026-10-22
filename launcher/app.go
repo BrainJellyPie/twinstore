@@ -29,11 +29,12 @@ type app struct {
 	status     *status
 	url        string // the address the browser uses (this launcher)
 
-	target    atomic.Pointer[url.URL] // the server, once it answers
-	starting  atomic.Bool
-	quit      chan struct{}
-	quitOnce  sync.Once
-	smokeDone chan int
+	target     atomic.Pointer[url.URL] // the server, once it answers
+	starting   atomic.Bool
+	restarting atomic.Bool
+	quit       chan struct{}
+	quitOnce   sync.Once
+	smokeDone  chan int
 
 	mu       sync.Mutex
 	cmd      *exec.Cmd
@@ -50,6 +51,25 @@ func newApp(home, root string, opt options, logs *logger) *app {
 }
 
 func (a *app) requestQuit() { a.quitOnce.Do(func() { close(a.quit) }) }
+
+// retry starts the app again after a failure. A server that is still running but has not answered (the error after
+// stuckStart) is stopped first; a start in progress is left alone.
+func (a *app) retry() {
+	if !a.running() {
+		a.start()
+		return
+	}
+	if !a.restarting.CompareAndSwap(false, true) {
+		return
+	}
+	defer a.restarting.Store(false)
+	if a.status.view().Error == "" {
+		return
+	}
+	a.log.Printf("Restarting the server")
+	a.stopBackend(10 * time.Second)
+	a.start()
+}
 
 // dataHome is where projects and the Python environment live when the app files cannot hold
 // them (read-only macOS bundle); "" keeps the usual backend/.data next to the app.
@@ -116,7 +136,8 @@ func (a *app) launch(uv string) error {
 	}
 	dist := filepath.Join(a.root, "frontend", "dist")
 	// The tested Python: uv would otherwise fetch the newest one, where some dependencies have no wheels yet.
-	args := []string{"run", "--project", filepath.Join(a.root, "backend"), "--frozen", "--python", "3.13"}
+	// --no-dev: the test and type-check tools are for development, not for running the app.
+	args := []string{"run", "--project", filepath.Join(a.root, "backend"), "--frozen", "--no-dev", "--python", "3.13"}
 	if !fileExists(filepath.Join(dist, ".prebuilt")) && fileExists(filepath.Join(a.root, "frontend", "package.json")) {
 		args = append(args, "--with", nodeWheel)
 	}
@@ -127,7 +148,10 @@ func (a *app) launch(uv string) error {
 	}
 	cmd := exec.Command(uv, args...)
 	cmd.Dir = a.root
-	cmd.Env = append(os.Environ(), "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "UV_NO_PROGRESS=1", "NO_COLOR=1")
+	// UV_COMPILE_BYTECODE: compile the packages in parallel while they install, shown as its own step, instead of one
+	// file at a time during the server's first import (minutes on a computer that scans every new file).
+	cmd.Env = append(os.Environ(), "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "UV_NO_PROGRESS=1", "NO_COLOR=1",
+		"UV_COMPILE_BYTECODE=1")
 	if data := a.dataHome(); data != "" {
 		cmd.Env = append(cmd.Env, "PARASTORE_DATA_HOME="+data, "UV_PROJECT_ENVIRONMENT="+filepath.Join(data, "venv"), "PYTHONDONTWRITEBYTECODE=1")
 		a.log.Printf("Data folder: %s", filepath.Join(data, ".data"))
@@ -201,6 +225,8 @@ func (a *app) readOutput(r io.Reader, exited <-chan struct{}) {
 			a.status.activate("ui", "Building once with Node.js — 1 to 3 minutes")
 		case strings.Contains(line, "Web interface ready"):
 			a.status.done("ui", "built")
+		case strings.HasPrefix(line, "Installed ") && a.status.state("python") == "active":
+			a.status.activate("python", line+" — preparing them for a fast start")
 		case strings.Contains(line, "Building the web interface failed"):
 			a.status.done("ui", "build failed — serving the API only")
 		case startingOn.MatchString(line):
@@ -233,6 +259,13 @@ func (a *app) backendActiveLocked(exited <-chan struct{}) bool {
 	}
 }
 
+// A first start can import for minutes while the computer scans thousands of new files. The boot screen says so
+// after slowStart; after stuckStart it shows an error with Try again, but keeps listening while the server runs.
+var (
+	slowStart  = 90 * time.Second
+	stuckStart = 15 * time.Minute
+)
+
 func (a *app) waitReady(base string, exited <-chan struct{}) {
 	target, err := url.Parse(base)
 	if err != nil {
@@ -240,8 +273,9 @@ func (a *app) waitReady(base string, exited <-chan struct{}) {
 		return
 	}
 	client := http.Client{Timeout: 2 * time.Second}
-	deadline := time.Now().Add(3 * time.Minute)
-	for time.Now().Before(deadline) {
+	started := time.Now()
+	slow, stuck := false, false
+	for {
 		a.mu.Lock()
 		active := a.backendActiveLocked(exited)
 		a.mu.Unlock()
@@ -267,19 +301,31 @@ func (a *app) waitReady(base string, exited <-chan struct{}) {
 				return
 			}
 		}
+		waited := time.Since(started)
+		a.mu.Lock()
+		if a.backendActiveLocked(exited) {
+			switch {
+			case !stuck && waited >= stuckStart:
+				stuck = true
+				a.status.fail("server", fmt.Sprintf("The server has not answered for %d minutes. The log below shows "+
+					"its last step; Try again restarts it.", int(waited.Minutes())))
+				a.log.Printf("The server has not answered after %s; still waiting", waited.Round(time.Second))
+				a.smokeFail()
+			case !slow && waited >= slowStart:
+				slow = true
+				a.status.activate("server", "Still loading. A first start can take several minutes while the "+
+					"computer scans the new files")
+				a.log.Printf("The server has not answered after %s; a first start can take several minutes",
+					waited.Round(time.Second))
+			}
+		}
+		a.mu.Unlock()
 		select {
 		case <-exited:
 			return
 		case <-time.After(400 * time.Millisecond):
 		}
 	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if !a.backendActiveLocked(exited) {
-		return
-	}
-	a.status.fail("server", "The server did not answer within 3 minutes.")
-	a.smokeFail()
 }
 
 // smokeCheck asks for the health check and the interface through the launcher's own address.

@@ -287,7 +287,9 @@ The new-store wizard asks for a format, size and currency, then your customers (
 
 A phone photo of a shelf becomes a rack face in the planogram. **Add photos** takes several files at once, checks
 duplicates and processes them one at a time, with pause and per-photo retry
-([queue details](./USAGE.md#upload-several-shelf-photos-with-a-controlled-queue)); **Combine reviewed shelf photos**
+([queue details](./USAGE.md#upload-several-shelf-photos-with-a-controlled-queue)). **Save queue on this browser**
+keeps original photos and upload settings for paused recovery after a browser restart;
+[recovery details](./USAGE.md#save-a-photo-queue-and-resume-later). **Combine reviewed shelf photos**
 previews completed photos together and saves them as one new draft layout without extra model calls
 ([workflow](./USAGE.md#combine-reviewed-shelf-photos-into-one-layout)).
 
@@ -330,7 +332,6 @@ respondents are for screening and direction; calibrate against a real panel befo
 Finished A/B, shelf, concept and conjoint tests have print-ready reports and can be duplicated into the next one.
 **Read the answers** on concept, shelf, conjoint and staff-script results groups respondents' reasons into themes and
 writes a short commentary on the numbers, labelled as model-written.
-
 
 ## How it works
 

@@ -197,3 +197,22 @@ func TestFailedStartAllowsANewAttempt(t *testing.T) {
 		t.Error("retry retained the previous startup error")
 	}
 }
+
+func TestRetryRestartsAServerThatNeverAnswered(t *testing.T) {
+	a, dir := testLauncher(t)
+	if err := os.WriteFile(filepath.Join(dir, "release"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a.start()
+	waitForLauncher(t, func() bool { return markerCount(dir, "run") == 1 && a.running() })
+	a.retry()
+	if count := markerCount(dir, "run"); count != 1 {
+		t.Fatalf("retry restarted a healthy start (%d backends)", count)
+	}
+	a.status.fail("server", "The server has not answered for 15 minutes.")
+	a.retry()
+	waitForLauncher(t, func() bool { return markerCount(dir, "run") == 2 && a.running() })
+	if a.status.view().Error != "" {
+		t.Error("restart kept the earlier error")
+	}
+}

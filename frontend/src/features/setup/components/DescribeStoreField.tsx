@@ -24,8 +24,9 @@ export function DescribeStoreField({ disabled, formKey, onFilled }: {
   const length = Array.from(text.trim()).length;
   useLayoutEffect(() => {
     setBusy(false);
+    setError(null);
     return () => { request.current += 1; };
-  }, [formKey, locale, disabled]);
+  }, [text, formKey, locale, disabled]);
   const fill = async () => {
     if (disabled || busy || length < 5) return;
     const asked = text;

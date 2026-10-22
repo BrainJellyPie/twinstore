@@ -162,3 +162,41 @@ func TestOldBackendOutputCannotOverwriteNewStartup(t *testing.T) {
 		t.Fatal("old output changed the current startup status")
 	}
 }
+
+func TestSlowFirstStartIsAwaitedPastTheStuckNotice(t *testing.T) {
+	oldSlow, oldStuck := slowStart, stuckStart
+	slowStart, stuckStart = 50*time.Millisecond, 150*time.Millisecond
+	defer func() { slowStart, stuckStart = oldSlow, oldStuck }()
+	dir := t.TempDir()
+	logs := newLog(filepath.Join(dir, "logs"), false)
+	defer logs.Close()
+	a := newApp(dir, dir, options{}, logs)
+	exited := make(chan struct{})
+	a.exited = exited
+	defer close(exited)
+	var answering atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !answering.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	done := make(chan struct{})
+	go func() { a.waitReady(server.URL, exited); close(done) }()
+	waitForLauncher(t, func() bool { return a.status.view().Error != "" })
+	if a.status.state("server") != "error" {
+		t.Fatal("a server that never answered was not reported")
+	}
+	answering.Store(true)
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("a late answer after the stuck notice was not picked up")
+	}
+	view := a.status.view()
+	if !view.Ready || view.Error != "" || a.target.Load() == nil {
+		t.Fatalf("late answer did not publish the server: ready=%v error=%q", view.Ready, view.Error)
+	}
+}

@@ -57,6 +57,8 @@ def _should_retry_without(model: str, error: BaseException, sent: dict[str, obje
     already in flight when another call learned the same thing are retried too."""
     hint = _thinking_off_hint(error)
     if hint is not None and "thinking" in sent:
+        if sent["thinking"] == hint:
+            return False
         with _REJECTED_LOCK:
             new = _THINKING_OFF.get(model) != hint
             _THINKING_OFF[model] = hint
