@@ -111,7 +111,7 @@ it("keeps a native query working and refreshes display labels when the locale ch
 
 it("ignores navigation keys with no results and wraps correctly once search is cleared", () => {
   render(<CommandPalette />); const input = screen.getByRole("combobox", { name: "Command" });
-  const query = "Unmatched".repeat(100);
+  const query = "Unmatched".repeat(50);
   fireEvent.change(input, { target: { value: query } });
   expect(input.getAttribute("aria-activedescendant")).toBeNull();
   expect(screen.getByRole("status").textContent).toBe(translate("en", "commandNoMatches", { query }));

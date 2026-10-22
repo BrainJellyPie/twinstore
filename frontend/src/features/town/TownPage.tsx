@@ -254,29 +254,27 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
     text: string; projectId: string; spec: TownSpec; rationale: string;
   } | null>(null);
   const describe = useMutation({
-    mutationFn: () => api.describeTown(projectId, { text: area.trim(), seed: spec.seed }),
+    mutationFn: (text: string) => api.describeTown(projectId, { text: text.trim(), seed: spec.seed }),
   });
   const resetDescription = describe.reset;
   useLayoutEffect(() => {
     resetDescription();
   }, [area, spec, projectId, resetDescription]);
-  const requestDescription = () => {
-    if (areaLength >= 5 && !describe.isPending) describe.mutate(undefined, {
+  const requestDescription = (text: string) => {
+    if (Array.from(text.trim()).length >= 5 && !describe.isPending) describe.mutate(text, {
       onSuccess: (r) => {
-        setDescribed({ ...r, text: area, projectId });
+        setDescribed({ ...r, text, projectId });
         setSpec(r.spec);
       },
     });
   };
   const rationale = described?.text === area && described.projectId === projectId
     && described.spec === spec ? described.rationale : "";
-  // Route through the same ownership-aware request path as manual descriptions.
+  // Routed descriptions use the same ownership rules as descriptions entered here.
   const panel = useRef<HTMLDetailsElement>(null);
   const pendingAsk = useAssistStore((s) => s.pending);
   const takeAsk = useAssistStore((s) => s.take);
-  const queueDescribe = useQueuedStart<string>((text) => {
-    if (text === area) requestDescription();
-  });
+  const queueDescribe = useQueuedStart(requestDescription);
   useEffect(() => {
     if (!pendingAsk) return;
     const routed = takeAsk(projectId, ["area"]);
@@ -296,10 +294,10 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
       <div className="mt-3 space-y-2 text-xs">
         <div className="flex items-start gap-1.5">
           <textarea value={area} onChange={(e) => setArea(Array.from(e.target.value).slice(0, 800).join(""))} rows={2} aria-label="Describe the area"
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); requestDescription(); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); requestDescription(area); } }}
             placeholder="Describe the area: a busy campus street, two rival stores nearby, a café next door…"
             className="min-h-[2.4rem] flex-1 resize-none rounded-md border bg-background px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
-          <Button type="button" size="sm" variant="outline" className="h-[2.4rem] shrink-0" disabled={areaLength < 5 || describe.isPending} onClick={requestDescription}>
+          <Button type="button" size="sm" variant="outline" className="h-[2.4rem] shrink-0" disabled={areaLength < 5 || describe.isPending} onClick={() => requestDescription(area)}>
             {describe.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} Set up
           </Button>
         </div>
