@@ -205,3 +205,17 @@ it("keeps pharmacy and mobility photos out of food classification after renaming
   for (const index of [11, 12])
     expect(classifyProduct("Medicine", `/api/catalog-images/starter-46/${index}.webp`).category).toBe("drink");
 });
+
+it("separates care products and pet food from grocery photos after localized renaming", () => {
+  for (let index = 0; index < 16; index++) {
+    expect(classifyProduct("Milk", `/api/catalog-images/starter-49/${index}.webp`).category).toBe(index === 11 ? "drink" : "other");
+    expect(classifyProduct("Coffee", `/api/catalog-images/starter-50/${index}.webp`).category).toBe("other");
+  }
+  for (let index = 0; index < 7; index++)
+    expect(classifyProduct("Cookies", `/api/catalog-images/starter-51/${index}.webp`).category).toBe("other");
+  expect(classifyProduct("Medicine", "/api/catalog-images/starter-51/7.webp").category).toBe("drink");
+  expect(classifyProduct("Frozen Pizza", "/api/catalog-images/starter-51/8.webp").category).toBe("pantry");
+  for (let index = 8; index < 15; index++)
+    expect(classifyProduct("상품", `/api/catalog-images/starter-52/${index}.webp`).category).toBe("drink");
+  expect(classifyProduct("Ice Cream", "/api/catalog-images/starter-52/15.webp").category).toBe("other");
+});

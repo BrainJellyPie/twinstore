@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Add 64 everyday-care, baby, hair, pet, plant-based food, snack, refreshment and
+  car-care photos, reaching 832 local images. Ten more catalog departments now have
+  pictures for every existing product, including their stocked default maps.
+
+- Rewrite open-area and floor-review guidance in six languages, including complete move labels,
+  localized floor badges and count summaries. Preserve user names and coordinates during language
+  changes; show translated recovery guidance when a floor preview fails.
+
+- A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
+  previous version). It now reloads once into the new version.
+
 - Keep the model-provider list available when a saved local address has malformed IPv6 syntax.
 
 - Add 64 Korean, Mediterranean, Mexican, Vietnamese, pharmacy and care-product photos,

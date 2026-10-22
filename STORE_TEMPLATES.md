@@ -29,9 +29,10 @@ new products and their available local photos. Departments are matched to each f
 
 The product categories shown in the template picker control these same stocked departments.
 Available photos stay attached when previewing, saving and reusing a generated layout.
-The new-store wizard enables automatic catalog selection by default; turn it off to use
-these format assortments directly. Creating a template layout inside an existing project
-uses the format assortment without a product-selection model call.
+The new-store wizard enables automatic catalog selection by default when a model is configured;
+otherwise it starts with the format assortment. Turning automatic selection off also uses
+that assortment. Creating a template layout inside an existing project uses the format
+assortment without a product-selection model call.
 
 **Pet supplies superstore** uses a 36×28 industrial floor with pet-food, care,
 walking, grooming, carrier and bedding displays along parallel aisles. It has
