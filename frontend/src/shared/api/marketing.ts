@@ -452,6 +452,19 @@ export interface ConjointReport {
 export interface ConjointView extends JobStatus { report: ConjointReport | null; request?: ConjointRequest | null }
 
 /** A conjoint study drafted by the text model from a question; prices in minor units of `currency`. */
+/** Layout edits written in words, drafted on the layout's products and shelves (the A/B builder's change kinds). */
+export interface LayoutEditDraft { name: string; summary: string; changes: VariantChange[]; applied: string[]; warnings: string[] }
+export const draftLayoutEdit = (pid: string, sid: string, text: string) =>
+  fetchJson<LayoutEditDraft>(`/api/projects/${encodeURIComponent(pid)}/setups/${encodeURIComponent(sid)}/edit/draft`, { method: "POST", body: JSON.stringify({ text }) });
+/** Saves the reviewed edits as a new, active layout; the original stays as it is. */
+export const applyLayoutEdit = (pid: string, sid: string, req: { name: string; changes: VariantChange[] }) =>
+  fetchJson<{ id: string; name: string; applied: string[]; warnings: string[] }>(
+    `/api/projects/${encodeURIComponent(pid)}/setups/${encodeURIComponent(sid)}/edit`, { method: "POST", body: JSON.stringify(req) });
+export interface ShelfTestDesign {
+  name: string; rack_id: string; target_sku: string; changes: VariantChange[]; age_groups: string[]; rationale: string; warnings: string[];
+}
+export const designShelfTest = (pid: string, req: { question: string; setup_id: string; model?: string }) =>
+  fetchJson<ShelfTestDesign>(`${root(pid)}/shelf-tests/design`, { method: "POST", body: JSON.stringify(req) });
 export interface SurveyDesign {
   name: string; stimuli: string[]; stimulus_names: string[]; questions: QuestionKind[]; context: string;
   reference_price: number | null; currency: string; age_groups: string[]; genders: string[]; rationale: string; warnings: string[];

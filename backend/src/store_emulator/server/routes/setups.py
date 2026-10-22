@@ -4,10 +4,12 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
+from store_emulator.application import layout_edit
 from store_emulator.application import setups as setup_service
 from store_emulator.application import generation_async
 from store_emulator.application.errors import AppError
 from store_emulator.application.storage.generations import read_status
+from store_emulator.engine.layout_edit import LayoutEditDraft
 from store_emulator.domain.types import ResourceId
 from store_emulator.server.deps import get_config
 from store_emulator.server.schemas import (
@@ -253,3 +255,23 @@ async def delete_setup_endpoint(pid: str, sid: str) -> DeletedResponse:
     except AppError as e:
         raise HTTPException(e.status_code, str(e))
     return DeletedResponse(status="deleted", deleted=deleted_ids)
+
+
+@router.post("/{sid}/edit/draft", summary="Draft layout edits from instructions", response_model=LayoutEditDraft)
+async def draft_layout_edit(pid: str, sid: ResourceId, req: layout_edit.LayoutEditRequest) -> LayoutEditDraft:
+    """The text model turns instructions ("put the cola at eye level, 10 % off ice cream") into price, discount, sign,
+    move and category-price edits on this layout's products and shelves, checked on a copy. Nothing is saved."""
+    try:
+        return await run_in_threadpool(layout_edit.draft_edit, pid, sid, req, get_config())
+    except AppError as e:
+        raise HTTPException(e.status_code, str(e)) from e
+
+
+@router.post("/{sid}/edit", summary="Save layout edits as a new layout")
+async def apply_layout_edit(pid: str, sid: ResourceId, req: layout_edit.LayoutEditApply) -> dict[str, Any]:
+    """Apply the reviewed edits to this layout and save the result as a new, active layout; the original stays as it
+    is. **Returns:** the new setup summary with `applied` (the edits in words) and `warnings`."""
+    try:
+        return await run_in_threadpool(layout_edit.apply_edit, pid, sid, req)
+    except AppError as e:
+        raise HTTPException(e.status_code, str(e)) from e

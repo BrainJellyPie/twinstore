@@ -35,7 +35,8 @@ def test_a_profile_is_drafted_in_the_form_language(client, monkeypatch):
 
 
 @pytest.mark.parametrize(("picked", "has_run", "expected"), [
-    ("ab_test", True, "ab_test"), ("concept_test", False, "concept_test"), ("run_question", True, "run_question"),
+    ("ab_test", True, "ab_test"), ("concept_test", False, "concept_test"), ("shelf_test", True, "shelf_test"),
+    ("layout_edit", True, "layout_edit"), ("run_question", True, "run_question"),
     ("run_question", False, "none"),
 ])
 def test_requests_are_routed_to_a_tool(client, monkeypatch, picked, has_run, expected):

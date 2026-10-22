@@ -33,8 +33,10 @@ it.each([
   ["ab_test", "Would a 1+1 sign on cola sell more?", "/marketing/$pid"],
   ["conjoint", "Would people pay more for oat milk?", "/marketing/$pid"],
   ["concept_test", "Which of our two labels looks more premium?", "/marketing/$pid"],
+  ["shelf_test", "Would the gold label stand out on the tea shelf?", "/marketing/$pid"],
   ["area", "We sit on a busy campus street", "/town/$pid"],
   ["run_question", "Why does the freezer sell so little?", "/projects/$pid"],
+  ["layout_edit", "Put the cola at eye level now", "/projects/$pid"],
 ] as const)("routes a typed request to %s and hands the words to that page", async (destination, text, to) => {
   vi.mocked(api.routeAssist).mockResolvedValue({ destination, reason: "" });
   useSimulationStore.getState().setActiveTab("settings");
@@ -44,7 +46,7 @@ it.each([
   await waitFor(() => expect(state.navigate).toHaveBeenCalledWith({ to, params: { pid: "proj_cafe" } }));
   expect(api.routeAssist).toHaveBeenCalledWith({ text, has_run: true });
   expect(useAssistStore.getState().pending).toMatchObject({ projectId: "proj_cafe", destination, text });
-  expect(useSimulationStore.getState().activeTab).toBe(destination === "run_question" ? "dashboard" : "settings");
+  expect(useSimulationStore.getState().activeTab).toBe(destination === "run_question" ? "dashboard" : "settings");  // layout edits open Store
   expect(useCommandPalette.getState().open).toBe(false);
 });
 

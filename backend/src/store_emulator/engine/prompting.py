@@ -86,3 +86,16 @@ def relevant_first[T](entries: list[tuple[str, str, T]], query: str, limit: int)
 def _words(text: str) -> set[str]:
     out = {w for w in re.split(r"[^\w]+", text.casefold()) if len(w) > 2}
     return out | {w[:-1] for w in out if w.endswith("s") and len(w) > 3}
+
+
+def resolve_listed[T](asked: str, listed: dict[str, T]) -> T | None:
+    """What a name a model copied from a prompt listing refers to. `listed` is keyed by casefolded name. The exact name
+    wins; otherwise the longest listed name the answer starts with or contains, since a model sometimes copies the
+    brand, price or description that followed the name in the listing."""
+    key = asked.strip().strip('"').strip().casefold()
+    if not key:
+        return None
+    if key in listed:
+        return listed[key]
+    found = [n for n in listed if n and key.startswith(n)] or [n for n in listed if n and n in key]
+    return listed[max(found, key=len)] if found else None

@@ -77,16 +77,16 @@ export function MarketingPage({ projectId }: { projectId: string }) {
   // A request routed here from the command palette opens the right builder and drafts from the same words.
   const pendingAsk = useAssistStore((s) => s.pending);
   const takeAsk = useAssistStore((s) => s.take);
-  const [prefill, setPrefill] = useState<{ tab: "ab" | "conjoint" | "survey" | "pitch"; text: string; id: number } | null>(null);
+  const [prefill, setPrefill] = useState<{ tab: "ab" | "shelf" | "conjoint" | "survey" | "pitch"; text: string; id: number } | null>(null);
   const prefillHandled = useCallback((id: number) => {
     setPrefill((current) => current?.id === id ? null : current);
   }, []);
   useEffect(() => {
     if (!pendingAsk) return;
-    const ask = takeAsk(projectId, ["ab_test", "conjoint", "concept_test", "staff_script"]);
+    const ask = takeAsk(projectId, ["ab_test", "shelf_test", "conjoint", "concept_test", "staff_script"]);
     if (!ask) return;
-    const target = ask.destination === "ab_test" ? "ab" : ask.destination === "conjoint" ? "conjoint"
-      : ask.destination === "concept_test" ? "survey" : "pitch";
+    const tabs = { ab_test: "ab", shelf_test: "shelf", conjoint: "conjoint", concept_test: "survey", staff_script: "pitch" } as const;
+    const target = tabs[ask.destination as keyof typeof tabs];
     setTab(target);
     setSelected((s) => ({ ...s, [target]: "" }));
     setPrefill({ tab: target, text: ask.text, id: ask.id });
@@ -216,7 +216,8 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             ) : <Loading />)}
             {tab === "shelf" && (current ? <ShelfJob projectId={projectId} id={current} onDuplicate={duplicateShelf} /> : setup.data?.store ? (
               <ShelfTestBuilder key={`${activeSetup}:${shelfDraft?.key ?? 0}`} projectId={projectId} setupId={activeSetup} store={setup.data.store}
-                currency={currency} initial={shelfDraft?.req} onStarted={(j) => { setShelfDraft(null); select(j.job_id); }} />
+                currency={currency} initial={shelfDraft?.req} prefill={prefill?.tab === "shelf" ? prefill : undefined}
+                onStarted={(j) => { setShelfDraft(null); select(j.job_id); }} />
             ) : <Loading />)}
             {tab === "survey" && (current ? <SurveyJob projectId={projectId} id={current} onDuplicate={duplicateSurvey} /> : (
               <SurveyBuilder key={`${surveyDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
