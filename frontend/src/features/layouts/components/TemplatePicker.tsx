@@ -1,9 +1,11 @@
+import { weekdayLong } from "@/shared/i18n/timeFormat";
+import { RequestError } from "@/shared/components/RequestError";
+import { starterCategoryLabel } from "@/shared/i18n/catalogCategories";
 import { Check, ChevronDown, X } from "lucide-react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { useI18n } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { storeTypeLabel, templateName } from "@/shared/i18n/storeLabels";
-import { weekdayLabel } from "@/shared/i18n/timeFormat";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { cloneElement, useId, useRef, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -226,7 +228,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
               {t(!validTemplateChoice(value) ? "templatePreviewInvalid" : preview.isError ? "templatePreviewUnavailable" : "templatePreviewUpdating")}
             </div>}
-            {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>{t("tryAgain")}</button></p>}
+            {preview.isError && <RequestError error={preview.error}><button type="button" className="underline" onClick={() => void preview.refetch()}>{t("tryAgain")}</button></RequestError>}
           </div>
           <div className="space-y-2">
             {selected && <p className="text-xs"><span className="text-muted-foreground">{t("selectedFormat")}: </span><strong>{templateName(selected.id, selected.name, locale)}</strong></p>}
@@ -412,7 +414,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <p className="text-muted-foreground">{t("layMixedTablesHint")}</p>
             </details>
             <div className="space-y-1 text-xs">
-              <Field label={t("layAssortmentSeed")}><input type="text" className={controlClass} value={seedText}
+              <Field label={t("templateSeed")}><input type="text" className={controlClass} value={seedText}
                 aria-invalid={!validSeed} aria-describedby={`${customizationId}-seed-help${validSeed ? "" : ` ${customizationId}-seed-error`}`}
                 onChange={(event) => {
                   const text = event.target.value;
@@ -420,13 +422,13 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                   const seed = Number.isSafeInteger(parsed) ? parsed : NaN;
                   setSeedDraft({ seed, text }); update({ seed });
                 }} /></Field>
-              <p id={`${customizationId}-seed-help`} className="text-muted-foreground">{t("layAssortmentSeedHint")}</p>
-              {!validSeed && <p id={`${customizationId}-seed-error`} role="alert" className="text-destructive">{t("layAssortmentSeedError")}</p>}
-              {value.seed === Number.MAX_SAFE_INTEGER && <p className="text-muted-foreground">{t("layAssortmentSeedMax")}</p>}
+              <p id={`${customizationId}-seed-help`} className="text-muted-foreground">{t("templateSeedHint")}</p>
+              {!validSeed && <p id={`${customizationId}-seed-error`} role="alert" className="text-destructive">{t("templateSeedInvalid")}</p>}
+              {value.seed === Number.MAX_SAFE_INTEGER && <p className="text-muted-foreground">{t("templateSeedHighest")}</p>}
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50" disabled={!validSeed || value.seed === Number.MAX_SAFE_INTEGER}
-                onClick={() => update({ seed: value.seed + 1 })}>{validSeed ? t("layShuffleAssortmentSeed", { seed: String(value.seed) }) : t("layShuffleAssortment")}</button>
+                onClick={() => update({ seed: value.seed + 1 })}>{validSeed ? t("templateShuffleSeed", { seed: String(value.seed) }) : t("templateShuffle")}</button>
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, table_clearance_x: null, table_clearance_y: null, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, category_product_limits: {}, open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, seed: 0 })}>{t("layResetOptions")}</button>
             </div>
             </div>
@@ -434,7 +436,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
         </div>
         <div id={`${customizationId}-more`} hidden={!customizationOpen} className="space-y-3">
         {showOperatingHours && <details className="space-y-2 rounded border p-2 text-xs">
-          <summary className="cursor-pointer">{t("layOperatingHoursDays", { count: 7 - closedDays.length })}</summary>
+          <summary className="cursor-pointer">{t("templateHoursSummary", { count: 7 - closedDays.length })}</summary>
           <label className="flex items-center gap-2"><input type="checkbox" checked={value.weekly_hours != null}
             disabled={value.weekly_hours == null && !operatingHours}
             onChange={(event) => {
@@ -443,65 +445,64 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 day: index + 1, is_open: !operatingHours.closed_days.includes(index + 1),
                 open_hour: operatingHours.open_hour, close_hour: operatingHours.close_hour,
               })) });
-            }} />{t("layHoursPerWeekday")}</label>
+            }} />{t("templateHoursIndividual")}</label>
           {value.weekly_hours != null ? <>
             <WeeklyHoursEditor hours={value.weekly_hours} onChange={(weekly_hours) => update({ weekly_hours })} />
-            {!validWeeklyHours(value.weekly_hours) && <p role="alert" className="text-destructive">{t("layWeeklyHoursError")}</p>}
-            <p className="text-muted-foreground">{t("layWeeklyHoursReplace")}</p>
+            {!validWeeklyHours(value.weekly_hours) && <p role="alert" className="text-destructive">{t("templateHoursInvalid")}</p>}
+            <p className="text-muted-foreground">{t("templateHoursIndividualHint")}</p>
           </> : <>
           <div className="grid grid-cols-2 gap-2">
-            <Field label={t("layOpeningHourRange")}><input type="number" min={0} max={23} step={1} className={controlClass}
+            <Field label={t("templateOpeningHour")}><input type="number" min={0} max={23} step={1} className={controlClass}
               placeholder={String(selected?.open_hours[0] ?? 0)} value={value.open_hour ?? ""}
               onChange={(event) => update({ open_hour: event.target.value === "" ? null : Number(event.target.value) })} /></Field>
-            <Field label={t("layClosingHourRange")}><input type="number" min={1} max={24} step={1} className={controlClass}
+            <Field label={t("templateClosingHour")}><input type="number" min={1} max={24} step={1} className={controlClass}
               placeholder={String(selected?.open_hours[1] ?? 24)} value={value.close_hour ?? ""}
               onChange={(event) => update({ close_hour: event.target.value === "" ? null : Number(event.target.value) })} /></Field>
           </div>
-          <p className="text-muted-foreground">{t("layHoursBlankHint")}</p>
+          <p className="text-muted-foreground">{t("templateHoursBlankHint")}</p>
           <fieldset className="space-y-2">
-            <legend>{t("layOpenWeekdays")}</legend>
+            <legend>{t("templateOpenWeekdays")}</legend>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               {WEEKDAYS.map((day, index) => <label key={day} className="flex items-center gap-1.5">
                 <input type="checkbox" checked={!closedDays.includes(index + 1)} disabled={closedDays.length === 6 && !closedDays.includes(index + 1)}
                   onChange={(event) => update({ closed_days: event.target.checked
                     ? closedDays.filter((value) => value !== index + 1)
-                    : [...closedDays, index + 1].sort((a, b) => a - b) })} />{weekdayLabel(day, locale)}
+                    : [...closedDays, index + 1].sort((a, b) => a - b) })} />{weekdayLong(index + 1, locale)}
               </label>)}
             </div>
           </fieldset>
-          <p className="text-muted-foreground">{t("layKeepOneOpenDay")}</p>
+          <p className="text-muted-foreground">{t("templateHoursDayHint")}</p>
           </>}
-          <button type="button" className="underline" onClick={() => update({ open_hour: null, close_hour: null, closed_days: null, weekly_hours: null })}>{t("layUseFormatHours")}</button>
+          <button type="button" className="underline" onClick={() => update({ open_hour: null, close_hour: null, closed_days: null, weekly_hours: null })}>{t("templateHoursReset")}</button>
           {onApplyHoursToAll && <div className="space-y-1 border-t pt-2">
             <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50"
               disabled={!operatingHours || sharedHours} onClick={() => { if (operatingHours) onApplyHoursToAll(operatingHours); }}>
-              {t(operatingHours && sharedHours ? "layHoursAllFloors" : "layApplyHoursAllFloors")}
+              {t(operatingHours && sharedHours ? "templateHoursShared" : "templateHoursApply")}
             </button>
             <p className="text-muted-foreground">{operatingHours
-              ? operatingHours.weekly_hours ? t("layApplyWeeklyHoursHint", { hours: formatWeeklyHours(operatingHours.weekly_hours, locale) })
-                : t("layApplyHoursHint", { open: `${String(operatingHours.open_hour).padStart(2, "0")}:00`, close: `${String(operatingHours.close_hour).padStart(2, "0")}:00`, days: 7 - operatingHours.closed_days.length })
-              : t("layApplyHoursInvalid")}</p>
+              ? operatingHours.weekly_hours ? t("templateHoursApplyHint", { hours: formatWeeklyHours(operatingHours.weekly_hours, locale) }) : t("templateHoursSharedApplyHint", { open: String(operatingHours.open_hour).padStart(2, "0") + ":00", close: String(operatingHours.close_hour).padStart(2, "0") + ":00", count: 7 - operatingHours.closed_days.length })
+              : t("templateHoursApplyInvalid")}</p>
           </div>}
         </details>}
         {categories.length > 0 && <details className="space-y-2 rounded border p-2 text-xs">
-          <summary className="cursor-pointer">{t("layCategoriesSummary", { included: includedCount, total: categories.length })}</summary>
-          <p className="text-muted-foreground">{t("layCategoriesHint")}</p>
-          <Field label={t("layProductsPerCategory")}><input type="number" min={1} max={16} step={1} className={controlClass}
-            placeholder={t("layFullAssortment")} value={value.products_per_category ?? ""}
+          <summary className="cursor-pointer">{t("templateCategoriesSummary", { included: includedCount, total: categories.length })}</summary>
+          <p className="text-muted-foreground">{t("templateCategoriesHint")}</p>
+          <Field label={t("templateProductsPerCategory")}><input type="number" min={1} max={16} step={1} className={controlClass}
+            placeholder={t("templateFullAssortment")} value={value.products_per_category ?? ""}
             onChange={(event) => update({ products_per_category: event.target.value === "" ? null : Number(event.target.value) })} /></Field>
-          <p className="text-muted-foreground">{t("layProductsPerCategoryHint")}</p>
-          <p className="text-muted-foreground">{t("layCategoryOverrideHint")}</p>
+          <p className="text-muted-foreground">{t("templateProductsLimitHint")}</p>
+          <p className="text-muted-foreground">{t("templateProductsOverrideHint")}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {categories.map((category) => <div key={category.id} className="flex items-center gap-2">
               <label className="flex min-w-0 flex-1 items-center gap-2">
                 <input type="checkbox" checked={!excluded.has(category.id)} disabled={!excluded.has(category.id) && includedCount === 1}
                   onChange={(event) => update({ excluded_categories: event.target.checked
                     ? (value.excluded_categories ?? []).filter((id) => id !== category.id)
-                    : [...(value.excluded_categories ?? []), category.id] })} />{category.label}
+                    : [...(value.excluded_categories ?? []), category.id] })} />{starterCategoryLabel(category.id, category.label, locale)}
               </label>
               <input type="number" min={1} max={16} step={1} className="w-16 shrink-0 rounded-md border bg-background px-2 py-1.5 text-xs disabled:opacity-40"
-                aria-label={t("layProductsFor", { category: category.label })} disabled={excluded.has(category.id)}
-                placeholder={value.products_per_category == null ? t("layAll") : String(value.products_per_category)} value={value.category_product_limits?.[category.id] ?? ""}
+                aria-label={t("templateProductsFor", { category: starterCategoryLabel(category.id, category.label, locale) })} disabled={excluded.has(category.id)}
+                placeholder={value.products_per_category == null ? t("templateAllProducts") : String(value.products_per_category)} value={value.category_product_limits?.[category.id] ?? ""}
                 onChange={(event) => {
                   const category_product_limits = { ...value.category_product_limits };
                   if (event.target.value === "") delete category_product_limits[category.id];
@@ -510,14 +511,14 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 }} />
             </div>)}
           </div>
-          {Object.keys(value.category_product_limits ?? {}).length > 0 && <button type="button" className="underline" onClick={() => update({ category_product_limits: {} })}>{t("layUseSharedLimit")}</button>}
-          {(value.excluded_categories?.length ?? 0) > 0 && <button type="button" className="underline" onClick={() => update({ excluded_categories: [] })}>{t("layRestoreCategories")}</button>}
+          {Object.keys(value.category_product_limits ?? {}).length > 0 && <button type="button" className="underline" onClick={() => update({ category_product_limits: {} })}>{t("templateProductsShared")}</button>}
+          {(value.excluded_categories?.length ?? 0) > 0 && <button type="button" className="underline" onClick={() => update({ excluded_categories: [] })}>{t("templateCategoriesRestore")}</button>}
           {onApplyAssortmentToAll && <div className="space-y-1 border-t pt-2">
             <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50"
               disabled={!assortment || sharedAssortment} onClick={() => { if (assortment) onApplyAssortmentToAll(assortment); }}>
-              {t(assortment && sharedAssortment ? "layAssortmentAllFloors" : "layApplyAssortmentAllFloors")}
+              {t(assortment && sharedAssortment ? "templateAssortmentShared" : "templateAssortmentApply")}
             </button>
-            <p className="text-muted-foreground">{t("layApplyAssortmentHint")}</p>
+            <p className="text-muted-foreground">{t("templateAssortmentApplyHint")}</p>
           </div>}
         </details>}
         <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })}

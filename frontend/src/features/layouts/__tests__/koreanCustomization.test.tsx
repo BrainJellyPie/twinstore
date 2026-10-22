@@ -5,15 +5,17 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { translate, useLocale } from "@/shared/i18n/i18n";
+import { starterCategoryLabel } from "@/shared/i18n/catalogCategories";
 import type { Store } from "@/shared/types/domain";
 import { BuildingPicker } from "../components/BuildingPicker";
 import { buildingPreset } from "../templateOptions";
 
 vi.mock("@/shared/api/client", () => ({ getStoreTemplates: vi.fn(), previewStoreTemplate: vi.fn(), validateLayoutPreset: vi.fn(), validateBuildingPreset: vi.fn() }));
 
-// Text the server writes (format descriptions, category labels) stays as sent; so do currency codes, color codes, key
+// Server-written descriptions stay as sent; known category labels use the shared catalog. Currency codes, color codes, key
 // names in the keyboard hint and the plan's IN/OUT marks.
-const SERVER_TEXT = ["Gifts and beauty", "Drinks", "Beer & Alcohol", "Household & Daily"];
+const SERVER_TEXT = ["Gifts and beauty"];
+const ko = (key: Parameters<typeof translate>[1]) => translate("ko", key);
 const ALLOWED = /#[0-9a-f]{6}\b|\b(USD|KRW|JPY|IN|OUT|INOUT|SVG|Home|End|Enter|Space|Tab)\b/gi;
 
 function englishLeft(root: HTMLElement): string[] {
@@ -56,47 +58,45 @@ afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMo
 
 it("shows the new-store layout customization panel, its building floors and floor-plan dialogs in Korean", async () => {
   useLocale.getState().setLocale("ko");
-  const ko = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate("ko", key, params);
   const { container } = render(<Building />);
   expect(screen.getByRole("button", { name: "1F · 1층 · 뷰티 플래그십 스토어" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "백화점" })).toBeTruthy();
   await screen.findByRole("button", { name: ko("planExpand") });
   fireEvent.click(screen.getByRole("button", { name: "예약 공간 추가" }));
-  fireEvent.click(screen.getByLabelText("요일별로 영업시간 설정"));
+  fireEvent.click(screen.getByLabelText(ko("templateHoursIndividual")));
   fireEvent.click(screen.getByLabelText("테이블 크기 섞어 쓰기"));
   fireEvent.click(screen.getByRole("button", { name: "층 복제" }));
 
-  for (const text of ["배치 우선순위 적용", "배치 패턴", "진열 밀도", "최대 연속 진열 길이", "입구 벽", "계산대 위치", "인테리어 디자인 (실사 보기)",
-    "식사 테이블 (크기 혼합)", "상품 구성 시드", "배치 설정 초기화", "비워 둘 공간", "공간 1", "월요일", "개점", "폐점", "인테리어 색상 직접 지정",
-    "모든 층에 크기 적용", "모든 층에 영업시간 적용", "설정 내보내기", "건물 설정 가져오기"]) {
+  for (const text of ["배치 우선순위 적용", "배치 패턴", "진열 밀도", "최대 연속 진열 길이", "입구 벽", "계산대 위치", ko("layInteriorDesignRealistic"),
+    "식사 테이블 (크기 혼합)", ko("templateSeed"), "배치 설정 초기화", "비워 둘 공간", "공간 1", "월요일", ko("templateOpens"), ko("templateCloses"), ko("layCustomColors"),
+    "모든 층에 크기 적용", ko("templateHoursApply"), "설정 내보내기", ko("optionsImportBuilding")]) {
     expect(container.textContent, text).toContain(text);
   }
   expect(screen.getByRole("option", { name: "템플릿 기본값 (뒤쪽 벽)" })).toBeTruthy();
   expect(screen.getByRole("option", { name: "템플릿 기본값 (입구 가까이)" })).toBeTruthy();
   expect(screen.getByText("기본 패턴: 쇼룸형 그룹 진열")).toBeTruthy();
-  expect(screen.getByText("기본 디자인: 럭셔리 차콜 & 브라스")).toBeTruthy();
-  expect(screen.getByRole("spinbutton", { name: "Drinks 상품 수" })).toBeTruthy();
+  expect(screen.getByText(translate("ko", "layDefaultDesign", { design: ko("planDesignLuxury") }))).toBeTruthy();
+  expect(screen.getByRole("spinbutton", { name: translate("ko", "templateProductsFor", { category: starterCategoryLabel("soft_drinks", "Drinks", "ko") }) })).toBeTruthy();
   expect(screen.getByRole("button", { name: "2F · 1층 · 뷰티 플래그십 스토어 사본 1" })).toBeTruthy();
   expect(englishLeft(container)).toEqual([]);
 
   fireEvent.click(await screen.findByRole("button", { name: ko("planExpand") }));
   const details = await screen.findByRole("dialog", { name: ko("planDetails") });
   expect(details.textContent).toContain("뷰티 플래그십 스토어 · 12×10칸");
-  expect(details.textContent).toContain(ko("planCounts", { displays: 0, tables: 0, seats: 0, counters: 0 }));
+  expect(details.textContent).toContain(translate("ko", "planCounts", { displays: 0, tables: 0, seats: 0, counters: 0 }));
   expect(details.textContent).toContain("영업시간: 월: 10:00–22:00; 화–일: 휴무");
   expect(within(details).getByRole("button", { name: ko("planFit") })).toBeTruthy();
-  expect(within(details).getByRole("button", { name: ko("planDownload") })).toBeTruthy();
+  expect(within(details).getByRole("button", { name: "SVG 다운로드" })).toBeTruthy();
   expect(englishLeft(details)).toEqual([]);
   act(() => fireEvent.keyDown(details, { key: "Escape" }));
 
-  fireEvent.click(await screen.findByRole("button", { name: ko("compareWithDefault") }));
+  fireEvent.click(await screen.findByRole("button", { name: "기본 배치와 비교" }));
   const compare = await screen.findByRole("dialog", { name: ko("planCompareTitle") });
   const table = await within(compare).findByRole("table", { name: ko("planCompareTable") });
-  for (const row of ["planCompareSize", "planCompareDisplays", "planCompareProducts", "planCompareSeating", "planCompareCounters",
-    "planCompareAreas", "planCompareDesign", "planCompareHours"] as const) {
-    expect(within(table).getByRole("rowheader", { name: ko(row) })).toBeTruthy();
+  for (const row of [ko("planCompareSize"), "상품 진열대", ko("planCompareProducts"), ko("planCompareSeating"), ko("planCompareCounters"), ko("planCompareAreas"), "인테리어 디자인", "영업시간"]) {
+    expect(within(table).getByRole("rowheader", { name: row })).toBeTruthy();
   }
-  expect(within(table).getAllByText("럭셔리 차콜 & 브라스").length).toBeGreaterThan(0);
+  expect(within(table).getAllByText(ko("planDesignLuxury")).length).toBeGreaterThan(0);
   expect(englishLeft(compare)).toEqual([]);
 }, 20_000);
 

@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+- Keep translated template headings in downloaded SVG titles without changing stored names.
+
+- Add 64 pizza, salad, juice, Indian, Thai, Turkish, Mexican and ice-cream menu
+  photos, reaching 704 local images. Seven more menu assortments now have pictures
+  for every existing product in their matching default maps.
+
+- Reject malformed Origin headers with 403 instead of a server error.
+
+- Add 64 tea, burger, noodle, sushi, restaurant, bubble-tea and Turkish-menu
+  photos, reaching 640 locally bundled images. Tea, burger, noodle, sushi,
+  restaurant and bubble-tea menus now have a photo for every product in their
+  matching default maps.
+
+- Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
+  ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,
+  cafe and dessert templates display the new photos automatically.
+
+- Complete photos for all 96 baby feeding, bath, toy vehicle, plush, educational toy,
+  puzzle, model building and miniature painting products. Add 64 local images, reaching
+  512 photos; they appear on the matching default maps and in image-aware VLM grids.
+- Rewrite interior-design, color, floor-plan and recovery guidance in natural Korean, Chinese,
+  Japanese, Spanish and French. Share design names across setup, floor review and comparison;
+  localize color-reset accessibility labels and preview error recovery without changing stored values.
+
+- Apply the expanded product catalog to all 82 default map templates, with departments
+  matched to each store format and bundled product images retained in previews and saved floors.
+  The default maps collectively stock every catalog product, including all 131 categories;
+  category exclusions, assortment limits and small-floor layouts remain supported.
+
+- Add 96 baby feeding, baby bath, toy vehicle, plush, educational toy, puzzle, model
+  building and miniature painting products, plus 32 photos and six-language category labels.
+  The catalog now has 1,496 products in 131 categories with 448 bundled images.
+
 ## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
 
 ### Safe updates
@@ -33,6 +66,10 @@
 - Complete starter-fill localization in six languages: automatic/manual guidance, catalog
   category labels, eligibility reasons, reviewed prices and retry states. Category language
   follows the selected interface language. Detect duplicate translation keys.
+
+- Localize template operating hours, product-category limits, assortment seeds and settings-file
+  import/export in all six interface languages. Keep exact seed values, category IDs and current
+  edits when switching languages. Rewrite the new guidance in natural, task-oriented language.
 
 - Add 96 home linen, dinnerware, food storage, pet grooming, hair accessory, woodcraft,
   ceramic craft and gift wrapping products, plus 32 photos. The catalog now has 1,400

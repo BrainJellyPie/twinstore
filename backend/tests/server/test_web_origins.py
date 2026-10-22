@@ -85,3 +85,11 @@ def test_the_apps_own_page_opened_by_ip_from_another_device_still_changes(monkey
     assert rebound.status_code == 403
     other = client.post("/api/thing", headers={"Origin": "http://192.168.0.9:8000", "Host": "192.168.0.7:8000"})
     assert other.status_code == 403
+
+
+@pytest.mark.parametrize("origin", ["http://[", "http://[not-ip]", "http://[::1", "http://[::ffff:999.1.2.3]"])
+def test_malformed_origin_is_refused_without_a_server_error(monkeypatch: pytest.MonkeyPatch, origin: str):
+    client = _client(monkeypatch)
+    response = client.post("/api/thing", headers={"Origin": origin})
+    assert response.status_code == 403
+    assert response.json() == {"detail": "TwinStore accepts changes only from its own pages"}

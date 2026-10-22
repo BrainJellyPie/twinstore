@@ -52,9 +52,11 @@ it("shows importance, part-worths and a live simulator", () => {
   render(<ConjointReportView projectId="p" report={REPORT} />, { wrapper: withQueries });
   expect(screen.getByText("What drives the choice")).toBeTruthy();
   expect(screen.getAllByText("Zero sugar").length).toBeGreaterThan(0);
-  const before = screen.getAllByText(/^\d+%$/).map((n) => n.textContent);
+  const simulator = within(screen.getByLabelText("Price of product A").closest("section")!);
+  const percentages = () => simulator.getAllByText(/^\d+%$/, { selector: "span" }).map((node) => node.textContent);
+  expect(percentages()).toEqual(["45%", "45%", "45%", "45%", "10%"]);
   fireEvent.change(screen.getByLabelText("Price of product A"), { target: { value: "249" } });
-  expect(screen.getAllByText(/^\d+%$/).map((n) => n.textContent)).not.toEqual(before);
+  expect(percentages()).toEqual(["23%", "63%", "23%", "63%", "14%"]);
   fireEvent.click(screen.getByRole("button", { name: /Add product/ }));
   expect(screen.getByLabelText("Price of product C")).toBeTruthy();
 });

@@ -75,7 +75,7 @@ it("preserves current options on invalid JSON, oversized files and server valida
   upload("not JSON");
   await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("not valid JSON"));
   upload(" ".repeat(64 * 1024 + 1));
-  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("smaller than 64 KB"));
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("no larger than 64 KB"));
   expect(api.validateLayoutPreset).not.toHaveBeenCalled();
   vi.mocked(api.validateLayoutPreset).mockRejectedValue(new Error("Not enough room for 48 dining tables."));
   upload("{}");

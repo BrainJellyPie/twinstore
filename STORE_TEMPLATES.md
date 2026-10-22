@@ -14,6 +14,25 @@ formats including hypermarkets, warehouse clubs, pharmacies, cafés, restaurants
 fashion boutiques, bookstores, electronics, pet supplies and design showrooms.
 Each format includes its own generic product assortment.
 
+The default maps collectively stock the full catalog across 131 categories, including the
+new products and their available local photos. Departments are matched to each format:
+
+| Format | Examples of included departments |
+| --- | --- |
+| Toy & hobby store | Toy vehicles, plush toys, educational toys, puzzles, model building, miniature painting |
+| Baby & family store | Baby care, feeding, bath supplies, plush toys and learning toys |
+| Pharmacies | First-aid tools, oral care, wellness, baby care and personal care |
+| Coffee shops and bakeries | Coffee and tea, barista tools, bread, pastries and related retail supplies |
+| Home and design stores | Linens, dinnerware, lighting, bathroom accessories and storage |
+| Pet stores | Food, enrichment, grooming, aquarium, small-pet and bird supplies |
+| Craft and sports stores | Relevant art, sewing, model, cycling, swimming, climbing and outdoor departments |
+
+The product categories shown in the template picker control these same stocked departments.
+Available photos stay attached when previewing, saving and reusing a generated layout.
+The new-store wizard enables automatic catalog selection by default; turn it off to use
+these format assortments directly. Creating a template layout inside an existing project
+uses the format assortment without a product-selection model call.
+
 **Pet supplies superstore** uses a 36×28 industrial floor with pet-food, care,
 walking, grooming, carrier and bedding displays along parallel aisles. It has
 five checkouts and opens 09:00–21:00 daily. **Sports & camping outlet** uses a

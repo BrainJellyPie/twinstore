@@ -143,7 +143,7 @@ it("keeps checkout spacing across walls, priorities and count changes and resets
 
 it("sets operating hours, protects the last open day and restores only the schedule", async () => {
   mount();
-  fireEvent.click(await screen.findByText("Operating hours · 7 open days"));
+  fireEvent.click(await screen.findByText("Operating hours · Open days: 7"));
   fireEvent.change(screen.getByLabelText("Opening hour (0–23)"), { target: { value: "6" } });
   fireEvent.change(screen.getByLabelText("Closing hour (1–24)"), { target: { value: "15" } });
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
@@ -165,7 +165,7 @@ it("sets operating hours, protects the last open day and restores only the sched
 it("does not request a preview or export when explicit hours are reversed", async () => {
   mount();
   await screen.findByRole("img", { name: "Floor plan preview" });
-  fireEvent.click(screen.getByText("Operating hours · 7 open days"));
+  fireEvent.click(screen.getByText("Operating hours · Open days: 7"));
   fireEvent.change(screen.getByLabelText("Opening hour (0–23)"), { target: { value: "20" } });
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ open_hour: 20 }), expect.any(AbortSignal)));
   const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
@@ -197,7 +197,7 @@ it("starts a mix from the seating that actually fits when the format count is au
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ id: "preview", name: "Small restaurant", type: "restaurant", grid_size: [8, 6], weekly_schedule: [], racks: [table] });
   mount();
   fireEvent.click(await screen.findByRole("radio", { name: /Family restaurant/ }));
-  await screen.findByText("1 dining tables · 4 seats");
+  await screen.findByText("Dining tables: 1 · Seats: 4");
   fireEvent.click(screen.getByText("Mixed table sizes"));
   fireEvent.click(screen.getByRole("checkbox", { name: "Use mixed table sizes" }));
   expect((screen.getByLabelText("4-seat tables") as HTMLInputElement).value).toBe("1");
@@ -389,8 +389,8 @@ it("excludes chosen categories, keeps a stocked category and restores the assort
   fireEvent.click(await screen.findByText("Product categories · 3 of 3 included"));
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "24" } });
   fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "Keep local signs" } });
-  fireEvent.click(screen.getByRole("checkbox", { name: "Beer & Alcohol" }));
-  fireEvent.click(screen.getByRole("checkbox", { name: "Household & Daily" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: translate("en", "capCatBeerAlcohol") }));
+  fireEvent.click(screen.getByRole("checkbox", { name: translate("en", "capCatHousehold") }));
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(
     expect.objectContaining({ width: 24, excluded_categories: ["beer_alcohol", "household"] }), expect.any(AbortSignal),
   ));
@@ -398,12 +398,12 @@ it("excludes chosen categories, keeps a stocked category and restores the assort
   expect((screen.getByRole("checkbox", { name: "Drinks" }) as HTMLInputElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Restore all product categories" }));
   expect((screen.getByRole("checkbox", { name: "Drinks" }) as HTMLInputElement).disabled).toBe(false);
-  expect((screen.getByRole("checkbox", { name: "Beer & Alcohol" }) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByRole("checkbox", { name: translate("en", "capCatBeerAlcohol") }) as HTMLInputElement).checked).toBe(true);
   expect((screen.getByLabelText("Width (8–40 cells)") as HTMLInputElement).value).toBe("24");
   expect((screen.getByLabelText("Additional design brief") as HTMLTextAreaElement).value).toBe("Keep local signs");
-  fireEvent.click(screen.getByRole("checkbox", { name: "Beer & Alcohol" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: translate("en", "capCatBeerAlcohol") }));
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
-  expect((screen.getByRole("checkbox", { name: "Beer & Alcohol" }) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByRole("checkbox", { name: translate("en", "capCatBeerAlcohol") }) as HTMLInputElement).checked).toBe(true);
 });
 
 it("sets directional table gaps independently, keeps floor directions when rotating and restores shared spacing", async () => {
@@ -455,7 +455,7 @@ it("overrides individual category limits, retains excluded limits and restores s
   fireEvent.change(screen.getByLabelText("Products per category"), { target: { value: "2" } });
   expect(screen.getByLabelText("Products for Drinks").getAttribute("placeholder")).toBe("2");
   fireEvent.change(screen.getByLabelText("Products for Drinks"), { target: { value: "16" } });
-  fireEvent.change(screen.getByLabelText("Products for Household & Daily"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText(translate("en", "templateProductsFor", { category: translate("en", "capCatHousehold") })), { target: { value: "1" } });
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
     products_per_category: 2, category_product_limits: { soft_drinks: 16, household: 1 },
   }), expect.any(AbortSignal)));
@@ -471,7 +471,7 @@ it("overrides individual category limits, retains excluded limits and restores s
     products_per_category: 2, category_product_limits: { household: 1 },
   }), expect.any(AbortSignal)));
   fireEvent.click(screen.getByRole("button", { name: "Use shared limit for all categories" }));
-  expect((screen.getByLabelText("Products for Household & Daily") as HTMLInputElement).value).toBe("");
+  expect((screen.getByLabelText(translate("en", "templateProductsFor", { category: translate("en", "capCatHousehold") })) as HTMLInputElement).value).toBe("");
   expect((screen.getByLabelText("Products per category") as HTMLInputElement).value).toBe("2");
   fireEvent.change(screen.getByLabelText("Products for Drinks"), { target: { value: "3" } });
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" }));
