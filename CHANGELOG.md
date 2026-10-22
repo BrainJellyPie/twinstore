@@ -81,6 +81,9 @@
   Nothing is downloaded now until you press Start for the local model, and the button says how large the download
   is. After that it comes back by itself when the app opens, until you press Stop. A model an earlier version already
   downloaded still starts with no key, without downloading anything.
+- A vision run, optimization or venue check whose model never answered (a key turned down, no credit, a server that
+  is down) still finished, with every shopper quietly on the rule-based plan and labelled as vision shoppers. Until
+  the model has answered once, a failed call now fails that shopper, so such a run stops with the model's error.
 - With no API key, creating a store failed: it chose starter products with a text model by default. The format's own
   products are now the default until a model is set up, and the new-store form and the customer-writing screen say
   that writing customers needs a model, with buttons to add a key or download the local model (showing its size).

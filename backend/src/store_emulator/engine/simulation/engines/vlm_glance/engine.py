@@ -193,6 +193,14 @@ class VLMGlanceEngine(RuleBasedEngine):
             entry_decision_model(max_items), system, prompt, image or None, context,
         )
         if decision is None:
+            with self._log_lock:
+                answered = any(p.source != "fallback" for p in self.plan_log)
+            if not answered:
+                # Until the model has answered once in this run, a failure is the model's (a key turned down, no
+                # credit, a server that is down), not this shopper's: the shopper fails and is tried again, and a run
+                # whose model never answers stops with the error rather than finishing as a vision run of rule-based
+                # shoppers.
+                raise RuntimeError(f"the vision model did not answer: {error[:300]}")
             logger.warning(f"[vlm_glance] plan for {persona.id} failed, using the rule plan: {error[:200]}")
             fallback = self._plan(context)
             fallback.trace = {**fallback.trace, "plan_source": "fallback", "plan_error": error[:200]}

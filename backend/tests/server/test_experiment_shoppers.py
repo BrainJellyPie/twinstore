@@ -121,7 +121,7 @@ def test_vision_test_whose_model_calls_all_fail_stops_instead_of_completing(app_
                              "focus_skus": ["A0001"], "variants": [{"name": "Sign", "changes": [{"kind": "promo", "sku": "A0001", "promo": "SALE"}]}]})
     # Before, the test finished "completed" as "vision shoppers (openai/gpt-4o-mini)" with every call failed.
     assert view["status"] == "failed" and view["report"] is None
-    assert f"failed on {llm.calls} of {llm.calls} calls in Control" in view["error"] and "503 provider overloaded" in view["error"]
+    assert "the vision model did not answer" in view["error"] and "503 provider overloaded" in view["error"]
     assert len(arms) == 1   # stopped after the control arm instead of paying for the variants
 
 

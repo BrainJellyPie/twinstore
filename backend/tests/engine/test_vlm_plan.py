@@ -315,17 +315,28 @@ def test_entry_narration_uses_the_models_words(mission, reason, entered, expecte
 
 
 def test_failed_plan_falls_back_to_the_rule_plan_and_is_counted():
-    store, personas = _store(), _personas(5)
-    failing = VLMGlanceEngine(llm=_FakeVLM(fail=True), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    store, personas = _store(), _personas(6)
+    model = _FakeVLM()
+    failing = VLMGlanceEngine(llm=model, pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
     rule = VLMGlanceEngine(llm=_FakeVLM(), pathfinder=AStarPathFinder(), config=_config(plan_policy="rule"))  # type: ignore[arg-type]
-    for i, persona in enumerate(personas):
+    asyncio.run(failing.decide_actions(_context(store, personas[0], seed=99)))   # the model answers once
+    model.fail = True
+    for i, persona in enumerate(personas[1:]):
         a = asyncio.run(failing.decide_actions(_context(store, persona, seed=100 + i)))
         b = asyncio.run(rule.decide_actions(_context(store, persona, seed=100 + i)))
         assert _buys(a.actions) == _buys(b.actions)
         assert a.trace["plan_source"] == "fallback" and "TimeoutError" in str(a.trace["plan_error"])
     planning = failing.metadata()["planning"]
-    assert isinstance(planning, dict) and planning["plan_errors"] == 5 and planning["enter_rate"] is None
+    assert isinstance(planning, dict) and planning["plan_errors"] == 5 and planning["plans"] == 6
     assert rule.metadata()["planning"] is None and rule.metadata()["plan_records"] == []
+
+
+def test_a_model_that_has_not_answered_fails_the_shopper_instead_of_passing_a_rule_plan_off_as_vision():
+    store, persona = _store(), _personas(1)[0]
+    engine = VLMGlanceEngine(llm=_FakeVLM(fail=True), pathfinder=AStarPathFinder(), config=_config())  # type: ignore[arg-type]
+    with pytest.raises(RuntimeError, match="the vision model did not answer: TimeoutError"):
+        asyncio.run(engine.decide_actions(_context(store, persona, seed=100)))
+    assert engine.plan_log == []
 
 
 def _baskets(scenario: Scenario | None, policy: str) -> list[list[tuple[str, int]]]:
