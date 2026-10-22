@@ -25,6 +25,23 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
   No model call or new spreadsheet is required. See the product editor section in USAGE.md.
 
+### Design briefs that set the layout options
+- The **Additional design brief** of a generated layout used to be saved as a note only. **Apply to the options**
+  now has the text model set what the brief asks for: style, density, size in grid cells, door wall and position,
+  tills and their placement, theme and #rrggbb colors, dining tables and seating zone, left-out categories (the
+  format's own, by name) and range size. Each option is checked against the options already chosen; one that does not
+  fit is reported, and what no option can express (music, lighting, signage text) is listed instead of guessed. The
+  brief is still saved with the layout. API: `POST /api/store-templates/{template_id}/brief`.
+
+### Change a layout in words
+- **Change it in words** under Store, Layout: "put the green tea at eye level and 10 % off all ice cream" becomes
+  the same edits the A/B builder makes (price, discount, sign, move, category price) on this layout's own products and
+  shelves, shown in words after they are applied to a copy. "The best seller" uses the layout's last run. **Save as a
+  new layout** keeps the result as a new layout that opens next; the original stays as it is. Package changes stay
+  test-only. The command palette sends direct edits ("raise every drink price by 5 %") here, and questions about
+  them ("would the cola sell more at eye level?") to an A/B test. API: `POST /api/projects/{pid}/setups/{sid}/edit/draft`,
+  `POST .../edit`.
+
 ### Concept tests and shelf tests drafted from a question
 - **Draft the test** in Concept tests: from "which of our two labels looks more premium to people in their
   twenties?" the text model picks the product images to show from the library (by name, with the shelf product and

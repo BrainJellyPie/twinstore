@@ -29,6 +29,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   projectId: string; personaCount: number; defaultCurrency?: string; initial?: SurveyRequest | null; setupId?: string;
   /** A request routed from the command palette: fills the question and drafts the test from it. */
   prefill?: { text: string; id: number };
+  /** Called once the routed request has been taken, so the page can forget it. */
   onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {

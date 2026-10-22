@@ -6,6 +6,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-grou
 import { LayoutExcelControls } from "@/features/layouts/components/LayoutExcelControls";
 import { RackDetailView } from "./RackDetailView";
 import { currencyCode } from "@/shared/utils/money";
+import { LayoutEditInWords } from "./LayoutEditInWords";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -217,6 +218,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
               View detail
             </button>
           </SheetTrigger>
+          {projectId && setupId && <LayoutEditInWords key={setupId} projectId={projectId} setupId={setupId} />}
         </section>
       </div>
 

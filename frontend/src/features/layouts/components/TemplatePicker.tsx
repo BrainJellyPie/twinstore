@@ -12,6 +12,7 @@ import * as api from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 import { searchText } from "@/shared/utils/searchText";
 import { applyLayoutPriority, LAYOUT_PRIORITIES, LAYOUT_STYLES, resolveFloorSize, resolveOperatingHours, templateRequest, validTemplateChoice, validWeeklyHours, type FloorSize, type LayoutPriority, type OperatingHours, type TemplateChoice } from "../templateOptions";
+import { LayoutBriefField } from "./LayoutBriefField";
 import { ReservedAreasEditor } from "./ReservedAreasEditor";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { GenerationOptionsFile } from "./GenerationOptionsFile";
@@ -514,10 +515,10 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
         </details>}
         <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })}
           grid={[value.width ?? selected?.grid[0] ?? 12, value.height ?? selected?.grid[1] ?? 10]} entrance={value.entrance} gateWall={value.gate_wall} />
-        <Field label="Additional design brief"><textarea className={controlClass} rows={2} maxLength={2000} value={value.requirements ?? ""} onChange={(e) => update({ requirements: e.target.value })} placeholder="For example: use warm task lighting in the consultation corner or seasonal signs near the entrance." /></Field>
+        <LayoutBriefField value={value} onApply={(patch) => update(patch)} onBriefChange={(requirements) => update({ requirements })} />
         </div>
         {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
-        {customizationOpen && <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction and aisle gap apply to interior rows and cross-aisles; wall spacing and seating clearance are separate. Your brief is saved with the layout for further editing; it does not automatically place fixtures. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>}
+        {customizationOpen && <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction and aisle gap apply to interior rows and cross-aisles; wall spacing and seating clearance are separate. Apply the brief to set the options it asks for; the brief is also saved with the layout, and what the options cannot express is listed rather than built. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>}
       </>}
     </div>
   );
