@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.3 — failures that say so, the local model behind company networks
 
 ### Runs and customers that fail now say so
 - A run in which every shopper failed (a key turned down, a model that is not there), or in which no shopper comes on
