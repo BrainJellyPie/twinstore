@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { webcrypto } from "node:crypto";
 import * as api from "@/shared/api/rackCopy";
@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.mocked(api.saveRackCopy).mockResolvedValue({ setup_id: "setup_copied", placements_added: 1 });
 });
 afterEach(() => { cleanup(); qc.clear(); vi.resetAllMocks(); vi.unstubAllGlobals(); useSimulationStore.getState().reset(); });
-const view = (sid = "s") => <QueryClientProvider client={qc}><RackCopy pid="p" sid={sid} /></QueryClientProvider>;
+const view = (sid = "s", pid = "p") => <QueryClientProvider client={qc}><RackCopy pid={pid} sid={sid} /></QueryClientProvider>;
 async function open() {
   const rendered = render(view());
   fireEvent.click(screen.getByRole("button", { name: "Reuse shelf products" }));
@@ -145,4 +145,66 @@ it("retries an uncertain save after refresh using its original snapshot and curr
 it("keeps the source selector's accessible name independent of its product options", async () => {
   await open();
   expect(screen.getByRole("combobox", { name: "Copy products from" })).toBeTruthy();
+});
+
+it.each(["close", "layout", "project"].flatMap(scope => ["success", "failure"].map(result => ({ scope, result }))))(
+  "discards a late preview $result after changing $scope", async ({ scope, result }) => {
+    let resolve!: (value: api.RackCopyPreview) => void;
+    let reject!: (error: Error) => void;
+    vi.mocked(api.previewRackCopy).mockReturnValueOnce(new Promise((yes, no) => { resolve = yes; reject = no; }));
+    const rendered = await open();
+    fireEvent.click(screen.getByLabelText("Copy to rack empty"));
+    fireEvent.click(screen.getByRole("button", { name: "Preview shelf copies" }));
+    await waitFor(() => expect(api.previewRackCopy).toHaveBeenCalledTimes(1));
+    if (scope === "close") {
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      fireEvent.click(screen.getByRole("button", { name: "Reuse shelf products" }));
+    } else rendered.rerender(view(scope === "layout" ? "new" : "s", scope === "project" ? "new" : "p"));
+    await act(async () => { if (result === "success") resolve(report); else reject(new Error("Old preview failed")); });
+    await screen.findByRole("option", { name: /Stocked shelf/ });
+    expect(screen.queryByRole("region", { name: "Shelf copy preview" })).toBeNull();
+    expect(screen.queryByText("Old preview failed")).toBeNull();
+    expect((screen.getByLabelText("Copy products from") as HTMLSelectElement).value).toBe("");
+    expect(api.saveRackCopy).not.toHaveBeenCalled();
+  },
+);
+
+it.each(["snapshot", "currency", "failure"])("never saves a pending preview invalidated by an options %s", async change => {
+  let finish!: (value: api.RackCopyPreview) => void;
+  vi.mocked(api.previewRackCopy).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  await open();
+  fireEvent.click(screen.getByLabelText("Copy to rack empty"));
+  fireEvent.click(screen.getByRole("button", { name: "Preview shelf copies" }));
+  await waitFor(() => expect(api.previewRackCopy).toHaveBeenCalledTimes(1));
+  if (change === "failure") vi.mocked(api.getRackCopyOptions).mockRejectedValue(new Error("Source unavailable"));
+  else vi.mocked(api.getRackCopyOptions).mockResolvedValue({ ...options, source_rack_id: "stocked", targets: [empty],
+    source_sha256: change === "snapshot" ? "b".repeat(64) : options.source_sha256,
+    currency: change === "currency" ? "JPY" : "USD" });
+  await act(async () => { await qc.invalidateQueries({ queryKey: ["rack-copy", "p", "s"] }); finish(report); });
+  await screen.findByText("The layout changed. Preview again before saving.");
+  expect(screen.queryByRole("region", { name: "Shelf copy preview" })).toBeNull();
+  expect(api.saveRackCopy).not.toHaveBeenCalled();
+});
+
+it("recovers an uncertain save even when the source options have become unavailable", async () => {
+  await open(); await preview();
+  vi.mocked(api.saveRackCopy).mockRejectedValueOnce(new Error("Lost response"));
+  fireEvent.click(screen.getByRole("button", { name: "Save layout with shelf copies" }));
+  await screen.findByRole("button", { name: "Retry saving shelf copies" });
+  vi.mocked(api.getRackCopyOptions).mockRejectedValue(new Error("Source removed"));
+  await act(async () => { await qc.invalidateQueries({ queryKey: ["rack-copy", "p", "s"] }); });
+  fireEvent.click(screen.getByRole("button", { name: "Retry saving shelf copies" }));
+  await screen.findByRole("button", { name: "Open copied layout" });
+  expect(vi.mocked(api.saveRackCopy).mock.calls[0]![2]).toEqual(vi.mocked(api.saveRackCopy).mock.calls[1]![2]);
+});
+
+it.each(["USD", "CAD", "CNY", "KRW", "JPY", "VND"])("shows exact safe-integer prices in a %s preview", async currency => {
+  vi.mocked(api.getRackCopyOptions).mockImplementation(async (_p, _s, id) => ({ ...options, currency, source_rack_id: id || null, targets: id ? [empty] : [] }));
+  vi.mocked(api.previewRackCopy).mockResolvedValue({ ...report, slots: [{ block: 0, face: "S", level: 1,
+    items: [{ ...product, price: 9007199254740991, regular_price: 9007199254740990 }] }] });
+  await open(); await preview();
+  const previewText = screen.getByRole("region", { name: "Shelf copy preview" }).textContent;
+  const unit = ["KRW", "JPY", "VND"].includes(currency);
+  expect(previewText).toContain(`${unit ? "9007199254740991" : "90071992547409.91"} ${currency}`);
+  expect(previewText).toContain(`regular price ${unit ? "9007199254740990" : "90071992547409.90"} ${currency}`);
 });
