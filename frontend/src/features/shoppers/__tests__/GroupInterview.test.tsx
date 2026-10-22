@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { askGroup, listGroups, suggestGroupQuestions, type GroupAnswer, type GroupInterview } from "@/shared/api/interview";
+import { askGroup, deleteGroup, listGroups, suggestGroupQuestions, type GroupAnswer, type GroupInterview } from "@/shared/api/interview";
 import { GroupInterviewPanel } from "../GroupInterview";
 
 vi.mock("@/shared/api/interview", async (original) => ({
@@ -58,4 +58,18 @@ it("suggests questions from the run and fills in the question and group", async 
   expect(screen.getByText("Impulse buyers · top impulse pick")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /^Ask / }));
   await waitFor(() => expect(askGroup).toHaveBeenCalledWith("project", "r", expect.objectContaining({ question: "What made you grab the jerky?", segment: "impulse" })));
+});
+
+it("asks before deleting a group interview and deletes it on the second click", async () => {
+  vi.mocked(listGroups).mockResolvedValue([first]);
+  vi.mocked(deleteGroup).mockResolvedValue(undefined);
+  render(<QueryClientProvider client={new QueryClient()}>
+    <GroupInterviewPanel projectId="project" runId="r" currency="USD" onOpen={vi.fn()} onBack={vi.fn()} />
+  </QueryClientProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "Delete group interview" }));
+  expect(deleteGroup).not.toHaveBeenCalled();
+  fireEvent.blur(screen.getByRole("button", { name: "Delete?" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete group interview" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete?" }));
+  await waitFor(() => expect(deleteGroup).toHaveBeenCalledWith("project", "r", "first"));
 });

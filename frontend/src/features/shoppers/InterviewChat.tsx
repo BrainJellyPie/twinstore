@@ -49,12 +49,13 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
   const messages = transcript.data?.messages ?? [];
   const first = journey.persona.identity.split(/[,(]/)[0]?.trim() || t("interviewTheShopper");
   // Next questions written by the model for this trip and this conversation; stored ones are reused until the
-  // conversation moves on. Without a model (or on error) the trip-based templates stay.
+  // conversation moves on. Without a model (or on error) the trip-based templates stay. Opening a shopper's
+  // interview calls no model: the trip-based templates start it, and model follow-ups come once a question is asked.
   const stored = transcript.data?.suggested_after === messages.length ? transcript.data.suggestions ?? [] : [];
   const ideas = useQuery({
     queryKey: interviewKeys.suggestions(projectId, runId, sid, messages, model),
     queryFn: ({ signal }) => suggestQuestions(projectId, runId, sid, model, signal),
-    enabled: transcript.isSuccess && !stored.length && !busy,
+    enabled: transcript.isSuccess && messages.length > 0 && !stored.length && !busy,
     staleTime: Infinity,
     retry: false,
   });

@@ -344,6 +344,7 @@ function EditsGallery({ projectId, captureId, editId, onSelect }: {
       await qc.invalidateQueries({ queryKey: editsKey(projectId, captureId) });
     },
   });
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);   // the edit whose delete was asked once
   const list = edits.data ?? [];
   if (list.length === 0) return null;
   const selected = list.find((e) => e.edit_id === editId);
@@ -373,7 +374,11 @@ function EditsGallery({ projectId, captureId, editId, onSelect }: {
           <div className="mt-2 flex gap-1.5">
             <Button variant="outline" size="xs" asChild><a href={api.editFileUrl(projectId, captureId, selected.edit_id, "image")} download={`${selected.edit_id}.jpg`}><Download /> {t("capLabImage")}</a></Button>
             <Button variant="outline" size="xs" asChild><a href={api.editFileUrl(projectId, captureId, selected.edit_id, "mask")} download={`${selected.edit_id}_mask.png`}><Download /> {t("capLabGtMask")}</a></Button>
-            <Button variant="ghost" size="xs" className="ml-auto hover:text-destructive" disabled={del.isPending} onClick={() => del.mutate(selected.edit_id)}><Trash2 /> {t("studioDelete")}</Button>
+            <Button variant={confirmDelete === selected.edit_id ? "destructive" : "ghost"} size="xs" className="ml-auto hover:text-destructive" disabled={del.isPending}
+              onBlur={() => setConfirmDelete(null)}
+              onClick={() => (confirmDelete === selected.edit_id ? del.mutate(selected.edit_id) : setConfirmDelete(selected.edit_id))}>
+              <Trash2 /> {confirmDelete === selected.edit_id ? t("mkDeleteConfirm") : t("studioDelete")}
+            </Button>
           </div>
           {del.error && <p role="alert" className="mt-2 text-destructive">{del.error.message}</p>}
         </div>
@@ -545,6 +550,7 @@ function Sim2RealCard({ projectId, captureId, editId, labeled, onAttention }: {
         <input type="checkbox" checked={raw} onChange={(e) => setRaw(e.target.checked)} />
         {t("capLabRaw")}
       </label>
+      <p className="text-[0.7rem] text-muted-foreground">{t("mkVisionCalls", { count: personas * (raw ? 3 : 2) })}</p>
       <Input value={situation} onChange={(e) => setSituation(e.target.value)} placeholder={t("capLabSituation")} className="h-9 text-sm" />
       {!labeled && <p className="rounded-lg tone-warn border p-2 text-xs">{t("capLabReadFirst")}</p>}
       {start.error && <p className="text-xs text-destructive">{start.error instanceof Error ? start.error.message : String(start.error)}</p>}

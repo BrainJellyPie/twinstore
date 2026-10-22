@@ -63,6 +63,8 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
     mutationFn: (gid: string) => deleteGroup(projectId, runId, gid),
     onSuccess: () => qc.invalidateQueries({ queryKey: interviewKeys.groups(projectId, runId) }),
   });
+  // Every answer cost a model call: the first click asks, the second deletes; leaving the button cancels.
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const list = groups.data ?? [];
   const shown = list.find((g) => g.group_id === open) ?? null;
 
@@ -133,8 +135,13 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
                 <span className="line-clamp-2 text-[0.78rem]">{g.question}</span>
                 <span className="text-[0.68rem] text-muted-foreground">{t("groupMeta", { count: g.answers.length, segment: segmentLabel(g.segment, t), themes: g.themes.length })}</span>
               </button>
-              <button type="button" onClick={() => del.mutate(g.group_id)} aria-label={t("groupDelete")}
-                className="rounded p-1 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"><Trash2 className="size-3.5" /></button>
+              <button type="button" onClick={() => (confirmDelete === g.group_id ? del.mutate(g.group_id) : setConfirmDelete(g.group_id))}
+                onBlur={() => setConfirmDelete(null)} disabled={del.isPending}
+                aria-label={confirmDelete === g.group_id ? t("mkDeleteConfirm") : t("groupDelete")}
+                className={cn("inline-flex shrink-0 items-center gap-1 rounded p-1 text-[0.68rem]", confirmDelete === g.group_id
+                  ? "bg-destructive text-white" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100")}>
+                <Trash2 className="size-3.5" />{confirmDelete === g.group_id ? ` ${t("mkDeleteConfirm")}` : ""}
+              </button>
             </div>
           ))}
         </section>
