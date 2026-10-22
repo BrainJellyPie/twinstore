@@ -98,3 +98,15 @@ it("keeps meal photos separate from personal-care packaging after renaming", () 
   expect(classifyProduct("상품", "/api/catalog-images/starter-14/11.webp").kind).toBe("jar");
   expect(classifyProduct("상품", "/api/catalog-images/starter-14/12.webp").kind).toBe("tube");
 });
+
+it("keeps apparel, plants and hobby supplies out of drink and food departments", () => {
+  for (const sheet of ["starter-15", "starter-16"]) {
+    for (let index = 0; index < 16; index++) {
+      const product = classifyProduct("Milk Coffee", `/api/catalog-images/${sheet}/${index}.webp`);
+      expect(product.category).toBe("other");
+      expect([product.w, product.h, product.d].every(n => n > 0 && Number.isFinite(n))).toBe(true);
+    }
+  }
+  expect(classifyProduct("상품", "/api/catalog-images/starter-16/1.webp").kind).toBe("bottle");
+  expect(classifyProduct("상품", "/api/catalog-images/starter-16/14.webp").kind).toBe("box");
+});

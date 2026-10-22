@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add 96 cycling, swimming, climbing, desk, aquarium, bird, lighting and bathroom products, plus
+  32 apparel, garden and hobby photos. The bundled catalog reaches 1,304 products, 115 categories
+  and 256 product photos, available to automatic category-based placement and vision grids.
+
 - Translate product bulk editing end to end in six languages, including validation, mixed values,
   undo, preview and saving. Preserve edits and retry identities when switching languages, format
   reviewed prices by locale, and keep long buttons inside mobile dialogs. Product workflow clients
