@@ -242,7 +242,8 @@ The **Floor** page is the store's day. **Run simulation** asks:
   it and staff refill it, a sold-out product is replaced from the same shelf or the sale is lost, and shoppers queue
   for a free till, some leaving their basket when the wait runs past their patience. **Store operations** in the
   results prices the empty shelves, shows the wait by hour and how many tills each hour needed. The model calls are
-  the same as without it.
+  the same as without it. **Try other stock and staffing** replays any finished run's shoppers under other stock,
+  refills and hourly tills in seconds, and with your costs finds the plan that leaves the most.
 - **What kind of day.** One of **19 situations** (weather, weekday or holiday, crowding, local events, promotions,
   sold-out items) or your own, plus customer sample, seed and preview-or-final. Vision runs start with at most 30
   customers and language-model runs with at most 300.

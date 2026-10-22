@@ -14,6 +14,7 @@ import logging
 import math
 import random
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from store_emulator.domain.customer import CustomerResult, TimelineEvent
@@ -92,7 +93,10 @@ def resolve_shared_store(
     store: Store, results: list[CustomerResult], config: OperationsConfig, *, seed: int,
 ) -> tuple[list[CustomerResult], OperationsReport]:
     """The shoppers' results replayed in one shared store, and what sharing it did. The input is left as it is."""
-    results = [r.model_copy(deep=True) for r in results]
+    # The input stays as it is: each result gets its own list of events, and an event is copied only when this pass
+    # changes it (copying them all took most of the time of a replay, and plans replay a run hundreds of times).
+    results = [r.model_copy(update={"timeline": list(r.timeline)}) for r in results]
+    copies = _Copies()
     products = shelf_stock(store, config)
     faces: dict[tuple[str, Face], list[FaceKey]] = defaultdict(list)
     for key in products:
@@ -112,14 +116,14 @@ def resolve_shared_store(
     busy_seconds = 0.0
     for day in sorted(days):
         day_checkouts, day_open, day_busy = _play_day(
-            store, results, days[day], products, faces, counters, config, report, hit, seed,
+            store, results, days[day], products, faces, tills, counters, config, report, hit, seed, copies,
         )
         checkouts.update(day_checkouts)
         open_seconds += day_open
         busy_seconds += day_busy
 
     for index, checkout in checkouts.items():
-        _apply_checkout(results[index], checkout)
+        _apply_checkout(results[index], checkout, copies)
     for result in results:
         result.total_spent = sum(e.price * e.quantity for e in result.timeline if e.action == Action.BUY)
         result.leave_time = _hms(_clock(result.arrival_time) + result.duration_sec)
@@ -134,7 +138,8 @@ def resolve_shared_store(
     )[:_STOCKOUTS_REPORTED]
     for stats in report.stockouts:
         stats.minutes_out = round(stats.minutes_out, 1)
-    _queue_summary(report, results, checkouts, config, counters, open_seconds, busy_seconds)
+    report.till_hours = round(open_seconds / 3600, 2)
+    _queue_summary(report, results, checkouts, config, tills, counters, open_seconds, busy_seconds)
     logger.info(
         f"[shared store] {report.days} day(s), {report.counters} till(s): {report.stockout_faces} faces ran out, "
         f"{report.lost_units} units lost, {report.substituted_units} substituted; {report.queued} shoppers queued, "
@@ -149,13 +154,17 @@ def _play_day(
     indexes: list[int],
     products: dict[FaceKey, _Product],
     faces: dict[tuple[str, Face], list[FaceKey]],
+    tills: int,
     counters: int,
     config: OperationsConfig,
     report: OperationsReport,
     hit: set[int],
     seed: int,
+    copies: "_Copies",
 ) -> tuple[dict[int, _Checkout], float, float]:
-    """One day in clock order. Returns each shopper's checkout, and the tills' open and serving seconds."""
+    """One day in clock order. Returns each shopper's checkout, and the tills' open and serving seconds.
+
+    The tills share one line (first come, first served): a shopper takes the first till that is free and staffed."""
     state = _Day(stock={key: product.full for key, product in products.items()})
     heap: list[tuple[float, int, int, int]] = []   # (clock second, kind, shopper, timeline index)
     start = math.inf
@@ -182,7 +191,10 @@ def _play_day(
             heapq.heappush(heap, (moment, _RESTOCK, -1, -1))
             moment += step
 
-    free = [float(opening)] * counters
+    def staffed(moment: float) -> int:
+        return tills_open(config, tills, counters, int(moment) // 3600 % 24)
+
+    free = [float(opening)] * tills
     busy = 0.0
     checkouts: dict[int, _Checkout] = {}
     last = 0.0
@@ -199,9 +211,9 @@ def _play_day(
             if refilled:
                 report.restocks += 1
         elif kind == _PUT_BACK:
-            _put_back(results[index], state, products, moment)
+            _put_back(results[index], state, products, moment, copies)
         elif kind == _PICK:
-            _pick(results[index], index, k, moment, state, products, faces, config, report, hit, seed)
+            _pick(results[index], index, k, moment, state, products, faces, config, report, hit, seed, copies)
         else:
             result = results[index]
             units = sum(e.quantity for e in result.timeline if e.action == Action.BUY)
@@ -211,15 +223,18 @@ def _play_day(
             if units == 0:
                 checkout.nothing_to_pay = True
                 continue
-            if counters == 0:
+            if tills == 0:
                 continue
             service = config.checkout_base_sec + config.checkout_item_sec * units
-            till = min(range(counters), key=lambda c: (free[c], c))
-            begins = max(moment, free[till])
+            till, begins = -1, math.inf
+            for c in range(tills):
+                starts = _till_starts(c, max(moment, free[c]), staffed)
+                if starts < begins:
+                    till, begins = c, starts
             wait = begins - moment
             z = random.Random(stable_seed(seed, result.persona_id, int(result.day), "patience")).gauss(0.0, 1.0)
             patience = config.patience_sec * math.exp(config.patience_sd * z)
-            if wait > patience:
+            if till < 0 or wait > patience:
                 checkout.abandoned = True
                 checkout.wait = patience
                 heapq.heappush(heap, (moment + patience, _PUT_BACK, index, k))
@@ -232,8 +247,26 @@ def _play_day(
     closing = max(closing, last)
     for key, since in list(state.empty_since.items()):
         products[key].stats.minutes_out += max(0.0, closing - since) / 60.0
-    open_seconds = counters * max(0.0, closing - opening)
+    open_seconds = 0.0
+    hour = float(opening)
+    while hour < closing:
+        open_seconds += staffed(hour) * (min(closing, hour + 3600) - hour)
+        hour += 3600
     return checkouts, open_seconds, busy
+
+
+def tills_open(config: OperationsConfig, tills: int, counters: int, hour: int) -> int:
+    """Tills staffed in an hour of the day: the hour's own number, else the run's, never more than the layout has."""
+    return min(tills, config.till_schedule.get(f"{hour:02d}", counters))
+
+
+def _till_starts(till: int, moment: float, staffed: Callable[[float], int]) -> float:
+    """The first moment from `moment` on when the till is staffed (within two days; else never)."""
+    for _ in range(48):
+        if till < staffed(moment):
+            return moment
+        moment = (int(moment) // 3600 + 1) * 3600
+    return math.inf
 
 
 def _emptied(state: _Day, key: FaceKey, product: _Product, moment: float) -> None:
@@ -261,6 +294,7 @@ def _pick(
     report: OperationsReport,
     hit: set[int],
     seed: int,
+    copies: "_Copies",
 ) -> None:
     event = result.timeline[k]
     if event.face is None or not event.product_sku:
@@ -280,6 +314,7 @@ def _pick(
 
     hit.add(index)
     product.stats.shoppers_missed += 1
+    event = copies.event(result.timeline, k)
     if have > 0:
         # Fewer left than the shopper wanted: they take what there is.
         state.stock[key] = 0
@@ -328,11 +363,14 @@ def _lost(result: CustomerResult, product: _Product, units: int) -> None:
     result.lost_units += units
 
 
-def _put_back(result: CustomerResult, state: _Day, products: dict[FaceKey, _Product], moment: float) -> None:
+def _put_back(
+    result: CustomerResult, state: _Day, products: dict[FaceKey, _Product], moment: float, copies: "_Copies",
+) -> None:
     """A shopper left the line: the basket goes back on the shelves."""
-    for event in result.timeline:
-        if event.action != Action.BUY:
+    for k, original in enumerate(result.timeline):
+        if original.action != Action.BUY:
             continue
+        event = copies.event(result.timeline, k)
         if event.face is not None and event.product_sku:
             key = (event.target_rack, event.face, event.product_sku)
             product = products.get(key)
@@ -346,13 +384,13 @@ def _put_back(result: CustomerResult, state: _Day, products: dict[FaceKey, _Prod
         event.description = _join(event.description, "put back: left the line at the tills")
 
 
-def _apply_checkout(result: CustomerResult, checkout: _Checkout) -> None:
+def _apply_checkout(result: CustomerResult, checkout: _Checkout, copies: "_Copies") -> None:
     """The wait at the tills moves the rest of the visit; a shopper who gave up leaves without paying."""
     timeline = result.timeline
     k = checkout.pay_index
     if k >= len(timeline) or timeline[k].action != Action.PAY:
         return
-    pay = timeline[k]
+    pay = copies.event(timeline, k)
     if checkout.nothing_to_pay:
         pay.action = Action.WANDER
         pay.description = _join(pay.description, "nothing left to pay for")
@@ -365,24 +403,40 @@ def _apply_checkout(result: CustomerResult, checkout: _Checkout) -> None:
         pay.action = Action.WANDER
         pay.duration = waited
         pay.description = _join(pay.description, f"left the line after {_minutes(waited)} without paying")
-        _shift(timeline, k + 1, waited - old)
+        _shift(timeline, k + 1, waited - old, copies)
         return
     waited = round(checkout.wait)
     service = max(1, round(checkout.service)) if checkout.service else old
     result.queue_wait_sec = waited
     if waited:
-        _shift(timeline, k, waited)
+        _shift(timeline, k, waited, copies)
         if waited >= 30:
             pay.description = _join(pay.description, f"waited {_minutes(waited)} for a till")
     pay.duration = service
-    _shift(timeline, k + 1, service - old)
+    _shift(timeline, k + 1, service - old, copies)
 
 
-def _shift(timeline: list[TimelineEvent], start: int, seconds: int) -> None:
+def _shift(timeline: list[TimelineEvent], start: int, seconds: int, copies: "_Copies") -> None:
     if seconds == 0:
         return
-    for event in timeline[start:]:
+    for k in range(start, len(timeline)):
+        event = copies.event(timeline, k)
         event.elapsed_sec = max(0, event.elapsed_sec + seconds)
+
+
+class _Copies:
+    """Copy-on-write for the input's events: an event is copied the first time this pass changes it."""
+
+    def __init__(self) -> None:
+        self._own: set[int] = set()
+
+    def event(self, timeline: list[TimelineEvent], k: int) -> TimelineEvent:
+        event = timeline[k]
+        if id(event) not in self._own:
+            event = event.model_copy()
+            timeline[k] = event
+            self._own.add(id(event))
+        return event
 
 
 def _minutes(seconds: int) -> str:
@@ -398,11 +452,12 @@ def _queue_summary(
     results: list[CustomerResult],
     checkouts: dict[int, _Checkout],
     config: OperationsConfig,
+    tills: int,
     counters: int,
     open_seconds: float,
     busy_seconds: float,
 ) -> None:
-    queued = [(index, c) for index, c in checkouts.items() if not c.nothing_to_pay and counters > 0]
+    queued = [(index, c) for index, c in checkouts.items() if not c.nothing_to_pay and tills > 0]
     report.queued = len(queued)
     waits = sorted(c.wait for _, c in queued)
     if waits:
@@ -430,6 +485,7 @@ def _queue_summary(
     needed = counters_needed([(results[index].day, c.arrived, c.units) for index, c in queued], config)
     for hour, stats in hours.items():
         stats.counters_needed = needed.get(hour, 1)
+        stats.counters_open = tills_open(config, tills, counters, int(hour))
     report.hours = [hours[h] for h in sorted(hours)]
     report.counters_needed = max((h.counters_needed for h in report.hours), default=0)
 

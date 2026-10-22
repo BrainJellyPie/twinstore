@@ -38,3 +38,14 @@ export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig 
     patience_sec: Math.round(patience * 60),
   };
 }
+
+/** The form for a run's own settings (the operations lab starts from them). */
+export function choiceFromConfig(config: OperationsConfig): SharedStoreChoice {
+  return {
+    enabled: true,
+    stock: String(config.stock_per_facing ?? 12),
+    restock: config.restock_every_min == null ? "" : String(config.restock_every_min),
+    tills: config.open_counters == null ? "" : String(config.open_counters),
+    patience: String(Math.round(((config.patience_sec ?? 300) / 60) * 10) / 10),
+  };
+}

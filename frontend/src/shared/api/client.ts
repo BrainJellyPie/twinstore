@@ -402,6 +402,8 @@ export interface OperationsConfig {
   restock_every_min?: number | null;
   substitute_share?: number;
   open_counters?: number | null;
+  // Tills staffed in single hours ("18" → 3); 0 closes the tills for that hour.
+  till_schedule?: Record<string, number>;
   checkout_base_sec?: number;
   checkout_item_sec?: number;
   patience_sec?: number;
@@ -430,6 +432,7 @@ export interface QueueHour {
   avg_wait_sec: number;
   max_wait_sec: number;
   abandoned: number;
+  counters_open?: number;
   counters_needed: number;
 }
 
@@ -454,6 +457,7 @@ export interface OperationsReport {
   abandoned_units: number;
   abandoned_revenue: number;
   counter_utilization: number;
+  till_hours?: number;
   counters_needed: number;
   hours: QueueHour[];
   stockouts: StockoutStats[];
@@ -461,6 +465,62 @@ export interface OperationsReport {
 
 export function getRunOperations(projectId: string, runId: string, signal?: AbortSignal): Promise<OperationsReport> {
   return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations`, { signal });
+}
+
+/** Costs of running the store, in the currency's minor unit. */
+export interface OperationsCosts {
+  till_hour?: number;
+  restock_round?: number;
+  stock_unit_day?: number;
+}
+
+export interface OperationsOutcome {
+  revenue: number;
+  lost_revenue: number;
+  abandoned_revenue: number;
+  abandoned: number;
+  avg_wait_sec: number;
+  p90_wait_sec: number;
+  till_hours: number;
+  restocks: number;
+  stock_units: number;
+  labor_cost: number;
+  restock_cost: number;
+  holding_cost: number;
+  net: number;
+}
+
+export interface OperationsReplay {
+  planned_revenue: number;
+  outcome: OperationsOutcome;
+  report: OperationsReport;
+}
+
+export interface OperationsPlan {
+  current_config: OperationsReport["config"];
+  current: OperationsOutcome;
+  config: OperationsReport["config"];
+  best: OperationsOutcome;
+  replays: number;
+  raised_skus: string[];
+}
+
+/** The run's shoppers, decisions unchanged, in a store run another way (no model call). */
+export function replayOperations(
+  projectId: string, runId: string, body: { operations: OperationsConfig; costs: OperationsCosts }, signal?: AbortSignal,
+): Promise<OperationsReplay> {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations/replay`, {
+    method: "POST", body: JSON.stringify(body), signal,
+  });
+}
+
+/** The best stock, refill and till plan found for the run's shoppers under these costs. */
+export function planOperations(
+  projectId: string, runId: string, body: { costs: OperationsCosts; operations?: OperationsConfig }, signal?: AbortSignal,
+): Promise<OperationsPlan> {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations/plan`, {
+    method: "POST", body: JSON.stringify(body), signal,
+  });
 }
 
 export type ShelfViewMode = "chart" | "photo_chart";

@@ -4,7 +4,7 @@ Without it every shopper walks an empty store with endless stock. With it, what 
 next, staff top the shelves up on a schedule, and shoppers who reach the tills wait for one to come free — and some
 give up and leave their basket behind."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class OperationsConfig(BaseModel):
@@ -21,6 +21,9 @@ class OperationsConfig(BaseModel):
     substitute_share: float = Field(default=0.45, ge=0.0, le=1.0)
     # Tills staffed; None = every checkout counter of the layout.
     open_counters: int | None = Field(default=None, ge=1, le=50)
+    # Tills staffed in single hours of the day ("18" → 3), overriding open_counters there; never more than the
+    # layout has. 0 closes the tills for that hour: shoppers wait for the next open one.
+    till_schedule: dict[str, int] = Field(default_factory=dict[str, int])
     # Time at the till: a fixed part (greeting, payment, bagging) and a part per unit scanned.
     checkout_base_sec: float = Field(default=25.0, ge=0.0, le=600.0)
     checkout_item_sec: float = Field(default=3.0, ge=0.0, le=60.0)
@@ -30,6 +33,23 @@ class OperationsConfig(BaseModel):
     patience_sd: float = Field(default=0.5, ge=0.0, le=2.0)
     # The longest average wait the till recommendation accepts in an hour (seconds).
     target_wait_sec: float = Field(default=120.0, ge=0.0, le=3600.0)
+
+    @field_validator("till_schedule")
+    @classmethod
+    def _hours(cls, schedule: dict[str, int]) -> dict[str, int]:
+        for hour, tills in schedule.items():
+            if len(hour) != 2 or not hour.isdigit() or int(hour) > 23:
+                raise ValueError(f"till_schedule hours are \"00\"–\"23\", not {hour!r}")
+            if not 0 <= tills <= 50:
+                raise ValueError(f"till_schedule[{hour!r}] must be 0–50 tills")
+        return dict(sorted(schedule.items()))
+
+    @field_validator("stock_overrides")
+    @classmethod
+    def _units(cls, overrides: dict[str, int]) -> dict[str, int]:
+        if any(not 1 <= units <= 10_000 for units in overrides.values()):
+            raise ValueError("stock_overrides are 1–10,000 units per shelf level")
+        return overrides
 
 
 class StockoutStats(BaseModel):
@@ -55,6 +75,7 @@ class QueueHour(BaseModel):
     avg_wait_sec: float = 0.0
     max_wait_sec: float = 0.0
     abandoned: int = 0
+    counters_open: int = 0         # tills staffed in the hour
     counters_needed: int = 0       # fewest tills keeping this hour's average wait within the target
 
 
@@ -81,6 +102,48 @@ class OperationsReport(BaseModel):
     abandoned_units: int = 0
     abandoned_revenue: int = 0
     counter_utilization: float = 0.0   # share of the tills' open time spent serving
+    till_hours: float = 0.0        # hours of staffed tills while the store served shoppers, all days
     counters_needed: int = 0       # the busiest hour's recommendation
     hours: list[QueueHour] = []
     stockouts: list[StockoutStats] = []   # by lost revenue, the largest first
+
+
+class OperationsCosts(BaseModel):
+    """What running the store costs, in the currency's minor unit, for comparing plans."""
+    till_hour: int = Field(default=0, ge=0, le=10**9)          # one staffed till for an hour
+    restock_round: int = Field(default=0, ge=0, le=10**9)      # one round of refilling the shelves
+    stock_unit_day: int = Field(default=0, ge=0, le=10**9)     # keeping one unit on the shelves for a day
+
+
+class OperationsOutcome(BaseModel):
+    """A day (or days) under one operations plan, in money and waits."""
+    revenue: int = 0
+    lost_revenue: int = 0          # wanted, sold out, not replaced
+    abandoned_revenue: int = 0     # baskets left at the tills
+    abandoned: int = 0
+    avg_wait_sec: float = 0.0
+    p90_wait_sec: float = 0.0
+    till_hours: float = 0.0
+    restocks: int = 0
+    stock_units: int = 0           # units on the shelves at opening, each day
+    labor_cost: int = 0
+    restock_cost: int = 0
+    holding_cost: int = 0
+    net: int = 0                   # revenue less the three costs
+
+
+class OperationsReplay(BaseModel):
+    """A finished run's shoppers, with their decisions unchanged, replayed under another operations plan."""
+    planned_revenue: int = 0       # what the shoppers meant to buy (endless stock, no line)
+    outcome: OperationsOutcome = OperationsOutcome()
+    report: OperationsReport = OperationsReport()
+
+
+class OperationsPlan(BaseModel):
+    """The best plan found by replaying the run's shoppers under many."""
+    current_config: OperationsConfig = OperationsConfig()
+    current: OperationsOutcome = OperationsOutcome()
+    config: OperationsConfig = OperationsConfig()
+    best: OperationsOutcome = OperationsOutcome()
+    replays: int = 0               # plans tried
+    raised_skus: list[str] = []    # products given more units per shelf level than the rest
