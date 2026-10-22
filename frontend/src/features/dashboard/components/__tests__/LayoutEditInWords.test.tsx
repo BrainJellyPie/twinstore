@@ -4,13 +4,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { applyLayoutEdit, draftLayoutEdit, type LayoutEditDraft } from "@/shared/api/marketing";
+import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { LayoutEditInWords } from "../LayoutEditInWords";
 
 vi.mock("@/shared/api/marketing", async (original) => ({
   ...await original<typeof import("@/shared/api/marketing")>(), draftLayoutEdit: vi.fn(), applyLayoutEdit: vi.fn(),
 }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); useSimulationStore.getState().setSelectedSetupId(null); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); useSimulationStore.getState().setSelectedSetupId(null); useAssistStore.setState({ pending: null }); });
 
 const DRAFT: LayoutEditDraft = {
   name: "Promo week", summary: "A sign and a lower price.",
@@ -48,4 +49,13 @@ it("drops a draft once the words change, so an older draft is never saved for ne
   await screen.findByRole("button", { name: "Save as a new layout" });
   fireEvent.change(box, { target: { value: "SALE sign on the chips and the nuts" } });
   expect(screen.queryByRole("button", { name: "Save as a new layout" })).toBeNull();
+});
+
+it("drafts instructions routed from the command palette once", async () => {
+  vi.mocked(draftLayoutEdit).mockResolvedValue(DRAFT);
+  useAssistStore.getState().send({ projectId: "p", destination: "layout_edit", text: "SALE sign on the chips" });
+  mount();
+  expect(await screen.findByRole("list", { name: "Drafted edits" })).toBeTruthy();
+  expect(draftLayoutEdit).toHaveBeenCalledTimes(1);
+  expect((screen.getByLabelText("Layout changes in words") as HTMLTextAreaElement).value).toBe("SALE sign on the chips");
 });

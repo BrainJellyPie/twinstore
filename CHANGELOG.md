@@ -11,7 +11,9 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   the same edits the A/B builder makes (price, discount, sign, move, category price) on this layout's own products and
   shelves, shown in words after they are applied to a copy. "The best seller" uses the layout's last run. **Save as a
   new layout** keeps the result as a new layout that opens next; the original stays as it is. Package changes stay
-  test-only. API: `POST /api/projects/{pid}/setups/{sid}/edit/draft`, `POST .../edit`.
+  test-only. The command palette sends direct edits ("raise every drink price by 5 %") here, and questions about
+  them ("would the cola sell more at eye level?") to an A/B test. API: `POST /api/projects/{pid}/setups/{sid}/edit/draft`,
+  `POST .../edit`.
 
 ### Concept tests and shelf tests drafted from a question
 - **Draft the test** in Concept tests: from "which of our two labels looks more premium to people in their

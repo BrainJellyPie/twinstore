@@ -1,14 +1,16 @@
 // Change the layout in words: the text model turns instructions into price, sign, discount, move and category-price
 // edits on this layout's products and shelves; the user reviews them and keeps the result as a new layout.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Wand2 } from "lucide-react";
 
 import { applyLayoutEdit, draftLayoutEdit, type LayoutEditDraft } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
+import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 
 export function LayoutEditInWords({ projectId, setupId }: { projectId: string; setupId: string }) {
@@ -34,13 +36,27 @@ export function LayoutEditInWords({ projectId, setupId }: { projectId: string; s
       setSelectedSetupId(setup.id);
     },
   });
+  // Instructions typed in the command palette and routed here are drafted once this layout is open.
+  const box = useRef<HTMLDivElement>(null);
+  const pendingAsk = useAssistStore((s) => s.pending);
+  const takeAsk = useAssistStore((s) => s.take);
+  const queueDraft = useQueuedStart(draft.mutate);
+  useEffect(() => {
+    if (!pendingAsk) return;
+    const routed = takeAsk(projectId, ["layout_edit"]);
+    if (!routed) return;
+    const words = Array.from(routed.text).slice(0, 800).join("");
+    setText(words);
+    box.current?.scrollIntoView?.({ block: "nearest" });
+    queueDraft(words);
+  }, [pendingAsk, projectId, takeAsk, queueDraft]);
   // A draft belongs to the words and the layout it was made from.
   const shown = drafted && drafted.text === text && drafted.setupId === setupId ? drafted.draft : null;
   const busy = draft.isPending || save.isPending;
   const request = () => { if (length >= 5 && !busy) { save.reset(); draft.mutate(text); } };
 
   return (
-    <div className="mt-3 space-y-2 border-t pt-3">
+    <div ref={box} className="mt-3 space-y-2 border-t pt-3">
       <p className="flex items-center gap-1.5 text-xs font-medium"><Wand2 className="size-3.5 text-primary" aria-hidden /> Change it in words</p>
       <textarea value={text} onChange={(e) => setText(Array.from(e.target.value).slice(0, 800).join(""))} rows={2}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); request(); } }}
