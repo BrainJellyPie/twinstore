@@ -3,6 +3,19 @@
 ## Unreleased
 
 ### Fixes
+- Applying a rival shelf's prices to its pull in the neighborhood compounded on every apply (0.82 → 1.03 → 1.28 →
+  1.61 for the same photo); it now replaces the earlier adjustment.
+- The rival comparison found none of our products in the rival's categories on layouts not made from a template (the
+  sample, model-made, hand-built), so overlap read 100 %; our products now get their category from their names.
+- A shelf audit of a rack side with nothing planned on it scored 100 % compliant; it is refused, naming the sides
+  that have products.
+- A wide shelf photo added as new racks on a north or east wall read right to left from the aisle.
+- A POS export whose product codes match nothing on the shelves scored 0 on every measure and replaced the run's
+  earlier report; it is refused with what to fix.
+- The run analyst called the walking path "metres"; it is grid tiles (1.25 m each).
+- A store larger than 100 tiles a side is refused (a huge size hung the save).
+- A capture cannot be deleted while a Shelf Lab job on it is running (the job wrote its results back under it), and
+  an interview with a shopper who is not in the run is "not found" instead of an empty transcript.
 - The dwell map counts each shopper's own walking pace, diagonal steps, the time at the entrance and wandering; it
   left about a tenth of the visit time off the map, most of it around the entrance.
 
