@@ -13,7 +13,7 @@ import type { MessageKey } from "@/shared/i18n/messages";
 import { richText } from "@/shared/i18n/richText";
 
 import { LikertBar, LikertLegend, ShareBars, VanWestendorpChart } from "./charts";
-import { segmentLabel } from "./labels";
+import { segmentLabel } from "@/shared/i18n/personaLabels";
 import { questionLabel } from "./questions";
 import { StudyReading } from "./StudyReading";
 
@@ -54,7 +54,7 @@ export function SurveyReportView({ projectId, report: r }: { projectId: string; 
               const label = questionLabel(q, t);
               if (b) return <li key={q}><b>{name(b.stimulus)}</b>{t("mkLeadsOn", { question: label.toLowerCase() })}<span className="num text-muted-foreground">({b.mean.toFixed(2)} / 5)</span></li>;
               const one = r.scales.find((s) => s.question === q);
-              return one ? <li key={q}>{richText(t("mkScaleOne"), { question: label, mean: <b className="num">{one.mean.toFixed(2)}</b>, top2: <span className="num">{Math.round(one.top2 * 100)} %</span> })}</li> : null;
+              return one ? <li key={q}>{richText(t("mkScaleOne"), { question: label, mean: <b className="num">{one.mean.toFixed(2)}</b>, top2: <span className="num">{Math.round(one.top2 * 100)}%</span> })}</li> : null;
             })}
             {r.price?.optimal_price_point != null && (
               <li>{richText(t("mkAcceptablePrice"), { name: name(0), range: <b className="num">{money(r.price.point_of_marginal_cheapness)}–{money(r.price.point_of_marginal_expensiveness)}</b>, optimal: <b className="num">{money(r.price.optimal_price_point)}</b> })}</li>
@@ -84,7 +84,7 @@ export function SurveyReportView({ projectId, report: r }: { projectId: string; 
                   <tr key={`${s.question}-${s.stimulus}`} className="border-t border-foreground/[0.06]">
                     <td className="py-1">{questionLabel(s.question, t)}</td><td>{name(s.stimulus)}</td><td className="text-right">{s.n}</td>
                     <td className="text-right">{s.mean.toFixed(2)}</td><td className="text-right">{s.ci_low.toFixed(2)}–{s.ci_high.toFixed(2)}</td>
-                    <td className="text-right">{Math.round(s.top2 * 100)} %</td><td className="text-right">{s.distribution.join(" · ")}</td>
+                    <td className="text-right">{Math.round(s.top2 * 100)}%</td><td className="text-right">{s.distribution.join(" · ")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -216,7 +216,7 @@ function Segments({ report: r }: { report: Report }) {
                   return (
                     <td key={c} className="px-2 text-right"
                       style={{ background: v == null || s.n < 5 ? undefined : `color-mix(in oklab, ${dev >= 0 ? "var(--viz-pos-2)" : "var(--viz-neg-2)"} ${tint}%, transparent)` }}>
-                      {v == null ? "–" : share ? `${Math.round(v * 100)} %` : v.toFixed(2)}
+                      {v == null ? "–" : share ? `${Math.round(v * 100)}%` : v.toFixed(2)}
                     </td>
                   );
                 })}

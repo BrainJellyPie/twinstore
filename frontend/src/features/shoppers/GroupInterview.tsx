@@ -11,8 +11,9 @@ import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { TestIdeas } from "@/features/assist/TestIdeas";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney } from "@/shared/utils/money";
+import { formatMoney, formatPercent } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
+import { personaLabel } from "@/shared/i18n/personaLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 
 const SEGMENTS: { id: GroupSegment; label: MessageKey; question: MessageKey }[] = [
@@ -162,7 +163,7 @@ function GroupResult({ group: g, currency, onOpen, projectId, runId }: {
                   <span className="block h-full rounded-r-[4px]" style={{ width: `${Math.max(3, item.share * 100)}%`, background: "var(--viz-1)" }} />
                 </span>
               </span>
-              <span className="num text-right text-[0.74rem]"><b>{Math.round(item.share * 100)} %</b> <span className="text-muted-foreground">{item.count}</span></span>
+              <span className="num text-right text-[0.74rem]"><b>{formatPercent(item.share, 0)}</b> <span className="text-muted-foreground">{item.count}</span></span>
             </button>
           ))}
         </div>
@@ -173,7 +174,7 @@ function GroupResult({ group: g, currency, onOpen, projectId, runId }: {
             <button type="button" onClick={() => onOpen(a.persona_id)} className="w-full rounded-xl bg-foreground/[0.035] px-3 py-2 text-left transition-colors hover:bg-primary/[0.07]">
               <span className="block text-[0.78rem] leading-snug">{a.answer}</span>
               <span className="num mt-0.5 block text-[0.66rem] text-muted-foreground">
-                {a.identity} · {a.age_group} · {a.units ? t(a.units === 1 ? "groupSpentOne" : "groupSpentMany", { amount: formatMoney(a.spent, currency), count: a.units }) : t("groupBoughtNothing")}
+                {a.identity} · {personaLabel(a.age_group, t)} · {a.units ? t(a.units === 1 ? "groupSpentOne" : "groupSpentMany", { amount: formatMoney(a.spent, currency), count: a.units }) : t("groupBoughtNothing")}
                 {a.theme >= 0 && g.themes[a.theme] ? ` · ${g.themes[a.theme]!.label}` : ""}
               </span>
             </button>

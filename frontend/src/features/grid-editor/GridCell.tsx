@@ -12,6 +12,8 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { Position, Rack, RackType, BlockedFaceDetail } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 import { BlockedFaceOverlay } from "./BlockedFaceOverlay";
 
 interface GridCellProps {
@@ -24,7 +26,7 @@ interface GridCellProps {
 
 interface RackVisual {
   icon: LucideIcon;
-  label: string;
+  label: MessageKey;
   bgClass: string;
   iconClass: string;
 }
@@ -32,38 +34,44 @@ interface RackVisual {
 const RACK_VISUALS: Record<RackType, RackVisual | null> = {
   entrance: {
     icon: DoorOpen,
-    label: "In",
+    label: "gridCellIn",
     bgClass: "bg-emerald-100 dark:bg-emerald-950/40",
     iconClass: "text-positive dark:text-emerald-300",
   },
   exit: {
     icon: DoorClosed,
-    label: "Out",
+    label: "gridCellOut",
     bgClass: "bg-violet-100 dark:bg-violet-950/40",
     iconClass: "text-violet-700 dark:text-violet-300",
   },
   shelf: {
     icon: Boxes,
-    label: "Open",
+    label: "gridCellOpen",
     bgClass: "bg-stone-100 dark:bg-stone-900/50",
     iconClass: "text-stone-700 dark:text-stone-300",
   },
   fridge: {
     icon: Refrigerator,
-    label: "Door",
+    label: "gridCellDoor",
     bgClass: "bg-sky-100 dark:bg-sky-950/40",
     iconClass: "text-sky-700 dark:text-sky-300",
   },
   counter: {
     icon: Coins,
-    label: "Counter",
+    label: "gridCellCounter",
     bgClass: "bg-yellow-100 dark:bg-yellow-950/40",
     iconClass: "text-yellow-700 dark:text-yellow-300",
   },
   // Other domain rack types are not produced by the grid editor; render as plain rack.
   display: null,
-  table: { icon: Armchair, label: "Dining", bgClass: "bg-violet-100 dark:bg-violet-950/40", iconClass: "text-violet-700 dark:text-violet-300" },
+  table: { icon: Armchair, label: "gridCellDining", bgClass: "bg-violet-100 dark:bg-violet-950/40", iconClass: "text-violet-700 dark:text-violet-300" },
   wall: null,
+};
+
+// Rack types in screen-reader labels ("fridge Drink 1 at 2,0"); the type values themselves are unchanged.
+const TYPE_LABELS: Partial<Record<RackType, MessageKey>> = {
+  shelf: "gridType_shelf", fridge: "gridType_fridge", counter: "gridType_counter", table: "gridType_table",
+  entrance: "gridType_entrance", exit: "gridType_exit",
 };
 
 const FACE_OVERLAY_TYPES: ReadonlySet<RackType> = new Set(["shelf", "fridge", "counter"]);
@@ -84,7 +92,9 @@ export function GridCell({
   selected,
   onClick,
 }: GridCellProps) {
+  const { t } = useI18n();
   const [x, y] = position;
+  const typeLabel = (type: RackType) => { const key = TYPE_LABELS[type]; return key ? t(key) : type; };
 
   if (racks.length === 0) {
     return (
@@ -100,7 +110,7 @@ export function GridCell({
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
           selected && "ring-2 ring-primary",
         )}
-        aria-label={`empty cell ${x},${y}`}
+        aria-label={t("gridEmptyCell", { x: String(x), y: String(y) })}
       />
     );
   }
@@ -121,7 +131,7 @@ export function GridCell({
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
           selected && "ring-2 ring-primary",
         )}
-        aria-label={`gate ${racks.map((r) => r.type).join("+")} at ${x},${y}`}
+        aria-label={t("gridGateCell", { types: racks.map((r) => typeLabel(r.type)).join("+"), x: String(x), y: String(y) })}
       >
         {racks.map((rack) => {
           const visual = RACK_VISUALS[rack.type];
@@ -142,7 +152,7 @@ export function GridCell({
               ) : null}
               {visual?.label ? (
                 <span className="text-[0.68rem] leading-none font-medium">
-                  {visual.label}
+                  {t(visual.label)}
                 </span>
               ) : null}
             </div>
@@ -178,7 +188,7 @@ export function GridCell({
         visual?.bgClass ?? "bg-muted",
         selected && "ring-2 ring-primary",
       )}
-      aria-label={`${rack.type} ${rack.rack_name || rack.id} at ${x},${y}`}
+      aria-label={t("gridRackCell", { type: typeLabel(rack.type), name: rack.rack_name || rack.id, x: String(x), y: String(y) })}
     >
       {Icon ? (
         <Icon
@@ -192,7 +202,7 @@ export function GridCell({
         />
       ) : null}
       {visual?.label ? (
-        <span className="text-[0.72rem] leading-none font-medium">{visual.label}</span>
+        <span className="text-[0.72rem] leading-none font-medium">{t(visual.label)}</span>
       ) : null}
       {rack.rack_name ? (
         <span className="max-w-full truncate text-[0.68rem] leading-none text-muted-foreground">

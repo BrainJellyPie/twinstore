@@ -15,7 +15,8 @@ const COMING: Partial<Record<ModelSetup["local"]["state"], MessageKey>> = {
   preparing: "localStatePreparing", downloading: "localStateDownloading", starting: "localStateStarting",
 };
 
-export function NeedsModel() {
+/** `settings`: also link to the model settings (off where the screen already has that button). */
+export function NeedsModel({ settings = true }: { settings?: boolean }) {
   const { t } = useI18n();
   const { data } = useModelSetup();
   const { start } = useLocalModelControl();
@@ -37,9 +38,9 @@ export function NeedsModel() {
                 ? t("downloadLocal", { size: data.plan.model.download_gb }) : t("startLocal")}
             </Button>
           )}
-          <Button size="sm" variant="outline" asChild>
+          {settings && <Button size="sm" variant="outline" asChild>
             <Link to="/settings"><KeyRound className="size-3.5" aria-hidden /> {t("modelSettings")}</Link>
-          </Button>
+          </Button>}
         </div>
       )}
       {start.isError && <p role="alert" className="break-words text-xs text-destructive">

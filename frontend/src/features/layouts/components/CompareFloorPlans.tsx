@@ -1,22 +1,15 @@
 import { RequestError } from "@/shared/components/RequestError";
 import type { MessageKey } from "@/shared/i18n/messages";
-import type { StoreDesign } from "@/shared/types/domain";
 import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { INTERIOR_COLOR_FIELDS } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import type { Store } from "@/shared/types/domain";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { formatWeeklyHours } from "../weeklyHours";
+import { paletteLabel } from "../optionLabels";
 import { useI18n } from "@/shared/i18n/i18n";
-
-const DESIGN_LABELS: Record<StoreDesign, MessageKey> = {
-  classic: "planDesignClassic", warm: "planDesignWarm", minimal: "planDesignMinimal", industrial: "planDesignIndustrial",
-  botanical: "planDesignBotanical", luxury: "planDesignLuxury", coastal: "planDesignCoastal", terracotta: "planDesignTerracotta",
-  nordic: "planDesignNordic", retro: "planDesignRetro",
-};
 
 export function CompareFloorPlans({ store, areas, templateId, currency }: {
   store: Store;
@@ -49,11 +42,8 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
     { label: "planCompareSeating", value: (plan) => { const tables = plan.store.racks.filter((rack) => rack.type === "table").length; return `${number(tables)} / ${number(plan.store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0))}`; } },
     { label: "planCompareCounters", value: (plan) => plan.store.racks.filter((rack) => rack.type === "counter").length },
     { label: "planCompareAreas", value: (plan) => plan.areas.length },
-    { label: "planCompareDesign", value: (plan) => (() => {
-      const design = t(DESIGN_LABELS[plan.store.design_theme ?? "classic"]);
-      return INTERIOR_COLOR_FIELDS.some(([key]) => plan.store.design_colors?.[key] != null)
-        ? t("planCustomColors", { design }) : design;
-    })() },
+    // The same names as the customization panel's design choices.
+    { label: "planCompareDesign", value: (plan) => paletteLabel(plan.store.design_theme, plan.store.design_colors, t) },
     { label: "planCompareHours", value: (plan) => formatWeeklyHours(plan.store.weekly_schedule, locale) },
   ];
   return <Dialog open={open} onOpenChange={setOpen}>

@@ -603,7 +603,7 @@ function ComplianceRing({ value }: { value: number }) {
 }
 
 function AuditView({ projectId, report, onFocus }: { projectId: string; report: AuditReport; onFocus: (box: CaptureBox | null) => void }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const delta = report.revenue_delta_per_day;
   return (
     <div className="space-y-4">
@@ -657,7 +657,7 @@ function AuditView({ projectId, report, onFocus }: { projectId: string; report: 
         {report.findings.length === 0 && <li className="rounded-xl tone-good border p-2.5 text-xs">{t("capLabMatches")}</li>}
       </ul>
       <p className="text-[0.72rem] text-muted-foreground">
-        {t("capLabAuditFooter", { rack: report.rack_id, face: String(report.face), panel: report.panel_size, visitors: visitorsPerDayText(report.visitors_per_day, report.simulated_visitors_per_day), seconds: String(report.seconds) })}
+        {t("capLabAuditFooter", { rack: report.rack_id, face: String(report.face), panel: report.panel_size, visitors: visitorsPerDayText(locale, report.visitors_per_day, report.simulated_visitors_per_day), seconds: String(report.seconds) })}
         {report.notes.length ? ` · ${report.notes.join("; ")}` : ""}
       </p>
       <RestockPlanner key={report.job_id} report={report} onFocus={onFocus} />

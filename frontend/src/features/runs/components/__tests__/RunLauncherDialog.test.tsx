@@ -7,7 +7,7 @@ import { useLocale, translate } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { RunLauncherDialog, type RunLauncherDialogProps } from "../RunLauncherDialog";
 
-vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn() }));
+vi.mock("@/shared/api/client", () => ({ getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn(), getModelSetup: vi.fn() }));
 vi.mock("../ScenarioEditor", () => ({ ScenarioEditor: () => <div>Situation editor</div> }));
 vi.mock("../ModelPicker", () => ({ ModelPicker: ({ onChange }: { onChange: (v: { kind: "single"; model: string }) => void }) =>
   <button type="button" onClick={() => onChange({ kind: "single", model: "text-only" })}>Select text model</button> }));
@@ -25,6 +25,7 @@ beforeEach(() => {
   vi.mocked(api.getTown).mockResolvedValue(null);
   vi.mocked(api.getModels).mockResolvedValue([]);
   vi.mocked(api.startRun).mockResolvedValue({ project_id: "p", run_id: "r", setup_id: "s" });
+  vi.mocked(api.getModelSetup).mockRejectedValue(new Error("Not needed"));
 });
 afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); vi.unstubAllGlobals(); });
 
@@ -217,8 +218,70 @@ it("runs on a model that has a key when the server default has none", async () =
 it("refuses to start on a default model without a key when nothing else has one", async () => {
   vi.mocked(api.getEngines).mockResolvedValue(engines.map((e) => e.engine_type === "pattern_intent_impulse"
     ? { ...e, model: "gemini/gemini-3.1-pro-preview", model_ready: false, suggested_model: "" } : e));
-  show({ defaultEngine: "pattern_intent_impulse" });
-  expect(await screen.findByText(/has no API key. Add one in Settings/)).toBeTruthy();
+  show();
+  fireEvent.click(await screen.findByRole("radio", { name: /^LLM shoppers/ }));
+  expect(await screen.findByText(/has no API key. Add one in Settings → Model providers, or use the rule-based preview/)).toBeTruthy();
   await submit();
   expect(api.startRun).not.toHaveBeenCalled();
+});
+
+const noKeyLlmDefault = engines.map((e) => e.engine_type === "pattern_intent_impulse"
+  ? { ...e, default: true, model: "anthropic/claude-haiku-5-5", model_ready: false, suggested_model: "" } : { ...e, default: false });
+
+it("opens on the rule-based preview when the server default engine cannot run", async () => {
+  vi.mocked(api.getEngines).mockResolvedValue(noKeyLlmDefault);
+  show();
+  await waitFor(() => expect(api.getEngines).toHaveBeenCalled());
+  await waitFor(() => expect(screen.getByRole("radio", { name: /^Rule-based preview/ }).getAttribute("aria-checked")).toBe("true"));
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect((screen.getByRole("button", { name: "Run preview" }) as HTMLButtonElement).disabled).toBe(false);
+  await submit();
+  await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ engine_type: "rule_based" })));
+});
+
+it("opens on the server default engine when it can run, with a smaller LLM sample", async () => {
+  vi.mocked(api.getEngines).mockResolvedValue(engines.map((e) => ({ ...e, default: e.engine_type === "pattern_intent_impulse" })));
+  show();
+  await waitFor(() => expect(screen.getByRole("radio", { name: /^LLM shoppers/ }).getAttribute("aria-checked")).toBe("true"));
+  expect((screen.getByLabelText("Sample size") as HTMLInputElement).value).toBe("150");
+});
+
+it("opens on a default engine without a key when another model has one", async () => {
+  vi.mocked(api.getEngines).mockResolvedValue(noKeyLlmDefault.map((e) => e.engine_type === "pattern_intent_impulse" ? { ...e, suggested_model: "openai/gpt-6-luna" } : e));
+  show();
+  await waitFor(() => expect(screen.getByRole("radio", { name: /^LLM shoppers/ }).getAttribute("aria-checked")).toBe("true"));
+});
+
+it.each([
+  ["disabled", "modelNotReadyLocalOff"], ["off", "modelNotReadyLocalStopped"], ["error", "modelNotReadyLocalStopped"],
+  ["downloading", "modelNotReadyLocalPreparing"], ["starting", "modelNotReadyLocalPreparing"], ["ready", "modelNotReadyNoKey"],
+] as const)("explains a model that cannot run when the local model is %s", async (state, key) => {
+  vi.mocked(api.getEngines).mockResolvedValue(noKeyLlmDefault);
+  vi.mocked(api.getModelSetup).mockResolvedValue({ local: { state } } as api.ModelSetup);
+  useLocale.getState().setLocale("ko");
+  show();
+  fireEvent.click(await screen.findByRole("radio", { name: /^LLM 고객/ }));
+  expect(await screen.findByText(translate("ko", key, { model: "anthropic/claude-haiku-5-5" }))).toBeTruthy();
+  expect(screen.queryByText(/로컬 모델이 준비될 때까지 기다리거나/)).toBeNull();
+});
+
+it.each(LOCALES)("names the rule-based engine the same way in the card and the not-ready message in $code", ({ code }) => {
+  for (const key of ["modelNotReadyNoKey", "modelNotReadyLocalOff", "modelNotReadyLocalStopped", "modelNotReadyLocalPreparing"] as const) {
+    expect(translate(code, key, { model: "m" }).toLowerCase()).toContain(translate(code, "rulePreview").toLowerCase());
+  }
+});
+
+it("shows no client-side estimate while the form is invalid", async () => {
+  show({ defaultEngine: "pattern_intent_impulse" });
+  await screen.findByText(/1,000 shoppers over 7 days/);
+  fireEvent.change(screen.getByLabelText("Sample size"), { target: { value: "" } });
+  expect(screen.queryByText(/shoppers over|LLM calls|server response cache|Checking time and cost/)).toBeNull();
+});
+
+it("says the layout stays finalized when previewing a finalized layout", () => {
+  show({ locked: true, defaultEngine: "rule_based" });
+  expect(screen.getByText(/Preview · the finalized layout stays as it is/)).toBeTruthy();
+  expect(screen.queryByText(/layout stays editable/)).toBeNull();
+  act(() => useLocale.getState().setLocale("ko"));
+  expect(screen.getByText(/미리보기 · 확정된 배치는 그대로 유지/)).toBeTruthy();
 });

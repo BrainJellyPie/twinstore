@@ -6,6 +6,7 @@ import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { richText } from "@/shared/i18n/richText";
+import { personaLabel } from "@/shared/i18n/personaLabels";
 
 function Tile({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
@@ -86,7 +87,7 @@ function SegmentBreakdown({ summary }: { summary: RunSummary }) {
         {rows.map(([name, s]) => (
           <li key={name} className="text-xs">
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate">{name}</span>
+              <span className="truncate">{dimension === "purpose" ? name : personaLabel(name, t)}</span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
                 {t("kpiSegmentLine", { visitors: s.visitors, conversion: formatPercent(s.conversion_rate, 0), perVisitor: formatMoney(s.revenue_per_visitor, code) })}
               </span>

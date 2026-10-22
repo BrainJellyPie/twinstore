@@ -438,7 +438,7 @@ export function GridEditorDialog({
                 onChange={(width) => { editor.setGridSize([width, editor.gridSize[1]]); setSaveError(null); }} />
               <DimensionInput axis="height" value={editor.gridSize[1]}
                 onChange={(height) => { editor.setGridSize([editor.gridSize[0], height]); setSaveError(null); }} />
-              <span className="text-xs text-muted-foreground">{MIN_DIM}–{MAX_DIM} cells per side</span>
+              <span className="text-xs text-muted-foreground">{t("gridCellsPerSide", { min: MIN_DIM, max: MAX_DIM })}</span>
             </div>
 
 
@@ -500,7 +500,7 @@ export function GridEditorDialog({
               onClick={requestClose}
               data-testid="grid-cancel-button"
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               onClick={() => {

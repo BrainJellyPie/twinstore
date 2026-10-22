@@ -19,9 +19,9 @@ import { richText } from "@/shared/i18n/richText";
 
 import { DemandChart, LiftChart, type LiftRow } from "./charts";
 import { FactorialReview } from "./FactorialReview";
-import { segmentLabel } from "./labels";
+import { segmentLabel } from "@/shared/i18n/personaLabels";
 
-const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(digits)} %`;
+const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(digits)}%`;
 
 function metric(v: VariantResult, name: string) {
   return v.vs_control.find((m) => m.metric === name);
@@ -40,7 +40,7 @@ function download(name: string, rows: (string | number)[][]) {
 }
 
 export function ExperimentReportView({ projectId, report: r, layoutName }: { projectId: string; report: Report; layoutName?: string }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const pp = (v: number) => t("studioPt", { value: `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}` });
   const money = (v: number) => formatMoney(v, r.currency);
   const signedMoney = (v: number) => `${v >= 0 ? "+" : "−"}${formatMoney(Math.abs(v), r.currency)}`;
@@ -108,11 +108,11 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
             <div key={a.name} className={cn("rounded-2xl border bg-card p-3", a.name === r.winner && "border-positive/60")}>
               <div className="mb-2 flex items-center gap-2">
                 <span className={cn("grid size-5 place-items-center rounded-md text-[0.68rem] font-bold", i === 0 ? "bg-foreground/[0.08]" : "bg-primary text-primary-foreground")}>{String.fromCharCode(65 + i)}</span>
-                <span className="truncate text-sm font-semibold">{a.name}</span>
+                <span className="truncate text-sm font-semibold">{i === 0 ? t("mkControl") : a.name}</span>
               </div>
               <dl className="space-y-1.5 text-sm">
                 <Kpi label={t("mkRevenuePerVisitor")} value={money(a.revenue_per_visitor)} delta={spend ? spend.mean_a === 0 ? t("mkAmountFromZero", { amount: signedMoney(spend.diff) }) : pct(spend.rel_diff) : null} up={spend ? spend.ci_low > 0 : null} down={spend ? spend.ci_high < 0 : null} />
-                <Kpi label={t("mkConversion")} value={`${(a.conversion * 100).toFixed(1)} %`} delta={bought ? pp(bought.diff) : null} up={bought ? bought.ci_low > 0 : null} down={bought ? bought.ci_high < 0 : null} />
+                <Kpi label={t("mkConversion")} value={`${(a.conversion * 100).toFixed(1)}%`} delta={bought ? pp(bought.diff) : null} up={bought ? bought.ci_low > 0 : null} down={bought ? bought.ci_high < 0 : null} />
                 <Kpi label={t("mkUnitsPerVisitor")} value={a.units_per_visitor.toFixed(2)} delta={units ? units.mean_a === 0 ? t("mkAmountFromZero", { amount: `${units.diff >= 0 ? "+" : ""}${units.diff.toFixed(2)}` }) : pct(units.rel_diff) : null} up={units ? units.ci_low > 0 : null} down={units ? units.ci_high < 0 : null} />
               </dl>
             </div>
@@ -178,7 +178,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
       </section>
 
       <footer className="space-y-1 text-xs text-muted-foreground">
-        <p>{layoutName ? t("mkFooterControl", { name: layoutName }) : ""}{r.engine === "vlm" ? r.model ? t("mkFooterVisionModel", { model: r.model }) : t("mkFooterVision") : t("mkFooterRule")} · {t("mkFooterPerArm", { count: r.panel_size })} · {visitorsPerDayText(r.visitors_per_day, r.simulated_visitors_per_day)} · {r.seconds}s</p>
+        <p>{layoutName ? t("mkFooterControl", { name: layoutName }) : ""}{r.engine === "vlm" ? r.model ? t("mkFooterVisionModel", { model: r.model }) : t("mkFooterVision") : t("mkFooterRule")} · {t("mkFooterPerArm", { count: r.panel_size })} · {visitorsPerDayText(locale, r.visitors_per_day, r.simulated_visitors_per_day)} · {r.seconds}s</p>
         {r.notes.map((n) => <p key={n}>{n}</p>)}
       </footer>
     </div>
@@ -271,7 +271,7 @@ function FocusTable({ variants, currency }: { variants: VariantResult[]; currenc
   const { t } = useI18n();
   const rows: (FocusOutcome & { arm: string })[] = variants.flatMap((v) => v.focus.filter((f) => f.metric !== "units").map((f) => ({ ...f, arm: v.name })));
   if (!rows.length) return null;
-  const fmt = (f: FocusOutcome, v: number) => (f.metric === "spend" ? formatMoney(v * 100, currency) : `${(v * 100).toFixed(1)} %`);
+  const fmt = (f: FocusOutcome, v: number) => (f.metric === "spend" ? formatMoney(v * 100, currency) : `${(v * 100).toFixed(1)}%`);
   return (
     <details className="mt-4">
       <summary className="cursor-pointer text-xs text-muted-foreground">{t("mkFocusTableSummary")}</summary>
@@ -289,7 +289,7 @@ function FocusTable({ variants, currency }: { variants: VariantResult[]; currenc
                 <td className="pr-3 text-right">{fmt(f, f.control)}</td>
                 <td className="pr-3 text-right">{fmt(f, f.variant)}</td>
                 <td className="pr-3 text-right">{t("mkRangeTo", { low: fmt(f, f.ci_low), high: fmt(f, f.ci_high) })}</td>
-                <td className="text-right">{Math.round(f.prob_better * 100)} %</td>
+                <td className="text-right">{Math.round(f.prob_better * 100)}%</td>
               </tr>
             ))}
           </tbody>

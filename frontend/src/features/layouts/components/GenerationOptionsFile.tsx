@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as api from "@/shared/api/client";
+import { useI18n } from "@/shared/i18n/i18n";
 import { DEFAULT_TEMPLATE_CHOICE, templateRequest, type BuildingFloorChoice, type TemplateChoice } from "../templateOptions";
-
-const INVALID_SEED = "This options file has a seed outside the supported whole-number range. Current settings were kept.";
 
 type Props = { canExport: boolean } & (
   { kind: "layout"; value: TemplateChoice; onChange: (value: TemplateChoice) => void }
@@ -14,13 +13,14 @@ function portableLayout(value: TemplateChoice): api.GenerateLayoutRequest {
   return layout;
 }
 
-function importedChoice({ template_id, source_setup_id: _source, name: _name, ...options }: api.GenerateLayoutRequest): TemplateChoice {
+function importedChoice({ template_id, source_setup_id: _source, name: _name, ...options }: api.GenerateLayoutRequest, invalidSeed: string): TemplateChoice {
   const choice = { ...DEFAULT_TEMPLATE_CHOICE, ...options, templateId: template_id };
-  if (!Number.isSafeInteger(choice.seed)) throw new Error(INVALID_SEED);
+  if (!Number.isSafeInteger(choice.seed)) throw new Error(invalidSeed);
   return choice;
 }
 
 export function GenerationOptionsFile(props: Props) {
+  const { t } = useI18n();
   const input = useRef<HTMLInputElement>(null);
   const request = useRef<AbortController | null>(null);
   const latestProps = useRef(props);
@@ -50,7 +50,7 @@ export function GenerationOptionsFile(props: Props) {
     setBusy(true);
     setError(null);
     try {
-      if (file.size > sizeLimit * 1024) throw new Error(`Choose an options file smaller than ${sizeLimit} KB.`);
+      if (file.size > sizeLimit * 1024) throw new Error(t("layOptionsFileTooLarge", { size: sizeLimit }));
       const source = (await file.text()).replace(/^\uFEFF/, "");
       const contents: unknown = JSON.parse(source);
       // JSON.parse can round a fractional seed to a safe integer, or underflow it to zero.
@@ -68,7 +68,7 @@ export function GenerationOptionsFile(props: Props) {
         if (!Number.isFinite(end) || end < 1 || end > 16 ||
           (shift < 0 && /[1-9]/.test(digits.slice(end))) ||
           !Number.isSafeInteger(Number(`${parts[1]}${digits.slice(0, end).padEnd(end, "0")}`))) {
-          throw new Error(INVALID_SEED);
+          throw new Error(t("layOptionsSeedOutOfRange"));
         }
       }
       if (controller.signal.aborted) return;
@@ -77,18 +77,18 @@ export function GenerationOptionsFile(props: Props) {
         if (controller.signal.aborted) return;
         const current = latestProps.current;
         if (current.kind !== "building") return;
-        current.onChange(preset.floors.map((floor) => ({ label: floor.label, choice: importedChoice(floor.layout) })));
+        current.onChange(preset.floors.map((floor) => ({ label: floor.label, choice: importedChoice(floor.layout, t("layOptionsSeedOutOfRange")) })));
       } else {
         const preset = await api.validateLayoutPreset(contents, controller.signal);
         if (controller.signal.aborted) return;
         const current = latestProps.current;
         if (current.kind !== "layout") return;
-        current.onChange(importedChoice(preset.layout));
+        current.onChange(importedChoice(preset.layout, t("layOptionsSeedOutOfRange")));
       }
     } catch (cause) {
       if (!controller.signal.aborted) setError(cause instanceof SyntaxError
-        ? "This file is not valid JSON. Choose a TwinStore options file."
-        : cause instanceof Error ? cause.message : "Could not import layout options.");
+        ? t("layOptionsNotJson")
+        : cause instanceof Error ? cause.message : t("layOptionsImportFailed"));
     } finally {
       if (!controller.signal.aborted) { setBusy(false); request.current = null; }
     }
@@ -96,14 +96,12 @@ export function GenerationOptionsFile(props: Props) {
 
   return <div className="space-y-1.5 rounded border p-2 text-xs">
     <div className="flex flex-wrap gap-2">
-      <button type="button" disabled={!props.canExport || busy} className="rounded border px-2 py-1 disabled:opacity-40" onClick={downloadOptions}>{building ? "Export building options" : "Export options"}</button>
-      <button type="button" disabled={busy} className="rounded border px-2 py-1 disabled:opacity-40" onClick={() => input.current?.click()}>{busy ? "Checking options…" : building ? "Import building options" : "Import options"}</button>
-      <input ref={input} type="file" accept=".json,application/json" aria-label={building ? "Import building options file" : "Import layout options file"} className="sr-only" tabIndex={-1} disabled={busy}
+      <button type="button" disabled={!props.canExport || busy} className="rounded border px-2 py-1 disabled:opacity-40" onClick={downloadOptions}>{t(building ? "layExportBuildingOptions" : "layExportOptions")}</button>
+      <button type="button" disabled={busy} className="rounded border px-2 py-1 disabled:opacity-40" onClick={() => input.current?.click()}>{t(busy ? "layCheckingOptions" : building ? "layImportBuildingOptions" : "layImportOptions")}</button>
+      <input ref={input} type="file" accept=".json,application/json" aria-label={t(building ? "layImportBuildingOptionsFile" : "layImportLayoutOptionsFile")} className="sr-only" tabIndex={-1} disabled={busy}
         onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void importOptions(file); }} />
     </div>
-    <p className="text-muted-foreground">{building
-      ? "Reuse all floors, their order, labels and generation settings in another project. Import replaces the current floor list after checking every floor. Manual fixture and product edits are not included."
-      : "Reuse this floor's generation settings and design brief in another project. Manual fixture and product edits are not included. Import replaces the current generation options."}</p>
+    <p className="text-muted-foreground">{t(building ? "layBuildingOptionsHint" : "layLayoutOptionsHint")}</p>
     {error && <p role="alert" className="text-destructive">{error}</p>}
   </div>;
 }

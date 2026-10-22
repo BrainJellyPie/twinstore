@@ -159,7 +159,8 @@ export function ScenarioEditor({
       >
         {presets.map((p) => (
           <option key={p.scenario.id} value={p.scenario.id}>
-            {p.scenario.name}
+            {/* "baseline" is the no-situation choice the run summary also names; other preset names are the server's. */}
+            {p.scenario.id === "baseline" ? t("baselineSituation") : p.scenario.name}
           </option>
         ))}
         <option value="custom">{scenario?.id === "custom" && scenario.name !== CUSTOM_NAME ? scenario.name : t("sitCustom")}</option>
