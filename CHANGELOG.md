@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.7 — Marketing studio results you can trust
 
 - Translate detailed floor previews, comparison metrics, gate legends and SVG exports into all six
   interface languages. Preserve expanded previews and zoom when changing language, retain original
