@@ -279,3 +279,23 @@ def test_preview_resolves_existing_project_image_without_rewriting_stored_produc
     opened = client.get(f"/api/projects/{PID}/setups/{draft['id']}").json()
     assert opened["store"]["racks"][3]["slots"][1]["items"][0]["image_url"] == link
     assert read_setup(PID, SID) == source
+
+
+def test_source_edit_after_snapshot_is_preserved_and_child_uses_reviewed_values(workflow, monkeypatch):
+    from store_emulator.application import rack_copy
+    client, source = workflow
+    body = {**request(client), "request_id": "7" * 32}
+    real = rack_copy.copy_products
+    def edit_after_snapshot(store, source_id, target_ids):
+        result = real(store, source_id, target_ids)
+        source["store"]["racks"][2]["slots"][0]["items"][0]["price"] = 999
+        write_json(setup_path(PID, SID), source)
+        return result
+    monkeypatch.setattr(rack_copy, "copy_products", edit_after_snapshot)
+    saved = client.post(URL + "/save", json=body)
+    assert saved.status_code == 200
+    assert read_setup(PID, SID) == source  # No lost update to the independently edited original.
+    draft = read_setup(PID, saved.json()["setup_id"])
+    assert draft["rack_copy_request"]["source_sha256"] == body["source_sha256"]
+    assert draft["store"]["racks"][2]["slots"][0]["items"][0]["price"] == 231
+    assert draft["store"]["racks"][3]["slots"][1]["items"][0]["price"] == 231

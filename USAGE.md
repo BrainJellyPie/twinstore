@@ -1131,6 +1131,8 @@ older price preview. After a failed or uncertain save, **Retry saving shelf copi
 request identity and currency so an accepted write can be recovered without another child. Check Layouts
 before starting a new request. A removed child or interrupted write reservation is never silently recreated.
 Closing discards unsaved choices; an accepted save may finish afterward and remains in Layouts.
+Save validates the source snapshot when it reads it; it does not lock the source against other editors.
+An edit arriving after that read stays in the original, while the child uses the reviewed snapshot values.
 
 API: `GET /api/projects/{pid}/setups/{sid}/rack-copy` lists stocked sources; optional `source_rack_id`
 lists destinations with exclusion reasons. `POST .../preview` takes `source_sha256`, `currency`,

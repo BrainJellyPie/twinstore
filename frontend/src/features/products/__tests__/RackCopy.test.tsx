@@ -144,5 +144,5 @@ it("retries an uncertain save after refresh using its original snapshot and curr
 });
 it("keeps the source selector's accessible name independent of its product options", async () => {
   await open();
-  expect(screen.getByRole("combobox", { name: "Copy products from", exact: true })).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Copy products from" })).toBeTruthy();
 });
