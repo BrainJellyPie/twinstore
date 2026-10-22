@@ -137,6 +137,8 @@
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
 ### Fixes
+- On a computer without the Noto fonts (Linux with DejaVu only), the narrowest shelf views cut the price off a
+  tag ("#100…"), so a vision shopper could not see it. Tags now shrink a little further before cutting.
 - Keep the model-provider list available when a saved local address has malformed IPv6 syntax.
 - Reject malformed Origin headers with 403 instead of a server error.
 - Without internet access (or when LiteLLM's online price table could not be downloaded), the warning before a run
