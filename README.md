@@ -41,6 +41,9 @@ Have an existing floor with empty shelves? **Step 2 → Fill empty shelves** pla
 products on those racks and saves a separate stocked layout, preserving existing products and geometry.
 Reference products/prices are examples, not actual stock. See [the guide](USAGE.md#fill-existing-empty-shelves-with-starter-products).
 
+Finished one shelf? **Step 2 → Reuse shelf products** copies its reviewed assortment to compatible empty
+shelves, preserving exact product values and saving a separate layout. See [the guide](USAGE.md#reuse-a-finished-shelf-assortment).
+
 Already stocked a layout? **Step 2 → Edit products together** changes selected product names, prices and
 promotion text in the app, with a before/after preview and a separate saved layout. See
 [the product editing guide](./USAGE.md#edit-placed-products-together-without-a-spreadsheet).

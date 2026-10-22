@@ -1093,3 +1093,46 @@ API: `GET /api/projects/{pid}/setups/{sid}/starter-fill`, `POST .../preview`, `P
 Preview takes `source_sha256`, `currency`, unique `assignments` of `rack_id`/`category`, and integer
 `products_per_slot` (1–4). Save also takes a stable 32-character lowercase hex `request_id`. Reuse the
 identical save body on retry. The snapshot includes the bundled catalog contents as well as the layout.
+
+## Reuse a finished shelf assortment
+
+In a draft's preparation dashboard, open **Step 2: Item placement → Reuse shelf products**. This reuses
+products already placed in this layout, whether entered manually, corrected from a reviewed photo or
+added from starter products. It does not call a model, create new SKUs or infer physical stock quantities.
+Reference/example products remain examples when copied; this operation does not validate their real-world prices.
+
+1. **Copy products from** selects one stocked shelf or fridge. Source products must have valid SKUs and
+   safe integer prices, and all occupied faces must be unlocked and reachable from an entrance.
+2. Select empty destinations, or **Select shown compatible shelves**. Search by name, identifier or fixture
+   type. The list shows up to 100 racks; selected racks remain selected across searches. At most 100
+   destinations may be copied in one operation. Stocked racks are protected, even if only partly stocked.
+3. **Preview shelf copies** shows each destination, placement totals and the exact source sections, item
+   order, names, SKUs, prices, usual prices, promotions and image-link availability.
+4. **Save layout with shelf copies → Open copied layout** saves a child draft. The original, stocked racks,
+   geometry, descriptions and building-floor context remain unchanged. Use the normal editor or
+   **Edit products together** to review the result. Return to the original in Layouts to undo the variant.
+
+Destinations must have the same fixture type and identical *rotated footprint*. Source block indices and
+absolute N/S/E/W faces are reused without rotation or mirroring; all copied faces must be accessible and
+unlocked at each destination. Every nonempty source section is copied with its original level and item
+order. Extra empty destination sections are retained. An incompatible destination rejects the whole batch;
+products are never silently truncated to fit. Source product values are copied as stored, including any
+intentional repeated SKU placements or different values at different placements. Use the bulk product
+editor to review those differences; no deduplication or price harmonization occurs here. Image links/SKU
+identity are retained; image files are not duplicated or guaranteed to remain available after later deletion.
+
+The result may have at most 50,000 placements. Source limits are 5,000 distinct SKUs and 50,000 placements;
+geometry limits are 65,536 grid cells, 1,000 racks, 10,000 occupied cells and 50,000 shape cells. Repair
+invalid geometry or a blocked source in Step 1 before copying.
+
+Source edits/currency changes invalidate an unsaved snapshot. **Discard choices and reload shelves**
+resets selections and loads the latest layout, then preview again. A refreshed snapshot cannot relabel an
+older price preview. After a failed or uncertain save, **Retry saving shelf copies** keeps the original
+request identity and currency so an accepted write can be recovered without another child. Check Layouts
+before starting a new request. A removed child or interrupted write reservation is never silently recreated.
+Closing discards unsaved choices; an accepted save may finish afterward and remains in Layouts.
+
+API: `GET /api/projects/{pid}/setups/{sid}/rack-copy` lists stocked sources; optional `source_rack_id`
+lists destinations with exclusion reasons. `POST .../preview` takes `source_sha256`, `currency`,
+`source_rack_id` and 1–100 unique `target_rack_ids`. `POST .../save` additionally takes a stable
+32-character lowercase hex `request_id`. Repeat the identical save body after a lost response.
