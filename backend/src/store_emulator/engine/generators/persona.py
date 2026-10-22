@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import math
 import os
 import random
 import time
@@ -617,29 +618,20 @@ def _persona_daily_cap_ceiling() -> int:
 
 
 def _scale_hourly(profiles: list[HourlyProfile], cap: int) -> list[HourlyProfile]:
-    """Scale hourly visitor_count proportionally so the daily sum never exceeds cap.
+    """Scale hourly visitor_count proportionally so the day has exactly `cap` visitors when it had more.
 
-    Preserves the LLM-emitted shape (peaks, off-peaks). If rounding pushes the
-    total over cap, peel 1 off the busiest bucket until the sum fits — cap is
-    a strict ceiling.
+    Preserves the LLM-emitted shape (peaks, off-peaks). Each hour gets its share rounded down, and the visitors left
+    over go to the hours with the largest remainders: rounding every hour on its own lost visitors (a 20-a-day sample
+    over 14 quiet hours came to 14, a cap of 1,000 to 994).
     """
-    total = sum(p.visitor_count for p in profiles)
+    total = sum(max(0, p.visitor_count) for p in profiles)
     if total <= cap:
         return profiles
-    ratio = cap / total
-    scaled: list[HourlyProfile] = [
-        HourlyProfile(
-            hour=p.hour,
-            visitor_count=max(0, round(p.visitor_count * ratio)),
-            person_types=p.person_types,
-        )
-        for p in profiles
-    ]
-    excess = sum(p.visitor_count for p in scaled) - cap
-    while excess > 0:
-        i = max(range(len(scaled)), key=lambda idx: scaled[idx].visitor_count)
-        if scaled[i].visitor_count == 0:
-            break
-        scaled[i].visitor_count -= 1
-        excess -= 1
-    return scaled
+    exact = [max(0, p.visitor_count) * cap / total for p in profiles]
+    counts = [math.floor(e) for e in exact]
+    left = cap - sum(counts)
+    by_remainder = sorted(range(len(profiles)),
+                          key=lambda i: (-(exact[i] - counts[i]), -profiles[i].visitor_count, profiles[i].hour))
+    for i in by_remainder[:left]:
+        counts[i] += 1
+    return [HourlyProfile(hour=p.hour, visitor_count=n, person_types=p.person_types) for p, n in zip(profiles, counts, strict=True)]

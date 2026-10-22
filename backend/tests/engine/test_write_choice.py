@@ -166,3 +166,14 @@ def test_a_request_takes_customers_across_quiet_hours() -> None:
     assert len(prompts) == 2                      # 6 customers, 5 a request — not one request per hour
     assert [p.arrival_hour for p in out] == [8, 8, 8, 9, 10, 10]
     assert len({p.id for p in out}) == 6 and all(p.day == Weekday(2) for p in out)
+
+
+def test_a_day_scaled_to_a_cap_has_exactly_that_many_visitors() -> None:
+    quiet = [gen.HourlyProfile(hour=h, visitor_count=500, person_types=["student"]) for h in range(8, 22)]   # 7,000
+    assert sum(h.visitor_count for h in gen._scale_hourly(quiet, 20)) == 20  # pyright: ignore[reportPrivateUsage]
+    assert sum(h.visitor_count for h in gen._scale_hourly(quiet, 1000)) == 1000  # pyright: ignore[reportPrivateUsage]
+    peaked = [gen.HourlyProfile(hour=8, visitor_count=90, person_types=["s"]),
+              gen.HourlyProfile(hour=9, visitor_count=7, person_types=["s"]),
+              gen.HourlyProfile(hour=10, visitor_count=3, person_types=["s"])]
+    assert [h.visitor_count for h in gen._scale_hourly(peaked, 10)] == [9, 1, 0]  # pyright: ignore[reportPrivateUsage]
+    assert gen._scale_hourly(peaked, 500) == peaked  # pyright: ignore[reportPrivateUsage]
