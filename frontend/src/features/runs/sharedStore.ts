@@ -10,9 +10,13 @@ export interface SharedStoreChoice {
   tills: string;      // tills open; "" = every till
   patience: string;   // minutes
   crowd: string;      // shoppers at one shelf that feel crowded; "" = crowding has no effect
+  backroom: string;   // units per product behind the shelves; "" = endless
+  delivery: boolean;  // a delivery tops the backroom up each morning
 }
 
-export const DEFAULT_SHARED_STORE: SharedStoreChoice = { enabled: true, stock: "12", restock: "120", tills: "", patience: "5", crowd: "4" };
+export const DEFAULT_SHARED_STORE: SharedStoreChoice = {
+  enabled: true, stock: "12", restock: "120", tills: "", patience: "5", crowd: "4", backroom: "", delivery: true,
+};
 
 export function wholeIn(text: string, min: number, max: number): number | null {
   const value = Number(text.trim());
@@ -29,8 +33,10 @@ export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig 
   const patience = Number(choice.patience.trim());
   const patienceOk = choice.patience.trim() !== "" && Number.isFinite(patience) && patience >= 0.5 && patience <= 120;
   const crowd = choice.crowd.trim() === "" ? null : wholeIn(choice.crowd, 2, 50);
+  const backroom = choice.backroom.trim() === "" ? null : wholeIn(choice.backroom, 0, 1_000_000);
   if (stock === null || (choice.restock.trim() !== "" && restock === null)
-      || (choice.tills.trim() !== "" && tills === null) || !patienceOk || (choice.crowd.trim() !== "" && crowd === null)) {
+      || (choice.tills.trim() !== "" && tills === null) || !patienceOk || (choice.crowd.trim() !== "" && crowd === null)
+      || (choice.backroom.trim() !== "" && backroom === null)) {
     return "invalid";
   }
   return {
@@ -39,6 +45,8 @@ export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig 
     open_counters: tills,
     patience_sec: Math.round(patience * 60),
     crowd_limit: crowd,
+    backroom_per_product: backroom,
+    daily_delivery: choice.delivery,
   };
 }
 
@@ -52,5 +60,7 @@ export function choiceFromConfig(config: OperationsConfig): SharedStoreChoice {
     patience: String(Math.round(((config.patience_sec ?? 300) / 60) * 10) / 10),
     // Reports from before crowding have no setting: crowding had no effect then.
     crowd: config.crowd_limit == null ? "" : String(config.crowd_limit),
+    backroom: config.backroom_per_product == null ? "" : String(config.backroom_per_product),
+    delivery: config.daily_delivery ?? true,
   };
 }

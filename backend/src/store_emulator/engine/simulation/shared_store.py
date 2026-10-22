@@ -19,7 +19,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from store_emulator.domain.customer import CustomerResult, TimelineEvent
-from store_emulator.domain.operations import EmptySpell, OperationsConfig, OperationsReport, QueueHour, StockoutStats
+from store_emulator.domain.operations import (
+    BackroomStats, EmptySpell, OperationsConfig, OperationsReport, QueueHour, StockoutStats,
+)
 from store_emulator.domain.rack import SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, Face, Weekday, stable_seed
@@ -65,6 +67,41 @@ class _Day:
     # Each shelf's stops (start, end, shopper), sorted: who stands at a shelf when someone else picks there.
     stops: dict[str, list[tuple[float, float, int]]] = field(default_factory=dict[str, list[tuple[float, float, int]]])
     longest_stop: int = 1
+
+
+@dataclass
+class _Backroom:
+    """Units behind the shelves, per product with a finite backroom (others never run short)."""
+    units: dict[str, int]
+    levels: dict[str, int]
+    stats: dict[str, BackroomStats]
+    carry: dict[FaceKey, int] | None = None   # the shelves as the last day closed (they are not emptied overnight)
+
+    def take(self, sku: str, wanted: int, day: int, moment: float) -> int:
+        """Units staff can move to the shelf: what is wanted, or what the backroom has."""
+        if sku not in self.units or wanted <= 0:
+            return max(0, wanted)
+        taken = min(wanted, self.units[sku])
+        self.units[sku] -= taken
+        stats = self.stats[sku]
+        stats.refilled += taken
+        stats.short_units += wanted - taken
+        if self.units[sku] == 0 and not stats.dry_at and wanted > taken:
+            stats.dry_day, stats.dry_at = day, _hms(moment)
+        return taken
+
+
+def _backroom(config: OperationsConfig, products: dict[FaceKey, "_Product"]) -> _Backroom | None:
+    names = {sku: product.item.name for (_, _, sku), product in products.items()}
+    levels: dict[str, int] = {}
+    for sku in names:
+        level = config.backroom_overrides.get(sku, config.backroom_per_product)
+        if level is not None:
+            levels[sku] = level
+    if not levels:
+        return None
+    return _Backroom(units=dict(levels), levels=levels,
+                     stats={sku: BackroomStats(sku=sku, name=names[sku], level=level) for sku, level in levels.items()})
 
 
 def _clock(hms: str) -> int:
@@ -121,9 +158,16 @@ def resolve_shared_store(
     hit: set[int] = set()
     open_seconds = 0.0
     busy_seconds = 0.0
-    for day in sorted(days):
+    backroom = _backroom(config, products)
+    if backroom is not None:
+        report.backroom_units = sum(backroom.levels.values())
+    for number, day in enumerate(sorted(days)):
+        if backroom is not None and number > 0 and config.daily_delivery:
+            short = {sku: level for sku, level in backroom.levels.items() if backroom.units[sku] < level}
+            backroom.units.update(short)   # the morning delivery tops every backroom up to its level
+            report.deliveries += int(bool(short))
         day_checkouts, day_open, day_busy = _play_day(
-            store, results, days[day], products, faces, tills, counters, config, report, hit, seed, copies,
+            store, results, days[day], products, faces, tills, counters, config, report, hit, seed, copies, backroom,
         )
         checkouts.update(day_checkouts)
         open_seconds += day_open
@@ -135,6 +179,10 @@ def resolve_shared_store(
         result.total_spent = sum(e.price * e.quantity for e in result.timeline if e.action == Action.BUY)
         result.leave_time = _hms(_clock(result.arrival_time) + result.duration_sec)
 
+    if backroom is not None:
+        report.refill_short_units = sum(s.short_units for s in backroom.stats.values())
+        report.backroom = sorted((s for s in backroom.stats.values() if s.short_units),
+                                 key=lambda s: (-s.short_units, s.sku))[:_STOCKOUTS_REPORTED]
     report.shoppers_hit = len(hit)
     report.stockout_faces = sum(1 for p in products.values() if p.stats.first_out)
     report.lost_units = sum(p.stats.lost_units for p in products.values())
@@ -168,8 +216,12 @@ def _play_day(
     hit: set[int],
     seed: int,
     copies: "_Copies",
+    backroom: _Backroom | None = None,
 ) -> tuple[dict[int, _Checkout], float, float]:
     """One day in clock order. Returns each shopper's checkout, and the tills' open and serving seconds.
+
+    With a finite backroom the shelves keep last night's stock and are filled from the backroom before opening and
+    at each refill, as far as it goes; without one every day opens with full shelves.
 
     The tills share one line (first come, first served): a shopper takes the first till that is free and staffed."""
     if not indexes:
@@ -198,9 +250,14 @@ def _play_day(
         stops.sort()
     schedule = store.schedule_for(day)
     opening = schedule.open_hour * 3600 if schedule is not None and schedule.is_open else start // 3600 * 3600
-    for key, product in products.items():
-        if product.full == 0:
-            _emptied(state, key, product, opening)
+    if backroom is not None and backroom.carry is not None:
+        # Overnight the shelves keep what was left and staff fill them from the backroom, as far as it goes.
+        for key, product in products.items():
+            left = backroom.carry.get(key, product.full)
+            state.stock[key] = left + backroom.take(key[2], product.full - left, int(day), opening)
+    for key in products:
+        if state.stock[key] == 0:   # stocked at zero, or not refilled overnight: out from opening
+            _emptied(state, key, products[key], opening)
     if config.restock_every_min is not None:
         step = config.restock_every_min * 60
         moment = opening + step
@@ -222,9 +279,12 @@ def _play_day(
             refilled = False
             for key, product in products.items():
                 if state.stock[key] < product.full:
-                    state.stock[key] = product.full
-                    refilled = True
-                    _refilled(state, key, product, moment)
+                    moved = (backroom.take(key[2], product.full - state.stock[key], int(day), moment)
+                             if backroom is not None else product.full - state.stock[key])
+                    if moved:
+                        state.stock[key] += moved
+                        refilled = True
+                        _refilled(state, key, product, moment)
             if refilled:
                 report.restocks += 1
         elif kind == _PUT_BACK:
@@ -262,6 +322,8 @@ def _play_day(
             busy += service
     closing = schedule.close_hour * 3600 if schedule is not None and schedule.is_open else max(end, last)
     closing = max(closing, last)
+    if backroom is not None:
+        backroom.carry = dict(state.stock)
     for key in list(state.empty_since):
         _refilled(state, key, products[key], closing)
     room = _SPELLS_REPORTED - len(report.empty_spells)

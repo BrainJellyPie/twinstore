@@ -40,7 +40,7 @@ def outcome(
     store: Store, results: list[CustomerResult], report: OperationsReport, config: OperationsConfig,
     costs: OperationsCosts,
 ) -> OperationsOutcome:
-    units = sum(p.full for p in shelf_stock(store, config).values())
+    units = sum(p.full for p in shelf_stock(store, config).values()) + report.backroom_units
     labor = round(report.till_hours * costs.till_hour)
     refills = report.restocks * costs.restock_round
     holding = units * max(1, report.days) * costs.stock_unit_day
@@ -108,7 +108,13 @@ def plan_operations(
         for stock in sorted(set(_STOCKS) | {current.stock_per_facing})
     )
 
-    # 2. More units for the products that still run out and lose money.
+    # 2. A backroom kept at another level (when the store has one): fewer refills come up short, more units held.
+    if best_config.backroom_per_product is not None:
+        level = best_config.backroom_per_product
+        consider(best_config.model_copy(update={"backroom_per_product": units})
+                 for units in sorted({0, level // 2, level * 2, level * 4, max(1, level) * 8} - {level}) if units <= 1_000_000)
+
+    # 3. More units for the products that still run out and lose money.
     raised: list[str] = []
     for stats in [s for s in best_tried[1].stockouts if s.lost_revenue > 0][:_RAISED]:
         base = best_config.stock_overrides.get(stats.sku, best_config.stock_per_facing)
@@ -121,7 +127,7 @@ def plan_operations(
         if best_config is not before:
             raised.append(stats.sku)
 
-    # 3. Tills hour by hour, twice over (an hour's line spills into the next).
+    # 4. Tills hour by hour, twice over (an hour's line spills into the next).
     hours = [h.hour for h in best_tried[1].hours]
     if limit > 0 and hours:
         for _ in range(2):

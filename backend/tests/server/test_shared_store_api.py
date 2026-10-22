@@ -197,3 +197,17 @@ def test_a_run_made_before_crowding_replays_without_it(client):
     plan = client.post(f"/api/projects/{PID}/runs/{rid}/operations/plan", json={}).json()
     assert plan["current_config"]["crowd_limit"] is None
     assert plan["current"]["revenue"] == summary["total_revenue"]
+
+
+def test_a_backroom_limits_refills_in_runs_and_replays(client):
+    rid = _run(client, _layout(client),
+               operations={"stock_per_facing": 1, "backroom_per_product": 0, "restock_every_min": 30})
+    saved = client.get(f"/api/projects/{PID}/runs/{rid}/operations").json()
+    assert saved["config"]["backroom_per_product"] == 0 and saved["refill_short_units"] > 0
+    assert saved["backroom"] and all(b["level"] == 0 and b["refilled"] == 0 for b in saved["backroom"])
+    url = f"/api/projects/{PID}/runs/{rid}/operations/replay"
+    same = client.post(url, json={"operations": saved["config"]}).json()
+    endless = client.post(url, json={"operations": {**saved["config"], "backroom_per_product": None}}).json()
+    assert same["report"] == saved
+    assert endless["report"]["refill_short_units"] == 0 and endless["report"]["backroom"] == []
+    assert endless["outcome"]["revenue"] >= same["outcome"]["revenue"]

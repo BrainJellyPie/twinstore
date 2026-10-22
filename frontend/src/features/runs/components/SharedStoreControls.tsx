@@ -66,6 +66,20 @@ export function SharedStoreControls({ value, onChange, tillsInLayout, fieldsOnly
               aria-invalid={value.crowd.trim() !== "" && wholeIn(value.crowd, 2, 50) === null} />
             <p id={`${id}-crowd-hint`} className="text-muted-foreground">{t("opsCrowdHint")}</p>
           </div>
+          <div className={field}>
+            <label className="block font-medium" htmlFor={`${id}-backroom`}>{t("opsBackroom")}</label>
+            <Input id={`${id}-backroom`} type="number" min={0} max={1000000} step={1} className="h-7" value={value.backroom}
+              onChange={(e) => set({ backroom: e.target.value })} aria-describedby={`${id}-backroom-hint`}
+              aria-invalid={value.backroom.trim() !== "" && wholeIn(value.backroom, 0, 1_000_000) === null} />
+            <p id={`${id}-backroom-hint`} className="text-muted-foreground">{t("opsBackroomHint")}</p>
+          </div>
+          {value.backroom.trim() !== "" && (
+            <label className="flex items-center gap-2 self-start pt-5" htmlFor={`${id}-delivery`}>
+              <input id={`${id}-delivery`} type="checkbox" className="size-4 accent-primary" checked={value.delivery}
+                onChange={(e) => set({ delivery: e.target.checked })} />
+              {t("opsDelivery")}
+            </label>
+          )}
         </div>
       )}
       {invalid && <p role="alert" className="text-destructive">{t("opsInvalid")}</p>}

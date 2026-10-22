@@ -238,3 +238,16 @@ def test_added_outdoor_and_craft_departments_respect_small_map_limits(template_i
                 for slot in rack.slots for item in slot.items}
         assert len(skus) <= (2 if category in departments else 1)
     assert generate_store(template_id, currency=currency, options=options) == store
+
+
+@pytest.mark.parametrize("template_id,departments", NEW_OUTDOOR_AND_CRAFT_DEPARTMENTS)
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_new_outdoor_and_craft_default_maps_stock_fully_pictured_departments(template_id, departments, currency):
+    store = generate_store(template_id, currency=currency)
+    for category in departments:
+        expected = {catalog_slot_item(product, currency).sku: catalog_slot_item(product, currency)
+                    for product in CATALOG[category]}
+        stocked = {item.sku: item for rack in store.product_racks if rack.rack_desc == category
+                   for slot in rack.slots for item in slot.items}
+        assert stocked == expected
+        assert all(item.image_url for item in stocked.values())

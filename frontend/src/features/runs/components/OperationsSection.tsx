@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import type { OperationsReport } from "@/shared/api/client";
 import { useI18n } from "@/shared/i18n/i18n";
+import { weekdayLong } from "@/shared/i18n/timeFormat";
 import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 
 import { useRunOperations } from "../hooks";
@@ -69,6 +70,19 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
         <Tile label={t("opsLeftLine")} value={t("opsLeftLineValue", { count: count(report.abandoned), amount: money(report.abandoned_revenue) })}
           hint={report.counters > 0 ? `${t("opsUtilization")}: ${formatPercent(report.counter_utilization, 0)}` : undefined} />
       </div>
+      {(report.config.backroom_per_product != null
+        || Object.keys(report.config.backroom_overrides ?? {}).length > 0
+        || (report.backroom_units ?? 0) > 0 || (report.refill_short_units ?? 0) > 0) && (
+        <div className="mt-2 space-y-1">
+          <Tile label={t("opsRefillShort")} value={t("opsUnits", { units: count(report.refill_short_units ?? 0) })}
+            hint={t("opsBackroomSetup", { units: count(report.backroom_units ?? 0), deliveries: count(report.deliveries ?? 0) })} />
+          {(report.backroom ?? []).slice(0, 5).map((b) => (
+            <p key={b.sku} className="text-xs text-muted-foreground">
+              {t("opsBackroomDry", { name: b.name || b.sku, day: weekdayLong(b.dry_day, locale), time: b.dry_at.slice(0, 5), units: count(b.short_units) })}
+            </p>
+          ))}
+        </div>
+      )}
       {(report.crowd_skipped_units ?? 0) > 0 && (
         <div className="mt-2">
           <Tile label={t("opsCrowdSkipped")} value={money(report.crowd_skipped_revenue ?? 0)}

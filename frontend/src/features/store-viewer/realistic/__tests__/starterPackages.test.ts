@@ -256,3 +256,8 @@ it("keeps sports, fishing, craft, plant and repair tools out of food categories 
   for (const sheet of [67, 68]) for (let index = 0; index < 16; index++)
     expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
 });
+
+it("keeps all remaining outdoor and craft photos classified as non-food after renaming", () => {
+  for (const sheet of [69, 70, 71, 72]) for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
+});

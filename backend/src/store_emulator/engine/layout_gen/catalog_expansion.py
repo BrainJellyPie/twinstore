@@ -1278,6 +1278,30 @@ PACKSHOT_SHEETS = {
         "Stainless Candle Wick Trimmer", "Long Handle Candle Snuffer", "Brass Candle Wick Dipper", "Ceramic Candle Rest Tray",
         "Tent Fabric Repair Tape Roll", "Aluminum Tent Pole Repair Sleeve", "Tent Guyline Tensioner Set 4pc", "Waterproof Fabric Patch Kit",
     ],
+    "starter-69": [
+        "Yoga Mat Carry Sling", "Cotton Yoga Eye Pillow", "Round Meditation Cushion", "Yoga Knee Support Pad Pair",
+        "Pilates Sliding Disc Pair", "Cotton Yoga Mat Towel", "Yoga Stretch Loop Band Light", "Yoga Mat Cleaning Spray 150ml",
+        "Reflective Running Ankle Band Pair", "Running Race Number Belt", "Soft Brim Running Cap", "Running Phone Armband",
+        "Running Shoe Identification Tag", "Lightweight Running Neck Gaiter", "Running Vest Bottle Pocket", "Water Resistant Race Bib Pouch",
+    ],
+    "starter-70": [
+        "Barbless Fishing Hook Pack 10pc", "Fishing Swivel Snap Pack 12pc", "Compact Fishing Line Winder", "Folding Fishing Landing Net",
+        "Padded Fishing Reel Pouch", "Rubber Fishing Rod Rest", "Fishing Lure Hook Cover Set", "Waterproof Fishing License Wallet",
+        "Blunt Leather Sewing Needle Set 6pc", "Nylon Leathercraft Mallet", "Leather Stitching Pony Small", "Leathercraft Cutting Mat A4",
+        "Adjustable Leather Edge Creaser", "Leather Hole Punch Pliers", "Vegetable Tanned Leather Scrap Pack 250g", "Leathercraft Brass Rivet Kit",
+    ],
+    "starter-71": [
+        "Paper Seed Envelopes 20pk", "Fine Rose Seedling Watering Bottle", "Adjustable Seed Sowing Dispenser", "Reusable Seed Cell Insert Six Cell",
+        "Seedling Transplant Scoop Narrow", "Biodegradable Seed Pots 8pk", "Seedling Tray Capillary Mat", "Mini Germination Thermometer",
+        "Plant Cutting Tube Brush", "Glass Propagation Tube Pair", "Indoor Plant Grafting Tape 10m", "Plant Stem Support Clip Set 10pc",
+        "Transparent Nursery Root Pot 9cm", "Plant Cutting Transport Sleeve Set", "Wall Mounted Propagation Vase", "Mini Plant Cutting Funnel",
+    ],
+    "starter-72": [
+        "Glass Candle Dust Cover 10cm", "Reusable Candle Jar Lid 8cm", "Candle Wick Centering Bar Pair", "Pre Waxed Cotton Candle Wicks 10pk",
+        "Candle Wick Adhesive Tabs 20pk", "Empty Amber Candle Jar 180ml", "Candle Pouring Pitcher 500ml", "Cotton Candle Tool Storage Roll",
+        "Camping Gear Zipper Pull Set 6pc", "Elastic Tent Pole Shock Cord 5m", "Replacement Backpack Buckle 25mm", "Camping Sleeping Mat Patch Set",
+        "Tent Seam Sealer 60ml", "Self Fusing Camping Repair Tape 3m", "Camp Gear Repair Thread and Needle Kit", "Tent Mesh Repair Patch Pair",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

@@ -117,6 +117,10 @@ export preserves the exact names, floor order and area coordinates.
 - **Patience in line (minutes)** (default 5): the wait a typical shopper accepts; each shopper's own patience varies
   around it (seeded, so it is the same shopper in both layouts of an A/B pair).
 
+- **Backroom units per product** (blank = endless, as before): the stock behind the shelves that refills draw from;
+  **Delivery every morning** (on) tops it up to that level before each later day. With a backroom, shelves are
+  not emptied overnight: they keep what was left and are filled from the backroom before opening. Coach users
+  running a week to set it — a backroom is what makes Saturday's stock-outs depend on Monday's sales.
 - **Shoppers at one shelf that feel crowded** (default 4; blank = no effect): with that many stopped at one shelf at
   once, each unplanned pick there is skipped with a 35 % chance (`crowd_skip`). Planned buys are always made.
 
@@ -1209,7 +1213,7 @@ barista tools and party supplies add another 96 products. Kitchen and baking too
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
 woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
-educational toys, puzzles, model building and miniature painting add another 96. Skincare, makeup and grooming tools, tea brewing, cake decorating, pantry organization and shoe care add 96 more. Yoga, running, fishing, leathercraft, seed starting, plant propagation, candle care and camping repairs add another 96. One thousand eighty-eight generated
+educational toys, puzzles, model building and miniature painting add another 96. Skincare, makeup and grooming tools, tea brewing, cake decorating, pantry organization and shoe care add 96 more. Yoga, running, fishing, leathercraft, seed starting, plant propagation, candle care and camping repairs add another 96. One thousand one hundred fifty-two generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 The 82 default map templates also include the expanded products in suitable departments. For example, toy
 shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and
