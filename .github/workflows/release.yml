@@ -73,7 +73,17 @@ jobs:
         run: |
           uv sync --frozen
           uv run python -c "from store_emulator.server.main import app; print('OK')"
-          uv run pytest -q -x
+          # Failures also go out as annotations: they can be read without downloading the log.
+          set +e
+          uv run pytest -q -x --tb=short 2>&1 | tee pytest.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            grep -E '^(FAILED|ERROR) |^E  ' pytest.log | head -15 | while IFS= read -r line; do
+              echo "::error title=pytest::${line//%/%25}"
+            done
+          fi
+          exit "$status"
 
       - uses: actions/setup-go@v5
         with:
