@@ -25,7 +25,7 @@ from store_emulator.engine.town.vlm_synergy import vlm_basket_synergy
 
 from .async_executor import executor
 from .currencies import simulation_currency
-from .errors import AppError
+from .errors import AppError, job_failure
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
 from .scenarios import get_preset
@@ -188,6 +188,6 @@ def _run_job(
     except Exception as e:  # surface any failure to the UI instead of a stuck job
         logger.exception(f"[town] synergy job {status.job_id} failed")
         status.status = "failed"
-        status.error = f"{type(e).__name__}: {e}"[:500]
+        status.error = job_failure(e, "The neighborhood run failed")
     status.finished_at = now_iso()
     _write_status(pid, status)

@@ -219,6 +219,16 @@ def assert_setup_mutation_allowed(
     incoming_store_data = incoming_setup.get("store")
     if incoming_store_data is None:
         return  # name/memo-only change — no rack comparison needed
+    if disk_setup.get("status") == "running" and incoming_store_data != disk_store_data:
+        # The run that ends will lock the layout it simulated; an edit saved meanwhile would be locked unsimulated
+        # (or lost to the run's own write).
+        raise AppError(
+            409,
+            "setup_running",
+            "simulation_running",
+            "This layout is being simulated; save the change when the run ends.",
+            {},
+        )
     disk_store = (
         Store.model_validate(disk_store_data) if disk_store_data else None
     )

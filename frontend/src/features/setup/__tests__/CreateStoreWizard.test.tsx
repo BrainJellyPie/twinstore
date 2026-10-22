@@ -9,6 +9,7 @@ import { LOCALES } from "@/shared/i18n/messages";
 import { CreateStoreWizard } from "../components/CreateStoreWizard";
 
 const { create } = vi.hoisted(() => ({ create: vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({ useBlocker: () => ({ status: "idle" }) }));
 vi.mock("@/shared/api/client", async (original) => ({
   ...await original<typeof import("@/shared/api/client")>(), draftCustomerProfile: vi.fn(),
 }));

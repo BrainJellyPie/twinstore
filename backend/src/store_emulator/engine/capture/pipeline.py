@@ -106,6 +106,10 @@ def build_items(
     return out, dominant
 
 
+class CaptureModelFailed(RuntimeError):
+    """Every product the model was asked to read failed with an error."""
+
+
 async def capture_shelf(
     photo: Image.Image, *, detector: FacingDetector, labeler: VLMLabeler | None = None,
     currency: str = "USD", rack_type: CaptureRackType = "shelf", model: str = "", salt: str = "",
@@ -155,6 +159,11 @@ async def capture_shelf(
         stage("reading", 0.35)
         await labeler.label_groups(photo, frame, bands, groups, on_done)
         failed = sum(1 for g in groups if g.label is None)
+        errors = [g.error for g in groups if g.error]
+        if failed == len(groups) and len(errors) == len(groups):
+            # Not one product read, every call an error (a model that is not there, a key turned down): a planogram
+            # of "Product 1.1, 1.2, …" at typical prices would look like a result.
+            raise CaptureModelFailed(errors[0])
         if failed:
             notes.append(f"{failed} of {len(groups)} products could not be read by the model")
     timings["recognize_sec"] = round(time.perf_counter() - t2, 3)

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, Cpu, KeyRound, Loader2, Sparkles, TriangleAlert, X } from "lucide-react";
+import { ChevronDown, Cpu, KeyRound, Loader2, Sparkles, Square, TriangleAlert, X } from "lucide-react";
 
 import { useI18n } from "@/shared/i18n/i18n";
 import { isPreparing, useLocalModelControl, useModelSetup } from "@/features/settings/useModelSetup";
@@ -22,7 +22,7 @@ function readDismissed(): string | null {
 export function ModelSetupBanner() {
   const { t } = useI18n();
   const { data } = useModelSetup();
-  const { start } = useLocalModelControl();
+  const { start, stop } = useLocalModelControl();
   const [dismissed, setDismissed] = useState<string | null>(readDismissed);
 
   if (!data?.warning) return null;
@@ -84,11 +84,17 @@ export function ModelSetupBanner() {
                     <Cpu className="size-3.5" aria-hidden /> {start.isPending ? t("starting") : failed ? t("retryLocal") : t("startLocal")}
                   </Button>
                 )}
+                {busy && (
+                  <Button size="sm" variant="outline" onClick={() => stop.mutate()} disabled={stop.isPending}>
+                    <Square className="size-3.5" aria-hidden /> {stop.isPending ? t("stoppingLocal") : t("stopLocal")}
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" asChild>
                   <Link to="/settings"><KeyRound className="size-3.5" aria-hidden /> {t("modelSettings")}</Link>
                 </Button>
               </div>
               {start.isError && <p role="alert" className="break-words text-xs text-destructive">{start.error instanceof Error ? start.error.message : t("startLocalError")}</p>}
+              {stop.isError && <p role="alert" className="break-words text-xs text-destructive">{stop.error instanceof Error && stop.error.message ? stop.error.message : t("stopLocalError")}</p>}
             </div>
           </details>
         </div>

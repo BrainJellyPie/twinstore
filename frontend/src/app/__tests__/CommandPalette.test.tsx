@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderUi, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CommandPalette } from "../CommandPalette";
 import { useCommandPalette } from "../commandPalette";
 import { translate, useLocale } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
-import { createContext, useContext } from "react";
+import { createContext, useContext, type ReactElement, type ReactNode } from "react";
 
 const MockUpdates = createContext(0);
 
@@ -23,6 +24,10 @@ vi.mock("../theme", () => ({ useTheme: () => ({ theme: state.theme, setTheme: st
 vi.mock("../launcher", () => ({ useLauncher: () => state.launched, quitLauncher: () => state.quit() }));
 Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 
+const render = (ui: ReactElement) => {
+  const client = new QueryClient();
+  return renderUi(ui, { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+};
 beforeEach(() => {
   useLocale.getState().setLocale("en"); useCommandPalette.setState({ open: true }); state.pathname = "/projects/new"; state.launched = false; state.theme = "dark"; state.loaded = true;
   state.projects = [{ project_id: "proj_cafe", name: "Café Étoile", store_type: "cafe" }, { project_id: "proj_pharmacy", name: "약국 Sakura", store_type: "pharmacy" }];

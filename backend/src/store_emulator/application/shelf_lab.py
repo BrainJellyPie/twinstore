@@ -58,7 +58,7 @@ from store_emulator.engine.files import remove_tree
 from .async_executor import executor
 from .capture import capture_image_path, capture_llm_config, get_capture
 from .currencies import project_currency, simulation_currency
-from .errors import AppError, model_failure
+from .errors import AppError, job_failure, model_failure
 from .providers import assistive_client, assistive_vision_model
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
@@ -481,7 +481,7 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
             _finish(pid, status, report)
         except Exception as e:
             logger.exception(f"[shelf_lab] sim2real {status.job_id} failed")
-            _finish(pid, status, None, f"{type(e).__name__}: {e}")
+            _finish(pid, status, None, job_failure(e, "The shelf test failed"))
 
     executor.submit(run)
     return status
@@ -564,7 +564,7 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
             _finish(pid, status, report)
         except Exception as e:
             logger.exception(f"[shelf_lab] audit {status.job_id} failed")
-            _finish(pid, status, None, f"{type(e).__name__}: {e}")
+            _finish(pid, status, None, job_failure(e, "The shelf test failed"))
 
     executor.submit(run)
     return status

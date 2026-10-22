@@ -44,6 +44,12 @@ export function useGridEditor(initialSetup: SetupDetailWithBlocked) {
   const [backendBlockedFaces, setBackendBlockedFaces] = useState<BlockedFaceDetail[]>(
     initialSetup.blocked_faces,
   );
+  const [baseline, setBaseline] = useState(() => ({ racks, gridSize }));
+  const dirty = useMemo(
+    () => gridSize[0] !== baseline.gridSize[0] || gridSize[1] !== baseline.gridSize[1]
+      || (racks !== baseline.racks && JSON.stringify(racks) !== JSON.stringify(baseline.racks)),
+    [racks, gridSize, baseline],
+  );
 
   const blockedFaces = useMemo(
     () =>
@@ -114,14 +120,17 @@ export function useGridEditor(initialSetup: SetupDetailWithBlocked) {
   );
 
   const reset = useCallback((newSetup: SetupDetailWithBlocked) => {
-    setRacks(newSetup.store?.racks ?? []);
-    setGridSize(newSetup.store?.grid_size ?? DEFAULT_GRID_SIZE);
+    const next = { racks: newSetup.store?.racks ?? [], gridSize: newSetup.store?.grid_size ?? DEFAULT_GRID_SIZE };
+    setRacks(next.racks);
+    setGridSize(next.gridSize);
+    setBaseline(next);
     setBackendBlockedFaces(newSetup.blocked_faces);
   }, []);
 
   return {
     racks,
     gridSize,
+    dirty,
     blockedFaces,
     addRack,
     removeRack,

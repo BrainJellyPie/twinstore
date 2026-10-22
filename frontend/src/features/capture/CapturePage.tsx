@@ -108,6 +108,7 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
   const [attention, setAttention] = useState<Record<string, number> | null>(null);
   const status = view.data?.status;
   const result = view.data?.result ?? null;
+  const processing = status?.status === "pending" || status?.status === "running";
   const pick = (id: string) => {
     if (draft.slot === "other" && needsOther(draft.kind)) setDraft({ ...draft, other: id, slot: "target" });
     else setDraft({ ...draft, target: id, slot: needsOther(draft.kind) && !draft.other ? "other" : "target" });
@@ -154,10 +155,13 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
             {result ? ` · ${result.items.length} products · ${result.items.reduce((a, i) => a + i.facings, 0)} facings · ${result.bands.length} shelves · ${result.gaps.length} gaps`
               + ` · ${result.detector}${result.model ? ` + ${result.model}` : ""}` : ""}
           </span>
-          <button type="button" className="flex items-center gap-1 hover:text-destructive" onClick={() => del.mutate()}>
-            <Trash2 className="size-3.5" /> Delete
-          </button>
+          {!processing && (
+            <button type="button" className="flex items-center gap-1 hover:text-destructive disabled:opacity-50" disabled={del.isPending} onClick={() => del.mutate()}>
+              {del.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} Delete
+            </button>
+          )}
         </div>
+        {del.error && <p role="alert" className="text-xs text-destructive">{del.error.message}</p>}
       </div>
       <aside className="panel flex w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-[1.6rem] md:w-[28rem]">
         <div className="flex gap-1 border-b border-glass-border p-2">
@@ -274,7 +278,8 @@ function ItemsEditor({ projectId, captureId, result, hover, onHover }: {
   const save = useMutation({
     mutationFn: () => api.updateCapture(projectId, captureId, drafts.map((d): CaptureEdit => ({
       id: d.id, name: d.name, brand: d.brand, size: d.size, category: d.category, facings: d.facings, level: d.level,
-      price: toMinor(d.price, minorUnitDivisor(result.currency)),
+      // An untouched estimated price stays estimated: null keeps the stored price and flag.
+      price: d.estimated ? null : toMinor(d.price, minorUnitDivisor(result.currency)),
     }))),
     onSuccess: (v) => qc.setQueryData([...capturesKey(projectId), captureId], v),
   });

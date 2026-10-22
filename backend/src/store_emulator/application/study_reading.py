@@ -24,7 +24,7 @@ from .marketing import (
     get_survey,
     load_reading,
 )
-from .providers import assistive_client, assistive_model
+from .providers import answered_by, assistive_client, assistive_model
 from .staff_pitch import get_pitch
 from .storage.io import now_iso, write_json
 
@@ -93,7 +93,7 @@ def write_reading(pid: str, kind: StudyKind, jid: str, model: str, config: Simul
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[reading] {kind} {jid}: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The reading could not be written"), 502) from e
-    reading = reading.model_copy(update={"model": model, "created_at": now_iso()})
+    reading = reading.model_copy(update={"model": answered_by(llm, model), "created_at": now_iso()})
     write_json(_job_dir(pid, kind, jid) / "reading.json", reading.model_dump(mode="json"))
     return reading
 

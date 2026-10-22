@@ -55,3 +55,29 @@ it.each([
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(api.updateCapture).toHaveBeenCalledWith("project", "cap_test", [expect.objectContaining({ price: expected })]));
 });
+
+it("keeps untouched estimated prices estimated when saving another correction", async () => {
+  const item = { id: "i1", band: 0, level: 1, order: 0, facings: 1, boxes: [], sku: "tea", name: "Tea", brand: "",
+    size: "", category: "", raw_category: "", price: 2500, price_estimated: true, price_text: "", confidence: 10, labeled: true };
+  const view: CaptureView = { status, result: {
+    image_size: [100, 100], tilt_deg: 0, detector: "classic", detection_sources: {}, model: "none", currency: "JPY",
+    rack_type: "shelf", bands: [], gaps: [], dominant_category: "", notes: [], timings: {}, vlm_calls: 0, edited: false,
+    items: [item, { ...item, id: "i2", order: 1, sku: "coffee", name: "Coffee", price: 300 }],
+  } };
+  vi.mocked(api.listCaptures).mockResolvedValue([status]);
+  vi.mocked(api.getCapture).mockResolvedValue(view);
+  vi.mocked(api.updateCapture).mockResolvedValue(view);
+  show("JPY");
+  const [tea, coffee] = await screen.findAllByPlaceholderText("price") as HTMLInputElement[];
+  fireEvent.change(screen.getAllByPlaceholderText("Product name")[0]!, { target: { value: "Green tea" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(api.updateCapture).toHaveBeenCalledWith("project", "cap_test", [
+    expect.objectContaining({ id: "i1", name: "Green tea", price: null }), expect.objectContaining({ id: "i2", price: null }),
+  ]));
+  expect(tea!.value).toBe("2500");
+  fireEvent.change(coffee!, { target: { value: "320" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(api.updateCapture).toHaveBeenLastCalledWith("project", "cap_test", [
+    expect.objectContaining({ id: "i1", price: null }), expect.objectContaining({ id: "i2", price: 320 }),
+  ]));
+});

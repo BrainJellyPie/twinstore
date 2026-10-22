@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/queries/keys";
 import { Button } from "@/shared/components/ui/button";
+import { useI18n } from "@/shared/i18n/i18n";
 import { GridEditorDialog } from "./GridEditorDialog";
 import { EditFloorConfirmDialog } from "./EditFloorConfirmDialog";
 import { useForceEdit } from "./useForceEdit";
@@ -28,6 +29,7 @@ export function FloorConfigurationPanel({
   itemCount,
   onBusyChange,
 }: FloorConfigurationPanelProps) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const forceEdit = useForceEdit(pid, sid);
 
@@ -72,8 +74,8 @@ export function FloorConfigurationPanel({
     setConfirmError(null);
     try {
       const result = await forceEdit.forceEdit(setup);
-      if (!result) {
-        setConfirmError("Failed to save force edit.");
+      if (!result.ok) {
+        setConfirmError(result.message);
         return;
       }
       // Single canonical path for fresh setup: invalidate + fetchQuery.
@@ -121,7 +123,7 @@ export function FloorConfigurationPanel({
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-sm">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium">Step 1: Floor configuration</h3>
+        <h3 className="font-medium">{t("floorConfigurationStep")}</h3>
         {hasFloor && (
           <button
             type="button"
@@ -129,7 +131,7 @@ export function FloorConfigurationPanel({
             className="text-indigo-600 hover:underline"
             onClick={itemCount > 0 ? onEditWithItems : onEditNoItems}
           >
-            Edit
+            {t("editFloor")}
           </button>
         )}
       </div>
@@ -139,7 +141,7 @@ export function FloorConfigurationPanel({
           data-testid="floor-config-build-button"
           onClick={onBuildFromScratch}
         >
-          Build from scratch
+          {t("buildLayoutFromScratch")}
         </Button>
       )}
 

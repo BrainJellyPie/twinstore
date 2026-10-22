@@ -108,7 +108,7 @@ function ReadyContent({
   simulating,
   availability,
 }: ReadyProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const hasFloor = setup.store != null;
   const blocked = availability !== undefined && !availability.canSimulate;
 
@@ -129,7 +129,7 @@ function ReadyContent({
       {!hasFloor && (
         <section className="flex items-center justify-between gap-2 rounded-lg border bg-muted/40 p-4 text-sm">
           <h3 className="text-sm font-medium text-muted-foreground">
-            Step 2: Item placement
+            {t("itemPlacementStep")}
           </h3>
           <Lock aria-hidden className="size-4 text-muted-foreground" />
         </section>
@@ -137,7 +137,7 @@ function ReadyContent({
 
       {hasFloor && setup.store && (
         <section className="flex flex-col gap-2 rounded-lg border bg-card p-4 text-sm">
-          <h3 className="text-sm font-medium">Step 2: Item placement</h3>
+          <h3 className="text-sm font-medium">{t("itemPlacementStep")}</h3>
           <StarterFill key={`starter:${pid}:${sid}`} pid={pid} sid={sid} />
           <RackCopy key={`copy:${pid}:${sid}`} pid={pid} sid={sid} />
           <ProductBulkEditor key={`${pid}:${sid}`} pid={pid} sid={sid} />
@@ -155,7 +155,7 @@ function ReadyContent({
               {simulating ? t("runningSimulation") : `${t("runSimulation")}…`}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Choose an instant rule-based preview or LLM shoppers, a customer sample and a seed.
+              {t("runEngineChoiceHint")}
             </p>
             {blocked && availability && availability.reasons.length > 0 && (
               <ul className="flex flex-col gap-1">
@@ -170,7 +170,7 @@ function ReadyContent({
                         aria-hidden
                         className="mt-0.5 size-3 shrink-0 text-muted-foreground"
                       />
-                      <span>{reasonLabel(r)}</span>
+                      <span>{reasonLabel(r, locale)}</span>
                     </li>
                   );
                 })}

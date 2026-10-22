@@ -99,7 +99,7 @@ async def factorial_preview(pid: str, eid: str, req: FactorialRequest) -> Factor
 @router.post("/{pid}/experiments/{eid}/factorial/export.csv", summary="Export source-bound factorial audit and selected shopper cells")
 async def factorial_export(pid: str, eid: str, req: FactorialRequest) -> PlainTextResponse:
     text = await run_in_threadpool(_call, lambda: factorial.export(pid, eid, req))
-    return PlainTextResponse(text, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{eid}-factorial.csv"'})
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{eid}-factorial.csv"'})
 
 
 @router.get("/{pid}/experiments/{eid}/report.md", summary="A/B test report (Markdown)")
@@ -185,7 +185,7 @@ def survey_report(pid: str, sid: str) -> HTMLResponse:
 @router.get("/{pid}/surveys/{sid}/export.csv", summary="Respondent-level answers as CSV")
 def survey_csv(pid: str, sid: str) -> PlainTextResponse:
     text = _call(lambda: mk.survey_csv(pid, sid))
-    return PlainTextResponse(text, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{sid}.csv"'})
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{sid}.csv"'})
 
 
 @router.delete("/{pid}/experiments/{eid}", summary="Delete an A/B test", status_code=204)
@@ -223,7 +223,7 @@ def get_pitch(pid: str, pitch_id: str) -> PitchView:
 @router.get("/{pid}/staff-pitches/{pitch_id}/export.csv", summary="Paired script ratings and exact stimuli")
 def pitch_csv(pid: str, pitch_id: str) -> PlainTextResponse:
     text = _call(lambda: staff_pitch.pitch_csv(pid, pitch_id))
-    return PlainTextResponse(text, media_type="text/csv",
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="{pitch_id}.csv"'})
 
 
@@ -309,7 +309,7 @@ def conjoint_report(pid: str, cid: str) -> HTMLResponse:
 @router.get("/{pid}/conjoints/{cid}/export.csv", summary="Every option shown and whether it was chosen, as CSV")
 def conjoint_csv(pid: str, cid: str) -> PlainTextResponse:
     text = _call(lambda: mk.conjoint_csv(pid, cid))
-    return PlainTextResponse(text, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{cid}.csv"'})
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{cid}.csv"'})
 
 
 @router.delete("/{pid}/conjoints/{cid}", summary="Delete a conjoint study", status_code=204)

@@ -118,3 +118,18 @@ it("prevents repeat starts while the first request is pending", async () => {
   expect(api.startLocalModel).toHaveBeenCalledOnce();
   await act(async () => resolve({ ...base.local, state: "preparing" }));
 });
+
+it.each(["preparing", "downloading", "starting"] as const)("offers Stop while the local model is %s", async (state) => {
+  vi.mocked(api.stopLocalModel).mockRejectedValueOnce(new Error("Process is not responding")).mockResolvedValue({ ...base.local, state: "off" });
+  await show({ ...base, local: { ...base.local, state } }); expand();
+  expect(screen.queryByRole("button", { name: /Start local model|Retry local model/ })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Stop local model" }));
+  expect((await screen.findByRole("alert")).textContent).toBe("Process is not responding");
+  fireEvent.click(screen.getByRole("button", { name: "Stop local model" }));
+  await waitFor(() => expect(api.stopLocalModel).toHaveBeenCalledTimes(2));
+});
+
+it("does not offer Stop when the local model is off or ready", async () => {
+  await show(); expand();
+  expect(screen.queryByRole("button", { name: "Stop local model" })).toBeNull();
+});

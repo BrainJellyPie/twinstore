@@ -19,6 +19,9 @@ export function useSimulate() {
     onSuccess: (_run, { projectId, setupId }) => {
       void qc.invalidateQueries({ queryKey: queryKeys.runs(projectId, setupId) });
       void qc.invalidateQueries({ queryKey: queryKeys.projectRuns(projectId) });
+      // The layouts list and the store list show run status.
+      void qc.invalidateQueries({ queryKey: queryKeys.setups(projectId), exact: true });
+      void qc.invalidateQueries({ queryKey: queryKeys.projects(), exact: true });
     },
   });
 }

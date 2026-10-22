@@ -255,7 +255,9 @@ class LocalVLMManager:
             hw, plan = self.plan()
             self._check_cancelled()
             self._set(hardware=hw, plan=plan)
-            if self._answers(DEFAULT_PORT):   # someone already serves a model there (e.g. by hand)
+            # Someone already serves a model there (by hand, or TwinStore from a crashed run). Only a llama.cpp server
+            # that reads images will do: any other program answering on 8081 would take every request and fail it.
+            if self._answers(DEFAULT_PORT) and _serves_images(f"http://127.0.0.1:{DEFAULT_PORT}/v1"):
                 self._ready(f"http://127.0.0.1:{DEFAULT_PORT}/v1", managed=False, runtime="already running")
                 return
             self._check_cancelled()
@@ -515,17 +517,31 @@ def server_answers(api_base: str) -> bool:
         return False
 
 
-def _server_slots(api_base: str) -> int:
-    """How many requests a llama.cpp server already running here answers at once (its /props), 1 when it does not
-    say: asking it for more only makes requests queue there, where their time-out runs."""
+def _props(api_base: str) -> dict[str, object] | None:
     root = api_base.removesuffix("/").removesuffix("/v1")
     try:
         with _DIRECT.open(f"{root}/props", timeout=3) as r:
             data: object = json.loads(r.read().decode("utf-8", "replace"))
-        slots = cast(dict[str, object], data).get("total_slots") if isinstance(data, dict) else None
-        return slots if isinstance(slots, int) and slots > 0 else 1
     except (OSError, ValueError):
-        return 1
+        return None
+    return cast(dict[str, object], data) if isinstance(data, dict) else None
+
+
+def _serves_images(api_base: str) -> bool:
+    """A llama.cpp server (it has /props) whose model reads images; a server that does not say counts as one."""
+    props = _props(api_base)
+    if props is None or "total_slots" not in props:
+        return False
+    modalities = props.get("modalities")
+    return not isinstance(modalities, dict) or bool(cast(dict[str, object], modalities).get("vision", True))
+
+
+def _server_slots(api_base: str) -> int:
+    """How many requests a llama.cpp server already running here answers at once (its /props), 1 when it does not
+    say: asking it for more only makes requests queue there, where their time-out runs."""
+    props = _props(api_base)
+    slots = props.get("total_slots") if props is not None else None
+    return slots if isinstance(slots, int) and slots > 0 else 1
 
 
 def _terminate(proc: subprocess.Popen[bytes]) -> None:

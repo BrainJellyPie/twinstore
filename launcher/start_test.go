@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -14,11 +15,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-// A copy of this test executable stands in for uv. It never starts Python or downloads anything.
+// A copy of this test executable stands in for uv. It never starts Python or downloads anything. Its marker files
+// hold the data and Python environment folders it was given.
 func TestMain(m *testing.M) {
 	if dir := os.Getenv("TWINSTORE_TEST_MODEL_DIR"); dir != "" {
 		serveModel(dir)
@@ -28,7 +31,8 @@ func TestMain(m *testing.M) {
 		if len(os.Args) > 1 && os.Args[1] == "--version" {
 			kind = "version"
 		}
-		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("%s-%d", kind, os.Getpid())), nil, 0o600); err != nil {
+		given := os.Getenv("PARASTORE_DATA_HOME") + "\n" + os.Getenv("UV_PROJECT_ENVIRONMENT")
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("%s-%d", kind, os.Getpid())), []byte(given), 0o600); err != nil {
 			os.Exit(2)
 		}
 		if kind == "version" {
@@ -117,6 +121,7 @@ func testLauncher(t *testing.T) (*app, string) {
 	t.Cleanup(func() {
 		_ = os.WriteFile(filepath.Join(dir, "release"), nil, 0o600)
 		a.stopBackend(time.Second)
+		a.releaseData()
 		// Failed assertions must also clean up extra processes launched by the regression.
 		for _, kind := range []string{"run", "model"} {
 			files, _ := filepath.Glob(filepath.Join(dir, kind+"-*"))
@@ -260,28 +265,6 @@ func TestRetryRestartsAServerThatNeverAnswered(t *testing.T) {
 	}
 }
 
-func TestLongWindowsAppFoldersGetAShortPythonEnvironment(t *testing.T) {
-	short := `C:\Users\me\Downloads\TwinStore\app`
-	long := `C:\Users\someone.name\OneDrive - Company\Desktop\TwinStore-0.4.2-windows-x64\TwinStore\app`
-	home := `C:\Users\me\AppData\Local\TwinStore`
-	if got := shortVenvFor("windows", short, home); got != "" {
-		t.Errorf("short folder moved its environment to %q", got)
-	}
-	got := shortVenvFor("windows", long, home)
-	if !strings.HasPrefix(got, filepath.Join(home, "venv")) || len(got) > len(home)+15 {
-		t.Errorf("long folder environment = %q", got)
-	}
-	if again := shortVenvFor("windows", strings.ToUpper(long), home); again != got {
-		t.Errorf("the same folder in other case got another environment: %q", again)
-	}
-	if other := shortVenvFor("windows", long+"2", home); other == got {
-		t.Error("two app folders share one environment")
-	}
-	if got := shortVenvFor("linux", long, home); got != "" {
-		t.Errorf("non-Windows folder moved its environment to %q", got)
-	}
-}
-
 func TestAnOldUVIsPassedOverForANewerOne(t *testing.T) {
 	dir := t.TempDir()
 	uv := func(name string) string {
@@ -373,45 +356,152 @@ func TestWindowsProxySettingsBecomeProxyVariables(t *testing.T) {
 	}
 }
 
+// fakeLauncher answers as a launcher for root does. quit is called for each Quit request (with the header the app
+// sends); once gone is set it no longer answers.
+func fakeLauncher(t *testing.T, root string, quit func()) (*httptest.Server, *atomic.Bool) {
+	t.Helper()
+	gone := new(atomic.Bool)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case gone.Load():
+			http.NotFound(w, r)
+		case r.URL.Path == "/__twinstore/ping":
+			writeJSON(w, map[string]string{"app": "twinstore-launcher", "root": root})
+		case r.URL.Path == "/__twinstore/quit" && r.Method == http.MethodPost && r.Header.Get("X-TwinStore") == "1":
+			writeJSON(w, map[string]bool{"stopping": true})
+			quit()
+		}
+	}))
+	t.Cleanup(server.Close)
+	return server, gone
+}
+
 func TestASecondLaunchShowsTheFirstInsteadOfStarting(t *testing.T) {
 	home := t.TempDir()
 	root := filepath.Join(home, "app files")
-	unlock, url := claimInstance(home, root, time.Second)
-	if unlock == nil || url != "" {
-		t.Fatalf("first launch: unlock=%v url=%q", unlock != nil, url)
+	first := claimData(home, home, root, time.Second)
+	if first.unlock == nil || first.url != "" {
+		t.Fatalf("first launch: %+v", first)
 	}
-	if again, url := claimInstance(home, root, 300*time.Millisecond); again != nil || url != "" {
-		t.Fatal("a second launch claimed the app files while the first had not noted its address yet")
+	if again := claimData(home, home, root, 300*time.Millisecond); again.unlock != nil || again.url != "" || again.other != "" {
+		t.Fatal("a second launch claimed the stores while the first had not noted its address yet")
 	}
-	if other, _ := claimInstance(home, filepath.Join(home, "other app files"), time.Second); other == nil {
-		t.Error("other app files waited for this launcher")
+	if other := claimData(home, t.TempDir(), root, time.Second); other.unlock == nil {
+		t.Error("a launcher on another data folder waited for this one")
 	} else {
-		other()
+		other.unlock()
 	}
-	first := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]string{"app": "twinstore-launcher", "root": root})
-	}))
-	defer first.Close()
-	found := make(chan string, 1)
-	go func() {
-		again, url := claimInstance(home, root, 5*time.Second)
-		if again != nil {
-			again()
-			url = "claimed"
-		}
-		found <- url
-	}()
+	server, _ := fakeLauncher(t, root, func() { t.Error("the first launcher was asked to quit") })
+	found := make(chan claim, 1)
+	go func() { found <- claimData(home, home, root, 5*time.Second) }()
 	time.Sleep(100 * time.Millisecond)
-	saveInstance(home, root, first.URL)
-	if url := <-found; url != first.URL {
-		t.Errorf("waiting second launch got %q; want the first launcher at %s", url, first.URL)
+	saveInstance(home, root, server.URL)
+	if c := <-found; c.url != server.URL || c.unlock != nil {
+		if c.unlock != nil {
+			c.unlock()
+		}
+		t.Errorf("waiting second launch got %+v; want the first launcher at %s", c, server.URL)
 	}
-	clearInstance(home, first.URL)
-	unlock()
-	if again, _ := claimInstance(home, root, time.Second); again == nil {
+	clearInstance(home, server.URL)
+	first.unlock()
+	if again := claimData(home, home, root, time.Second); again.unlock == nil {
 		t.Error("the lock outlived its launcher")
 	} else {
-		again()
+		again.unlock()
+	}
+}
+
+func TestAnotherVersionQuitsSoThisOneCanUseTheStores(t *testing.T) {
+	defer func(old time.Duration) { quitWait = old }(quitWait)
+	home := t.TempDir()
+	root, older := filepath.Join(home, "TwinStore 0.4.4", "app"), filepath.Join(home, "TwinStore 0.4.3", "app")
+	holder := claimData(home, home, older, time.Second)
+	if holder.unlock == nil {
+		t.Fatal("the first version did not get the stores")
+	}
+	var asked atomic.Int32
+	var letGo atomic.Bool
+	server, _ := fakeLauncher(t, older, func() {
+		if asked.Add(1); letGo.Load() {
+			go func() { time.Sleep(50 * time.Millisecond); holder.unlock() }()
+		}
+	})
+	saveInstance(home, older, server.URL)
+
+	quitWait = 300 * time.Millisecond
+	if c := claimData(home, home, root, time.Second); c.unlock != nil || c.other != older || asked.Load() != 1 {
+		t.Fatalf("a version that does not quit: %+v after %d quit requests", c, asked.Load())
+	}
+	quitWait = 3 * time.Second
+	letGo.Store(true)
+	c := claimData(home, home, root, time.Second)
+	if c.unlock == nil || c.stopped != older || asked.Load() != 2 {
+		t.Fatalf("a version that quits: %+v after %d quit requests", c, asked.Load())
+	}
+	c.unlock()
+}
+
+func TestTryAgainAsksTheOtherVersionToQuitAgain(t *testing.T) {
+	defer func(old time.Duration) { quitWait = old }(quitWait)
+	quitWait = 300 * time.Millisecond
+	a, dir := testLauncher(t)
+	older := filepath.Join(dir, "TwinStore 0.4.3", "app")
+	holder := claimData(dir, dir, older, time.Second)
+	var asked atomic.Int32
+	server, _ := fakeLauncher(t, older, func() {
+		if asked.Add(1) == 2 { // the user quit it after the first attempt
+			go func() { time.Sleep(50 * time.Millisecond); holder.unlock() }()
+		}
+	})
+	saveInstance(dir, older, server.URL)
+	if err := os.WriteFile(filepath.Join(dir, "release"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a.start()
+	want := "Another TwinStore (" + older + ") is still running; quit it and try again."
+	if got := a.status.view().Error; got != want || a.status.state("data") != "error" || markerCount(dir, "run") != 0 {
+		t.Fatalf("boot screen: %q, data step %s, %d servers", got, a.status.state("data"), markerCount(dir, "run"))
+	}
+	quitWait = 3 * time.Second
+	a.retry()
+	waitForLauncher(t, func() bool { return markerCount(dir, "run") == 1 })
+	if line := "» Stopped the TwinStore running from " + older + " so this version can use your stores"; !slices.Contains(a.log.Tail(40), line) {
+		t.Errorf("log does not say %q: %q", line, a.log.Tail(40))
+	}
+}
+
+func TestAnOlderMacLauncherOnTheSameStoresIsAskedToQuit(t *testing.T) {
+	defer func(old time.Duration) { quitWait = old }(quitWait)
+	quitWait = 3 * time.Second
+	home := t.TempDir()
+	root := "/Applications/TwinStore.app/Contents/Resources/app"
+	older := func(theirs string) (*httptest.Server, *atomic.Int32) {
+		var asked atomic.Int32
+		var server *httptest.Server
+		var gone *atomic.Bool
+		server, gone = fakeLauncher(t, theirs, func() { asked.Add(1); gone.Store(true) })
+		raw, _ := json.Marshal(instance{URL: server.URL, Root: theirs, PID: 1})
+		if err := os.WriteFile(olderNote(home), raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return server, &asked
+	}
+	server, _ := older(root)
+	if c := claimData(home, home, root, time.Second); c.url != server.URL || c.unlock != nil {
+		t.Errorf("an older launcher of these app files is not shown: %+v", c)
+	}
+	elsewhere := "/Users/me/Downloads/TwinStore.app/Contents/Resources/app"
+	_, asked := older(elsewhere)
+	if c := claimData(home, home, root, time.Second); c.unlock == nil || c.stopped != elsewhere || asked.Load() != 1 {
+		t.Errorf("an older macOS launcher on the same stores: %+v after %d quit requests", c, asked.Load())
+	} else {
+		c.unlock()
+	}
+	_, asked = older(`C:\Users\me\TwinStore 0.4.3\app`) // kept its stores in its app folder
+	if c := claimData(home, home, root, time.Second); c.unlock == nil || c.stopped != "" || asked.Load() != 0 {
+		t.Errorf("an older launcher with its own stores: %+v after %d quit requests", c, asked.Load())
+	} else {
+		c.unlock()
 	}
 }
 

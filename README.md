@@ -60,6 +60,8 @@ unpack it and double-click the **TwinStore** icon. The browser opens a boot scre
 app when it is ready. Nothing to install beforehand — the first start fetches Python and the packages (a few minutes,
 once); later starts take seconds.
 
+**Updating:** unpack the new version anywhere; your stores come along (they live in your user folder, not the app folder).
+
 > [!NOTE]
 > **Windows may say "Windows protected your PC".** That is normal for a new app without a code-signing
 > certificate, not a virus warning: click **More info → Run anyway**. On a Mac, open TwinStore once, then
@@ -540,7 +542,7 @@ Defaults live in `backend/src/store_emulator/application/config.py`; these envir
 | `PARASTORE_VLM_MODEL`, `PARASTORE_VLM_API_BASE` | vision model for `vlm_glance` (default `openai/local-vlm` at `http://127.0.0.1:8081/v1`) |
 | `PARASTORE_VLM_MAX_GLANCES`, `PARASTORE_VLM_GLANCE_POLICY`, `PARASTORE_VLM_LOOK_BASE` | shelves considered per customer; `gated`/`all`; look probability |
 | `PARASTORE_VLM_IMAGE_WIDTH`, `PARASTORE_VLM_CACHE_DIR`, `PARASTORE_VLM_SEED` | shelf image width (px); response cache; per-call seeds |
-| `PARASTORE_DATA_HOME` | for the launcher: folder that holds `.data` (projects, runs, settings) instead of `backend/` |
+| `PARASTORE_DATA_HOME` | folder that holds `.data` (stores, runs, settings, the local model). The app icon and the fallback scripts default to the per-user TwinStore folder (`%LOCALAPPDATA%\TwinStore`, `~/Library/Application Support/TwinStore`, `~/.local/share/twinstore`); the backend run on its own to `backend/` |
 
 </details>
 

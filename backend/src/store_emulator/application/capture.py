@@ -57,8 +57,8 @@ from store_emulator.engine.files import remove_tree
 
 from .async_executor import executor
 from .currencies import project_currency
-from .errors import AppError
-from .providers import PRESETS, resolve_model
+from .errors import AppError, job_failure
+from .providers import PRESETS, assistive_vision_model, ensure_local_ready, resolve_model
 from .setups import set_active_setup, setup_summary
 from .storage import images as image_storage
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
@@ -164,10 +164,24 @@ def capture_llm_config(config: SimulationConfig, model: str) -> LLMConfig | None
         except ValueError as e:
             raise AppError(str(e), 400) from e
     vlm = config.engines.vlm_glance.llm
-    # Through resolve_model: the default local endpoint follows TwinStore's own server (port, request limit).
-    return resolve_model(vlm.model, base=base.model_copy(update={
+    # The app's vision model, or a cloud provider's when that is the local model and it is not running while a key is
+    # set up (as for reading a pack). Through resolve_model: the default local endpoint follows TwinStore's own
+    # server (port, request limit).
+    alternative = assistive_vision_model("", vlm)
+    if alternative:
+        try:
+            return resolve_model(alternative, base=base)
+        except ValueError as e:
+            raise AppError(str(e), 400) from e
+    resolved = resolve_model(vlm.model, base=base.model_copy(update={
         "api_base": vlm.api_base, "structured_output": vlm.structured_output, "api_key": vlm.api_key,
     }))
+    if resolved.api_base:
+        try:   # a local server that does not answer would "read" every product as Product 1.1, 1.2, …
+            ensure_local_ready(resolved.api_base)
+        except ValueError as e:
+            raise AppError(str(e), 503) from e
+    return resolved
 
 
 def model_has_vision(model: str) -> bool:
@@ -242,7 +256,9 @@ def create_capture(
     base = _base_dir(pid)
     base.mkdir(parents=True, exist_ok=True)
     try:
-        with FileLock(base / ".upload.lock", timeout=0):
+        # Wait for another photo being accepted (decoding a 25 MB photo takes seconds) rather than refusing at once: a
+        # second tab's queue paused on that refusal until retried by hand.
+        with FileLock(base / ".upload.lock", timeout=60):
             if (_dir(pid, cid) / "status.json").exists():
                 accepted = _read_status(pid, cid)
                 if accepted.upload_sha256 != digest:
@@ -346,7 +362,7 @@ def _run_job(pid: str, status: CaptureStatus, llm_config: LLMConfig | None) -> N
     except Exception as e:  # surface any failure to the UI instead of a stuck job
         logger.exception(f"[capture] {status.capture_id} failed")
         final = writer.status.model_copy(update={
-            "status": "failed", "error": f"{type(e).__name__}: {e}"[:500], "finished_at": now_iso(),
+            "status": "failed", "error": job_failure(e, "Reading the shelf photo failed"), "finished_at": now_iso(),
         })
     _write_status(pid, final)
 

@@ -26,24 +26,34 @@ export function ProductDrop({ projectId, compact = false, onUploaded, setupId }:
   const [cutOut, setCutOut] = useState(true);
   const [readPacks, setReadPacks] = useState(true);
   const [unread, setUnread] = useState(0);
+  const [failures, setFailures] = useState<{ name: string; message: string }[]>([]);
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
       const out: PackageAsset[] = [];
-      let failed = 0;
+      const failed: { name: string; message: string }[] = [];
+      let unreadable = 0;
+      // One file at a time; a rejected file is reported and the rest still upload.
       for (const f of files) {
-        let asset = await api.uploadPackage(projectId, f, { name: f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "), remove_background: cutOut });
+        let asset: PackageAsset;
+        try {
+          asset = await api.uploadPackage(projectId, f, { name: f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "), remove_background: cutOut });
+        } catch (e) {
+          failed.push({ name: f.name, message: e instanceof Error ? e.message : String(e) });
+          continue;
+        }
         if (readPacks) {
           // The printed name beats the file name; a pack the model cannot read keeps the file name.
-          try { asset = (await api.readPackage(projectId, asset.asset_id, { setup_id: setupId })).asset; } catch { failed += 1; }
+          try { asset = (await api.readPackage(projectId, asset.asset_id, { setup_id: setupId })).asset; } catch { unreadable += 1; }
         }
         out.push(asset);
       }
-      setUnread(failed);
+      setUnread(unreadable);
+      setFailures(failed);
       return out;
     },
-    onSuccess: async (assets) => {
+    onSettled: async (assets) => {
       await qc.invalidateQueries({ queryKey: marketingKeys.packages(projectId) });
-      onUploaded?.(assets);
+      if (assets?.length) onUploaded?.(assets);
     },
   });
   const pick = (list: FileList | null) => {
@@ -83,7 +93,15 @@ export function ProductDrop({ projectId, compact = false, onUploaded, setupId }:
           Name packs from what they say
         </label>
       </div>
-      {upload.error && <p className="text-xs text-destructive">{upload.error.message}</p>}
+      {upload.error && <p role="alert" className="text-xs text-destructive">{upload.error.message}</p>}
+      {failures.length > 0 && !upload.isPending && (
+        <div role="alert" className="px-1 text-xs text-destructive">
+          <p>{failures.length === 1 ? "1 image could not be uploaded:" : `${failures.length} images could not be uploaded:`}</p>
+          <ul className="list-disc pl-4">
+            {failures.map((f, i) => <li key={i} className="break-words"><span className="font-medium">{f.name}</span>: {f.message}</li>)}
+          </ul>
+        </div>
+      )}
       {unread > 0 && !upload.isPending && (
         <p className="text-xs text-muted-foreground">{unread} pack{unread > 1 ? "s" : ""} could not be read and kept the file name; use “Read the pack” on the card to try again.</p>
       )}
@@ -131,7 +149,7 @@ function ProductCard({ projectId, asset, products, setupId }: { projectId: strin
   });
   const del = useMutation({
     mutationFn: () => api.deletePackage(projectId, asset.asset_id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: marketingKeys.packages(projectId) }),
+    onSettled: () => qc.invalidateQueries({ queryKey: marketingKeys.packages(projectId) }),
   });
   const linked = products.find((p) => p.sku === asset.sku);
   return (

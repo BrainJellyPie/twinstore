@@ -41,7 +41,8 @@ def test_conjoint_csv_preserves_text_headers_options_and_none_rows(monkeypatch, 
     monkeypatch.setattr(marketing, 'get_conjoint', lambda *_: view)
     response = TestClient(app).get('/api/projects/proj_test/conjoints/cjt_test/export.csv')
     assert response.status_code == 200
-    rows = list(csv.reader(io.StringIO(response.text)))
+    assert response.text.startswith("\ufeff")   # opens as UTF-8 in Excel
+    rows = list(csv.reader(io.StringIO(response.text.removeprefix("\ufeff"))))
     # Attribute labels are stripped by the request model; persona fields retain their original whitespace.
     label = expected if text == text.strip() else "'" + text.strip()
     header = ['respondent', 'age_group', 'gender', 'task', 'option', label, 'Pack', *(['price'] if has_price else []), 'chosen']
@@ -82,7 +83,8 @@ def test_survey_csv_preserves_text_answers_and_numeric_zero(monkeypatch, text, e
     monkeypatch.setattr(marketing, 'get_survey', lambda *_: view)
     response = TestClient(app).get('/api/projects/proj_test/surveys/srv_test/export.csv')
     assert response.status_code == 200
-    rows = list(csv.DictReader(io.StringIO(response.text)))
+    assert response.text.startswith("\ufeff")   # opens as UTF-8 in Excel
+    rows = list(csv.DictReader(io.StringIO(response.text.removeprefix("\ufeff"))))
     for field in ('respondent', 'age_group', 'gender', 'why', 'error'):
         assert rows[0][field] == expected
     assert [rows[0][field] for field in ('purchase_intent_A', 'too_cheap', 'cheap', 'expensive', 'too_expensive', 'preferred')] == ['5', '0', '100', '200', '300', 'A']

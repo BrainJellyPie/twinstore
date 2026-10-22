@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { useLocale } from "@/shared/i18n/i18n";
 import { currencyCode, formatMoney, formatPercent, majorUnitText, minorUnitDivisor, toMinor } from "../money";
 
 describe("money", () => {
@@ -49,4 +50,31 @@ it("retains compact, fractional-minor-unit and unknown-code formatting", () => {
   expect(formatMoney(1.5, "USD")).toBe("$0.02");
   expect(formatMoney(123, "invalid")).toBe("1.23 invalid");
   expect(formatMoney(-0, "USD")).toBe("-$0.00");
+});
+
+it.each(["en", "ko", "zh", "ja", "es", "fr"] as const)("formats money in the app's selected %s locale, not the browser's", (locale) => {
+  const previous = useLocale.getState().locale;
+  try {
+    useLocale.getState().setLocale(locale);
+    const euro = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
+    expect(formatMoney(123456, "EUR")).toBe(euro.format(1234.56));
+    expect(formatMoney(123456700, "EUR", { compact: true })).toBe(new Intl.NumberFormat(locale, {
+      style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }).format(1234567));
+    expect(formatMoney(1234567, "invalid")).toBe(`${(12345.67).toLocaleString(locale)} invalid`);
+  } finally {
+    useLocale.getState().setLocale(previous);
+  }
+});
+
+it("keeps cached formatters apart per locale and honours an explicit locale", () => {
+  const previous = useLocale.getState().locale;
+  try {
+    useLocale.getState().setLocale("en");
+    expect(formatMoney(123456, "EUR")).toBe("€1,234.56");
+    useLocale.getState().setLocale("fr");
+    expect(formatMoney(123456, "EUR")).toBe(new Intl.NumberFormat("fr", { style: "currency", currency: "EUR" }).format(1234.56));
+    expect(formatMoney(123456, "EUR", { locale: "en" })).toBe("€1,234.56");
+  } finally {
+    useLocale.getState().setLocale(previous);
+  }
 });

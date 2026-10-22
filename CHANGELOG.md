@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.4.4 — updates keep your stores; photo and vision features check their model
+
+### Updating keeps your stores
+- Stores, runs and the local model's downloads now live in a folder of your own (Windows %LOCALAPPDATA%\TwinStore,
+  Linux ~/.local/share/twinstore, macOS as before) instead of inside the unpacked app folder, so a new version
+  unpacked anywhere finds them. On its first start it copies the stores over once from the app folder an earlier
+  version ran from (large model files are linked, not copied), showing it on the start screen. An earlier version
+  still running is asked to quit first, so two versions never share the stores at once.
+
+### Photo and vision features check their model
+- Shelf capture used the app's vision model without checking it: with a cloud key and no local model, or while the
+  local model was still downloading, every product came out as "Product 1.1, 1.2, …" at typical prices and the capture
+  said "completed". It now uses the cloud provider's vision model when the local one is not running, refuses to start
+  when no model can answer, and fails with the reason when not one product could be read.
+- A vision A/B test on a model that cannot answer is refused before it starts (vision shoppers whose every call
+  failed fell back to rule-based decisions, and the report said "no winner").
+- A concept test nobody could answer fails instead of reporting zeros on a 1–5 scale.
+- Failed background jobs (captures, tests, Shelf Lab, the optimizer, neighborhood runs) say what went wrong in words,
+  e.g. "the model could not be reached. If it is the local model, start it in Settings…", instead of
+  "APIConnectionError: litellm…".
+- Interviews, the run analyst, commentaries and study readings record the model that actually answered.
+
+### Editing and settings
+- The floor editor no longer throws away unsaved changes on Esc, a click outside it, Cancel or ×: it asks first. A
+  failed save or reset says why instead of silently re-enabling the button, and reset cannot run twice.
+- The new-store form asks before leaving it (another page, Back, closing the tab) with what you typed still unsaved.
+- Saving a correction in shelf capture no longer turns every estimated "typical" price into a read tag price.
+- Errors that were swallowed now show: shelf photo and Shelf Lab uploads and deletes, model-provider saves and tests,
+  the local model's start and stop, the "Edit floor" confirmation (with the server's reason), and the store gallery
+  (in your language, details below). One bad file in a product-photo upload no longer stops the others.
+- Photo mode stops when you leave the 3D view (it came back on by itself, with "Fit store view" disabled).
+- The Store tab shows opening hours right (24:00 as midnight, closed days as gaps, each day's own hours).
+- The layout list and store gallery show a layout as running or finalized as soon as a run starts or ends.
+- Money follows the app's language rather than the browser's; the template preview, floor comparison, run readiness
+  reasons and floor set-up steps are translated.
+- A question about results typed in the command palette while a draft layout is open goes to a layout that has a
+  run, instead of disappearing; with no run anywhere the palette says so.
+- The local model can be stopped from the banner while it downloads or starts.
+
+### Smaller fixes
+- The macOS download is signed (ad-hoc) as a whole bundle: only its arm64 executable was, and Apple silicon Macs may
+  call such a download "damaged" instead of offering Open Anyway.
+- "Try again" after the local model failed to start (a dropped download) starts it again instead of repeating the
+  old failure.
+- A program other than a llama.cpp server that reads images, answering on port 8081, is no longer taken for the local
+  model; TwinStore starts its own on another port.
+- A layout being simulated refuses changes to its store until the run ends (a change saved meanwhile was locked
+  unsimulated, or lost to the run's own write).
+- A second tab uploading shelf photos waits its turn instead of pausing its whole queue with "Another photo is being
+  accepted".
+- Survey, conjoint, factorial and staff-script CSVs open in Excel with Korean and other non-ASCII text intact.
+
 ## 0.4.3 — failures that say so, the local model behind company networks
 
 ### Runs and customers that fail now say so

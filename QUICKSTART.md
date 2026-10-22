@@ -25,7 +25,10 @@
 **API 키 없이도** 샘플 매장과 *Rule-based* 엔진으로 바로 시뮬레이션할 수 있습니다. LLM/VLM 쇼퍼를 쓰려면 상단의 **Models**에서
 OpenAI·Anthropic·Gemini·Qwen 키를 입력하거나, vLLM·Ollama·llama.cpp 같은 로컬 서버 주소를 넣으세요.
 
-데이터는 내 컴퓨터에만 저장됩니다 (Windows·Linux: 압축을 푼 폴더의 `app/backend/.data`, macOS: `~/Library/Application Support/TwinStore`).
+데이터는 내 컴퓨터에만, 앱 폴더가 아닌 사용자 폴더에 저장됩니다 (Windows: `%LOCALAPPDATA%\TwinStore`,
+macOS: `~/Library/Application Support/TwinStore`, Linux: `~/.local/share/twinstore`).
+**업데이트**: 새 버전을 아무 폴더에나 압축을 풀어 실행하면 매장이 그대로 따라옵니다. 예전 버전이 앱 폴더(`app/backend/.data`)에
+두었던 매장은 첫 실행 때 한 번 복사해 오고, 예전 버전이 아직 실행 중이면 종료시킨 뒤 시작합니다.
 문제가 생기면 시작 화면의 **Copy log**로 로그를 복사해 알려주세요.
 
 ## English
@@ -53,8 +56,11 @@ shoppers, open **Models** and add an OpenAI, Anthropic, Gemini or Qwen key, or t
 llama.cpp server. **Capture** (shelf photo → planogram) works out of the box; for the Grounding DINO detector run
 `uv sync --extra capture` once in `backend` (it downloads PyTorch, which is large).
 
-Data stays on your machine: `app/backend/.data` next to the launcher on Windows and Linux,
-`~/Library/Application Support/TwinStore` on macOS. If something goes wrong, **Copy log** on the boot screen.
+Data stays on your machine, in your user folder rather than the app folder: `%LOCALAPPDATA%\TwinStore` on Windows,
+`~/Library/Application Support/TwinStore` on macOS, `~/.local/share/twinstore` on Linux. **Updating**: unpack the new
+version anywhere and start it; your stores come along. Stores an earlier version kept in its app folder
+(`app/backend/.data`) are copied over once on the first start, and an earlier version still running is asked to quit
+first. If something goes wrong, **Copy log** on the boot screen.
 
 ### What the launcher does
 
@@ -65,5 +71,6 @@ dependencies, and serves the boot screen and then the app at `127.0.0.1` only. O
 `--rebuild-ui`, `--smoke`. Its log is in the per-user TwinStore folder (`logs/launcher.log`).
 
 **From a source checkout** (no release): build the launcher once with Go (`launcher/build.sh`, outputs in
-`launcher/dist`), or use the fallback scripts `launcher/scripts/twinstore-{windows.bat,macos.command,linux.sh}`;
+`launcher/dist`), or use the fallback scripts `launcher/scripts/twinstore-{windows.bat,macos.command,linux.sh}`
+(same per-user data, but they neither bring stores over from an earlier version nor stop a running TwinStore);
 the first start then also builds the web interface (1–3 minutes).

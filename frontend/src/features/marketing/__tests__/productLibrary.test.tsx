@@ -54,3 +54,37 @@ it("reads one pack from its card and says what it found", async () => {
   expect(await screen.findByText("500 ml · Tea · linked to the shelf product")).toBeTruthy();
   expect(api.readPackage).toHaveBeenCalledWith("p", "pkg_1", { setup_id: "s1" });
 });
+
+it("keeps uploading past a rejected file, names it with the server's reason and refreshes the library", async () => {
+  vi.mocked(api.uploadPackage).mockImplementation(async (_p, file) => {
+    if (file.name === "huge.png") throw new Error("image is larger than 20 MB");
+    return { ...ASSET, asset_id: file.name, name: file.name };
+  });
+  const client = new QueryClient();
+  const invalidate = vi.spyOn(client, "invalidateQueries");
+  const uploaded = vi.fn();
+  render(<QueryClientProvider client={client}><ProductDrop projectId="p" onUploaded={uploaded} /></QueryClientProvider>);
+  fireEvent.click(screen.getByLabelText("Name packs from what they say"));
+  const files = ["a.png", "huge.png", "c.png"].map((name) => new File(["x"], name, { type: "image/png" }));
+  fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files } });
+  await waitFor(() => expect(uploaded).toHaveBeenCalledOnce());
+  expect(api.uploadPackage).toHaveBeenCalledTimes(3);
+  expect(uploaded.mock.calls[0]![0].map((a: PackageAsset) => a.asset_id)).toEqual(["a.png", "c.png"]);
+  const alert = screen.getByRole("alert");
+  expect(alert.textContent).toContain("1 image could not be uploaded:");
+  expect(alert.textContent).toContain("huge.png: image is larger than 20 MB");
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ["projects", "p", "lab-packages"] });
+});
+
+it("refreshes the library even when every file is rejected", async () => {
+  vi.mocked(api.uploadPackage).mockRejectedValue(new Error("Unsupported image"));
+  const client = new QueryClient();
+  const invalidate = vi.spyOn(client, "invalidateQueries");
+  const uploaded = vi.fn();
+  render(<QueryClientProvider client={client}><ProductDrop projectId="p" onUploaded={uploaded} /></QueryClientProvider>);
+  const files = ["a.png", "b.png"].map((name) => new File(["x"], name, { type: "image/png" }));
+  fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files } });
+  expect((await screen.findByRole("alert")).textContent).toContain("2 images could not be uploaded:");
+  await waitFor(() => expect(invalidate).toHaveBeenCalled());
+  expect(uploaded).not.toHaveBeenCalled();
+});

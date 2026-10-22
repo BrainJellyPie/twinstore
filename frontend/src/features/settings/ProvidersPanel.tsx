@@ -66,7 +66,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
   const test = useMutation({
     mutationFn: (vision: boolean) => api.testModel(`${preset.kind}:${model}`, vision),
     onSuccess: setResult,
-    onError: (e) => setResult({ ok: false, model, latency_ms: 0, reply: "", error: String(e), vision: false }),
+    onError: (e) => setResult({ ok: false, model, latency_ms: 0, reply: "", error: e.message, vision: false }),
   });
 
   const badge = !status.enabled
@@ -91,6 +91,9 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
             {status.key_source === "none" && (preset.api_key_env ? `or set ${preset.api_key_env}` : "")}
             {status.key_source === "not needed" && "No key needed"}
           </div>
+          {save.error && (
+            <div role="alert" className="mt-1 break-words text-xs text-destructive">{save.error.message}</div>
+          )}
           {status.key_rejected && (
             <div role="alert" className="mt-1 text-xs text-destructive">
               {preset.label} turned this key down (not valid or revoked). Paste a new key; until then TwinStore uses

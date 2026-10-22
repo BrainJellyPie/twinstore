@@ -17,6 +17,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import weakref
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast
@@ -550,16 +551,23 @@ class _Fallback:
         problem = f"{label} turned the API key down ({reason})" if rejected else f"No API key for {label}"
         fix = "replace the key in Settings → Model providers" if rejected else "add a key in Settings → Model providers"
         local = manager()
-        starting = local.status().state == "off" and os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1"
+        # Off, or failed last time (a dropped download, a server that crashed): start it again, once per request —
+        # "Try again" on a failed generation would otherwise repeat the old failure without trying.
+        starting = local.status().state in ("off", "error") and os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1"
         if starting:
             local.start()
         deadline = time.monotonic() + self._wait
+        restarted_seen = False
         while True:
             status = local.status()
             if status.state == "ready" and _local_text_ready(load_settings()):
                 logger.warning(f"[providers] {problem}; assistive features use the local model")
                 return f"{ProviderKind.LLAMACPP.value}:local"
             if status.state not in _LOCAL_COMING and not (starting and status.state == "off"):
+                if starting and status.state == "error" and not restarted_seen:
+                    restarted_seen = True     # the error may be the old one, before the restart got going
+                    time.sleep(1.0)
+                    continue
                 why = f" (the local model: {status.message})" if status.state == "error" and status.message else ""
                 raise ValueError(f"{problem}{why}. {fix[0].upper()}{fix[1:]}, or add another provider's key.")
             done = f" ({status.progress:.0%})" if status.progress is not None else ""
@@ -579,6 +587,15 @@ def _short_reason(error: BaseException) -> str:
     return "authentication failed"
 
 
+_FALLBACKS: "weakref.WeakKeyDictionary[LiteLLMClient, _Fallback]" = weakref.WeakKeyDictionary()
+
+
+def answered_by(llm: object, ref: str) -> str:
+    """The model that answered an assistive client: `ref`, unless the client moved on (a key turned down)."""
+    fallback = _FALLBACKS.get(llm) if isinstance(llm, LiteLLMClient) else None
+    return fallback.ref if fallback is not None else ref
+
+
 def assistive_client(
     requested: str, config: LLMConfig, *, wait: float = 0.0, on_wait: Callable[[str], None] | None = None,
 ) -> LiteLLMClient:
@@ -592,7 +609,9 @@ def assistive_client(
     kind = None if own_endpoint else missing_key(ref)
     if kind is not None:
         fallback.move_on(kind, None)
-    return LiteLLMClient(fallback.config, reroute=fallback)
+    client = LiteLLMClient(fallback.config, reroute=fallback)
+    _FALLBACKS[client] = fallback
+    return client
 
 
 # ── key check at start ──────────────────────────────────────────────────────
@@ -673,7 +692,7 @@ def ensure_resolvable(config: SimulationConfig) -> None:
             _ensure_plain_key(ref, settings)
         resolved = resolve_model(ref, base=base, settings=settings)
         if resolved.api_base:
-            _ensure_local_ready(resolved.api_base)
+            ensure_local_ready(resolved.api_base)
 
 
 def _provider_of(ref: str) -> ProviderKind | None:
@@ -710,7 +729,7 @@ def _ensure_plain_key(ref: str, settings: dict[ProviderKind, ProviderSettings]) 
     raise ValueError(f"{problem}. {hint}, or {fix} in Settings → Model providers.")
 
 
-def _ensure_local_ready(api_base: str) -> None:
+def ensure_local_ready(api_base: str) -> None:
     """A run on a server on this computer that is not up would only fail — and vision shoppers whose every call fails
     fall back to rule-based decisions, so the run would even look fine."""
     # late import: local_vlm imports this module

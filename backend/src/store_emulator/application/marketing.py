@@ -80,10 +80,10 @@ from store_emulator.engine.files import remove_tree
 
 from .async_executor import executor
 from .capture import capture_llm_config
-from .errors import AppError, model_failure
+from .errors import AppError, job_failure, model_failure
 from .currencies import project_currency, simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
-from .providers import assistive_client, assistive_model, build_client
+from .providers import answered_by, assistive_client, assistive_model, build_client, ensure_resolvable
 from .shelf_lab import (
     _check_id,  # pyright: ignore[reportPrivateUsage]
     _load_store,  # pyright: ignore[reportPrivateUsage]
@@ -203,6 +203,14 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
         built.append((v.name, store, applied, warnings))
     if req.engine == "rule" and any(c.kind == "package" for v in req.variants for c in v.changes):
         raise AppError("packaging is only visible to vision shoppers: choose the vision engine", 400)
+    if req.engine == "vlm":
+        # Vision shoppers whose every call fails fall back to rule-based decisions: a model that cannot answer would
+        # give a report that looks fine and says "no winner".
+        vision = config.model_copy(update={"engine_type": EngineType.VLM_GLANCE})
+        try:
+            ensure_resolvable(with_engine_model(vision, req.model) if req.model else vision)
+        except ValueError as e:
+            raise AppError(str(e), 400) from e
     name = req.name.strip() or " vs ".join(["Control", *[v.name for v in req.variants]])
     status = _new_job(pid, "experiment", name, req)
 
@@ -262,7 +270,7 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
             _finish(pid, status, report)
         except Exception as e:
             logger.exception(f"[marketing] experiment {status.job_id} failed")
-            _finish(pid, status, None, f"{type(e).__name__}: {e}")
+            _finish(pid, status, None, job_failure(e, "The test failed"))
 
     executor.submit(run)
     return status
@@ -324,7 +332,7 @@ def write_experiment_narrative(pid: str, eid: str, model: str, config: Simulatio
     except Exception as e:  # provider errors reach the user as a message
         logger.warning(f"[marketing] narrative for {eid} failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The commentary could not be written"), 502) from e
-    narrative.model = model
+    narrative.model = answered_by(llm, model)
     write_json(_job_dir(pid, "experiment", eid) / "narrative.json", narrative.model_dump(mode="json"))
     return narrative
 
@@ -385,7 +393,7 @@ def start_survey(pid: str, req: SurveyRequest, config: SimulationConfig) -> JobS
                                                    seconds=round(time.perf_counter() - t0, 1)))
         except Exception as e:
             logger.exception(f"[marketing] survey {status.job_id} failed")
-            _finish(pid, status, None, f"{type(e).__name__}: {e}")
+            _finish(pid, status, None, job_failure(e, "The test failed"))
 
     executor.submit(run)
     return status
@@ -395,6 +403,10 @@ def summarize_survey(
     sid: str, name: str, model: str, req: SurveyRequest, names: list[str], answers: list[SurveyAnswer], *, seconds: float = 0.0,
 ) -> SurveyReport:
     ok = [a for a in answers if not a.error]
+    if not ok:
+        # A report of zero respondents (every scale 0 on a 1–5 scale) would read as a result.
+        first = next((a.error for a in answers if a.error), "no answers")
+        raise ValueError(f"No respondent could answer, so there is nothing to report. {first}")
     k = len(req.stimuli)
     scales: list[ScaleSummary] = []
     for q in SCALES:
@@ -586,7 +598,7 @@ def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) 
             _finish(pid, status, report)
         except Exception as e:
             logger.exception(f"[marketing] shelf test {status.job_id} failed")
-            _finish(pid, status, None, f"{type(e).__name__}: {e}")
+            _finish(pid, status, None, job_failure(e, "The test failed"))
 
     executor.submit(run)
     return status
@@ -651,7 +663,7 @@ def start_conjoint(pid: str, req: ConjointRequest, config: SimulationConfig) -> 
                                                      seconds=round(time.perf_counter() - t0, 1)))
         except Exception as e:
             logger.exception(f"[marketing] conjoint {status.job_id} failed")
-            _finish(pid, status, None, f"{type(e).__name__}: {e}")
+            _finish(pid, status, None, job_failure(e, "The test failed"))
 
     executor.submit(run)
     return status
