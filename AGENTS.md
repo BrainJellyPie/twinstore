@@ -145,6 +145,8 @@ Add translations in all six columns
 when extending these surfaces. Use the selected locale for dates and numbers.
 Prefer natural task-oriented copy over word-for-word translation; follow
 [`verification/i18n-copy-style.md`](./verification/i18n-copy-style.md) for language-specific voice.
+Interior design names are shared by setup, floor review and comparison; color resets use complete
+localized messages, and preview failures retain diagnostics below localized recovery guidance.
 Operating-hour, assortment-limit/seed and options-file controls also use the catalog; known product
 category labels are shared across the starter-fill and template flows.
 

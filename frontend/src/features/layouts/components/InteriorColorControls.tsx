@@ -1,14 +1,14 @@
 import type { InteriorColors, StoreDesign } from "@/shared/types/domain";
 import { INTERIOR_COLOR_FIELDS, resolveInteriorPalette } from "@/features/store-viewer/realistic/designThemes";
 import { useI18n } from "@/shared/i18n/i18n";
-import { COLOR_LABELS } from "../optionLabels";
+import { COLOR_LABELS, COLOR_RESET_LABELS } from "../optionLabels";
 
 export function InteriorColorControls({ design, colors, onChange }: {
   design?: StoreDesign;
   colors?: InteriorColors | null;
   onChange: (colors: InteriorColors | null) => void;
 }) {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const palette = resolveInteriorPalette(design, colors);
   const count = INTERIOR_COLOR_FIELDS.filter(([key]) => colors?.[key] != null).length;
   return <details className="space-y-2 rounded border p-2 text-xs">
@@ -22,7 +22,7 @@ export function InteriorColorControls({ design, colors, onChange }: {
         </label>
         <div className="flex items-center justify-between gap-2 text-[11px]">
           <code>{palette[key]}</code>
-          <button type="button" className="underline disabled:opacity-50" aria-label={t("layResetColor", { color: t(COLOR_LABELS[key]).toLocaleLowerCase(locale) })}
+          <button type="button" className="underline disabled:opacity-50" aria-label={t(COLOR_RESET_LABELS[key])}
             disabled={colors?.[key] == null} onClick={() => onChange({ ...colors, [key]: null })}>{t("layUseDesignColor")}</button>
         </div>
       </div>)}

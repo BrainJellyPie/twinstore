@@ -1,4 +1,5 @@
 import { weekdayLong } from "@/shared/i18n/timeFormat";
+import { RequestError } from "@/shared/components/RequestError";
 import { starterCategoryLabel } from "@/shared/i18n/catalogCategories";
 import { Check, ChevronDown, X } from "lucide-react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
@@ -227,7 +228,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
               {t(!validTemplateChoice(value) ? "templatePreviewInvalid" : preview.isError ? "templatePreviewUnavailable" : "templatePreviewUpdating")}
             </div>}
-            {preview.isError && <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>{t("tryAgain")}</button></p>}
+            {preview.isError && <RequestError error={preview.error}><button type="button" className="underline" onClick={() => void preview.refetch()}>{t("tryAgain")}</button></RequestError>}
           </div>
           <div className="space-y-2">
             {selected && <p className="text-xs"><span className="text-muted-foreground">{t("selectedFormat")}: </span><strong>{templateName(selected.id, selected.name, locale)}</strong></p>}

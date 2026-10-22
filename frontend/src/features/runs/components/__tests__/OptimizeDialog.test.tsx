@@ -5,14 +5,19 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
 import { OptimizeDialog } from "../OptimizeDialog";
+import { useSimulationStore } from "@/stores/simulationStore";
+import { useLocale } from "@/shared/i18n/i18n";
 
 vi.mock("@/shared/api/client", () => ({
   getScenarios: vi.fn(), startOptimization: vi.fn(), getOptimization: vi.fn(),
   applyOptimization: vi.fn(), cancelOptimization: vi.fn(),
 }));
-afterEach(() => { cleanup(); vi.resetAllMocks(); vi.unstubAllGlobals(); useLocale.getState().setLocale("en"); });
+const originalCurrency = useSimulationStore.getState().currency;
+afterEach(() => { cleanup(); vi.resetAllMocks(); vi.unstubAllGlobals(); useLocale.getState().setLocale("en"); useSimulationStore.setState({ currency: originalCurrency }); });
 
-async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeObjective = "revenue_per_visitor", options: { state?: "pending" | "running"; loadError?: Error; ci?: [number, number]; summaries?: [api.RunSummary, api.RunSummary] } = {}) {
+async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeObjective = "revenue_per_visitor", options: { state?: "pending" | "running"; loadError?: Error; currency?: string; ci?: [number, number]; summaries?: [api.RunSummary, api.RunSummary] } = {}) {
+  useLocale.getState().setLocale("en");
+  useSimulationStore.setState({ currency: options.currency ?? "USD" });
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   const minimize = objective === "walking_distance";
   const difference = minimize ? -10 : 10;
@@ -65,9 +70,12 @@ async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeO
   return client;
 }
 
-it.each(["rule", "vlm"] as const)("keeps a gain from zero visible and saveable for %s", async (kind) => {
-  await show(kind);
-  expect(screen.getByRole("dialog").textContent).toContain("+$0.10 (absolute change from zero)");
+it.each([
+  ["rule", "USD", "+$0.10"], ["vlm", "USD", "+$0.10"],
+  ["rule", "JPY", "+¥10"], ["vlm", "JPY", "+¥10"],
+] as const)("keeps a gain from zero visible and saveable for %s in %s", async (kind, currency, gain) => {
+  await show(kind, 0, "revenue_per_visitor", { currency });
+  expect(screen.getByRole("dialog").textContent).toContain(`${gain} (absolute change from zero)`);
   expect(screen.getByRole("dialog").textContent).not.toContain("+0.0%");
   const save = screen.getByRole("button", { name: kind === "vlm" ? "Save the winner as a new layout" : "Save as new layout" });
   expect((save as HTMLButtonElement).disabled).toBe(false);

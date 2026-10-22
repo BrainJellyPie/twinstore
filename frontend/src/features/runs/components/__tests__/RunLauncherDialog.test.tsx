@@ -17,8 +17,15 @@ const engines: api.EngineInfo[] = [
   { engine_type: "pattern_intent_impulse", label: "LLM", description: "", uses_llm: true, model: "text", default: false },
   { engine_type: "vlm_glance", label: "Vision", description: "", uses_llm: true, model: "vision", default: false },
 ];
+const modelSetup: api.ModelSetup = {
+  warning: null, cloud_providers: [],
+  local: { state: "disabled", message: "", progress: null, downloaded_mb: 0, total_mb: 0, api_base: null, model_ref: "local", managed: false, runtime: "" },
+  hardware: { os: "linux", arch: "x64", cpu: "CPU", cores: 4, threads: 8, ram_gb: 16, ram_free_gb: 8, gpus: [] },
+  plan: { backend: "cpu", model: { key: "small", label: "Small model", repo: "model/repo", download_gb: 2, memory_gb: 2 }, device: "CPU", gpu_layers: 0, threads: 4, parallel: 1, context: 4096, reason: "Fixture" },
+};
 const quick: api.RunEstimate = { customers: 1000, days: 7, per_day: 143, engine: "rule_based", model: "", local: false, model_calls: 0, minutes: 1, cost_usd: null, warn: false };
 beforeEach(() => {
+  vi.mocked(api.getModelSetup).mockResolvedValue(modelSetup);
   vi.mocked(api.estimateRun).mockResolvedValue(quick);
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.mocked(api.getEngines).mockResolvedValue(engines);
@@ -215,14 +222,24 @@ it("runs on a model that has a key when the server default has none", async () =
   await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ model: "anthropic:claude-haiku-5-5" })));
 });
 
-it("refuses to start on a default model without a key when nothing else has one", async () => {
+it.each(LOCALES)("starts on rules and blocks an explicitly selected unavailable model in $code", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  const model = "gemini/gemini-3.1-pro-preview";
   vi.mocked(api.getEngines).mockResolvedValue(engines.map((e) => e.engine_type === "pattern_intent_impulse"
-    ? { ...e, model: "gemini/gemini-3.1-pro-preview", model_ready: false, suggested_model: "" } : e));
-  show();
-  fireEvent.click(await screen.findByRole("radio", { name: /^LLM shoppers/ }));
-  expect(await screen.findByText(/has no API key. Add one in Settings → Model providers, or use the rule-based preview/)).toBeTruthy();
+    ? { ...e, model, model_ready: false, suggested_model: "" } : e));
+  show({ defaultEngine: "pattern_intent_impulse" });
+  const rule = screen.getByRole("radio", { name: new RegExp(`^${translate(code, "rulePreview")}`) });
+  await waitFor(() => expect(rule.getAttribute("aria-checked")).toBe("true"));
+  expect(api.startRun).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("radio", { name: new RegExp(`^${translate(code, "llmShoppers")}`) }));
+  expect(await screen.findByText(translate(code, "modelNotReadyLocalOff", { model }))).toBeTruthy();
+  const estimateCalls = vi.mocked(api.estimateRun).mock.calls.length;
   await submit();
   expect(api.startRun).not.toHaveBeenCalled();
+  expect(api.estimateRun).toHaveBeenCalledTimes(estimateCalls);
+  fireEvent.click(rule);
+  await submit();
+  await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ engine_type: "rule_based", model: undefined, preview: true })));
 });
 
 const noKeyLlmDefault = engines.map((e) => e.engine_type === "pattern_intent_impulse"

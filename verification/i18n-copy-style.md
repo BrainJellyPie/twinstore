@@ -42,3 +42,18 @@ screens, expanded sections and accessible names, not only the catalog file. Swit
 draft or a pending request to check that the words change without losing the user's work. Download
 and reopen files to confirm that translated explanations do not change the underlying data format.
 Record remaining English server/model output separately from missing frontend translations.
+
+
+## Public writing references
+
+Reviewed on 2026-10-22:
+
+- [Google: Write for a global audience](https://developers.google.com/style/translation)
+  recommends clear context, consistent terms and explicit explanations of abbreviations.
+- [Microsoft: Global writing tips](https://learn.microsoft.com/en-us/style-guide/global-communications/writing-tips)
+  recommends avoiding idioms and culture-specific references that obscure an instruction.
+
+These support clear source copy and consistent terminology. They do not establish that a
+particular Korean, Chinese, Japanese, Spanish or French sentence has passed native-speaker review.
+Apply the language-specific voice above in its actual interface context, preserving technical
+constraints and the user's data.
