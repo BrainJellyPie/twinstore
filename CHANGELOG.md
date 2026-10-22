@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.4.6 — the whole app in your language; neighborhood and Shelf Lab fixes
+
+### The whole app in your language
+- The store screen (playback, results, shoppers, store tab, run comparison and optimization), the floor editor,
+  Settings, the Marketing studio, Shelf capture and Shelf Lab, and the Area page are now in English, Korean, Chinese,
+  Japanese, Spanish and French, as the rest of the app was. Template names, weekdays and times follow the language
+  too. Text the server writes (analyst answers, notes, errors, reports) stays English.
 
 ### Neighborhood visitors
 - A scenario run with neighborhood visitors could not be compared with its baseline: changing one hour's count
