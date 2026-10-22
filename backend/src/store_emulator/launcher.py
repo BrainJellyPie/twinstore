@@ -178,8 +178,9 @@ def main(argv: list[str] | None = None) -> int:
     from store_emulator.application.providers import cloud_providers_with_key
 
     if not cloud_providers_with_key():
-        _say("No model API key is set. Vision shoppers will use a small local model chosen for this computer "
-             "(downloaded on first use); add a key in Settings → Model providers for faster, more accurate shoppers.")
+        _say("No model API key is set. Vision shoppers and, once it is ready, the text features will use a small local "
+             "model chosen for this computer (downloaded on first use); add a key in Settings → Model providers for "
+             "faster, more accurate results.")
 
     import uvicorn
 

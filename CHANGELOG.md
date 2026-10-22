@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Models
+- The default text model is **Claude Haiku 5.5** (`anthropic/claude-haiku-5-5`) instead of Gemini 3.1 Pro: an Anthropic
+  key is all the app's text features and language-model shoppers need.
+- With no cloud API key at all, the text features (set-up helpers, interviews, persona generation, the run analyst)
+  and language-model runs use the local model TwinStore runs on the computer for vision shoppers, once it is ready
+  (`llamacpp:local`). A cloud provider with a key still comes first, and a run refused for a missing key now names
+  the local model when it is ready.
+
 ### Fixes
 - The local vision model could not start ("no llama.cpp build for windows/x64 in release v0.7.0"): llama.cpp's latest
   release is now a versioned one without binaries, which come with its numbered builds marked as pre-releases. The

@@ -665,11 +665,15 @@ Run through this before triggering generation or simulation:
   have no UI yet. If the user asks how to constrain persona generation
   further, these are the levers.
 - **Choosing the LLM provider.** Default model is
-  `gemini/gemini-3.1-pro-preview` (`LLMConfig.model` in
-  `backend/src/store_emulator/application/config.py`). Filling in
-  `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` alone has no effect — set
-  `PARASTORE_LLM_MODEL` to the matching LiteLLM model string *and* the
-  matching `*_API_KEY` in `backend/.env`. For a self-hosted
+  `anthropic/claude-haiku-5-5` (`LLMConfig.model` in
+  `backend/src/store_emulator/application/config.py`): an Anthropic key
+  (Settings → Model providers, or `ANTHROPIC_API_KEY`) is all it needs.
+  Without one, the set-up helpers, interviews and persona generation use a
+  fast model of another provider that has a key, and with no cloud key at
+  all the local model TwinStore runs for vision shoppers once it is ready
+  (slower, and weaker on long structured answers). To make another model
+  the default, set `PARASTORE_LLM_MODEL` to its LiteLLM model string *and*
+  the matching `*_API_KEY` in `backend/.env`. For a self-hosted
   OpenAI-compatible server also set `PARASTORE_LLM_API_BASE`
   (e.g. `PARASTORE_LLM_MODEL=openai/local`,
   `PARASTORE_LLM_API_BASE=http://127.0.0.1:8080/v1`). Small local models

@@ -50,7 +50,7 @@ _SIM_ENV: dict[str, str] = {
 
 
 def local_config() -> SimulationConfig:
-    llm: dict[str, object] = {"model": "gemini/gemini-3.1-pro-preview"}
+    llm: dict[str, object] = {"model": "anthropic/claude-haiku-5-5"}
     for env, field in _LLM_ENV.items():
         if os.getenv(env):
             llm[field] = os.environ[env]

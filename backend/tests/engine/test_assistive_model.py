@@ -73,13 +73,16 @@ def test_the_engine_list_says_when_a_default_model_has_no_key(keys, monkeypatch)
     from store_emulator.server.main import app
 
     monkeypatch.setattr(deps, "_config", None)
-    keys("ANTHROPIC_API_KEY")
+    keys("OPENAI_API_KEY")
     with TestClient(app) as client:
         engines = {e["engine_type"]: e for e in client.get("/api/engines").json()}
-    llm = engines["pattern_intent_impulse"]
-    assert llm["model"].startswith("gemini/") and llm["model_ready"] is False
-    assert llm["suggested_model"] == "anthropic:claude-haiku-5-5"
-    assert engines["rule_based"]["model_ready"] is True and engines["rule_based"]["suggested_model"] == ""
+        llm = engines["pattern_intent_impulse"]
+        assert llm["model"] == "anthropic/claude-haiku-5-5" and llm["model_ready"] is False
+        assert llm["suggested_model"] == "openai:gpt-6-luna"
+        assert engines["rule_based"]["model_ready"] is True and engines["rule_based"]["suggested_model"] == ""
+        keys("ANTHROPIC_API_KEY")
+        llm = {e["engine_type"]: e for e in client.get("/api/engines").json()}["pattern_intent_impulse"]
+        assert llm["model_ready"] is True and llm["suggested_model"] == ""
 
 
 def test_prompt_listings_put_products_the_question_names_first_and_share_the_rest():
@@ -90,3 +93,50 @@ def test_prompt_listings_put_products_the_question_names_first_and_share_the_res
     assert relevant_first(entries, "Would ice creams sell more at eye level?", 4) == ["vanilla", "dough", "cola0", "chips0"]
     assert relevant_first(entries, "", 3) == ["cola0", "chips0", "vanilla"]
     assert len(relevant_first(entries, "", 50)) == 12
+
+
+def test_haiku_is_the_default_text_model(keys, monkeypatch):
+    from store_emulator.application.config import local_config
+
+    for env in ("PARASTORE_LLM_MODEL", "PARASTORE_LLM_API_BASE"):
+        monkeypatch.delenv(env, raising=False)
+    assert LLMConfig().model == "anthropic/claude-haiku-5-5"
+    assert local_config().llm.model == "anthropic/claude-haiku-5-5"
+
+
+def test_with_no_cloud_key_the_local_model_answers_text_once_it_is_ready(keys, monkeypatch):
+    from store_emulator.application import local_vlm, providers
+    from store_emulator.application.local_vlm import LocalVLMStatus
+
+    config = LLMConfig(model="anthropic/claude-haiku-5-5")
+    # Nothing set up: nothing to fall back to.
+    assert assistive_model("", config) == "anthropic/claude-haiku-5-5"
+    providers.use_local_server("http://127.0.0.1:8081/v1")
+    state = {"now": "downloading"}
+
+    class _Manager:
+        def status(self) -> LocalVLMStatus:
+            return LocalVLMStatus(state=state["now"])  # type: ignore[arg-type]
+
+    monkeypatch.setattr(local_vlm, "manager", lambda: _Manager())
+    assert text_model_fallback(config.model) is None          # still downloading
+    state["now"] = "ready"
+    assert assistive_model("", config) == "llamacpp:local"
+    resolved = providers.resolve_model("llamacpp:local", base=config)
+    assert resolved.model == "openai/local-model" and resolved.api_base == "http://127.0.0.1:8081/v1"
+    # A cloud key, when there is one, still comes first.
+    keys("OPENAI_API_KEY")
+    assert assistive_model("", config) == "openai:gpt-6-luna"
+
+
+def test_a_run_without_a_key_names_the_local_model_when_it_is_ready(keys, monkeypatch):
+    from store_emulator.application import local_vlm, providers
+    from store_emulator.application.local_vlm import LocalVLMStatus
+    from store_emulator.application.providers import ensure_resolvable
+    from store_emulator.domain.config import EngineType, SimulationConfig
+
+    providers.use_local_server("http://127.0.0.1:8081/v1")
+    monkeypatch.setattr(local_vlm, "manager", lambda: type("M", (), {"status": lambda self: LocalVLMStatus(state="ready")})())
+    config = SimulationConfig(engine_type=EngineType.PATTERN_INTENT_IMPULSE)
+    with pytest.raises(ValueError, match=r"Pick the local model on this computer for this run \(llamacpp:local\)"):
+        ensure_resolvable(config)

@@ -80,7 +80,8 @@ First-time security prompts and details: [`QUICKSTART.md`](./QUICKSTART.md).
 </table>
 
 **No API key is needed to start.** The sample store runs with the rule-based engine, and without a key TwinStore runs a
-small vision model on your own computer. For language and vision shoppers, add an OpenAI, Anthropic, Gemini, Qwen or
+small model on your own computer for vision shoppers and, once it is ready, for the text features too (slower and
+less capable than a cloud model). The default text model is Claude Haiku 5.5 when an Anthropic key is added. For language and vision shoppers, add an OpenAI, Anthropic, Gemini, Qwen or
 OpenRouter key — or any OpenAI-compatible server such as vLLM, Ollama or llama.cpp — under **Models**.
 
 **Six languages.** The language control next to the theme switch offers English, 한국어, 中文, 日本語, Español and

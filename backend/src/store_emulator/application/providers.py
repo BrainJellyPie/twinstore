@@ -314,7 +314,8 @@ _PLAIN_PREFIX = {"gemini": ProviderKind.GEMINI, "anthropic": ProviderKind.ANTHRO
 
 def text_model_fallback(model: str, settings: dict[ProviderKind, ProviderSettings] | None = None) -> str | None:
     """A model reference to use instead of `model` when its provider has no API key: the first fast model of the
-    first cloud provider that has one. None when `model` can be used as it is, or nothing else can."""
+    first cloud provider that has one; with no cloud key at all, the local model TwinStore runs on this computer
+    (it reads text as well as shelves) once it is up. None when `model` can be used as it is, or nothing else can."""
     settings = settings if settings is not None else load_settings()
     kind = missing_key(model, settings)
     if kind is None:
@@ -324,7 +325,19 @@ def text_model_fallback(model: str, settings: dict[ProviderKind, ProviderSetting
         if other != kind and preset.models and provider_status(other, settings).ready:
             fast = next((m for m in preset.models if "fast" in m.note), preset.models[0])
             return f"{other.value}:{fast.id}"
+    if _local_text_ready(settings):
+        return f"{ProviderKind.LLAMACPP.value}:local"
     return None
+
+
+def _local_text_ready(settings: dict[ProviderKind, ProviderSettings]) -> bool:
+    """The llama.cpp server is set up and answering: TwinStore's own local model once it is ready, or a server the
+    user turned on in Settings."""
+    if not provider_status(ProviderKind.LLAMACPP, settings).ready:
+        return False
+    from .local_vlm import manager  # late import: local_vlm imports this module
+
+    return manager().status().state not in ("preparing", "downloading", "starting", "error")
 
 
 def assistive_model(requested: str, config: LLMConfig) -> str:
@@ -422,8 +435,9 @@ def _ensure_plain_key(ref: str, settings: dict[ProviderKind, ProviderSettings]) 
     if kind is None:
         return
     alternative = text_model_fallback(ref, settings)
-    hint = (f"Pick another model for this run ({alternative} has a key)" if alternative
-            else "Use rule-based shoppers")
+    hint = ("Pick the local model on this computer for this run (llamacpp:local)" if alternative == "llamacpp:local"
+            else f"Pick another model for this run ({alternative} has a key)" if alternative
+            else "Use rule-based shoppers, wait for the local model to be ready")
     raise ValueError(f"No API key for {PRESETS[kind].label} ({ref}). {hint}, or add a key in Settings → Model providers.")
 
 

@@ -42,7 +42,7 @@ type PlanPolicy = Literal["vlm", "rule"]
 
 
 class LLMConfig(BaseModel):
-    model: str = "gemini/gemini-3.1-pro-preview"
+    model: str = "anthropic/claude-haiku-5-5"
     temperature: float = 1.0
     max_tokens: int = 65535
     # OpenAI-compatible endpoint override (vLLM, llama.cpp server, gateways). None = provider default.
