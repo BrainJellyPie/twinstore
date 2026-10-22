@@ -157,3 +157,16 @@ def test_a_replay_and_a_plan_follow_the_weeks_when_shoppers_remember(client):
 @pytest.mark.parametrize("memory", [{"weeks": 1}, {"weekly_churn": 2}])
 def test_impossible_memory_settings_are_refused_by_the_api(client, memory):
     assert client.post(f"/api/projects/{PID}/runs/run_x/operations/replay", json={"memory": memory}).status_code == 422
+
+
+def test_a_run_made_before_crowding_replays_without_it(client):
+    rid = _run(client, _layout(client), operations={"stock_per_facing": 2, "open_counters": 1, "crowd_limit": None})
+    path = Path(f".data/{PID}/runs/{rid}/output/operations.json")
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    for key in ("crowd_limit", "crowd_skip"):
+        del saved["config"][key]
+    path.write_text(json.dumps(saved), encoding="utf-8")
+    summary = client.get(f"/api/projects/{PID}/runs/{rid}/summary").json()["summary"]
+    plan = client.post(f"/api/projects/{PID}/runs/{rid}/operations/plan", json={}).json()
+    assert plan["current_config"]["crowd_limit"] is None
+    assert plan["current"]["revenue"] == summary["total_revenue"]

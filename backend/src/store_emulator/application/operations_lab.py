@@ -47,7 +47,11 @@ def _load(pid: str, run_id: str) -> tuple[Store, list[CustomerResult], int, Oper
     try:
         own: OperationsConfig | None = None
         if (output / "operations.json").exists():
-            own = OperationsReport.model_validate(read_json(output / "operations.json")).config
+            saved = read_json(output / "operations.json")
+            own = OperationsReport.model_validate(saved).config
+            settings = cast(dict[str, object], saved).get("config") if isinstance(saved, dict) else None
+            if not isinstance(settings, dict) or "crowd_limit" not in settings:
+                own = own.model_copy(update={"crowd_limit": None})   # made before crowding: none happened
             if not (output / "timeline_planned.json").exists():
                 raise AppError("this run was made before its shoppers' visits were kept for replaying; run it again "
                                "to try other operations plans", 409)
