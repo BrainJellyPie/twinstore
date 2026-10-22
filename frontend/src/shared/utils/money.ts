@@ -13,6 +13,16 @@ export function minorUnitDivisor(code: string): number {
   return ZERO_DECIMAL.has(code) ? 1 : 100;
 }
 
+export function majorUnitText(minor: number, code: string, opts: { fixed?: boolean } = {}): string {
+  const divisor = minorUnitDivisor(code);
+  if (divisor === 1 || !Number.isSafeInteger(minor)) return String(minor / divisor);
+  const amount = BigInt(Math.abs(minor));
+  const whole = `${minor < 0 ? "-" : ""}${amount / 100n}`;
+  const fraction = String(amount % 100n).padStart(2, "0");
+  const digits = opts.fixed ? fraction : fraction.replace(/0+$/, "");
+  return digits ? `${whole}.${digits}` : whole;
+}
+
 export function toMinor(text: string, divisor: number): number | null {
   const amount = text.trim().replace(/^[$€£¥₩]\s*|\s*[$€£¥₩]$/g, "");
   if (!/^(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d*)?|\.\d+)$/.test(amount)) return null;
@@ -26,6 +36,9 @@ export function toMinor(text: string, divisor: number): number | null {
 }
 
 const formatters = new Map<string, Intl.NumberFormat>();
+const fractionFormatter = new Intl.NumberFormat(undefined, {
+  minimumIntegerDigits: 2, maximumFractionDigits: 0, useGrouping: false,
+});
 
 function formatter(code: string, compact: boolean): Intl.NumberFormat {
   const key = `${code}:${compact}`;
@@ -45,7 +58,17 @@ function formatter(code: string, compact: boolean): Intl.NumberFormat {
 export function formatMoney(minor: number, code = "USD", opts: { compact?: boolean } = {}): string {
   const value = minor / minorUnitDivisor(code);
   try {
-    return formatter(code, opts.compact ?? false).format(value);
+    const f = formatter(code, opts.compact ?? false);
+    if (!opts.compact && minorUnitDivisor(code) === 100 && Number.isSafeInteger(minor)) {
+      // Dividing a large safe integer by 100 can already lose a cent. Format the
+      // integer part with Intl and insert the exact minor units separately.
+      const amount = BigInt(minor);
+      const whole = amount / 100n;
+      const fraction = fractionFormatter.format((amount < 0n ? -amount : amount) % 100n);
+      return f.formatToParts(whole === 0n && (minor < 0 || Object.is(minor, -0)) ? -0 : whole)
+        .map((part) => part.type === "fraction" ? fraction : part.value).join("");
+    }
+    return f.format(value);
   } catch {
     // Unknown ISO code — fall back to a plain number with the code appended.
     return `${value.toLocaleString()} ${code}`;

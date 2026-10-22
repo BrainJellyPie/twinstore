@@ -29,6 +29,8 @@ vi.mock("@/shared/api/marketing", async (original) => ({
   listConjoints: vi.fn().mockResolvedValue([]),
   designExperiment: vi.fn(),
   designSurvey: vi.fn(),
+  designShelfTest: vi.fn(),
+  previewShelf: vi.fn().mockResolvedValue({face:"N",control:"control.png",test:"test.png",applied:[],warnings:[]}),
   designConjoint: vi.fn(),
   draftPitchScript: vi.fn(),
 }));
@@ -79,6 +81,7 @@ beforeEach(() => {
     async (_pid, sid) =>
       ({ ...setups.find((s) => s.id === sid), store }) as never,
   );
+  vi.mocked(marketing.designShelfTest).mockResolvedValue({name:"Generated shelf test",rack_id:"r",target_sku:"tea",changes:[{kind:"promo",sku:"tea",promo:"SALE"}],age_groups:[],rationale:"Generated shelf rationale",warnings:[]});
   vi.mocked(marketing.designSurvey).mockResolvedValue({ name: "Generated survey", stimuli: [], stimulus_names: [], questions: ["appeal"], context: "Brief", reference_price: null, currency: "USD", age_groups: [], genders: [], rationale: "Generated survey rationale", warnings: [] });
   vi.mocked(marketing.designExperiment).mockResolvedValue({
     name: "Generated test",
@@ -116,6 +119,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 const targets = [
+  {destination:"shelf_test",tab:"Shelf tests",mock:marketing.designShelfTest,rationale:"Generated shelf rationale"},
   { destination: "concept_test", tab: "Concept tests", mock: marketing.designSurvey, rationale: "Generated survey rationale" },
   {
     destination: "ab_test",
@@ -136,14 +140,14 @@ const targets = [
     rationale: "Generated script rationale",
   },
 ] as const;
-function send(destination: AssistDestination) {
+function send(destination: AssistDestination, text = "Would a different approach sell more tea?") {
   act(() =>
     useAssistStore
       .getState()
       .send({
         projectId: "p",
         destination,
-        text: "Would a different approach sell more tea?",
+        text,
       }),
   );
 }
@@ -234,4 +238,13 @@ it.each(["project", "layout"])("waits for %s before drafting a routed concept te
   await waitFor(() => expect(client.isMutating()).toBe(0));
   expect(marketing.designSurvey).toHaveBeenCalledTimes(1);
   expect(marketing.designSurvey).toHaveBeenCalledWith("p", expect.objectContaining({ setup_id: "s1" }));
+});
+
+it.each(targets)("keeps a newer routed $destination request while the old draft is pending",async target=>{
+ let resolve!:(value:unknown)=>void;const old=new Promise<unknown>(r=>{resolve=r;});vi.mocked(target.mock).mockReturnValueOnce(old as never);
+ const client=mount();send(target.destination,"Would the older approach sell more tea?");await waitFor(()=>expect(target.mock).toHaveBeenCalledTimes(1));
+ send(target.destination,"Would the newer approach sell more tea?");await waitFor(()=>expect(target.mock).toHaveBeenCalledTimes(2));await screen.findByText(new RegExp(target.rationale));
+ const current=await vi.mocked(target.mock).mock.results[1]!.value as object;
+ await act(async()=>{resolve({...current,rationale:"Obsolete routed rationale",differs_by:"Obsolete routed rationale"});await old;});
+ await waitFor(()=>expect(client.isMutating()).toBe(0));expect(screen.getByText(new RegExp(target.rationale))).toBeTruthy();expect(screen.queryByText(/Obsolete routed rationale/)).toBeNull();
 });

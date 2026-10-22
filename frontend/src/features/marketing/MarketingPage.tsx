@@ -216,7 +216,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             ) : <Loading />)}
             {tab === "shelf" && (current ? <ShelfJob projectId={projectId} id={current} onDuplicate={duplicateShelf} /> : setup.data?.store ? (
               <ShelfTestBuilder key={`${activeSetup}:${shelfDraft?.key ?? 0}`} projectId={projectId} setupId={activeSetup} store={setup.data.store}
-                currency={currency} initial={shelfDraft?.req} prefill={prefill?.tab === "shelf" ? prefill : undefined}
+                currency={currency} initial={shelfDraft?.req} prefill={prefillReady && prefill?.tab === "shelf" ? prefill : undefined} onPrefillHandled={prefillHandled}
                 onStarted={(j) => { setShelfDraft(null); select(j.job_id); }} />
             ) : <Loading />)}
             {tab === "survey" && (current ? <SurveyJob projectId={projectId} id={current} onDuplicate={duplicateSurvey} /> : (

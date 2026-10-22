@@ -1,7 +1,7 @@
 // Virtual shelf test: respondents stand in front of one shelf face twice — as it is and with a change to one
 // product (new pack, price, sign) — pick what they would take and name what caught their eye first.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, Loader2, Rows3, Sparkles } from "lucide-react";
 
@@ -25,7 +25,7 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import type { Store } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney, minorUnitDivisor } from "@/shared/utils/money";
+import { formatMoney, majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
 
 import { LiftChart } from "./charts";
 import { usePackages } from "./hooks";
@@ -35,10 +35,11 @@ import { StudyReading } from "./StudyReading";
 const PROMOS = ["", "NEW", "SALE", "1+1", "-20%"];
 const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
 
-export function ShelfTestBuilder({ projectId, setupId, store, currency, initial, prefill, onStarted }: {
+export function ShelfTestBuilder({ projectId, setupId, store, currency, initial, prefill, onPrefillHandled, onStarted }: {
   projectId: string; setupId: string; store: Store; currency: string; initial?: ShelfTestRequest | null;
   /** A request routed from the command palette: fills the question and drafts the test from it. */
   prefill?: { text: string; id: number };
+  onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
@@ -57,7 +58,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
   const init = (kind: VariantChange["kind"]) => initial?.changes.find((c) => c.kind === kind);
   const [assetId, setAssetId] = useState(init("package")?.asset_id ?? "");
   const divisor = minorUnitDivisor(currency);
-  const [priceText, setPriceText] = useState(init("price")?.price != null ? (init("price")!.price! / divisor).toFixed(divisor === 1 ? 0 : 2) : "");
+  const [priceText, setPriceText] = useState(init("price")?.price != null ? majorUnitText(init("price")!.price!, currency, { fixed: true }) : "");
   const [promo, setPromo] = useState(init("promo")?.promo ?? "");
   const [panel, setPanel] = useState(initial?.panel ?? 60);
   const [ages, setAges] = useState<string[]>(initial?.age_groups ?? []);
@@ -89,23 +90,37 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
   // respondents see on the test shelf. Everything stays editable.
   const [question, setQuestion] = useState("");
   const questionLength = Array.from(question.trim()).length;
-  const [drafted, setDrafted] = useState<{ question: string; design: ShelfTestDesign } | null>(null);
+  const draftContext = JSON.stringify([projectId, setupId, currency, store, packages]);
+  const form = { question, rackId, target, assetId, priceText, promo, panel, ages, model, name };
+  const formKey = JSON.stringify(form);
+  const [drafted, setDrafted] = useState<{ context: string; form: string; design: ShelfTestDesign } | null>(null);
   const draft = useMutation({
     mutationFn: (q: string) => designShelfTest(projectId, { question: q.trim(), setup_id: setupId }),
-    onSuccess: (d, q) => {
-      setDrafted({ question: q, design: d });
+  });
+  const { reset } = draft;
+  useLayoutEffect(() => reset(), [draftContext, formKey, reset]);
+  const requestDraft = (asked: string, replacePending = false) => {
+    if (Array.from(asked.trim()).length < 5 || (draft.isPending && !replacePending)) return;
+    draft.mutate(asked, { onSuccess: (d) => {
+      const change = (kind: VariantChange["kind"]) => d.changes.find((c) => c.kind === kind);
+      const nextAsset = change("package")?.asset_id ?? "";
+      const p = change("price")?.price;
+      const nextPrice = p != null ? majorUnitText(p, currency, { fixed: true }) : "";
+      const nextPromo = change("promo")?.promo ?? "";
+      const nextName = name.trim() ? name : d.name;
       setRackId(d.rack_id);
       setTarget(d.target_sku);
-      const change = (kind: VariantChange["kind"]) => d.changes.find((c) => c.kind === kind);
-      setAssetId(change("package")?.asset_id ?? "");
-      const p = change("price")?.price;
-      setPriceText(p != null ? (p / divisor).toFixed(divisor === 1 ? 0 : 2) : "");
-      setPromo(change("promo")?.promo ?? "");
+      setAssetId(nextAsset);
+      setPriceText(nextPrice);
+      setPromo(nextPromo);
       setAges(d.age_groups);
-      setName((current) => current.trim() ? current : d.name);
-    },
-  });
-  const queueDraft = useQueuedStart(draft.mutate);
+      setName(nextName);
+      setDrafted({ context: draftContext, design: d, form: JSON.stringify({ ...form, question: asked,
+        rackId: d.rack_id, target: d.target_sku, assetId: nextAsset, priceText: nextPrice,
+        promo: nextPromo, ages: d.age_groups, name: nextName }) });
+    } });
+  };
+  const queueDraft = useQueuedStart((asked: string) => requestDraft(asked, true));
   const prefillId = prefill?.id;
   const prefillText = prefill?.text;
   useEffect(() => {
@@ -113,8 +128,9 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
     const text = Array.from(prefillText).slice(0, 500).join("");
     setQuestion(text);
     queueDraft(text);
-  }, [prefillId, prefillText, queueDraft]);
-  const shownDraft = drafted?.question === question ? drafted.design : null;
+    onPrefillHandled?.(prefillId);
+  }, [prefillId, prefillText, queueDraft, onPrefillHandled]);
+  const shownDraft = drafted?.context === draftContext && drafted.form === formKey ? drafted.design : null;
   const promos = promo && !PROMOS.includes(promo) ? [...PROMOS, promo] : PROMOS;
 
   const run = useMutation({
@@ -131,10 +147,10 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2 md:col-span-2">
           <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
           <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); draft.mutate(question); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); requestDraft(question); } }}
             placeholder="What should the test answer? e.g. Would the new gold label stand out on the tea shelf with a SALE sign?"
             aria-label="Question for the shelf test" className="h-9 min-w-[14rem] flex-1 bg-card" />
-          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => draft.mutate(question)}>
+          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => requestDraft(question)}>
             {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the test
           </Button>
           {shownDraft && (
