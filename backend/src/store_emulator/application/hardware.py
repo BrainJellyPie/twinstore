@@ -109,7 +109,9 @@ def _run(cmd: list[str]) -> str:
         return ""
     try:
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        done = subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False, creationflags=flags)
+        # stdin from DEVNULL: an inherited pipe from the app launcher is not the probe's to read.
+        done = subprocess.run(cmd, capture_output=True, text=True, timeout=5, check=False, creationflags=flags,
+                              stdin=subprocess.DEVNULL)
     except (OSError, subprocess.SubprocessError):
         return ""
     return done.stdout if done.returncode == 0 else ""

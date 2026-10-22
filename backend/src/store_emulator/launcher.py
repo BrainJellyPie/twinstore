@@ -13,6 +13,7 @@ else needs to be installed:
 """
 
 import argparse
+import faulthandler
 import importlib.util
 import os
 import shutil
@@ -25,6 +26,17 @@ import time
 import urllib.request
 import webbrowser
 from pathlib import Path
+
+if sys.platform == "win32":
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    def _stdin_pipe_closed() -> bool:
+        """Whether the launcher closed its end of our stdin pipe, without reading from it (see below)."""
+        avail = wintypes.DWORD()
+        handle = wintypes.HANDLE(msvcrt.get_osfhandle(sys.stdin.fileno()))
+        return not ctypes.windll.kernel32.PeekNamedPipe(handle, None, 0, None, ctypes.byref(avail), None)
 
 ROOT = Path(__file__).resolve().parents[3]
 BACKEND = ROOT / "backend"
@@ -110,6 +122,7 @@ def _open_when_ready(url: str, open_browser: bool) -> None:
         except OSError:
             pass
         time.sleep(0.5)
+    faulthandler.cancel_dump_traceback_later()
     _say(f"TwinStore is running at {url}  (close this window or press Ctrl+C to stop)")
     if open_browser:
         webbrowser.open(url)
@@ -117,8 +130,15 @@ def _open_when_ready(url: str, open_browser: bool) -> None:
 
 def _exit_when_stdin_closes() -> None:
     """The app launcher keeps a pipe open to our stdin; end of input means it is gone or asked us to stop."""
-    while sys.stdin.buffer.read(1024):
-        pass
+    if sys.platform == "win32":
+        # Not a blocking read: Windows serializes every operation on a synchronous pipe handle behind a pending
+        # read, so a library or a child process asking what stdin is (GetFileType) would wait until the launcher
+        # quits, and the server would never finish starting.
+        while not _stdin_pipe_closed():
+            time.sleep(1.0)
+    else:
+        while sys.stdin.buffer.read(1024):
+            pass
     _say("Launcher closed — stopping.")
     signal.raise_signal(signal.SIGINT)
     time.sleep(8)
@@ -155,7 +175,14 @@ def main(argv: list[str] | None = None) -> int:
     import uvicorn
 
     _say(f"Starting on {url} …")
-    uvicorn.run("store_emulator.server.main:app", host=args.host, port=port, log_level="warning")
+    # A start that hangs shows where: every thread's stack goes to the log every two minutes until it answers.
+    faulthandler.dump_traceback_later(120, repeat=True)
+    _say("Loading the simulator…")
+    started = time.monotonic()
+    from store_emulator.server.main import app
+
+    _say(f"Simulator loaded in {time.monotonic() - started:.1f} s; opening the server…")
+    uvicorn.run(app, host=args.host, port=port, log_level="warning")
     return 0
 
 

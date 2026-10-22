@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixes
+- On Windows the first start could stop at "Simulator" for good: the server process watched for the launcher closing
+  its stdin with a blocking read, and Windows makes every other operation on that pipe (a library or child process
+  asking what stdin is) wait behind a pending read. It now polls the pipe without reading it, hardware probes no
+  longer inherit it, and the boot log says when the simulator is loading and how long it took. If a start still
+  stalls, every thread's stack is written to the log every two minutes until the server answers.
+
 ### Vision shoppers can see the shelf in 3D
 - The run dialog's vision settings add **What a vision shopper sees at a shelf**: **Chart** (as before: a flat
   drawing of the shelf with names, prices and numbers) or **Chart + 3D photo**. With the photo, the browser first
