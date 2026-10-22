@@ -5,6 +5,7 @@ import { PreparingView } from "../PreparingView";
 import { translate, useLocale } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import type { SetupGenerationState } from "@/shared/queries/useSetupGeneration";
+vi.mock("@/features/settings/useModelSetup", () => import("@/features/settings/__tests__/modelSetupWithKey"));
 
 afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); });
 const failedLayout: SetupGenerationState = { phase: "failed", kind: "layout", currentGenId: "layout_generation", error: "Invalid image", retry: vi.fn(), retrying: false };
