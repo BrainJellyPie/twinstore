@@ -92,6 +92,32 @@ the saved level number; they do not renumber floors for a locale. Errors retain 
 under translated recovery guidance, and each failed floor can be retried separately. Building options
 export preserves the exact names, floor order and area coordinates.
 
+## Shared store: stock-outs and the line at the tills
+
+**Run simulation** → **Shoppers share the store** (on by default) plays the day's visits together in one store:
+
+- **Units of each product per shelf level** (default 12): the stock each shelf starts the day with. A product on
+  three levels of one face has three times that. Every day of a multi-day run opens with full shelves.
+- **Refill shelves every (minutes)** (default 120; blank = only overnight): staff fill every shelf back to its
+  opening stock on that schedule, counted from opening time.
+- **Tills open** (blank = every checkout counter of the layout): try fewer tills than the layout has to see what
+  staffing does to the line.
+- **Patience in line (minutes)** (default 5): the wait a typical shopper accepts; each shopper's own patience varies
+  around it (seeded, so it is the same shopper in both layouts of an A/B pair).
+
+A shopper who finds a product gone takes another from the same shelf face at the closest price (45 % of them) or
+does without; one who finds fewer units than wanted takes what is left. A shopper with nothing left to buy skips the
+tills. Time at a till is 25 s plus 3 s per unit. The model calls do not change: the engines still decide each visit
+on its own, and the shared store is resolved afterwards in clock order.
+
+**Store operations** in the results then shows lost sales and units, products taken instead, the waits, shoppers
+who left the line (their basket went back on the shelf), till occupancy, a table by hour with the fewest tills that
+keep the hour's average wait under 2 minutes (counting every shopper as staying in line), and the products that
+ran out. The same report is `GET /api/projects/{pid}/runs/{rid}/operations` (404 for a run without the shared store);
+`POST /runs` takes the settings as `operations` (`stock_per_facing`, `restock_every_min`, `open_counters`,
+`patience_sec`, plus `stock_overrides` by SKU, `substitute_share`, `checkout_base_sec`, `checkout_item_sec`,
+`patience_sd` and `target_wait_sec`). Coach users to turn it off only to reproduce a run made before it existed.
+
 ## LLM call count (static analysis)
 
 Counted directly from the code, not measured.

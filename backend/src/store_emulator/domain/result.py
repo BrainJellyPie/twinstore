@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from store_emulator.domain.operations import OperationsReport
 from store_emulator.domain.types import TokenUsage
 
 
@@ -106,3 +107,5 @@ class AggregatedResult(BaseModel):
     dwell_heatmap: list[list[float]] = []  # seconds spent per tile, summed over customers
     token_usage: TokenUsage = TokenUsage()
     diagnostics: RunDiagnostics = RunDiagnostics()
+    # Stock and till lines shared by the run's shoppers; None = every shopper had the store to themselves.
+    operations: OperationsReport | None = None
