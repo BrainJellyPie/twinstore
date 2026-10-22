@@ -6,6 +6,13 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### From what shoppers said to a test
+- A group interview's result and the run analyst's last answer offer **Turn this into tests**: the text model writes up
+  to three test questions from the themes and answers (or the analyst's answer and figures), each with the tool that
+  answers it (A/B test, shelf test or concept test) and what it checks, naming the layout's own products and shelves.
+  Picking one opens the Marketing studio with that test drafted from the question. What shoppers said stays a
+  hypothesis until the test runs. API: `POST /api/projects/{pid}/runs/{run_id}/tests-to-run`.
+
 ### Optimization goals in words
 - **Optimize** takes the goal in words ("sell more ice cream on impulse, don't move the fridges or touch the drinks
   shelves, at most 6 changes"): the text model sets the objective, what may change, the move limit, whether fridges

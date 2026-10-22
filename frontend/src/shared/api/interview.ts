@@ -121,6 +121,10 @@ export interface ShopperMatch {
 }
 export const findShoppers = (pid: string, runId: string, text: string) =>
   fetchJson<ShopperMatch>(`/api/projects/${pid}/runs/${runId}/shoppers/find`, { method: "POST", body: JSON.stringify({ text }) });
+/** A question a test can answer, written from what shoppers said or what the run analyst answered. */
+export interface TestIdea { question: string; kind: "ab_test" | "shelf_test" | "concept_test"; why: string }
+export const suggestTests = (pid: string, runId: string, body: { source: "group" | "analyst"; group_id?: string }) =>
+  fetchJson<TestIdea[]>(`/api/projects/${pid}/runs/${runId}/tests-to-run`, { method: "POST", body: JSON.stringify(body) });
 export interface GroupQuestion { question: string; segment: GroupSegment; why: string }
 /** Three group questions the model reads off the run's numbers, each with the group to ask. */
 export const suggestGroupQuestions = (pid: string, runId: string, model: string) =>
