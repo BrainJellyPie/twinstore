@@ -127,6 +127,11 @@
   closed and its storefront ratings, without asking. With a neighborhood on the map they now ask first.
 - The sim2real panel in Shelf Lab and the vision-shopper check of a neighborhood venue said nothing about their size
   before starting; they now show how many vision-model calls or shopper visits they take.
+- A drafted A/B test (or a recipe) that switched to vision shoppers kept the 300-shopper rule panel — thousands of
+  model calls — where choosing vision shoppers by hand starts at 80. Both now start at 80 per arm.
+- A run whose model never answered (a key turned down, no credit left, a server that is down) still tried every
+  shopper twice before failing, which could take many minutes. Once the first 10 shoppers have all failed, the rest
+  are not tried and the run stops with the reason.
 - "OpenStreetMap download failed: … HTTP Error 502: Bad Gateway": the public map server is often overloaded for a
   few minutes. The download now moves to other Overpass servers and tries once more before giving up, and then says
   the map servers are busy and to try again shortly.

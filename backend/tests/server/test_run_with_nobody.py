@@ -49,6 +49,26 @@ def test_every_shopper_failing_fails_the_run_and_keeps_the_layout_editable(clien
     assert layout["status"] == "draft" and not layout.get("runId")
 
 
+def test_a_refused_key_stops_the_run_after_the_first_shoppers(client, monkeypatch):
+    from store_emulator.engine.simulation.engines import rule_based
+
+    tried: list[str] = []
+
+    async def refused(self, context):
+        tried.append(context.persona.id)
+        raise RuntimeError("AuthenticationError: invalid api key")
+
+    monkeypatch.setattr(rule_based.RuleBasedEngine, "decide_actions", refused)
+    sid = _new_layout(client)
+    rid = client.post(f"/api/projects/{PID}/runs", json={"setup_id": sid, "engine_type": "rule_based", "max_customers": 40}).json()["run_id"]
+    st = _finish(client, rid)
+    assert st["status"] == "failed"
+    assert len(set(tried)) < 40
+    assert str(st["error"]).startswith(f"The first {len(set(tried))} shoppers all failed, so the other "
+                                       f"{40 - len(set(tried))} were not tried and nothing was simulated: "
+                                       "the provider rejected the API key")
+
+
 def test_no_shopper_on_the_scenarios_days_fails_the_run(client):
     sid = _new_layout(client)
     path = Path(f".data/{PID}/setups/{sid}.json")

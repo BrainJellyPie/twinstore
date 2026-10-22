@@ -28,6 +28,9 @@ logger = logging.getLogger(__name__)
 type CueSampler = Callable[[random.Random], BehaviorCue]
 
 _MAX_ATTEMPTS = 2
+# Shoppers that failed with none succeeding before the rest are not tried: the model is not answering (a key turned
+# down, no credit left, a server that is down), and trying every shopper twice only repeats the error for minutes.
+_GIVE_UP_AFTER = 10
 
 
 def _format_error(e: Exception) -> str:
@@ -146,7 +149,9 @@ class PerCustomerSimulationRunner:
         semaphore = asyncio.Semaphore(max_concurrent)
         total = len(entries)
         completed = 0
+        succeeded = 0
         failures: list[FailedCustomer] = []
+        given_up = ""   # the reason the remaining shoppers are not tried
         run_seed = self.run_seed
         logger.info(f"[simulation] async run start: {total} customers, parallel {max_concurrent}, seed {self.config.seed}/rep {self.config.replicate}")
 
@@ -158,11 +163,16 @@ class PerCustomerSimulationRunner:
                     logger.warning(f"[simulation] progress callback failed: {e}")
 
         async def simulate_one(entry: CustomerEntry, persona: Persona) -> CustomerResult | None:
-            nonlocal completed
+            nonlocal completed, succeeded, given_up
             customer_seed = stable_seed(run_seed, persona.id)
             persona = scale_trip(persona, size_fx, entry.hour, customer_seed)
             cue = self.cue_sampler(random.Random(stable_seed(customer_seed, "cue")))
             async with semaphore:
+                if given_up:
+                    completed += 1
+                    failures.append(FailedCustomer(persona_id=entry.persona_id, reason=given_up))
+                    report()
+                    return None
                 reason = ""
                 for attempt in range(_MAX_ATTEMPTS):
                     try:
@@ -195,6 +205,7 @@ class PerCustomerSimulationRunner:
                             max_quantity=self.config.max_quantity_per_line,
                         )
                         completed += 1
+                        succeeded += 1
                         logger.info(f"[simulation] customer {completed}/{total} ({entry.persona_id}) done")
                         report()
                         return result
@@ -205,6 +216,10 @@ class PerCustomerSimulationRunner:
                 completed += 1
                 failures.append(FailedCustomer(persona_id=entry.persona_id, reason=reason.split("\n")[0][:300]))
                 logger.warning(f"[simulation] customer ({entry.persona_id}) failed {_MAX_ATTEMPTS}x, recorded as failure: {reason}")
+                if not succeeded and not given_up and len(failures) >= _GIVE_UP_AFTER:
+                    given_up = f"not tried: the first {len(failures)} shoppers all failed — {failures[0].reason}"[:300]
+                    logger.warning(f"[simulation] the first {len(failures)} customers all failed; the remaining "
+                                   f"{total - completed} are not tried")
                 report()
             return None
 

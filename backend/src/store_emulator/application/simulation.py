@@ -325,8 +325,11 @@ def run_simulation_background(
         if not customers and failed:
             # Every shopper failed (a key turned down, a model that is not there): a "completed" run of nobody would
             # lock the layout and the customers. Say what went wrong instead.
-            raise RuntimeError(model_failure(RuntimeError(failed[0].reason),
-                                             f"All {len(failed)} shoppers failed, so nothing was simulated"))
+            tried = [f for f in failed if not f.reason.startswith("not tried:")]
+            what = (f"All {len(failed)} shoppers failed, so nothing was simulated" if len(tried) == len(failed) else
+                    f"The first {len(tried)} shoppers all failed, so the other {len(failed) - len(tried)} were not "
+                    "tried and nothing was simulated")
+            raise RuntimeError(model_failure(RuntimeError((tried or failed)[0].reason), what))
         run_dir = save_run(
             DATA_DIR, pid, run_id,
             aggregated, customers, store, personas, config,
