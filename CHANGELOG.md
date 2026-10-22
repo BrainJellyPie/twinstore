@@ -81,6 +81,9 @@
   Nothing is downloaded now until you press Start for the local model, and the button says how large the download
   is. After that it comes back by itself when the app opens, until you press Stop. A model an earlier version already
   downloaded still starts with no key, without downloading anything.
+- With no API key, creating a store failed: it chose starter products with a text model by default. The format's own
+  products are now the default until a model is set up, and the new-store form and the customer-writing screen say
+  that writing customers needs a model, with buttons to add a key or download the local model (showing its size).
 - After an update, a browser that kept the previous version's page could show a blank screen or the old app. The page
   is now fetched fresh on every visit.
 - "OpenStreetMap download failed: … HTTP Error 502: Bad Gateway": the public map server is often overloaded for a

@@ -7,6 +7,7 @@ import { useLocale, translate } from "@/shared/i18n/i18n";
 import { DEFAULT_VALUES, type WizardValues } from "../validate";
 import { Step2Fields } from "../components/Step2Fields";
 import { CreateStoreWizard } from "../components/CreateStoreWizard";
+vi.mock("@/features/settings/useModelSetup", () => import("@/features/settings/__tests__/modelSetupWithKey"));
 vi.mock("@tanstack/react-router", () => ({ useBlocker: () => ({ status: "idle" }) }));
 vi.mock("@/shared/api/client", async original => ({ ...await original<typeof import("@/shared/api/client")>(), draftCustomerProfile: vi.fn() }));
 vi.mock("@/shared/mutations/useCreateStore", () => ({ useCreateStore: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }) }));

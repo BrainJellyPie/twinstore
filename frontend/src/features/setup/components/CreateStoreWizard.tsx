@@ -29,6 +29,8 @@ import { DescribeStoreField } from "./DescribeStoreField";
 import { Step1Fields } from "./Step1Fields";
 import { Step2Fields } from "./Step2Fields";
 import { WizardHeader } from "./WizardHeader";
+import { NeedsModel } from "@/features/settings/NeedsModel";
+import { modelAvailable, useModelSetup } from "@/features/settings/useModelSetup";
 
 interface CreateStoreWizardProps {
   onCreated?: (projectId: string) => void;
@@ -40,7 +42,7 @@ const STEPS = [
 ] as const;
 
 const INITIAL_VALUES: WizardValues = { ...DEFAULT_VALUES, storeType: "convenience" };
-const INITIAL_FORM = JSON.stringify([INITIAL_VALUES, true, DEFAULT_TEMPLATE_CHOICE, true]);
+const INITIAL_FORM = JSON.stringify([INITIAL_VALUES, true, DEFAULT_TEMPLATE_CHOICE, null]);
 const blockLeaving = () => true;
 
 export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
@@ -49,7 +51,11 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
   const [step, setStep] = useState<1 | 2>(1);
   const [values, setValues] = useState<WizardValues>(INITIAL_VALUES);
   const [withTemplate, setWithTemplate] = useState(true);
-  const [automaticProducts, setAutomaticProducts] = useState(true);
+  // Untouched (null): picked by the model at hand. With no key and no local model, the format's own products —
+  // choosing them with a model would fail, and the local model downloads only when the user asks for it.
+  const [chosenAutomatic, setAutomaticProducts] = useState<boolean | null>(null);
+  const { data: modelSetup } = useModelSetup();
+  const automaticProducts = chosenAutomatic ?? (modelSetup ? modelAvailable(modelSetup) : false);
   const [templateOptions, setTemplate] = useState(DEFAULT_TEMPLATE_CHOICE);
   const template = useMemo(() => ({ ...templateOptions, weekly_hours: null, open_hour: values.openHour, close_hour: values.closeHour,
     closed_days: buildWeeklySchedule(values).filter((day) => !day.is_open).map((day) => day.day) }), [templateOptions, values]);
@@ -164,7 +170,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
     : null;
   const isPending = create.isPending;
   // Leaving loses everything typed; creating (pending or done) navigates away on purpose.
-  const dirty = JSON.stringify([values, withTemplate, templateOptions, automaticProducts]) !== INITIAL_FORM;
+  const dirty = JSON.stringify([values, withTemplate, templateOptions, chosenAutomatic]) !== INITIAL_FORM;
   const leave = useBlocker({ shouldBlockFn: blockLeaving, withResolver: true, enableBeforeUnload: true,
     disabled: !dirty || isPending || create.isSuccess });
 
@@ -207,6 +213,8 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
             onChange={onChange}
           />
         )}
+
+        {step === 2 && <NeedsModel />}
 
         {errMessage && step === 2 && (
           <p role="alert" className="text-sm text-destructive">{errMessage}</p>
