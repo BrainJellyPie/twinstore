@@ -1,25 +1,29 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { webcrypto } from "node:crypto";
 import * as api from "@/shared/api/libraryPhotos";
 import { LibraryPhotos } from "../LibraryPhotos";
 import { useSimulationStore } from "@/stores/simulationStore";
 vi.mock("@/shared/api/libraryPhotos", () => ({ getLibraryPhotos: vi.fn(), previewLibraryPhotos: vi.fn(), saveLibraryPhotos: vi.fn() }));
+import { useLocale, translate } from "@/shared/i18n/i18n";
+import { LOCALES } from "@/shared/i18n/messages";
+import { ApiError } from "@/shared/api/errors";
 const asset = { asset_id: "pkg_1", name: "Tea photo", sku: "茶", version: "b".repeat(64), image_url: "/photo.png" };
 const product = { sku: "茶", names: ["Tea"], image_urls: [], placements: 2 };
 const options: api.PhotoOptions = { source_sha256: "a".repeat(64), assets: [asset], products: [product] };
 const report: api.PhotoPreview = { changed_placements: 2, changes: [{ ...product, asset_name: asset.name, image_url: "/snapshot" }] };
 let qc: QueryClient;
 beforeEach(() => {
+  useLocale.getState().setLocale("en");
   vi.stubGlobal("crypto", webcrypto);
   qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   vi.mocked(api.getLibraryPhotos).mockResolvedValue(options);
   vi.mocked(api.previewLibraryPhotos).mockResolvedValue(report);
   vi.mocked(api.saveLibraryPhotos).mockResolvedValue({ setup_id: "setup_photos", changed_placements: 2 });
 });
-afterEach(() => { cleanup(); qc.clear(); vi.resetAllMocks(); vi.unstubAllGlobals(); useSimulationStore.getState().reset(); });
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); qc.clear(); vi.resetAllMocks(); vi.unstubAllGlobals(); useSimulationStore.getState().reset(); });
 const view = (sid = "s") => <QueryClientProvider client={qc}><LibraryPhotos pid="p" sid={sid} /></QueryClientProvider>;
 async function open() {
   const rendered = render(view()); fireEvent.click(screen.getByRole("button", { name: "Use library photos" }));
@@ -133,4 +137,57 @@ it("searches photos without losing a selected image outside the filter", async (
   expect(screen.getByRole("button", { name: "Save layout with photos" })).toBeTruthy();
   fireEvent.change(screen.getByRole("combobox", { name: "Photo for 茶" }), { target: { value: "pkg_other" } });
   expect(screen.queryByRole("button", { name: "Save layout with photos" })).toBeNull();
+});
+
+// Localization boundary phase: retain the same draft and request through language changes.
+it.each(LOCALES)("completes the photo workflow in $code without translating SKU data", async ({ code }) => {
+  useLocale.getState().setLocale(code);
+  const t = (key: Parameters<typeof translate>[1], values?: Record<string, string | number>) => translate(code, key, values);
+  render(view());
+  fireEvent.click(screen.getByRole("button", { name: t("photosTitle") }));
+  const choice = await screen.findByRole("combobox", { name: t("photosForSku", { sku: "茶" }) });
+  expect(screen.getByText(t("photosHelp"))).toBeTruthy();
+  fireEvent.change(choice, { target: { value: "pkg_1" } });
+  fireEvent.click(screen.getByRole("button", { name: t("photosPreview") }));
+  fireEvent.click(await screen.findByRole("button", { name: t("photosSave") }));
+  fireEvent.click(await screen.findByRole("button", { name: t("photosOpen") }));
+  expect(api.saveLibraryPhotos).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(api.saveLibraryPhotos).mock.lastCall?.[2].assignments).toEqual([{ sku: "茶", asset_id: "pkg_1", version: asset.version }]);
+  expect(useSimulationStore.getState().selectedSetupId).toBe("setup_photos");
+});
+it("switches language during preview and an uncertain save without restarting or losing choices", async () => {
+  await open();
+  let finish!: (value: api.PhotoPreview) => void;
+  vi.mocked(api.previewLibraryPhotos).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  fireEvent.change(screen.getByLabelText("Search shelf products"), { target: { value: "茶" } });
+  fireEvent.click(screen.getByRole("button", { name: "Use unique links for shown products" }));
+  fireEvent.click(screen.getByRole("button", { name: "Preview product photos" }));
+  await waitFor(() => expect(api.previewLibraryPhotos).toHaveBeenCalledTimes(1));
+  act(() => useLocale.getState().setLocale("ko"));
+  expect((screen.getByLabelText("진열 상품 검색") as HTMLInputElement).value).toBe("茶");
+  expect((screen.getByLabelText("茶 사진") as HTMLSelectElement).value).toBe("pkg_1");
+  finish(report);
+  vi.mocked(api.saveLibraryPhotos).mockRejectedValueOnce(new ApiError("Source changed", 409));
+  fireEvent.click(await screen.findByRole("button", { name: "사진을 적용한 배치 저장" }));
+  await screen.findByRole("button", { name: "사진 배치 저장 재시도" });
+  act(() => useLocale.getState().setLocale("fr"));
+  expect(screen.getByRole("alert").textContent).toContain(translate("fr", "requestConflict"));
+  fireEvent.click(screen.getByRole("button", { name: translate("fr", "photosRetrySave") }));
+  await screen.findByRole("button", { name: translate("fr", "photosOpen") });
+  expect(api.previewLibraryPhotos).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(api.saveLibraryPhotos).mock.calls[0]![2]).toEqual(vi.mocked(api.saveLibraryPhotos).mock.calls[1]![2]);
+});
+it("retranslates an already displayed validation error and preserves literal user names", async () => {
+  const name = 'Tea <b>{sku}</b> & नमस्ते';
+  vi.mocked(api.getLibraryPhotos).mockResolvedValue({ ...options, assets: [{ ...asset, name }] });
+  await open();
+  fireEvent.click(screen.getByRole("button", { name: "Use unique links for shown products" }));
+  expect(screen.getByRole("option", { name: `${name} · pkg_1 · linked to 茶` }).textContent).toContain(name);
+  qc.setQueryData(["library-photos", "p", "s"], { ...options, assets: [] });
+  await screen.findByText(/No library photos yet/);
+  fireEvent.click(screen.getByRole("button", { name: "Preview product photos" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("selected photo disappeared");
+  act(() => useLocale.getState().setLocale("ja"));
+  expect(screen.getByRole("alert").textContent).toBe(translate("ja", "photosMissingSelection"));
+  expect(api.previewLibraryPhotos).not.toHaveBeenCalled();
 });

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Translate the complete reviewed library-photo workflow into all six interface languages, including
+  explanations, selection and preview counts, accessibility names, validation and save/retry states.
+  Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated
+  Close button and provide localized error guidance with original diagnostics available on demand.
+
 - Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
   in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.
 

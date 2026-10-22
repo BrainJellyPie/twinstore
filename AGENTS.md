@@ -117,10 +117,12 @@ that has all the imports I need?" and put it there.
 ## i18n policy
 
 Frontend display text can be localized through `frontend/src/shared/i18n/`. The language
-picker supports English, Korean, Chinese, Japanese, Spanish and French; currently the home,
+picker supports English, Korean, Chinese, Japanese, Spanish and French. All new end-user UI copy
+must use this catalog, including explanations, accessibility names, validation and save/error states.
+Existing coverage includes the home,
 main navigation, command palette, store gallery, model notice, simulation launcher, new-store forms,
 preparation/recovery screens, layout navigation/finder, basic layout-creation forms, floor-plan import and template
-search/filter controls use it. Store-category labels are shared between the gallery and template picker.
+search/filter controls and reviewed library-photo reuse. Store-category labels are shared between the gallery and template picker.
 Add translations in all six columns
 when extending these surfaces. Use the selected locale for dates and numbers.
 
