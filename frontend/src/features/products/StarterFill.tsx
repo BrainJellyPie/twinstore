@@ -14,7 +14,7 @@ export function StarterFill({ pid, sid }: { pid: string; sid: string }) {
   return <>
     <Button variant="outline" onClick={() => setOpen(true)}>Fill empty shelves</Button>
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="flex max-h-[90dvh] flex-col overflow-y-auto sm:max-w-4xl">
+      <DialogContent className="flex max-h-[90dvh] flex-col overflow-y-auto p-4 sm:max-w-4xl sm:p-7">
         <DialogTitle>Fill empty shelves</DialogTitle>
         <DialogDescription>Place starter products on existing empty shelves and fridges. Review first, then save a new layout.</DialogDescription>
         {open && <StarterSession key={`${pid}:${sid}`} pid={pid} sid={sid} close={() => setOpen(false)} />}
@@ -31,7 +31,7 @@ function StarterSession({ pid, sid, close }: { pid: string; sid: string; close: 
     void catalog.refetch().then((result) => { if (result.isSuccess) setRevision((n) => n + 1); }).finally(() => setReloading(false));
   };
   return <>
-    {catalog.isError && <p role="alert">{catalog.error.message}<Button disabled={reloading} onClick={reload}>{catalog.data ? "Discard choices and retry" : "Retry starter options"}</Button></p>}
+    {catalog.isError && <p role="alert">{catalog.error.message}<Button className="h-auto min-h-9 max-w-full whitespace-normal py-2" disabled={reloading} onClick={reload}>{catalog.data ? "Discard choices and retry" : "Retry starter options"}</Button></p>}
     {!catalog.data && !catalog.isError && <p role="status">Loading starter options…</p>}
     {catalog.data && <StarterForm key={revision} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} reload={reload} close={close} />}
   </>;
@@ -80,15 +80,15 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close }: {
   };
   const options = snapshot.categories.map((c) => <option key={c.key} value={c.key}>{c.label} ({c.products.length} products)</option>);
   const sample = snapshot.categories.find((c) => c.key === category);
-  return <div className="min-w-0 space-y-3">
+  return <div className="min-w-0 space-y-3 [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-2">
     <p>Generic products and reference prices are examples, not your actual stock or shelf prices. KRW/JPY references use fixed illustrative conversions, not live FX. Review prices after saving in Edit products together.</p>
     <p>Only completely empty racks are eligible. Geometry, signs, stocked racks and images stay unchanged. Each accessible, unlocked face receives products on four levels. Tables and checkout counters are excluded.</p>
-    <label className="block">Search shelves<input className="ml-2 max-w-full rounded border p-2" value={search} onChange={(e) => setSearch(e.target.value)} /></label>
+    <label className="block">Search shelves<input className="mt-1 block w-full min-w-0 max-w-full rounded border p-2" value={search} onChange={(e) => setSearch(e.target.value)} /></label>
     <p>{shown.length} racks shown (up to 100). {selected.size} selected across all filters.</p>
-    <fieldset disabled={locked} className="space-y-2 rounded border p-3">
+    <fieldset disabled={locked} className="min-w-0 space-y-2 rounded border p-3">
       <legend>Starter assortment</legend>
-      <label className="block">Category to apply<select className="ml-2 max-w-full rounded border p-2" value={category} onChange={(e) => setCategory(e.target.value)}><option value="">Choose a category</option>{options}</select></label>
-      <label className="block">Products per shelf section<select className="ml-2 rounded border p-2" value={perSlot} onChange={(e) => { setPerSlot(Number(e.target.value)); clear(); }}>{[1, 2, 3, 4].map((n) => <option key={n}>{n}</option>)}</select></label>
+      <label className="block">Category to apply<select className="mt-1 block w-full min-w-0 max-w-full rounded border p-2" value={category} onChange={(e) => setCategory(e.target.value)}><option value="">Choose a category</option>{options}</select></label>
+      <label className="block">Products per shelf section<select className="mt-1 block w-full min-w-0 rounded border p-2" value={perSlot} onChange={(e) => { setPerSlot(Number(e.target.value)); clear(); }}>{[1, 2, 3, 4].map((n) => <option key={n}>{n}</option>)}</select></label>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={() => { const next = new Map(selected); for (const rack of shown) if (!rack.reason && !next.has(rack.id)) next.set(rack.id, category || rack.suggested_category || ""); choose(next); }}>Select shown empty racks</Button>
         <Button variant="outline" disabled={!category || !selected.size} onClick={() => choose(new Map([...selected.keys()].map((id) => [id, category])))}>Apply category to selected racks</Button>
@@ -107,7 +107,7 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close }: {
     <p>Existing exact SKUs reuse their current names, prices and images. Mixed existing values must be resolved first. Matching names alone never merge products.</p>
     {error && <p role="alert">{error}</p>}
     <Button disabled={locked || !selected.size} onClick={() => void check()}>{preview.isPending ? "Checking shelves…" : "Preview starter products"}</Button>
-    {preview.data && <section aria-label="Starter product preview" className="space-y-2 rounded border p-3">
+    {preview.data && <section aria-label="Starter product preview" className="min-w-0 space-y-2 rounded border p-3">
       <p>{preview.data.racks.length} racks · {preview.data.placements_added} placements · {preview.data.new_skus} new SKUs · {preview.data.reused_skus} reused SKUs.</p>
       {preview.data.racks.map((rack) => <details key={rack.id}><summary>{rack.name}: {rack.slots_added} sections, {rack.placements_added} placements — review products</summary><ul>{rack.products.map((p) => <li key={p.sku}>{p.name} — {priceText(p.price, snapshot.currency)} {snapshot.currency}{rack.reused_skus.includes(p.sku) ? " (existing SKU values)" : " (reference)"}</li>)}</ul></details>)}
       {prepared && !save.data && <Button disabled={busy} onClick={() => void persist()}>{save.isPending ? "Saving starter draft…" : save.isError ? "Retry saving starter draft" : "Save stocked layout"}</Button>}
