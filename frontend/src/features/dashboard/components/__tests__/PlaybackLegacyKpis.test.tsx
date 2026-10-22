@@ -38,6 +38,13 @@ it("keeps the live conversion and impulse share for a current run", () => {
   expect(tile("Impulse share")).toBe("0%");
 });
 
+it("shows the completed figures of an older run, but no impulse share it never recorded", () => {
+  show({ ...current, impulse_revenue_share: null });
+  expect(screen.queryByText(/made by an older version/)).toBeNull();
+  expect(tile("Converted")).toBe("100%");
+  expect(tile("Impulse share")).toBe("—");
+});
+
 it("says the rack and item lists fill in as the day plays, and only reports no sales once it is over", () => {
   show(current);
   expect(screen.getByText("Racks fill in as shoppers pay during the day.")).toBeTruthy();

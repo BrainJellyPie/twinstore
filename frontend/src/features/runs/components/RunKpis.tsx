@@ -46,7 +46,8 @@ export function RunKpis({ summary, days }: { summary: RunSummary; days: number }
         <Tile label={t("kpiRevenuePerVisitor")} value={formatMoney(summary.revenue_per_visitor ?? 0, code)} />
         <Tile label={t("kpiBasketValue")} value={formatMoney(summary.avg_basket_value ?? 0, code)} hint={t("kpiBasketHint")} />
         <Tile label={t("kpiUnitsPerBuyer")} value={(summary.avg_units_per_buyer ?? 0).toFixed(2)} />
-        <Tile label={t("dashImpulseShare")} value={formatPercent(summary.impulse_revenue_share ?? 0)} hint={t("dashImpulseHint")} />
+        <Tile label={t("dashImpulseShare")} value={summary.impulse_revenue_share === null ? "—" : formatPercent(summary.impulse_revenue_share ?? 0)}
+          hint={t("dashImpulseHint")} />
         <Tile label={t("kpiAvgVisit")} value={t("kpiSeconds", { seconds: Math.round(summary.avg_visit_sec ?? 0) })}
           hint={t("kpiTilesWalked", { tiles: (summary.avg_path_tiles ?? 0).toFixed(1) })} />
       </div>

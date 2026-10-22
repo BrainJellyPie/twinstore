@@ -74,13 +74,15 @@ export function DashboardPanel(props: DashboardPanelProps) {
 
 function PlaybackContent({ customers, minTime, maxTime, store, summary, projectId, runId, setupId }: PlaybackProps) {
   // Runs from older versions lack the conversion and impulse KPIs (RunKpis says so); their events carry
-  // no purchase origin, so live figures read off them would be misleading.
+  // no purchase origin, so live figures read off them would be misleading. The server completes an older summary
+  // from the saved shoppers where it can, leaving the impulse share empty (null) when the run did not record it.
   const legacyRun = summary != null && summary.conversion_rate === undefined;
+  const noImpulse = legacyRun || summary?.impulse_revenue_share === null;
   return (
     <div className="flex flex-col">
       <PlaybackStatus minTime={minTime} maxTime={maxTime} />
       <TimelineChart customers={customers} minTime={minTime} maxTime={maxTime} />
-      <Summary legacyRun={legacyRun} />
+      <Summary legacyRun={noImpulse} />
       <CustomerBehavior legacyRun={legacyRun} />
       {summary && <RunKpis summary={summary} days={new Set(customers?.map((c) => c.day)).size || 1} />}
       {projectId && runId && <OperationsSection key={`operations:${projectId}:${runId}`} projectId={projectId} runId={runId} setupId={setupId} currency={summary?.currency} />}
