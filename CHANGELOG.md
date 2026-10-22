@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.8 — Shoppers share one store, store operations; safe updates; nothing downloaded or spent unasked
+
 ### Try other stock and staffing on a finished run
 - **Store operations → Try other stock and staffing** replays a run's shoppers — the same people making the same
   choices — in a store run another way: units per shelf level, refills, tills open, patience, and tills hour by
@@ -16,8 +18,6 @@
   first served. API: `POST /runs/{rid}/operations/replay` and `/operations/plan`; shared-store runs keep their
   shoppers' visits as decided (`timeline_planned.json`) for this.
 - A replay copies only the events it changes; replaying a run is now about seven times faster.
-
-## 0.4.8 — Shoppers share one store; safe updates; nothing downloaded or spent unasked
 
 ### Shoppers share one store
 - Until now every simulated shopper had the store to themselves: endless stock on every shelf and no one else at the
