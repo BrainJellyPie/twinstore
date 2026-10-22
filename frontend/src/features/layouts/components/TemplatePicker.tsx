@@ -4,7 +4,7 @@ import { Check, ChevronDown, X } from "lucide-react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { useI18n } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
-import { storeTypeLabel, templateName } from "@/shared/i18n/storeLabels";
+import { storeTypeLabel, templateDescription, templateName } from "@/shared/i18n/storeLabels";
 import { weekdayLong } from "@/shared/i18n/timeFormat";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { cloneElement, useId, useRef, useState, type ReactElement } from "react";
@@ -102,7 +102,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
     if (size === "large" && cells <= 480) return false;
     if (seating === "with" && format.default_dining_tables === 0) return false;
     if (seating === "without" && format.default_dining_tables > 0) return false;
-    const labels = LOCALES.map(({ code }) => `${storeTypeLabel(format.store_type, code)} ${templateName(format.id, format.name, code)}`).join(" ");
+    const labels = LOCALES.map(({ code }) => `${storeTypeLabel(format.store_type, code)} ${templateName(format.id, format.name, code)} ${templateDescription(format.id, format.description, code)}`).join(" ");
     const text = searchText(`${format.name} ${format.description} ${format.store_type} ${format.id} ${labels}`);
     return terms.every((term) => text.includes(term));
   }).sort((a, b) => {
@@ -232,7 +232,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           </div>
           <div className="space-y-2">
             {selected && <p className="text-xs"><span className="text-muted-foreground">{t("selectedFormat")}: </span><strong>{templateName(selected.id, selected.name, locale)}</strong></p>}
-            <p className="text-xs text-muted-foreground">{selected?.description}</p>
+            <p className="text-xs text-muted-foreground">{selected && templateDescription(selected.id, selected.description, locale)}</p>
             <div className="grid grid-cols-2 gap-2">
               <Field label={t("widthCells")}><input type="number" className={controlClass} min={8} max={40} step={1} placeholder={String(selected?.grid[0] ?? 12)} value={value.width ?? ""} onChange={(e) => update({ width: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               <Field label={t("depthCells")}><input type="number" className={controlClass} min={6} max={40} step={1} placeholder={String(selected?.grid[1] ?? 10)} value={value.height ?? ""} onChange={(e) => update({ height: e.target.value === "" ? null : Number(e.target.value) })} /></Field>

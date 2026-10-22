@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Localize the descriptions of all 82 built-in store formats in Korean, Chinese, Japanese, Spanish
+  and French, including cross-language search. Preserve custom or updated server descriptions.
+  New non-English preset floor names no longer repeat the level shown by the interface.
+
 - Rewrite open-area and floor-review guidance in six languages, including complete move labels,
   localized floor badges and count summaries. Preserve user names and coordinates during language
   changes; show translated recovery guidance when a floor preview fails.

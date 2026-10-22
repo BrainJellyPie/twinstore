@@ -55,6 +55,18 @@ entered. The SVG always contains the complete floor geometry, independent of the
 These actions do not run shoppers or call a model. Detailed template-setting coverage is still being
 expanded; see `verification/2026-10-22-i18n-coverage.md` for the verified scope.
 
+## Read and find store formats in your language
+
+The format picker shows descriptions of the 82 built-in store formats in English, Korean,
+Chinese, Japanese, Spanish or French. Search also matches these translated descriptions;
+you can change language without losing your query or selected format. These descriptions
+explain template assumptions, not verified inventory, prices or actual sales.
+
+Custom or updated descriptions from the server remain unchanged until a matching translation
+is available. New non-English building presets use the format name for each editable floor
+name; the interface adds the current floor number. Saved and manually edited names stay as
+entered when changing language or moving floors.
+
 ## Reuse template hours and product settings
 
 Under **Customize layout**, choose opening days and hours, optionally setting each day separately.

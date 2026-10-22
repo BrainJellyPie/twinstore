@@ -125,7 +125,10 @@ preparation/recovery screens, layout navigation/finder, basic layout-creation fo
 search/filter controls, reviewed library-photo reuse, product bulk editing, shelf-product reuse and automatic/manual starter filling (including catalog categories), and floor-plan previews/comparisons with localized SVG exports (shared `plan*` catalog keys). Store-category labels are shared between the gallery and template picker. The layout
 customization panel (patterns, entrances, counters, seating, design and colors, hours, categories, reserved areas,
 options files) and building floors and presets use keys in `messages/layout.ts`; option ids stay unchanged and
-preset floor labels are ordinary editable text. Persona age groups and genders read through
+preset floor labels are ordinary editable text. Built-in format descriptions use
+`templateDescriptionMessages.ts` and `templateDescription()` only when the ID and exact English
+source both match. Preserve custom, changed or unknown descriptions; do not translate them via
+a stale built-in entry. Search may include all six built-in language variants without changing IDs. Persona age groups and genders read through
 `shared/i18n/personaLabels.ts` everywhere (the values `40s`, `Female` are unchanged).
 The marketing studio (every tab, builder and report), shelf capture with Shelf Lab and the neighborhood
 (area) page are localized too, with keys in `messages/studio.ts`. Their server-generated notes, warnings,

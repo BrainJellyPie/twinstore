@@ -58,7 +58,7 @@ it("shows the new-store layout customization panel, its building floors and floo
   useLocale.getState().setLocale("ko");
   const ko = (key: Parameters<typeof translate>[1], params?: Parameters<typeof translate>[2]) => translate("ko", key, params);
   const { container } = render(<Building />);
-  expect(screen.getByRole("button", { name: "1층 · 1층 · 뷰티 플래그십 스토어" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "1층 · 뷰티 플래그십 스토어" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "백화점" })).toBeTruthy();
   await screen.findByRole("button", { name: "평면도 확대 보기" });
   fireEvent.click(screen.getByRole("button", { name: "비워 둘 구역 추가" }));
@@ -76,7 +76,7 @@ it("shows the new-store layout customization panel, its building floors and floo
   expect(screen.getByText("기본 패턴: 쇼룸형 그룹 진열")).toBeTruthy();
   expect(screen.getByText("기본 디자인: 차콜·브라스")).toBeTruthy();
   expect(screen.getByRole("spinbutton", { name: "음료 상품 종류 수" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "2층 · 1층 · 뷰티 플래그십 스토어 사본 1" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "2층 · 뷰티 플래그십 스토어 사본 1" })).toBeTruthy();
   expect(englishLeft(container)).toEqual([]);
 
   fireEvent.click(await screen.findByRole("button", { name: ko("planExpand") }));
