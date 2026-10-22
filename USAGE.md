@@ -118,6 +118,20 @@ ran out. The same report is `GET /api/projects/{pid}/runs/{rid}/operations` (404
 `patience_sec`, plus `stock_overrides` by SKU, `substitute_share`, `checkout_base_sec`, `checkout_item_sec`,
 `patience_sd` and `target_wait_sec`). Coach users to turn it off only to reproduce a run made before it existed.
 
+### Try other stock and staffing (no model calls)
+
+Under **Store operations**, **Try other stock and staffing** replays the run's shoppers with their decisions
+unchanged. Edit units per shelf level, refills, tills, patience and the tills of single hours (blank uses the
+number above; 0 closes the tills that hour), then **Replay** for the outcome, or enter costs (a staffed till hour,
+one refilling round, one unit on the shelves for a day, in the store's currency) and **Find the best plan**. The
+plan search keeps behaviour fixed, so it answers operational questions (staffing, par levels, refill rhythm), not
+layout or assortment ones; run the simulation again for those. Runs whose shoppers each had the store alone replay
+too. A shared-store run made before replays existed cannot replay (it did not keep its shoppers' planned visits) and
+says so: run it again.
+
+API: `POST /api/projects/{pid}/runs/{rid}/operations/replay` with `{operations, costs}` and
+`POST …/operations/plan` with `{costs, operations?, max_tills?}`; costs are in the currency's minor unit.
+
 ## LLM call count (static analysis)
 
 Counted directly from the code, not measured.

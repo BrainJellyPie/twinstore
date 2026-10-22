@@ -11,6 +11,7 @@ from store_emulator.application import town as town_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
 from store_emulator.application.movement import MAX_TRACK_BYTES
+from store_emulator.application.operations_lab import PlanRequest, ReplayRequest, plan_run, replay_run
 from store_emulator.application.providers import (
     ensure_resolvable,
     load_settings,
@@ -26,7 +27,7 @@ from store_emulator.domain.config import EngineType, ExposureModel, LLMConfig, P
 from store_emulator.domain.movement import MovementReport
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
-from store_emulator.domain.operations import OperationsConfig, OperationsReport
+from store_emulator.domain.operations import OperationsConfig, OperationsPlan, OperationsReplay, OperationsReport
 from store_emulator.domain.scenario import Scenario
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import RESOURCE_ID_PATTERN, ResourceId
@@ -299,6 +300,31 @@ async def get_operations(pid: str, run_id: str) -> OperationsReport:
         raise HTTPException(404, "this run did not share the store's stock and tills")
     except ValueError:   # cut short or damaged on disk
         raise HTTPException(422, "the run's operations.json is damaged and cannot be read")
+
+
+@router.post("/{pid}/runs/{run_id}/operations/replay", summary="Replay a run under another operations plan",
+             response_model=OperationsReplay)
+async def replay_operations(pid: str, run_id: str, req: ReplayRequest) -> OperationsReplay:
+    """The run's shoppers, their decisions unchanged, in a store run another way: other shelf stock (per product
+    too), refills and tills staffed (per hour too). No model call; the shoppers keep their patience and their
+    substitute-or-not draws, so plans compare on the same people. With `costs`, the outcome counts till hours, refill
+    rounds and units kept on the shelves against revenue. Works for any completed run, shared store or not."""
+    try:
+        return await run_in_threadpool(replay_run, pid, run_id, req)
+    except AppError as e:
+        raise HTTPException(e.status_code, e.message)
+
+
+@router.post("/{pid}/runs/{run_id}/operations/plan", summary="Find an operations plan for a run's shoppers",
+             response_model=OperationsPlan)
+async def plan_operations(pid: str, run_id: str, req: PlanRequest) -> OperationsPlan:
+    """Replays the run's shoppers under hundreds of plans — refill interval with shelf stock, more stock for the
+    products that still run out, tills hour by hour — and returns the one with the most revenue left after `costs`
+    (ties to the plan using less). Seconds, no model call."""
+    try:
+        return await run_in_threadpool(plan_run, pid, run_id, req)
+    except AppError as e:
+        raise HTTPException(e.status_code, e.message)
 
 
 @router.get("/{pid}/compare", summary="Paired A/B comparison of two runs", response_model=ComparisonReport)

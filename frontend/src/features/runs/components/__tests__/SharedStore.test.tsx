@@ -110,7 +110,7 @@ describe("the run dialog", () => {
 
 const report: api.OperationsReport = {
   config: {
-    stock_per_facing: 12, stock_overrides: {}, restock_every_min: 120, substitute_share: 0.45, open_counters: null,
+    stock_per_facing: 12, stock_overrides: {}, till_schedule: {}, restock_every_min: 120, substitute_share: 0.45, open_counters: null,
     checkout_base_sec: 25, checkout_item_sec: 3, patience_sec: 300, patience_sd: 0.5, target_wait_sec: 120,
   },
   days: 1, counters: 1, counters_in_layout: 2, stockout_faces: 9, shoppers_hit: 14,

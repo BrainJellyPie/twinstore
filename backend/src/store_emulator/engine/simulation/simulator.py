@@ -228,8 +228,10 @@ class PerCustomerSimulationRunner:
         raw_results = await asyncio.gather(*tasks)
         results = [r for r in raw_results if r is not None]
         operations = None
+        planned: list[CustomerResult] = []
         if self.config.operations is not None:
             # The visits were decided apart; now they share one store — its stock and its tills — in clock order.
+            planned = results
             results, operations = resolve_shared_store(store, results, self.config.operations, seed=run_seed)
 
         aggregated = aggregate(
@@ -238,6 +240,8 @@ class PerCustomerSimulationRunner:
             currency=self.config.currency,
         )
         aggregated.operations = operations
+        if operations is not None:
+            aggregated.planned_customers = planned
         aggregated.token_usage = self.engine.get_usage()
         aggregated.diagnostics.requested_customers = total
         aggregated.diagnostics.failed_customers = sorted(failures, key=lambda f: f.persona_id)

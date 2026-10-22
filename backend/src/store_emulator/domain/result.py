@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from store_emulator.domain.customer import CustomerResult
 
 from store_emulator.domain.operations import OperationsReport
 from store_emulator.domain.types import TokenUsage
@@ -109,3 +111,6 @@ class AggregatedResult(BaseModel):
     diagnostics: RunDiagnostics = RunDiagnostics()
     # Stock and till lines shared by the run's shoppers; None = every shopper had the store to themselves.
     operations: OperationsReport | None = None
+    # The shoppers' visits as decided, before the shared store played them (kept to replay other operations plans
+    # without asking the model again). Not part of any response.
+    planned_customers: list[CustomerResult] = Field(default_factory=list[CustomerResult], exclude=True)

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Try other stock and staffing on a finished run
+- **Store operations → Try other stock and staffing** replays a run's shoppers — the same people making the same
+  choices — in a store run another way: units per shelf level, refills, tills open, patience, and tills hour by
+  hour. No model is asked, so even a vision run replays in seconds, and the shoppers keep their patience and their
+  substitute-or-not draws, so plans compare on the same people. Any finished run replays, including one whose
+  shoppers each had the store alone ("what would real stock and a line at the tills have cost this day?").
+- With costs for a staffed till hour, a round of refilling and a unit kept on the shelves for a day, **Find the best
+  plan** tries hundreds of plans (refill interval with shelf stock, more stock for the products that still run out,
+  tills hour by hour) and shows the one leaving the most after costs next to the current one, ready to use in the
+  form. Ties go to the plan using less.
+- Tills can be staffed per hour (`till_schedule`, 0 closes them for the hour); the tills share one line, first come,
+  first served. API: `POST /runs/{rid}/operations/replay` and `/operations/plan`; shared-store runs keep their
+  shoppers' visits as decided (`timeline_planned.json`) for this.
+- A replay copies only the events it changes; replaying a run is now about seven times faster.
+
 ## 0.4.8 — Shoppers share one store; safe updates; nothing downloaded or spent unasked
 
 ### Shoppers share one store
