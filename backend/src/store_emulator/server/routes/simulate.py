@@ -7,6 +7,7 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import run_analyst
 from store_emulator.application import simulation as sim_service
+from store_emulator.application import setups as setup_service
 from store_emulator.application import town as town_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
@@ -70,8 +71,13 @@ class SimulateRequest(BaseModel):
     operations: OperationsConfig | None = Field(
         default=None,
         description="Shoppers share the store: finite stock per shelf face, restocking, and a line at the tills "
-                    "(GET /runs/{rid}/operations reports stock-outs, waits and tills needed). Omit for shoppers "
-                    "who each have the store to themselves.",
+                    "(GET /runs/{rid}/operations reports stock-outs, waits and tills needed). Omitted: the "
+                    "layout's saved settings (PUT /setups/{sid}/operations), if any.",
+    )
+    shared_store: bool | None = Field(
+        default=None,
+        description="false: shoppers each have the store to themselves, whatever the layout saved. "
+                    "Omitted: `operations` if given, else the layout's saved settings, else none.",
     )
 
 
@@ -170,6 +176,11 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
 
     **Errors:** 400 (no layout / no personas), 404 (setup not found), 409 (locked / running / readiness not met / duplicate run_id)"""
     options = _options(req)
+    try:
+        options = options.model_copy(update={"operations": await run_in_threadpool(
+            setup_service.run_operations, pid, req.setup_id, req.operations, req.shared_store)})
+    except AppError as e:
+        raise HTTPException(e.status_code, e.message)
     config = get_config()
     try:
         ensure_resolvable(sim_service.apply_options(config, options))

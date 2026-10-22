@@ -32,6 +32,16 @@ export function useProjectRuns(projectId: string, enabled = true) {
   });
 }
 
+/** How the layout's store is run, when saved (null otherwise). */
+export function useLayoutOperations(projectId: string, setupId: string) {
+  return useQuery({
+    queryKey: queryKeys.layoutOperations(projectId, setupId),
+    queryFn: async ({ signal }) => (await api.getLayoutOperations(projectId, setupId, signal)).operations,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
 /** The shared store's stock-outs and till lines; `null` for runs whose shoppers each had the store alone. */
 export function useRunOperations(projectId: string, runId: string) {
   return useQuery({

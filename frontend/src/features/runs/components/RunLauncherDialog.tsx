@@ -39,15 +39,15 @@ import { Input } from "@/shared/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
 import { useSimulate } from "@/shared/mutations/useSimulate";
 import { SharedStoreControls } from "./SharedStoreControls";
-import { DEFAULT_SHARED_STORE, sharedStoreOptions, type SharedStoreChoice } from "../sharedStore";
+import { choiceFromConfig, DEFAULT_SHARED_STORE, sharedStoreOptions, type SharedStoreChoice } from "../sharedStore";
 import * as api from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
 import { queryKeys } from "@/shared/queries/keys";
-import type { EngineType, RunEstimate, RunOptions, Scenario, ShelfViewMode } from "@/shared/api/client";
+import type { EngineType, OperationsConfig, RunEstimate, RunOptions, Scenario, ShelfViewMode } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 import { costText, durationText, runEstimateText, shoppersOverDaysText } from "@/shared/utils/estimate";
 
-import { useAvailableModels, useEngines } from "../hooks";
+import { useAvailableModels, useEngines, useLayoutOperations } from "../hooks";
 import { photographShelves } from "../shelfPhotos";
 import { ModelPicker, type ModelChoice } from "./ModelPicker";
 import { ScenarioEditor } from "./ScenarioEditor";
@@ -120,8 +120,14 @@ function LauncherForm({
   const [townScale, setTownScale] = useState(0.2);
   const [planPolicy, setPlanPolicy] = useState<"vlm" | "rule">("vlm");
   const [shelfView, setShelfView] = useState<ShelfViewMode>("chart");
-  const [sharedStore, setSharedStore] = useState<SharedStoreChoice>(DEFAULT_SHARED_STORE);
-  const operations = sharedStoreOptions(sharedStore);
+  // The layout's saved operations are the starting point; settings without a field here (hourly tills, per-product
+  // stock) come along unchanged.
+  const layoutOperations = useLayoutOperations(projectId, setupId).data;
+  const [pickedStore, setSharedStore] = useState<SharedStoreChoice | null>(null);
+  const sharedStore = pickedStore ?? (layoutOperations ? choiceFromConfig(layoutOperations) : DEFAULT_SHARED_STORE);
+  const fields = sharedStoreOptions(sharedStore);
+  const operations: OperationsConfig | undefined | "invalid" = fields === "invalid" || fields === undefined
+    ? fields : { ...(layoutOperations ?? {}), ...fields };
   const [photos, setPhotos] = useState<{ done: number; total: number } | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photographing = useRef<AbortController | null>(null);
@@ -196,6 +202,8 @@ function LauncherForm({
     plan_policy: engine === "vlm_glance" ? planPolicy : undefined,
     shelf_view: engine === "vlm_glance" ? shelfView : undefined,
     operations: operations === "invalid" ? undefined : operations,
+    // Off means off, even on a layout with saved operations.
+    shared_store: sharedStore.enabled ? undefined : false,
   });
 
   // The estimate follows the choices after a short pause; starting a run reuses it (or asks for it).
@@ -371,6 +379,7 @@ function LauncherForm({
         </div>
 
         <SharedStoreControls value={sharedStore} onChange={setSharedStore} />
+        {layoutOperations && <p className="-mt-1 text-xs text-muted-foreground">{t("opsLayoutSaved")}</p>}
 
         <details className="group rounded-xl border">
           <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl p-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">

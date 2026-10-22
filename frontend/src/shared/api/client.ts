@@ -391,8 +391,10 @@ export interface RunOptions {
   plan_policy?: "vlm" | "rule" | null;
   // Vision shoppers: the rendered shelf chart, or the 3D store's photo of each face above it.
   shelf_view?: ShelfViewMode | null;
-  // Shoppers share the store: finite stock, restocking, a line at the tills. Omitted = each shopper alone.
+  // Shoppers share the store: finite stock, restocking, a line at the tills. Omitted: the layout's saved settings.
   operations?: OperationsConfig;
+  // false: each shopper has the store alone, whatever the layout saved.
+  shared_store?: boolean;
 }
 
 /** How the shared store runs (backend domain/operations.py). Every field falls back to the server default. */
@@ -478,6 +480,17 @@ export interface OperationsReport {
   hours: QueueHour[];
   stockouts: StockoutStats[];
   empty_spells?: EmptySpell[];
+}
+
+/** How the layout's store is run (null: not saved). Runs, A/B tests and the optimizer on it use these by default. */
+export function getLayoutOperations(projectId: string, setupId: string, signal?: AbortSignal): Promise<{ operations: OperationsReport["config"] | null }> {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/setups/${encodeURIComponent(setupId)}/operations`, { signal });
+}
+
+export function saveLayoutOperations(projectId: string, setupId: string, operations: OperationsConfig | null): Promise<{ operations: OperationsReport["config"] | null }> {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/setups/${encodeURIComponent(setupId)}/operations`, {
+    method: "PUT", body: JSON.stringify({ operations }),
+  });
 }
 
 export function getRunOperations(projectId: string, runId: string, signal?: AbortSignal): Promise<OperationsReport> {
@@ -1620,6 +1633,8 @@ export interface OptimizationStatus {
   created_at: string;
   finished_at: string;
   applied_setup_id: string | null;
+  // Candidates were judged with shoppers sharing the store run this way (null: each had the store alone).
+  operations?: OperationsConfig | null;
 }
 
 export interface OptimizeResult {

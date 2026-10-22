@@ -144,6 +144,11 @@ layout or assortment ones; run the simulation again for those. Runs whose shoppe
 too. A shared-store run made before replays existed cannot replay (it did not keep its shoppers' planned visits) and
 says so: run it again.
 
+**Save for this layout** keeps the settings with the layout (`PUT /setups/{sid}/operations`). From then on runs,
+A/B tests and layout optimizations on that layout share the store run this way by default (`shared_store: false`
+opts one request out). Coach users comparing promotions to save operations first: a discount that sells its
+shelf out by noon then shows up as lost units and a smaller lift, instead of endless stock flattering it.
+
 **Shoppers remember: follow the weeks after** repeats the run's week (2–52 weeks). After each week a shopper stops
 coming with a chance built from: each unit they wanted and found gone, giving up in the line, each minute waited
 at the tills, and a weekly churn that applies in any store. The result shows shoppers per week against an ideal

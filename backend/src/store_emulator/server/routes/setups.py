@@ -11,6 +11,7 @@ from store_emulator.application import shelf_views
 from store_emulator.application.errors import AppError
 from store_emulator.application.storage.generations import read_status
 from store_emulator.engine.layout_edit import LayoutEditDraft
+from store_emulator.domain.operations import OperationsConfig
 from store_emulator.domain.types import ResourceId
 from store_emulator.server.deps import get_config
 from store_emulator.server.schemas import (
@@ -315,3 +316,30 @@ async def put_shelf_view(pid: ResourceId, sid: ResourceId, key: str, req: shelf_
         return await run_in_threadpool(shelf_views.save_shelf_view, pid, sid, key, req, get_config().currency)
     except AppError as e:
         raise _http_exc_from_app_error(e)
+
+
+class LayoutOperations(BaseModel):
+    """How the layout's store is run; null = not saved (runs share the store only when asked)."""
+    operations: OperationsConfig | None = None
+
+
+@router.get("/{sid}/operations", summary="How this layout's store is run", response_model=LayoutOperations)
+async def get_layout_operations(pid: str, sid: str) -> LayoutOperations:
+    """The stock, refills, tills and crowding saved for the layout. Runs, A/B tests and the optimizer on the layout
+    share the store with these settings unless the request says otherwise (`shared_store: false` or its own
+    `operations`)."""
+    try:
+        return LayoutOperations(operations=await run_in_threadpool(setup_service.layout_operations, pid, sid))
+    except AppError as e:
+        raise HTTPException(e.status_code, e.message)
+
+
+@router.put("/{sid}/operations", summary="Save how this layout's store is run", response_model=LayoutOperations)
+async def put_layout_operations(pid: str, sid: str, body: LayoutOperations) -> LayoutOperations:
+    """Save the layout's operations settings (null clears them). Allowed on a finalized layout: it changes how the
+    store is run, not the recorded layout."""
+    try:
+        return LayoutOperations(operations=await run_in_threadpool(
+            setup_service.save_layout_operations, pid, sid, body.operations))
+    except AppError as e:
+        raise HTTPException(e.status_code, e.message)
