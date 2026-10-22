@@ -161,7 +161,8 @@ it.each(LOCALES)("keeps new category IDs intact in a KRW store in $code", async 
     "aquarium_decor", "bird_supplies", "home_lighting", "bathroom_accessories", "home_linen",
     "dinnerware", "food_storage", "pet_grooming", "hair_accessories", "woodcraft_supplies",
     "ceramic_craft_supplies", "gift_wrapping",
-    "baby_feeding", "baby_bath", "toy_vehicles", "plush_toys", "educational_toys", "puzzle_games", "model_building_supplies", "miniature_painting"];
+    "baby_feeding", "baby_bath", "toy_vehicles", "plush_toys", "educational_toys", "puzzle_games", "model_building_supplies", "miniature_painting",
+    "facial_skincare", "makeup_accessories", "nail_grooming", "shaving_grooming", "tea_brewing_tools", "baking_decorating", "pantry_organization", "shoe_care"];
   const originalProduct = { ...product, name: "원본 상품 🌿", price: 123400 };
   vi.mocked(api.getStarterCatalog).mockResolvedValue({ ...catalog, currency: "KRW",
     categories: keys.map(key => ({ key, label: `API label ${key}`, products: [originalProduct] })),

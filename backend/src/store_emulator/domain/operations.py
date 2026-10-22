@@ -51,7 +51,7 @@ class OperationsConfig(BaseModel):
     @classmethod
     def _hours(cls, schedule: dict[str, int]) -> dict[str, int]:
         for hour, tills in schedule.items():
-            if len(hour) != 2 or not hour.isdigit() or int(hour) > 23:
+            if len(hour) != 2 or not hour.isascii() or not hour.isdigit() or int(hour) > 23:
                 raise ValueError(f"till_schedule hours are \"00\"–\"23\", not {hour!r}")
             if not 0 <= tills <= 50:
                 raise ValueError(f"till_schedule[{hour!r}] must be 0–50 tills")

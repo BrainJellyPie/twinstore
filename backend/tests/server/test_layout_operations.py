@@ -116,3 +116,13 @@ def test_the_optimizer_judges_layouts_in_the_layouts_store(client):
     off = client.post(f"/api/projects/{PID}/setups/{sid}/optimize",
                       json={"spec": {"budget": 8, "eval_customers": 30, "validation_customers": 0}, "shared_store": False})
     assert off.json()["operations"] is None
+    # Stop both jobs before the next test: a job left running would write its files into that test's folder.
+    for job in (started.json()["job_id"], off.json()["job_id"]):
+        client.post(f"/api/projects/{PID}/optimizations/{job}/cancel")
+        for _ in range(1200):
+            if client.get(f"/api/projects/{PID}/optimizations/{job}").json()["status"]["status"] in (
+                    "completed", "failed", "canceled"):
+                break
+            time.sleep(0.05)
+        else:
+            raise AssertionError(f"optimization {job} did not stop")

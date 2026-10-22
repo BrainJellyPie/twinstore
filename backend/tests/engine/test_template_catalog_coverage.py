@@ -151,3 +151,40 @@ def test_default_essentials_maps_stock_complete_photographed_departments(templat
                for slot in rack.slots for item in slot.items}
     assert stocked == expected
     assert all(item.image_url for item in stocked.values())
+
+
+NEW_CARE_AND_HOME_DEPARTMENTS = [('beauty_flagship', ['facial_skincare', 'makeup_accessories', 'nail_grooming', 'shaving_grooming']), ('wellness_pharmacy', ['facial_skincare', 'nail_grooming', 'shaving_grooming']), ('drugstore', ['facial_skincare', 'makeup_accessories', 'nail_grooming']), ('tea_lounge', ['tea_brewing_tools']), ('specialty_cafe', ['tea_brewing_tools']), ('book_cafe', ['tea_brewing_tools']), ('artisan_bakery', ['baking_decorating']), ('design_showroom', ['pantry_organization']), ('refill_market', ['pantry_organization']), ('hypermarket', ['pantry_organization', 'shoe_care', 'facial_skincare']), ('shoe_boutique', ['shoe_care']), ('sports_outlet', ['shoe_care'])]
+
+
+@pytest.mark.parametrize("template_id,departments", NEW_CARE_AND_HOME_DEPARTMENTS)
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+@pytest.mark.parametrize("seed", [0, 7, 42])
+def test_default_care_and_home_maps_stock_added_products_and_photos(template_id, departments, currency, seed):
+    store = generate_store(template_id, currency=currency, seed=seed)
+    assert validate(store) == []
+    for category in departments:
+        expected = {catalog_slot_item(product, currency).sku: catalog_slot_item(product, currency)
+                    for product in CATALOG[category]}
+        stocked = {item.sku: item for rack in store.product_racks if rack.rack_desc == category
+                   for slot in rack.slots for item in slot.items}
+        assert len(expected) == 12
+        assert stocked == expected
+        assert sum(bool(item.image_url) for item in stocked.values()) >= 4
+
+
+@pytest.mark.parametrize("template_id,departments", NEW_CARE_AND_HOME_DEPARTMENTS)
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_added_care_and_home_departments_respect_small_map_limits(template_id, departments, currency):
+    excluded = departments[0]
+    options = LayoutOptions(width=8, height=6, dining_tables=0, checkouts=1,
+                            excluded_categories=[excluded], products_per_category=1,
+                            category_product_limits={category: 2 for category in departments})
+    store = generate_store(template_id, currency=currency, options=options)
+    assert validate(store) == []
+    assert store.product_racks
+    assert excluded not in {rack.rack_desc for rack in store.product_racks}
+    for category in {rack.rack_desc for rack in store.product_racks}:
+        skus = {item.sku for rack in store.product_racks if rack.rack_desc == category
+                for slot in rack.slots for item in slot.items}
+        assert len(skus) <= (2 if category in departments else 1)
+    assert generate_store(template_id, currency=currency, options=options) == store

@@ -298,10 +298,33 @@ def test_till_hours_count_the_staffed_hours_of_the_day():
     assert report.till_hours == 13 * 3
 
 
-@pytest.mark.parametrize("schedule", [{"24": 1}, {"9": 1}, {"ab": 1}, {"10": 51}, {"10": -1}])
+@pytest.mark.parametrize("schedule", [{"24": 1}, {"9": 1}, {"ab": 1}, {"10": 51}, {"10": -1},
+                                      {"０１": 1}, {"٠١": 1}, {" 1": 1}, {"+1": 1}, {"-1": 1}])
 def test_impossible_till_schedules_are_refused(schedule):
     with pytest.raises(ValueError):
         OperationsConfig(till_schedule=schedule)
+
+
+def test_till_schedule_accepts_both_ends_of_the_day_and_sorts_hours():
+    config = OperationsConfig(till_schedule={"23": 50, "00": 0, "12": 1})
+    assert list(config.till_schedule.items()) == [("00", 0), ("12", 1), ("23", 50)]
+
+
+@pytest.mark.parametrize("holding_cost", [0, 200, 400])
+def test_a_plan_can_stock_a_product_that_starts_sold_out_when_it_pays(holding_cost):
+    from store_emulator.engine.simulation.operations_plan import plan_operations
+    store = _store()
+    customers = [_shopper("p", "10:00:00", [("chips", 1)])]
+    current = OperationsConfig(stock_overrides={"chips": 0}, substitute_share=0, **_NO_LINE)
+    before = customers[0].model_dump()
+    plan = plan_operations(store, customers, current, OperationsCosts(stock_unit_day=holding_cost), seed=1)
+    profitable = holding_cost < 300
+    assert plan.current.revenue == 0
+    assert plan.best.revenue == (300 if profitable else 0)
+    assert plan.config.stock_overrides["chips"] == (1 if profitable else 0)
+    assert plan.raised_skus == (["chips"] if profitable else [])
+    assert plan.best.net >= plan.current.net
+    assert current.stock_overrides == {"chips": 0} and customers[0].model_dump() == before
 
 
 def test_a_replay_with_the_runs_own_plan_reproduces_it():
