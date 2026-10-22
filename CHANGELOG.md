@@ -20,62 +20,6 @@
   the customer export has each shopper's wait, whether they left the line, and units lost or replaced. API:
   `operations` on `POST /runs`, `GET /runs/{rid}/operations`. Runs without it work as before.
 
-### Catalog, photos, translations and fixes
-- Keep the model-provider list available when a saved local address has malformed IPv6 syntax.
-
-- Add 64 Korean, Mediterranean, Mexican, Vietnamese, pharmacy and care-product photos,
-  reaching 768 locally bundled images. All 18 menu assortments and six pharmacy/care
-  departments now have pictures for every existing product in their default maps.
-
-- Keep translated template headings in downloaded SVG titles without changing stored names.
-
-- The local model's llama.cpp program, downloaded by a version before 0.4.3, did not count as downloaded: a newer
-  version deleted it and fetched it again. A complete earlier download is now kept, and it comes along when the
-  stores are brought over from an earlier app folder, so a local model you already have starts without a download.
-- Settings showed a local server (llama.cpp, Ollama, …) as Ready at an address an earlier version or session left
-  behind, with nothing running there. It now says Not running.
-- Compare paired different people when the customers had been written again between the two runs, which versions
-  before 0.4.7 allowed once the earlier run's layout was deleted (the new customers reuse the ids M1001, F1003, …).
-  Such customers are now left out, and the comparison says how many.
-
-- Add 64 pizza, salad, juice, Indian, Thai, Turkish, Mexican and ice-cream menu
-  photos, reaching 704 local images. Seven more menu assortments now have pictures
-  for every existing product in their matching default maps.
-
-- Reject malformed Origin headers with 403 instead of a server error.
-
-- Add 64 tea, burger, noodle, sushi, restaurant, bubble-tea and Turkish-menu
-  photos, reaching 640 locally bundled images. Tea, burger, noodle, sushi,
-  restaurant and bubble-tea menus now have a photo for every product in their
-  matching default maps.
-- Rewrite open-area and floor-review guidance in six languages, including complete move labels,
-  localized floor badges and count summaries. Preserve user names and coordinates during language
-  changes; show translated recovery guidance when a floor preview fails.
-
-- Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
-  ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,
-  cafe and dessert templates display the new photos automatically.
-
-- Complete photos for all 96 baby feeding, bath, toy vehicle, plush, educational toy,
-  puzzle, model building and miniature painting products. Add 64 local images, reaching
-  512 photos; they appear on the matching default maps and in image-aware VLM grids.
-- Rewrite interior-design, color, floor-plan and recovery guidance in natural Korean, Chinese,
-  Japanese, Spanish and French. Share design names across setup, floor review and comparison;
-  localize color-reset accessibility labels and preview error recovery without changing stored values.
-
-- Apply the expanded product catalog to all 82 default map templates, with departments
-  matched to each store format and bundled product images retained in previews and saved floors.
-  The default maps collectively stock every catalog product, including all 131 categories;
-  category exclusions, assortment limits and small-floor layouts remain supported.
-
-- Add 96 baby feeding, baby bath, toy vehicle, plush, educational toy, puzzle, model
-  building and miniature painting products, plus 32 photos and six-language category labels.
-  The catalog now has 1,496 products in 131 categories with 448 bundled images.
-
-### Fixes
-- A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
-  previous version). It now reloads once into the new version.
-
 ## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
 
 ### Safe updates
@@ -100,6 +44,46 @@
   download. Details under Fixes.
 
 ### Starter catalog, photos and translations
+- Add 64 Korean, Mediterranean, Mexican, Vietnamese, pharmacy and care-product photos,
+  reaching 768 locally bundled images. All 18 menu assortments and six pharmacy/care
+  departments now have pictures for every existing product in their default maps.
+
+- Keep translated template headings in downloaded SVG titles without changing stored names.
+
+- Add 64 pizza, salad, juice, Indian, Thai, Turkish, Mexican and ice-cream menu
+  photos, reaching 704 local images. Seven more menu assortments now have pictures
+  for every existing product in their matching default maps.
+
+- Add 64 tea, burger, noodle, sushi, restaurant, bubble-tea and Turkish-menu
+  photos, reaching 640 locally bundled images. Tea, burger, noodle, sushi,
+  restaurant and bubble-tea menus now have a photo for every product in their
+  matching default maps.
+
+- Rewrite open-area and floor-review guidance in six languages, including complete move labels,
+  localized floor badges and count summaries. Preserve user names and coordinates during language
+  changes; show translated recovery guidance when a floor preview fails.
+
+- Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
+  ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,
+  cafe and dessert templates display the new photos automatically.
+
+- Complete photos for all 96 baby feeding, bath, toy vehicle, plush, educational toy,
+  puzzle, model building and miniature painting products. Add 64 local images, reaching
+  512 photos; they appear on the matching default maps and in image-aware VLM grids.
+
+- Rewrite interior-design, color, floor-plan and recovery guidance in natural Korean, Chinese,
+  Japanese, Spanish and French. Share design names across setup, floor review and comparison;
+  localize color-reset accessibility labels and preview error recovery without changing stored values.
+
+- Apply the expanded product catalog to all 82 default map templates, with departments
+  matched to each store format and bundled product images retained in previews and saved floors.
+  The default maps collectively stock every catalog product, including all 131 categories;
+  category exclusions, assortment limits and small-floor layouts remain supported.
+
+- Add 96 baby feeding, baby bath, toy vehicle, plush, educational toy, puzzle, model
+  building and miniature painting products, plus 32 photos and six-language category labels.
+  The catalog now has 1,496 products in 131 categories with 448 bundled images.
+
 - Add 64 hardware, music, gardening, pantry, produce, bakery, dairy, prepared-food and
   personal-care photos, reaching 416 local product images for the 1,400-item catalog.
   Extend six-language category labels to all 123 categories, including the newest home and hobby assortments.
@@ -116,11 +100,6 @@
   ceramic craft and gift wrapping products, plus 32 photos. The catalog now has 1,400
   products in 123 categories and 352 bundled photos for automatic or manual placement.
 
-- Translate shelf-product reuse into six languages, including eligibility reasons, section review,
-  price formatting, save/retry and accessibility text. Preserve selections and request identities
-  across language changes and keep legacy API reason compatibility. Stabilize seeded neighborhood
-  trip assignments when demand-report ordering changes.
-
 - Translate detailed floor previews, comparison metrics, gate legends and SVG exports into all six
   interface languages. Preserve expanded previews and zoom when changing language, retain original
   layout/product data, and translate the eight newly added starter category labels.
@@ -132,27 +111,6 @@
 - Add 96 cycling, swimming, climbing, desk, aquarium, bird, lighting and bathroom products, plus
   32 apparel, garden and hobby photos. The bundled catalog reaches 1,304 products, 115 categories
   and 256 product photos, available to automatic category-based placement and vision grids.
-
-- Translate product bulk editing end to end in six languages, including validation, mixed values,
-  undo, preview and saving. Preserve edits and retry identities when switching languages, format
-  reviewed prices by locale, and keep long buttons inside mobile dialogs. Product workflow clients
-  retain HTTP status so conflict and invalid-input guidance can be localized correctly.
-
-- Add 32 prepared-food, pharmacy and personal-care photos, bringing the collection to 224.
-  Starter placement previews show current uploaded or bundled photos for reused products without
-  rewriting their saved values. Empty product names retain their SKU label in vision grids.
-
-- Previously saved starter products pick up new bundled photos by exact SKU when no custom photo is set.
-  Existing uploads and explicit photos retain priority; layouts are not rewritten on read. Add 32 kitchen,
-  pet, technology and everyday-product photos, bringing the local collection to 192.
-
-- Add 96 kitchen, home, pet and technology products and 32 grocery/merchandise photos: 1,208 products,
-  107 categories and 160 local photos. Vision grids fit bundled product artwork more closely by omitting
-  empty white margins, while retaining names, prices and numbered identities.
-- Translate the complete reviewed library-photo workflow into all six interface languages, including
-  explanations, selection and preview counts, accessibility names, validation and save/retry states.
-  Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated
-  Close button and provide localized error guidance with original diagnostics available on demand.
 
 - Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
   in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.
@@ -179,6 +137,13 @@
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
 ### Fixes
+- Keep the model-provider list available when a saved local address has malformed IPv6 syntax.
+- Reject malformed Origin headers with 403 instead of a server error.
+- Without internet access (or when LiteLLM's online price table could not be downloaded), the warning before a run
+  or customer writing had no cost for the default models. Their prices are now built in; a downloaded price still
+  wins.
+- A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
+  previous version). It now reloads once into the new version.
 - The first launch downloaded a local vision model (up to several GB) without asking, even with no plan to use it.
   Nothing is downloaded now until you press Start for the local model, and the button says how large the download
   is. After that it comes back by itself when the app opens, until you press Stop. A model an earlier version already
@@ -247,7 +212,6 @@
 - On Linux, the application-menu entry now works from a folder whose name holds `$`, `"`, `%` or a backslash.
 - A data folder chosen with `PARASTORE_DATA_HOME` now gets its own Python environment, so a TwinStore using it
   can run beside the usual one without the two changing each other's packages.
-
 
 ## 0.4.7 — Marketing studio results you can trust
 
