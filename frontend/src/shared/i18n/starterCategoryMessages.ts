@@ -103,4 +103,12 @@ export const starterCategoryMessages = {
   "starterCategory_woodcraft_supplies": ["Woodcraft Supplies", "목공예 용품", "木工艺用品", "木工芸用品", "Materiales de artesanía en madera", "Fournitures de travail du bois"],
   "starterCategory_ceramic_craft_supplies": ["Ceramic Craft Supplies", "도예 용품", "陶艺用品", "陶芸用品", "Materiales de cerámica", "Fournitures de céramique"],
   "starterCategory_gift_wrapping": ["Gift Wrapping", "선물 포장 용품", "礼品包装", "ギフト包装", "Envoltorio de regalos", "Emballage cadeau"],
+  "starterCategory_baby_feeding": ["Baby Feeding", "유아 식기·수유 용품", "婴儿喂养用品", "ベビー食器・授乳用品", "Alimentación del bebé", "Repas de bébé"],
+  "starterCategory_baby_bath": ["Baby Bath", "아기 목욕 용품", "婴儿洗浴用品", "ベビーバス用品", "Baño del bebé", "Bain de bébé"],
+  "starterCategory_toy_vehicles": ["Toy Vehicles", "탈것 장난감", "玩具车船", "乗り物おもちゃ", "Vehículos de juguete", "Véhicules miniatures"],
+  "starterCategory_plush_toys": ["Plush Toys", "봉제 인형", "毛绒玩具", "ぬいぐるみ", "Peluches", "Peluches"],
+  "starterCategory_educational_toys": ["Educational Toys", "교육용 장난감", "益智教具", "知育玩具", "Juguetes educativos", "Jouets éducatifs"],
+  "starterCategory_puzzle_games": ["Puzzle Games", "퍼즐 게임", "拼图与解谜游戏", "パズルゲーム", "Puzles y rompecabezas", "Puzzles et casse-têtes"],
+  "starterCategory_model_building_supplies": ["Model Building Supplies", "모형 제작 용품", "模型制作用品", "模型製作用品", "Materiales de modelismo", "Fournitures de modélisme"],
+  "starterCategory_miniature_painting": ["Miniature Painting", "미니어처 도색 용품", "微缩模型涂装", "ミニチュア塗装用品", "Pintura de miniaturas", "Peinture de figurines"],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;

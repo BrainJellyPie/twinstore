@@ -155,3 +155,32 @@ it("names the actual translated product editor in the price-review instructions"
   const notice = screen.getByText(/Les produits génériques/);
   expect(notice.textContent).toContain(t("bulkTitle"));
 });
+
+it.each(LOCALES)("keeps new category IDs intact in a KRW store in $code", async ({ code }) => {
+  const keys = ["cycling_maintenance", "swimming_gear", "climbing_accessories", "desk_organization",
+    "aquarium_decor", "bird_supplies", "home_lighting", "bathroom_accessories", "home_linen",
+    "dinnerware", "food_storage", "pet_grooming", "hair_accessories", "woodcraft_supplies",
+    "ceramic_craft_supplies", "gift_wrapping",
+    "baby_feeding", "baby_bath", "toy_vehicles", "plush_toys", "educational_toys", "puzzle_games", "model_building_supplies", "miniature_painting"];
+  const originalProduct = { ...product, name: "원본 상품 🌿", price: 123400 };
+  vi.mocked(api.getStarterCatalog).mockResolvedValue({ ...catalog, currency: "KRW",
+    categories: keys.map(key => ({ key, label: `API label ${key}`, products: [originalProduct] })),
+    racks: keys.map(key => ({ ...catalog.racks[0]!, id: `rack_${key}`, suggested_category: key })),
+  });
+  vi.mocked(api.previewStarterFill).mockResolvedValue({ placements_added: keys.length * 8, new_skus: 0, reused_skus: 1,
+    racks: keys.map(key => ({ ...report.racks[0]!, id: `rack_${key}`, category: key, products: [originalProduct] })),
+  });
+  await open(code);
+  const select = screen.getByLabelText(t("starterCategoryToApply")) as HTMLSelectElement;
+  expect(Array.from(select.options).map(option => option.value).filter(Boolean)).toEqual(keys);
+  expect(select.textContent).not.toContain("API label");
+  fireEvent.click(screen.getByRole("button", { name: t("starterSelectShown") }));
+  fireEvent.click(screen.getByRole("button", { name: t("starterPreview") }));
+  await screen.findByRole("button", { name: t("starterSave") });
+  expect(vi.mocked(api.previewStarterFill).mock.lastCall?.[2]).toEqual({
+    source_sha256: catalog.source_sha256, currency: "KRW", products_per_slot: 2,
+    assignments: keys.map(key => ({ rack_id: `rack_${key}`, category: key })),
+  });
+  expect(screen.getByRole("region", { name: t("starterPreviewRegion") }).textContent).toContain(originalProduct.name);
+  expect(api.autoSelectStarterProducts).not.toHaveBeenCalled();
+});

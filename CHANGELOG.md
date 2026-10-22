@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Apply the expanded product catalog to all 82 default map templates, with departments
+  matched to each store format and bundled product images retained in previews and saved floors.
+  The default maps collectively stock every catalog product, including all 131 categories;
+  category exclusions, assortment limits and small-floor layouts remain supported.
+
+- Add 96 baby feeding, baby bath, toy vehicle, plush, educational toy, puzzle, model
+  building and miniature painting products, plus 32 photos and six-language category labels.
+  The catalog now has 1,496 products in 131 categories with 448 bundled images.
+
+- Add 64 hardware, music, gardening, pantry, produce, bakery, dairy, prepared-food and
+  personal-care photos, reaching 416 local product images for the 1,400-item catalog.
+  Extend six-language category labels to all 123 categories, including the newest home and hobby assortments.
 - Localize template operating hours, product-category limits, assortment seeds and settings-file
   import/export in all six interface languages. Keep exact seed values, category IDs and current
   edits when switching languages. Rewrite the new guidance in natural, task-oriented language.

@@ -125,6 +125,14 @@ const categories: Record<string, MessageKey> = {
   "woodcraft_supplies": "starterCategory_woodcraft_supplies",
   "ceramic_craft_supplies": "starterCategory_ceramic_craft_supplies",
   "gift_wrapping": "starterCategory_gift_wrapping",
+  "baby_feeding": "starterCategory_baby_feeding",
+  "baby_bath": "starterCategory_baby_bath",
+  "toy_vehicles": "starterCategory_toy_vehicles",
+  "plush_toys": "starterCategory_plush_toys",
+  "educational_toys": "starterCategory_educational_toys",
+  "puzzle_games": "starterCategory_puzzle_games",
+  "model_building_supplies": "starterCategory_model_building_supplies",
+  "miniature_painting": "starterCategory_miniature_painting"
 };
 
 export function starterCategoryLabel(key: string, original: string, locale: Locale): string {
