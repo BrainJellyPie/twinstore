@@ -30,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+    outputs:
+      version: ${{ steps.launchers.outputs.version }}
     steps:
       - name: Check version
         run: |
@@ -78,10 +80,12 @@ jobs:
           cache-dependency-path: launcher/go.mod
 
       - name: Build launchers
+        id: launchers
         run: |
           VERSION="${RELEASE_TAG#v}"
           [ -n "$RELEASE_TAG" ] || VERSION="0.0.0-snapshot.${GITHUB_SHA::7}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           VERSION="$VERSION" launcher/build.sh
 
       - name: Package
@@ -124,6 +128,58 @@ jobs:
         with:
           name: TwinStore-${{ env.VERSION }}
           path: out/*
+
+  # The downloads start on the systems they are for before anything is published: the Windows and macOS launchers run
+  # their first start (uv, Python, every package, the server answering) on clean runners, as a user's computer would.
+  smoke-windows:
+    needs: bundle
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: TwinStore-${{ needs.bundle.outputs.version }}
+          path: dl
+      - name: First start on Windows
+        shell: pwsh
+        run: |
+          Expand-Archive -Path "dl/TwinStore-${{ needs.bundle.outputs.version }}-windows-x64.zip" -DestinationPath win
+          # A GUI-subsystem program: wait for it explicitly, PowerShell would not.
+          $p = Start-Process -FilePath "win/TwinStore/TwinStore.exe" -ArgumentList "--smoke", "--no-browser", "--port", "8765" -Wait -PassThru
+          $log = Join-Path $env:LOCALAPPDATA "TwinStore/logs/launcher.log"
+          if (Test-Path $log) { Get-Content $log -Tail 120 }
+          if ($p.ExitCode -ne 0) { Write-Error "TwinStore.exe --smoke exited with $($p.ExitCode)"; exit 1 }
+
+  smoke-macos:
+    needs: bundle
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: TwinStore-${{ needs.bundle.outputs.version }}
+          path: dl
+      - name: First start on macOS
+        run: |
+          ditto -x -k "dl/TwinStore-${{ needs.bundle.outputs.version }}-macos.zip" mac
+          codesign --verify --deep --strict --verbose=2 mac/TwinStore.app
+          status=0
+          mac/TwinStore.app/Contents/MacOS/twinstore --smoke --no-browser --port 8765 || status=$?
+          tail -n 120 "$HOME/Library/Application Support/TwinStore/logs/launcher.log" || true
+          exit $status
+
+  publish:
+    needs: [bundle, smoke-windows, smoke-macos]
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: TwinStore-${{ needs.bundle.outputs.version }}
+          path: out
 
       - name: Publish release
         if: env.RELEASE_TAG != ''
