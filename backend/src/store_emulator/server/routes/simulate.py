@@ -13,7 +13,7 @@ from store_emulator.application.movement import MAX_TRACK_BYTES
 from store_emulator.application.providers import ensure_resolvable, load_settings, missing_key, text_model_fallback
 from store_emulator.application.simulation import RunOptions
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
-from store_emulator.domain.config import EngineType, ExposureModel, LLMConfig, PlanPolicy, RouteOrdering
+from store_emulator.domain.config import EngineType, ExposureModel, LLMConfig, PlanPolicy, RouteOrdering, ShelfViewMode
 from store_emulator.domain.movement import MovementReport
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
@@ -50,6 +50,11 @@ class SimulateRequest(BaseModel):
     plan_policy: PlanPolicy | None = Field(
         default=None,
         description='Vision shoppers only: "vlm" (the model plans the visit at the entrance) or "rule" (rule planner)',
+    )
+    shelf_view: ShelfViewMode | None = Field(
+        default=None,
+        description='Vision shoppers only: "chart" (rendered shelf chart) or "photo_chart" (the 3D store\'s photo of each '
+                    "face above the chart; render the photos first with PUT /setups/{sid}/shelf-views/{key})",
     )
 
 
@@ -125,7 +130,7 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
         exposure_model=req.exposure_model, route_ordering=req.route_ordering,
         max_customers=req.max_customers, preview=req.preview, model=req.model, ensemble=req.ensemble,
         scenario_id=req.scenario_id, scenario=req.scenario, use_town=req.use_town, town_scale=req.town_scale,
-        plan_policy=req.plan_policy,
+        plan_policy=req.plan_policy, shelf_view=req.shelf_view,
     )
     config = get_config()
     try:

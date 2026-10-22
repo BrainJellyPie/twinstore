@@ -54,6 +54,11 @@ from store_emulator.engine.perception import (
     render_store_map,
     store_directory,
 )
+from store_emulator.engine.perception.shelf_photo import (
+    face_key,
+    load_shelf_photo,
+    photo_chart_view,
+)
 from store_emulator.engine.routing.route_builder import build_journey, perceive_products
 from store_emulator.engine.scenario import words_categories
 
@@ -120,6 +125,7 @@ class GlanceRecord:
     model: str = ""       # ensemble member that answered (mixture) or "vote"
     agreement: float | None = None  # vote mode: share of members that named the winner
     votes: tuple[tuple[str, str, int], ...] = ()  # vote mode: (member, product, interest)
+    view: str = "chart"   # what the glance showed: chart | photo_chart (the 3D photo above the chart)
 
 
 class VLMGlanceEngine(RuleBasedEngine):
@@ -405,6 +411,13 @@ class VLMGlanceEngine(RuleBasedEngine):
             view = render_face(rack, face, currency=cfg.currency, width=vcfg.image_width, rng=marks_rng)
             if not view.items:
                 continue
+            shown = "chart"
+            if vcfg.shelf_view == "photo_chart":
+                # A face without a stored photo (rendered before an edit, or never) is shown as the chart alone.
+                photo = load_shelf_photo(vcfg.shelf_views_dir, face_key(rack, face, cfg.currency))
+                if photo is not None:
+                    view = photo_chart_view(view, photo, cfg.currency)
+                    shown = "photo_chart"
             prompt = user_prompt(
                 persona, context.cue, plan.pattern, view,
                 basket=self._basket_names(context, plan),
@@ -414,12 +427,13 @@ class VLMGlanceEngine(RuleBasedEngine):
                 situation=context.situation,
             )
             calls += 1
-            glance, model, agreement, votes, error = await self._ask(view, prompt, context, rack, face.value)
+            glance, model, agreement, votes, error = await self._ask(
+                view, prompt, context, rack, face.value, photo=shown == "photo_chart")
             if glance is None:
                 errors += 1
                 logger.warning(f"[vlm_glance] {persona.id} {rack.rack_name}/{face.value}: {error}")
                 self._record(GlanceRecord(persona.id, rack.rack_name, face.value, visibility, "", 0, 0, "",
-                                          None, "error", None, "error", model, None, votes))
+                                          None, "error", None, "error", model, None, votes, view=shown))
                 continue
 
             hit, how = resolve(view, glance)
@@ -441,7 +455,7 @@ class VLMGlanceEngine(RuleBasedEngine):
             self._record(GlanceRecord(
                 persona.id, rack.rack_name, face.value, visibility, glance.product, glance.number, glance.interest,
                 glance.reason, hit.item.sku if hit else None, how, hit.slot.level if hit else None, outcome,
-                model, agreement, votes,
+                model, agreement, votes, view=shown,
             ))
 
         out.trace = {"vlm_calls": calls, "vlm_buys": buys, "vlm_looks": looks,
@@ -449,14 +463,15 @@ class VLMGlanceEngine(RuleBasedEngine):
         return out
 
     async def _ask(
-        self, view: ShelfView, prompt: str, context: PerCustomerContext, rack: Rack, face: str,
+        self, view: ShelfView, prompt: str, context: PerCustomerContext, rack: Rack, face: str, *, photo: bool = False,
     ) -> tuple[ShelfGlance | None, str, float | None, tuple[tuple[str, str, int], ...], str]:
         """(glance, answering model, agreement, votes, error) for one shelf glance."""
         seed = stable_seed(context.seed, "vlm", rack.id, face)
         route = context.persona.id
+        system = glance_system_prompt(context.store.type, photo=photo)
         if isinstance(self._llm, EnsembleLLMClient) and self._llm.mode == "vote":
             answers = await self._llm.ask_all_with_image(
-                ShelfGlance, glance_system_prompt(context.store.type), prompt, view.data_url(), seed=seed, route=route, max_retries=1,
+                ShelfGlance, system, prompt, view.data_url(), seed=seed, route=route, max_retries=1,
             )
             votes = tuple((a.member, a.answer.product if a.answer else "", a.answer.interest if a.answer else -1)
                           for a in answers)
@@ -473,7 +488,7 @@ class VLMGlanceEngine(RuleBasedEngine):
         for max_tokens in (None, 2 * budget):
             try:
                 glance = await self._llm.generate_structured_with_image_async(
-                    ShelfGlance, glance_system_prompt(context.store.type), prompt, view.data_url(), seed=seed, route=route,
+                    ShelfGlance, system, prompt, view.data_url(), seed=seed, route=route,
                     max_retries=1, **({} if max_tokens is None else {"max_tokens": max_tokens}),
                 )
             except Exception as e:  # noqa: BLE001 — one failed glance must not fail the customer
@@ -541,6 +556,8 @@ class VLMGlanceEngine(RuleBasedEngine):
             "glance_policy": vlm.glance_policy,
             "max_glances": vlm.max_glances,
             "image_width": vlm.image_width,
+            "shelf_view": vlm.shelf_view,
+            "views": dict(Counter(g.view for g in log)),
             "glances": len(log),
             "errors": len(log) - len(answered),
             "noticed_rate": round(len(picked) / len(answered), 4) if answered else 0.0,

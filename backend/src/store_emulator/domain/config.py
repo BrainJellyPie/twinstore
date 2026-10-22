@@ -35,6 +35,7 @@ type StructuredOutput = Literal["json", "json_schema"]
 #   pattern factor (calibratable rate); the VLM decides what catches the eye and whether to buy.
 # - all: the VLM sees every one of the max_glances most visible faces and decides alone.
 type GlancePolicy = Literal["gated", "all"]
+type ShelfViewMode = Literal["chart", "photo_chart"]
 
 # Who plans the visit of a vision shopper (see VLMGlanceConfig.plan_policy).
 type PlanPolicy = Literal["vlm", "rule"]
@@ -175,6 +176,11 @@ class VLMGlanceConfig(BaseModel):
     # "rack" takes them by rack id, which sent every shopper's glances to the same first racks whatever the route.
     glance_order: Literal["shuffle", "rack"] = "shuffle"
     plan_max_tokens: int = Field(default=320, ge=64, le=4096)  # plans are longer than glance answers
+    # What a glance shows: "chart" (the rendered front elevation with names, prices and numbers) or
+    # "photo_chart" (the face photographed in the 3D store, with the same numbers, above that chart). Faces
+    # without a stored photo fall back to the chart. shelf_views_dir: where the photos are (set per run).
+    shelf_view: ShelfViewMode = "chart"
+    shelf_views_dir: str = ""
 
 
 class EngineConfigs(BaseModel):

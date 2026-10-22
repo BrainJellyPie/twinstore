@@ -11,7 +11,9 @@ from typing import Any, cast
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
-from store_emulator.domain.config import EngineType, ExposureModel, PlanPolicy, RouteOrdering, SimulationConfig
+from store_emulator.domain.config import (
+    EngineType, ExposureModel, PlanPolicy, RouteOrdering, ShelfViewMode, SimulationConfig,
+)
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.movement import MovementReport
 from store_emulator.domain.persona import Persona
@@ -39,6 +41,7 @@ from store_emulator.engine.analysis.fidelity import fidelity_report
 
 from store_emulator.application.errors import AppError
 from store_emulator.application.currencies import simulation_currency
+from store_emulator.application.shelf_views import views_dir
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +71,8 @@ class RunOptions(BaseModel):
     town_scale: float = Field(default=1.0, gt=0.0, le=5.0)
     # Vision shoppers: who plans the visit ("vlm": the model at the entrance; "rule": rule planner).
     plan_policy: PlanPolicy | None = None
+    # Vision shoppers: "chart" or "photo_chart" (the 3D store's photo of each face above the chart).
+    shelf_view: ShelfViewMode | None = None
 
 
 def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationConfig:
@@ -90,6 +95,9 @@ def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationCo
         config = with_engine_model(config, options.model)
     if options.plan_policy is not None:
         vlm = config.engines.vlm_glance.model_copy(update={"plan_policy": options.plan_policy})
+        config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
+    if options.shelf_view is not None:
+        vlm = config.engines.vlm_glance.model_copy(update={"shelf_view": options.shelf_view})
         config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
     return config
 
@@ -250,6 +258,9 @@ def run_simulation_background(
     try:
         config = apply_options(config, options)
         config = config.model_copy(update={"currency": store.currency or config.currency})
+        if config.engines.vlm_glance.shelf_view == "photo_chart":
+            vlm = config.engines.vlm_glance.model_copy(update={"shelf_views_dir": str(views_dir(pid))})
+            config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
         town = get_town(pid) if options.use_town else None
         arrivals: list[TownArrival] = []
         if town is not None:

@@ -7,6 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 from store_emulator.application import layout_edit
 from store_emulator.application import setups as setup_service
 from store_emulator.application import generation_async
+from store_emulator.application import shelf_views
 from store_emulator.application.errors import AppError
 from store_emulator.application.storage.generations import read_status
 from store_emulator.engine.layout_edit import LayoutEditDraft
@@ -275,3 +276,24 @@ async def apply_layout_edit(pid: str, sid: ResourceId, req: layout_edit.LayoutEd
         return await run_in_threadpool(layout_edit.apply_edit, pid, sid, req)
     except AppError as e:
         raise HTTPException(e.status_code, str(e)) from e
+
+
+@router.get("/{sid}/shelf-views", summary="Shelf faces to photograph for vision runs", response_model=shelf_views.ShelfViewStatus)
+async def get_shelf_views(pid: ResourceId, sid: ResourceId) -> shelf_views.ShelfViewStatus:
+    """Every stocked rack face of the layout with the key its 3D photo is stored under, whether that photo
+    exists, the run's currency and the store the keys were computed from (render exactly this store).
+    Vision runs with `shelf_view: "photo_chart"` show the photo above the shelf chart."""
+    try:
+        return await run_in_threadpool(shelf_views.shelf_view_status, pid, sid, get_config().currency)
+    except AppError as e:
+        raise _http_exc_from_app_error(e)
+
+
+@router.put("/{sid}/shelf-views/{key}", summary="Store a shelf face photo", response_model=shelf_views.ShelfFace)
+async def put_shelf_view(pid: ResourceId, sid: ResourceId, key: str, req: shelf_views.ShelfViewUpload) -> shelf_views.ShelfFace:
+    """A JPEG or PNG of one face (the browser's 3D render) and the box of each product in it, by
+    `face:level:block:index`. 409 when the face changed since its key was handed out."""
+    try:
+        return await run_in_threadpool(shelf_views.save_shelf_view, pid, sid, key, req, get_config().currency)
+    except AppError as e:
+        raise _http_exc_from_app_error(e)

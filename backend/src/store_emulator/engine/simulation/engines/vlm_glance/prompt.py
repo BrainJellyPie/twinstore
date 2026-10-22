@@ -47,8 +47,21 @@ def store_kind(store_type: str) -> str:
     return _STORE_KINDS.get(key, f"a {store_type.strip().lower()} store" if store_type.strip() else "a store")
 
 
-def glance_system_prompt(store_type: str = "convenience") -> str:
-    return SYSTEM_PROMPT.replace("a convenience store", store_kind(store_type), 1)
+PHOTO_LINE = (
+    "The image has two parts. Top: a photo of the shelf this shopper is passing right now, as they see it from the "
+    'aisle, with a yellow tag "#N price" on each product. Bottom: a chart of the same shelf with each product\'s name '
+    "and the same tag. Judge what catches the eye from the photo; read names and prices from the chart."
+)
+
+
+def glance_system_prompt(store_type: str = "convenience", *, photo: bool = False) -> str:
+    """`photo`: the glance shows the 3D store's photo of the face above the chart (shelf_view "photo_chart")."""
+    text = SYSTEM_PROMPT.replace("a convenience store", store_kind(store_type), 1)
+    if photo:
+        text = text.replace(
+            'The image is the shelf this shopper is passing right now. Each product shows its name on the package '
+            'and a yellow price tag "#N price" below it.', PHOTO_LINE, 1)
+    return text
 
 
 class ShelfGlance(BaseModel):
