@@ -68,7 +68,11 @@ def test_a_damaged_report_is_named_instead_of_a_server_error(client):
 
 
 @pytest.mark.parametrize("bad", [{"stock_per_facing": 0}, {"open_counters": 0}, {"substitute_share": 1.5},
-                                 {"restock_every_min": 1}, {"patience_sec": -5}])
+                                 {"restock_every_min": 1}, {"patience_sec": -5},
+                                 {"stock_overrides": {"chips": -1}},
+                                 {"stock_overrides": {"chips": 10_001}},
+                                 {"stock_overrides": {"chips": 1.5}},
+                                 {"stock_overrides": {"chips": None}}])
 def test_impossible_store_settings_are_refused(client, bad):
     response = client.post(f"/api/projects/{PID}/runs",
                            json={"setup_id": "setup_7d6d", "engine_type": "rule_based", "preview": True,

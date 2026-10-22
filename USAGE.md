@@ -54,6 +54,18 @@ entered. The SVG always contains the complete floor geometry, independent of the
 These actions do not run shoppers or call a model. Detailed template-setting coverage is still being
 expanded; see `verification/2026-10-22-i18n-coverage.md` for the verified scope.
 
+## Read and find store formats in your language
+
+The format picker shows descriptions of the 82 built-in store formats in English, Korean,
+Chinese, Japanese, Spanish or French. Search also matches these translated descriptions;
+you can change language without losing your query or selected format. These descriptions
+explain template assumptions, not verified inventory, prices or actual sales.
+
+Custom or updated descriptions from the server remain unchanged until a matching translation
+is available. New non-English building presets use the format name for each editable floor
+name; the interface adds the current floor number. Saved and manually edited names stay as
+entered when changing language or moving floors.
+
 ## Reuse template hours and product settings
 
 Under **Customize layout**, choose opening days and hours, optionally setting each day separately.
@@ -1192,7 +1204,7 @@ barista tools and party supplies add another 96 products. Kitchen and baking too
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
 woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
-educational toys, puzzles, model building and miniature painting add another 96. Seven hundred sixty-eight generated
+educational toys, puzzles, model building and miniature painting add another 96. Nine hundred sixty generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 The 82 default map templates also include the expanded products in suitable departments. For example, toy
 shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and

@@ -26,6 +26,18 @@
   assumptions to set from your own loyalty or survey data, not fitted values. API: `memory` on
   `POST /runs/{rid}/operations/replay` and `/plan`; no model call.
 
+### Catalog, photos, translations and fixes
+- Per-product stock (`stock_overrides`) may be 0: the product starts each day sold out, refills included, and counts
+  as out from opening. Values outside 0–10,000 are refused.
+- Add 64 everyday essentials, pantry, book, electronics, music, household and garden photos, reaching 960 local
+  images; with the dairy, prepared-meal, dessert, breakfast, coffee, baking, frozen-food, seafood and barista-tool
+  (896) and everyday-care, baby, hair, pet, plant-based food, snack, refreshment and car-care (832) photos, 35 more
+  catalog departments have a picture for every product in their stocked default maps.
+- Localize the descriptions of all 82 built-in store formats in Korean, Chinese, Japanese, Spanish and French,
+  including cross-language search; custom or updated server descriptions are kept. New non-English preset floor
+  names no longer repeat the level the interface already shows.
+- Keep one model-settings action after customer generation fails, with the local-model download/start control.
+
 ## 0.4.8 — Shoppers share one store, store operations; safe updates; nothing downloaded or spent unasked
 
 ### Try other stock and staffing on a finished run

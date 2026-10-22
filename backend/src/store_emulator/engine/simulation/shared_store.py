@@ -196,6 +196,9 @@ def _play_day(
         stops.sort()
     schedule = store.schedule_for(day)
     opening = schedule.open_hour * 3600 if schedule is not None and schedule.is_open else start // 3600 * 3600
+    for key, product in products.items():
+        if product.full == 0:   # a product stocked at zero is out from opening
+            _emptied(state, key, product, opening)
     if config.restock_every_min is not None:
         step = config.restock_every_min * 60
         moment = opening + step

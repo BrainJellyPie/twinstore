@@ -27,3 +27,11 @@ export function templateName(id: string, name: string, locale: Locale): string {
   const key = `tpl_${id}`;
   return locale !== "en" && Object.prototype.hasOwnProperty.call(messages, key) ? translate(locale, key as MessageKey) : name;
 }
+
+/** Translate only an unchanged built-in description; custom or newer server text is authoritative. */
+export function templateDescription(id: string, description: string, locale: Locale): string {
+  const key = `tplDesc_${id}`;
+  if (locale === "en" || !Object.prototype.hasOwnProperty.call(messages, key)) return description;
+  const messageKey = key as MessageKey;
+  return messages[messageKey][0] === description ? translate(locale, messageKey) : description;
+}
