@@ -12,7 +12,7 @@ import { OperationsReportView, OperationsSection } from "../OperationsSection";
 
 vi.mock("@/shared/api/client", () => ({
   getEngines: vi.fn(), getTown: vi.fn(), getModels: vi.fn(), startRun: vi.fn(), estimateRun: vi.fn(),
-  getModelSetup: vi.fn(), getRunOperations: vi.fn(),
+  getModelSetup: vi.fn(), getRunOperations: vi.fn(), getLayoutOperations: vi.fn(),
 }));
 vi.mock("../ScenarioEditor", () => ({ ScenarioEditor: () => <div>Situation editor</div> }));
 
@@ -29,6 +29,7 @@ beforeEach(() => {
   vi.mocked(api.estimateRun).mockResolvedValue(quick);
   vi.mocked(api.getModelSetup).mockRejectedValue(new Error("Not needed"));
   vi.mocked(api.startRun).mockResolvedValue({ project_id: "p", run_id: "r", setup_id: "s" });
+  vi.mocked(api.getLayoutOperations).mockResolvedValue({ operations: null });
 });
 afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); vi.unstubAllGlobals(); });
 
@@ -81,12 +82,26 @@ describe("the run dialog", () => {
     })));
   });
 
-  it("starts the old way with the option off", async () => {
+  it("starts the old way with the option off, whatever the layout saved", async () => {
     showDialog();
     fireEvent.click(screen.getByLabelText("Shoppers share the store"));
     expect(screen.queryByLabelText("Tills open")).toBeNull();
     await submit();
-    await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ operations: undefined })));
+    await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ operations: undefined, shared_store: false })));
+  });
+
+  it("starts from the layout's saved operations and keeps the settings the dialog has no field for", async () => {
+    vi.mocked(api.getLayoutOperations).mockResolvedValue({ operations: { ...report.config, stock_per_facing: 6,
+      till_schedule: { "18": 3 }, stock_overrides: { cola: 24 } } });
+    showDialog();
+    expect(await screen.findByText("Starting from this layout's saved operations.")).toBeTruthy();
+    expect((screen.getByLabelText("Units of each product per shelf level") as HTMLInputElement).value).toBe("6");
+    fireEvent.change(screen.getByLabelText("Tills open"), { target: { value: "2" } });
+    await submit();
+    await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({
+      shared_store: undefined,
+      operations: expect.objectContaining({ stock_per_facing: 6, open_counters: 2, till_schedule: { "18": 3 }, stock_overrides: { cola: 24 } }),
+    })));
   });
 
   it("blocks the run until an impossible setting is corrected", async () => {

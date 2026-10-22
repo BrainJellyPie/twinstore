@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
+from store_emulator.domain.operations import OperationsConfig
 from store_emulator.domain.rack import RACK_LEVELS, Face, Slot, SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import RESOURCE_ID_PATTERN
@@ -664,7 +665,7 @@ def create_setup_from_source(
                 cast(dict[str, Any], rack_any)["slots"] = []
 
     new_setup = new_setup_data(final_name, source_setup_id, store_copy, memo)
-    for key in ("building", "generation"):
+    for key in ("building", "generation", "operations"):   # a copy is run like its source until changed
         if source.get(key) is not None:
             new_setup[key] = copy.deepcopy(source[key])
     write_json(setup_path(project_id, new_setup["id"]), new_setup)
@@ -707,3 +708,53 @@ def delete_setup_with_descendants(project_id: str, setup_id: str) -> list[str]:
         write_state(project_id, state)
 
     return deleted_ids
+
+
+def layout_operations(project_id: str, setup_id: str) -> OperationsConfig | None:
+    """How this layout's store is run (stock, refills, tills, crowding), when it has been saved; None otherwise.
+    Runs, A/B tests and the optimizer on the layout use it unless told otherwise."""
+    try:
+        data = read_setup(project_id, setup_id)
+    except FileNotFoundError:
+        raise AppError(404, "setup_not_found", "not_found", f"Setup not found: {setup_id}", {})
+    saved = data.get("operations")
+    if not isinstance(saved, dict):
+        return None
+    try:
+        return OperationsConfig.model_validate(saved)
+    except ValidationError as e:   # damaged on disk: the layout runs as if none were saved, and says why in the log
+        logger.warning(f"[setups] {project_id}/{setup_id}: unreadable operations settings ignored: {e}")
+        return None
+
+
+def save_layout_operations(project_id: str, setup_id: str, config: OperationsConfig | None) -> OperationsConfig | None:
+    """Save (or with None, clear) how the layout's store is run. Allowed on a finalized layout too: it changes how
+    the store is run, not the layout its runs recorded."""
+    try:
+        with FileLock(str(_lock_path(project_id, setup_id)), timeout=10):
+            try:
+                data = read_setup(project_id, setup_id)
+            except FileNotFoundError:
+                raise AppError(404, "setup_not_found", "not_found", f"Setup not found: {setup_id}", {})
+            if config is None:
+                data.pop("operations", None)
+            else:
+                data["operations"] = config.model_dump(mode="json")
+            write_setup(project_id, setup_id, data)
+            return config
+    except Timeout:
+        raise AppError(503, "setup_lock_timeout", "lock_timeout",
+                       "another request is modifying this setup. Please retry shortly.", {"timeout_seconds": 10})
+
+
+def run_operations(
+    project_id: str, setup_id: str, operations: OperationsConfig | None, shared_store: bool | None,
+) -> OperationsConfig | None:
+    """The operations a run, test or search on the layout uses: none when asked for none, the request's own when it
+    brings them, else the layout's saved ones (or none)."""
+    if shared_store is False:
+        return None
+    if operations is not None:
+        return operations
+    saved = layout_operations(project_id, setup_id)
+    return saved if saved is not None or not shared_store else OperationsConfig()

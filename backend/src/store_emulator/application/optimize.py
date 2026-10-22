@@ -13,6 +13,7 @@ from typing import Any, cast
 from pydantic import BaseModel
 
 from store_emulator.domain.config import EngineType, SimulationConfig
+from store_emulator.domain.operations import OperationsConfig
 from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.optimize import JudgeSpec, OptimizeResult, OptimizeSpec
 from store_emulator.domain.persona import Persona
@@ -63,6 +64,8 @@ class OptimizationStatus(BaseModel):
     created_at: str = ""
     finished_at: str = ""
     applied_setup_id: str | None = None
+    # Candidates were judged in a shared store run this way (None: each shopper had the store alone).
+    operations: OperationsConfig | None = None
 
 
 class OptimizationView(BaseModel):
@@ -127,7 +130,7 @@ def _load_store_and_personas(pid: str, setup_id: str) -> tuple[Store, list[Perso
 
 def start_optimization(
     pid: str, setup_id: str, spec: OptimizeSpec, config: SimulationConfig, *, scenario_id: str | None = None,
-    judge: JudgeSpec | None = None,
+    judge: JudgeSpec | None = None, operations: OperationsConfig | None = None,
 ) -> OptimizationStatus:
     judge = judge or JudgeSpec()
     store, personas = _load_store_and_personas(pid, setup_id)
@@ -138,6 +141,8 @@ def start_optimization(
         "engine_type": EngineType.RULE_BASED,
         "currency": simulation_currency(pid, store, config.currency),
         "scenario": None if scenario is None or scenario.id == "baseline" else scenario,
+        # With the layout's operations, candidates pay for what they do to stock-outs, the tills and crowding.
+        "operations": operations,
     })
     vlm_config: SimulationConfig | None = None
     if judge.judge == "vlm":
@@ -149,7 +154,7 @@ def start_optimization(
     job_id = f"opt_{uuid.uuid4().hex[:6]}"
     status = OptimizationStatus(
         job_id=job_id, setup_id=setup_id, status="pending", budget=spec.budget, spec=spec, judge=judge,
-        scenario=scenario.name if scenario else "", created_at=now_iso(),
+        scenario=scenario.name if scenario else "", created_at=now_iso(), operations=operations,
     )
     _write_status(pid, status)
     executor.submit(_run_job, pid, status, store, personas, run_config, vlm_config)

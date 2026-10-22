@@ -344,6 +344,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
           {status.best_score != null ? ` · ${t("optBestSoFar", { score: score(status.best_score) })}` : ""}{status.scenario ? ` · ${status.scenario}` : ""}
           {status.judge?.judge === "vlm" ? ` · ${t("optVisionJudge")}` : ""}
         </div>
+        {status.operations && <div className="text-xs text-muted-foreground">{t("optSharedStoreNote")}</div>}
         <Button variant="outline" size="sm" className="gap-1.5" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
           <Square className="size-3.5" /> {t("optStop")}
         </Button>

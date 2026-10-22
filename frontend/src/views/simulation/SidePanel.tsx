@@ -84,6 +84,7 @@ export function SidePanel({
               summary={summary}
               projectId={projectId}
               runId={runId}
+              setupId={setupId}
             />
           ) : mode === "running" ? (
             <DashboardPanel mode="running" status={runStatus} />

@@ -115,10 +115,19 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
                 <Kpi label={t("mkConversion")} value={`${(a.conversion * 100).toFixed(1)}%`} delta={bought ? pp(bought.diff) : null} up={bought ? bought.ci_low > 0 : null} down={bought ? bought.ci_high < 0 : null} />
                 <Kpi label={t("mkUnitsPerVisitor")} value={a.units_per_visitor.toFixed(2)} delta={units ? units.mean_a === 0 ? t("mkAmountFromZero", { amount: `${units.diff >= 0 ? "+" : ""}${units.diff.toFixed(2)}` }) : pct(units.rel_diff) : null} up={units ? units.ci_low > 0 : null} down={units ? units.ci_high < 0 : null} />
               </dl>
+              {r.operations && (
+                <p className="mt-2 text-xs text-muted-foreground tabular-nums">
+                  {t("mkSoldOutLine", { units: (a.lost_units ?? 0).toLocaleString(locale), left: (a.left_line ?? 0).toLocaleString(locale) })}
+                </p>
+              )}
             </div>
           );
         })}
       </div>
+
+      {r.operations && (
+        <p className="text-xs text-muted-foreground">{t("mkSharedStoreNote", { stock: r.operations.stock_per_facing.toLocaleString(locale) })}</p>
+      )}
 
       <section className="rounded-2xl border bg-card p-4">
         <h3 className="text-sm font-semibold">{t("mkRevenueVsControl")}</h3>

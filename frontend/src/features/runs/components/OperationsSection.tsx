@@ -22,7 +22,7 @@ function Tile({ label, value, hint }: { label: string; value: ReactNode; hint?: 
   );
 }
 
-export function OperationsSection({ projectId, runId, currency }: { projectId: string; runId: string; currency?: string }) {
+export function OperationsSection({ projectId, runId, setupId, currency }: { projectId: string; runId: string; setupId?: string; currency?: string }) {
   const { t } = useI18n();
   const { data, isSuccess } = useRunOperations(projectId, runId);
   if (!isSuccess) return null;
@@ -30,12 +30,12 @@ export function OperationsSection({ projectId, runId, currency }: { projectId: s
     // Shoppers each had the store alone: the lab replays them with real stock and tills.
     return (
       <section className="border-t px-3 py-3" aria-label={t("opsTitle")}>
-        <OperationsLab projectId={projectId} runId={runId} report={null} currency={currency} />
+        <OperationsLab projectId={projectId} runId={runId} setupId={setupId} report={null} currency={currency} />
       </section>
     );
   }
   return <OperationsReportView report={data} currency={currency}
-    lab={<OperationsLab projectId={projectId} runId={runId} report={data} currency={currency} />} />;
+    lab={<OperationsLab projectId={projectId} runId={runId} setupId={setupId} report={data} currency={currency} />} />;
 }
 
 export function OperationsReportView({ report, currency, lab }: { report: OperationsReport; currency?: string; lab?: ReactNode }) {

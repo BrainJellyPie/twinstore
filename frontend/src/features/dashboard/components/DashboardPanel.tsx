@@ -57,6 +57,7 @@ interface PlaybackProps {
   summary?: RunSummary | null;
   projectId?: string;
   runId?: string;
+  setupId?: string;
 }
 
 export type DashboardPanelProps = ReadyProps | RunningProps | PlaybackProps;
@@ -71,7 +72,7 @@ export function DashboardPanel(props: DashboardPanelProps) {
   return <ReadyContent {...props} />;
 }
 
-function PlaybackContent({ customers, minTime, maxTime, store, summary, projectId, runId }: PlaybackProps) {
+function PlaybackContent({ customers, minTime, maxTime, store, summary, projectId, runId, setupId }: PlaybackProps) {
   // Runs from older versions lack the conversion and impulse KPIs (RunKpis says so); their events carry
   // no purchase origin, so live figures read off them would be misleading.
   const legacyRun = summary != null && summary.conversion_rate === undefined;
@@ -82,7 +83,7 @@ function PlaybackContent({ customers, minTime, maxTime, store, summary, projectI
       <Summary legacyRun={legacyRun} />
       <CustomerBehavior legacyRun={legacyRun} />
       {summary && <RunKpis summary={summary} days={new Set(customers?.map((c) => c.day)).size || 1} />}
-      {projectId && runId && <OperationsSection key={`operations:${projectId}:${runId}`} projectId={projectId} runId={runId} currency={summary?.currency} />}
+      {projectId && runId && <OperationsSection key={`operations:${projectId}:${runId}`} projectId={projectId} runId={runId} setupId={setupId} currency={summary?.currency} />}
       {projectId && runId && <RunAnalystSection key={`analyst:${projectId}:${runId}`} projectId={projectId} runId={runId} />}
       <RackRanking store={store} />
       <TopItems store={store} />
