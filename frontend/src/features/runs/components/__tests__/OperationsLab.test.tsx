@@ -194,6 +194,8 @@ it("staffs a crew hour by hour, costs a staff hour and plans the crew", async ()
   })));
   expect(await lab.findByRole("rowheader", { name: "Staff hours" })).toBeTruthy();
   expect(lab.queryByRole("rowheader", { name: "Till hours" })).toBeNull();
+  expect(lab.getByRole("rowheader", { name: "Shelves refilled" })).toBeTruthy();
+  expect(lab.queryByRole("rowheader", { name: "Shelf refills" })).toBeNull();
   fireEvent.click(lab.getByRole("button", { name: "Find the best plan" }));
   expect(await lab.findByText("Crew on duty: 2 · Crew by hour: 18:00 3")).toBeTruthy();
   expect(lab.getByText(/Refill: at 25% of full/)).toBeTruthy();

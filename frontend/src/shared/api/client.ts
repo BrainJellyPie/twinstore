@@ -553,6 +553,7 @@ export interface OperationsOutcome {
   till_hours: number;
   crew_hours?: number;
   restocks: number;
+  face_refills?: number;
   stock_units: number;
   labor_cost: number;
   restock_cost: number;

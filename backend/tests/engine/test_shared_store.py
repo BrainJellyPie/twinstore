@@ -509,6 +509,7 @@ def test_a_crew_replay_reproduces_the_run_and_a_crew_plan_counts_crew_hours():
     assert plan.best.net >= plan.current.net and plan.config.crew is not None
     assert plan.best.labor_cost == round(plan.best.crew_hours * 1500) and plan.best.crew_hours > 0
     assert plan.current.labor_cost == round(report.crew_hours * 1500)
+    assert outcome.face_refills == report.face_refills > 0 and outcome.restocks == 0
 
 
 @pytest.mark.parametrize("duration, arrival, crowded", [

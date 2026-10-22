@@ -49,7 +49,8 @@ def outcome(
     return OperationsOutcome(
         revenue=revenue, lost_revenue=report.lost_revenue, abandoned_revenue=report.abandoned_revenue,
         abandoned=report.abandoned, avg_wait_sec=report.avg_wait_sec, p90_wait_sec=report.p90_wait_sec,
-        till_hours=report.till_hours, crew_hours=report.crew_hours, restocks=report.restocks, stock_units=units,
+        till_hours=report.till_hours, crew_hours=report.crew_hours, restocks=report.restocks,
+        face_refills=report.face_refills, stock_units=units,
         labor_cost=labor, restock_cost=refills, holding_cost=holding, net=revenue - labor - refills - holding,
     )
 

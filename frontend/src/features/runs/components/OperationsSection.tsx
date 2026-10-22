@@ -116,8 +116,8 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
               <tr>
                 <th scope="col" className="py-0.5 text-left font-normal">{t("opsHour")}</th>
                 <th scope="col" className="py-0.5 text-right font-normal">{t("opsAtTills")}</th>
-                {crew != null && <th scope="col" className="py-0.5 text-right font-normal">{t("opsCrewCol")}</th>}
-                <th scope="col" className="w-2/5 py-0.5 text-left font-normal">{t("opsWaitCol")}</th>
+                {crew != null && <th scope="col" className="py-0.5 pl-2 text-right font-normal">{t("opsCrewCol")}</th>}
+                <th scope="col" className={crew != null ? "w-1/3 py-0.5 pl-2 text-left font-normal" : "w-2/5 py-0.5 text-left font-normal"}>{t("opsWaitCol")}</th>
                 <th scope="col" className="py-0.5 text-right font-normal">{t("opsLeftCol")}</th>
                 <th scope="col" className="py-0.5 text-right font-normal">{t("opsNeededCol")}</th>
               </tr>
@@ -127,7 +127,7 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
                 <tr key={hour.hour} className="border-t">
                   <th scope="row" className="py-1 text-left font-normal">{t("opsHourLabel", { hour: hour.hour })}</th>
                   <td className="py-1 text-right">{count(hour.arrivals)}</td>
-                  {crew != null && <td className="py-1 text-right">{count(hour.crew_on_duty ?? crew)}</td>}
+                  {crew != null && <td className="py-1 pl-2 text-right">{count(hour.crew_on_duty ?? crew)}</td>}
                   <td className="py-1 pl-2">
                     <div className="flex items-center gap-1.5">
                       <div className="h-1.5 flex-1 rounded-full bg-muted">

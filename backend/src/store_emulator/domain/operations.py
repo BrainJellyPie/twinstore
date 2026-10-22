@@ -211,6 +211,7 @@ class OperationsOutcome(BaseModel):
     till_hours: float = 0.0
     crew_hours: float = 0.0        # with a crew: staff hours on duty (what labor_cost counts instead of till hours)
     restocks: int = 0
+    face_refills: int = 0          # with a crew: shelf faces refilled (it refills face by face, not in rounds)
     stock_units: int = 0           # units on the shelves and in finite backrooms at opening, each day
     labor_cost: int = 0
     restock_cost: int = 0

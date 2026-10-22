@@ -38,6 +38,7 @@ const ROWS: { key: keyof OperationsOutcome; label: MessageKey; kind: "money" | "
   { key: "till_hours", label: "labTillHours", kind: "hours" },
   { key: "crew_hours", label: "opsCrewHours", kind: "hours" },
   { key: "restocks", label: "labRefills", kind: "count" },
+  { key: "face_refills", label: "opsFaceRefills", kind: "count" },
   { key: "stock_units", label: "labUnits", kind: "count" },
   { key: "labor_cost", label: "labLaborCost", kind: "money" },
   { key: "restock_cost", label: "labRefillCost", kind: "money" },
@@ -128,9 +129,11 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
     ...(replay.data ? [{ label: "labReplayCol" as const, outcome: replay.data.outcome, weeksNet: replay.data.weeks?.net }] : []),
     ...(plan.data ? [{ label: "labPlanCol" as const, outcome: plan.data.best, weeksNet: plan.data.best_weeks?.net }] : []),
   ];
-  // Crew hours only where a column had a crew; till hours unless every column had one.
-  const rows = ROWS.filter((row) => row.key === "crew_hours" ? columns.some((c) => (c.outcome.crew_hours ?? 0) > 0)
-    : row.key === "till_hours" ? columns.some((c) => !c.outcome.crew_hours) : true);
+  // Crew hours and shelves refilled only where a column had a crew; till hours and refill rounds unless every column
+  // had one.
+  const crewed = (c: (typeof columns)[number]) => (c.outcome.crew_hours ?? 0) > 0;
+  const rows = ROWS.filter((row) => row.key === "crew_hours" || row.key === "face_refills" ? columns.some(crewed)
+    : row.key === "till_hours" || row.key === "restocks" ? !columns.every(crewed) : true);
   const memoryField = (key: keyof MemoryText, label: MessageKey) => (
     <div className="space-y-1">
       <label className="block font-medium" htmlFor={`${id}-mem-${key}`}>{t(label)}</label>
@@ -159,7 +162,7 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
         {hours.length > 0 && (
           <fieldset className="space-y-1">
             <legend className="font-medium">{t(crewMode ? "labCrewByHourTitle" : "opsHoursTitle")}</legend>
-            <div className="grid grid-cols-3 gap-1.5 min-[400px]:grid-cols-4">
+            <div className="grid grid-cols-2 gap-1.5 min-[400px]:grid-cols-3">
               {hours.map((hour) => (
                 <label key={hour} className="flex items-center gap-1">
                   <span className="w-10 shrink-0 tabular-nums text-muted-foreground">{t("opsHourLabel", { hour })}</span>
