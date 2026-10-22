@@ -43,6 +43,12 @@
   order) and puts waiting shoppers at their own till; crowding counts shelf visits longer than ten minutes until
   they end, and a visit that ends as another shopper picks no longer counts. The weeks table scrolls in its panel.
 
+### Fixes
+- A run saved by an older version, the bundled sample store's runs included, said "re-run it to see conversion,
+  basket and impulse KPIs". Its conversion, revenue per visitor, basket, units, visit length and segment figures are
+  now worked out from its saved shoppers when it is opened (nothing is rewritten); only the impulse share, which
+  those runs did not record, stays empty.
+
 ## 0.4.9 — Layouts keep how their store is run; shoppers in each other's way; shoppers remember
 
 ### A layout knows how its store is run — runs, A/B tests and the optimizer use it
