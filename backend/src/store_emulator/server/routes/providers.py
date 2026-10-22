@@ -57,10 +57,15 @@ def _listens(api_base: str) -> bool:
 def _with_local_check(statuses: list[ProviderStatus]) -> list[ProviderStatus]:
     """Whether each enabled local server on this computer answers."""
     def answers(status: ProviderStatus) -> bool | None:
-        local = status.preset.local and status.enabled and status.api_base is not None
-        if not local or urlsplit(status.api_base or "").hostname not in ("127.0.0.1", "localhost", "::1"):
+        if not status.preset.local or not status.enabled or status.api_base is None:
             return None
-        return _listens(status.api_base or "")
+        try:
+            hostname = urlsplit(status.api_base).hostname
+        except ValueError:
+            return False
+        if hostname not in ("127.0.0.1", "localhost", "::1"):
+            return None
+        return _listens(status.api_base)
     return [status.model_copy(update={"answers": answers(status)}) for status in statuses]
 
 
