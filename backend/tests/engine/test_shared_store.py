@@ -228,3 +228,17 @@ def test_plenty_of_stock_and_tills_leave_the_day_as_it_was():
     assert shared.summary.total_revenue == alone.summary.total_revenue
     assert [c.total_spent for c in customers] == [c.total_spent for c in alone_customers]
     assert shared.operations is not None and shared.operations.lost_units == 0
+
+
+def test_a_shopper_meets_a_sold_out_product_the_same_way_whatever_the_route():
+    config = OperationsConfig(stock_per_facing=1, substitute_share=0.5, **_NO_LINE)
+    outcomes = set()
+    for detour in (0, 1, 3):
+        first = _shopper("p0", "10:00:00", [("chips", 1)])
+        second = _shopper("p1", "10:05:00", [("chips", 1)])
+        for i in range(detour):   # a longer walk before the same pick
+            second.timeline.insert(1, TimelineEvent(elapsed_sec=1 + i, x=1, y=4 - i, action=Action.MOVE))
+        results, _ = resolve_shared_store(_store(), [first, second], config, seed=11)
+        pick = next(e for e in results[1].timeline if e.product_sku in ("chips", "nuts"))
+        outcomes.add((pick.action, pick.product_sku))
+    assert len(outcomes) == 1

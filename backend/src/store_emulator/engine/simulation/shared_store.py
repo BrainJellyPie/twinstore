@@ -290,7 +290,9 @@ def _pick(
         event.description = _join(event.description, f"only {have} left of {wanted} wanted")
         return
 
-    rng = random.Random(stable_seed(seed, result.persona_id, int(result.day), k, "sold out"))
+    # Keyed by the product, not the step: the same shopper meets the same sold-out product the same way in either
+    # layout of a pair, however their route differs.
+    rng = random.Random(stable_seed(seed, result.persona_id, int(result.day), event.product_sku, "sold out"))
     if rng.random() < config.substitute_share:
         options = [other for other in faces[(key[0], key[1])] if other != key and state.stock[other] > 0]
         if options:
