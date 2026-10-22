@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Rewrite open-area and floor-review guidance in six languages, including complete move labels,
+  localized floor badges and count summaries. Preserve user names and coordinates during language
+  changes; show translated recovery guidance when a floor preview fails.
+
 - Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
   ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,
   cafe and dessert templates display the new photos automatically.

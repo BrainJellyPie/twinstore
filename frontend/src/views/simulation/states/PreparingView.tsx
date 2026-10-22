@@ -91,7 +91,7 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
           {deleting && <p ref={deleteNotice} role="status" aria-label={t("deletingStore")} tabIndex={-1} className="text-sm text-muted-foreground outline-none">{t("generationContinueHint")}</p>}
           {!deleting && failed && <p role="alert" className="text-sm text-muted-foreground">{error || t(statusUnavailable ? "generationStatusUnavailable" : isLayoutFailed ? "layoutErrorFallback" : "personaErrorFallback")}</p>}
           {!deleting && isLayoutFailed && <p className="text-sm text-muted-foreground">{t("layoutFailureHint")}</p>}
-          {!deleting && (isPersonaFailed || canGenerate) && <p className="text-sm text-muted-foreground">{t("generatePersonasHint")}</p>}
+          {!deleting && canGenerate && <p className="text-sm text-muted-foreground">{t("generatePersonasHint")}</p>}
           {!deleting && (isPersonaFailed || canGenerate) && <NeedsModel />}
           {!deleting && (statusUnavailable || loadingStatus) && <p role={loadingStatus ? "status" : undefined} className="text-sm text-muted-foreground">{t("generationStatusReadHint")}</p>}
           {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && note && <div role="status" className="space-y-1 rounded-lg border p-3 text-sm">

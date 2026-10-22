@@ -14,7 +14,8 @@ generate personas, and run simulations. This is intentionally separate from
 ## Pipeline mental model
 
 The wizard collects two screens of input, then kicks off an async pipeline. With a furnished template,
-automatic starter products are enabled by default: two text-model calls choose categories and exact products
+automatic starter products are initially enabled when a model is available; otherwise the template's own
+products are selected. Automatic selection makes two text-model calls to choose categories and exact products
 from the bundled catalog before project files or persona jobs are created. These calls are additional to the
 pipeline below. Turn off automatic products in Step 1 to use format defaults without these two calls. Empty
 layouts do not call the product-selection model. A model-selection failure preserves the form for retry and
@@ -78,6 +79,18 @@ restores that part of the selected design, while **Reset all custom colors** res
 Changing the interface language keeps the current colors and other unsaved settings. Color codes
 and design IDs in exported options stay unchanged. A preview failure shows recovery guidance in
 the selected language, with the original diagnostic under **Technical details**.
+
+**Keep areas clear** leaves room for a pickup point, consultation, events or later manual placement.
+Choose a purpose, then adjust the area's name, position and size. Moving an area keeps its size;
+swapping width and depth keeps its starting position and is available only when the new shape fits.
+Coordinates exclude the outer-wall cells. Changing the floor size does not move existing areas.
+These spaces remain walkable: no walls, rooms or service behavior are added. Review the dashed
+outlines before saving. Area names become ordinary user text and stay unchanged when switching language.
+
+**Review all floors** compares independent floor plans at the same scale. Translated headings use
+the saved level number; they do not renumber floors for a locale. Errors retain original diagnostics
+under translated recovery guidance, and each failed floor can be retried separately. Building options
+export preserves the exact names, floor order and area coordinates.
 
 ## LLM call count (static analysis)
 

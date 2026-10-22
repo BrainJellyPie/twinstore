@@ -522,7 +522,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           </div>}
         </details>}
         <ReservedAreasEditor areas={value.reserved_areas ?? []} onChange={(reserved_areas) => update({ reserved_areas })}
-          grid={[value.width ?? selected?.grid[0] ?? 12, value.height ?? selected?.grid[1] ?? 10]} entrance={value.entrance} gateWall={value.gate_wall} />
+          grid={[value.width ?? selected?.grid[0] ?? (preview.isSuccess ? preview.data.grid_size[0] : NaN), value.height ?? selected?.grid[1] ?? (preview.isSuccess ? preview.data.grid_size[1] : NaN)]} entrance={value.entrance} gateWall={value.gate_wall} />
         <LayoutBriefField value={value} onApply={(patch) => update(patch)} onBriefChange={(requirements) => update({ requirements })} />
         </div>
         {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">{t("layBudgetCurrencyMismatch", { budget: budgetCurrency, currency: value.currency })}</p>}

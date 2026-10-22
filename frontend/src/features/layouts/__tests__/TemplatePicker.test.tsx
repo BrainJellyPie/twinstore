@@ -509,7 +509,7 @@ it("previews moved and swapped areas without losing floor requirements", async (
   fireEvent.change(screen.getByLabelText("Area starting point"), { target: { value: "consultation" } });
   fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
   fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
-  fireEvent.click(screen.getByRole("button", { name: "Move area 1 to back left" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move area 1: Back left" }));
   fireEvent.click(screen.getByRole("button", { name: "Swap area 1 width and depth" }));
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
     width: 24, height: 18, reserved_areas: [
@@ -520,8 +520,8 @@ it("previews moved and swapped areas without losing floor requirements", async (
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "8" } });
   fireEvent.change(screen.getByLabelText("Depth (6–40 cells)"), { target: { value: "6" } });
   // Resizing keeps coordinates until the user explicitly moves the second area.
-  expect((screen.getByLabelText("Area 2 start column") as HTMLInputElement).value).toBe("19");
-  fireEvent.click(screen.getByRole("button", { name: "Move area 2 to front right" }));
+  expect((screen.getByLabelText("Area 2: Start column") as HTMLInputElement).value).toBe("19");
+  fireEvent.click(screen.getByRole("button", { name: "Move area 2: Front right" }));
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
     width: 8, height: 6, reserved_areas: [
       { label: "Consultation", x: 1, y: 1, width: 3, height: 4 },
@@ -702,7 +702,8 @@ it("does not request an invalid size and resets options without losing the brief
   await screen.findByRole("img", { name: "Floor plan preview" });
   const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
   fireEvent.change(screen.getByLabelText("Width (8–40 cells)"), { target: { value: "99" } });
-  expect(screen.getByRole("status").textContent).toContain("valid grid dimensions");
+  expect(screen.getByText(/Enter valid grid dimensions/).getAttribute("role")).toBe("status");
+  expect(screen.getByRole("button", { name: "Add reserved area" }).matches(":disabled")).toBe(true);
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
   fireEvent.change(screen.getByLabelText("Additional design brief"), { target: { value: "Quiet corner" } });
   fireEvent.change(screen.getByLabelText("Checkout placement"), { target: { value: "near_entrance" } });
@@ -772,8 +773,8 @@ it("previews named clear areas, converts display coordinates and removes them on
   await screen.findByRole("img", { name: "Floor plan preview" });
   fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
   fireEvent.change(screen.getByLabelText("Area 1 name"), { target: { value: "Consultation" } });
-  fireEvent.change(screen.getByLabelText("Area 1 start column"), { target: { value: "5" } });
-  fireEvent.change(screen.getByLabelText("Area 1 depth"), { target: { value: "4" } });
+  fireEvent.change(screen.getByLabelText("Area 1: Start column"), { target: { value: "5" } });
+  fireEvent.change(screen.getByLabelText("Area 1: Depth"), { target: { value: "4" } });
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({
     reserved_areas: [{ label: "Consultation", x: 4, y: 2, width: 3, height: 4 }],
   }), expect.any(AbortSignal)));
@@ -803,7 +804,7 @@ it("holds preview for incomplete area values and supports removing a reservation
   fireEvent.click(screen.getByRole("button", { name: "Add reserved area" }));
   await screen.findByTestId("reserved-area-preview-0");
   const calls = vi.mocked(api.previewStoreTemplate).mock.calls.length;
-  fireEvent.change(screen.getByLabelText("Area 1 width"), { target: { value: "" } });
+  fireEvent.change(screen.getByLabelText("Area 1: Width"), { target: { value: "" } });
   expect(screen.getByRole("status").textContent).toContain("reserved-area values");
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(calls);
   fireEvent.click(screen.getByRole("button", { name: "Remove area 1" }));
