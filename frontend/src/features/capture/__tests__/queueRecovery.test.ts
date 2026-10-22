@@ -114,3 +114,27 @@ it("reports unavailable browser storage", async () => {
   vi.stubGlobal("indexedDB", undefined);
   await expect(readRecovery("p")).rejects.toThrow(/does not support/);
 });
+
+it.each(["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF", "PLN", "KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR", "CNY", "SGD"])(
+  "preserves a store's %s currency through a saved queue", async currency => {
+    const original = photo();
+    const copy = await saveRecovery("p", null, [original], { ...options, currency });
+    expect((await readRecovery("p"))?.options.currency).toBe(currency);
+    expect((await restoreRecovery(copy))[0]?.requestId).toBe(original.requestId);
+  },
+);
+
+it.each(["", "usd", "US", "USDD", "USD\n", "ＵＳＤ", "U D"])("rejects malformed currency %j without replacing a valid copy", async currency => {
+  const initial = await saveRecovery("p", null, [photo()], options);
+  await expect(saveRecovery("p", initial.revision, [photo()], { ...options, currency })).rejects.toThrow(/unreadable/);
+  expect((await readRecovery("p"))?.revision).toBe(initial.revision);
+});
+
+it.each(["revision", "id", "requestId", "digest"])("rejects a newline suffix on saved %s before a restored upload can use it", async field => {
+  const initial = await saveRecovery("p", null, [photo()], options);
+  const copy = structuredClone(initial);
+  if (field === "revision") copy.revision += "\n";
+  else copy.photos[0]![field as "id" | "requestId" | "digest"] += "\n";
+  expect(() => validateRecovery(copy, "p")).toThrow(/unreadable/);
+  expect((await readRecovery("p"))?.revision).toBe(initial.revision);
+});

@@ -194,3 +194,41 @@ it("keeps a saved model visible when it is absent from the current model list", 
   await screen.findByText(/2 of 2 ready/);
   expect(vi.mocked(api.createCapture).mock.calls[0]![2]?.model).toBe("saved/model-not-listed");
 });
+
+it.each(["CAD", "AUD", "CHF", "VND", "CLP", "TWD", "IDR", "CNY", "SGD"])("shows the exact %s store currency before saving and after restore", async currency => {
+  vi.mocked(api.getProject).mockResolvedValue({ metadata: { currency } } as api.ProjectDetail);
+  const view = mount(); await choose();
+  expect((screen.getByLabelText("Prices in") as HTMLSelectElement).value).toBe(currency);
+  await save(); expect(disk?.options.currency).toBe(currency); view.unmount();
+  qc.clear(); vi.mocked(api.getProject).mockResolvedValue({ metadata: { currency: "USD" } } as api.ProjectDetail);
+  mount(); fireEvent.click(screen.getByRole("button", { name: "Restore saved queue" }));
+  await screen.findByText(/Queue restored and paused/);
+  expect((screen.getByLabelText("Prices in") as HTMLSelectElement).value).toBe(currency);
+  expect(api.createCapture).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Start / resume queue" }));
+  await screen.findByText(/2 of 2 ready/);
+  expect(vi.mocked(api.createCapture).mock.calls.every(call => call[2]?.currency === currency)).toBe(true);
+});
+
+it("keeps new local photos when the saved revision changes during byte validation", async () => {
+  const view = mount(); await choose(); await save(); view.unmount();
+  mount(); await choose();
+  vi.mocked(recovery.checkRecoveryRevision).mockRejectedValueOnce(new Error("Saved queue changed in another tab"));
+  fireEvent.click(screen.getByRole("button", { name: "Replace local queue from saved copy" }));
+  await screen.findByText(/Saved queue changed.*live queue was not replaced/);
+  expect(screen.getByText(/0 of 2 ready/)).toBeTruthy();
+  expect(api.createCapture).not.toHaveBeenCalled();
+  expect(recovery.forgetRecovery).not.toHaveBeenCalled();
+});
+
+it("discards a restored queue after leaving during revision verification", async () => {
+  const initial = mount(); await choose(); await save(); initial.unmount();
+  const checked = deferred<void>();
+  vi.mocked(recovery.checkRecoveryRevision).mockReturnValueOnce(checked.promise);
+  const available = vi.fn();
+  const view = render(<QueryClientProvider client={qc}><CaptureUploadQueue projectId="p" onAccepted={() => {}} onReview={review} onRecoveryAvailable={available} /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Restore saved queue" }));
+  await waitFor(() => expect(recovery.checkRecoveryRevision).toHaveBeenCalled());
+  view.unmount(); available.mockClear(); await act(async () => checked.resolve());
+  expect(api.createCapture).not.toHaveBeenCalled(); expect(available).not.toHaveBeenCalled();
+});
