@@ -23,7 +23,7 @@ import { explainComparison, type ComparisonReport, type MetricComparison, type R
 import type { Layout } from "@/features/layouts/hooks/useLayouts";
 import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
-import type { Locale } from "@/shared/i18n/messages";
+import { messages, type Locale, type MessageKey } from "@/shared/i18n/messages";
 import { translate } from "@/shared/i18n/translate";
 
 import { useCompare, useProjectRuns } from "../hooks";
@@ -188,11 +188,18 @@ function CompareTable({ report, code }: { report: ComparisonReport; code: string
       <p className="text-xs text-muted-foreground">
         {t("cmpFootnote", { paired: report.paired_customers, draws: report.n_bootstrap })}
       </p>
-      {report.notes.map((n) => (
-        <p key={n} className="rounded-md border tone-warn px-2.5 py-1.5 text-sm">{n}</p>
+      {report.notes.map((n, i) => (
+        <p key={`${i}-${n}`} className="rounded-md border tone-warn px-2.5 py-1.5 text-sm">{noteText(report, i, t)}</p>
       ))}
     </div>
   );
+}
+
+/** A note in the user's language when its kind is known here; else the server's English text. */
+function noteText(report: ComparisonReport, index: number, t: (key: MessageKey, params?: Record<string, string | number>) => string): string {
+  const coded = report.note_codes?.[index];
+  const key = coded ? `cmpNote_${coded.code}` : "";
+  return coded && Object.prototype.hasOwnProperty.call(messages, key) ? t(key as MessageKey, coded.params) : report.notes[index]!;
 }
 
 function Headline({ m, code, locale }: { m: MetricComparison; code: string; locale: Locale }) {

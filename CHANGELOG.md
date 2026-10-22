@@ -38,6 +38,12 @@
   names no longer repeat the level the interface already shows.
 - Keep one model-settings action after customer generation fails, with the local-model download/start control.
 
+### Fixes
+- Compare did not say when one run's shoppers shared the store (stock and tills, new in 0.4.8) and the other's had it
+  alone, as every run before 0.4.8 did, or when the two runs used different store operations: the difference
+  looked like the layout's. It now says so.
+- Compare's notes were always in English. They now follow the app's language.
+
 ## 0.4.8 — Shoppers share one store, store operations; safe updates; nothing downloaded or spent unasked
 
 ### Try other stock and staffing on a finished run
