@@ -92,7 +92,7 @@ from .shelf_lab import (
     package_path,
 )
 from .scenarios import scenario_shoppers
-from .simulation import with_engine_model
+from .simulation import with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import read_setup
 
@@ -227,7 +227,7 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
         # give a report that looks fine and says "no winner".
         vision = config.model_copy(update={"engine_type": EngineType.VLM_GLANCE})
         try:
-            ensure_resolvable(with_engine_model(vision, req.model) if req.model else vision)
+            ensure_resolvable(with_vision_default(vision, req.model))
         except ValueError as e:
             raise AppError(str(e), 400) from e
     name = req.name.strip() or " vs ".join(["Control", *[v.name for v in req.variants]])
@@ -244,9 +244,8 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
             engine = None
             model = ""
             if req.engine == "vlm":
-                run_config = run_config.model_copy(update={"engine_type": EngineType.VLM_GLANCE})
-                if req.model:
-                    run_config = with_engine_model(run_config, req.model)
+                run_config = with_vision_default(run_config.model_copy(update={"engine_type": EngineType.VLM_GLANCE}),
+                                                 req.model)
                 llm = build_client(run_config.llm_for(EngineType.VLM_GLANCE), run_config.ensemble)
                 engine = build_engine(run_config, llm=llm, pathfinder=pathfinder)
                 model = req.model or run_config.llm_for(EngineType.VLM_GLANCE).model

@@ -23,6 +23,7 @@ from store_emulator.domain.result import AggregatedResult
 from store_emulator.domain.runner import ProgressCallback, SimulationRunner
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import stable_seed
+from store_emulator.application.providers import run_vision_model
 from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.movement import read_movement, score_movement
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
@@ -91,14 +92,25 @@ def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationCo
             raise ValueError(f"unknown scenario preset: {options.scenario_id}")
         updates["scenario"] = None if preset.id == "baseline" else preset
     config = config.model_copy(update=updates)
-    if options.model:
-        config = with_engine_model(config, options.model)
+    config = with_vision_default(config, options.model)
     if options.plan_policy is not None:
         vlm = config.engines.vlm_glance.model_copy(update={"plan_policy": options.plan_policy})
         config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
     if options.shelf_view is not None:
         vlm = config.engines.vlm_glance.model_copy(update={"shelf_view": options.shelf_view})
         config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
+    return config
+
+
+def with_vision_default(config: SimulationConfig, model: str | None) -> SimulationConfig:
+    """The run's engine on `model`; with none named, vision shoppers use a connected cloud provider's vision model
+    instead of the local model (which ran only when it was up, even with a key in Settings)."""
+    if model:
+        return with_engine_model(config, model)
+    if config.engine_type == EngineType.VLM_GLANCE and config.ensemble is None:
+        cloud = run_vision_model(config.engines.vlm_glance.llm)
+        if cloud:
+            return with_engine_model(config, cloud)
     return config
 
 

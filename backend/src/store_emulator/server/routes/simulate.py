@@ -20,7 +20,7 @@ from store_emulator.application.providers import (
     text_model_fallback,
 )
 from store_emulator.application.run_estimate import RunEstimate, estimate_run
-from store_emulator.application.simulation import RunOptions
+from store_emulator.application.simulation import RunOptions, with_vision_default
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
 from store_emulator.domain.config import EngineType, ExposureModel, LLMConfig, PlanPolicy, RouteOrdering, ShelfViewMode
 from store_emulator.domain.movement import MovementReport
@@ -77,22 +77,23 @@ async def list_engines() -> list[EngineInfo]:
 def _engines() -> list[EngineInfo]:
     config = get_config()
     llm = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE)
-    vlm = config.llm_for(EngineType.VLM_GLANCE)
+    # The model a vision run uses when it names none: a connected cloud provider's, else the app's (local) one.
+    vlm = with_vision_default(config.model_copy(update={"engine_type": EngineType.VLM_GLANCE}), None).llm_for(
+        EngineType.VLM_GLANCE)
     settings = load_settings()
 
     def ready(model: LLMConfig) -> bool:
-        if model.api_base is not None:
-            return local_model_answers(model.api_base)
         if model.api_key is not None:
             return True
-        if missing_key(model.model, settings) is not None:
+        if model.api_base is None and missing_key(model.model, settings) is not None:
             return False
         try:
             resolved = resolve_model(model.model, base=model)
         except ValueError:
             return False
-        # e.g. llamacpp:local resolves to a server on this computer, which must answer
-        return resolved.api_base is None or local_model_answers(resolved.api_base)
+        if resolved.api_base:   # a server (llamacpp:local, the app's local model, a self-hosted one) must answer
+            return local_model_answers(resolved.api_base)
+        return missing_key(model.model, settings) is None
 
     def suggested(model: LLMConfig) -> str:
         return "" if ready(model) else text_model_fallback(model.model, settings) or ""

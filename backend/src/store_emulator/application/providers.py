@@ -472,6 +472,39 @@ def assistive_model(requested: str, config: LLMConfig) -> str:
     return config.model
 
 
+def _targets_own_local_server(vision: LLMConfig) -> bool:
+    """Whether the app's vision model is the local model TwinStore runs on this computer (its address)."""
+    if not vision.api_base:
+        return False
+    endpoint = urlsplit(vision.api_base)
+    loopback = {"127.0.0.1", "localhost", "::1"}
+    if endpoint.hostname not in loopback:
+        return False
+    from .local_vlm import manager  # late import: local_vlm imports this module
+
+    managed = urlsplit(manager().status().api_base or PRESETS[ProviderKind.LLAMACPP].default_api_base or "")
+    return (managed.hostname in loopback and endpoint.scheme == managed.scheme and endpoint.port == managed.port
+            and endpoint.path.rstrip("/") == managed.path.rstrip("/"))
+
+
+def _cloud_vision_model(settings: dict[ProviderKind, ProviderSettings]) -> str:
+    for kind in _FALLBACK_ORDER:
+        seeing = [m for m in PRESETS[kind].models if m.vision]
+        if seeing and provider_status(kind, settings).ready:
+            fast = next((m for m in seeing if "fast" in m.note), seeing[0])
+            return f"{kind.value}:{fast.id}"
+    return ""
+
+
+def run_vision_model(vision: LLMConfig) -> str:
+    """The vision model a run that names none uses: with the app's vision model on the local model of this computer
+    (the no-key fallback) and a cloud provider connected, that provider's fast vision model — a key added in Settings
+    is what vision shoppers should use, faster and better than the small local model. "" = the app's vision model."""
+    if not _targets_own_local_server(vision):
+        return ""
+    return _cloud_vision_model(load_settings())
+
+
 def assistive_vision_model(requested: str, vision: LLMConfig) -> str:
     """The vision model an assistive feature (reading a pack) uses: the one asked for; else the app's vision model,
     unless it targets the app's local server and it is not running while a cloud provider with a key is set up, in which case
