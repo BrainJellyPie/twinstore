@@ -37,6 +37,7 @@ it.each([
   ["area", "We sit on a busy campus street", "/town/$pid"],
   ["run_question", "Why does the freezer sell so little?", "/projects/$pid"],
   ["layout_edit", "Put the cola at eye level now", "/projects/$pid"],
+  ["find_shoppers", "Show me students who left empty-handed", "/projects/$pid"],
 ] as const)("routes a typed request to %s and hands the words to that page", async (destination, text, to) => {
   vi.mocked(api.routeAssist).mockResolvedValue({ destination, reason: "" });
   useSimulationStore.getState().setActiveTab("settings");
@@ -46,7 +47,8 @@ it.each([
   await waitFor(() => expect(state.navigate).toHaveBeenCalledWith({ to, params: { pid: "proj_cafe" } }));
   expect(api.routeAssist).toHaveBeenCalledWith({ text, has_run: true });
   expect(useAssistStore.getState().pending).toMatchObject({ projectId: "proj_cafe", destination, text });
-  expect(useSimulationStore.getState().activeTab).toBe(destination === "run_question" ? "dashboard" : "settings");  // layout edits open Store
+  const tab = { run_question: "dashboard", find_shoppers: "shoppers" } as Record<string, string>;
+  expect(useSimulationStore.getState().activeTab).toBe(tab[destination] ?? "settings");  // layout edits open Store
   expect(useCommandPalette.getState().open).toBe(false);
 });
 

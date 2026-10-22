@@ -1,7 +1,7 @@
 // Shoppers tab of a finished run: pick one shopper, follow their path and thoughts step by step, see them in
 // 3D, and interview them about the trip afterwards.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Crosshair, Loader2, MessagesSquare, Route, Search, Sparkles, UsersRound, X } from "lucide-react";
 
@@ -12,6 +12,8 @@ import type { CustomerResult, Persona, Store } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
 import { parseTimeToSeconds } from "@/features/playback/utils/playback";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
+import { useAssistStore } from "@/stores/assistStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 
@@ -39,7 +41,21 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
   // Shoppers found from a sentence: the model writes the filter, the run's records decide who fits.
   const [describe, setDescribe] = useState("");
   const [found, setFound] = useState<ShopperMatch | null>(null);
+  const foundCard = useRef<HTMLElement>(null);
   const finder = useMutation({ mutationFn: (text: string) => findShoppers(projectId, runId, text.trim()), onSuccess: setFound });
+  useEffect(() => { if (found) foundCard.current?.scrollIntoView?.({ block: "nearest" }); }, [found]);
+  // A description typed in the command palette and routed here is searched once the run's shoppers are open.
+  const pendingAsk = useAssistStore((s) => s.pending);
+  const takeAsk = useAssistStore((s) => s.take);
+  const queueFind = useQueuedStart(finder.mutate);
+  useEffect(() => {
+    if (!pendingAsk) return;
+    const routed = takeAsk(projectId, ["find_shoppers"]);
+    if (!routed) return;
+    const text = Array.from(routed.text).slice(0, 400).join("");
+    setDescribe(text);
+    queueFind(text);
+  }, [pendingAsk, projectId, takeAsk, queueFind]);
   const sorted = useMemo(() => sortShoppers(rows, sort, query), [rows, sort, query]);
   const list = useMemo(() => {
     if (!found) return sorted;
@@ -87,7 +103,7 @@ export function ShopperPanel({ projectId, runId, customers, personas, store }: {
       </div>
       {finder.error && <p role="alert" className="text-[0.72rem] text-destructive">{finder.error.message}</p>}
       {found && (
-        <section className="space-y-1.5 rounded-xl border border-primary/40 bg-primary/[0.04] px-2.5 py-2" aria-label="Found shoppers">
+        <section ref={foundCard} className="space-y-1.5 rounded-xl border border-primary/40 bg-primary/[0.04] px-2.5 py-2" aria-label="Found shoppers">
           <div className="flex items-start justify-between gap-2">
             <p className="text-[0.78rem]"><b>{found.label}</b> <span className="num text-muted-foreground">{found.persona_ids.length.toLocaleString()} of {found.total.toLocaleString()} shoppers</span></p>
             <button type="button" onClick={() => { setFound(null); finder.reset(); }} aria-label="Clear the found shoppers"

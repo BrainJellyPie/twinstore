@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { askGroup, findShoppers, listGroups } from "@/shared/api/interview";
 import type { CustomerResult, Persona, Store } from "@/shared/types/domain";
+import { useAssistStore } from "@/stores/assistStore";
 import { ShopperPanel } from "../ShopperPanel";
 
 vi.mock("@/shared/api/interview", async (original) => ({
@@ -12,7 +13,7 @@ vi.mock("@/shared/api/interview", async (original) => ({
   suggestGroupQuestions: vi.fn(), deleteGroup: vi.fn(),
 }));
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), getModels: vi.fn().mockResolvedValue([]) }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); useAssistStore.setState({ pending: null }); });
 
 const shopper = (id: string, spent: number): CustomerResult => ({
   persona_id: id, day: 1, arrival_time: "15:00:00", leave_time: "15:10:00", total_spent: spent,
@@ -73,4 +74,14 @@ it("says which single condition keeps everyone out when nobody fits", async () =
   fireEvent.click(screen.getByRole("button", { name: "Find" }));
   expect(await screen.findByText('Without "Bought nothing": 1 shopper')).toBeTruthy();
   expect(screen.getByText("No shopper matches.")).toBeTruthy();
+});
+
+it("searches a description routed from the command palette once", async () => {
+  vi.mocked(findShoppers).mockResolvedValue({ label: "Students", persona_ids: ["p1"], total: 3, criteria: ["Persona mentions: student"],
+    warnings: [], sort: "spent", near_misses: [] });
+  useAssistStore.getState().send({ projectId: "p", destination: "find_shoppers", text: "students who left empty-handed" });
+  mount();
+  expect(await screen.findByRole("region", { name: "Found shoppers" })).toBeTruthy();
+  expect(findShoppers).toHaveBeenCalledTimes(1);
+  expect((screen.getByLabelText("Describe shoppers to find") as HTMLInputElement).value).toBe("students who left empty-handed");
 });

@@ -12,7 +12,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   something or nothing on the trip or at given shelves, impulse buys, shelves stopped at, products bought or not,
   arrival time, spend, visit length, order); the run's own records decide who fits, so every listed shopper really
   matches. The filter is shown in words; when nobody fits, the panel says how many would without each condition.
-  **Interview these shoppers** opens a group interview with the found shoppers as the group.
+  **Interview these shoppers** opens a group interview with the found shoppers as the group. The command palette
+  sends "show me students who left empty-handed" here.
   API: `POST /api/projects/{pid}/runs/{run_id}/shoppers/find`.
 
 ### Design briefs that set the layout options

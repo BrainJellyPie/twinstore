@@ -1076,7 +1076,8 @@ export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
 /** Where a plain-words request belongs: an A/B test, a shelf test, a conjoint study, a concept test, a staff script, the neighborhood, a question
  * about the last run, or none of these. */
 export function routeAssist(req: { text: string; has_run: boolean }): Promise<{
-  destination: "ab_test" | "shelf_test" | "conjoint" | "concept_test" | "staff_script" | "layout_edit" | "area" | "run_question" | "none";
+  destination: "ab_test" | "shelf_test" | "conjoint" | "concept_test" | "staff_script" | "layout_edit" | "area" | "run_question"
+    | "find_shoppers" | "none";
   reason: string;
 }> {
   return fetchJson(`/api/assist/route`, { method: "POST", ...json(req) });
