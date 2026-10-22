@@ -22,7 +22,7 @@ export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", 
   entrance?: LayoutOptions["entrance"];
   gateWall?: LayoutOptions["gate_wall"];
 }) {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const id = useId();
   const [startingPoint, setStartingPoint] = useState("custom");
   const validGrid = Number.isInteger(grid[0]) && grid[0] >= 8 && grid[0] <= 40 &&
@@ -66,6 +66,8 @@ export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", 
       <button type="button" className="rounded border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
         disabled={areas.length >= 8 || !validGrid} onClick={addArea}>{t("layAddReservedArea")}</button>
     </div>
+    {!validGrid && <p role="status" className="text-[11px] text-muted-foreground">{t("layAreaGridRequired")}</p>}
+    {areas.length >= 8 && <p role="status" className="text-[11px] text-muted-foreground">{t("layAreaLimitReached")}</p>}
     <p className="text-[11px] text-muted-foreground">{t("layStartingPointsHint")}</p>
     <p className="text-[11px] text-muted-foreground">{t("layReserveHint")}</p>
     {areas.map((area, index) => <fieldset key={index} className="space-y-2 rounded border p-2">
@@ -84,7 +86,7 @@ export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", 
           ["x", "layAreaStartColumn", 1], ["y", "layAreaStartRow", 1], ["width", "layWidth", 0], ["height", "layDepth", 0],
         ] as const).map(([key, label, offset]) => <div key={key} className="space-y-1 text-xs">
           <label htmlFor={`${id}-${index}-${key}`}>{t(label)}</label>
-          <input id={`${id}-${index}-${key}`} aria-label={t("layAreaField", { number: index + 1, field: t(label).toLocaleLowerCase(locale) })}
+          <input id={`${id}-${index}-${key}`} aria-label={t("layAreaField", { number: index + 1, field: t(label) })}
             className={controlClass} type="number" min={1 + offset} max={38 + offset} step={1}
             value={Number.isFinite(area[key]) ? area[key] + offset : ""}
             onChange={(e) => update(index, { [key]: e.target.value === "" ? NaN : Number(e.target.value) - offset })} />
@@ -96,7 +98,7 @@ export function ReservedAreasEditor({ areas, onChange, grid, entrance = "left", 
           {AREA_POSITIONS.map(([position]) => {
             const moved = moveReservedArea(area, grid, position);
             const label = t(AREA_POSITION_LABELS[position]);
-            return <button key={position} type="button" aria-label={t("layMoveAreaToPosition", { number: index + 1, position: label.toLocaleLowerCase(locale) })}
+            return <button key={position} type="button" aria-label={t("layMoveAreaToPosition", { number: index + 1, position: label })}
               className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-40" disabled={!moved}
               onClick={() => { if (moved) update(index, moved); }}>{label}</button>;
           })}

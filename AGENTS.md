@@ -148,6 +148,8 @@ Prefer natural task-oriented copy over word-for-word translation; follow
 [`verification/i18n-copy-style.md`](./verification/i18n-copy-style.md) for language-specific voice.
 Interior design names are shared by setup, floor review and comparison; color resets use complete
 localized messages, and preview failures retain diagnostics below localized recovery guidance.
+Open-area editing and floor review use complete movement labels and localized level numbers;
+names created from presets become ordinary editable user data and must not change with locale.
 Operating-hour, assortment-limit/seed and options-file controls also use the catalog; known product
 category labels are shared across the starter-fill and template flows.
 

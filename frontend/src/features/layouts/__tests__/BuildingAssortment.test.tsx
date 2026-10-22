@@ -55,7 +55,7 @@ async function closeReview() {
 
 it.each([2, 6])("shares only assortment fields across %i floors and keeps later edits independent", async (count) => {
   const before = initial(count); await mount(before); expect(floors()).toEqual(before);
-  fireEvent.click(apply()); await screen.findByText(`${count} of ${count} floor previews ready`);
+  fireEvent.click(apply()); await screen.findByText(`Floor previews ready: ${count}/${count}`);
   const source = before[0]!.choice;
   expect(floors()).toEqual(before.map((f) => ({ ...f, choice: { ...f.choice, seed: source.seed,
     products_per_category: source.products_per_category, category_product_limits: source.category_product_limits, excluded_categories: source.excluded_categories } })));
@@ -82,7 +82,7 @@ it("reviews an excluded-only floor and recovers that floor without changing the 
   fireEvent.click(screen.getByRole("button", { name: "Restore all product categories" }));
   expect(floors().map((f) => f.choice.excluded_categories)).toEqual([["electronics"], []]);
   fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
-  await screen.findByText("2 of 2 floor previews ready");
+  await screen.findByText("Floor previews ready: 2/2");
 });
 
 it.each<Partial<TemplateChoice>>([
@@ -99,13 +99,13 @@ it("does not show a building action on an individual layout", async () => {
 });
 
 it("leaves a newly added floor at its own defaults until assortment is applied again", async () => {
-  await mount(); fireEvent.click(apply()); await screen.findByText("2 of 2 floor previews ready"); await closeReview();
+  await mount(); fireEvent.click(apply()); await screen.findByText("Floor previews ready: 2/2"); await closeReview();
   fireEvent.click(screen.getByRole("button", { name: "Add floor" }));
   expect(floors()[2]!.choice).toMatchObject({ products_per_category: null, category_product_limits: {}, excluded_categories: [], seed: 0 });
   fireEvent.click(screen.getByRole("button", { name: "1F · Floor 1" }));
   fireEvent.click(screen.getByText(/^Product categories/));
   expect(apply().disabled).toBe(false);
-  fireEvent.click(apply()); await screen.findByText("3 of 3 floor previews ready");
+  fireEvent.click(apply()); await screen.findByText("Floor previews ready: 3/3");
   expect(floors()[2]!.choice).toMatchObject({ products_per_category: 2, category_product_limits: { soft_drinks: 3, electronics: 1 }, excluded_categories: ["household"] });
 });
 
@@ -120,7 +120,7 @@ it("keeps directly entered seeds independent until shared across floors", async 
   fireEvent.click(screen.getByRole("button", { name: "1F · Floor 1" }));
   expect((screen.getByLabelText("Assortment seed") as HTMLInputElement).value).toBe("-42");
   fireEvent.click(screen.getByText(/^Product categories/));
-  fireEvent.click(apply()); await screen.findByText("2 of 2 floor previews ready");
+  fireEvent.click(apply()); await screen.findByText("Floor previews ready: 2/2");
   expect(floors().map((floor) => floor.choice.seed)).toEqual([-42, -42]);
   expect(floors().map((floor) => floor.choice.width)).toEqual([16, 17]);
   await closeReview();

@@ -6,7 +6,7 @@ export const floorCompareMessages = {
   planCompareProducts: ["Unique products", "상품 종류 수", "商品种类数", "商品の種類数", "Productos distintos", "Produits différents"],
   planCompareSeating: ["Dining tables / seats", "식탁 / 좌석", "餐桌 / 座位", "テーブル / 座席", "Mesas / asientos", "Tables / places"],
   planCompareCounters: ["Checkout counters", "계산대", "收银台", "レジ", "Cajas", "Caisses"],
-  planCompareAreas: ["Reserved areas", "비워 둘 구역", "预留区域", "空けておくエリア", "Zonas reservadas", "Zones réservées"],
+  planCompareAreas: ["Reserved areas", "비워 둘 구역", "预留区域", "空けておくエリア", "Zonas libres", "Espaces libres"],
   planCompareDesign: ["Interior design", "인테리어 디자인", "室内设计", "インテリア", "Diseño interior", "Décoration intérieure"],
   planCompareHours: ["Operating hours", "영업시간", "营业时间", "営業時間", "Horario", "Horaires"],
   planCompareTitle: ["Compare floor plans", "평면도 비교", "比较平面图", "平面図を比較", "Comparar planos", "Comparer les plans"],
