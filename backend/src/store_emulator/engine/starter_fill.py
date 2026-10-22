@@ -37,7 +37,8 @@ def rack_choices(store: Store) -> list[StarterRack]:
         result.append(StarterRack(id=rack.id, name=rack.rack_name or rack.id, type=rack.type.value,
                                   available_slots=0 if reason else len(faces[rack.id]) * 4,
                                   suggested_category=rack.rack_desc if rack.rack_desc in CATALOG else None,
-                                  reason=reason))
+                                  reason=reason,
+                                  reason_code="occupied" if stocked else (None if faces[rack.id] else "no_accessible_face")))
     return result
 
 

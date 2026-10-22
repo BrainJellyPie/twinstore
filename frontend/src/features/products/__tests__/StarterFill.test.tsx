@@ -213,19 +213,19 @@ it.each(LOCALES)("retains automatic selection and photos in $code", async ({ cod
     racks: [{ id: "empty", name: "Empty shelf", category: "water", slots_added: 8, placements_added: 8, products: [pictured], reused_skus: ["A"] }] });
   vi.mocked(api.autoSelectStarterProducts).mockResolvedValue(automatic);
   render(<QueryClientProvider client={qc}><StarterFill pid="p" sid="s" /></QueryClientProvider>);
-  fireEvent.click(screen.getByRole("button", { name: translate(code, "starterLaunch") }));
-  const auto = await screen.findByLabelText(translate(code, "starterAutomatic"));
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "starterEntry") }));
+  const auto = await screen.findByLabelText(translate(code, "starterAutoMode"));
   expect((auto as HTMLInputElement).checked).toBe(true);
   expect(api.autoSelectStarterProducts).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText(translate(code, "starterRequirements")), { target: { value: "유아용품, 반려동물 🌿" } });
-  fireEvent.click(screen.getByRole("button", { name: translate(code, "starterChooseAuto") }));
+  fireEvent.click(screen.getByRole("button", { name: translate(code, "starterAutoPreview") }));
   await screen.findByRole("button", { name: translate(code, "starterSave") });
   expect(vi.mocked(api.autoSelectStarterProducts).mock.lastCall?.[2].requirements).toBe("유아용품, 반려동물 🌿");
   expect(api.previewStarterFill).toHaveBeenCalledWith("p", "s", automatic);
   const image = screen.getByRole("img", { name: pictured.name, hidden: true });
   expect(image.getAttribute("src")).toContain(pictured.image_url);
   expect(screen.getByRole("region", { name: translate(code, "starterPreviewRegion") }).textContent).toContain(formatMoney(pictured.price, "USD", { locale: code }));
-  expect(screen.getByText(translate(code, "starterClosingAutomatic"))).toBeTruthy();
+  expect(screen.getByText(translate(code, "starterAutoClosing"))).toBeTruthy();
 });
 
 it("keeps pending automatic choices, preview and retry identity across language changes", async () => {

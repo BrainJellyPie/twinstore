@@ -1,5 +1,5 @@
 """Explicit starter categories for empty existing racks; no inferred stock or prices."""
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from store_emulator.domain.rack import SlotItem
 
@@ -57,6 +57,7 @@ class StarterRack(BaseModel):
     available_slots: int
     suggested_category: str | None = None
     reason: str | None = None
+    reason_code: Literal["occupied", "no_accessible_face"] | None = None
 
 
 class StarterCatalog(BaseModel):

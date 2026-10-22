@@ -1,3 +1,11 @@
+import { useI18n } from "@/shared/i18n/i18n";
+import { UserMessageError } from "@/shared/i18n/userMessage";
+import { RequestError } from "@/shared/components/RequestError";
+import { formatMoney } from "@/shared/utils/money";
+import { searchText } from "@/shared/utils/searchText";
+import { fixtureLabel, fixtureSearchLabels } from "./rackCopyLabels";
+import { starterCategoryLabel } from "./starterCategoryLabels";
+import { starterRackReason } from "./starterRackReason";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/shared/components/ui/button";
@@ -9,16 +17,12 @@ import { autoSelectStarterProducts } from "@/shared/api/starterFill";
 import { resolveImageUrl } from "@/shared/api/images";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
-import { useI18n } from "@/shared/i18n/i18n";
-import { RequestError } from "@/shared/components/RequestError";
-import { UserMessageError } from "@/shared/i18n/userMessage";
-import { formatMoney } from "@/shared/utils/money";
 
 export function StarterFill({ pid, sid }: { pid: string; sid: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return <>
-    <Button variant="outline" onClick={() => setOpen(true)}>{t("starterLaunch")}</Button>
+    <Button variant="outline" onClick={() => setOpen(true)}>{t("starterEntry")}</Button>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="flex max-h-[90dvh] flex-col overflow-y-auto p-4 sm:max-w-4xl sm:p-7">
         <DialogTitle>{t("starterTitle")}</DialogTitle>
@@ -39,7 +43,7 @@ function StarterSession({ pid, sid, close }: { pid: string; sid: string; close: 
     void catalog.refetch().then((result) => { if (result.isSuccess) setRevision((n) => n + 1); }).finally(() => setReloading(false));
   };
   return <>
-    {catalog.isError && <RequestError error={catalog.error}><Button className="h-auto min-h-9 max-w-full whitespace-normal py-2" disabled={reloading} onClick={reload}>{catalog.data ? t("starterDiscardRetry") : t("starterRetry")}</Button></RequestError>}
+    {catalog.isError && <RequestError error={catalog.error}><Button className="h-auto min-h-9 max-w-full whitespace-normal py-2" disabled={reloading} onClick={reload}>{t(catalog.data ? "starterDiscardRetry" : "starterRetry")}</Button></RequestError>}
     {!catalog.data && !catalog.isError && <p role="status">{t("starterLoading")}</p>}
     {catalog.data && <StarterForm key={revision} pid={pid} sid={sid} initial={catalog.data} refreshing={reloading} reload={reload} close={close} mode={mode} setMode={setMode} />}
   </>;
@@ -69,7 +73,11 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
   const busy = preview.isPending || save.isPending || auto.isPending || refreshing;
   const locked = busy || !!save.data;
   const eligibleCount = snapshot.racks.filter((r) => !r.reason && r.available_slots > 0).length;
-  const shown = snapshot.racks.filter((r) => `${r.name} ${r.id} ${r.type}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).slice(0, 100);
+  const terms = searchText(search).split(" ").filter(Boolean);
+  const shown = snapshot.racks.filter(r => {
+    const text = searchText(`${r.name} ${r.id} ${r.type} ${fixtureSearchLabels(r.type)}`);
+    return terms.every(term => text.includes(term));
+  }).slice(0, 100);
   const clear = () => { setPrepared(null); preview.reset(); save.reset(); setError(null); };
   const choose = (next: Map<string, string>) => { setSelected(next); clear(); };
   const automatic = async () => {
@@ -108,24 +116,24 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
     } catch { /* Keep the same prepared request for retry. */ }
     finally { pending.current = false; }
   };
-  const options = snapshot.categories.map((c) => <option key={c.key} value={c.key}>{t("starterCategoryOption", { category: c.label, count: c.products.length })}</option>);
+  const options = snapshot.categories.map((c) => <option key={c.key} value={c.key}>{t("starterCategoryOption", { category: starterCategoryLabel(c.key, c.label, locale), count: c.products.length })}</option>);
   const sample = snapshot.categories.find((c) => c.key === category);
   return <div className="min-w-0 space-y-3 [overflow-wrap:anywhere] [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-2">
-    <p>{t("starterExamples")}</p>
+    <p>{t("starterExamples", { editor: t("bulkTitle") })}</p>
     <p>{t("starterEligible")}</p>
     <fieldset disabled={locked} className="flex flex-wrap gap-4 rounded border p-3">
       <legend>{t("starterSelection")}</legend>
-      <label><input type="radio" name="starter-mode" checked={mode === "auto"} onChange={() => { setMode("auto"); clear(); }} /> {t("starterAutomatic")}</label>
-      <label><input type="radio" name="starter-mode" checked={mode === "manual"} onChange={() => { setMode("manual"); clear(); }} /> {t("starterManual")}</label>
+      <label><input type="radio" name="starter-mode" checked={mode === "auto"} onChange={() => { setMode("auto"); clear(); }} /> {t("starterAutoMode")}</label>
+      <label><input type="radio" name="starter-mode" checked={mode === "manual"} onChange={() => { setMode("manual"); clear(); }} /> {t("starterManualMode")}</label>
     </fieldset>
     {mode === "auto" && <section className="space-y-3 rounded border p-3" aria-label={t("starterAutoRegion")}>
       <p>{t("starterAutoHelp")}</p>
-      <label className="block">{t("starterRequirements")}<textarea disabled={locked} value={requirements} onChange={(e) => { setRequirements(Array.from(e.target.value).slice(0, 2000).join("")); clear(); }} className="mt-1 block w-full rounded border p-2" placeholder={t("starterExample")} /></label>
+      <label className="block">{t("starterRequirements")}<textarea disabled={locked} value={requirements} onChange={(e) => { setRequirements(Array.from(e.target.value).slice(0, 2000).join("")); clear(); }} className="mt-1 block w-full rounded border p-2" placeholder={t("starterRequirementsHint")} /></label>
       <label className="block">{t("starterPerSection")}<select disabled={locked} className="mt-1 block w-full rounded border p-2" value={perSlot} onChange={(e) => { setPerSlot(Number(e.target.value)); clear(); }}>{[1, 2, 3, 4].map((n) => <option key={n}>{n}</option>)}</select></label>
-      <p>{t("starterEligibleCount", { count: eligibleCount })}</p>
-      <Button disabled={locked || eligibleCount < 1 || eligibleCount > 100} onClick={() => void automatic()}>{auto.isPending ? t("starterChoosing") : preview.isPending ? t("productsCheckingShelves") : t("starterChooseAuto")}</Button>
+      <p>{t("starterAvailable", { count: eligibleCount })}</p>
+      <Button disabled={locked || eligibleCount < 1 || eligibleCount > 100} onClick={() => void automatic()}>{t(auto.isPending ? "starterChoosing" : preview.isPending ? "copyChecking" : "starterAutoPreview")}</Button>
       <Button variant="outline" disabled={locked} onClick={reload}>{t("starterReload")}</Button>
-      {!!error && <p>{t("starterModelRecovery")}</p>}
+      {!!error && <p>{t("starterAutoFallback")}</p>}
     </section>}
     {mode === "manual" && <>
     <label className="block">{t("starterSearch")}<input className="mt-1 block w-full min-w-0 max-w-full rounded border p-2" value={search} onChange={(e) => setSearch(e.target.value)} /></label>
@@ -137,29 +145,29 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={() => { const next = new Map(selected); for (const rack of shown) if (!rack.reason && !next.has(rack.id)) next.set(rack.id, category || rack.suggested_category || ""); choose(next); }}>{t("starterSelectShown")}</Button>
         <Button variant="outline" disabled={!category || !selected.size} onClick={() => choose(new Map([...selected.keys()].map((id) => [id, category])))}>{t("starterApplyCategory")}</Button>
-        <Button variant="outline" onClick={() => choose(new Map())}>{t("productsClearSelection")}</Button>
+        <Button variant="outline" onClick={() => choose(new Map())}>{t("productClearSelection")}</Button>
         <Button variant="outline" onClick={reload}>{t("starterDiscardReload")}</Button>
       </div>
     </fieldset>
-    {sample && <details><summary>{t("starterReferenceProducts", { category: sample.label })}</summary><ul>{sample.products.map((p) => <li key={p.sku}>{p.name} — {formatMoney(p.price, snapshot.currency, { locale })}</li>)}</ul></details>}
+    {sample && <details><summary>{t("starterReferenceProducts", { category: starterCategoryLabel(sample.key, sample.label, locale) })}</summary><ul>{sample.products.map((p) => <li key={p.sku}>{p.name} — {formatMoney(p.price, snapshot.currency, { locale })}</li>)}</ul></details>}
     <div className="max-h-[35dvh] overflow-auto rounded border">
       {shown.map((rack) => <div key={rack.id} className="space-y-1 border-b p-2">
-        <label><input type="checkbox" aria-label={t("starterSelectRack", { rack: rack.id })} disabled={locked || !!rack.reason} checked={selected.has(rack.id)} onChange={(e) => { const next = new Map(selected); if (e.target.checked) next.set(rack.id, category || rack.suggested_category || ""); else next.delete(rack.id); choose(next); }} /> {rack.name} · {rack.type} · {rack.id}</label>
-        {rack.reason ? <p>{rack.reason}</p> : <><p>{t("starterSectionsAvailable", { count: rack.available_slots })}</p><select aria-label={t("starterCategoryFor", { rack: rack.id })} disabled={locked || !selected.has(rack.id)} className="max-w-full rounded border p-2" value={selected.get(rack.id) ?? ""} onChange={(e) => { const next = new Map(selected); next.set(rack.id, e.target.value); choose(next); }}><option value="">{t("starterChooseCategory")}</option>{options}</select></>}
+        <label><input type="checkbox" aria-label={t("starterSelectRack", { rack: rack.id })} disabled={locked || !!rack.reason} checked={selected.has(rack.id)} onChange={(e) => { const next = new Map(selected); if (e.target.checked) next.set(rack.id, category || rack.suggested_category || ""); else next.delete(rack.id); choose(next); }} /> {rack.name} · {fixtureLabel(rack.type, locale)} · {rack.id}</label>
+        {rack.reason ? <p>{starterRackReason(rack, locale)}</p> : <><p>{t("starterSectionsAvailable", { count: rack.available_slots })}</p><select aria-label={t("starterCategoryFor", { rack: rack.id })} disabled={locked || !selected.has(rack.id)} className="max-w-full rounded border p-2" value={selected.get(rack.id) ?? ""} onChange={(e) => { const next = new Map(selected); next.set(rack.id, e.target.value); choose(next); }}><option value="">{t("starterChooseCategory")}</option>{options}</select></>}
       </div>)}
       {!shown.length && <p>{t("starterNoMatch")}</p>}
     </div>
     <p>{t("starterExistingSkus")}</p>
-    <Button disabled={locked || !selected.size} onClick={() => void check()}>{preview.isPending ? t("productsCheckingShelves") : t("starterPreview")}</Button>
+    <Button disabled={locked || !selected.size} onClick={() => void check()}>{t(preview.isPending ? "copyChecking" : "starterPreview")}</Button>
     </>}
     <RequestError error={error} />
     {preview.data && <section aria-label={t("starterPreviewRegion")} className="min-w-0 space-y-2 rounded border p-3">
       <p>{t("starterPreviewSummary", { racks: preview.data.racks.length, placements: preview.data.placements_added, newSkus: preview.data.new_skus, reusedSkus: preview.data.reused_skus })}</p>
-      {preview.data.racks.map((rack) => <details key={rack.id}><summary>{t("starterRackSummary", { rack: rack.name, sections: rack.slots_added, placements: rack.placements_added })}</summary><ul>{rack.products.map((p) => <li className="flex items-center gap-2 py-1" key={p.sku}>{p.image_url && <img className="size-14 shrink-0 rounded border object-contain" loading="lazy" src={resolveImageUrl(p.image_url)} alt={p.name} />}<span>{p.name} — {formatMoney(p.price, snapshot.currency, { locale })} {rack.reused_skus.includes(p.sku) ? t("starterExistingValues") : t("starterReference")}</span></li>)}</ul></details>)}
-      {prepared && !save.data && <Button disabled={busy} onClick={() => void persist()}>{save.isPending ? t("starterSaving") : save.isError ? t("starterRetrySave") : t("starterSave")}</Button>}
+      {preview.data.racks.map((rack) => <details key={rack.id}><summary>{t("starterRackSummary", { rack: rack.name, sections: rack.slots_added, placements: rack.placements_added })}</summary><ul>{rack.products.map((p) => <li className="flex items-center gap-2 py-1" key={p.sku}>{p.image_url && <img className="size-14 shrink-0 rounded border object-contain" loading="lazy" src={resolveImageUrl(p.image_url)} alt={p.name} />}<span>{p.name} — {formatMoney(p.price, snapshot.currency, { locale })} {t(rack.reused_skus.includes(p.sku) ? "starterExistingValues" : "starterReference")}</span></li>)}</ul></details>)}
+      {prepared && !save.data && <Button disabled={busy} onClick={() => void persist()}>{t(save.isPending ? "starterSaving" : save.isError ? "starterRetrySave" : "starterSave")}</Button>}
     </section>}
-    {save.isError && <RequestError error={save.error}><p>{t("starterUncertainSave")}</p></RequestError>}
+    {save.isError && <RequestError error={save.error}><p>{t("copyUncertain")}</p></RequestError>}
     {save.data && <div role="status"><p>{t("starterSaved")}</p><Button onClick={() => { if (save.data) { useSimulationStore.getState().setSelectedSetupId(save.data.setup_id); close(); } }}>{t("starterOpen")}</Button></div>}
-    <p className="text-xs">{t("starterClosingAutomatic")}</p>
+    <p className="text-xs">{t("starterAutoClosing")}</p>
   </div>;
 }

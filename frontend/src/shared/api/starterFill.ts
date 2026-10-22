@@ -2,7 +2,7 @@ import { BASE } from "./client";
 import { ApiError, apiErrorMessage } from "./errors";
 export interface StarterProduct { sku: string; name: string; price: number; promo: string; regular_price: number; image_url: string | null }
 export interface StarterCategory { key: string; label: string; products: StarterProduct[] }
-export interface StarterRack { id: string; name: string; type: string; available_slots: number; suggested_category: string | null; reason: string | null }
+export interface StarterRack { id: string; name: string; type: string; available_slots: number; suggested_category: string | null; reason: string | null; reason_code?: string | null }
 export interface StarterCatalog { source_sha256: string; currency: string; racks: StarterRack[]; categories: StarterCategory[] }
 export interface StarterRequest { source_sha256: string; currency: string; assignments: { rack_id: string; category: string; skus?: string[] | null }[]; products_per_slot: number }
 export interface StarterAutoRequest { source_sha256: string; currency: string; requirements: string; products_per_slot: number }

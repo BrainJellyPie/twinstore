@@ -1,3 +1,4 @@
+import { starterCategoryMessages } from "./starterCategoryMessages";
 import { rackCopyMessages } from "./rackCopyMessages";
 import { starterMessages } from "./starterMessages";
 import { bulkMessages } from "./bulkMessages";
@@ -529,6 +530,7 @@ export const messages = {
   ...studioMessages,
   ...bulkMessages,
   ...starterMessages,
+  ...starterCategoryMessages,
   ...rackCopyMessages,
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;
 export type MessageKey = keyof typeof messages;
