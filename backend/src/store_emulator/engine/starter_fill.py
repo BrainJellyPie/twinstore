@@ -95,6 +95,8 @@ def fill_empty_racks(store: Store, assignments: list[RackFill], per_slot: int) -
                         reused_here.add(item.sku)
                     else:
                         added.add(item.sku)
+                        if len(existing) + len(added) > 5_000:
+                            raise ValueError("The result would exceed 5,000 SKUs")
                     items.append(item.model_copy(deep=True))
                     used[item.sku] = item
                 slots[(block, face, level)] = Slot(block=block, face=face, level=level, items=items)

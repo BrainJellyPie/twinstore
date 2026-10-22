@@ -223,3 +223,19 @@ it("waits for the project and layout before drafting a routed conjoint", async (
     expect.objectContaining({ setup_id: "s1" }),
   );
 });
+
+it.each(["project", "layout"])("waits for %s before drafting a routed concept test", async kind => {
+  let resolve!: (p: never) => void;
+  const pending = new Promise<never>(r => { resolve = r; });
+  if (kind === "project") vi.mocked(api.getProject).mockReturnValue(pending);
+  else vi.mocked(api.getSetup).mockReturnValue(pending);
+  send("concept_test"); const client = mount();
+  await act(async () => {});
+  if (kind === "layout") await waitFor(() => expect(api.getSetup).toHaveBeenCalled());
+  expect(marketing.designSurvey).not.toHaveBeenCalled();
+  await act(async () => resolve((kind === "project" ? project : { ...setups[0], store }) as never));
+  await screen.findByText(/Generated survey rationale/);
+  await waitFor(() => expect(client.isMutating()).toBe(0));
+  expect(marketing.designSurvey).toHaveBeenCalledTimes(1);
+  expect(marketing.designSurvey).toHaveBeenCalledWith("p", expect.objectContaining({ setup_id: "s1" }));
+});

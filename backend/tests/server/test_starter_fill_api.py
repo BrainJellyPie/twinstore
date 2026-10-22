@@ -303,3 +303,38 @@ def test_interrupted_write_keeps_original_and_requires_deliberate_new_preview(wo
     monkeypatch.setattr(starter_fill, "write_json", real_write)
     assert client.post(URL + "/save", json=body).status_code == 409
     assert read_setup(PID, SID) == source
+
+
+@pytest.mark.parametrize('existing_count', [4992, 4993, 5000])
+def test_filled_child_stays_within_product_editor_sku_limit(workflow, existing_count):
+    client, source = workflow
+    # Sixteen different items per rack, with clear aisles and a separate empty shelf.
+    racks = [Rack(id='in', type='entrance', shape=[[1]], position=(0, 69)),
+             Rack(id='out', type='exit', shape=[[1]], position=(69, 69)),
+             Rack(id='counter', type='counter', shape=[[1]], position=(69, 0)),
+             Rack(id='empty', type='shelf', shape=[[1]], position=(65, 65))]
+    for index, start in enumerate(range(0, existing_count, 16)):
+        slots = [Slot(block=0, face='S', level=level + 1,
+                      items=[SlotItem(sku=f'custom_{sku}', name=f'Custom {sku}', price=100)
+                             for sku in range(start + level * 4, min(start + (level + 1) * 4, existing_count))])
+                 for level in range(4) if start + level * 4 < existing_count]
+        racks.append(Rack(id=f'stocked_{index}', type='shelf', shape=[[1]],
+                          position=(2 + index % 20 * 3, 2 + index // 20 * 3), slots=slots))
+    source['store'] = Store(id='large', name='Boundary fixture', type='convenience', currency='USD',
+                            grid_size=(70, 70), racks=racks).model_dump(mode='json')
+    write_json(setup_path(PID, SID), source)
+    body = request(client)
+    assert len(CATALOG['water_sports']) == 8
+    expected = 200 if existing_count == 4992 else 422
+    preview = client.post(URL + '/preview', json=body)
+    assert preview.status_code == expected, preview.text[:300]
+    saved = client.post(URL + '/save', json={**body, 'request_id': 'e' * 32})
+    assert saved.status_code == expected, saved.text[:300]
+    if expected == 200:
+        from store_emulator.application.product_sources import read_product_source
+        child, _ = read_product_source(PID, saved.json()['setup_id'])
+        assert len({item.sku for rack in child.racks for slot in rack.slots for item in slot.items}) == 5000
+    else:
+        assert '5,000' in preview.text and '5,000' in saved.text
+        assert not setup_path(PID, 'setup_starter_' + 'e' * 32).exists()
+    assert read_setup(PID, SID) == source
