@@ -53,6 +53,25 @@ entered. The SVG always contains the complete floor geometry, independent of the
 These actions do not run shoppers or call a model. Detailed template-setting coverage is still being
 expanded; see `verification/2026-10-22-i18n-coverage.md` for the verified scope.
 
+## Reuse template hours and product settings
+
+Under **Customize layout**, choose opening days and hours, optionally setting each day separately.
+Use 0–24 for a full day; closing must follow opening, without crossing into the next day. Keep at
+least one open day. Select the product categories and optionally limit each to 1–16 distinct
+products. A blank limit uses the full available assortment; individual category limits override
+the general limit. These are product types, not inventory quantities. Changing the assortment seed
+selects another reproducible mix while keeping the same seed and settings reproduces the selection.
+
+**Export options** downloads the generation settings and design brief as JSON. **Import options**
+checks that file before replacing the current settings. The building equivalents include the floor
+order and names; they check all floors before replacing the floor list. Manual fixture/product edits
+are not included. Source project/layout links and the current layout name are not copied by a
+single-floor export. Exact integer seeds and category identifiers stay unchanged in every language.
+
+Hours, category labels, validation, import/export guidance and accessible control names use the
+selected interface language. Switching language preserves unsaved values and does not trigger a new
+preview request. Known catalog categories are translated; custom/unknown labels remain as supplied.
+
 ## LLM call count (static analysis)
 
 Counted directly from the code, not measured.

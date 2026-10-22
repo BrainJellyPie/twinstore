@@ -53,7 +53,7 @@ it("opens a detailed plan without submitting and returns to the unchanged creati
   fireEvent.click(screen.getByRole("button", { name: "Expand floor plan" }));
   expect(screen.getByRole("dialog", { name: "Floor plan details" })).toBeTruthy();
   expect(screen.getByRole("img", { name: "Detailed floor plan" }).getAttribute("viewBox")).toBe("-1.2 -1.2 41.4 41.4");
-  expect(screen.getByText(/1 dining tables · 4 seats/)).toBeTruthy();
+  expect(screen.getByText(/Dining tables: 1 · Seats: 4/)).toBeTruthy();
   expect(screen.getByText("Reading corner · 4×5 cells · column 3, row 4")).toBeTruthy();
   expect(screen.getByTestId("detailed-area-preview-0").getAttribute("x")).toBe("2");
   fireEvent.click(screen.getByRole("button", { name: "Zoom in floor plan" }));
@@ -102,7 +102,7 @@ it("downloads the full floor at any zoom and safely preserves custom names", asy
   expect(root.getAttribute("height")).toBe("1600");
   expect(root.getAttribute("style")).toBeNull();
   expect(root.querySelector("title")?.textContent).toBe("Tea & <Books> — 40×40 cells");
-  expect(root.querySelector("desc")?.textContent).toContain("2 dining tables, 10 seats");
+  expect(root.querySelector("desc")?.textContent).toContain("Dining tables: 2. Seats: 10.");
   expect(root.querySelector("desc")?.textContent).toContain("Operating hours: Mon–Sat: Closed; Sun: 23:00–24:00.");
   expect(root.querySelector("desc")?.textContent).toContain("Area 1: A & <B>, 4×5 cells at column 3, row 4.");
   expect(root.querySelector("desc")?.textContent).toContain("Split IN/OUT: shared gate");

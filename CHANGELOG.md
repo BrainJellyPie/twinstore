@@ -27,6 +27,10 @@
   category labels, eligibility reasons, reviewed prices and retry states. Category language
   follows the selected interface language. Detect duplicate translation keys.
 
+- Localize template operating hours, product-category limits, assortment seeds and settings-file
+  import/export in all six interface languages. Keep exact seed values, category IDs and current
+  edits when switching languages. Rewrite the new guidance in natural, task-oriented language.
+
 - Add 96 home linen, dinnerware, food storage, pet grooming, hair accessory, woodcraft,
   ceramic craft and gift wrapping products, plus 32 photos. The catalog now has 1,400
   products in 123 categories and 352 bundled photos for automatic or manual placement.

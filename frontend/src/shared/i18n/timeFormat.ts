@@ -16,3 +16,9 @@ export function clockTime(seconds: number, locale: Locale): string {
   if (locale === "en") return `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
   return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 1, h, m)));
 }
+
+/** Full weekday for forms; IDs remain Monday=1 through Sunday=7. */
+export function weekdayLong(day: number, locale: Locale): string {
+  const index = (((day - 1) % 7) + 7) % 7;
+  return new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 1 + index)));
+}
