@@ -108,9 +108,9 @@ def load_setup_with_validation(project_id: str, setup_id: str) -> dict[str, obje
 
 
 def _resolve_slot_images(project_id: str, setup: dict[str, object]) -> None:
-    """Fill every SlotItem.image_url in the setup dict from the manifest, in-place.
+    """Resolve current SKU photos, preserving reviewed immutable layout snapshots.
 
-    image_url is stored as None in raw storage, so it must be resolved on each response.
+    Legacy SKU photos are resolved at read time; reviewed layout snapshots keep their own URL.
     """
     store_obj = setup.get("store")
     if not isinstance(store_obj, dict):
@@ -146,8 +146,9 @@ def _resolve_slot_images(project_id: str, setup: dict[str, object]) -> None:
                 sku = item_dict.get("sku")
                 if not isinstance(sku, str):
                     continue
-                item_dict["image_url"] = image_storage.image_url_for(
-                    project_id, sku, manifest,
+                stored_url = item_dict.get("image_url")
+                item_dict["image_url"] = image_storage.layout_image_url(
+                    project_id, sku, stored_url if isinstance(stored_url, str) else None, manifest,
                 )
 
 

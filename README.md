@@ -286,8 +286,10 @@ The new-store wizard asks for a format, size and currency, then your customers (
 - **Fill empty shelves** (Step 2) places reviewed starter products on empty racks and saves a separate stocked
   layout; existing products and geometry stay as they are. Reference products and prices are examples, not your
   stock. [Guide](./USAGE.md#fill-existing-empty-shelves-with-starter-products).
-- **Reuse shelf products** (Step 2) copies a reviewed assortment to compatible empty shelves, preserving
-  exact product values and saving a separate layout. [Guide](./USAGE.md#reuse-a-finished-shelf-assortment).
+- **Reuse shelf products** (Step 2) copies a finished shelf’s reviewed assortment to compatible empty racks,
+  preserving exact product values and saving a separate layout. [Guide](./USAGE.md#reuse-a-finished-shelf-assortment).
+- **Use library photos** (Step 2) reuses uploaded packshots on exact SKUs, reviews before/after images
+  and saves a separate layout with retained photo copies. [Guide](./USAGE.md#reuse-uploaded-product-photos-on-a-layout).
 - **Edit products together** (Step 2) changes names, prices and promotion text of selected products with a
   before/after preview and saves a separate layout. [Guide](./USAGE.md#edit-placed-products-together-without-a-spreadsheet).
 - **Change it in words** applies price, discount, sign and placement edits from a sentence (see
@@ -303,6 +305,10 @@ keeps original photos and upload settings for paused recovery after a browser re
 [recovery details](./USAGE.md#save-a-photo-queue-and-resume-later). **Combine reviewed shelf photos**
 previews completed photos together and saves them as one new draft layout without extra model calls
 ([workflow](./USAGE.md#combine-reviewed-shelf-photos-into-one-layout)).
+
+**Save queue on this browser** retains selected photos and settings for a paused restore after reload.
+Browser storage can be cleared or evicted and is not a backup. Combining keeps original layouts and photos;
+missing products block saving and reduced facing counts need confirmation.
 
 **Shelf Lab** edits real shelf photos counterfactually (Fig. 3 below) and audits them against the reference layout.
 Completed audits rank missing products by net contribution (**Restocking priorities**) and turn verified stockroom

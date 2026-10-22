@@ -3,7 +3,7 @@ from filelock import FileLock, Timeout
 from store_emulator.application.errors import AppError
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
-from store_emulator.application.storage.images import image_url_for, load_manifest
+from store_emulator.application.storage.images import layout_image_url, load_manifest
 from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path
 from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.product_edits import ProductEditsReceipt
@@ -38,7 +38,7 @@ def preview(pid: str, sid: str, req: RackCopyRequest) -> RackCopyPreview:
     manifest = load_manifest(pid)
     for slot in report.slots:
         for item in slot.items:
-            item.image_url = image_url_for(pid, item.sku, manifest) or item.image_url
+            item.image_url = layout_image_url(pid, item.sku, item.image_url, manifest)
     return report
 
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
+  before/after preview, immutable photo copies, source revision checks and retry-safe saving.
+
 ## 0.4.3 — failures that say so, the local model behind company networks
 
 ### Runs and customers that fail now say so

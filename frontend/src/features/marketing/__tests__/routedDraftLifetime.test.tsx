@@ -28,11 +28,10 @@ vi.mock("@/shared/api/marketing", async (original) => ({
   listShelfTests: vi.fn().mockResolvedValue([]),
   listConjoints: vi.fn().mockResolvedValue([]),
   designExperiment: vi.fn(),
-  designSurvey: vi.fn(),
-  designShelfTest: vi.fn(),
-  previewShelf: vi.fn().mockResolvedValue({face:"N",control:"control.png",test:"test.png",applied:[],warnings:[]}),
   designConjoint: vi.fn(),
   draftPitchScript: vi.fn(),
+  designSurvey: vi.fn(), designShelfTest: vi.fn(),
+  previewShelf: vi.fn().mockResolvedValue({ face: "N", control: "control.png", test: "test.png", applied: [], warnings: [] }),
 }));
 vi.mock("../hooks", () => ({ usePackages: () => ({ data: [] }) }));
 const store = {
@@ -81,8 +80,6 @@ beforeEach(() => {
     async (_pid, sid) =>
       ({ ...setups.find((s) => s.id === sid), store }) as never,
   );
-  vi.mocked(marketing.designShelfTest).mockResolvedValue({name:"Generated shelf test",rack_id:"r",target_sku:"tea",changes:[{kind:"promo",sku:"tea",promo:"SALE"}],age_groups:[],rationale:"Generated shelf rationale",warnings:[]});
-  vi.mocked(marketing.designSurvey).mockResolvedValue({ name: "Generated survey", stimuli: [], stimulus_names: [], questions: ["appeal"], context: "Brief", reference_price: null, currency: "USD", age_groups: [], genders: [], rationale: "Generated survey rationale", warnings: [] });
   vi.mocked(marketing.designExperiment).mockResolvedValue({
     name: "Generated test",
     engine: "rule",
@@ -111,6 +108,9 @@ beforeEach(() => {
     script: "Generated greeting",
     differs_by: "Generated script rationale",
   });
+  vi.mocked(marketing.designSurvey).mockResolvedValue({ name: "Concept", stimuli: [], stimulus_names: [], questions: ["appeal"], context: "Tea", reference_price: null,
+    currency: "USD", age_groups: [], genders: [], rationale: "Generated concept rationale", warnings: [] });
+  vi.mocked(marketing.designShelfTest).mockResolvedValue({ name: "Shelf", rack_id: "r", target_sku: "tea", changes: [], age_groups: [], rationale: "Generated shelf rationale", warnings: [] });
 });
 afterEach(() => {
   cleanup();
@@ -119,8 +119,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 const targets = [
-  {destination:"shelf_test",tab:"Shelf tests",mock:marketing.designShelfTest,rationale:"Generated shelf rationale"},
-  { destination: "concept_test", tab: "Concept tests", mock: marketing.designSurvey, rationale: "Generated survey rationale" },
+  { destination: "concept_test", tab: "Concept tests", mock: marketing.designSurvey, rationale: "Generated concept rationale" },
+  { destination: "shelf_test", tab: "Shelf tests", mock: marketing.designShelfTest, rationale: "Generated shelf rationale" },
   {
     destination: "ab_test",
     tab: "A/B tests",
@@ -234,7 +234,7 @@ it.each(["project", "layout"])("waits for %s before drafting a routed concept te
   if (kind === "layout") await waitFor(() => expect(api.getSetup).toHaveBeenCalled());
   expect(marketing.designSurvey).not.toHaveBeenCalled();
   await act(async () => resolve((kind === "project" ? project : { ...setups[0], store }) as never));
-  await screen.findByText(/Generated survey rationale/);
+  await screen.findByText(/Generated concept rationale/);
   await waitFor(() => expect(client.isMutating()).toBe(0));
   expect(marketing.designSurvey).toHaveBeenCalledTimes(1);
   expect(marketing.designSurvey).toHaveBeenCalledWith("p", expect.objectContaining({ setup_id: "s1" }));
