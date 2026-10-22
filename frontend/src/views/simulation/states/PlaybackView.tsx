@@ -6,6 +6,7 @@ import { useSimulationStore } from "@/stores/simulationStore";
 import { useStoreAssets } from "@/features/store-viewer/hooks/useStoreAssets";
 import { usePersonaData } from "@/features/playback/hooks/usePersonaData";
 import { RunToolbar } from "@/features/runs/components/RunToolbar";
+import { useRunOperations } from "@/features/runs/hooks";
 import { currencyCode } from "@/shared/utils/money";
 import { useI18n } from "@/shared/i18n/i18n";
 
@@ -28,6 +29,7 @@ export function PlaybackView({
 }: { pid: string; runId: string; location: string; setupStatus: string; personaCount: number } & LayoutTabProps) {
   const { t } = useI18n();
   const run = useRun(pid, runId).data;
+  const operations = useRunOperations(pid, runId).data;
   const assets = useStoreAssets(run.store);
   const { personaNames, personaGenders } = usePersonaData(run.personas);
   const activeTab = useSimulationStore((s) => s.activeTab);
@@ -55,6 +57,7 @@ export function PlaybackView({
           customers={run.customers}
           heatmaps={run.heatmaps}
           rackStats={run.summary.racks ?? null}
+          emptySpells={operations?.empty_spells ?? null}
           mode="playback"
           onAskAboutRack={(rack) => {
             sendAsk({ projectId: pid, destination: "run_question",

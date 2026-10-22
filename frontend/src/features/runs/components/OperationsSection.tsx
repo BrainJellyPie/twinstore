@@ -69,6 +69,12 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
         <Tile label={t("opsLeftLine")} value={t("opsLeftLineValue", { count: count(report.abandoned), amount: money(report.abandoned_revenue) })}
           hint={report.counters > 0 ? `${t("opsUtilization")}: ${formatPercent(report.counter_utilization, 0)}` : undefined} />
       </div>
+      {(report.crowd_skipped_units ?? 0) > 0 && (
+        <div className="mt-2">
+          <Tile label={t("opsCrowdSkipped")} value={money(report.crowd_skipped_revenue ?? 0)}
+            hint={t("opsUnits", { units: count(report.crowd_skipped_units ?? 0) })} />
+        </div>
+      )}
       <p className="mt-2 text-xs text-muted-foreground">{t("opsShoppersHit", { count: count(report.shoppers_hit) })}</p>
 
       {report.counters === 0 ? (

@@ -404,6 +404,9 @@ export interface OperationsConfig {
   open_counters?: number | null;
   // Tills staffed in single hours ("18" → 3); 0 closes the tills for that hour.
   till_schedule?: Record<string, number>;
+  // With this many shoppers at one shelf (null: never), an unplanned pick there is skipped with crowd_skip chance.
+  crowd_limit?: number | null;
+  crowd_skip?: number;
   checkout_base_sec?: number;
   checkout_item_sec?: number;
   patience_sec?: number;
@@ -424,6 +427,17 @@ export interface StockoutStats {
   shoppers_missed: number;
   first_out: string;
   minutes_out: number;
+}
+
+/** A time one product's shelf face stood empty (clock seconds of the day). */
+export interface EmptySpell {
+  day: number;
+  rack_id: string;
+  face: string;
+  sku: string;
+  name: string;
+  start: number;
+  end: number;
 }
 
 export interface QueueHour {
@@ -449,6 +463,8 @@ export interface OperationsReport {
   substituted_units: number;
   substituted_revenue: number;
   restocks: number;
+  crowd_skipped_units?: number;
+  crowd_skipped_revenue?: number;
   queued: number;
   avg_wait_sec: number;
   p90_wait_sec: number;
@@ -461,6 +477,7 @@ export interface OperationsReport {
   counters_needed: number;
   hours: QueueHour[];
   stockouts: StockoutStats[];
+  empty_spells?: EmptySpell[];
 }
 
 export function getRunOperations(projectId: string, runId: string, signal?: AbortSignal): Promise<OperationsReport> {

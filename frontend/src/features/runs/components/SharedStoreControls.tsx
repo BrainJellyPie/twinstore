@@ -59,6 +59,13 @@ export function SharedStoreControls({ value, onChange, tillsInLayout, fieldsOnly
               onChange={(e) => set({ patience: e.target.value })} aria-describedby={`${id}-patience-hint`} />
             <p id={`${id}-patience-hint`} className="text-muted-foreground">{t("opsPatienceHint")}</p>
           </div>
+          <div className={field}>
+            <label className="block font-medium" htmlFor={`${id}-crowd`}>{t("opsCrowd")}</label>
+            <Input id={`${id}-crowd`} type="number" min={2} max={50} step={1} className="h-7" value={value.crowd}
+              onChange={(e) => set({ crowd: e.target.value })} aria-describedby={`${id}-crowd-hint`}
+              aria-invalid={value.crowd.trim() !== "" && wholeIn(value.crowd, 2, 50) === null} />
+            <p id={`${id}-crowd-hint`} className="text-muted-foreground">{t("opsCrowdHint")}</p>
+          </div>
         </div>
       )}
       {invalid && <p role="alert" className="text-destructive">{t("opsInvalid")}</p>}

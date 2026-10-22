@@ -33,6 +33,11 @@ class OperationsConfig(BaseModel):
     patience_sd: float = Field(default=0.5, ge=0.0, le=2.0)
     # The longest average wait the till recommendation accepts in an hour (seconds).
     target_wait_sec: float = Field(default=120.0, ge=0.0, le=3600.0)
+    # Crowding: with this many shoppers stopped at one shelf at once (the shopper included), an unplanned pick there
+    # is skipped with crowd_skip chance — crowded shoppers buy less on impulse and leave sooner (Harrell, Hutt &
+    # Anderson 1980; Machleit, Eroglu & Mantel 2000). None = no crowding. Assumed values, to set from observation.
+    crowd_limit: int | None = Field(default=4, ge=2, le=50)
+    crowd_skip: float = Field(default=0.35, ge=0.0, le=1.0)
 
     @field_validator("till_schedule")
     @classmethod
@@ -68,6 +73,17 @@ class StockoutStats(BaseModel):
     minutes_out: float = 0.0       # time empty while the store was serving shoppers, all days
 
 
+class EmptySpell(BaseModel):
+    """A time a product's shelf face stood empty (clock seconds of the day)."""
+    day: int
+    rack_id: str
+    face: str
+    sku: str
+    name: str = ""
+    start: int
+    end: int
+
+
 class QueueHour(BaseModel):
     """The tills in one hour of the day (all simulated days together)."""
     hour: str                      # "HH" — the hour shoppers reached the tills
@@ -93,6 +109,8 @@ class OperationsReport(BaseModel):
     substituted_units: int = 0
     substituted_revenue: int = 0
     restocks: int = 0              # rounds of shelf filling during the day(s)
+    crowd_skipped_units: int = 0   # unplanned picks given up at a crowded shelf
+    crowd_skipped_revenue: int = 0
     # Tills
     queued: int = 0                # shoppers who reached the tills with something to pay
     avg_wait_sec: float = 0.0
@@ -106,6 +124,7 @@ class OperationsReport(BaseModel):
     counters_needed: int = 0       # the busiest hour's recommendation
     hours: list[QueueHour] = []
     stockouts: list[StockoutStats] = []   # by lost revenue, the largest first
+    empty_spells: list[EmptySpell] = []   # when each face stood empty, for playback (the first few thousand)
 
 
 class OperationsCosts(BaseModel):

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Shoppers in each other's way, and the shared store in 3D
+- Crowding: when four or more shoppers stand at one shelf at once, an unplanned pick there is given up with a 35 %
+  chance (crowded shoppers buy less on impulse — Harrell, Hutt & Anderson 1980; Machleit, Eroglu & Mantel 2000;
+  assumed values to set from observation). Planned buys are made however crowded. **Run simulation** has the
+  setting (blank turns crowding off); **Store operations** shows the impulse sales lost in crowds, and journeys say
+  "too crowded at the shelf".
+- Playback shows the shared store: shelves standing empty get a red floor mark and a "Sold out: …" label while they
+  are empty, and shoppers waiting for a till stand in a line behind it, earliest first, instead of on one spot.
+  The operations report carries when each face stood empty (`empty_spells`).
+
 ### Shoppers remember: the weeks after a run
 - A bad visit used to cost only that visit. **Try other stock and staffing → Shoppers remember** repeats the run's
   week: after each week, a shopper may stop coming, the likelier the more products they found gone (and did

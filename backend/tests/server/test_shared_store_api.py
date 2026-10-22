@@ -44,6 +44,10 @@ def test_a_shared_store_run_reports_its_stock_and_tills(client):
     report = response.json()
     assert report["config"]["stock_per_facing"] == 1 and report["counters"] == 1
     assert report["queued"] > 0 and report["hours"]
+    spells = report["empty_spells"]
+    assert spells and all(s["start"] < s["end"] for s in spells)
+    assert {(s["rack_id"], s["sku"]) for s in spells} >= {(s["rack_id"], s["sku"]) for s in report["stockouts"]
+                                                         if s["first_out"]}
     customers = client.get(f"/api/projects/{PID}/runs/{shared}/timeline").json()
     summary = client.get(f"/api/projects/{PID}/runs/{shared}/summary").json()["summary"]
     assert summary["total_revenue"] == sum(c["total_spent"] for c in customers)

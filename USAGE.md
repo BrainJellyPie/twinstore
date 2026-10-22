@@ -105,6 +105,9 @@ export preserves the exact names, floor order and area coordinates.
 - **Patience in line (minutes)** (default 5): the wait a typical shopper accepts; each shopper's own patience varies
   around it (seeded, so it is the same shopper in both layouts of an A/B pair).
 
+- **Shoppers at one shelf that feel crowded** (default 4; blank = no effect): with that many stopped at one shelf at
+  once, each unplanned pick there is skipped with a 35 % chance (`crowd_skip`). Planned buys are always made.
+
 A shopper who finds a product gone takes another from the same shelf face at the closest price (45 % of them) or
 does without; one who finds fewer units than wanted takes what is left. A shopper with nothing left to buy skips the
 tills. Time at a till is 25 s plus 3 s per unit. The model calls do not change: the engines still decide each visit

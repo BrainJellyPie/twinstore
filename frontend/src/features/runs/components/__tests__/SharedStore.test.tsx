@@ -43,26 +43,27 @@ async function submit() { await act(async () => { fireEvent.submit(document.quer
 describe("the run option", () => {
   it("shares the store by default, refilling every two hours with every till open", () => {
     expect(sharedStoreOptions(DEFAULT_SHARED_STORE)).toEqual({
-      stock_per_facing: 12, restock_every_min: 120, open_counters: null, patience_sec: 300,
+      stock_per_facing: 12, restock_every_min: 120, open_counters: null, patience_sec: 300, crowd_limit: 4,
     });
   });
 
   it("reads blank refill and tills as overnight and every till, and turning it off sends nothing", () => {
-    expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, restock: " ", tills: "", patience: "1.5" }))
-      .toEqual({ stock_per_facing: 12, restock_every_min: null, open_counters: null, patience_sec: 90 });
+    expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, restock: " ", tills: "", patience: "1.5", crowd: "" }))
+      .toEqual({ stock_per_facing: 12, restock_every_min: null, open_counters: null, patience_sec: 90, crowd_limit: null });
     expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, enabled: false, stock: "nonsense" })).toBeUndefined();
   });
 
   it.each([
     { stock: "0" }, { stock: "1.5" }, { stock: "" }, { stock: "10001" }, { restock: "4" }, { restock: "1441" },
     { tills: "0" }, { tills: "51" }, { tills: "2.5" }, { patience: "0.4" }, { patience: "121" }, { patience: "" },
+    { crowd: "1" }, { crowd: "51" }, { crowd: "3.5" },
   ])("refuses %o", (patch) => {
     expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, ...patch })).toBe("invalid");
   });
 
   it.each([
     { stock: "1" }, { stock: "10000" }, { restock: "5" }, { restock: "1440" }, { tills: "1" }, { tills: "50" },
-    { patience: "0.5" }, { patience: "120" },
+    { patience: "0.5" }, { patience: "120" }, { crowd: "2" }, { crowd: "50" },
   ])("accepts the boundary %o", (patch) => {
     expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, ...patch })).not.toBe("invalid");
   });
@@ -76,7 +77,7 @@ describe("the run dialog", () => {
     fireEvent.change(screen.getByLabelText("Units of each product per shelf level"), { target: { value: "4" } });
     await submit();
     await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({
-      operations: { stock_per_facing: 4, restock_every_min: 120, open_counters: 2, patience_sec: 300 },
+      operations: { stock_per_facing: 4, restock_every_min: 120, open_counters: 2, patience_sec: 300, crowd_limit: 4 },
     })));
   });
 
@@ -102,7 +103,7 @@ describe("the run dialog", () => {
   it.each(LOCALES)("names every control in $code", ({ code }) => {
     useLocale.getState().setLocale(code);
     showDialog();
-    for (const key of ["opsShareTitle", "opsStockPerFacing", "opsRestockEvery", "opsTillsOpen", "opsPatience"] as const) {
+    for (const key of ["opsShareTitle", "opsStockPerFacing", "opsRestockEvery", "opsTillsOpen", "opsPatience", "opsCrowd"] as const) {
       expect(screen.getByLabelText(translate(code, key))).toBeTruthy();
     }
   });
@@ -111,7 +112,7 @@ describe("the run dialog", () => {
 const report: api.OperationsReport = {
   config: {
     stock_per_facing: 12, stock_overrides: {}, till_schedule: {}, restock_every_min: 120, substitute_share: 0.45, open_counters: null,
-    checkout_base_sec: 25, checkout_item_sec: 3, patience_sec: 300, patience_sd: 0.5, target_wait_sec: 120,
+    checkout_base_sec: 25, checkout_item_sec: 3, patience_sec: 300, patience_sd: 0.5, target_wait_sec: 120, crowd_limit: 4, crowd_skip: 0.35,
   },
   days: 1, counters: 1, counters_in_layout: 2, stockout_faces: 9, shoppers_hit: 14,
   lost_units: 23, lost_revenue: 4560, substituted_units: 11, substituted_revenue: 2200, restocks: 3,
