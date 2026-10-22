@@ -28,6 +28,8 @@ from store_emulator.domain.staff_pitch import PitchRequest, PitchView
 from store_emulator.domain.factorial import FactorialReport, FactorialRequest, FactorialSource
 from store_emulator.engine.marketing.conjoint_design import ConjointDesign
 from store_emulator.engine.marketing.experiment_design import ExperimentDesign
+from store_emulator.engine.marketing.shelf_test_design import ShelfTestDesign
+from store_emulator.engine.marketing.survey_design import SurveyDesign
 from store_emulator.engine.marketing.reading import StudyReading
 from store_emulator.engine.marketing.script_writer import ScriptDraft
 from store_emulator.engine.marketing.report import ReportNarrative
@@ -146,6 +148,13 @@ def delete_study_reading(pid: str, study: StudyPath, jid: str) -> None:
     _call(lambda: study_reading.delete_reading(pid, _STUDY_PATHS[study], jid))
 
 
+@router.post("/{pid}/surveys/design", summary="Draft a concept test from a question", response_model=SurveyDesign)
+async def design_survey(pid: str, req: study_design.SurveyDesignRequest) -> SurveyDesign:
+    """The text model picks the product images to show (from the project's library, by name), the questions, the
+    brief, an optional shelf price and the panel quotas for the question. Nothing runs; the draft fills the builder."""
+    return await run_in_threadpool(_call, lambda: study_design.design_concept(pid, req, get_config()))
+
+
 @router.post("/{pid}/surveys", summary="Start a concept test", response_model=JobStatus)
 async def start_survey(pid: str, req: SurveyRequest) -> JobStatus:
     """Synthetic respondents (the project's personas, optionally by quota) look at product images and answer purchase
@@ -221,6 +230,13 @@ def pitch_csv(pid: str, pitch_id: str) -> PlainTextResponse:
 @router.delete("/{pid}/staff-pitches/{pitch_id}", summary="Delete a completed staff script test", status_code=204)
 def delete_pitch(pid: str, pitch_id: str) -> None:
     _call(lambda: mk.delete_job(pid, "pitch", pitch_id))
+
+
+@router.post("/{pid}/shelf-tests/design", summary="Draft a shelf test from a question", response_model=ShelfTestDesign)
+async def design_shelf_test(pid: str, req: study_design.ShelfTestDesignRequest) -> ShelfTestDesign:
+    """The text model picks the product under test (a product of the layout), its shelf and the change respondents
+    see (a library pack, a price, a sign). Nothing runs; the draft fills the builder."""
+    return await run_in_threadpool(_call, lambda: study_design.design_shelf(pid, req, get_config()))
 
 
 @router.post("/{pid}/shelf-tests", summary="Start a virtual shelf test", response_model=JobStatus)

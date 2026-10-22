@@ -9,7 +9,7 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
-Destination = Literal["ab_test", "conjoint", "staff_script", "area", "run_question", "none"]
+Destination = Literal["ab_test", "shelf_test", "conjoint", "concept_test", "staff_script", "area", "run_question", "none"]
 
 
 class StructuredLLM(Protocol):
@@ -25,8 +25,13 @@ class AssistRoute(BaseModel):
 
 
 ROUTER_PROMPT = """You route a store manager's request to the right tool of a store simulator:
-- ab_test: compare changes on the shelves (price, discount, promotion sign, placement, new package) on the same shoppers;
+- ab_test: compare what changes on the shelves (price, discount, promotion sign, placement, new package) do to sales
+  over a simulated trading day, on the same shoppers;
+- shelf_test: whether one product's new pack, price or sign stands out and gets picked when shoppers look at its
+  shelf (a picture of the shelf before and after the change);
 - conjoint: what features or price levels of one product shoppers prefer or would pay for;
+- concept_test: how shoppers react to product packs, labels or new product ideas shown as pictures (appeal, purchase
+  intent, value, which one they prefer), asked as a survey rather than on the shelf;
 - staff_script: what staff should say to shoppers;
 - area: the neighborhood around the store (who lives or works nearby, rivals, nearby venues);
 - run_question: a question about what happened in the last simulated day (sales, shelves, hours, shoppers);

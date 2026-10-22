@@ -18,13 +18,25 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
   No model call or new spreadsheet is required. See the product editor section in USAGE.md.
 
+### Concept tests and shelf tests drafted from a question
+- **Draft the test** in Concept tests: from "which of our two labels looks more premium to people in their
+  twenties?" the text model picks the product images to show from the library (by name, with the shelf product and
+  price each one shows), the questions, the brief respondents read, a shelf price when price matters, and age or
+  gender quotas only when the question names a group. Images the library does not have are reported, never
+  invented; "preference" is asked only with two or more images. API: `POST /api/projects/{pid}/surveys/design`.
+- **Draft the test** in Shelf tests: from "would the green tea stand out more with a SALE sign?" the model picks the
+  product under test (a product of the layout, by name) and the shelf it stands on, and only the changes the question
+  asks about: a library pack, a new price, a sign (any short sign, shown beside the usual ones). A product that is not
+  in the layout is refused, a pack that is not in the library reported. API: `POST /api/projects/{pid}/shelf-tests/design`.
+
 ### Ask TwinStore from the command palette
 - Inside a store, a sentence typed in the command palette (Ctrl K) that names no command can be handed to TwinStore:
-  the text model decides whether it is an A/B test ("would a 1+1 sign on cola sell more than a 20 % cut?"), a
-  conjoint study, a staff script, the neighborhood, or a question about the last run, opens that page and drafts
-  from the same words (the A/B variants, the study, script B for the product the sentence names, the area settings,
-  or the analyst's answer). Nothing runs on its own; a request that fits none of these says what can be set up.
-  A request that is not picked up within two minutes is dropped. API: `POST /api/assist/route`.
+  the text model decides whether it is an A/B test ("would a 1+1 sign on cola sell more than a 20 % cut?"), a shelf
+  test, a conjoint study, a concept test, a staff script, the neighborhood, or a question about the last run, opens
+  that page and drafts from the same words (the A/B variants, the shelf test, the study, the concept test, script B
+  for the product the sentence names, the area settings, or the analyst's answer). Nothing runs on its own; a
+  request that fits none of these says what can be set up. A request that is not picked up within two minutes is
+  dropped. API: `POST /api/assist/route`.
 
 ### Ask about this run
 - A new **Ask about this run** box in a run's results answers questions such as "which shelf converts worst, and

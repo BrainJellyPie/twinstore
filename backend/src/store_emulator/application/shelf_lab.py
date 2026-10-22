@@ -600,7 +600,7 @@ def _model_matches(store: Store, result: CaptureResult, req: RivalRequest, confi
     try:
         llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
         return asyncio.run(match_products(llm, missing, ours)), ""
-    except Exception as e:  # matching by name still works; say what was skipped
+    except Exception as e:  # noqa: BLE001 -- matching by name still works; say what was skipped
         logger.warning(f"[shelf_lab] rival model matching failed: {type(e).__name__}: {e}")
         return {}, model_failure(e, f"{len(missing)} product(s) were matched by name only")
 

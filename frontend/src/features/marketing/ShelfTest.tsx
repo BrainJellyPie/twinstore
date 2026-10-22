@@ -3,22 +3,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Loader2, Rows3 } from "lucide-react";
+import { FileText, Loader2, Rows3, Sparkles } from "lucide-react";
 
 import * as api from "@/shared/api/client";
 import {
+  designShelfTest,
   marketingKeys,
   previewShelf,
   shelfTestImageUrl,
   shelfTestReportUrl,
   startShelfTest,
   type JobStatus,
+  type ShelfTestDesign,
   type ShelfTestReport as Report,
   type ShelfTestRequest,
   type VariantChange,
 } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import type { Store } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
@@ -32,8 +35,11 @@ import { StudyReading } from "./StudyReading";
 const PROMOS = ["", "NEW", "SALE", "1+1", "-20%"];
 const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
 
-export function ShelfTestBuilder({ projectId, setupId, store, currency, initial, onStarted }: {
-  projectId: string; setupId: string; store: Store; currency: string; initial?: ShelfTestRequest | null; onStarted: (job: JobStatus) => void;
+export function ShelfTestBuilder({ projectId, setupId, store, currency, initial, prefill, onStarted }: {
+  projectId: string; setupId: string; store: Store; currency: string; initial?: ShelfTestRequest | null;
+  /** A request routed from the command palette: fills the question and drafts the test from it. */
+  prefill?: { text: string; id: number };
+  onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
   const packages = usePackages(projectId).data ?? [];
@@ -79,6 +85,38 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
     placeholderData: (prev) => prev,
     staleTime: 60_000,
   });
+  // Draft the test from the question it should answer: the product and its shelf, and the pack, price or sign
+  // respondents see on the test shelf. Everything stays editable.
+  const [question, setQuestion] = useState("");
+  const questionLength = Array.from(question.trim()).length;
+  const [drafted, setDrafted] = useState<{ question: string; design: ShelfTestDesign } | null>(null);
+  const draft = useMutation({
+    mutationFn: (q: string) => designShelfTest(projectId, { question: q.trim(), setup_id: setupId }),
+    onSuccess: (d, q) => {
+      setDrafted({ question: q, design: d });
+      setRackId(d.rack_id);
+      setTarget(d.target_sku);
+      const change = (kind: VariantChange["kind"]) => d.changes.find((c) => c.kind === kind);
+      setAssetId(change("package")?.asset_id ?? "");
+      const p = change("price")?.price;
+      setPriceText(p != null ? (p / divisor).toFixed(divisor === 1 ? 0 : 2) : "");
+      setPromo(change("promo")?.promo ?? "");
+      setAges(d.age_groups);
+      setName((current) => current.trim() ? current : d.name);
+    },
+  });
+  const queueDraft = useQueuedStart(draft.mutate);
+  const prefillId = prefill?.id;
+  const prefillText = prefill?.text;
+  useEffect(() => {
+    if (prefillId === undefined || !prefillText) return;
+    const text = Array.from(prefillText).slice(0, 500).join("");
+    setQuestion(text);
+    queueDraft(text);
+  }, [prefillId, prefillText, queueDraft]);
+  const shownDraft = drafted?.question === question ? drafted.design : null;
+  const promos = promo && !PROMOS.includes(promo) ? [...PROMOS, promo] : PROMOS;
+
   const run = useMutation({
     mutationFn: () => startShelfTest(projectId, { name: name.trim(), setup_id: setupId, rack_id: rackId, target_sku: target, changes, panel, age_groups: ages, model }),
     onSuccess: async (job) => {
@@ -90,6 +128,23 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
   return (
     <div className="space-y-4">
       <section className="glass grid gap-3 rounded-2xl p-4 md:grid-cols-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2 md:col-span-2">
+          <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
+          <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); draft.mutate(question); } }}
+            placeholder="What should the test answer? e.g. Would the new gold label stand out on the tea shelf with a SALE sign?"
+            aria-label="Question for the shelf test" className="h-9 min-w-[14rem] flex-1 bg-card" />
+          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => draft.mutate(question)}>
+            {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the test
+          </Button>
+          {shownDraft && (
+            <div className="basis-full space-y-0.5 px-1 text-xs text-muted-foreground">
+              <p>{shownDraft.rationale} Check the shelf, product and changes below before running.</p>
+              {shownDraft.warnings.map((w) => <p key={w}>· {w}</p>)}
+            </div>
+          )}
+          {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
+        </div>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Shelf</span>
           <select value={rackId} onChange={(e) => { setRackId(e.target.value); setTarget(""); }} className="h-10 rounded-xl border bg-card/60 px-2.5 text-sm">
@@ -133,7 +188,7 @@ export function ShelfTestBuilder({ projectId, setupId, store, currency, initial,
         <div className="rounded-2xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">Sign</h3>
           <div className="flex flex-wrap gap-1.5">
-            {PROMOS.map((p) => (
+            {promos.map((p) => (
               <button key={p || "none"} type="button" onClick={() => setPromo(p)}
                 className={cn("rounded-full border px-2.5 py-0.5 text-xs font-semibold", promo === p ? (p ? "border-transparent bg-[#e8182e] text-white" : "border-primary") : "hover:border-foreground/25")}>
                 {p || "None"}

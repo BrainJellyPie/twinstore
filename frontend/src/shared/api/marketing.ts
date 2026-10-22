@@ -452,6 +452,17 @@ export interface ConjointReport {
 export interface ConjointView extends JobStatus { report: ConjointReport | null; request?: ConjointRequest | null }
 
 /** A conjoint study drafted by the text model from a question; prices in minor units of `currency`. */
+export interface ShelfTestDesign {
+  name: string; rack_id: string; target_sku: string; changes: VariantChange[]; age_groups: string[]; rationale: string; warnings: string[];
+}
+export const designShelfTest = (pid: string, req: { question: string; setup_id: string; model?: string }) =>
+  fetchJson<ShelfTestDesign>(`${root(pid)}/shelf-tests/design`, { method: "POST", body: JSON.stringify(req) });
+export interface SurveyDesign {
+  name: string; stimuli: string[]; stimulus_names: string[]; questions: QuestionKind[]; context: string;
+  reference_price: number | null; currency: string; age_groups: string[]; genders: string[]; rationale: string; warnings: string[];
+}
+export const designSurvey = (pid: string, req: { question: string; setup_id?: string; currency: string; model?: string }) =>
+  fetchJson<SurveyDesign>(`${root(pid)}/surveys/design`, { method: "POST", body: JSON.stringify(req) });
 export interface ConjointDesign {
   name: string; product: string; context: string; attributes: ConjointAttribute[]; prices: number[]; currency: string;
   rationale: string; comparable: string[];
