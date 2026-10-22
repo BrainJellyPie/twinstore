@@ -104,3 +104,4 @@ def test_the_dwell_map_holds_every_second_of_every_visit():
     held = sum(map(sum, aggregated.dwell_heatmap))
     visits = sum(c.duration_sec + c.timeline[-1].duration for c in customers)
     assert customers and held == pytest.approx(visits)   # a fixed seconds-per-step left ~10% of it off the map
+

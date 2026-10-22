@@ -8,13 +8,16 @@ import { RackDetailView } from "./RackDetailView";
 import { currencyCode } from "@/shared/utils/money";
 import { LayoutEditInWords } from "./LayoutEditInWords";
 import { formatWeeklyHours } from "@/features/layouts/weeklyHours";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
+import { storeTypeLabel } from "@/shared/i18n/storeLabels";
 
 type CustomerTab = "identity" | "purpose" | "age" | "gender";
-const CUSTOMER_TABS: { value: CustomerTab; label: string }[] = [
-  { value: "identity", label: "Persona" },
-  { value: "purpose", label: "Purpose" },
-  { value: "age", label: "Age group" },
-  { value: "gender", label: "Gender" },
+const CUSTOMER_TABS: { value: CustomerTab; label: MessageKey }[] = [
+  { value: "identity", label: "storeTabPersona" },
+  { value: "purpose", label: "kpiPurpose" },
+  { value: "age", label: "storeTabAgeGroup" },
+  { value: "gender", label: "kpiGender" },
 ];
 
 // Category-marker dots — 10 well-separated hues from Tailwind's default 500 palette,
@@ -65,6 +68,7 @@ function breakdownFromPersonas(personas: Persona[]): Pick<
 }
 
 export function SettingsPanel({ store, summary, personas, location, projectId, setupId, editableLayout }: Props) {
+  const { locale, t } = useI18n();
   const [tab, setTab] = useState<CustomerTab>("identity");
 
   // useMemo must precede any early return to preserve hook order.
@@ -78,7 +82,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
   if (store == null) {
     return (
       <div className="px-3 pt-3 text-xs text-muted-foreground">
-        Add a floor first to see store info.
+        {t("storeTabNoFloor")}
       </div>
     );
   }
@@ -103,18 +107,18 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
   // Customers are written per open day, so the total spans the week, not one day.
   const days = new Set(personas.map((p) => p.day)).size;
   const infoRows: [string, string][] = [
-    ["Store name", store.name || "—"],
-    ["Address", location || "—"],
-    ["Store type", store.type || "—"],
-    ["Price currency", currencyCode(summary?.currency ?? store.currency ?? undefined)],
-    ["Opening hours", formatWeeklyHours(store.weekly_schedule ?? [])],
+    [t("storeName"), store.name || "—"],
+    [t("address"), location || "—"],
+    [t("storeType"), store.type ? storeTypeLabel(store.type, locale) : "—"],
+    [t("priceCurrency"), currencyCode(summary?.currency ?? store.currency ?? undefined)],
+    [t("openingHours"), formatWeeklyHours(store.weekly_schedule ?? [], locale)],
   ];
 
   return (
     <Sheet>
       <div className="flex flex-col gap-3 py-3">
         <section className="rounded-md border px-3 py-3">
-          <h3 className="mb-2 text-xs font-semibold">Store info</h3>
+          <h3 className="mb-2 text-xs font-semibold">{t("storeTabInfo")}</h3>
           <dl className="flex flex-col gap-1.5">
             {infoRows.map(([label, value]) => (
               <div key={label} className="flex items-start justify-between gap-3">
@@ -126,7 +130,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
         </section>
 
         <section className="rounded-md border px-3 py-3">
-          <h3 className="mb-2 text-xs font-semibold">Synthetic Customers</h3>
+          <h3 className="mb-2 text-xs font-semibold">{t("storeTabCustomers")}</h3>
           <ToggleGroup
             type="single"
             variant="outline"
@@ -136,20 +140,20 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
               if (v) setTab(v as CustomerTab);
             }}
             className="mb-3"
-            aria-label="Customer distribution metric"
+            aria-label={t("storeTabDistribution")}
           >
-            {CUSTOMER_TABS.map((t) => (
+            {CUSTOMER_TABS.map((item) => (
               <ToggleGroupItem
-                key={t.value}
-                value={t.value}
+                key={item.value}
+                value={item.value}
                 className="text-xs"
               >
-                {t.label}
+                {t(item.label)}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
           {sortedEntries.length === 0 ? (
-            <p className="py-3 text-center text-xs text-muted-foreground">No data</p>
+            <p className="py-3 text-center text-xs text-muted-foreground">{t("dashNoData")}</p>
           ) : (
             <>
               <ul className="flex flex-col gap-1.5">
@@ -167,10 +171,10 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
                 ))}
               </ul>
               <div className="mt-2 flex items-center justify-between border-t pt-2 text-xs font-medium">
-                <span>{days > 1 ? `Total over ${days} days` : "Total"}</span>
+                <span>{days > 1 ? t("storeTabTotalDays", { days }) : t("storeTabTotal")}</span>
                 <span className="tabular-nums">
-                  {total.toLocaleString()}
-                  {days > 1 && <span className="font-normal text-muted-foreground"> · ≈{Math.round(total / days).toLocaleString()} a day</span>}
+                  {total.toLocaleString(locale)}
+                  {days > 1 && <span className="font-normal text-muted-foreground"> · {t("storeTabPerDay", { count: Math.round(total / days) })}</span>}
                 </span>
               </div>
             </>
@@ -178,14 +182,14 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
         </section>
 
         <section className="rounded-md border px-3 py-3">
-          <h3 className="mb-2 text-xs font-semibold">Layout</h3>
+          <h3 className="mb-2 text-xs font-semibold">{t("optLayout")}</h3>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Racks</span>
+              <span className="text-muted-foreground">{t("dashRacks")}</span>
               <span className="tabular-nums">{rackCount}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Items</span>
+              <span className="text-muted-foreground">{t("storeTabItems")}</span>
               <span className="tabular-nums">{itemCount}</span>
             </div>
           </div>
@@ -202,7 +206,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
               type="button"
               className="mt-2 text-xs text-primary hover:underline"
             >
-              View detail
+              {t("storeTabViewDetail")}
             </button>
           </SheetTrigger>
           {projectId && setupId && <LayoutEditInWords key={setupId} projectId={projectId} setupId={setupId} />}
@@ -211,9 +215,9 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
 
       <SheetContent side="right" className="w-[900px] sm:max-w-[900px] max-w-[90vw] overflow-hidden p-0">
         <SheetHeader className="border-b px-4 py-3">
-          <SheetTitle className="text-sm">Rack Detail</SheetTitle>
+          <SheetTitle className="text-sm">{t("storeTabRackDetail")}</SheetTitle>
           <SheetDescription className="text-xs">
-            Rack → Face → Level slot details
+            {t("storeTabRackDetailHint")}
           </SheetDescription>
         </SheetHeader>
         <RackDetailView store={store} />

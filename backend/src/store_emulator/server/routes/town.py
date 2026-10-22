@@ -118,14 +118,17 @@ def delete_venue(pid: str, venue_id: str) -> Town:
 def town_demand(
     pid: str, day_type: Literal["weekday", "weekend", "holiday"] = "weekday", scenario_id: str | None = None,
 ) -> TownDemand:
+    """In the hours the active layout opens on such a day, with its store format's scenario effect sizes."""
     scenario = get_preset(scenario_id) if scenario_id else None
-    return _call(lambda: town_service.demand(pid, day_type, scenario))
+    if scenario_id and scenario is None:
+        raise HTTPException(400, f"unknown scenario preset: {scenario_id}")
+    return _call(lambda: town_service.demand(pid, day_type, scenario, scenario_priors=get_config().scenario_priors))
 
 
 @router.get("/{pid}/town/synergy", summary="Effect of every other venue on our visitors", response_model=list[SynergyRow])
 def town_synergy(pid: str, day_type: Literal["weekday", "weekend", "holiday"] = "weekday") -> list[SynergyRow]:
-    """Counterfactual: recompute demand without each venue. Positive = complement (it brings us
-    customers), negative = competitor. Takes a few seconds."""
+    """Counterfactual: recompute demand without each venue, in the hours the active layout opens on such a day.
+    Positive = complement (it brings us customers), negative = competitor. Takes a few seconds."""
     return _call(lambda: town_service.synergy(pid, day_type))
 
 

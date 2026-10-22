@@ -7,6 +7,7 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import run_analyst
 from store_emulator.application import simulation as sim_service
+from store_emulator.application import town as town_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
 from store_emulator.application.movement import MAX_TRACK_BYTES
@@ -143,6 +144,8 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
     except ValueError as e:
         raise HTTPException(400, str(e))
     try:
+        if options.use_town:
+            town_service.town_for_run(pid)  # before the setup is marked running
         run_id, store, personas, address, customer_profile = sim_service.prepare_simulation(
             pid, req.setup_id, req.run_id, preview=req.preview, default_currency=config.currency,
         )

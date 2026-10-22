@@ -91,6 +91,13 @@ def test_edits_packages_and_audit(client):
     # Nothing was read by a model: sim2real has no product names to compare.
     assert client.post(f"/api/projects/{PID}/captures/{cid}/sim2real", json={}).status_code == 409
 
+    # A side of the rack with nothing planned on it is refused (it scored 100 % compliant, every product "unexpected").
+    rack = next(r for r in client.get(f"/api/projects/{PID}/setups/{SETUP}").json()["store"]["racks"] if r["id"] == DRINK_1)
+    empty_side = next(f for f in "NSEW" if f not in {slot["face"] for slot in rack["slots"] if slot["items"]})
+    refused = client.post(f"/api/projects/{PID}/captures/{cid}/audit",
+                          json={"setup_id": SETUP, "rack_id": DRINK_1, "face": empty_side, "panel": 40})
+    assert refused.status_code == 400 and "holds no products" in refused.json()["detail"]
+
     started = client.post(f"/api/projects/{PID}/captures/{cid}/audit",
                           json={"setup_id": SETUP, "rack_id": DRINK_1, "edit_id": eid, "panel": 40, "max_stockouts": 2})
     assert started.status_code == 200, started.text

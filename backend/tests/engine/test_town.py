@@ -1,9 +1,11 @@
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 from store_emulator.domain.persona import AGE_GROUPS, AgeGroup, Persona
+from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.town import (
     BuildingKind,
     RoadKind,
@@ -24,6 +26,7 @@ from store_emulator.engine.town import (
     synergy_analysis,
     town_context_text,
     town_from_overpass,
+    with_store_hours,
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "osm_sample.json"  # synthetic, not real OSM data
@@ -195,6 +198,73 @@ def test_plan_arrivals(residential: Town):
     assert all("~t" not in p.id for p in pool)
     with pytest.raises(ValueError):
         plan_arrivals([], demand, residential, seed=1)
+
+
+def test_visitor_ids_follow_their_demand_row_so_a_changed_row_keeps_other_visitors_paired(residential: Town):
+    pool = [_persona(f"{age}-{hour}", age, hour) for age in AGE_GROUPS for hour in (8, 12, 19)]
+    base = estimate_demand(residential)
+    rush = estimate_demand(residential, hourly_multiplier={12: 1.7})  # a lunch rush changes only the noon rows
+    visitors, arrivals = plan_arrivals(pool, base, residential, seed=1, scale=0.3, day=Weekday.TUE)
+    rushed, rushed_arrivals = plan_arrivals(pool, rush, residential, seed=1, scale=0.3, day=Weekday.TUE)
+    before = {a.persona_id: a for a in arrivals}
+    after = {a.persona_id: a for a in rushed_arrivals}
+    assert len(after) > len(before)
+    assert {i for i, a in before.items() if a.hour != 12} == {i for i, a in after.items() if a.hour != 12}
+    assert set(before) <= set(after)  # a busier noon row keeps its first visitors
+    assert all(after[i] == a for i, a in before.items())  # same pool persona, same trip
+    clones = {p.id: p for p in rushed}
+    assert all(clones[p.id] == p for p in visitors)
+    for arrival in arrivals:
+        who = f"linked-{arrival.came_from_venue}" if arrival.is_linked_trip else arrival.segment
+        assert re.fullmatch(
+            rf"{re.escape(arrival.source_persona_id)}~t2-{arrival.hour:02d}h-{who}-{arrival.age_group.rstrip('+')}-\d+",
+            arrival.persona_id,
+        )
+        assert re.fullmatch(r"[A-Za-z0-9_~-]{1,80}", arrival.persona_id)  # usable in run, journey and interview URLs
+    monday, _ = plan_arrivals(pool, base, residential, seed=1, scale=0.3, day=Weekday.MON)
+    assert not {p.id for p in monday} & set(before)  # unique across days
+
+
+def test_visitors_have_the_age_group_of_the_persona_they_were_cloned_from(residential: Town):
+    demand = estimate_demand(residential)
+    assert any(r.age_group == "10s" and r.segment == "student" for r in demand.hourly_by_segment)
+    adults = [_persona(f"{age}-{hour}", age, hour) for age in AGE_GROUPS[1:] for hour in (8, 12, 16, 19)]
+    teen = _persona("teen", "10s", 16).model_copy(update={"day": Weekday.WED})
+    visitors, arrivals = plan_arrivals([*adults, teen], demand, residential, seed=1, scale=0.3, day=Weekday.MON)
+    teens = [(p, a) for p, a in zip(visitors, arrivals) if a.age_group == "10s"]
+    # Monday has no teenager: Wednesday's stands in for the day's teenage visitors.
+    assert teens and all(a.source_persona_id == "teen" and p.day == Weekday.MON for p, a in teens)
+    assert all(p.age_group == a.age_group for p, a in zip(visitors, arrivals))
+
+    # Nobody in the pool is a teenager: the visitor, the arrival and its origin take the cloned persona's age.
+    visitors, arrivals = plan_arrivals(adults, demand, residential, seed=1, scale=0.3, day=Weekday.MON)
+    by_id = {p.id: p for p in adults}
+    for persona, arrival in zip(visitors, arrivals):
+        assert persona.age_group == arrival.age_group == by_id[arrival.source_persona_id].age_group != "10s"
+        building = residential.get_building(arrival.origin_building_id)
+        assert not (arrival.segment == "student" and building is not None and building.kind == BuildingKind.SCHOOL)
+        assert not re.search(r"from school\b", town_context_text(arrival, residential))
+
+
+def test_store_hours_set_the_modeled_hours_and_our_venue_hours(residential: Town):
+    store = Store(id="s", name="Corner", type="Convenience store", grid_size=(10, 10), weekly_schedule=[
+        DaySchedule(day=Weekday.MON, open_hour=0, close_hour=24),
+        DaySchedule(day=Weekday.TUE, open_hour=8, close_hour=20),
+        DaySchedule(day=Weekday.SUN, is_open=False),
+    ])
+    before = residential.model_dump()
+    town, hours = with_store_hours(residential, store, Weekday.TUE)
+    assert hours == list(range(8, 20)) and (_focal(town).open_hour, _focal(town).close_hour) == (8, 20)
+    assert residential.model_dump() == before
+    tuesday = estimate_demand(town, hours=hours)
+    assert all(v == 0 for h, v in enumerate(tuesday.hourly_totals) if not 8 <= h < 20)
+    assert tuesday.total_daily_visitors == pytest.approx(sum(estimate_demand(residential).hourly_totals[8:20]), rel=1e-3)
+    town, hours = with_store_hours(residential, store, Weekday.MON)
+    assert hours == list(range(24)) and sum(estimate_demand(town, hours=hours).hourly_totals[:7]) > 0  # a 24-hour store
+    assert with_store_hours(residential, store, Weekday.SUN)[1] == with_store_hours(residential, store, Weekday.WED)[1] == []
+    assert with_store_hours(residential, None, Weekday.MON) == (residential, list(range(7, 24)))
+    legacy = store.model_copy(update={"weekly_schedule": []})
+    assert with_store_hours(residential, legacy, Weekday.MON) == (residential, list(range(7, 24)))
 
 
 def test_town_context_text(residential: Town):

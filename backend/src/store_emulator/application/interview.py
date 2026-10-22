@@ -124,6 +124,9 @@ def _transcript_path(pid: str, run_id: str, persona_id: str) -> Path:
 def get_interview(pid: str, run_id: str, persona_id: str) -> Interview:
     path = _transcript_path(pid, run_id, persona_id)
     if not path.exists():
+        _, personas, _, _ = _load(pid, run_id)
+        if persona_id not in personas:   # an empty transcript for nobody read as a shopper who said nothing
+            raise AppError(f"shopper not in this run: {persona_id}", 404)
         return Interview(run_id=run_id, persona_id=persona_id)
     return Interview.model_validate(read_json(path))
 

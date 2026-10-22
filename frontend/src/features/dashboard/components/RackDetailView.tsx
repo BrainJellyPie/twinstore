@@ -3,8 +3,10 @@ import type { Rack, Slot, Face, Store } from "@/shared/types/domain";
 import { resolveImageUrl } from "@/shared/api/images";
 import { formatMoney } from "@/shared/utils/money";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
-const FACE_LABELS: Record<Face, string> = { N: "North", S: "South", E: "East", W: "West" };
+const FACE_LABELS: Record<Face, MessageKey> = { N: "dirNorth", S: "dirSouth", E: "dirEast", W: "dirWest" };
 const FACE_ORDER: Face[] = ["N", "E", "S", "W"];
 const EXCLUDED_TYPES = new Set(["entrance", "exit"]);
 
@@ -125,6 +127,7 @@ interface Props {
 }
 
 export function RackDetailView({ store }: Props) {
+  const { t } = useI18n();
   const currency = useSimulationStore((s) => s.currency);
   const racks = useMemo(
     () => store.racks.filter((r) => !EXCLUDED_TYPES.has(r.type)),
@@ -134,7 +137,7 @@ export function RackDetailView({ store }: Props) {
   if (racks.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center p-6 text-xs text-muted-foreground">
-        No items assigned
+        {t("rackNoItemsAssigned")}
       </div>
     );
   }
@@ -144,13 +147,13 @@ export function RackDetailView({ store }: Props) {
       <table className="w-full text-xs">
         <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
           <tr className="border-b text-left text-muted-foreground">
-            <th className="w-[140px] pl-6 pr-2 py-2 font-medium">Rack</th>
-            <th className="w-[80px] px-2 py-2 font-medium">Face</th>
-            <th className="w-[80px] px-2 py-2 font-medium">Total slots</th>
-            <th className="w-[60px] px-2 py-2 font-medium">Level</th>
-            <th className="px-2 py-2 font-medium">Items</th>
-            <th className="w-[80px] px-2 py-2 font-medium">Slots</th>
-            <th className="w-[70px] pl-2 pr-6 py-2 text-right font-medium">Price</th>
+            <th className="w-[140px] pl-6 pr-2 py-2 font-medium">{t("rackColRack")}</th>
+            <th className="w-[80px] px-2 py-2 font-medium">{t("rackColFace")}</th>
+            <th className="w-[80px] px-2 py-2 font-medium">{t("rackColTotalSlots")}</th>
+            <th className="w-[60px] px-2 py-2 font-medium">{t("rackColLevel")}</th>
+            <th className="px-2 py-2 font-medium">{t("storeTabItems")}</th>
+            <th className="w-[80px] px-2 py-2 font-medium">{t("rackColSlots")}</th>
+            <th className="w-[70px] pl-2 pr-6 py-2 text-right font-medium">{t("rackColPrice")}</th>
           </tr>
         </thead>
         <tbody>
@@ -162,7 +165,7 @@ export function RackDetailView({ store }: Props) {
                 <tr key={rack.id} className="border-b">
                   <td className="pl-6 pr-2 py-1.5">{rack.rack_name}</td>
                   <td colSpan={6} className="px-2 py-1.5 italic text-muted-foreground">
-                    No items assigned
+                    {t("rackNoItemsAssigned")}
                   </td>
                 </tr>
               );
@@ -177,10 +180,10 @@ export function RackDetailView({ store }: Props) {
                 return [(
                   <tr key={`${rack.id}-${fg.face}-blocked`} className="border-b">
                     <td className="px-4 py-1.5">{showRack ? rack.rack_name : ""}</td>
-                    <td className="px-2 py-1.5">{FACE_LABELS[fg.face]}</td>
-                    <td className="px-2 py-1.5 italic text-muted-foreground">blocked</td>
+                    <td className="px-2 py-1.5">{t(FACE_LABELS[fg.face])}</td>
+                    <td className="px-2 py-1.5 italic text-muted-foreground">{t("rackBlocked")}</td>
                     <td colSpan={4} className="px-2 py-1.5 italic text-muted-foreground">
-                      This section is blocked
+                      {t("rackSectionBlocked")}
                     </td>
                   </tr>
                 )];
@@ -201,7 +204,7 @@ export function RackDetailView({ store }: Props) {
                   rows.push(
                     <tr key={`${rack.id}-${fg.face}-${lg.level}-${si}-${item.sku}`} className="border-b">
                       <td className="pl-6 pr-2 py-1">{showRack ? rack.rack_name : ""}</td>
-                      <td className="px-2 py-1">{showFace ? FACE_LABELS[fg.face] : ""}</td>
+                      <td className="px-2 py-1">{showFace ? t(FACE_LABELS[fg.face]) : ""}</td>
                       <td className="px-2 py-1 tabular-nums">{showFace ? fg.totalSlots : ""}</td>
                       <td className="px-2 py-1 tabular-nums">{showLevel ? lg.level : ""}</td>
                       <td className="px-2 py-1">
@@ -214,7 +217,7 @@ export function RackDetailView({ store }: Props) {
                             />
                           ) : (
                             <div className="flex size-8 shrink-0 items-center justify-center rounded border bg-muted text-[0.68rem] text-muted-foreground">
-                              no img
+                              {t("rackNoImg")}
                             </div>
                           )}
                           <span className="truncate">{item.name}</span>

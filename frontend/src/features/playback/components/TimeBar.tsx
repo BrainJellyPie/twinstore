@@ -7,6 +7,9 @@ import { usePlaybackControlStore, type PlaybackSpeed } from "@/stores/playbackCo
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { useSimulationStore, type GraphicsMode, type HeatmapMode } from "@/stores/simulationStore";
 import { paletteGradient } from "@/features/store-viewer/utils/heatmapPalette";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
+import { clockTime, weekdayShort } from "@/shared/i18n/timeFormat";
 
 interface Props {
   minTime: number;
@@ -16,35 +19,26 @@ interface Props {
   hasRackStats?: boolean;
 }
 
-const HEATMAP_LAYERS: { value: HeatmapMode; label: string; hint: string }[] = [
-  { value: "off", label: "Off", hint: "No heatmap" },
-  { value: "footfall", label: "Footfall", hint: "Where shoppers walked and stopped (event count per tile)" },
-  { value: "dwell", label: "Dwell", hint: "Seconds spent per tile — where attention actually went" },
-  { value: "traffic", label: "Traffic", hint: "Predicted shortest-path load between racks (layout only)" },
+const HEATMAP_LAYERS: { value: HeatmapMode; label: MessageKey; hint: MessageKey }[] = [
+  { value: "off", label: "pbLayerOff", hint: "pbLayerOffHint" },
+  { value: "footfall", label: "pbLayerFootfall", hint: "pbLayerFootfallHint" },
+  { value: "dwell", label: "pbLayerDwell", hint: "pbLayerDwellHint" },
+  { value: "traffic", label: "pbLayerTraffic", hint: "pbLayerTrafficHint" },
 ];
 
-const SPEED_LABEL: Record<PlaybackSpeed, string> = {
-  1: "Real time",
-  60: "Normal",
-  600: "Fast",
-  3600: "Very fast",
+const SPEED_LABEL: Record<PlaybackSpeed, MessageKey> = {
+  1: "pbSpeedRealTime",
+  60: "pbSpeedNormal",
+  600: "pbSpeedFast",
+  3600: "pbSpeedVeryFast",
 };
 const SPEED_VALUES: PlaybackSpeed[] = [1, 60, 600, 3600];
-
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-
-function formatClock12h(sec: number): string {
-  const h = Math.floor(sec / 3600) % 24;
-  const m = Math.floor((sec % 3600) / 60);
-  const ampm = h < 12 ? "am" : "pm";
-  const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${hh}:${String(m).padStart(2, "0")} ${ampm}`;
-}
 
 // Phones, and laptop-height windows where the full panel would cover a large part of the store.
 const FOLDED_BY_DEFAULT = "(max-width: 1023px), (max-height: 960px)";
 
 export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = false }: Props) {
+  const { locale, t } = useI18n();
   const [smallScreen, setSmallScreen] = useState(() => window.matchMedia(FOLDED_BY_DEFAULT).matches);
   useEffect(() => {
     const media = window.matchMedia(FOLDED_BY_DEFAULT);
@@ -76,7 +70,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
   const dayIdx = availableDays.indexOf(currentDay);
   const isFirst = dayIdx <= 0;
   const isLast = dayIdx >= availableDays.length - 1;
-  const weekdayLabel = WEEKDAYS[(currentDay - 1) % 7];
+  const weekdayLabel = weekdayShort(currentDay, locale);
 
   const handleReset = () => {
     usePlaybackControlStore.getState().setDay(availableDays[0] ?? 1);
@@ -103,22 +97,22 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
 
   // Dense panel glass: compass labels and speech bubbles behind it must not read through.
   return (
-    <div role="region" aria-label="Playback controls" className={cn("panel absolute top-16 right-4 z-20 max-h-[calc(100%-12rem)] max-w-[calc(100%-2rem)] overflow-y-auto rounded-[1.4rem] text-foreground transition-[width] duration-300 xl:top-4 xl:max-h-[calc(100%-9rem)]", collapsed ? "w-[21rem]" : "w-[25rem]")}>
+    <div role="region" aria-label={t("pbRegion")} className={cn("panel absolute top-16 right-4 z-20 max-h-[calc(100%-12rem)] max-w-[calc(100%-2rem)] overflow-y-auto rounded-[1.4rem] text-foreground transition-[width] duration-300 xl:top-4 xl:max-h-[calc(100%-9rem)]", collapsed ? "w-[21rem]" : "w-[25rem]")}>
       <div className="flex items-center justify-between gap-2 px-3 pt-3 sm:gap-3 sm:px-5 sm:pt-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon-xs" className="-ml-1.5 rounded-full" disabled={isFirst} onClick={prevDay} aria-label="Previous day">
+            <Button variant="ghost" size="icon-xs" className="-ml-1.5 rounded-full" disabled={isFirst} onClick={prevDay} aria-label={t("pbPreviousDay")}>
               <ChevronLeft />
             </Button>
             <span className="eyebrow">
-              Day {dayIdx + 1} · {weekdayLabel}
+              {t("pbDayOf", { day: dayIdx + 1, weekday: weekdayLabel })}
             </span>
-            <Button variant="ghost" size="icon-xs" className="rounded-full" disabled={isLast} onClick={nextDay} aria-label="Next day">
+            <Button variant="ghost" size="icon-xs" className="rounded-full" disabled={isLast} onClick={nextDay} aria-label={t("pbNextDay")}>
               <ChevronRight />
             </Button>
           </div>
           <div className={cn("num mt-1 whitespace-nowrap leading-none font-medium tracking-[-0.06em] transition-[font-size]", collapsed ? "text-[1.5rem] sm:text-[2rem]" : "text-[1.75rem] sm:text-[2.6rem]")}>
-            {finished ? "Closed" : formatClock12h(currentMinute)}
+            {finished ? t("pbClosed") : clockTime(currentMinute, locale)}
           </div>
         </div>
 
@@ -126,7 +120,7 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
           {finished ? (
             <Button variant="outline" className="h-11 gap-1.5 rounded-full px-4" onClick={handleReset}>
               <RotateCcw className="size-4" />
-              Replay
+              {t("pbReplay")}
             </Button>
           ) : (
             <>
@@ -136,8 +130,8 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
                 className="size-8 rounded-full sm:size-10"
                 disabled={disabled}
                 onClick={() => seek(maxTime)}
-                title="Skip to closing time"
-                aria-label="Skip to closing time"
+                title={t("pbSkipToClose")}
+                aria-label={t("pbSkipToClose")}
               >
                 <SkipForward className="size-4" />
               </Button>
@@ -145,8 +139,8 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
                 type="button"
                 disabled={disabled}
                 onClick={togglePlay}
-                title={playing ? "Pause (Space)" : "Play (Space)"}
-                aria-label={playing ? "Pause" : "Play"}
+                title={playing ? t("pbPauseSpace") : t("pbPlaySpace")}
+                aria-label={playing ? t("pbPause") : t("pbPlay")}
                 className={cn(
                   "grid size-10 place-items-center rounded-full bg-primary text-primary-foreground transition-[transform,box-shadow] duration-200 hover:scale-105 active:scale-95 disabled:opacity-40 sm:size-14",
                   "shadow-[inset_0_1px_0_rgb(255_255_255/0.35),0_0_0_6px_color-mix(in_oklab,var(--primary)_14%,transparent),0_14px_36px_-10px_var(--primary)]",
@@ -171,40 +165,40 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
           onChange={(e) => seek(Number(e.target.value))}
           className="w-full"
           style={{ background: "transparent" }}
-          aria-label="Scrub through the day"
+          aria-label={t("pbScrub")}
         />
         <div className="num -mt-0.5 flex justify-between text-[0.68rem] text-muted-foreground">
-          <span>{formatClock12h(minTime)}</span>
+          <span>{clockTime(minTime, locale)}</span>
           <button
             type="button"
             onClick={() => setPref({ view: shopperView, collapsed: !collapsed })}
             className="flex items-center gap-1 rounded-full px-2 text-muted-foreground transition-colors hover:text-foreground"
             aria-expanded={!collapsed}
-            aria-label={collapsed ? "Expand playback controls" : "Collapse playback controls"}
+            aria-label={collapsed ? t("pbExpand") : t("pbCollapse")}
           >
-            {Math.round(progress * 100)}% · {collapsed ? "controls" : "less"}
+            {Math.round(progress * 100)}% · {collapsed ? t("pbMore") : t("pbLess")}
             <ChevronDown className={cn("size-3 transition-transform", !collapsed && "rotate-180")} />
           </button>
-          <span>{formatClock12h(maxTime)}</span>
+          <span>{clockTime(maxTime, locale)}</span>
         </div>
       </div>
 
       {collapsed ? (
         shopperView && (
           <div className="flex items-center justify-between border-t border-glass-border px-5 py-2.5 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><Eye className="size-3.5" /> Shopper's-eye view</span>
+            <span className="flex items-center gap-1.5"><Eye className="size-3.5" /> {t("pbShopperEye")}</span>
             <button type="button" onClick={() => setShopperView(false)} className="rounded-full px-2 py-0.5 font-medium text-foreground hover:bg-foreground/[0.06]">
-              Exit
+              {t("pbExit")}
             </button>
           </div>
         )
       ) : (
       <div className="mt-2 space-y-3 border-t border-glass-border bg-foreground/[0.02] px-3 py-4 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="eyebrow w-14">Speed</span>
+          <span className="eyebrow w-14">{t("pbSpeed")}</span>
           <ToggleGroup
             type="single"
-            aria-label="Playback speed"
+            aria-label={t("pbPlaybackSpeed")}
             value={String(speed)}
             onValueChange={(v) => v && setSpeed(Number(v) as PlaybackSpeed)}
             size="sm"
@@ -212,8 +206,8 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
             className="grid min-w-40 flex-1 grid-cols-2 rounded-xl bg-foreground/[0.05] p-0.5 sm:flex"
           >
             {SPEED_VALUES.map((s) => (
-              <ToggleGroupItem key={s} value={String(s)} title={s === 1 ? "1 second of simulation per second" : `${s} seconds of simulation per second`} className="h-7 flex-1 rounded-[0.6rem] text-[0.8rem]">
-                {SPEED_LABEL[s]}
+              <ToggleGroupItem key={s} value={String(s)} title={s === 1 ? t("pbSpeedHintOne") : t("pbSpeedHint", { seconds: String(s) })} className="h-7 flex-1 rounded-[0.6rem] text-[0.8rem]">
+                {t(SPEED_LABEL[s])}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
@@ -221,54 +215,54 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="eyebrow flex w-14 items-center gap-1">
             <Layers className="size-3" aria-hidden />
-            Layer
+            {t("pbLayer")}
           </span>
           <ToggleGroup
             type="single"
             value={heatmapMode}
             onValueChange={(v) => v && setHeatmapMode(v as HeatmapMode)}
             size="sm"
-            aria-label="Heatmap layer"
+            aria-label={t("pbHeatmapLayer")}
             className="min-w-40 flex-1 flex-wrap rounded-xl bg-foreground/[0.05] p-0.5"
           >
             {HEATMAP_LAYERS.map((l) => (
               <ToggleGroupItem
                 key={l.value}
                 value={l.value}
-                title={l.hint}
+                title={t(l.hint)}
                 disabled={l.value === "dwell" && !hasDwell}
                 className="h-7 flex-1 rounded-[0.6rem] text-[0.8rem]"
               >
-                {l.label}
+                {t(l.label)}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
         </div>
         {heatmapMode !== "off" && (
           <div className="flex items-center gap-2 pl-[4.25rem] text-[0.72rem] text-muted-foreground">
-            low
+            {t("pbLow")}
             <span className="h-1.5 flex-1 rounded-full" style={{ background: paletteGradient(heatmapMode) }} />
-            high
+            {t("pbHigh")}
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="eyebrow flex w-14 items-center gap-1">
             <Box className="size-3" aria-hidden />
-            View
+            {t("pbView")}
           </span>
           <ToggleGroup
             type="single"
             value={graphicsMode}
             onValueChange={(v) => v && setGraphicsMode(v as GraphicsMode)}
             size="sm"
-            aria-label="Graphics"
+            aria-label={t("pbGraphics")}
             className="rounded-xl bg-foreground/[0.05] p-0.5"
           >
-            <ToggleGroupItem value="classic" className="h-7 rounded-[0.6rem] px-2.5 text-[0.8rem]" title="Low-poly look">
-              Classic
+            <ToggleGroupItem value="classic" className="h-7 rounded-[0.6rem] px-2.5 text-[0.8rem]" title={t("pbClassicHint")}>
+              {t("pbClassic")}
             </ToggleGroupItem>
-            <ToggleGroupItem value="realistic" className="h-7 rounded-[0.6rem] px-2.5 text-[0.8rem]" title="Lit store interior with stocked shelves">
-              Realistic
+            <ToggleGroupItem value="realistic" className="h-7 rounded-[0.6rem] px-2.5 text-[0.8rem]" title={t("pbRealisticHint")}>
+              {t("pbRealistic")}
             </ToggleGroupItem>
           </ToggleGroup>
           <div className="ml-auto flex items-center gap-1">
@@ -276,8 +270,8 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               variant={shopperView ? "default" : "ghost"}
               size="icon-sm"
               onClick={() => setShopperView(!shopperView)}
-              title="Shopper view — first person, from a shopper's eyes"
-              aria-label="Shopper view"
+              title={t("pbShopperViewHint")}
+              aria-label={t("pbShopperView")}
               aria-pressed={shopperView}
             >
               <Eye />
@@ -287,8 +281,8 @@ export function TimeBar({ minTime, maxTime, hasDwell = false, hasRackStats = fal
               size="icon-sm"
               onClick={toggleRackOverlay}
               disabled={!hasRackStats}
-              title={hasRackStats ? "Rack KPIs — revenue and stop→buy rate per rack" : "Re-run to get rack KPIs"}
-              aria-label="Rack KPIs"
+              title={hasRackStats ? t("pbRackKpisHint") : t("pbRackKpisRerun")}
+              aria-label={t("pbRackKpis")}
               aria-pressed={rackOverlayOn}
             >
               <BarChart3 />

@@ -43,6 +43,7 @@ from store_emulator.engine.scenario import (
     apply_to_personas,
     apply_to_store,
     compile_scenario,
+    priors_for,
 )
 from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunner
 from store_emulator.engine.town.arrivals import (
@@ -50,12 +51,11 @@ from store_emulator.engine.town.arrivals import (
     plan_arrivals,
     town_context_text,
 )
-from store_emulator.engine.town.demand import estimate_demand
+from store_emulator.engine.town.demand import TYPICAL_DAY, DemandParams, estimate_demand, with_store_hours
 
 type CueSampler = Callable[[random.Random], BehaviorCue]
 type SynergyProgress = Callable[[str, int, int], None]  # (phase, customers done, customers total)
 
-_DAY_FOR: dict[str, Weekday] = {"weekday": Weekday.WED, "weekend": Weekday.SAT, "holiday": Weekday.SUN}
 _AFFECTED_SHARE_OF_PANEL = 2 / 3
 
 
@@ -108,15 +108,16 @@ async def vlm_basket_synergy(
     if focal is None or venue.id == focal.id:
         raise ValueError("pick a venue other than our own store")
     scenario = config.scenario
-    effects = compile_scenario(scenario) if scenario is not None else None
+    effects = compile_scenario(scenario, priors_for(store.type, config.scenario_priors)) if scenario is not None else None
     traffic = effects.base_traffic if effects is not None else 1.0
     hourly = (effects.traffic_by_hour or None) if effects is not None else None
-    day = Weekday(scenario.only_days[0]) if scenario is not None and scenario.only_days else _DAY_FOR[day_type]
-    if store.weekly_schedule:
-        hourly = {hour: (hourly or {}).get(hour, 1.0) if store.is_open_at(day, hour) else 0.0 for hour in range(24)}
+    day = Weekday(scenario.only_days[0]) if scenario is not None and scenario.only_days else TYPICAL_DAY[day_type]
+    town, hours = with_store_hours(town, store, day)  # our store's opening hours that day
     without = town.model_copy(update={"venues": [v for v in town.venues if v.id != venue_id]})
-    demand_with = estimate_demand(town, day_type=day_type, traffic_multiplier=traffic, hourly_multiplier=hourly)
-    demand_without = estimate_demand(without, day_type=day_type, traffic_multiplier=traffic, hourly_multiplier=hourly)
+    demand_with = estimate_demand(town, day_type=day_type, hours=hours, traffic_multiplier=traffic,
+                                  hourly_multiplier=hourly)
+    demand_without = estimate_demand(without, day_type=day_type, hours=hours, traffic_multiplier=traffic,
+                                     hourly_multiplier=hourly)
     linked = sum(t.expected_visitors for t in demand_with.linked_trips if t.from_venue_id == venue_id)
 
     # One day of visitors with the venue, each with both trip contexts.
@@ -257,7 +258,8 @@ async def vlm_basket_synergy(
     from_baskets = visitors_with * (spend_with - spend_without)
     return VLMSynergyResult(
         venue_id=venue.id, venue_name=venue.name, category=venue.category,
-        distance_m=round(math.hypot(venue.x - focal.x, venue.y - focal.y), 1), day_type=day_type,
+        distance_m=round(math.hypot(venue.x - focal.x, venue.y - focal.y) * DemandParams().detour_factor, 1),
+        day_type=day_type,
         scenario=scenario.name if scenario is not None else "", model=model_label, currency=config.currency,
         visitors_with=round(visitors_with, 3), visitors_without=round(visitors_without, 3),
         delta_visitors=round(visitors_with - visitors_without, 3), linked_visitors_from_venue=round(linked, 3),

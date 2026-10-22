@@ -3,6 +3,8 @@
 import type { CustomerResult, Persona } from "@/shared/types/domain";
 import type { Journey } from "@/shared/api/interview";
 import { parseTimeToSeconds } from "@/features/playback/utils/playback";
+import type { Locale } from "@/shared/i18n/messages";
+import { translate } from "@/shared/i18n/translate";
 
 export interface ShopperRow {
   id: string;
@@ -57,17 +59,17 @@ export function sortShoppers(rows: ShopperRow[], sort: ShopperSort, query: strin
 }
 
 /** Questions a researcher would ask after this trip. */
-export function suggestedQuestions(j: Journey): string[] {
+export function suggestedQuestions(j: Journey, locale: Locale = "en"): string[] {
   const out: string[] = [];
   const buys = j.steps.filter((s) => s.action === "buy");
   const impulse = buys.find((s) => s.origin === "impulse");
   const planned = buys.find((s) => s.origin !== "impulse");
-  if (impulse) out.push(`What made you pick up the ${impulse.product_name}? Was it planned?`);
-  if (planned) out.push(`Why that ${planned.product_name} and not another one on the shelf?`);
+  if (impulse) out.push(translate(locale, "askImpulse", { product: impulse.product_name }));
+  if (planned) out.push(translate(locale, "askPlanned", { product: planned.product_name }));
   const emptyStop = j.steps.find((s) => s.action === "browse" && !buys.some((b) => b.rack_id === s.rack_id));
-  if (emptyStop) out.push(`You stopped at ${emptyStop.rack} but didn't buy anything there. Why?`);
-  if (!buys.length) out.push("You left without buying anything. What was missing?");
-  out.push("How did the prices feel to you today?");
-  out.push("What would have made you spend more on this trip?");
+  if (emptyStop) out.push(translate(locale, "askEmptyStop", { rack: emptyStop.rack }));
+  if (!buys.length) out.push(translate(locale, "askNothingBought"));
+  out.push(translate(locale, "askPrices"));
+  out.push(translate(locale, "askSpendMore"));
   return out.slice(0, 4);
 }

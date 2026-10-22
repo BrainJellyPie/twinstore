@@ -75,9 +75,10 @@ def _stochastic_round(value: float, rng: random.Random) -> int:
     return base + (1 if rng.random() < value - base else 0)
 
 
-def _candidates(same_age: list[Persona], pool: list[Persona], hour: int) -> list[Persona]:
-    """Pool personas for a visitor: same age group at the same hour, then nearby hours, then any hour."""
-    for group in (same_age, pool):
+def _candidates(same_age: list[Persona], same_age_any_day: list[Persona], pool: list[Persona], hour: int) -> list[Persona]:
+    """Pool personas for a visitor: same age group at the same hour, then nearby hours, then any hour; the same age
+    group on other days when the day has nobody of it; any age group only when no day has."""
+    for group in (same_age, same_age_any_day, pool):
         for tolerance in (0, _HOUR_TOLERANCE):
             matches = [p for p in group if abs(p.arrival_hour - hour) <= tolerance]
             if matches:
@@ -100,8 +101,13 @@ def plan_arrivals(
     """Build the visitor list of one simulated day from a persona pool.
 
     `scale` multiplies the expected visitors (e.g. 0.1 to simulate a 10 % sample). Clones get
-    ids "<pool id>~t<k>" and `arrival_hour` set to the demand hour; with `day` set, pool
-    personas of that weekday are preferred and clones get that day. Returns (visitors,
+    `arrival_hour` set to the demand hour and ids "<pool id>~t<day>-<hour>h-<segment>-<age>-<k>"
+    (k-th visitor of that demand row; linked rows name the venue category after "linked"), so a
+    visitor keeps their id when other rows' counts change and runs on the same seed stay paired.
+    With `day` set, pool personas of that weekday are preferred and clones get that day. A
+    visitor is cloned from a persona of the row's age group (from another day if the day has
+    none); only when the pool has nobody of that age does the visitor, their arrival and its
+    origin take the age group of the persona they were cloned from. Returns (visitors,
     annotations) in the same order.
     """
     if not personas:
@@ -111,16 +117,18 @@ def plan_arrivals(
     by_age: dict[AgeGroup, list[Persona]] = {}
     for persona in pool:
         by_age.setdefault(persona.age_group, []).append(persona)
+    by_age_any_day: dict[AgeGroup, list[Persona]] = {}
+    for persona in personas:
+        by_age_any_day.setdefault(persona.age_group, []).append(persona)
 
-    origin_cache: dict[tuple[TownSegment, AgeGroup], tuple[list[OriginShare], list[float]]] = {}
+    origin_cache: dict[tuple[TownSegment | None, AgeGroup | None], tuple[list[OriginShare], list[float]]] = {}
 
-    def origins_for(segment: TownSegment, age: AgeGroup) -> tuple[list[OriginShare], list[float]]:
+    def origins_for(segment: TownSegment | None, age: AgeGroup | None) -> tuple[list[OriginShare], list[float]]:
+        """Direct origins of `segment` (None: every segment) weighted by their visitors of `age` (None: all)."""
         key = (segment, age)
         if key not in origin_cache:
-            options = [o for o in demand.origin_shares if o.segment == segment]
-            weights = [o.by_age.get(age, 0.0) for o in options]
-            if sum(weights) <= 0:
-                weights = [o.expected_visitors for o in options]
+            options = [o for o in demand.origin_shares if segment is None or o.segment == segment]
+            weights = [o.expected_visitors if age is None else o.by_age.get(age, 0.0) for o in options]
             origin_cache[key] = (options, list(itertools.accumulate(weights)))
         return origin_cache[key]
 
@@ -139,7 +147,7 @@ def plan_arrivals(
 
     visitors: list[Persona] = []
     arrivals: list[TownArrival] = []
-    counter = 0
+    day_key = f"{int(day)}-" if day is not None else ""
     for row in demand.hourly_by_segment:
         rng = random.Random(stable_seed(
             seed, "town-arrivals", demand.focal_venue_id, row.hour, row.segment, row.source_category, row.age_group,
@@ -147,12 +155,14 @@ def plan_arrivals(
         count = _stochastic_round(row.expected_visitors * scale, rng)
         if count == 0:
             continue
-        order = list(_candidates(by_age.get(row.age_group, []), pool, row.hour))
+        order = list(_candidates(by_age.get(row.age_group, []), by_age_any_day.get(row.age_group, []), pool, row.hour))
         rng.shuffle(order)
+        who = f"linked-{row.source_category}" if row.segment == "linked" else row.segment
+        row_key = f"{day_key}{row.hour:02d}h-{who}-{row.age_group.removesuffix('+')}"
         for i in range(count):
             source = order[i % len(order)]
-            clone_id = f"{source.id}~t{counter}"
-            counter += 1
+            clone_id = f"{source.id}~t{row_key}-{i}"
+            age = source.age_group  # the row's, unless nobody in the pool is of the row's age group
             update: dict[str, object] = {"id": clone_id, "arrival_hour": row.hour}
             if day is not None:
                 update["day"] = day
@@ -162,17 +172,24 @@ def plan_arrivals(
                 distance = trip.distance_m if trip else 0.0
                 arrivals.append(TownArrival(
                     persona_id=clone_id, source_persona_id=source.id, hour=row.hour, segment=row.segment,
-                    age_group=row.age_group, purpose=row.purpose, origin_kind=row.source_category,
+                    age_group=age, purpose=row.purpose, origin_kind=row.source_category,
                     origin_name=trip.from_name if trip else "", distance_m=distance,
                     walk_min=round(distance / walk_m_per_min, 1), came_from_venue=row.source_category,
                     came_from_venue_id=trip.from_venue_id if trip else "", is_linked_trip=True,
                 ))
             else:
-                origin = pick(*origins_for(row.segment, row.age_group), rng)
+                origin = pick(*origins_for(row.segment, age), rng)
+                if origin is None and age != row.age_group:
+                    # Nobody of the visitor's age comes from this segment's buildings (a 40s visitor "from school"):
+                    # draw from where people of their age come.
+                    origin = pick(*origins_for(None, age), rng)
+                if origin is None:
+                    origin = pick(*origins_for(row.segment, None), rng)
+                segment = origin.segment if origin is not None else row.segment
                 distance = origin.distance_m if origin else 0.0
                 arrivals.append(TownArrival(
-                    persona_id=clone_id, source_persona_id=source.id, hour=row.hour, segment=row.segment,
-                    age_group=row.age_group, purpose=row.purpose,
+                    persona_id=clone_id, source_persona_id=source.id, hour=row.hour, segment=segment,
+                    age_group=age, purpose=row.purpose if segment == row.segment else purpose_label(segment, row.hour),
                     origin_building_id=origin.building_id if origin else "",
                     origin_kind=origin.kind.value if origin else "", origin_name=origin.name if origin else "",
                     distance_m=distance, walk_min=round(distance / walk_m_per_min, 1),

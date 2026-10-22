@@ -76,6 +76,7 @@ def test_unknown_shopper_and_bad_ids(client):
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/NOBODY/journey").status_code == 404
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/a.b/journey").status_code == 400
     assert client.get(f"/api/projects/{PID}/runs/run_missing/shoppers/M1/journey").status_code == 404
+    assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/NOBODY/interview").status_code == 404
 
 
 def test_town_shopper_can_view_journey_and_complete_interview(client, monkeypatch):

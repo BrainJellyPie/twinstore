@@ -9,6 +9,7 @@ import type { Rack } from "@/shared/types/domain";
 import type { RackStats } from "@/shared/api/client";
 import { rackBounds, rackWorldCenter } from "@/shared/utils/grid";
 import { formatMoney, formatPercent } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
 
 interface Props {
   racks: Rack[];
@@ -20,6 +21,7 @@ const LOW = [148, 163, 184]; // slate-400
 const HIGH = [16, 185, 129]; // emerald-500
 
 export function RackPerformanceLayer({ racks, stats, currency }: Props) {
+  const { t: tr } = useI18n();
   const byId = useMemo(() => new Map(stats.map((s) => [s.rack_id, s])), [stats]);
   const maxRevenue = Math.max(1, ...stats.map((s) => s.revenue));
 
@@ -43,8 +45,8 @@ export function RackPerformanceLayer({ racks, stats, currency }: Props) {
               <div className="whitespace-nowrap rounded-md border bg-background/90 px-1.5 py-0.5 text-[0.72rem] leading-tight shadow-sm">
                 <div className="font-medium">{rack.rack_name || rack.id}</div>
                 <div className="tabular-nums text-muted-foreground">
-                  {formatMoney(s.revenue, currency, { compact: true })} · {s.buyers.toLocaleString()} buyers
-                  {s.visitors > s.buyers && ` · ${formatPercent(stopToBuy, 0)} stop→buy`}
+                  {formatMoney(s.revenue, currency, { compact: true })} · {tr("rackKpiBuyers", { count: s.buyers })}
+                  {s.visitors > s.buyers && ` · ${tr("rackKpiStopToBuy", { percent: formatPercent(stopToBuy, 0) })}`}
                 </div>
               </div>
             </Html>

@@ -7,6 +7,7 @@ import type { Store, Persona, CustomerResult } from "@/shared/types/domain";
 import type { RunStatus, RunSummary } from "@/shared/api/client";
 import type { DashboardTab } from "@/stores/simulationStore";
 import type { SetupDetailWithBlocked } from "@/features/grid-editor/types";
+import { useI18n } from "@/shared/i18n/i18n";
 import { type Availability } from "./availability";
 
 export interface SidePanelProps {
@@ -61,14 +62,15 @@ export function SidePanel({
   runId,
   runStatus,
 }: SidePanelProps) {
+  const { t } = useI18n();
   return (
     <aside className="panel m-3 flex w-auto min-w-0 shrink-0 flex-col overflow-y-auto rounded-[1.6rem] md:w-[24rem]">
       <Tabs value={activeTab === "shoppers" && mode !== "playback" ? "dashboard" : activeTab} onValueChange={(v) => setActiveTab(v as DashboardTab)} className="gap-0">
         <div className="sticky top-0 z-10 border-b border-glass-border bg-[var(--glass-strong)] px-3 pt-3 pb-2.5 backdrop-blur-xl">
           <TabsList className="h-11 w-full rounded-xl">
-            <TabsTrigger value="dashboard" className="gap-1.5 rounded-[0.65rem] text-sm"><BarChart3 className="size-4" />Results</TabsTrigger>
-            {mode === "playback" && <TabsTrigger value="shoppers" className="gap-1.5 rounded-[0.65rem] text-sm"><UsersRound className="size-4" />Shoppers</TabsTrigger>}
-            <TabsTrigger value="settings" className="gap-1.5 rounded-[0.65rem] text-sm"><Settings2 className="size-4" />{mode === "playback" ? "Store" : <>Store &amp; layout</>}</TabsTrigger>
+            <TabsTrigger value="dashboard" className="gap-1.5 rounded-[0.65rem] text-sm"><BarChart3 className="size-4" />{t("spResults")}</TabsTrigger>
+            {mode === "playback" && <TabsTrigger value="shoppers" className="gap-1.5 rounded-[0.65rem] text-sm"><UsersRound className="size-4" />{t("spShoppers")}</TabsTrigger>}
+            <TabsTrigger value="settings" className="gap-1.5 rounded-[0.65rem] text-sm"><Settings2 className="size-4" />{mode === "playback" ? t("store") : t("spStoreLayout")}</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="dashboard" className="px-3">
