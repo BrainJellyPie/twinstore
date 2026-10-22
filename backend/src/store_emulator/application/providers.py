@@ -472,6 +472,39 @@ def assistive_model(requested: str, config: LLMConfig) -> str:
     return config.model
 
 
+def _targets_own_local_server(vision: LLMConfig) -> bool:
+    """Whether the app's vision model is the local model TwinStore runs on this computer (its address)."""
+    if not vision.api_base:
+        return False
+    endpoint = urlsplit(vision.api_base)
+    loopback = {"127.0.0.1", "localhost", "::1"}
+    if endpoint.hostname not in loopback:
+        return False
+    from .local_vlm import manager  # late import: local_vlm imports this module
+
+    managed = urlsplit(manager().status().api_base or PRESETS[ProviderKind.LLAMACPP].default_api_base or "")
+    return (managed.hostname in loopback and endpoint.scheme == managed.scheme and endpoint.port == managed.port
+            and endpoint.path.rstrip("/") == managed.path.rstrip("/"))
+
+
+def _cloud_vision_model(settings: dict[ProviderKind, ProviderSettings]) -> str:
+    for kind in _FALLBACK_ORDER:
+        seeing = [m for m in PRESETS[kind].models if m.vision]
+        if seeing and provider_status(kind, settings).ready:
+            fast = next((m for m in seeing if "fast" in m.note), seeing[0])
+            return f"{kind.value}:{fast.id}"
+    return ""
+
+
+def run_vision_model(vision: LLMConfig) -> str:
+    """The vision model a run that names none uses: with the app's vision model on the local model of this computer
+    (the no-key fallback) and a cloud provider connected, that provider's fast vision model — a key added in Settings
+    is what vision shoppers should use, faster and better than the small local model. "" = the app's vision model."""
+    if not _targets_own_local_server(vision):
+        return ""
+    return _cloud_vision_model(load_settings())
+
+
 def assistive_vision_model(requested: str, vision: LLMConfig) -> str:
     """The vision model an assistive feature (reading a pack) uses: the one asked for; else the app's vision model,
     unless it targets the app's local server and it is not running while a cloud provider with a key is set up, in which case
@@ -751,6 +784,16 @@ def _ensure_plain_key(ref: str, settings: dict[ProviderKind, ProviderSettings]) 
     raise ValueError(f"{problem}. {hint}, or {fix} in Settings → Model providers.")
 
 
+def local_model_answers(api_base: str) -> bool:
+    """Whether a model at this address can be used now: any address not on this computer counts (the provider says),
+    a server on this computer must answer."""
+    from .local_vlm import server_answers  # late import: local_vlm imports this module
+
+    if urlsplit(api_base).hostname not in {"127.0.0.1", "localhost", "::1"}:
+        return True
+    return server_answers(api_base)
+
+
 def ensure_local_ready(api_base: str) -> None:
     """A run on a server on this computer that is not up would only fail — and vision shoppers whose every call fails
     fall back to rule-based decisions, so the run would even look fine."""
@@ -770,6 +813,11 @@ def ensure_local_ready(api_base: str) -> None:
             raise ValueError(f"The local vision model is not ready yet: {status.message}{done}. "
                              "Try again in a moment, or add an API key in Settings → Model providers.")
     if not server_answers(api_base):
+        if status.state == "disabled":
+            # "Start it in Settings" cannot help: Settings says it is turned off and offers no Start.
+            raise ValueError(f"No model server answers at {api_base}, and the local model on this computer is turned "
+                             "off (TWINSTORE_LOCAL_VLM). Add an API key in Settings → Model providers and pick that "
+                             "model for this run, or use rule-based shoppers.")
         raise ValueError(f"No model server answers at {api_base}: the local model is not running. Start it in "
                          "Settings → Model providers, or pick a cloud model for this run.")
 

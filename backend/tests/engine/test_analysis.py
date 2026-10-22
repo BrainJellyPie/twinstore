@@ -100,3 +100,13 @@ def test_parse_pos_csv_accepts_common_aliases():
     csv_text = "BASKET_ID,PRODUCT_ID,QUANTITY,SALES_VALUE,TRANS_TIME\n1,sku-a,2,300,1631\n1,sku-b,1,200,1631\n"
     lines = parse_pos_csv(csv_text.encode(), "pos.csv")
     assert [(ln.sku, ln.quantity, ln.unit_price, ln.hour) for ln in lines] == [("sku-a", 2, 150, 16), ("sku-b", 1, 200, 16)]
+
+
+def test_impulse_spend_is_not_compared_with_a_run_that_never_recorded_it():
+    new = [_customer(f"P{i}", [("cola", 200, 1, "impulse")]) for i in range(40)]
+    old = [_customer(f"P{i}", [("cola", 200, 1, "")]) for i in range(40)]   # an older version: no origin
+    report = compare_runs(new, old, run_a="run_new", run_b="run_old", n_bootstrap=200)
+    assert "impulse_spend" not in {m.metric for m in report.metrics}
+    assert any("run_old was made by an older version" in note for note in report.notes)
+    both = compare_runs(new, new, n_bootstrap=200)
+    assert "impulse_spend" in {m.metric for m in both.metrics} and not any("older version" in n for n in both.notes)

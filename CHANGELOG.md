@@ -85,6 +85,17 @@
 - Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
+### Fixes
+- With an API key connected, vision shoppers still ran on the local model, and failed whenever it was not running.
+  They now use the connected provider's vision model unless a run picks another (the local model is the fallback
+  with no key) — in runs, vision A/B tests, the optimizer's vision judge and the neighborhood synergy runs, and the
+  run dialog shows that model.
+- Vision shoppers looked ready with no model at all (the local model turned off and no key): the run dialog let the
+  run start and it failed with "Start it in Settings", which Settings cannot do. The engine now shows as not ready,
+  and the message says the local model is turned off and what to do instead (also for shelf capture).
+- Compare no longer shows an impulse-spend drop to 0 against a run made before impulse buys were recorded; it says
+  why that row is missing. The note about minor units is gone (amounts are shown as money).
+
 ## 0.4.7 — Marketing studio results you can trust
 
 ### Marketing studio results you can trust
