@@ -159,8 +159,10 @@ func TestStoresAreBroughtOverOnceAndStayInTheEarlierFolder(t *testing.T) {
 		"proj_a/runs/run_1/output/timeline.json": "[]",
 		"settings/providers.json":                `{"openai": "sk-test"}`,
 		"local_vlm/models/qwen.gguf":             strings.Repeat("w", 2000),
+		"local_vlm/bin/cpu/llama-server":         "#!",
+		"local_vlm/bin/cpu/.complete":            "b6000 llama-b6000-bin-ubuntu-x64.tar.gz\n",
 	}
-	left := []string{"local_vlm/bin/cpu/llama-server", "local_vlm/models/mmproj.gguf.part", "proj_a/state.json.tmp-1a2b3c"}
+	left := []string{"local_vlm/models/mmproj.gguf.part", "proj_a/state.json.tmp-1a2b3c"}
 	for rel, content := range kept {
 		writeFile(t, filepath.Join(src, filepath.FromSlash(rel)), content)
 	}
@@ -168,6 +170,9 @@ func TestStoresAreBroughtOverOnceAndStayInTheEarlierFolder(t *testing.T) {
 		writeFile(t, filepath.Join(src, filepath.FromSlash(rel)), "x")
 	}
 	if err := os.Chmod(filepath.Join(src, "settings", "providers.json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(src, "local_vlm", "bin", "cpu", "llama-server"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	stamp := time.Date(2026, 10, 1, 9, 30, 0, 0, time.UTC)
@@ -204,6 +209,10 @@ func TestStoresAreBroughtOverOnceAndStayInTheEarlierFolder(t *testing.T) {
 	}
 	if !same("local_vlm/models/qwen.gguf") {
 		t.Error("the model was copied, not linked, on the same volume")
+	}
+	if st, err := os.Stat(filepath.Join(dest, "local_vlm", "bin", "cpu", "llama-server")); err != nil ||
+		(runtime.GOOS != "windows" && st.Mode().Perm()&0o100 == 0) {
+		t.Errorf("the llama.cpp runtime came over not runnable: %v", err)
 	}
 	if same("proj_a/metadata.json") {
 		t.Error("a small file is shared by both versions")

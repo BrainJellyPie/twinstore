@@ -4,6 +4,7 @@ import io
 import json
 import sys
 import textwrap
+import urllib.error
 import urllib.request
 
 import pytest
@@ -283,6 +284,85 @@ def test_a_half_installed_build_is_fetched_again_and_a_gpu_plan_without_a_gpu_bu
         mgr._runtime(gpu, cuda_plan)  # pyright: ignore[reportPrivateUsage]
     assert not (home / "bin" / "cuda").exists()          # the half-installed build is gone
     assert downgrade(cuda_plan, gpu).backend == "cpu"
+
+
+def _offline(req: urllib.request.Request):
+    raise urllib.error.URLError("no route to github.com")
+
+
+def _old_build(root, files: dict[str, bytes]) -> None:
+    """bin/<backend> as versions before 0.4.3 left it: unpacked archives (removed once unpacked), no .complete marker."""
+    for name, body in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(body)
+        if name.endswith("llama-server"):
+            path.chmod(0o755)
+
+
+@pytest.mark.parametrize(("backend", "files"), [
+    ("cpu", {"build/bin/llama-server": b"#!/bin/sh\n", "build/bin/libggml-cpu.so": b"\x7fELF"}),
+    ("vulkan", {"build/bin/llama-server": b"#!/bin/sh\n", "build/bin/libggml-vulkan.so": b"\x7fELF"}),
+    ("cuda", {"build/bin/llama-server": b"#!/bin/sh\n", "build/bin/libggml-cuda.so": b"\x7fELF",
+              "libcudart.so.12": b"\x7fELF", "libcublas.so.12": b"\x7fELF"}),
+])
+@pytest.mark.skipif(sys.platform == "win32", reason="checks the executable bit the old versions set")
+def test_a_whole_build_from_before_the_marker_is_kept(no_keys, monkeypatch, backend, files):
+    monkeypatch.delenv("TWINSTORE_LLAMA_SERVER", raising=False)
+    monkeypatch.setattr(local_vlm.shutil, "which", lambda _name: None)
+    home = no_keys / "local_vlm"
+    _old_build(home / "bin" / backend, files)
+    mgr = LocalVLMManager(home, opener=_offline, hardware=lambda: _hw())
+    hw, plan = mgr.plan()
+    server = mgr._runtime(hw, plan.model_copy(update={"backend": backend}))  # pyright: ignore[reportPrivateUsage]
+    assert server == home / "bin" / backend / "build" / "bin" / "llama-server"
+    assert {p.relative_to(home / "bin" / backend).as_posix() for p in (home / "bin" / backend).rglob("*") if p.is_file()} == set(files)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="checks the executable bit the old versions set")
+def test_a_model_an_old_version_downloaded_starts_with_nothing_downloaded(no_keys, monkeypatch):
+    monkeypatch.delenv("TWINSTORE_LLAMA_SERVER", raising=False)
+    monkeypatch.delenv("TWINSTORE_LOCAL_VLM", raising=False)
+    monkeypatch.setattr(local_vlm.shutil, "which", lambda _name: None)
+    home = no_keys / "local_vlm"
+    asked: list[str] = []
+
+    def opener(req: urllib.request.Request):
+        asked.append(req.full_url)
+        raise urllib.error.URLError("offline")
+
+    mgr = LocalVLMManager(home, opener=opener, hardware=lambda: _hw())
+    _, plan = mgr.plan()
+    _old_build(home / "bin" / plan.backend, {"build/bin/llama-server": b"#!/bin/sh\n", "build/bin/libggml.so": b"\x7fELF"})
+    models = home / "models" / plan.model.repo.replace("/", "__")
+    models.mkdir(parents=True)
+    for name in (plan.model.file, plan.model.mmproj):
+        (models / name).write_bytes(b"gguf")
+    served: list[str] = []
+    monkeypatch.setattr(mgr, "_answers", lambda port: False)
+    monkeypatch.setattr(mgr, "_serve", lambda server, model, mmproj, plan: (
+        served.append(server.name), mgr._set(state="ready", message="")))  # pyright: ignore[reportPrivateUsage]
+    assert mgr.on_disk(plan)
+    assert mgr.auto_start()                              # nobody chose it: only what is on this computer
+    assert mgr._thread is not None  # pyright: ignore[reportPrivateUsage]
+    mgr._thread.join(timeout=10)  # pyright: ignore[reportPrivateUsage]
+    assert asked == [] and served == ["llama-server"] and mgr.status().state == "ready"
+
+
+@pytest.mark.parametrize("leftover", [
+    "llama-b9001-bin-ubuntu-x64.tar.gz",           # unpacking was cut short (the archive went once unpacked)
+    "llama-b9001-bin-ubuntu-x64.tar.gz.part",      # the download was cut short
+])
+def test_an_old_build_left_mid_way_is_fetched_again(no_keys, monkeypatch, leftover):
+    monkeypatch.delenv("TWINSTORE_LLAMA_SERVER", raising=False)
+    monkeypatch.setattr(local_vlm.shutil, "which", lambda _name: None)
+    home = no_keys / "local_vlm"
+    _old_build(home / "bin" / "cpu", {"build/bin/llama-server": b"#!/bin/sh\n", leftover: b"\x1f\x8b"})
+    mgr = LocalVLMManager(home, opener=_offline, hardware=lambda: _hw())
+    hw, plan = mgr.plan()
+    with pytest.raises(RuntimeError, match="could not reach GitHub"):
+        mgr._runtime(hw, plan.model_copy(update={"backend": "cpu"}))  # pyright: ignore[reportPrivateUsage]
+    assert not (home / "bin" / "cpu").exists()
 
 
 def test_an_interrupted_download_continues_where_it_stopped(no_keys):

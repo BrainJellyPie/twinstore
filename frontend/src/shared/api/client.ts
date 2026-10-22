@@ -832,6 +832,8 @@ export interface ProviderStatus {
   api_base: string | null;
   default_model: string | null;
   ready: boolean;
+  /** A local server at api_base answers now; absent or null when not checked (older servers, cloud, off). */
+  answers?: boolean | null;
 }
 
 export interface ProviderUpdate {

@@ -56,8 +56,9 @@ launcher/
   not bring the stores over (app files not found, quit early) do not lose them. It copies, so the earlier version
   keeps working (delete its folder once the stores show up): model files of 64 MB and more in `local_vlm` are
   hard-linked when on the same drive, links to folders or files (a store moved to another disk) are followed, files
-  OneDrive keeps in the cloud are read like any other, and the llama.cpp runtime (`local_vlm/bin`, fetched again),
-  unfinished files (`*.part`, `*.tmp-*`), devices, pipes and sockets are left out. A file that cannot be read is
+  OneDrive keeps in the cloud are read like any other (the llama.cpp runtime in `local_vlm/bin` too, so a local model
+  the user already has starts without a download), and unfinished files (`*.part`, `*.tmp-*`), devices, pipes and
+  sockets are left out. A file that cannot be read is
   left out and named in the log (the step says how many), except a store's `metadata.json`. The copy goes to
   `.data.migrating`, renamed to `.data` once complete, so a copy cut short is made again at the next start. A copy
   that fails, or a folder that may hold stores but cannot be read, stops the start, with Try again and Start without

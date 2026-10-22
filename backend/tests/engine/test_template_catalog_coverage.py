@@ -78,6 +78,9 @@ def test_new_departments_respect_exclusions_limits_and_small_floor_space(templat
     ("ice_cream_parlor", "scoop_menu"), ("turkish_cafe", "turkish_menu"),
     ("pizzeria", "pizza_menu"), ("salad_cafe", "salad_menu"), ("juice_bar", "juice_menu"),
     ("indian_curry_house", "indian_menu"), ("thai_kitchen", "thai_menu"),
+    ("korean_restaurant", "korean_menu"), ("mediterranean_deli", "mediterranean_menu"),
+    ("mexican_cantina", "mexican_menu"), ("vietnamese_cafe", "vietnamese_menu"),
+    ("specialty_cafe", "cafe_menu"),
 ])
 @pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
 def test_default_menu_maps_stock_their_complete_photographed_menu(template_id, category, currency):
@@ -88,3 +91,16 @@ def test_default_menu_maps_stock_their_complete_photographed_menu(template_id, c
                for slot in rack.slots for item in slot.items}
     assert stocked == expected
     assert all(item.image_url for item in stocked.values())
+
+
+@pytest.mark.parametrize("template_id", ["wellness_pharmacy", "care_supply_store", "round_the_clock_pharmacy"])
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_default_care_maps_stock_complete_photographed_care_departments(template_id, currency):
+    store = generate_store(template_id, currency=currency)
+    for category in ["first_aid_tools", "nutrition_supplements", "oral_care", "care_supplies", "bath_body", "pharmacy_care"]:
+        expected = {catalog_slot_item(product, currency).sku: catalog_slot_item(product, currency)
+                    for product in CATALOG[category]}
+        stocked = {item.sku: item for rack in store.product_racks if rack.rack_desc == category
+                   for slot in rack.slots for item in slot.items}
+        assert stocked == expected, (template_id, category)
+        assert all(item.image_url for item in stocked.values()), (template_id, category)

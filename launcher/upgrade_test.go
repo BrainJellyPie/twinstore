@@ -291,8 +291,8 @@ func TestCloudFilesAreNotLeftOut(t *testing.T) {
 			t.Errorf("leftOut(%s, %v) = %v", c.entry.name, c.entry.mode, got)
 		}
 	}
-	if !leftOut(filepath.Join("local_vlm", "bin"), fakeEntry{"bin", fs.ModeDir | fs.ModeIrregular}) {
-		t.Error("the llama.cpp runtime is brought over")
+	if leftOut(filepath.Join("local_vlm", "bin"), fakeEntry{"bin", fs.ModeDir | fs.ModeIrregular}) {
+		t.Error("the llama.cpp runtime is left behind: the model brought over would not start without a download")
 	}
 }
 

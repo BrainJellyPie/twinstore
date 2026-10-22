@@ -2,7 +2,22 @@
 
 ## Unreleased
 
+- Keep the model-provider list available when a saved local address has malformed IPv6 syntax.
+
+- Add 64 Korean, Mediterranean, Mexican, Vietnamese, pharmacy and care-product photos,
+  reaching 768 locally bundled images. All 18 menu assortments and six pharmacy/care
+  departments now have pictures for every existing product in their default maps.
+
 - Keep translated template headings in downloaded SVG titles without changing stored names.
+
+- The local model's llama.cpp program, downloaded by a version before 0.4.3, did not count as downloaded: a newer
+  version deleted it and fetched it again. A complete earlier download is now kept, and it comes along when the
+  stores are brought over from an earlier app folder, so a local model you already have starts without a download.
+- Settings showed a local server (llama.cpp, Ollama, …) as Ready at an address an earlier version or session left
+  behind, with nothing running there. It now says Not running.
+- Compare paired different people when the customers had been written again between the two runs, which versions
+  before 0.4.7 allowed once the earlier run's layout was deleted (the new customers reuse the ids M1001, F1003, …).
+  Such customers are now left out, and the comparison says how many.
 
 - Add 64 pizza, salad, juice, Indian, Thai, Turkish, Mexican and ice-cream menu
   photos, reaching 704 local images. Seven more menu assortments now have pictures

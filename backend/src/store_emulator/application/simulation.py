@@ -507,7 +507,20 @@ def compare_project_runs(
         )
     a = load_run_results(base_a)
     b = load_run_results(base_b)
+    people_a, people_b = _people(base_a), _people(base_b)
+    paired = {r.persona_id for r in a} & {r.persona_id for r in b} & people_a.keys() & people_b.keys()
+    others = {i for i in paired if people_a[i] != people_b[i]}
+    if others:
+        # Before 0.4.7 the customers could be written again once the layout of a final run was deleted: the new ones
+        # reuse the ids (M1001, …), and pairing them compared different people.
+        a = [r for r in a if r.persona_id not in others]
+        b = [r for r in b if r.persona_id not in others]
     report = compare_runs(a, b, run_a=run_a, run_b=run_b, n_bootstrap=n_bootstrap, seed=seed)
+    if others:
+        report.unpaired_a += len(others)
+        report.unpaired_b += len(others)
+        report.notes.insert(0, f"{len(others)} customers have the same id in both runs but are different people (the "
+                            "customers were written again between the runs); they are left out of the comparison.")
     report.currency = currencies[0]
     ma, mb = _manifest_or_empty(pid, run_a), _manifest_or_empty(pid, run_b)
     if ma and mb and (ma.get("seed"), ma.get("replicate")) != (mb.get("seed"), mb.get("replicate")):
@@ -518,6 +531,25 @@ def compare_project_runs(
     if ma and mb and ma.get("engine_type") != mb.get("engine_type"):
         report.notes.append("Runs used different engines; the difference mixes engine and layout effects.")
     return report
+
+
+_PERSON_FIELDS = ("identity", "age_group", "gender", "purpose", "intent")   # as a situation or the neighborhood leave them
+
+
+def _people(base: Path) -> dict[str, tuple[object, ...]]:
+    """Who each customer of a run is, by id ({} when the run did not keep its customers)."""
+    path = base / "output" / "personas.json"
+    try:
+        raw: object = read_json(path) if path.exists() else {}
+    except ValueError:
+        return {}
+    people: dict[str, tuple[object, ...]] = {}
+    rows = cast(dict[str, object], raw) if isinstance(raw, dict) else dict[str, object]()
+    for key, row in rows.items():
+        if isinstance(row, dict):
+            fields = cast(dict[str, object], row)
+            people[key] = tuple(fields.get(name) for name in _PERSON_FIELDS)
+    return people
 
 
 def _manifest_or_empty(pid: str, run_id: str) -> dict[str, Any]:

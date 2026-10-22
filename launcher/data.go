@@ -522,12 +522,14 @@ func optional(rel string, dir bool) bool {
 	return filepath.Base(rel) != "metadata.json"
 }
 
-// leftOut is what the copy skips: the llama.cpp runtime (this version fetches its own), downloads cut short (*.part),
-// files caught mid-write (*.tmp-*) and devices, pipes and sockets. Other files Windows marks as special, such as
-// files OneDrive keeps in the cloud (Go reports them as irregular), are read like any file.
+// leftOut is what the copy skips: downloads cut short (*.part), files caught mid-write (*.tmp-*) and devices, pipes
+// and sockets. Other files Windows marks as special, such as files OneDrive keeps in the cloud (Go reports them as
+// irregular), are read like any file. The llama.cpp runtime (local_vlm/bin) comes along with the model: the app
+// starts a local model the user already has without asking, but never downloads one unasked, so a model brought
+// over without its runtime would not start.
 func leftOut(rel string, d fs.DirEntry) bool {
 	if d.IsDir() {
-		return filepath.ToSlash(rel) == "local_vlm/bin"
+		return false
 	}
 	name := d.Name()
 	return d.Type()&(fs.ModeDevice|fs.ModeCharDevice|fs.ModeNamedPipe|fs.ModeSocket) != 0 ||

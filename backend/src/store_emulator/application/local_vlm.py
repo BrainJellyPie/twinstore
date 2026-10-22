@@ -179,6 +179,19 @@ NOT_DOWNLOADED = "not downloaded yet: Start downloads it"
 _COMPLETE = ".complete"
 
 
+def _unpacked_before_marker(target: Path, backend: str) -> bool:
+    """A whole build that versions before 0.4.3 unpacked: they wrote no marker, but removed each archive once it was
+    unpacked (and a download cut short left its .part). Removing it would leave a computer without internet access (a
+    company network) with no local model. Whole: llama-server is there (runnable), no download or archive was left
+    mid-way, and a CUDA build has the CUDA runtime it is fetched with."""
+    if not target.is_dir() or any(p.name.endswith((".part", ".zip", ".tar.gz")) for p in target.iterdir()):
+        return False
+    server = _find_server(target)
+    if server is None or (os.name != "nt" and not os.access(server, os.X_OK)):
+        return False
+    return backend != "cuda" or any("cudart" in p.name for p in target.rglob("*"))
+
+
 class LocalVLMManager:
     def __init__(self, home: Path | None = None, *, opener: Callable[[urllib.request.Request], IO[bytes]] | None = None,
                  hardware: Callable[[], HardwareProfile] = detect_hardware) -> None:
@@ -253,7 +266,8 @@ class LocalVLMManager:
         own = os.environ.get("TWINSTORE_LLAMA_SERVER")
         target = self.home / "bin" / plan.backend
         runtime = bool(own and Path(own).is_file()) or (
-            (target / _COMPLETE).is_file() and _find_server(target) is not None)
+            ((target / _COMPLETE).is_file() or _unpacked_before_marker(target, plan.backend))
+            and _find_server(target) is not None)
         models = self.home / "models" / plan.model.repo.replace("/", "__")
         return runtime and all((models / f).is_file() and (models / f).stat().st_size > 0
                                for f in (plan.model.file, plan.model.mmproj))
@@ -401,7 +415,8 @@ class LocalVLMManager:
             self._set(runtime=own)
             return Path(own)
         target = self.home / "bin" / plan.backend
-        found = _find_server(target) if (target / _COMPLETE).is_file() else None
+        whole = (target / _COMPLETE).is_file() or _unpacked_before_marker(target, plan.backend)
+        found = _find_server(target) if whole else None
         if found is not None:
             self._set(runtime=str(found))
             return found
