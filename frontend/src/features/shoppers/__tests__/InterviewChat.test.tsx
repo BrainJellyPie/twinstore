@@ -106,9 +106,17 @@ it("asks the model for follow-ups once the conversation moves on and sends one w
 });
 
 it("keeps the trip-based questions when no model can write follow-ups", async () => {
-  vi.mocked(getInterview).mockResolvedValue(empty);
+  vi.mocked(getInterview).mockResolvedValue(answered);
   mount();
-  expect(await screen.findByRole("button", { name: "You left without buying anything. What was missing?" })).toBeTruthy();
   await waitFor(() => expect(suggestQuestions).toHaveBeenCalled());
+  expect(await screen.findByRole("button", { name: "You left without buying anything. What was missing?" })).toBeTruthy();
   expect(screen.queryByLabelText("Written for this trip")).toBeNull();
+});
+
+it("opening a shopper's interview calls no model: the trip-based questions start it", async () => {
+  vi.mocked(getInterview).mockResolvedValue(empty);
+  const client = mount();
+  expect(await screen.findByRole("button", { name: "You left without buying anything. What was missing?" })).toBeTruthy();
+  await waitFor(() => expect(client.isFetching()).toBe(0));
+  expect(suggestQuestions).not.toHaveBeenCalled();
 });

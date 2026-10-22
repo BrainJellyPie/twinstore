@@ -83,6 +83,17 @@
   downloaded still starts with no key, without downloading anything.
 - After an update, a browser that kept the previous version's page could show a blank screen or the old app. The page
   is now fetched fresh on every visit.
+- A sample store you deleted came back the next time the app started. It now stays deleted; a new sample store that
+  comes with an update still appears once.
+- Just opening a shopper's interview had the model write opening questions — a paid call for every shopper you looked
+  at. The trip-based questions start an interview now; the model writes follow-ups once you have asked something.
+- One click on the bin deleted a finished marketing study, a shelf photo with its reading and Shelf Lab results, a
+  counterfactual photo or a group interview — all made with model calls. The first click now asks "Delete?"; a second
+  click deletes, and clicking elsewhere cancels.
+- "Regenerate" and "Import" on the neighborhood page replaced the current neighborhood, with the venues you opened or
+  closed and its storefront ratings, without asking. With a neighborhood on the map they now ask first.
+- The sim2real panel in Shelf Lab and the vision-shopper check of a neighborhood venue said nothing about their size
+  before starting; they now show how many vision-model calls or shopper visits they take.
 - "OpenStreetMap download failed: … HTTP Error 502: Bad Gateway": the public map server is often overloaded for a
   few minutes. The download now moves to other Overpass servers and tries once more before giving up, and then says
   the map servers are busy and to try again shortly.

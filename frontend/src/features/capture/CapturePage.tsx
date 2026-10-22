@@ -100,6 +100,8 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
     mutationFn: () => api.deleteCapture(projectId, captureId),
     onSuccess: async () => { await qc.invalidateQueries({ queryKey: capturesKey(projectId) }); onDeleted(); },
   });
+  // The photo, its reading, corrections and Shelf Lab results go with it: the first click asks, the second deletes.
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
   const [tab, setTab] = useState<"planogram" | "lab">("planogram");
   const [draft, setDraft] = useState<LabDraft>(EMPTY_DRAFT);
@@ -157,8 +159,9 @@ function CaptureWorkspace({ projectId, captureId, onDeleted }: { projectId: stri
               + ` · ${result.detector}${result.model ? ` + ${result.model}` : ""}` : ""}
           </span>
           {!processing && (
-            <button type="button" className="flex items-center gap-1 hover:text-destructive disabled:opacity-50" disabled={del.isPending} onClick={() => del.mutate()}>
-              {del.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} {t("studioDelete")}
+            <button type="button" className={cn("flex shrink-0 items-center gap-1 rounded-md px-1 hover:text-destructive disabled:opacity-50", confirmDelete && "bg-destructive text-white hover:text-white")}
+              disabled={del.isPending} onBlur={() => setConfirmDelete(false)} onClick={() => (confirmDelete ? del.mutate() : setConfirmDelete(true))}>
+              {del.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />} {confirmDelete ? t("mkDeleteConfirm") : t("studioDelete")}
             </button>
           )}
         </div>

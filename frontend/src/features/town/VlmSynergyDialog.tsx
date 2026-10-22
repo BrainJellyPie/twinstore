@@ -72,6 +72,8 @@ function Body({ projectId, venue, dayType, scenarioId }: { projectId: string; ve
               onChange={(e) => setCustomers(Math.min(400, Math.max(4, Number(e.target.value) || 4)))} />
             <span className="text-muted-foreground">{t("areaVlmPairedHint")}</span>
           </label>
+          {/* Up to two thirds of the panel are affected visitors, each walked a second time without the venue. */}
+          <p className="text-xs text-muted-foreground">{t("optVlmVisits", { count: customers + Math.ceil((customers * 2) / 3) })}</p>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex justify-end">
             <Button onClick={() => start.mutate()} disabled={start.isPending}>

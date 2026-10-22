@@ -96,6 +96,8 @@ it.each(["generate", "import", "place", "remove"] as const)("keeps a late %s res
   }
   const button = { generate: "Regenerate", import: "Import buildings, shops and roads", place: "Place on map", remove: "Remove on map" }[operation];
   fireEvent.click(screen.getByRole("button", { name: button }));
+  // Replacing the current neighborhood asks first.
+  if (operation === "generate" || operation === "import") fireEvent.click(screen.getByRole("button", { name: "Replace the current neighborhood?" }));
   await waitFor(() => expect(method).toHaveBeenCalledOnce());
   expect(vi.mocked(method).mock.calls[0]![0]).toBe("alpha");
   await go();

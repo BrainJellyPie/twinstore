@@ -101,3 +101,12 @@ it("keeps a displayed result in its own currency when another simulation changes
   await screen.findByText("+₩1,000 / day"); act(() => useSimulationStore.getState().setCurrency("USD"));
   expect(screen.getByText("+₩1,000 / day")).toBeTruthy(); expect(screen.queryByText("+$10.00 / day")).toBeNull();
 });
+
+it("says how many vision-shopper visits a run takes before it starts", () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
+  render(<QueryClientProvider client={client}>
+    <VlmSynergyDialog projectId="p" venue={venue} dayType="weekday" scenarioId={null} onOpenChange={() => {}} />
+  </QueryClientProvider>);
+  expect(screen.getByText(/About 40 shopper visits by the VLM/)).toBeTruthy();   // 24 visitors + 16 affected again
+  expect(api.startVlmSynergy).not.toHaveBeenCalled();
+});
