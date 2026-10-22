@@ -21,7 +21,7 @@ from store_emulator.engine.perception import MarkedItem, ShelfView
 from store_emulator.engine.prompting import display_price
 
 SYSTEM_PROMPT = """You role-play one shopper walking through a convenience store.
-The image is the shelf this shopper is passing right now. Each product shows its name on the package and a yellow price tag "#N price" below it.
+The image is the shelf this shopper is passing right now. Each product shows its photo when available, its name below the photo or on a text card, and a yellow price tag "#N price" below it.
 
 Look at the whole shelf, top to bottom. Pick the ONE product that would most likely catch THIS shopper's eye, then rate how tempted they are to take it right now:
 0 = would walk past, 3 = a passing glance, 6 = would pick it up and look, 9-10 = would definitely grab it.
@@ -49,8 +49,8 @@ def store_kind(store_type: str) -> str:
 
 PHOTO_LINE = (
     "The image has two parts. Top: a photo of the shelf this shopper is passing right now, as they see it from the "
-    'aisle, with a yellow number tag "#N" on each product. Bottom: a chart of the same shelf with each product\'s name '
-    'and a tag "#N price" with the same numbers. Judge what catches the eye from the photo; read names and prices from '
+    'aisle, with a yellow number tag "#N" on each product. Bottom: a chart of the same shelf with each product\'s name, '
+    'an available product photo and a tag "#N price" with the same numbers. Judge what catches the eye from the photo; read names and prices from '
     "the chart."
 )
 
@@ -60,7 +60,7 @@ def glance_system_prompt(store_type: str = "convenience", *, photo: bool = False
     text = SYSTEM_PROMPT.replace("a convenience store", store_kind(store_type), 1)
     if photo:
         text = text.replace(
-            'The image is the shelf this shopper is passing right now. Each product shows its name on the package '
+            'The image is the shelf this shopper is passing right now. Each product shows its photo when available, its name below the photo or on a text card, '
             'and a yellow price tag "#N price" below it.', PHOTO_LINE, 1)
     return text
 
@@ -70,7 +70,7 @@ class ShelfGlance(BaseModel):
     shopper actually buys is a seeded draw from that interest (see VLMGlanceConfig), so
     small models' habit of always answering "yes" cannot set the purchase rate."""
     product: str = Field(default="", max_length=60)
-    number: int = Field(default=0, ge=0, le=99)
+    number: int = Field(default=0, ge=0, le=10000)
     interest: int = Field(default=0, ge=0, le=10)
     reason: str = Field(default="", max_length=80)
 

@@ -21,6 +21,7 @@ from store_emulator.domain.town import DayType, Town, VLMSynergyResult
 from store_emulator.domain.types import RESOURCE_ID_PATTERN, ResourceId
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
+from store_emulator.application.product_images import project_image_loader
 from store_emulator.engine.town.vlm_synergy import vlm_basket_synergy
 
 from .async_executor import executor
@@ -178,7 +179,7 @@ def _run_job(
         request = status.request
         result = asyncio.run(vlm_basket_synergy(
             town, status.venue_id, store, personas,
-            config=config, engine=build_engine(config, llm=llm, pathfinder=pathfinder), pathfinder=pathfinder,
+            config=config, engine=build_engine(config, llm=llm, pathfinder=pathfinder, image_loader=project_image_loader(pid)), pathfinder=pathfinder,
             cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, customers=request.customers,
             day_type=request.day_type,
             model_label=request.model or config.llm_for(EngineType.VLM_GLANCE).model, on_progress=on_progress,

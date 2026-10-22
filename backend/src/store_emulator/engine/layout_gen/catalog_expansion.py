@@ -254,6 +254,18 @@ PACKSHOT_SHEETS = {
         "Wide Tooth Amber Comb", "Travel Neck Pillow Pair", "Embroidery Hoop and Fabric Kit", "Metal Watercolor Tin 12 Colors",
         "Compact Bicycle Headlight", "Clear Storage Box Blue Lid", "Geometric Strategy Board Game", "Refillable Amber Cleaner Spray",
     ],
+    "starter-05": [
+        "Grilled Chicken Rice Bowl", "Margherita Pizza", "Cheddar Cheeseburger", "Vegetable Bibimbap",
+        "Salmon Nigiri 2pc", "Butter Chicken Curry Bowl", "Falafel Pita Wrap", "Chicken Pad Thai Bowl",
+        "Beef Pho Noodle Bowl", "Chicken Doner Wrap", "Classic Pearl Milk Tea", "Orange Juice 350ml",
+        "Grilled Chicken Caesar Salad", "Jasmine Tea Pot", "Chocolate Brownie", "Flat White",
+    ],
+    "starter-06": [
+        "Adhesive Bandages 30pk", "Weekly Pill Organizer", "Classic Round Frame", "Seasonal Flower Bouquet",
+        "Sterling Silver Ring", "Guitar Strings Set", "Claw Hammer", "Windshield Washer Fluid",
+        "Vegetable Seed Pack", "Compact Camping Lantern", "Citrus Eau de Toilette 50ml", "Everyday Canvas Sneakers",
+        "Postcard Set", "Notebook A5", "Rolled Oats Refill 1kg", "Hand Sanitizer 100ml",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

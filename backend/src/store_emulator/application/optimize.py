@@ -22,6 +22,7 @@ from store_emulator.engine.optimize.judge import (
 from store_emulator.engine.optimize.search import optimize
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
+from store_emulator.application.product_images import project_image_loader
 
 from .async_executor import executor
 from .errors import AppError, job_failure
@@ -201,7 +202,7 @@ def _run_job(
             result = asyncio.run(judge_layout_search(
                 store, spec, judge,
                 surrogate_config=config, vlm_config=vlm_config,
-                vlm_engine=build_engine(vlm_config, llm=llm, pathfinder=pathfinder),
+                vlm_engine=build_engine(vlm_config, llm=llm, pathfinder=pathfinder, image_loader=project_image_loader(pid)),
                 # The judge panel is a subset of the search panel, so calibration and search share people.
                 search_personas=search_personas,
                 vlm_personas=select_personas(search_personas, judge.vlm_customers, seed=spec.seed + 2),

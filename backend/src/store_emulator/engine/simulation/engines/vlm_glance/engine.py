@@ -46,6 +46,7 @@ from store_emulator.domain.types import (
     stable_seed,
 )
 from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
+from store_emulator.engine.perception.product_images import ProductImageLoader
 from store_emulator.engine.perception import (
     ShelfView,
     category_label,
@@ -131,9 +132,11 @@ class GlanceRecord:
 class VLMGlanceEngine(RuleBasedEngine):
     engine_type = "vlm_glance"
 
-    def __init__(self, llm: SimLLM, pathfinder: PathFinder, config: SimulationConfig):
+    def __init__(self, llm: SimLLM, pathfinder: PathFinder, config: SimulationConfig,
+                 image_loader: ProductImageLoader | None = None):
         super().__init__(pathfinder, config)
         self._llm = llm
+        self._image_loader = image_loader
         self._log_lock = threading.Lock()
         self.glance_log: list[GlanceRecord] = []
         self.plan_log: list[PlanRecord] = []
@@ -408,7 +411,8 @@ class VLMGlanceEngine(RuleBasedEngine):
             if vcfg.glance_policy == "gated" and look_u >= look_p:
                 continue
             marks_rng = random.Random(stable_seed(context.seed, "marks", rack.id, face.value)) if vcfg.shuffle_marks else None
-            view = render_face(rack, face, currency=cfg.currency, width=vcfg.image_width, rng=marks_rng)
+            view = render_face(rack, face, currency=cfg.currency, width=vcfg.image_width, rng=marks_rng,
+                               image_loader=self._image_loader)
             if not view.items:
                 continue
             shown = "chart"

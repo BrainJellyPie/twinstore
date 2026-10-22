@@ -25,6 +25,7 @@ from PIL import Image, ImageDraw, ImageFont
 from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType, Slot, SlotItem
 from store_emulator.domain.types import Face
 from store_emulator.engine.prompting import display_price
+from store_emulator.engine.perception.product_images import ProductImageLoader, default_product_image
 
 type _Font = ImageFont.FreeTypeFont | ImageFont.ImageFont
 
@@ -143,19 +144,6 @@ def wrap_text(draw: ImageDraw.ImageDraw, text: str, font: _Font, width: int, max
     return lines
 
 
-@cache
-def _package_image(url: str) -> Image.Image | None:
-    """A package image a slot item points to with a file:// URI (marketing tests of new packaging)."""
-    if not url.startswith("file://"):
-        return None
-    path = Path(url.removeprefix("file://"))
-    if not path.is_file():
-        return None
-    img = Image.open(path)
-    img.load()
-    return img.convert("RGBA")
-
-
 def render_face(
     rack: Rack,
     face: Face,
@@ -164,6 +152,7 @@ def render_face(
     width: int = 768,
     rng: random.Random | None = None,
     number_on_tag: bool = True,
+    image_loader: ProductImageLoader | None = None,
 ) -> ShelfView:
     """Render a rack face. With `rng`, badge numbers are a random permutation of 1..N.
 
@@ -171,19 +160,26 @@ def render_face(
     read text far more reliably than they localize a badge, so this ties number, name
     and price together on the line the model actually reads.
     """
-    rows = face_slots(rack, face)
-    flat = [entry for row in rows for entry in row]
+    if width < 128:
+        raise ValueError("Shelf charts need a width of at least 128 pixels")
+    shelf_rows = face_slots(rack, face)
+    flat = [entry for row in shelf_rows for entry in row]
     marks = list(range(1, len(flat) + 1))
     if rng is not None:
         rng.shuffle(marks)
 
-    columns = max(1, max((len(r) for r in rows), default=1))
     margin, frame, header = 14, 10, 46
     inner_w = width - 2 * margin - 2 * frame
+    max_columns = max(1, inner_w // 120)
+    rows = [(RACK_LEVELS - level, row[start:start + max_columns])
+            for level, row in enumerate(shelf_rows)
+            for start in range(0, max(1, len(row)), max_columns)]
+    columns = max(1, max((len(row) for _, row in rows), default=1))
     cell_w = inner_w // columns
-    pkg_h = min(170, int(cell_w * 0.78))
-    tag_h = max(26, cell_w // 6)
-    row_h = pkg_h + tag_h + 10
+    pkg_h = max(100, min(170, int(cell_w * 0.78)))
+    tag_h = max(44 if any(item.regular_price > item.price for _, item in flat) else 26, cell_w // 6)
+    level_h = 18
+    row_h = level_h + pkg_h + tag_h + 10
     height = margin * 2 + header + frame * 2 + row_h * len(rows)
 
     fridge = rack.type == RackType.FRIDGE
@@ -212,8 +208,9 @@ def render_face(
     top = body[1] + frame
     left = body[0] + frame
     index = 0
-    for r, row in enumerate(rows):
-        y0 = top + r * row_h
+    for r, (level, row) in enumerate(rows):
+        y0 = top + r * row_h + level_h
+        draw.text((left + 4, y0 - level_h), f"Level {level}", font=load_font(12), fill=(65, 65, 65))
         board_y = y0 + 6 + pkg_h
         # Shelf board with the price-tag strip.
         draw.rectangle((left, board_y, left + inner_w, board_y + tag_h), fill=(250, 250, 248) if fridge else (245, 240, 230))
@@ -225,14 +222,18 @@ def render_face(
             x0 = left + c * cell_w + 6
             x1 = left + (c + 1) * cell_w - 6
             color = _package_color(item.name)
-            package = _package_image(item.image_url) if item.image_url else None
+            package = (image_loader or default_product_image)(item)
             if package is not None:
                 # The product's own package art, standing on the shelf; its name stays readable underneath.
                 art = package.copy()
-                art.thumbnail((x1 - x0 - 8, pkg_h - name_size - 14))
-                img.paste(art, ((x0 + x1) // 2 - art.width // 2, board_y - name_size - 8 - art.height), art)
-                name = wrap_text(draw, item.name, name_font, x1 - x0 - 8, max_lines=1)[0]
-                draw.text(((x0 + x1) // 2, board_y - name_size - 5), name, font=name_font, fill=(30, 30, 34), anchor="mt")
+                caption_h = (name_size + 3) * 2 + 6
+                art.thumbnail((max(1, x1 - x0 - 8), max(1, pkg_h - caption_h - 8)))
+                art = art.convert("RGBA")
+                img.paste(art, ((x0 + x1) // 2 - art.width // 2, board_y - caption_h - art.height), art)
+                names = wrap_text(draw, item.name or item.sku, name_font, x1 - x0 - 8, max_lines=2)
+                for line, name in enumerate(names):
+                    draw.text(((x0 + x1) // 2, board_y - caption_h + 3 + line * (name_size + 3)), name,
+                              font=name_font, fill=(30, 30, 34), anchor="mt")
             else:
                 draw.rounded_rectangle((x0, y0 + 6, x1, board_y - 2), radius=10, fill=color, outline=(40, 40, 40), width=2)
                 lines = wrap_text(draw, item.name, name_font, x1 - x0 - 14, max_lines=4)
@@ -241,22 +242,31 @@ def render_face(
                 for i, line in enumerate(lines):
                     draw.text(((x0 + x1) // 2, ty + i * line_h), line, font=name_font, fill=text_color(color), anchor="mt")
             if item.promo:
-                ribbon = item.promo.strip()[:12].upper()
-                rw = int(draw.textlength(ribbon, font=promo_font)) + 12
+                ribbon = wrap_text(draw, item.promo.strip()[:12].upper(), promo_font, x1 - x0 - 14, max_lines=1)
+                ribbon_text = ribbon[0] if ribbon else ""
+                rw = min(x1 - x0, int(draw.textlength(ribbon_text, font=promo_font)) + 12)
                 draw.rectangle((x1 - rw, y0 + 8, x1 - 2, y0 + 8 + promo_size + 6), fill=(214, 32, 39))
-                draw.text((x1 - rw // 2 - 1, y0 + 11), ribbon, font=promo_font, fill=(255, 255, 255), anchor="mt")
+                draw.text((x1 - rw // 2 - 1, y0 + 11), ribbon_text, font=promo_font, fill=(255, 255, 255), anchor="mt")
             # Price tag on the shelf edge.
             price = display_price(item.price, currency)
-            if item.regular_price > item.price:
-                price = f"{price} (was {display_price(item.regular_price, currency)})"
             if number_on_tag:
                 price = f"#{mark}  {price}"
-            pw = int(draw.textlength(price, font=price_font)) + 14
+            tag_font = price_font
+            for size in range(max(13, min(20, tag_h - 8)), 9, -1):
+                tag_font = load_font(size, bold=True)
+                if draw.textlength(price, font=tag_font) <= x1 - x0 - 6:
+                    break
+            price = wrap_text(draw, price, tag_font, x1 - x0 - 6, max_lines=1)[0]
+            pw = min(x1 - x0, int(draw.textlength(price, font=tag_font)) + 8)
             px = (x0 + x1) // 2 - pw // 2
             draw.rectangle((px, board_y + 3, px + pw, board_y + tag_h - 3), fill=(255, 221, 64), outline=(60, 60, 60))
-            draw.text(((x0 + x1) // 2, board_y + tag_h // 2), price, font=price_font, fill=(0, 0, 0), anchor="mm")
+            discounted = item.regular_price > item.price
+            draw.text(((x0 + x1) // 2, board_y + (14 if discounted else tag_h // 2)), price, font=tag_font, fill=(0, 0, 0), anchor="mm")
+            if discounted:
+                previous = wrap_text(draw, f"was {display_price(item.regular_price, currency)}", load_font(10), x1 - x0 - 6, max_lines=1)[0]
+                draw.text(((x0 + x1) // 2, board_y + 31), previous, font=load_font(10), fill=(40, 40, 40), anchor="mm")
             # Number badge.
-            rad = max(13, mark_size - 2)
+            rad = max(13, mark_size - 2, int(draw.textlength(str(mark), font=mark_font) / 2) + 4)
             cx, cy = x0 + rad - 2, y0 + rad + 2
             draw.ellipse((cx - rad, cy - rad, cx + rad, cy + rad), fill=(0, 0, 0), outline=(255, 255, 255), width=2)
             draw.text((cx, cy), str(mark), font=mark_font, fill=(255, 255, 255), anchor="mm")

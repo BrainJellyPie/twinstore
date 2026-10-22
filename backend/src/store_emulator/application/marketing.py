@@ -76,6 +76,7 @@ from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_pers
 from store_emulator.engine.prompting import display_price
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
+from store_emulator.application.product_images import project_image_loader
 from store_emulator.engine.files import remove_tree
 
 from .async_executor import executor
@@ -229,7 +230,7 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 if req.model:
                     run_config = with_engine_model(run_config, req.model)
                 llm = build_client(run_config.llm_for(EngineType.VLM_GLANCE), run_config.ensemble)
-                engine = build_engine(run_config, llm=llm, pathfinder=pathfinder)
+                engine = build_engine(run_config, llm=llm, pathfinder=pathfinder, image_loader=project_image_loader(pid))
                 model = req.model or run_config.llm_for(EngineType.VLM_GLANCE).model
             evaluator = LayoutEvaluator(run_config, panel, sample_cue, BEHAVIOR_PATTERNS, pathfinder,
                                         OptimizeObjective.REVENUE_PER_VISITOR, engine=engine)
@@ -548,7 +549,7 @@ def preview_shelf(pid: str, req: ShelfPreviewRequest, config: SimulationConfig) 
     rack, test_rack, face, applied, warnings, currency = _shelf_arms(pid, req, config)
 
     def url(r: Rack) -> str:
-        return "data:image/png;base64," + base64.b64encode(render_face(r, face, currency=currency, width=640, number_on_tag=False).png).decode()
+        return "data:image/png;base64," + base64.b64encode(render_face(r, face, currency=currency, width=640, number_on_tag=False, image_loader=project_image_loader(pid)).png).decode()
 
     return ShelfPreview(face=face.value, control=url(rack), test=url(test_rack), applied=applied, warnings=warnings)
 
@@ -575,9 +576,9 @@ def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) 
         _write_status(pid, status)
         try:
             for arm, arm_rack in (("control", rack), ("test", test_rack)):
-                png = render_face(arm_rack, face, currency=currency, width=900, number_on_tag=False).png
+                png = render_face(arm_rack, face, currency=currency, width=900, number_on_tag=False, image_loader=project_image_loader(pid)).png
                 (_job_dir(pid, "shelf", status.job_id) / f"{arm}.png").write_bytes(png)
-            choices = asyncio.run(shelf_panel(LiteLLMClient(llm_config), respondents, rack, test_rack, face, currency=currency, seed=req.seed))
+            choices = asyncio.run(shelf_panel(LiteLLMClient(llm_config), respondents, rack, test_rack, face, currency=currency, seed=req.seed, image_loader=project_image_loader(pid)))
             ok = [c for c in choices if not c.error]
             paired_ids = {c.respondent for c in ok if c.arm == "control"} & {c.respondent for c in ok if c.arm == "test"}
             if not paired_ids:

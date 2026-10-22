@@ -45,6 +45,7 @@ from store_emulator.engine.interview import (
     suggest_group_questions as engine_group_questions,
 )
 from store_emulator.engine.perception.shelf_render import render_face
+from store_emulator.application.product_images import project_image_loader
 
 from .errors import AppError, model_failure
 from .providers import answered_by, assistive_client, assistive_model
@@ -88,13 +89,12 @@ def _load(pid: str, run_id: str) -> tuple[dict[str, CustomerResult], dict[str, P
     return _run_data(str(base), (base / "output" / "timeline.json").stat().st_mtime)
 
 
-@lru_cache(maxsize=64)
-def _face_png(base: str, mtime: float, rack_id: str, face: str) -> bytes:
+def _face_png(base: str, mtime: float, rack_id: str, face: str, pid: str) -> bytes:
     _, _, store, currency = _run_data(base, mtime)
     rack = next((r for r in store.racks if r.id == rack_id), None)
     if rack is None:
         raise AppError(f"rack not in this run: {rack_id}", 404)
-    return render_face(rack, Face(face), currency=currency, width=640, number_on_tag=False).png
+    return render_face(rack, Face(face), currency=currency, width=640, number_on_tag=False, image_loader=project_image_loader(pid)).png
 
 
 def shelf_face_png(pid: str, run_id: str, rack_id: str, face: str) -> bytes:
@@ -103,7 +103,7 @@ def shelf_face_png(pid: str, run_id: str, rack_id: str, face: str) -> bytes:
     if face not in ("N", "S", "E", "W"):
         raise AppError(f"invalid face: {face}", 400)
     base = _run_dir(pid, run_id)
-    return _face_png(str(base), (base / "output" / "timeline.json").stat().st_mtime, rack_id, face)
+    return _face_png(str(base), (base / "output" / "timeline.json").stat().st_mtime, rack_id, face, pid)
 
 
 def get_journey(pid: str, run_id: str, persona_id: str) -> Journey:

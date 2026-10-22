@@ -46,3 +46,11 @@ it("keeps frozen meals flat and art supplies out of drink classification", () =>
   for (const url of ["/api/catalog-images/starter-03/14.webp", "/api/catalog-images/starter-04/11.webp"])
     expect(classifyProduct("Watercolor Paint", url)).toMatchObject({ kind: "box", category: "other" });
 });
+
+it.each([
+  ["starter-05", ["cup", "box", "box", "cup", "box", "cup", "bag", "cup", "cup", "bag", "teaCup", "bottle", "cup", "pot", "box", "cup"]],
+  ["starter-06", ["box", "box", "box", "bag", "box", "box", "box", "bottle", "bag", "tube", "perfumeBottle", "box", "box", "box", "bag", "bottle"]],
+] as const)("keeps menu and specialty photos attached to their package for %s", (sheet, kinds) => {
+  for (const [index, kind] of kinds.entries())
+    expect(classifyProduct("이름을 바꾼 상품", `/api/catalog-images/${sheet}/${index}.webp`).kind).toBe(kind);
+});

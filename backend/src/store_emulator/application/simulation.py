@@ -27,6 +27,8 @@ from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.movement import read_movement, score_movement
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.application.runner import build_runner
+from store_emulator.application.product_images import project_image_loader
+from store_emulator.engine.perception.product_images import ProductImageLoader
 from store_emulator.application.scenarios import get_preset, prepare_inputs
 from store_emulator.application.town import get_town, town_visitors
 from store_emulator.domain.town import TownArrival
@@ -134,6 +136,7 @@ async def run_simulation(
     address: str = "",
     customer_profile: str = "",
     on_progress: ProgressCallback | None = None,
+    image_loader: ProductImageLoader | None = None,
 ) -> tuple[AggregatedResult, list[CustomerResult], SimulationRunner]:
     """Run a simulation and return (aggregated, per-customer results, runner).
 
@@ -141,7 +144,7 @@ async def run_simulation(
     ``get_engine_metadata()``.
     """
     config = config.model_copy(update={"currency": store.currency or config.currency})
-    runner = build_runner(config)
+    runner = build_runner(config) if image_loader is None else build_runner(config, image_loader=image_loader)
     aggregated, customers = await runner.run(
         store, personas,
         max_concurrent=max_concurrent,
@@ -291,7 +294,7 @@ def run_simulation_background(
         aggregated, customers, runner = asyncio.run(
             run_simulation(config, store, personas,
                            address=address, customer_profile=customer_profile,
-                           on_progress=on_progress),
+                           on_progress=on_progress, image_loader=project_image_loader(pid)),
         )
         failed = aggregated.diagnostics.failed_customers
         if not customers and failed:

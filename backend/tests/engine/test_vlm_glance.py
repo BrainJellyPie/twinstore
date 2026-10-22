@@ -186,3 +186,35 @@ def test_glances_spread_over_the_equally_seen_faces_of_each_route():
 
     assert len({(r, f) for _, r, f in faces(shuffled)}) > len({(r, f) for _, r, f in faces(by_rack)})
     assert faces(shuffled) == faces(again)  # the draw is seeded per shopper, so runs repeat exactly
+
+
+def test_vlm_receives_product_pixels_in_its_numbered_grid():
+    import base64
+    class PhotoVLM(_ScriptedVLM):
+        def __init__(self):
+            super().__init__()
+            self.images = []
+        async def generate_structured_with_image_async(self, response_model, system_prompt, user_prompt, image_url, **kwargs):
+            self.images.append(Image.open(io.BytesIO(base64.b64decode(image_url.split(',', 1)[1]))).convert('RGB'))
+            assert 'photo when available' in system_prompt
+            return await super().generate_structured_with_image_async(response_model, system_prompt, user_prompt, image_url, **kwargs)
+    store = _store()
+    for rack in store.racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                item.image_url = '/project-photo.png'
+    photo = Image.new('RGBA', (70, 100), (17, 203, 171, 255))
+    requested = []
+    def loader(item):
+        requested.append(item.sku)
+        return photo if item.image_url == '/project-photo.png' else None
+    vlm = PhotoVLM()
+    engine = VLMGlanceEngine(llm=vlm, pathfinder=AStarPathFinder(), config=_config(), image_loader=loader)
+    for i, persona in enumerate(_personas()[:8]):
+        asyncio.run(engine.decide_actions(_context(store, persona, seed=1000 + i)))
+        if vlm.images:
+            break
+    assert vlm.images and requested
+    assert all(sum(p == (17, 203, 171) for p in image.get_flattened_data()) > 100 for image in vlm.images)
+    skus = {item.sku for rack in store.racks for slot in rack.slots for item in slot.items}
+    assert all(r.resolved_sku in skus for r in engine.glance_log if r.resolved_sku)

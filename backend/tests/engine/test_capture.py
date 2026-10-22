@@ -56,12 +56,12 @@ from store_emulator.engine.validation import list_blocked_faces, validate
 
 
 def _scene(template: str = "urban_cvs", rack_index: int = 2, *, seed: int = 7, severity: str = "mild",
-           currency: str = "USD", blocks: int = 1) -> SyntheticShelf:
+           currency: str = "USD", blocks: int = 1, width: int | None = None) -> SyntheticShelf:
     store = generate_store(template, seed=1, currency=currency)
     racks = [r for r in store.racks if r.slots]
     rack = racks[rack_index]
     return make_scene(rack, rack.slots[0].face, currency=currency, seed=seed, severity=severity,  # type: ignore[arg-type]
-                      blocks=blocks, columns=4 * blocks, width=768 if blocks == 1 else 1280)
+                      blocks=blocks, columns=4 * blocks, width=width or (768 if blocks == 1 else 1280))
 
 
 def _iou(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
@@ -85,9 +85,10 @@ def _matches(preds: list[tuple[float, float, float, float]], gts: list[tuple[flo
     return len(used_p)
 
 
-def test_synthetic_geometry_matches_renderer() -> None:
+@pytest.mark.parametrize("blocks,width", [(1, 128), (1, 768), (2, 768), (2, 1280), (4, 768)])
+def test_synthetic_geometry_matches_renderer(blocks: int, width: int) -> None:
     """Ground-truth boxes sit exactly on the rendered packages (dark outline on the left edge)."""
-    scene = _scene(severity="clean")
+    scene = _scene(severity="clean", blocks=blocks, width=width)
     px = scene.image.load()
     assert px is not None
     for f in scene.facings:

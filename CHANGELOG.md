@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Vision shoppers now see available product photos together with names, numbered badges and prices in
+  the shelf grid. Bundled, uploaded and reviewed library photos resolve locally. Dense shelves wrap within
+  labeled levels; missing or corrupt pictures retain text cards. Shelf tests and interview previews use
+  the same renderer, including project photos. Extend the bundled photo catalog from 64 to 96 images.
+
 - Expand the starter catalog by 192 products across 16 specialty categories, reaching 1,016 products in
   91 categories. Add 32 local photos for apparel, books, pets, hobbies and specialty merchandise (64 total).
   Automatic selection sees image availability while retaining store requirements and exact SKU validation.

@@ -79,11 +79,11 @@ def _geometry(columns: int, width: int) -> _Geometry:
     margin, frame, header = 14, 10, 46
     inner_w = width - 2 * margin - 2 * frame
     cell_w = inner_w // columns
-    pkg_h = min(170, int(cell_w * 0.78))
+    pkg_h = max(100, min(170, int(cell_w * 0.78)))
     tag_h = max(26, cell_w // 6)
     return _Geometry(
-        columns=columns, cell_w=cell_w, pkg_h=pkg_h, tag_h=tag_h, row_h=pkg_h + tag_h + 10,
-        top=margin + header + frame, left=margin + frame, mark_size=max(14, min(20, cell_w // 8)),
+        columns=columns, cell_w=cell_w, pkg_h=pkg_h, tag_h=tag_h, row_h=18 + pkg_h + tag_h + 10,
+        top=margin + header + frame + 18, left=margin + frame, mark_size=max(14, min(20, cell_w // 8)),
     )
 
 
@@ -155,10 +155,14 @@ def _sample(img: Image.Image, x: float, y: float) -> tuple[int, int, int]:
 def render_scene(
     rack: Rack, face: Face, gaps: list[list[bool]], *, currency: str, width: int = 768,
 ) -> SyntheticShelf:
-    view = render_face(rack, face, currency=currency, width=width, number_on_tag=False)
-    img = Image.open(io.BytesIO(view.png)).convert("RGB")
     rows = face_slots(rack, face)
     columns = max(1, max((len(r) for r in rows), default=1))
+    # Capture benchmarks model four physical shelves, without wrapping the chart's rows.
+    width = max(width, columns * 120 + 48)
+    # Their colour oracle and exact box outlines require synthetic packages rather than photos.
+    view = render_face(rack, face, currency=currency, width=width, number_on_tag=False,
+                       image_loader=lambda item: None)
+    img = Image.open(io.BytesIO(view.png)).convert("RGB")
     g = _geometry(columns, width)
     draw = ImageDraw.Draw(img)
     fridge = rack.type == RackType.FRIDGE

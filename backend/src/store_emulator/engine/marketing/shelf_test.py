@@ -6,6 +6,7 @@ compared pair by pair (paired bootstrap over respondents).
 
 import asyncio
 import random
+from store_emulator.engine.perception.product_images import ProductImageLoader
 from collections.abc import Callable, Sequence
 from typing import Literal, Protocol
 
@@ -38,9 +39,9 @@ class ShelfAnswer(BaseModel):
     why: str = Field(default="", max_length=240)
 
 
-def render_arm(rack: Rack, face: Face, currency: str, seed: int) -> ShelfView:
+def render_arm(rack: Rack, face: Face, currency: str, seed: int, image_loader: ProductImageLoader | None = None) -> ShelfView:
     """The face with badge numbers shuffled per respondent, so no position wins by its number."""
-    return render_face(rack, face, currency=currency, width=900, rng=random.Random(seed))
+    return render_face(rack, face, currency=currency, width=900, rng=random.Random(seed), image_loader=image_loader)
 
 
 async def shelf_panel(
@@ -53,12 +54,13 @@ async def shelf_panel(
     currency: str = "USD",
     seed: int = 0,
     max_concurrent: int = 6,
+    image_loader: ProductImageLoader | None = None,
 ) -> list[ShelfChoice]:
     sem = asyncio.Semaphore(max_concurrent)
 
     async def ask(p: Persona, arm: Literal["control", "test"], rack: Rack) -> ShelfChoice:
         base = ShelfChoice(respondent=p.id, age_group=str(p.age_group), gender=str(p.gender), arm=arm)
-        view = render_arm(rack, face, currency, stable_seed("shelf-marks", seed, p.id))
+        view = render_arm(rack, face, currency, stable_seed("shelf-marks", seed, p.id), image_loader)
         user = (f"{persona_text(p, currency)}\n\nYou are at the {rack.rack_name or 'shelf'}. Which products catch your eye first "
                 "(up to three badge numbers, in order), and which one product would you take (its number, or 0 for none)? Why, in one sentence?")
         async with sem:
