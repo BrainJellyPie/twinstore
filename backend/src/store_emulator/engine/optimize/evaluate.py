@@ -57,11 +57,20 @@ def objective_value(objective: OptimizeObjective, summary: SimulationSummary) ->
 
 
 def select_personas(personas: list[Persona], n: int, *, seed: int = 0) -> list[Persona]:
-    """Deterministic subsample of `n` personas, kept in input order (all of them when n >= len)."""
+    """Deterministic subsample of `n` personas, kept in input order (all of them when n >= len).
+
+    Customers the model wrote come before their twins (copies filling a day to its visitors): a study panel of
+    twins counts the same person as independent respondents (100 picked from a quick-sample store held 63 people).
+    """
     if n >= len(personas):
         return list(personas)
     rng = random.Random(stable_seed("optimize-personas", seed, n, len(personas)))
-    keep = set(rng.sample(range(len(personas)), n))
+    written = [i for i, p in enumerate(personas) if not p.twin_of]
+    if len(written) == len(personas) or n <= len(written):
+        keep = set(rng.sample(written, n))   # the same draw as before when nobody is a twin
+    else:
+        twins = [i for i, p in enumerate(personas) if p.twin_of]
+        keep = set(written) | set(rng.sample(twins, n - len(written)))
     return [p for i, p in enumerate(personas) if i in keep]
 
 

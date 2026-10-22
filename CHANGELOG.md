@@ -60,6 +60,15 @@
 - Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
+### Fixes
+- Deleting a layout that had a final run unlocked the customers: they could be edited or written again while the
+  run still used them, and comparisons then paired different people under the same ids. A final run on disk keeps
+  them locked, and the store still shows as simulated.
+- A restart between a final run finishing and its layout being locked left the layout an editable draft; it is
+  locked on start-up.
+- Concept, shelf, conjoint and staff-script panels drawn from a quick-sample store counted a written customer's
+  copies as separate respondents (100 picked held 63 people); written customers come first.
+
 ## 0.4.6 — the whole app in your language; neighborhood and Shelf Lab fixes
 
 ### The whole app in your language

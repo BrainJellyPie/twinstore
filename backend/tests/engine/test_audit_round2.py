@@ -104,3 +104,22 @@ def test_a_weekend_scenario_is_not_counted_twice_on_the_neighborhoods_weekend_pr
     # On the weekend profile only the heat is applied; on a weekday profile the weekend's effect is applied too.
     assert _scenario_traffic(weekend, store, None, profile="weekend") == _scenario_traffic(as_weekday, store, None)
     assert _scenario_traffic(weekend, store, None, profile="weekday") == _scenario_traffic(weekend, store, None)
+
+
+def test_a_study_panel_takes_written_customers_before_their_twins():
+    from store_emulator.domain.persona import Persona
+    from store_emulator.domain.types import Weekday
+    from store_emulator.engine.optimize.evaluate import select_personas
+
+    def person(i: int, twin_of: str = "") -> Persona:
+        return Persona(id=f"P{i}", day=Weekday(1), arrival_hour=9, identity="s", age_group="20s", gender="Female",  # type: ignore[arg-type]
+                       description=f"d{i % 100}", intent="i", purpose="p", twin_of=twin_of)
+
+    written = [person(i) for i in range(100)]
+    pool = written + [person(100 + i, twin_of=f"P{i % 100}") for i in range(2340)]
+    panel = select_personas(pool, 100, seed=1)
+    assert len(panel) == 100 and not any(p.twin_of for p in panel)
+    bigger = select_personas(pool, 150, seed=1)
+    assert sum(not p.twin_of for p in bigger) == 100 and len(bigger) == 150
+    # Without twins the draw is the one it always was.
+    assert select_personas(written, 30, seed=2) == select_personas(list(written), 30, seed=2)

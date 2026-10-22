@@ -161,11 +161,42 @@ def recover_running_setups() -> int:
                     raise ValueError("setup must be an object")
                 data = cast(dict[str, object], raw)
                 if data.get("status") == "running":
-                    data["status"] = "draft"
+                    # A final run that completed just before the restart locks its layout, as it would have.
+                    finished = [run for run, setup in final_runs(proj_dir.name) if setup == sf.stem]
+                    if finished:
+                        data["status"], data["runId"] = "locked", finished[-1]
+                    else:
+                        data["status"] = "draft"
                     data["updated_at"] = now_iso()
                     write_json(sf, data)
                     recovered += 1
-                    logger.info(f"[recovery] {proj_dir.name}/{sf.stem}: running → draft")
+                    logger.info(f"[recovery] {proj_dir.name}/{sf.stem}: running → {data['status']}")
             except (OSError, ValueError) as exc:
                 logger.warning("Could not recover setup %s: %s", sf, exc)
     return recovered
+
+
+def final_runs(project_id: str) -> list[tuple[str, str]]:
+    """(run id, layout id) of the project's completed final (not preview) runs, oldest first. They fix the
+    customers: regenerated ones would reuse ids (M1001…) and pair with different people in comparisons."""
+    runs = Path(DATA_DIR) / project_id / "runs"
+    found: list[tuple[str, str, str]] = []
+    if not runs.is_dir():
+        return []
+    for run in runs.iterdir():
+        try:
+            raw: object = read_json(run / "status.json")
+        except (OSError, ValueError):
+            continue
+        if not isinstance(raw, dict):
+            continue
+        status = cast(dict[str, object], raw)
+        if status.get("status") == "completed" and status.get("preview") is not True:
+            when = status.get("finished_at") or status.get("created_at") or ""
+            found.append((str(when), run.name, str(status.get("setup_id") or "")))
+    return [(run, setup) for _, run, setup in sorted(found)]
+
+
+def has_run_history(project_id: str) -> bool:
+    """A layout finalized by a run, or a final run on disk (its layout may have been deleted since)."""
+    return any(s.get("runId") for s in list_setups(project_id)) or bool(final_runs(project_id))
