@@ -12,6 +12,7 @@ import type { JudgeSpec, OptimizeAlgorithm, OptimizeObjective, OptimizeScope, Op
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { formatPercent } from "@/shared/utils/money";
@@ -41,18 +42,24 @@ const DEFAULT_SPEC: OptimizeSpec = {
 };
 
 export function OptimizeDialog({
-  open, onOpenChange, projectId, setupId,
-}: { open: boolean; onOpenChange: (o: boolean) => void; projectId: string; setupId: string }) {
+  open, onOpenChange, projectId, setupId, goalPrefill,
+}: {
+  open: boolean; onOpenChange: (o: boolean) => void; projectId: string; setupId: string;
+  /** A goal routed from the command palette: filled in and read once. */
+  goalPrefill?: { id: number; text: string };
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[720px]">
-        <OptimizeBody projectId={projectId} setupId={setupId} onClose={() => onOpenChange(false)} />
+        <OptimizeBody projectId={projectId} setupId={setupId} goalPrefill={goalPrefill} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setupId: string; onClose: () => void }) {
+function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
+  projectId: string; setupId: string; goalPrefill?: { id: number; text: string }; onClose: () => void;
+}) {
   const [spec, setSpec] = useState<OptimizeSpec>(DEFAULT_SPEC);
   const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -75,6 +82,39 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
       else if (members.some((member) => !Number.isFinite(member.weight) || member.weight <= 0)) modelError = "Every ensemble weight must be a positive finite number.";
     }
   }
+
+  // The goal in words sets the objective, what may change, the move limit and the locked shelves.
+  const [goal, setGoal] = useState("");
+  const [goalRead, setGoalRead] = useState<{ text: string; goal: api.OptimizeGoal } | null>(null);
+  const reader = useMutation({
+    mutationFn: (text: string) => api.readOptimizeGoal(projectId, setupId, text.trim()),
+    onSuccess: (g, text) => {
+      setGoalRead({ text, goal: g });
+      setSpec((s) => ({
+        ...s, objective: g.objective, scope: g.scope,
+        constraints: {
+          ...s.constraints,
+          ...(g.max_moves != null ? { max_moves: g.max_moves } : {}),
+          ...(g.keep_fridges_on_walls != null ? { keep_fridges_on_walls: g.keep_fridges_on_walls } : {}),
+          ...(g.min_improvement != null ? { min_improvement: g.min_improvement } : {}),
+          lock_rack_ids: g.lock_rack_ids,
+        },
+      }));
+    },
+  });
+  const queueGoal = useQueuedStart(reader.mutate);
+  const [goalHandled, setGoalHandled] = useState<number | null>(null);
+  const prefillId = goalPrefill?.id;
+  const prefillText = goalPrefill?.text;
+  useEffect(() => {
+    if (prefillId === undefined || !prefillText || goalHandled === prefillId) return;
+    setGoalHandled(prefillId);
+    const text = Array.from(prefillText).slice(0, 600).join("");
+    setGoal(text);
+    queueGoal(text);
+  }, [prefillId, prefillText, goalHandled, queueGoal]);
+  const goalShown = goalRead?.text === goal ? goalRead.goal : null;
+  const goalLength = Array.from(goal.trim()).length;
 
   const start = useMutation({
     mutationFn: () => api.startOptimization(projectId, setupId, spec, scenarioId, judge.judge === "vlm" ? {
@@ -105,6 +145,33 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
 
       {!jobId && (
         <div className="space-y-3 text-sm">
+          <div className="space-y-1.5 rounded-lg bg-muted/60 p-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="ml-0.5 size-4 shrink-0 text-primary" aria-hidden />
+              <Input value={goal} onChange={(e) => setGoal(Array.from(e.target.value).slice(0, 600).join(""))}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && goalLength >= 5 && !reader.isPending) { e.preventDefault(); reader.mutate(goal); } }}
+                placeholder="Goal, e.g. more impulse sales, keep the fridges where they are, at most 5 changes"
+                aria-label="Optimization goal" className="h-8 min-w-0 flex-1 bg-background text-xs" />
+              <Button type="button" size="sm" variant="outline" className="h-8 text-xs" disabled={goalLength < 5 || reader.isPending} onClick={() => reader.mutate(goal)}>
+                {reader.isPending ? <Loader2 className="size-3.5 animate-spin" /> : "Set up"}
+              </Button>
+            </div>
+            {reader.error && <p role="alert" className="text-xs text-destructive">{reader.error.message}</p>}
+            {goalShown && (
+              <div className="space-y-0.5 text-xs text-muted-foreground">
+                <p>{goalShown.rationale} Check the settings below before starting.</p>
+                {goalShown.warnings.map((w) => <p key={w}>· {w}</p>)}
+              </div>
+            )}
+          </div>
+          {spec.constraints.lock_rack_ids.length > 0 && (
+            <p className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground">Locked shelves:</span>
+              <span>{goalRead?.goal.locked.join(", ") || `${spec.constraints.lock_rack_ids.length} shelf(s)`}</span>
+              <button type="button" className="text-primary hover:underline"
+                onClick={() => setSpec({ ...spec, constraints: { ...spec.constraints, lock_rack_ids: [] } })}>Unlock all</button>
+            </p>
+          )}
           <label className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">Improve</span>
             <select className="h-8 rounded-md border bg-background px-2" value={spec.objective} onChange={(e) => setSpec({ ...spec, objective: e.target.value as OptimizeObjective })}>

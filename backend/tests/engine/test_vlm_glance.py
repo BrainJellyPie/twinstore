@@ -64,11 +64,11 @@ class _ScriptedVLM:
         return TokenUsage(requests=len(self.calls))
 
 
-def _config(policy: str = "all") -> SimulationConfig:
+def _config(policy: str = "all", order: str = "shuffle") -> SimulationConfig:
     cfg = SimulationConfig(engine_type=EngineType.VLM_GLANCE)
     # Glance-only behavior: the rule planner decides the planned purchases (VLM planning: test_vlm_plan.py).
     vlm = cfg.engines.vlm_glance.model_copy(update={"glance_policy": policy, "max_glances": 3, "image_width": 384,
-                                                    "plan_policy": "rule"})
+                                                    "plan_policy": "rule", "glance_order": order})
     return cfg.model_copy(update={"engines": cfg.engines.model_copy(update={"vlm_glance": vlm})})
 
 
@@ -121,9 +121,10 @@ def test_resolve_prefers_the_printed_name_and_falls_back_to_the_number():
     assert resolve(view, ShelfGlance(product="Unicorn Milk", number=99))[1] == "invalid"
 
 
-def _run(vlm: _ScriptedVLM, policy: str = "all", n: int = 16) -> tuple[VLMGlanceEngine, list[tuple[Persona, list[Action], list[str]]]]:
+def _run(vlm: _ScriptedVLM, policy: str = "all", n: int = 16,
+         order: str = "shuffle") -> tuple[VLMGlanceEngine, list[tuple[Persona, list[Action], list[str]]]]:
     store = _store()
-    engine = VLMGlanceEngine(llm=vlm, pathfinder=AStarPathFinder(), config=_config(policy))  # type: ignore[arg-type]
+    engine = VLMGlanceEngine(llm=vlm, pathfinder=AStarPathFinder(), config=_config(policy, order))  # type: ignore[arg-type]
     out: list[tuple[Persona, list[Action], list[str]]] = []
     for i, persona in enumerate(_personas()[:n]):
         decision = asyncio.run(engine.decide_actions(_context(store, persona, seed=1000 + i)))
@@ -171,3 +172,17 @@ def test_gated_policy_asks_less_often_and_is_reproducible():
     _, res_b = _run(_ScriptedVLM(), policy="gated")
     assert 0 < gated_a.metadata()["glances"] < every.metadata()["glances"]  # type: ignore[operator]
     assert res_a == res_b
+
+
+def test_glances_spread_over_the_equally_seen_faces_of_each_route():
+    """By rack id, every shopper's glances go to the same first racks; shuffled per shopper, they spread out."""
+    assert SimulationConfig().engines.vlm_glance.glance_order == "shuffle"
+    by_rack, _ = _run(_ScriptedVLM(answer="nothing"), n=24, order="rack")
+    shuffled, _ = _run(_ScriptedVLM(answer="nothing"), n=24, order="shuffle")
+    again, _ = _run(_ScriptedVLM(answer="nothing"), n=24, order="shuffle")
+
+    def faces(engine: VLMGlanceEngine) -> list[tuple[str, str, str]]:
+        return [(r["persona_id"], r["rack"], r["face"]) for r in engine.metadata()["records"]]  # type: ignore[index, union-attr]
+
+    assert len({(r, f) for _, r, f in faces(shuffled)}) > len({(r, f) for _, r, f in faces(by_rack)})
+    assert faces(shuffled) == faces(again)  # the draw is seeded per shopper, so runs repeat exactly

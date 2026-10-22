@@ -1077,10 +1077,20 @@ export function generateTown(projectId: string, spec: TownSpec): Promise<Town> {
  * about the last run, or none of these. */
 export function routeAssist(req: { text: string; has_run: boolean }): Promise<{
   destination: "ab_test" | "shelf_test" | "conjoint" | "concept_test" | "staff_script" | "layout_edit" | "area" | "run_question"
-    | "find_shoppers" | "none";
+    | "find_shoppers" | "optimize" | "none";
   reason: string;
 }> {
   return fetchJson(`/api/assist/route`, { method: "POST", ...json(req) });
+}
+
+/** The create-store form filled from one description: only what it says, the format from the generator's list. */
+export interface StoreSetupDraft {
+  name: string; description: string; address: string; store_type: string; template_id: string;
+  open_days: "7" | "weekday" | "weekend"; open_hour: number | null; close_hour: number | null;
+  currency: "USD" | "KRW" | "JPY" | null; rationale: string; warnings: string[];
+}
+export function draftStoreSetup(req: { text: string; locale: string }): Promise<StoreSetupDraft> {
+  return fetchJson(`/api/assist/store-setup`, { method: "POST", ...json(req) });
 }
 
 /** A customer profile drafted by the text model from the create-store form; nothing is saved. */
@@ -1334,6 +1344,15 @@ export interface OptimizeResult {
 export interface OptimizationView {
   status: OptimizationStatus;
   result: OptimizeResult | null;
+}
+
+/** An optimization's settings read from the goal the manager writes; nothing starts. */
+export interface OptimizeGoal {
+  objective: OptimizeObjective; scope: OptimizeScope; max_moves: number | null; keep_fridges_on_walls: boolean | null;
+  lock_rack_ids: string[]; locked: string[]; min_improvement: number | null; rationale: string; warnings: string[];
+}
+export function readOptimizeGoal(projectId: string, setupId: string, text: string): Promise<OptimizeGoal> {
+  return fetchJson(`/api/projects/${projectId}/setups/${setupId}/optimize/goal`, { method: "POST", ...json({ text }) });
 }
 
 export function startOptimization(

@@ -160,7 +160,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       if (route.destination === "layout_edit") setActiveTab("settings");
       if (route.destination === "find_shoppers") setActiveTab("shoppers");
       onDone();
-      const onFloor = route.destination === "run_question" || route.destination === "layout_edit" || route.destination === "find_shoppers";
+      const onFloor = ["run_question", "layout_edit", "find_shoppers", "optimize"].includes(route.destination);
       const to = route.destination === "area" ? "/town/$pid" : onFloor ? "/projects/$pid" : "/marketing/$pid";
       void navigate({ to, params: { pid } });
     } catch (e) {
@@ -241,6 +241,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
           <p role="status" className="break-words px-3 py-10 text-center text-sm text-muted-foreground">{t("commandNoMatches", { query })}</p>
         )}
         {askNote && <p role="status" className="mx-3 mb-1 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">{askNote}</p>}
+        {pid && !query.trim() && <p className="mx-3 mb-1 flex items-start gap-1.5 rounded-lg bg-primary/[0.05] px-3 py-2 text-xs text-muted-foreground"><Sparkles className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />{t("commandAskTip")}</p>}
         {visible.map((c, i) => {
           const header = c.group !== lastGroup ? c.group : null;
           lastGroup = c.group;

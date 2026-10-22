@@ -8,7 +8,7 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import interview as service
 from store_emulator.application import run_analyst as analyst
-from store_emulator.application import shopper_search
+from store_emulator.application import hypotheses, shopper_search
 from store_emulator.application.errors import AppError
 from store_emulator.domain.interview import (
     AnalystQuestion,
@@ -22,6 +22,7 @@ from store_emulator.domain.interview import (
 )
 
 from store_emulator.engine.interview import GroupQuestion
+from store_emulator.engine.hypotheses import Hypothesis
 from store_emulator.engine.shopper_filter import ShopperMatch
 
 from ..deps import get_config
@@ -98,6 +99,14 @@ async def suggest_group_questions(pid: str, run_id: str, req: SuggestionRequest)
     return await run_in_threadpool(_call, lambda: service.suggest_group_questions(pid, run_id, req, get_config()))
 
 
+@router.post("/{pid}/runs/{run_id}/tests-to-run", summary="Tests suggested from what shoppers or the analyst said",
+             response_model=list[Hypothesis])
+async def suggest_tests(pid: str, run_id: str, req: hypotheses.HypothesisRequest) -> list[Hypothesis]:
+    """Up to three test questions (A/B, shelf or concept test) written from a group interview's themes and answers or
+    from the run analyst's last answer, naming the layout's products and shelves. Nothing runs."""
+    return await run_in_threadpool(_call, lambda: hypotheses.suggest(pid, run_id, req, get_config()))
+
+
 @router.get("/{pid}/runs/{run_id}/group-interviews", summary="Group interviews of a run", response_model=list[GroupInterview])
 def list_group_interviews(pid: str, run_id: str) -> list[GroupInterview]:
     return _call(lambda: service.list_group_interviews(pid, run_id))
@@ -120,6 +129,13 @@ async def ask_analyst(pid: str, run_id: str, q: AnalystQuestion) -> AnalystThrea
     """The model answers from the run's fact sheet (totals, hours, shelves, products, shopper groups) and lists the
     figures it used; questions the run cannot answer are said to be so. Returns the whole thread."""
     return await run_in_threadpool(_call, lambda: analyst.ask(pid, run_id, q, get_config()))
+
+
+@router.post("/{pid}/runs/{run_id}/analyst/suggestions", summary="Questions worth asking about this run",
+             response_model=list[str])
+async def suggest_analyst_questions(pid: str, run_id: str, req: SuggestionRequest) -> list[str]:
+    """Three questions the model reads off the run's fact sheet: the shelves, products, hours or groups that stand out."""
+    return await run_in_threadpool(_call, lambda: analyst.suggest(pid, run_id, req.model, get_config()))
 
 
 @router.delete("/{pid}/runs/{run_id}/analyst", summary="Clear the questions about this run", status_code=204)

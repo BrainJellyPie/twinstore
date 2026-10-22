@@ -4,13 +4,16 @@ from collections.abc import Callable
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from store_emulator.application import optimize as opt_service
+from store_emulator.application import optimize_goal
 from store_emulator.application.errors import AppError
 from store_emulator.application.optimize import OptimizationStatus, OptimizationView
 from store_emulator.domain.optimize import JudgeSpec, OptimizeJudge, OptimizeSpec
 from store_emulator.domain.providers import EnsembleConfig
+from store_emulator.engine.optimize.goal import OptimizeGoal
 
 from ..deps import get_config
 
@@ -45,6 +48,13 @@ def _call[T](fn: Callable[[], T]) -> T:
         return fn()
     except AppError as e:
         raise HTTPException(e.status_code, str(e)) from e
+
+
+@router.post("/{pid}/setups/{sid}/optimize/goal", summary="Read an optimization goal into its settings", response_model=OptimizeGoal)
+async def read_goal(pid: str, sid: str, req: optimize_goal.GoalRequest) -> OptimizeGoal:
+    """The text model chooses the objective, what may change, the move limit, the locked shelves (of this layout, by
+    name) and the smallest gain worth keeping from the goal. Nothing starts; the settings fill the dialog."""
+    return await run_in_threadpool(_call, lambda: optimize_goal.read(pid, sid, req, get_config()))
 
 
 @router.post("/{pid}/setups/{sid}/optimize", summary="Start a layout optimization", response_model=OptimizationStatus)

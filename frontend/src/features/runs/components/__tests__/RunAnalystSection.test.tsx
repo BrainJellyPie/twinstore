@@ -3,12 +3,12 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { askAnalyst, clearAnalyst, getAnalyst, type AnalystThread } from "@/shared/api/interview";
+import { askAnalyst, clearAnalyst, getAnalyst, suggestAnalystQuestions, type AnalystThread } from "@/shared/api/interview";
 import { RunAnalystSection } from "../RunAnalystSection";
 import { useAssistStore } from "@/stores/assistStore";
 
 vi.mock("@/shared/api/interview", async (original) => ({
-  ...await original<typeof import("@/shared/api/interview")>(), getAnalyst: vi.fn(), askAnalyst: vi.fn(), clearAnalyst: vi.fn(),
+  ...await original<typeof import("@/shared/api/interview")>(), getAnalyst: vi.fn(), askAnalyst: vi.fn(), clearAnalyst: vi.fn(), suggestAnalystQuestions: vi.fn(),
 }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); useAssistStore.setState({ pending: null }); });
 
@@ -59,4 +59,15 @@ it("asks a question routed from the command palette once, for its own project on
   expect(await screen.findByText("Ice cream 1: under half of those who stop buy.")).toBeTruthy();
   expect(askAnalyst).toHaveBeenCalledTimes(1);
   expect(useAssistStore.getState().pending).toBeNull();
+});
+
+it("replaces the generic starters with questions read off this run", async () => {
+  vi.mocked(getAnalyst).mockResolvedValue(empty);
+  vi.mocked(suggestAnalystQuestions).mockResolvedValue(["Why do so few who stop at Ice cream 2 buy there?"]);
+  vi.mocked(askAnalyst).mockResolvedValue(answered);
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Suggest questions from this run" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Why do so few who stop at Ice cream 2 buy there?" }));
+  expect(screen.queryByRole("button", { name: "Which shoppers spend the most per visit?" })).toBeNull();
+  await waitFor(() => expect(askAnalyst).toHaveBeenCalledWith("p", "r", "Why do so few who stop at Ice cream 2 buy there?"));
 });

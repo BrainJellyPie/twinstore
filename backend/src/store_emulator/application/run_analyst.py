@@ -20,6 +20,7 @@ from store_emulator.engine.run_analyst import (
     comparison_text,
     explain_difference,
     run_facts,
+    suggest_run_questions,
 )
 
 from .errors import AppError, model_failure
@@ -84,6 +85,21 @@ def ask(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> 
         return thread
     finally:
         lock.release()
+
+
+def suggest(pid: str, run_id: str, model: str, config: SimulationConfig) -> list[str]:
+    """Three starter questions read off this run's fact sheet (what stands out); nothing is kept."""
+    sheet = facts(pid, run_id)
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 500})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(model, llm_config))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        return asyncio.run(suggest_run_questions(llm, sheet))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[analyst] suggestions {pid}/{run_id}: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "No questions could be suggested"), 502) from e
 
 
 def explain_comparison(pid: str, run_a: str, run_b: str, model: str, config: SimulationConfig) -> DifferenceReading:

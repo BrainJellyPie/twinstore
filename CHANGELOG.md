@@ -13,6 +13,28 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   Save/restore makes no model call. Browser storage limits and eviction still apply; see USAGE.md.
 - Routed concept/shelf drafts are consumed once so returning to their tabs does not repeat drafting.
 
+### From what shoppers said to a test
+- A group interview's result and the run analyst's last answer offer **Turn this into tests**: the text model writes up
+  to three test questions from the themes and answers (or the analyst's answer and figures), each with the tool that
+  answers it (A/B test, shelf test or concept test) and what it checks, naming the layout's own products and shelves.
+  Picking one opens the Marketing studio with that test drafted from the question. What shoppers said stays a
+  hypothesis until the test runs. API: `POST /api/projects/{pid}/runs/{run_id}/tests-to-run`.
+
+### Optimization goals in words
+- **Optimize** takes the goal in words ("sell more ice cream on impulse, don't move the fridges or touch the drinks
+  shelves, at most 6 changes"): the text model sets the objective, what may change, the move limit, whether fridges
+  stay on the walls, the shelves that stay locked (this layout's, by name; shown with **Unlock all**) and the
+  smallest gain worth keeping. Limits out of range and unknown shelves are reported, not guessed. Nothing starts until
+  the user does. The command palette sends "optimize the layout for more impulse sales" to a finished run's
+  optimizer with the goal filled in. API: `POST /api/projects/{pid}/setups/{sid}/optimize/goal`.
+
+### A new store from one description
+- The create-store form starts with **Describe the store in your own words**: "a campus convenience store at the
+  university gate, open weekdays 7 to 23, mostly students" fills the name, a short description (only what was said),
+  the address only when a place is given, the type, opening days and hours, and picks the starting store format and
+  its currency from the generator's own list. Overnight hours and unknown formats are left for the user with a note;
+  an answer that arrives after the user edited the form is dropped. Works in all six interface languages.
+  API: `POST /api/assist/store-setup`.
 
 ### Find shoppers in words
 - The Shoppers tab of a run takes a description ("women in their 20s who stopped at the ice cream freezers but bought
@@ -79,6 +101,10 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   products, age and gender groups). Every answer lists the figures it rests on (only lines that are in the sheet are
   kept), says plainly when the run cannot answer, and offers follow-up questions; the thread is kept with the run.
   API: `GET/POST/DELETE /api/projects/{pid}/runs/{run_id}/analyst`, `GET .../analyst/facts`.
+- **Suggest questions from this run** replaces the generic starters with three questions read off the run's fact sheet
+  (the shelves, products, hours or groups that stand out). API: `POST .../analyst/suggestions`.
+- A shelf picked on the floor of a finished run offers **Ask about this shelf**, which asks the analyst why it sells the
+  way it does and what could make more of the shoppers who stop there buy.
 
 - **Explain the difference** in Compare runs: the model reads the paired comparison (in money, points, seconds and
   metres) and both runs' fact sheets, and says what changed, which shelves, products, hours or groups it came from,
@@ -221,6 +247,14 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 ### Fixes
 - Realistic shoppers no longer crash the 3D view when React remounts them (development StrictMode): the
   per-shopper animation mixer is no longer uncached while its actions are still reused.
+- Vision shoppers' shelf glances are now spread over the shelves their route passes equally well: ties were ranked
+  by rack id, which sent every shopper's glances to the same first racks of the store whatever the route. Each
+  shopper now draws among them with their own seed (`engines.vlm_glance.glance_order: "shuffle"`, the default), so
+  runs still repeat exactly and paired layout comparisons keep common random numbers; `"rack"` restores the old
+  order. Runs made before this change will glance at different shelves when repeated.
+- Newer Claude models (Sonnet 5.5) refuse `thinking: {"type": "disabled"}` and name the value to send instead; the
+  client now learns that value per model and retries, instead of dropping the setting and letting the model think
+  through the shopper's small answer budget.
 
 ### Shopper journeys and interviews
 - Playback has a **Shoppers** tab: rank the run's shoppers (top spenders, left empty-handed, impulse

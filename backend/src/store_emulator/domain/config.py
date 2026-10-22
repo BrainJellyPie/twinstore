@@ -170,6 +170,10 @@ class VLMGlanceConfig(BaseModel):
     directory_examples: int = Field(default=8, ge=1, le=50)
     directory_shuffle: bool = True
     directory_prices: bool = True   # each product's own price in the directory (else the category's range)
+    # glance_order: which of the equally well seen rack faces the max_glances glances go to. Faces passed close by
+    # are all seen at visibility 1; "shuffle" draws among them per shopper (common random numbers across layouts),
+    # "rack" takes them by rack id, which sent every shopper's glances to the same first racks whatever the route.
+    glance_order: Literal["shuffle", "rack"] = "shuffle"
     plan_max_tokens: int = Field(default=320, ge=64, le=4096)  # plans are longer than glance answers
 
 

@@ -121,6 +121,10 @@ export interface ShopperMatch {
 }
 export const findShoppers = (pid: string, runId: string, text: string) =>
   fetchJson<ShopperMatch>(`/api/projects/${pid}/runs/${runId}/shoppers/find`, { method: "POST", body: JSON.stringify({ text }) });
+/** A question a test can answer, written from what shoppers said or what the run analyst answered. */
+export interface TestIdea { question: string; kind: "ab_test" | "shelf_test" | "concept_test"; why: string }
+export const suggestTests = (pid: string, runId: string, body: { source: "group" | "analyst"; group_id?: string }) =>
+  fetchJson<TestIdea[]>(`/api/projects/${pid}/runs/${runId}/tests-to-run`, { method: "POST", body: JSON.stringify(body) });
 export interface GroupQuestion { question: string; segment: GroupSegment; why: string }
 /** Three group questions the model reads off the run's numbers, each with the group to ask. */
 export const suggestGroupQuestions = (pid: string, runId: string, model: string) =>
@@ -146,5 +150,8 @@ export const getAnalyst = (pid: string, runId: string, signal?: AbortSignal) =>
   fetchJson<AnalystThread>(`/api/projects/${pid}/runs/${runId}/analyst`, { signal });
 export const askAnalyst = (pid: string, runId: string, question: string, model = "") =>
   fetchJson<AnalystThread>(`/api/projects/${pid}/runs/${runId}/analyst`, { method: "POST", body: JSON.stringify({ question, model }) });
+/** Three questions the model reads off the run's fact sheet (what stands out); nothing is kept. */
+export const suggestAnalystQuestions = (pid: string, runId: string, model = "") =>
+  fetchJson<string[]>(`/api/projects/${pid}/runs/${runId}/analyst/suggestions`, { method: "POST", body: JSON.stringify({ model }) });
 export const clearAnalyst = (pid: string, runId: string) =>
   fetchJson<void>(`/api/projects/${pid}/runs/${runId}/analyst`, { method: "DELETE" });
