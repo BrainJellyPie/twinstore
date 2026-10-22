@@ -7,8 +7,8 @@ import type { CustomerResult } from "@/shared/types/domain";
 export interface Point { x: number; y: number }
 export interface Waiting extends Point { id: string; since: number }
 
-/** Seconds into the visit when the shopper started waiting at the tills, if they are waiting at `rel`; else null. */
-export function waitingSince(customer: CustomerResult, rel: number): number | null {
+/** Till position and seconds into the visit when this wait began, if the shopper is waiting at `rel`. */
+export function waitingAt(customer: CustomerResult, rel: number): Omit<Waiting, "id"> | null {
   const wait = customer.queue_wait_sec ?? 0;
   if (wait <= 0) return null;
   const timeline = customer.timeline;
@@ -17,7 +17,8 @@ export function waitingSince(customer: CustomerResult, rel: number): number | nu
     for (let i = timeline.length - 1; i >= 0; i--) {
       const event = timeline[i]!;
       if (event.action === "wander") {
-        return rel >= event.elapsed_sec && rel < event.elapsed_sec + wait ? event.elapsed_sec : null;
+        return rel >= event.elapsed_sec && rel < event.elapsed_sec + wait
+          ? { x: event.x, y: event.y, since: event.elapsed_sec } : null;
       }
     }
     return null;
@@ -25,7 +26,7 @@ export function waitingSince(customer: CustomerResult, rel: number): number | nu
   const pay = timeline.find((event) => event.action === "pay");
   if (!pay) return null;
   const since = pay.elapsed_sec - wait;
-  return rel >= since && rel < pay.elapsed_sec ? since : null;
+  return rel >= since && rel < pay.elapsed_sec ? { x: pay.x, y: pay.y, since } : null;
 }
 
 /** Where each waiting shopper stands: one behind another on their till's tile, leading away from the nearest

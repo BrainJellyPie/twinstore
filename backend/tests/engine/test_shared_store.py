@@ -509,3 +509,22 @@ def test_a_crew_replay_reproduces_the_run_and_a_crew_plan_counts_crew_hours():
     assert plan.best.net >= plan.current.net and plan.config.crew is not None
     assert plan.best.labor_cost == round(plan.best.crew_hours * 1500) and plan.best.crew_hours > 0
     assert plan.current.labor_cost == round(report.crew_hours * 1500)
+
+
+@pytest.mark.parametrize("duration, arrival, crowded", [
+    (600, "10:10:10", False), (610, "10:10:10", False),
+    (611, "10:10:10", True), (1200, "10:10:10", True),
+    (20, "10:00:19", True), (20, "10:00:20", False), (20, "10:00:21", False),
+])
+def test_crowding_counts_long_browsing_stops_until_their_end(duration, arrival, crowded):
+    observer = _shopper("observer", "10:00:00", [], pay=False)
+    observer.timeline.insert(1, TimelineEvent(elapsed_sec=10, x=1, y=0, action=Action.BROWSE,
+                                             target_rack="A", face=Face.E, duration=duration))
+    observer.timeline[-1].elapsed_sec = duration + 20
+    buyer = _shopper("buyer", arrival, [("chips", 1)], origin="impulse")
+    before = [r.model_dump() for r in [observer, buyer]]
+    config = OperationsConfig(stock_per_facing=10, crowd_limit=2, crowd_skip=1, **_NO_LINE)
+    results, report = resolve_shared_store(_store(), [observer, buyer], config, seed=1)
+    assert report.crowd_skipped_units == int(crowded)
+    assert results[1].total_spent == (0 if crowded else 300)
+    assert [r.model_dump() for r in [observer, buyer]] == before

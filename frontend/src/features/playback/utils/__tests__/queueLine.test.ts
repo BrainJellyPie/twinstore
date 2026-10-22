@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CustomerResult, TimelineEvent } from "@/shared/types/domain";
-import { lineUp, waitingSince } from "../queueLine";
+import { lineUp, waitingAt } from "../queueLine";
 
 const event = (elapsed_sec: number, action: TimelineEvent["action"], duration = 0): TimelineEvent =>
   ({ elapsed_sec, x: 4, y: 2, action, duration } as TimelineEvent);
@@ -9,26 +9,26 @@ function shopper(timeline: TimelineEvent[], extra: Partial<CustomerResult> = {})
   return { persona_id: "p", day: 1, arrival_time: "10:00:00", leave_time: "", timeline, total_spent: 0, ...extra };
 }
 
-describe("waitingSince", () => {
+describe("waitingAt", () => {
   const paid = shopper([event(0, "enter"), event(40, "move"), event(100, "pay", 30), event(140, "exit")], { queue_wait_sec: 60 });
 
   it("is the moment the shopper reached the till, while they wait to pay", () => {
-    expect(waitingSince(paid, 39)).toBeNull();
-    expect(waitingSince(paid, 40)).toBe(40);
-    expect(waitingSince(paid, 99)).toBe(40);
-    expect(waitingSince(paid, 100)).toBeNull();   // being served now
+    expect(waitingAt(paid, 39)).toBeNull();
+    expect(waitingAt(paid, 40)).toEqual({ x: 4, y: 2, since: 40 });
+    expect(waitingAt(paid, 99)).toEqual({ x: 4, y: 2, since: 40 });
+    expect(waitingAt(paid, 100)).toBeNull();   // being served now
   });
 
   it("covers a shopper who gave up for as long as they stood there", () => {
     const left = shopper([event(0, "enter"), event(40, "wander", 90), event(140, "exit")], { queue_wait_sec: 90, left_queue: true });
-    expect(waitingSince(left, 40)).toBe(40);
-    expect(waitingSince(left, 129)).toBe(40);
-    expect(waitingSince(left, 130)).toBeNull();
+    expect(waitingAt(left, 40)).toEqual({ x: 4, y: 2, since: 40 });
+    expect(waitingAt(left, 129)).toEqual({ x: 4, y: 2, since: 40 });
+    expect(waitingAt(left, 130)).toBeNull();
   });
 
   it("is null for a shopper who never waited, or a run without the shared store", () => {
-    expect(waitingSince(shopper([event(0, "enter"), event(50, "pay")]), 49)).toBeNull();
-    expect(waitingSince(shopper([event(0, "enter"), event(50, "pay")], { queue_wait_sec: 0 }), 49)).toBeNull();
+    expect(waitingAt(shopper([event(0, "enter"), event(50, "pay")]), 49)).toBeNull();
+    expect(waitingAt(shopper([event(0, "enter"), event(50, "pay")], { queue_wait_sec: 0 }), 49)).toBeNull();
   });
 });
 

@@ -46,7 +46,8 @@ export function WeeksView({ series, code }: { series: { label: MessageKey; repor
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <table className="w-full tabular-nums">
+      <div role="region" aria-label={t("memChart")} tabIndex={0} className="overflow-x-auto">
+      <table className="w-full tabular-nums [&_td]:px-2 [&_th]:px-2">
         <caption className="sr-only">{t("memChart")}</caption>
         <thead className="text-muted-foreground">
           <tr>
@@ -69,6 +70,7 @@ export function WeeksView({ series, code }: { series: { label: MessageKey; repor
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

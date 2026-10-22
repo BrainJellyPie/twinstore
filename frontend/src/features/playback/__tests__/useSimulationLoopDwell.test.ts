@@ -27,6 +27,27 @@ const seek = (seconds: number) => { usePlaybackControlStore.getState().seek(2880
 beforeEach(() => { usePlaybackControlStore.getState().reset(); useSimulationMetricsStore.getState().reset(); });
 afterEach(cleanup);
 
+it.each([false, true])("orders the till line by clock time across different arrival times (left=%s)", left => {
+  const early: CustomerResult = { ...shopper, persona_id: "early", queue_wait_sec: 300, left_queue: left,
+    timeline: [ev(0, 4, "enter"), ev(600, left ? 4 : 1, "wander", { duration: 300 }),
+      ...(left ? [] : [ev(900, 4, "pay", { duration: 10 })]), ev(920, 5, "exit")] };
+  const later: CustomerResult = { ...shopper, persona_id: "later", arrival_time: "08:09:00", queue_wait_sec: 280,
+    timeline: [ev(0, 4, "enter"), ev(120, 2, "wander", { duration: 280 }),
+      ev(400, 4, "pay", { duration: 10 }), ev(420, 5, "exit")] };
+  const hook = renderHook(() => useSimulationLoop({ ...options, customers: [later, early], maxTime: 30000,
+    counters: [{ x: 4, y: 1 }] }));
+  for (const seconds of [730, 800, 730]) {
+    seek(seconds);
+    const frames = new Map(hook.result.current.personaFramesRef.current.map(frame => [frame.id, frame]));
+    expect(frames.get("early")!.y).toBeCloseTo(2.55);
+    expect(frames.get("later")!.y).toBeCloseTo(3.1);
+    expect(frames.get("early")!.x).toBe(4);
+    expect(frames.get("later")!.x).toBe(4);
+    expect(frames.get("early")!.isMoving).toBe(false);
+    expect(frames.get("later")!.isMoving).toBe(false);
+  }
+});
+
 it.each([2, 7, 11.999, 12, 13.5, 15, 16, 16.999, 18.5])("keeps rendered body and camera at the same pose at %ss", seconds => {
   const hook = renderHook(() => useSimulationLoop(options));
   seek(seconds);

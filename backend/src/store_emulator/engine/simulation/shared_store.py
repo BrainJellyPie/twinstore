@@ -36,7 +36,6 @@ _RESTOCK, _FACE_DONE, _PUT_BACK, _PICK, _PAY, _CREW = 0, 1, 2, 3, 4, 5
 _MAX_COUNTERS_ADVISED = 30
 _STOCKOUTS_REPORTED = 60
 _SPELLS_REPORTED = 3000
-_LONGEST_STOP = 600.0   # seconds; a stop that began earlier than this cannot still be going on
 
 
 @dataclass
@@ -68,6 +67,7 @@ class _Day:
     spells: list[EmptySpell] = field(default_factory=list[EmptySpell])
     # Each shelf's stops (start, end, shopper), sorted: who stands at a shelf when someone else picks there.
     stops: dict[str, list[tuple[float, float, int]]] = field(default_factory=dict[str, list[tuple[float, float, int]]])
+    longest_stop: int = 1                  # seconds; a stop that began earlier than this cannot still be going on
     touched: list[FaceKey] | None = None   # with a crew: faces a pick took units from, for the crew to look at
 
 
@@ -314,7 +314,9 @@ def _play_day(
         for k, event in enumerate(result.timeline):
             if event.action in (Action.BUY, Action.BROWSE) and event.target_rack:
                 at = arrival + event.elapsed_sec
-                state.stops.setdefault(event.target_rack, []).append((at, at + max(1, event.duration), index))
+                duration = max(1, event.duration)
+                state.longest_stop = max(state.longest_stop, duration)
+                state.stops.setdefault(event.target_rack, []).append((at, at + duration, index))
             if event.action == Action.BUY:
                 heapq.heappush(heap, (arrival + event.elapsed_sec, _PICK, index, k))
             elif event.action == Action.PAY:
@@ -518,9 +520,9 @@ def _refilled(state: _Day, key: FaceKey, product: _Product, moment: float) -> No
 def _crowd(state: _Day, rack: str, moment: float, index: int) -> int:
     """Shoppers stopped at the shelf at that moment, this one included."""
     stops = state.stops.get(rack, [])
-    first = bisect.bisect_left(stops, (moment - _LONGEST_STOP,))
+    first = bisect.bisect_left(stops, (moment - state.longest_stop,))
     last = bisect.bisect_right(stops, (moment, math.inf, math.inf))
-    others = {shopper for began, ends, shopper in stops[first:last] if began <= moment <= ends and shopper != index}
+    others = {shopper for began, ends, shopper in stops[first:last] if began <= moment < ends and shopper != index}
     return len(others) + 1
 
 

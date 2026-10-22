@@ -14,7 +14,7 @@ import { parseTimeToSeconds } from "../utils/playback";
 import { colorForCustomer } from "@/shared/utils/hashColor";
 import { facingForEvent, positionBetweenEvents } from "@/features/store-viewer/realistic/shopperPose";
 import { livePlaybackClock } from "@/features/store-viewer/realistic/playbackClock";
-import { lineUp, waitingSince, type Point, type Waiting } from "../utils/queueLine";
+import { lineUp, waitingAt, type Point, type Waiting } from "../utils/queueLine";
 
 export interface PersonaFrame {
   id: string;
@@ -278,8 +278,8 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
         outTrail.push({ x, y });
       }
 
-      const since = waitingSince(c, rel);
-      if (since !== null) waiting.push({ id: c.persona_id, x, y, since });
+      const wait = waitingAt(c, rel);
+      if (wait !== null) waiting.push({ ...wait, id: c.persona_id, since: arrivalSec + wait.since });
 
       const label = personaNames.get(c.persona_id) ?? c.persona_id;
       const gender = personaGenders.get(c.persona_id) ?? "";

@@ -37,6 +37,11 @@
   "00"–"23" in ASCII digits; a damaged saved shopper list is reported (422) instead of a server error.
 - Wait for the saved starter layout to appear in navigation before opening it, and recover failed list refreshes
   through the same idempotent save request. Wide operations comparisons scroll within their panel.
+- Add 64 more skincare, makeup, nail, shaving, tea, cake-decorating, pantry and shoe-care photos, reaching 1,056
+  local images; all eight new departments have a picture for every product in their matching default maps.
+- Playback orders the line at the tills by clock time (shoppers who arrived at different times queued in the wrong
+  order) and puts waiting shoppers at their own till; crowding counts shelf visits longer than ten minutes until
+  they end, and a visit that ends as another shopper picks no longer counts. The weeks table scrolls in its panel.
 
 ## 0.4.9 — Layouts keep how their store is run; shoppers in each other's way; shoppers remember
 
@@ -94,6 +99,38 @@
 - Compare's notes were always in English. They now follow the app's language.
 
 ## 0.4.8 — Shoppers share one store, store operations; safe updates; nothing downloaded or spent unasked
+
+
+
+### Shoppers in each other's way, and the shared store in 3D
+- Crowding: when four or more shoppers stand at one shelf at once, an unplanned pick there is given up with a 35 %
+  chance (crowded shoppers buy less on impulse — Harrell, Hutt & Anderson 1980; Machleit, Eroglu & Mantel 2000;
+  assumed values to set from observation). Planned buys are made however crowded. **Run simulation** has the
+  setting (blank turns crowding off); **Store operations** shows the impulse sales lost in crowds, and journeys say
+  "too crowded at the shelf".
+- Playback shows the shared store: shelves standing empty get a red floor mark and a "Sold out: …" label while they
+  are empty, and shoppers waiting for a till stand in a line behind it, earliest first, instead of on one spot.
+  The operations report carries when each face stood empty (`empty_spells`).
+
+### Shoppers remember: the weeks after a run
+- A bad visit used to cost only that visit. **Try other stock and staffing → Shoppers remember** repeats the run's
+  week: after each week, a shopper may stop coming, the likelier the more products they found gone (and did
+  without), the longer they waited at the tills, and if they gave up in the line; everyone else comes again and
+  makes the same visits. A store that runs out loses customers, the next weeks are less crowded and stock and tills
+  stretch further — the loop one day cannot show.
+- Each week is shown next to an ideal store (endless stock, no line) that loses only the weekly churn, with the
+  same leave-or-stay draw per shopper in both and in every plan: the gap is what operations cost through customers'
+  memory, and shoppers who left are counted by reason (stock or tills). **Find the best plan** then judges plans by
+  their money over all the weeks, so a plan that costs more today can win by keeping customers.
+- The chances (3 % per missing unit, 25 % after giving up in the line, 1 % per minute waited, 1 % weekly churn) are
+  assumptions to set from your own loyalty or survey data, not fitted values. API: `memory` on
+  `POST /runs/{rid}/operations/replay` and `/plan`; no model call.
+
+- Compare did not say when one run's shoppers shared the store (stock and tills, new in 0.4.8) and the other's had it
+  alone, as every run before 0.4.8 did, or when the two runs used different store operations: the difference
+  looked like the layout's. It now says so.
+- Compare's notes were always in English. They now follow the app's language.
+
 
 ### Try other stock and staffing on a finished run
 - **Store operations → Try other stock and staffing** replays a run's shoppers — the same people making the same

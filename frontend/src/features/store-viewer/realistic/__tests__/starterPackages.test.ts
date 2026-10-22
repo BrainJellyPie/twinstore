@@ -246,3 +246,8 @@ it("keeps skincare, tea tools, baking tools and shoe care out of food categories
   for (const sheet of [61, 62]) for (let index = 0; index < 16; index++)
     expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
 });
+
+it("keeps all remaining care and home photos classified as non-food after renaming", () => {
+  for (const sheet of [63, 64, 65, 66]) for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
+});
