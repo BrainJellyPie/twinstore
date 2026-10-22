@@ -242,8 +242,8 @@ def test_visitors_have_the_age_group_of_the_persona_they_were_cloned_from(reside
     for persona, arrival in zip(visitors, arrivals):
         assert persona.age_group == arrival.age_group == by_id[arrival.source_persona_id].age_group != "10s"
         building = residential.get_building(arrival.origin_building_id)
-        assert building is None or building.kind != BuildingKind.SCHOOL or arrival.segment == "worker"
-        assert "from school." not in town_context_text(arrival, residential)
+        assert not (arrival.segment == "student" and building is not None and building.kind == BuildingKind.SCHOOL)
+        assert not re.search(r"from school\b", town_context_text(arrival, residential))
 
 
 def test_store_hours_set_the_modeled_hours_and_our_venue_hours(residential: Town):
