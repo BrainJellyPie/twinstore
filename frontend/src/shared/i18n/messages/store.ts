@@ -598,6 +598,7 @@ export const storeMessages = {
   providerDisabled: ["Disabled", "사용 안 함", "已停用", "無効", "Desactivado", "Désactivé"],
   providerKeyRejected: ["Key turned down", "키 거부됨", "密钥被拒绝", "キーが拒否されました", "Clave rechazada", "Clé refusée"],
   providerReady: ["Ready", "준비됨", "就绪", "準備完了", "Listo", "Prêt"],
+  providerNotRunning: ["Not running", "실행 중 아님", "未运行", "起動していません", "No está en ejecución", "Arrêté"],
   providerNeedsEndpoint: ["Needs endpoint", "엔드포인트 필요", "需要端点", "エンドポイントが必要", "Falta el endpoint", "Point d’accès requis"],
   providerNeedsKey: ["Needs API key", "API 키 필요", "需要 API 密钥", "APIキーが必要", "Falta la clave de API", "Clé d’API requise"],
   providerKeyFromEnv: ["Key from {env}", "{env}에서 읽은 키", "密钥来自 {env}", "{env} のキー", "Clave de {env}", "Clé issue de {env}"],

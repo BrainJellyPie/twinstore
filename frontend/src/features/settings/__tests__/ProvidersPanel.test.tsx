@@ -71,3 +71,18 @@ it("refreshes the provider badge after a failed test and shows the whole message
   expect(result.querySelector(".truncate")).toBeNull();
   client.clear();
 });
+
+it("says a local server is not running when nothing answers at its saved address", async () => {
+  const llama: api.ProviderStatus = {
+    preset: { kind: "llamacpp", label: "llama.cpp", default_api_base: "http://127.0.0.1:8081/v1", api_key_env: null, needs_key: false, local: true,
+      models: [{ id: "local", label: "Local", vision: true, note: "" }], docs_url: "" },
+    enabled: true, has_key: false, key_source: "not needed", key_hint: "", api_base: "http://127.0.0.1:53303/v1", default_model: null,
+    ready: true, answers: false,
+  };
+  vi.mocked(api.getProviders).mockResolvedValue([llama]);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
+  expect(await screen.findByText("Not running")).toBeTruthy();
+  expect(screen.queryByText("Ready")).toBeNull();
+  client.clear();
+});

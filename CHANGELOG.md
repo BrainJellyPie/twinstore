@@ -15,6 +15,8 @@
 - The local model's llama.cpp program, downloaded by a version before 0.4.3, did not count as downloaded: a newer
   version deleted it and fetched it again. A complete earlier download is now kept, and it comes along when the
   stores are brought over from an earlier app folder, so a local model you already have starts without a download.
+- Settings showed a local server (llama.cpp, Ollama, …) as Ready at an address an earlier version or session left
+  behind, with nothing running there. It now says Not running.
 - Compare paired different people when the customers had been written again between the two runs, which versions
   before 0.4.7 allowed once the earlier run's layout was deleted (the new customers reuse the ids M1001, F1003, …).
   Such customers are now left out, and the comparison says how many.

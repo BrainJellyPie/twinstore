@@ -141,6 +141,9 @@ class ProviderStatus(BaseModel):
     api_base: str | None
     default_model: str | None
     ready: bool
+    # A server on this computer (llama.cpp, Ollama, …) at api_base answers right now; None: not checked (not a local
+    # provider, turned off, or on another computer). An address an earlier session left behind is no running server.
+    answers: bool | None = None
 
 
 class ConnectionTest(BaseModel):
