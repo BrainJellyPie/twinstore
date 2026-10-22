@@ -40,6 +40,9 @@ class Persona(BaseModel):
     # Products this shopper habitually buys (names as on the shelf), e.g. from their purchase history.
     # The VLM planner sees them; the rule planner picks one of them first with probability habit_prob.
     usual_products: list[str] = []
+    # The written customer this visitor copies ("" = written by the model or taken from data). A day is written as a
+    # sample of its estimated visitors and filled with twins; model-based runs sample written customers first.
+    twin_of: str = ""
 
     @property
     def budget_label(self) -> str:

@@ -37,7 +37,7 @@ async def _input(labels: UploadFile, checkouts: UploadFile, store_ref: str, audi
 
 @router.get("/template.csv")
 def template(pid: str) -> PlainTextResponse:
-    return PlainTextResponse(_call(lambda: price_checks.template(pid)), media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="price-check-template.csv"'})
+    return PlainTextResponse("\ufeff" + _call(lambda: price_checks.template(pid)), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="price-check-template.csv"'})
 
 
 @router.post("/preview", response_model=PriceCheckReport)
@@ -50,4 +50,4 @@ async def preview(pid: str, labels: UploadFile = File(...), checkouts: UploadFil
 async def export(pid: str, labels: UploadFile = File(...), checkouts: UploadFile = File(...), store_ref: str = Form(..., min_length=1, max_length=120), audit_date: str = Form(..., min_length=10, max_length=10, pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"), source_sha256: str = Form(..., pattern=r"^[0-9a-f]{64}$")) -> PlainTextResponse:
     label_data, checkout_data, scope = await _input(labels, checkouts, store_ref, audit_date)
     result = await run_in_threadpool(_call, lambda: price_checks.export(pid, label_data, checkout_data, scope, source_sha256))
-    return PlainTextResponse(result, media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="price-check-audit.csv"'})
+    return PlainTextResponse("\ufeff" + result, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="price-check-audit.csv"'})

@@ -38,7 +38,7 @@ export function TownPage({ projectId }: { projectId: string }) {
     queryFn: ({ signal }) => api.getTownDemand(projectId, dayType, scenarioId, signal),
     enabled: !!town,
   });
-  const { data: scenarios = [] } = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios(signal), staleTime: Infinity });
+  const { data: scenarios = [] } = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios({}, signal), staleTime: Infinity });
 
   const setTown = (t: Town) => {
     qc.setQueryData(queryKeys.town(projectId), t);

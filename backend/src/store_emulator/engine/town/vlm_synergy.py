@@ -167,7 +167,8 @@ async def vlm_basket_synergy(
                 on_progress(f"{arm} venue", offset + done, total)
 
         aggregated, results = await runner.run(store.model_copy(deep=True), personas,
-                                               max_concurrent=max_concurrent, on_progress=progress)
+                                               max_concurrent=max_concurrent, on_progress=progress,
+                                               path_heatmap=False)
         done_before += len(personas)
         requests += aggregated.token_usage.requests
         failed += len(aggregated.diagnostics.failed_customers)

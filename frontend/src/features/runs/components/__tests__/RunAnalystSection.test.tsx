@@ -71,3 +71,30 @@ it("replaces the generic starters with questions read off this run", async () =>
   expect(screen.queryByRole("button", { name: "Which shoppers spend the most per visit?" })).toBeNull();
   await waitFor(() => expect(askAnalyst).toHaveBeenCalledWith("p", "r", "Why do so few who stop at Ice cream 2 buy there?"));
 });
+
+it("does not scroll the page on open, and follows new messages inside its own thread box", async () => {
+  const scrollIntoView = vi.fn();
+  const scrolled: number[] = [];
+  Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
+  Object.defineProperty(HTMLElement.prototype, "scrollHeight", { configurable: true, get: () => 640 });
+  Object.defineProperty(HTMLElement.prototype, "scrollTop", { configurable: true, get: () => 0, set: (v: number) => { scrolled.push(v); } });
+  try {
+    vi.mocked(getAnalyst).mockResolvedValue(answered);
+    vi.mocked(askAnalyst).mockResolvedValue({ ...answered, messages: [...answered.messages, ...answered.messages] });
+    mount();
+    expect(await screen.findByText("Ice cream 1: under half of those who stop buy.")).toBeTruthy();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(scrolled).toEqual([]);
+
+    fireEvent.change(screen.getByLabelText("Question about this run"), { target: { value: "Busiest hour?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    await waitFor(() => expect(screen.getAllByText("Ice cream 1: under half of those who stop buy.")).toHaveLength(2));
+    expect(scrolled.length).toBeGreaterThan(0);
+    expect(scrolled.every((v) => v === 640)).toBe(true);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  } finally {
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    delete (HTMLElement.prototype as { scrollHeight?: unknown }).scrollHeight;
+    delete (HTMLElement.prototype as { scrollTop?: unknown }).scrollTop;
+  }
+});

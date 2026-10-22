@@ -16,6 +16,7 @@ from store_emulator.domain.scenario import (
     Promotion,
     PromotionKind,
     Scenario,
+    ScenarioPriors,
     Season,
     Weather,
 )
@@ -100,14 +101,39 @@ def prepare_inputs(
     """Apply operating hours and the run's scenario: promotions/stock-outs, day filter, traffic and
     visitor budgets. `traffic_applied` skips the
     traffic scaling when the visitors already came from a demand model that included it."""
+    return scenario_store(config, store), scenario_shoppers(config, store, personas, traffic_applied=traffic_applied)
+
+
+def scenario_store(config: SimulationConfig, store: Store) -> Store:
+    """The store as the run's scenario has it: promotions priced and labeled, stock-outs emptied."""
+    if config.scenario is None:
+        return store
+    store, _ = apply_to_store(store, config.scenario)
+    return store
+
+
+def scenario_shoppers(
+    config: SimulationConfig, store: Store, personas: list[Persona], *, traffic_applied: bool = False,
+) -> list[Persona]:
+    """The run's shoppers under its scenario (its days, traffic and budgets) who arrive while the store is open."""
     scenario = config.scenario
     if scenario is not None:
         effects = compile_scenario(scenario, priors_for(store.type, config.scenario_priors))
-        store, _ = apply_to_store(store, scenario)
         personas = apply_to_personas(personas, scenario, effects, seed=config.seed, scale_traffic=not traffic_applied)
     if store.weekly_schedule:
         personas = [person for person in personas if store.is_open_at(person.day, person.arrival_hour)]
-    return store, personas
+    return personas
+
+
+def who_can_come(config: SimulationConfig, store: Store, personas: list[Persona]) -> list[Persona]:
+    """Shoppers on the scenario's days who arrive while the store is open, as they are (no extra traffic or budgets):
+    the pool a run with a customer cap samples from, so the cap counts people who actually come."""
+    days = set(config.scenario.only_days) if config.scenario is not None and config.scenario.only_days else None
+    return [
+        p for p in personas
+        if (days is None or int(p.day) in days)
+        and (not store.weekly_schedule or store.is_open_at(p.day, p.arrival_hour))
+    ]
 
 
 # ── a situation described in words ───────────────────────────────────────────────
@@ -131,6 +157,16 @@ def _store_for(project_id: str, setup_id: str) -> Store | None:
     except FileNotFoundError:
         raise AppError(f"layout not found: {setup_id}", 404) from None
     return Store.model_validate(data) if data else None
+
+
+def layout_priors(project_id: str, setup_id: str, config: SimulationConfig) -> ScenarioPriors:
+    """The effect sizes a run of this layout uses (its store format, or the calibrated override), so a preview shows
+    the numbers the run will use. Without a usable layout: the convenience-store priors, or the override."""
+    try:
+        store = _store_for(project_id, setup_id)
+    except AppError:
+        store = None
+    return priors_for(store.type if store is not None else "", config.scenario_priors)
 
 
 def describe(req: DescribeRequest, config: SimulationConfig) -> DescribedScenario:

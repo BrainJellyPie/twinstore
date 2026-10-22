@@ -22,7 +22,7 @@ def client(tmp_path, monkeypatch):
 
 def test_template_preview_and_export_are_connected_and_read_only(client):
     template = client.get(ROOT + "/template.csv")
-    assert template.status_code == 200 and template.text == HEADER.replace("\n", "\r\n")
+    assert template.status_code == 200 and template.text == "\ufeff" + HEADER.replace("\n", "\r\n")   # BOM: Excel opens UTF-8
     before = metadata_path(PID).read_bytes()
     response = client.post(ROOT + "/preview", files={"file": ("stock.csv", DATA)}, data=PERIOD)
     assert response.status_code == 200, response.text
@@ -31,7 +31,7 @@ def test_template_preview_and_export_are_connected_and_read_only(client):
     assert result["rows"][0]["gmroi"] == 0.5 and result["totals"]["reconciled_skus"] == 1
     export = client.post(ROOT + "/export.csv", files={"file": ("stock.csv", DATA)}, data=PERIOD)
     assert export.status_code == 200 and "attachment" in export.headers["content-disposition"]
-    rows = list(csv.DictReader(io.StringIO(export.text)))
+    rows = list(csv.DictReader(io.StringIO(export.text.removeprefix("\ufeff"))))
     assert rows[0]["source_sha256"] == result["source_sha256"] and rows[-1]["row_type"] == "portfolio"
     assert metadata_path(PID).read_bytes() == before
 

@@ -29,6 +29,14 @@ html {
   font-size: 106.25%;
 }
 
+/* Korean wraps between words, not syllables ("고객으 / 로"). A word too long for its box (a URL,
+   an unbroken run of text) still breaks rather than overflowing; break-all/break-words utilities
+   on an element keep their own behaviour. */
+html:lang(ko) {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -280,10 +288,14 @@ body {
   color: transparent;
 }
 
-/* Animated aurora sheen through text — for the one phrase on a page that should glow. */
+/* Animated aurora sheen through text — for the one phrase on a page that should glow.
+   Cloned decoration gives every wrapped line its own end padding, so an italic glyph at a line end
+   is not cut off where the clipped background stops. */
 @utility aurora-text {
   background-image: linear-gradient(100deg, var(--heat-1), var(--heat-2), var(--heat-3), var(--heat-1));
   background-size: 300% 100%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

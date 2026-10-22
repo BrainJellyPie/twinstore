@@ -13,6 +13,7 @@ import type { ExperimentReport as Report, FocusOutcome, VariantResult } from "@/
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
+import { visitorsPerDayText } from "@/shared/utils/estimate";
 
 import { DemandChart, LiftChart, type LiftRow } from "./charts";
 import { FactorialReview } from "./FactorialReview";
@@ -167,7 +168,7 @@ export function ExperimentReportView({ projectId, report: r, layoutName }: { pro
       </section>
 
       <footer className="space-y-1 text-xs text-muted-foreground">
-        <p>{layoutName ? `Control: ${layoutName} · ` : ""}{r.engine === "vlm" ? `Vision shoppers${r.model ? ` (${r.model})` : ""}` : "Rule shoppers"} · {r.panel_size} shoppers per arm · ≈{Math.round(r.visitors_per_day)} visitors a day in this store · {r.seconds}s</p>
+        <p>{layoutName ? `Control: ${layoutName} · ` : ""}{r.engine === "vlm" ? `Vision shoppers${r.model ? ` (${r.model})` : ""}` : "Rule shoppers"} · {r.panel_size} shoppers per arm · {visitorsPerDayText(r.visitors_per_day, r.simulated_visitors_per_day)} · {r.seconds}s</p>
         {r.notes.map((n) => <p key={n}>{n}</p>)}
       </footer>
     </div>

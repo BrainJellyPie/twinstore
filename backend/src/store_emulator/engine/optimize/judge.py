@@ -13,6 +13,8 @@ they are the consumer model the decision should rest on. So:
    agreement between surrogate and VLM scores.
 """
 
+import asyncio
+import contextlib
 import logging
 import random
 import time
@@ -142,6 +144,8 @@ async def calibrate_surrogate(
     patterns: list[BehaviorPattern],
     pathfinder: PathFinder,
     pilot: list[CustomerResult],
+    *,
+    prepare_store: Callable[[Store], Store] | None = None,
 ) -> tuple[SimulationConfig, SurrogateCalibration]:
     """Grid-search the rule surrogate's impulse_base scale × level-attention tilt so its impulse
     profile on `personas` matches the VLM `pilot` on the same store. Returns the fitted config."""
@@ -151,7 +155,10 @@ async def calibrate_surrogate(
     async def profile(cfg: SimulationConfig) -> ImpulseProfile:
         runner = PerCustomerSimulationRunner(cfg, build_engine(cfg, pathfinder=pathfinder), pathfinder,
                                              cue_sampler, patterns)
-        _, customers = await runner.run(store.model_copy(deep=True), personas, max_concurrent=8)
+        walked = store.model_copy(deep=True)
+        if prepare_store is not None:
+            walked = prepare_store(walked)
+        _, customers = await runner.run(walked, personas, max_concurrent=8, path_heatmap=False)
         return impulse_profile(store, customers)
 
     base = config.engines.rule_based.impulse_base
@@ -220,6 +227,7 @@ async def judge_layout_search(
     on_phase: PhaseCallback | None = None,
     on_progress: ProgressCallback | None = None,
     should_stop: Callable[[], bool] | None = None,
+    prepare_store: Callable[[Store], Store] | None = None,
 ) -> OptimizeResult:
     """Calibrate (optional), search with the rule surrogate, then let the VLM shoppers pick the winner.
 
@@ -235,7 +243,7 @@ async def judge_layout_search(
             on_phase(name)
 
     vlm = LayoutEvaluator(vlm_config, vlm_personas, cue_sampler, patterns, pathfinder, spec.objective,
-                          engine=vlm_engine, max_concurrent=4)
+                          engine=vlm_engine, max_concurrent=4, prepare_store=prepare_store)
     metric_name = COMPARISON_METRICS[spec.objective]
     maximize = spec.objective.maximize
     runs: dict[str, tuple[float, SimulationSummary, list[CustomerResult], int, int]] = {}
@@ -243,7 +251,17 @@ async def judge_layout_search(
 
     async def run_vlm(label: str, layout: Store) -> None:
         nonlocal requests
-        score, aggregated, customers = await vlm.simulate(layout)
+        # A layout run is dozens of vision shoppers (minutes on a local model, billed calls on a cloud one): Stop ends
+        # it now rather than when it finishes. Shoppers already asked are abandoned with their calls.
+        task = asyncio.ensure_future(vlm.simulate(layout))
+        while not task.done():
+            await asyncio.wait({task}, timeout=1.0)
+            if should_stop is not None and not task.done() and should_stop():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+                raise OptimizationCanceled(f"canceled while judging {label}")
+        score, aggregated, customers = task.result()
         if label == "baseline" and not customers:
             raise ValueError("The vision baseline produced no successful shopper results; layouts cannot be compared.")
         planning = vlm.engine_metadata().get("planning")
@@ -259,10 +277,12 @@ async def judge_layout_search(
         await run_vlm("baseline", store)
         config, calibration = await calibrate_surrogate(
             store, config, search_personas, cue_sampler, patterns, pathfinder, runs["baseline"][2],
+            prepare_store=prepare_store,
         )
 
     phase("searching")
-    surrogate = LayoutEvaluator(config, search_personas, cue_sampler, patterns, pathfinder, spec.objective)
+    surrogate = LayoutEvaluator(config, search_personas, cue_sampler, patterns, pathfinder, spec.objective,
+                                prepare_store=prepare_store)
     search_spec = spec.model_copy(update={"validation_customers": 0})
     result = await optimize(store, search_spec, surrogate, on_progress=on_progress, keep_top=judge.top_k,
                             should_stop=should_stop)

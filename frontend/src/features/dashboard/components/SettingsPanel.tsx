@@ -100,6 +100,8 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
 
   const sortedEntries = Object.entries(tabData).sort(([, a], [, b]) => b - a);
   const total = sortedEntries.reduce((sum, [, v]) => sum + v, 0);
+  // Customers are written per open day, so the total spans the week, not one day.
+  const days = new Set(personas.map((p) => p.day)).size;
   const infoRows: [string, string][] = [
     ["Store name", store.name || "—"],
     ["Address", location || "—"],
@@ -165,8 +167,11 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
                 ))}
               </ul>
               <div className="mt-2 flex items-center justify-between border-t pt-2 text-xs font-medium">
-                <span>Total</span>
-                <span className="tabular-nums">{total}</span>
+                <span>{days > 1 ? `Total over ${days} days` : "Total"}</span>
+                <span className="tabular-nums">
+                  {total.toLocaleString()}
+                  {days > 1 && <span className="font-normal text-muted-foreground"> · ≈{Math.round(total / days).toLocaleString()} a day</span>}
+                </span>
               </div>
             </>
           )}

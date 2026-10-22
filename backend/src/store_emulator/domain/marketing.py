@@ -141,7 +141,8 @@ class ExperimentReport(BaseModel):
     model: str = ""
     panel_size: int
     currency: str
-    visitors_per_day: float
+    visitors_per_day: float                     # what per-day money scales by: the estimated traffic when known
+    simulated_visitors_per_day: float = 0.0     # customers simulated a day (a sample of it); 0 = same as above
     focus_skus: list[str] = []
     control: VariantResult
     variants: list[VariantResult]

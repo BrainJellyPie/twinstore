@@ -2,7 +2,8 @@ import asyncio
 import logging
 import os
 import random
-from collections.abc import Callable
+import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -74,9 +75,43 @@ class TooManyBatchesFailed(RuntimeError):
 
 @dataclass(frozen=True)
 class Pace:
-    """How much to ask of the model that answers: customers a day, and customers per request."""
+    """How much to ask of the model that answers: customers a day, customers per request, and how many a day a quick
+    sample writes (the rest of each day are twins of them)."""
     daily_cap: int
     batch_size: int
+    sample_cap: int = 100
+
+
+@dataclass(frozen=True)
+class WriteSize:
+    """Customers written in total (all days) and the model requests that takes."""
+    per_day: int
+    customers: int
+    requests: int
+
+
+@dataclass(frozen=True)
+class WritePlan:
+    """What writing the customers takes, measured on one request (the probe) before the rest are sent.
+
+    `visitors` are each open day's estimated visitors (weekday → count, at most the population cap). `all` writes
+    every one of them; `sample` writes `sample.per_day` a day and fills the rest with twins. The probe wrote
+    `probe_customers` customers in `probe_seconds` using `probe_prompt_tokens` + `probe_completion_tokens`
+    (`probe_requests` requests, retries included); its customers are kept either way."""
+    visitors: dict[int, int]
+    all: WriteSize
+    sample: WriteSize
+    probe_seconds: float
+    probe_customers: int
+    probe_requests: int
+    probe_prompt_tokens: int
+    probe_completion_tokens: int
+
+
+# The answer to a WritePlan: how many customers a day to write (the rest of each day's visitors are twins of them).
+type Decide = Callable[[WritePlan], Awaitable[int]]
+# Customers written so far and in all, as the batches come back.
+type WriteProgress = Callable[[int, int], None]
 
 
 PROFILE_PROMPT = """당신은 상권 분석 전문가입니다.
@@ -229,6 +264,7 @@ async def generate_personas_for_day(
     *,
     semaphore: asyncio.Semaphore | None = None,
     tally: BatchTally | None = None,
+    on_written: Callable[[int], None] | None = None,
 ) -> list[Persona]:
     system_prompt = persona_prompt(currency)
     # Local stream per day: days are generated concurrently, so seeding the global
@@ -241,61 +277,65 @@ async def generate_personas_for_day(
     purpose_list = "\n".join(f"  - {p}" for p in profile.purposes)
 
     limit = semaphore or asyncio.Semaphore(max_concurrent)
-    tasks: list[tuple[int, int, asyncio.Task[PersonaBatch]]] = []
+    tasks: list[tuple[list[int], asyncio.Task[PersonaBatch]]] = []
 
     async def _generate_batch(prompt: str) -> PersonaBatch:
         async with limit:
             return await llm.generate_structured_async(PersonaBatch, system_prompt, prompt, max_retries=3)
 
+    # One spec line per customer, hour by hour; requests take `batch_size` of them in order, across hours, so a quiet
+    # hour's one or two customers do not cost a request of their own (a 20-a-day sample over 14 hours took 14).
+    specs: list[tuple[int, str]] = []
     for hour, hp in sorted(profiles_map.items()):
         if not hp.person_types or hp.visitor_count <= 0:
             continue
+        for _ in range(hp.visitor_count):
+            n_types = min(rng.choice([1, 1, 2]), len(hp.person_types))
+            types = rng.sample(hp.person_types, n_types)
+            n_kw = min(rng.randint(1, 3), len(profile.keywords))
+            kws = rng.sample(profile.keywords, n_kw)
+            specs.append((hour, f"{hour}시, {'+'.join(types)}, 키워드: {', '.join(kws)}"))
+    if specs:
+        logger.info(f"[persona] {day_label}: {len(specs)} customers in {-(-len(specs) // batch_size)} requests")
 
-        logger.info(f"[persona] {day_label} hour {hour} slot ({hp.visitor_count} visitors) LLM generation start")
-
-        for batch_start in range(0, hp.visitor_count, batch_size):
-            current_size = min(batch_size, hp.visitor_count - batch_start)
-            spec_lines: list[str] = []
-            for i in range(current_size):
-                n_types = min(rng.choice([1, 1, 2]), len(hp.person_types))
-                types = rng.sample(hp.person_types, n_types)
-                n_kw = min(rng.randint(1, 3), len(profile.keywords))
-                kws = rng.sample(profile.keywords, n_kw)
-                spec_lines.append(f"[{i}] {hour}시, {'+'.join(types)}, 키워드: {', '.join(kws)}")
-
-            category_section = ""
-            if categories:
-                cat_list = "\n".join(f"  - {c}" for c in categories)
-                category_section = f"## 카테고리 목록 (preferred_categories는 반드시 이 중에서만 선택)\n{cat_list}\n\n"
-
-            persona_input = (
-                f"매장 위치: {address}\n요일: {day_label}\n\n"
-                f"## identity 목록 (반드시 이 중 하나 선택)\n{identity_list}\n\n"
-                f"## purpose 목록 (반드시 이 중 하나 선택)\n{purpose_list}\n\n"
-                f"{category_section}"
-                f"아래 {current_size}명의 고객 페르소나를 생성하세요:\n\n"
-                + "\n".join(spec_lines)
-            )
-            if custom_instruction:
-                persona_input += f"\n\n추가 지시: {custom_instruction}"
-
-            task = asyncio.create_task(_generate_batch(persona_input))
-            tasks.append((hour, current_size, task))
+    category_section = ""
+    if categories:
+        cat_list = "\n".join(f"  - {c}" for c in categories)
+        category_section = f"## 카테고리 목록 (preferred_categories는 반드시 이 중에서만 선택)\n{cat_list}\n\n"
+    for batch_start in range(0, len(specs), batch_size):
+        chunk = specs[batch_start:batch_start + batch_size]
+        persona_input = (
+            f"매장 위치: {address}\n요일: {day_label}\n\n"
+            f"## identity 목록 (반드시 이 중 하나 선택)\n{identity_list}\n\n"
+            f"## purpose 목록 (반드시 이 중 하나 선택)\n{purpose_list}\n\n"
+            f"{category_section}"
+            f"아래 {len(chunk)}명의 고객 페르소나를 생성하세요 (순서대로):\n\n"
+            + "\n".join(f"[{i}] {line}" for i, (_, line) in enumerate(chunk))
+        )
+        if custom_instruction:
+            persona_input += f"\n\n추가 지시: {custom_instruction}"
+        tasks.append(([hour for hour, _ in chunk], asyncio.create_task(_generate_batch(persona_input))))
 
     all_personas: list[Persona] = []
-    for hour, size, task in tasks:
+    for hours, task in tasks:
+        size = len(hours)
         if tally is not None:
             tally.requested += 1
         try:
             batch = await task
         except Exception as e:
-            logger.error(f"[persona] {day_label} hour {hour} batch generation failed: {e}")
+            logger.error(f"[persona] {day_label} hours {hours[0]}–{hours[-1]} batch generation failed: {e}")
             if tally is not None:
                 tally.failed += 1
                 tally.first_error = tally.first_error or e
+            if on_written is not None:
+                on_written(size)   # settled, if not written: twins stand in for them
             continue
+        if on_written is not None:
+            on_written(size)
 
-        for generated in batch.personas[:size]:   # small models may add a few: the hour asked for `size`
+        # Small models may add a few: the request asked for `size`, in the order of their hours.
+        for generated, hour in zip(batch.personas[:size], hours):
             persona = Persona.model_validate(generated.model_dump())
             prefix = "F" if persona.gender == "Female" else "M"
             seq = len([p for p in all_personas if p.gender == persona.gender]) + 1
@@ -323,52 +363,193 @@ async def generate_batched(
     currency: str = "USD",
     traffic: TrafficProfile | None = None,
     pace: Callable[[Pace], Pace] | None = None,
+    estimates: dict[int, int] | None = None,
+    decide: Decide | None = None,
+    on_progress: WriteProgress | None = None,
 ) -> list[Persona]:
     """Personas for every open day. With `traffic` (fitted from the store's own transaction times),
     the model's hourly estimate keeps deciding who comes, but how many come each hour follows the
     data — asked for times, models collapse onto a few stereotyped peaks.
 
-    `pace` turns the usual pace (customers a day, customers per request) into the one to use; it is asked after
-    the first call, once the model that answers is settled (a small model on this computer is asked for less)."""
+    Each open day gets the visitors the model estimates for it (at most the population cap, 1000). `pace` turns the
+    usual pace (customers a day, customers per request) into the one to use; it is asked after the first call, once
+    the model that answers is settled (a small model on this computer gets smaller requests). With `decide`, one
+    request is written and timed first, and `decide` gets the plan with that measurement and answers how many a day to
+    write (every visitor, or a quick sample whose twins fill the rest of the day). `estimates`, when given, receives
+    each open day's visitors (weekday 1–7 → visitors); per-day money in reports scales by them."""
     profile = await analyze_location(
         llm, address, customer_profile, custom_instruction,
         supplemental_summary=supplemental_summary,
     )
 
     usual = Pace(daily_cap=_persona_daily_cap_ceiling(), batch_size=batch_size)
+    population_cap = _env_int("PERSONA_DAILY_POPULATION", DAILY_POPULATION_CAP)
     settled = pace(usual) if pace is not None else usual
-    daily_cap_now, batch_size = max(1, settled.daily_cap), max(1, settled.batch_size)
+    daily_cap_now, batch_size = max(1, min(settled.daily_cap, population_cap)), max(1, settled.batch_size)
+    sample_cap = max(1, min(settled.sample_cap, daily_cap_now))
     open_days = [s for s in schedules if s.is_open]
 
     # One limit for all days (they run together): 10 requests a day at once came to 70, enough to hit rate limits.
     shared = asyncio.Semaphore(max(max_concurrent, 20))
     tally = BatchTally()
 
-    async def _process_day(schedule: DaySchedule) -> list[Persona]:
+    async def _day_visitors(schedule: DaySchedule) -> list[HourlyProfile]:
         hourly = await analyze_daily_traffic(
             llm, address, customer_profile, profile,
             schedule.day, schedule.open_hour, schedule.close_hour,
         )
-        hourly = _usable_hourly(hourly, profile, schedule, daily_cap_now)
+        hourly = _usable_hourly(hourly, profile, schedule, PLAIN_DAY_VISITORS)
         if traffic is not None:
             hourly = _apply_traffic(hourly, traffic, schedule)
-        hourly = _scale_hourly(hourly, daily_cap_now)
-        return await generate_personas_for_day(
-            llm, address, profile, schedule.day, hourly,
+        return _scale_hourly(hourly, population_cap)
+
+    days = list(zip(open_days, await asyncio.gather(*[_day_visitors(s) for s in open_days]), strict=True))
+    if estimates is not None:
+        for schedule, visitors in days:
+            estimates[int(schedule.day)] = sum(h.visitor_count for h in visitors)
+
+    def size(cap: int) -> WriteSize:   # requests take batch_size customers of a day, across its hours
+        per_day = [sum(h.visitor_count for h in _scale_hourly(visitors, cap) if h.person_types and h.visitor_count > 0)
+                   for _, visitors in days]
+        return WriteSize(per_day=cap, customers=sum(per_day), requests=sum(-(-n // batch_size) for n in per_day))
+
+    total = size(daily_cap_now).customers
+    done = 0
+
+    def written(n: int) -> None:
+        nonlocal done
+        done += n
+        if on_progress is not None:
+            on_progress(min(done, total), total)
+
+    def write(day: Weekday, hourly: list[HourlyProfile]) -> Awaitable[list[Persona]]:
+        return generate_personas_for_day(
+            llm, address, profile, day, hourly,
             seed=seed, custom_instruction=custom_instruction,
             batch_size=batch_size, max_concurrent=max_concurrent,
-            categories=categories, currency=currency, semaphore=shared, tally=tally,
+            categories=categories, currency=currency, semaphore=shared, tally=tally, on_written=written,
         )
 
-    day_results = await asyncio.gather(*[_process_day(s) for s in open_days])
+    cap = daily_cap_now
+    probe: list[Persona] = []
+    probe_at: tuple[Weekday, int] | None = None
+    busy = [(schedule, h) for schedule, visitors in days for h in _scale_hourly(visitors, cap)
+            if h.person_types and h.visitor_count > 0]
+    if decide is not None and busy:
+        # One request first, timed: what the rest will take on this model, before asking for all of them.
+        schedule, hour = max(busy, key=lambda pair: pair[1].visitor_count)
+        n = min(batch_size, hour.visitor_count)
+        get_usage = getattr(llm, "get_usage", None)
+        before = get_usage() if callable(get_usage) else None
+        started = time.monotonic()
+        probe = await write(schedule.day, [hour.model_copy(update={"visitor_count": n})])
+        seconds = time.monotonic() - started
+        after = get_usage() if callable(get_usage) else None
+        if not probe and tally.failed:
+            raise TooManyBatchesFailed(tally)   # the model cannot write customers: say so now, not after hours
+        probe_at = (schedule.day, hour.hour)
+        tokens = _usage_delta(before, after)
+        plan = WritePlan(
+            visitors={int(sched.day): sum(h.visitor_count for h in visitors) for sched, visitors in days},
+            all=size(daily_cap_now), sample=size(sample_cap),
+            probe_seconds=seconds, probe_customers=len(probe), probe_requests=max(1, tokens[0]),
+            probe_prompt_tokens=tokens[1], probe_completion_tokens=tokens[2],
+        )
+        cap = max(1, min(await decide(plan), daily_cap_now))
+        if cap != daily_cap_now:
+            total = size(cap).customers
+            done = min(done, total)
+
+    async def _write_day(schedule: DaySchedule, visitors: list[HourlyProfile]) -> list[Persona]:
+        target = _scale_hourly(visitors, cap)
+        kept: list[Persona] = []
+        if probe_at is not None and probe_at[0] == schedule.day:   # the probe's customers count toward their hour
+            kept, probe_hour = probe, probe_at[1]
+            target = [h.model_copy(update={"visitor_count": max(0, h.visitor_count - len(kept))})
+                      if h.hour == probe_hour else h for h in target]
+        out = await write(schedule.day, target)
+        if kept:
+            out = _renumber([*kept, *out], schedule.day)
+        return fill_population(out, visitors, schedule.day)
+
+    day_results = await asyncio.gather(*[_write_day(schedule, visitors) for schedule, visitors in days])
     all_personas: list[Persona] = [p for personas in day_results for p in personas]
     if tally.failed * 2 > tally.requested:
         raise TooManyBatchesFailed(tally)
     if tally.failed:
-        logger.warning(f"[persona] {tally.failed} of {tally.requested} requests failed; keeping the rest")
+        logger.warning(f"[persona] {tally.failed} of {tally.requested} requests failed; their visitors are twins")
 
     logger.info(f"[persona] generated {len(all_personas)} personas total across {len(open_days)} days")
     return all_personas
+
+
+def _usage_delta(before: object, after: object) -> tuple[int, int, int]:
+    """(requests, prompt tokens, completion tokens) between two usage snapshots of the client (zeros without them)."""
+    def get(usage: object, name: str) -> int:
+        value = getattr(usage, name, 0)
+        return value if isinstance(value, int) else 0
+
+    if before is None or after is None:
+        return (0, 0, 0)
+    return (get(after, "requests") - get(before, "requests"),
+            get(after, "prompt_tokens") - get(before, "prompt_tokens"),
+            get(after, "completion_tokens") - get(before, "completion_tokens"))
+
+
+def _renumber(personas: list[Persona], day: Weekday) -> list[Persona]:
+    """Ids in order (F1001, F1002, …, M1001, …) for customers written in more than one go on the same day."""
+    seq: dict[str, int] = {}
+    out: list[Persona] = []
+    for p in personas:
+        seq[p.gender] = seq.get(p.gender, 0) + 1
+        prefix = "F" if p.gender == "Female" else "M"
+        out.append(p.model_copy(update={"id": f"{prefix}{day.value}{seq[p.gender]:03d}"}))
+    return out
+
+
+# A day's visitors follow the traffic estimate up to this many; the model writes them all, or a quick sample whose
+# twins fill the rest. A plain day — the model gave no usable estimate — has PLAIN_DAY_VISITORS.
+DAILY_POPULATION_CAP = 1000
+PLAIN_DAY_VISITORS = 300
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return max(1, int(os.environ.get(name, default)))
+    except ValueError:
+        return default
+
+
+def fill_population(written: list[Persona], visitors: list[HourlyProfile], day: Weekday) -> list[Persona]:
+    """The day's visitors: the customers the model wrote, and twins of them for the rest of each hour's estimate.
+
+    The model writes every visitor unless the user chose a quick sample (writing them all would take long or cost
+    much), and a failed request leaves its customers unwritten. Totals, playback and runs should still see the whole
+    day, so each hour gets copies of that hour's customers (of the day's, when the hour has none) under their own ids;
+    every copy shops with its own randomness."""
+    if not written:
+        return written
+    by_hour: dict[int, list[Persona]] = {}
+    for p in written:
+        by_hour.setdefault(p.arrival_hour, []).append(p)
+    used = {p.id for p in written}
+    seq = {g: sum(1 for p in written if p.gender == g) for g in ("Female", "Male")}
+    out = list(written)
+    for h in visitors:
+        have = by_hour.get(h.hour, [])
+        pool = have or written
+        for k in range(max(0, h.visitor_count - len(have))):
+            src = pool[k % len(pool)]
+            prefix = "F" if src.gender == "Female" else "M"
+            while True:   # the ids the written customers have (F1001, M1001, …), continued
+                seq[src.gender] = seq.get(src.gender, 0) + 1
+                twin_id = f"{prefix}{day.value}{seq[src.gender]:03d}"
+                if twin_id not in used:
+                    break
+            used.add(twin_id)
+            out.append(src.model_copy(update={"id": twin_id, "arrival_hour": h.hour, "day": day,
+                                              "twin_of": src.twin_of or src.id}))
+    return out
 
 
 # Relative visits per hour of a plain convenience-store day (morning, lunch and evening peaks; other hours 2).
@@ -379,9 +560,15 @@ def _usable_hourly(hourly: list[HourlyProfile], profile: TradeAreaProfile, sched
                    cap: int) -> list[HourlyProfile]:
     """Hours the persona step can use. Small models sometimes answer an open day with no visitors at all, or with
     visitors but no customer types; both left the day without customers. Hours without types get every identity
-    of the trade area; a day without visitors gets a plain convenience-store day of `cap` visitors."""
+    of the trade area (at most 10 an hour, as the schema allows, taking turns so every identity comes); a day
+    without visitors gets a plain convenience-store day of `cap` visitors."""
     identities = list(profile.identities) or ["shopper"]
-    fixed = [h if h.person_types or h.visitor_count <= 0 else h.model_copy(update={"person_types": identities})
+    per_hour = min(10, len(identities))
+
+    def types_for(hour: int) -> list[str]:
+        return [identities[(hour * per_hour + k) % len(identities)] for k in range(per_hour)]
+
+    fixed = [h if h.person_types or h.visitor_count <= 0 else h.model_copy(update={"person_types": types_for(h.hour)})
              for h in hourly]
     if sum(h.visitor_count for h in fixed) > 0:
         return fixed
@@ -393,7 +580,7 @@ def _usable_hourly(hourly: list[HourlyProfile], profile: TradeAreaProfile, sched
     weights = {h: _PLAIN_DAY.get(h, 2) for h in hours}
     total_w = sum(weights.values())
     counts = {h: max(1, round(cap * w / total_w)) for h, w in weights.items()}
-    return [HourlyProfile(hour=h, visitor_count=n, person_types=identities) for h, n in counts.items()]
+    return [HourlyProfile(hour=h, visitor_count=n, person_types=types_for(h)) for h, n in counts.items()]
 
 
 def _apply_traffic(hourly: list[HourlyProfile], traffic: TrafficProfile, schedule: DaySchedule) -> list[HourlyProfile]:
@@ -414,14 +601,15 @@ def _apply_traffic(hourly: list[HourlyProfile], traffic: TrafficProfile, schedul
 
 
 def _persona_daily_cap_ceiling() -> int:
+    """Customers a day the model writes at most: every estimated visitor (1000), unless PERSONA_DAILY_CAP says less."""
     raw = os.getenv("PERSONA_DAILY_CAP")
     if raw is None:
-        return 100
+        return DAILY_POPULATION_CAP
     try:
         value = int(raw)
     except ValueError:
-        logger.warning(f"[persona] invalid PERSONA_DAILY_CAP={raw!r}; falling back to 100")
-        return 100
+        logger.warning(f"[persona] invalid PERSONA_DAILY_CAP={raw!r}; falling back to {DAILY_POPULATION_CAP}")
+        return DAILY_POPULATION_CAP
     if value < 10:
         logger.warning(f"[persona] PERSONA_DAILY_CAP={value} below minimum; clamping to 10")
         return 10

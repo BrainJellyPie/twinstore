@@ -563,8 +563,10 @@ Defaults live in `backend/src/store_emulator/application/config.py`; these envir
   what calibration involves.
 - **Synthetic respondents are not a panel.** Concept, shelf, conjoint and staff-script results screen ideas; confirm
   with real people before pricing or launching on them.
-- **Model calls cost money and time.** A week of personas for a modest store can be hundreds of calls (capped at 100
-  personas per day by default, `PERSONA_DAILY_CAP`). The rule-based engine and response caches make iteration free.
+- **Model calls cost money and time.** A week of personas is every estimated visitor (up to 1,000 a day), which can be
+  hundreds of calls; the app times one call first and asks before writing them all when that takes about 10 minutes or
+  costs about $1, offering a quick sample instead. Model-based runs ask the same way. The rule-based engine and
+  response caches make iteration free.
 - **One store at a time.** No fleet view or multi-week dynamics; crowding is light (per-shopper paths, no queues);
   floors of a building are simulated separately.
 - **APIs and data shapes may still change** between versions.

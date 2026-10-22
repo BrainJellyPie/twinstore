@@ -205,6 +205,24 @@ async def get_generation_status(pid: str, sid: str, gid: str) -> dict[str, Any]:
     return data
 
 
+class WriteChoiceRequest(BaseModel):
+    choice: Literal["all", "sample", "cancel"]
+
+
+@router.post("/{sid}/generations/{gid}/confirm", summary="Choose how many customers to write",
+             response_model=GenerationStatusModel)
+async def confirm_generation(pid: str, sid: str, gid: str, req: WriteChoiceRequest) -> dict[str, Any]:
+    """Answer a customer generation that asks first (its `progress.confirm`: writing every estimated visitor would take
+    long or cost much). `all` writes them all, `sample` writes `confirm.sample.per_day` a day and fills each day with
+    twins of them, `cancel` stops the generation (it ends as failed).
+
+    **Errors:** 404 (unknown generation), 409 (not waiting for a choice), 422 (unknown choice)."""
+    try:
+        return await run_in_threadpool(generation_async.choose_write_size, pid, sid, gid, req.choice)
+    except AppError as e:
+        raise HTTPException(e.status_code, str(e)) from e
+
+
 @router.get("/{sid}/generations", summary="List generations for setup", response_model=list[GenerationListItem])
 async def list_setup_generations(
     pid: str, sid: str, active_only: bool = False,

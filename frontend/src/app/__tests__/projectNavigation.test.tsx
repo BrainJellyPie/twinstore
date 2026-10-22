@@ -116,6 +116,20 @@ it.each(["/projects/alpha", "/projects/alpha/"])("opens the wizard after confirm
   expect(api.deleteProject).toHaveBeenCalledWith("alpha"); expect(router.state.location.pathname).toBe("/projects/new");
 });
 
+it("opens the new-store form even though the deleted store's data is gone", async () => {
+  vi.mocked(api.deleteProject).mockResolvedValue({ status: "deleted" }); const { router } = await mountFailed();
+  // After deletion the store has no layouts left and its details 404 — refetching them used to leave
+  // "No layouts found" with the deleted store in the breadcrumb.
+  const gone = () => Promise.reject(new Error("HTTP 404: Project not found"));
+  vi.mocked(api.getProject).mockImplementation(gone); vi.mocked(api.getSetups).mockResolvedValue([]);
+  vi.mocked(api.getSetup).mockImplementation(gone); vi.mocked(api.getRuns).mockImplementation(gone);
+  vi.mocked(api.getSetupGenerations).mockImplementation(gone);
+  fireEvent.click(screen.getByRole("button", { name: "Confirmed deletion" }));
+  await screen.findByText("New-store form");
+  expect(router.state.location.pathname).toBe("/projects/new");
+  expect(api.getProject).not.toHaveBeenCalled(); expect(api.getSetups).not.toHaveBeenCalled();
+});
+
 it("keeps the current page after a deletion failure", async () => {
   vi.mocked(api.deleteProject).mockRejectedValue(new Error("Deletion unavailable")); const { router } = await mountFailed();
   fireEvent.click(screen.getByRole("button", { name: "Confirmed deletion" }));

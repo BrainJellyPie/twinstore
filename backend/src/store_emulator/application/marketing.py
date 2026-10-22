@@ -85,6 +85,7 @@ from .errors import AppError, job_failure, model_failure
 from .currencies import project_currency, simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import answered_by, assistive_client, assistive_model, build_client, ensure_resolvable
+from .generation_async import visitors_per_day
 from .shelf_lab import (
     _check_id,  # pyright: ignore[reportPrivateUsage]
     _load_store,  # pyright: ignore[reportPrivateUsage]
@@ -251,7 +252,7 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
             control_result, results, winner = asyncio.run(run_experiment(
                 evaluator, control, built, panel, req.focus_skus, on_progress=progress, on_outcomes=retain_outcomes, seed=req.seed,
             ))
-            days = max(1, len({p.day for p in personas}))
+            per_day, simulated_per_day = visitors_per_day(pid, personas)
             panel_size = control_result.customers if control_result.customers is not None else len(panel)
             notes = list(control_result.warnings)
             if panel_size < 100:
@@ -263,7 +264,8 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 notes.append("The rule-based shoppers read promotion signs as a generic impulse boost; vision shoppers see the sign itself.")
             report = ExperimentReport(
                 experiment_id=status.job_id, name=name, setup_id=req.setup_id, engine=req.engine, model=model,
-                panel_size=panel_size, currency=currency, visitors_per_day=round(len(personas) / days, 1),
+                panel_size=panel_size, currency=currency, visitors_per_day=per_day,
+                simulated_visitors_per_day=simulated_per_day,
                 focus_skus=req.focus_skus, control=control_result, variants=results, winner=winner, notes=notes,
                 price_response=price_response(control_result, results),
                 seconds=round(time.perf_counter() - t0, 1),

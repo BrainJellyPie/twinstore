@@ -19,6 +19,7 @@ import { flushSync } from "react-dom";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -52,6 +53,9 @@ import type { EditorRack, SetupDetailWithBlocked } from "./types";
 // No `next` argument by design: removes the temptation to sync via local state.
 // invalidate → refetch handles propagation automatically.
 // onCreateNewSetup is only used by LegacyDetectModal's "create new setup" button — optional.
+// clearItemsOnSave: the layout has products, which the backend does not allow on a changed floor.
+// The editor works on the floor without them and removes them only when a changed floor is saved,
+// so closing without saving leaves the layout as it was.
 interface GridEditorDialogProps {
   open: boolean;
   pid: string;
@@ -60,6 +64,14 @@ interface GridEditorDialogProps {
   onClose: () => void;
   onSaved: () => void;
   onCreateNewSetup?: () => void;
+  clearItemsOnSave?: boolean;
+}
+
+function withoutItems(store: Store): Store {
+  return {
+    ...store,
+    racks: store.racks.map((r) => ({ ...r, slots: r.slots.map((s) => ({ ...s, items: [] })) })),
+  };
 }
 
 export function GridEditorDialog({
@@ -70,14 +82,23 @@ export function GridEditorDialog({
   onClose,
   onSaved,
   onCreateNewSetup,
+  clearItemsOnSave = false,
 }: GridEditorDialogProps) {
   const { t } = useI18n();
-  const editor = useGridEditor(initialSetup);
   const project = useProject(pid).data;
 
   // Local snapshot of the setup the dialog operates on. Updated after legacy reset.
   // Not updated after a successful Save — the dialog closes and the parent invalidates.
-  const [setup, setSetup] = useState<SetupDetailWithBlocked>(initialSetup);
+  const [setup, setSetup] = useState<SetupDetailWithBlocked>(() =>
+    clearItemsOnSave && initialSetup.store
+      ? { ...initialSetup, store: withoutItems(initialSetup.store) }
+      : initialSetup,
+  );
+  // The saved store with its products, while they are still on the backend.
+  const [productsStore, setProductsStore] = useState<Store | null>(
+    clearItemsOnSave ? initialSetup.store : null,
+  );
+  const editor = useGridEditor(setup);
 
   const [selectedCell, setSelectedCell] = useState<Position | null>(null);
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null);
@@ -225,6 +246,13 @@ export function GridEditorDialog({
     });
     const racksForSave = racksRef.current;
     setSaveError(null);
+    // An unchanged floor keeps its products.
+    if (productsStore && setup.store
+      && editor.gridSize[0] === setup.store.grid_size[0] && editor.gridSize[1] === setup.store.grid_size[1]
+      && JSON.stringify(racksForSave) === JSON.stringify(setup.store.racks)) {
+      onClose();
+      return;
+    }
     const outside = racksForSave.filter((rack) => rackCells(rack).some(([x, y]) =>
       x < 0 || y < 0 || x >= editor.gridSize[0] || y >= editor.gridSize[1],
     ));
@@ -246,7 +274,18 @@ export function GridEditorDialog({
       return;
     }
     setSaving(true);
+    let productsRemoved = false;
     try {
+      if (productsStore) {
+        // The backend refuses floor changes while products are placed: remove them first and put
+        // them back (finally, below) if the new floor is not saved.
+        const cleared = await saveSetup(pid, sid, { store: withoutItems(productsStore) });
+        if (!cleared.ok) {
+          setSaveError(cleared.message || "Save failed");
+          return;
+        }
+        productsRemoved = true;
+      }
       const baseStore: Store = setup.store ?? {
         id: `store_${crypto.randomUUID().slice(0, 8)}`,
         name: project.metadata.name,
@@ -267,14 +306,22 @@ export function GridEditorDialog({
         setSaveError(result.message || "Save failed");
         return;
       }
+      productsRemoved = false;
       onSaved();
       onClose();
     } catch (error) {
       setSaveError(error instanceof Error && error.message ? error.message : "Save failed");
     } finally {
+      if (productsRemoved && productsStore) {
+        const restored = await saveSetup(pid, sid, { store: productsStore }).catch(() => null);
+        if (!restored?.ok) {
+          setProductsStore(null);
+          setSaveError((message) => `${message ?? "Save failed"} The products on this layout were removed and could not be put back.`);
+        }
+      }
       setSaving(false);
     }
-  }, [pid, sid, setup, editor.gridSize, project, onSaved, onClose]);
+  }, [pid, sid, setup, productsStore, editor.gridSize, project, onSaved, onClose]);
 
   // Legacy reset (2-step PUT) — same flow as GridEditorPage.
   const onLegacyReset = useCallback(async () => {
@@ -314,6 +361,7 @@ export function GridEditorDialog({
       };
       setSetup(reset);
       editor.reset(reset);
+      setProductsStore(null);
       setLegacyDismissed(true);
     } catch (error) {
       setLegacyResetError(error instanceof Error && error.message ? error.message : "Reset failed");
@@ -343,7 +391,7 @@ export function GridEditorDialog({
   const showLegacyModal = legacyState === "clean" && !legacyDismissed;
   const isBlockingLegacy = legacyState === "with_run";
 
-  // Cancel and the X button ask before dropping unsaved edits; Escape and outside clicks are ignored.
+  // Cancel, the X button and Escape ask before dropping unsaved edits; outside clicks are ignored.
   const requestClose = () => {
     if (editor.dirty) setConfirmDiscard(true);
     else onClose();
@@ -361,7 +409,7 @@ export function GridEditorDialog({
         data-testid="grid-editor-dialog"
         onEscapeKeyDown={(event) => {
           if (placing) { event.preventDefault(); setPlacing(false); setSaveError(null); }
-          else if (editor.dirty) event.preventDefault();
+          else if (editor.dirty) { event.preventDefault(); setConfirmDiscard(true); }
         }}
         onInteractOutside={(event) => {
           if (editor.dirty) event.preventDefault();
@@ -369,6 +417,9 @@ export function GridEditorDialog({
       >
         <DialogHeader>
           <DialogTitle>Floor Configuration</DialogTitle>
+          <DialogDescription className={productsStore ? "text-warn" : "sr-only"} data-testid="grid-editor-description">
+            {productsStore ? t("floorEditRemovesProducts") : t("floorEditorDescription")}
+          </DialogDescription>
         </DialogHeader>
 
         {isBlockingLegacy ? (

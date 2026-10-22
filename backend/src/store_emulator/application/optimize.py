@@ -5,12 +5,15 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
 from pydantic import BaseModel
 
 from store_emulator.domain.config import EngineType, SimulationConfig
+from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.optimize import JudgeSpec, OptimizeResult, OptimizeSpec
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
@@ -29,7 +32,7 @@ from .errors import AppError, job_failure
 from .currencies import simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
-from .scenarios import get_preset
+from .scenarios import get_preset, scenario_shoppers, scenario_store
 from .setups import set_active_setup, setup_summary
 from .simulation import with_engine_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
@@ -187,11 +190,20 @@ def _run_job(
     try:
         if (pid, status.job_id) in _cancel_requests:
             raise OptimizationCanceled("optimization canceled before starting")
+        # The situation's days, traffic and budgets pick the panels; its promotions and stock-outs go on every
+        # layout the shoppers walk (the layouts themselves, and the one saved, keep the regular prices).
+        personas = scenario_shoppers(config, store, personas)
+        if not personas:
+            raise ValueError("No shoppers come on this situation's days and opening hours, so there is nothing to "
+                             "optimize for. Pick another situation, or change the layout's opening hours.")
+        situation: Callable[[Store], Store] | None = None
+        if config.scenario is not None:
+            situation = partial(scenario_store, config)
         search_personas = select_personas(personas, spec.eval_customers, seed=spec.seed)
         if vlm_config is None:
             evaluator = LayoutEvaluator(
                 config, search_personas, sample_cue, BEHAVIOR_PATTERNS, AStarPathFinder(diagonal=config.diagonal_moves),
-                spec.objective,
+                spec.objective, prepare_store=situation,
             )
             validation = select_personas(personas, spec.validation_size, seed=spec.seed + 1)
             result = asyncio.run(optimize(store, spec, evaluator, validation_personas=validation, on_progress=on_progress,
@@ -209,7 +221,7 @@ def _run_job(
                 cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, pathfinder=pathfinder,
                 model_label=judge.model or vlm_config.llm_for(EngineType.VLM_GLANCE).model,
                 on_phase=on_phase, on_progress=on_progress,
-                should_stop=lambda: (pid, status.job_id) in _cancel_requests,
+                should_stop=lambda: (pid, status.job_id) in _cancel_requests, prepare_store=situation,
             ))
         if (pid, status.job_id) in _cancel_requests:
             raise OptimizationCanceled("optimization canceled before publishing its result")
@@ -243,6 +255,8 @@ def apply_optimization(pid: str, job_id: str, name: str | None = None) -> dict[s
     final_name = name or f"{source.get('name') or 'layout'} (optimized{' ' + label if label else ''})"
     memo = "; ".join(view.result.applied_moves[:12])
     new_setup = new_setup_data(final_name, view.status.setup_id, view.result.best_store.model_dump(mode="json"), memo[:1000])
+    if source.get("building") is not None:  # the optimized layout stays on the same building floor
+        new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
     write_json(setup_path(pid, new_setup["id"]), new_setup)
     set_active_setup(pid, new_setup["id"])
     status = view.status.model_copy(update={"applied_setup_id": new_setup["id"]})

@@ -176,3 +176,16 @@ it.each([[28800, 28800], [72000, 28800]])("disables real-time selection for an u
   fireEvent.click(screen.getByRole("radio", { name: "Real time" }));
   expect(usePlaybackControlStore.getState().speed).toBe(60);
 });
+
+it("folds by default on laptop-height windows too, on dense glass that hides the scene behind it", () => {
+  const queries: string[] = [];
+  vi.stubGlobal("matchMedia", (query: string) => {
+    queries.push(query);
+    // A 1440×900 window: wide enough, but short.
+    return { matches: /max-height: 960px/.test(query), addEventListener: () => {}, removeEventListener: () => {} };
+  });
+  render(<TimeBar minTime={28800} maxTime={72000} />);
+  expect(queries.length).toBeGreaterThan(0);
+  expect(screen.getByRole("button", { name: "Expand playback controls" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Playback controls" }).className).toMatch(/\bpanel\b/);
+});

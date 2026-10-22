@@ -21,7 +21,7 @@ import {
 } from "@/shared/components/ui/select";
 import { explainComparison, type ComparisonReport, type MetricComparison, type RunListItem } from "@/shared/api/client";
 import type { Layout } from "@/features/layouts/hooks/useLayouts";
-import { formatPercent } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 
 import { useCompare, useProjectRuns } from "../hooks";
 import { METRIC_LABELS, runLabel } from "../labels";
@@ -56,6 +56,8 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
   const a = runA ?? otherDefault;
   const b = runB ?? defaultRunId ?? null;
   const compare = useCompare(projectId, a, b);
+  // Spend comes in the currency's minor unit; show it as money, like the rest of the app.
+  const code = currencyCode((runs.find((r) => r.run_id === a) ?? runs.find((r) => r.run_id === b))?.summary?.currency);
 
   const option = (r: RunListItem) => (
     <SelectItem key={r.run_id} value={r.run_id}>
@@ -103,7 +105,7 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
               {compare.error instanceof Error ? compare.error.message : "Comparison failed"}
             </p>
           )}
-          {compare.data && <CompareTable report={compare.data} />}
+          {compare.data && <CompareTable report={compare.data} code={code} />}
           {compare.data && a && b && a !== b && <Explain key={`${a}:${b}`} projectId={projectId} a={a} b={b} />}
         </>
       )}
@@ -142,11 +144,11 @@ function Explain({ projectId, a, b }: { projectId: string; a: string; b: string 
   );
 }
 
-function CompareTable({ report }: { report: ComparisonReport }) {
+function CompareTable({ report, code }: { report: ComparisonReport; code: string }) {
   const spend = report.metrics.find((m) => m.metric === "spend");
   return (
     <div className="space-y-3">
-      {spend && <Headline m={spend} />}
+      {spend && <Headline m={spend} code={code} />}
       <div className="overflow-x-auto" role="region" aria-label="Run comparison metrics" tabIndex={0}>
       <table className="w-full min-w-[640px] text-xs">
         <thead className="text-muted-foreground">
@@ -164,9 +166,9 @@ function CompareTable({ report }: { report: ComparisonReport }) {
           {report.metrics.map((m) => (
             <tr key={m.metric} className="border-b last:border-0">
               <td className="py-1.5">{METRIC_LABELS[m.metric] ?? m.metric}</td>
-              <td className="text-right tabular-nums">{fmt(m, m.mean_a)}</td>
-              <td className="text-right tabular-nums">{fmt(m, m.mean_b)}</td>
-              <td className="px-2"><ForestBar m={m} /></td>
+              <td className="text-right tabular-nums">{fmt(m, m.mean_a, code)}</td>
+              <td className="text-right tabular-nums">{fmt(m, m.mean_b, code)}</td>
+              <td className="px-2"><ForestBar m={m} code={code} /></td>
               <td className="text-right tabular-nums">{m.mean_a ? signed(m.rel_diff) : "—"}</td>
               <td className="text-right tabular-nums">{formatPercent(m.prob_b_greater, 0)}</td>
               <td className="text-right tabular-nums text-muted-foreground" title={m.mean_a === 0 ? "A 5% relative change is undefined for a zero baseline." : undefined}>
@@ -179,7 +181,6 @@ function CompareTable({ report }: { report: ComparisonReport }) {
       </div>
       <p className="text-xs text-muted-foreground">
         {report.paired_customers.toLocaleString()} paired customers · {report.n_bootstrap.toLocaleString()} bootstrap draws.
-        Spend values are in the currency's minor unit.
         With a zero baseline, intervals show absolute changes (conversion in percentage points).
         Relative sample size estimates are unavailable for a zero baseline.
       </p>
@@ -190,7 +191,7 @@ function CompareTable({ report }: { report: ComparisonReport }) {
   );
 }
 
-function Headline({ m }: { m: MetricComparison }) {
+function Headline({ m, code }: { m: MetricComparison; code: string }) {
   const decisive = m.ci_low > 0 || m.ci_high < 0;
   const better = m.ci_low > 0;
   return (
@@ -200,9 +201,9 @@ function Headline({ m }: { m: MetricComparison }) {
         (decisive ? (better ? "tone-good" : "tone-bad") : "bg-muted/40")
       }
     >
-      <span className="font-medium">Spend per visitor: {signedChange(m, m.diff)}{m.mean_a ? "" : " minor units"}</span>{" "}
+      <span className="font-medium">Spend per visitor: {signedChange(m, m.diff, code)}</span>{" "}
       <span className="text-muted-foreground">
-        ({signedChange(m, m.ci_low)} to {signedChange(m, m.ci_high)}) —{" "}
+        ({signedChange(m, m.ci_low, code)} to {signedChange(m, m.ci_high, code)}) —{" "}
         {decisive
           ? better
             ? "B is reliably better."
@@ -215,7 +216,7 @@ function Headline({ m }: { m: MetricComparison }) {
 
 // Each row has its own symmetric scale: what matters is whether the interval
 // crosses zero, and a shared scale would flatten small effects next to large ones.
-function ForestBar({ m }: { m: MetricComparison }) {
+function ForestBar({ m, code }: { m: MetricComparison; code: string }) {
   const W = 110;
   const baseline = m.mean_a || 1;
   const rel = m.diff / baseline;
@@ -234,7 +235,7 @@ function ForestBar({ m }: { m: MetricComparison }) {
         <circle cx={scale(rel)} cy={8} r={3.5} fill="white" stroke={color} strokeWidth={2} />
       </svg>
       <span className="whitespace-nowrap text-[0.72rem] tabular-nums text-muted-foreground">
-        {signedChange(m, m.ci_low)} … {signedChange(m, m.ci_high)}
+        {signedChange(m, m.ci_low, code)} … {signedChange(m, m.ci_high, code)}
       </span>
     </div>
   );
@@ -245,14 +246,14 @@ function signed(ratio: number): string {
   return ratio > 0 ? `+${s}` : s;
 }
 
-function signedChange(m: MetricComparison, delta: number): string {
+function signedChange(m: MetricComparison, delta: number, code: string): string {
   if (m.mean_a) return signed(delta / m.mean_a);
-  const value = m.metric === "bought" ? formatPercent(delta).replace("%", " pp") : fmt(m, delta);
+  const value = m.metric === "bought" ? formatPercent(delta).replace("%", " pp") : fmt(m, delta, code);
   return delta > 0 ? `+${value}` : value;
 }
 
-function fmt(m: MetricComparison, v: number): string {
+function fmt(m: MetricComparison, v: number, code: string): string {
   if (m.metric === "bought") return formatPercent(v);
-  if (m.metric === "spend" || m.metric === "impulse_spend") return Math.round(v).toLocaleString();
+  if (m.metric === "spend" || m.metric === "impulse_spend") return formatMoney(v, code);
   return v.toFixed(v >= 100 ? 0 : 2);
 }

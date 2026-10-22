@@ -60,6 +60,7 @@ from .capture import capture_image_path, capture_llm_config, get_capture
 from .currencies import project_currency, simulation_currency
 from .errors import AppError, job_failure, model_failure
 from .providers import assistive_client, assistive_vision_model
+from .generation_async import visitors_per_day
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import metadata_path, personas_path, read_setup
@@ -534,8 +535,7 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
             levels, findings = diff_face(rack, face, field, result.currency)
             expected = sum(lv.expected_facings for lv in levels)
             compliance = round(sum(lv.matched_facings for lv in levels) / expected, 4) if expected else 1.0
-            days = max(1, len({p.day for p in personas}))
-            visitors_per_day = round(len(personas) / days, 1)
+            per_day, simulated_per_day = visitors_per_day(pid, personas)
             panel = select_personas(personas, req.panel, seed=req.seed)
             status.stage, status.progress = "simulating", 0.2
             _write_status(pid, status)
@@ -544,7 +544,7 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
                                         OptimizeObjective.REVENUE_PER_VISITOR)
             missing = list(dict.fromkeys(f.sku for f in findings if f.kind == "missing" and f.sku))
             impact, _ = asyncio.run(price_findings(evaluator, store, field, req.rack_id, face, panel, missing=missing,
-                                                   visitors_per_day=visitors_per_day, max_stockouts=req.max_stockouts))
+                                                   visitors_per_day=per_day, max_stockouts=req.max_stockouts))
             for f in findings:
                 loss = impact.losses.get(f.sku) if f.kind == "missing" else None
                 if loss is not None:
@@ -556,9 +556,9 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
             report = AuditReport(
                 job_id=status.job_id, capture_id=cid, setup_id=req.setup_id, rack_id=req.rack_id, face=face.value,
                 currency=result.currency, compliance=compliance, levels=levels, findings=findings, impact=whole,
-                visitors_per_day=visitors_per_day,
-                revenue_delta_per_day=round(whole.diff * visitors_per_day, 1) if whole else None,
-                revenue_delta_ci=(round(whole.ci_low * visitors_per_day, 1), round(whole.ci_high * visitors_per_day, 1)) if whole else None,
+                visitors_per_day=per_day, simulated_visitors_per_day=simulated_per_day,
+                revenue_delta_per_day=round(whole.diff * per_day, 1) if whole else None,
+                revenue_delta_ci=(round(whole.ci_low * per_day, 1), round(whole.ci_high * per_day, 1)) if whole else None,
                 panel_size=len(panel), notes=notes, seconds=round(time.perf_counter() - t0, 1),
             )
             _finish(pid, status, report)

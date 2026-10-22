@@ -22,6 +22,7 @@ class SimulationRunner(Protocol):
         address: str = "",
         customer_profile: str = "",
         on_progress: ProgressCallback | None = None,
+        path_heatmap: bool = True,
     ) -> tuple[AggregatedResult, list[CustomerResult]]: ...
 
     def get_engine_metadata(self) -> dict[str, object]:

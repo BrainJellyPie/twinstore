@@ -237,10 +237,13 @@ function SimulationPageContent({
         onBackToStores={() => { void navigate({ to: "/" }); }}
         onAbandonProject={async () => {
           await deleteProject(pid);
-          await qc.invalidateQueries({ queryKey: queryKeys.projects() });
+          // Leave before touching the cache: refetching the deleted store's queries 404s and would
+          // unmount this page before the new-store form opens.
           if (mounted.current && router.state.location.pathname.replace(/\/$/, "") === `/projects/${pid}`) {
             await navigate({ to: "/projects/new" });
           }
+          qc.removeQueries({ queryKey: queryKeys.project(pid) });
+          await qc.invalidateQueries({ queryKey: queryKeys.projects(), exact: true });
         }}
       />
     );

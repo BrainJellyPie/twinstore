@@ -51,3 +51,23 @@ it("shows a failed connection test without the error class name", async () => {
   expect(screen.queryByText(/ApiError/)).toBeNull();
   client.clear();
 });
+
+it("refreshes the provider badge after a failed test and shows the whole message", async () => {
+  const ready = { ...openai, has_key: true, key_source: "settings" as const, key_hint: "…abcd", ready: true };
+  vi.mocked(api.getProviders).mockResolvedValue([ready]);
+  const message = "OpenAI turned this key down: it is not valid or was revoked. Paste a new key in the field above, then test again.";
+  vi.mocked(api.testModel).mockImplementation(async () => {
+    vi.mocked(api.getProviders).mockResolvedValue([{ ...ready, key_rejected: true }]);
+    return { ok: false, model: "gpt-mini", latency_ms: 0, reply: "", error: message, vision: false };
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  render(<QueryClientProvider client={client}><ProvidersPanel /></QueryClientProvider>);
+  expect(await screen.findByText("Ready")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Test" }));
+  expect(await screen.findByText("Key turned down")).toBeTruthy();
+  expect(screen.queryByText("Ready")).toBeNull();
+  const result = screen.getByTestId("provider-test-result");
+  expect(result.textContent).toBe(message);
+  expect(result.querySelector(".truncate")).toBeNull();
+  client.clear();
+});

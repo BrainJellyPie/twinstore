@@ -141,7 +141,8 @@ class AuditReport(BaseModel):
     levels: list[LevelCompliance] = []
     findings: list[AuditFinding] = []
     impact: MetricComparison | None = None    # per-visitor spend: reference (A) vs as photographed (B)
-    visitors_per_day: float = 0.0
+    visitors_per_day: float = 0.0               # what per-day money scales by: the estimated traffic when known
+    simulated_visitors_per_day: float = 0.0     # customers simulated a day (a sample of it); 0 = same as above
     revenue_delta_per_day: float | None = None
     revenue_delta_ci: tuple[float, float] | None = None
     panel_size: int = 0

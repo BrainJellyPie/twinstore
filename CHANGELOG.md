@@ -23,6 +23,73 @@
 - Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
+### Every visitor a day, with a warning before long or costly work
+- A new store's customers were capped at 100 a day (20 with the local model), so a convenience store the model
+  expected to see 600 people a day was simulated with 100 (or 20) a day — 140 for a week on the local model. The model
+  now writes every visitor each day's traffic estimate expects (up to 1,000 a day; 300 when it gives no usable
+  estimate), with the local model as with any provider.
+- Before writing them all, one request is written and timed. When the rest would take about 10 minutes or more, or
+  cost about $1 or more (LiteLLM's price list), the preparing screen asks first: write them all (about how long and
+  how much), a quick sample (100 a day, 20 on the local model) whose twins fill the rest of each day, or cancel.
+  Writing shows its progress ("1,240 of 3,640"). Each request writes customers across hours, so a quiet hour's one or
+  two customers no longer cost a request of their own (a 20-a-day sample took 14 requests a day, now 4).
+- The run dialog shows the shoppers a run will simulate (a day × days), the model requests, and about how long and how
+  much; above the same limits it asks before starting. A project's last finished run with the same engine and model is
+  what the estimate is measured on.
+- Per-day money in A/B tests and Shelf Lab audits ("about ₩X a day") scales by the store's estimated visitors a day,
+  and the reports say how many a day were simulated when that differs.
+
+### Faster and more faithful runs
+- The route map was rebuilt with a path search for every pair of access points on every run and every optimizer
+  candidate: minutes per run on a hypermarket or warehouse club (an optimization looked hung for hours). It is one
+  sweep per access point now (under a second) and optimizer candidates skip it.
+- "Optimize for a situation" now optimizes for it: its promotions, stock-outs, days, traffic and budgets apply to every
+  layout the optimizer's shoppers walk (they bought out-of-stock water and noodles before). The saved layout keeps the
+  regular prices.
+- A run with a customer cap samples from the shoppers who come on the situation's days and opening hours; "Payday
+  Friday" with 20 customers simulated 1 (and could fail with "no shoppers come… change the opening hours").
+- Situation previews show the effect sizes a run of that layout uses: a supermarket's "Holiday season" said traffic
+  ×0.80 while its runs used ×1.16.
+
+### Fixes
+- Stop on a vision-judged layout optimization ends the layout run in progress at once; it waited for dozens of vision
+  shoppers to finish (minutes on a local model, billed calls on a cloud one).
+- A key saved in Settings at the moment the local model became ready could be lost (two writes of the settings file
+  at once); they now take turns.
+- Customer generation on a small model failed with "List should have at most 10 items" when the model listed many
+  customer types but gave a day no visitors (the plain day put every type in each hour); each hour now takes ten of
+  them in turn.
+- Optimized layouts and "Edited products" drafts stay on their building floor.
+- Every CSV download opens in Excel with Korean (and other non-English) text intact; customers.csv says the unit of
+  its money columns (e.g. "USD cents").
+- A field-pilot observation sheet saved back by Excel (staff 007 → 7, a shift date in the computer's format) imports
+  again.
+- A concept-test draft for a layout priced in another currency no longer copies its prices over as the survey's.
+- Testing a model provider's key says "OpenAI turned this key down (Incorrect API key)…" instead of a raw library
+  error; with no key anywhere, messages say so instead of naming the default model's provider.
+
+### In the app
+- Opening the floor editor no longer removes a layout's products: they are removed only when a changed floor is saved
+  (and put back if the save is refused). Cancel and Esc leave the layout as it was; Esc with unsaved changes asks,
+  like Cancel.
+- "Delete store and start over" opens the new-store form, as it says, instead of a page of the deleted store.
+- Totals say the period they cover ("Totals over 7 days: 3,640 shoppers, ≈520 a day"), and A/B and Shelf Lab reports
+  say how many visitors a day were simulated of how many estimated.
+- On a phone the store page opens at the top (it scrolled down to the run analyst).
+- Testing a provider's key updates its badge at once ("Key turned down"), and the message wraps instead of being cut.
+- The sample store's older run shows "—" for conversion and impulse share instead of 100% and 0%, and empty rack and
+  product lists say they fill in as shoppers pay.
+- The playback panel starts folded on screens up to 960 px tall and no longer lets the compass show through; speech
+  bubbles go when the store closes.
+- Compare shows spend as money ("$8.45 → $8.62") instead of cents.
+- Korean text wraps between words, and the wizard heading's last syllable is no longer cut off.
+- The breadcrumb and the run picker no longer cut names and times short on wide screens.
+- With the local model turned off by TWINSTORE_LOCAL_VLM, Settings says so and how to turn it on.
+
+### Releases
+- Each release now starts on clean Windows and macOS machines before it is published (the launcher's first start:
+  uv, Python, every package, the server answering), and the macOS bundle's signature is verified there.
+
 ## 0.4.4 — updates keep your stores; photo and vision features check their model
 
 ### Updating keeps your stores

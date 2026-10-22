@@ -282,7 +282,7 @@ def test_the_persona_job_notes_the_wait_in_its_status(monkeypatch):
 
 
 
-def test_the_local_model_is_asked_for_fewer_customers_a_day(monkeypatch):
+def test_the_local_model_gets_smaller_requests_and_a_smaller_quick_sample(monkeypatch):
     from store_emulator.domain.store import DaySchedule
     from store_emulator.engine.generators import persona as gen
 
@@ -310,7 +310,7 @@ def test_the_local_model_is_asked_for_fewer_customers_a_day(monkeypatch):
     schedules = [DaySchedule(day=1, is_open=True, open_hour=8, close_hour=18)]
     asyncio.run(gen.generate_batched(object(), "addr", "profile", schedules, pace=pace))  # type: ignore[arg-type]
     asyncio.run(gen.generate_batched(object(), "addr", "profile", schedules))  # type: ignore[arg-type]
-    assert asked == [(30, 4), (100, 10)]
+    assert asked == [(30, 4), (200, 10)]   # every estimated visitor by default, whatever the model
 
     # Customer generation asks for the local model's cap only when the client ended up on TwinStore's local server.
     from store_emulator.application import generation_async
@@ -319,7 +319,7 @@ def test_the_local_model_is_asked_for_fewer_customers_a_day(monkeypatch):
     caps: list[gen.Pace] = []
 
     async def batched(llm, *a, pace, **k):
-        caps.append(pace(gen.Pace(daily_cap=100, batch_size=10)))
+        caps.append(pace(gen.Pace(daily_cap=gen.DAILY_POPULATION_CAP, batch_size=10)))
         return []
 
     class _Client:
@@ -336,7 +336,8 @@ def test_the_local_model_is_asked_for_fewer_customers_a_day(monkeypatch):
         asyncio.run(generation_async._run_async_pipeline(  # pyright: ignore[reportPrivateUsage]
             config=SimulationConfig(), project_id="p", meta={}, schedules=[], custom_instruction="",
             supplemental_bytes=None, supplemental_filename=""))
-    assert caps == [generation_async.LOCAL_MODEL_PACE, gen.Pace(daily_cap=100, batch_size=10)]
+    assert caps == [generation_async.LOCAL_MODEL_PACE, gen.Pace(daily_cap=1000, batch_size=10, sample_cap=100)]
+    assert generation_async.LOCAL_MODEL_PACE == gen.Pace(daily_cap=1000, batch_size=5, sample_cap=20)
 
 
 def test_requests_to_the_local_server_wait_their_turn_in_the_client(monkeypatch, fake_calls):
@@ -457,8 +458,14 @@ def test_a_local_server_address_left_from_last_time_must_answer_now(monkeypatch)
 def test_with_no_usable_key_anywhere_no_request_is_sent_to_a_provider(monkeypatch, fake_calls):
     monkeypatch.setattr(local_vlm, "server_answers", lambda base: False)
     monkeypatch.setattr(local_vlm, "manager", lambda: _LocalModel(["downloading"]))
-    with pytest.raises(ValueError, match=r"No API key for Anthropic \(Claude\)\. The local model .* getting ready"):
+    # Nobody picked a provider, so the message does not send them to the default model's (Anthropic).
+    with pytest.raises(ValueError, match=r"^No model API key is set\. The local model .* getting ready"):
         providers.assistive_client("", LLMConfig(model="anthropic/claude-haiku-5-5"))
+    monkeypatch.setattr(local_vlm, "manager", lambda: _LocalModel(["disabled"]))
+    with pytest.raises(ValueError, match=r"^No model API key is set, and the local model on this computer is turned off "
+                                         r"\(TWINSTORE_LOCAL_VLM\)\. Add a key for any provider .*, or turn the local model on\.$"):
+        providers.assistive_client("", LLMConfig(model="anthropic/claude-haiku-5-5"))
+    monkeypatch.setattr(local_vlm, "manager", lambda: _LocalModel(["downloading"]))
     assert fake_calls.models == []
     # A background job waits and starts on the local model.
     monkeypatch.setattr(providers.time, "sleep", lambda s: None)
@@ -613,3 +620,64 @@ def test_trying_again_restarts_a_local_model_that_failed(monkeypatch, fake_calls
     monkeypatch.setattr(local_vlm, "manager", lambda: local)
     client = providers.assistive_client("", LLMConfig(model="anthropic/claude-haiku-5-5"), wait=600)
     assert client.model == "openai/local-model" and local.started == 1
+
+
+def test_a_day_is_filled_to_its_estimated_visitors_with_twins_of_the_written_customers():
+    from store_emulator.domain.persona import Persona
+    from store_emulator.domain.types import Weekday
+    from store_emulator.engine.generators import persona as gen
+
+    def written(i: int, hour: int, gender: str) -> Persona:
+        return Persona(id=f"{'F' if gender == 'Female' else 'M'}6{i:03d}", day=Weekday(6), arrival_hour=hour, identity="student",
+                       age_group="20s", gender=gender, description=f"d{i}", intent="i", purpose="p")  # type: ignore[arg-type]
+
+    customers = [written(1, 9, "Female"), written(2, 9, "Male"), written(3, 12, "Female")]
+    visitors = [gen.HourlyProfile(hour=9, visitor_count=5, person_types=["student"]),
+                gen.HourlyProfile(hour=12, visitor_count=3, person_types=["student"]),
+                gen.HourlyProfile(hour=18, visitor_count=2, person_types=["student"])]   # nobody written for 18h
+    day = gen.fill_population(customers, visitors, Weekday(6))
+    assert len(day) == 10 and len({p.id for p in day}) == 10
+    by_hour = {h: [p for p in day if p.arrival_hour == h] for h in (9, 12, 18)}
+    assert [len(by_hour[h]) for h in (9, 12, 18)] == [5, 3, 2]
+    assert {p.description for p in by_hour[9]} == {"d1", "d2"} and {p.description for p in by_hour[12]} == {"d3"}
+    assert all(p.day == Weekday(6) for p in day) and day[:3] == customers
+    assert gen.fill_population([], visitors, Weekday(6)) == []
+    assert all(p.twin_of in {"F6001", "M6002", "F6003"} for p in day[3:]) and not any(p.twin_of for p in day[:3])
+
+    # A run sampling the day takes the written customers first.
+    from store_emulator.application.simulation import subsample_personas
+    assert {p.id for p in subsample_personas(day, 3, seed=7)} == {"F6001", "M6002", "F6003"}
+    assert len(subsample_personas(day, 6, seed=7)) == 6
+
+
+def test_a_key_test_the_provider_turns_down_says_so_in_a_line(monkeypatch):
+    from instructor.core.exceptions import FailedAttempt, InstructorRetryException
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-fake-key")
+    auth = litellm.AuthenticationError("Incorrect API key provided: sk-fake-***", llm_provider="openai", model="gpt-6-luna")
+
+    async def refuse(self, *a, **k):
+        raise InstructorRetryException("<failed_attempts>…</failed_attempts>", n_attempts=1, total_usage=0,
+                                       failed_attempts=[FailedAttempt(1, auth, None)])
+
+    monkeypatch.setattr(providers.LiteLLMClient, "generate_structured_async", refuse)
+    result = asyncio.run(providers.test_connection("openai:gpt-6-luna"))
+    assert not result.ok
+    assert result.error == "OpenAI turned this key down (Incorrect API key). Check the key, save it and test again."
+
+
+def test_a_long_list_of_identities_still_fits_each_hour():
+    """A small model listed 40 customer identities and gave the day no visitors: the plain day crashed on the
+    10-types-an-hour limit. Each hour takes 10 of them in turn, so all 40 still come."""
+    from store_emulator.domain.store import DaySchedule
+    from store_emulator.engine.generators import persona as gen
+
+    identities = [f"type {i}" for i in range(40)]
+    profile = gen.TradeAreaProfile(keywords=["k"], identities=identities, purposes=["p"])
+    day = DaySchedule(day=1, is_open=True, open_hour=8, close_hour=22)
+    zeros = [gen.HourlyProfile(hour=h, visitor_count=0, person_types=[]) for h in range(24)]
+    plain = gen._usable_hourly(zeros, profile, day, 300)  # pyright: ignore[reportPrivateUsage]
+    assert all(len(h.person_types) == 10 for h in plain)
+    assert {t for h in plain for t in h.person_types} == set(identities)
+    untyped = gen._usable_hourly([gen.HourlyProfile(hour=9, visitor_count=4, person_types=[])], profile, day, 300)  # pyright: ignore[reportPrivateUsage]
+    assert len(untyped[0].person_types) == 10

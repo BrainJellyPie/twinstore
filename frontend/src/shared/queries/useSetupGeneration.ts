@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGenerationStatus, getSetupGenerations, regeneratePersona } from "@/shared/api/client";
+import { confirmGeneration, getGenerationStatus, getSetupGenerations, regeneratePersona } from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
-import type { GenerationKind, GenerationStatus } from "@/shared/types/domain";
+import type { GenerationChoice, GenerationConfirm, GenerationKind, GenerationStatus } from "@/shared/types/domain";
 import { queryKeys } from "@/shared/queries/keys";
 
 const POLL_INTERVAL_MS = 3000;
@@ -15,6 +15,14 @@ export interface SetupGenerationState {
   error: string | null;
   /** What a running job is waiting for (the local model getting ready), from the server. */
   note?: string | null;
+  /** Customers written so far while a generation writes them. */
+  writing?: { written: number; total: number } | null;
+  /** A running customer generation waits for the user to choose how many customers the model writes. */
+  confirm?: GenerationConfirm | null;
+  /** Sends that choice; "cancel" ends the generation as failed. */
+  answer?: (choice: GenerationChoice) => void;
+  answering?: boolean;
+  answerError?: string | null;
   errorSource?: "status" | "generation" | null;
   loadingStatus?: boolean;
   // Read failures retry GET; only an explicit idle/failed-persona action starts generation.
@@ -22,9 +30,10 @@ export interface SetupGenerationState {
   retrying: boolean;
 }
 
-type Snapshot = Omit<SetupGenerationState, "retry"> & { context: string };
+type Snapshot = Omit<SetupGenerationState, "retry" | "answer"> & { context: string };
 function initialState(context: string, genId?: string | null): Snapshot {
-  return { context, phase: "idle", kind: null, currentGenId: genId ?? null, error: null, errorSource: null, note: null, loadingStatus: true, retrying: false };
+  return { context, phase: "idle", kind: null, currentGenId: genId ?? null, error: null, errorSource: null, note: null,
+    writing: null, confirm: null, answering: false, answerError: null, loadingStatus: true, retrying: false };
 }
 
 export function useSetupGeneration(projectId: string, setupId: string, initialGenId?: string | null): SetupGenerationState {
@@ -32,6 +41,7 @@ export function useSetupGeneration(projectId: string, setupId: string, initialGe
   const context = JSON.stringify([projectId, setupId, initialGenId ?? null]);
   const [snapshot, setSnapshot] = useState(() => initialState(context, initialGenId));
   const retryRef = useRef<(() => void) | null>(null);
+  const answerRef = useRef<((choice: GenerationChoice) => void) | null>(null);
 
   // Each project/layout owns its requests and poll timer; cleanup discards late responses.
   useEffect(() => {
@@ -39,6 +49,8 @@ export function useSetupGeneration(projectId: string, setupId: string, initialGe
     let busy = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let state = initialState(context, initialGenId);
+    // Jobs already answered here (or found not waiting): a status read before the answer must not ask again.
+    const answered = new Set<string>();
     const publish = (patch: Partial<Snapshot>) => {
       if (!active) return;
       state = { ...state, ...patch };
@@ -52,8 +64,14 @@ export function useSetupGeneration(projectId: string, setupId: string, initialGe
       timer = setTimeout(() => { void readStatus(genId); }, delay);
     };
     const acceptStatus = (status: GenerationStatus, genId: string, fromHistory: boolean) => {
+      const running = status.status === "running" ? status.progress ?? null : null;
+      const confirm = running && !answered.has(genId) ? running.confirm ?? null : null;
+      const { written, total } = running ?? {};
       publish({ kind: status.kind, currentGenId: genId, error: null, errorSource: null,
-        note: status.status === "running" ? status.progress?.note ?? null : null });
+        // An answered job's note ("Writing the customers…") is not a wait for the local model.
+        note: running && !answered.has(genId) ? running.note ?? null : null,
+        writing: typeof written === "number" && typeof total === "number" && total > 0 ? { written, total } : null,
+        confirm, answerError: confirm ? state.answerError : null });
       if (status.status === "failed") {
         publish({ phase: "failed", error: status.error ?? "Generation failed", errorSource: "generation" });
       } else if (status.status === "completed") {
@@ -124,17 +142,44 @@ export function useSetupGeneration(projectId: string, setupId: string, initialGe
         if (conflict !== undefined) void readStatus(null, conflict);
       })();
     };
+    const answer = (choice: GenerationChoice) => {
+      const genId = state.currentGenId;
+      if (!active || !genId || !state.confirm || state.answering) return;
+      publish({ answering: true, answerError: null });
+      void (async () => {
+        let refresh = false;
+        try {
+          const status = await confirmGeneration(projectId, setupId, genId, choice);
+          if (!active) return;
+          answered.add(genId);
+          // A read in flight schedules the next poll itself; otherwise the answer's status replaces the pending poll.
+          if (busy) publish({ confirm: null });
+          else { clearTimeout(timer); acceptStatus(status, genId, false); }
+        } catch (cause) {
+          if (!active) return;
+          // 409: no longer waiting (answered elsewhere, or finished) — show what it is doing now.
+          if (cause instanceof ApiError && cause.status === 409) { answered.add(genId); publish({ confirm: null }); refresh = true; }
+          else publish({ answerError: cause instanceof Error ? cause.message : String(cause) });
+        } finally {
+          publish({ answering: false });
+        }
+        if (refresh && !busy) { clearTimeout(timer); void readStatus(genId); }
+      })();
+    };
     setSnapshot(state);
     retryRef.current = retry;
+    answerRef.current = answer;
     void readStatus(initialGenId ?? null);
     return () => {
       active = false;
       clearTimeout(timer);
       if (retryRef.current === retry) retryRef.current = null;
+      if (answerRef.current === answer) answerRef.current = null;
     };
   }, [context, projectId, setupId, initialGenId, qc]);
 
   const retry = useCallback(() => { retryRef.current?.(); }, []);
+  const answer = useCallback((choice: GenerationChoice) => { answerRef.current?.(choice); }, []);
   const current = snapshot.context === context ? snapshot : initialState(context, initialGenId);
-  return { ...current, retry };
+  return { ...current, retry, answer };
 }

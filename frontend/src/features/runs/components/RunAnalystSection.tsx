@@ -20,7 +20,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
   const thread = useQuery({ queryKey: key, queryFn: ({ signal }) => getAnalyst(projectId, runId, signal) });
   const [text, setText] = useState("");
   const [pending, setPending] = useState<string | null>(null);
-  const end = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const ask = useMutation({
     mutationFn: (q: string) => askAnalyst(projectId, runId, q),
     onMutate: (q) => { setPending(q); setText(""); },
@@ -59,7 +59,19 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
   const suggestions = last ? last.follow_ups : messages.length === 0 ? starters : [];
   const busy = ask.isPending || clear.isPending;
   const send = (q: string) => { const t = q.trim(); if (Array.from(t).length >= 2 && !busy) { clear.reset(); ask.mutate(t); } };
-  useEffect(() => { end.current?.scrollIntoView?.({ block: "nearest" }); }, [messages.length, pending]);
+  // Follow a new question or answer inside the thread's own scroll box; never scroll the page,
+  // which on a phone would jump past the store as soon as the panel mounts.
+  const seen = useRef<{ count: number; pending: string | null } | null>(null);
+  useEffect(() => {
+    if (!thread.isFetched) return;
+    const previous = seen.current;
+    seen.current = { count: messages.length, pending };
+    // The stored thread as first loaded sets the baseline; only later additions scroll.
+    if (!previous || !list.current) return;
+    if (messages.length > previous.count || (pending !== null && pending !== previous.pending)) {
+      list.current.scrollTop = list.current.scrollHeight;
+    }
+  }, [messages.length, pending, thread.isFetched]);
 
   return (
     <section ref={section} className="border-t px-3 py-3" aria-label="Ask about this run">
@@ -78,7 +90,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
             className="ml-2 underline disabled:opacity-50">Retry</button>
         </div>
       )}
-      <div className="space-y-2">
+      <div ref={list} data-testid="analyst-thread" className="max-h-[28rem] space-y-2 overflow-y-auto overscroll-contain">
         {messages.map((m, i) => m.role === "user" ? (
           <p key={i} className="ml-6 rounded-2xl rounded-br-md bg-primary px-3 py-1.5 text-[0.78rem] text-primary-foreground">{m.text}</p>
         ) : (
@@ -98,7 +110,6 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
           </>
         )}
         {(ask.error || clear.error) && <p role="alert" className="text-[0.72rem] text-destructive">{(ask.error ?? clear.error)?.message}</p>}
-        <div ref={end} />
       </div>
       {messages.length === 0 && !pending && !ideas.data && (
         <button type="button" onClick={() => ideas.mutate()} disabled={ideas.isPending}

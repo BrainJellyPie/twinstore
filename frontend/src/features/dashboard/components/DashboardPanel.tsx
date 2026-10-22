@@ -71,13 +71,16 @@ export function DashboardPanel(props: DashboardPanelProps) {
 }
 
 function PlaybackContent({ customers, minTime, maxTime, store, summary, projectId, runId }: PlaybackProps) {
+  // Runs from older versions lack the conversion and impulse KPIs (RunKpis says so); their events carry
+  // no purchase origin, so live figures read off them would be misleading.
+  const legacyRun = summary != null && summary.conversion_rate === undefined;
   return (
     <div className="flex flex-col">
       <PlaybackStatus minTime={minTime} maxTime={maxTime} />
       <TimelineChart customers={customers} minTime={minTime} maxTime={maxTime} />
-      <Summary />
-      <CustomerBehavior />
-      {summary && <RunKpis summary={summary} />}
+      <Summary legacyRun={legacyRun} />
+      <CustomerBehavior legacyRun={legacyRun} />
+      {summary && <RunKpis summary={summary} days={new Set(customers?.map((c) => c.day)).size || 1} />}
       {projectId && runId && <RunAnalystSection key={`analyst:${projectId}:${runId}`} projectId={projectId} runId={runId} />}
       <RackRanking store={store} />
       <TopItems store={store} />

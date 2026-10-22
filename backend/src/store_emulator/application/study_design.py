@@ -123,7 +123,14 @@ def design_concept(pid: str, req: SurveyDesignRequest, config: SimulationConfig)
 
     store = _store_for(pid, req.setup_id) if req.setup_id else None
     store_currency = (store.currency or project_currency(pid, req.currency)).upper() if store is not None else req.currency.upper()
-    on_shelf = {i.sku: f"{i.name} at {display_price(i.price, store_currency)} on {r.rack_name or 'a shelf'}"
+    # The draft's price is asked in the survey's currency: shelf prices in another one would be copied over as they
+    # are (₩1,500 read as $1,500), so then the products are listed without them.
+    same_money = store_currency == req.currency.upper()
+
+    def listed(name: str, price: int, rack: str) -> str:
+        return f"{name} at {display_price(price, store_currency)} on {rack}" if same_money else f"{name} on {rack}"
+
+    on_shelf = {i.sku: listed(i.name, i.price, r.rack_name or "a shelf")
                 for r in store.product_racks for s in r.slots for i in s.items} if store is not None else {}
     packages = [(p.name, p.asset_id, p.brand, on_shelf.get(p.sku, "")) for p in list_packages(pid)]
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1200})

@@ -7,22 +7,21 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
+import { useI18n } from "@/shared/i18n/i18n";
 
 interface EditFloorConfirmDialogProps {
   open: boolean;
   onCancel: () => void;
   onConfirm: () => void;
-  error?: string | null;
-  confirmDisabled?: boolean;
 }
 
+// Confirming only opens the editor; products are removed when a changed floor is saved.
 export function EditFloorConfirmDialog({
   open,
   onCancel,
   onConfirm,
-  error,
-  confirmDisabled,
 }: EditFloorConfirmDialogProps) {
+  const { t } = useI18n();
   return (
     <Dialog
       open={open}
@@ -32,25 +31,15 @@ export function EditFloorConfirmDialog({
     >
       <DialogContent data-testid="edit-floor-confirm-dialog">
         <DialogHeader>
-          <DialogTitle>Edit floor configuration</DialogTitle>
-          <DialogDescription>
-            Please note that all existing item placement information will be reset.
-          </DialogDescription>
+          <DialogTitle>{t("editFloorConfirmTitle")}</DialogTitle>
+          <DialogDescription>{t("editFloorConfirmDescription")}</DialogDescription>
         </DialogHeader>
-        {error && (
-          <p
-            data-testid="edit-floor-confirm-error"
-            className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-sm text-destructive"
-          >
-            {error}
-          </p>
-        )}
         <DialogFooter>
-          <Button variant="outline" disabled={confirmDisabled} onClick={onCancel}>
-            Cancel
+          <Button variant="outline" onClick={onCancel}>
+            {t("cancel")}
           </Button>
-          <Button variant="destructive" disabled={confirmDisabled} onClick={onConfirm}>
-            Edit floor configuration
+          <Button onClick={onConfirm}>
+            {t("editFloorConfirmTitle")}
           </Button>
         </DialogFooter>
       </DialogContent>

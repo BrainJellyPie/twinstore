@@ -13,6 +13,7 @@ import type {
   Readiness,
   GenerationStatus,
   GenerationListItem,
+  GenerationChoice,
   SlotRow,
   BlockedFaceInfo,
   BlockedFaceDetail,
@@ -20,7 +21,7 @@ import type {
   Issue,
 } from "@/shared/types/domain";
 
-export type { BlockedFaceDetail, Issue } from "@/shared/types/domain";
+export type { BlockedFaceDetail, GenerationChoice, GenerationConfirm, Issue, WriteChoice } from "@/shared/types/domain";
 
 // Dev server (vite on :5173) talks to the API on :8000; a production build is served by the API
 // server itself (one-click mode), so it uses the same origin. VITE_API_URL overrides both.
@@ -289,6 +290,20 @@ export function getGenerationStatus(
   );
 }
 
+/** Answers a generation waiting for the user's choice (progress.confirm); 409 when it is not waiting. */
+export function confirmGeneration(
+  projectId: string,
+  setupId: string,
+  genId: string,
+  choice: GenerationChoice,
+  signal?: AbortSignal,
+): Promise<GenerationStatus> {
+  return fetchJson(
+    `/api/projects/${projectId}/setups/${setupId}/generations/${genId}/confirm`,
+    { method: "POST", body: JSON.stringify({ choice }), signal },
+  );
+}
+
 export function regeneratePersona(
   projectId: string,
   setupId: string,
@@ -422,6 +437,9 @@ export interface EnsembleConfig {
   seed?: number;
 }
 
+// The SimulateRequest body, shared by starting a run and estimating one.
+const runBody = (setupId: string, options: RunOptions) => JSON.stringify({ setup_id: setupId, ...options });
+
 export function startRun(
   projectId: string,
   setupId: string,
@@ -430,7 +448,38 @@ export function startRun(
 ): Promise<{ project_id: string; run_id: string; setup_id: string }> {
   return fetchJson(`/api/projects/${projectId}/runs`, {
     method: "POST",
-    body: JSON.stringify({ setup_id: setupId, ...options }),
+    body: runBody(setupId, options),
+    signal,
+  });
+}
+
+/** About how long and how costly a run with these options is; nothing starts. */
+export interface RunEstimate {
+  /** Shoppers the run simulates (after the cap, scenario days and opening hours). */
+  customers: number;
+  /** Distinct weekdays among them. */
+  days: number;
+  per_day: number;
+  engine: EngineType;
+  /** "" for the rule-based engine. */
+  model: string;
+  local: boolean;
+  model_calls: number;
+  minutes: number;
+  cost_usd: number | null;
+  /** Long (about 10 min or more) or costly (about $1 or more). */
+  warn: boolean;
+}
+
+export function estimateRun(
+  projectId: string,
+  setupId: string,
+  options: RunOptions = {},
+  signal?: AbortSignal,
+): Promise<RunEstimate> {
+  return fetchJson(`/api/projects/${projectId}/runs/estimate`, {
+    method: "POST",
+    body: runBody(setupId, options),
     signal,
   });
 }
@@ -968,8 +1017,19 @@ export interface ScenarioPreset {
   effects: ScenarioEffects;
 }
 
-export function getScenarios(signal?: AbortSignal): Promise<ScenarioPreset[]> {
-  return fetchJson("/api/scenarios", { signal });
+/** The layout whose store format sizes scenario effects (a supermarket's holiday season differs from a kiosk's). */
+export interface ScenarioLayout { projectId?: string; setupId?: string }
+
+function scenarioLayoutQuery({ projectId, setupId }: ScenarioLayout): string {
+  const q = new URLSearchParams();
+  if (projectId) q.set("project_id", projectId);
+  if (setupId) q.set("setup_id", setupId);
+  const query = q.toString();
+  return query ? `?${query}` : "";
+}
+
+export function getScenarios(layout: ScenarioLayout = {}, signal?: AbortSignal): Promise<ScenarioPreset[]> {
+  return fetchJson(`/api/scenarios${scenarioLayoutQuery(layout)}`, { signal });
 }
 
 export interface DescribedScenario {
@@ -992,8 +1052,8 @@ export function describeScenario(
   });
 }
 
-export function previewScenario(scenario: Scenario, signal?: AbortSignal): Promise<ScenarioEffects> {
-  return fetchJson("/api/scenarios/preview", {
+export function previewScenario(scenario: Scenario, layout: ScenarioLayout = {}, signal?: AbortSignal): Promise<ScenarioEffects> {
+  return fetchJson(`/api/scenarios/preview${scenarioLayoutQuery(layout)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(scenario),
@@ -1829,7 +1889,10 @@ export interface AuditReport {
   levels: LevelCompliance[];
   findings: AuditFinding[];
   impact: MetricComparison | null;
+  /** Estimated visitors a day: what per-day money scales by. */
   visitors_per_day: number;
+  /** Customers simulated a day (a sample of the estimate); 0 or absent = the same as visitors_per_day. */
+  simulated_visitors_per_day?: number;
   revenue_delta_per_day: number | null;
   revenue_delta_ci: [number, number] | null;
   panel_size: number;

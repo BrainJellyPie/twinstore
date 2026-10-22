@@ -66,7 +66,9 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
   const [error, setError] = useState<string | null>(null);
   const [judge, setJudge] = useState<JudgeSpec>({ judge: "rule", vlm_customers: 40, top_k: 3, calibrate: true });
   const [modelChoice, setModelChoice] = useState<ModelChoice>({ kind: "default" });
-  const { data: scenarios = [] } = useQuery({ queryKey: queryKeys.scenarios(), queryFn: ({ signal }) => api.getScenarios(signal), staleTime: Infinity });
+  const { data: scenarios = [] } = useQuery({
+    queryKey: queryKeys.scenarios(projectId, setupId), queryFn: ({ signal }) => api.getScenarios({ projectId, setupId }, signal), staleTime: Infinity,
+  });
   const models = useAvailableModels(judge.judge === "vlm");
   const available = models.data?.filter((model) => model.vision);
   let modelError: string | null = null;

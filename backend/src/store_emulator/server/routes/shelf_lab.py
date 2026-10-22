@@ -145,7 +145,7 @@ def restock_order(pid: str, cid: str, jid: str, req: RestockOrderRequest) -> Res
 @router.post("/{pid}/captures/{cid}/lab/jobs/{jid}/restock-order.csv", summary="Export a budgeted restocking worksheet")
 def export_restock_order(pid: str, cid: str, jid: str, req: RestockOrderRequest) -> PlainTextResponse:
     text = _call(lambda: export_order(pid, cid, jid, req))
-    return PlainTextResponse(text, media_type="text/csv",
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": f'attachment; filename="{jid}-restock-order.csv"'})
 
 

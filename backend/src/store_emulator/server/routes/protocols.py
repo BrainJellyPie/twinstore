@@ -49,4 +49,4 @@ def export_json(pid: str, protocol_id: str, head: Annotated[str, Query(pattern=r
 @router.get("/{protocol_id}/changes.csv")
 def export_csv(pid: str, protocol_id: str, head: Annotated[str, Query(pattern=r"^[0-9a-f]{64}$")]) -> PlainTextResponse:
     text = _call(lambda: protocols.export_protocol(pid, protocol_id, head, True))
-    return PlainTextResponse(text, media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="protocol-changes.csv"'})
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="protocol-changes.csv"'})

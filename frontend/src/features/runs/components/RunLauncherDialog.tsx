@@ -6,13 +6,25 @@
 //   customer; seconds per call, so they default to a small sample.
 // - The same seed on two layouts makes them see the same customers in the same moods,
 //   which is what makes the A/B compare view statistically sharp.
+// - The server estimates each choice (shoppers over how many days, time, cost); a long or costly run asks once more
+//   before it starts.
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Bot, Camera, ChevronDown, Eye, FlaskConical, Map as MapIcon, SlidersHorizontal, Zap } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/shared/i18n/i18n";
 import { Button } from "@/shared/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -25,9 +37,11 @@ import { Input } from "@/shared/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
 import { useSimulate } from "@/shared/mutations/useSimulate";
 import * as api from "@/shared/api/client";
+import { ApiError } from "@/shared/api/errors";
 import { queryKeys } from "@/shared/queries/keys";
-import type { EngineType, RunOptions, Scenario, ShelfViewMode } from "@/shared/api/client";
+import type { EngineType, RunEstimate, RunOptions, Scenario, ShelfViewMode } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
+import { costText, durationText, runEstimateText, shoppersOverDaysText } from "@/shared/utils/estimate";
 
 import { useAvailableModels, useEngines } from "../hooks";
 import { photographShelves } from "../shelfPhotos";
@@ -58,6 +72,10 @@ export function RunLauncherDialog(props: RunLauncherDialogProps) {
 
 const SAMPLE_DEFAULT = 300;
 const VISION_SAMPLE_DEFAULT = 30;
+const ESTIMATE_DEBOUNCE_MS = 400;
+const ESTIMATE_STALE_MS = 30_000;
+// Starting waits this long for an estimate it does not have yet; without one the run starts unwarned.
+const ESTIMATE_WAIT_MS = 10_000;
 
 function LauncherForm({
   onOpenChange,
@@ -67,7 +85,8 @@ function LauncherForm({
   locked = false,
   defaultEngine,
 }: RunLauncherDialogProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
+  const qc = useQueryClient();
   const simulate = useSimulate();
   const engines = useEngines().data;
   const serverDefault = engines?.find((e) => e.default)?.engine_type;
@@ -91,8 +110,14 @@ function LauncherForm({
   const [photos, setPhotos] = useState<{ done: number; total: number } | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photographing = useRef<AbortController | null>(null);
-  // Closing the dialog stops photographing; nothing is started.
-  useEffect(() => () => photographing.current?.abort(), []);
+  const mounted = useRef(true);
+  // Closing the dialog stops photographing and estimating; nothing is started.
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; photographing.current?.abort(); };
+  }, []);
+  const [checking, setChecking] = useState(false);
+  const [warning, setWarning] = useState<{ options: RunOptions; estimate: RunEstimate } | null>(null);
   const preparing = photos !== null;
   const withPhotos = engine === "vlm_glance" && shelfView === "photo_chart";
 
@@ -137,24 +162,57 @@ function LauncherForm({
     }
   };
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!valid || simulate.isPending || preparing) return;
-    const options: RunOptions = {
-      engine_type: engine,
-      seed: Number(seed),
-      replicate: Number(replicate),
-      preview: isPreview,
-      max_customers: sampleMode === "sample" ? customers : undefined,
-      model: usesLlm && modelChoice.kind === "single" ? modelChoice.model : undefined,
-      ensemble:
-        usesLlm && modelChoice.kind === "ensemble" && (modelChoice.ensemble?.members.length ?? 0) > 0 ? modelChoice.ensemble : undefined,
-      scenario: scenario ?? undefined,
-      use_town: town && useTown ? true : undefined,
-      town_scale: town && useTown ? townScale : undefined,
-      plan_policy: engine === "vlm_glance" ? planPolicy : undefined,
-      shelf_view: engine === "vlm_glance" ? shelfView : undefined,
-    };
+  const buildOptions = (): RunOptions => ({
+    engine_type: engine,
+    seed: Number(seed),
+    replicate: Number(replicate),
+    preview: isPreview,
+    max_customers: sampleMode === "sample" ? customers : undefined,
+    model: usesLlm && modelChoice.kind === "single" ? modelChoice.model : undefined,
+    ensemble:
+      usesLlm && modelChoice.kind === "ensemble" && (modelChoice.ensemble?.members.length ?? 0) > 0 ? modelChoice.ensemble : undefined,
+    scenario: scenario ?? undefined,
+    use_town: town && useTown ? true : undefined,
+    town_scale: town && useTown ? townScale : undefined,
+    plan_policy: engine === "vlm_glance" ? planPolicy : undefined,
+    shelf_view: engine === "vlm_glance" ? shelfView : undefined,
+  });
+
+  // The estimate follows the choices after a short pause; starting a run reuses it (or asks for it).
+  const estimateQuery = (options: RunOptions) => queryOptions({
+    queryKey: queryKeys.runEstimate(projectId, setupId, options),
+    queryFn: ({ signal }) => api.estimateRun(projectId, setupId, options, signal),
+    staleTime: ESTIMATE_STALE_MS,
+    retry: false,
+  });
+  const optionsKey = JSON.stringify(valid ? buildOptions() : null);
+  const [estimateKey, setEstimateKey] = useState(optionsKey);
+  useEffect(() => {
+    const timer = setTimeout(() => setEstimateKey(optionsKey), ESTIMATE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [optionsKey]);
+  const estimateOptions = JSON.parse(estimateKey) as RunOptions | null;
+  const estimate = useQuery({ ...estimateQuery(estimateOptions ?? {}), enabled: estimateOptions !== null, placeholderData: keepPreviousData });
+  const shownEstimate = valid ? estimate.data : undefined;
+  const estimateCurrent = estimateKey === optionsKey && !estimate.isPlaceholderData;
+  // 400/404: nothing to estimate yet (e.g. no customers) — no line rather than a guess.
+  const noEstimate = estimate.error instanceof ApiError && (estimate.error.status === 400 || estimate.error.status === 404);
+
+  const fetchEstimate = async (options: RunOptions): Promise<RunEstimate | null> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        qc.fetchQuery(estimateQuery(options)),
+        new Promise<null>((done) => { timer = setTimeout(() => done(null), ESTIMATE_WAIT_MS); }),
+      ]);
+    } catch {
+      return null; // An estimate that cannot be read never blocks the run.
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const start = async (options: RunOptions) => {
     if (withPhotos) {
       const controller = new AbortController();
       photographing.current = controller;
@@ -173,6 +231,24 @@ function LauncherForm({
       setPhotos(null);
     }
     simulate.mutate({ projectId, setupId, options }, { onSuccess: () => onOpenChange(false) });
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!valid || simulate.isPending || preparing || checking || warning) return;
+    const options = buildOptions();
+    let latest = qc.getQueryData(estimateQuery(options).queryKey) ?? null;
+    if (!latest) {
+      setChecking(true);
+      latest = await fetchEstimate(options);
+      setChecking(false);
+      if (!mounted.current) return;
+    }
+    if (latest?.warn) {
+      setWarning({ options, estimate: latest });
+      return;
+    }
+    await start(options);
   };
 
   const engineCards: { value: EngineType; title: string; body: string; icon: typeof Bot; wide?: boolean }[] = [
@@ -200,6 +276,7 @@ function LauncherForm({
   ];
 
   return (
+    <>
     <form onSubmit={submit}
       onInvalidCapture={(event) => {
         const details = (event.target as HTMLElement).closest("details");
@@ -214,7 +291,7 @@ function LauncherForm({
         </DialogDescription>
       </DialogHeader>
 
-      <fieldset disabled={simulate.isPending || preparing} className="min-w-0 space-y-5">
+      <fieldset disabled={simulate.isPending || preparing || checking} className="min-w-0 space-y-5">
         <RadioGroup
           value={engine}
           onValueChange={(v: string) => chooseEngine(v as EngineType)}
@@ -389,11 +466,14 @@ function LauncherForm({
           {withPhotos && ` · ${t("shelfViewPhoto")}`}
         </p>
 
-        <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
-          {engine === "vlm_glance"
-            ? t("visionCallEstimate", { min: customers, max: customers * 3, count: customers })
-            : usesLlm ? t("llmCallEstimate", { calls: customers * 3, count: customers }) : t("ruleCallEstimate", { count: customers })}
-        </div>
+        {!noEstimate && <div className={cn("rounded-md border px-3 py-2 text-xs", shownEstimate?.warn && estimateCurrent ? "tone-warn" : "bg-muted/40")}
+          aria-live="polite" aria-busy={!estimateCurrent || estimate.isFetching}>
+          {shownEstimate
+            ? <span className={cn(!estimateCurrent && "opacity-60")}>{runEstimateText(locale, shownEstimate)}</span>
+            : engine === "vlm_glance"
+              ? t("visionCallEstimate", { min: customers, max: customers * 3, count: customers })
+              : usesLlm ? t("llmCallEstimate", { calls: customers * 3, count: customers }) : t("ruleCallEstimate", { count: customers })}
+        </div>}
 
       </fieldset>
 
@@ -422,11 +502,46 @@ function LauncherForm({
         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={simulate.isPending}>
           {t("cancel")}
         </Button>
-        <Button type="submit" disabled={simulate.isPending || preparing || !valid}>
+        <Button type="submit" disabled={simulate.isPending || preparing || checking || !valid}>
           {preparing ? t("photographingShelves", { done: photos.done, total: photos.total || "…" })
+            : checking ? t("checkingEstimate")
             : simulate.isPending ? t("starting") : isPreview ? t("runPreview") : t("runFinalize")}
         </Button>
       </DialogFooter>
     </form>
+    {warning && <RunWarning estimate={warning.estimate} onBack={() => setWarning(null)}
+      onRun={() => { const { options } = warning; setWarning(null); void start(options); }} />}
+    </>
+  );
+}
+
+/** Asked before a long or costly run starts (shelf photos, if any, are taken only after "Run anyway"). */
+function RunWarning({ estimate, onBack, onRun }: { estimate: RunEstimate; onBack: () => void; onRun: () => void }) {
+  const { locale, t } = useI18n();
+  const calls = estimate.model_calls > 0;
+  return (
+    <AlertDialog open onOpenChange={(next) => { if (!next) onBack(); }}>
+      <AlertDialogContent className="max-h-[92dvh] grid-cols-1 overflow-y-auto [overflow-wrap:anywhere] data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-md">
+        <AlertDialogHeader className="min-w-0">
+          <AlertDialogTitle>{t("runWarnTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>{t("runWarnDescription")}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+          <dt className="text-muted-foreground">{t("estimateShoppers")}</dt>
+          <dd>{shoppersOverDaysText(locale, estimate.customers, estimate.days, estimate.per_day)}</dd>
+          {estimate.model && <><dt className="text-muted-foreground">{t("model")}</dt><dd className="break-all">{estimate.model}</dd></>}
+          <dt className="text-muted-foreground">{t("estimateModelCalls")}</dt>
+          <dd>{calls ? new Intl.NumberFormat(locale).format(estimate.model_calls) : t("noModelCalls")}</dd>
+          <dt className="text-muted-foreground">{t("estimateTime")}</dt>
+          <dd>{durationText(locale, estimate.minutes)}</dd>
+          {calls && <><dt className="text-muted-foreground">{t("estimateCost")}</dt><dd>{costText(locale, estimate.cost_usd, estimate.local)}</dd></>}
+        </dl>
+        <p className="text-xs text-muted-foreground">{t("runWarnHint")}</p>
+        <AlertDialogFooter className="min-w-0">
+          <AlertDialogCancel>{t("goBack")}</AlertDialogCancel>
+          <AlertDialogAction onClick={onRun}>{t("runAnyway")}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

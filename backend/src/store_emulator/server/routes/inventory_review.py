@@ -35,7 +35,7 @@ async def _input(file: UploadFile, start_date: date, end_date: date, currency: s
 @router.get("/template.csv", summary="Download the inventory period input columns")
 def template(pid: str) -> PlainTextResponse:
     text = _call(lambda: inventory_review.template(pid))
-    return PlainTextResponse(text, media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="inventory-template.csv"'})
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="inventory-template.csv"'})
 
 
 @router.post("/preview", response_model=InventoryReport, summary="Reconcile supplied inventory and calculate period margin ratios")
@@ -50,4 +50,4 @@ async def export(pid: str, file: UploadFile = File(...), start_date: date = Form
                  currency: str = Form(..., min_length=3, max_length=3)) -> PlainTextResponse:
     data, period = await _input(file, start_date, end_date, currency)
     text = await run_in_threadpool(_call, lambda: inventory_review.export(pid, data, period))
-    return PlainTextResponse(text, media_type="text/csv", headers={"Content-Disposition": 'attachment; filename="inventory-review.csv"'})
+    return PlainTextResponse("\ufeff" + text, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="inventory-review.csv"'})
