@@ -197,3 +197,17 @@ def test_noncanonical_till_hours_are_rejected_before_loading_a_run(client, hour)
         response = client.post(f"/api/projects/{PID}/runs/run_missing/operations/{action}",
                                json={"operations": {"till_schedule": {hour: 1}}})
         assert response.status_code == 422
+
+
+def test_a_backroom_limits_refills_in_runs_and_replays(client):
+    rid = _run(client, _layout(client),
+               operations={"stock_per_facing": 1, "backroom_per_product": 0, "restock_every_min": 30})
+    saved = client.get(f"/api/projects/{PID}/runs/{rid}/operations").json()
+    assert saved["config"]["backroom_per_product"] == 0 and saved["refill_short_units"] > 0
+    assert saved["backroom"] and all(b["level"] == 0 and b["refilled"] == 0 for b in saved["backroom"])
+    url = f"/api/projects/{PID}/runs/{rid}/operations/replay"
+    same = client.post(url, json={"operations": saved["config"]}).json()
+    endless = client.post(url, json={"operations": {**saved["config"], "backroom_per_product": None}}).json()
+    assert same["report"] == saved
+    assert endless["report"]["refill_short_units"] == 0 and endless["report"]["backroom"] == []
+    assert endless["outcome"]["revenue"] >= same["outcome"]["revenue"]
