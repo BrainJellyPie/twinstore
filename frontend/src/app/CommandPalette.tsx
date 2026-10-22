@@ -121,7 +121,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
         : localize({ id: "theme", group: "commandAppearance", label: "switchNight", hint: "commandDarkHint", icon: Moon, run: () => setTheme("dark") }),
     );
     if (launched) {
-      list.push(localize({ id: "quit", group: "commandApp", label: "quitTwinStore", hint: "commandQuitHint", icon: Power, run: () => void quitLauncher() }));
+      list.push(localize({ id: "quit", group: "commandApp", label: "quitTwinStore", hint: "commandQuitHint", icon: Power, run: () => void quitLauncher({ title: translate(locale, "quitStoppedTitle"), body: translate(locale, "quitStoppedBody") }) }));
     }
     return list;
   }, [navigate, pid, projects, theme, setTheme, launched, locale]);

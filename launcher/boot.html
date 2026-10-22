@@ -8,7 +8,7 @@
 <style>
   :root {
     --bg: #06070a; --fg: #f4f5f8; --muted: #8b90a0; --line: rgb(255 255 255 / 0.08);
-    --c1: #3fdfff; --c2: #a586ff; --c3: #ff5fc6; --volt: #c6ff3a; --bad: #ff6b6b;
+    --c1: #3fdfff; --c2: #a586ff; --c3: #ff5fc6; --volt: #c6ff3a; --bad: #ff6b6b; --warn: #ffb547;
     --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
     --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -86,6 +86,9 @@
   .error .dot { background: var(--bad); color: #160606; }
   @keyframes pop { from { transform: scale(0.4); } }
 
+  .notice { display: grid; grid-template-columns: 22px 1fr; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: rgb(255 181 71 / 0.09); border: 1px solid rgb(255 181 71 / 0.38); color: #ffe2b8; font-size: 13px; }
+  .notice .sign { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--warn); color: #1a1004; font: 700 13px var(--sans); }
+  .notice b { display: block; font-weight: 600; color: #fff1dc; }
   .alert { display: none; margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: rgb(255 107 107 / 0.1); border: 1px solid rgb(255 107 107 / 0.35); color: #ffd4d4; }
   .alert.show { display: block; }
   .hint { margin-top: 14px; font-size: 12.5px; color: var(--muted); min-height: 1.5em; }
@@ -125,6 +128,10 @@
     <div class="hint" id="hint"></div>
     <pre id="log" class="hidden"></pre>
     <a id="open" class="open hidden" href="/">Open TwinStore</a>
+    <div class="notice" id="notice" role="note">
+      <span class="sign" aria-hidden="true">!</span>
+      <div><b id="noticeTitle">Closing the browser tab does not stop TwinStore.</b><span id="noticeText">It keeps running in the background, holding memory and the local model, and the app cannot be updated or deleted while it runs. When you are done, press Quit at the top right of the app (or Quit below).</span></div>
+    </div>
     <div class="row">
       <span class="small" id="where"></span>
       <div class="btns">
@@ -150,6 +157,20 @@
 
   const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
   const post = (path) => fetch(path, { method: "POST", headers: { "X-TwinStore": "1" } });
+
+  // Closing the tab leaves TwinStore running: say so in the browser's language.
+  const NOTICE = {
+    ko: ["브라우저 탭을 닫아도 TwinStore는 종료되지 않습니다.", "백그라운드에서 계속 실행되면서 메모리와 로컬 모델을 차지하고, 실행 중에는 앱을 업데이트하거나 삭제할 수 없습니다. 다 쓰셨으면 앱 오른쪽 위 [종료] 버튼(또는 아래 Quit)을 눌러 주세요."],
+    zh: ["关闭浏览器标签页不会停止 TwinStore。", "它会在后台继续运行，占用内存和本地模型，运行期间也无法更新或删除应用。用完后请点击应用右上角的 [退出]（或下方的 Quit）。"],
+    ja: ["ブラウザのタブを閉じても TwinStore は終了しません。", "バックグラウンドで動き続けてメモリとローカルモデルを使い、実行中はアプリを更新・削除できません。使い終わったらアプリ右上の［終了］（または下の Quit）を押してください。"],
+    es: ["Cerrar la pestaña del navegador no detiene TwinStore.", "Sigue ejecutándose en segundo plano, ocupando memoria y el modelo local, y la app no se puede actualizar ni borrar mientras tanto. Cuando termines, pulsa Salir arriba a la derecha de la app (o Quit abajo)."],
+    fr: ["Fermer l’onglet du navigateur n’arrête pas TwinStore.", "Il continue en arrière-plan, en occupant la mémoire et le modèle local, et l’application ne peut pas être mise à jour ni supprimée pendant ce temps. Quand vous avez fini, cliquez sur Quitter en haut à droite de l’application (ou sur Quit ci-dessous)."],
+  };
+  const lang = (navigator.languages || [navigator.language || "en"]).map((l) => String(l).slice(0, 2).toLowerCase()).find((l) => l === "en" || NOTICE[l]);
+  if (NOTICE[lang]) {
+    $("noticeTitle").textContent = NOTICE[lang][0];
+    $("noticeText").textContent = NOTICE[lang][1];
+  }
 
   function render(s) {
     const steps = $("steps");

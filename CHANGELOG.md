@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Quitting
+- Closing the browser tab never stopped TwinStore: the server and the local model kept running in the background,
+  holding memory and keeping the app from being updated or deleted. Under the launcher the top bar now has a **Quit**
+  button (it asks first, since running simulations and the local model stop too), and the app and the boot screen
+  warn that closing the tab does not stop TwinStore. The stopped screen follows the app's language.
+
 ### Models
 - The default text model is **Claude Haiku 5.5** (`anthropic/claude-haiku-5-5`) instead of Gemini 3.1 Pro: an Anthropic
   key is all the app's text features and language-model shoppers need.

@@ -20,17 +20,37 @@ export function useLauncher(): boolean {
   return data ?? false;
 }
 
+export interface StoppedNote {
+  title: string;
+  body: string;
+}
+
+const STOPPED: StoppedNote = {
+  title: "TwinStore stopped",
+  body: "You can close this tab. Click the TwinStore icon to start it again.",
+};
+
 /** Stops the launcher and the server behind it, then leaves a note in place of the app. */
-export async function quitLauncher(): Promise<void> {
+export async function quitLauncher(note: StoppedNote = STOPPED): Promise<void> {
   try {
     await fetch("/__twinstore/quit", { method: "POST", headers: { "X-TwinStore": "1" } });
   } catch {
     // already gone
   }
-  const note = document.createElement("div");
-  note.className =
-    "fixed inset-0 z-[100] grid place-items-center bg-background/95 text-center backdrop-blur-xl";
-  note.innerHTML = `<div class="space-y-2"><div class="font-display text-4xl">TwinStore stopped</div>
-    <p class="text-muted-foreground">You can close this tab. Click the TwinStore icon to start it again.</p></div>`;
-  document.body.append(note);
+  const screen = document.createElement("div");
+  screen.setAttribute("role", "status");
+  screen.dataset.twinstoreStopped = "";
+  screen.className =
+    "fixed inset-0 z-[100] grid place-items-center bg-background/95 p-6 text-center backdrop-blur-xl";
+  const box = document.createElement("div");
+  box.className = "max-w-md space-y-2";
+  const title = document.createElement("div");
+  title.className = "font-display text-4xl";
+  title.textContent = note.title;
+  const body = document.createElement("p");
+  body.className = "text-muted-foreground";
+  body.textContent = note.body;
+  box.append(title, body);
+  screen.append(box);
+  document.body.append(screen);
 }

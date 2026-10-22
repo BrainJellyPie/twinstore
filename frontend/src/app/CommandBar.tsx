@@ -1,5 +1,6 @@
 // Top command bar: brand and where you are on the left, the places of the app as one segmented
-// control in the middle, and search (⌘K), backend status and the day/night switch on the right.
+// control in the middle, and search (⌘K), backend status, the day/night switch and, under the launcher,
+// Quit on the right.
 
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ import type { MessageKey } from "@/shared/i18n/messages";
 import { BrandMark } from "./BrandMark";
 import { MOD_KEY, useCommandPalette } from "./commandPalette";
 import { projectIdFromPath } from "./paths";
+import { QuitButton } from "./QuitTwinStore";
 import { useTheme } from "./theme";
 
 const PAGE_TITLES: Record<string, MessageKey> = {
@@ -204,6 +206,7 @@ export function CommandBar() {
         <BackendStatus />
         <LanguagePicker />
         <ThemeSwitch />
+        <QuitButton />
       </div>
     </header>
   );

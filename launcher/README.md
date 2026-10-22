@@ -18,8 +18,9 @@ launcher/
   proxies everything to the backend on a private port, so bookmarks keep working across restarts.
 - **Second click**: a running launcher for the same app files is found through `running.json` in the per-user
   folder and simply reopened in the browser.
-- **Stopping**: `POST /__twinstore/quit` (needs the `X-TwinStore: 1` header) from the app's ⌘K palette or the boot
-  screen, or Ctrl+C in a terminal. The backend gets end-of-input on stdin and shuts down cleanly; the process tree is
+- **Stopping**: `POST /__twinstore/quit` (needs the `X-TwinStore: 1` header) from the app's Quit button (top right),
+  its ⌘K palette or the boot screen, or Ctrl+C in a terminal. Closing the browser tab does not stop it; the app and
+  the boot screen say so. The backend gets end-of-input on stdin and shuts down cleanly; the process tree is
   ended if it does not.
 - **macOS**: the app files live inside `TwinStore.app/Contents/Resources/app` (one icon, survives Gatekeeper's
   read-only copy); data and the Python environment go to `~/Library/Application Support/TwinStore`.

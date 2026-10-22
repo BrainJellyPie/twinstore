@@ -5,6 +5,7 @@ import { CommandBar } from "@/app/CommandBar";
 import { CommandPalette } from "@/app/CommandPalette";
 import { ModelSetupBanner } from "@/app/ModelSetupBanner";
 import { projectIdFromPath } from "@/app/paths";
+import { TabCloseNotice } from "@/app/QuitTwinStore";
 import { LoadingView } from "@/shared/components/LoadingView";
 import { RouteErrorBoundary } from "@/app/providers/RouteErrorBoundary";
 
@@ -20,6 +21,7 @@ function RootLayout() {
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
       <AppBackdrop calm={calm} />
       <CommandBar />
+      <TabCloseNotice />
       <ModelSetupBanner />
       <main className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
         <RouteErrorBoundary>

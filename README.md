@@ -71,8 +71,9 @@ once); later starts take seconds.
 | macOS 11+ | `…-macos.zip` | **TwinStore.app** |
 | Linux x64 / arm64 | `…-linux-*.tar.gz` | **twinstore** |
 
-Clicking the icon again reopens the running app. Quit with
-<kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> → **Quit TwinStore**.
+Clicking the icon again reopens the running app. **Closing the browser tab does not
+stop TwinStore**: when you are done, press **Quit** at the top right of the app (or
+<kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> → **Quit TwinStore**).
 First-time security prompts and details: [`QUICKSTART.md`](./QUICKSTART.md).
 
 </td>

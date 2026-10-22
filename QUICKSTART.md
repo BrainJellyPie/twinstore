@@ -14,7 +14,8 @@
    - 브라우저가 바로 열리고 시작 화면(진행 단계·로그)이 보이다가, 준비되면 앱으로 자동 전환됩니다 (`http://127.0.0.1:8000`).
    - 첫 실행만 Python과 필요한 구성요소를 자동으로 내려받느라 몇 분 걸립니다. 다음부터는 몇 초면 시작됩니다.
    - 아이콘을 다시 누르면 이미 실행 중인 앱이 다시 열립니다.
-   - 끝낼 때는 앱에서 `Ctrl+K`(macOS `⌘K`) → **Quit TwinStore**, 또는 시작 화면의 **Quit** 버튼.
+   - **브라우저 탭을 닫아도 TwinStore는 종료되지 않습니다.** 다 쓰셨으면 앱 오른쪽 위 **종료** 버튼(또는 `Ctrl+K`/`⌘K` →
+     **TwinStore 종료**, 시작 화면의 **Quit**)을 눌러 주세요. 켜 둔 채로는 메모리를 계속 쓰고, 앱을 업데이트하거나 지울 수 없습니다.
 
 3. **처음 한 번만 나오는 보안 확인**
    - Windows: "Windows의 PC 보호" 창 → **추가 정보 → 실행**
@@ -40,7 +41,9 @@ OpenAI·Anthropic·Gemini·Qwen 키를 입력하거나, vLLM·Ollama·llama.cpp 
 2. **Double-click the TwinStore icon** — the same icon and the same behavior on every system.
    Your browser opens a boot screen with live progress and switches to the app when it is ready (`http://127.0.0.1:8000`).
    The first start downloads Python and the dependencies (a few minutes); later starts take seconds. Clicking the icon
-   again reopens the running app. Quit with `Ctrl+K` / `⌘K` → **Quit TwinStore**, or **Quit** on the boot screen.
+   again reopens the running app. **Closing the browser tab does not stop TwinStore**: when you are done, press **Quit**
+   at the top right of the app (or `Ctrl+K` / `⌘K` → **Quit TwinStore**, or **Quit** on the boot screen). Left running,
+   it keeps using memory, and the app cannot be updated or deleted.
 
 3. **First time only**: Windows SmartScreen → **More info → Run anyway**. macOS → **right-click → Open → Open**
    (macOS 15+: **System Settings → Privacy & Security → Open Anyway**). Linux adds TwinStore to the app menu on first start.
