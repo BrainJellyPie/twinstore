@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add 64 grocery, baby, pet, stationery, art, technology, travel, game and household photos,
+  reaching 320 bundled product images. Preserve automatic starter selection and image previews
+  when merging the six-language interface; automatic choices and recovery guidance are localized too.
+
+- Add 96 cycling, swimming, climbing, desk, aquarium, bird, lighting and bathroom products, plus
+  32 apparel, garden and hobby photos. The bundled catalog reaches 1,304 products, 115 categories
+  and 256 product photos, available to automatic category-based placement and vision grids.
+
 ### Marketing studio results you can trust
 - A vision-shopper A/B test whose model calls failed finished "completed" with rule-shopper results labelled as
   vision results. It now stops (after the control, before paying for the variants) when most calls fail, and notes
