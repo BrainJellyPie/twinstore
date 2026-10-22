@@ -268,7 +268,7 @@ async def draft_layout_edit(pid: str, sid: ResourceId, req: layout_edit.LayoutEd
 
 
 @router.post("/{sid}/edit", summary="Save layout edits as a new layout")
-async def apply_layout_edit(pid: str, sid: ResourceId, req: layout_edit.LayoutEditApply) -> dict[str, Any]:
+async def apply_layout_edit(pid: str, sid: ResourceId, req: layout_edit.LayoutEditApply) -> dict[str, object]:
     """Apply the reviewed edits to this layout and save the result as a new, active layout; the original stays as it
     is. **Returns:** the new setup summary with `applied` (the edits in words) and `warnings`."""
     try:

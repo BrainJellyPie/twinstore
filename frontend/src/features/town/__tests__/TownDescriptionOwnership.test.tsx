@@ -123,3 +123,11 @@ it.each([[200, 0], [250, 0.01], [650, 0.83], [2050, 0.99], [2950, 0.5], [3000, 1
     expect(api.generateTown).not.toHaveBeenCalled();
   },
 );
+it("keeps a newer routed description while the previous request is pending",async()=>{
+ const old=deferred<typeof RESULT>(),current=deferred<typeof RESULT>();vi.mocked(api.describeTown).mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
+ await mount();act(()=>useAssistStore.getState().send({projectId:"alpha",destination:"area",text:"An older busy university area"}));await waitFor(()=>expect(api.describeTown).toHaveBeenCalledTimes(1));
+ act(()=>useAssistStore.getState().send({projectId:"alpha",destination:"area",text:"A newer quiet residential area"}));await waitFor(()=>expect(api.describeTown).toHaveBeenCalledTimes(2));
+ await act(async()=>{current.resolve({...RESULT,spec:{...RESULT.spec,size_m:1400},rationale:"Current routed rationale"});await current.promise;});await screen.findByText(/Current routed rationale/);
+ await act(async()=>{old.resolve(RESULT);await old.promise;});await waitFor(()=>expect(clients[0]!.isMutating()).toBe(0));
+ expect((screen.getAllByRole("slider")[0] as HTMLInputElement).value).toBe("1400");expect(screen.getByText(/Current routed rationale/)).toBeTruthy();expect(api.generateTown).not.toHaveBeenCalled();
+});

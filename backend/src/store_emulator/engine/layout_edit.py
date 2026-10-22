@@ -51,6 +51,7 @@ class _EditDraft(BaseModel):
 
 class LayoutEditDraft(BaseModel):
     name: str
+    source_sha256: str = ""
     summary: str = ""
     changes: list[VariantChange]
     applied: list[str] = []      # each change in words, as applied to a copy of the layout
@@ -70,7 +71,9 @@ below, written exactly as listed. Name the edited layout in a few words and summ
 
 def to_edit(draft: _EditDraft, store: Store, currency: str) -> LayoutEditDraft:
     """The edits resolved like an A/B variant (SKUs, shelf ids, minor-unit prices), then applied to a copy."""
-    variant = _Variant(name="Edit", changes=[_Change.model_validate(c.model_dump()) for c in draft.changes])
+    changes = [_Change.model_validate(c.model_dump()) for c in draft.changes]
+    # Every change is validated above. Layout instructions allow twelve changes; an A/B variant allows six.
+    variant = _Variant.model_construct(name="Edit", changes=changes)
     try:
         design = to_design(_Draft(name=draft.name or "Edited layout", variants=[variant]), store, currency, [])
     except ValueError as e:

@@ -140,14 +140,14 @@ const targets = [
     rationale: "Generated script rationale",
   },
 ] as const;
-function send(destination: AssistDestination) {
+function send(destination: AssistDestination, text = "Would a different approach sell more tea?") {
   act(() =>
     useAssistStore
       .getState()
       .send({
         projectId: "p",
         destination,
-        text: "Would a different approach sell more tea?",
+        text,
       }),
   );
 }
@@ -238,4 +238,13 @@ it.each(["project", "layout"])("waits for %s before drafting a routed concept te
   await waitFor(() => expect(client.isMutating()).toBe(0));
   expect(marketing.designSurvey).toHaveBeenCalledTimes(1);
   expect(marketing.designSurvey).toHaveBeenCalledWith("p", expect.objectContaining({ setup_id: "s1" }));
+});
+
+it.each(targets)("keeps a newer routed $destination request while the old draft is pending",async target=>{
+ let resolve!:(value:unknown)=>void;const old=new Promise<unknown>(r=>{resolve=r;});vi.mocked(target.mock).mockReturnValueOnce(old as never);
+ const client=mount();send(target.destination,"Would the older approach sell more tea?");await waitFor(()=>expect(target.mock).toHaveBeenCalledTimes(1));
+ send(target.destination,"Would the newer approach sell more tea?");await waitFor(()=>expect(target.mock).toHaveBeenCalledTimes(2));await screen.findByText(new RegExp(target.rationale));
+ const current=await vi.mocked(target.mock).mock.results[1]!.value as object;
+ await act(async()=>{resolve({...current,rationale:"Obsolete routed rationale",differs_by:"Obsolete routed rationale"});await old;});
+ await waitFor(()=>expect(client.isMutating()).toBe(0));expect(screen.getByText(new RegExp(target.rationale))).toBeTruthy();expect(screen.queryByText(/Obsolete routed rationale/)).toBeNull();
 });

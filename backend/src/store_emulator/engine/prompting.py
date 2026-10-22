@@ -89,13 +89,18 @@ def _words(text: str) -> set[str]:
 
 
 def resolve_listed[T](asked: str, listed: dict[str, T]) -> T | None:
-    """What a name a model copied from a prompt listing refers to. `listed` is keyed by casefolded name. The exact name
-    wins; otherwise the longest listed name the answer starts with or contains, since a model sometimes copies the
-    brand, price or description that followed the name in the listing."""
+    """Resolve an exact or uniquely longest complete name, allowing a copied description after it.
+
+    `listed` is keyed by casefolded name. Equal-length matches must refer to the same value.
+    """
     key = asked.strip().strip('"').strip().casefold()
     if not key:
         return None
     if key in listed:
         return listed[key]
-    found = [n for n in listed if n and key.startswith(n)] or [n for n in listed if n and n in key]
-    return listed[max(found, key=len)] if found else None
+    found = [n for n in listed if n and re.search(rf"(?<!\w){re.escape(n)}(?!\w)", key)]
+    if not found:
+        return None
+    longest = max(map(len, found))
+    matches = [listed[n] for n in found if len(n) == longest]
+    return matches[0] if all(value == matches[0] for value in matches) else None

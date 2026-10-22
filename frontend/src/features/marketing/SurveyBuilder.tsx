@@ -13,7 +13,7 @@ import { Textarea } from "@/shared/components/ui/textarea";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
-import { minorUnitDivisor } from "@/shared/utils/money";
+import { majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
 
 import { usePackages } from "./hooks";
 import { ProductDrop } from "./ProductLibrary";
@@ -42,7 +42,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   const [questions, setQuestions] = useState<QuestionKind[]>(initial?.questions ?? ["purchase_intent", "appeal", "value", "preference", "open"]);
   const [context, setContext] = useState(initial?.context ?? "");
   const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency);
-  const [price, setPrice] = useState(initial?.reference_price != null ? String(initial.reference_price / minorUnitDivisor(initial.currency)) : "");
+  const [price, setPrice] = useState(initial?.reference_price != null ? majorUnitText(initial.reference_price, initial.currency) : "");
   const [panel, setPanel] = useState(initial?.panel ?? 60);
   const [ages, setAges] = useState<string[]>(initial?.age_groups ?? []);
   const [genders, setGenders] = useState<string[]>(initial?.genders ?? []);
@@ -69,15 +69,15 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   });
   const { reset } = draft;
   useLayoutEffect(() => reset(), [draftContext, formKey, reset]);
-  const requestDraft = (asked: string) => {
-    if (Array.from(asked.trim()).length < 5 || draft.isPending) return;
+  const requestDraft = (asked: string, replacePending = false) => {
+    if (Array.from(asked.trim()).length < 5 || (draft.isPending && !replacePending)) return;
     draft.mutate(asked, { onSuccess: (d) => {
       const nextStimuli = d.stimuli.length > 0 ? d.stimuli : stimuli;
       const nextNames = d.stimuli.length > 0
         ? { ...names, ...Object.fromEntries(d.stimuli.map((id, i) => [id, d.stimulus_names[i] ?? ""]).filter(([, v]) => v)) }
         : names;
       const nextContext = d.context ? Array.from(d.context).slice(0, 300).join("") : context;
-      const nextPrice = d.reference_price != null ? String(d.reference_price / minorUnitDivisor(d.currency)) : "";
+      const nextPrice = d.reference_price != null ? majorUnitText(d.reference_price, d.currency) : "";
       const nextName = name.trim() ? name : d.name;
       setStimuli(nextStimuli);
       setNames(nextNames);
@@ -93,7 +93,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
         currency: d.currency, price: nextPrice, ages: d.age_groups, genders: d.genders, name: nextName }) });
     } });
   };
-  const queueDraft = useQueuedStart(requestDraft);
+  const queueDraft = useQueuedStart((asked: string) => requestDraft(asked, true));
   const prefillId = prefill?.id;
   const prefillText = prefill?.text;
   useEffect(() => {

@@ -260,8 +260,8 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
   useLayoutEffect(() => {
     resetDescription();
   }, [area, spec, projectId, resetDescription]);
-  const requestDescription = (text: string) => {
-    if (Array.from(text.trim()).length >= 5 && !describe.isPending) describe.mutate(text, {
+  const requestDescription = (text: string, replacePending = false) => {
+    if (Array.from(text.trim()).length >= 5 && (!describe.isPending || replacePending)) describe.mutate(text, {
       onSuccess: (r) => {
         setDescribed({ ...r, text, projectId });
         setSpec(r.spec);
@@ -274,7 +274,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
   const panel = useRef<HTMLDetailsElement>(null);
   const pendingAsk = useAssistStore((s) => s.pending);
   const takeAsk = useAssistStore((s) => s.take);
-  const queueDescribe = useQueuedStart(requestDescription);
+  const queueDescribe = useQueuedStart((text: string) => requestDescription(text, true));
   useEffect(() => {
     if (!pendingAsk) return;
     const routed = takeAsk(projectId, ["area"]);
