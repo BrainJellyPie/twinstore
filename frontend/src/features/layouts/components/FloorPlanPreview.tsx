@@ -17,7 +17,7 @@ const FIXTURE_LABELS = new Map<string, MessageKey>([
   ["table", "planTable"], ["entrance", "planEntrance"], ["exit", "planExit"],
 ]);
 
-export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store; areas: ReservedArea[]; previewFrame?: [number, number] }) {
+export function FloorPlanPreview({ store, areas, previewFrame, name = store.name }: { store: Store; areas: ReservedArea[]; previewFrame?: [number, number]; name?: string }) {
   const { t, locale } = useI18n();
   const legend = t("planLegend", { inLabel: t("planIn"), outLabel: t("planOut") });
   const [zoom, setZoom] = useState(1);
@@ -56,7 +56,7 @@ export function FloorPlanPreview({ store, areas, previewFrame }: { store: Store;
       <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-[min(92vw,1000px)]" data-testid="expanded-floor-plan-dialog">
         <DialogHeader className="shrink-0">
           <DialogTitle>{t("planDetails")}</DialogTitle>
-          <DialogDescription>{t("planDescription", { name: store.name, width: store.grid_size[0], height: store.grid_size[1] })}</DialogDescription>
+          <DialogDescription>{t("planDescription", { name, width: store.grid_size[0], height: store.grid_size[1] })}</DialogDescription>
         </DialogHeader>
         <div role="group" aria-label={t("planControls")} className="flex shrink-0 flex-wrap items-center gap-2 text-xs">
           <button type="button" aria-label={t("planZoomOut")} disabled={zoom === 1} className="rounded border px-2 py-1 disabled:opacity-40" onClick={() => setZoom((current) => Math.max(1, current - 0.5))}>−</button>

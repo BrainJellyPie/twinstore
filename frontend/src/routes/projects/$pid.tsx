@@ -235,6 +235,7 @@ function SimulationPageContent({
         selectedSetupId={effectiveSetupId}
         onLayoutSelect={onLayoutSelect}
         onBackToStores={() => { void navigate({ to: "/" }); }}
+        onOpenSettings={() => { void navigate({ to: "/settings" }); }}
         onAbandonProject={async () => {
           await deleteProject(pid);
           // Leave before touching the cache: refetching the deleted store's queries 404s and would

@@ -320,7 +320,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaDensity")}</span>
           <input type="range" min={0} max={1} step={0.01} value={spec.density} onChange={(e) => setSpec({ ...spec, density: Number(e.target.value) })} className="flex-1 accent-primary" />
-          <span className="w-14 text-right tabular-nums">{Math.round(spec.density * 100)} %</span>
+          <span className="w-14 text-right tabular-nums">{Math.round(spec.density * 100)}%</span>
         </label>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">{t("areaRivals")}</span>
@@ -385,7 +385,7 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
     <div className="space-y-3 text-xs">
       <div className="grid grid-cols-2 gap-2">
         <Stat label={t("areaVisitorsPerDay")} value={Math.round(demand.total_daily_visitors).toLocaleString(locale)} hint={t("areaViaNearby", { count: Math.round(demand.linked_visitors) })} />
-        <Stat label={t("areaMarketShare")} value={`${(demand.market_share * 100).toFixed(1)} %`} hint={t("areaShareHint")} />
+        <Stat label={t("areaMarketShare")} value={`${(demand.market_share * 100).toFixed(1)}%`} hint={t("areaShareHint")} />
         <Stat label={t("areaHalfWithin")} value={`${Math.round(demand.catchment_radius_50_m)} m`} hint={t("areaEightyWithin", { distance: Math.round(demand.catchment_radius_80_m) })} />
         <Stat label={t("areaAvgWalk")} value={`${Math.round(demand.avg_walk_distance_m)} m`} hint={t("areaWalkMinutes", { minutes: Math.max(1, Math.round(demand.avg_walk_distance_m / 80)) })} icon={Footprints} />
       </div>
@@ -404,7 +404,7 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
           <div key={seg} className="mb-1 grid grid-cols-[110px_1fr_44px] items-center gap-2">
             <span>{labelOf(SEGMENT_LABELS, seg, t)}</span>
             <span className="h-1.5 rounded-full bg-muted"><span className="block h-1.5 rounded-full bg-primary" style={{ width: `${(v / segTotal) * 100}%` }} /></span>
-            <span className="text-right tabular-nums">{Math.round((v / segTotal) * 100)} %</span>
+            <span className="text-right tabular-nums">{Math.round((v / segTotal) * 100)}%</span>
           </div>
         ))}
       </div>
@@ -450,7 +450,7 @@ function SynergyTable({ rows, onAskShoppers }: { rows: SynergyRow[]; onAskShoppe
             </td>
             <td className="text-right tabular-nums text-muted-foreground">{Math.round(r.distance_m)} m</td>
             <td className={cn("text-right tabular-nums", r.role === "complement" ? "text-positive" : r.role === "competitor" ? "text-negative" : "text-muted-foreground")}>
-              {r.effect_on_focal_visitors > 0 ? "+" : ""}{Math.round(r.effect_on_focal_visitors)} ({r.effect_on_focal_pct > 0 ? "+" : ""}{r.effect_on_focal_pct.toFixed(1)} %)
+              {r.effect_on_focal_visitors > 0 ? "+" : ""}{Math.round(r.effect_on_focal_visitors)} ({r.effect_on_focal_pct > 0 ? "+" : ""}{r.effect_on_focal_pct.toFixed(1)}%)
             </td>
             <td className="pl-1 text-right">
               <button type="button" onClick={() => onAskShoppers(r)} title={t("areaAskShoppers")}

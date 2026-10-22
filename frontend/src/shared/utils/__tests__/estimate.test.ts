@@ -49,8 +49,10 @@ it("puts shoppers, time and cost on one line", () => {
 });
 
 it("shows simulated and estimated visitors a day when they differ", () => {
-  expect(visitorsPerDayText(520, 100)).toBe("simulated 100 a day of about 520 estimated visitors a day");
-  expect(visitorsPerDayText(520)).toBe("≈520 visitors a day");
-  expect(visitorsPerDayText(142.9, 142.9)).toBe("≈143 visitors a day");
-  expect(visitorsPerDayText(1200.4, 1200)).toBe("≈1,200 visitors a day");
+  expect(visitorsPerDayText("en", 520, 100)).toBe("simulated 100 a day of about 520 estimated visitors a day");
+  expect(visitorsPerDayText("en", 520)).toBe("≈520 visitors a day");
+  expect(visitorsPerDayText("en", 142.9, 142.9)).toBe("≈143 visitors a day");
+  expect(visitorsPerDayText("en", 1200.4, 1200)).toBe("≈1,200 visitors a day");
+  expect(visitorsPerDayText("ko", 488)).toBe("하루 약 488명 방문");
+  expect(visitorsPerDayText("ko", 1200.4, 300)).toBe("하루 예상 방문객 약 1,200명 중 300명 시뮬레이션");
 });

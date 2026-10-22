@@ -11,6 +11,7 @@ import { formatWeeklyHours } from "@/features/layouts/weeklyHours";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { storeTypeLabel } from "@/shared/i18n/storeLabels";
+import { personaLabel } from "@/shared/i18n/personaLabels";
 
 type CustomerTab = "identity" | "purpose" | "age" | "gender";
 const CUSTOMER_TABS: { value: CustomerTab; label: MessageKey }[] = [
@@ -164,7 +165,7 @@ export function SettingsPanel({ store, summary, personas, location, projectId, s
                         className="inline-block size-2 shrink-0 rounded-full"
                         style={{ backgroundColor: DOT_COLORS[i % DOT_COLORS.length] }}
                       />
-                      <span className="truncate">{label}</span>
+                      <span className="truncate">{tab === "age" || tab === "gender" ? personaLabel(label, t) : label}</span>
                     </span>
                     <span className="shrink-0 tabular-nums text-muted-foreground">{count}</span>
                   </li>

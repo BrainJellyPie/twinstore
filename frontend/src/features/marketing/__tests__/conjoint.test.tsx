@@ -52,9 +52,9 @@ it("shows importance, part-worths and a live simulator", () => {
   render(<ConjointReportView projectId="p" report={REPORT} />, { wrapper: withQueries });
   expect(screen.getByText("What drives the choice")).toBeTruthy();
   expect(screen.getAllByText("Zero sugar").length).toBeGreaterThan(0);
-  const before = screen.getAllByText(/^\d+ %$/).map((n) => n.textContent);
+  const before = screen.getAllByText(/^\d+%$/).map((n) => n.textContent);
   fireEvent.change(screen.getByLabelText("Price of product A"), { target: { value: "249" } });
-  expect(screen.getAllByText(/^\d+ %$/).map((n) => n.textContent)).not.toEqual(before);
+  expect(screen.getAllByText(/^\d+%$/).map((n) => n.textContent)).not.toEqual(before);
   fireEvent.click(screen.getByRole("button", { name: /Add product/ }));
   expect(screen.getByLabelText("Price of product C")).toBeTruthy();
 });

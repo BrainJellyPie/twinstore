@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, AlertCircle, RefreshCw, Users } from "lucide-react";
+import { Loader2, AlertCircle, KeyRound, RefreshCw, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/components/ui/alert-dialog";
@@ -15,6 +15,8 @@ interface Props {
   selectedSetupId: string;
   onLayoutSelect: (id: string) => void;
   onBackToStores: () => void;
+  /** Opens Settings → Model providers, where a failed generation's model or key is usually fixed. */
+  onOpenSettings: () => void;
   onAbandonProject: () => void | Promise<void>;
 }
 
@@ -22,7 +24,7 @@ const actionClass = "h-auto min-h-10 w-full whitespace-normal sm:w-auto";
 // Alert-dialog actions compose Button via a slot, so inline wrapping also overrides its base nowrap style.
 const confirmationActionStyle = { whiteSpace: "normal", height: "auto", maxWidth: "100%" } as const;
 
-export function PreparingView({ generation, contextKind, projectName, layouts, selectedSetupId, onLayoutSelect, onBackToStores, onAbandonProject }: Props) {
+export function PreparingView({ generation, contextKind, projectName, layouts, selectedSetupId, onLayoutSelect, onBackToStores, onOpenSettings, onAbandonProject }: Props) {
   const { t } = useI18n();
   const { phase, kind, error, retry, retrying, loadingStatus, errorSource, note, writing, confirm, answer, answering, answerError } = generation;
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -89,7 +91,7 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
           {deleting && <p ref={deleteNotice} role="status" aria-label={t("deletingStore")} tabIndex={-1} className="text-sm text-muted-foreground outline-none">{t("generationContinueHint")}</p>}
           {!deleting && failed && <p role="alert" className="text-sm text-muted-foreground">{error || t(statusUnavailable ? "generationStatusUnavailable" : isLayoutFailed ? "layoutErrorFallback" : "personaErrorFallback")}</p>}
           {!deleting && isLayoutFailed && <p className="text-sm text-muted-foreground">{t("layoutFailureHint")}</p>}
-          {!deleting && (isPersonaFailed || canGenerate) && <p className="text-sm text-muted-foreground">{t("generatePersonasHint")}</p>}
+          {!deleting && canGenerate && <p className="text-sm text-muted-foreground">{t("generatePersonasHint")}</p>}
           {!deleting && (isPersonaFailed || canGenerate) && <NeedsModel />}
           {!deleting && (statusUnavailable || loadingStatus) && <p role={loadingStatus ? "status" : undefined} className="text-sm text-muted-foreground">{t("generationStatusReadHint")}</p>}
           {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && note && <div role="status" className="space-y-1 rounded-lg border p-3 text-sm">
@@ -113,6 +115,9 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
           {!deleting && (isPersonaFailed || canGenerate) && <Button className={actionClass} onClick={() => { if (!retrying) retry(); }} disabled={retrying}>
             <RefreshCw className={retrying ? "size-4 shrink-0 animate-spin" : "size-4 shrink-0"} aria-hidden />
             {retrying ? t("tryingAgain") : canGenerate ? t("generate") : t("tryAgain")}
+          </Button>}
+          {!deleting && canDelete && <Button variant="outline" className={actionClass} onClick={onOpenSettings}>
+            <KeyRound className="size-4 shrink-0" aria-hidden />{t("modelSettings")}
           </Button>}
           <Button ref={backButton} variant="outline" className={actionClass} onClick={onBackToStores}>{t("backToStores")}</Button>
           {!deleting && canDelete && <Button ref={deleteButton} variant="destructive" className={actionClass}
