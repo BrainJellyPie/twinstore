@@ -69,7 +69,8 @@ export interface ProductMeshes {
   textures: THREE.CanvasTexture[];
   // Swap package meshes between the coarse (overview) and fine (close-up) LOD.
   setDetail: (fine: boolean) => void;
-  loadAssets: (onReady?: () => void) => () => void;
+  // `onPhotosDone`: product photos have all loaded or failed (scanned produce reports through onReady).
+  loadAssets: (onReady?: () => void, onPhotosDone?: () => void) => () => void;
   dispose: () => void;
 }
 
@@ -245,9 +246,9 @@ export function buildProductMeshes(
     setDetail: (fine) => {
       for (const l of lods) l.mesh.geometry = fine ? l.fine : l.coarse;
     },
-    loadAssets: (onReady) => {
+    loadAssets: (onReady, onPhotosDone) => {
       cancelAssets();
-      const stopPhotos = photos.load();
+      const stopPhotos = photos.load(onPhotosDone);
       const stopScans = [...scans].map(([url, targets]) => loadScannedProducts(url, targets, cheap, onReady));
       cancelAssets = () => { stopPhotos(); stopScans.forEach((stop) => stop()); };
       return cancelAssets;

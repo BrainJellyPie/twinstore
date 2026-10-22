@@ -49,8 +49,9 @@ def store_kind(store_type: str) -> str:
 
 PHOTO_LINE = (
     "The image has two parts. Top: a photo of the shelf this shopper is passing right now, as they see it from the "
-    'aisle, with a yellow tag "#N price" on each product. Bottom: a chart of the same shelf with each product\'s name '
-    "and the same tag. Judge what catches the eye from the photo; read names and prices from the chart."
+    'aisle, with a yellow number tag "#N" on each product. Bottom: a chart of the same shelf with each product\'s name '
+    'and a tag "#N price" with the same numbers. Judge what catches the eye from the photo; read names and prices from '
+    "the chart."
 )
 
 

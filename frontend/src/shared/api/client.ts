@@ -3,6 +3,7 @@
 import { apiErrorMessage } from "./errors";
 
 import type {
+  Face,
   Store,
   StoreDesign,
   InteriorColors,
@@ -370,6 +371,40 @@ export interface RunOptions {
   town_scale?: number;
   // Vision shoppers: who decides what the shopper came for — the VLM at the door, or the rule planner.
   plan_policy?: "vlm" | "rule" | null;
+  // Vision shoppers: the rendered shelf chart, or the 3D store's photo of each face above it.
+  shelf_view?: ShelfViewMode | null;
+}
+
+export type ShelfViewMode = "chart" | "photo_chart";
+
+/** A stocked rack face and the key its 3D photo is stored under (GET /setups/{sid}/shelf-views). */
+export interface ShelfViewFace {
+  rack_id: string;
+  rack_name: string;
+  face: Face;
+  key: string;
+  ready: boolean;
+}
+
+export interface ShelfViewStatus {
+  currency: string;
+  faces: ShelfViewFace[];
+  // The store the keys were computed from: render exactly this one.
+  store: Store;
+}
+
+export function getShelfViews(projectId: string, setupId: string, signal?: AbortSignal): Promise<ShelfViewStatus> {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/setups/${encodeURIComponent(setupId)}/shelf-views`, { signal });
+}
+
+export function putShelfView(
+  projectId: string, setupId: string, key: string,
+  body: { rack_id: string; face: Face; image: string; boxes: Record<string, [number, number, number, number][]> },
+  signal?: AbortSignal,
+): Promise<ShelfViewFace> {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/setups/${encodeURIComponent(setupId)}/shelf-views/${encodeURIComponent(key)}`, {
+    method: "PUT", ...json(body), signal,
+  });
 }
 
 export interface EnsembleMember {
@@ -559,6 +594,9 @@ export interface VisionGlanceSummary {
   resolved_by?: Record<string, number>;
   outcomes?: Record<string, number>;
   picked_level?: Record<string, number>;
+  // What the glances showed: the chart, or the 3D photo above it (faces without a photo show the chart).
+  shelf_view?: ShelfViewMode;
+  views?: Record<string, number>;
   examples?: VisionGlanceRecord[];
   plan_policy?: "vlm" | "rule";
   planning?: {

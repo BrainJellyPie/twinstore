@@ -41,9 +41,10 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 
 - **A twin, not a mock-up.** Shelf photos become planograms, floor-plan sketches become the store grid, receipts and
   POS exports score the simulation, storefront photos set how many people walk in.
-- **Shoppers that look.** Vision-language models see the shelf the shopper would see — a photoreal render or the real
-  photo — read prices and promotion signs, and say what tempts them. Purchases are seeded draws, so two layouts are
-  always compared on the very same people.
+- **Shoppers that look.** Vision-language models look at each shelf the shopper passes — a chart of the shelf with
+  names, prices and signs, optionally with the shelf photographed in the 3D store above it, or a real shelf photo in
+  Shelf Lab — and say what tempts them. Purchases are seeded draws, so two layouts are always compared on the very
+  same people.
 - **Answers with error bars.** Paired A/B runs with confidence intervals, a layout optimizer judged by vision shoppers,
   conjoint and concept tests for marketers, compliance audits priced in revenue per day, and a validation loop against
   real households' baskets.
@@ -151,7 +152,7 @@ Each preview loops; click it for the full-quality MP4.
 <td width="50%"><img src="./.github/assets/twinstore/screens/floor-light.jpg" alt="Photoreal 3D store with photographic shoppers"><br>
 <b>Photoreal 3D twin.</b> Photographic shoppers walk the floor on a wall-clock day; scrub, pause, speed up, follow anyone. <b>Photo</b> path-traces any view into a still.</td>
 <td width="50%"><img src="./.github/assets/twinstore/screens/shopper-light.jpg" alt="Shopper's-eye view"><br>
-<b>Shopper's-eye view.</b> The first-person camera shows what a shopper — and the vision model — sees.</td>
+<b>Shopper's-eye view.</b> The first-person camera walks the aisles at a shopper's eye height.</td>
 </tr>
 <tr>
 <td><img src="./.github/assets/twinstore/screens/heat-light.jpg" alt="Footfall heatmap"><br>
@@ -220,7 +221,12 @@ back to a fast model of a provider that has one; simulation runs and studies kee
 The **Floor** page is the store's day. **Run simulation** asks:
 
 - **Who shops.** The rule-based engine (seconds, no model), language-model shoppers that plan, intend and give in to
-  impulses, or vision shoppers that look at rendered shelves.
+  impulses, or vision shoppers that look at the shelves they pass.
+- **What a vision shopper sees at a shelf.** **Chart**: a flat drawing of the shelf with names, prices and numbers.
+  **Chart + 3D photo**: the same chart with the shelf photographed in the 3D store above it, tagged with the same
+  numbers: closer to what a shopper sees, about twice the image per call. The browser photographs each shelf once
+  before the run (only shelves changed since are photographed again); a shelf changed by the day's promotions or
+  stock-outs is shown as the chart.
 - **Which model.** The app default, one model, or an ensemble that mixes models across shoppers or lets them vote. The
   dialog estimates the number of model calls before you start.
 - **What kind of day.** One of **19 situations** (weather, weekday or holiday, crowding, local events, promotions,

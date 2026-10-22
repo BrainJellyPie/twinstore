@@ -2,7 +2,7 @@
 // Lets a reviewer judge the model at a glance: how often it named a product, how tempted
 // it said shoppers were, whether its answers mapped to real shelf products, and its reasons.
 
-import { DoorOpen, Eye } from "lucide-react";
+import { Camera, DoorOpen, Eye } from "lucide-react";
 
 import { formatPercent } from "@/shared/utils/money";
 
@@ -42,6 +42,13 @@ export function VisionGlancesSection({ projectId, runId }: { projectId: string; 
         <Eye className="size-4" aria-hidden /> Vision shoppers
         {meta.model && <span className="truncate font-normal text-muted-foreground">· {meta.model}</span>}
       </h3>
+      {meta.shelf_view === "photo_chart" && (
+        <p className="mb-2 flex items-center gap-1.5 text-muted-foreground">
+          <Camera className="size-3.5" aria-hidden />
+          Chart + 3D photo: {(meta.views?.photo_chart ?? 0).toLocaleString()} of {glances.toLocaleString()} glances showed the photo
+          {(meta.views?.chart ?? 0) > 0 && " (shelves changed since they were photographed, or by the day's promotions and stock-outs, show the chart)"}
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-2">
         {tiles.map((t) => (
           <div key={t.label} className="rounded-md border px-2 py-1.5">

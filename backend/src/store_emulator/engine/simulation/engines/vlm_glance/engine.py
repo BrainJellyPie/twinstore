@@ -416,7 +416,7 @@ class VLMGlanceEngine(RuleBasedEngine):
                 # A face without a stored photo (rendered before an edit, or never) is shown as the chart alone.
                 photo = load_shelf_photo(vcfg.shelf_views_dir, face_key(rack, face, cfg.currency))
                 if photo is not None:
-                    view = photo_chart_view(view, photo, cfg.currency)
+                    view = photo_chart_view(view, photo)
                     shown = "photo_chart"
             prompt = user_prompt(
                 persona, context.cue, plan.pattern, view,

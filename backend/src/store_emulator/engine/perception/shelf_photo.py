@@ -21,7 +21,6 @@ from PIL import Image, ImageDraw
 
 from store_emulator.domain.rack import Rack, Slot
 from store_emulator.domain.types import Face
-from store_emulator.engine.prompting import display_price
 
 from .shelf_render import MarkedItem, ShelfView, load_font
 
@@ -120,7 +119,7 @@ def _ref_of(marked: MarkedItem) -> str:
     return item_ref(marked.slot, marked.slot.items.index(marked.item))
 
 
-def photo_chart_view(chart: ShelfView, photo: ShelfPhoto, currency: str, *, width: int | None = None) -> ShelfView:
+def photo_chart_view(chart: ShelfView, photo: ShelfPhoto, *, width: int | None = None) -> ShelfView:
     """The photo with the chart's numbers on yellow tags, stacked above the chart, as one view.
 
     The view keeps the chart's marks, so the model's "#N" maps to the same product either way."""
@@ -134,7 +133,8 @@ def photo_chart_view(chart: ShelfView, photo: ShelfPhoto, currency: str, *, widt
         if not boxes:
             continue
         x1, _, x2, y2 = boxes[0]
-        text = f"#{marked.mark} {display_price(marked.item.price, currency)}"
+        # The number only: products stand close together on a photo, and the price is on the shelf tag and the chart.
+        text = f"#{marked.mark}"
         left, top, right, bottom = d.textbbox((0, 0), text, font=font)
         tw, th = right - left, bottom - top
         cx = (x1 + x2) / 2 * scale

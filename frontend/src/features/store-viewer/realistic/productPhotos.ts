@@ -49,7 +49,8 @@ export function attachProductPhotos(atlas: Atlas, sources: ProductLabelSource[],
   atlas.redraw = redraw;
 
   let cancel = () => {};
-  const load = () => {
+  // `onDone`: every photo has loaded or failed (shelf snapshots wait for it).
+  const load = (onDone?: () => void) => {
     cancel();
     atlas.redraw = redraw;
     let alive = true;
@@ -65,7 +66,13 @@ export function attachProductPhotos(atlas: Atlas, sources: ProductLabelSource[],
     const queue = [...byUrl.entries()];
     const active = new Set<HTMLImageElement>();
     let next = 0;
+    let done = false;
     const pump = () => {
+      if (alive && !done && next >= queue.length && active.size === 0) {
+        done = true;
+        onDone?.();
+        return;
+      }
       while (alive && active.size < 4 && next < queue.length) {
         const [url, entries] = queue[next++]!;
         const image = new Image();

@@ -96,7 +96,7 @@ def test_photo_chart_view_keeps_the_chart_marks_and_tags_the_photo():
              for i, (slot, k) in enumerate((s, k) for s in rack.slots for k in range(len(s.items)))}
     from store_emulator.engine.perception.shelf_photo import ShelfPhoto
     photo = ShelfPhoto(image=Image.new("RGB", (640, 480), (40, 90, 160)), boxes=boxes)
-    view = photo_chart_view(chart, photo, "USD")
+    view = photo_chart_view(chart, photo)
     assert view.items == chart.items and view.rack is chart.rack
     img = Image.open(io.BytesIO(view.png))
     assert img.size == view.size and img.width == 512 and img.height > chart.size[1] + 380

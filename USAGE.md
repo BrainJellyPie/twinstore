@@ -50,7 +50,8 @@ simulation_calls = N_simulated × 3                            # stage1 + stage2
                  # N_simulated = N_personas, or the run's `max_customers` sample.
                  # engine_type="rule_based" → simulation_calls = 0.
                  # engine_type="vlm_glance" → 0 to max_glances (default 3) vision calls per
-                 # customer; with the default gating about 1–1.5.
+                 # customer; with the default gating about 1–1.5. shelf_view="photo_chart"
+                 # (chart + 3D photo) keeps the count but sends about twice the image per call.
 
 total = generation_calls + simulation_calls
 ```

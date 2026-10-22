@@ -7,8 +7,8 @@
 // - The same seed on two layouts makes them see the same customers in the same moods,
 //   which is what makes the A/B compare view statistically sharp.
 
-import { useState, type FormEvent } from "react";
-import { Bot, ChevronDown, Eye, FlaskConical, Map as MapIcon, SlidersHorizontal, Zap } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Bot, Camera, ChevronDown, Eye, FlaskConical, Map as MapIcon, SlidersHorizontal, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useI18n } from "@/shared/i18n/i18n";
@@ -26,10 +26,11 @@ import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
 import { useSimulate } from "@/shared/mutations/useSimulate";
 import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
-import type { EngineType, RunOptions, Scenario } from "@/shared/api/client";
+import type { EngineType, RunOptions, Scenario, ShelfViewMode } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 
 import { useAvailableModels, useEngines } from "../hooks";
+import { photographShelves } from "../shelfPhotos";
 import { ModelPicker, type ModelChoice } from "./ModelPicker";
 import { ScenarioEditor } from "./ScenarioEditor";
 
@@ -86,6 +87,14 @@ function LauncherForm({
   const [useTown, setUseTown] = useState(false);
   const [townScale, setTownScale] = useState(0.2);
   const [planPolicy, setPlanPolicy] = useState<"vlm" | "rule">("vlm");
+  const [shelfView, setShelfView] = useState<ShelfViewMode>("chart");
+  const [photos, setPhotos] = useState<{ done: number; total: number } | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photographing = useRef<AbortController | null>(null);
+  // Closing the dialog stops photographing; nothing is started.
+  useEffect(() => () => photographing.current?.abort(), []);
+  const preparing = photos !== null;
+  const withPhotos = engine === "vlm_glance" && shelfView === "photo_chart";
 
   const isPreview = locked || preview;
   const validSample = sampleMode === "all" || (sampleSize.trim() !== "" && Number.isSafeInteger(Number(sampleSize)) && Number(sampleSize) >= 1 && Number(sampleSize) <= personaCount);
@@ -128,9 +137,9 @@ function LauncherForm({
     }
   };
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!valid || simulate.isPending) return;
+    if (!valid || simulate.isPending || preparing) return;
     const options: RunOptions = {
       engine_type: engine,
       seed: Number(seed),
@@ -144,7 +153,25 @@ function LauncherForm({
       use_town: town && useTown ? true : undefined,
       town_scale: town && useTown ? townScale : undefined,
       plan_policy: engine === "vlm_glance" ? planPolicy : undefined,
+      shelf_view: engine === "vlm_glance" ? shelfView : undefined,
     };
+    if (withPhotos) {
+      const controller = new AbortController();
+      photographing.current = controller;
+      setPhotoError(null);
+      setPhotos({ done: 0, total: 0 });
+      try {
+        await photographShelves(projectId, setupId, (done, total) => setPhotos({ done, total }), controller.signal);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setPhotoError(error instanceof Error ? error.message : String(error));
+          setPhotos(null);
+        }
+        return;
+      }
+      if (controller.signal.aborted) return;
+      setPhotos(null);
+    }
     simulate.mutate({ projectId, setupId, options }, { onSuccess: () => onOpenChange(false) });
   };
 
@@ -187,7 +214,7 @@ function LauncherForm({
         </DialogDescription>
       </DialogHeader>
 
-      <fieldset disabled={simulate.isPending} className="min-w-0 space-y-5">
+      <fieldset disabled={simulate.isPending || preparing} className="min-w-0 space-y-5">
         <RadioGroup
           value={engine}
           onValueChange={(v: string) => chooseEngine(v as EngineType)}
@@ -290,6 +317,20 @@ function LauncherForm({
                     </button>
                   ))}
                 </div>
+                <div className="pt-2 text-sm font-medium">{t("shelfViewTitle")}</div>
+                <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+                  {([
+                    { id: "chart", title: t("shelfViewChart"), hint: t("shelfViewChartHint") },
+                    { id: "photo_chart", title: t("shelfViewPhoto"), hint: t("shelfViewPhotoHint") },
+                  ] as const).map((o) => (
+                    <button key={o.id} type="button" onClick={() => { setShelfView(o.id); setPhotoError(null); }}
+                      aria-pressed={shelfView === o.id}
+                      className={cn("rounded-lg border p-2 text-left", shelfView === o.id ? "border-primary bg-primary/5" : "hover:bg-muted/50")}>
+                      <div className="flex items-center gap-1.5 font-medium">{o.id === "photo_chart" && <Camera className="size-3.5" aria-hidden />}{o.title}</div>
+                      <div className="text-muted-foreground">{o.hint}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -345,6 +386,7 @@ function LauncherForm({
           {" · "}{scenario?.name ?? t("baselineSituation")}
           {usesLlm && ` · ${modelChoice.kind === "single" ? modelChoice.model ?? t("chooseModel") : modelChoice.kind === "ensemble" ? t("modelEnsemble") : modelOf(engine) || t("serverDefaultModel")}`}
           {town && useTown && ` · ${t("neighborSummary", { percent: Math.round(townScale * 100) })}`}
+          {withPhotos && ` · ${t("shelfViewPhoto")}`}
         </p>
 
         <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
@@ -363,6 +405,11 @@ function LauncherForm({
 
       {modelError && <p id="run-model-error" role={!available && !models.isError ? "status" : "alert"} className={cn("break-words text-xs", !available && !models.isError ? "text-muted-foreground" : "text-destructive")}>{modelError}</p>}
 
+      {photos && photos.total > 0 && (
+        <p role="status" className="text-xs text-muted-foreground">{t("photographingShelves", { done: photos.done, total: photos.total })}</p>
+      )}
+      {photoError && <p role="alert" className="break-words text-xs text-destructive">{t("shelfPhotosFailed", { error: photoError })}</p>}
+
       {simulate.isError && (
         <p role="alert" className="text-xs text-destructive">
           {simulate.error instanceof Error ? simulate.error.message : t("runStartError")}
@@ -375,8 +422,9 @@ function LauncherForm({
         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={simulate.isPending}>
           {t("cancel")}
         </Button>
-        <Button type="submit" disabled={simulate.isPending || !valid}>
-          {simulate.isPending ? t("starting") : isPreview ? t("runPreview") : t("runFinalize")}
+        <Button type="submit" disabled={simulate.isPending || preparing || !valid}>
+          {preparing ? t("photographingShelves", { done: photos.done, total: photos.total || "…" })
+            : simulate.isPending ? t("starting") : isPreview ? t("runPreview") : t("runFinalize")}
         </Button>
       </DialogFooter>
     </form>

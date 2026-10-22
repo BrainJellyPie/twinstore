@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Vision shoppers can see the shelf in 3D
+- The run dialog's vision settings add **What a vision shopper sees at a shelf**: **Chart** (as before: a flat
+  drawing of the shelf with names, prices and numbers) or **Chart + 3D photo**. With the photo, the browser first
+  photographs every stocked shelf face in the 3D store (Realistic mode's fixtures, labels, product photos and price
+  tags, from a shopper's eye height; chest freezers and tables from above), crops it to the fixture and uploads it
+  with the position of every product. Each glance then shows that photo, tagged with the chart's own numbers, above
+  the chart: the photo for what catches the eye, the chart for names and prices. Answers map to the same products
+  either way, and the same shoppers glance at the same shelves, so the two views can be compared on paired runs.
+- Photos are kept per project under a key of what the face shows (products, prices, promotions, fixture, face,
+  currency): later runs reuse them, an edited shelf is photographed again, and a shelf changed since, or by the
+  day's promotions and stock-outs, is shown as the chart. Run results say how many glances showed the photo.
+  API: `GET /api/projects/{pid}/setups/{sid}/shelf-views`, `PUT .../shelf-views/{key}`; run option `shelf_view`.
+- The glance prompt for the photo view describes the two parts; chart runs keep the prompt they had.
+
 ## 0.4.1 — a dependable first start on Windows, and more set-up in words
 
 ### First start

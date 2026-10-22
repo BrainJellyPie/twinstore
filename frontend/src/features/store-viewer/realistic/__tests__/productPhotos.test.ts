@@ -89,3 +89,28 @@ describe("product photographs", () => {
     photos.dispose();
   });
 });
+
+describe("photo loading completion", () => {
+  it("reports once every photo has loaded or failed, and at once when there are none", () => {
+    const sources: ProductLabelSource[] = [
+      { name: "Tea", kind: "bottle", imageUrl: "/api/images/tea" },
+      { name: "Cola", kind: "can", imageUrl: "/api/images/cola" },
+      { name: "Chips", kind: "bag", imageUrl: null },
+    ];
+    const { images, photos } = setup(sources);
+    const done = vi.fn();
+    photos.load(done);
+    expect(images).toHaveLength(2);
+    images[0]!.onload!();
+    expect(done).not.toHaveBeenCalled();
+    images[1]!.onerror!();
+    expect(done).toHaveBeenCalledOnce();
+    photos.dispose();
+
+    const empty = setup([{ name: "Plain", kind: "box", imageUrl: null }]);
+    const none = vi.fn();
+    empty.photos.load(none);
+    expect(none).toHaveBeenCalledOnce();
+    empty.photos.dispose();
+  });
+});

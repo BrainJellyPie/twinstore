@@ -18,6 +18,8 @@ import {
 export interface ProductInstance {
   name: string;
   imageUrl?: string | null;
+  // Which product of which slot this package shows ("face:level:block:index"), for shelf snapshots.
+  ref?: string;
   kind: PackageKind;
   // Bottom-centre of the package (store-local world coordinates).
   x: number;
@@ -100,6 +102,7 @@ function placeOnShelf(
   shelfY: number,
   clearance: number,
   maxRows: number,
+  refPrefix: string,
 ) {
   const m = items.length;
   if (!m) return;
@@ -130,6 +133,7 @@ function placeOnShelf(
           out.products.push({
             name: item.name,
             imageUrl: item.image_url,
+            ref: `${refPrefix}:${k}`,
             kind: spec.kind,
             x,
             y: shelfY + s * (ph + 0.003),
@@ -171,7 +175,7 @@ function layoutBanks(out: Emit, plan: FixturePlan, maxRows: number) {
       const edge: ShelfEdge = fridge
         ? { stockFront: bank.front - 0.075, railFace: bank.front - 0.068 }
         : { stockFront: bank.front, railFace: bank.front + 0.012 };
-      placeOnShelf(out, bank, edge, slot.items, u0, u0 + blockW, y, ceiling - y, maxRows);
+      placeOnShelf(out, bank, edge, slot.items, u0, u0 + blockW, y, ceiling - y, maxRows, `${slot.face}:${slot.level}:${slot.block}`);
     }
   }
 }
@@ -185,10 +189,11 @@ function layoutBin(out: Emit, plan: FixturePlan, frame: Frame, floorY: number, h
   const innerD = frame.depth - 0.12;
   const rowD = innerD / levels.length;
   levels.forEach((level, ri) => {
-    const items = slots.filter((s) => s.level === level).flatMap((s) => s.items);
-    const slotW = innerW / items.length;
+    const entries = slots.filter((s) => s.level === level)
+      .flatMap((s) => s.items.map((item, k) => ({ item, ref: `${s.face}:${s.level}:${s.block}:${k}` })));
+    const slotW = innerW / entries.length;
     const vFront = innerD / 2 - ri * rowD;
-    items.forEach((item, k) => {
+    entries.forEach(({ item, ref }, k) => {
       const { spec, w, h, d } = worldSize(item.name);
       const flat = preferFlat && spec.lieFlatInChest;
       // Footprint along t (fw) and n (fd), and height above the floor (fh).
@@ -211,6 +216,7 @@ function layoutBin(out: Emit, plan: FixturePlan, frame: Frame, floorY: number, h
             out.products.push({
               name: item.name,
               imageUrl: item.image_url,
+              ref,
               kind: spec.kind,
               x,
               y: floorY + l * (fh * fit + 0.003),
