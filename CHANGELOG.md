@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
+
+### Safe updates
+- The stores of an earlier version are always brought over, from any folder (OneDrive included), and one unreadable
+  file no longer stops the app from starting. Details under Fixes.
+
+### Nothing downloaded or spent unasked
+- The local model downloads only when you press Start; screens that need a model say so and offer a key or the
+  download. Details under Fixes.
+
+### Starter catalog, photos and translations
 - Add 64 hardware, music, gardening, pantry, produce, bakery, dairy, prepared-food and
   personal-care photos, reaching 416 local product images for the 1,400-item catalog.
   Extend six-language category labels to all 123 categories, including the newest home and hobby assortments.
