@@ -48,10 +48,15 @@ def aggregate(
         hourly[cr.arrival_time[:2]] += 1
         visit_sec += cr.duration_sec
         bought_any = False
-        for event in cr.timeline:
+        # Dwell: each event's tile holds the shopper until the next event — each shopper's own pace, diagonal steps,
+        # the time at the entrance and wandering included (a fixed block_move_sec per step left a tenth of the
+        # visit's seconds off the map). The last event keeps its own duration.
+        timeline = cr.timeline
+        for k, event in enumerate(timeline):
             if 0 <= event.x < w and 0 <= event.y < h:
                 behavioral[event.y][event.x] += 1
-                dwell[event.y][event.x] += block_move_sec if event.action == Action.MOVE else event.duration
+                held = timeline[k + 1].elapsed_sec - event.elapsed_sec if k + 1 < len(timeline) else event.duration
+                dwell[event.y][event.x] += max(0, held)
             if event.action == Action.MOVE:
                 path_tiles += 1
             if event.action not in (Action.BROWSE, Action.BUY) or not event.target_rack:
