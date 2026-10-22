@@ -666,6 +666,30 @@ PACKSHOT_SHEETS = {
         "Linen Cushion Cover", "Stoneware Mug", "Cotton Throw Blanket", "Desk Lamp",
         "Cotton Baby Socks 3pk", "Soft Baby Hair Brush", "Snack Cup with Handles", "Baby Bottle Cleaning Brush",
     ],
+    "starter-23": [
+        "Measuring Tape 5m", "Safety Glasses", "LED Work Light", "Spirit Level",
+        "Wood Glue", "Work Gloves", "Painter's Tape", "Wall Plugs & Screws",
+        "Practice Drum Pad", "Clip-On Tuner", "Guitar Strap", "Keyboard Sustain Pedal",
+        "Potting Mix 10L", "Seedling Tray", "Terracotta Pot 20cm", "Garden Hose Nozzle",
+    ],
+    "starter-24": [
+        "Bulgur Wheat 500g", "Giant White Beans 400g", "Sun Dried Tomatoes 200g", "Grape Leaves Jar 300g",
+        "Sweet Potato Glass Noodles 300g", "Toasted Sesame Oil 160ml", "Korean Soybean Paste 500g", "Korean Red Pepper Flakes 200g",
+        "Short Grain Sushi Rice 1kg", "Rice Vinegar 300ml", "Panko Breadcrumbs 200g", "Dried Shiitake Mushrooms 80g",
+        "Zaatar Herb Blend 70g", "Whole Cumin Seeds 60g", "Ground Turmeric 60g", "Ceylon Cinnamon Sticks 30g",
+    ],
+    "starter-25": [
+        "Onions 3pk", "Potatoes", "Kimchi 500g", "Mandarins",
+        "Garlic Bread", "Cinnamon Roll", "Cheesecake Slice", "Egg Tart",
+        "Milk 200ml", "Banana Milk 240ml", "Strawberry Milk 240ml", "Chocolate Milk 240ml",
+        "Bulgogi Rice Ball", "Egg Salad Sandwich", "Chicken Wrap", "Spicy Rice Cakes Cup",
+    ],
+    "starter-26": [
+        "Moisture Conditioner 400ml", "Leave In Hair Cream 150ml", "Flexible Hair Gel 150ml", "Microfiber Hair Wrap",
+        "Natural Loofah Sponge", "Travel Shampoo Bar 60g", "Conditioner Bar 60g", "Wooden Nail Brush",
+        "Alcohol Free Mouth Rinse 500ml", "Stainless Tongue Cleaner", "Travel Toothbrush Case", "Interdental Brushes 6pk",
+        "Silicone Pet Bath Brush", "Stainless Pet Grooming Comb", "Microfiber Pet Drying Towel", "Gentle Pet Paw Wipes 40pk",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

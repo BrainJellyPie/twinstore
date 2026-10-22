@@ -1087,7 +1087,7 @@ refill cleaning. Mediterranean, Korean and Japanese pantry staples, spice blends
 barista tools and party supplies add another 96 products. Kitchen and baking tools, laundry care, aquarium and small-pet supplies, computer peripherals, camera accessories
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
-woodcraft, ceramic craft and gift wrapping add another 96. Three hundred fifty-two generated
+woodcraft, ceramic craft and gift wrapping add another 96. Four hundred sixteen generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 Automatic selection sees which products have photos and prefers them only when they fit the store and
 requirements equally well. Products without photos remain available.

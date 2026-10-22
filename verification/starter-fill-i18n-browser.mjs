@@ -7,7 +7,8 @@ async function catalog(file, key) {
   const code = ts.transpileModule(fs.readFileSync(new URL(`../frontend/src/shared/i18n/${file}`, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
   return (await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`))[key];
 }
-const messages = { ...await catalog('messages/store.ts', 'storeMessages'), ...await catalog('starterMessages.ts', 'starterMessages'), ...await catalog('bulkMessages.ts', 'bulkMessages'), ...await catalog('rackCopyMessages.ts', 'rackCopyMessages') };
+const categoryMessages = await catalog('starterCategoryMessages.ts', 'starterCategoryMessages');
+const messages = { ...await catalog('messages/store.ts', 'storeMessages'), ...await catalog('starterMessages.ts', 'starterMessages'), ...await catalog('bulkMessages.ts', 'bulkMessages'), ...await catalog('rackCopyMessages.ts', 'rackCopyMessages'), ...categoryMessages };
 const origin = process.env.STARTER_TEST_ORIGIN || 'http://127.0.0.1:18775';
 const pid = 'proj_67916afd', sid = 'setup_starter_fixture';
 const { sku } = JSON.parse(fs.readFileSync('fixture.json', 'utf8'));
@@ -37,6 +38,11 @@ try {
     const categories = page.getByRole('combobox', { name: t('starterCategoryToApply'), exact: true });
     const categoryValues = await categories.locator('option').evaluateAll(els => els.map(el => el.value).filter(Boolean));
     assert.deepEqual(categoryValues, options.categories.map(c => c.key));
+    for (const key of categoryValues) {
+      const message = `starterCategory_${key}`;
+      if (categoryMessages[message])
+        assert((await categories.locator(`option[value="${key}"]`).innerText()).includes(t(message)), `${locale}: category ${key}`);
+    }
     await categories.selectOption('water_sports');
     await page.getByRole('button', { name: t('starterSelectShown'), exact: true }).click();
     const previewResponse = page.waitForResponse(r => r.url().endsWith('/starter-fill/preview') && r.request().method() === 'POST');
@@ -47,7 +53,7 @@ try {
     await review.locator('details').evaluateAll(els => els.forEach(el => { el.open = true; }));
     assert((await review.innerText()).includes('My water'));
     for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 640 }]) {
-      await page.setViewportSize(viewport); await save.scrollIntoViewIfNeeded();
+      await page.setViewportSize(viewport); await save.click({ trial: true });
       await page.screenshot({ path: `starter-i18n-${locale}-${viewport.width}.png` });
       const overflow = await dialog.evaluate(el => ({ width: el.clientWidth, scrollWidth: el.scrollWidth }));
       assert(overflow.scrollWidth <= overflow.width + 1, `${locale}: overflow ${JSON.stringify(overflow)}`);

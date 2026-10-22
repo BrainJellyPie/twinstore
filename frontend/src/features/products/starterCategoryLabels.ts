@@ -108,7 +108,23 @@ const categories: Record<string, MessageKey> = {
   "small_pet_supplies": "starterCategory_small_pet_supplies",
   "computer_peripherals": "starterCategory_computer_peripherals",
   "photography_accessories": "starterCategory_photography_accessories",
-  "outdoor_cooking": "starterCategory_outdoor_cooking"
+  "outdoor_cooking": "starterCategory_outdoor_cooking",
+  "cycling_maintenance": "starterCategory_cycling_maintenance",
+  "swimming_gear": "starterCategory_swimming_gear",
+  "climbing_accessories": "starterCategory_climbing_accessories",
+  "desk_organization": "starterCategory_desk_organization",
+  "aquarium_decor": "starterCategory_aquarium_decor",
+  "bird_supplies": "starterCategory_bird_supplies",
+  "home_lighting": "starterCategory_home_lighting",
+  "bathroom_accessories": "starterCategory_bathroom_accessories",
+  "home_linen": "starterCategory_home_linen",
+  "dinnerware": "starterCategory_dinnerware",
+  "food_storage": "starterCategory_food_storage",
+  "pet_grooming": "starterCategory_pet_grooming",
+  "hair_accessories": "starterCategory_hair_accessories",
+  "woodcraft_supplies": "starterCategory_woodcraft_supplies",
+  "ceramic_craft_supplies": "starterCategory_ceramic_craft_supplies",
+  "gift_wrapping": "starterCategory_gift_wrapping"
 };
 
 export function starterCategoryLabel(key: string, original: string, locale: Locale): string {

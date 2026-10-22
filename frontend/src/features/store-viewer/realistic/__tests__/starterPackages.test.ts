@@ -138,3 +138,15 @@ it("keeps empty drinkware, clay and pet grooming products out of food department
   expect(classifyProduct("상품", "/api/catalog-images/starter-21/3.webp").kind).toBe("cup");
   expect(classifyProduct("상품", "/api/catalog-images/starter-22/9.webp").kind).toBe("cup");
 });
+
+it("distinguishes pantry and fresh groceries from care products with similar package shapes", () => {
+  for (let index = 0; index < 16; index++) {
+    for (const sheet of ["starter-23", "starter-26"])
+      expect(classifyProduct("Milk Coffee", `/api/catalog-images/${sheet}/${index}.webp`).category).toBe("other");
+    expect(classifyProduct("지역 상품", `/api/catalog-images/starter-24/${index}.webp`).category).toBe("pantry");
+  }
+  for (const index of [8, 9, 10, 11])
+    expect(classifyProduct("상품", `/api/catalog-images/starter-25/${index}.webp`).category).toBe("drink");
+  for (const index of [2, 12, 13, 14])
+    expect(classifyProduct("상품", `/api/catalog-images/starter-25/${index}.webp`).lieFlatInChest).toBe(true);
+});

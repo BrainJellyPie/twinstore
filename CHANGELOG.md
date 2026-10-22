@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add 64 hardware, music, gardening, pantry, produce, bakery, dairy, prepared-food and
+  personal-care photos, reaching 416 local product images for the 1,400-item catalog.
+  Extend six-language category labels to all 123 categories, including the newest home and hobby assortments.
+
 - Complete starter-fill localization in six languages: automatic/manual guidance, catalog
   category labels, eligibility reasons, reviewed prices and retry states. Category language
   follows the selected interface language. Detect duplicate translation keys.
