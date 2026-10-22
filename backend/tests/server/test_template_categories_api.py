@@ -42,10 +42,39 @@ def test_category_metadata_and_preview_save_reuse_agree(client, tmp_path):
     assert detail["parentId"] == saved["id"]
 
 
-@pytest.mark.parametrize("excluded", [["unknown"], [""], ["x" * 81], ["chips"] * 65, ["electronics"]])
+@pytest.mark.parametrize("excluded", [["unknown"], [""], ["x" * 81], ["chips"] * 65,
+    ["electronics", "digital_accessories", "computer_peripherals", "photography_accessories", "home_lighting"]])
 def test_bad_or_empty_assortments_are_rejected_without_writes(client, tmp_path, excluded):
     options = {"template_id": "electronics_shop", "excluded_categories": excluded}
     post = client.post("/api/store-templates/preview", json=options)
     get = client.get("/api/store-templates/electronics_shop/preview", params={"excluded_categories": excluded})
     assert post.status_code == get.status_code == 422, (post.text, get.text)
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("template_id", [
+    "toy_hobby_store", "baby_family_store", "community_pharmacy", "specialty_cafe",
+    "design_showroom", "electronics_shop", "pet_superstore", "art_supply_warehouse",
+])
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_expanded_default_products_and_images_survive_preview_save_and_reuse(client, tmp_path, template_id, currency):
+    options = {"template_id": template_id, "currency": currency, "seed": 7}
+    preview = client.post("/api/store-templates/preview", json=options)
+    assert preview.status_code == 200, preview.text
+    read_preview = client.get(f"/api/store-templates/{template_id}/preview", params={"currency": currency, "seed": 7})
+    assert read_preview.json() == preview.json()
+    items = [item for rack in preview.json()["racks"] for slot in rack["slots"] for item in slot["items"]]
+    assert any(item.get("image_url") for item in items)
+    assert list(tmp_path.iterdir()) == []
+
+    write_json(tmp_path / ".data" / "proj_catalog_maps" / "metadata.json", {"currency": currency, "name": "Catalog maps"})
+    created = client.post("/api/projects/proj_catalog_maps/setups/generate", json=options)
+    assert created.status_code == 200, created.text
+    saved = client.get(f"/api/projects/proj_catalog_maps/setups/{created.json()['id']}").json()
+    assert saved["store"]["racks"] == preview.json()["racks"]
+    reused = client.post("/api/projects/proj_catalog_maps/setups/generate", json={
+        **saved["generation"], "source_setup_id": saved["id"],
+    })
+    assert reused.status_code == 200, reused.text
+    detail = client.get(f"/api/projects/proj_catalog_maps/setups/{reused.json()['id']}").json()
+    assert detail["store"]["racks"] == saved["store"]["racks"]

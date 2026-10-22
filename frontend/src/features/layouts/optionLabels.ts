@@ -15,14 +15,18 @@ export const STYLE_LABELS: Record<typeof LAYOUT_STYLES[number][0], MessageKey> =
   free_flow: "layStyle_free_flow", perimeter: "layStyle_perimeter", showroom: "layStyle_showroom",
 };
 
-const DESIGN_LABELS: Record<StoreDesign, MessageKey> = {
-  classic: "layDesign_classic", warm: "layDesign_warm", minimal: "layDesign_minimal", industrial: "layDesign_industrial",
-  botanical: "layDesign_botanical", luxury: "layDesign_luxury", coastal: "layDesign_coastal", terracotta: "layDesign_terracotta",
-  nordic: "layDesign_nordic", retro: "layDesign_retro",
+export const DESIGN_LABELS: Record<StoreDesign, MessageKey> = {
+  classic: "planDesignClassic", warm: "planDesignWarm", minimal: "planDesignMinimal", industrial: "planDesignIndustrial",
+  botanical: "planDesignBotanical", luxury: "planDesignLuxury", coastal: "planDesignCoastal", terracotta: "planDesignTerracotta",
+  nordic: "planDesignNordic", retro: "planDesignRetro",
 };
 
 export const COLOR_LABELS: Record<typeof INTERIOR_COLOR_FIELDS[number][0], MessageKey> = {
   wall: "layColor_wall", floor: "layColor_floor", accent: "layColor_accent", counter: "layColor_counter",
+};
+
+export const COLOR_RESET_LABELS: Record<typeof INTERIOR_COLOR_FIELDS[number][0], MessageKey> = {
+  wall: "layResetWall", floor: "layResetFloor", accent: "layResetAccent", counter: "layResetCounter",
 };
 
 export const SEATING_LABELS: Record<Exclude<NonNullable<LayoutOptions["seating_zone"]>, "auto">, MessageKey> = {
@@ -69,7 +73,7 @@ export function designLabel(design: StoreDesign, t: Translate): string {
 /** The design's name, marked when custom interior colors replace some of its colors. */
 export function paletteLabel(design: StoreDesign | undefined, colors: InteriorColors | null | undefined, t: Translate): string {
   const name = designLabel(design ?? "classic", t);
-  return INTERIOR_COLOR_FIELDS.some(([key]) => colors?.[key] != null) ? t("layDesignCustomColors", { design: name }) : name;
+  return INTERIOR_COLOR_FIELDS.some(([key]) => colors?.[key] != null) ? t("planCustomColors", { design: name }) : name;
 }
 
 export function priorityLabels(priority: { id: string; name: string; description: string }, t: Translate): { name: string; description: string } {

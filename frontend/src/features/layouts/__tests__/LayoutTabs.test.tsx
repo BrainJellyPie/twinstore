@@ -63,6 +63,7 @@ it.each(LOCALES)("localizes layout navigation and floor context without altering
   rerender(<LayoutTabs {...props} layouts={[{ ...layouts[0]!, name: "", building: { id: "raw-building", name: "우리商店", level: 2, label: "Cafe", floor_count: 3 } }]} />);
   expect(screen.getByRole("tablist", { name: translate(code, "layoutsLabel") })).toBeTruthy();
   const tab = screen.getByRole("tab", { name: translate(code, "unnamedLayout", { number: 1 }) });
+  expect(tab.textContent).toContain(translate(code, "layFloorBadge", { number: 2 }));
   expect(tab.title).toContain(translate(code, "buildingFloorPosition", { level: 2, count: 3 })); expect(tab.dataset.layoutId).toBe("one");
   expect(screen.getByRole("button", { name: translate(code, "newLayout") })).toBeTruthy();
 });

@@ -35,25 +35,25 @@ function Building({ patch = {} }: { patch?: Partial<TemplateChoice> }) {
 async function mount(patch: Partial<TemplateChoice> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><Building patch={patch} /></QueryClientProvider>);
-  fireEvent.click(await screen.findByText("Operating hours · 6 open days"));
+  fireEvent.click(await screen.findByText("Operating hours · Open days: 6"));
 }
 const floors = (): BuildingFloorChoice[] => JSON.parse(screen.getByTestId("floors").textContent!);
 const share = () => screen.getByRole("button", { name: "Apply operating hours to all floors" }) as HTMLButtonElement;
 
 it("copies resolved source defaults across unlike formats and preserves all other choices", async () => {
   await mount();
-  expect(screen.getByText(/Applies 09:00–21:00 and 6 open days/)).toBeTruthy();
+  expect(screen.getByText(/09:00–21:00. Open days per week: 6/)).toBeTruthy();
   fireEvent.click(share());
   expect(floors()).toEqual(initial.map((floor) => ({ ...floor, choice: { ...floor.choice, open_hour: 9, close_hour: 21, closed_days: [7] } })));
   expect(screen.getByTestId("shared-array").textContent).toBe("false");
   expect((screen.getByRole("button", { name: "Operating hours used on all floors" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "2F · Café" }));
-  fireEvent.click(screen.getByText("Operating hours · 6 open days"));
+  fireEvent.click(screen.getByText("Operating hours · Open days: 6"));
   expect((screen.getByLabelText("Opening hour (0–23)") as HTMLInputElement).value).toBe("9");
   fireEvent.click(screen.getByRole("button", { name: "Use format operating hours" }));
   expect(floors()[0]!.choice).toEqual(expect.objectContaining({ open_hour: 9, close_hour: 21, closed_days: [7] }));
   expect(floors()[1]!.choice).toEqual(expect.objectContaining({ open_hour: null, close_hour: null, closed_days: null }));
-  expect(screen.getByText(/Applies 07:00–22:00 and 5 open days/)).toBeTruthy();
+  expect(screen.getByText(/07:00–22:00. Open days per week: 5/)).toBeTruthy();
   fireEvent.click(share());
   expect(floors().map((f) => f.choice.closed_days)).toEqual([[6, 7], [6, 7]]);
   expect(floors().map((f) => f.choice.open_hour)).toEqual([7, 7]);
@@ -86,7 +86,7 @@ it("does not show building-wide actions on a single layout", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><TemplatePicker value={initial[0]!.choice} onChange={vi.fn()} /></QueryClientProvider>);
   await screen.findByRole("img", { name: "Floor plan preview" });
-  fireEvent.click(screen.getByText("Operating hours · 6 open days"));
+  fireEvent.click(screen.getByText("Operating hours · Open days: 6"));
   expect(screen.queryByRole("button", { name: /operating hours to all floors/ })).toBeNull();
 });
 
@@ -97,7 +97,7 @@ it("shares across six floors and does not silently assign hours to a newly added
   expect((screen.getByRole("button", { name: "Add floor" }) as HTMLButtonElement).disabled).toBe(true);
   expect(floors().slice(2).every((f) => f.choice.open_hour === null)).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "1F · Pharmacy" }));
-  fireEvent.click(screen.getByText("Operating hours · 6 open days"));
+  fireEvent.click(screen.getByText("Operating hours · Open days: 6"));
   expect(share().disabled).toBe(false);
   fireEvent.click(share());
   expect(floors()).toHaveLength(6);
@@ -109,11 +109,11 @@ it("keeps already shared hours when a floor is duplicated or reordered", async (
   await mount();
   fireEvent.click(share());
   fireEvent.click(screen.getByRole("button", { name: "Duplicate floor" }));
-  fireEvent.click(screen.getByText("Operating hours · 6 open days"));
+  fireEvent.click(screen.getByText("Operating hours · Open days: 6"));
   expect((screen.getByRole("button", { name: "Operating hours used on all floors" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Move to higher level" }));
   expect(floors().map((f) => f.label)).toEqual(["Pharmacy", "Café", "Pharmacy copy 1"]);
-  fireEvent.click(screen.getByText("Operating hours · 6 open days"));
+  fireEvent.click(screen.getByText("Operating hours · Open days: 6"));
   fireEvent.change(screen.getByLabelText("Closing hour (1–24)"), { target: { value: "23" } });
   expect(floors().map((f) => f.choice.close_hour)).toEqual([21, 21, 23]);
   fireEvent.click(share());

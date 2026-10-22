@@ -31,7 +31,7 @@ it("reviews resolved per-floor hours even when the choices use format defaults",
   }));
   mount();
   fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
-  await screen.findByText("2 of 2 floor previews ready");
+  await screen.findByText("Floor previews ready: 2/2");
   expect(within(screen.getByRole("region", { name: "1F · Juice" })).getByText("Operating hours: Mon: Closed; Tue–Sun: 10:00–18:00")).toBeTruthy();
   expect(within(screen.getByRole("region", { name: "2F · Pizza" })).getByText("Operating hours: Every day: 00:00–24:00")).toBeTruthy();
 });
@@ -54,21 +54,21 @@ it("totals the actual two- and six-seat furniture on independent floors", async 
   }));
   mount();
   fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
-  await screen.findByText("2 of 2 floor previews ready");
-  expect(screen.getByText("240 total floor cells · 2 dining tables · 8 seats · 0 checkout counters")).toBeTruthy();
-  expect(within(screen.getByRole("region", { name: "1F · Juice" })).getByText(/1 dining tables · 2 seats/)).toBeTruthy();
-  expect(within(screen.getByRole("region", { name: "2F · Pizza" })).getByText(/1 dining tables · 6 seats/)).toBeTruthy();
+  await screen.findByText("Floor previews ready: 2/2");
+  expect(screen.getByText("Total floor cells: 240 · Dining tables: 2 · Seats: 8 · Checkout counters: 0")).toBeTruthy();
+  expect(within(screen.getByRole("region", { name: "1F · Juice" })).getByText(/Dining tables: 1 · Seats: 2/)).toBeTruthy();
+  expect(within(screen.getByRole("region", { name: "2F · Pizza" })).getByText(/Dining tables: 1 · Seats: 6/)).toBeTruthy();
 });
 
 it("loads all floors on demand at the same scale, totals actual capacity and keeps settings", async () => {
   const { edit, submit } = mount();
   expect(api.previewStoreTemplate).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
-  await screen.findByText("2 of 2 floor previews ready");
+  await screen.findByText("Floor previews ready: 2/2");
   expect(api.previewStoreTemplate).toHaveBeenCalledTimes(2);
   expect(api.previewStoreTemplate).toHaveBeenCalledWith(expect.objectContaining({ template_id: "pizzeria", width: 24, height: 18 }), expect.any(AbortSignal));
   expect(vi.mocked(api.previewStoreTemplate).mock.calls.every(([request]) => !("requirements" in request))).toBe(true);
-  expect(screen.getByText("552 total floor cells · 1 dining tables · 4 seats · 2 checkout counters")).toBeTruthy();
+  expect(screen.getByText("Total floor cells: 552 · Dining tables: 1 · Seats: 4 · Checkout counters: 2")).toBeTruthy();
   expect(screen.getAllByRole("img", { name: "Floor plan preview" }).map((plan) => plan.getAttribute("viewBox"))).toEqual(["-0.2 -0.2 24.4 18.4", "-0.2 -0.2 24.4 18.4"]);
   expect(within(screen.getByRole("region", { name: "2F · Pizza" })).getByTestId("reserved-area-preview-0")).toBeTruthy();
   fireEvent.click(within(screen.getByRole("region", { name: "1F · Juice" })).getByRole("button", { name: "Expand floor plan" }));
@@ -91,19 +91,19 @@ it("shows a failed floor beside working floors and retries before showing totals
   mount();
   fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
   expect((await screen.findByRole("alert")).textContent).toContain("Not enough room");
-  expect(screen.getByText("1 of 2 floor previews ready")).toBeTruthy();
-  expect(screen.queryByText(/total floor cells/)).toBeNull();
+  expect(screen.getByText("Floor previews ready: 1/2")).toBeTruthy();
+  expect(screen.queryByText(/Total floor cells/)).toBeNull();
   expect(screen.getAllByRole("img", { name: "Floor plan preview" })).toHaveLength(1);
   vi.mocked(api.previewStoreTemplate).mockResolvedValue(large);
   fireEvent.click(screen.getByRole("button", { name: "Retry floor 2" }));
-  await screen.findByText("2 of 2 floor previews ready");
+  await screen.findByText("Floor previews ready: 2/2");
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
 it("keeps invalid floor values local and offers a direct edit action", async () => {
   const { edit } = mount([floors[0]!, { label: "Invalid", choice: { ...floors[1]!.choice, width: 7 } }]);
   fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
-  await screen.findByText("1 of 2 floor previews ready");
+  await screen.findByText("Floor previews ready: 1/2");
   expect(vi.mocked(api.previewStoreTemplate).mock.calls.map(([request]) => request.template_id)).toEqual(["juice_bar"]);
   expect(within(screen.getByRole("region", { name: "2F · Invalid" })).getByRole("alert").textContent).toContain("Enter valid grid dimensions");
   fireEvent.click(screen.getByRole("button", { name: "Edit floor 2" }));
@@ -113,8 +113,8 @@ it("keeps invalid floor values local and offers a direct edit action", async () 
 it("reuses identical requests for duplicated floors but counts each floor separately", async () => {
   mount([floors[0]!, { ...floors[0]!, label: "Juice upstairs" }]);
   fireEvent.click(screen.getByRole("button", { name: "Review all floors" }));
-  await screen.findByText("2 of 2 floor previews ready");
+  await screen.findByText("Floor previews ready: 2/2");
   expect(vi.mocked(api.previewStoreTemplate).mock.calls.map(([request]) => request.template_id)).toEqual(["juice_bar"]);
-  expect(screen.getByText("240 total floor cells · 0 dining tables · 0 seats · 2 checkout counters")).toBeTruthy();
+  expect(screen.getByText("Total floor cells: 240 · Dining tables: 0 · Seats: 0 · Checkout counters: 2")).toBeTruthy();
   expect(screen.getAllByRole("img", { name: "Floor plan preview" })).toHaveLength(2);
 });

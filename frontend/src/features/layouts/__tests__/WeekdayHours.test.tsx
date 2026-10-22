@@ -35,7 +35,7 @@ async function mount(starting = initial) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
   render(<QueryClientProvider client={client}><Building starting={starting} /></QueryClientProvider>);
   await screen.findByRole("img", { name: "Floor plan preview" });
-  fireEvent.click(screen.getByText("Operating hours · 6 open days"));
+  fireEvent.click(screen.getByText("Operating hours · Open days: 6"));
 }
 const floors = (): BuildingFloorChoice[] => JSON.parse(screen.getByTestId("floors").textContent!);
 const toggle = () => fireEvent.click(screen.getByRole("checkbox", { name: "Set hours for each weekday" }));
@@ -55,7 +55,7 @@ it("starts from the effective schedule, copies independent weekday entries and r
     const { weekly_hours: _oldWeek, open_hour: _oldOpen, close_hour: _oldClose, closed_days: _oldDays, ...old } = floor.choice;
     expect(rest).toEqual(old);
   });
-  fireEvent.click(screen.getByRole("button", { name: "2F · Café" })); fireEvent.click(screen.getByText("Operating hours · 6 open days"));
+  fireEvent.click(screen.getByRole("button", { name: "2F · Café" })); fireEvent.click(screen.getByText("Operating hours · Open days: 6"));
   set("Monday closing hour", "18"); expect(floors()[0]!.choice.weekly_hours?.[0]?.close_hour).toBe(24);
   toggle(); expect(input("Opening hour (0–23)").value).toBe("9"); share();
   expect(floors().every((floor) => floor.choice.weekly_hours === null)).toBe(true);

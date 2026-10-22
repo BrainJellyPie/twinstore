@@ -6,7 +6,7 @@ import { webcrypto } from "node:crypto";
 import * as api from "@/shared/api/starterFill";
 import { ApiError } from "@/shared/api/errors";
 import { StarterFill } from "../StarterFill";
-import { starterCategoryLabel } from "../starterCategoryLabels";
+import { starterCategoryLabel } from "@/shared/i18n/catalogCategories";
 import { starterRackReason } from "../starterRackReason";
 import { LOCALES, type Locale, type MessageKey } from "@/shared/i18n/messages";
 import { useLocale, translate } from "@/shared/i18n/i18n";
@@ -156,17 +156,18 @@ it("names the actual translated product editor in the price-review instructions"
   expect(notice.textContent).toContain(t("bulkTitle"));
 });
 
-it.each(LOCALES)("keeps new hobby and home category IDs intact in a KRW store in $code", async ({ code }) => {
+it.each(LOCALES)("keeps new category IDs intact in a KRW store in $code", async ({ code }) => {
   const keys = ["cycling_maintenance", "swimming_gear", "climbing_accessories", "desk_organization",
     "aquarium_decor", "bird_supplies", "home_lighting", "bathroom_accessories", "home_linen",
     "dinnerware", "food_storage", "pet_grooming", "hair_accessories", "woodcraft_supplies",
-    "ceramic_craft_supplies", "gift_wrapping"];
+    "ceramic_craft_supplies", "gift_wrapping",
+    "baby_feeding", "baby_bath", "toy_vehicles", "plush_toys", "educational_toys", "puzzle_games", "model_building_supplies", "miniature_painting"];
   const originalProduct = { ...product, name: "원본 상품 🌿", price: 123400 };
   vi.mocked(api.getStarterCatalog).mockResolvedValue({ ...catalog, currency: "KRW",
     categories: keys.map(key => ({ key, label: `API label ${key}`, products: [originalProduct] })),
     racks: keys.map(key => ({ ...catalog.racks[0]!, id: `rack_${key}`, suggested_category: key })),
   });
-  vi.mocked(api.previewStarterFill).mockResolvedValue({ placements_added: 128, new_skus: 0, reused_skus: 1,
+  vi.mocked(api.previewStarterFill).mockResolvedValue({ placements_added: keys.length * 8, new_skus: 0, reused_skus: 1,
     racks: keys.map(key => ({ ...report.racks[0]!, id: `rack_${key}`, category: key, products: [originalProduct] })),
   });
   await open(code);

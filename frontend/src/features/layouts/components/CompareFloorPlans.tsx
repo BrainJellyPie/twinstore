@@ -1,5 +1,6 @@
 import { RequestError } from "@/shared/components/RequestError";
 import type { MessageKey } from "@/shared/i18n/messages";
+import { paletteLabel } from "../optionLabels";
 import { useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
@@ -8,8 +9,8 @@ import type { Store } from "@/shared/types/domain";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { formatWeeklyHours } from "../weeklyHours";
-import { paletteLabel } from "../optionLabels";
 import { useI18n } from "@/shared/i18n/i18n";
+import { templateName } from "@/shared/i18n/storeLabels";
 
 export function CompareFloorPlans({ store, areas, templateId, currency }: {
   store: Store;
@@ -42,7 +43,6 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
     { label: "planCompareSeating", value: (plan) => { const tables = plan.store.racks.filter((rack) => rack.type === "table").length; return `${number(tables)} / ${number(plan.store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0))}`; } },
     { label: "planCompareCounters", value: (plan) => plan.store.racks.filter((rack) => rack.type === "counter").length },
     { label: "planCompareAreas", value: (plan) => plan.areas.length },
-    // The same names as the customization panel's design choices.
     { label: "planCompareDesign", value: (plan) => paletteLabel(plan.store.design_theme, plan.store.design_colors, t) },
     { label: "planCompareHours", value: (plan) => formatWeeklyHours(plan.store.weekly_schedule, locale) },
   ];
@@ -60,7 +60,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
           <div className="grid gap-4 sm:grid-cols-2">
             {plans.map((plan, index) => <section key={plan.id} aria-labelledby={`${id}-plan-${index}`} className="min-w-0 space-y-2">
               <h3 id={`${id}-plan-${index}`} className="text-sm font-medium">{plan.label}</h3>
-              <FloorPlanPreview store={plan.store} areas={plan.areas} previewFrame={frame} />
+              <FloorPlanPreview store={plan.store} areas={plan.areas} previewFrame={frame} name={plan.id === "default" ? templateName(templateId, plan.store.name, locale) : plan.store.name} />
             </section>)}
           </div>
           <p className="text-xs text-muted-foreground">{t("planLegend", { inLabel: t("planIn"), outLabel: t("planOut") })}</p>

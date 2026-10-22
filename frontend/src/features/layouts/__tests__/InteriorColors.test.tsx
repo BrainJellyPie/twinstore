@@ -31,7 +31,7 @@ async function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
   render(<QueryClientProvider client={client}><Building /></QueryClientProvider>);
   await screen.findByRole("img", { name: "Floor plan preview" });
-  fireEvent.click(screen.getByText("Custom interior colors · 2 overrides"));
+  fireEvent.click(screen.getByText("Custom interior colors · Changes: 2"));
 }
 const floors = (): BuildingFloorChoice[] => JSON.parse(screen.getByTestId("floors").textContent!);
 const color = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
@@ -60,7 +60,7 @@ it("copies design and colors to six floors without sharing objects or overwritin
   floors().forEach((floor, i) => expect(floor).toEqual({ ...initial[i], choice: { ...initial[i]!.choice, design_theme: "coastal", design_colors: initial[0]!.choice.design_colors } }));
   expect((screen.getByRole("button", { name: "Design used on all floors" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "2F · Floor 2" }));
-  fireEvent.click(screen.getByText("Custom interior colors · 2 overrides"));
+  fireEvent.click(screen.getByText("Custom interior colors · Changes: 2"));
   fireEvent.change(color("Floor color"), { target: { value: "#000000" } });
   expect(floors().map((floor) => floor.choice.design_colors?.floor)).toEqual(["#abcdef", "#000000", "#abcdef", "#abcdef", "#abcdef", "#abcdef"]);
   expect((screen.getByRole("button", { name: "Apply design to all floors" }) as HTMLButtonElement).disabled).toBe(false);

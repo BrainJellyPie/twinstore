@@ -13,10 +13,11 @@ generate personas, and run simulations. This is intentionally separate from
 
 ## Pipeline mental model
 
-The wizard collects two screens of input, then kicks off an async pipeline. With a furnished template,
-automatic starter products are enabled by default: two text-model calls choose categories and exact products
+The wizard collects two screens of input, then kicks off an async pipeline. With a furnished template and a configured
+model, automatic starter products are enabled by default: two text-model calls choose categories and exact products
 from the bundled catalog before project files or persona jobs are created. These calls are additional to the
-pipeline below. Turn off automatic products in Step 1 to use format defaults without these two calls. Empty
+pipeline below. Without a model, the wizard starts with the stocked format defaults; turning off automatic products
+in Step 1 also uses those defaults without these two calls. Empty
 layouts do not call the product-selection model. A model-selection failure preserves the form for retry and
 creates no partial project.
 
@@ -52,6 +53,44 @@ an already expanded preview and its zoom. Store/product names and custom rack/ar
 entered. The SVG always contains the complete floor geometry, independent of the current zoom.
 These actions do not run shoppers or call a model. Detailed template-setting coverage is still being
 expanded; see `verification/2026-10-22-i18n-coverage.md` for the verified scope.
+
+## Reuse template hours and product settings
+
+Under **Customize layout**, choose opening days and hours, optionally setting each day separately.
+Use 0–24 for a full day; closing must follow opening, without crossing into the next day. Keep at
+least one open day. Select the product categories and optionally limit each to 1–16 distinct
+products. A blank limit uses the full available assortment; individual category limits override
+the general limit. These are product types, not inventory quantities. Changing the assortment seed
+selects another reproducible mix while keeping the same seed and settings reproduces the selection.
+
+**Export options** downloads the generation settings and design brief as JSON. **Import options**
+checks that file before replacing the current settings. The building equivalents include the floor
+order and names; they check all floors before replacing the floor list. Manual fixture/product edits
+are not included. Source project/layout links and the current layout name are not copied by a
+single-floor export. Exact integer seeds and category identifiers stay unchanged in every language.
+
+Hours, category labels, validation, import/export guidance and accessible control names use the
+selected interface language. Switching language preserves unsaved values and does not trigger a new
+preview request. Known catalog categories are translated; custom/unknown labels remain as supplied.
+
+The interior-design picker, color controls and floor comparison use the same translated design
+names. In **Custom interior colors**, choose wall, floor, accent or counter colors; each reset
+restores that part of the selected design, while **Reset all custom colors** restores them all.
+Changing the interface language keeps the current colors and other unsaved settings. Color codes
+and design IDs in exported options stay unchanged. A preview failure shows recovery guidance in
+the selected language, with the original diagnostic under **Technical details**.
+
+**Keep areas clear** leaves room for a pickup point, consultation, events or later manual placement.
+Choose a purpose, then adjust the area's name, position and size. Moving an area keeps its size;
+swapping width and depth keeps its starting position and is available only when the new shape fits.
+Coordinates exclude the outer-wall cells. Changing the floor size does not move existing areas.
+These spaces remain walkable: no walls, rooms or service behavior are added. Review the dashed
+outlines before saving. Area names become ordinary user text and stay unchanged when switching language.
+
+**Review all floors** compares independent floor plans at the same scale. Translated headings use
+the saved level number; they do not renumber floors for a locale. Errors retain original diagnostics
+under translated recovery guidance, and each failed floor can be retried separately. Building options
+export preserves the exact names, floor order and area coordinates.
 
 ## LLM call count (static analysis)
 
@@ -1092,7 +1131,7 @@ assignments are rejected. Review the products, prices and available images, then
 Automatic selection supports 1–100 empty accessible racks. A failed model call leaves the layout unchanged;
 retry or switch to **Choose categories manually**, which needs no model or spreadsheet.
 
-The bundled catalog now includes 1,400 products in 123 categories. New examples cover plant-based foods,
+The bundled catalog now includes 1,496 products in 131 categories. New examples cover plant-based foods,
 breakfast spreads, home coffee/tea, bath/body care, first-aid tools, supplements, indoor plants, digital
 accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Further assortments cover
 baking ingredients, global sauces, fresh herbs, frozen and takeaway meals, gift confectionery, baby and oral
@@ -1101,8 +1140,17 @@ refill cleaning. Mediterranean, Korean and Japanese pantry staples, spice blends
 barista tools and party supplies add another 96 products. Kitchen and baking tools, laundry care, aquarium and small-pet supplies, computer peripherals, camera accessories
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
-woodcraft, ceramic craft and gift wrapping add another 96. Four hundred sixteen generated
+woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
+educational toys, puzzles, model building and miniature painting add another 96. Seven hundred sixty-eight generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
+The 82 default map templates also include the expanded products in suitable departments. For example, toy
+shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and
+bath products; cafés include coffee and barista supplies; home stores include linens, tableware and lighting.
+Choose a template to see its stocked map, including available product images, before saving. These format
+defaults need no product-selection model call. The new-store wizard uses them when no model is configured,
+or when automatic starter products are turned off. With a model configured, automatic selection is the default.
+Category exclusions and product-count limits apply to the new departments too.
+
 Automatic selection sees which products have photos and prefers them only when they fit the store and
 requirements equally well. Products without photos remain available.
 

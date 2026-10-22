@@ -81,7 +81,7 @@ export function LayoutTabs({ layouts, selectedId, onSelect, onAddNew, disabled =
               selected ? "bg-primary text-primary-foreground shadow-[0_6px_16px_-8px_var(--primary)]" : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
-            {layout.building && <span aria-hidden className="mr-1.5 rounded bg-current/10 px-1 text-[10px]">{layout.building.level}F</span>}
+            {layout.building && <span aria-hidden className="mr-1.5 rounded bg-current/10 px-1 text-[10px]">{t("layFloorBadge", { number: layout.building.level })}</span>}
             {label}
           </button>
         );

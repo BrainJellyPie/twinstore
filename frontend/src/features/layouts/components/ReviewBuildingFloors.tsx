@@ -1,3 +1,4 @@
+import { RequestError } from "@/shared/components/RequestError";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { useId, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
@@ -69,11 +70,11 @@ function FloorReviews({ floors, onEdit }: Props) {
         const tableCount = store?.racks.filter((rack) => rack.type === "table").length ?? 0;
         return <section key={index} aria-labelledby={`${id}-floor-${index}`} className="min-w-0 space-y-2 rounded-lg border p-3">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3 id={`${id}-floor-${index}`} className="min-w-0 break-words text-sm font-medium">{index + 1}F · {floor.label.trim() || t("layUnnamedFloor")}</h3>
+            <h3 id={`${id}-floor-${index}`} className="min-w-0 break-words text-sm font-medium">{t("layNamedFloor", { number: index + 1, name: floor.label.trim() || t("layUnnamedFloor") })}</h3>
             <button type="button" className="shrink-0 rounded border px-2 py-1 text-xs hover:bg-muted" onClick={() => onEdit(index)}>{t("layEditFloorNumber", { number: index + 1 })}</button>
           </div>
           {!valid ? <p role="alert" className="text-xs text-destructive">{t("layFloorInvalid")}</p>
-            : preview?.isError ? <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>{t("layRetryFloor", { number: index + 1 })}</button></p>
+            : preview?.isError ? <RequestError error={preview.error}><button type="button" className="underline" onClick={() => void preview.refetch()}>{t("layRetryFloor", { number: index + 1 })}</button></RequestError>
               : !preview || preview.isPending ? <p role="status" className="text-xs">{t("layLoadingFloor", { number: index + 1 })}</p>
                 : store && <>
                   <p className="text-xs text-muted-foreground">{t("layFloorStoreLine", { name: templateName(floor.choice.templateId, store.name, locale), size: store.grid_size.join("×"), currency: store.currency ?? floor.choice.currency })}</p>
