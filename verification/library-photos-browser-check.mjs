@@ -26,7 +26,7 @@ try {
   await page.getByRole('button', { name: 'Preview product photos', exact: true }).click();
   const save = page.getByRole('button', { name: 'Save layout with photos', exact: true });
   await save.waitFor();
-  assert((await page.getByRole('region', { name: 'Product photo preview' }).innerText()).includes('1 products · 2 placements'));
+  assert((await page.getByRole('region', { name: 'Product photo preview' }).innerText()).includes('Products: 1 · Placements: 2'));
   assert(await page.getByAltText('Saved photo for tea', { exact: true }).evaluate(img => img.complete && img.naturalWidth > 0));
   const reachable = () => save.evaluate(button => {
     const r = button.getBoundingClientRect(), d = button.closest('[role="dialog"]').getBoundingClientRect();
