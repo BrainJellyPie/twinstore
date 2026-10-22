@@ -39,6 +39,20 @@ Step 2: Customer +    ├──► (optional) supplemental file → LLM summary 
 
 Steps below cover each input in turn.
 
+## Inspect and export a floor plan
+
+In **Add layout → Generate a store from a template**, open **Expand floor plan** to zoom, inspect
+coordinates and reserved areas, or download an SVG. **Compare with default** shows the format's
+starting plan alongside the current options at the same cell scale. Closing either preview returns
+to the current creation form without saving or submitting it.
+
+Preview controls, gate legends, comparison details, numbers, hours and SVG metadata use the selected
+interface language (English, Korean, Chinese, Japanese, Spanish or French). A language change keeps
+an already expanded preview and its zoom. Store/product names and custom rack/area labels stay as
+entered. The SVG always contains the complete floor geometry, independent of the current zoom.
+These actions do not run shoppers or call a model. Detailed template-setting coverage is still being
+expanded; see `verification/2026-10-22-i18n-coverage.md` for the verified scope.
+
 ## LLM call count (static analysis)
 
 Counted directly from the code, not measured.

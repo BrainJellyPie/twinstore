@@ -1001,7 +1001,7 @@ it.each(LOCALES)("translates the live preview summary, legend and status lines i
   expect(await screen.findByText(translate(code, "templatePreviewSize", { width: 12, height: 10, displays: 1, products: 1 }))).toBeTruthy();
   expect(screen.getByText(translate(code, "templatePreviewSeating", { tables: 0, seats: 0 }))).toBeTruthy();
   expect(screen.getByText(translate(code, "templatePreviewCounters", { counters: 1 }))).toBeTruthy();
-  expect(screen.getByText(translate(code, "floorPlanLegend"))).toBeTruthy();
+  expect(screen.getByText(translate(code, "planLegend", { inLabel: translate(code, "planIn"), outLabel: translate(code, "planOut") }))).toBeTruthy();
   expect(screen.getByRole("button", { name: translate(code, "compareWithDefault") })).toBeTruthy();
   fail = true;
   fireEvent.change(screen.getByLabelText(translate(code, "widthCells")), { target: { value: "13" } });

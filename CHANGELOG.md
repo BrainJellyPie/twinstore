@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Translate detailed floor previews, comparison metrics, gate legends and SVG exports
+  into all six interface languages. Preserve expanded previews and zoom when changing
+  language, and retain original layout and product data.
+
 - Add 64 hardware, music, gardening, pantry, produce, bakery, dairy, prepared-food and
   personal-care photos, reaching 416 local product images for the 1,400-item catalog.
   Extend six-language category labels to all 123 categories, including the newest home and hobby assortments.
