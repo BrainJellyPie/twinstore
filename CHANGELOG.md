@@ -94,6 +94,12 @@
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
 ### Fixes
+- The first launch downloaded a local vision model (up to several GB) without asking, even with no plan to use it.
+  Nothing is downloaded now until you press Start for the local model, and the button says how large the download
+  is. After that it comes back by itself when the app opens, until you press Stop. A model an earlier version already
+  downloaded still starts with no key, without downloading anything.
+- After an update, a browser that kept the previous version's page could show a blank screen or the old app. The page
+  is now fetched fresh on every visit.
 - "OpenStreetMap download failed: … HTTP Error 502: Bad Gateway": the public map server is often overloaded for a
   few minutes. The download now moves to other Overpass servers and tries once more before giving up, and then says
   the map servers are busy and to try again shortly.

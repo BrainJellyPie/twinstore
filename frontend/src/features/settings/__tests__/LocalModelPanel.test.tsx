@@ -107,3 +107,9 @@ it("says the model is turned off by TWINSTORE_LOCAL_VLM and how to turn it on, i
   expect(screen.getByTestId("local-model-turned-off").textContent).toMatch(/TWINSTORE_LOCAL_VLM.*restart TwinStore/s);
   expect(screen.queryByRole("button", { name: /^Start/ })).toBeNull();
 });
+
+it("names the download on Start when the model is not on this computer yet", async () => {
+  await show({ ...base, local: { ...base.local, downloaded: false } });
+  fireEvent.click(screen.getByRole("button", { name: "Download and start Small model (2 GB)" }));
+  await waitFor(() => expect(api.startLocalModel).toHaveBeenCalledOnce());
+});

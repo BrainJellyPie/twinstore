@@ -169,6 +169,13 @@ class _LocalModel:
         self.started += 1
         return self.status()
 
+    def auto_start(self) -> bool:
+        self.start()
+        return True
+
+    def busy(self) -> bool:
+        return True
+
 
 def test_with_no_other_key_a_background_job_waits_for_the_local_model(monkeypatch, fake_calls):
     monkeypatch.setenv("GEMINI_API_KEY", "old-gemini-key")

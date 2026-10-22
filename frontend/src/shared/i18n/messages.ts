@@ -205,6 +205,7 @@ export const messages = {
   starting: ["Starting…", "시작 중…", "正在启动…", "起動中…", "Iniciando…", "Démarrage…"],
   retryLocal: ["Retry local model", "로컬 모델 재시도", "重试本地模型", "ローカルモデルを再試行", "Reintentar modelo local", "Réessayer le modèle local"],
   startLocal: ["Start local model", "로컬 모델 시작", "启动本地模型", "ローカルモデルを起動", "Iniciar modelo local", "Démarrer le modèle local"],
+  downloadLocal: ["Download local model ({size} GB)", "로컬 모델 다운로드 ({size} GB)", "下载本地模型（{size} GB）", "ローカルモデルをダウンロード（{size} GB）", "Descargar modelo local ({size} GB)", "Télécharger le modèle local ({size} Go)"],
   modelSettings: ["Model settings", "모델 설정", "模型设置", "モデル設定", "Ajustes del modelo", "Paramètres du modèle"],
   startLocalError: ["Could not start the local model. Try again or open Model settings.", "로컬 모델을 시작할 수 없습니다. 다시 시도하거나 모델 설정을 열어 주세요.", "无法启动本地模型。请重试或打开模型设置。", "ローカルモデルを起動できません。再試行するか、モデル設定を開いてください。", "No se pudo iniciar el modelo local. Reintenta o abre los ajustes del modelo.", "Impossible de démarrer le modèle local. Réessayez ou ouvrez les paramètres du modèle."],
   hideNotice: ["Hide this notice", "이 안내 숨기기", "隐藏此提示", "この通知を非表示", "Ocultar este aviso", "Masquer cet avis"],

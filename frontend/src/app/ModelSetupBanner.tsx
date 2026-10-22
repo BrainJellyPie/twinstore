@@ -81,7 +81,8 @@ export function ModelSetupBanner() {
               <div className="flex flex-wrap items-center gap-2">
                 {(state === "off" || failed) && (
                   <Button size="sm" variant="outline" onClick={() => start.mutate()} disabled={start.isPending}>
-                    <Cpu className="size-3.5" aria-hidden /> {start.isPending ? t("starting") : failed ? t("retryLocal") : t("startLocal")}
+                    <Cpu className="size-3.5" aria-hidden /> {start.isPending ? t("starting") : failed ? t("retryLocal")
+                      : data.local.downloaded === false ? t("downloadLocal", { size: data.plan.model.download_gb }) : t("startLocal")}
                   </Button>
                 )}
                 {busy && (
