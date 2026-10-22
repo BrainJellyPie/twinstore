@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add 96 kitchen, home, pet and technology products and 32 grocery/merchandise photos: 1,208 products,
+  107 categories and 160 local photos. Vision grids fit bundled product artwork more closely by omitting
+  empty white margins, while retaining names, prices and numbered identities.
+
 - Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
   in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.
 

@@ -72,3 +72,13 @@ it("places fresh seafood photo trays flat in chest displays", () => {
     expect(product.h).toBeLessThan(product.d);
   }
 });
+
+it("preserves grocery departments and non-food merchandise after localized renaming", () => {
+  for (const index of [0, 1, 2, 3])
+    expect(classifyProduct("지역 상품", `/api/catalog-images/starter-09/${index}.webp`).category).toBe("produce");
+  for (const index of [10, 11])
+    expect(classifyProduct("지역 상품", `/api/catalog-images/starter-09/${index}.webp`).category).toBe("candy");
+  expect(classifyProduct("지역 상품", "/api/catalog-images/starter-09/12.webp")).toMatchObject({ category: "icecream", lieFlatInChest: true });
+  for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Coffee", `/api/catalog-images/starter-10/${index}.webp`).category).toBe("other");
+});
