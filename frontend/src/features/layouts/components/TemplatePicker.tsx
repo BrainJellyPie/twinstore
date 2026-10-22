@@ -218,7 +218,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <p className="text-xs text-muted-foreground">{t("templatePreviewSeating", { tables: preview.data.racks.filter((r) => r.type === "table").length,
                 seats: preview.data.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0) })}</p>
               <p className="text-xs text-muted-foreground">{t("templatePreviewCounters", { counters: preview.data.racks.filter((r) => r.type === "counter").length })}</p>
-              <p className="text-[10px] text-muted-foreground">{t("floorPlanLegend")}</p>
+              <p className="text-[10px] text-muted-foreground">{t("planLegend", { inLabel: t("planIn"), outLabel: t("planOut") })}</p>
             </> : <div className="flex min-h-24 items-center justify-center rounded border bg-muted p-3 text-xs" role="status">
               {t(!validTemplateChoice(value) ? "templatePreviewInvalid" : preview.isError ? "templatePreviewUnavailable" : "templatePreviewUpdating")}
             </div>}

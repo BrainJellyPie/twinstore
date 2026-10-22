@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Translate detailed floor previews, comparison metrics, gate legends and SVG exports into all six
+  interface languages. Preserve expanded previews and zoom when changing language, retain original
+  layout/product data, and translate the eight newly added starter category labels.
+
 - Add 64 grocery, baby, pet, stationery, art, technology, travel, game and household photos,
   reaching 320 bundled product images. Preserve automatic starter selection and image previews
   when merging the six-language interface; automatic choices and recovery guidance are localized too.

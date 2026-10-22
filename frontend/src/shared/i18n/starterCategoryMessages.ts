@@ -87,4 +87,12 @@ export const starterCategoryMessages = {
   "starterCategory_computer_peripherals": ["Computer Peripherals", "컴퓨터 주변기기", "电脑外设", "パソコン周辺機器", "Periféricos de ordenador", "Périphériques informatiques"],
   "starterCategory_photography_accessories": ["Photography Accessories", "사진 촬영 액세서리", "摄影配件", "撮影アクセサリー", "Accesorios de fotografía", "Accessoires photo"],
   "starterCategory_outdoor_cooking": ["Outdoor Cooking", "야외 조리 용품", "户外烹饪", "アウトドア調理", "Cocina al aire libre", "Cuisine en plein air"],
+  "starterCategory_cycling_maintenance": ["Bicycle Maintenance", "자전거 정비", "自行车保养", "自転車メンテナンス", "Mantenimiento de bicicletas", "Entretien des vélos"],
+  "starterCategory_swimming_gear": ["Swimming Gear", "수영 용품", "游泳装备", "水泳用品", "Equipo de natación", "Équipement de natation"],
+  "starterCategory_climbing_accessories": ["Climbing Accessories", "클라이밍 소품", "攀岩配件", "クライミング用品", "Accesorios de escalada", "Accessoires d’escalade"],
+  "starterCategory_desk_organization": ["Desk Organization", "책상 정리 용품", "桌面收纳", "デスク整理用品", "Organización de escritorio", "Rangement de bureau"],
+  "starterCategory_aquarium_decor": ["Aquarium Décor", "수족관 장식", "水族箱装饰", "水槽の装飾", "Decoración de acuarios", "Décoration d’aquarium"],
+  "starterCategory_bird_supplies": ["Bird Supplies", "새 용품", "鸟类用品", "鳥用品", "Artículos para aves", "Articles pour oiseaux"],
+  "starterCategory_home_lighting": ["Home Lighting", "가정용 조명", "家居照明", "家庭用照明", "Iluminación del hogar", "Éclairage de la maison"],
+  "starterCategory_bathroom_accessories": ["Bathroom Accessories", "욕실 소품", "浴室配件", "浴室用品", "Accesorios de baño", "Accessoires de salle de bain"],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;

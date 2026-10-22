@@ -1,3 +1,5 @@
+import { floorCompareMessages } from "./floorCompareMessages";
+import { floorPlanMessages } from "./floorPlanMessages";
 import { starterMessages } from "./starterMessages";
 import { starterCategoryMessages } from "./starterCategoryMessages";
 import { rackCopyMessages } from "./rackCopyMessages";
@@ -16,6 +18,8 @@ export type Locale = typeof LOCALES[number]["code"];
 // Columns follow LOCALES: English, Korean, Chinese, Japanese, Spanish, French.
 export const messages = {
   ...productMessages,
+  ...floorCompareMessages,
+  ...floorPlanMessages,
   ...rackCopyMessages,
   ...starterMessages,
   ...starterCategoryMessages,

@@ -1,15 +1,17 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/components/ui/dialog";
 import type { Rack, Store } from "@/shared/types/domain";
 import { CompareFloorPlans } from "../components/CompareFloorPlans";
+import { LOCALES } from "@/shared/i18n/messages";
+import { ApiError } from "@/shared/api/errors";
 import { translate, useLocale } from "@/shared/i18n/i18n";
 
 vi.mock("@/shared/api/client", () => ({ previewStoreTemplate: vi.fn() }));
-afterEach(() => { cleanup(); vi.resetAllMocks(); });
+afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); });
 
 const rack: Rack = { id: "display", type: "shelf", position: [2, 2], shape: [[1]], rotation: 0,
   levels: 1, dwell_min: 0, dwell_max: 0, rack_name: "Products", rack_desc: "", rack_decoration_desc: "", locked_faces: [],
@@ -22,7 +24,7 @@ const current: Store = { ...baseline, id: "current", grid_size: [24, 18], design
   { ...rack, id: "counter", type: "counter", slots: [], position: [0, 16] },
 ] };
 const areas = [{ label: "Pickup", x: 2, y: 14, width: 3, height: 2 }];
-beforeEach(() => { vi.mocked(api.previewStoreTemplate).mockResolvedValue(baseline); });
+beforeEach(() => { useLocale.getState().setLocale("en"); vi.mocked(api.previewStoreTemplate).mockResolvedValue(baseline); });
 
 it("compares resolved default hours against the current floor's weekday schedule", async () => {
   vi.mocked(api.previewStoreTemplate).mockResolvedValue({ ...baseline,
@@ -123,8 +125,60 @@ it("labels the comparison button and legend in the selected language", async () 
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(<QueryClientProvider client={client}><CompareFloorPlans store={current} areas={[]} templateId="specialty_cafe" currency="USD" /></QueryClientProvider>);
     fireEvent.click(screen.getByRole("button", { name: translate("ja", "compareWithDefault") }));
-    expect(await screen.findByText(translate("ja", "floorPlanLegend"))).toBeTruthy();
+    expect(await screen.findByText(translate("ja", "planLegend", { inLabel: translate("ja", "planIn"), outLabel: translate("ja", "planOut") }))).toBeTruthy();
   } finally {
     useLocale.getState().setLocale("en");
   }
+});
+
+
+it.each(LOCALES)("keeps nested preview state, values and requests stable across a switch to $code", async ({ code }) => {
+  const { submit } = mount();
+  fireEvent.click(screen.getByRole("button", { name: "Compare with default" }));
+  const section = await screen.findByRole("region", { name: "Your current options" });
+  fireEvent.click(within(section).getByRole("button", { name: "Expand floor plan" }));
+  fireEvent.click(screen.getByRole("button", { name: "Zoom in floor plan" }));
+  const originalImage = screen.getByRole("img", { name: "Detailed floor plan" });
+  act(() => useLocale.getState().setLocale(code));
+  expect(screen.getByRole("dialog", { name: translate(code, "planDetails") })).toBeTruthy();
+  expect(screen.getByRole("img", { name: translate(code, "planDetailedImage") })).toBe(originalImage);
+  expect(screen.getByText(new Intl.NumberFormat(code, { style: "percent" }).format(1.5), { normalizer: value => value })).toBeTruthy();
+  fireEvent.keyDown(document, { key: "Escape" });
+  const table = await screen.findByRole("table", { name: translate(code, "planCompareTable") });
+  const row = within(table).getByRole("row", { name: `${translate(code, "planCompareProducts")} 1 1` });
+  expect(within(row).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["1", "1"]);
+  expect(within(table).getByRole("cell", { name: translate(code, "planDesignCoastal") })).toBeTruthy();
+  const legend = translate(code, "planLegend", { inLabel: translate(code, "planIn"), outLabel: translate(code, "planOut") });
+  expect(screen.getByText(legend)).toBeTruthy();
+  expect(api.previewStoreTemplate).toHaveBeenCalledTimes(1);
+  expect(api.previewStoreTemplate).toHaveBeenCalledWith({ template_id: "specialty_cafe", seed: 0, currency: "JPY" }, expect.any(AbortSignal));
+  fireEvent.keyDown(document, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: translate(code, "planCompareTitle") })).toBeNull());
+  expect((screen.getByLabelText("Layout name") as HTMLInputElement).value).toBe("My café");
+  expect(submit).not.toHaveBeenCalled();
+});
+
+it("retranslates a pending request and conflict recovery, then shows custom colors without changing the options", async () => {
+  let reject!: (error: Error) => void;
+  vi.mocked(api.previewStoreTemplate).mockReturnValueOnce(new Promise<Store>((_resolve, fail) => { reject = fail; }));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const options = { ...current, design_colors: { floor: "#000000" } };
+  const before = JSON.stringify(options);
+  render(<QueryClientProvider client={client}><CompareFloorPlans store={options} areas={[]} templateId="specialty_cafe" currency="KRW" /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Compare with default" }));
+  act(() => useLocale.getState().setLocale("ko"));
+  expect(screen.getByRole("status").textContent).toBe(translate("ko", "planCompareLoading"));
+  reject(new ApiError("Original diagnostic: 변경됨", 409));
+  const error = await screen.findByRole("alert");
+  expect(error.textContent).toContain(translate("ko", "requestConflict"));
+  expect(within(error).getByText("Original diagnostic: 변경됨")).toBeTruthy();
+  act(() => useLocale.getState().setLocale("fr"));
+  expect(error.textContent).toContain(translate("fr", "requestConflict"));
+  fireEvent.click(screen.getByRole("button", { name: translate("fr", "planCompareRetry") }));
+  const table = await screen.findByRole("table", { name: translate("fr", "planCompareTable") });
+  expect(within(table).getByRole("cell", { name: translate("fr", "planCustomColors", { design: translate("fr", "planDesignCoastal") }) })).toBeTruthy();
+  expect(JSON.stringify(options)).toBe(before);
+  expect(api.previewStoreTemplate).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(api.previewStoreTemplate).mock.calls[0]![0]).toEqual(vi.mocked(api.previewStoreTemplate).mock.calls[1]![0]);
+  client.clear();
 });
