@@ -33,7 +33,9 @@ try {
     assert((await preview.innerText()).includes('Tea'));
     await preview.getByText(t('copySection', { block: 1, face: t('fixtureSouth'), level: 1 }), { exact: true }).waitFor();
     for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 640 }]) {
-      await page.setViewportSize(viewport); await save.scrollIntoViewIfNeeded();
+      await page.setViewportSize(viewport);
+      // Wait for the resized dialog to settle and verify pointer access without saving.
+      await save.click({ trial: true });
       await page.screenshot({ path: `rack-copy-${locale}-${viewport.width}.png` });
       const overflow = await dialog.evaluate(el => ({ width: el.clientWidth, scrollWidth: el.scrollWidth }));
       assert(overflow.scrollWidth <= overflow.width + 1, `${locale}: dialog overflow: ${JSON.stringify(overflow)}`);

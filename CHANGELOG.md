@@ -1,10 +1,16 @@
 # Changelog
 
-## 0.4.7 — Marketing studio results you can trust
+## Unreleased
+
+- Add 96 home linen, dinnerware, food storage, pet grooming, hair accessory, woodcraft,
+  ceramic craft and gift wrapping products, plus 32 photos. The catalog now has 1,400
+  products in 123 categories and 352 bundled photos for automatic or manual placement.
 
 - Translate detailed floor previews, comparison metrics, gate legends and SVG exports into all six
   interface languages. Preserve expanded previews and zoom when changing language, retain original
   layout/product data, and translate the eight newly added starter category labels.
+
+## 0.4.7 — Marketing studio results you can trust
 
 - Add 64 grocery, baby, pet, stationery, art, technology, travel, game and household photos,
   reaching 320 bundled product images. Preserve automatic starter selection and image previews

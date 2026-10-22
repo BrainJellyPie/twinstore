@@ -1092,7 +1092,7 @@ assignments are rejected. Review the products, prices and available images, then
 Automatic selection supports 1–100 empty accessible racks. A failed model call leaves the layout unchanged;
 retry or switch to **Choose categories manually**, which needs no model or spreadsheet.
 
-The bundled catalog now includes 1,304 products in 115 categories. New examples cover plant-based foods,
+The bundled catalog now includes 1,400 products in 123 categories. New examples cover plant-based foods,
 breakfast spreads, home coffee/tea, bath/body care, first-aid tools, supplements, indoor plants, digital
 accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Further assortments cover
 baking ingredients, global sauces, fresh herbs, frozen and takeaway meals, gift confectionery, baby and oral
@@ -1100,7 +1100,8 @@ care, hair care, travel essentials, sewing, fine art, bicycle accessories, stora
 refill cleaning. Mediterranean, Korean and Japanese pantry staples, spice blends, deli cheeses, fresh seafood,
 barista tools and party supplies add another 96 products. Kitchen and baking tools, laundry care, aquarium and small-pet supplies, computer peripherals, camera accessories
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
-home lighting and bathroom accessories add 96 more. Three hundred twenty generated
+home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
+woodcraft, ceramic craft and gift wrapping add another 96. Three hundred fifty-two generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 Automatic selection sees which products have photos and prefers them only when they fit the store and
 requirements equally well. Products without photos remain available.
