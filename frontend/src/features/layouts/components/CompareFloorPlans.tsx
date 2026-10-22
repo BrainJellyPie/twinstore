@@ -10,6 +10,7 @@ import { rackDiningSeats } from "@/shared/utils/dining";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { formatWeeklyHours } from "../weeklyHours";
 import { useI18n } from "@/shared/i18n/i18n";
+import { templateName } from "@/shared/i18n/storeLabels";
 
 export function CompareFloorPlans({ store, areas, templateId, currency }: {
   store: Store;
@@ -60,7 +61,7 @@ export function CompareFloorPlans({ store, areas, templateId, currency }: {
           <div className="grid gap-4 sm:grid-cols-2">
             {plans.map((plan, index) => <section key={plan.id} aria-labelledby={`${id}-plan-${index}`} className="min-w-0 space-y-2">
               <h3 id={`${id}-plan-${index}`} className="text-sm font-medium">{plan.label}</h3>
-              <FloorPlanPreview store={plan.store} areas={plan.areas} previewFrame={frame} />
+              <FloorPlanPreview store={plan.store} areas={plan.areas} previewFrame={frame} name={plan.id === "default" ? templateName(templateId, plan.store.name, locale) : plan.store.name} />
             </section>)}
           </div>
           <p className="text-xs text-muted-foreground">{t("planLegend", { inLabel: t("planIn"), outLabel: t("planOut") })}</p>

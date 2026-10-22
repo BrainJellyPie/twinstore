@@ -6,6 +6,19 @@
   localized floor badges and count summaries. Preserve user names and coordinates during language
   changes; show translated recovery guidance when a floor preview fails.
 
+- Keep translated template headings in downloaded SVG titles without changing stored names.
+
+- Add 64 pizza, salad, juice, Indian, Thai, Turkish, Mexican and ice-cream menu
+  photos, reaching 704 local images. Seven more menu assortments now have pictures
+  for every existing product in their matching default maps.
+
+- Reject malformed Origin headers with 403 instead of a server error.
+
+- Add 64 tea, burger, noodle, sushi, restaurant, bubble-tea and Turkish-menu
+  photos, reaching 640 locally bundled images. Tea, burger, noodle, sushi,
+  restaurant and bubble-tea menus now have a photo for every product in their
+  matching default maps.
+
 - Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
   ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,
   cafe and dessert templates display the new photos automatically.
@@ -13,6 +26,9 @@
 - Complete photos for all 96 baby feeding, bath, toy vehicle, plush, educational toy,
   puzzle, model building and miniature painting products. Add 64 local images, reaching
   512 photos; they appear on the matching default maps and in image-aware VLM grids.
+- Rewrite interior-design, color, floor-plan and recovery guidance in natural Korean, Chinese,
+  Japanese, Spanish and French. Share design names across setup, floor review and comparison;
+  localize color-reset accessibility labels and preview error recovery without changing stored values.
 
 ### Fixes
 - A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
@@ -134,10 +150,38 @@
   and the message says the local model is turned off and what to do instead (also for shelf capture).
 - Compare no longer shows an impulse-spend drop to 0 against a run made before impulse buys were recorded; it says
   why that row is missing. The note about minor units is gone (amounts are shown as money).
+- Other websites open in your browser can no longer use TwinStore while it runs. Before, any page could quit it,
+  read or change your stores, or point a model provider's address elsewhere and so send your API key there.
+  TwinStore now answers only its own pages.
+- After an update, your stores could go missing: if TwinStore was once started without bringing them over (for
+  example from inside the downloaded zip), a later start no longer knew where the earlier version kept them and began
+  with the sample stores. It now remembers that folder until the stores are brought over.
+- Stores in a folder OneDrive keeps in sync arrived empty after an update; their files are now copied.
+- One file that could not be read (or a full disk) kept TwinStore from starting at all, and Try again could not get
+  past it. Files that cannot be read are now left out and named in the log; if the copy still fails, **Start without
+  them** starts TwinStore and leaves the stores where they are. A store kept on another disk through a link is now
+  brought over too.
+- Clicking the TwinStore icon right after Quit opened the TwinStore that was closing, and then nothing ran. The click
+  now waits for it to close and starts TwinStore.
+- Clicking a new version twice while an older one was running opened a second tab saying the older one was still
+  running. The second click now shows the new one.
+- When another TwinStore held your stores without answering, a click did nothing for 20 seconds and then gave up
+  silently. The start screen now says so, with Try again.
+- On Windows, a new version could not update its copy of uv while an older TwinStore was still running, and fell
+  back to the old one. On a slow connection the uv download no longer gives up after five minutes; it stops only when
+  nothing arrives for a minute.
+- On Windows, starting a second TwinStore emptied the log of the one already running; each now keeps its own log.
+- Try again no longer shows when the app files are missing (there is nothing to try again), and the start screen no
+  longer cuts Korean text in the middle of a character.
+- On Linux, the application-menu entry now works from a folder whose name holds `$`, `"`, `%` or a backslash.
+- A data folder chosen with `PARASTORE_DATA_HOME` now gets its own Python environment, so a TwinStore using it
+  can run beside the usual one without the two changing each other's packages.
 - A file left empty or cut short by a version before 0.4.3 (it was stopped, or the computer lost power, while saving)
   showed "Internal Server Error" instead of the store gallery, a store, its layouts or its run history. The rest now
   opens: a store whose customers file is damaged opens without customers, a damaged run shows as failed, damaged
-  captures, studies and optimizations are left out of their lists, and opening a damaged item names its file.
+  captures, studies and optimizations are left out of their lists, and opening a damaged item names its file. A
+  store whose settings file is damaged was left out of the gallery as if lost; it is listed, saying so.
+
 
 ## 0.4.7 — Marketing studio results you can trust
 

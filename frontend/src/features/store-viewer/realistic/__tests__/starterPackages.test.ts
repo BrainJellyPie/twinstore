@@ -162,3 +162,33 @@ it("keeps renamed drink photos and frozen food photos in their proper department
   expect(classifyProduct("Toy", "/api/catalog-images/starter-34/1.webp").kind).toBe("box");
   expect(classifyProduct("Toy", "/api/catalog-images/starter-33/5.webp").kind).toBe("can");
 });
+
+it("keeps prepared menu photos distinct from frozen food and empty tea cups", () => {
+  for (const sheet of ["starter-38", "starter-39"])
+    for (let index = 0; index < 16; index++) {
+      const product = classifyProduct("Frozen Pizza", `/api/catalog-images/${sheet}/${index}.webp`);
+      expect(product.category).not.toBe("frozen");
+      expect(product.lieFlatInChest).toBe(false);
+    }
+  for (let index = 0; index < 11; index++)
+    expect(classifyProduct("Wooden Toy", `/api/catalog-images/starter-40/${index}.webp`).category).toBe("drink");
+  expect(classifyProduct("Milk Tea", "/api/catalog-images/starter-37/8.webp"))
+    .toMatchObject({ kind: "cup", category: "other" });
+  expect(classifyProduct("Coffee", "/api/catalog-images/starter-37/0.webp").category).toBe("pantry");
+  expect(classifyProduct("Tea", "/api/catalog-images/starter-37/6.webp").category).toBe("bakery");
+});
+
+it("distinguishes hot restaurant meals, bakery food and drinks from frozen packages", () => {
+  for (const sheet of ["starter-41", "starter-42", "starter-43", "starter-44"])
+    for (let index = 0; index < 16; index++) {
+      const item = classifyProduct("Frozen Pizza", `/api/catalog-images/${sheet}/${index}.webp`);
+      expect(item.category).not.toBe("frozen");
+      expect(item.lieFlatInChest).toBe(false);
+    }
+  expect(classifyProduct("Tea", "/api/catalog-images/starter-41/0.webp").category).toBe("icecream");
+  expect(classifyProduct("Coffee", "/api/catalog-images/starter-41/2.webp").category).toBe("bakery");
+  for (const index of [10, 11, 12, 13, 14, 15])
+    expect(classifyProduct("Noodles", `/api/catalog-images/starter-42/${index}.webp`).category).toBe("drink");
+  expect(classifyProduct("Juice", "/api/catalog-images/starter-43/3.webp").category).toBe("produce");
+  expect(classifyProduct("Tea", "/api/catalog-images/starter-43/15.webp").category).toBe("noodle");
+});

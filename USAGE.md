@@ -17,7 +17,8 @@ The wizard collects two screens of input, then kicks off an async pipeline. With
 automatic starter products are initially enabled when a model is available; otherwise the template's own
 products are selected. Automatic selection makes two text-model calls to choose categories and exact products
 from the bundled catalog before project files or persona jobs are created. These calls are additional to the
-pipeline below. Turn off automatic products in Step 1 to use format defaults without these two calls. Empty
+pipeline below. Without a model, the wizard starts with the stocked format defaults; turning off automatic products
+in Step 1 also uses those defaults without these two calls. Empty
 layouts do not call the product-selection model. A model-selection failure preserves the form for retry and
 creates no partial project.
 
@@ -1141,13 +1142,14 @@ barista tools and party supplies add another 96 products. Kitchen and baking too
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
 woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
-educational toys, puzzles, model building and miniature painting add another 96. Five hundred seventy-six generated
+educational toys, puzzles, model building and miniature painting add another 96. Seven hundred four generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 The 82 default map templates also include the expanded products in suitable departments. For example, toy
 shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and
 bath products; cafés include coffee and barista supplies; home stores include linens, tableware and lighting.
 Choose a template to see its stocked map, including available product images, before saving. These format
-defaults need no product-selection model call; they also apply when automatic starter products are turned off.
+defaults need no product-selection model call. The new-store wizard uses them when no model is configured,
+or when automatic starter products are turned off. With a model configured, automatic selection is the default.
 Category exclusions and product-count limits apply to the new departments too.
 
 Automatic selection sees which products have photos and prefers them only when they fit the store and

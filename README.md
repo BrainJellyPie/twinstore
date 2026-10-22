@@ -282,9 +282,10 @@ and colors; download the plan as SVG. Every option and the floor editor (up to 4
 
 The new-store wizard asks for a format, size and currency, then your customers (optionally with a CSV or XLSX of up to
 10 MB) and generates personas with the configured model. Alternatives of a store live side by side as layout tabs.
-Automatic starter products are enabled by default: the text model selects existing catalog products for the store
-category before creation. Turn this option off to keep the format's preset assortment. Model-selection failures
-create no partial store. The catalog includes 1,496 products in 131 categories and 576 locally bundled product images.
+Automatic starter products are enabled by default when a model is configured: the text model selects existing
+catalog products for the store category before creation. Without a model, the wizard starts with the format's
+stocked assortment. You can also turn automatic selection off to use that assortment. Model-selection failures
+create no partial store. The catalog includes 1,496 products in 131 categories and 704 locally bundled product images.
 All 82 map templates also stock these products directly in their format defaults, with departments matched to
 the store: baby supplies and toys, pharmacy care, coffee equipment, homeware, pet supplies and more.
 Together, the default maps cover the full catalog. Previews and saved floors retain the same products and images.
