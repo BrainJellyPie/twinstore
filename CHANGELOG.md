@@ -37,6 +37,9 @@
 
 - Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
+### Fixes
+- The dwell map counts each shopper's own walking pace, diagonal steps, the time at the entrance and wandering; it
+  left about a tenth of the visit time off the map, most of it around the entrance.
 
 ## 0.4.5 — every visitor a day, with a warning before long or costly work
 
