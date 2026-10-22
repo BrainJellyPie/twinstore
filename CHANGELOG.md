@@ -6,6 +6,13 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Resume saved photo queues
+- Capture can explicitly save original photos and recognition settings in this browser, restore paused after
+  a reload or restart, and reuse stable upload identities even when an accepted upload response was lost.
+- Revision checks protect another tab's saved copy; storage failures preserve the live queue and old copy.
+  Save/restore makes no model call. Browser storage limits and eviction still apply; see USAGE.md.
+- Routed concept/shelf drafts are consumed once so returning to their tabs does not repeat drafting.
+
 ### From what shoppers said to a test
 - A group interview's result and the run analyst's last answer offer **Turn this into tests**: the text model writes up
   to three test questions from the themes and answers (or the analyst's answer and figures), each with the tool that
@@ -28,13 +35,6 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   its currency from the generator's own list. Overnight hours and unknown formats are left for the user with a note;
   an answer that arrives after the user edited the form is dropped. Works in all six interface languages.
   API: `POST /api/assist/store-setup`.
-
-### Resume saved photo queues
-- Capture can explicitly save original photos and recognition settings in this browser, restore paused after
-  a reload or restart, and reuse stable upload identities even when an accepted upload response was lost.
-- Revision checks protect another tab's saved copy; storage failures preserve the live queue and old copy.
-  Save/restore makes no model call. Browser storage limits and eviction still apply; see USAGE.md.
-- Routed concept/shelf drafts are consumed once so returning to their tabs does not repeat drafting.
 
 ### Find shoppers in words
 - The Shoppers tab of a run takes a description ("women in their 20s who stopped at the ice cream freezers but bought

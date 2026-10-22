@@ -108,7 +108,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
         </button>
       )}
       {ideas.error && <p role="alert" className="mt-1 text-[0.7rem] text-destructive">{ideas.error.message}</p>}
-      {last && !pending && <div className="mt-2"><TestIdeas key={messages.length} projectId={projectId} runId={runId} source="analyst" /></div>}
+      {last && !pending && <div className="mt-2"><TestIdeas key={JSON.stringify(last)} projectId={projectId} runId={runId} source="analyst" /></div>}
       {suggestions.length > 0 && !pending && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {suggestions.map((q) => (

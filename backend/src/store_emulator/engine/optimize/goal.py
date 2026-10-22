@@ -84,10 +84,14 @@ def to_goal(draft: _Goal, store: Store) -> OptimizeGoal:
     if gain is not None and not 0 <= gain <= 100:
         warnings.append(f"A {gain:g} % minimum gain is outside 0 to 100; it was left as it was.")
         gain = None
+    minimum = None if gain is None else gain / 100
+    if gain is not None and gain > 0 and minimum == 0:
+        warnings.append("The minimum gain is too small to represent; it was left as it was.")
+        minimum = None
     return OptimizeGoal(
         objective=OptimizeObjective(draft.objective), scope=OptimizeScope(draft.scope), max_moves=max_moves,
         keep_fridges_on_walls=draft.keep_fridges_on_walls, lock_rack_ids=locked_ids, locked=locked_names,
-        min_improvement=None if gain is None else round(gain / 100, 4), rationale=draft.rationale.strip(),
+        min_improvement=minimum, rationale=draft.rationale.strip(),
         warnings=warnings,
     )
 

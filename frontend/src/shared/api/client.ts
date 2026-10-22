@@ -1086,7 +1086,7 @@ export function routeAssist(req: { text: string; has_run: boolean }): Promise<{
 /** The create-store form filled from one description: only what it says, the format from the generator's list. */
 export interface StoreSetupDraft {
   name: string; description: string; address: string; store_type: string; template_id: string;
-  open_days: "7" | "weekday" | "weekend"; open_hour: number | null; close_hour: number | null;
+  open_days: "7" | "weekday" | "weekend" | null; open_hour: number | null; close_hour: number | null;
   currency: "USD" | "KRW" | "JPY" | null; rationale: string; warnings: string[];
 }
 export function draftStoreSetup(req: { text: string; locale: string }): Promise<StoreSetupDraft> {

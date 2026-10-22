@@ -85,13 +85,15 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
       ...(d.description ? { description: d.description } : {}),
       ...(d.address ? { address: d.address } : {}),
       ...(d.store_type ? { storeType: d.store_type } : {}),
-      workingDayPreset: d.open_days,
+      ...(d.open_days ? { workingDayPreset: d.open_days } : {}),
       ...(d.open_hour != null && d.close_hour != null ? { openHour: d.open_hour, closeHour: d.close_hour } : {}),
     }));
     if (d.template_id) {
       setWithTemplate(true);
-      setTemplate((prev) => ({ ...prev, templateId: d.template_id, ...(d.currency ? { currency: d.currency } : {}) }));
     }
+    if (d.template_id || d.currency) setTemplate((prev) => ({ ...prev,
+      ...(d.template_id ? { templateId: d.template_id } : {}), ...(d.currency ? { currency: d.currency } : {}),
+    }));
   }, []);
 
   const handleNext = useCallback(() => {
@@ -167,8 +169,7 @@ export function CreateStoreWizard({ onCreated }: CreateStoreWizardProps = {}) {
         {step === 1 && (
           <>
             <DescribeStoreField disabled={isPending} onFilled={fillFromDescription}
-              formKey={JSON.stringify([values.name, values.description, values.address, values.storeType, values.workingDayPreset,
-                values.openHour, values.closeHour, withTemplate, templateOptions.templateId, templateOptions.currency])} />
+              formKey={JSON.stringify([values, withTemplate, templateOptions])} />
             <Step1Fields values={values} errors={step1Errors ?? undefined} disabled={isPending} onChange={onChange} />
             <fieldset className="space-y-3 rounded-xl border p-4" disabled={isPending}>
               <legend className="px-1 text-sm font-medium">{t("startingLayout")}</legend>

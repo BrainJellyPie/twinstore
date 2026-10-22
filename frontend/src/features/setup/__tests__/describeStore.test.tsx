@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useLayoutEffect } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
@@ -9,7 +10,10 @@ const picked = vi.hoisted(() => ({ value: null as null | { templateId: string; c
 vi.mock("@/shared/api/client", async (original) => ({ ...await original<typeof import("@/shared/api/client")>(), draftStoreSetup: vi.fn() }));
 vi.mock("@/shared/mutations/useCreateStore", () => ({ useCreateStore: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }) }));
 vi.mock("@/features/layouts/components/TemplatePicker", () => ({
-  TemplatePicker: ({ value }: { value: { templateId: string; currency: string } }) => { picked.value = value; return null; },
+  TemplatePicker: ({ value, onChange }: { value: { templateId: string; currency: string }; onChange: (value: object) => void }) => {
+    useLayoutEffect(() => { picked.value = value; }, [value]);
+    return <button type="button" onClick={() => onChange({ ...value, width: 22 })}>Adjust template width</button>;
+  },
 }));
 afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); picked.value = null; });
 
@@ -46,4 +50,29 @@ it("drops an answer requested before the user edited the form", async () => {
   await act(async () => { request.resolve(DRAFT); await request.promise; });
   expect((screen.getByLabelText("Store name") as HTMLInputElement).value).toBe("My own name");
   expect(screen.queryByText(/Filled in from your description/)).toBeNull();
+});
+
+it("preserves chosen opening days and format when the description does not name them, but applies its currency", async () => {
+  vi.mocked(api.draftStoreSetup).mockResolvedValue({ ...DRAFT, template_id: "", store_type: "", open_days: null, open_hour: null, close_hour: null });
+  render(<CreateStoreWizard />);
+  const weekday = screen.getByRole("radio", { name: "Weekday (Mon-Fri)" });
+  fireEvent.click(weekday);
+  const before = picked.value?.templateId;
+  fireEvent.change(screen.getByLabelText("Describe the store in your own words"), { target: { value: "A small shop in Seoul" } });
+  fireEvent.click(screen.getByRole("button", { name: "Fill in the form" }));
+  await screen.findByText(/Filled in from your description/);
+  expect(weekday.getAttribute("aria-checked")).toBe("true");
+  expect(picked.value).toMatchObject({ templateId: before, currency: "KRW" });
+});
+
+it("does not replace the format after the user adjusts its layout options", async () => {
+  const request = deferred();vi.mocked(api.draftStoreSetup).mockReturnValue(request.promise);
+  render(<CreateStoreWizard />);
+  const before = picked.value?.templateId;
+  fireEvent.change(screen.getByLabelText("Describe the store in your own words"), { target: { value: "A campus store" } });
+  fireEvent.click(screen.getByRole("button", { name: "Fill in the form" }));
+  fireEvent.click(screen.getByRole("button", { name: "Adjust template width" }));
+  await act(async () => request.resolve(DRAFT));
+  expect(picked.value?.templateId).toBe(before);
+  expect((screen.getByLabelText("Store name") as HTMLInputElement).value).not.toBe("Campus Mart");
 });
