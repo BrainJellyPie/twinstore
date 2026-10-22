@@ -481,3 +481,29 @@ def test_reused_product_preview_resolves_photos_but_save_preserves_original_valu
     resolved = next(r for r in opened.json()["store"]["racks"] if r["id"] == "empty")
     assert all(p["image_url"] == expected for s in resolved["slots"] for p in s["items"])
     assert path.read_bytes() == before
+
+
+def test_starter_eligibility_has_stable_codes_and_legacy_english_reasons(workflow):
+    client, source = workflow
+    data = client.get(URL).json()
+    racks = {row["id"]: row for row in data["racks"]}
+    assert racks["stocked"]["reason_code"] == "occupied"
+    assert racks["stocked"]["reason"] == "Already contains products; kept unchanged"
+    assert racks["empty"]["reason_code"] is None and racks["empty"]["reason"] is None
+    assert racks["empty"]["available_slots"] == 8
+    assert read_setup(PID, SID) == source
+
+
+def test_locked_starter_faces_keep_the_same_rejection_and_expose_a_code(workflow):
+    client, source = workflow
+    rack = next(r for r in source["store"]["racks"] if r["id"] == "empty")
+    rack["locked_faces"] = [{"block": 0, "face": face} for face in ("N", "S", "E", "W")]
+    write_json(setup_path(PID, SID), source)
+    response = client.get(URL)
+    assert response.status_code == 200, response.text
+    locked = next(r for r in response.json()["racks"] if r["id"] == "empty")
+    assert locked["reason_code"] == "no_accessible_face" and locked["available_slots"] == 0
+    assert locked["reason"] == "No accessible, unlocked product face"
+    rejected = client.post(URL + "/preview", json=request(client))
+    assert rejected.status_code == 422 and "no accessible, unlocked product face" in rejected.json()["detail"]
+    assert read_setup(PID, SID) == source

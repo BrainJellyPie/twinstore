@@ -35,7 +35,7 @@ async function mount() {
   const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ["/"] }) });
   await router.load();
   const view = render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
-  await screen.findByLabelText("Describe the area"); return view;
+  await screen.findByLabelText(translate(useLocale.getState().locale, "areaDescribeLabel")); return view;
 }
 function begin() {
   fireEvent.change(screen.getByLabelText("Describe the area"), { target: { value: "A busy university area" } });

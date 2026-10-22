@@ -1,3 +1,5 @@
+import { starterMessages } from "./starterMessages";
+import { starterCategoryMessages } from "./starterCategoryMessages";
 import { rackCopyMessages } from "./rackCopyMessages";
 import { bulkMessages } from "./bulkMessages";
 import { productMessages } from "./productMessages";
@@ -15,6 +17,8 @@ export type Locale = typeof LOCALES[number]["code"];
 export const messages = {
   ...productMessages,
   ...rackCopyMessages,
+  ...starterMessages,
+  ...starterCategoryMessages,
   ...bulkMessages,
   ...feedbackMessages,
   language: ["Language", "언어", "语言", "言語", "Idioma", "Langue"],

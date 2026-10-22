@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Complete starter-fill localization in six languages: automatic/manual guidance, all 107 catalog
+  category labels, eligibility reasons, exact reviewed prices and retry states. Category language
+  follows the selected interface language even in KRW stores; existing product identities remain intact.
+  Detect duplicate translation keys and keep price-review instructions aligned with the editor label.
+
 - Integrate the store-screen, Settings, marketing, capture and neighborhood translations from
   the current development branch while retaining product workflow validation and automatic selection.
 
