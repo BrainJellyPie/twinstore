@@ -29,6 +29,17 @@
   **Find the best plan** also tries other backroom levels. API: `backroom_per_product`, `backroom_overrides` and
   `daily_delivery` in `operations`; blank (null) keeps the endless backroom of earlier versions.
 
+### Catalog and fixes
+- Add 96 skincare, makeup, nail, shaving, tea, cake-decorating, pantry-organization and shoe-care products, with 32
+  photos and six-language category labels. Twelve matching default maps stock the added departments. The catalog
+  now includes 1,592 products in 139 categories and 992 local images.
+- Operations planning can stock a product that starts sold out (0 units) when that pays; till hours must be written
+  "00"–"23" in ASCII digits; a damaged saved shopper list is reported (422) instead of a server error.
+- Wait for the saved starter layout to appear in navigation before opening it, and recover failed list refreshes
+  through the same idempotent save request. Wide operations comparisons scroll within their panel.
+
+## 0.4.9 — Layouts keep how their store is run; shoppers in each other's way; shoppers remember
+
 ### A layout knows how its store is run — runs, A/B tests and the optimizer use it
 - A layout can now keep its operations: units per shelf level (and per product), refills, tills (and by hour),
   patience and crowding. **Try other stock and staffing → Save for this layout** stores a plan you replayed or
@@ -65,13 +76,6 @@
   `POST /runs/{rid}/operations/replay` and `/plan`; no model call.
 
 ### Catalog, photos, translations and fixes
-- Add 96 skincare, makeup, nail, shaving, tea, cake-decorating, pantry-organization and shoe-care products, with 32
-  photos and six-language category labels. Twelve matching default maps stock the added departments. The catalog
-  now includes 1,592 products in 139 categories and 992 local images.
-- Operations planning can stock a product that starts sold out (0 units) when that pays; till hours must be written
-  "00"–"23" in ASCII digits; a damaged saved shopper list is reported (422) instead of a server error.
-- Wait for the saved starter layout to appear in navigation before opening it, and recover failed list refreshes
-  through the same idempotent save request. Wide operations comparisons scroll within their panel.
 - Per-product stock (`stock_overrides`) may be 0: the product starts each day sold out, refills included, and counts
   as out from opening. Values outside 0–10,000 are refused.
 - Add 64 everyday essentials, pantry, book, electronics, music, household and garden photos, reaching 960 local
