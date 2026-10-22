@@ -37,17 +37,21 @@ class RivalComparison(BaseModel):
     suggested_pull_factor: float | None
 
 
+def _product_key(name: str) -> str:
+    return normalize_text(name) or f"symbol:{name.strip()}"
+
+
 def unmatched_names(store: Store, rival: CaptureResult, *, cutoff: float = 0.86) -> tuple[list[str], list[str]]:
     """Rival product names that neither an exact nor a close name match reaches, and our product names."""
-    ours = {normalize_text(item.name): item.name for _, slot in store.all_slots for item in slot.items}
-    keys = list(ours)
+    ours = {_product_key(item.name): item.name for _, slot in store.all_slots for item in slot.items}
+    keys = [key for key in ours if not key.startswith("symbol:")]
     missing: list[str] = []
     for item in rival.items:
         if not item.labeled:
             continue
         name = display_name(item)
-        key = normalize_text(name)
-        if key not in ours and not difflib.get_close_matches(key, keys, n=1, cutoff=cutoff):
+        key = _product_key(name)
+        if key not in ours and (not normalize_text(name) or not difflib.get_close_matches(key, keys, n=1, cutoff=cutoff)):
             missing.append(name)
     return list(dict.fromkeys(missing)), list(dict.fromkeys(ours.values()))
 
@@ -60,25 +64,31 @@ def compare_rival(
     ours: dict[str, tuple[str, int, str]] = {}          # normalized name → (name, price, category)
     for rack, slot in store.all_slots:
         for item in slot.items:
-            ours.setdefault(normalize_text(item.name), (item.name, item.price, rack.rack_desc))
+            ours.setdefault(_product_key(item.name), (item.name, item.price, rack.rack_desc))
     categories = {i.category for i in rival.items if i.category}
     ours_here = {k: v for k, v in ours.items() if not categories or v[2] in categories}
-    keys = list(ours)
+    keys = [key for key in ours if not key.startswith("symbol:")]
     prices: list[PriceComparison] = []
     canonical: dict[str, str] = {}                      # rival product name → our key, or its own normalized name
     for item in rival.items:
         if not item.labeled:
             continue
         name = display_name(item)
-        key = normalize_text(name)
-        alias = normalize_text((aliases or {}).get(name, ""))
-        hit = key if key in ours else alias if alias in ours else next(iter(difflib.get_close_matches(key, keys, n=1, cutoff=cutoff)), None)
-        canonical[name] = hit or f"rival:{key}"
+        key = _product_key(name)
+        raw_alias = (aliases or {}).get(name)
+        alias = _product_key(raw_alias) if raw_alias else None
+        if key in ours:
+            hit = key
+        elif alias is not None and alias in ours:
+            hit = alias
+        else:
+            hit = next(iter(difflib.get_close_matches(key, keys, n=1, cutoff=cutoff)), None) if normalize_text(name) else None
+        canonical[name] = hit if hit is not None else f"rival:{key}"
         if hit is None:
             continue
         our_name, our_price, _ = ours[hit]
         if item.price is not None and not item.price_estimated and item.price > 0 and our_price > 0:
-            prices.append(PriceComparison(name=our_name, rival_price=item.price, our_price=our_price, ratio=round(item.price / our_price, 4)))
+            prices.append(PriceComparison(name=our_name, rival_price=item.price, our_price=our_price, ratio=item.price / our_price))
     index = math.exp(sum(math.log(p.ratio) for p in prices) / len(prices)) if prices else None
     theirs = set(canonical.values())
     mine = set(ours_here) | {k for k in theirs if k in ours}
@@ -88,7 +98,7 @@ def compare_rival(
     only_ours = [v[0] for k, v in ours_here.items() if k not in theirs]
     return RivalComparison(
         matched=matched, rival_products=len(canonical), our_products_in_categories=len(ours_here),
-        price_index=round(index, 4) if index is not None else None, overlap=round(overlap, 4),
+        price_index=index, overlap=round(overlap, 4),
         only_rival=only_rival[:20], only_ours=only_ours[:20], prices=sorted(prices, key=lambda p: p.ratio),
         suggested_pull_factor=round(min(1.5, max(0.67, (1 / index) ** elasticity)), 3) if index else None,
     )

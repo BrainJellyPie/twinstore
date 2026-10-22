@@ -1,7 +1,7 @@
 // ⌘K / Ctrl+K (or "/") command palette: jump to any store or page, or flip the theme, from the
 // keyboard. Arrow keys move, Enter runs, Esc closes.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -74,6 +74,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const pid = projectIdFromPath(pathname);
+  const open = useCommandPalette((s) => s.open);
   const { data: projects } = useProjects();
   const { theme, setTheme } = useTheme();
   const launched = useLauncher();
@@ -128,17 +129,28 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
   // A sentence typed in a store's palette can be handed to the right tool, which drafts from the same words.
   const [asking, setAsking] = useState(false);
   const [askNote, setAskNote] = useState<string | null>(null);
+  const requestId = useRef(0);
+  useLayoutEffect(() => {
+    requestId.current += 1;
+    setAsking(false);
+    setAskNote(null);
+    return () => { requestId.current += 1; };
+  }, [query, pid, open]);
   const sendAsk = useAssistStore((s) => s.send);
   const setActiveTab = useSimulationStore((s) => s.setActiveTab);
   const text = query.trim();
-  const canAsk = !!pid && text.split(/\s+/).filter(Boolean).length >= 3;
+  const sentence = text.split(/\s+/).filter(Boolean).length >= 3
+    || /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(text);
+  const canAsk = !!pid && sentence && Array.from(text).length >= 3;
   const ask = async () => {
-    if (!pid || asking) return;
+    if (!open || !pid || !canAsk || asking) return;
+    const id = ++requestId.current;
     setAsking(true);
     setAskNote(null);
     try {
       const hasRun = projects?.find((p) => p.project_id === pid)?.status === "Simulated";
       const route = await api.routeAssist({ text, has_run: hasRun });
+      if (id !== requestId.current) return;
       if (route.destination === "none") {
         setAskNote(t("commandAskNone"));
         return;
@@ -151,9 +163,9 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       const to = route.destination === "area" ? "/town/$pid" : onFloor ? "/projects/$pid" : "/marketing/$pid";
       void navigate({ to, params: { pid } });
     } catch (e) {
-      setAskNote(e instanceof Error ? e.message : String(e));
+      if (id === requestId.current) setAskNote(e instanceof Error ? e.message : String(e));
     } finally {
-      setAsking(false);
+      if (id === requestId.current) setAsking(false);
     }
   };
   const visible = useMemo(() => {
@@ -205,7 +217,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
           value={query}
           onKeyDown={onKeyDown}
           onChange={(e) => {
-            setQuery(e.target.value);
+            setQuery(Array.from(e.target.value).slice(0, 500).join(""));
             setActive(0);
           }}
           placeholder={t("commandPlaceholder")}

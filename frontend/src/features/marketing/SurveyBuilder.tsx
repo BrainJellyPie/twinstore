@@ -25,10 +25,12 @@ const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
 const GENDERS = ["Female", "Male"];
 const LETTERS = "ABCD";
 
-export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, setupId, prefill, onStarted }: {
+export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, setupId, prefill, onPrefillHandled, onStarted }: {
   projectId: string; personaCount: number; defaultCurrency?: string; initial?: SurveyRequest | null; setupId?: string;
   /** A request routed from the command palette: fills the question and drafts the test from it. */
   prefill?: { text: string; id: number };
+  /** Called once the routed request has been taken, so the page can forget it. */
+  onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
@@ -84,7 +86,8 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
     const text = Array.from(prefillText).slice(0, 500).join("");
     setQuestion(text);
     queueDraft(text);
-  }, [prefillId, prefillText, queueDraft]);
+    onPrefillHandled?.(prefillId);
+  }, [prefillId, prefillText, queueDraft, onPrefillHandled]);
   const shownDraft = drafted?.question === question ? drafted.design : null;
 
   const run = useMutation({

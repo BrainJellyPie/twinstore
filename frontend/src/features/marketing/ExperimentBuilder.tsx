@@ -2,12 +2,12 @@
 // a was-price tag, promotion sign, a move to eye level, new package art, category pricing). Every variant runs on
 // the same shoppers as the control, so the differences come from the change.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpDown, BadgePercent, Copy, Eye, FlaskConical, Loader2, Package, Plus, Sparkles, Tag, Tags, Trash2, Wand2, X } from "lucide-react";
 
 import * as api from "@/shared/api/client";
-import { designExperiment, marketingKeys, startExperiment, type ChangeKind, type ExperimentEngine, type ExperimentRequest, type JobStatus, type VariantChange } from "@/shared/api/marketing";
+import { designExperiment, marketingKeys, startExperiment, type ChangeKind, type ExperimentDesign, type ExperimentEngine, type ExperimentRequest, type JobStatus, type VariantChange } from "@/shared/api/marketing";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
@@ -58,12 +58,13 @@ function ready(c: VariantChange): boolean {
   }
 }
 
-export function ExperimentBuilder({ projectId, setupId, products, store, currency, initial, prefill, onStarted }: {
+export function ExperimentBuilder({ projectId, setupId, products, store, currency, initial, prefill, onPrefillHandled, onStarted }: {
   projectId: string; setupId: string; products: Product[]; store: Parameters<typeof storeFixtures>[0]; currency: string;
   /** A finished test to start from ("duplicate and edit"). */
   initial?: ExperimentRequest | null;
   /** A question routed here from the command palette: filled in and drafted at once. */
   prefill?: { text: string; id: number };
+  onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {
   const qc = useQueryClient();
@@ -105,26 +106,47 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
 
   // Draft the whole test from the question it should answer; everything stays editable.
   const [question, setQuestion] = useState("");
+  const questionLength = Array.from(question.trim()).length;
+  const [accepted, setAccepted] = useState<{
+    design: ExperimentDesign; question: string; projectId: string; setupId: string; currency: string;
+    store: typeof store; products: Product[]; variants: DraftVariant[]; engine: ExperimentEngine;
+    name: string; hero: string; extraFocus: string[];
+  } | null>(null);
   const draft = useMutation({
-    mutationFn: (q: string) => designExperiment(projectId, { question: q, setup_id: setupId }),
-    onSuccess: (d) => {
-      setVariants(d.variants.map((v) => ({ id: uid(), name: v.name, changes: v.changes.map((c) => ({ ...c, id: uid() })) })));
-      setEngine(d.engine);
-      const first = d.variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).find(Boolean);
-      if (first) setHero(first);
-      setExtraFocus(d.focus_skus.filter((s) => !d.variants.some((v) => v.changes.some((c) => c.sku === s))));
-      if (!name.trim()) setName(d.name);
-    },
+    mutationFn: (q: string) => designExperiment(projectId, { question: q.trim(), setup_id: setupId }),
   });
+  const { reset } = draft;
+  useLayoutEffect(() => reset(), [question, projectId, setupId, currency, store, products, variants, engine, name, hero, extraFocus, reset]);
+  const requestDraft = (asked: string) => {
+    if (Array.from(asked.trim()).length < 5 || draft.isPending) return;
+    draft.mutate(asked, { onSuccess: (d) => {
+      const nextVariants = d.variants.map((v) => ({ id: uid(), name: v.name, changes: v.changes.map((c) => ({ ...c, id: uid() })) }));
+      const nextHero = d.variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).find(Boolean) || hero;
+      const nextFocus = d.focus_skus.filter((s) => !d.variants.some((v) => v.changes.some((c) => c.sku === s)));
+      const nextName = name.trim() ? name : d.name;
+      setVariants(nextVariants);
+      setEngine(d.engine);
+      setHero(nextHero);
+      setExtraFocus(nextFocus);
+      setName(nextName);
+      setAccepted({ design: d, question: asked, projectId, setupId, currency, store, products,
+        variants: nextVariants, engine: d.engine, name: nextName, hero: nextHero, extraFocus: nextFocus });
+    } });
+  };
+  const designed = accepted?.question === question && accepted.projectId === projectId && accepted.setupId === setupId
+    && accepted.currency === currency && accepted.store === store && accepted.products === products && accepted.variants === variants
+    && accepted.engine === engine && accepted.name === name && accepted.hero === hero && accepted.extraFocus === extraFocus ? accepted.design : null;
 
   const prefillId = prefill?.id;
   const prefillText = prefill?.text;
-  const queueDraft = useQueuedStart(draft.mutate);
+  const queueDraft = useQueuedStart(requestDraft);
   useEffect(() => {
     if (prefillId === undefined || !prefillText) return;
-    setQuestion(prefillText);
-    queueDraft(prefillText);
-  }, [prefillId, prefillText, queueDraft]);
+    const text = Array.from(prefillText).slice(0, 500).join("");
+    setQuestion(text);
+    queueDraft(text);
+    onPrefillHandled?.(prefillId);
+  }, [prefillId, prefillText, queueDraft, onPrefillHandled]);
 
   const update = (vid: string, fn: (v: DraftVariant) => DraftVariant) => setVariants((vs) => vs.map((v) => (v.id === vid ? fn(v) : v)));
   const heroProduct = productMap.get(hero);
@@ -175,17 +197,17 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
       <section className="glass space-y-3 rounded-2xl p-4">
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-foreground/[0.035] p-2">
           <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
-          <Input value={question} onChange={(e) => setQuestion(e.target.value.slice(0, 500))}
-            onKeyDown={(e) => { if (e.key === "Enter" && question.trim().length >= 5 && !draft.isPending) { e.preventDefault(); draft.mutate(question.trim()); } }}
+          <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); requestDraft(question); } }}
             placeholder="What should the test answer? e.g. Does a 1+1 sign on cola sell more than a 20 % cut?"
             aria-label="Question for the test" className="h-9 min-w-[14rem] flex-1 bg-card" />
-          <Button type="button" size="sm" variant="outline" disabled={question.trim().length < 5 || draft.isPending} onClick={() => draft.mutate(question.trim())}>
+          <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => requestDraft(question)}>
             {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the test
           </Button>
-          {draft.data && (
+          {designed && (
             <div className="basis-full space-y-0.5 px-1 text-xs text-muted-foreground">
-              <p>{draft.data.rationale} Check the variants below before running.</p>
-              {draft.data.warnings.map((w) => <p key={w}>· {w}</p>)}
+              <p>{designed.rationale} Check the variants below before running.</p>
+              {designed.warnings.map((w) => <p key={w}>· {w}</p>)}
             </div>
           )}
           {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}

@@ -270,12 +270,11 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
   };
   const rationale = described?.text === area && described.projectId === projectId
     && described.spec === spec ? described.rationale : "";
-  // An area described in the command palette lands here: the panel opens, the text fills the box and the settings
-  // are drafted from it once the box shows it (so the reset above, on any text change, keeps the reply).
+  // Routed descriptions use the same ownership rules as descriptions entered here.
   const panel = useRef<HTMLDetailsElement>(null);
   const pendingAsk = useAssistStore((s) => s.pending);
   const takeAsk = useAssistStore((s) => s.take);
-  const queueDescription = useQueuedStart(requestDescription);
+  const queueDescribe = useQueuedStart(requestDescription);
   useEffect(() => {
     if (!pendingAsk) return;
     const routed = takeAsk(projectId, ["area"]);
@@ -286,8 +285,8 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
       panel.current.open = true;
       panel.current.scrollIntoView?.({ block: "nearest" });
     }
-    queueDescription(text);
-  }, [pendingAsk, projectId, takeAsk, queueDescription]);
+    queueDescribe(text);
+  }, [pendingAsk, projectId, takeAsk, queueDescribe]);
   const neighborChoices = [...new Set([...NEIGHBOR_CHOICES, ...spec.neighbor_categories])];
   return (
     <details ref={panel} className="rounded-lg border p-3" open={!hasTown}>
