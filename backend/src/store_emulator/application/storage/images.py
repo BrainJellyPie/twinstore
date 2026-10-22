@@ -18,6 +18,7 @@ from urllib.parse import urlencode
 from PIL import Image, UnidentifiedImageError
 
 from store_emulator.engine.files import remove_tree, replace_file
+from store_emulator.engine.layout_gen.catalog import CATALOG_IMAGE_URLS
 from store_emulator.domain.types import RESOURCE_ID_PATTERN
 
 from .io import DATA_DIR, read_json, write_json
@@ -250,4 +251,4 @@ def layout_image_url(
     """Keep reviewed immutable photos; other SKU photos follow current manifest versions."""
     if stored_url and stored_url.startswith(f"/api/projects/{project_id}/product-photo-files/"):
         return stored_url
-    return image_url_for(project_id, sku, manifest) or stored_url
+    return image_url_for(project_id, sku, manifest) or stored_url or CATALOG_IMAGE_URLS.get(sku)

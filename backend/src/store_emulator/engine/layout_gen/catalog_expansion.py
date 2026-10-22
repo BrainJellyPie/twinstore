@@ -418,6 +418,18 @@ PACKSHOT_SHEETS = {
         "Cabin Travel Backpack", "Foldable Camp Chair", "Trekking Pole Pair", "Adjustable Walking Cane",
         "Shower Stool", "Newborn Diapers 40pk", "Screwdriver Set", "Adjustable Wrench",
     ],
+    "starter-11": [
+        "Silicone Cooking Spatula", "Stainless Kitchen Tongs 25cm", "Nonstick Muffin Tray 6 Cup", "Round Cake Tin 20cm",
+        "Fragrance Free Laundry Liquid 1L", "Oxygen Laundry Booster 500g", "Tropical Fish Flakes 50g", "Small Fish Feeding Ring",
+        "Timothy Hay Bag 500g", "Rabbit Pellet Food 1kg", "Compact Wired Keyboard", "Silent Wireless Computer Mouse",
+        "Mini Camera Tabletop Tripod", "Adjustable Woven Camera Strap", "Compact Camp Cook Pot 1L", "Folding Camp Frying Pan 18cm",
+    ],
+    "starter-12": [
+        "Face Masks 5pk", "Lip Balm", "Ballpoint Pens 3pk", "Highlighters",
+        "Wet Wipes", "Laundry Detergent Small", "Trash Bags 20pk", "AA Batteries 4pk",
+        "Car Air Freshener", "Microfiber Cloth", "Engine Oil 1L", "Phone Car Mount",
+        "Mint Gum", "Breath Mints", "Keychain", "Fridge Magnet",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

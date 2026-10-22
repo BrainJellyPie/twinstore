@@ -12,6 +12,10 @@
   Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated
   Close button and provide localized error guidance with original diagnostics available on demand.
 
+- Previously saved starter products pick up new bundled photos by exact SKU when no custom photo is set.
+  Existing uploads and explicit photos retain priority; layouts are not rewritten on read. Add 32 kitchen,
+  pet, technology and everyday-product photos, bringing the local collection to 192.
+
 - Add 96 kitchen, home, pet and technology products and 32 grocery/merchandise photos: 1,208 products,
   107 categories and 160 local photos. Vision grids fit bundled product artwork more closely by omitting
   empty white margins, while retaining names, prices and numbered identities.
@@ -58,6 +62,8 @@
 
 - Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
+
+## 0.4.5 — every visitor a day, with a warning before long or costly work
 
 ### Every visitor a day, with a warning before long or costly work
 - A new store's customers were capped at 100 a day (20 with the local model), so a convenience store the model
