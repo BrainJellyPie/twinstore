@@ -2,16 +2,20 @@
 
 ## Unreleased
 
+- Translate the complete reviewed library-photo workflow into all six interface languages, including
+  explanations, selection and preview counts, accessibility names, validation and save/retry states.
+  Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated
+  Close button and provide localized error guidance with original diagnostics available on demand.
+
+- Add 96 kitchen, home, pet and technology products and 32 grocery/merchandise photos: 1,208 products,
+  107 categories and 160 local photos. Vision grids fit bundled product artwork more closely by omitting
+  empty white margins, while retaining names, prices and numbered identities.
+
 ### Fixes
 - The dwell map counts each shopper's own walking pace, diagonal steps, the time at the entrance and wandering; it
   left about a tenth of the visit time off the map, most of it around the entrance.
 
 ## 0.4.5 — every visitor a day, with a warning before long or costly work
-
-- Translate the complete reviewed library-photo workflow into all six interface languages, including
-  explanations, selection and preview counts, accessibility names, validation and save/retry states.
-  Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated
-  Close button and provide localized error guidance with original diagnostics available on demand.
 
 - Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
   in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.

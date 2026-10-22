@@ -6,7 +6,7 @@ from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageChops, ImageOps
 
 from store_emulator.domain.rack import SlotItem
 from store_emulator.engine.perception.catalog_images import packshot
@@ -45,7 +45,19 @@ def bundled_product_image(url: str) -> Image.Image | None:
     if match is None:
         return None
     try:
-        return decode_product_image(packshot(match[1], int(match[2])))
+        picture = decode_product_image(packshot(match[1], int(match[2])))
+        if picture is None:
+            return None
+        # Atlas cells have generous white gutters; fit the product itself into the VLM's small chart tile.
+        background = Image.new("RGB", picture.size, "white")
+        difference = ImageChops.difference(picture.convert("RGB"), background).convert("L")
+        bounds = difference.point([255 if value > 14 else 0 for value in range(256)]).getbbox()
+        if bounds is not None:
+            left, top, right, bottom = bounds
+            padding = max(4, round(max(right - left, bottom - top) * .04))
+            picture = picture.crop((max(0, left - padding), max(0, top - padding),
+                                    min(picture.width, right + padding), min(picture.height, bottom + padding)))
+        return picture
     except (OSError, ValueError):
         return None
 

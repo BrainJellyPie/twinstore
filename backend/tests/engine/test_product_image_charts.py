@@ -9,6 +9,7 @@ from store_emulator.domain.types import Face
 from store_emulator.engine.layout_gen.catalog import CATALOG, catalog_slot_item
 from store_emulator.engine.layout_gen.catalog_expansion import PACKSHOT_URLS
 from store_emulator.engine.perception.product_images import decode_product_image
+from store_emulator.engine.perception import product_images
 from store_emulator.engine.perception.shelf_render import render_face
 from store_emulator.engine.simulation.engines.vlm_glance.prompt import ShelfGlance, resolve
 
@@ -79,3 +80,35 @@ def test_missing_file_and_empty_name_do_not_break_the_grid(tmp_path):
     photo = Image.new('RGB', (100, 1), 'red')
     view = render_face(rack_with([item]), Face.S, image_loader=lambda item: photo)
     assert view.png
+
+
+def test_bundled_product_itself_is_large_enough_to_see_in_the_vlm_grid(monkeypatch):
+    raw = Image.new('RGB', (256, 384), 'white')
+    ImageDraw.Draw(raw).rectangle((90, 150, 165, 235), fill=(193, 24, 45))
+    data = io.BytesIO(); raw.save(data, format='PNG')
+    monkeypatch.setattr(product_images, 'packshot', lambda sheet, index: data.getvalue())
+    item = SlotItem(sku='fit-photo', name='Example', price=349,
+                    image_url='/api/catalog-images/starter-999/0.webp')
+    rack = rack_with([item])
+    fitted = render_face(rack, Face.S, width=384)
+    original = render_face(rack, Face.S, width=384, image_loader=lambda item: raw)
+    def colored_pixels(view):
+        with Image.open(io.BytesIO(view.png)) as image:
+            return sum(r > 140 and g < 60 and b < 80 for r, g, b in image.get_flattened_data())
+    assert colored_pixels(fitted) > 4 * colored_pixels(original)
+    assert [(m.mark, m.item.sku, m.item.price) for m in fitted.items] == [(m.mark, m.item.sku, m.item.price) for m in original.items]
+
+
+@pytest.mark.parametrize('color', ['white', (235, 235, 235), 'black'])
+def test_light_or_blank_catalog_photo_does_not_vanish_when_margins_are_fitted(monkeypatch, color):
+    raw = Image.new('RGB', (256, 384), 'white')
+    ImageDraw.Draw(raw).rectangle((80, 120, 175, 263), fill=color)
+    data = io.BytesIO(); raw.save(data, format='PNG')
+    monkeypatch.setattr(product_images, 'packshot', lambda sheet, index: data.getvalue())
+    index = 0 if color == 'white' else 1 if color == 'black' else 2
+    picture = product_images.bundled_product_image(f'/api/catalog-images/starter-998/{index}.webp')
+    assert picture is not None and min(picture.size) > 0
+    assert picture.getpixel((picture.width // 2, picture.height // 2)) == raw.convert('RGBA').getpixel((128, 192))
+    # General uploaded pictures keep their original framing; only the bundled atlas loader fits margins.
+    decoded = decode_product_image(data.getvalue())
+    assert decoded is not None and decoded.size == raw.size
