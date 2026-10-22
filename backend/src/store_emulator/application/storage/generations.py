@@ -93,7 +93,14 @@ def list_generations(project_id: str, setup_id: str | None = None) -> list[dict[
         sf = gd / "status.json"
         if not sf.exists():
             continue
-        data = read_json(sf)
+        try:
+            raw: object = read_json(sf)
+        except ValueError as e:   # a finished job's status: one damaged must not stop the layouts from loading
+            logger.warning(f"[generations] skipping {project_id}/{gd.name}: {e}")
+            continue
+        if not isinstance(raw, dict):
+            continue
+        data = cast(dict[str, Any], raw)
         if setup_id and data.get("setup_id") != setup_id:
             continue
         results.append({"gen_id": gd.name, **data})

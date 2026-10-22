@@ -92,6 +92,10 @@
   and the message says the local model is turned off and what to do instead (also for shelf capture).
 - Compare no longer shows an impulse-spend drop to 0 against a run made before impulse buys were recorded; it says
   why that row is missing. The note about minor units is gone (amounts are shown as money).
+- A file left empty or cut short by a version before 0.4.3 (it was stopped, or the computer lost power, while saving)
+  showed "Internal Server Error" instead of the store gallery, a store, its layouts or its run history. The rest now
+  opens: a store whose customers file is damaged opens without customers, a damaged run shows as failed, damaged
+  captures, studies and optimizations are left out of their lists, and opening a damaged item names its file.
 
 ## 0.4.7 — Marketing studio results you can trust
 

@@ -139,7 +139,12 @@ def _finish(pid: str, status: JobStatus, report: BaseModel | None, error: str = 
 
 def list_jobs(pid: str, kind: Kind) -> list[JobStatus]:
     folder = _root(pid, kind)
-    jobs = [JobStatus.model_validate(read_json(p)) for p in folder.glob("*/status.json")] if folder.exists() else []
+    jobs: list[JobStatus] = []
+    for p in folder.glob("*/status.json"):
+        try:
+            jobs.append(JobStatus.model_validate(read_json(p)))
+        except ValueError as e:   # one damaged study must not hide the others
+            logger.warning(f"[marketing] skipping {p.parent.name}: {e}")
     return sorted(jobs, key=lambda j: j.created_at, reverse=True)
 
 

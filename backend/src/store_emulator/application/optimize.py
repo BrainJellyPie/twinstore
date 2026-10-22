@@ -96,7 +96,13 @@ def list_optimizations(pid: str, setup_id: str | None = None) -> list[Optimizati
     base = Path(DATA_DIR) / pid / "optimizations"
     if not base.is_dir():
         return []
-    out = [OptimizationStatus.model_validate(read_json(p / "status.json")) for p in base.iterdir() if (p / "status.json").exists()]
+    out: list[OptimizationStatus] = []
+    for p in base.iterdir():
+        if (p / "status.json").exists():
+            try:
+                out.append(OptimizationStatus.model_validate(read_json(p / "status.json")))
+            except ValueError as e:   # one damaged optimization must not hide the others
+                logger.warning(f"[optimize] skipping {pid}/{p.name}: {e}")
     out = [s for s in out if setup_id is None or s.setup_id == setup_id]
     return sorted(out, key=lambda s: s.created_at, reverse=True)
 

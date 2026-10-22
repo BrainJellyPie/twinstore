@@ -401,7 +401,13 @@ def list_captures(pid: str) -> list[CaptureStatus]:
     base = _base_dir(pid)
     if not base.is_dir():
         return []
-    out = [CaptureStatus.model_validate(read_json(p / "status.json")) for p in base.iterdir() if (p / "status.json").exists()]
+    out: list[CaptureStatus] = []
+    for p in base.iterdir():
+        if (p / "status.json").exists():
+            try:
+                out.append(CaptureStatus.model_validate(read_json(p / "status.json")))
+            except ValueError as e:   # one damaged capture must not hide the others
+                logger.warning(f"[capture] skipping {pid}/{p.name}: {e}")
     return sorted(out, key=lambda s: s.created_at, reverse=True)
 
 

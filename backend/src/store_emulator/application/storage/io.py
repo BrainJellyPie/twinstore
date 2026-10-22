@@ -35,8 +35,27 @@ def write_json(path: Path, data: object) -> None:
             logger.warning("Could not remove temporary JSON file %s", tmp, exc_info=True)
 
 
+class DamagedFile(ValueError):
+    """A saved file that is not JSON: empty, NUL bytes or cut short. Versions before 0.4.3 did not flush a file before
+    replacing the old one, so a power cut or a forced shutdown right after a save could leave it so."""
+
+    def __init__(self, path: Path, reason: str) -> None:
+        try:
+            shown = path.resolve().relative_to(Path(DATA_DIR).resolve()).as_posix()
+        except ValueError:
+            shown = path.name
+        super().__init__(f"The saved file {shown} is damaged and cannot be read ({reason}). It was probably cut off "
+                         "when TwinStore was stopped or the computer lost power while saving it.")
+        self.path = path
+
+
 def read_json(path: Path) -> Any:  # json.load returns dict | list; caller refines the type.
-    return json.loads(read_text(path))
+    try:
+        return json.loads(read_text(path))
+    except UnicodeDecodeError as e:
+        raise DamagedFile(path, "not text") from e
+    except json.JSONDecodeError as e:
+        raise DamagedFile(path, "empty" if not e.doc.strip(" \t\r\n\0") else "cut off or not JSON") from e
 
 
 def generate_setup_id() -> str:

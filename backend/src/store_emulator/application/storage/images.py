@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import io
-import json
 import logging
 import re
 import shutil
@@ -21,7 +20,7 @@ from store_emulator.engine.files import remove_tree, replace_file
 from store_emulator.engine.layout_gen.catalog import CATALOG_IMAGE_URLS
 from store_emulator.domain.types import RESOURCE_ID_PATTERN
 
-from .io import DATA_DIR, read_json, write_json
+from .io import DATA_DIR, DamagedFile, read_json, write_json
 from .setups import metadata_path
 
 
@@ -94,7 +93,7 @@ def load_manifest(project_id: str, *, strict: bool = False) -> dict[str, dict[st
     # read_json -> Any (JSON parsing boundary); coerce defensively.
     try:
         data = read_json(p)  # type: ignore[reportAny]
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+    except DamagedFile as e:
         if strict:
             raise ImageStorageError("Stored image metadata is invalid; repair it before uploading photos.") from e
         return {}
