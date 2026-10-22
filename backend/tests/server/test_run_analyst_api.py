@@ -98,3 +98,26 @@ def test_a_comparison_is_explained_from_both_sheets(client, monkeypatch):
     assert "share who bought: A " in fake.prompt and " pt (95 % interval " in fake.prompt
     assert "Run A (run_ab0039) fact sheet:\nVisitors: " in fake.prompt and f"Run B ({RUN}) fact sheet:\nVisitors: " in fake.prompt
     assert client.post(f"/api/projects/{PID}/compare/explain?a=run_missing&b={RUN}", json={}).status_code == 404
+
+
+def test_starter_questions_are_read_off_the_fact_sheet(client, monkeypatch):
+    from store_emulator.application import run_analyst
+    seen: list[str] = []
+
+    class _Starters:
+        async def generate_structured_async[T: BaseModel](
+            self, response_model: type[T], system_prompt: str, user_prompt: str, *, max_retries: int = 1, seed: int | None = None,
+        ) -> T:
+            seen.append(user_prompt)
+            return response_model.model_validate({"questions": [
+                "Why do so few who stop at Ice cream 2 buy there?", "why do so few who stop at  Ice cream 2 buy there?",
+                "Why do so few who stop at Ice cream 2 buy there?", "Ok?", "Which hour brings the biggest baskets?",
+                "Do shoppers in their 60s spend less per visit?"]})
+
+    monkeypatch.setattr(run_analyst, "build_client", lambda *a, **k: _Starters())
+    r = client.post(f"/api/projects/{PID}/runs/{RUN}/analyst/suggestions", json={})
+    assert r.status_code == 200, r.text
+    assert r.json() == ["Why do so few who stop at Ice cream 2 buy there?", "Which hour brings the biggest baskets?",
+                        "Do shoppers in their 60s spend less per visit?"]
+    assert seen[0].startswith("Fact sheet:\nVisitors: ")
+    assert client.get(f"/api/projects/{PID}/runs/{RUN}/analyst").json()["messages"] == []  # nothing is kept

@@ -146,5 +146,8 @@ export const getAnalyst = (pid: string, runId: string, signal?: AbortSignal) =>
   fetchJson<AnalystThread>(`/api/projects/${pid}/runs/${runId}/analyst`, { signal });
 export const askAnalyst = (pid: string, runId: string, question: string, model = "") =>
   fetchJson<AnalystThread>(`/api/projects/${pid}/runs/${runId}/analyst`, { method: "POST", body: JSON.stringify({ question, model }) });
+/** Three questions the model reads off the run's fact sheet (what stands out); nothing is kept. */
+export const suggestAnalystQuestions = (pid: string, runId: string, model = "") =>
+  fetchJson<string[]>(`/api/projects/${pid}/runs/${runId}/analyst/suggestions`, { method: "POST", body: JSON.stringify({ model }) });
 export const clearAnalyst = (pid: string, runId: string) =>
   fetchJson<void>(`/api/projects/${pid}/runs/${runId}/analyst`, { method: "DELETE" });

@@ -122,6 +122,13 @@ async def ask_analyst(pid: str, run_id: str, q: AnalystQuestion) -> AnalystThrea
     return await run_in_threadpool(_call, lambda: analyst.ask(pid, run_id, q, get_config()))
 
 
+@router.post("/{pid}/runs/{run_id}/analyst/suggestions", summary="Questions worth asking about this run",
+             response_model=list[str])
+async def suggest_analyst_questions(pid: str, run_id: str, req: SuggestionRequest) -> list[str]:
+    """Three questions the model reads off the run's fact sheet: the shelves, products, hours or groups that stand out."""
+    return await run_in_threadpool(_call, lambda: analyst.suggest(pid, run_id, req.model, get_config()))
+
+
 @router.delete("/{pid}/runs/{run_id}/analyst", summary="Clear the questions about this run", status_code=204)
 def clear_analyst(pid: str, run_id: str) -> None:
     _call(lambda: analyst.clear_thread(pid, run_id))

@@ -141,6 +141,28 @@ async def answer_run_question(
     return answer.model_copy(update={"figures": figures[:8], "follow_ups": [q.strip() for q in answer.follow_ups if q.strip()][:3]})
 
 
+class _Starters(BaseModel):
+    questions: list[str] = Field(default_factory=list[str], max_length=8,
+                                 description="three short questions a manager would ask about this day")
+
+
+STARTER_PROMPT = """You help a store manager start reading one simulated trading day. From the fact sheet, write three
+short questions worth asking about what stands out: a shelf, product, hour or shopper group whose numbers are unusual
+compared with the rest. Name the shelf, product, hour or group as written in the sheet, and ask questions the sheet can
+answer or that point to what would explain them. One sentence each, no numbers in the question. Write in English."""
+
+
+async def suggest_run_questions(llm: StructuredLLM, facts: str) -> list[str]:
+    """Three questions read off the fact sheet (what stands out), for an empty analyst thread."""
+    reply = await llm.generate_structured_async(_Starters, STARTER_PROMPT, f"Fact sheet:\n{facts}", max_retries=2, seed=0)
+    seen: dict[str, str] = {}
+    for q in reply.questions:
+        text = " ".join(q.split())
+        if 8 <= len(text) <= 200:
+            seen.setdefault(text.casefold(), text)
+    return list(seen.values())[:3]
+
+
 class DifferenceReading(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 

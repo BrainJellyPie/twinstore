@@ -79,6 +79,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   products, age and gender groups). Every answer lists the figures it rests on (only lines that are in the sheet are
   kept), says plainly when the run cannot answer, and offers follow-up questions; the thread is kept with the run.
   API: `GET/POST/DELETE /api/projects/{pid}/runs/{run_id}/analyst`, `GET .../analyst/facts`.
+- **Suggest questions from this run** replaces the generic starters with three questions read off the run's fact sheet
+  (the shelves, products, hours or groups that stand out). API: `POST .../analyst/suggestions`.
 
 - **Explain the difference** in Compare runs: the model reads the paired comparison (in money, points, seconds and
   metres) and both runs' fact sheets, and says what changed, which shelves, products, hours or groups it came from,
