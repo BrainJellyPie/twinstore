@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+- The dwell map counts each shopper's own walking pace, diagonal steps, the time at the entrance and wandering; it
+  left about a tenth of the visit time off the map, most of it around the entrance.
+
 ## 0.4.5 — every visitor a day, with a warning before long or costly work
 
 - Translate the complete reviewed library-photo workflow into all six interface languages, including
