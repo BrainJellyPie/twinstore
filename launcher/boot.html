@@ -138,6 +138,7 @@
         <button id="toggle">Show log</button>
         <button id="copy" class="hidden">Copy log</button>
         <button id="retry" class="primary hidden">Try again</button>
+        <button id="skip" class="hidden">Start without them</button>
         <button id="quit">Quit</button>
       </div>
     </div>
@@ -195,7 +196,8 @@
     const err = s.error || "";
     $("alert").textContent = err;
     $("alert").classList.toggle("show", !!err);
-    $("retry").classList.toggle("hidden", !err);
+    $("retry").classList.toggle("hidden", !err || s.can_retry === false);
+    $("skip").classList.toggle("hidden", !err || s.offer !== "skip-data");
     $("copy").classList.toggle("hidden", !err && !showLog);
     $("eyebrow").textContent = err ? "Needs attention" : s.ready ? "Ready" : "Launching";
     $("sub").textContent = err ? "Something stopped the start." : s.ready ? "Opening the app…" : "Preparing your store lab…";
@@ -260,6 +262,7 @@
     setTimeout(() => ($("copy").textContent = "Copy log"), 1500);
   };
   $("retry").onclick = async () => { await post("/__twinstore/retry"); };
+  $("skip").onclick = async () => { await post("/__twinstore/skip-data"); };
   $("quit").onclick = async () => {
     try { await post("/__twinstore/quit"); } catch { /* already gone */ }
     final("TwinStore stopped", "You can close this tab. Click the TwinStore icon to start it again.");

@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
-	"os"
 	"strings"
 	"time"
 )
@@ -51,6 +50,16 @@ func (a *app) handler() http.Handler {
 			}
 		},
 		FlushInterval: -1, // stream server-sent events and long responses as they come
+		// The server's CORS answers are for the development UI on another port; through this address only this
+		// address's pages may use it (crossSite turns other pages away), so none are passed on.
+		ModifyResponse: func(resp *http.Response) error {
+			for name := range resp.Header {
+				if strings.HasPrefix(name, "Access-Control-") {
+					resp.Header.Del(name)
+				}
+			}
+			return nil
+		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			if errors.Is(err, context.Canceled) {
 				return
@@ -61,16 +70,18 @@ func (a *app) handler() http.Handler {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /__twinstore/ping", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"app": "twinstore-launcher", "version": version, "root": a.root, "ready": a.target.Load() != nil})
+		writeJSON(w, map[string]any{"app": "twinstore-launcher", "version": version, "root": a.root,
+			"ready": a.target.Load() != nil, "stopping": a.quitting.Load()})
 	})
 	mux.HandleFunc("GET /__twinstore/status", func(w http.ResponseWriter, r *http.Request) {
 		v := a.status.view()
 		v.Log, v.Root, v.Data, v.LogFile = a.log.Tail(160), a.root, a.dataFolder(), a.log.path
+		v.CanRetry = a.root != "" // without the app files there is nothing to try again
 		writeJSON(w, v)
 	})
 	mux.HandleFunc("GET /__twinstore/log", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		raw, err := os.ReadFile(a.log.path)
+		raw, err := a.log.Contents()
 		if err != nil {
 			raw = []byte(strings.Join(a.log.Tail(ringSize), "\n"))
 		}
@@ -82,6 +93,7 @@ func (a *app) handler() http.Handler {
 		w.Write(iconPNG)
 	})
 	mux.HandleFunc("POST /__twinstore/quit", sameSite(func(w http.ResponseWriter, r *http.Request) {
+		a.quitting.Store(true) // a click on the icon now waits for this one to let go instead of showing it
 		writeJSON(w, map[string]bool{"stopping": true})
 		go func() { time.Sleep(200 * time.Millisecond); a.requestQuit() }()
 	}))
@@ -91,6 +103,22 @@ func (a *app) handler() http.Handler {
 		}
 		writeJSON(w, map[string]bool{"restarting": true})
 	}))
+	mux.HandleFunc("POST /__twinstore/skip-data", sameSite(func(w http.ResponseWriter, r *http.Request) {
+		if a.root != "" {
+			a.skipData.Store(true)
+			go a.retry()
+		}
+		writeJSON(w, map[string]bool{"restarting": true})
+	}))
+	// The launcher's own paths never go on to the server: its CORS answer to a preflight would let other web pages
+	// send the X-TwinStore header (see sameSite).
+	mux.HandleFunc("/__twinstore/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		http.NotFound(w, r)
+	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if a.target.Load() != nil {
 			proxy.ServeHTTP(w, r)
@@ -105,7 +133,7 @@ func (a *app) handler() http.Handler {
 		w.Header().Set("Retry-After", "2")
 		http.Error(w, `{"detail":"TwinStore is starting"}`, http.StatusServiceUnavailable)
 	})
-	return localOnly(mux)
+	return localOnly(crossSite(mux))
 }
 
 // localOnly answers only requests addressed to this machine by name (no DNS-rebinding tricks).
@@ -123,8 +151,24 @@ func localOnly(next http.Handler) http.Handler {
 	})
 }
 
+// crossSite turns away what other web pages send here: a request naming another origin (a fetch, a form posted from
+// another site, a CORS preflight) or one a browser marks cross-site that is not a plain visit (an image, a script).
+// Without this any site the user visits could use the stores, the model keys' settings and Quit through this address
+// (the server's CORS answer to a preflight let it send the X-TwinStore header). Programs that send neither header, and
+// links to the app, still work.
+func crossSite(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if origin := r.Header.Get("Origin"); origin != "" && !strings.EqualFold(origin, "http://"+r.Host) ||
+			r.Header.Get("Sec-Fetch-Site") == "cross-site" && r.Header.Get("Sec-Fetch-Mode") != "navigate" {
+			http.Error(w, "TwinStore answers only its own pages", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // sameSite requires the X-TwinStore header, which other web pages cannot send without a CORS
-// preflight this launcher never approves.
+// preflight, which crossSite turns away and the launcher never approves.
 func sameSite(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-TwinStore") != "1" {
