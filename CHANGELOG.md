@@ -104,6 +104,8 @@
   downloaded still starts with no key, without downloading anything.
 - After an update, a browser that kept the previous version's page could show a blank screen or the old app. The page
   is now fetched fresh on every visit.
+- With no API key, the start-up window still said a local model would be downloaded on first use. It now says that
+  rule-based shoppers work without a key, and that nothing is downloaded until you start the local model in Settings.
 - "OpenStreetMap download failed: … HTTP Error 502: Bad Gateway": the public map server is often overloaded for a
   few minutes. The download now moves to other Overpass servers and tries once more before giving up, and then says
   the map servers are busy and to try again shortly.
