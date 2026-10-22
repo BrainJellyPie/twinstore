@@ -41,6 +41,8 @@
   shoppers' visits as decided (`timeline_planned.json`) for this.
 - A replay copies only the events it changes; replaying a run is now about seven times faster.
 
+## 0.4.8 — Shoppers share one store; safe updates; nothing downloaded or spent unasked
+
 ### Shoppers share one store
 - Until now every simulated shopper had the store to themselves: endless stock on every shelf and no one else at the
   tills. Runs now play all of the day's visits in clock order against one store. What a shopper takes is gone for the
@@ -58,8 +60,6 @@
   how long, units lost). Journeys say "sold out", "took … instead", "waited 2.5 min for a till" or "left the line";
   the customer export has each shopper's wait, whether they left the line, and units lost or replaced. API:
   `operations` on `POST /runs`, `GET /runs/{rid}/operations`. Runs without it work as before.
-
-## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
 
 ### Safe updates
 - The stores of an earlier version are always brought over, from any folder (OneDrive included), and one unreadable
