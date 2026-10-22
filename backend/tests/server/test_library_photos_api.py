@@ -221,3 +221,50 @@ def test_resource_scope_and_bad_digest(workflow):
     assert client.get(URL.replace(PID, "no_such_project")).status_code == 404
     assert client.get(f"/api/projects/{PID}/product-photo-files/not-a-hash").status_code == 422
     assert client.get(f"/api/projects/{PID}/product-photo-files/" + "0" * 64).status_code == 404
+
+
+def test_empty_layout_library_and_corrupt_image(workflow):
+    from store_emulator.application.shelf_lab import package_path
+    client, source, asset = workflow
+    source["store"]["racks"][2]["slots"] = []; write_json(setup_path(PID, SID), source)
+    assert client.get(URL).json()["products"] == []
+    package_path(PID, asset["asset_id"]).write_bytes(b"not a PNG")
+    assert client.get(URL).status_code == 409
+    client.delete(f"/api/projects/{PID}/lab/packages/{asset['asset_id']}")
+    assert client.get(URL).json()["assets"] == []
+
+
+def test_asset_lock_and_concurrent_same_save_are_safe(workflow):
+    from concurrent.futures import ThreadPoolExecutor
+    from filelock import FileLock
+    from store_emulator.application.shelf_lab import package_path
+    client, source, asset = workflow; body = {**request(client), "request_id": "3" * 32}
+    with FileLock(package_path(PID, asset["asset_id"]).with_suffix(".lock")):
+        assert client.post(URL + "/save", json=body).status_code == 409
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda _: client.post(URL + "/save", json=body), range(2)))
+    assert all(r.status_code in {200, 409} for r in responses)
+    result = client.post(URL + "/save", json=body); assert result.status_code == 200
+    assert len(list(setup_path(PID, SID).parent.glob('setup_photos_*.json'))) == 1
+    assert read_setup(PID, SID) == source
+
+
+def test_invalid_second_assignment_does_not_apply_first(workflow):
+    from pathlib import Path
+    client, source, _ = workflow; body = request(client)
+    body["assignments"].append({**body["assignments"][0], "sku": "missing"})
+    assert client.post(URL + "/save", json={**body, "request_id": "4" * 32}).status_code == 422
+    assert not (Path('.data') / PID / 'product_photos').exists()
+    assert read_setup(PID, SID) == source
+
+
+def test_unselected_manifest_photo_refreshes_but_selected_snapshot_stays_fixed(workflow):
+    client, _, _ = workflow
+    client.post(f"/api/projects/{PID}/sku-images", params={"sku": "tea2"}, files={"file": ("red.png", png("red"), "image/png")})
+    result = client.post(URL + "/save", json={**request(client), "request_id": "5" * 32}).json()
+    changed = client.post(f"/api/projects/{PID}/sku-images", params={"sku": "tea2"}, files={"file": ("green.png", png("green"), "image/png")}).json()
+    loaded = client.get(f"/api/projects/{PID}/setups/{result['setup_id']}").json()
+    items = loaded["store"]["racks"][2]["slots"][0]["items"]
+    assert items[1]["image_url"] == changed["url"]
+    assert '/product-photo-files/' in items[0]["image_url"]
+    assert client.get(items[0]["image_url"]).content == png()

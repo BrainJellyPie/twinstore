@@ -10,7 +10,7 @@ from store_emulator.application.errors import AppError
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.shelf_lab import PackageAsset, package_asset, package_directory, package_edit
 from store_emulator.application.storage.io import DATA_DIR, write_json
-from store_emulator.application.storage.images import image_url_for, load_manifest
+from store_emulator.application.storage.images import layout_image_url, load_manifest
 from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path
 from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.library_photos import PhotoAsset, PhotoOptions, PhotoPreview, PhotoRecord, PhotoRequest, PhotoSave, PhotoSaved
@@ -29,7 +29,7 @@ def _source(pid: str, sid: str) -> tuple[Store, str]:
     for rack in store.racks:
         for slot in rack.slots:
             for item in slot.items:
-                item.image_url = item.image_url or image_url_for(pid, item.sku, manifest)
+                item.image_url = layout_image_url(pid, item.sku, item.image_url, manifest)
     payload = digest + json.dumps(manifest, sort_keys=True)
     return store, hashlib.sha256(payload.encode()).hexdigest()
 

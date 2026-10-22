@@ -236,3 +236,15 @@ def image_url_for(
     if version:
         query["v"] = version
     return f"/api/projects/{project_id}/images?{urlencode(query)}"
+
+
+def layout_image_url(
+    project_id: str,
+    sku: str,
+    stored_url: str | None,
+    manifest: dict[str, dict[str, str]],
+) -> str | None:
+    """Keep reviewed immutable photos; other SKU photos follow current manifest versions."""
+    if stored_url and stored_url.startswith(f"/api/projects/{project_id}/product-photo-files/"):
+        return stored_url
+    return image_url_for(project_id, sku, manifest) or stored_url
