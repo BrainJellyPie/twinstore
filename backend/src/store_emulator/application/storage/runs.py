@@ -114,6 +114,7 @@ def _save_output(
     write_json(d / "diagnostics.json", result.diagnostics.model_dump())
     if result.operations is not None:
         write_json(d / "operations.json", result.operations.model_dump())
+        write_json(d / "timeline_planned.json", [cr.model_dump() for cr in result.planned_customers])
     write_json(d / "timeline.json", [cr.model_dump() for cr in customer_results])
     write_json(d / "personas.json", {p.id: p.model_dump() for p in personas})
     write_json(d / "token_usage.json", result.token_usage.model_dump())

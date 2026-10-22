@@ -130,6 +130,20 @@ ran out. The same report is `GET /api/projects/{pid}/runs/{rid}/operations` (404
 `patience_sec`, plus `stock_overrides` by SKU, `substitute_share`, `checkout_base_sec`, `checkout_item_sec`,
 `patience_sd` and `target_wait_sec`). Coach users to turn it off only to reproduce a run made before it existed.
 
+### Try other stock and staffing (no model calls)
+
+Under **Store operations**, **Try other stock and staffing** replays the run's shoppers with their decisions
+unchanged. Edit units per shelf level, refills, tills, patience and the tills of single hours (blank uses the
+number above; 0 closes the tills that hour), then **Replay** for the outcome, or enter costs (a staffed till hour,
+one refilling round, one unit on the shelves for a day, in the store's currency) and **Find the best plan**. The
+plan search keeps behaviour fixed, so it answers operational questions (staffing, par levels, refill rhythm), not
+layout or assortment ones; run the simulation again for those. Runs whose shoppers each had the store alone replay
+too. A shared-store run made before replays existed cannot replay (it did not keep its shoppers' planned visits) and
+says so: run it again.
+
+API: `POST /api/projects/{pid}/runs/{rid}/operations/replay` with `{operations, costs}` and
+`POST …/operations/plan` with `{costs, operations?, max_tills?}`; costs are in the currency's minor unit.
+
 ## LLM call count (static analysis)
 
 Counted directly from the code, not measured.
@@ -1169,7 +1183,7 @@ assignments are rejected. Review the products, prices and available images, then
 Automatic selection supports 1–100 empty accessible racks. A failed model call leaves the layout unchanged;
 retry or switch to **Choose categories manually**, which needs no model or spreadsheet.
 
-The bundled catalog now includes 1,496 products in 131 categories. New examples cover plant-based foods,
+The bundled catalog now includes 1,592 products in 139 categories. New examples cover plant-based foods,
 breakfast spreads, home coffee/tea, bath/body care, first-aid tools, supplements, indoor plants, digital
 accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Further assortments cover
 baking ingredients, global sauces, fresh herbs, frozen and takeaway meals, gift confectionery, baby and oral
@@ -1179,7 +1193,7 @@ barista tools and party supplies add another 96 products. Kitchen and baking too
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
 woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
-educational toys, puzzles, model building and miniature painting add another 96. Nine hundred sixty generated
+educational toys, puzzles, model building and miniature painting add another 96. Skincare, makeup and grooming tools, tea brewing, cake decorating, pantry organization and shoe care add 96 more. Nine hundred ninety-two generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 The 82 default map templates also include the expanded products in suitable departments. For example, toy
 shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and

@@ -111,4 +111,12 @@ export const starterCategoryMessages = {
   "starterCategory_puzzle_games": ["Puzzle Games", "퍼즐 게임", "拼图与解谜游戏", "パズルゲーム", "Puzles y rompecabezas", "Puzzles et casse-têtes"],
   "starterCategory_model_building_supplies": ["Model Building Supplies", "모형 제작 용품", "模型制作用品", "模型製作用品", "Materiales de modelismo", "Fournitures de modélisme"],
   "starterCategory_miniature_painting": ["Miniature Painting", "미니어처 도색 용품", "微缩模型涂装", "ミニチュア塗装用品", "Pintura de miniaturas", "Peinture de figurines"],
+  "starterCategory_facial_skincare": ["Facial skincare", "스킨케어", "面部护理", "フェイスケア", "Cuidado facial", "Soins du visage"],
+  "starterCategory_makeup_accessories": ["Makeup tools", "메이크업 도구", "化妆工具", "メイク道具", "Utensilios de maquillaje", "Accessoires de maquillage"],
+  "starterCategory_nail_grooming": ["Nail care", "손발톱 관리", "指甲护理", "ネイルケア", "Cuidado de uñas", "Soins des ongles"],
+  "starterCategory_shaving_grooming": ["Shaving and beard care", "면도·수염 관리", "剃须与胡须护理", "シェービング・ひげケア", "Afeitado y barba", "Rasage et barbe"],
+  "starterCategory_tea_brewing_tools": ["Tea brewing tools", "다도 용품", "泡茶器具", "茶器・茶道具", "Utensilios para preparar té", "Accessoires pour le thé"],
+  "starterCategory_baking_decorating": ["Cake decorating tools", "케이크 장식 도구", "蛋糕装饰工具", "ケーキデコレーション道具", "Utensilios para decorar tartas", "Ustensiles de décoration de gâteaux"],
+  "starterCategory_pantry_organization": ["Pantry organization", "식재료 수납·정리", "食品储物收纳", "食品収納・整理用品", "Organización de despensa", "Rangement du garde-manger"],
+  "starterCategory_shoe_care": ["Shoe care", "신발 관리", "鞋履护理", "シューズケア", "Cuidado del calzado", "Entretien des chaussures"],
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;

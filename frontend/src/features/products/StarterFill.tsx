@@ -65,11 +65,15 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
   const live = useRef(false);
   useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
   const preview = useMutation(starterPreview(pid, sid));
-  const save = useMutation(starterSave(pid, sid));
+  const qc = useQueryClient();
+  const save = useMutation({ ...starterSave(pid, sid), onSuccess: async () => {
+    // Opening before the list includes this draft makes layout navigation fall back to the old one.
+    await qc.invalidateQueries({ queryKey: queryKeys.setups(pid) }, { throwOnError: true });
+    void qc.invalidateQueries({ queryKey: queryKeys.project(pid), exact: true });
+  } });
   const auto = useMutation({ mutationFn: () => autoSelectStarterProducts(pid, sid, {
     source_sha256: snapshot.source_sha256, currency: snapshot.currency, requirements: requirements.trim(), products_per_slot: perSlot,
   }) });
-  const qc = useQueryClient();
   const busy = preview.isPending || save.isPending || auto.isPending || refreshing;
   const locked = busy || !!save.data;
   const eligibleCount = snapshot.racks.filter((r) => !r.reason && r.available_slots > 0).length;
@@ -111,8 +115,6 @@ function StarterForm({ pid, sid, initial, refreshing, reload, close, mode, setMo
     pending.current = true;
     try {
       await save.mutateAsync(prepared);
-      void qc.invalidateQueries({ queryKey: queryKeys.setups(pid) });
-      void qc.invalidateQueries({ queryKey: queryKeys.project(pid), exact: true });
     } catch { /* Keep the same prepared request for retry. */ }
     finally { pending.current = false; }
   };

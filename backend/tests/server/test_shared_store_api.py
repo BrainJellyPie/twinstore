@@ -89,3 +89,74 @@ def test_the_customer_export_carries_each_shoppers_wait_and_missing_products(cli
         if cells[0] in customers:
             assert int(cells[-4]) == customers[cells[0]]["queue_wait_sec"]
             assert int(cells[-2]) == customers[cells[0]]["lost_units"]
+
+
+def _layout(c: TestClient) -> str:
+    return c.post(f"/api/projects/{PID}/setups",
+                  json={"mode": "racks_and_items", "source_setup_id": "setup_7d6d"}).json()["id"]
+
+
+def test_a_replay_with_the_runs_own_plan_gives_the_run_back(client):
+    operations = {"stock_per_facing": 2, "open_counters": 1, "patience_sec": 120}
+    rid = _run(client, _layout(client), operations=operations)
+    assert Path(f".data/{PID}/runs/{rid}/output/timeline_planned.json").exists()
+    saved = client.get(f"/api/projects/{PID}/runs/{rid}/operations").json()
+    summary = client.get(f"/api/projects/{PID}/runs/{rid}/summary").json()["summary"]
+    replay = client.post(f"/api/projects/{PID}/runs/{rid}/operations/replay",
+                         json={"operations": saved["config"]}).json()
+    assert replay["outcome"]["revenue"] == summary["total_revenue"]
+    assert replay["report"] == saved
+    assert replay["planned_revenue"] >= replay["outcome"]["revenue"]
+
+
+def test_any_finished_run_replays_in_a_shared_store_and_gets_a_plan(client):
+    rid = _run(client, _layout(client))
+    summary = client.get(f"/api/projects/{PID}/runs/{rid}/summary").json()["summary"]
+    tight = client.post(f"/api/projects/{PID}/runs/{rid}/operations/replay",
+                        json={"operations": {"stock_per_facing": 1, "restock_every_min": None, "open_counters": 1},
+                              "costs": {"till_hour": 1000}}).json()
+    assert tight["planned_revenue"] == summary["total_revenue"]
+    assert tight["outcome"]["revenue"] <= summary["total_revenue"]
+    assert tight["outcome"]["labor_cost"] == round(tight["outcome"]["till_hours"] * 1000)
+    plan = client.post(f"/api/projects/{PID}/runs/{rid}/operations/plan",
+                       json={"costs": {"till_hour": 1000, "restock_round": 300, "stock_unit_day": 1}}).json()
+    assert plan["best"]["net"] >= plan["current"]["net"] and plan["replays"] > 1
+    assert set(plan["config"]) >= {"stock_per_facing", "restock_every_min", "till_schedule", "stock_overrides"}
+
+
+def test_a_shared_run_without_its_planned_visits_says_why_it_cannot_replay(client):
+    rid = _run(client, _layout(client), operations={})
+    Path(f".data/{PID}/runs/{rid}/output/timeline_planned.json").unlink()
+    response = client.post(f"/api/projects/{PID}/runs/{rid}/operations/replay", json={})
+    assert response.status_code == 409 and "run it again" in response.json()["detail"]
+    assert client.post(f"/api/projects/{PID}/runs/run_nothere/operations/plan", json={}).status_code == 404
+
+
+@pytest.mark.parametrize("bad", [{"costs": {"till_hour": -1}}, {"max_tills": 0},
+                                 {"operations": {"till_schedule": {"25": 1}}}])
+def test_impossible_plan_requests_are_refused(client, bad):
+    response = client.post(f"/api/projects/{PID}/runs/run_x/operations/plan", json=bad)
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("shared", [False, True])
+@pytest.mark.parametrize("damaged", [None, 0, True, {}, {"shoppers": []}, "", [None]])
+def test_damaged_saved_visits_are_reported_without_changing_the_run(client, shared, damaged):
+    rid = _run(client, _layout(client), **({"operations": {}} if shared else {}))
+    output = Path(f".data/{PID}/runs/{rid}/output")
+    path = output / ("timeline_planned.json" if shared else "timeline.json")
+    path.write_text(json.dumps(damaged), encoding="utf-8")
+    before = {p.name: p.read_bytes() for p in output.iterdir() if p.is_file()}
+    for action in ("replay", "plan"):
+        response = client.post(f"/api/projects/{PID}/runs/{rid}/operations/{action}", json={})
+        assert response.status_code == 422
+        assert "saved files cannot be read" in response.json()["detail"]
+    assert {p.name: p.read_bytes() for p in output.iterdir() if p.is_file()} == before
+
+
+@pytest.mark.parametrize("hour", ["０１", "٠١", " 1", "+1", "-1", "24"])
+def test_noncanonical_till_hours_are_rejected_before_loading_a_run(client, hour):
+    for action in ("replay", "plan"):
+        response = client.post(f"/api/projects/{PID}/runs/run_missing/operations/{action}",
+                               json={"operations": {"till_schedule": {hour: 1}}})
+        assert response.status_code == 422

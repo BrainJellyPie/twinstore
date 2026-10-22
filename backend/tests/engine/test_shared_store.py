@@ -7,11 +7,11 @@ import pytest
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.customer import CustomerResult, TimelineEvent
-from store_emulator.domain.operations import OperationsConfig
+from store_emulator.domain.operations import OperationsConfig, OperationsCosts
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.rack import Rack, RackType, Slot, SlotItem
 from store_emulator.domain.store import DaySchedule, Store
-from store_emulator.domain.types import Action, Face, Weekday
+from store_emulator.domain.types import Action, Face, Weekday, stable_seed
 from store_emulator.engine.layout_gen import generate_store
 from store_emulator.engine.routing.invariants import check_buy_consistency
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
@@ -224,6 +224,9 @@ def _crowd(count: int) -> list[Persona]:
                     budget_min=1000, budget_max=6000) for i in range(count)]
 
 
+_SEED = stable_seed(3, 0)
+
+
 def _run(store: Store, people: list[Persona], operations: OperationsConfig | None):
     config = SimulationConfig(engine_type=EngineType.RULE_BASED, seed=3, operations=operations)
     pathfinder = AStarPathFinder()
@@ -273,3 +276,86 @@ def test_a_shopper_meets_a_sold_out_product_the_same_way_whatever_the_route():
         pick = next(e for e in results[1].timeline if e.product_sku in ("chips", "nuts"))
         outcomes.add((pick.action, pick.product_sku))
     assert len(outcomes) == 1
+
+
+def test_tills_follow_an_hourly_schedule_on_one_shared_line():
+    shoppers = [_shopper(f"p{i}", "10:59:00", [("chips", 1)]) for i in range(3)]
+    config = OperationsConfig(checkout_base_sec=57, checkout_item_sec=3, patience_sec=3600, patience_sd=0,
+                              restock_every_min=None, till_schedule={"10": 1, "11": 3})
+    results, report = resolve_shared_store(_store(counters=3), shoppers, config, seed=1)
+    # One till until 11:00, then all three: the second shopper starts at 11:00, the third too.
+    assert [r.queue_wait_sec for r in results] == [0, 35, 35]
+    closed = config.model_copy(update={"till_schedule": {"10": 0}})
+    results, report = resolve_shared_store(_store(counters=3), shoppers, closed, seed=1)
+    assert [r.queue_wait_sec for r in results] == [35, 35, 35]
+    assert {h.hour: h.counters_open for h in report.hours} == {"10": 0}
+
+
+def test_till_hours_count_the_staffed_hours_of_the_day():
+    config = OperationsConfig(restock_every_min=None, till_schedule={"08": 0, "12": 3})
+    _, report = resolve_shared_store(_store(counters=3), [_shopper("p0", "10:00:00", [("chips", 1)])], config, seed=1)
+    # Open 08–22: hour 08 closed, 12 with three tills, the other twelve hours with all three (no run-wide number).
+    assert report.till_hours == 13 * 3
+
+
+@pytest.mark.parametrize("schedule", [{"24": 1}, {"9": 1}, {"ab": 1}, {"10": 51}, {"10": -1},
+                                      {"０１": 1}, {"٠١": 1}, {" 1": 1}, {"+1": 1}, {"-1": 1}])
+def test_impossible_till_schedules_are_refused(schedule):
+    with pytest.raises(ValueError):
+        OperationsConfig(till_schedule=schedule)
+
+
+def test_till_schedule_accepts_both_ends_of_the_day_and_sorts_hours():
+    config = OperationsConfig(till_schedule={"23": 50, "00": 0, "12": 1})
+    assert list(config.till_schedule.items()) == [("00", 0), ("12", 1), ("23", 50)]
+
+
+@pytest.mark.parametrize("holding_cost", [0, 200, 400])
+def test_a_plan_can_stock_a_product_that_starts_sold_out_when_it_pays(holding_cost):
+    from store_emulator.engine.simulation.operations_plan import plan_operations
+    store = _store()
+    customers = [_shopper("p", "10:00:00", [("chips", 1)])]
+    current = OperationsConfig(stock_overrides={"chips": 0}, substitute_share=0, **_NO_LINE)
+    before = customers[0].model_dump()
+    plan = plan_operations(store, customers, current, OperationsCosts(stock_unit_day=holding_cost), seed=1)
+    profitable = holding_cost < 300
+    assert plan.current.revenue == 0
+    assert plan.best.revenue == (300 if profitable else 0)
+    assert plan.config.stock_overrides["chips"] == (1 if profitable else 0)
+    assert plan.raised_skus == (["chips"] if profitable else [])
+    assert plan.best.net >= plan.current.net
+    assert current.stock_overrides == {"chips": 0} and customers[0].model_dump() == before
+
+
+def test_a_replay_with_the_runs_own_plan_reproduces_it():
+    from store_emulator.engine.simulation.operations_plan import replay
+    store = generate_store("urban_cvs")
+    config = OperationsConfig(stock_per_facing=2, open_counters=1, patience_sec=120)
+    shared, customers = _run(store, _crowd(80), config)
+    outcome, report, results = replay(store, shared.planned_customers, config, OperationsCosts(), seed=_SEED)
+    assert outcome.revenue == shared.summary.total_revenue
+    assert report == shared.operations
+    assert [r.model_dump() for r in results] == [c.model_dump() for c in customers]
+
+
+def test_a_plan_never_does_worse_than_the_current_one_and_counts_its_costs():
+    from store_emulator.engine.simulation.operations_plan import plan_operations
+    store = generate_store("urban_cvs")
+    _, customers = _run(store, _crowd(150), None)
+    current = OperationsConfig(stock_per_facing=2, restock_every_min=None, patience_sec=120)
+    costs = OperationsCosts(till_hour=1500, restock_round=500, stock_unit_day=1)
+    plan = plan_operations(store, customers, current, costs, seed=_SEED)
+    assert plan.best.net >= plan.current.net and plan.replays > 10
+    assert plan.best.labor_cost == round(plan.best.till_hours * 1500)
+    assert plan.best.net == plan.best.revenue - plan.best.labor_cost - plan.best.restock_cost - plan.best.holding_cost
+    free = plan_operations(store, customers, current, OperationsCosts(), seed=_SEED)
+    assert free.best.lost_revenue <= free.current.lost_revenue and free.best.revenue >= free.current.revenue
+
+
+def test_a_plan_out_of_time_answers_with_the_best_found_so_far():
+    from store_emulator.engine.simulation.operations_plan import plan_operations
+    store = generate_store("urban_cvs")
+    _, customers = _run(store, _crowd(40), None)
+    plan = plan_operations(store, customers, OperationsConfig(), OperationsCosts(), seed=_SEED, time_budget_sec=0)
+    assert not plan.complete and plan.replays == 1 and plan.config == OperationsConfig()
+    assert plan_operations(store, customers, OperationsConfig(), OperationsCosts(), seed=_SEED).complete

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Wait for the saved starter layout to appear in navigation before opening it;
+  recover failed list refreshes through the same idempotent save request. Keep
+  operations comparisons readable by scrolling wide results within their panel.
+
+- Let operations planning restore profitable products that start with zero stock,
+  reject noncanonical till-hour keys, and report malformed saved shopper lists
+  without a server error. Preserve zero-stock overrides in the latest operations lab.
+
+- Add 96 skincare, makeup, nail, shaving, tea, cake-decorating, pantry-organization
+  and shoe-care products, with 32 photos and six-language category labels. Twelve
+  matching default maps stock the added departments. The catalog now includes
+  1,592 products in 139 categories and 992 local images.
+
 - Validate per-product stock overrides and count products with zero opening stock
   as sold out from opening, including multi-day runs and scheduled refills.
 
@@ -39,6 +52,21 @@
 - Add 64 Korean, Mediterranean, Mexican, Vietnamese, pharmacy and care-product photos,
   reaching 768 locally bundled images. All 18 menu assortments and six pharmacy/care
   departments now have pictures for every existing product in their default maps.
+
+### Try other stock and staffing on a finished run
+- **Store operations → Try other stock and staffing** replays a run's shoppers — the same people making the same
+  choices — in a store run another way: units per shelf level, refills, tills open, patience, and tills hour by
+  hour. No model is asked, so even a vision run replays in seconds, and the shoppers keep their patience and their
+  substitute-or-not draws, so plans compare on the same people. Any finished run replays, including one whose
+  shoppers each had the store alone ("what would real stock and a line at the tills have cost this day?").
+- With costs for a staffed till hour, a round of refilling and a unit kept on the shelves for a day, **Find the best
+  plan** tries hundreds of plans (refill interval with shelf stock, more stock for the products that still run out,
+  tills hour by hour) and shows the one leaving the most after costs next to the current one, ready to use in the
+  form. Ties go to the plan using less.
+- Tills can be staffed per hour (`till_schedule`, 0 closes them for the hour); the tills share one line, first come,
+  first served. API: `POST /runs/{rid}/operations/replay` and `/operations/plan`; shared-store runs keep their
+  shoppers' visits as decided (`timeline_planned.json`) for this.
+- A replay copies only the events it changes; replaying a run is now about seven times faster.
 
 ### Shoppers share one store
 - Until now every simulated shopper had the store to themselves: endless stock on every shelf and no one else at the

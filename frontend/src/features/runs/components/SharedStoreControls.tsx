@@ -8,10 +8,12 @@ import { useI18n } from "@/shared/i18n/i18n";
 
 import { sharedStoreOptions, wholeIn, type SharedStoreChoice } from "../sharedStore";
 
-export function SharedStoreControls({ value, onChange, tillsInLayout }: {
+/** `fieldsOnly`: the settings without the on/off switch (the operations lab, where the store is always shared). */
+export function SharedStoreControls({ value, onChange, tillsInLayout, fieldsOnly = false }: {
   value: SharedStoreChoice;
   onChange: (next: SharedStoreChoice) => void;
   tillsInLayout?: number;
+  fieldsOnly?: boolean;
 }) {
   const { t } = useI18n();
   const set = (patch: Partial<SharedStoreChoice>) => onChange({ ...value, ...patch });
@@ -19,7 +21,8 @@ export function SharedStoreControls({ value, onChange, tillsInLayout }: {
   const invalid = sharedStoreOptions(value) === "invalid";
   const field = "space-y-1";
   return (
-    <div className="space-y-2 rounded-md border p-3 text-xs">
+    <div className={fieldsOnly ? "space-y-2 text-xs" : "space-y-2 rounded-md border p-3 text-xs"}>
+      {!fieldsOnly && <>
       <label className="flex items-start gap-2 text-sm font-medium" htmlFor={`${id}-on`}>
         <input id={`${id}-on`} type="checkbox" className="mt-0.5 size-4 accent-primary" checked={value.enabled}
           onChange={(e) => set({ enabled: e.target.checked })} aria-describedby={`${id}-hint`} />
@@ -27,6 +30,7 @@ export function SharedStoreControls({ value, onChange, tillsInLayout }: {
         <span>{t("opsShareTitle")}</span>
       </label>
       <p id={`${id}-hint`} className="text-muted-foreground">{t("opsShareHint")}</p>
+      </>}
       {value.enabled && (
         <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
           <div className={field}>

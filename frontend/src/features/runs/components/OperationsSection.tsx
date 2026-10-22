@@ -8,6 +8,7 @@ import { useI18n } from "@/shared/i18n/i18n";
 import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 
 import { useRunOperations } from "../hooks";
+import { OperationsLab } from "./OperationsLab";
 
 const STOCKOUTS_SHOWN = 8;
 
@@ -22,12 +23,22 @@ function Tile({ label, value, hint }: { label: string; value: ReactNode; hint?: 
 }
 
 export function OperationsSection({ projectId, runId, currency }: { projectId: string; runId: string; currency?: string }) {
-  const { data } = useRunOperations(projectId, runId);
-  if (!data) return null;
-  return <OperationsReportView report={data} currency={currency} />;
+  const { t } = useI18n();
+  const { data, isSuccess } = useRunOperations(projectId, runId);
+  if (!isSuccess) return null;
+  if (!data) {
+    // Shoppers each had the store alone: the lab replays them with real stock and tills.
+    return (
+      <section className="border-t px-3 py-3" aria-label={t("opsTitle")}>
+        <OperationsLab projectId={projectId} runId={runId} report={null} currency={currency} />
+      </section>
+    );
+  }
+  return <OperationsReportView report={data} currency={currency}
+    lab={<OperationsLab projectId={projectId} runId={runId} report={data} currency={currency} />} />;
 }
 
-export function OperationsReportView({ report, currency }: { report: OperationsReport; currency?: string }) {
+export function OperationsReportView({ report, currency, lab }: { report: OperationsReport; currency?: string; lab?: ReactNode }) {
   const { locale, t } = useI18n();
   const code = currencyCode(currency);
   const money = (minor: number) => formatMoney(minor, code, { locale });
@@ -132,6 +143,7 @@ export function OperationsReportView({ report, currency }: { report: OperationsR
           </ul>
         )}
       </div>
+      {lab}
     </section>
   );
 }
