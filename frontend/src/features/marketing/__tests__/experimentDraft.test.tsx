@@ -64,3 +64,20 @@ it("drafts from a request routed by the command palette, once per request", asyn
   </QueryClientProvider>);
   expect(designExperiment).toHaveBeenCalledTimes(1);
 });
+
+it("a drafted test that picks vision shoppers starts from a vision-sized panel, as choosing them by hand does", async () => {
+  vi.mocked(designExperiment).mockResolvedValue({ name: "Pack", engine: "vlm", rationale: "Shoppers must see the pack.", focus_skus: ["A1"],
+    warnings: [], variants: [{ name: "Sign", changes: [{ kind: "promo", sku: "A1", promo: "1+1" }] }] });
+  vi.mocked(startExperiment).mockResolvedValue({ job_id: "exp_1", kind: "experiment", name: "", status: "pending", stage: "", progress: 0, error: "", created_at: "", finished_at: "" });
+  render(<QueryClientProvider client={new QueryClient()}>
+    <ExperimentBuilder projectId="p" setupId="s1" products={products} store={store} currency="USD" onStarted={vi.fn()} />
+  </QueryClientProvider>);
+  expect(screen.getByText("600 simulated trips.", { exact: false })).toBeTruthy();   // 300 rule shoppers × 2 arms
+  fireEvent.change(screen.getByLabelText("Question for the test"), { target: { value: "Does the new pack sell more?" } });
+  fireEvent.click(screen.getByRole("button", { name: "Draft the test" }));
+  expect(await screen.findByText(/160 simulated trips through the model/)).toBeTruthy();   // 80 vision shoppers × 2 arms
+  const run = screen.getAllByRole("button").find((b) => /^Run /.test(b.textContent ?? "") || /Start/.test(b.textContent ?? ""));
+  fireEvent.click(run!);
+  await waitFor(() => expect(startExperiment).toHaveBeenCalled());
+  expect(vi.mocked(startExperiment).mock.calls[0]![1]).toMatchObject({ engine: "vlm", panel: 80 });
+});

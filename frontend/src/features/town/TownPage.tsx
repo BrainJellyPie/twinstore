@@ -123,7 +123,7 @@ export function TownPage({ projectId }: { projectId: string }) {
         {analysisError && <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">{analysisError.message}</p>}
         {(townQ.isSuccess || town) && <>
           <GeneratePanel projectId={projectId} onDone={setTown} onError={onError} hasTown={!!town} />
-          <ImportPanel projectId={projectId} onDone={setTown} onError={onError} />
+          <ImportPanel projectId={projectId} onDone={setTown} onError={onError} hasTown={!!town} />
         </>}
 
         {town && (
@@ -253,6 +253,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
   const { t } = useI18n();
   const [spec, setSpec] = useState<TownSpec>({ archetype: "residential", size_m: 800, density: 0.5, n_competitors: null, neighbor_categories: ["cafe"], seed: 1 });
   const gen = useMutation({ mutationFn: () => api.generateTown(projectId, spec), onSuccess: onDone, onError });
+  const replace = useReplaceConfirm(hasTown);
   // "Describe the area": the text model fills the form below; generating stays a separate, explicit step.
   const [area, setArea] = useState("");
   const areaLength = Array.from(area.trim()).length;
@@ -342,19 +343,38 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
             })}
           </div>
         </div>
-        <Button size="sm" className="w-full" onClick={() => gen.mutate()} disabled={gen.isPending}>
-          {gen.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />} {hasTown ? t("areaRegenerate") : t("areaGenerate")}
+        <Button size="sm" className="w-full" variant={replace.armed ? "destructive" : "default"} onBlur={replace.disarm}
+          onClick={() => replace.confirm(() => gen.mutate())} disabled={gen.isPending}>
+          {gen.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}{" "}
+          {replace.armed ? t("areaReplaceConfirm") : hasTown ? t("areaRegenerate") : t("areaGenerate")}
         </Button>
+        {replace.armed && <p role="status" className="text-muted-foreground">{t("areaReplaceHint")}</p>}
       </div>
     </details>
   );
 }
 
-function ImportPanel({ projectId, onDone, onError }: { projectId: string; onDone: (t: Town) => void; onError: (e: unknown) => void }) {
+/** Replacing a neighborhood loses its what-if venues and storefront ratings: with one on the map, the first click
+ * only asks (the button says so) and a second click replaces it; leaving the button cancels. */
+function useReplaceConfirm(hasTown: boolean) {
+  const [armed, setArmed] = useState(false);
+  return {
+    armed: armed && hasTown,
+    disarm: () => setArmed(false),
+    confirm: (run: () => void) => {
+      if (hasTown && !armed) { setArmed(true); return; }
+      setArmed(false);
+      run();
+    },
+  };
+}
+
+function ImportPanel({ projectId, onDone, onError, hasTown }: { projectId: string; onDone: (t: Town) => void; onError: (e: unknown) => void; hasTown: boolean }) {
   const { t } = useI18n();
   const [address, setAddress] = useState("");
   const [radius, setRadius] = useState(600);
   const imp = useMutation({ mutationFn: () => api.importTownFromMap(projectId, { address, radius_m: radius }), onSuccess: onDone, onError });
+  const replace = useReplaceConfirm(hasTown);
   return (
     <details className="rounded-lg border p-3">
       <summary className="flex cursor-pointer items-center gap-1.5 font-medium"><Globe2 className="size-4" /> {t("areaRealMap")}</summary>
@@ -365,9 +385,12 @@ function ImportPanel({ projectId, onDone, onError }: { projectId: string; onDone
           <input type="range" min={200} max={1500} step={50} value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="flex-1 accent-primary" />
           <span className="w-14 text-right tabular-nums">{radius} m</span>
         </label>
-        <Button size="sm" variant="outline" className="w-full" onClick={() => imp.mutate()} disabled={!address.trim() || imp.isPending}>
-          {imp.isPending ? <Loader2 className="size-3 animate-spin" /> : <Globe2 className="size-3" />} {t("areaImport")}
+        <Button size="sm" variant={replace.armed ? "destructive" : "outline"} className="w-full" onBlur={replace.disarm}
+          onClick={() => replace.confirm(() => imp.mutate())} disabled={!address.trim() || imp.isPending}>
+          {imp.isPending ? <Loader2 className="size-3 animate-spin" /> : <Globe2 className="size-3" />}{" "}
+          {replace.armed ? t("areaReplaceConfirm") : t("areaImport")}
         </Button>
+        {replace.armed && <p role="status" className="text-muted-foreground">{t("areaReplaceHint")}</p>}
         <p className="text-muted-foreground">{t("areaImportHint")}</p>
       </div>
     </details>

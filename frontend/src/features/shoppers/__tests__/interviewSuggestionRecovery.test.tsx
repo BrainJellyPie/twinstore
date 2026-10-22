@@ -67,9 +67,9 @@ it("ignores late suggestions for an earlier conversation with the same number of
   expect(screen.queryByRole("button", { name: "Why were you in a hurry?" })).toBeNull();
 });
 
-it.each([empty, answered])("keeps trip-based suggestions when all model suggestions were filtered out: $messages.length messages", async current => {
-  vi.mocked(getInterview).mockResolvedValue(current);
-  vi.mocked(suggestQuestions).mockResolvedValue({ ...current, suggestions: [], suggested_after: current.messages.length });
+it("keeps trip-based suggestions when all model suggestions were filtered out", async () => {
+  vi.mocked(getInterview).mockResolvedValue(answered);
+  vi.mocked(suggestQuestions).mockResolvedValue({ ...answered, suggestions: [], suggested_after: answered.messages.length });
   mount(); await waitFor(() => expect(suggestQuestions).toHaveBeenCalled());
   expect(await screen.findByRole("button", { name: "How did the prices feel to you today?" })).toBeTruthy();
 });

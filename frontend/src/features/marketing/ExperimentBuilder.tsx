@@ -93,6 +93,12 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
     return (initial?.focus_skus ?? []).filter((s) => !changed.has(s));
   });
 
+  // A switch to vision shoppers (by hand, by a drafted design or a recipe) starts from a panel sized for model calls:
+  // 300 rule shoppers per arm are seconds, 300 vision shoppers per arm are thousands of model calls.
+  const switchEngine = (next: ExperimentEngine) => {
+    setEngine(next);
+    setPanel((current) => (next === "vlm" ? Math.min(current, 80) : Math.max(current, 300)));
+  };
   const usesPackage = variants.some((v) => v.changes.some((c) => c.kind === "package"));
   const focus = [...new Set([...variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).filter(Boolean), ...extraFocus])].slice(0, 20);
   const complete = variants.length > 0 && variants.every((v) => v.name.trim() && v.changes.length > 0 && v.changes.every(ready));
@@ -130,7 +136,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
       const nextFocus = d.focus_skus.filter((s) => !d.variants.some((v) => v.changes.some((c) => c.sku === s)));
       const nextName = name.trim() ? name : d.name;
       setVariants(nextVariants);
-      setEngine(d.engine);
+      if (d.engine !== engine) switchEngine(d.engine);
       setHero(nextHero);
       setExtraFocus(nextFocus);
       setName(nextName);
@@ -237,7 +243,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
                 const built = r.build();
                 if (built.length) {
                   setVariants(built);
-                  if (r.needs === "vlm") setEngine("vlm");
+                  if (r.needs === "vlm" && engine !== "vlm") switchEngine("vlm");
                   if (!name) setName(`${heroProduct?.name ?? hero} · ${t(r.label).toLowerCase()}`);
                 }
               }}
@@ -296,7 +302,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
           <span className="text-xs text-muted-foreground">{t("mkShoppers")}</span>
           <div className="grid grid-cols-2 gap-1.5">
             {([["rule", "mkRuleShoppers", "mkRuleShoppersHint"], ["vlm", "mkVisionShoppers", "mkVisionShoppersHint"]] as const).map(([k, title, hint]) => (
-              <button key={k} type="button" onClick={() => { setEngine(k); setPanel(k === "vlm" ? Math.min(panel, 80) : Math.max(panel, 300)); }}
+              <button key={k} type="button" onClick={() => switchEngine(k)}
                 className={cn("rounded-xl border px-3 py-2 text-left transition-colors", engine === k ? "border-primary bg-primary/[0.07]" : "hover:border-foreground/20")}>
                 <b className="block text-sm">{t(title)}</b>
                 <span className="text-[0.7rem] text-muted-foreground">{t(hint)}</span>

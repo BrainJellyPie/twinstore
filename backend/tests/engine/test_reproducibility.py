@@ -111,3 +111,46 @@ def test_failures_are_recorded_not_silently_dropped():
     assert len(agg.diagnostics.failed_customers) == 5
     assert "boom" in agg.diagnostics.failed_customers[0].reason
     assert progress[-1] == (5, 5, 5)
+
+
+def test_a_model_that_never_answers_is_not_asked_for_every_shopper():
+    """A key turned down, no credit left: once the first shoppers have all failed, the rest are not tried (each try
+    is two model attempts), and they are recorded as not tried with the first error."""
+    calls: list[str] = []
+
+    class _Refusing(_RecordingEngine):
+        async def decide_actions(self, context: PerCustomerContext) -> EngineDecision:
+            calls.append(context.persona.id)
+            raise RuntimeError("AuthenticationError: invalid x-api-key")
+
+    store, personas = _sample("run_ab0039", 40)
+    pf = AStarPathFinder()
+    runner = PerCustomerSimulationRunner(SimulationConfig(), _Refusing(), pf, sample_cue, BEHAVIOR_PATTERNS)
+    progress: list[tuple[int, int, int]] = []
+    agg, results = asyncio.run(runner.run(store, personas, max_concurrent=1,
+                                          on_progress=lambda c, f, t: progress.append((c, f, t))))
+    assert results == []
+    assert len(set(calls)) == 10 and len(calls) == 20   # ten shoppers, two attempts each
+    failed = agg.diagnostics.failed_customers
+    assert len(failed) == 40 and agg.diagnostics.requested_customers == 40
+    skipped = [f for f in failed if f.reason.startswith("not tried:")]
+    assert len(skipped) == 30 and all("invalid x-api-key" in f.reason for f in skipped)
+    assert progress[-1] == (40, 40, 40)
+
+
+def test_a_run_that_has_succeeded_keeps_trying_after_failures():
+    calls: list[str] = []
+
+    class _Flaky(_RecordingEngine):
+        async def decide_actions(self, context: PerCustomerContext) -> EngineDecision:
+            calls.append(context.persona.id)
+            if len(calls) == 1:
+                return EngineDecision(actions=[], engine_type=self.engine_type)
+            raise RuntimeError("RateLimitError: slow down")
+
+    store, personas = _sample("run_ab0039", 25)
+    pf = AStarPathFinder()
+    runner = PerCustomerSimulationRunner(SimulationConfig(), _Flaky(), pf, sample_cue, BEHAVIOR_PATTERNS)
+    agg, results = asyncio.run(runner.run(store, personas, max_concurrent=1))
+    assert len(results) == 1 and len(agg.diagnostics.failed_customers) == 24
+    assert not any(f.reason.startswith("not tried:") for f in agg.diagnostics.failed_customers)

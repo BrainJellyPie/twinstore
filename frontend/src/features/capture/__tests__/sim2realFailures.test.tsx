@@ -59,3 +59,14 @@ it("keeps a measured zero-agreement result visible when a pair exists", async ()
   expect(screen.queryByText("No complete response pairs")).toBeNull();
   expect(screen.getByText("1 model call failed")).toBeTruthy();
 });
+
+it("says how many vision-model calls the panel makes before it is run", () => {
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <ShelfLabPanel projectId="project" captureId="cap_test" result={result} draft={EMPTY_DRAFT} setDraft={vi.fn()}
+      editId={null} onSelectEdit={vi.fn()} onFocus={vi.fn()} onAttention={vi.fn()} />
+  </QueryClientProvider>);
+  expect(screen.getByText("72 vision-model calls.")).toBeTruthy();   // 24 shoppers × render, tagged and raw photo
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(screen.getByText("48 vision-model calls.")).toBeTruthy();
+  expect(api.startSim2Real).not.toHaveBeenCalled();
+});
