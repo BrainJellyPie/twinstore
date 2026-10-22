@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.10 — One crew for the tills and the shelves; a backroom behind them; older runs show their results
+
 ### One crew for the tills and the shelves
 - Tills and refills used to be staffed separately: refill rounds were instant and cost nothing at the tills. A store
   can now have a crew — **Crew on duty (tills and shelves)** — who serve at the tills when shoppers wait and refill
