@@ -391,6 +391,76 @@ export interface RunOptions {
   plan_policy?: "vlm" | "rule" | null;
   // Vision shoppers: the rendered shelf chart, or the 3D store's photo of each face above it.
   shelf_view?: ShelfViewMode | null;
+  // Shoppers share the store: finite stock, restocking, a line at the tills. Omitted = each shopper alone.
+  operations?: OperationsConfig;
+}
+
+/** How the shared store runs (backend domain/operations.py). Every field falls back to the server default. */
+export interface OperationsConfig {
+  stock_per_facing?: number;
+  stock_overrides?: Record<string, number>;
+  restock_every_min?: number | null;
+  substitute_share?: number;
+  open_counters?: number | null;
+  checkout_base_sec?: number;
+  checkout_item_sec?: number;
+  patience_sec?: number;
+  patience_sd?: number;
+  target_wait_sec?: number;
+}
+
+export interface StockoutStats {
+  sku: string;
+  name: string;
+  rack_id: string;
+  rack_name: string;
+  stock: number;
+  sold_units: number;
+  lost_units: number;
+  lost_revenue: number;
+  substituted_units: number;
+  shoppers_missed: number;
+  first_out: string;
+  minutes_out: number;
+}
+
+export interface QueueHour {
+  hour: string;
+  arrivals: number;
+  avg_wait_sec: number;
+  max_wait_sec: number;
+  abandoned: number;
+  counters_needed: number;
+}
+
+/** What sharing the store did to a run (GET /runs/{rid}/operations; 404 = each shopper had the store alone). */
+export interface OperationsReport {
+  config: Required<Omit<OperationsConfig, "stock_overrides">> & { stock_overrides: Record<string, number> };
+  days: number;
+  counters: number;
+  counters_in_layout: number;
+  stockout_faces: number;
+  shoppers_hit: number;
+  lost_units: number;
+  lost_revenue: number;
+  substituted_units: number;
+  substituted_revenue: number;
+  restocks: number;
+  queued: number;
+  avg_wait_sec: number;
+  p90_wait_sec: number;
+  max_wait_sec: number;
+  abandoned: number;
+  abandoned_units: number;
+  abandoned_revenue: number;
+  counter_utilization: number;
+  counters_needed: number;
+  hours: QueueHour[];
+  stockouts: StockoutStats[];
+}
+
+export function getRunOperations(projectId: string, runId: string, signal?: AbortSignal): Promise<OperationsReport> {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations`, { signal });
 }
 
 export type ShelfViewMode = "chart" | "photo_chart";

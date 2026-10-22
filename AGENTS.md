@@ -141,6 +141,8 @@ store-category labels. Server-written text (analyst answers, run/optimizer notes
 fields, model replies and errors) stays as sent; only the no-situation `baseline` preset reads as the translated
 ordinary day. `richText()` puts bold figures or code into a translated sentence;
 `timeFormat.ts` gives weekday names and store clocks in the selected language.
+The shared-store run option and the **Store operations** results use `operationsMessages.ts` (`ops*`); their
+counts are written "label: value" so no language has to agree a noun with a number.
 Coverage is still being audited; a catalog entry alone does not prove every state is localized.
 Add translations in all six columns
 when extending these surfaces. Use the selected locale for dates and numbers.

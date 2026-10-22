@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
+import { ApiError } from "@/shared/api/errors";
 import { queryKeys } from "@/shared/queries/keys";
 
 export function useAvailableModels(enabled = true) {
@@ -28,6 +29,23 @@ export function useProjectRuns(projectId: string, enabled = true) {
     enabled,
     refetchInterval: (q) =>
       q.state.data?.some((r) => r.status === "running" || r.status === "pending") ? 2000 : false,
+  });
+}
+
+/** The shared store's stock-outs and till lines; `null` for runs whose shoppers each had the store alone. */
+export function useRunOperations(projectId: string, runId: string) {
+  return useQuery({
+    queryKey: queryKeys.runOperations(projectId, runId),
+    queryFn: async ({ signal }) => {
+      try {
+        return await api.getRunOperations(projectId, runId, signal);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      }
+    },
+    staleTime: Infinity,
+    retry: false,
   });
 }
 

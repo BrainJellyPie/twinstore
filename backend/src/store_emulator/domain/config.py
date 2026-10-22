@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, SecretStr
 
+from .operations import OperationsConfig
 from .providers import EnsembleConfig
 from .rack import RackType
 from .scenario import Scenario, ScenarioPriors
@@ -229,6 +230,9 @@ class SimulationConfig(BaseModel):
     # type — grocery formats use the profile fitted to real data (engine/scenario.py GROCERY_PRIORS),
     # the others the convenience-store priors.
     scenario_priors: ScenarioPriors | None = None
+    # Shoppers share one store: finite stock on the shelves, restocking and a line at the tills. None = each shopper
+    # has the store to themselves (endless stock, no waiting) as before.
+    operations: OperationsConfig | None = None
 
     def dwell_for(self, rack_type: RackType) -> DwellRange:
         return self.dwell.get(rack_type, DwellRange(min=5, max=30))

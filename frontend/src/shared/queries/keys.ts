@@ -17,6 +17,8 @@ export const queryKeys = {
     ["projects", projectId, "setups", setupId, "run-estimate", options] as const,
   // All runs of a project across layouts (compare dialog).
   projectRuns: (projectId: string) => ["projects", projectId, "all-runs"] as const,
+  runOperations: (projectId: string, runId: string) =>
+    ["projects", projectId, "runs", runId, "operations"] as const,
   runDiagnostics: (projectId: string, runId: string) =>
     ["projects", projectId, "runs", runId, "diagnostics"] as const,
   compare: (projectId: string, runA: string, runB: string) =>
