@@ -315,7 +315,7 @@ export function CaptureUploadQueue({
   return (
     <section
       aria-label="Photo upload queue"
-      className="max-h-[70dvh] space-y-3 overflow-y-auto rounded-2xl border bg-card p-4 text-sm md:max-h-full"
+      className="min-w-0 max-h-[70dvh] space-y-3 overflow-y-auto rounded-2xl border bg-card p-4 text-sm md:max-h-full [&_button]:h-auto [&_button]:min-h-9 [&_button]:max-w-full [&_button]:whitespace-normal [&_button]:py-2"
     >
       <h2 className="text-lg font-semibold">Add shelf photos together</h2>
       <p>
@@ -323,7 +323,7 @@ export function CaptureUploadQueue({
         total). Review each result, then use Combine reviewed shelf photos to
         build one layout.
       </p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>label]:min-w-0">
         <label>
           Find products with
           <select
@@ -369,7 +369,7 @@ export function CaptureUploadQueue({
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
           >
-            {["USD", "KRW", "JPY", "EUR", "GBP"].map((c) => (
+            {[...new Set(["USD", "KRW", "JPY", "EUR", "GBP", currency])].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>

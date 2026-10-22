@@ -48,7 +48,7 @@ export function validateRecovery(value: unknown, projectId: string): RecoveryCop
     || !object(value.options) || !Array.isArray(value.photos) || !value.photos.length || value.photos.length > MAX_QUEUE_FILES) throw invalid();
   const options = value.options;
   if (typeof options.detector !== "string" || !["auto", "classic", "gdino", "vlm"].includes(options.detector)
-    || !text(options.model, 512) || typeof options.currency !== "string" || !["USD", "KRW", "JPY", "EUR", "GBP"].includes(options.currency)
+    || !text(options.model, 512) || typeof options.currency !== "string" || options.currency.length !== 3 || !/^[A-Z]{3}$/.test(options.currency)
     || typeof options.rack_type !== "string" || !["shelf", "fridge"].includes(options.rack_type)) throw invalid();
   const ids = new Set<string>(), requests = new Set<string>(), digests = new Set<string>();
   let bytes = 0;
