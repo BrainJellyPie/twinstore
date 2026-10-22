@@ -430,3 +430,52 @@ def test_filled_child_stays_within_product_editor_sku_limit(workflow, existing_c
         assert '5,000' in preview.text and '5,000' in saved.text
         assert not setup_path(PID, 'setup_starter_' + 'e' * 32).exists()
     assert read_setup(PID, SID) == source
+
+
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+@pytest.mark.parametrize("stored_kind", ["missing", "custom", "reviewed"])
+@pytest.mark.parametrize("uploaded", [False, True])
+def test_reused_product_preview_resolves_photos_but_save_preserves_original_values(workflow, currency, stored_kind, uploaded):
+    import io
+    from PIL import Image
+    from store_emulator.application.storage.images import layout_image_url, load_manifest, save_image
+
+    client, source = workflow
+    product = next(p for p in CATALOG["pharmacy_care"] if p.en == "Sterile Gauze Pads")
+    item = catalog_slot_item(product, currency)
+    assert item.image_url
+    item.name, item.price = "My own label", 777
+    item.image_url = {
+        "missing": None,
+        "custom": "/custom/selected.png",
+        "reviewed": f"/api/projects/{PID}/product-photo-files/" + "a" * 64,
+    }[stored_kind]
+    source["store"]["currency"] = currency
+    source["store"]["racks"][4]["slots"][0]["items"] = [item.model_dump(mode="json")]
+    path = setup_path(PID, SID)
+    write_json(path, source)
+    before = path.read_bytes()
+    write_json(path.parent.parent / "metadata.json", {"name": "Photo preview", "currency": currency})
+    if uploaded:
+        buf = io.BytesIO()
+        Image.new("RGB", (40, 60), "red").save(buf, format="PNG")
+        save_image(PID, item.sku, buf.getvalue(), "photo.png")
+    expected = layout_image_url(PID, item.sku, item.image_url, load_manifest(PID))
+    body = request(client, assignments=[{"rack_id": "empty", "category": "pharmacy_care", "skus": [item.sku]}])
+    response = client.post(URL + "/preview", json=body)
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report["reused_skus"] == 1 and report["new_skus"] == 0
+    assert report["racks"][0]["products"] == [{**item.model_dump(mode="json"), "image_url": expected}]
+    assert path.read_bytes() == before
+
+    saved = client.post(URL + "/save", json={**body, "request_id": "f" * 32})
+    assert saved.status_code == 200, saved.text
+    child = read_setup(PID, saved.json()["setup_id"])
+    placed = next(r for r in child["store"]["racks"] if r["id"] == "empty")
+    assert all(p == item.model_dump(mode="json") for s in placed["slots"] for p in s["items"])
+    opened = client.get(f"/api/projects/{PID}/setups/{saved.json()['setup_id']}")
+    assert opened.status_code == 200, opened.text
+    resolved = next(r for r in opened.json()["store"]["racks"] if r["id"] == "empty")
+    assert all(p["image_url"] == expected for s in resolved["slots"] for p in s["items"])
+    assert path.read_bytes() == before

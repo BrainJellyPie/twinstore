@@ -6,6 +6,7 @@ from filelock import FileLock, Timeout
 from store_emulator.application.errors import AppError
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
+from store_emulator.application.storage.images import layout_image_url, load_manifest
 from store_emulator.application.storage.setups import new_setup_data, setup_path, read_setup
 from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.product_edits import ProductEditsReceipt
@@ -80,7 +81,12 @@ def _prepare(pid: str, sid: str, req: StarterFillRequest) -> tuple[Store, Starte
 
 
 def preview(pid: str, sid: str, req: StarterFillRequest) -> StarterPreview:
-    return _prepare(pid, sid, req)[1]
+    report = _prepare(pid, sid, req)[1].model_copy(deep=True)
+    manifest = load_manifest(pid)
+    for rack in report.racks:
+        for item in rack.products:
+            item.image_url = layout_image_url(pid, item.sku, item.image_url, manifest)
+    return report
 
 
 def save(pid: str, sid: str, req: StarterFillSave) -> StarterSaved:

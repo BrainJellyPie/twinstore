@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add 32 prepared-food, pharmacy and personal-care photos, bringing the collection to 224.
+  Starter placement previews show current uploaded or bundled photos for reused products without
+  rewriting their saved values. Empty product names retain their SKU label in vision grids.
+
 - Previously saved starter products pick up new bundled photos by exact SKU when no custom photo is set.
   Existing uploads and explicit photos retain priority; layouts are not rewritten on read. Add 32 kitchen,
   pet, technology and everyday-product photos, bringing the local collection to 192.

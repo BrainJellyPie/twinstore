@@ -236,7 +236,7 @@ def render_face(
                               font=name_font, fill=(30, 30, 34), anchor="mt")
             else:
                 draw.rounded_rectangle((x0, y0 + 6, x1, board_y - 2), radius=10, fill=color, outline=(40, 40, 40), width=2)
-                lines = wrap_text(draw, item.name, name_font, x1 - x0 - 14, max_lines=4)
+                lines = wrap_text(draw, item.name or item.sku, name_font, x1 - x0 - 14, max_lines=4)
                 line_h = name_size + 3
                 ty = y0 + 6 + (pkg_h - line_h * len(lines)) // 2 + 6
                 for i, line in enumerate(lines):
