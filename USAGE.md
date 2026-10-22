@@ -1083,7 +1083,8 @@ breakfast spreads, home coffee/tea, bath/body care, first-aid tools, supplements
 accessories, pet enrichment, picnic reusables, artisan snacks and craft refreshments. Further assortments cover
 baking ingredients, global sauces, fresh herbs, frozen and takeaway meals, gift confectionery, baby and oral
 care, hair care, travel essentials, sewing, fine art, bicycle accessories, storage, tabletop games and
-refill cleaning. Ninety-six generated
+refill cleaning. Mediterranean, Korean and Japanese pantry staples, spice blends, deli cheeses, fresh seafood,
+barista tools and party supplies add another 96 products. One hundred twenty-eight generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 Automatic selection sees which products have photos and prefers them only when they fit the store and
 requirements equally well. Products without photos remain available.

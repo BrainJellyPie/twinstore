@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
+  in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.
+
 - Vision shoppers now see available product photos together with names, numbered badges and prices in
   the shelf grid. Bundled, uploaded and reviewed library photos resolve locally. Dense shelves wrap within
   labeled levels; missing or corrupt pictures retain text cards. Shelf tests and interview previews use

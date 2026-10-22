@@ -54,3 +54,21 @@ it.each([
   for (const [index, kind] of kinds.entries())
     expect(classifyProduct("이름을 바꾼 상품", `/api/catalog-images/${sheet}/${index}.webp`).kind).toBe(kind);
 });
+
+it("distinguishes cafe drinks from milk and coffee tools after renaming", () => {
+  for (let index = 0; index < 16; index++) {
+    const product = classifyProduct("지역 상품", `/api/catalog-images/starter-07/${index}.webp`);
+    expect(product.category).toBe(index < 12 ? "drink" : "bakery");
+    expect(product.h).toBeGreaterThan(0);
+  }
+  for (const index of [12, 13, 14, 15])
+    expect(classifyProduct("Milk Coffee", `/api/catalog-images/starter-08/${index}.webp`).category).toBe("other");
+});
+
+it("places fresh seafood photo trays flat in chest displays", () => {
+  for (const index of [10, 11]) {
+    const product = classifyProduct("상품", `/api/catalog-images/starter-08/${index}.webp`);
+    expect(product.lieFlatInChest).toBe(true);
+    expect(product.h).toBeLessThan(product.d);
+  }
+});
