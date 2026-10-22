@@ -10,12 +10,14 @@ import { askShopper, clearInterview, getInterview, interviewKeys, suggestQuestio
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { useI18n } from "@/shared/i18n/i18n";
 
 import { suggestedQuestions } from "./shopperStats";
 
 export function InterviewChat({ projectId, runId, journey, onCite }: {
   projectId: string; runId: string; journey: Journey; onCite: (steps: number[] | null) => void;
 }) {
+  const { locale, t } = useI18n();
   const sid = journey.persona.id;
   const qc = useQueryClient();
   const key = interviewKeys.interview(projectId, runId, sid);
@@ -29,9 +31,9 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
   const ask = useMutation({
     mutationFn: (q: string) => askShopper(projectId, runId, sid, q, model),
     onMutate: (q) => { setPending(q); setText(""); },
-    onSuccess: async (t) => {
+    onSuccess: async (thread) => {
       await qc.cancelQueries({ queryKey: key });
-      qc.setQueryData(key, t);
+      qc.setQueryData(key, thread);
     },
     onError: (_error, question) => setText(current => current || question),
     onSettled: () => setPending(null),
@@ -45,7 +47,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
   });
   const busy = ask.isPending || reset.isPending;
   const messages = transcript.data?.messages ?? [];
-  const first = journey.persona.identity.split(/[,(]/)[0]?.trim() || "the shopper";
+  const first = journey.persona.identity.split(/[,(]/)[0]?.trim() || t("interviewTheShopper");
   // Next questions written by the model for this trip and this conversation; stored ones are reused until the
   // conversation moves on. Without a model (or on error) the trip-based templates stay.
   const stored = transcript.data?.suggested_after === messages.length ? transcript.data.suggestions ?? [] : [];
@@ -59,15 +61,15 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
   const written = stored.length ? stored
     : ideas.data?.suggested_after === messages.length && JSON.stringify(ideas.data.messages) === JSON.stringify(messages)
       ? ideas.data.suggestions ?? [] : [];
-  const chips = written.length ? written : messages.length === 0 || ideas.isError || ideas.isSuccess ? suggestedQuestions(journey) : [];
+  const chips = written.length ? written : messages.length === 0 || ideas.isError || ideas.isSuccess ? suggestedQuestions(journey, locale) : [];
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "nearest" });
   }, [messages.length, pending]);
 
   const send = (q: string) => {
-    const t = q.trim();
-    if (t && !busy) ask.mutate(t);
+    const question = q.trim();
+    if (question && !busy) ask.mutate(question);
   };
 
   return (
@@ -75,7 +77,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
       <div className="space-y-2">
         {messages.length === 0 && !pending && (
           <p className="rounded-xl bg-foreground/[0.035] px-3 py-2 text-[0.78rem] text-muted-foreground">
-            Ask {first} about the trip. Answers come only from what this shopper saw and did, and point at the steps they mean.
+            {t("interviewIntro", { name: first })}
           </p>
         )}
         {messages.map((m, i) => (
@@ -89,7 +91,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
               {m.text}
               {m.steps.length > 0 && (
                 <span className="mt-1 flex flex-wrap gap-1">
-                  {m.steps.map((s) => <span key={s} className="num rounded-full bg-foreground/[0.07] px-1.5 text-[0.65rem] text-muted-foreground">step {s}</span>)}
+                  {m.steps.map((s) => <span key={s} className="num rounded-full bg-foreground/[0.07] px-1.5 text-[0.65rem] text-muted-foreground">{t("interviewStep", { step: s })}</span>)}
                 </span>
               )}
             </div>
@@ -98,7 +100,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
         {pending && (
           <>
             <div className="flex justify-end"><div className="max-w-[88%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-[0.8rem] text-primary-foreground opacity-80">{pending}</div></div>
-            <div className="flex items-center gap-1.5 text-[0.75rem] text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> {first} is thinking…</div>
+            <div className="flex items-center gap-1.5 text-[0.75rem] text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> {t("interviewThinking", { name: first })}</div>
           </>
         )}
         {ask.error && <p className="text-[0.75rem] text-destructive">{ask.error.message}</p>}
@@ -106,11 +108,11 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
         <div ref={end} />
       </div>
       {written.length > 0 && (
-        <p className="flex items-center gap-1 text-[0.7rem] text-muted-foreground" aria-label="Written for this trip">
-          <Sparkles className="size-3 text-primary/80" /> Follow-ups for this trip
+        <p className="flex items-center gap-1 text-[0.7rem] text-muted-foreground" aria-label={t("interviewWritten")}>
+          <Sparkles className="size-3 text-primary/80" /> {t("interviewFollowUps")}
         </p>
       )}
-      <div className="-mt-0.5 flex flex-wrap items-center gap-1.5" aria-label="Suggested questions">
+      <div className="-mt-0.5 flex flex-wrap items-center gap-1.5" aria-label={t("interviewSuggested")}>
         {chips.map((q) => (
           <button key={q} type="button" onClick={() => send(q)} disabled={busy}
             className="rounded-full border px-2.5 py-1 text-left text-[0.72rem] text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground disabled:opacity-50">
@@ -119,7 +121,7 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
         ))}
         {!written.length && ideas.isFetching && messages.length > 0 && (
           <span className="inline-flex items-center gap-1 text-[0.72rem] text-muted-foreground">
-            <Loader2 className="size-3 animate-spin" /> Thinking of follow-ups…
+            <Loader2 className="size-3 animate-spin" /> {t("interviewThinkingFollowUps")}
           </span>
         )}
       </div>
@@ -133,18 +135,18 @@ export function InterviewChat({ projectId, runId, journey, onCite }: {
             }
           }}
           rows={2}
-          placeholder={`Ask ${first}…`}
+          placeholder={t("interviewAskPlaceholder", { name: first })}
           className="min-h-[2.6rem] flex-1 resize-none rounded-xl border bg-card/60 px-3 py-2 text-[0.8rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
         />
-        <Button type="submit" size="sm" className="h-[2.6rem]" disabled={!text.trim() || busy} aria-label="Ask"><Send className="size-4" /></Button>
+        <Button type="submit" size="sm" className="h-[2.6rem]" disabled={!text.trim() || busy} aria-label={t("analystAsk")}><Send className="size-4" /></Button>
       </form>
       <div className="flex items-center gap-2 text-[0.72rem] text-muted-foreground">
-        <select value={model} onChange={(e) => setModel(e.target.value)} className="h-7 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5" aria-label="Model">
-          <option value="">App's text model</option>
+        <select value={model} onChange={(e) => setModel(e.target.value)} className="h-7 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5" aria-label={t("model")}>
+          <option value="">{t("interviewAppModel")}</option>
           {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
         </select>
         {messages.length > 0 && (
-          <button type="button" onClick={() => reset.mutate()} disabled={busy} className="inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50"><RotateCcw className="size-3" /> Start over</button>
+          <button type="button" onClick={() => reset.mutate()} disabled={busy} className="inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50"><RotateCcw className="size-3" /> {t("interviewStartOver")}</button>
         )}
       </div>
     </div>

@@ -35,7 +35,7 @@ export interface RunToolbarProps {
 }
 
 export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCount, layouts }: RunToolbarProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const runs = useRuns(projectId, setupId).data
     .filter((r) => r.status === "completed")
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -57,19 +57,19 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
   const editable = setupStatus === "draft";
 
   return (
-    <div className="relative z-10 flex min-w-0 shrink-0 flex-col gap-2" role="region" aria-label="Run actions">
+    <div className="relative z-10 flex min-w-0 shrink-0 flex-col gap-2" role="region" aria-label={t("tbRunActions")}>
       <LastRunFailure projectId={projectId} setupId={setupId}
         className="glass rounded-xl border border-destructive/40 px-3 py-1.5 text-sm text-destructive shadow-float" />
       <div className="glass flex flex-wrap items-center gap-1 rounded-2xl border p-1.5 shadow-float">
         <Select value={runId} onValueChange={setViewRunId}>
           {/* Sized to the label ("Rule-based · seed 0 · preview · 05:12 PM"), cut only when the bar is narrower. */}
-          <SelectTrigger className="h-9 w-auto min-w-[min(270px,100%)] max-w-full rounded-xl text-sm" aria-label="Run shown">
+          <SelectTrigger className="h-9 w-auto min-w-[min(270px,100%)] max-w-full rounded-xl text-sm" aria-label={t("tbRunShown")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {runs.map((r) => (
               <SelectItem key={r.run_id} value={r.run_id} className="text-sm">
-                {runLabel(r)}
+                {runLabel(r, locale)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -78,10 +78,10 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
           <Play className="size-4" /> {t("runAgain")}
         </Button>
         <Button size="sm" variant="ghost" className="h-9 gap-1.5 rounded-xl px-3 text-sm" onClick={() => setCompareOpen(true)}>
-          <GitCompareArrows className="size-4" /> Compare
+          <GitCompareArrows className="size-4" /> {t("tbCompare")}
         </Button>
         <Button size="sm" variant="ghost" className="h-9 gap-1.5 rounded-xl px-3 text-sm" onClick={() => setOptimizeOpen(true)}>
-          <Wand2 className="size-4" /> Optimize
+          <Wand2 className="size-4" /> {t("tbOptimize")}
         </Button>
         <Button size="sm" variant="ghost" className="h-9 gap-1.5 rounded-xl px-3 text-sm" asChild>
           <a href={runExportUrl(projectId, runId)} download>
@@ -90,7 +90,7 @@ export function RunToolbar({ projectId, setupId, runId, setupStatus, personaCoun
         </Button>
         {editable && (
           <Button size="sm" variant="ghost" className="h-9 gap-1.5 rounded-xl px-3 text-sm" onClick={() => setViewRunId(null)}>
-            <Pencil className="size-4" /> Edit layout
+            <Pencil className="size-4" /> {t("tbEditLayout")}
           </Button>
         )}
       </div>

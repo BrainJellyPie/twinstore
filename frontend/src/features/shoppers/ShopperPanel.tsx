@@ -16,17 +16,20 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { useAssistStore } from "@/stores/assistStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
+import { engineLabel } from "@/features/runs/labels";
 
 import { GroupInterviewPanel } from "./GroupInterview";
 import { InterviewChat } from "./InterviewChat";
 import { JourneyMap, JourneySteps } from "./JourneyView";
 import { shopperRows, sortShoppers, type ShopperSort } from "./shopperStats";
 
-const SORTS: { id: ShopperSort; label: string }[] = [
-  { id: "spent", label: "Top spenders" },
-  { id: "nothing", label: "Left empty-handed" },
-  { id: "impulse", label: "Impulse buys" },
-  { id: "longest", label: "Longest visits" },
+const SORTS: { id: ShopperSort; label: MessageKey }[] = [
+  { id: "spent", label: "shopperSortSpent" },
+  { id: "nothing", label: "shopperSortNothing" },
+  { id: "impulse", label: "shopperSortImpulse" },
+  { id: "longest", label: "shopperSortLongest" },
 ];
 
 interface ShopperPanelProps {
@@ -38,6 +41,7 @@ export function ShopperPanel(props: ShopperPanelProps) {
 }
 
 function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPanelProps) {
+  const { locale, t } = useI18n();
   const currency = useSimulationStore((s) => s.currency);
   const [selected, setSelected] = useState<string | null>(null);
   const [sort, setSort] = useState<ShopperSort>("spent");
@@ -83,11 +87,12 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
       .filter((r) => !q || r.id.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
   }, [found, sorted, rows, query]);
   const setHighlight = useSimulationStore((s) => s.setHighlightId);
+  const oneDecimal = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const findLength = Array.from(describe.trim()).length;
 
   if (selected) {
     return <ShopperDetail projectId={projectId} runId={runId} store={store} sid={selected} customers={customers}
-      backLabel={group ? "Group interview" : "All shoppers"} onBack={() => { setSelected(null); setHighlight(null); }} />;
+      backLabel={group ? t("groupInterview") : t("allShoppers")} onBack={() => { setSelected(null); setHighlight(null); }} />;
   }
   if (group) {
     return <GroupInterviewPanel projectId={projectId} runId={runId} currency={currency}
@@ -100,30 +105,30 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
         className="flex w-full items-center gap-2.5 rounded-2xl border border-dashed border-primary/40 bg-primary/[0.04] px-3 py-2.5 text-left transition-colors hover:border-primary">
         <UsersRound className="size-4 shrink-0 text-primary" />
         <span className="min-w-0">
-          <span className="block text-[0.8rem] font-semibold">Group interview</span>
-          <span className="block text-[0.7rem] text-muted-foreground">Ask many shoppers one question — e.g. everyone who left empty-handed — and see the themes</span>
+          <span className="block text-[0.8rem] font-semibold">{t("groupInterview")}</span>
+          <span className="block text-[0.7rem] text-muted-foreground">{t("groupInterviewHint")}</span>
         </span>
       </button>
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${rows.length.toLocaleString()} shoppers`} className="h-9 pl-8 text-sm" />
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("shopperSearch", { count: rows.length })} className="h-9 pl-8 text-sm" />
       </div>
       <div className="flex items-center gap-1.5 rounded-xl bg-foreground/[0.035] p-1.5">
         <Sparkles className="ml-1 size-3.5 shrink-0 text-primary" aria-hidden />
         <Input value={describe} onChange={(e) => setDescribe(Array.from(e.target.value).slice(0, 400).join(""))}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && findLength >= 3 && !finder.isPending) { e.preventDefault(); requestFind(describe); } }}
-          placeholder="Describe shoppers, e.g. women in their 20s who stopped at ice cream but bought nothing"
-          aria-label="Describe shoppers to find" className="h-8 min-w-0 flex-1 bg-card text-[0.78rem]" />
+          placeholder={t("shopperDescribePlaceholder")}
+          aria-label={t("shopperDescribe")} className="h-8 min-w-0 flex-1 bg-card text-[0.78rem]" />
         <Button type="button" size="sm" variant="outline" className="h-8 px-2.5 text-xs" disabled={findLength < 3 || finder.isPending} onClick={() => requestFind(describe)}>
-          {finder.isPending ? <Loader2 className="size-3.5 animate-spin" /> : "Find"}
+          {finder.isPending ? <Loader2 className="size-3.5 animate-spin" /> : t("shopperFind")}
         </Button>
       </div>
       {finder.error && <p role="alert" className="text-[0.72rem] text-destructive">{finder.error.message}</p>}
       {found && (
-        <section ref={foundCard} className="space-y-1.5 rounded-xl border border-primary/40 bg-primary/[0.04] px-2.5 py-2" aria-label="Found shoppers">
+        <section ref={foundCard} className="space-y-1.5 rounded-xl border border-primary/40 bg-primary/[0.04] px-2.5 py-2" aria-label={t("shopperFound")}>
           <div className="flex items-start justify-between gap-2">
-            <p className="text-[0.78rem]"><b>{found.label}</b> <span className="num text-muted-foreground">{found.persona_ids.length.toLocaleString()} of {found.total.toLocaleString()} shoppers</span></p>
-            <button type="button" onClick={() => { setAccepted(null); finder.reset(); }} aria-label="Clear the found shoppers"
+            <p className="text-[0.78rem]"><b>{found.label}</b> <span className="num text-muted-foreground">{t("shopperFoundCount", { count: found.persona_ids.length, total: found.total })}</span></p>
+            <button type="button" onClick={() => { setAccepted(null); finder.reset(); }} aria-label={t("shopperClearFound")}
               className="rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="size-3.5" /></button>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -132,13 +137,13 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
           {found.warnings.map((w) => <p key={w} className="text-[0.68rem] text-muted-foreground">· {w}</p>)}
           {found.near_misses.length > 0 && (
             <div className="text-[0.68rem] text-muted-foreground">
-              <p>No shopper fits all of these. Loosen one condition:</p>
+              <p>{t("shopperNoFit")}</p>
               <ul className="list-disc pl-4">{found.near_misses.map((m) => <li key={m}>{m}</li>)}</ul>
             </div>
           )}
           {found.persona_ids.length >= 2 && (
             <button type="button" onClick={() => setGroup(true)} className="inline-flex items-center gap-1 text-[0.72rem] text-primary hover:underline">
-              <UsersRound className="size-3" /> Interview these shoppers
+              <UsersRound className="size-3" /> {t("shopperInterviewThese")}
             </button>
           )}
         </section>
@@ -147,7 +152,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
         {SORTS.map((s) => (
           <button key={s.id} type="button" onClick={() => setSort(s.id)}
             className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", sort === s.id ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>
-            {s.label}
+            {t(s.label)}
           </button>
         ))}
       </div>
@@ -160,18 +165,18 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-foreground/[0.06] text-[0.68rem] font-semibold">{r.age || "–"}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[0.8rem] font-medium">{r.name}</span>
-                <span className="num block text-[0.68rem] text-muted-foreground">Day {r.day} · {r.arrival} · {r.minutes.toFixed(1)} min · {r.stops} stop{r.stops === 1 ? "" : "s"}</span>
+                <span className="num block text-[0.68rem] text-muted-foreground">{t(r.stops === 1 ? "shopperTripOne" : "shopperTripMany", { day: r.day, time: r.arrival, minutes: oneDecimal.format(r.minutes), stops: r.stops })}</span>
               </span>
               <span className="text-right">
                 <span className="num block text-[0.8rem] font-semibold">{r.units ? formatMoney(r.spent, currency) : "–"}</span>
-                <span className="num block text-[0.68rem] text-muted-foreground">{r.units} item{r.units === 1 ? "" : "s"}{r.impulse ? ` · ${r.impulse} impulse` : ""}</span>
+                <span className="num block text-[0.68rem] text-muted-foreground">{t(r.units === 1 ? "shopperItemsOne" : "shopperItemsMany", { count: r.units })}{r.impulse ? ` · ${t("shopperImpulseCount", { count: r.impulse })}` : ""}</span>
               </span>
             </button>
           </li>
         ))}
       </ul>
-      {list.length > limit && <Button variant="ghost" size="sm" className="w-full" onClick={() => setLimit((l) => l + 60)}>Show more ({list.length - limit})</Button>}
-      {list.length === 0 && <p className="px-1 text-sm text-muted-foreground">No shopper matches.</p>}
+      {list.length > limit && <Button variant="ghost" size="sm" className="w-full" onClick={() => setLimit((l) => l + 60)}>{t("shopperShowMore", { count: list.length - limit })}</Button>}
+      {list.length === 0 && <p className="px-1 text-sm text-muted-foreground">{t("shopperNoMatch")}</p>}
     </div>
   );
 }
@@ -179,6 +184,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
 function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onBack }: {
   projectId: string; runId: string; store: Store; sid: string; customers: CustomerResult[]; backLabel: string; onBack: () => void;
 }) {
+  const { locale, t } = useI18n();
   const journey = useQuery({ queryKey: interviewKeys.journey(projectId, runId, sid), queryFn: ({ signal }) => getJourney(projectId, runId, sid, signal) });
   const [tab, setTab] = useState<"journey" | "interview">("journey");
   const [hover, setHover] = useState<number | null>(null);
@@ -211,24 +217,24 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
     <div className="space-y-3 py-3">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {backLabel}</Button>
-        <Button variant="outline" size="sm" onClick={follow} title="Jump to this shopper's arrival and highlight them in the store"><Crosshair className="size-4" /> Follow in 3D</Button>
+        <Button variant="outline" size="sm" onClick={follow} title={t("shopperFollowHint")}><Crosshair className="size-4" /> {t("shopperFollow")}</Button>
       </div>
       <div className="rounded-2xl border bg-card p-3">
         <div className="text-sm font-semibold">{p.identity}</div>
-        <div className="text-[0.72rem] text-muted-foreground">{p.age_group} · {p.gender} · day {j.day} · {j.arrival_time.slice(0, 5)}–{j.leave_time.slice(0, 5)} · {j.engine_type.replace(/_/g, " ")}</div>
+        <div className="text-[0.72rem] text-muted-foreground">{p.age_group} · {p.gender} · {t("shopperDay", { day: j.day })} · {j.arrival_time.slice(0, 5)}–{j.leave_time.slice(0, 5)} · {engineLabel(j.engine_type, locale)}</div>
         <p className="mt-1.5 line-clamp-3 text-[0.76rem] text-muted-foreground">{p.description}</p>
         <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
-          <Fact label="Came for" value={p.purpose || p.intent || "–"} />
-          <Fact label="Budget" value={p.budget_max ? `${formatMoney(p.budget_min, j.currency)}–${formatMoney(p.budget_max, j.currency)}` : "–"} />
-          <Fact label="Spent" value={`${formatMoney(j.total_spent, j.currency)} · ${j.units}`} />
+          <Fact label={t("shopperCameFor")} value={p.purpose || p.intent || "–"} />
+          <Fact label={t("shopperBudget")} value={p.budget_max ? `${formatMoney(p.budget_min, j.currency)}–${formatMoney(p.budget_max, j.currency)}` : "–"} />
+          <Fact label={t("shopperSpent")} value={`${formatMoney(j.total_spent, j.currency)} · ${j.units}`} />
         </div>
       </div>
       <JourneyMap journey={j} store={store} active={active} onHover={setHover} />
       <div className="flex rounded-xl bg-foreground/[0.055] p-1">
-        {([["journey", "Journey", Route], ["interview", "Interview", MessagesSquare]] as const).map(([id, label, Icon]) => (
+        {([["journey", "shopperJourney", Route], ["interview", "shopperInterview", MessagesSquare]] as const).map(([id, label, Icon]) => (
           <button key={id} type="button" onClick={() => setTab(id)}
             className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[0.8rem] font-medium", tab === id ? "bg-card shadow-sm" : "text-muted-foreground")}>
-            <Icon className="size-3.5" /> {label}
+            <Icon className="size-3.5" /> {t(label)}
           </button>
         ))}
       </div>

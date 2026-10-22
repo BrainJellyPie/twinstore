@@ -1,6 +1,7 @@
-// Colors and labels shared by the neighborhood map and its legend.
+// Colors and label keys shared by the neighborhood map and its legend.
 
 import type { VenueCategory } from "@/shared/api/client";
+import type { MessageKey } from "@/shared/i18n/messages";
 
 export const BUILDING_COLORS: Record<string, string> = {
   apartment: "#93c5fd",
@@ -17,10 +18,10 @@ export const BUILDING_COLORS: Record<string, string> = {
   mixed_use: "#a5b4fc",
 };
 
-export const BUILDING_LABELS: Record<string, string> = {
-  apartment: "Apartments", house: "Houses", studio: "Studios", dormitory: "Dorms", office: "Offices",
-  school: "Schools", university: "University", station: "Station", hospital: "Hospital", hotel: "Hotel",
-  park: "Park", mixed_use: "Mixed use",
+export const BUILDING_LABELS: Record<string, MessageKey> = {
+  apartment: "areaBuildingApartment", house: "areaBuildingHouse", studio: "areaBuildingStudio", dormitory: "areaBuildingDormitory",
+  office: "areaBuildingOffice", school: "areaBuildingSchool", university: "areaBuildingUniversity", station: "areaBuildingStation",
+  hospital: "areaBuildingHospital", hotel: "areaBuildingHotel", park: "areaBuildingPark", mixed_use: "areaBuildingMixedUse",
 };
 
 export const VENUE_COLORS: Record<VenueCategory, string> = {
@@ -40,20 +41,26 @@ export const VENUE_COLORS: Record<VenueCategory, string> = {
   pc_room: "#db2777",
 };
 
-export const VENUE_LABELS: Record<VenueCategory, string> = {
-  convenience: "Convenience store", cafe: "Café", bakery: "Bakery", pharmacy: "Pharmacy", restaurant: "Restaurant",
-  fast_food: "Fast food", supermarket: "Supermarket", bar: "Bar", gym: "Gym", bookstore: "Bookstore",
-  academy: "Academy (hagwon)", laundry: "Laundromat", bank: "Bank", pc_room: "PC room",
+export const VENUE_LABELS: Record<VenueCategory, MessageKey> = {
+  convenience: "areaVenueConvenience", cafe: "areaVenueCafe", bakery: "areaVenueBakery", pharmacy: "areaVenuePharmacy",
+  restaurant: "areaVenueRestaurant", fast_food: "areaVenueFastFood", supermarket: "areaVenueSupermarket", bar: "areaVenueBar",
+  gym: "areaVenueGym", bookstore: "areaVenueBookstore", academy: "areaVenueAcademy", laundry: "areaVenueLaundry",
+  bank: "areaVenueBank", pc_room: "areaVenuePcRoom",
 };
 
 export const ROAD_WIDTH: Record<string, number> = { arterial: 16, street: 9, alley: 4.5, footpath: 2.5 };
 
-export const SEGMENT_LABELS: Record<string, string> = {
-  resident: "Residents", worker: "Office workers", student: "Students", commuter: "Commuters",
-  visitor: "Visitors", linked: "From nearby venues",
+export const SEGMENT_LABELS: Record<string, MessageKey> = {
+  resident: "areaSegmentResident", worker: "areaSegmentWorker", student: "areaSegmentStudent", commuter: "areaSegmentCommuter",
+  visitor: "areaSegmentVisitor", linked: "areaSegmentLinked",
 };
 
-export const ARCHETYPE_LABELS: Record<string, string> = {
-  residential: "Residential", university: "University district", business_district: "Business district",
-  suburban: "Suburban", station_area: "Station area", tourist: "Tourist area", mixed: "Mixed",
+export const ARCHETYPE_LABELS: Record<string, MessageKey> = {
+  residential: "areaArchetypeResidential", university: "areaArchetypeUniversity", business_district: "areaArchetypeBusiness",
+  suburban: "areaArchetypeSuburban", station_area: "areaArchetypeStation", tourist: "areaArchetypeTourist", mixed: "areaArchetypeMixed",
 };
+
+/** The translated label of a key in one of the maps above, or the raw value when the map does not know it. */
+export function labelOf(map: Record<string, MessageKey>, value: string, t: (key: MessageKey) => string): string {
+  return Object.prototype.hasOwnProperty.call(map, value) ? t(map[value]!) : value;
+}

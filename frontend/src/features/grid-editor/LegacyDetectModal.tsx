@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
+import { useI18n } from "@/shared/i18n/i18n";
 import type { SetupDetailWithBlocked } from "./types";
 
 export type LegacyState = "ok" | "with_run" | "clean";
@@ -43,6 +44,7 @@ export function LegacyDetectModal({
   error,
   resetting = false,
 }: LegacyDetectModalProps) {
+  const { t } = useI18n();
   // "with_run" is a blocking modal — no outside-click / ESC dismiss, no Cancel button.
   // The only exit is "create new setup"; otherwise the modal stays mounted.
   const isBlocking = state === "with_run";
@@ -68,11 +70,9 @@ export function LegacyDetectModal({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Legacy layout detected</DialogTitle>
+          <DialogTitle>{t("legacyTitle")}</DialogTitle>
           <DialogDescription>
-            {state === "with_run"
-              ? "This setup contains multi-cell racks and has simulation history, so it cannot be reused. Create a new setup to proceed."
-              : "This setup contains multi-cell racks. Reset and recreate it, or create a new setup."}
+            {state === "with_run" ? t("legacyWithRun") : t("legacyClean")}
           </DialogDescription>
         </DialogHeader>
         {state === "clean" && error && (
@@ -86,12 +86,12 @@ export function LegacyDetectModal({
         <DialogFooter>
           {state === "with_run" ? (
             <Button onClick={onCreateNew} data-testid="legacy-create-new">
-              Create new setup
+              {t("legacyCreateNew")}
             </Button>
           ) : (
             <>
               <Button variant="outline" disabled={resetting} onClick={onCancel}>
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 variant="destructive"
@@ -101,7 +101,7 @@ export function LegacyDetectModal({
                 }}
                 data-testid="legacy-reset"
               >
-                {resetting ? "Resetting…" : "Reset and recreate"}
+                {resetting ? t("legacyResetting") : t("legacyReset")}
               </Button>
             </>
           )}

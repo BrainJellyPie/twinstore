@@ -14,15 +14,14 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
 import { majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
 
 import { usePackages } from "./hooks";
+import { AGE_GROUPS as AGES, GENDERS, personaLabel } from "./labels";
 import { ProductDrop } from "./ProductLibrary";
 import { toMinor } from "./products";
 import { QUESTIONS } from "./questions";
 
-
-const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
-const GENDERS = ["Female", "Male"];
 const LETTERS = "ABCD";
 
 export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD", initial, setupId, prefill, onPrefillHandled, onStarted }: {
@@ -33,6 +32,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   onPrefillHandled?: (id: number) => void;
   onStarted: (job: JobStatus) => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const packages = usePackages(projectId).data ?? [];
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
@@ -47,7 +47,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
   const [ages, setAges] = useState<string[]>(initial?.age_groups ?? []);
   const [genders, setGenders] = useState<string[]>(initial?.genders ?? []);
   const [model, setModel] = useState(initial?.model ?? "");
-  const [name, setName] = useState(initial?.name ? `${initial.name} (copy)`.slice(0, 80) : "");
+  const [name, setName] = useState(initial?.name ? t("mkCopySuffix", { name: initial.name }).slice(0, 80) : "");
 
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
   const pickStimulus = (id: string) => setStimuli((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length < 4 ? [...s, id] : s));
@@ -123,21 +123,21 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
           <Sparkles className="ml-1 size-4 shrink-0 text-primary" aria-hidden />
           <Input value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 500).join(""))}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && questionLength >= 5 && !draft.isPending) { e.preventDefault(); requestDraft(question); } }}
-            placeholder="What should the test answer? e.g. Which of our two new labels looks more premium to people in their twenties?"
-            aria-label="Question for the concept test" className="h-9 min-w-[14rem] flex-1 bg-card" />
+            placeholder={t("mkSurveyQuestionPlaceholder")}
+            aria-label={t("mkSurveyQuestionLabel")} className="h-9 min-w-[14rem] flex-1 bg-card" />
           <Button type="button" size="sm" variant="outline" disabled={questionLength < 5 || draft.isPending} onClick={() => requestDraft(question)}>
-            {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Draft the test
+            {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("mkDraftTest")}
           </Button>
           {shownDraft && (
             <div className="basis-full space-y-0.5 px-1 text-xs text-muted-foreground">
-              <p>{shownDraft.rationale} Check the images, questions and quotas below before fielding it.</p>
+              <p>{shownDraft.rationale} {t("mkCheckSurvey")}</p>
               {shownDraft.warnings.map((w) => <p key={w}>· {w}</p>)}
             </div>
           )}
           {draft.error && <p role="alert" className="basis-full px-1 text-xs text-destructive">{draft.error.message}</p>}
         </div>
         <div className="flex items-baseline justify-between">
-          <h3 className="text-sm font-semibold">What respondents see <span className="font-normal text-muted-foreground">· pick 1–4 images, shown side by side as A–D</span></h3>
+          <h3 className="text-sm font-semibold">{t("mkWhatTheySee")} <span className="font-normal text-muted-foreground">{t("mkWhatTheySeeHint")}</span></h3>
           <span className="num text-xs text-muted-foreground">{stimuli.length}/4</span>
         </div>
         <div className="flex flex-wrap items-stretch gap-2">
@@ -159,7 +159,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
             {stimuli.map((id, i) => (
               <label key={id} className="flex items-center gap-2">
                 <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground">{LETTERS[i]}</span>
-                <Input value={label(id)} onChange={(e) => setNames((n) => ({ ...n, [id]: e.target.value }))} className="h-8 text-sm" maxLength={28} aria-label={`Name of ${LETTERS[i]}`} />
+                <Input value={label(id)} onChange={(e) => setNames((n) => ({ ...n, [id]: e.target.value }))} className="h-8 text-sm" maxLength={28} aria-label={t("mkNameOf", { letter: LETTERS[i]! })} />
               </label>
             ))}
           </div>
@@ -168,7 +168,7 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
 
       <section className="grid gap-3 lg:grid-cols-[1.3fr_1fr]">
         <div className="rounded-2xl border bg-card p-4">
-          <h3 className="mb-2 text-sm font-semibold">Questions</h3>
+          <h3 className="mb-2 text-sm font-semibold">{t("mkQuestions")}</h3>
           <div className="grid gap-1.5 sm:grid-cols-2">
             {QUESTIONS.map((q) => {
               const on = questions.includes(q.kind);
@@ -180,50 +180,50 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
                   <span className={cn("mt-0.5 grid size-4 shrink-0 place-items-center rounded border", on && !off ? "border-primary bg-primary text-primary-foreground" : "")}>
                     {on && !off && <Check className="size-3" />}
                   </span>
-                  <span><b className="block text-sm">{q.label}</b><span className="text-[0.7rem] text-muted-foreground">{off ? "Needs two or more images" : q.hint}</span></span>
+                  <span><b className="block text-sm">{t(q.label)}</b><span className="text-[0.7rem] text-muted-foreground">{off ? t("mkNeedsTwo") : t(q.hint)}</span></span>
                 </button>
               );
             })}
           </div>
         </div>
         <div className="space-y-3 rounded-2xl border bg-card p-4">
-          <h3 className="text-sm font-semibold">Brief and respondents</h3>
+          <h3 className="text-sm font-semibold">{t("mkBrief")}</h3>
           <Textarea value={context} onChange={(e) => setContext(Array.from(e.target.value).slice(0, 300).join(""))} rows={3}
-            placeholder="What respondents are told, e.g. “A new sparkling iced tea, 500 ml, sold next to the sodas.”" />
+            placeholder={t("mkBriefPlaceholder")} />
           <div className="flex items-end gap-2">
             <label className="flex flex-1 flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Shelf price shown with A (optional)</span>
+              <span className="text-xs text-muted-foreground">{t("mkShelfPriceA")}</span>
               <Input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder="1.99" className="num h-9"
                 aria-invalid={invalidPrice} aria-describedby={invalidPrice ? "survey-price-error" : undefined} />
             </label>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="h-9 rounded-xl border bg-card/60 px-2 text-sm" aria-label="Currency">
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="h-9 rounded-xl border bg-card/60 px-2 text-sm" aria-label={t("mkCurrency")}>
               <option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="KRW">KRW</option><option value="JPY">JPY</option>
             </select>
           </div>
-          {invalidPrice && <p id="survey-price-error" className="text-xs text-destructive">Enter a valid nonnegative price, or leave it blank.</p>}
+          {invalidPrice && <p id="survey-price-error" className="text-xs text-destructive">{t("mkInvalidPriceBlank")}</p>}
           <div>
             <div className="flex items-baseline justify-between text-xs text-muted-foreground">
-              <span>Panel size · from {personaCount.toLocaleString()} personas</span>
+              <span>{t("mkPanelFromPersonas", { count: personaCount })}</span>
               <span className="num text-sm font-semibold text-foreground">{panel}</span>
             </div>
-            <input type="range" min={5} max={400} step={5} value={panel} onChange={(e) => setPanel(Number(e.target.value))} className="w-full" aria-label="Respondents" />
-            <p className="text-[0.7rem] text-muted-foreground">{panel} model calls (one per respondent, cached on re-run).</p>
+            <input type="range" min={5} max={400} step={5} value={panel} onChange={(e) => setPanel(Number(e.target.value))} className="w-full" aria-label={t("mkRespondents")} />
+            <p className="text-[0.7rem] text-muted-foreground">{t("mkSurveyCalls", { count: panel })}</p>
           </div>
-          <Chips label="Age" options={AGES} value={ages} onToggle={(v) => setAges((a) => toggle(a, v))} />
-          <Chips label="Gender" options={GENDERS} value={genders} onToggle={(v) => setGenders((g) => toggle(g, v))} />
-          <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-sm" value={model} onChange={(e) => setModel(e.target.value)} aria-label="Vision model">
-            <option value="">App's vision model</option>
+          <Chips label={t("studioAge")} options={AGES} value={ages} onToggle={(v) => setAges((a) => toggle(a, v))} />
+          <Chips label={t("studioGender")} options={GENDERS} value={genders} onToggle={(v) => setGenders((g) => toggle(g, v))} />
+          <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-sm" value={model} onChange={(e) => setModel(e.target.value)} aria-label={t("studioVisionModel")}>
+            <option value="">{t("studioAppVisionModel")}</option>
             {models.filter((m) => m.vision).map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
           </select>
         </div>
       </section>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Test name (optional)" maxLength={80} className="mr-auto h-10 max-w-xs" />
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("mkTestNameOptional")} maxLength={80} className="mr-auto h-10 max-w-xs" />
         {run.error && <p className="text-sm text-destructive">{run.error.message}</p>}
         <Button size="lg" disabled={stimuli.length === 0 || asked.length === 0 || invalidPrice || run.isPending} onClick={() => run.mutate()}>
           {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <ClipboardList className="size-4" />}
-          Field the survey
+          {t("mkFieldSurvey")}
         </Button>
       </div>
     </div>
@@ -231,16 +231,17 @@ export function SurveyBuilder({ projectId, personaCount, defaultCurrency = "USD"
 }
 
 function Chips({ label, options, value, onToggle }: { label: string; options: string[]; value: string[]; onToggle: (v: string) => void }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="w-14 text-xs text-muted-foreground">{label}</span>
       {options.map((o) => (
         <button key={o} type="button" onClick={() => onToggle(o)}
           className={cn("rounded-full border px-2.5 py-0.5 text-xs", value.includes(o) ? "border-primary bg-primary text-primary-foreground" : "hover:border-foreground/25")}>
-          {o}
+          {personaLabel(o, t)}
         </button>
       ))}
-      {value.length === 0 && <span className="text-[0.7rem] text-muted-foreground">all</span>}
+      {value.length === 0 && <span className="text-[0.7rem] text-muted-foreground">{t("studioAll")}</span>}
     </div>
   );
 }

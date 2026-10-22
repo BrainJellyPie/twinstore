@@ -12,8 +12,10 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { useI18n } from "@/shared/i18n/i18n";
 
 export function LayoutEditInWords({ projectId, setupId }: { projectId: string; setupId: string }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const setSelectedSetupId = useSimulationStore((s) => s.setSelectedSetupId);
   const [text, setText] = useState("");
@@ -72,33 +74,33 @@ export function LayoutEditInWords({ projectId, setupId }: { projectId: string; s
 
   return (
     <div ref={box} className="mt-3 space-y-2 border-t pt-3">
-      <p className="flex items-center gap-1.5 text-xs font-medium"><Wand2 className="size-3.5 text-primary" aria-hidden /> Change it in words</p>
+      <p className="flex items-center gap-1.5 text-xs font-medium"><Wand2 className="size-3.5 text-primary" aria-hidden /> {t("editWordsTitle")}</p>
       <textarea value={text} onChange={(e) => setText(Array.from(e.target.value).slice(0, 800).join(""))} rows={2}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); request(text); } }}
-        placeholder="e.g. Put the cola at eye level, 10 % off all ice cream and a SALE sign on the chips"
-        aria-label="Layout changes in words"
+        placeholder={t("editWordsPlaceholder")}
+        aria-label={t("editWordsLabel")}
         className="w-full resize-none rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
       <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={length < 5 || busy} onClick={() => request(text)}>
-        {draft.isPending ? <Loader2 className="size-3 animate-spin" /> : <Wand2 className="size-3" />} Draft the edits
+        {draft.isPending ? <Loader2 className="size-3 animate-spin" /> : <Wand2 className="size-3" />} {t("editWordsDraft")}
       </Button>
       {draft.error && <p role="alert" className="text-xs text-destructive">{draft.error.message}</p>}
       {shown && (
         <div className="space-y-2 rounded-md bg-foreground/[0.035] p-2 text-xs">
           {shown.summary && <p className="text-muted-foreground">{shown.summary}</p>}
           {shown.applied.length > 0 ? (
-            <ul aria-label="Drafted edits" className="list-disc space-y-0.5 pl-4">
+            <ul aria-label={t("editWordsDrafted")} className="list-disc space-y-0.5 pl-4">
               {shown.applied.map((a) => <li key={a}>{a}</li>)}
             </ul>
-          ) : <p>No edit applies to this layout. Reword the instructions and draft again.</p>}
+          ) : <p>{t("editWordsNone")}</p>}
           {shown.warnings.map((w) => <p key={w} className="text-muted-foreground">· {w}</p>)}
           {shown.applied.length > 0 && (
             <>
-              <Input value={name} onChange={(e) => setName(Array.from(e.target.value).slice(0, 80).join(""))} placeholder="Name of the new layout"
-                aria-label="Name of the new layout" className="h-8 text-xs" />
+              <Input value={name} onChange={(e) => setName(Array.from(e.target.value).slice(0, 80).join(""))} placeholder={t("editWordsName")}
+                aria-label={t("editWordsName")} className="h-8 text-xs" />
               <Button type="button" size="sm" className="h-7 text-xs" disabled={busy} onClick={persist}>
-                {save.isPending && <Loader2 className="size-3 animate-spin" />} Save as a new layout
+                {save.isPending && <Loader2 className="size-3 animate-spin" />} {t("editWordsSave")}
               </Button>
-              <p className="text-[0.7rem] text-muted-foreground">This layout stays as it is; the new one opens next.</p>
+              <p className="text-[0.7rem] text-muted-foreground">{t("editWordsSaveHint")}</p>
             </>
           )}
           {save.error && <p role="alert" className="text-destructive">{save.error.message}</p>}

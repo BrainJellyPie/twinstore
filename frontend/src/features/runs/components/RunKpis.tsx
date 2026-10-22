@@ -3,6 +3,9 @@ import { useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import type { RunSummary } from "@/shared/api/client";
 import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
+import { richText } from "@/shared/i18n/richText";
 
 function Tile({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
@@ -16,44 +19,49 @@ function Tile({ label, value, hint }: { label: string; value: ReactNode; hint?: 
 // Final KPIs of the run (from the backend summary), independent of playback position.
 // days: the open days the run's shoppers came on — the totals add those days up.
 export function RunKpis({ summary, days }: { summary: RunSummary; days: number }) {
+  const { locale, t } = useI18n();
   const code = currencyCode(summary.currency);
   if (summary.conversion_rate === undefined) {
     return (
       <div className="border-t px-3 py-3 text-xs text-muted-foreground">
-        This run was made by an older version — re-run it to see conversion, basket and impulse KPIs.
+        {t("kpiOlderRun")}
       </div>
     );
   }
+  const figure = (value: string) => <b className="tabular-nums text-foreground">{value}</b>;
+  const count = (value: number) => figure(value.toLocaleString(locale));
   return (
     <div className="border-t px-3 py-3">
-      <div className="section-title mb-2">Run results</div>
+      <div className="section-title mb-2">{t("kpiRunResults")}</div>
       <p className="mb-2 text-xs text-muted-foreground">
-        {days > 1 ? `Totals over ${days} days` : "Totals for one day"}:{" "}
-        <b className="tabular-nums text-foreground">{summary.total_customers.toLocaleString()}</b> shoppers
-        {days > 1 && ` (≈${Math.round(summary.total_customers / days).toLocaleString()} a day)`}
-        {" · "}<b className="tabular-nums text-foreground">{formatMoney(summary.total_revenue, code)}</b> revenue
-        {summary.units_sold !== undefined && <>{" · "}<b className="tabular-nums text-foreground">{summary.units_sold.toLocaleString()}</b> units</>}
+        {days > 1 ? t("kpiTotalsDays", { days }) : t("kpiTotalsOneDay")}
+        {richText(t("kpiShoppers"), { count: count(summary.total_customers) })}
+        {days > 1 && t("kpiPerDay", { count: Math.round(summary.total_customers / days) })}
+        {" · "}{richText(t("kpiRevenue"), { amount: figure(formatMoney(summary.total_revenue, code)) })}
+        {summary.units_sold !== undefined && <>{" · "}{richText(t("kpiUnits"), { count: count(summary.units_sold) })}</>}
       </p>
       <div className="grid grid-cols-2 gap-2">
-        <Tile label="Conversion" value={formatPercent(summary.conversion_rate)} hint="Visitors who bought at least one item" />
-        <Tile label="Revenue / visitor" value={formatMoney(summary.revenue_per_visitor ?? 0, code)} />
-        <Tile label="Basket value" value={formatMoney(summary.avg_basket_value ?? 0, code)} hint="Revenue per paying customer" />
-        <Tile label="Units / buyer" value={(summary.avg_units_per_buyer ?? 0).toFixed(2)} />
-        <Tile label="Impulse share" value={formatPercent(summary.impulse_revenue_share ?? 0)} hint="Revenue from unplanned purchases" />
-        <Tile label="Avg. visit" value={`${Math.round(summary.avg_visit_sec ?? 0)}s`} hint={`${(summary.avg_path_tiles ?? 0).toFixed(1)} tiles walked on average`} />
+        <Tile label={t("kpiConversion")} value={formatPercent(summary.conversion_rate)} hint={t("kpiConversionHint")} />
+        <Tile label={t("kpiRevenuePerVisitor")} value={formatMoney(summary.revenue_per_visitor ?? 0, code)} />
+        <Tile label={t("kpiBasketValue")} value={formatMoney(summary.avg_basket_value ?? 0, code)} hint={t("kpiBasketHint")} />
+        <Tile label={t("kpiUnitsPerBuyer")} value={(summary.avg_units_per_buyer ?? 0).toFixed(2)} />
+        <Tile label={t("dashImpulseShare")} value={formatPercent(summary.impulse_revenue_share ?? 0)} hint={t("dashImpulseHint")} />
+        <Tile label={t("kpiAvgVisit")} value={t("kpiSeconds", { seconds: Math.round(summary.avg_visit_sec ?? 0) })}
+          hint={t("kpiTilesWalked", { tiles: (summary.avg_path_tiles ?? 0).toFixed(1) })} />
       </div>
       <SegmentBreakdown summary={summary} />
     </div>
   );
 }
 
-const DIMENSIONS: { value: string; label: string }[] = [
-  { value: "age_group", label: "Age" },
-  { value: "gender", label: "Gender" },
-  { value: "purpose", label: "Purpose" },
+const DIMENSIONS: { value: string; label: MessageKey }[] = [
+  { value: "age_group", label: "kpiAge" },
+  { value: "gender", label: "kpiGender" },
+  { value: "purpose", label: "kpiPurpose" },
 ];
 
 function SegmentBreakdown({ summary }: { summary: RunSummary }) {
+  const { t } = useI18n();
   const [dimension, setDimension] = useState("age_group");
   const code = currencyCode(summary.currency);
   const rows = Object.entries(summary.segments?.[dimension] ?? {})
@@ -65,11 +73,11 @@ function SegmentBreakdown({ summary }: { summary: RunSummary }) {
   return (
     <div className="mt-3">
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-xs font-medium text-muted-foreground">By segment</div>
+        <div className="text-xs font-medium text-muted-foreground">{t("kpiBySegment")}</div>
         <ToggleGroup type="single" value={dimension} onValueChange={(v) => v && setDimension(v)} variant="outline" size="sm">
           {DIMENSIONS.map((d) => (
             <ToggleGroupItem key={d.value} value={d.value} className="h-6 px-2 text-xs">
-              {d.label}
+              {t(d.label)}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
@@ -80,7 +88,7 @@ function SegmentBreakdown({ summary }: { summary: RunSummary }) {
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">{name}</span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
-                {s.visitors} · {formatPercent(s.conversion_rate, 0)} conv · {formatMoney(s.revenue_per_visitor, code)}/visitor
+                {t("kpiSegmentLine", { visitors: s.visitors, conversion: formatPercent(s.conversion_rate, 0), perVisitor: formatMoney(s.revenue_per_visitor, code) })}
               </span>
             </div>
             <div className="mt-1 h-1.5 w-full rounded-full bg-muted">

@@ -11,22 +11,24 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
+import { useI18n } from "@/shared/i18n/i18n";
 
 export function ProvidersPanel() {
+  const { t } = useI18n();
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.providers(),
     queryFn: ({ signal }) => api.getProviders(signal),
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading providers…</p>;
-  if (error || !data) return <p className="text-sm text-destructive">Could not load providers.</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">{t("providersLoading")}</p>;
+  if (error || !data) return <p className="text-sm text-destructive">{t("providersLoadFailed")}</p>;
 
   const cloud = data.filter((p) => !p.preset.local);
   const local = data.filter((p) => p.preset.local);
   return (
     <div className="space-y-8">
-      <Section title="Cloud APIs" icon={Cloud} providers={cloud} />
-      <Section title="Self-hosted / local models" icon={Server} providers={local} />
+      <Section title={t("providersCloud")} icon={Cloud} providers={cloud} />
+      <Section title={t("providersLocal")} icon={Server} providers={local} />
     </div>
   );
 }
@@ -47,6 +49,7 @@ function Section({ title, icon: Icon, providers }: { title: string; icon: typeof
 }
 
 function ProviderCard({ status }: { status: ProviderStatus }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const { preset } = status;
   const [key, setKey] = useState("");
@@ -76,14 +79,14 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
   });
 
   const badge = !status.enabled
-    ? { text: preset.local ? "Off" : "Disabled", cls: "bg-muted text-muted-foreground" }
+    ? { text: preset.local ? t("providerOff") : t("providerDisabled"), cls: "bg-muted text-muted-foreground" }
     : status.key_rejected
-      ? { text: "Key turned down", cls: "tone-bad" }
+      ? { text: t("providerKeyRejected"), cls: "tone-bad" }
       : status.ready
-        ? { text: "Ready", cls: "tone-good" }
+        ? { text: t("providerReady"), cls: "tone-good" }
         : preset.local
-          ? { text: "Needs endpoint", cls: "tone-warn" }
-          : { text: "Needs API key", cls: "tone-warn" };
+          ? { text: t("providerNeedsEndpoint"), cls: "tone-warn" }
+          : { text: t("providerNeedsKey"), cls: "tone-warn" };
   const listId = `models-${preset.kind}`;
 
   return (
@@ -92,18 +95,17 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
         <div>
           <div className="font-medium">{preset.label}</div>
           <div className="text-xs text-muted-foreground">
-            {status.key_source === "env" && `Key from ${preset.api_key_env}`}
-            {status.key_source === "settings" && `Key stored on this server ${status.key_hint}`}
-            {status.key_source === "none" && (preset.api_key_env ? `or set ${preset.api_key_env}` : "")}
-            {status.key_source === "not needed" && "No key needed"}
+            {status.key_source === "env" && t("providerKeyFromEnv", { env: preset.api_key_env ?? "" })}
+            {status.key_source === "settings" && t("providerKeyStored", { hint: status.key_hint })}
+            {status.key_source === "none" && (preset.api_key_env ? t("providerOrSetEnv", { env: preset.api_key_env }) : "")}
+            {status.key_source === "not needed" && t("providerNoKeyNeeded")}
           </div>
           {save.error && (
             <div role="alert" className="mt-1 break-words text-xs text-destructive">{save.error.message}</div>
           )}
           {status.key_rejected && (
             <div role="alert" className="mt-1 text-xs text-destructive">
-              {preset.label} turned this key down (not valid or revoked). Paste a new key; until then TwinStore uses
-              another provider with a key, or the local model on this computer.
+              {t("providerKeyRejectedHint", { provider: preset.label })}
             </div>
           )}
         </div>
@@ -116,7 +118,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
               className="h-6 px-2 text-xs"
               onClick={() => save.mutate({ enabled: !status.enabled, ...(base ? { api_base: base } : {}) })}
             >
-              {status.enabled ? "Turn off" : "Turn on"}
+              {status.enabled ? t("providerTurnOff") : t("providerTurnOn")}
             </Button>
           )}
         </div>
@@ -133,18 +135,18 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
           <Input
             type="password"
             autoComplete="off"
-            placeholder={status.has_key ? "Replace API key" : "Paste API key"}
+            placeholder={status.has_key ? t("providerReplaceKey") : t("providerPasteKey")}
             value={key}
             onChange={(e) => setKey(e.target.value)}
             className="h-8"
-            aria-label={`${preset.label} API key`}
+            aria-label={t("providerApiKey", { provider: preset.label })}
           />
           <Button type="submit" size="sm" className="h-8" disabled={!key.trim() || save.isPending}>
-            Save
+            {t("providerSave")}
           </Button>
           {status.key_source === "settings" && (
             <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => save.mutate({ api_key: "" })}>
-              Remove
+              {t("remove")}
             </Button>
           )}
         </form>
@@ -152,7 +154,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
 
       {(preset.default_api_base || preset.local) && (
         <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted-foreground">Endpoint</span>
+          <span className="text-muted-foreground">{t("providerEndpoint")}</span>
           <div className="flex gap-2">
             <Input value={base} placeholder="http://host:port/v1" onChange={(e) => setBase(e.target.value)} className="h-8 font-mono text-xs" />
             <Button
@@ -162,14 +164,14 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
               disabled={save.isPending || base === (status.api_base ?? "")}
               onClick={() => save.mutate({ api_base: base })}
             >
-              Save
+              {t("providerSave")}
             </Button>
           </div>
         </label>
       )}
 
       <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted-foreground">Model</span>
+        <span className="text-muted-foreground">{t("model")}</span>
         <div className="flex gap-2">
           <Input list={listId} value={model} onChange={(e) => setModel(e.target.value)} className="h-8 font-mono text-xs" />
           <datalist id={listId}>
@@ -183,9 +185,9 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
             className="h-8"
             disabled={!model || save.isPending || model === status.default_model}
             onClick={() => save.mutate({ default_model: model })}
-            title="Make this the default model of the provider"
+            title={t("providerDefaultHint")}
           >
-            Default
+            {t("providerDefault")}
           </Button>
         </div>
       </label>
@@ -201,7 +203,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
               m.id === model ? "border-primary bg-primary/5" : "hover:bg-muted",
             )}
           >
-            {m.vision && <Eye className="size-3" aria-label="vision" />}
+            {m.vision && <Eye className="size-3" aria-label={t("providerVision")} />}
             {m.label}
           </button>
         ))}
@@ -209,10 +211,10 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
 
       <div className="flex items-center gap-2">
         <Button size="sm" variant="secondary" className="h-7" disabled={!status.ready || !model || test.isPending} onClick={() => test.mutate(false)}>
-          {test.isPending ? <Loader2 className="size-3 animate-spin" /> : null} Test
+          {test.isPending ? <Loader2 className="size-3 animate-spin" /> : null} {t("providerTest")}
         </Button>
         <Button size="sm" variant="secondary" className="h-7" disabled={!status.ready || !model || test.isPending} onClick={() => test.mutate(true)}>
-          <Eye className="size-3" /> Test vision
+          <Eye className="size-3" /> {t("providerTestVision")}
         </Button>
       </div>
       {result && (
@@ -223,7 +225,7 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
         >
           {result.ok ? <CheckCircle2 className="mt-px size-3.5 shrink-0" /> : <XCircle className="mt-px size-3.5 shrink-0" />}
           <span className="line-clamp-4 min-w-0 break-words">
-            {result.ok ? `OK · ${result.latency_ms} ms${result.reply ? ` · "${result.reply}"` : ""}` : result.error || "failed"}
+            {result.ok ? `${t("providerTestOk", { latency: result.latency_ms })}${result.reply ? ` · "${result.reply}"` : ""}` : result.error || t("providerTestFailed")}
           </span>
         </p>
       )}

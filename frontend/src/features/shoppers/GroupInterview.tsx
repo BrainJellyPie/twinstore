@@ -12,16 +12,23 @@ import { queryKeys } from "@/shared/queries/keys";
 import { TestIdeas } from "@/features/assist/TestIdeas";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
-const SEGMENTS: { id: GroupSegment; label: string; question: string }[] = [
-  { id: "empty_handed", label: "Left empty-handed", question: "You looked around but left without buying. What would have made you buy something?" },
-  { id: "impulse", label: "Impulse buyers", question: "You picked up something you hadn't planned. What made you grab it?" },
-  { id: "top_spenders", label: "Top spenders", question: "What do you like about shopping here, and what would you change?" },
-  { id: "buyers", label: "Buyers", question: "How did the prices feel to you on this trip?" },
-  { id: "all", label: "Anyone", question: "If you could change one thing about this store, what would it be?" },
+const SEGMENTS: { id: GroupSegment; label: MessageKey; question: MessageKey }[] = [
+  { id: "empty_handed", label: "shopperSortNothing", question: "groupAskEmptyHanded" },
+  { id: "impulse", label: "groupImpulseBuyers", question: "groupAskImpulse" },
+  { id: "top_spenders", label: "shopperSortSpent", question: "groupAskTopSpenders" },
+  { id: "buyers", label: "groupBuyers", question: "groupAskBuyers" },
+  { id: "all", label: "groupAnyone", question: "groupAskAnyone" },
 ];
 
-const FOUND_QUESTION = "Tell us about this trip: what made it go the way it did, and what would you change?";
+const FOUND_QUESTION: MessageKey = "groupAskFound";
+
+function segmentLabel(segment: GroupSegment, t: (key: MessageKey) => string): string {
+  const label = SEGMENTS.find((s) => s.id === segment)?.label;
+  return label ? t(label) : "";
+}
 
 export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen, onBack }: {
   projectId: string; runId: string; currency: string;
@@ -29,11 +36,12 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
   preset?: { label: string; personaIds: string[] };
   onOpen: (sid: string) => void; onBack: () => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const groups = useQuery({ queryKey: interviewKeys.groups(projectId, runId), queryFn: ({ signal }) => listGroups(projectId, runId, signal) });
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
   const [segment, setSegment] = useState<GroupSegment | "found">(preset ? "found" : "empty_handed");
-  const [question, setQuestion] = useState(preset ? FOUND_QUESTION : SEGMENTS[0]!.question);
+  const [question, setQuestion] = useState(() => t(preset ? FOUND_QUESTION : SEGMENTS[0]!.question));
   const presetMax = Math.min(40, preset?.personaIds.length ?? 40);
   const [size, setSize] = useState(Math.min(12, presetMax));
   const maxSize = segment === "found" ? presetMax : 40;
@@ -59,20 +67,20 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
 
   return (
     <div className="space-y-3 py-3">
-      <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> All shoppers</Button>
+      <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}><ArrowLeft className="size-4" /> {t("allShoppers")}</Button>
       <section className="space-y-2 rounded-2xl border bg-card p-3">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold"><UsersRound className="size-4 text-primary" /> Group interview</h3>
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold"><UsersRound className="size-4 text-primary" /> {t("groupInterview")}</h3>
         <div className="flex flex-wrap gap-1">
           {preset && (
-            <button type="button" onClick={() => { setSegment("found"); setQuestion(FOUND_QUESTION); }}
+            <button type="button" onClick={() => { setSegment("found"); setQuestion(t(FOUND_QUESTION)); }}
               className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", segment === "found" ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>
               {preset.label} · {preset.personaIds.length}
             </button>
           )}
           {SEGMENTS.map((s) => (
-            <button key={s.id} type="button" onClick={() => { setSegment(s.id); setQuestion(s.question); }}
+            <button key={s.id} type="button" onClick={() => { setSegment(s.id); setQuestion(t(s.question)); }}
               className={cn("rounded-full border px-2.5 py-0.5 text-[0.72rem]", segment === s.id ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground hover:border-foreground/25")}>
-              {s.label}
+              {t(s.label)}
             </button>
           ))}
         </div>
@@ -80,35 +88,35 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
           <button type="button" onClick={() => ideas.mutate()} disabled={ideas.isPending}
             className="inline-flex items-center gap-1 text-[0.72rem] text-primary hover:underline disabled:opacity-60">
             {ideas.isPending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
-            {ideas.isPending ? "Reading the run…" : "Suggest questions from this run"}
+            {ideas.isPending ? t("analystReading") : t("analystSuggest")}
           </button>
           {ideas.data?.map((q) => (
             <button key={q.question} type="button" onClick={() => { setSegment(q.segment); setQuestion(q.question); }}
               className={cn("block w-full rounded-xl border px-2.5 py-1.5 text-left text-[0.74rem] transition-colors hover:border-primary/60",
                 question === q.question && "border-primary bg-primary/[0.05]")}>
               <span className="block">{q.question}</span>
-              <span className="block text-[0.66rem] text-muted-foreground">{SEGMENTS.find((s) => s.id === q.segment)?.label}{q.why ? ` · ${q.why}` : ""}</span>
+              <span className="block text-[0.66rem] text-muted-foreground">{segmentLabel(q.segment, t)}{q.why ? ` · ${q.why}` : ""}</span>
             </button>
           ))}
           {ideas.error && <p role="alert" className="text-[0.72rem] text-destructive">{ideas.error.message}</p>}
         </div>
-        <textarea value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 600).join(""))} rows={3} aria-label="Question"
+        <textarea value={question} onChange={(e) => setQuestion(Array.from(e.target.value).slice(0, 600).join(""))} rows={3} aria-label={t("groupQuestion")}
           className="w-full resize-none rounded-xl border bg-card/60 px-3 py-2 text-[0.8rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/40" />
         <div className="flex items-center gap-2 text-[0.72rem] text-muted-foreground">
-          <span>Shoppers</span>
-          <input type="range" min={Math.min(4, maxSize)} max={maxSize} step={1} value={askedSize} onChange={(e) => setSize(Number(e.target.value))} className="flex-1" aria-label="Group size" />
+          <span>{t("spShoppers")}</span>
+          <input type="range" min={Math.min(4, maxSize)} max={maxSize} step={1} value={askedSize} onChange={(e) => setSize(Number(e.target.value))} className="flex-1" aria-label={t("groupSize")} />
           <span className="num w-6 text-right font-semibold text-foreground">{askedSize}</span>
         </div>
         <div className="flex items-center gap-2">
-          <select value={model} onChange={(e) => setModel(e.target.value)} className="h-8 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5 text-xs" aria-label="Model">
-            <option value="">App's text model</option>
+          <select value={model} onChange={(e) => setModel(e.target.value)} className="h-8 min-w-0 flex-1 rounded-lg border bg-card/60 px-1.5 text-xs" aria-label={t("model")}>
+            <option value="">{t("interviewAppModel")}</option>
             {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
           </select>
           <Button size="sm" disabled={!question.trim() || ask.isPending} onClick={() => ask.mutate()}>
-            {ask.isPending ? <Loader2 className="size-4 animate-spin" /> : <UsersRound className="size-4" />} Ask {askedSize}
+            {ask.isPending ? <Loader2 className="size-4 animate-spin" /> : <UsersRound className="size-4" />} {t("groupAsk", { count: askedSize })}
           </Button>
         </div>
-        <p className="text-[0.68rem] text-muted-foreground">{askedSize + 1} model calls: one answer per shopper from their own trip, then theme coding.{segment === "found" ? " The first shoppers of the found list are asked." : ""}</p>
+        <p className="text-[0.68rem] text-muted-foreground">{t("groupCalls", { count: askedSize + 1 })}{segment === "found" ? ` ${t("groupFoundNote")}` : ""}</p>
         {ask.error && <p className="text-[0.75rem] text-destructive">{ask.error.message}</p>}
       </section>
 
@@ -117,14 +125,14 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
 
       {list.length > 0 && (
         <section className="space-y-1">
-          <h4 className="px-1 text-[0.72rem] font-semibold text-muted-foreground uppercase">Earlier questions</h4>
+          <h4 className="px-1 text-[0.72rem] font-semibold text-muted-foreground uppercase">{t("groupEarlier")}</h4>
           {list.map((g) => (
             <div key={g.group_id} className={cn("group flex items-start gap-2 rounded-xl border px-2.5 py-2", g.group_id === open ? "border-primary bg-primary/[0.05]" : "bg-card/60")}>
               <button type="button" onClick={() => setOpen(g.group_id === open ? null : g.group_id)} className="min-w-0 flex-1 text-left">
                 <span className="line-clamp-2 text-[0.78rem]">{g.question}</span>
-                <span className="text-[0.68rem] text-muted-foreground">{g.answers.length} shoppers · {SEGMENTS.find((s) => s.id === g.segment)?.label} · {g.themes.length} themes</span>
+                <span className="text-[0.68rem] text-muted-foreground">{t("groupMeta", { count: g.answers.length, segment: segmentLabel(g.segment, t), themes: g.themes.length })}</span>
               </button>
-              <button type="button" onClick={() => del.mutate(g.group_id)} aria-label="Delete group interview"
+              <button type="button" onClick={() => del.mutate(g.group_id)} aria-label={t("groupDelete")}
                 className="rounded p-1 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"><Trash2 className="size-3.5" /></button>
             </div>
           ))}
@@ -137,6 +145,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
 function GroupResult({ group: g, currency, onOpen, projectId, runId }: {
   group: GroupInterview; currency: string; onOpen: (sid: string) => void; projectId: string; runId: string;
 }) {
+  const { t } = useI18n();
   const [theme, setTheme] = useState<number | null>(null);
   const answers = g.answers.filter((a) => a.answer && (theme === null || a.theme === theme));
   return (
@@ -144,16 +153,16 @@ function GroupResult({ group: g, currency, onOpen, projectId, runId }: {
       <p className="text-[0.8rem] font-medium">“{g.question}”</p>
       {g.themes.length > 0 && (
         <div className="space-y-1.5">
-          {g.themes.map((t, i) => (
-            <button key={t.label} type="button" onClick={() => setTheme(theme === i ? null : i)}
+          {g.themes.map((item, i) => (
+            <button key={item.label} type="button" onClick={() => setTheme(theme === i ? null : i)}
               className={cn("grid w-full grid-cols-[1fr_4.5rem] items-center gap-2 rounded-lg px-1 py-0.5 text-left", theme === i && "bg-primary/[0.07]")}>
               <span className="min-w-0">
-                <span className="block truncate text-[0.76rem]">{t.label}</span>
+                <span className="block truncate text-[0.76rem]">{item.label}</span>
                 <span className="mt-0.5 block h-2 rounded-r-[4px] bg-foreground/[0.05]">
-                  <span className="block h-full rounded-r-[4px]" style={{ width: `${Math.max(3, t.share * 100)}%`, background: "var(--viz-1)" }} />
+                  <span className="block h-full rounded-r-[4px]" style={{ width: `${Math.max(3, item.share * 100)}%`, background: "var(--viz-1)" }} />
                 </span>
               </span>
-              <span className="num text-right text-[0.74rem]"><b>{Math.round(t.share * 100)} %</b> <span className="text-muted-foreground">{t.count}</span></span>
+              <span className="num text-right text-[0.74rem]"><b>{Math.round(item.share * 100)} %</b> <span className="text-muted-foreground">{item.count}</span></span>
             </button>
           ))}
         </div>
@@ -164,15 +173,15 @@ function GroupResult({ group: g, currency, onOpen, projectId, runId }: {
             <button type="button" onClick={() => onOpen(a.persona_id)} className="w-full rounded-xl bg-foreground/[0.035] px-3 py-2 text-left transition-colors hover:bg-primary/[0.07]">
               <span className="block text-[0.78rem] leading-snug">{a.answer}</span>
               <span className="num mt-0.5 block text-[0.66rem] text-muted-foreground">
-                {a.identity} · {a.age_group} · {a.units ? `${formatMoney(a.spent, currency)}, ${a.units} item${a.units === 1 ? "" : "s"}` : "bought nothing"}
+                {a.identity} · {a.age_group} · {a.units ? t(a.units === 1 ? "groupSpentOne" : "groupSpentMany", { amount: formatMoney(a.spent, currency), count: a.units }) : t("groupBoughtNothing")}
                 {a.theme >= 0 && g.themes[a.theme] ? ` · ${g.themes[a.theme]!.label}` : ""}
               </span>
             </button>
           </li>
         ))}
       </ul>
-      {g.errors > 0 && <p className="text-[0.7rem] text-muted-foreground">{g.errors} shopper(s) could not answer (model errors).</p>}
-      <p className="text-[0.68rem] text-muted-foreground">Answers are synthetic: each comes from one simulated trip. Use them to find hypotheses, then test them.</p>
+      {g.errors > 0 && <p className="text-[0.7rem] text-muted-foreground">{t("groupErrors", { count: g.errors })}</p>}
+      <p className="text-[0.68rem] text-muted-foreground">{t("groupSynthetic")}</p>
       {g.answers.some((a) => a.answer) && <TestIdeas projectId={projectId} runId={runId} source="group" groupId={g.group_id} />}
     </section>
   );

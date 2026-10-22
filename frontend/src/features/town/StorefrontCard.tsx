@@ -9,14 +9,16 @@ import * as api from "@/shared/api/client";
 import type { StorefrontResult, Town } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 import { queryKeys } from "@/shared/queries/keys";
+import { useI18n } from "@/shared/i18n/i18n";
+import { richText } from "@/shared/i18n/richText";
 
 import { VENUE_LABELS } from "./townStyle";
 
 const SCORES = [
-  ["signage", "Sign"],
-  ["entrance", "Entrance"],
-  ["window", "Window"],
-  ["upkeep", "Upkeep"],
+  ["signage", "areaScoreSign"],
+  ["entrance", "areaScoreEntrance"],
+  ["window", "areaScoreWindow"],
+  ["upkeep", "areaScoreUpkeep"],
 ] as const;
 
 export function StorefrontCard({ projectId, town, onTown }: { projectId: string; town: Town; onTown: (t: Town) => void }) {
@@ -30,6 +32,7 @@ export function StorefrontCard({ projectId, town, onTown }: { projectId: string;
 function StorefrontRating({ projectId, town, venueId, onVenueChange, onTown }: {
   projectId: string; town: Town; venueId: string; onVenueChange: (id: string) => void; onTown: (t: Town) => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const focal = town.venues.find((v) => v.id === town.focal_venue_id);
   const rivals = town.venues.filter((v) => !v.is_focal && (v.category === "convenience" || v.category === "supermarket"));
@@ -69,19 +72,19 @@ function StorefrontRating({ projectId, town, venueId, onVenueChange, onTown }: {
     <section className="space-y-3">
       <div className="flex items-center gap-2">
         <Store className="size-4 text-heat-2" />
-        <h3 className="font-medium">Storefront appeal</h3>
+        <h3 className="font-medium">{t("areaStorefrontTitle")}</h3>
       </div>
-      <p className="text-xs text-muted-foreground">A street photo of a shop front sets how strongly it pulls passers-by in the demand model.</p>
-      <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-xs" aria-label="Storefront venue" value={venueId} disabled={rate.isPending || !venueId} onChange={(e) => onVenueChange(e.target.value)}>
-        {focal && <option value={focal.id}>Our store · {focal.name}</option>}
-        {rivals.map((v) => <option key={v.id} value={v.id}>Rival · {v.name} ({VENUE_LABELS[v.category]})</option>)}
+      <p className="text-xs text-muted-foreground">{t("areaStorefrontHint")}</p>
+      <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-xs" aria-label={t("areaStorefrontVenue")} value={venueId} disabled={rate.isPending || !venueId} onChange={(e) => onVenueChange(e.target.value)}>
+        {focal && <option value={focal.id}>{t("areaStorefrontOurs", { name: focal.name })}</option>}
+        {rivals.map((v) => <option key={v.id} value={v.id}>{t("areaStorefrontRival", { name: v.name, category: t(VENUE_LABELS[v.category]) })}</option>)}
       </select>
       <button type="button" disabled={rate.isPending || !venueId} onClick={() => input.current?.click()}
         className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-foreground/15 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
-        {preview ? <img src={preview} alt="Storefront" className="absolute inset-0 h-full w-full object-cover" /> : null}
+        {preview ? <img src={preview} alt={t("areaStorefrontAlt")} className="absolute inset-0 h-full w-full object-cover" /> : null}
         <span className={cn("relative flex items-center gap-1.5 rounded-full px-3 py-1.5", preview && "glass text-foreground")}>
           {rate.isPending ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
-          {rate.isPending ? "Rating…" : preview ? "Another photo" : "Upload a storefront photo"}
+          {rate.isPending ? t("areaRating") : preview ? t("areaAnotherPhoto") : t("areaUploadStorefront")}
         </span>
       </button>
       <input ref={input} type="file" disabled={rate.isPending || !venueId} accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
@@ -90,17 +93,17 @@ function StorefrontRating({ projectId, town, venueId, onVenueChange, onTown }: {
         <div className="space-y-2 rounded-2xl border border-glass-border bg-foreground/[0.02] p-3">
           <div className="flex items-end justify-between">
             <div>
-              <div className="eyebrow">Appeal</div>
+              <div className="eyebrow">{t("areaAppeal")}</div>
               <div className="num text-3xl font-medium tracking-[-0.05em]">{appeal.overall.toFixed(1)}<span className="text-base text-muted-foreground">/10</span></div>
             </div>
             <div className="text-right text-xs">
-              <div className="text-muted-foreground">pull {result!.previous_attractiveness.toFixed(2)} → <span className="num font-semibold text-foreground">{appeal.attractiveness.toFixed(2)}</span></div>
+              <div className="text-muted-foreground">{richText(t("areaPull"), { before: result!.previous_attractiveness.toFixed(2), after: <span className="num font-semibold text-foreground">{appeal.attractiveness.toFixed(2)}</span> })}</div>
               <div className={cn("num font-semibold", delta >= 0 ? "text-positive" : "text-negative")}>{delta >= 0 ? "+" : ""}{Math.round(delta * 100)}%</div>
             </div>
           </div>
           {SCORES.map(([key, label]) => (
             <div key={key} className="flex items-center gap-2 text-xs">
-              <span className="w-16 text-muted-foreground">{label}</span>
+              <span className="w-16 text-muted-foreground">{t(label)}</span>
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
                 <div className="aurora-gradient h-full rounded-full" style={{ width: `${appeal[key] * 10}%` }} />
               </div>

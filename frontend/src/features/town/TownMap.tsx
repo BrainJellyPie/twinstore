@@ -5,8 +5,9 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
 
 import type { Town, TownDemand, TownVenue } from "@/shared/api/client";
+import { useI18n } from "@/shared/i18n/i18n";
 
-import { BUILDING_COLORS, ROAD_WIDTH, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
+import { BUILDING_COLORS, labelOf, ROAD_WIDTH, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
 
 export type MapMode = "inspect" | "place" | "remove";
 
@@ -25,6 +26,7 @@ export function TownMap({
   onRemove: (venue: TownVenue) => void;
   highlightVenueId?: string | null;
 }) {
+  const { t, locale } = useI18n();
   const S = town.size_m;
   const [view, setView] = useState({ x: 0, y: 0, w: S });
   const drag = useRef<{ px: number; py: number; vx: number; vy: number; moved: boolean } | null>(null);
@@ -111,7 +113,7 @@ export function TownMap({
       onPointerMove={onMove}
       onPointerUp={onUp}
       role="img"
-      aria-label={`Map of ${town.name}`}
+      aria-label={t("areaMapOf", { name: town.name })}
     >
       {/* Roads */}
       {town.roads.map((r) => (
@@ -144,11 +146,11 @@ export function TownMap({
             strokeWidth={0.8}
           >
             <title>
-              {`${b.name || b.kind} · ${b.floors} floors` +
-                (b.residents ? ` · ${b.residents} residents` : "") +
-                (b.workers ? ` · ${b.workers} workers` : "") +
-                (b.students ? ` · ${b.students} students` : "") +
-                (b.daily_passersby ? ` · ${b.daily_passersby.toLocaleString()} passengers/day` : "")}
+              {t("areaBuildingFloors", { name: b.name || b.kind, floors: b.floors }) +
+                (b.residents ? t("areaBuildingResidents", { count: b.residents }) : "") +
+                (b.workers ? t("areaBuildingWorkers", { count: b.workers }) : "") +
+                (b.students ? t("areaBuildingStudents", { count: b.students }) : "") +
+                (b.daily_passersby ? t("areaBuildingPassengers", { count: b.daily_passersby.toLocaleString(locale) }) : "")}
             </title>
           </rect>
         );
@@ -206,7 +208,7 @@ export function TownMap({
                 strokeWidth={hl ? 3 : 2}
               />
             )}
-            <title>{`${v.name} (${VENUE_LABELS[v.category] ?? v.category})${v.is_focal ? " — our store" : ""}`}</title>
+            <title>{t("areaVenueTitle", { name: v.name, category: labelOf(VENUE_LABELS, v.category, t) }) + (v.is_focal ? t("areaVenueOurs") : "")}</title>
           </g>
         );
       })}

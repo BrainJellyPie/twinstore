@@ -10,6 +10,7 @@ import { Textarea } from "@/shared/components/ui/textarea";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { formatMoney } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
 
 import { productNamedIn } from "./productMatch";
 import type { Product } from "./products";
@@ -20,15 +21,16 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
   prefill?: { text: string; id: number };
   onPrefillHandled?: (id: number) => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const { data: models = [] } = useQuery({ queryKey: queryKeys.models(), queryFn: ({ signal }) => api.getModels(signal), staleTime: 60_000 });
   const [sku, setSku] = useState(products[0]?.sku ?? "");
   const [name, setName] = useState("");
-  const [aName, setAName] = useState("Current greeting");
-  const [bName, setBName] = useState("Helpful recommendation");
+  const [aName, setAName] = useState(() => t("mkPitchCurrentName"));
+  const [bName, setBName] = useState(() => t("mkPitchAltName"));
   const [a, setA] = useState("");
   const [b, setB] = useState("");
-  const [context, setContext] = useState("The shopper is browsing this product's shelf. An available employee offers help once; the shopper can decline.");
+  const [context, setContext] = useState(() => t("mkPitchDefaultContext"));
   const [facts, setFacts] = useState("");
   const [panel, setPanel] = useState("40");
   const [seed, setSeed] = useState("1");
@@ -86,72 +88,72 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
   }, [prefillId, prefillText, queueDraft, handled, products, sku, onPrefillHandled]);
   return <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (ready) run.mutate(); }}>
     <section className="space-y-3 rounded-2xl border bg-card p-4">
-      <h2 className="font-semibold">Staff script A/B test</h2>
-      <p className="text-sm text-muted-foreground">Screen two greetings, recommendations or objection-handling scripts with the same synthetic shoppers. Each encounter is independent. Ratings help choose a field pilot; they do not predict sales.</p>
-      <label className="block space-y-1 text-sm">Product held constant
-        <select aria-label="Product held constant" value={sku} onChange={(e) => setSku(e.target.value)} className="block h-10 w-full rounded-xl border bg-card px-2">
+      <h2 className="font-semibold">{t("mkPitchTitle")}</h2>
+      <p className="text-sm text-muted-foreground">{t("mkPitchIntro")}</p>
+      <label className="block space-y-1 text-sm">{t("mkPitchProduct")}
+        <select aria-label={t("mkPitchProduct")} value={sku} onChange={(e) => setSku(e.target.value)} className="block h-10 w-full rounded-xl border bg-card px-2">
           {products.map((p) => <option key={p.sku} value={p.sku}>{p.name} · {formatMoney(p.price, currency)} · {p.sku}</option>)}
         </select>
       </label>
-      <label className="block space-y-1 text-sm">Encounter context
+      <label className="block space-y-1 text-sm">{t("mkPitchContext")}
         <Textarea value={context} onChange={(e) => setContext(e.target.value)} maxLength={1200} required />
       </label>
-      <label className="block space-y-1 text-sm">Verified product facts (optional)
-        <Textarea value={facts} onChange={(e) => setFacts(e.target.value)} maxLength={1600} placeholder="Only facts you can verify, such as pack size, ingredients or usage. Keep the offer the same in both scripts." />
+      <label className="block space-y-1 text-sm">{t("mkPitchFacts")}
+        <Textarea value={facts} onChange={(e) => setFacts(e.target.value)} maxLength={1600} placeholder={t("mkPitchFactsPlaceholder")} />
       </label>
-      <p className="text-xs text-muted-foreground">Prices and promotions come from the selected layout. Avoid changing the offer between scripts if you want to isolate wording. Spoken tone, staff availability and queue time are outside this test.</p>
+      <p className="text-xs text-muted-foreground">{t("mkPitchPricesHint")}</p>
     </section>
     <div className="grid gap-3 md:grid-cols-2">
       {([{ arm: "A", label: aName, setLabel: setAName, value: a, setValue: setA }, { arm: "B", label: bName, setLabel: setBName, value: b, setValue: setB }]).map((v) =>
         <section key={v.arm} className="space-y-3 rounded-2xl border bg-card p-4">
-          <h3 className="font-semibold">Script {v.arm}</h3>
-          <Input aria-label={`Script ${v.arm} name`} value={v.label} onChange={(e) => v.setLabel(e.target.value)} maxLength={40} required />
-          <Textarea aria-label={`Script ${v.arm} text`} value={v.value} onChange={(e) => v.setValue(e.target.value)} maxLength={1200} rows={6} required
-            placeholder={v.arm === "A" ? "Write the exact words staff currently say." : "Write the alternative wording to test."} />
-          <p className="text-xs text-muted-foreground">{v.value.length}/1,200 characters · name hidden from shoppers</p>
+          <h3 className="font-semibold">{t("mkScriptN", { arm: v.arm })}</h3>
+          <Input aria-label={t("mkScriptName", { arm: v.arm })} value={v.label} onChange={(e) => v.setLabel(e.target.value)} maxLength={40} required />
+          <Textarea aria-label={t("mkScriptText", { arm: v.arm })} value={v.value} onChange={(e) => v.setValue(e.target.value)} maxLength={1200} rows={6} required
+            placeholder={v.arm === "A" ? t("mkScriptAPlaceholder") : t("mkScriptBPlaceholder")} />
+          <p className="text-xs text-muted-foreground">{t("mkScriptChars", { count: v.value.length })}</p>
           {v.arm === "B" && (
             <div className="space-y-1.5 border-t pt-3">
               <div className="flex flex-wrap items-center gap-1.5">
-                <Input aria-label="Direction for script B" value={direction} onChange={(e) => setDirection(Array.from(e.target.value).slice(0, 200).join(""))}
+                <Input aria-label={t("mkDirectionB")} value={direction} onChange={(e) => setDirection(Array.from(e.target.value).slice(0, 200).join(""))}
                   onKeyDown={(e) => {
                     if (e.key !== "Enter") return;
                     e.preventDefault();
                     if (!e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) requestDraft({ dir: direction, product: sku });
                   }}
-                  placeholder="Optional direction, e.g. lead with value, shorter, more personal" className="h-8 min-w-[12rem] flex-1 text-xs" />
+                  placeholder={t("mkDirectionPlaceholder")} className="h-8 min-w-[12rem] flex-1 text-xs" />
                 <Button type="button" size="sm" variant="outline" disabled={!sku || draft.isPending} onClick={() => requestDraft({ dir: direction, product: sku })}>
-                  {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Write an alternative
+                  {draft.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} {t("mkWriteAlternative")}
                 </Button>
               </div>
-              {explanation && <p className="text-xs text-muted-foreground">{explanation} Same product and offer as script A.</p>}
+              {explanation && <p className="text-xs text-muted-foreground">{explanation} {t("mkSameOffer")}</p>}
               {draft.error && <p role="alert" className="text-xs text-destructive">{draft.error.message}</p>}
             </div>
           )}
         </section>)}
     </div>
-    {(sameScripts || sameNames) && <p role="alert" className="text-sm text-destructive">Use distinct script names and different wording.</p>}
+    {(sameScripts || sameNames) && <p role="alert" className="text-sm text-destructive">{t("mkDistinctScripts")}</p>}
     <section className="grid gap-3 rounded-2xl border bg-card p-4 sm:grid-cols-2">
-      <label className="space-y-1 text-sm">Requested shoppers
+      <label className="space-y-1 text-sm">{t("mkRequestedShoppers")}
         <Input type="number" min={20} max={500} step={1} value={panel} onChange={(e) => setPanel(e.target.value)} required />
       </label>
-      <label className="space-y-1 text-sm">Random seed
+      <label className="space-y-1 text-sm">{t("mkRandomSeed")}
         <Input type="number" min={0} max={2_147_483_647} step={1} value={seed} onChange={(e) => setSeed(e.target.value)} required />
       </label>
-      <label className="space-y-1 text-sm">Text model
+      <label className="space-y-1 text-sm">{t("mkTextModel")}
         <select value={model} onChange={(e) => setModel(e.target.value)} className="block h-10 w-full rounded-xl border bg-card px-2">
-          <option value="">App's text model</option>
+          <option value="">{t("studioAppTextModel")}</option>
           {models.map((m) => <option key={m.ref} value={m.ref}>{m.label}</option>)}
         </select>
       </label>
-      <label className="space-y-1 text-sm">Test name (optional)
+      <label className="space-y-1 text-sm">{t("mkTestNameOptional")}
         <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
       </label>
-      <p className="text-xs text-muted-foreground sm:col-span-2">{personaCount} saved personas. {validNumbers ? `${Math.min(count, personaCount)} shoppers × 2 scripts = ${2 * Math.min(count, personaCount)} planned model requests, plus retries if needed.` : "Choose 20–500 shoppers and a nonnegative integer seed."} Product, scripts and sampled personas are saved with the test.</p>
+      <p className="text-xs text-muted-foreground sm:col-span-2">{t("mkSavedPersonas", { count: personaCount })} {validNumbers ? t("mkPlannedRequests", { shoppers: Math.min(count, personaCount), requests: 2 * Math.min(count, personaCount) }) : t("mkChooseShoppersSeed")} {t("mkSavedWithTest")}</p>
     </section>
-    {personaCount < 20 && <p role="alert" className="text-sm text-destructive">Generate at least 20 personas before testing staff scripts.</p>}
+    {personaCount < 20 && <p role="alert" className="text-sm text-destructive">{t("mkNeedPersonas")}</p>}
     {run.error && <p role="alert" className="text-sm text-destructive">{run.error.message}</p>}
     <div className="flex justify-end"><Button type="submit" disabled={!ready || run.isPending}>
-      {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <MessagesSquare className="size-4" />} Test staff scripts
+      {run.isPending ? <Loader2 className="size-4 animate-spin" /> : <MessagesSquare className="size-4" />} {t("mkTestScripts")}
     </Button></div>
   </form>;
 }

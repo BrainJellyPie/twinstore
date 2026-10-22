@@ -5,6 +5,7 @@ import type { CustomerResult } from "@/shared/types/domain";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { parseTimeToSeconds } from "@/features/playback/utils/playback";
+import { useI18n } from "@/shared/i18n/i18n";
 
 interface Props {
   customers: CustomerResult[] | null;
@@ -12,14 +13,14 @@ interface Props {
   maxTime: number;
 }
 
-const chartConfig = {
-  visitors: { label: "Visitors", color: "var(--color-chart-1)" },
-} satisfies ChartConfig;
-
 const MARGIN = { top: 4, right: 4, bottom: 0, left: 4 };
 const PADDING = { left: 8, right: 8 };
 
 export function TimelineChart({ customers, minTime, maxTime }: Props) {
+  const { t } = useI18n();
+  const chartConfig = {
+    visitors: { label: t("dashVisitors"), color: "var(--color-chart-1)" },
+  } satisfies ChartConfig;
   const currentMinute = useSimulationMetricsStore((s) => s.currentMinute);
   const currentDay = usePlaybackControlStore((s) => s.currentDay);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -70,9 +71,9 @@ export function TimelineChart({ customers, minTime, maxTime }: Props) {
   if (data.length === 0) {
     return (
       <div className="border-t px-3 py-3">
-        <div className="section-title mb-2">Timeline</div>
+        <div className="section-title mb-2">{t("dashTimeline")}</div>
         <div className="flex h-20 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
-          No data
+          {t("dashNoData")}
         </div>
       </div>
     );
@@ -84,7 +85,7 @@ export function TimelineChart({ customers, minTime, maxTime }: Props) {
 
   return (
     <div className="border-t px-3 py-3">
-      <div className="section-title mb-1">Timeline</div>
+      <div className="section-title mb-1">{t("dashTimeline")}</div>
       <div ref={containerRef} onClick={handleChartClick} className="cursor-pointer">
         <ChartContainer config={chartConfig} className="aspect-auto h-[96px] w-full">
           <BarChart data={data} margin={MARGIN}>

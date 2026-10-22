@@ -10,15 +10,22 @@ import type { Store } from "@/shared/types/domain";
 import { cn } from "@/shared/utils/cn";
 import { rackBounds } from "@/shared/utils/grid";
 import { formatMoney } from "@/shared/utils/money";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
 const ICON: Record<JourneyAction, typeof Eye> = {
   enter: DoorOpen, move: Footprints, browse: Eye, buy: ShoppingBasket, pay: CreditCard, wander: Shuffle, exit: DoorClosed,
 };
-const VERB: Record<JourneyAction, string> = {
-  enter: "Walks in", move: "Heads over", browse: "Looks at", buy: "Takes", pay: "Pays", wander: "Wanders", exit: "Leaves",
+const VERB: Record<JourneyAction, MessageKey> = {
+  enter: "journeyEnter", move: "journeyMove", browse: "journeyBrowse", buy: "journeyBuy", pay: "journeyPay", wander: "journeyWander", exit: "journeyExit",
+};
+const SIDE: Record<string, MessageKey> = { N: "dirNorth", S: "dirSouth", E: "dirEast", W: "dirWest" };
+const VERB_AT: Partial<Record<JourneyAction, MessageKey>> = {
+  enter: "journeyEnterAt", move: "journeyMoveAt", browse: "journeyBrowseAt", buy: "journeyBuyAt", pay: "journeyPayAt", wander: "journeyWanderAt", exit: "journeyExitAt",
 };
 
 export function JourneyMap({ journey, store, active, onHover }: { journey: Journey; store: Store; active: Set<number>; onHover: (i: number | null) => void }) {
+  const { t } = useI18n();
   const [w, h] = store.grid_size;
   const points = journey.path.map(([, x, y]) => `${x + 0.5},${y + 0.5}`).join(" ");
   // One marker per spot: a shopper often browses and buys several times without moving.
@@ -29,7 +36,7 @@ export function JourneyMap({ journey, store, active, onHover }: { journey: Journ
     spots.set(key, [...(spots.get(key) ?? []), s]);
   }
   return (
-    <svg viewBox={`-0.3 -0.3 ${w + 0.6} ${h + 0.6}`} className="w-full rounded-xl border bg-foreground/[0.025]" role="img" aria-label="Path through the store">
+    <svg viewBox={`-0.3 -0.3 ${w + 0.6} ${h + 0.6}`} className="w-full rounded-xl border bg-foreground/[0.025]" role="img" aria-label={t("journeyPath")}>
       {store.racks.map((r) => {
         const b = rackBounds(r);
         return (
@@ -62,6 +69,7 @@ export function JourneyMap({ journey, store, active, onHover }: { journey: Journ
 export function JourneySteps({ projectId, journey, active, onHover }: {
   projectId: string; journey: Journey; active: Set<number>; onHover: (i: number | null) => void;
 }) {
+  const { locale, t } = useI18n();
   const [zoom, setZoom] = useState<{ url: string; title: string } | null>(null);
   // The first browse/buy step at each shelf face shows what the shopper saw there.
   const firstAtFace = new Set<number>();
@@ -79,7 +87,8 @@ export function JourneySteps({ projectId, journey, active, onHover }: {
         {journey.steps.map((s) => (
           <Step key={s.index} step={s} currency={journey.currency} active={active.has(s.index)} onHover={onHover}
             shelf={firstAtFace.has(s.index) ? shelfFaceUrl(projectId, journey.run_id, s.rack_id, s.face) : null}
-            onZoom={(url) => setZoom({ url, title: `${s.rack} · ${s.face} side, as the shopper saw it at ${s.time}` })} />
+            onZoom={(url) => setZoom({ url, title: t("journeyShelfTitle", { rack: s.rack, time: s.time,
+              side: locale !== "en" && SIDE[s.face] ? t(SIDE[s.face]!) : s.face }) })} />
         ))}
       </ol>
       {zoom && <Lightbox {...zoom} onClose={() => setZoom(null)} />}
@@ -88,6 +97,7 @@ export function JourneySteps({ projectId, journey, active, onHover }: {
 }
 
 function Lightbox({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
+  const { t } = useI18n();
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", key);
@@ -100,7 +110,7 @@ function Lightbox({ url, title, onClose }: { url: string; title: string; onClose
         <img src={url} alt={title} className="max-h-[75vh] w-full object-contain" />
         <figcaption className="flex items-center gap-2 px-4 py-2.5 text-sm">
           <span className="flex-1 text-muted-foreground">{title}</span>
-          <button type="button" onClick={onClose} className="rounded-md p-1 hover:bg-foreground/[0.06]" aria-label="Close"><X className="size-4" /></button>
+          <button type="button" onClick={onClose} className="rounded-md p-1 hover:bg-foreground/[0.06]" aria-label={t("close")}><X className="size-4" /></button>
         </figcaption>
       </figure>
     </div>,
@@ -111,7 +121,10 @@ function Lightbox({ url, title, onClose }: { url: string; title: string; onClose
 function Step({ step: s, currency, active, onHover, shelf, onZoom }: {
   step: JourneyStep; currency: string; active: boolean; onHover: (i: number | null) => void; shelf: string | null; onZoom: (url: string) => void;
 }) {
+  const { t } = useI18n();
   const Icon = ICON[s.action] ?? Footprints;
+  const at = VERB_AT[s.action];
+  const verb = s.rack && at ? t(at, { rack: s.rack }) : VERB[s.action] ? t(VERB[s.action]) : `${s.action}${s.rack ? ` ${s.rack}` : ""}`;
   const buy = s.action === "buy";
   return (
     <li
@@ -126,19 +139,19 @@ function Step({ step: s, currency, active, onHover, shelf, onZoom }: {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-1.5 text-[0.78rem]">
           <span className="num font-semibold text-muted-foreground">{s.index}</span>
-          <span className="font-medium">{VERB[s.action] ?? s.action}{s.rack ? ` ${s.rack}` : ""}</span>
+          <span className="font-medium">{verb}</span>
           <span className="num ml-auto shrink-0 text-[0.7rem] text-muted-foreground">{s.time}</span>
         </div>
         {s.product_name && (
           <div className="text-[0.78rem]">
             <b>{s.product_name}</b>{s.quantity > 1 ? ` ×${s.quantity}` : ""} · <span className="num">{formatMoney(s.price * s.quantity, currency)}</span>
-            {s.origin === "impulse" && <span className="ml-1.5 rounded-full bg-[color-mix(in_oklab,var(--viz-2)_18%,transparent)] px-1.5 py-px text-[0.65rem] font-semibold">impulse</span>}
+            {s.origin === "impulse" && <span className="ml-1.5 rounded-full bg-[color-mix(in_oklab,var(--viz-2)_18%,transparent)] px-1.5 py-px text-[0.65rem] font-semibold">{t("journeyImpulse")}</span>}
           </div>
         )}
         {s.thought && <p className="mt-0.5 text-[0.76rem] leading-snug text-muted-foreground italic">“{s.thought}”</p>}
         {shelf && (
-          <button type="button" onClick={() => onZoom(shelf)} className="mt-1 block overflow-hidden rounded-lg border transition-shadow hover:shadow-md" title="What the shopper saw here — click to enlarge">
-            <img src={shelf} alt={`${s.rack} as seen by the shopper`} loading="lazy" className="h-16 w-auto" />
+          <button type="button" onClick={() => onZoom(shelf)} className="mt-1 block overflow-hidden rounded-lg border transition-shadow hover:shadow-md" title={t("journeyShelfHint")}>
+            <img src={shelf} alt={t("journeyShelfAlt", { rack: s.rack })} loading="lazy" className="h-16 w-auto" />
           </button>
         )}
       </div>
