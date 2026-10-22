@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.2 — the local model when no key works, and a Quit button
 
 ### Downloads
 - The release notes and the README say up front that Windows' "Windows protected your PC" warning is expected for a
