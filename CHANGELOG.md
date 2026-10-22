@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Fixes
+- The local vision model could not start ("no llama.cpp build for windows/x64 in release v0.7.0"): llama.cpp's latest
+  release is now a versioned one without binaries, which come with its numbered builds marked as pre-releases. The
+  download now takes the newest of the recent releases that has a build for the computer.
 - On Windows the first start could stop at "Simulator" for good: the server process watched for the launcher closing
   its stdin with a blocking read, and Windows makes every other operation on that pipe (a library or child process
   asking what stdin is) wait behind a pending read. It now polls the pipe without reading it, hardware probes no

@@ -50,7 +50,9 @@ from .storage.io import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
-RELEASES_URL = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
+# Recent releases, newest first. "latest" is not enough: llama.cpp's versioned releases (v0.7.0, …) carry no
+# binaries, which come with its numbered builds (b11804, …) marked as pre-releases.
+RELEASES_URL = "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30"
 HF_URL = "https://huggingface.co/{repo}/resolve/main/{file}"
 DEFAULT_PORT = 8081
 type State = Literal["off", "disabled", "preparing", "downloading", "starting", "ready", "error"]
@@ -103,6 +105,28 @@ def pick_runtime_assets(names: list[str], *, os_name: str, arch: str, backend: s
             return [name, *extra[:1]]
         return [hits[0][0]]
     return []
+
+
+def pick_release(
+    releases: list[dict[str, object]], *, os_name: str, arch: str, backend: str, cuda: str = "",
+) -> tuple[str, list[str], dict[str, str]] | None:
+    """(tag, asset names to download, every asset's download URL) of the newest release with a build for this
+    machine; drafts and releases without one (a versioned release without binaries) are skipped."""
+    for release in releases:
+        if release.get("draft"):
+            continue
+        raw = release.get("assets")
+        assets: dict[str, str] = {}
+        for asset in cast(list[object], raw) if isinstance(raw, list) else []:
+            if isinstance(asset, dict):
+                item = cast(dict[str, object], asset)
+                name, url = item.get("name"), item.get("browser_download_url")
+                if isinstance(name, str) and isinstance(url, str):
+                    assets[name] = url
+        names = pick_runtime_assets(list(assets), os_name=os_name, arch=arch, backend=backend, cuda=cuda)
+        if names:
+            return str(release.get("tag_name", "")), names, assets
+    return None
 
 
 def _safe_extract(archive: Path, dest: Path) -> None:
@@ -275,21 +299,25 @@ class LocalVLMManager:
         try:
             with self._open(urllib.request.Request(RELEASES_URL, headers={"Accept": "application/vnd.github+json",
                                                                           "User-Agent": "TwinStore"})) as r:
-                release = json.loads(r.read().decode())
+                listed: object = json.loads(r.read().decode())
         except OSError as e:
             raise RuntimeError(
                 f"could not reach GitHub to download llama.cpp ({e}). Install llama.cpp (e.g. `brew install llama.cpp`, "
                 "`winget install llama.cpp`) so that `llama-server` is on the PATH, or set TWINSTORE_LLAMA_SERVER "
                 "to its path, then start the local model again") from e
-        assets = {a["name"]: a["browser_download_url"] for a in release.get("assets", [])}
+        releases = [cast(dict[str, object], r) for r in cast(list[object], listed) if isinstance(r, dict)] \
+            if isinstance(listed, list) else []
         gpu = hw.best_gpu
-        names = pick_runtime_assets(list(assets), os_name=hw.os, arch=hw.arch, backend=plan.backend,
-                                    cuda=gpu.cuda if gpu else "")
-        if not names:
-            raise RuntimeError(f"no llama.cpp build for {hw.os}/{hw.arch} in release {release.get('tag_name')}")
+        chosen = pick_release(releases, os_name=hw.os, arch=hw.arch, backend=plan.backend, cuda=gpu.cuda if gpu else "")
+        if chosen is None:
+            raise RuntimeError(
+                f"no llama.cpp build for {hw.os}/{hw.arch} in its {len(releases)} latest releases. Install llama.cpp "
+                "(e.g. `winget install llama.cpp`, `brew install llama.cpp`) so that `llama-server` is on the PATH, or "
+                "set TWINSTORE_LLAMA_SERVER to its path, then start the local model again")
+        tag, names, assets = chosen
         target.mkdir(parents=True, exist_ok=True)
         for name in names:
-            archive = self._download(assets[name], target / name, label=f"llama.cpp {release.get('tag_name', '')}")
+            archive = self._download(assets[name], target / name, label=f"llama.cpp {tag}")
             self._check_cancelled()
             _safe_extract(archive, target)
             archive.unlink(missing_ok=True)
@@ -300,7 +328,7 @@ class LocalVLMManager:
             for exe in found.parent.iterdir():
                 if exe.is_file() and not exe.suffix:
                     exe.chmod(exe.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        self._set(runtime=f"{release.get('tag_name', '')} {names[0]}")
+        self._set(runtime=f"{tag} {names[0]}")
         return found
 
     def _download_model(self, repo: str, file: str) -> Path:

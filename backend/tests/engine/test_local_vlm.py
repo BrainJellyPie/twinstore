@@ -196,3 +196,62 @@ def test_model_setup_warns_without_any_key_and_not_with_one(no_keys, monkeypatch
     body = client.get("/api/system/models").json()
     assert body["cloud_providers"] == ["Anthropic (Claude)"] and body["warning"] is None
     assert json.dumps(body).count("sk-ant") == 0
+
+
+def _asset(name: str) -> dict[str, object]:
+    return {"name": name, "browser_download_url": f"https://github.com/ggml-org/llama.cpp/releases/download/x/{name}"}
+
+
+# As llama.cpp publishes them since its versioned releases: the newest ("latest") carries no binaries; numbered
+# builds, marked as pre-releases, do.
+_RELEASES: list[dict[str, object]] = [
+    {"tag_name": "b11805", "draft": True, "prerelease": True, "assets": [_asset("llama-b11805-bin-win-cpu-x64.zip")]},
+    {"tag_name": "v0.7.0", "draft": False, "prerelease": False, "assets": [_asset("nightly-tag.txt")]},
+    {"tag_name": "b11804", "draft": False, "prerelease": True, "assets": [_asset(n) for n in (
+        "llama-b11804-bin-win-cpu-x64.zip", "llama-b11804-bin-win-vulkan-x64.zip",
+        "llama-b11804-bin-win-cuda-12.4-x64.zip", "llama-b11804-bin-win-cuda-13.4-x64.zip",
+        "cudart-llama-bin-win-cuda-12.4-x64.zip", "cudart-llama-bin-win-cuda-13.4-x64.zip",
+        "llama-b11804-bin-macos-arm64.tar.gz", "llama-b11804-bin-ubuntu-x64.tar.gz")]},
+    {"tag_name": "b11803", "draft": False, "prerelease": True, "assets": [_asset("llama-b11803-bin-ubuntu-arm64.tar.gz")]},
+]
+
+
+def test_the_newest_release_with_a_build_for_this_machine_is_used():
+    from store_emulator.application.local_vlm import pick_release
+
+    win = pick_release(_RELEASES, os_name="windows", arch="x64", backend="cpu")
+    assert win is not None and win[0] == "b11804" and win[1] == ["llama-b11804-bin-win-cpu-x64.zip"]
+    assert win[2][win[1][0]].endswith("llama-b11804-bin-win-cpu-x64.zip")
+    cuda = pick_release(_RELEASES, os_name="windows", arch="x64", backend="cuda", cuda="12.8")
+    assert cuda is not None and cuda[1] == ["llama-b11804-bin-win-cuda-12.4-x64.zip", "cudart-llama-bin-win-cuda-12.4-x64.zip"]
+    # A build only an older release has is found there.
+    arm = pick_release(_RELEASES, os_name="linux", arch="arm64", backend="cpu")
+    assert arm is not None and arm[0] == "b11803"
+    assert pick_release(_RELEASES[:2], os_name="windows", arch="x64", backend="cpu") is None
+
+
+def test_runtime_download_skips_a_release_without_binaries(tmp_path, monkeypatch):
+    import tarfile
+
+    monkeypatch.delenv("TWINSTORE_LLAMA_SERVER", raising=False)
+    monkeypatch.setattr(local_vlm.shutil, "which", lambda _name: None)
+    archive = io.BytesIO()
+    with tarfile.open(fileobj=archive, mode="w:gz") as t:
+        body = b"#!/bin/sh\n"
+        info = tarfile.TarInfo("build/bin/llama-server")
+        info.size = len(body)
+        t.addfile(info, io.BytesIO(body))
+    fetched: list[str] = []
+
+    def opener(req: urllib.request.Request):
+        fetched.append(req.full_url)
+        if req.full_url == local_vlm.RELEASES_URL:
+            return _Resp(json.dumps(_RELEASES).encode())
+        return _Resp(archive.getvalue())
+
+    mgr = LocalVLMManager(tmp_path / "lv", opener=opener, hardware=lambda: _hw(os="linux", arch="x64"))
+    hw, plan = mgr.plan()
+    server = mgr._runtime(hw, plan.model_copy(update={"backend": "cpu"}))  # pyright: ignore[reportPrivateUsage]
+    assert server.name == "llama-server" and server.is_file()
+    assert fetched == [local_vlm.RELEASES_URL, "https://github.com/ggml-org/llama.cpp/releases/download/x/llama-b11804-bin-ubuntu-x64.tar.gz"]
+    assert mgr.status().runtime == "b11804 llama-b11804-bin-ubuntu-x64.tar.gz"
