@@ -83,7 +83,9 @@ export function LocalModelPanel() {
               </Button>
             ) : (
               <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending || local.state === "ready"}>
-                <Play className="size-3.5" aria-hidden /> {t("localStart", { model: plan.model.label })}
+                <Play className="size-3.5" aria-hidden /> {local.downloaded === false
+                  ? t("localDownloadStart", { model: plan.model.label, size: plan.model.download_gb })
+                  : t("localStart", { model: plan.model.label })}
               </Button>
             )}
           </div>

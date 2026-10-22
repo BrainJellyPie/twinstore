@@ -931,6 +931,8 @@ export interface LocalVLMStatus {
   model_ref: string;
   managed: boolean;
   runtime: string;
+  /** The model and its runtime are on this computer: starting downloads nothing. Absent from older servers. */
+  downloaded?: boolean;
 }
 
 export interface ModelSetup {

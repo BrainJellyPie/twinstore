@@ -603,10 +603,10 @@ class _Fallback:
             problem, fix = f"No API key for {label}", "add a key in Settings → Model providers"
         local = manager()
         # Off, or failed last time (a dropped download, a server that crashed): start it again, once per request —
-        # "Try again" on a failed generation would otherwise repeat the old failure without trying.
-        starting = local.status().state in ("off", "error") and os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1"
-        if starting:
-            local.start()
+        # "Try again" on a failed generation would otherwise repeat the old failure without trying. Only a model the
+        # user set up: nothing is downloaded for them unasked.
+        starting = (local.status().state in ("off", "error") and os.environ.get("TWINSTORE_LOCAL_VLM_AUTO") == "1"
+                    and local.auto_start())
         deadline = time.monotonic() + self._wait
         restarted_seen = False
         while True:
@@ -614,7 +614,7 @@ class _Fallback:
             if status.state == "ready" and _local_text_ready(load_settings()):
                 logger.warning(f"[providers] {problem}; assistive features use the local model")
                 return f"{ProviderKind.LLAMACPP.value}:local"
-            if status.state not in _LOCAL_COMING and not (starting and status.state == "off"):
+            if status.state not in _LOCAL_COMING and not (starting and status.state == "off" and local.busy()):
                 if starting and status.state == "error" and not restarted_seen:
                     restarted_seen = True     # the error may be the old one, before the restart got going
                     time.sleep(1.0)
@@ -624,7 +624,9 @@ class _Fallback:
                                      f"(TWINSTORE_LOCAL_VLM). {fix[0].upper()}{fix[1:]}, or turn the local model on.")
                 why = f" (the local model: {status.message})" if status.state == "error" and status.message else ""
                 other = "" if problem.startswith("No model API key") else ", or add another provider's key"
-                raise ValueError(f"{problem}{why}. {fix[0].upper()}{fix[1:]}{other}.")
+                local_hint = (" You can also start the local model in Settings → Model providers (it downloads once)."
+                              if status.state == "off" else "")
+                raise ValueError(f"{problem}{why}. {fix[0].upper()}{fix[1:]}{other}.{local_hint}")
             done = f" ({status.progress:.0%})" if status.progress is not None else ""
             if time.monotonic() >= deadline:
                 raise ValueError(f"{problem}. The local model on this computer is getting ready ({status.message}"

@@ -133,3 +133,14 @@ it("does not offer Stop when the local model is off or ready", async () => {
   await show(); expand();
   expect(screen.queryByRole("button", { name: "Stop local model" })).toBeNull();
 });
+
+it("says starting the local model downloads it, and how much, before anything is downloaded", async () => {
+  await show({ ...base, local: { ...base.local, downloaded: false } });
+  expand();
+  expect(screen.getByRole("button", { name: "Download local model (2 GB)" })).toBeTruthy();
+  expect(api.startLocalModel).not.toHaveBeenCalled();
+  cleanup();
+  await show({ ...base, local: { ...base.local, downloaded: true } });
+  expand();
+  expect(screen.getByRole("button", { name: "Start local model" })).toBeTruthy();
+});

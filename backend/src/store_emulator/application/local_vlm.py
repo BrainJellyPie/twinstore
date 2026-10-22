@@ -6,8 +6,10 @@ the `llama-server` build that matches it (CUDA, Metal, Vulkan or CPU) from llama
 releases and the model from Hugging Face into `.data/local_vlm/`, starts the server on 127.0.0.1
 and points the `llamacpp` provider at it, so `llamacpp:local` works in every model picker.
 
-It starts on its own when the app is opened from a launcher (`TWINSTORE_LOCAL_VLM_AUTO=1`) and no
-cloud key is set; otherwise from Settings or `POST /api/system/local-model/start`. Set
+Nothing is downloaded until the user starts it (Settings, or `POST /api/system/local-model/start`), which also
+records that choice. When the app is opened from a launcher (`TWINSTORE_LOCAL_VLM_AUTO=1`) and no cloud key is set,
+it starts again on its own if the user chose it before, or if it is already on this computer (an earlier version
+downloaded it without asking); it never downloads on its own, and once the user stops it, it stays off. Set
 `TWINSTORE_LOCAL_VLM=off` to disable it, `TWINSTORE_LLAMA_SERVER=/path/to/llama-server` to use your
 own build, `TWINSTORE_LOCAL_VLM_MODEL=<key>` to force a model (keys in `hardware.MODELS`).
 
@@ -71,6 +73,7 @@ class LocalVLMStatus(BaseModel):
     managed: bool = False             # True: TwinStore started (and will stop) the server
     slots: int = 0                    # requests the server answers at once (llama.cpp -np); 0 = not known
     runtime: str = ""                 # llama.cpp build in use
+    downloaded: bool = False          # the planned model and a llama.cpp build are on this computer (no download)
 
 
 # ── llama.cpp release assets ────────────────────────────────────────────────
@@ -162,6 +165,15 @@ class _NoGpuBuild(Exception):
     """The newest llama.cpp releases have no build for this GPU (or its driver): the CPU plan applies."""
 
 
+class _NeedsDownload(Exception):
+    """A start nobody asked for reached a download: it stops there."""
+
+
+# The user's own Start (True) or Stop (False) in the app; no file: never asked.
+_CHOICE = "choice.json"
+NOT_DOWNLOADED = "not downloaded yet: Start downloads it"
+
+
 # Written into bin/<backend> once every archive of a build is unpacked; a build without it (an interrupted download, a
 # full disk, a DLL removed by antivirus) is fetched again rather than reused forever.
 _COMPLETE = ".complete"
@@ -181,6 +193,7 @@ class LocalVLMManager:
         self._stopping = False
         self._thread: threading.Thread | None = None
         self._proc: subprocess.Popen[bytes] | None = None
+        self._may_download = True
 
     @property
     def disabled(self) -> bool:
@@ -212,15 +225,65 @@ class LocalVLMManager:
             plan = plan.model_copy(update={"model": MODEL_BY_KEY[forced], "reason": f"set by TWINSTORE_LOCAL_VLM_MODEL={forced}"})
         return hw, plan
 
-    def start(self, *, wait: bool = False) -> LocalVLMStatus:
-        """Prepare and start the local model in the background (no-op while already running)."""
+    # ── the user's choice ──
+
+    def chosen(self) -> bool | None:
+        """True: the user started the local model; False: they stopped it; None: they never did either."""
+        try:
+            raw: object = json.loads((self.home / _CHOICE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):       # never chosen, or a file cut short: as if never asked
+            return None
+        use = cast(dict[str, object], raw).get("use") if isinstance(raw, dict) else None
+        return use if isinstance(use, bool) else None
+
+    def choose(self, use: bool) -> None:
+        """Remember the user's Start or Stop for the next time the app opens."""
+        path = self.home / _CHOICE
+        tmp = path.with_name(f"{_CHOICE}.{os.getpid()}.tmp")
+        try:
+            self.home.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(json.dumps({"use": use}), encoding="utf-8")
+            replace_file(tmp, path)
+        except OSError:                     # a read-only folder: the choice holds for this session only
+            logger.warning("[local_vlm] could not save the local model choice", exc_info=True)
+            tmp.unlink(missing_ok=True)
+
+    def on_disk(self, plan: LocalVLMPlan) -> bool:
+        """Would this plan start without downloading anything?"""
+        own = os.environ.get("TWINSTORE_LLAMA_SERVER")
+        target = self.home / "bin" / plan.backend
+        runtime = bool(own and Path(own).is_file()) or (
+            (target / _COMPLETE).is_file() and _find_server(target) is not None)
+        models = self.home / "models" / plan.model.repo.replace("/", "__")
+        return runtime and all((models / f).is_file() and (models / f).stat().st_size > 0
+                               for f in (plan.model.file, plan.model.mmproj))
+
+    def auto_start(self) -> bool:
+        """A start nobody asked for (the app opening, a request with no key): only what the user set up. It downloads
+        only for a user who chose the local model (an interrupted download goes on); for anyone else it starts a model
+        that is already on this computer, or nothing. False: nothing is coming."""
+        if self.disabled:
+            self._set(state="disabled", message="turned off by TWINSTORE_LOCAL_VLM")
+            return False
+        choice = self.chosen()
+        if choice is False:
+            return False
+        self.start(download=choice is True)
+        return True
+
+    def start(self, *, wait: bool = False, download: bool = True) -> LocalVLMStatus:
+        """Prepare and start the local model in the background (no-op while already running). `download=False` stops
+        at the first download instead (state off, NOT_DOWNLOADED)."""
         if self.disabled:
             self._set(state="disabled", message="turned off by TWINSTORE_LOCAL_VLM")
             return self.status()
         with self._lock:
             busy = self._stopping or (self._thread is not None and self._thread.is_alive())
             ready = self._status.state == "ready" and (self._proc is None or self._proc.poll() is None)
+            if download:
+                self._may_download = True    # a start already under way may go on to download
             if not busy and not ready:
+                self._may_download = download
                 self._cancel.clear()
                 self._thread = threading.Thread(target=self._run, name="local-vlm", daemon=True)
                 self._thread.start()
@@ -248,7 +311,33 @@ class LocalVLMManager:
 
     # ── pipeline ──
 
+    def busy(self) -> bool:
+        """A start (or stop) is still under way."""
+        with self._lock:
+            return self._stopping or (self._thread is not None and self._thread.is_alive())
+
+    def _check_download(self) -> None:
+        self._check_cancelled()
+        with self._lock:
+            if not self._may_download:
+                raise _NeedsDownload
+
     def _run(self) -> None:
+        while True:
+            try:
+                self._pipeline()
+                return
+            except _NeedsDownload:
+                with self._lock:
+                    if self._cancel.is_set():
+                        return
+                    if not self._may_download:
+                        self._status = self._status.model_copy(update={
+                            "state": "off", "message": NOT_DOWNLOADED, "progress": None, "downloaded": False})
+                        return
+                # The user pressed Start meanwhile: go on, with the download.
+
+    def _pipeline(self) -> None:
         try:
             self._check_cancelled()
             self._set(state="preparing", message="Reading this computer's hardware", progress=None)
@@ -290,6 +379,8 @@ class LocalVLMManager:
                 self._serve(server, files[0], files[1], plan)
         except _StartCancelled:
             pass
+        except _NeedsDownload:
+            raise
         except Exception as e:  # noqa: BLE001 — surfaced in the status, the app keeps working without it
             logger.warning(f"[local_vlm] {type(e).__name__}: {e}")
             self._set(state="error", message=f"{type(e).__name__}: {e}"[:300], progress=None)
@@ -314,6 +405,7 @@ class LocalVLMManager:
         if found is not None:
             self._set(runtime=str(found))
             return found
+        self._check_download()
         if target.exists():
             remove_tree(target)        # a build left half-installed
         self._set(state="downloading", message=f"Getting llama.cpp for {plan.backend.upper()}")
@@ -374,7 +466,7 @@ class LocalVLMManager:
     def _download(self, url: str, path: Path, *, label: str) -> Path:
         """Download to `<path>.part`, then move it into place. A `.part` left by a dropped connection, a sleeping laptop
         or a restart is continued where it stopped (HTTP range request) rather than fetched again from zero."""
-        self._check_cancelled()
+        self._check_download()
         path.parent.mkdir(parents=True, exist_ok=True)
         part = path.with_name(path.name + ".part")
         have = part.stat().st_size if part.is_file() else 0
