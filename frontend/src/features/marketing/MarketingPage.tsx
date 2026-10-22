@@ -221,7 +221,7 @@ export function MarketingPage({ projectId }: { projectId: string }) {
             {tab === "survey" && (current ? <SurveyJob projectId={projectId} id={current} onDuplicate={duplicateSurvey} /> : (
               <SurveyBuilder key={`${surveyDraft?.key ?? 0}:${budgetCurrency}`} projectId={projectId} personaCount={project.data?.personas.length ?? 0}
                 defaultCurrency={budgetCurrency} initial={surveyDraft?.req} setupId={activeSetup || undefined}
-                prefill={prefill?.tab === "survey" ? prefill : undefined}
+                prefill={prefillReady && prefill?.tab === "survey" ? prefill : undefined} onPrefillHandled={prefillHandled}
                 onStarted={(j) => { setSurveyDraft(null); select(j.job_id); }} />
             ))}
             {tab === "conjoint" && (current ? <ConjointJob projectId={projectId} id={current} onDuplicate={duplicateConjoint} /> : (
