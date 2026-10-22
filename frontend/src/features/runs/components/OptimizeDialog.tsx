@@ -2,7 +2,7 @@
 // the search, then judge the result by its validation on fresh customers — the search score is
 // optimistic (it was tuned on the same shoppers), the validated number is the one to trust.
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Eye, Loader2, Sparkles, Square, TriangleAlert, Wand2, Zap } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -51,7 +51,7 @@ export function OptimizeDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[720px]">
-        <OptimizeBody projectId={projectId} setupId={setupId} goalPrefill={goalPrefill} onClose={() => onOpenChange(false)} />
+        <OptimizeBody key={JSON.stringify([projectId, setupId])} projectId={projectId} setupId={setupId} goalPrefill={goalPrefill} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
@@ -85,24 +85,32 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
 
   // The goal in words sets the objective, what may change, the move limit and the locked shelves.
   const [goal, setGoal] = useState("");
-  const [goalRead, setGoalRead] = useState<{ text: string; goal: api.OptimizeGoal } | null>(null);
+  const [goalRead, setGoalRead] = useState<{ context: string; goal: api.OptimizeGoal } | null>(null);
+  const goalContext = (value: OptimizeSpec) => JSON.stringify([projectId, setupId, goal, value, scenarioId, judge, modelChoice]);
+  const context = goalContext(spec);
   const reader = useMutation({
     mutationFn: (text: string) => api.readOptimizeGoal(projectId, setupId, text.trim()),
-    onSuccess: (g, text) => {
-      setGoalRead({ text, goal: g });
-      setSpec((s) => ({
-        ...s, objective: g.objective, scope: g.scope,
+  });
+  const { reset: resetReader } = reader;
+  useLayoutEffect(() => { resetReader(); }, [context, resetReader]);
+  const readGoal = (text: string, replacePending = false) => {
+    if (Array.from(text.trim()).length < 5 || (reader.isPending && !replacePending)) return;
+    reader.mutate(text, { onSuccess: (g) => {
+      const next: OptimizeSpec = {
+        ...spec, objective: g.objective, scope: g.scope,
         constraints: {
-          ...s.constraints,
+          ...spec.constraints,
           ...(g.max_moves != null ? { max_moves: g.max_moves } : {}),
           ...(g.keep_fridges_on_walls != null ? { keep_fridges_on_walls: g.keep_fridges_on_walls } : {}),
           ...(g.min_improvement != null ? { min_improvement: g.min_improvement } : {}),
           lock_rack_ids: g.lock_rack_ids,
         },
-      }));
-    },
-  });
-  const queueGoal = useQueuedStart(reader.mutate);
+      };
+      setGoalRead({ context: goalContext(next), goal: g });
+      setSpec(next);
+    } });
+  };
+  const queueGoal = useQueuedStart((text: string) => readGoal(text, true));
   const [goalHandled, setGoalHandled] = useState<number | null>(null);
   const prefillId = goalPrefill?.id;
   const prefillText = goalPrefill?.text;
@@ -113,7 +121,7 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
     setGoal(text);
     queueGoal(text);
   }, [prefillId, prefillText, goalHandled, queueGoal]);
-  const goalShown = goalRead?.text === goal ? goalRead.goal : null;
+  const goalShown = goalRead?.context === context ? goalRead.goal : null;
   const goalLength = Array.from(goal.trim()).length;
 
   const start = useMutation({
@@ -149,10 +157,10 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
             <div className="flex items-center gap-1.5">
               <Sparkles className="ml-0.5 size-4 shrink-0 text-primary" aria-hidden />
               <Input value={goal} onChange={(e) => setGoal(Array.from(e.target.value).slice(0, 600).join(""))}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && goalLength >= 5 && !reader.isPending) { e.preventDefault(); reader.mutate(goal); } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229 && goalLength >= 5 && !reader.isPending) { e.preventDefault(); readGoal(goal); } }}
                 placeholder="Goal, e.g. more impulse sales, keep the fridges where they are, at most 5 changes"
                 aria-label="Optimization goal" className="h-8 min-w-0 flex-1 bg-background text-xs" />
-              <Button type="button" size="sm" variant="outline" className="h-8 text-xs" disabled={goalLength < 5 || reader.isPending} onClick={() => reader.mutate(goal)}>
+              <Button type="button" size="sm" variant="outline" className="h-8 text-xs" disabled={goalLength < 5 || reader.isPending} onClick={() => readGoal(goal)}>
                 {reader.isPending ? <Loader2 className="size-3.5 animate-spin" /> : "Set up"}
               </Button>
             </div>
@@ -266,7 +274,7 @@ function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={() => { if (modelError === null) start.mutate(); }} disabled={start.isPending || modelError !== null}>
+            <Button onClick={() => { if (modelError === null && !reader.isPending) start.mutate(); }} disabled={start.isPending || reader.isPending || modelError !== null}>
               {start.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Start
             </Button>
           </div>

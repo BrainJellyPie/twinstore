@@ -27,7 +27,7 @@ class _Setup(BaseModel):
     description: str = Field(default="", max_length=400, description="one or two sentences about the store")
     address: str = Field(default="", max_length=200, description="only an address or place the description gives")
     format: str = Field(default="", max_length=80, description="the listed store format that fits, exactly as listed")
-    open_days: Literal["7", "weekday", "weekend"] = Field(default="7", description="every day, weekdays only or weekends only")
+    open_days: Literal["7", "weekday", "weekend"] | None = Field(default=None, description="every day, weekdays only or weekends only; null when unspecified")
     open_hour: int | None = Field(default=None, description="0 to 23")
     close_hour: int | None = Field(default=None, description="1 to 24; 24 means midnight")
     currency: Literal["USD", "KRW", "JPY"] | None = Field(default=None, description="from the place, when it is clear")
@@ -40,7 +40,7 @@ class StoreSetup(BaseModel):
     address: str = ""
     store_type: str = ""
     template_id: str = ""
-    open_days: Literal["7", "weekday", "weekend"] = "7"
+    open_days: Literal["7", "weekday", "weekend"] | None = None
     open_hour: int | None = None
     close_hour: int | None = None
     currency: Literal["USD", "KRW", "JPY"] | None = None
@@ -53,24 +53,26 @@ the description says or clearly implies: a short name (theirs if given, otherwis
 "Campus Corner Store"), one or two sentences describing the store
 from what the owner said (add no products, prices or facts they did not give), the address only when a place is
 given (never invent a street), which listed store format fits best, the opening days
-(every day, weekdays or weekends) and hours (an all-night store is 0 to 24), and the currency when the place makes it
+(every day, weekdays or weekends, null when unspecified) and hours (an all-night store is 0 to 24), and the currency when the place makes it
 clear (USD, KRW or JPY only). Write the name and description in {language}; give a short rationale in English."""
 
 
 def to_setup(draft: _Setup, formats: Sequence[tuple[str, str, str]]) -> StoreSetup:
     """formats: (id, name, store type). The format is resolved by id or name; hours are checked as a pair."""
     warnings: list[str] = []
-    by_name: dict[str, tuple[str, str]] = {}
+    by_name: dict[str, set[tuple[str, str]]] = {}
     for fid, name, store_type in formats:
-        by_name.setdefault(fid.casefold(), (fid, store_type))
-        by_name.setdefault(name.casefold(), (fid, store_type))
+        by_name.setdefault(fid.strip().casefold(), set()).add((fid, store_type))
+        by_name.setdefault(name.strip().casefold(), set()).add((fid, store_type))
     template_id = store_type = ""
     if draft.format.strip():
         hit = resolve_listed(draft.format, by_name)
         if hit is None:
             warnings.append(f'No store format "{draft.format}"; choose the starting layout below.')
+        elif len(hit) != 1:
+            warnings.append(f'More than one store format matches "{draft.format}"; choose the starting layout below.')
         else:
-            template_id, store_type = hit
+            template_id, store_type = next(iter(hit))
     open_hour, close_hour = draft.open_hour, draft.close_hour
     given = open_hour is not None or close_hour is not None
     valid = open_hour is not None and close_hour is not None and 0 <= open_hour < close_hour <= 24 and open_hour <= 23
