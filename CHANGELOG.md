@@ -82,11 +82,6 @@
   ceramic craft and gift wrapping products, plus 32 photos. The catalog now has 1,400
   products in 123 categories and 352 bundled photos for automatic or manual placement.
 
-- Translate shelf-product reuse into six languages, including eligibility reasons, section review,
-  price formatting, save/retry and accessibility text. Preserve selections and request identities
-  across language changes and keep legacy API reason compatibility. Stabilize seeded neighborhood
-  trip assignments when demand-report ordering changes.
-
 - Translate detailed floor previews, comparison metrics, gate legends and SVG exports into all six
   interface languages. Preserve expanded previews and zoom when changing language, retain original
   layout/product data, and translate the eight newly added starter category labels.
@@ -98,27 +93,6 @@
 - Add 96 cycling, swimming, climbing, desk, aquarium, bird, lighting and bathroom products, plus
   32 apparel, garden and hobby photos. The bundled catalog reaches 1,304 products, 115 categories
   and 256 product photos, available to automatic category-based placement and vision grids.
-
-- Translate product bulk editing end to end in six languages, including validation, mixed values,
-  undo, preview and saving. Preserve edits and retry identities when switching languages, format
-  reviewed prices by locale, and keep long buttons inside mobile dialogs. Product workflow clients
-  retain HTTP status so conflict and invalid-input guidance can be localized correctly.
-
-- Add 32 prepared-food, pharmacy and personal-care photos, bringing the collection to 224.
-  Starter placement previews show current uploaded or bundled photos for reused products without
-  rewriting their saved values. Empty product names retain their SKU label in vision grids.
-
-- Previously saved starter products pick up new bundled photos by exact SKU when no custom photo is set.
-  Existing uploads and explicit photos retain priority; layouts are not rewritten on read. Add 32 kitchen,
-  pet, technology and everyday-product photos, bringing the local collection to 192.
-
-- Add 96 kitchen, home, pet and technology products and 32 grocery/merchandise photos: 1,208 products,
-  107 categories and 160 local photos. Vision grids fit bundled product artwork more closely by omitting
-  empty white margins, while retaining names, prices and numbered identities.
-- Translate the complete reviewed library-photo workflow into all six interface languages, including
-  explanations, selection and preview counts, accessibility names, validation and save/retry states.
-  Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated
-  Close button and provide localized error guidance with original diagnostics available on demand.
 
 - Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
   in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.
@@ -220,7 +194,6 @@
 - On Linux, the application-menu entry now works from a folder whose name holds `$`, `"`, `%` or a backslash.
 - A data folder chosen with `PARASTORE_DATA_HOME` now gets its own Python environment, so a TwinStore using it
   can run beside the usual one without the two changing each other's packages.
-
 
 ## 0.4.7 — Marketing studio results you can trust
 
