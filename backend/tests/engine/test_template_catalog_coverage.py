@@ -75,6 +75,9 @@ def test_new_departments_respect_exclusions_limits_and_small_floor_space(templat
     ("tea_lounge", "tea_menu"), ("burger_shop", "burger_menu"),
     ("noodle_bar", "noodle_menu"), ("quick_service", "restaurant_menu"),
     ("sushi_shop", "sushi_menu"), ("bubble_tea_cafe", "bubble_tea_menu"),
+    ("ice_cream_parlor", "scoop_menu"), ("turkish_cafe", "turkish_menu"),
+    ("pizzeria", "pizza_menu"), ("salad_cafe", "salad_menu"), ("juice_bar", "juice_menu"),
+    ("indian_curry_house", "indian_menu"), ("thai_kitchen", "thai_menu"),
 ])
 @pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
 def test_default_menu_maps_stock_their_complete_photographed_menu(template_id, category, currency):

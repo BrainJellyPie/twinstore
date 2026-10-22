@@ -886,6 +886,30 @@ PACKSHOT_SHEETS = {
         "Lychee Coconut Jelly Tea", "Oat Milk Pearl Tea", "Mini Milk Tea Tasting Set", "Falafel Doner Wrap",
         "Lamb Kofte Plate", "Spinach Gozleme", "Cheese Pide", "Red Lentil Soup Cup",
     ],
+    "starter-41": [
+        "Mini Scoop Tasting Flight", "Bulgur Pilaf Bowl", "Baklava 3pc", "Simit Bread",
+        "Turkish Coffee Cup", "Apple Tea Cup", "Ayran Yogurt Drink", "Roasted Vegetable Pizza",
+        "Mushroom Pizza", "Chicken Pesto Pizza", "Margherita Slice", "Pepperoni Slice",
+        "Mixed Leaf Side Salad", "Tomato Mozzarella Salad", "Pizza & Drink Lunch Set", "Roasted Vegetable Grain Bowl",
+    ],
+    "starter-42": [
+        "Chickpea Quinoa Salad", "Salmon Avocado Grain Bowl", "Tofu Sesame Grain Bowl", "Mediterranean Lentil Bowl",
+        "Beet & Feta Salad", "Crunchy Cabbage Slaw", "Tomato Lentil Soup", "Roasted Sweet Potato Side",
+        "Whole Grain Bread Roll", "Salad & Soup Lunch Set", "Apple Juice 350ml", "Carrot Ginger Juice 350ml",
+        "Green Vegetable Juice 350ml", "Pineapple Mint Juice 350ml", "Watermelon Juice 350ml", "Berry Banana Smoothie",
+    ],
+    "starter-43": [
+        "Mango Yogurt Smoothie", "Oat Banana Smoothie", "Strawberry Yogurt Smoothie", "Tropical Fruit Cup",
+        "Berry Granola Bowl", "Chickpea Chana Masala Bowl", "Lentil Dal Bowl", "Vegetable Biryani Bowl",
+        "Chicken Biryani Bowl", "Garlic Naan 2pc", "Vegetable Samosa 2pc", "Cucumber Raita Cup",
+        "Mango Lassi", "Masala Chai Cup", "Gulab Jamun 2pc", "Tofu Pad Thai Bowl",
+    ],
+    "starter-44": [
+        "Thai Red Curry Bowl", "Basil Chicken Rice Bowl", "Pineapple Fried Rice Bowl", "Tom Yum Soup Cup",
+        "Thai Spring Rolls 3pc", "Satay Chicken Skewers 3pc", "Mango Sticky Rice", "Thai Iced Tea",
+        "Coconut Iced Coffee", "Bean & Rice Burrito", "Grilled Vegetable Bowl", "Chicken Tacos 3pc",
+        "Mushroom Tacos 3pc", "Cheese Quesadilla", "Chicken Quesadilla", "Loaded Nachos",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

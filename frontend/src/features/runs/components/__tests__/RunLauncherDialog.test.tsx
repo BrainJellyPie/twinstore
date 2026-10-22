@@ -32,7 +32,6 @@ beforeEach(() => {
   vi.mocked(api.getTown).mockResolvedValue(null);
   vi.mocked(api.getModels).mockResolvedValue([]);
   vi.mocked(api.startRun).mockResolvedValue({ project_id: "p", run_id: "r", setup_id: "s" });
-  vi.mocked(api.getModelSetup).mockRejectedValue(new Error("Not needed"));
 });
 afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMocks(); vi.unstubAllGlobals(); });
 

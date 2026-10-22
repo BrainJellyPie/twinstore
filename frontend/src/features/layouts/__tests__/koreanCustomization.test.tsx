@@ -67,15 +67,15 @@ it("shows the new-store layout customization panel, its building floors and floo
   fireEvent.click(screen.getByLabelText("테이블 크기 섞어 쓰기"));
   fireEvent.click(screen.getByRole("button", { name: "층 복제" }));
 
-  for (const text of ["배치 우선순위 적용", "배치 패턴", "진열 밀도", "최대 연속 진열 길이", "입구 벽", "계산대 위치", "인테리어 디자인 (실사 보기)",
-    "식사 테이블 (크기 혼합)", ko("templateSeed"), "배치 설정 초기화", "비워 둘 공간", "공간 1", "월요일", ko("templateOpens"), ko("templateCloses"), "인테리어 색상 직접 지정",
+  for (const text of ["배치 우선순위 적용", "배치 패턴", "진열 밀도", "최대 연속 진열 길이", "입구 벽", "계산대 위치", ko("layInteriorDesignRealistic"),
+    "식사 테이블 (크기 혼합)", ko("templateSeed"), "배치 설정 초기화", "비워 둘 공간", "공간 1", "월요일", ko("templateOpens"), ko("templateCloses"), ko("layCustomColors"),
     "모든 층에 크기 적용", ko("templateHoursApply"), "설정 내보내기", ko("optionsImportBuilding")]) {
     expect(container.textContent, text).toContain(text);
   }
   expect(screen.getByRole("option", { name: "템플릿 기본값 (뒤쪽 벽)" })).toBeTruthy();
   expect(screen.getByRole("option", { name: "템플릿 기본값 (입구 가까이)" })).toBeTruthy();
   expect(screen.getByText("기본 패턴: 쇼룸형 그룹 진열")).toBeTruthy();
-  expect(screen.getByText("기본 디자인: 럭셔리 차콜 & 브라스")).toBeTruthy();
+  expect(screen.getByText(translate("ko", "layDefaultDesign", { design: ko("planDesignLuxury") }))).toBeTruthy();
   expect(screen.getByRole("spinbutton", { name: translate("ko", "templateProductsFor", { category: starterCategoryLabel("soft_drinks", "Drinks", "ko") }) })).toBeTruthy();
   expect(screen.getByRole("button", { name: "2F · 1층 · 뷰티 플래그십 스토어 사본 1" })).toBeTruthy();
   expect(englishLeft(container)).toEqual([]);
@@ -93,7 +93,7 @@ it("shows the new-store layout customization panel, its building floors and floo
   fireEvent.click(await screen.findByRole("button", { name: "기본 배치와 비교" }));
   const compare = await screen.findByRole("dialog", { name: ko("planCompareTitle") });
   const table = await within(compare).findByRole("table", { name: ko("planCompareTable") });
-  for (const row of [ko("planCompareSize"), "상품 진열대", "고유 상품 수", ko("planCompareSeating"), ko("planCompareCounters"), ko("planCompareAreas"), "인테리어 디자인", "영업시간"]) {
+  for (const row of [ko("planCompareSize"), "상품 진열대", ko("planCompareProducts"), ko("planCompareSeating"), ko("planCompareCounters"), ko("planCompareAreas"), "인테리어 디자인", "영업시간"]) {
     expect(within(table).getByRole("rowheader", { name: row })).toBeTruthy();
   }
   expect(within(table).getAllByText(ko("planDesignLuxury")).length).toBeGreaterThan(0);

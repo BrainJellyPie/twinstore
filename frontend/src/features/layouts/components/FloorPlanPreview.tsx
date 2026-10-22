@@ -36,7 +36,7 @@ export function FloorPlanPreview({ store, areas, previewFrame, name = store.name
     exported.removeAttribute("style");
     exported.setAttribute("font-family", "Arial, sans-serif");
     const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-    title.textContent = t("planExportTitle", { name: store.name, width: store.grid_size[0], height: store.grid_size[1] });
+    title.textContent = t("planExportTitle", { name, width: store.grid_size[0], height: store.grid_size[1] });
     const description = document.createElementNS("http://www.w3.org/2000/svg", "desc");
     description.textContent = t("planExportSummary", { tables, seats, counters: store.racks.filter(rack => rack.type === "counter").length,
       hours: formatWeeklyHours(store.weekly_schedule, locale), legend,

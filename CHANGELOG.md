@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Keep translated template headings in downloaded SVG titles without changing stored names.
+
+- Add 64 pizza, salad, juice, Indian, Thai, Turkish, Mexican and ice-cream menu
+  photos, reaching 704 local images. Seven more menu assortments now have pictures
+  for every existing product in their matching default maps.
+
 - Reject malformed Origin headers with 403 instead of a server error.
 
 - Add 64 tea, burger, noodle, sushi, restaurant, bubble-tea and Turkish-menu

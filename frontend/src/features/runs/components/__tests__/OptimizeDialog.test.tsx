@@ -6,7 +6,6 @@ import * as api from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
 import { OptimizeDialog } from "../OptimizeDialog";
 import { useSimulationStore } from "@/stores/simulationStore";
-import { useLocale } from "@/shared/i18n/i18n";
 
 vi.mock("@/shared/api/client", () => ({
   getScenarios: vi.fn(), startOptimization: vi.fn(), getOptimization: vi.fn(),
