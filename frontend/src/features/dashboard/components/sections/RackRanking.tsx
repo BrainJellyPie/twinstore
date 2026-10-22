@@ -16,6 +16,7 @@ interface Props {
 export function RackRanking({ store }: Props) {
   const rackMetrics = useSimulationMetricsStore((s) => s.rackMetrics);
   const entered = useSimulationMetricsStore((s) => s.entered);
+  const finished = useSimulationMetricsStore((s) => s.finished);
   const [sortBy, setSortBy] = useState<SortKey>("revenue");
   const currency = useSimulationStore((s) => s.currency);
 
@@ -64,7 +65,9 @@ export function RackRanking({ store }: Props) {
       </div>
 
       {shown.length === 0 ? (
-        <div className="py-3 text-center text-xs text-muted-foreground">No rack data</div>
+        <div className="py-3 text-center text-xs text-muted-foreground">
+          {finished ? "No rack sales in this run." : "Racks fill in as shoppers pay during the day."}
+        </div>
       ) : (
         <>
           <ol className="flex flex-col gap-2.5">

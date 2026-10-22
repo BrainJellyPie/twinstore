@@ -158,7 +158,8 @@ export function CommandBar() {
       <div className="flex min-w-0 items-center gap-3">
         <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-xl" aria-label={t("home")}>
           <BrandMark />
-          <span className="hidden font-display text-[1.08rem] tracking-[-0.045em] xl:block">
+          {/* With a breadcrumb the wordmark waits for a wide screen, so the store and page names fit. */}
+          <span className={cn("hidden font-display text-[1.08rem] tracking-[-0.045em]", pid || pageTitle ? "2xl:block" : "xl:block")}>
             <span className="aurora-text">twin</span>store
           </span>
         </Link>

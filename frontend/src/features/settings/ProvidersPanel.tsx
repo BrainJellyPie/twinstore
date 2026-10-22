@@ -67,6 +67,12 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
     mutationFn: (vision: boolean) => api.testModel(`${preset.kind}:${model}`, vision),
     onSuccess: setResult,
     onError: (e) => setResult({ ok: false, model, latency_ms: 0, reply: "", error: e.message, vision: false }),
+    // A test can find the key turned down (or working again): refresh the badge and what runs can use.
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.providers() });
+      void qc.invalidateQueries({ queryKey: queryKeys.models() });
+      void qc.invalidateQueries({ queryKey: queryKeys.engines() });
+    },
   });
 
   const badge = !status.enabled
@@ -208,15 +214,19 @@ function ProviderCard({ status }: { status: ProviderStatus }) {
         <Button size="sm" variant="secondary" className="h-7" disabled={!status.ready || !model || test.isPending} onClick={() => test.mutate(true)}>
           <Eye className="size-3" /> Test vision
         </Button>
-        {result && (
-          <span className={cn("flex min-w-0 items-center gap-1 text-xs", result.ok ? "text-positive" : "text-destructive")} title={result.error}>
-            {result.ok ? <CheckCircle2 className="size-3.5 shrink-0" /> : <XCircle className="size-3.5 shrink-0" />}
-            <span className="truncate">
-              {result.ok ? `OK · ${result.latency_ms} ms${result.reply ? ` · "${result.reply}"` : ""}` : result.error || "failed"}
-            </span>
-          </span>
-        )}
       </div>
+      {result && (
+        <p
+          data-testid="provider-test-result"
+          className={cn("flex min-w-0 items-start gap-1 text-xs", result.ok ? "text-positive" : "text-destructive")}
+          title={result.error}
+        >
+          {result.ok ? <CheckCircle2 className="mt-px size-3.5 shrink-0" /> : <XCircle className="mt-px size-3.5 shrink-0" />}
+          <span className="line-clamp-4 min-w-0 break-words">
+            {result.ok ? `OK · ${result.latency_ms} ms${result.reply ? ` · "${result.reply}"` : ""}` : result.error || "failed"}
+          </span>
+        </p>
+      )}
     </div>
   );
 }

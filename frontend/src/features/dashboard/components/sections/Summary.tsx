@@ -4,7 +4,8 @@ import { useSimulationStore } from "@/stores/simulationStore";
 import { formatMoney, formatPercent } from "@/shared/utils/money";
 
 // Live totals up to the current playback time; on a multi-day run they add up the days played so far.
-export function Summary() {
+// legacyRun: the run predates impulse KPIs, so no impulse share is shown.
+export function Summary({ legacyRun = false }: { legacyRun?: boolean }) {
   const days = usePlaybackControlStore((s) => s.availableDays);
   const day = usePlaybackControlStore((s) => s.currentDay);
   const revenue = useSimulationMetricsStore((s) => s.revenue);
@@ -31,9 +32,9 @@ export function Summary() {
           <div className="eyebrow">Avg. basket</div>
           <div className="num mt-1 text-xl font-medium tracking-[-0.04em]">{formatMoney(aov, currency)}</div>
         </div>
-        <div className="rounded-2xl border border-glass-border bg-foreground/[0.02] p-3" title="Revenue from unplanned purchases">
+        <div className="rounded-2xl border border-glass-border bg-foreground/[0.02] p-3" title={legacyRun ? "Not recorded by this older run" : "Revenue from unplanned purchases"}>
           <div className="eyebrow">Impulse share</div>
-          <div className="num mt-1 text-xl font-medium tracking-[-0.04em]">{formatPercent(impulseShare, 0)}</div>
+          <div className="num mt-1 text-xl font-medium tracking-[-0.04em]">{legacyRun ? "—" : formatPercent(impulseShare, 0)}</div>
         </div>
       </div>
     </div>

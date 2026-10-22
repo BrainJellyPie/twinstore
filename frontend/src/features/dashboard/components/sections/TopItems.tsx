@@ -14,6 +14,7 @@ interface Props {
 
 export function TopItems({ store }: Props) {
   const skuSales = useSimulationMetricsStore((s) => s.skuSales);
+  const finished = useSimulationMetricsStore((s) => s.finished);
   const [sortBy, setSortBy] = useState<SortKey>("revenue");
   const currency = useSimulationStore((s) => s.currency);
   const [showAll, setShowAll] = useState(false);
@@ -58,7 +59,9 @@ export function TopItems({ store }: Props) {
       </div>
 
       {shown.length === 0 ? (
-        <div className="py-3 text-center text-xs text-muted-foreground">No sales data</div>
+        <div className="py-3 text-center text-xs text-muted-foreground">
+          {finished ? "No sales in this run." : "Items fill in as shoppers pay during the day."}
+        </div>
       ) : (
         <>
           <ol className="flex flex-col gap-2.5">

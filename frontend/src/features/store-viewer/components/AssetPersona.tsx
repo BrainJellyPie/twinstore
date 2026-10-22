@@ -9,6 +9,7 @@ import { useGlbModel } from "@/shared/hooks/useGlbModel";
 import { formatMoney } from "@/shared/utils/money";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
+import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { M, PERSONA_SCALE } from "../realistic/constants";
 import { angleDelta } from "../realistic/shopperPose";
 import { shopperBlinkWeight } from "../realistic/shopperBlink";
@@ -252,6 +253,8 @@ export function AssetPersona({
   dimmed,
 }: AssetPersonaProps) {
   const realistic = useSimulationStore((s) => s.graphicsMode === "realistic");
+  // Once the day shows Closed, a shopper still finishing up keeps no speech bubble on screen.
+  const closed = useSimulationMetricsStore((s) => s.finished);
   const url = realistic ? realisticCharacterAssetFor(personaId, gender) : characterAssetFor(personaId, gender);
   const scale = highlighted && !realistic ? 1.2 : 1;
   const idleName = characterAnimationPhase(`${personaId}:idle-motion`) < 0.5 ? "idle" : "wait";
@@ -312,7 +315,7 @@ export function AssetPersona({
           {label}
         </div>
       </Html>
-      {event?.description && !dimmed && <SpeechBubble event={event} />}
+      {event?.description && !dimmed && !closed && <SpeechBubble event={event} />}
       </group>
     </group>
   );
