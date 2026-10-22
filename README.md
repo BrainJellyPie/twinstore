@@ -19,7 +19,9 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 <a href="#one-icon-every-os">Start</a> ·
 <a href="#watch-it-run">Watch</a> ·
 <a href="#what-you-can-do">Features</a> ·
+<a href="#ask-in-your-own-words">Ask in words</a> ·
 <a href="#simulate-compare-optimize">Simulate</a> ·
+<a href="#stores-layouts-and-shelves">Stores</a> ·
 <a href="#marketing-studio">Marketing studio</a> ·
 <a href="#how-it-works">How it works</a> ·
 <a href="#validated-on-real-baskets">Validation</a> ·
@@ -37,17 +39,6 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 
 ## Why TwinStore
 
-Have an existing floor with empty shelves? **Step 2 → Fill empty shelves** places reviewed starter
-products on those racks and saves a separate stocked layout, preserving existing products and geometry.
-Reference products/prices are examples, not actual stock. See [the guide](USAGE.md#fill-existing-empty-shelves-with-starter-products).
-
-Finished one shelf? **Step 2 → Reuse shelf products** copies its reviewed assortment to compatible empty
-shelves, preserving exact product values and saving a separate layout. See [the guide](USAGE.md#reuse-a-finished-shelf-assortment).
-
-Already stocked a layout? **Step 2 → Edit products together** changes selected product names, prices and
-promotion text in the app, with a before/after preview and a separate saved layout. See
-[the product editing guide](./USAGE.md#edit-placed-products-together-without-a-spreadsheet).
-
 - **A twin, not a mock-up.** Shelf photos become planograms, floor-plan sketches become the store grid, receipts and
   POS exports score the simulation, storefront photos set how many people walk in.
 - **Shoppers that look.** Vision-language models see the shelf the shopper would see — a photoreal render or the real
@@ -58,6 +49,8 @@ promotion text in the app, with a before/after preview and a separate saved layo
   real households' baskets.
 - **Ask the shopper why.** Follow any one shopper's path and thoughts, then interview them — or a whole segment —
   after the day is over.
+- **Say it in a sentence.** Describe a test, a layout change, a new store or an optimization goal in your own words;
+  TwinStore drafts it on your layout's own products and shelves, and nothing runs until you start it.
 
 ## One icon, every OS
 
@@ -85,9 +78,14 @@ First-time security prompts and details: [`QUICKSTART.md`](./QUICKSTART.md).
 </tr>
 </table>
 
-No API key is needed to start: the sample store runs with the rule-based engine, and without a key TwinStore can run a
-small vision model on your own computer. Add an OpenAI, Anthropic, Gemini, Qwen or OpenRouter key — or any
-OpenAI-compatible server such as vLLM, Ollama or llama.cpp — under **Models** for language and vision shoppers.
+**No API key is needed to start.** The sample store runs with the rule-based engine, and without a key TwinStore runs a
+small vision model on your own computer. For language and vision shoppers, add an OpenAI, Anthropic, Gemini, Qwen or
+OpenRouter key — or any OpenAI-compatible server such as vLLM, Ollama or llama.cpp — under **Models**.
+
+**Six languages.** The language control next to the theme switch offers English, 한국어, 中文, 日本語, Español and
+Français; it follows your browser on first use and remembers your choice. Home, navigation, the command palette, the
+new-store wizard, layouts, templates and the simulation launcher are translated; detailed editors and technical
+server messages are still in English.
 
 ## Watch it run
 
@@ -100,9 +98,10 @@ OpenAI-compatible server such as vLLM, Ollama or llama.cpp — under **Models** 
 </tr>
 </table>
 
-### Feature demos
+<details>
+<summary><b>Feature demos</b> · short real recordings of single features</summary>
 
-Short real recordings of single features. Each preview loops; click it for the full-quality MP4.
+Each preview loops; click it for the full-quality MP4.
 
 <table>
 <tr>
@@ -143,33 +142,7 @@ Short real recordings of single features. Each preview loops; click it for the f
 </tr>
 </table>
 
-The language control next to the theme switch supports **English, 한국어, 中文, 日本語,
-Español and Français**. It follows your browser language on first use and remembers your
-selection. Home, navigation, the command palette, store cards, search, the model notice, simulation launcher and
-new-store forms and preparation screens are localized, including validation, file selection,
-generation review and failure recovery. Basic layout-creation controls and floor-plan import
-also use the selected language.
-If preparation progress cannot be loaded, **Reload progress** checks the existing task
-without starting another generation. Generation is available after the initial progress check,
-and a failed customer task can be restarted explicitly.
-Template search and filters use the same languages. Search also accepts translated categories,
-accent and full-width variants, and template IDs; format names and descriptions remain in English.
-The command palette also searches original and translated command names. Use the arrow keys
-to select, Enter to open, or Escape and the close button to dismiss it. Text composition with
-an input method finishes before command keys take effect.
-Layout tabs and the layout finder use these languages too. Use Left/Right, Home or End
-to focus a tab, then Enter or Space to open it. The finder searches names, building floors,
-saved design briefs and IDs, accepting accent, full-width and separator variants.
-Clear the search alone or reset both search and group filters; neither changes your current layout.
-In **Add layout**, template customization starts folded. Floor-plan selection works with the
-keyboard; a failed preview can be retried without selecting the file again. If a saved source
-disappears, choose another source to copy or remove its links while keeping the saved options.
-You can close the creation dialog and keep working while a request finishes. The new layout
-is added to the list without replacing a choice you made after dismissing the dialog. Reopening
-a pending request preserves its inputs and prevents duplicate submissions. If creation fails,
-reopening retains the name, source and file so you can retry the same request.
-Model selection is localized too. Detailed layout and situation editors, other feature editors and technical server messages
-currently remain in English.
+</details>
 
 ## What you can do
 
@@ -218,151 +191,144 @@ currently remain in English.
 </tr>
 </table>
 
+## Ask in your own words
+
+Most set-up screens take a sentence. The text model drafts the settings from it, and TwinStore checks every draft
+against your data: products, shelves and images the layout or library does not have are reported, never invented; an
+ambiguous name is not guessed; and nothing runs until you press start.
+
+| Where | You write | You get |
+| :-- | :-- | :-- |
+| Command palette (<kbd>⌘K</kbd> / <kbd>Ctrl K</kbd>) inside a store | "would a 1+1 sign on cola sell more than a 20 % cut?" | the right page, with the draft filled in: an A/B, shelf, concept or conjoint test, a staff script, the neighborhood, a question about the run, a shopper search or the optimizer |
+| A/B, shelf, concept and conjoint builders | the question the test should answer | variants, the product under test, the images and questions to show, or attributes and price levels |
+| Staff scripts | a direction ("lead with value") | an alternative script B built only from the verified facts given |
+| New store | "a campus convenience store at the university gate, open weekdays 7 to 23" | name, type, hours, starting format and currency, then a customer profile |
+| Add layout → **Additional design brief** | "bright, two tills by the door, no tobacco" | the generator's options; whatever no option can express is listed |
+| Store → Layout → **Change it in words** | "green tea at eye level and 10 % off all ice cream" | the edits applied to a copy, saved as a new layout when you keep them |
+| Run dialog → **Describe the day** | "rainy Friday evening, the game next door at 7, out of ice cream" | weather, weekday, event, promotions and stock-outs |
+| Area | "a busy campus street, two rival stores nearby" | the town generator's settings |
+| Run results → **Ask about this run** | "which shelf converts worst, and why?" | an answer with the figures it rests on, and follow-up questions; **Explain the difference** does the same for two compared runs |
+| Shoppers tab | "women in their 20s who stopped at the ice cream freezers but bought nothing" | exactly the shoppers who match, read from the run's records, ready for a group interview |
+| Optimize | "more impulse sales, keep the fridges where they are, at most 6 changes" | objective, scope, move limit and locked shelves |
+| Group interview or analyst → **Turn this into tests** | | up to three test questions, each opening a drafted test |
+
+What shoppers say stays a hypothesis until a test runs. Without a key for the app's text model, these helpers fall
+back to a fast model of a provider that has one; simulation runs and studies keep the model you chose.
+
 ## Simulate, compare, optimize
 
-The **Floor** page is the store's day. Press **Run simulation** and choose:
+The **Floor** page is the store's day. **Run simulation** asks:
 
 - **Who shops.** The rule-based engine (seconds, no model), language-model shoppers that plan, intend and give in to
-  impulses, or vision shoppers that look at rendered shelves — deciding everything, or only judging what they glance at.
-- **Which model.** The server default, one model, or an ensemble that mixes models across shoppers or lets them vote —
-  for example one model from each provider. The dialog estimates the number of model calls before you start.
-- **What kind of day.** One of **19 situations** — weather, temperature, weekday or holiday, crowding, local events,
-  promotions, sold-out items and notes for the model shoppers — or your own. Customer sample, seed and
-  preview-or-final run are set in the same place. The dialog opens with the engine and customer sample; expand
-  **Advanced settings** for situations, models, neighborhood visitors, seed, replicate and finalization. Vision
-  runs start with at most 30 customers, and language-model runs with at most 300; the call estimate stays visible.
+  impulses, or vision shoppers that look at rendered shelves.
+- **Which model.** The app default, one model, or an ensemble that mixes models across shoppers or lets them vote. The
+  dialog estimates the number of model calls before you start.
+- **What kind of day.** One of **19 situations** (weather, weekday or holiday, crowding, local events, promotions,
+  sold-out items) or your own, plus customer sample, seed and preview-or-final. Vision runs start with at most 30
+  customers and language-model runs with at most 300.
 
 **Results** fill in as the day plays: revenue, conversion, basket, footfall and dwell heatmaps, revenue by rack, what
-caught the vision shoppers' eye and at which shelf level, who walked in at the door, and run diagnostics (failed
-customers, dropped over-budget or hallucinated buys, cost). Export every customer as CSV, validate a run against your
-POS export (CSV or XLSX) or receipts, and compare observed movement tracks with simulated occupancy.
+caught the vision shoppers' eye and at which shelf level, who walked in, and run diagnostics (failed customers,
+dropped over-budget or hallucinated buys, cost). Export every customer as CSV, validate a run against your POS export
+(CSV or XLSX) or receipts, and compare observed movement tracks with simulated occupancy.
 
-Run selection, comparison and exports sit below the store view. On phones and small tablets, playback controls
-start folded with Play/Pause and the time slider still available; expand them for speed, heatmaps and graphics.
-
-- **Compare runs** — any two runs side by side on paired customers: a forest plot of differences with bootstrap 95 %
-  intervals, P(B > A) and how many customers you would need to detect a 5 % change.
-- **Optimize** — pick a goal (revenue, conversion, units, impulse revenue or shorter walks), what may change (shelves,
-  rack positions or both), a search method (hill climbing, simulated annealing or a genetic algorithm) and a situation.
-  A rule model calibrated to the vision shoppers searches; an optional panel of vision shoppers judges the finalists
-  with P(better). The winner is saved as a new layout.
-- **Layouts** — alternatives of a store live side by side as tabs; download the planogram as an Excel workbook, edit it
-  and upload it back.
+- **Compare runs** — two runs side by side on paired customers: differences with bootstrap 95 % intervals, P(B > A)
+  and the sample needed to detect a 5 % change.
+- **Optimize** — choose a goal (revenue, conversion, units, impulse revenue or shorter walks), what may change
+  (shelves, rack positions or both) and a search method (hill climbing, simulated annealing or a genetic algorithm).
+  A rule model calibrated to the vision shoppers searches; an optional vision panel judges the finalists with
+  P(better). The winner is saved as a new layout.
 
 ### Shoppers and interviews
 
-During playback the **Shoppers** tab lists everyone who came — sorted by top spenders, those who left empty-handed,
-impulse buyers or the longest visits. Open one to see their path, every stop, the shelf face they saw there and what
-they thought; **Follow in 3D** jumps to their arrival and keeps the camera on them. Then ask them anything ("why didn't
-you buy anything at the snack shelf?"): answers come from their persona and trip only and point at the steps they mean.
-A **group interview** asks a segment (say, everyone who left empty-handed; 4–40 shoppers) one question and codes the
-answers into themes.
+The **Shoppers** tab lists everyone who came, sorted by spend, empty-handed visits, impulse buys or visit length. Open
+one to see their path, every stop, the shelf face they saw and what they thought; **Follow in 3D** keeps the camera
+on them. Then ask them anything ("why didn't you buy anything at the snack shelf?"): answers come from their persona
+and trip only and point at the steps they mean. A **group interview** asks a segment (4–40 shoppers) one question and
+codes the answers into themes.
 
 ### Photo mode
 
 **Photo** path-traces the current view (three-gpu-pathtracer) into a photoreal still with global illumination,
-area-light shadows, glossy floors, glass and HDR store lighting. Choose 64, 256 or 1,024 samples, denoise, and depth of
-field (f/1.4–5.6) in the shopper's view; save it as PNG.
+area-light shadows, glossy floors, glass and HDR store lighting: 64, 256 or 1,024 samples, denoising and depth of
+field (f/1.4–5.6) in the shopper's view, saved as PNG.
+
+## Stores, layouts and shelves
 
 ### Store formats and templates
 
-Start from **82 furnished formats** — convenience stores, supermarkets, hypermarkets and warehouse clubs, pharmacies,
-cafés, bakeries, pizzerias, sushi, ramen, Korean, burger, salad and ice-cream shops, fashion, footwear, eyewear,
-jewelry, music, bookstores, electronics, pet, garden and craft stores, airport retail, hospital convenience, museum gifts,
-weekend markets, station food shops, cinema snacks, office cafeterias, central-plaza halls, compact and 24-hour pharmacies, Mediterranean delis, Mexican cantinas, art-supply warehouses, beauty outlets, Indian curry houses, Vietnamese cafés, pet superstores, camping outlets, Thai kitchens and Turkish cafés — each with its own assortment, palette, seating
-and checkouts, or from **25 multi-floor buildings** (department store, dining house, campus hub and more). Choose which
-product categories to stock, where the entrance, exit and checkouts go, how many dining tables, aisle widths, shelf
-direction and areas to keep clear, set different opening hours for each weekday; customize wall, floor, accent and counter colors, compare against the format default and download the plan as SVG. Every option and
-the floor editor (up to 40×40 cells) are documented in [`STORE_TEMPLATES.md`](./STORE_TEMPLATES.md).
+Start from **82 furnished formats** — convenience stores, supermarkets, hypermarkets, pharmacies, cafés, bakeries,
+restaurants of many cuisines, fashion, electronics, bookstores, pet and garden stores, airport and station retail,
+weekend markets and more, each with its own assortment, palette, seating and checkouts — or from **25 multi-floor
+buildings** (department store, dining house, campus hub and more). Choose the categories to stock, where the entrance,
+exit and checkouts go, dining tables, aisle widths, shelf direction, areas to keep clear, opening hours per weekday
+and colors; download the plan as SVG. Every option and the floor editor (up to 40×40 cells) are documented in
+[`STORE_TEMPLATES.md`](./STORE_TEMPLATES.md).
 
-In the new-store wizard, choose a format, size and currency first. **Customize layout** opens
-shelf, entrance, seating and reserved-area settings; folding them keeps your edits.
-The format list takes one Tab stop. Arrow keys choose a format; Home/End move to the
-ends, Enter or Space selects, and Tab continues to the next control. Filtering preserves
-the selected layout until you make another choice.
-Next, describe your customers and optionally select a CSV or XLSX file up to 10 MB. Review
-the store details before **Generate** starts persona creation with the configured model.
-If preparation fails, return to your stores or switch to another saved layout. **Delete store
-and start over** asks you to review the store name and deletion scope first. If deletion fails,
-you can try again from the same screen.
+The new-store wizard asks for a format, size and currency, then your customers (optionally with a CSV or XLSX of up to
+10 MB) and generates personas with the configured model. Alternatives of a store live side by side as layout tabs.
+
+### Stock and edit a layout
+
+- **Fill empty shelves** (Step 2) places reviewed starter products on empty racks and saves a separate stocked
+  layout; existing products and geometry stay as they are. Reference products and prices are examples, not your
+  stock. [Guide](./USAGE.md#fill-existing-empty-shelves-with-starter-products).
+- **Reuse shelf products** (Step 2) copies a finished shelf’s reviewed assortment to compatible empty racks,
+  preserving exact product values and saving a separate layout. [Guide](./USAGE.md#reuse-a-finished-shelf-assortment).
+- **Edit products together** (Step 2) changes names, prices and promotion text of selected products with a
+  before/after preview and saves a separate layout. [Guide](./USAGE.md#edit-placed-products-together-without-a-spreadsheet).
+- **Change it in words** applies price, discount, sign and placement edits from a sentence (see
+  [Ask in your own words](#ask-in-your-own-words)).
+- **Excel round trip** — download the planogram as a workbook, edit it and upload it back.
+
+### Shelf capture and Shelf Lab
+
+A phone photo of a shelf becomes a rack face in the planogram. **Add photos** takes several files at once, checks
+duplicates and processes them one at a time, with pause and per-photo retry
+([queue details](./USAGE.md#upload-several-shelf-photos-with-a-controlled-queue)); **Combine reviewed shelf photos**
+previews completed photos together and saves them as one new draft layout without extra model calls
+([workflow](./USAGE.md#combine-reviewed-shelf-photos-into-one-layout)).
+
+**Save queue on this browser** retains selected photos and settings for a paused restore after reload.
+Browser storage can be cleared or evicted and is not a backup. Combining keeps original layouts and photos;
+missing products block saving and reduced facing counts need confirmation.
+
+**Shelf Lab** edits real shelf photos counterfactually (Fig. 3 below) and audits them against the reference layout.
+Completed audits rank missing products by net contribution (**Restocking priorities**) and turn verified stockroom
+counts, pack sizes and costs into a budgeted restock worksheet in whole supplier packs, without placing orders or
+predicting recovered sales. Details: [`SHELF_LAB.md`](./SHELF_LAB.md).
 
 ### The neighborhood
 
 **Area** puts the store in a town: generate one (residential, university, station, suburban, tourist or mixed, at a
 chosen density) or import streets and venues from OpenStreetMap. A Huff demand model gives visitors per day, market
 share, catchment, average walk, visitors by hour and who comes; open or close a venue to see what changes, and let
-simulation runs draw their visitors from the town. A storefront photo sets how strongly the store pulls, a rival's shelf
-photo sets its price index, and a vision check rates the synergy with the shop next door.
+runs draw their visitors from the town. A storefront photo sets how strongly the store pulls, a rival's shelf photo
+sets its price index, and a vision check rates the synergy with the shop next door.
 
 ## Marketing studio
 
-For brand managers, category teams, store operators and research agencies (**Market** in the command bar). Eleven tabs:
+For brand managers, category teams, store operators and research agencies (**Market** in the command bar). Synthetic
+respondents are for screening and direction; calibrate against a real panel before deciding.
 
-- **A/B tests** — a variant is a list of changes to a saved layout: a new price, a discount with the was-price on the
-  tag, a promotion sign (1+1, SALE, −30 %), a move to eye level or another fixture, a new pack, or a category re-price
-  with .99 endings. One-click recipes: discount ladder, discount vs sign, eye level vs bottom shelf, **price sweep**
-  (a demand curve with the product's elasticity and revenue-maximising price), price up, new pack.
-  Every arm runs on the **same shoppers with the same random numbers** as the control, so the result reports paired
-  differences with bootstrap 95 % intervals — revenue, conversion and units per visitor, and units, spend and buyers of
-  each tracked product — **by age group and gender**, and names a winner only when its interval clears zero. Rule
-  shoppers answer in seconds; vision shoppers also see packs and signs. Every finished test comes with a **report** —
-  summary and recommendation, design, charts, tracked products, method, and optional model-written commentary — as a
-  print-ready page (PDF) or Markdown.
-  **Price × sign analysis** reuses retained individual outcomes from new runs with control, price-only,
-  sign-only and combined arms. It checks the exact factor changes, computes paired main effects and the
-  interaction, and exports source-bound cells and contrasts. Missing cells withhold intervals; adjusted
-  bootstrap intervals describe a synthetic panel, not real sales effects or confirmatory evidence.
-- **Shelf tests** — the classic shelf impact test: the same respondents see the shelf as it is and with a new pack,
-  price or sign (previewed live), pick what they would take and say what caught their eye first; pick share and
-  stand-out are compared pair by pair.
-- **Concept tests** — up to four images side by side; a vision model answers as each sampled persona (with age and
-  gender quotas): purchase intent, pack appeal, value, stand-out (1–5), a Van Westendorp price range, preference and
-  one open answer. Results show distributions, means with CIs, top-2-box, Wilson intervals for preference, the price
-  curves with the acceptable range, segment tables and verbatims; respondent-level CSV export.
-- **Conjoint** — choice-based conjoint: define a product's attributes and levels (pack size, sugar, brand, claim …) and
-  price levels. Each respondent gets their own level-balanced choice tasks (2–4 versions plus "none") and answers them
-  in one model call. A multinomial logit gives **part-worths**, **attribute importance** and **willingness to pay**,
-  with intervals that resample respondents, importance by segment, and a **market simulator**: build a line-up from the
-  tested levels, move a price slider and watch the shares of preference — and the share-versus-price curve — update.
-  Long-format CSV for re-estimation elsewhere.
-- **Staff scripts** — compare two exact greetings, recommendations or objection-handling lines on the same
-  synthetic shoppers, with independent exposures and balanced request order. Hold the product, price and encounter
-  context fixed; compare purchase intent, trust and pressure (1–5), paired bootstrap intervals, exploratory segments
-  and customer replies. Results screen wording for a field pilot; they do not estimate real conversion or sales.
-- **Field pilots** — turn a staff-script test into a fixed, balanced A/B assignment sheet within anonymous staff/shift
-  blocks; plan sample size and duration from your minimum worthwhile difference and daily traffic; import observed
-  encounters and purchases (with a reviewed change history), check collection gaps, and reconcile POS purchases to the
-  assignments. A complete planned sample gets a conservative 95 % conversion-difference interval; missing
-  transactions never become non-purchases.
-  **Staff and shift sensitivity** checks completed, locked pilots by leaving out each staff alias, shift ID
-  and staff/shift block in turn, with the original planned weights renormalized. It exports all deletion
-  estimates and flags opposite signs without producing new hypothesis tests or staff performance rankings.
-  **Staff-script cost scenario** applies explicit contribution, staff-time, hourly labor cost and traffic
-  assumptions to the locked conversion result. It shows break-even lift and conditional contribution ranges,
-  with CSV export; these are cost scenarios, not realized profit or daily sales forecasts.
-  **Observed staff time** reviews an anonymous assignment/time CSV from a completed, locked pilot. It
-  checks staff/shift coverage, withholds averages until all times are recorded, and exports a source-bound
-  audit to inform explicit labor-cost assumptions without inferring profit or staff performance.
-- **Price checks** — reconcile supplied shelf-label and checkout observations by check ID, retaining unmatched and noncomparable pairs. Review signed price differences by currency and export both sources with exclusions; no legal or sales-loss verdict.
-- **Protocols** — record original research plans and reasoned amendments, with declared data visibility, complete snapshots, field differences and head-bound JSON/CSV exports. Local history is not external preregistration or proof that results were unseen.
-- **Unit prices** — compare operator-supplied competitor offers across pack quantities, with explicit date, stock and purchase-condition exclusions. Separate currencies and quantity dimensions; export exact-rate audit data. No live prices, price write-back or inferred sales effects.
-- **Inventory** — upload observed period stock, movements, net sales, COGS and inventory values at cost.
-  Reconcile each SKU before interpreting net unit sell-through, period turnover and GMROI. Missing data are
-  rejected; stock/value conflicts withhold ratios. Export source inputs, calculations and review flags with
-  the period and source hash. These descriptive records do not estimate a promotion's causal effect or place orders.
-- **Products** — drop packshots or phone photos of packs (the background is cut out), name them, tag the brand and link
-  each to the shelf product it replaces. Shelf Lab and the vision shoppers use the same images.
+| Tab | What it answers |
+| :-- | :-- |
+| **A/B tests** | Price, discount, promotion sign, placement, new pack or category re-price against the control, on the same shoppers with the same random numbers. Paired differences with bootstrap 95 % intervals, by age group and gender; a winner only when its interval clears zero. Recipes include a **price sweep** (demand curve, elasticity, revenue-maximising price); a **price × sign** analysis splits control, price-only, sign-only and combined arms into main effects and the interaction. |
+| **Shelf tests** | The same respondents see the shelf as it is and with a new pack, price or sign: pick share and what caught the eye first. |
+| **Concept tests** | Up to four images rated by sampled personas with age and gender quotas: purchase intent, appeal, value, stand-out, a Van Westendorp price range and preference. |
+| **Conjoint** | Choice-based conjoint: part-worths, attribute importance and willingness to pay from a multinomial logit, importance by segment, and a market simulator with price sliders. |
+| **Staff scripts** | Two greetings, recommendations or objection-handling lines on the same synthetic shoppers: purchase intent, trust and pressure, with paired intervals. A screen for wording, not a sales forecast. |
+| **Field pilots** | A staff-script test turned into a balanced assignment sheet for real shifts: sample size and duration, observed encounters and POS purchases, a conservative 95 % conversion interval, plus staff/shift sensitivity, cost scenarios and observed staff time. |
+| **Price checks** | Shelf-label and checkout observations reconciled by check ID, with signed differences by currency. |
+| **Protocols** | Research plans and reasoned amendments with complete snapshots and exports. |
+| **Unit prices** | Competitor offers compared across pack sizes, with date, stock and purchase-condition exclusions. |
+| **Inventory** | Observed stock, movements, sales and costs reconciled per SKU into sell-through, turnover and GMROI. |
+| **Products** | Packshots or phone photos of packs (background cut out, named from what the pack says), linked to the shelf products they replace. |
 
-Any finished A/B, shelf, concept or conjoint test can be **duplicated and edited** into the next one. Concept, shelf and
-conjoint tests have print-ready reports too. Synthetic respondents are for screening and direction; calibrate against
-a real panel before deciding.
+Finished A/B, shelf, concept and conjoint tests have print-ready reports and can be duplicated into the next one.
+**Read the answers** on concept, shelf, conjoint and staff-script results groups respondents' reasons into themes and
+writes a short commentary on the numbers, labelled as model-written.
 
-**Upload shelf photos together.** Capture’s **Add photos** panel accepts multiple files or a drop, checks duplicates and limits, and processes one photo at a time. Pause later uploads, retry an individual error, and review results before combining them. Accepted photos stay in history. **Save queue on this browser** retains selected photos and settings; restore paused after a reload or browser restart, then resume without reselecting files. Browser storage can be cleared or evicted and is not a backup. [Queue details and limits](./USAGE.md#upload-several-shelf-photos-with-a-controlled-queue).
-
-**Combine shelf photos.** In Capture, choose **Combine reviewed shelf photos**, select completed photos,
-preview their racks together, then save and open one new draft. Original layouts and photos stay intact;
-missing products block saving and reduced facing counts need confirmation. This reuses existing recognition
-and grid placement, with no extra model calls. See [the workflow and limits](./USAGE.md#combine-reviewed-shelf-photos-into-one-layout).
 
 ## How it works
 
@@ -383,27 +349,19 @@ the purchase rate, and paired layouts share every random number.
 
 **Fig. 3 — Shelf Lab.** Swap products, empty a run, inpaint a new package, reprint a price tag or hang a promotion on a
 real shelf photo. Only pixels inside the changed boxes move, so every edit has an exact mask. The same shoppers judge
-the render, the tagged photo and the raw photo (sim2real agreement with CIs, with each panel's picks painted onto the
-photo), and compliance gaps against the reference layout are priced in revenue per day by paired simulation. The shelf
-here is a photoreal render from the built-in shelf studio, which supplies exact boxes; phone photos are edited the same
-way. Details: [`SHELF_LAB.md`](./SHELF_LAB.md).
-
-Completed audits also plan the restock. **Restocking priorities** ranks the missing products by net contribution over a
-chosen horizon (margin and handling overhead), with **Locate** on the shelf and CSV export. **Restocking quantities
-and budget** takes verified stockroom counts, required shelf units, supplier pack sizes and costs and priorities, and
-prepares a budgeted worksheet in whole supplier packs, showing unfilled units and pack surplus — without deriving
-inventory from a photo, placing orders or predicting recovered sales.
+the render, the tagged photo and the raw photo (sim2real agreement with CIs), and compliance gaps against the reference
+layout are priced in revenue per day by paired simulation.
 
 ### Photos in, twin out
 
 | Input | What TwinStore does with it |
 | :-- | :-- |
 | Shelf photo | detects shelves and facings, reads names and price tags → a rack face in the planogram |
-| Floor-plan image or multi-page PDF | preview the selected page and rotation → ink mask or vision model → walls, racks, doors on an 8–16 tile grid; PDF support included |
+| Floor-plan image or multi-page PDF | page and rotation preview → ink mask or vision model → walls, racks and doors on an 8–16 tile grid |
 | Storefront photo | a vision model rates sign, entrance, window and upkeep → the venue's pull in the neighborhood model |
-| Receipt photos | transcribed by a vision model → review product matches, quantities and paid amounts → check and score a run against corrected POS lines |
-| POS export with timestamps | sets when the simulated shoppers arrive (new-store wizard), and scores a run's sales |
-| Anonymous track CSV | device-extracted grid coordinates → observed vs simulated visitor and occupancy heatmaps, tracking-gap accounting and per-cell differences; aggregate reports only |
+| Receipt photos | transcribed by a vision model, matches reviewed → corrected POS lines that score a run |
+| POS export with timestamps | sets when the simulated shoppers arrive, and scores a run's sales |
+| Anonymous track CSV | observed vs simulated visitor and occupancy heatmaps, with tracking gaps accounted for |
 | Rival's shelf photo | price index and assortment overlap against your layout → the rival's price-adjusted pull |
 
 ## Validated on real baskets
@@ -414,13 +372,8 @@ inventory from a photo, placing orders or predicting recovered sales.
 trips are compared with real trips they never saw. The main test uses dunnhumby's *The Complete Journey*: 150
 households and 14 weeks, held out (replicated on a second panel), with Claude Haiku 5.5, Qwen 3.8 Flash and GPT-6
 Luna as decision models, alone and mixed into one population. Every failure the data exposed changed the simulator:
-- visit times and trip size;
-- silent fallbacks;
-- shelf prices and price response;
-- walking speed and time at the shelf;
-- trips that repeat the same staples, and habits within a category;
-- situations (weekend, season, holidays, a big match, the time of day) from convenience-store guesses to effects
-  measured on real receipts.
+visit times and trip size, silent fallbacks, shelf prices and price response, walking speed and time at the shelf,
+repeated staples and habits within a category, and situation effects measured on real receipts.
 
 | Check (held out) | Simulated | Real reference |
 | :--- | :--- | :--- |
@@ -436,13 +389,13 @@ Luna as decision models, alone and mixed into one population. Every failure the 
 | Walking speed (13,159 tracks) | `1.12 m/s` | `1.13 m/s` |
 | Seconds at the shelf per unplanned purchase (eye tracking) | `7–9` (median) | `8.2` |
 
-The full validation study — what failed, what was fixed, its limits and how to reproduce it — is maintained outside
+The full validation study (what failed, what was fixed, its limits and how to reproduce it) is maintained outside
 this repository; every number in it is recomputed from the saved trips.
 
 ## For researchers
 
 Every stimulus and every model call is seeded and cached, so experiments are paired and reproducible, and figures
-regenerate from saved JSON without model calls. The research directions TwinStore is built for:
+regenerate from saved JSON without model calls. TwinStore is built for:
 
 - **VLM shopper bench** — position and order biases (Latin-square placement, shuffled tag numbers), merchandising
   levers, price read-back, persona and situation conditioning, corruption robustness, image-vs-text ablation, agreement
@@ -451,7 +404,7 @@ regenerate from saved JSON without model calls. The research directions TwinStor
   reconstruction*: does the simulator reach the same conclusion on the reconstruction as on the original?
 - **Sim2real for shopper agents** — the same panel on renders, tagged photos and raw photos (Shelf Lab).
 - **Expensive-oracle layout optimization** — a rule-based surrogate proposes, vision shoppers judge on a paired panel.
-- **Synthetic respondents** — concept tests, shelf tests and choice-based conjoint on persona panels, with the
+- **Synthetic respondents** — concept tests, shelf tests and choice-based conjoint on persona panels, with
   respondent-level data exported for comparison with human panels.
 
 `uv run python -m store_emulator.lab_cli bench` writes a counterfactual benchmark (`index.jsonl` with images, masks and
@@ -473,9 +426,11 @@ cp backend/.env.example backend/.env   # add an LLM API key if you want LLM shop
 
 Requirements: Python **3.13+** with [uv](https://github.com/astral-sh/uv), Node **20+** with **pnpm 10.33.0**. The
 optional Grounding DINO detector for shelf capture: `cd backend && uv sync --extra capture` (pulls PyTorch).
+Contributor and AI-agent conventions: [`AGENTS.md`](./AGENTS.md). Running TwinStore with an AI assistant: point it at
+[`USAGE.md`](./USAGE.md). History: [`CHANGELOG.md`](./CHANGELOG.md).
 
 <details>
-<summary><b>Run each side, build, launcher</b></summary>
+<summary><b>Run each side, build, verify</b></summary>
 
 ```bash
 cd backend && uv sync && uv run uvicorn store_emulator.server.main:app --reload   # API docs at :8000/docs
@@ -484,8 +439,8 @@ cd frontend && pnpm build                                                       
 launcher/build.sh                                                                 # TwinStore.exe / .app / linux → launcher/dist
 ```
 
-Verification (keep all green): `uv run pyright src/`, `uv run pytest` in `backend`; `pnpm build`, `pnpm lint`,
-`pnpm test` in `frontend`. Conventions for contributors and AI agents: [`AGENTS.md`](./AGENTS.md).
+Verification (keep all green): `uv run pyright src/` and `uv run pytest` in `backend`; `pnpm build`, `pnpm lint` and
+`pnpm test` in `frontend`.
 
 </details>
 
@@ -505,22 +460,22 @@ uv run twinstore fidelity /tmp/runs/A/rep_0 pos.csv        # Spearman, JS, NDCG 
 uv run twinstore summary /tmp/runs/A/rep_0
 ```
 
-The former command name `parastore` still works. Everything in the app is also an HTTP API (`:8000/docs`), including
-the marketing studio (`/api/projects/{pid}/experiments`, `/surveys`, `/shelf-tests`, `/conjoints`).
+The former command name `parastore` still works. Everything in the app is also an HTTP API (`:8000/docs`).
 
 </details>
 
 <details>
-<summary><b>Vision shoppers without an API key (CPU or GPU, chosen automatically)</b></summary>
+<summary><b>Vision shoppers without an API key</b></summary>
 
-With no API key set, TwinStore says so in a notice under the command bar and runs its vision shoppers on a small open
-model on your computer. It reads the hardware and picks the model:
+With no API key set, TwinStore says so under the command bar and runs its vision shoppers on a small open model on your
+computer, picked from the hardware:
 - a GPU gets Qwen3.5-9B, 4B or 2B (CUDA on NVIDIA, Metal on Apple silicon, Vulkan on AMD/Intel);
 - a CPU gets Qwen3.5-2B, 0.8B or LFM2.5-VL-450M, by cores and free memory.
 
-It then downloads the matching [llama.cpp](https://github.com/ggml-org/llama.cpp) build and the model into
+It downloads the matching [llama.cpp](https://github.com/ggml-org/llama.cpp) build and the model into
 `.data/local_vlm/` and serves it on 127.0.0.1. Opened from the app icon this happens by itself; otherwise press
-**Start local model** in the notice or on the Models page.
+**Start local model** in the notice or on the Models page. A llama.cpp server already running on port 8081 is used
+as it is.
 
 | Variable | Effect |
 | :--- | :--- |
@@ -528,10 +483,7 @@ It then downloads the matching [llama.cpp](https://github.com/ggml-org/llama.cpp
 | `TWINSTORE_LLAMA_SERVER=/path/to/llama-server` | uses your own build |
 | `TWINSTORE_LOCAL_VLM_MODEL` | forces a model: `qwen3.5-0.8b`, `qwen3.5-2b`, … |
 
-A llama.cpp server already running on port 8081 is used as it is. A cloud key gives faster and far more accurate
-shoppers; the validation above uses cloud models.
-
-To run the model by hand instead:
+To run the model by hand:
 
 ```bash
 # Qwen3.5-0.8B (Q4_K_M) + its vision projector, ~1 GB RAM, 2 CPU threads
@@ -550,23 +502,18 @@ Measured on 2 vCPUs without a GPU (512 px shelf images, ~1.4 glances per custome
 | Qwen3.5-0.8B | ~9.5 | 58–63% / 50–69% |
 | Qwen3.5-2B | ~22.5 | 88–94% / 100% |
 
-Both favor products in the top row of a shelf image (2B: ~70% of picks) — treat VLM picks as a model to calibrate,
-not as ground truth.
+Both favor products in the top row of a shelf image (2B: ~70% of picks). A cloud key gives faster and far more
+accurate shoppers; treat small-model picks as a model to calibrate, not as ground truth.
 
 </details>
 
 <details>
-<summary><b>Models and providers</b></summary>
+<summary><b>Models and configuration</b></summary>
 
 **Models** lists OpenAI, Anthropic, Gemini, Qwen and OpenRouter, plus any custom OpenAI-compatible endpoint (vLLM,
 Ollama, llama.cpp, a gateway). Keys stay on your computer; each provider can be tested with one click and given its own
-default model. Runs and the optimizer can use the app default, a specific model, or an ensemble; the marketing studio
+default model. Runs and the optimizer can use the app default, a specific model or an ensemble; the marketing studio
 uses the app default or a model you pick per test.
-
-</details>
-
-<details>
-<summary><b>Configuration</b></summary>
 
 Defaults live in `backend/src/store_emulator/application/config.py`; these environment variables override them (the
 `PARASTORE_` prefix is kept for compatibility):
@@ -585,9 +532,6 @@ Defaults live in `backend/src/store_emulator/application/config.py`; these envir
 | `PARASTORE_VLM_IMAGE_WIDTH`, `PARASTORE_VLM_CACHE_DIR`, `PARASTORE_VLM_SEED` | shelf image width (px); response cache; per-call seeds |
 | `PARASTORE_DATA_HOME` | for the launcher: folder that holds `.data` (projects, runs, settings) instead of `backend/` |
 
-Running TwinStore with an AI assistant? Point it at [`USAGE.md`](./USAGE.md): the inputs a simulation hinges on, LLM
-call counts per persona size, and the silent failures to catch before a run. History: [`CHANGELOG.md`](./CHANGELOG.md).
-
 </details>
 
 ## Limitations
@@ -595,8 +539,8 @@ call counts per persona size, and the silent failures to catch before a run. His
 - **Calibrate before you trust numbers.** Out of the box the shoppers are plausible, not fitted to your store. Use the
   fidelity report against your POS data, read paired differences with their intervals, and see the validation loop for
   what calibration involves.
-- **Synthetic respondents are not a panel.** Concept, shelf and conjoint results screen ideas; confirm with real people
-  before pricing or launching on them.
+- **Synthetic respondents are not a panel.** Concept, shelf, conjoint and staff-script results screen ideas; confirm
+  with real people before pricing or launching on them.
 - **Model calls cost money and time.** A week of personas for a modest store can be hundreds of calls (capped at 100
   personas per day by default, `PERSONA_DAILY_CAP`). The rule-based engine and response caches make iteration free.
 - **One store at a time.** No fleet view or multi-week dynamics; crowding is light (per-shopper paths, no queues);
@@ -619,45 +563,21 @@ kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
 
 ## Credits
 
-- **Shoppers.** Realistic shoppers use locally bundled [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox)
-  avatars under MIT: fourteen appearances with textured faces and clothing, normal maps, varying surface roughness adapted
-  from the original specular textures, separate face/body normal-map strengths for soft skin and clearer fabric
-  detail, alpha-tested hair, authored eyelid blinks with varied timing and small gaze shifts, and retargeted breathing, varied standing,
-  walking and browsing animations. They pause with playback and keep adult proportions when highlighted. Sources and
-  conversion instructions: [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
-- **Materials.** [Poly Haven](https://polyhaven.com/) CC0 material scans for ceramic flooring and wood fixtures (diffuse
-  and roughness at every quality level; High adds OpenGL normal maps), [ambientCG Plaster 001](https://ambientcg.com/a/Plaster001)
-  (CC0) for walls with consistent scale across lengths, corners and rotated sections, CC0
-  [ambientCG Metal 032](https://ambientcg.com/a/Metal032) for exposed supports and frames in High, and Poly Haven's CC0
-  Pavement 02 scan for the storefront pavement in High (world-space coordinates keep its 2.12 m coverage). Assets load
-  locally with procedural fallbacks. High also uses ambientCG’s CC0 Office Ceiling 001 material for
-  acoustic tiles, with matching color, roughness and normal maps; its tile grid and the Medium
-  fallback align with ceiling lights at a consistent physical scale. Checkout tops in High use ambientCG's CC0
-  Marble 012 color, roughness and normal maps, with consistent pattern scale across counter sizes and rotations.
-  These maps load only when a checkout is present. High also rounds the edges of checkout hardware;
-  plastic housings and coated grilles use a nonmetallic finish. Cashier, customer and card-reader displays
-  have distinct idle artwork in one shared 512 × 256 texture, retained in Photo mode. These decorative
-  screens do not show simulation orders or payment totals. Cans in High separate printed labels from
-  reflective metal ends and rims, with the same finishes in Photo mode. Close-view cans have a recessed
-  flat lid, a beveled pull tab with a real opening, and a rivet, all inside the existing package bounds;
-  the distant model and the number of material batches stay unchanged. Round packages keep continuous
-  shading across their label wraps without changing the printed UVs or silhouette. Authors, source URLs and checksums are in
-  [`frontend/public/assets/materials/`](./frontend/public/assets/materials/LICENSE.txt).
-- **Props and products.** A reduced Poly Haven Potted Plant 01 model by Rico Cilliers (CC0) at the entrance in High
-  ([`props/`](./frontend/public/assets/props/README.md)). Fresh bananas use Alexander Shulha's CC0 Poly Haven scan;
-  single and paired apples, whole avocados, kiwis and ginger roots use Oliver Harries' CC0 food scans; individual plain burger buns use Alexander Shulha's CC0 scan; lemons and yellow onions use Kuutti Siitonen's CC0 scans, whole sweet potatoes use Jan Martens' CC0 scan, and Asian pears use Amal Kumar's CC0 scan, with shared instancing, two detail
-  levels, photographic PBR maps and stable per-instance variation that is kept in Photo mode
-  ([`produce/`](./frontend/public/assets/produce/README.md)). Garden-center terracotta pots use the hollow pot from Rico
-  Cilliers' CC0 scan; plain croissants use Dario Barresi and Greg Zaal's CC0 Poly Haven scan; metal watering cans use
-  Charles Nderitu's CC0 scan ([`products/`](./frontend/public/assets/products/README.md)).
-- **Lighting.** High quality uses Poly Haven's [Gear Store HDR panorama](https://polyhaven.com/a/gear_store) for
-  photographic indoor lighting and reflections, ambient occlusion that respects hair and leaf alpha masks and ignores
-  transparent glass, and Three.js SMAA with 4× multisampling for hair, eyelashes and fine edges
-  ([`environments/`](./frontend/public/assets/environments/LICENSE.txt)).
-- **Your own photos.** Uploaded SKU photos and product crops from Capture appear on 3D packages (shared across facings;
-  cylindrical packages use the central label band of the front photo, an approximation rather than a full scan).
-  Playback fills missing photo references from the project's image library without rewriting recorded runs.
-- **Classic view.** The original market, character and ghost assets are from [Kenney](https://kenney.nl), CC0 1.0 —
+- **Shoppers.** [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox) avatars (MIT), bundled
+  locally: fourteen appearances with retargeted standing, walking and browsing animations. Sources and conversion:
+  [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
+- **Materials and lighting.** CC0 scans from [Poly Haven](https://polyhaven.com/) (ceramic flooring, wood fixtures,
+  storefront pavement and the [Gear Store HDR panorama](https://polyhaven.com/a/gear_store)) and
+  [ambientCG](https://ambientcg.com/) (Plaster 001, Metal 032, Office Ceiling 001, Marble 012), loaded locally with
+  procedural fallbacks. Authors, source URLs and checksums: [`materials/`](./frontend/public/assets/materials/LICENSE.txt),
+  [`environments/`](./frontend/public/assets/environments/LICENSE.txt).
+- **Props, produce and products.** CC0 Poly Haven scans by Rico Cilliers, Alexander Shulha, Oliver Harries, Kuutti
+  Siitonen, Jan Martens, Amal Kumar, Dario Barresi, Greg Zaal and Charles Nderitu
+  ([`props/`](./frontend/public/assets/props/README.md), [`produce/`](./frontend/public/assets/produce/README.md),
+  [`products/`](./frontend/public/assets/products/README.md)).
+- **Your own photos.** Uploaded SKU photos and Capture crops appear on 3D packages (round packages use the front
+  photo's central label band, an approximation rather than a full scan).
+- **Classic view.** Market, character and ghost assets from [Kenney](https://kenney.nl), CC0 1.0 —
   [Mini Market](https://kenney.nl/assets/mini-market), [Mini Characters](https://kenney.nl/assets/mini-characters),
   [Graveyard Kit](https://kenney.nl/assets/graveyard-kit).
 - **Data.** Validation uses dunnhumby *The Complete Journey* and *Breakfast at the Frat*, X5 RetailHero, Ta-Feng,
