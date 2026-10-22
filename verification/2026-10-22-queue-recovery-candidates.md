@@ -33,3 +33,7 @@ the live queue and previous stored copy intact. Clear/forget actions are explici
 
 No usage-time savings are claimed. Browser storage can be cleared/evicted; it is not cross-device/cloud backup.
 Live model accuracy and actual store inventory/prices are outside this recovery feature's validation.
+
+Integration update: a later fetch brought AI UX `052af553`, which now implements direct layout edits in words
+and applies design briefs to generator options. It was integrated before final verification. Whole-store
+natural language work must build on those entry points, not add another duplicate tool.

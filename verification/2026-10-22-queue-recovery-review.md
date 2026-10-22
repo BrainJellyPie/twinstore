@@ -16,6 +16,14 @@ uses the incoming request-text queue; marketing keeps consumed-prefill tracking 
 destinations. Scenarios `692d80ba` and photoreal `dc9a7805` were already ancestors. No force push, branch
 removal or change to the previous parastore working directory is involved.
 
+The pre-push fetch found main `6e1970d1` and AI UX `052af553`; operator remained `e602be2e`.
+Integrated them as `e4a5a192` / `04f3400f` before final validation. Kept main's newer concept form/context
+ownership checks, minor-unit price validation and unambiguous image matching, plus starter editability/mobile
+fixes. Kept AI UX's layout-in-words and design-brief options. Conflicts in routed-prefill consumption were
+semantically equivalent; kept one callback and both concept/shelf tests. Changelog retains all workflows.
+The natural-language candidate is consequently partly covered by incoming work, not claimed as this cycle's
+new feature. Final checks run on this integrated snapshot.
+
 ## User flow and implementation
 
 Capture → choose photos/settings → **Save queue on this browser** explicitly retains the original bytes,
@@ -47,6 +55,13 @@ boundary suite then reproduced these failures before repair:
 | A changed saved revision blocked resume, while existing local files also disabled Restore; Clear/Forget conflicted too | Allow explicit replacement from the latest copy. Validate files and revision before replacing local state; stale-revision UI regression now resumes the winning list |
 | Synchronously thrown storage exceptions that are not Error instances were still reduced to a generic message inside the transaction | Preserve the actionable message at the transaction boundary. Separate regression: 1 failure / 29 passes before repair; final focused capture/routing run passes |
 | Integrated concept/shelf routes redrafted after switching tabs and returning | Consume routed prefill once in both new builders and gate delivery on loaded context. Reproduced 2 failures / 14 passes; regression now passes for tab switches, layout changes and a subsequent explicit request |
+
+The final merge added two concept-loading tests whose mock rationale differed from this branch's shared
+fixture. The first integrated full frontend run completed with 2 failures / 3,389 passes (503.53 s), both
+matching this fixture-text mismatch. Unified the expected rationale without weakening API call-count or
+context-loading assertions; the focused routed-draft/brief set then passed all 19 tests. The incoming brief
+test also assigned to a global variable during render; it now asserts rendered state through a test output,
+removing the new compiler warning without changing application code. Full frontend tests were rerun.
 
 The initial build also found an ES2022-only `.at()` in a new test while this repository targets ES2020.
 Replaced it with indexed access; no application compatibility setting was changed.
@@ -89,7 +104,36 @@ fix after unit-boundary repairs. All images/names/prices in this check are synth
 
 Local logs, synthetic data and browser profiles are under
 `/workspace/.verification/twinstore-queue-recovery/`, outside normal backend data and outside Git.
-Results are filled in only after the checks finish.
+The first full backend/frontend runs were interrupted by an exec-server transport disconnect (the logs
+end without a test summary; their processes became defunct). They are not counted as passing results.
+Environment status recovered; final full checks were restarted after the additional integrations. The
+completed browser check preceded these merges; `git diff 160bbf85 04f3400f -- frontend/src/features/capture
+frontend/src/services/mutations/captureUpload.ts frontend/src/services/queries/captureUpload.ts
+backend/src/store_emulator/application/capture* backend/src/store_emulator/server/routes/capture.py`
+shows no change to the recovery/upload workflow. Final full suites cover the integrated application.
+
+| Check | Completed result |
+| --- | --- |
+| Backend `uv run pyright src/` | 0 errors, 0 warnings after final integration (`backend-pyright-final.log`) |
+| Backend `uv run pytest` | 15,221 passed, 1 skipped, 648.32 s (`backend-pytest-final.log`); exit 0. Skip: existing opt-in Grounding DINO test needing capture extras and ~700 MB model download |
+| Backend app import smoke | `OK`, exit 0 after final integration (`backend-boot-final.log`) |
+| Frontend build, pinned pnpm 10.33.0 | TypeScript/Vite pass, Vite 26.48 s (`build-verified.log`); existing large-chunk/plugin-timing notices |
+| Frontend lint, pinned pnpm 10.33.0 | 0 errors, existing 19 warnings (`lint-verified.log`). The first integration run had one additional warning from AI UX `052af553` in `LayoutBriefField.test.tsx`; repaired its test harness and reran lint. No warning in recovery code/tests |
+| Frontend full tests, pinned pnpm 10.33.0 | 3,391 passed in 188 files, 388.60 s (`frontend-test-serial.log`); exit 0 after all integration/test repairs |
+| Focused capture and routed draft tests | 148 passed in 14 files, 38.13 s (`queue-final.log`) after recovery repairs; before final remote integration |
+| Real Chromium / FastAPI / classic detector | Passed browser restart, accepted-response loss, duplicate prevention, photo review, product/crop/layout save, base preservation and three viewport sizes (`browser-second.log`) |
+
+Frontend commands use `npm exec --yes --package=pnpm@10.33.0 -- pnpm <build|lint|test>`;
+full frontend tests use `test --maxWorkers=1`. An intermediate two-worker run reported three failures in
+existing `TemplatePicker` priority tests (two reached about five seconds); it was stopped and rerun serially
+with no backend/browser/build work running. These same tests passed in the first serial full run. No test
+assertion or timeout was relaxed, and no lint rule was disabled. The intermediate parallel run is not counted
+as passing verification. The final serial run passed all 3,391 tests, including the three priority cases.
+Browser testing uses synthetic scenes and no live VLM.
+
+A destination-only pre-push fetch again confirmed `origin/feat/operator-modules` at `e602be2e` is an ancestor
+of this branch. The normal push preserves that history. Feature implementation is `160bbf85`; later merge
+and verification commits preserve the additional remote work and document the final tested state.
 
 ## Limits and next candidate
 
@@ -98,7 +142,9 @@ It is not a cloud backup or cross-device sync. Copies intentionally store intent
 existing single-worker capture service and durable request receipts handle replay; this is not a distributed
 job system. A definitively failed recognition still requires an explicit new attempt. A removed accepted
 capture returns a conflict rather than being recreated. Unreadable future-version copies remain unchanged;
-site-data controls can remove them. Saved-model availability is not guaranteed after restart.
+site-data controls can remove them. Saved-model availability is not guaranteed after restart. A saved
+**App's vision model** selection still refers to the configured default at upload time; it does not pin a
+provider/model version. Explicit model selections and the no-model choice retain their original identifiers.
 
 No live VLM, real store photos/inventory/prices, recognition accuracy study, shopper simulation or user timing
 study was run. Synthetic names/prices are explicit test corrections. Existing photo-to-grid approximations

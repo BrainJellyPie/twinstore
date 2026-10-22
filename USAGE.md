@@ -1005,6 +1005,8 @@ or remove recovery. Storage errors preserve the live queue and previous copy. An
 is not overwritten; browser site-data controls can remove it if needed. Original photos are retained locally
 until explicitly forgotten or cleared by the browser. Saved settings are preserved even if project currency
 or available models change; an unavailable model may require clearing/reselecting the queue to choose another.
+The **App's vision model** choice still refers to the app's current default, which may change between sessions;
+select an explicit model before saving when that distinction matters.
 
 Accepted captures remain in history. A restarted single-worker server marks interrupted captures failed,
 rather than leaving them pending forever. A retry of a removed accepted photo returns a conflict rather than
