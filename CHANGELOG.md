@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Shoppers remember: the weeks after a run
+- A bad visit used to cost only that visit. **Try other stock and staffing → Shoppers remember** repeats the run's
+  week: after each week, a shopper may stop coming, the likelier the more products they found gone (and did
+  without), the longer they waited at the tills, and if they gave up in the line; everyone else comes again and
+  makes the same visits. A store that runs out loses customers, the next weeks are less crowded and stock and tills
+  stretch further — the loop one day cannot show.
+- Each week is shown next to an ideal store (endless stock, no line) that loses only the weekly churn, with the
+  same leave-or-stay draw per shopper in both and in every plan: the gap is what operations cost through customers'
+  memory, and shoppers who left are counted by reason (stock or tills). **Find the best plan** then judges plans by
+  their money over all the weeks, so a plan that costs more today can win by keeping customers.
+- The chances (3 % per missing unit, 25 % after giving up in the line, 1 % per minute waited, 1 % weekly churn) are
+  assumptions to set from your own loyalty or survey data, not fitted values. API: `memory` on
+  `POST /runs/{rid}/operations/replay` and `/plan`; no model call.
+
 ### Try other stock and staffing on a finished run
 - **Store operations → Try other stock and staffing** replays a run's shoppers — the same people making the same
   choices — in a store run another way: units per shelf level, refills, tills open, patience, and tills hour by

@@ -133,3 +133,23 @@ def test_a_shared_run_without_its_planned_visits_says_why_it_cannot_replay(clien
 def test_impossible_plan_requests_are_refused(client, bad):
     response = client.post(f"/api/projects/{PID}/runs/run_x/operations/plan", json=bad)
     assert response.status_code == 422
+
+
+def test_a_replay_and_a_plan_follow_the_weeks_when_shoppers_remember(client):
+    rid = _run(client, _layout(client))
+    memory = {"weeks": 4, "leave_per_missing_unit": 0.2}
+    replay = client.post(f"/api/projects/{PID}/runs/{rid}/operations/replay",
+                         json={"operations": {"stock_per_facing": 1, "restock_every_min": None}, "memory": memory}).json()
+    weeks = replay["weeks"]
+    assert [w["week"] for w in weeks["weeks"]] == [1, 2, 3, 4]
+    assert weeks["weeks"][0]["revenue"] == replay["outcome"]["revenue"]
+    assert all(w["shoppers"] <= w["ideal_shoppers"] for w in weeks["weeks"])
+    assert client.post(f"/api/projects/{PID}/runs/{rid}/operations/replay", json={}).json()["weeks"] is None
+    plan = client.post(f"/api/projects/{PID}/runs/{rid}/operations/plan",
+                       json={"operations": {"stock_per_facing": 1, "restock_every_min": None}, "memory": memory}).json()
+    assert plan["best_weeks"]["net"] >= plan["current_weeks"]["net"]
+
+
+@pytest.mark.parametrize("memory", [{"weeks": 1}, {"weekly_churn": 2}])
+def test_impossible_memory_settings_are_refused_by_the_api(client, memory):
+    assert client.post(f"/api/projects/{PID}/runs/run_x/operations/replay", json={"memory": memory}).status_code == 422

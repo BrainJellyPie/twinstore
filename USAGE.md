@@ -129,8 +129,16 @@ layout or assortment ones; run the simulation again for those. Runs whose shoppe
 too. A shared-store run made before replays existed cannot replay (it did not keep its shoppers' planned visits) and
 says so: run it again.
 
-API: `POST /api/projects/{pid}/runs/{rid}/operations/replay` with `{operations, costs}` and
-`POST …/operations/plan` with `{costs, operations?, max_tills?}`; costs are in the currency's minor unit.
+**Shoppers remember: follow the weeks after** repeats the run's week (2–52 weeks). After each week a shopper stops
+coming with a chance built from: each unit they wanted and found gone, giving up in the line, each minute waited
+at the tills, and a weekly churn that applies in any store. The result shows shoppers per week against an ideal
+store (endless stock, no line), who left for stock or for the tills, revenue over the weeks and what customers'
+memory cost; plans are then judged by their money over the weeks. Coach users to treat the default chances as
+placeholders and set them from their loyalty data (lapse rates after a stock-out or a long wait) before relying
+on the totals.
+
+API: `POST /api/projects/{pid}/runs/{rid}/operations/replay` with `{operations, costs, memory?}` and
+`POST …/operations/plan` with `{costs, operations?, max_tills?, memory?}`; costs are in the currency's minor unit.
 
 ## LLM call count (static analysis)
 

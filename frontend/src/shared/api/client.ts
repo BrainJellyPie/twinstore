@@ -490,10 +490,46 @@ export interface OperationsOutcome {
   net: number;
 }
 
+/** Shoppers who remember: the run's week repeated, with the shoppers a bad visit put off staying away. */
+export interface MemoryConfig {
+  weeks?: number;
+  leave_per_missing_unit?: number;
+  leave_after_line?: number;
+  leave_per_wait_minute?: number;
+  weekly_churn?: number;
+}
+
+export interface WeekStats {
+  week: number;
+  shoppers: number;
+  revenue: number;
+  lost_revenue: number;
+  abandoned: number;
+  avg_wait_sec: number;
+  net: number;
+  left_for_stock: number;
+  left_for_tills: number;
+  left_anyway: number;
+  ideal_shoppers: number;
+  ideal_revenue: number;
+}
+
+export interface WeeksReport {
+  memory: Required<MemoryConfig>;
+  weeks: WeekStats[];
+  shoppers_first: number;
+  shoppers_last: number;
+  revenue: number;
+  net: number;
+  ideal_revenue: number;
+  lost_to_memory: number;
+}
+
 export interface OperationsReplay {
   planned_revenue: number;
   outcome: OperationsOutcome;
   report: OperationsReport;
+  weeks?: WeeksReport | null;
 }
 
 export interface OperationsPlan {
@@ -505,11 +541,15 @@ export interface OperationsPlan {
   raised_skus: string[];
   // False: the search stopped at its time limit with the best plan found so far.
   complete?: boolean;
+  // With shoppers who remember: the weeks under the current plan and the best one.
+  current_weeks?: WeeksReport | null;
+  best_weeks?: WeeksReport | null;
 }
 
 /** The run's shoppers, decisions unchanged, in a store run another way (no model call). */
 export function replayOperations(
-  projectId: string, runId: string, body: { operations: OperationsConfig; costs: OperationsCosts }, signal?: AbortSignal,
+  projectId: string, runId: string, body: { operations: OperationsConfig; costs: OperationsCosts; memory?: MemoryConfig },
+  signal?: AbortSignal,
 ): Promise<OperationsReplay> {
   return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations/replay`, {
     method: "POST", body: JSON.stringify(body), signal,
@@ -518,7 +558,8 @@ export function replayOperations(
 
 /** The best stock, refill and till plan found for the run's shoppers under these costs. */
 export function planOperations(
-  projectId: string, runId: string, body: { costs: OperationsCosts; operations?: OperationsConfig }, signal?: AbortSignal,
+  projectId: string, runId: string, body: { costs: OperationsCosts; operations?: OperationsConfig; memory?: MemoryConfig },
+  signal?: AbortSignal,
 ): Promise<OperationsPlan> {
   return fetchJson(`/api/projects/${encodeURIComponent(projectId)}/runs/${encodeURIComponent(runId)}/operations/plan`, {
     method: "POST", body: JSON.stringify(body), signal,

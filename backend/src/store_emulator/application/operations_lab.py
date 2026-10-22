@@ -13,16 +13,19 @@ from store_emulator.application.storage.io import DATA_DIR, read_json
 from store_emulator.application.storage.runs import load_run_store
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.operations import (
-    OperationsConfig, OperationsCosts, OperationsPlan, OperationsReplay, OperationsReport,
+    MemoryConfig, OperationsConfig, OperationsCosts, OperationsPlan, OperationsReplay, OperationsReport,
 )
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import stable_seed
+from store_emulator.engine.simulation.customer_memory import simulate_weeks
 from store_emulator.engine.simulation.operations_plan import plan_operations, replay
 
 
 class ReplayRequest(BaseModel):
     operations: OperationsConfig = OperationsConfig()
     costs: OperationsCosts = OperationsCosts()
+    # Shoppers who remember: the run's week repeated, with the shoppers a bad visit put off staying away.
+    memory: MemoryConfig | None = None
 
 
 class PlanRequest(BaseModel):
@@ -30,6 +33,8 @@ class PlanRequest(BaseModel):
     # The plan starts from these settings (patience, checkout speed …); None = the run's own, or the defaults.
     operations: OperationsConfig | None = None
     max_tills: int | None = Field(default=None, ge=1, le=50)
+    # Judge plans by their money over the weeks that follow, with shoppers who remember their visits.
+    memory: MemoryConfig | None = None
 
 
 def _load(pid: str, run_id: str) -> tuple[Store, list[CustomerResult], int, OperationsConfig | None]:
@@ -63,10 +68,14 @@ def _load(pid: str, run_id: str) -> tuple[Store, list[CustomerResult], int, Oper
 def replay_run(pid: str, run_id: str, request: ReplayRequest) -> OperationsReplay:
     store, planned, seed, _ = _load(pid, run_id)
     result, report, _ = replay(store, planned, request.operations, request.costs, seed=seed)
-    return OperationsReplay(planned_revenue=sum(c.total_spent for c in planned), outcome=result, report=report)
+    weeks = (simulate_weeks(store, planned, request.operations, request.memory, request.costs, seed=seed)
+             if request.memory is not None else None)
+    return OperationsReplay(planned_revenue=sum(c.total_spent for c in planned), outcome=result, report=report,
+                            weeks=weeks)
 
 
 def plan_run(pid: str, run_id: str, request: PlanRequest) -> OperationsPlan:
     store, planned, seed, own = _load(pid, run_id)
     start = request.operations or own or OperationsConfig()
-    return plan_operations(store, planned, start, request.costs, seed=seed, max_tills=request.max_tills)
+    return plan_operations(store, planned, start, request.costs, seed=seed, max_tills=request.max_tills,
+                           memory=request.memory)
