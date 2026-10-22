@@ -7,13 +7,20 @@
 #   TwinStore-<v>-linux-x64.tar.gz   TwinStore/twinstore + TwinStore/app/
 #   TwinStore-<v>-linux-arm64.tar.gz
 #
-# Runs on version tags (v*) and on demand (Actions → Release bundle → Run workflow).
+# Runs on version tags (v*) and on demand (Actions → Release bundle → Run workflow). On demand, a
+# version such as v0.4.0 creates that tag on the selected commit and publishes its release; left
+# empty, the run only builds snapshot archives.
 name: Release bundle
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. v0.4.0 (creates the tag and the release). Leave empty for a snapshot build."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -21,8 +28,19 @@ permissions:
 jobs:
   bundle:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
     steps:
+      - name: Check version
+        run: |
+          if [ -n "$RELEASE_TAG" ] && ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version must look like v0.4.0, got '$RELEASE_TAG'"; exit 1
+          fi
+
       - uses: actions/checkout@v4
+
+      - name: Test release tag handling
+        run: python3 .github/tests/test_release_workflow.py
 
       - uses: pnpm/action-setup@v4
         with:
@@ -44,6 +62,8 @@ jobs:
           touch dist/.prebuilt
 
       - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
 
       - name: Backend smoke test
         working-directory: backend
@@ -59,8 +79,8 @@ jobs:
 
       - name: Build launchers
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          [ "$GITHUB_REF_TYPE" = "tag" ] || VERSION="0.0.0-snapshot.${GITHUB_SHA::7}"
+          VERSION="${RELEASE_TAG#v}"
+          [ -n "$RELEASE_TAG" ] || VERSION="0.0.0-snapshot.${GITHUB_SHA::7}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           VERSION="$VERSION" launcher/build.sh
 
@@ -101,11 +121,22 @@ jobs:
           path: out/*
 
       - name: Publish release
-        if: github.ref_type == 'tag'
+        if: env.RELEASE_TAG != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" out/* --title "TwinStore $GITHUB_REF_NAME" --notes-file - <<'NOTES'
+          release_commit="$(git rev-parse HEAD)"
+          tag_ref="refs/tags/$RELEASE_TAG"
+          remote_refs="$(git ls-remote origin "$tag_ref" "$tag_ref^{}")"
+          remote_commit="$(printf '%s\n' "$remote_refs" | awk -v ref="$tag_ref" '$2 == ref {plain=$1} $2 == (ref "^{}") {peeled=$1} END {print peeled ? peeled : plain}')"
+          if [ -z "$remote_commit" ]; then
+            # A competing tag must make this push fail; never replace another release's tag.
+            git push origin "$release_commit:$tag_ref"
+          elif [ "$remote_commit" != "$release_commit" ]; then
+            echo "::error::Tag $RELEASE_TAG points to $remote_commit, but these artifacts were built from $release_commit. Choose a new version."
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" out/* --verify-tag --target "$release_commit" --title "TwinStore $RELEASE_TAG" --notes-file - <<'NOTES'
           Download the file for your computer, unpack it, and double-click **TwinStore**.
 
           | Computer | Download | Double-click |

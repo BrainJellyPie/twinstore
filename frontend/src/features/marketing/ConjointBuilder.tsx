@@ -11,7 +11,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney, minorUnitDivisor, toMinor } from "@/shared/utils/money";
+import { formatMoney, majorUnitText, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 
 const AGES = ["10s", "20s", "30s", "40s", "50s", "60s+"];
 const GENDERS = ["Female", "Male"];
@@ -73,7 +73,7 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
   const [context, setContext] = useState(initial?.context ?? "");
   const [attrs, setAttrs] = useState<Draft[]>(initial?.attributes.map((a) => ({ name: a.name, levels: a.levels.join(", ") }))
     ?? [{ name: "", levels: "" }, { name: "", levels: "" }]);
-  const [priceText, setPriceText] = useState(initial?.prices.map((p) => String(p / divisor)).join(", ") ?? "");
+  const [priceText, setPriceText] = useState(initial?.prices.map((p) => majorUnitText(p, currency)).join(", ") ?? "");
   const [tasks, setTasks] = useState(initial?.tasks ?? 8);
   const [options, setOptions] = useState(initial?.options ?? 3);
   const [none, setNone] = useState(initial?.none_option ?? true);
@@ -168,10 +168,10 @@ export function ConjointBuilder({ projectId, personaCount, defaultCurrency = "US
       setProduct(d.product);
       setContext(d.context);
       setAttrs(d.attributes.map((a) => ({ name: a.name, levels: a.levels.join(", ") })));
-      setPriceText(d.prices.map((p) => String(p / divisor)).join(", "));
+      setPriceText(d.prices.map((p) => majorUnitText(p, currency)).join(", "));
       if (!name.trim()) setName(d.name);
     },
-  }), [mutateDraft, projectId, setupId, currency, divisor, name]);
+  }), [mutateDraft, projectId, setupId, currency, name]);
   // A routed request fills the question first; the draft is requested once the question shows it, so the reset
   // above (on any question change) cannot discard the reply.
   const [queued, setQueued] = useState<string | null>(null);

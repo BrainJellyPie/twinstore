@@ -6,11 +6,12 @@ excluded categories). What the options cannot express is listed instead of being
 record of what was asked and the options the record of what will be built.
 """
 
+import json
 import re
 from collections.abc import Mapping, Sequence
-from typing import Any, Protocol
+from typing import Protocol
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, JsonValue, ValidationError
 
 from store_emulator.domain.layout_options import (
     CheckoutPlacement,
@@ -67,7 +68,7 @@ class _Brief(BaseModel):
 
 
 class BriefReading(BaseModel):
-    options: dict[str, Any] = {}      # a patch of LayoutOptions fields, valid against the current options
+    options: dict[str, JsonValue] = {}  # a patch of LayoutOptions fields, valid against the current options
     applied: list[str] = []           # each option in words
     not_expressible: list[str] = []
     warnings: list[str] = []
@@ -76,7 +77,8 @@ class BriefReading(BaseModel):
 
 BRIEF_PROMPT = """You set up a procedural store-layout generator from a designer's brief. The store format is given
 below with its default size, tills and product categories. Set only the options the brief asks for and leave every
-other one empty (the format's default):
+other one empty (keep the current choice, or the format's default when unset). Use the current options for relative
+requests such as adding one more till:
 - style: aisles (parallel aisles), loop (racetrack), spine (one central walkway), cross (crossing aisles), plaza (open
   centre with fixtures around), free_flow (islands), perimeter (shelves on the walls, open centre), showroom (grouped
   displays);
@@ -102,27 +104,29 @@ _LABELS = {
 }
 
 
-def _describe(key: str, value: Any, labels: Mapping[str, str]) -> str:
+def _describe(key: str, value: JsonValue, labels: Mapping[str, str]) -> str:
     if key in ("width", "height", "aisle_width"):
         text = f"{value} cells"
-    elif key == "excluded_categories":
-        text = ", ".join(labels.get(c, c) for c in value)
-    elif key == "design_colors":
+    elif key == "excluded_categories" and isinstance(value, list):
+        text = ", ".join(labels.get(c, c) for c in value if isinstance(c, str))
+    elif key == "design_colors" and isinstance(value, dict):
         text = ", ".join(f"{part} {color}" for part, color in value.items() if color)
     else:
         text = str(value).replace("_", " ")
     return f"{_LABELS.get(key, key)}: {text}"
 
 
-def to_options(brief: _Brief, current: Mapping[str, Any], categories: Sequence[tuple[str, str]]) -> BriefReading:
+def to_options(brief: _Brief, current: Mapping[str, JsonValue], categories: Sequence[tuple[str, str]]) -> BriefReading:
     """The brief's options checked one by one against the current options; an option that does not fit is reported."""
     labels = dict(categories)
-    by_name: dict[str, str] = {}
+    base = LayoutOptions.model_validate({k: v for k, v in current.items() if k in LayoutOptions.model_fields})
+    current = base.model_dump(mode="json", exclude_unset=True)
+    by_name: dict[str, set[str]] = {}
     for cid, label in categories:
-        by_name.setdefault(cid.casefold(), cid)
-        by_name.setdefault(label.casefold(), cid)
+        by_name.setdefault(cid.strip().casefold(), set()).add(cid)
+        by_name.setdefault(label.strip().casefold(), set()).add(cid)
     warnings: list[str] = []
-    wanted: dict[str, Any] = {}
+    wanted: dict[str, JsonValue] = {}
     for key in ("style", "density", "aisle_width", "shelf_direction", "entrance", "gate_wall", "checkouts",
                 "checkout_placement", "checkout_wall", "design_theme", "dining_tables", "seating_zone", "products_per_category"):
         value = getattr(brief, key)
@@ -142,18 +146,23 @@ def to_options(brief: _Brief, current: Mapping[str, Any], categories: Sequence[t
             else:
                 warnings.append(f'The {part} color "{color}" is not a #rrggbb color; it was not applied.')
         if colors:
-            wanted["design_colors"] = colors
+            kept: dict[str, JsonValue] = base.design_colors.model_dump(mode="json", exclude_unset=True) if base.design_colors else {}
+            wanted["design_colors"] = {**kept, **colors}
     excluded: list[str] = []
     for asked in brief.excluded_categories:
-        cid = resolve_listed(asked, by_name)
-        if cid is None:
+        matches = resolve_listed(asked, by_name)
+        if matches is None:
             warnings.append(f'No category "{asked}" in this format; nothing was left out for it.')
-        elif cid not in excluded:
-            excluded.append(cid)
+        elif len(matches) != 1:
+            warnings.append(f'The category "{asked}" is ambiguous; nothing was left out for it.')
+        else:
+            cid = next(iter(matches))
+            if cid not in excluded:
+                excluded.append(cid)
     if excluded:
-        wanted["excluded_categories"] = sorted(set(excluded) | set(current.get("excluded_categories") or []))
-    current = {k: v for k, v in current.items() if k in LayoutOptions.model_fields}
-    accepted: dict[str, Any] = {}
+        kept_categories: list[JsonValue] = list(sorted(set(excluded) | set(base.excluded_categories)))
+        wanted["excluded_categories"] = kept_categories
+    accepted: dict[str, JsonValue] = {}
     for key, value in wanted.items():
         try:
             LayoutOptions.model_validate({**current, **accepted, key: value})
@@ -169,8 +178,10 @@ def to_options(brief: _Brief, current: Mapping[str, Any], categories: Sequence[t
     )
 
 
-def _format(template: Mapping[str, Any], categories: Sequence[tuple[str, str]]) -> str:
-    grid = template.get("grid") or ("?", "?")
+def _format(template: Mapping[str, JsonValue], categories: Sequence[tuple[str, str]]) -> str:
+    grid = template.get("grid")
+    if not isinstance(grid, list) or len(grid) < 2:
+        grid = ["?", "?"]
     lines = [
         f"Format: {template.get('name', '')} ({template.get('store_type', '')}); {template.get('description', '')}",
         (f"Default size: {grid[0]} by {grid[1]} grid cells; default style {template.get('style', '')}; "
@@ -181,11 +192,13 @@ def _format(template: Mapping[str, Any], categories: Sequence[tuple[str, str]]) 
 
 
 async def read_brief(
-    llm: StructuredLLM, brief: str, template: Mapping[str, Any], categories: Sequence[tuple[str, str]],
-    current: Mapping[str, Any],
+    llm: StructuredLLM, brief: str, template: Mapping[str, JsonValue], categories: Sequence[tuple[str, str]],
+    current: Mapping[str, JsonValue],
 ) -> BriefReading:
     """template: name, store_type, description, grid, style, checkouts, dining_tables; categories: (id, label)."""
     reading = await llm.generate_structured_async(
-        _Brief, BRIEF_PROMPT, f"{_format(template, categories)}\n\nBrief: {brief.strip()}", max_retries=2, seed=0,
+        _Brief, BRIEF_PROMPT,
+        f"{_format(template, categories)}\nCurrent options: {json.dumps(dict(current), ensure_ascii=False)}\n\nBrief: {brief.strip()}",
+        max_retries=2, seed=0,
     )
     return to_options(reading, current, categories)

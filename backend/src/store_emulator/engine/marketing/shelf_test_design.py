@@ -6,6 +6,8 @@ price, a sign. Names that point at nothing are dropped and reported; nothing run
 """
 
 from collections.abc import Sequence
+from decimal import Decimal, ROUND_HALF_UP
+from math import isfinite
 from typing import Protocol
 
 from pydantic import BaseModel, Field
@@ -21,6 +23,7 @@ from store_emulator.engine.prompting import (
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
 MAX_LISTED = 150
+MAX_PRICE = 9_007_199_254_740_991
 
 
 class StructuredLLM(Protocol):
@@ -105,8 +108,18 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
             changes.append(VariantChange(kind="package", sku=sku, asset_id=next(iter(asset))))
     if draft.price is not None and draft.price > 0:
         zero = currency.upper() in ZERO_DECIMAL
-        changes.append(VariantChange(kind="price", sku=sku, price=round(draft.price) if zero else round(draft.price * 100),
-                                     keep_reference=True))
+        if not isfinite(draft.price):
+            warnings.append("The new price is not finite; the price change was left out.")
+        else:
+            amount = Decimal(str(draft.price)) * (1 if zero else 100)
+            if amount > MAX_PRICE:
+                warnings.append("The new price exceeds the safe integer limit; the price change was left out.")
+            else:
+                price = int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                if price == 0:
+                    warnings.append(f"The new price rounds to zero in {currency.upper()}; the price change was left out.")
+                else:
+                    changes.append(VariantChange(kind="price", sku=sku, price=price, keep_reference=True))
     if draft.promo.strip():
         changes.append(VariantChange(kind="promo", sku=sku, promo=draft.promo.strip().upper()[:12]))
     if not changes:

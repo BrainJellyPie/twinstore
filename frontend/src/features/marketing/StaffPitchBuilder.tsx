@@ -59,8 +59,8 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
   });
   const { reset } = draft;
   useLayoutEffect(() => reset(), [draftContext, b, bName, reset]);
-  const requestDraft = (input: { dir: string; product: string }) => {
-    if (!products.some((p) => p.sku === input.product) || draft.isPending) return;
+  const requestDraft = (input: { dir: string; product: string }, replacePending = false) => {
+    if (!products.some((p) => p.sku === input.product) || (draft.isPending && !replacePending)) return;
     draft.mutate(input, { onSuccess: (d) => {
       setAccepted({ draft: d, context: draftContext });
       setB(d.script);
@@ -72,7 +72,7 @@ export function StaffPitchBuilder({ projectId, setupId, products, currency, pers
   // A request routed from the command palette ("a friendlier pitch for the cold brew") picks the product it names.
   const prefillId = prefill?.id;
   const prefillText = prefill?.text;
-  const queueDraft = useQueuedStart(requestDraft);
+  const queueDraft = useQueuedStart((input: { dir: string; product: string }) => requestDraft(input, true));
   const [handled, setHandled] = useState<number | null>(null);
   useEffect(() => {
     if (prefillId === undefined || !prefillText || handled === prefillId) return;

@@ -13,7 +13,7 @@ import { Input } from "@/shared/components/ui/input";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { cn } from "@/shared/utils/cn";
-import { formatMoney, minorUnitDivisor } from "@/shared/utils/money";
+import { formatMoney, majorUnitText, minorUnitDivisor } from "@/shared/utils/money";
 
 import { usePackages } from "./hooks";
 import { storeCategories, storeFixtures, toMinor, type Fixture, type Product } from "./products";
@@ -117,8 +117,8 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
   });
   const { reset } = draft;
   useLayoutEffect(() => reset(), [question, projectId, setupId, currency, store, products, variants, engine, name, hero, extraFocus, reset]);
-  const requestDraft = (asked: string) => {
-    if (Array.from(asked.trim()).length < 5 || draft.isPending) return;
+  const requestDraft = (asked: string, replacePending = false) => {
+    if (Array.from(asked.trim()).length < 5 || (draft.isPending && !replacePending)) return;
     draft.mutate(asked, { onSuccess: (d) => {
       const nextVariants = d.variants.map((v) => ({ id: uid(), name: v.name, changes: v.changes.map((c) => ({ ...c, id: uid() })) }));
       const nextHero = d.variants.flatMap((v) => v.changes.map((c) => c.sku ?? "")).find(Boolean) || hero;
@@ -139,7 +139,7 @@ export function ExperimentBuilder({ projectId, setupId, products, store, currenc
 
   const prefillId = prefill?.id;
   const prefillText = prefill?.text;
-  const queueDraft = useQueuedStart(requestDraft);
+  const queueDraft = useQueuedStart((asked: string) => requestDraft(asked, true));
   useEffect(() => {
     if (prefillId === undefined || !prefillText) return;
     const text = Array.from(prefillText).slice(0, 500).join("");
@@ -414,7 +414,7 @@ function ChangeEditor({ change: c, products, fixtures, categories, packages, pro
   currency: string; summary: string; onPatch: (p: Partial<VariantChange>) => void; onRemove: () => void;
 }) {
   const divisor = minorUnitDivisor(currency);
-  const [priceText, setPriceText] = useState(c.price != null ? (c.price / divisor).toFixed(divisor === 1 ? 0 : 2) : "");
+  const [priceText, setPriceText] = useState(c.price != null ? majorUnitText(c.price, currency, { fixed: true }) : "");
   const meta = KINDS.find((k) => k.kind === c.kind)!;
   const Icon = meta.icon;
   const product = products.find((p) => p.sku === c.sku);

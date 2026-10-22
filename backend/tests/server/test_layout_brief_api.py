@@ -67,3 +67,20 @@ def test_unknown_formats_and_model_failures(client, monkeypatch):
     monkeypatch.setattr(layout_brief, "build_client", lambda *a, **k: _Reader({"style": "zigzag"}))
     r = client.post("/api/store-templates/urban_cvs/brief", json={"brief": "a zigzag store"})
     assert r.status_code == 502 and "could not be read" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("options", [
+    {"excluded_categories": 3}, {"excluded_categories": {"tea": True}},
+    {"density": "impossible"}, {"width": 100}, {"design_colors": {"wall": "sage"}},
+    {"table_mix": {"two_seat": 2}, "dining_tables": 3},
+])
+def test_invalid_current_options_are_rejected_before_calling_a_model(client, monkeypatch, options):
+    from store_emulator.application import layout_brief
+    calls=[]
+    def build(*args, **kwargs):
+        calls.append(1)
+        return _Reader({"style":"loop", "excluded_categories":["Tea"]})
+    monkeypatch.setattr(layout_brief,"build_client",build)
+    response=client.post("/api/store-templates/urban_cvs/brief",json={"brief":"Make a spacious store","options":options})
+    assert response.status_code==422, response.text
+    assert not calls

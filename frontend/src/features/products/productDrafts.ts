@@ -1,10 +1,8 @@
 import type { ProductEdit } from "@/shared/api/productEdits";
-import { minorUnitDivisor, toMinor } from "@/shared/utils/money";
+import { majorUnitText, minorUnitDivisor, toMinor } from "@/shared/utils/money";
 export interface RowDraft { name?: string; price?: string; promo?: string }
 export function priceText(minor: number, currency: string): string {
-  const divisor = BigInt(minorUnitDivisor(currency));
-  const value = BigInt(minor);
-  return divisor === 1n ? String(value) : `${value / divisor}.${String(value % divisor).padStart(2, "0")}`;
+  return majorUnitText(minor, currency, { fixed: true });
 }
 export function draftEdits(drafts: Map<string, RowDraft>, currency: string): ProductEdit[] {
   if (drafts.size > 500) throw new Error("Edit at most 500 SKUs at a time.");
