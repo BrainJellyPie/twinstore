@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from store_emulator.application.capture import recover_interrupted_captures
 from store_emulator.application.storage.generations import recover_running_generations
+from store_emulator.application.storage.io import DamagedFile
 from store_emulator.application.storage.jobs import recover_interrupted_jobs
 from store_emulator.application.storage.seed import seed_sample_projects
 from store_emulator.application.storage.setups import recover_running_setups
@@ -124,6 +125,13 @@ async def validation_error_response(_request: Request, exc: RequestValidationErr
         bytes: lambda value: value.decode("utf-8", errors="replace"),
     })
     return JSONResponse(status_code=422, content={"detail": detail})
+
+
+@app.exception_handler(DamagedFile)
+async def damaged_file_response(_request: Request, exc: DamagedFile) -> JSONResponse:
+    # Says which file instead of "Internal Server Error"; lists leave such a file out and show the rest.
+    logger.warning(f"{exc} ({exc.path})")
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
 app.add_middleware(

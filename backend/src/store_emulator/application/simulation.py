@@ -450,15 +450,23 @@ def list_runs(pid: str, setup_id: str | None = None) -> list[dict[str, Any]]:
         entry: dict[str, Any] = {"run_id": d.name}
         status_file = d / "status.json"
         if status_file.exists():
-            entry.update(read_json(status_file))
+            try:
+                entry.update(read_json(status_file))
+            except ValueError as e:
+                # Damaged: listed as failed with the reason (one bad file must not hide every other run).
+                logger.warning(f"[runs] {pid}/{d.name}: {e}")
+                if setup_id:
+                    continue
+                entry.update({"status": "failed", "error": str(e)})
         if setup_id and entry.get("setup_id") != setup_id:
             continue
-        summary_file = d / "output" / "summary.json"
-        if summary_file.exists():
-            entry["summary"] = read_json(summary_file)
-        manifest_file = d / "output" / "manifest.json"
-        if manifest_file.exists():
-            entry["manifest"] = read_json(manifest_file)
+        for name in ("summary", "manifest"):
+            path = d / "output" / f"{name}.json"
+            if path.exists():
+                try:
+                    entry[name] = read_json(path)
+                except ValueError as e:   # left out; the run's own pages say which file is damaged
+                    logger.warning(f"[runs] {pid}/{d.name}: {e}")
         results.append(entry)
     results.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
     return results

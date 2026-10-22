@@ -322,8 +322,12 @@ def _count_personas(project_id: str) -> int:
     p_file = personas_path(project_id)
     if not p_file.exists():
         return 0
-    data = cast(list[Any], read_json(p_file) or [])
-    return len(data)
+    try:
+        data: object = read_json(p_file)
+    except ValueError as e:   # damaged: the layouts still open and say the customers are missing
+        logger.warning(f"[setups] {project_id}: {e}")
+        return 0
+    return len(cast(list[object], data)) if isinstance(data, list) else 0
 
 
 def _running_generations(project_id: str) -> list[dict[str, Any]]:

@@ -93,13 +93,17 @@ def list_projects() -> list[dict[str, Any]]:
         pid = d.name
         try:
             meta: dict[str, Any] = read_json(meta_file)
-            p_file = personas_path(pid)
-            has_personas = p_file.exists() and len(read_json(p_file)) > 0
             setups = list_setups(pid)
         except (OSError, ValueError) as e:
             # One damaged file (a crash mid-write) must not hide every other store.
             logger.warning(f"[projects] skipping {pid}: unreadable ({type(e).__name__}: {e})")
             continue
+        p_file = personas_path(pid)
+        try:
+            has_personas = p_file.exists() and len(read_json(p_file)) > 0
+        except ValueError as e:   # damaged customers: the store is still listed, as setting up
+            logger.warning(f"[projects] {pid}: {e}")
+            has_personas = False
         has_run = any(s.get("runId") for s in setups) or bool(final_runs(pid))
         state = read_state(pid)
         active_sid = state.get("activeSetupId")
@@ -112,6 +116,8 @@ def list_projects() -> list[dict[str, Any]]:
                     meta["footprint"] = _footprint(cast(dict[str, Any], active["store"]))
             except FileNotFoundError:
                 pass
+            except ValueError as e:   # the layout last open is damaged; the others still are listed
+                logger.warning(f"[projects] {pid}: {e}")
         if has_run:
             meta["status"] = "Simulated"
         elif has_store and has_personas:
@@ -132,10 +138,15 @@ def load_project(project_id: str) -> dict[str, Any]:
     # setup summaries carry readiness here (same shape as GET /setups).
     from store_emulator.application.setups import get_setups as _get_setups
     setups = _get_setups(project_id)
+    try:
+        personas: object = read_json(p_file) if p_file.exists() else []
+    except ValueError as e:   # damaged customers: the store opens and shows none (they can be written again)
+        logger.warning(f"[projects] {project_id}: {e}")
+        personas = []
     return {
         "projectId": project_id,
         "metadata": read_json(meta_file),
-        "personas": read_json(p_file) if p_file.exists() else [],
+        "personas": personas,
         "state": read_state(project_id),
         "setups": setups,
         "personasLocked": any(s.get("runId") for s in setups) or bool(final_runs(project_id)),
