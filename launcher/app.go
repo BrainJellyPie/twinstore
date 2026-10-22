@@ -35,6 +35,8 @@ type app struct {
 	target     atomic.Pointer[url.URL] // the server, once it answers
 	starting   atomic.Bool
 	restarting atomic.Bool
+	quitting   atomic.Bool // Quit was asked for: the ping says so, and a click on the icon waits for the lock
+	skipData   atomic.Bool // the user chose to start without bringing the earlier stores over
 	quit       chan struct{}
 	quitOnce   sync.Once
 	smokeDone  chan int
@@ -90,11 +92,12 @@ func (a *app) start() {
 		return
 	}
 	// Before the server starts: it would otherwise add the sample stores to an empty data folder, and the stores of
-	// the earlier version would never be brought over. A copy that fails stops here, to be tried again.
+	// the earlier version would never be brought over. A copy that fails stops here, to be tried again, or the user
+	// starts without them.
 	if err := a.bringStoresOver(); err != nil {
 		a.log.Printf("Could not bring your stores over %v", err)
-		a.status.fail("data", "Could not bring your stores over "+err.Error()+". They are still there; Try again "+
-			"copies them again.")
+		a.status.failWithChoice("data", "Could not bring your stores over "+err.Error()+". They are still there; "+
+			"Try again copies them again, or Start without them.", "skip-data")
 		a.smokeFail()
 		return
 	}
@@ -179,7 +182,8 @@ func serverEnv(goos string, environ []string, uvVer string, extra ...string) []s
 // PYTHONUTF8: files are read and written as UTF-8 whatever the Windows code page (cp949, cp1252, …).
 func (a *app) backendEnv(uvVer string) []string {
 	extra := []string{"PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONUTF8=1", "UV_NO_PROGRESS=1", "NO_COLOR=1",
-		"UV_COMPILE_BYTECODE=1", "PARASTORE_DATA_HOME=" + a.dataHome(), "UV_PROJECT_ENVIRONMENT=" + pythonEnv(a.home)}
+		"UV_COMPILE_BYTECODE=1", "PARASTORE_DATA_HOME=" + a.dataHome(),
+		"UV_PROJECT_ENVIRONMENT=" + pythonEnv(a.home, a.dataHome())}
 	if inBundle(a.root) || !writable(filepath.Join(a.root, "backend")) {
 		// Read-only app files (the macOS bundle): Python cannot keep compiled sources beside them.
 		extra = append(extra, "PYTHONDONTWRITEBYTECODE=1")
@@ -301,8 +305,8 @@ func (a *app) readOutput(r io.Reader, exited <-chan struct{}) {
 			a.status.activate("server", "Waking up the shoppers")
 			go a.waitReady(startingOn.FindStringSubmatch(line)[1], exited)
 		case a.status.state("python") == "active" && !strings.HasPrefix(line, "[TwinStore]"):
-			if len(line) > 90 {
-				line = line[:87] + "…"
+			if runes := []rune(line); len(runes) > 90 { // whole characters: a path may be Korean
+				line = string(runes[:87]) + "…"
 			}
 			a.status.activate("python", line)
 		}

@@ -2,6 +2,7 @@ import logging
 import math
 import mimetypes
 import os
+import re
 import threading
 from os import PathLike
 from pathlib import Path
@@ -13,7 +14,8 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from starlette.types import Scope
+from starlette.datastructures import Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 from fastapi.middleware.cors import CORSMiddleware
 
 from store_emulator.application.capture import recover_interrupted_captures
@@ -127,12 +129,43 @@ async def validation_error_response(_request: Request, exc: RequestValidationErr
     return JSONResponse(status_code=422, content={"detail": detail})
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Web pages that may use the API: those on this computer — the app itself (from this server or through the launcher)
+# and the development UI (http://localhost:5173 calling http://localhost:8000) — and any TWINSTORE_ALLOWED_ORIGINS
+# names (comma-separated). Any other site the user visits must not read the stores or change the model settings.
+LOOPBACK_ORIGIN = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?"
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+class RefuseOtherSites:
+    """CORS only hides the answer from other pages: a POST without a body, or a form, is sent from any web page
+    without asking first. A change (any method but GET, HEAD and OPTIONS) is refused when the request names an origin
+    that is not allowed, or names none while the browser marks it cross-site."""
+
+    def __init__(self, app: ASGIApp, extra: list[str]) -> None:
+        self.app = app
+        self.extra = frozenset(extra)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope["method"] not in _SAFE_METHODS:
+            headers = Headers(scope=scope)
+            origin = headers.get("origin")
+            if (origin is None and headers.get("sec-fetch-site") == "cross-site") or (
+                    origin is not None and re.fullmatch(LOOPBACK_ORIGIN, origin) is None and origin not in self.extra):
+                refused = JSONResponse({"detail": "TwinStore accepts changes only from its own pages"}, status_code=403)
+                await refused(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
+def guard_origins(target: FastAPI) -> None:
+    listed = os.environ.get("TWINSTORE_ALLOWED_ORIGINS", "").split(",")
+    extra = [origin.strip().rstrip("/") for origin in listed if origin.strip()]
+    target.add_middleware(CORSMiddleware, allow_origins=extra, allow_origin_regex=LOOPBACK_ORIGIN, allow_methods=["*"],
+                          allow_headers=["*"])
+    target.add_middleware(RefuseOtherSites, extra=extra)
+
+
+guard_origins(app)
 
 app.include_router(simulate.router)
 app.include_router(simulate.engines_router)

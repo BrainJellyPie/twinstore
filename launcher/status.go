@@ -27,6 +27,7 @@ type status struct {
 	stages  []stage
 	ready   bool
 	err     string
+	offer   string // a choice the boot screen offers with the error ("skip-data": Start without them)
 	started time.Time
 }
 
@@ -43,7 +44,15 @@ func (s *status) reset() {
 	for _, l := range stageLabels {
 		s.stages = append(s.stages, stage{ID: l[0], Label: l[1], State: "pending"})
 	}
-	s.ready, s.err, s.started = false, "", time.Now()
+	s.ready, s.err, s.offer, s.started = false, "", "", time.Now()
+}
+
+// failWithChoice is fail, with a choice besides Try again on the boot screen.
+func (s *status) failWithChoice(id, msg, offer string) {
+	s.fail(id, msg)
+	s.mu.Lock()
+	s.offer = offer
+	s.mu.Unlock()
 }
 
 func (s *status) set(id, state, detail string) {
@@ -79,7 +88,7 @@ func (s *status) finish() {
 			s.stages[i].State = "done"
 		}
 	}
-	s.ready, s.err = true, ""
+	s.ready, s.err, s.offer = true, "", ""
 }
 
 func (s *status) state(id string) string {
@@ -106,22 +115,24 @@ func (s *status) current() string {
 }
 
 type statusView struct {
-	Stages  []stage  `json:"stages"`
-	Ready   bool     `json:"ready"`
-	Error   string   `json:"error,omitempty"`
-	Elapsed float64  `json:"elapsed"`
-	Log     []string `json:"log"`
-	Version string   `json:"version"`
-	Root    string   `json:"root"`
-	Data    string   `json:"data"`
-	LogFile string   `json:"log_file"`
+	Stages   []stage  `json:"stages"`
+	Ready    bool     `json:"ready"`
+	Error    string   `json:"error,omitempty"`
+	Offer    string   `json:"offer,omitempty"`
+	CanRetry bool     `json:"can_retry"`
+	Elapsed  float64  `json:"elapsed"`
+	Log      []string `json:"log"`
+	Version  string   `json:"version"`
+	Root     string   `json:"root"`
+	Data     string   `json:"data"`
+	LogFile  string   `json:"log_file"`
 }
 
 func (s *status) view() statusView {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return statusView{
-		Stages: append([]stage(nil), s.stages...), Ready: s.ready, Error: s.err,
+		Stages: append([]stage(nil), s.stages...), Ready: s.ready, Error: s.err, Offer: s.offer,
 		Elapsed: time.Since(s.started).Seconds(), Version: version,
 	}
 }
