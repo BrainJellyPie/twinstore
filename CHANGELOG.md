@@ -2,24 +2,22 @@
 
 ## Unreleased
 
-### Fixes
+## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
+
+### Safe updates
+- The stores of an earlier version are always brought over, from any folder (OneDrive included), and one unreadable
+  file no longer stops the app from starting. Details under Fixes.
 - A file left empty or cut short by a version before 0.4.3 (it was stopped, or the computer lost power, while saving)
   showed "Internal Server Error" instead of the store gallery, a store, its layouts or its run history. The rest now
   opens: a store whose customers file is damaged opens without customers, a damaged run shows as failed, damaged
   captures, studies and optimizations are left out of their lists, and opening a damaged item names its file. A
   store whose settings file is damaged was left out of the gallery as if lost; it is listed, saying so.
 - The local model's llama.cpp program, downloaded by a version before 0.4.3, did not count as downloaded: a newer
-  version deleted it and fetched it again, and since 0.4.8 it did not start at all without Start (and without
-  internet access, not even then). A complete earlier download is kept and starts as before.
+  version deleted it and fetched it again. A complete earlier download is now kept, and it comes along when the
+  stores are brought over from an earlier app folder, so a local model you already have starts without a download.
 - Compare paired different people when the customers had been written again between the two runs, which versions
   before 0.4.7 allowed once the earlier run's layout was deleted (the new customers reuse the ids M1001, F1003, …).
   Such customers are now left out, and the comparison says how many.
-
-## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
-
-### Safe updates
-- The stores of an earlier version are always brought over, from any folder (OneDrive included), and one unreadable
-  file no longer stops the app from starting. Details under Fixes.
 
 ### Nothing downloaded or spent unasked
 - The local model downloads only when you press Start; screens that need a model say so and offer a key or the
