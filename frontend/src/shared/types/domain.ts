@@ -138,14 +138,40 @@ export interface Readiness {
 export type GenerationKind = "layout" | "persona";
 export type GenerationStatusValue = "pending" | "running" | "completed" | "failed";
 
+/** One way to write a store's customers: how many the model writes and about what that takes. */
+export interface WriteChoice {
+  per_day: number;
+  customers: number;
+  requests: number;
+  minutes: number;
+  /** null: free (local model) or the price is unknown. */
+  cost_usd: number | null;
+}
+
+/** A customer generation waiting for the user to choose between writing every estimated visitor and a sample. */
+export interface GenerationConfirm {
+  model: string;
+  /** The model runs on this computer: free, time is what matters. */
+  local: boolean;
+  days: number;
+  /** Weekday "1".."7" → estimated visitors that day. */
+  visitors_per_day: Record<string, number>;
+  all: WriteChoice;
+  /** sample.per_day written a day; the rest of each day are copies ("twins") of them. */
+  sample: WriteChoice;
+}
+
+export type GenerationChoice = "all" | "sample" | "cancel";
+
 export interface GenerationStatus {
   status: GenerationStatusValue;
   kind: GenerationKind;
   setup_id: string;
   error: string | null;
-  // backend type is dict[str, object] | None; frontend reads next_gen_id and, while a job waits for the local
-  // model, note (English, from the server).
-  progress: { next_gen_id?: string; note?: string } | null;
+  // backend type is dict[str, object] | None; frontend reads next_gen_id, while a job waits for the local
+  // model note (English, from the server), while it waits for the user's choice confirm, and while customers are
+  // being written written/total.
+  progress: { next_gen_id?: string; note?: string; confirm?: GenerationConfirm; written?: number; total?: number } | null;
   created_at: string | null;
   updated_at: string | null;
 }

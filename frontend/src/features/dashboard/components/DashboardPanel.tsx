@@ -76,7 +76,7 @@ function PlaybackContent({ customers, minTime, maxTime, store, summary, projectI
       <TimelineChart customers={customers} minTime={minTime} maxTime={maxTime} />
       <Summary />
       <CustomerBehavior />
-      {summary && <RunKpis summary={summary} />}
+      {summary && <RunKpis summary={summary} days={new Set(customers?.map((c) => c.day)).size || 1} />}
       {projectId && runId && <RunAnalystSection key={`analyst:${projectId}:${runId}`} projectId={projectId} runId={runId} />}
       <RackRanking store={store} />
       <TopItems store={store} />

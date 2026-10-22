@@ -4,6 +4,7 @@ import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/components/ui/alert-dialog";
 import type { SetupGenerationState } from "@/shared/queries/useSetupGeneration";
+import { GenerationConfirmDialog } from "./GenerationConfirmDialog";
 
 interface Props {
   generation: SetupGenerationState;
@@ -22,7 +23,7 @@ const confirmationActionStyle = { whiteSpace: "normal", height: "auto", maxWidth
 
 export function PreparingView({ generation, contextKind, projectName, layouts, selectedSetupId, onLayoutSelect, onBackToStores, onAbandonProject }: Props) {
   const { t } = useI18n();
-  const { phase, kind, error, retry, retrying, loadingStatus, errorSource, note } = generation;
+  const { phase, kind, error, retry, retrying, loadingStatus, errorSource, note, writing, confirm, answer, answering, answerError } = generation;
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -92,6 +93,9 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
           {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && note && <div role="status" className="space-y-1 rounded-lg border p-3 text-sm">
             <p>{t("generationWaitsForLocalModel")}</p><p className="text-xs text-muted-foreground">{note}</p>
           </div>}
+          {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && writing && <p role="status" className="text-sm font-medium tabular-nums">
+            {t("writingCustomers", { written: writing.written, total: writing.total })}
+          </p>}
           {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && <p role="status" className="text-sm text-muted-foreground">{t("generationContinueHint")}</p>}
           {deleteError !== null && <p ref={deleteErrorNotice} role="alert" tabIndex={-1} className="space-y-1 rounded-lg border border-destructive/30 p-3 text-sm text-destructive outline-none">
             <span className="block">{t("deleteStoreFailed")}</span>{deleteError && <span className="block text-xs">{deleteError}</span>}
@@ -131,6 +135,9 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>}
+      {confirm && answer && !failed && !deleting && (
+        <GenerationConfirmDialog confirm={confirm} answering={answering ?? false} error={answerError ?? null} onAnswer={answer} />
+      )}
     </div>
   );
 }

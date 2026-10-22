@@ -66,8 +66,8 @@ export function ScenarioEditor({
   setupId?: string;
 }) {
   const { data: presets = [] } = useQuery({
-    queryKey: queryKeys.scenarios(),
-    queryFn: ({ signal }) => api.getScenarios(signal),
+    queryKey: queryKeys.scenarios(projectId, setupId),
+    queryFn: ({ signal }) => api.getScenarios({ projectId, setupId }, signal),
     staleTime: Infinity,
   });
   const [customOpen, setCustomOpen] = useState(false);
@@ -84,8 +84,8 @@ export function ScenarioEditor({
     [presets, scenario?.id],
   );
   const { data: liveEffects } = useQuery({
-    queryKey: queryKeys.scenarioPreview(debounced),
-    queryFn: ({ signal }) => api.previewScenario(debounced!, signal),
+    queryKey: queryKeys.scenarioPreview(debounced, projectId, setupId),
+    queryFn: ({ signal }) => api.previewScenario(debounced!, { projectId, setupId }, signal),
     enabled: !!debounced && debounced.id === "custom",
     staleTime: Infinity,
   });
