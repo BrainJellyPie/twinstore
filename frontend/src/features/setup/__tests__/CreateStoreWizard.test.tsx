@@ -7,6 +7,7 @@ import type { StoreTemplate } from "@/shared/api/client";
 import { useLocale, translate } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { CreateStoreWizard } from "../components/CreateStoreWizard";
+vi.mock("@/features/settings/useModelSetup", () => import("@/features/settings/__tests__/modelSetupWithKey"));
 
 const { create } = vi.hoisted(() => ({ create: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({ useBlocker: () => ({ status: "idle" }) }));

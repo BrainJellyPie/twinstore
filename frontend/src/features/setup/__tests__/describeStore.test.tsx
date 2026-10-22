@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import * as api from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
 import { CreateStoreWizard } from "../components/CreateStoreWizard";
+vi.mock("@/features/settings/useModelSetup", () => import("@/features/settings/__tests__/modelSetupWithKey"));
 
 const picked = vi.hoisted(() => ({ value: null as null | { templateId: string; currency: string } }));
 vi.mock("@tanstack/react-router", () => ({ useBlocker: () => ({ status: "idle" }) }));

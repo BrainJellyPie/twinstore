@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Complete starter-fill localization in six languages: automatic/manual guidance, catalog
+  category labels, eligibility reasons, reviewed prices and retry states. Category language
+  follows the selected interface language. Detect duplicate translation keys.
+
+- Translate shelf-product reuse into six languages, including eligibility reasons, section review,
+  price formatting, save/retry and accessibility text. Preserve selections and request identities
+  across language changes and keep legacy API reason compatibility. Stabilize seeded neighborhood
+  trip assignments when demand-report ordering changes.
+
+- Add 96 kitchen, home, pet and technology products and 32 grocery/merchandise photos: 1,208 products,
+  107 categories and 160 local photos. Vision grids fit bundled product artwork more closely by omitting
+  empty white margins, while retaining names, prices and numbered identities.
+- Translate the complete reviewed library-photo workflow into all six interface languages, including
+  explanations, selection and preview counts, accessibility names, validation and save/retry states.
+  Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated
+  Close button and provide localized error guidance with original diagnostics available on demand.
+
 - Rewrite interior-design, color, floor-plan and recovery guidance in natural Korean, Chinese,
   Japanese, Spanish and French. Share design names across setup, floor review and comparison;
   localize color-reset accessibility labels and preview error recovery without changing stored values.

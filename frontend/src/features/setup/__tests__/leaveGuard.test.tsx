@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { createBrowserHistory, createMemoryHistory, createRootRoute, createRoute, createRouter, Link, Outlet, RouterProvider } from "@tanstack/react-router";
 import { translate, useLocale } from "@/shared/i18n/i18n";
 import { CreateStoreWizard } from "../components/CreateStoreWizard";
+vi.mock("@/features/settings/useModelSetup", () => import("@/features/settings/__tests__/modelSetupWithKey"));
 
 const created = vi.hoisted(() => ({ isSuccess: false, mutateAsync: vi.fn() }));
 vi.mock("@/shared/mutations/useCreateStore", () => ({ useCreateStore: () => ({ ...created, isPending: false, error: null }) }));

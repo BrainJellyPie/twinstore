@@ -105,6 +105,18 @@ func TestEarlierLaunchersLogsNameTheirDataFolders(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("earlier data folders:\n got %q\nwant %q", got, want)
 	}
+	// Noted before the logs turned over, they stay in the list once the logs no longer name them.
+	rememberEarlierData(a.home)
+	for _, name := range []string{"launcher.log", "launcher.prev.log"} {
+		if err := os.WriteFile(filepath.Join(logs, name), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got = a.earlierData()
+	want = []string{here, here, "/old/TwinStore 0.4.1/app/backend/.data", "/old/home/.data"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("earlier data folders:\n got %q\nwant %q", got, want)
+	}
 }
 
 func TestTheNewestDataFolderWithAStoreIsBroughtOver(t *testing.T) {
@@ -121,18 +133,18 @@ func TestTheNewestDataFolderWithAStoreIsBroughtOver(t *testing.T) {
 	age(t, newer, now.Add(-48*time.Hour))
 	age(t, unused, now)
 	candidates := []string{missing, unused, older, newer, older}
-	if got, n := newestStores(candidates); got != newer || n != 1 {
-		t.Errorf("chose %q (%d stores); want the newer folder", got, n)
+	if got, n, err := newestStores(candidates); got != newer || n != 1 || err != nil {
+		t.Errorf("chose %q (%d stores, %v); want the newer folder", got, n, err)
 	}
 	// A run deep inside a store of the older folder is its latest change.
 	writeFile(t, filepath.Join(older, "proj_a", "runs", "run_1", "timeline.json"), "[]")
 	age(t, older, now.Add(-72*time.Hour))
 	age(t, filepath.Join(older, "proj_a", "runs", "run_1"), now.Add(-time.Hour))
-	if got, n := newestStores(candidates); got != older || n != 2 {
-		t.Errorf("after a run in the older folder chose %q (%d stores)", got, n)
+	if got, n, err := newestStores(candidates); got != older || n != 2 || err != nil {
+		t.Errorf("after a run in the older folder chose %q (%d stores, %v)", got, n, err)
 	}
-	if got, _ := newestStores([]string{missing, unused}); got != "" {
-		t.Errorf("folders without stores gave %q", got)
+	if got, _, err := newestStores([]string{missing, unused}); got != "" || err != nil {
+		t.Errorf("folders without stores gave %q (%v)", got, err)
 	}
 }
 
@@ -270,13 +282,25 @@ func TestTheServerKeepsItsDataAndPythonInTheUserFolder(t *testing.T) {
 		t.Errorf("boot screen data folder = %q (%v)", view.Data, err)
 	}
 
-	// A data folder the user chose wins (a relative one from the app folder, as the server reads it), keeps the
-	// Python environment in the per-user folder, and is not filled from earlier versions.
+	// A data folder the user chose wins (a relative one from the app folder, as the server reads it), gets a Python
+	// environment of its own in the per-user folder (a launcher on it may run beside one on the per-user data, and
+	// the lock is per data folder), and is not filled from earlier versions.
 	mine := filepath.Join(t.TempDir(), "stores")
 	t.Setenv("PARASTORE_DATA_HOME", mine)
 	env = a.backendEnv("uv 0.11.2")
 	check(env, "PARASTORE_DATA_HOME", mine)
-	check(env, "UV_PROJECT_ENVIRONMENT", filepath.Join(a.home, "venv"))
+	own, _ := envValue(env, "UV_PROJECT_ENVIRONMENT")
+	if filepath.Dir(own) != a.home || !strings.HasPrefix(filepath.Base(own), "venv-") {
+		t.Errorf("the chosen data folder's environment is %q; want a venv-<hash> of its own in %s", own, a.home)
+	}
+	t.Setenv("PARASTORE_DATA_HOME", filepath.Join(t.TempDir(), "other stores"))
+	if again, _ := envValue(a.backendEnv("uv 0.11.2"), "UV_PROJECT_ENVIRONMENT"); again == own {
+		t.Errorf("two chosen data folders share the environment %q", own)
+	}
+	t.Setenv("PARASTORE_DATA_HOME", mine)
+	if again, _ := envValue(a.backendEnv("uv 0.11.2"), "UV_PROJECT_ENVIRONMENT"); again != own {
+		t.Errorf("the environment of a data folder moved from %q to %q", own, again)
+	}
 	t.Setenv("PARASTORE_DATA_HOME", "my stores")
 	check(a.backendEnv("uv 0.11.2"), "PARASTORE_DATA_HOME", filepath.Join(a.root, "my stores"))
 	writeFile(t, filepath.Join(a.root, "backend", ".data", "proj_a", "metadata.json"), "{}")
@@ -298,7 +322,7 @@ func TestTheServerKeepsItsDataAndPythonInTheUserFolder(t *testing.T) {
 	other := t.TempDir()
 	writeFile(t, filepath.Join(other, "venv", "pyvenv.cfg"), "")
 	writeFile(t, filepath.Join(other, "venv", "1a2b3c4d", "pyvenv.cfg"), "")
-	if got := pythonEnv(other); got != filepath.Join(other, "venv") {
+	if got := pythonEnv(other, other); got != filepath.Join(other, "venv") {
 		t.Errorf("an existing environment was passed over for %q", got)
 	}
 }

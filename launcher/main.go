@@ -55,13 +55,16 @@ func run(opt options) int {
 		return 1
 	}
 	root, rootErr := findRoot()
+	// Before any log turns over: the logs name the data folders earlier versions used (see bringStoresOver).
+	rememberEarlierData(home)
 	// Before the log turns over and the address is taken: a second click only shows the running app, and another
 	// version that quits for this one leaves its address free (bookmarks keep working).
 	var held claim
-	if rootErr == nil && !opt.smoke {
-		held = claimData(home, dataHomeOf(home, root), root, 20*time.Second)
-		if held.url != "" { // already running: just show it
-			if isTerminal() {
+	if rootErr == nil {
+		if opt.smoke {
+			held = smokeClaim(dataHomeOf(home, root))
+		} else if held = claimData(home, dataHomeOf(home, root), root, claimWait); held.url != "" {
+			if isTerminal() { // already running: just show it
 				fmt.Println("TwinStore is already running at", held.url)
 			}
 			if !opt.noBrowser {
@@ -69,12 +72,9 @@ func run(opt options) int {
 			}
 			return 0
 		}
-		if held.unlock == nil && held.other == "" {
-			fmt.Fprintln(os.Stderr, "TwinStore: another launcher using these stores is starting but does not answer")
-			return 1
-		}
 	}
-	logs := newLog(filepath.Join(home, "logs"), isTerminal())
+	// Only the launcher that holds the per-user data folder turns over launcher.log (see openLog).
+	logs := openLog(filepath.Join(home, "logs"), isTerminal(), held.unlock != nil && dataHomeOf(home, root) == home)
 	defer logs.Close()
 	logs.Printf("TwinStore launcher %s", version)
 	if proxy != "" {
@@ -92,13 +92,20 @@ func run(opt options) int {
 	defer app.releaseData() // after the server has stopped (deferred calls run last first)
 	defer srv.Close()
 	logs.Printf("Boot screen at %s", app.url)
-	if rootErr != nil {
+	switch {
+	case rootErr != nil:
 		app.status.fail("files", rootErr.Error())
-	} else {
-		if isLinux() && !opt.smoke {
+		app.smokeFail()
+	case opt.smoke: // the stores are this launcher's if no other one holds them; it never asks one to quit
+		app.holdForSmoke(held.unlock)
+		go app.start()
+	default:
+		if isLinux() {
 			installDesktopEntry(home, logs)
 		}
-		if opt.smoke || app.useClaim(held) { // otherwise the boot screen says who uses the stores, with Try again
+		// Otherwise the boot screen says who uses the stores (or that the one holding them does not answer), with
+		// Try again.
+		if app.useClaim(held) {
 			go app.start()
 		}
 	}
@@ -110,9 +117,11 @@ func run(opt options) int {
 	case <-ctx.Done():
 	case <-app.quit:
 	case code := <-app.smokeDone:
+		app.quitting.Store(true)
 		app.stopBackend(10 * time.Second)
 		return code
 	}
+	app.quitting.Store(true) // a click on the icon now waits until this one has let go of the stores
 	logs.Printf("Stopping TwinStore…")
 	app.stopBackend(10 * time.Second)
 	logs.Printf("Stopped.")

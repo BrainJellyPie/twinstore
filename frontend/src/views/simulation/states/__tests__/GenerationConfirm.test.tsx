@@ -9,6 +9,7 @@ import { useLocale } from "@/shared/i18n/i18n";
 import { useSetupGeneration } from "@/shared/queries/useSetupGeneration";
 import type { GenerationConfirm, GenerationListItem, GenerationStatus } from "@/shared/types/domain";
 import { PreparingView } from "../PreparingView";
+vi.mock("@/features/settings/useModelSetup", () => import("@/features/settings/__tests__/modelSetupWithKey"));
 
 vi.mock("@/shared/api/client", () => ({
   getSetupGenerations: vi.fn(), getGenerationStatus: vi.fn(), regeneratePersona: vi.fn(), confirmGeneration: vi.fn(),

@@ -1,5 +1,7 @@
 # dependencies & build
 node_modules/
+# A link to another checkout's folders (worktrees) is a file, not a folder: ignored too.
+node_modules
 dist/
 dist-standalone/
 *.local
@@ -24,6 +26,7 @@ docs/
 __pycache__/
 *.pyc
 .venv/
+.venv
 
 # Backend
 backend/.venv/

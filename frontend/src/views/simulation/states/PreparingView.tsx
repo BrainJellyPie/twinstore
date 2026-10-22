@@ -4,6 +4,7 @@ import { Button } from "@/shared/components/ui/button";
 import { useI18n } from "@/shared/i18n/i18n";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/components/ui/alert-dialog";
 import type { SetupGenerationState } from "@/shared/queries/useSetupGeneration";
+import { NeedsModel } from "@/features/settings/NeedsModel";
 import { GenerationConfirmDialog } from "./GenerationConfirmDialog";
 
 interface Props {
@@ -90,7 +91,8 @@ export function PreparingView({ generation, contextKind, projectName, layouts, s
           {deleting && <p ref={deleteNotice} role="status" aria-label={t("deletingStore")} tabIndex={-1} className="text-sm text-muted-foreground outline-none">{t("generationContinueHint")}</p>}
           {!deleting && failed && <p role="alert" className="text-sm text-muted-foreground">{error || t(statusUnavailable ? "generationStatusUnavailable" : isLayoutFailed ? "layoutErrorFallback" : "personaErrorFallback")}</p>}
           {!deleting && isLayoutFailed && <p className="text-sm text-muted-foreground">{t("layoutFailureHint")}</p>}
-          {!deleting && canGenerate && <p className="text-sm text-muted-foreground">{t("generatePersonasHint")}</p>}
+          {!deleting && (isPersonaFailed || canGenerate) && <p className="text-sm text-muted-foreground">{t("generatePersonasHint")}</p>}
+          {!deleting && (isPersonaFailed || canGenerate) && <NeedsModel />}
           {!deleting && (statusUnavailable || loadingStatus) && <p role={loadingStatus ? "status" : undefined} className="text-sm text-muted-foreground">{t("generationStatusReadHint")}</p>}
           {!deleting && !failed && !canGenerate && !statusUnavailable && !loadingStatus && note && <div role="status" className="space-y-1 rounded-lg border p-3 text-sm">
             <p>{t("generationWaitsForLocalModel")}</p><p className="text-xs text-muted-foreground">{note}</p>

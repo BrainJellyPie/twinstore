@@ -12,6 +12,11 @@ export function isPreparing(setup: ModelSetup | undefined): boolean {
   return !!setup && BUSY.has(setup.local.state);
 }
 
+/** A text or vision model answers now, or the local model is on its way. */
+export function modelAvailable(setup: ModelSetup): boolean {
+  return setup.cloud_providers.length > 0 || setup.local.state === "ready" || isPreparing(setup);
+}
+
 export function useModelSetup() {
   const qc = useQueryClient();
   return useQuery({

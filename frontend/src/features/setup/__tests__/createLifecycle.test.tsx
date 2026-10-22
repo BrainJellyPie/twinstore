@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { useLocale } from "@/shared/i18n/i18n";
 import { CreateStoreWizard } from "../components/CreateStoreWizard";
+vi.mock("@/features/settings/useModelSetup", () => import("@/features/settings/__tests__/modelSetupWithKey"));
 
 vi.mock("@tanstack/react-router", () => ({ useBlocker: () => ({ status: "idle" }) }));
 vi.mock("@/shared/api/client", () => ({ createStore: vi.fn() }));
