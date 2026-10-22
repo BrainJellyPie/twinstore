@@ -33,6 +33,14 @@ class OperationsConfig(BaseModel):
     patience_sd: float = Field(default=0.5, ge=0.0, le=2.0)
     # The longest average wait the till recommendation accepts in an hour (seconds).
     target_wait_sec: float = Field(default=120.0, ge=0.0, le=3600.0)
+    # Backroom: units of each product kept behind the shelves (all its shelves together), which refills draw from.
+    # None = an endless backroom: refills never run short. backroom_overrides sets single products (SKU → units);
+    # with backroom_per_product None only those products have a finite backroom.
+    backroom_per_product: int | None = Field(default=None, ge=0, le=1_000_000)
+    backroom_overrides: dict[str, int] = Field(default_factory=dict[str, int])
+    # A delivery before each later day tops every backroom up to its level again (order-up-to, next-morning
+    # delivery). False: no delivery during the simulated days — what was in the backroom has to last.
+    daily_delivery: bool = True
     # Crowding: with this many shoppers stopped at one shelf at once (the shopper included), an unplanned pick there
     # is skipped with crowd_skip chance — crowded shoppers buy less on impulse and leave sooner (Harrell, Hutt &
     # Anderson 1980; Machleit, Eroglu & Mantel 2000). None = no crowding. Assumed values, to set from observation.
@@ -48,6 +56,13 @@ class OperationsConfig(BaseModel):
             if not 0 <= tills <= 50:
                 raise ValueError(f"till_schedule[{hour!r}] must be 0–50 tills")
         return dict(sorted(schedule.items()))
+
+    @field_validator("backroom_overrides")
+    @classmethod
+    def _backroom_units(cls, overrides: dict[str, int]) -> dict[str, int]:
+        if any(not 0 <= units <= 1_000_000 for units in overrides.values()):
+            raise ValueError("backroom_overrides are 0–1,000,000 units")
+        return overrides
 
     @field_validator("stock_overrides")
     @classmethod
@@ -71,6 +86,17 @@ class StockoutStats(BaseModel):
     shoppers_missed: int = 0       # shoppers who found it gone
     first_out: str = ""            # "HH:MM:SS" of the first time it ran out
     minutes_out: float = 0.0       # time empty while the store was serving shoppers, all days
+
+
+class BackroomStats(BaseModel):
+    """A product whose backroom ran dry: refills that came up short."""
+    sku: str
+    name: str = ""
+    level: int = 0                 # units in the backroom at opening of the first day (and after each delivery)
+    refilled: int = 0              # units moved from the backroom to the shelves, all days
+    short_units: int = 0           # units refills wanted but the backroom did not have
+    dry_day: int = 0               # the first day it ran dry (weekday number)
+    dry_at: str = ""               # "HH:MM:SS" that day
 
 
 class EmptySpell(BaseModel):
@@ -109,6 +135,10 @@ class OperationsReport(BaseModel):
     substituted_units: int = 0
     substituted_revenue: int = 0
     restocks: int = 0              # rounds of shelf filling during the day(s)
+    backroom_units: int = 0        # units in finite backrooms at opening of the first day
+    refill_short_units: int = 0    # units refills could not put on the shelves: the backroom was empty
+    deliveries: int = 0            # mornings a delivery topped the backrooms up
+    backroom: list[BackroomStats] = []    # products whose backroom ran dry, by units short
     crowd_skipped_units: int = 0   # unplanned picks given up at a crowded shelf
     crowd_skipped_revenue: int = 0
     # Tills
@@ -144,7 +174,7 @@ class OperationsOutcome(BaseModel):
     p90_wait_sec: float = 0.0
     till_hours: float = 0.0
     restocks: int = 0
-    stock_units: int = 0           # units on the shelves at opening, each day
+    stock_units: int = 0           # units on the shelves and in finite backrooms at opening, each day
     labor_cost: int = 0
     restock_cost: int = 0
     holding_cost: int = 0

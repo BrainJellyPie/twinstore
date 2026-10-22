@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### The backroom: refills come from somewhere
+- Refills used to fill every shelf from nowhere. A store can now keep a backroom: units of each product behind the
+  shelves (one number for all, or per product) that refills draw from, until it runs dry. Shelves keep last
+  night's stock and are filled from the backroom before opening; a delivery each morning tops the backroom up to
+  its level (an order-up-to policy), or, turned off, what was there has to last the simulated days — so a week-long
+  run shows a popular product's backroom running out on Saturday and the shelf staying empty.
+- **Store operations** shows the refills that came up short, the backroom at opening and the deliveries, and for
+  each product whose backroom ran dry, when. Units in the backroom are held at the stock-holding cost, and
+  **Find the best plan** also tries other backroom levels. API: `backroom_per_product`, `backroom_overrides` and
+  `daily_delivery` in `operations`; blank (null) keeps the endless backroom of earlier versions.
+
 ### A layout knows how its store is run — runs, A/B tests and the optimizer use it
 - A layout can now keep its operations: units per shelf level (and per product), refills, tills (and by hour),
   patience and crowding. **Try other stock and staffing → Save for this layout** stores a plan you replayed or

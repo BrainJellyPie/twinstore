@@ -406,6 +406,10 @@ export interface OperationsConfig {
   open_counters?: number | null;
   // Tills staffed in single hours ("18" → 3); 0 closes the tills for that hour.
   till_schedule?: Record<string, number>;
+  // Units kept behind the shelves per product (null: endless), per-product backrooms, and a delivery each morning.
+  backroom_per_product?: number | null;
+  backroom_overrides?: Record<string, number>;
+  daily_delivery?: boolean;
   // With this many shoppers at one shelf (null: never), an unplanned pick there is skipped with crowd_skip chance.
   crowd_limit?: number | null;
   crowd_skip?: number;
@@ -442,6 +446,17 @@ export interface EmptySpell {
   end: number;
 }
 
+/** A product whose backroom ran dry: refills that came up short. */
+export interface BackroomStats {
+  sku: string;
+  name: string;
+  level: number;
+  refilled: number;
+  short_units: number;
+  dry_day: number;
+  dry_at: string;
+}
+
 export interface QueueHour {
   hour: string;
   arrivals: number;
@@ -467,6 +482,10 @@ export interface OperationsReport {
   restocks: number;
   crowd_skipped_units?: number;
   crowd_skipped_revenue?: number;
+  backroom_units?: number;
+  refill_short_units?: number;
+  deliveries?: number;
+  backroom?: BackroomStats[];
   queued: number;
   avg_wait_sec: number;
   p90_wait_sec: number;

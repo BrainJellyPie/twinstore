@@ -362,3 +362,53 @@ def test_the_report_says_when_each_face_stood_empty():
     assert [(s.rack_id, s.face, s.sku, s.start, s.end) for s in report.empty_spells] == [
         ("A", "E", "chips", 36010, 37800), ("A", "E", "chips", 37870, 79200)]
     assert report.empty_spells[0].name == "Chips" and report.empty_spells[0].day == 1
+
+
+def test_refills_come_from_the_backroom_and_stop_when_it_runs_dry():
+    shoppers = [_shopper("p0", "10:00:00", [("chips", 1)]), _shopper("p1", "10:31:00", [("chips", 1)]),
+                _shopper("p2", "11:05:00", [("chips", 1)])]
+    config = OperationsConfig(stock_per_facing=1, backroom_per_product=1, substitute_share=0.0, restock_every_min=30,
+                              checkout_base_sec=1, checkout_item_sec=0, crowd_limit=None)
+    results, report = resolve_shared_store(_store(), shoppers, config, seed=1)
+    assert [r.total_spent for r in results] == [300, 300, 0]
+    chips = next(b for b in report.backroom if b.sku == "chips")
+    assert (chips.level, chips.refilled, chips.dry_day, chips.dry_at) == (1, 1, 1, "11:00:00")
+    assert report.refill_short_units == chips.short_units >= 1
+    assert report.backroom_units == 3   # chips, nuts and caviar, one each
+
+
+def test_the_shelves_keep_last_nights_stock_and_a_morning_delivery_refills_the_backroom():
+    week = [_shopper("mon", "10:00:00", [("chips", 1)], day=Weekday.MON),
+            _shopper("tue", "10:00:00", [("chips", 1)], day=Weekday.TUE),
+            _shopper("wed", "10:00:00", [("chips", 1)], day=Weekday.WED)]
+    base = dict(stock_per_facing=1, substitute_share=0.0, restock_every_min=None, checkout_base_sec=1,
+                checkout_item_sec=0, crowd_limit=None)
+    # No backroom at all: nothing refills the shelf after Monday.
+    results, report = resolve_shared_store(_store(), week, OperationsConfig(backroom_per_product=0, **base), seed=1)
+    assert [r.total_spent for r in results] == [300, 0, 0]
+    chips = next(s for s in report.stockouts if s.sku == "chips")
+    assert chips.lost_units == 2 and report.deliveries == 0
+    # One unit in the backroom, no deliveries: it fills Tuesday's shelf, then nothing is left for Wednesday.
+    no_truck = OperationsConfig(backroom_per_product=1, daily_delivery=False, **base)
+    assert [r.total_spent for r in resolve_shared_store(_store(), week, no_truck, seed=1)[0]] == [300, 300, 0]
+    # With a delivery each morning the backroom is back to one unit before Wednesday's shelf is filled.
+    truck = no_truck.model_copy(update={"daily_delivery": True})
+    results, report = resolve_shared_store(_store(), week, truck, seed=1)
+    assert [r.total_spent for r in results] == [300, 300, 300] and report.deliveries == 1
+    # An endless backroom (the default) opens every day with full shelves, as before.
+    assert [r.total_spent for r in resolve_shared_store(_store(), week, OperationsConfig(**base), seed=1)[0]] == [300] * 3
+
+
+def test_units_in_the_backroom_are_held_at_a_cost_too():
+    from store_emulator.engine.simulation.operations_plan import replay
+    shoppers = [_shopper("p0", "10:00:00", [("chips", 1)])]
+    config = OperationsConfig(stock_per_facing=2, backroom_per_product=10, crowd_limit=None, **_NO_LINE)
+    outcome, _, _ = replay(_store(), shoppers, config, OperationsCosts(stock_unit_day=1), seed=1)
+    assert outcome.stock_units == 3 * 2 + 3 * 10 and outcome.holding_cost == 36
+
+
+@pytest.mark.parametrize("bad", [{"backroom_per_product": -1}, {"backroom_overrides": {"chips": -1}},
+                                 {"backroom_overrides": {"chips": 1_000_001}}])
+def test_impossible_backrooms_are_refused(bad):
+    with pytest.raises(ValueError):
+        OperationsConfig(**bad)
