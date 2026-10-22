@@ -1,3 +1,4 @@
+import { useI18n } from "@/shared/i18n/i18n";
 // Neighborhood workspace: generate a synthetic town or import a real map, try what-ifs (open a
 // café next door, a rival store across the street), and see where our customers come from.
 
@@ -18,7 +19,7 @@ import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { useAssistStore } from "@/stores/assistStore";
 
 import { TownMap, type MapMode } from "./TownMap";
-import { ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
+import { labelOf, ARCHETYPE_LABELS, BUILDING_COLORS, BUILDING_LABELS, SEGMENT_LABELS, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
 
 const NEIGHBOR_CHOICES: VenueCategory[] = ["cafe", "bakery", "pharmacy", "gym", "academy", "pc_room", "restaurant", "laundry"];
 
@@ -175,6 +176,7 @@ export function TownPage({ projectId }: { projectId: string }) {
 function MapToolbar({
   mode, setMode, category, setCategory, busy,
 }: { mode: MapMode; setMode: (m: MapMode) => void; category: VenueCategory; setCategory: (c: VenueCategory) => void; busy: boolean }) {
+  const { t } = useI18n();
   const btn = (m: MapMode, Icon: typeof MousePointer2, label: string) => (
     <button type="button" onClick={() => setMode(m)} className={cn("flex items-center gap-1 rounded px-2 py-1", mode === m ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
       <Icon className="size-3.5" /> {label}
@@ -186,7 +188,7 @@ function MapToolbar({
       {btn("place", MapPinPlus, "Open venue")}
       {mode === "place" && (
         <select className="h-7 max-w-full rounded border bg-background px-1" value={category} onChange={(e) => setCategory(e.target.value as VenueCategory)} aria-label="Venue type">
-          {(Object.keys(VENUE_LABELS) as VenueCategory[]).map((c) => <option key={c} value={c}>{VENUE_LABELS[c]}</option>)}
+          {(Object.keys(VENUE_LABELS) as VenueCategory[]).map((c) => <option key={c} value={c}>{labelOf(VENUE_LABELS, c, t)}</option>)}
         </select>
       )}
       {btn("remove", Trash2, "Close venue")}
@@ -196,18 +198,19 @@ function MapToolbar({
 }
 
 function Legend() {
+  const { t } = useI18n();
   const venues: VenueCategory[] = ["convenience", "cafe", "bakery", "pharmacy", "gym", "academy", "restaurant", "supermarket"];
   return (
     <div className="absolute bottom-3 left-3 right-3 max-w-[560px] glass rounded-xl border p-2.5 text-xs shadow-float lg:bottom-6 lg:left-6 lg:right-6">
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         <span className="flex items-center gap-1"><span className="size-3 rounded-full bg-[var(--map-focal)] ring-2 ring-background" /> Our store</span>
         {venues.map((c) => (
-          <span key={c} className="flex items-center gap-1"><span className="size-2.5 rounded-full" style={{ background: VENUE_COLORS[c] }} />{VENUE_LABELS[c]}</span>
+          <span key={c} className="flex items-center gap-1"><span className="size-2.5 rounded-full" style={{ background: VENUE_COLORS[c] }} />{labelOf(VENUE_LABELS, c, t)}</span>
         ))}
       </div>
       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
         {["apartment", "house", "studio", "office", "school", "university", "station", "park"].map((k) => (
-          <span key={k} className="flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: BUILDING_COLORS[k] }} />{BUILDING_LABELS[k]}</span>
+          <span key={k} className="flex items-center gap-1"><span className="size-2.5 rounded-sm" style={{ background: BUILDING_COLORS[k] }} />{labelOf(BUILDING_LABELS, k, t)}</span>
         ))}
         <span>· rings: 50 % / 80 % of customers · lines: where they come from</span>
       </div>
@@ -216,6 +219,7 @@ function Legend() {
 }
 
 function TownSummary({ town }: { town: Town }) {
+  const { t } = useI18n();
   const sum = (f: (b: Town["buildings"][number]) => number) => town.buildings.reduce((a, b) => a + f(b), 0);
   const rivals = town.venues.filter((v) => v.category === "convenience" && !v.is_focal).length;
   return (
@@ -224,7 +228,7 @@ function TownSummary({ town }: { town: Town }) {
         <div>
           <div className="font-medium">{town.name}</div>
           <div className="text-xs text-muted-foreground">
-            {ARCHETYPE_LABELS[town.archetype] ?? town.archetype} · {Math.round(town.size_m)} m · {town.source === "osm" ? "OpenStreetMap" : "generated"}
+            {labelOf(ARCHETYPE_LABELS, town.archetype, t)} · {Math.round(town.size_m)} m · {town.source === "osm" ? "OpenStreetMap" : "generated"}
           </div>
         </div>
         <Users className="size-4 text-muted-foreground" />
@@ -245,6 +249,7 @@ function TownSummary({ town }: { town: Town }) {
 }
 
 function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: string; onDone: (t: Town) => void; onError: (e: unknown) => void; hasTown: boolean }) {
+  const { t } = useI18n();
   const [spec, setSpec] = useState<TownSpec>({ archetype: "residential", size_m: 800, density: 0.5, n_competitors: null, neighbor_categories: ["cafe"], seed: 1 });
   const gen = useMutation({ mutationFn: () => api.generateTown(projectId, spec), onSuccess: onDone, onError });
   // "Describe the area": the text model fills the form below; generating stays a separate, explicit step.
@@ -304,7 +309,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
         {rationale && <p className="text-muted-foreground">{rationale} Check the settings, then generate.</p>}
         {describe.error && <p role="alert" className="text-destructive">{describe.error.message}</p>}
         <select className="h-8 w-full rounded-md border bg-background px-2" value={spec.archetype} onChange={(e) => setSpec({ ...spec, archetype: e.target.value as TownArchetype })} aria-label="Archetype">
-          {Object.entries(ARCHETYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          {Object.entries(ARCHETYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
         </select>
         <label className="flex items-center gap-2">
           <span className="w-16 text-muted-foreground">Size</span>
@@ -330,7 +335,7 @@ function GeneratePanel({ projectId, onDone, onError, hasTown }: { projectId: str
               return (
                 <button key={c} type="button" onClick={() => setSpec({ ...spec, neighbor_categories: on ? spec.neighbor_categories.filter((x) => x !== c) : [...spec.neighbor_categories, c] })}
                   className={cn("rounded-full border px-2 py-0.5", on ? "border-primary bg-primary/10" : "hover:bg-muted")}>
-                  {VENUE_LABELS[c]}
+                  {labelOf(VENUE_LABELS, c, t)}
                 </button>
               );
             })}
@@ -368,6 +373,7 @@ function ImportPanel({ projectId, onDone, onError }: { projectId: string; onDone
 }
 
 function DemandView({ demand }: { demand: api.TownDemand }) {
+  const { t } = useI18n();
   const hours = demand.hourly_totals;
   const peak = Math.max(1, ...hours);
   const segments = Object.entries(demand.segment_totals).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
@@ -394,7 +400,7 @@ function DemandView({ demand }: { demand: api.TownDemand }) {
         <div className="mb-1 text-muted-foreground">Who comes</div>
         {segments.map(([seg, v]) => (
           <div key={seg} className="mb-1 grid grid-cols-[110px_1fr_44px] items-center gap-2">
-            <span>{SEGMENT_LABELS[seg] ?? seg}</span>
+            <span>{labelOf(SEGMENT_LABELS, seg, t)}</span>
             <span className="h-1.5 rounded-full bg-muted"><span className="block h-1.5 rounded-full bg-primary" style={{ width: `${(v / segTotal) * 100}%` }} /></span>
             <span className="text-right tabular-nums">{Math.round((v / segTotal) * 100)} %</span>
           </div>

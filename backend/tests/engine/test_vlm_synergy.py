@@ -36,7 +36,9 @@ def test_synergy_flow_panels_and_progress_use_the_store_open_window(town, openin
     store = Store.model_validate(json.loads((SAMPLE / "store.json").read_text()))
     store.weekly_schedule = [DaySchedule(day=Weekday.WED, is_open=is_open, open_hour=opening, close_hour=opening + 1)]
     pool = [Persona.model_validate(p) for p in json.loads((SAMPLE / "personas.json").read_text())][:300]
-    baseline = estimate_demand(town)
+    # Explicitly model the store's window: the default neighborhood window starts at 07:00
+    # and cannot be used as the oracle for a store open at midnight.
+    baseline = estimate_demand(town, hours=[opening] if is_open else [])
     before = town.model_dump()
     engine = _RecordingEngine()
     progress = []

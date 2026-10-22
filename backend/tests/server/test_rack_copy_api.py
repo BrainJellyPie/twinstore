@@ -63,6 +63,43 @@ def test_choose_preview_save_open_exact_products_and_preserve_original(workflow)
     assert client.post(URL + "/save", json={**body, "request_id": "a" * 32}).json() == saved.json()
 
 
+def test_options_keep_english_reasons_and_expose_stable_localization_codes(workflow):
+    client, source = workflow
+    data = client.get(URL, params={"source_rack_id": "source"}).json()
+    targets = {r["id"]: r for r in data["targets"]}
+    assert targets["source"]["reason_code"] == "source_rack"
+    assert targets["source"]["reason"] == "This is the source rack"
+    assert targets["fridge"]["reason_code"] == "fixture_mismatch"
+    assert targets["empty"]["reason_code"] is None
+    assert targets["empty"]["reason"] is None
+    assert read_setup(PID, SID) == source
+
+
+@pytest.mark.parametrize("change,code", [
+    ("occupied", "occupied"), ("locked", "target_inaccessible"),
+    ("source_locked", "source_inaccessible"), ("invalid_sku", "source_invalid_products"),
+])
+def test_invalid_racks_have_localizable_codes_without_changing_eligibility(workflow, change, code):
+    client, source = workflow
+    racks = source["store"]["racks"]
+    if change == "occupied": racks[3]["slots"] = racks[2]["slots"]
+    if change == "locked": racks[3]["locked_faces"] = [{"block": 0, "face": "S"}]
+    if change == "source_locked": racks[2]["locked_faces"] = [{"block": 0, "face": "S"}]
+    if change == "invalid_sku": racks[2]["slots"][0]["items"][0]["sku"] = " "
+    write_json(setup_path(PID, SID), source)
+    invalid_source = change in {"source_locked", "invalid_sku"}
+    response = client.get(URL, params={} if invalid_source else {"source_rack_id": "source"})
+    assert response.status_code == 200, response.text
+    choices = response.json()["sources" if invalid_source else "targets"]
+    selected = next(r for r in choices if r["id"] == ("source" if invalid_source else "empty"))
+    assert selected["reason_code"] == code and selected["reason"]
+    if invalid_source:
+        refused = client.get(URL, params={"source_rack_id": "source"})
+        assert refused.status_code == 422
+        assert refused.json()["detail"] == selected["reason"]
+    assert read_setup(PID, SID) == source
+
+
 @pytest.mark.parametrize("patch", [
     {"target_rack_ids": []}, {"target_rack_ids": ["empty"] * 2}, {"target_rack_ids": ["source"]},
     {"target_rack_ids": ["unknown"]}, {"target_rack_ids": ["fridge"]}, {"target_rack_ids": ["in"]},
@@ -242,11 +279,15 @@ def test_building_context_and_replay_after_source_removal(workflow):
 
 def test_exact_placement_budget_and_overflow_are_checked_before_write(workflow):
     client, source = workflow
-    source["store"]["grid_size"] = [128, 128]
+    source["store"]["grid_size"] = [100, 100]
     items = [SlotItem(sku=f"item_{i}", name=f"Item {i}", price=i).model_dump(mode="json") for i in range(4)]
-    shelves = [Rack(id="source" if i == 0 else f"target_{i}", type="shelf", shape=[[1] * 125], position=(1, 2 + 3 * i)).model_dump(mode="json") for i in range(26)]
-    shelves[0]["slots"] = [{"block": b, "face": "S", "level": level, "items": items} for b in range(125) for level in range(1, 5)]
-    source["store"]["racks"] = [Rack(id="in", type="entrance", shape=[[1]], position=(0, 127)).model_dump(mode="json"), *shelves]
+    shelves = [Rack(id="source" if i == 0 else f"target_{i}", type="shelf", shape=[[1] * 63], position=(1, 2 + 3 * i)).model_dump(mode="json") for i in range(26)]
+    # 125 accessible sides × four levels × four items = 2,000 placements per rack,
+    # within the new 100-tile geometry limit. Keep the exact 50,000/52,000 budget assertions.
+    shelves[0]["slots"] = [{"block": b, "face": face, "level": level, "items": items}
+                            for b in range(63) for face in ("N", "S") if face == "N" or b < 62
+                            for level in range(1, 5)]
+    source["store"]["racks"] = [Rack(id="in", type="entrance", shape=[[1]], position=(0, 99)).model_dump(mode="json"), *shelves]
     write_json(setup_path(PID, SID), source)
     body = request(client, target_rack_ids=[f"target_{i}" for i in range(1, 25)])
     allowed = client.post(URL + "/preview", json=body)

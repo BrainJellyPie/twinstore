@@ -1,3 +1,4 @@
+import { useI18n } from "@/shared/i18n/i18n";
 // Top-down map of the neighborhood: roads, buildings (tinted by use, opacity by population),
 // venues, our store with its 50 % / 80 % catchment rings, and the strongest origin flows.
 // Wheel to zoom, drag to pan; in "place" mode a click opens a venue at that spot.
@@ -6,7 +7,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEven
 
 import type { Town, TownDemand, TownVenue } from "@/shared/api/client";
 
-import { BUILDING_COLORS, ROAD_WIDTH, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
+import { labelOf, BUILDING_COLORS, ROAD_WIDTH, VENUE_COLORS, VENUE_LABELS } from "./townStyle";
 
 export type MapMode = "inspect" | "place" | "remove";
 
@@ -25,6 +26,7 @@ export function TownMap({
   onRemove: (venue: TownVenue) => void;
   highlightVenueId?: string | null;
 }) {
+  const { t } = useI18n();
   const S = town.size_m;
   const [view, setView] = useState({ x: 0, y: 0, w: S });
   const drag = useRef<{ px: number; py: number; vx: number; vy: number; moved: boolean } | null>(null);
@@ -206,7 +208,7 @@ export function TownMap({
                 strokeWidth={hl ? 3 : 2}
               />
             )}
-            <title>{`${v.name} (${VENUE_LABELS[v.category] ?? v.category})${v.is_focal ? " — our store" : ""}`}</title>
+            <title>{`${v.name} (${labelOf(VENUE_LABELS, v.category, t)})${v.is_focal ? " — our store" : ""}`}</title>
           </g>
         );
       })}

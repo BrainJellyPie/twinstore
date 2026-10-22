@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Translate shelf-product reuse into six languages, including eligibility reasons, section review,
+  price formatting, save/retry and accessibility text. Keep selections and request identities across
+  language changes, support translated fixture searches, and retain legacy API reason compatibility.
+
 - Translate product bulk editing end to end in six languages, including validation, mixed values,
   undo, preview and saving. Preserve edits and retry identities when switching languages, format
   reviewed prices by locale, and keep long buttons inside mobile dialogs. Product workflow clients
@@ -21,6 +25,9 @@
   empty white margins, while retaining names, prices and numbered identities.
 
 ### Fixes
+- Resolve neighborhood label keys in controls, legends and map tooltips instead of showing the keys.
+  Keep seeded visitor trip assignments independent of demand-report list ordering so unchanged
+  demand rows remain paired when another hour's volume changes.
 - Applying a rival shelf's prices to its pull in the neighborhood compounded on every apply (0.82 → 1.03 → 1.28 →
   1.61 for the same photo); it now replaces the earlier adjustment.
 - The rival comparison found none of our products in the rival's categories on layouts not made from a template (the

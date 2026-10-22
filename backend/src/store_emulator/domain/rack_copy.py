@@ -1,7 +1,13 @@
 """Reuse exact slot assortments without replacing existing products."""
-from typing import Self
+from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from store_emulator.domain.rack import Slot
+
+
+RackCopyReason = Literal[
+    "choose_stocked", "source_inaccessible", "source_invalid_products", "source_rack",
+    "occupied", "fixture_mismatch", "target_inaccessible",
+]
 
 
 class RackCopyRequest(BaseModel):
@@ -32,6 +38,7 @@ class RackCopyChoice(BaseModel):
     type: str
     placements: int
     reason: str | None = None
+    reason_code: RackCopyReason | None = None
 
 
 class RackCopyOptions(BaseModel):

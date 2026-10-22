@@ -83,7 +83,7 @@ it("retains the last open day, blocks blank and reversed windows, and recovers w
 it("keeps individual hours when switching formats whose shared defaults would conflict", async () => {
   await mount([{ ...initial[0]!, choice: { ...initial[0]!.choice, close_hour: 8, weekly_hours: week() } }, initial[1]!]);
   expect(input("Monday closing hour").value).toBe("21");
-  fireEvent.click(screen.getByRole("radio", { name: /Specialty café/ }));
+  fireEvent.click(screen.getByRole("radio", { name: /Specialty coffee bar/ }));
   await waitFor(() => expect(api.previewStoreTemplate).toHaveBeenLastCalledWith(expect.objectContaining({ template_id: "specialty_cafe", weekly_hours: week(), close_hour: 8 }), expect.any(AbortSignal)));
   expect(floors()[0]!.choice.weekly_hours).toEqual(week());
   fireEvent.click(screen.getByRole("button", { name: "Reset layout options" })); expect(floors()[0]!.choice.weekly_hours).toBeNull();

@@ -1,3 +1,4 @@
+import { useI18n } from "@/shared/i18n/i18n";
 // Storefront appeal: a photo of a shop front, rated like a passer-by would (sign, entrance, window,
 // upkeep), sets that venue's pull in the demand model — ours or a rival's.
 
@@ -10,7 +11,7 @@ import type { StorefrontResult, Town } from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 import { queryKeys } from "@/shared/queries/keys";
 
-import { VENUE_LABELS } from "./townStyle";
+import { labelOf, VENUE_LABELS } from "./townStyle";
 
 const SCORES = [
   ["signage", "Sign"],
@@ -30,6 +31,7 @@ export function StorefrontCard({ projectId, town, onTown }: { projectId: string;
 function StorefrontRating({ projectId, town, venueId, onVenueChange, onTown }: {
   projectId: string; town: Town; venueId: string; onVenueChange: (id: string) => void; onTown: (t: Town) => void;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const focal = town.venues.find((v) => v.id === town.focal_venue_id);
   const rivals = town.venues.filter((v) => !v.is_focal && (v.category === "convenience" || v.category === "supermarket"));
@@ -74,7 +76,7 @@ function StorefrontRating({ projectId, town, venueId, onVenueChange, onTown }: {
       <p className="text-xs text-muted-foreground">A street photo of a shop front sets how strongly it pulls passers-by in the demand model.</p>
       <select className="h-9 w-full rounded-xl border bg-card/60 px-2.5 text-xs" aria-label="Storefront venue" value={venueId} disabled={rate.isPending || !venueId} onChange={(e) => onVenueChange(e.target.value)}>
         {focal && <option value={focal.id}>Our store · {focal.name}</option>}
-        {rivals.map((v) => <option key={v.id} value={v.id}>Rival · {v.name} ({VENUE_LABELS[v.category]})</option>)}
+        {rivals.map((v) => <option key={v.id} value={v.id}>Rival · {v.name} ({labelOf(VENUE_LABELS, v.category, t)})</option>)}
       </select>
       <button type="button" disabled={rate.isPending || !venueId} onClick={() => input.current?.click()}
         className="relative flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-foreground/15 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground">

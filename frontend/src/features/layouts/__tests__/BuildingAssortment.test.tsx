@@ -43,7 +43,7 @@ function Building({ starting }: { starting: BuildingFloorChoice[] }) {
 async function mount(starting = initial()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
   render(<QueryClientProvider client={client}><Building starting={starting} /></QueryClientProvider>);
-  await screen.findByRole("radio", { name: /^City store/ });
+  await screen.findByRole("radio", { name: /^Urban convenience store/ });
   fireEvent.click(screen.getByText(/^Product categories/));
 }
 const floors = (): BuildingFloorChoice[] => JSON.parse(screen.getByTestId("floors").textContent!);
@@ -94,7 +94,7 @@ it.each<Partial<TemplateChoice>>([
 it("does not show a building action on an individual layout", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); clients.push(client);
   render(<QueryClientProvider client={client}><TemplatePicker value={initial()[0]!.choice} onChange={vi.fn()} /></QueryClientProvider>);
-  await screen.findByRole("radio", { name: /^City store/ }); fireEvent.click(screen.getByText(/^Product categories/));
+  await screen.findByRole("radio", { name: /^Urban convenience store/ }); fireEvent.click(screen.getByText(/^Product categories/));
   expect(screen.queryByRole("button", { name: /assortment to all floors/ })).toBeNull();
 });
 

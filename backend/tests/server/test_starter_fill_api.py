@@ -302,7 +302,7 @@ def test_same_name_with_a_different_sku_is_not_merged(workflow):
 
 def test_one_hundred_racks_and_grid_limits(workflow):
     client, source = workflow
-    source["store"]["grid_size"] = [256, 256]
+    source["store"]["grid_size"] = [100, 100]
     source["store"]["racks"] = source["store"]["racks"][:3] + [
         Rack(id=f"empty_{n}", type="shelf", shape=[[1]], position=(2 + n % 10 * 3, 2 + n // 10 * 3)).model_dump(mode="json")
         for n in range(100)]
@@ -311,8 +311,10 @@ def test_one_hundred_racks_and_grid_limits(workflow):
     response = client.post(URL + "/preview", json=body)
     assert response.status_code == 200, response.text[:300]
     assert len(response.json()["racks"]) == 100 and response.json()["new_skus"] == 8
-    source["store"]["grid_size"] = [257, 256]; write_json(setup_path(PID, SID), source)
-    assert client.get(URL).status_code == 422
+    source["store"]["grid_size"] = [101, 100]; write_json(setup_path(PID, SID), source)
+    response = client.get(URL)
+    assert response.status_code == 409
+    assert "stored layout is invalid" in response.json()["detail"]
 
 
 def test_small_category_avoids_duplicate_products_per_section(workflow, monkeypatch):

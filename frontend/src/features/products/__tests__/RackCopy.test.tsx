@@ -40,7 +40,7 @@ it("chooses a stocked source, previews exact products, saves and explicitly open
   expect((screen.getByLabelText("Copy to rack stocked") as HTMLInputElement).disabled).toBe(true);
   await preview();
   expect(api.previewRackCopy).toHaveBeenCalledWith("p", "s", { source_sha256: options.source_sha256, currency: "USD", source_rack_id: "stocked", target_rack_ids: ["empty"] });
-  expect(screen.getByRole("region", { name: "Shelf copy preview" }).textContent).toContain("Tea · 茶 · 2.31 USD");
+  expect(screen.getByRole("region", { name: "Shelf copy preview" }).textContent).toContain("Tea · 茶 · $2.31");
   fireEvent.click(screen.getByRole("button", { name: "Save layout with shelf copies" }));
   fireEvent.click(await screen.findByRole("button", { name: "Open copied layout" }));
   await waitFor(() => expect(useSimulationStore.getState().selectedSetupId).toBe("setup_copied"));
@@ -136,7 +136,7 @@ it("retries an uncertain save after refresh using its original snapshot and curr
   vi.mocked(api.getRackCopyOptions).mockResolvedValue({ ...options, source_sha256: "b".repeat(64), currency: "KRW", source_rack_id: "stocked", targets: [empty] });
   await qc.invalidateQueries({ queryKey: ["rack-copy", "p", "s"] });
   await waitFor(() => expect(screen.queryByText("Checking shelves…")).toBeNull());
-  expect(screen.getByRole("region", { name: "Shelf copy preview" }).textContent).toContain("2.31 USD");
+  expect(screen.getByRole("region", { name: "Shelf copy preview" }).textContent).toContain("$2.31");
   expect(screen.getByRole("region", { name: "Shelf copy preview" }).textContent).not.toContain("KRW");
   fireEvent.click(screen.getByRole("button", { name: "Retry saving shelf copies" }));
   await screen.findByRole("button", { name: "Open copied layout" });
@@ -205,6 +205,7 @@ it.each(["USD", "CAD", "CNY", "KRW", "JPY", "VND"])("shows exact safe-integer pr
   await open(); await preview();
   const previewText = screen.getByRole("region", { name: "Shelf copy preview" }).textContent;
   const unit = ["KRW", "JPY", "VND"].includes(currency);
-  expect(previewText).toContain(`${unit ? "9007199254740991" : "90071992547409.91"} ${currency}`);
-  expect(previewText).toContain(`regular price ${unit ? "9007199254740990" : "90071992547409.90"} ${currency}`);
+  expect(previewText).toContain(unit ? "9,007,199,254,740,991" : "90,071,992,547,409.91");
+  expect(previewText).toContain("regular price");
+  expect(previewText).toContain(unit ? "9,007,199,254,740,990" : "90,071,992,547,409.90");
 });

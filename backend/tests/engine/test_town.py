@@ -200,8 +200,18 @@ def test_plan_arrivals(residential: Town):
         plan_arrivals([], demand, residential, seed=1)
 
 
-def test_visitor_ids_follow_their_demand_row_so_a_changed_row_keeps_other_visitors_paired(residential: Town):
+def test_arrival_trip_context_does_not_depend_on_demand_report_sort_order(residential: Town):
     pool = [_persona(f"{age}-{hour}", age, hour) for age in AGE_GROUPS for hour in (8, 12, 19)]
+    demand = estimate_demand(residential)
+    assert demand.origin_shares and demand.linked_trips
+    reordered = demand.model_copy(update={"origin_shares": list(reversed(demand.origin_shares)),
+                                          "linked_trips": list(reversed(demand.linked_trips))})
+    assert plan_arrivals(pool, demand, residential, seed=1, scale=0.3, day=Weekday.TUE) == \
+        plan_arrivals(pool, reordered, residential, seed=1, scale=0.3, day=Weekday.TUE)
+
+
+def test_visitor_ids_follow_their_demand_row_so_a_changed_row_keeps_other_visitors_paired(residential: Town):
+    pool = [_persona(f"{age.removesuffix('+')}-{hour}", age, hour) for age in AGE_GROUPS for hour in (8, 12, 19)]
     base = estimate_demand(residential)
     rush = estimate_demand(residential, hourly_multiplier={12: 1.7})  # a lunch rush changes only the noon rows
     visitors, arrivals = plan_arrivals(pool, base, residential, seed=1, scale=0.3, day=Weekday.TUE)

@@ -1,7 +1,7 @@
 import { BASE } from "./client";
 import { ApiError, apiErrorMessage } from "./errors";
 import type { StarterProduct } from "./starterFill";
-export interface RackCopyChoice { id: string; name: string; type: string; placements: number; reason: string | null }
+export interface RackCopyChoice { id: string; name: string; type: string; placements: number; reason: string | null; reason_code?: string | null }
 export interface RackCopyOptions { source_sha256: string; currency: string; source_rack_id: string | null; sources: RackCopyChoice[]; targets: RackCopyChoice[] }
 export interface RackCopyRequest { source_sha256: string; currency: string; source_rack_id: string; target_rack_ids: string[] }
 export interface RackCopySave extends RackCopyRequest { request_id: string }
