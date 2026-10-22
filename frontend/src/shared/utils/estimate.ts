@@ -43,11 +43,10 @@ export function runEstimateText(locale: Locale, estimate: RunEstimate): string {
     : `${shoppers} · ${time}, ${translate(locale, "noModelCalls")}`;
 }
 
-/** Report footers (English, like those screens): "≈520 visitors a day", or both figures when the simulated customers
- * are a sample of the estimated traffic that per-day money scales by. */
-export function visitorsPerDayText(estimated: number, simulated = 0): string {
-  const count = (value: number) => Math.round(value).toLocaleString("en-US");
+/** Report footers: "≈520 visitors a day", or both figures when the simulated customers are a sample of the estimated
+ * traffic that per-day money scales by. */
+export function visitorsPerDayText(locale: Locale, estimated: number, simulated = 0): string {
   return simulated > 0 && Math.round(simulated) < Math.round(estimated)
-    ? `simulated ${count(simulated)} a day of about ${count(estimated)} estimated visitors a day`
-    : `≈${count(estimated)} visitors a day`;
+    ? translate(locale, "visitorsPerDaySample", { simulated: Math.round(simulated), estimated: Math.round(estimated) })
+    : translate(locale, "visitorsPerDayApprox", { count: Math.round(estimated) });
 }

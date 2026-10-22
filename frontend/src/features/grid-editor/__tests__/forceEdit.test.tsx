@@ -116,7 +116,7 @@ it("translates the floor step heading, actions and confirmation", () => {
   expect(screen.getByRole("heading").textContent).toBe("1단계: 매장 배치 구성");
   expect(screen.getByTestId("floor-config-edit-link").textContent).toBe("편집");
   fireEvent.click(screen.getByTestId("floor-config-edit-link"));
-  expect(screen.getByRole("button", { name: "매장 배치 편집" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "매장 배치 구성 편집" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "취소" })).toBeTruthy();
   unmount();
   renderPanel({ ...setup, store: null });

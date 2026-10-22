@@ -63,11 +63,9 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
   // Spend comes in the currency's minor unit; show it as money, like the rest of the app.
   const code = currencyCode((runs.find((r) => r.run_id === a) ?? runs.find((r) => r.run_id === b))?.summary?.currency);
 
-  const option = (r: RunListItem) => (
-    <SelectItem key={r.run_id} value={r.run_id}>
-      {layoutName.get(r.setup_id) ?? r.setup_id} — {runLabel(r, locale)}
-    </SelectItem>
-  );
+  const runName = (r: RunListItem) => `${layoutName.get(r.setup_id) ?? r.setup_id} — ${runLabel(r, locale)}`;
+  const nameOf = (id: string | null) => { const r = runs.find((run) => run.run_id === id); return r ? runName(r) : undefined; };
+  const option = (r: RunListItem) => <SelectItem key={r.run_id} value={r.run_id}>{runName(r)}</SelectItem>;
 
   return (
     <div className="min-w-0 space-y-4">
@@ -81,16 +79,17 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
       ) : (
         <>
           <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+            {/* Narrow screens cut long run names with an ellipsis; the full name is the trigger's tooltip. */}
             <Select value={a ?? undefined} onValueChange={setRunA}>
-              <SelectTrigger className="w-full min-w-0 text-xs" aria-label={t("cmpBaselineRun")}>
-                <SelectValue placeholder={t("cmpBaseline")} />
+              <SelectTrigger className="w-full min-w-0 text-xs" aria-label={t("cmpBaselineRun")} title={nameOf(a)}>
+                <SelectValue placeholder={t("cmpBaseline")}>{nameOf(a) && <span className="block min-w-0 truncate">{nameOf(a)}</span>}</SelectValue>
               </SelectTrigger>
               <SelectContent>{runs.map(option)}</SelectContent>
             </Select>
             <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
             <Select value={b ?? undefined} onValueChange={setRunB}>
-              <SelectTrigger className="w-full min-w-0 text-xs" aria-label={t("cmpVariantRun")}>
-                <SelectValue placeholder={t("cmpVariant")} />
+              <SelectTrigger className="w-full min-w-0 text-xs" aria-label={t("cmpVariantRun")} title={nameOf(b)}>
+                <SelectValue placeholder={t("cmpVariant")}>{nameOf(b) && <span className="block min-w-0 truncate">{nameOf(b)}</span>}</SelectValue>
               </SelectTrigger>
               <SelectContent>{runs.map(option)}</SelectContent>
             </Select>
@@ -145,15 +144,19 @@ function Explain({ projectId, a, b }: { projectId: string; a: string; b: string 
 
 function CompareTable({ report, code }: { report: ComparisonReport; code: string }) {
   const { locale, t } = useI18n();
+  // On narrow screens the table scrolls sideways: the metric column stays put, the right edge fades until the end.
+  const [scrolledToEnd, setScrolledToEnd] = useState(false);
   const spend = report.metrics.find((m) => m.metric === "spend");
   return (
     <div className="space-y-3">
       {spend && <Headline m={spend} code={code} locale={locale} />}
-      <div className="overflow-x-auto" role="region" aria-label={t("cmpMetricsRegion")} tabIndex={0}>
+      <div className="relative">
+      <div className="overflow-x-auto" role="region" aria-label={t("cmpMetricsRegion")} tabIndex={0}
+        onScroll={(event) => { const el = event.currentTarget; setScrolledToEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 1); }}>
       <table className="w-full min-w-[640px] text-xs">
         <thead className="text-muted-foreground">
           <tr className="border-b">
-            <th className="py-1.5 text-left font-medium">{t("cmpMetric")}</th>
+            <th className="sticky left-0 z-10 bg-popover py-1.5 pr-2 text-left font-medium">{t("cmpMetric")}</th>
             <th className="text-right font-medium">A</th>
             <th className="text-right font-medium">B</th>
             <th className="w-[230px] text-center font-medium">{t("cmpBvsA", { confidence: Math.round(report.confidence * 100) })}</th>
@@ -165,7 +168,7 @@ function CompareTable({ report, code }: { report: ComparisonReport; code: string
         <tbody>
           {report.metrics.map((m) => (
             <tr key={m.metric} className="border-b last:border-0">
-              <td className="py-1.5">{metricLabel(m.metric, locale)}</td>
+              <td className="sticky left-0 z-10 bg-popover py-1.5 pr-2">{metricLabel(m.metric, locale)}</td>
               <td className="text-right tabular-nums">{fmt(m, m.mean_a, code)}</td>
               <td className="text-right tabular-nums">{fmt(m, m.mean_b, code)}</td>
               <td className="px-2"><ForestBar m={m} code={code} locale={locale} /></td>
@@ -179,6 +182,9 @@ function CompareTable({ report, code }: { report: ComparisonReport; code: string
         </tbody>
       </table>
       </div>
+      {!scrolledToEnd && <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-popover to-transparent sm:hidden" />}
+      </div>
+      <p className="text-xs text-muted-foreground sm:hidden">{t("cmpScrollHint")}</p>
       <p className="text-xs text-muted-foreground">
         {t("cmpFootnote", { paired: report.paired_customers, draws: report.n_bootstrap })}
       </p>

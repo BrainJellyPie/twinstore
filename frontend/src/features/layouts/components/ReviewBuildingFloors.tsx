@@ -1,12 +1,14 @@
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { useId, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { resolveInteriorPalette } from "@/features/store-viewer/realistic/designThemes";
 import * as api from "@/shared/api/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import { templateRequest, validBuildingFloors, validTemplateChoice, type BuildingFloorChoice } from "../templateOptions";
 import { FloorPlanPreview } from "./FloorPlanPreview";
 import { formatWeeklyHours } from "../weeklyHours";
+import { useI18n } from "@/shared/i18n/i18n";
+import { templateName } from "@/shared/i18n/storeLabels";
+import { paletteLabel } from "../optionLabels";
 
 interface Props {
   floors: BuildingFloorChoice[];
@@ -16,15 +18,16 @@ interface Props {
 }
 
 export function ReviewBuildingFloors({ floors, onEdit, open: controlledOpen, onOpenChange }: Props) {
+  const { t } = useI18n();
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen ?? localOpen;
   const setOpen = (next: boolean) => { setLocalOpen(next); onOpenChange?.(next); };
   return <Dialog open={open} onOpenChange={setOpen}>
-    <DialogTrigger asChild><button type="button" className="rounded border px-2 py-1 text-xs hover:bg-muted">Review all floors</button></DialogTrigger>
+    <DialogTrigger asChild><button type="button" className="rounded border px-2 py-1 text-xs hover:bg-muted">{t("layReviewAllFloors")}</button></DialogTrigger>
     <DialogContent className="flex max-h-[92dvh] flex-col overflow-hidden sm:max-w-[min(92vw,1000px)] [@media(max-height:500px)]:gap-3 [@media(max-height:500px)]:p-4">
       <DialogHeader className="shrink-0">
-        <DialogTitle className="[@media(max-height:500px)]:pr-6 [@media(max-height:500px)]:text-lg">Review building floors</DialogTitle>
-        <DialogDescription className="[@media(max-height:500px)]:sr-only">Compare every floor at the same cell scale before creating the building. Floors are simulated independently.</DialogDescription>
+        <DialogTitle className="[@media(max-height:500px)]:pr-6 [@media(max-height:500px)]:text-lg">{t("layReviewBuildingFloors")}</DialogTitle>
+        <DialogDescription className="[@media(max-height:500px)]:sr-only">{t("layReviewBuildingHint")}</DialogDescription>
       </DialogHeader>
       <FloorReviews floors={floors} onEdit={(index) => { setOpen(false); onEdit(index); }} />
     </DialogContent>
@@ -32,6 +35,7 @@ export function ReviewBuildingFloors({ floors, onEdit, open: controlledOpen, onO
 }
 
 function FloorReviews({ floors, onEdit }: Props) {
+  const { locale, t } = useI18n();
   const id = useId();
   const requests = floors.map((floor) => {
     if (!validTemplateChoice(floor.choice)) return null;
@@ -53,9 +57,9 @@ function FloorReviews({ floors, onEdit }: Props) {
   const checkouts = stores.reduce((sum, store) => sum + store.racks.filter((rack) => rack.type === "counter").length, 0);
   return <>
     <div className="space-y-1 text-xs" aria-live="polite">
-      <p>{ready} of {floors.length} floor previews ready</p>
-      {ready === floors.length && <p>{stores.reduce((sum, store) => sum + store.grid_size[0] * store.grid_size[1], 0)} total floor cells · {tables} dining tables · {seats} seats · {checkouts} checkout counters</p>}
-      {!validBuildingFloors(floors) && <p role="alert" className="text-destructive">Each floor needs a unique label and valid layout values before creating the building.</p>}
+      <p>{t("layFloorPreviewsReady", { ready, total: floors.length })}</p>
+      {ready === floors.length && <p>{t("layBuildingTotals", { cells: stores.reduce((sum, store) => sum + store.grid_size[0] * store.grid_size[1], 0), tables, seats, checkouts })}</p>}
+      {!validBuildingFloors(floors) && <p role="alert" className="text-destructive">{t("layBuildingInvalidCreate")}</p>}
     </div>
     <div className="grid min-h-0 gap-4 overflow-y-auto sm:grid-cols-2">
       {floors.map((floor, index) => {
@@ -65,18 +69,18 @@ function FloorReviews({ floors, onEdit }: Props) {
         const tableCount = store?.racks.filter((rack) => rack.type === "table").length ?? 0;
         return <section key={index} aria-labelledby={`${id}-floor-${index}`} className="min-w-0 space-y-2 rounded-lg border p-3">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3 id={`${id}-floor-${index}`} className="min-w-0 break-words text-sm font-medium">{index + 1}F · {floor.label.trim() || "Unnamed floor"}</h3>
-            <button type="button" className="shrink-0 rounded border px-2 py-1 text-xs hover:bg-muted" onClick={() => onEdit(index)}>Edit floor {index + 1}</button>
+            <h3 id={`${id}-floor-${index}`} className="min-w-0 break-words text-sm font-medium">{index + 1}F · {floor.label.trim() || t("layUnnamedFloor")}</h3>
+            <button type="button" className="shrink-0 rounded border px-2 py-1 text-xs hover:bg-muted" onClick={() => onEdit(index)}>{t("layEditFloorNumber", { number: index + 1 })}</button>
           </div>
-          {!valid ? <p role="alert" className="text-xs text-destructive">Enter valid grid dimensions, product and table counts, and reserved-area values for this floor.</p>
-            : preview?.isError ? <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>Retry floor {index + 1}</button></p>
-              : !preview || preview.isPending ? <p role="status" className="text-xs">Loading floor {index + 1}…</p>
+          {!valid ? <p role="alert" className="text-xs text-destructive">{t("layFloorInvalid")}</p>
+            : preview?.isError ? <p role="alert" className="text-xs text-destructive">{preview.error.message} <button type="button" className="underline" onClick={() => void preview.refetch()}>{t("layRetryFloor", { number: index + 1 })}</button></p>
+              : !preview || preview.isPending ? <p role="status" className="text-xs">{t("layLoadingFloor", { number: index + 1 })}</p>
                 : store && <>
-                  <p className="text-xs text-muted-foreground">{store.name} · {store.grid_size.join("×")} cells · {store.currency ?? floor.choice.currency}</p>
-                  <FloorPlanPreview store={store} areas={floor.choice.reserved_areas ?? []} previewFrame={frame} />
-                  <p className="text-xs">{store.racks.filter((rack) => rack.slots.length).length} displays · {tableCount} dining tables · {store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0)} seats · {store.racks.filter((rack) => rack.type === "counter").length} checkout counters</p>
-                  <p className="text-xs text-muted-foreground">{resolveInteriorPalette(store.design_theme, store.design_colors).label} · {floor.choice.reserved_areas?.length ?? 0} reserved areas</p>
-                  <p className="break-words text-xs text-muted-foreground">Operating hours: {formatWeeklyHours(store.weekly_schedule)}</p>
+                  <p className="text-xs text-muted-foreground">{t("layFloorStoreLine", { name: templateName(floor.choice.templateId, store.name, locale), size: store.grid_size.join("×"), currency: store.currency ?? floor.choice.currency })}</p>
+                  <FloorPlanPreview store={store} areas={floor.choice.reserved_areas ?? []} previewFrame={frame} name={templateName(floor.choice.templateId, store.name, locale)} />
+                  <p className="text-xs">{t("layFloorStats", { displays: store.racks.filter((rack) => rack.slots.length).length, tables: tableCount, seats: store.racks.reduce((sum, rack) => sum + rackDiningSeats(rack), 0), counters: store.racks.filter((rack) => rack.type === "counter").length })}</p>
+                  <p className="text-xs text-muted-foreground">{paletteLabel(store.design_theme, store.design_colors, t)} · {t("layReservedAreaCount", { count: floor.choice.reserved_areas?.length ?? 0 })}</p>
+                  <p className="break-words text-xs text-muted-foreground">{t("layOperatingHoursLine", { hours: formatWeeklyHours(store.weekly_schedule, locale) })}</p>
                 </>}
         </section>;
       })}

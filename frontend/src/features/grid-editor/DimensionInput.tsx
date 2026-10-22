@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Input } from "@/shared/components/ui/input";
+import { useI18n } from "@/shared/i18n/i18n";
 import { MIN_DIM, MAX_DIM, clampDim } from "./gridDimensions";
 
 interface DimensionInputProps {
@@ -9,10 +10,11 @@ interface DimensionInputProps {
 }
 
 export function DimensionInput({ axis, value, onChange }: DimensionInputProps) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState<string | null>(null);
   return (
     <label className="flex items-center gap-1.5 text-muted-foreground">
-      {axis === "width" ? "Width" : "Depth"}
+      {t(axis === "width" ? "layWidth" : "layDepth")}
       <Input
         type="number"
         min={MIN_DIM}
