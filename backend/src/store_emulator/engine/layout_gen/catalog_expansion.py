@@ -982,6 +982,30 @@ PACKSHOT_SHEETS = {
         "Seafood Chowder Mix 300g", "Lemon Herb Fish Skewers 2pk", "Gooseneck Pour Over Kettle 600ml", "Portafilter Cleaning Brush",
         "Espresso Distribution Tool 58mm", "Coffee Dosing Funnel 58mm", "Latte Art Stencil Set 4pk", "Milk Pitcher Thermometer",
     ],
+    "starter-57": [
+        "Phone Charging Cable", "Umbrella", "Disposable Raincoat", "Lighter",
+        "Light Bulb", "Envelope 5pk", "Local Snack Gift Box", "Travel Adapter",
+        "Transit Card", "Ginseng Candy", "Honey Citron Tea", "Chocolate Bar Mini",
+        "Lollipop", "Jelly Pouch", "Hot Pack Mini", "Energy Shot 60ml",
+    ],
+    "starter-58": [
+        "Iced Cup", "Hot Barley Tea", "Steamed Bun", "Rolled Oats 1kg",
+        "Olive Oil 500ml", "Canned Chickpeas 400g", "All Purpose Flour 1kg", "Ground Coffee 250g",
+        "Travel Guide", "Children's Picture Book", "Design & Architecture Book", "Pocket Poetry Collection",
+        "Nature Field Guide", "Weekly Planner", "USB-C Cable 1m", "Phone Stand",
+    ],
+    "starter-59": [
+        "Wireless Mouse", "Bluetooth Speaker", "USB Wall Charger", "Screen Cleaning Kit",
+        "Wooden Serving Tray", "Small Indoor Planter", "Fitness Towel", "Foam Roller",
+        "Sanding Sheets 10pk", "Portable Keyboard", "Instrument Cable 3m", "Guitar Picks 12pk",
+        "Folding Music Stand", "Instrument Cleaning Kit", "Wildflower Seed Pack", "Plant Support Stakes 6pk",
+    ],
+    "starter-60": [
+        "Plant Labels 20pk", "Nesting Measuring Spoons 5pk", "Silicone Pot Holder Pair", "Mesh Laundry Bag Trio",
+        "Retractable Indoor Clothesline 5m", "Fabric Shaver with Guard", "Ironing Board Cover 110cm", "Cedar Hanger Set 4pk",
+        "Foldable Sweater Drying Net", "Mini Succulent", "Potted Herb", "Orchid Plant",
+        "Flower Food Sachets", "Greeting Card", "Gift Wrap", "Dried Flower Bundle",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

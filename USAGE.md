@@ -54,6 +54,18 @@ entered. The SVG always contains the complete floor geometry, independent of the
 These actions do not run shoppers or call a model. Detailed template-setting coverage is still being
 expanded; see `verification/2026-10-22-i18n-coverage.md` for the verified scope.
 
+## Read and find store formats in your language
+
+The format picker shows descriptions of the 82 built-in store formats in English, Korean,
+Chinese, Japanese, Spanish or French. Search also matches these translated descriptions;
+you can change language without losing your query or selected format. These descriptions
+explain template assumptions, not verified inventory, prices or actual sales.
+
+Custom or updated descriptions from the server remain unchanged until a matching translation
+is available. New non-English building presets use the format name for each editable floor
+name; the interface adds the current floor number. Saved and manually edited names stay as
+entered when changing language or moving floors.
+
 ## Reuse template hours and product settings
 
 Under **Customize layout**, choose opening days and hours, optionally setting each day separately.
@@ -91,6 +103,32 @@ outlines before saving. Area names become ordinary user text and stay unchanged 
 the saved level number; they do not renumber floors for a locale. Errors retain original diagnostics
 under translated recovery guidance, and each failed floor can be retried separately. Building options
 export preserves the exact names, floor order and area coordinates.
+
+## Shared store: stock-outs and the line at the tills
+
+**Run simulation** → **Shoppers share the store** (on by default) plays the day's visits together in one store:
+
+- **Units of each product per shelf level** (default 12): the stock each shelf starts the day with. A product on
+  three levels of one face has three times that. Every day of a multi-day run opens with full shelves.
+- **Refill shelves every (minutes)** (default 120; blank = only overnight): staff fill every shelf back to its
+  opening stock on that schedule, counted from opening time.
+- **Tills open** (blank = every checkout counter of the layout): try fewer tills than the layout has to see what
+  staffing does to the line.
+- **Patience in line (minutes)** (default 5): the wait a typical shopper accepts; each shopper's own patience varies
+  around it (seeded, so it is the same shopper in both layouts of an A/B pair).
+
+A shopper who finds a product gone takes another from the same shelf face at the closest price (45 % of them) or
+does without; one who finds fewer units than wanted takes what is left. A shopper with nothing left to buy skips the
+tills. Time at a till is 25 s plus 3 s per unit. The model calls do not change: the engines still decide each visit
+on its own, and the shared store is resolved afterwards in clock order.
+
+**Store operations** in the results then shows lost sales and units, products taken instead, the waits, shoppers
+who left the line (their basket went back on the shelf), till occupancy, a table by hour with the fewest tills that
+keep the hour's average wait under 2 minutes (counting every shopper as staying in line), and the products that
+ran out. The same report is `GET /api/projects/{pid}/runs/{rid}/operations` (404 for a run without the shared store);
+`POST /runs` takes the settings as `operations` (`stock_per_facing`, `restock_every_min`, `open_counters`,
+`patience_sec`, plus `stock_overrides` by SKU, `substitute_share`, `checkout_base_sec`, `checkout_item_sec`,
+`patience_sd` and `target_wait_sec`). Coach users to turn it off only to reproduce a run made before it existed.
 
 ## LLM call count (static analysis)
 
@@ -1141,7 +1179,7 @@ barista tools and party supplies add another 96 products. Kitchen and baking too
 and outdoor cookware add another 96 products. Cycling maintenance, swimming, climbing accessories, desk organization, aquarium decor, bird supplies,
 home lighting and bathroom accessories add 96 more. Home linens, dinnerware, food storage, pet grooming, hair accessories,
 woodcraft, ceramic craft and gift wrapping add another 96. Baby feeding and bath supplies, toy vehicles, plush toys,
-educational toys, puzzles, model building and miniature painting add another 96. Eight hundred ninety-six generated
+educational toys, puzzles, model building and miniature painting add another 96. Nine hundred sixty generated
 generic packshots ship locally; they do not require a network connection or image-generation call at use time.
 The 82 default map templates also include the expanded products in suitable departments. For example, toy
 shops stock vehicles, plush toys, educational toys, puzzles and hobby supplies; baby stores stock feeding and

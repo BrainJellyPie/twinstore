@@ -16,6 +16,7 @@ from store_emulator.domain.config import (
 )
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.movement import MovementReport
+from store_emulator.domain.operations import OperationsConfig
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.scenario import Scenario
@@ -76,6 +77,8 @@ class RunOptions(BaseModel):
     plan_policy: PlanPolicy | None = None
     # Vision shoppers: "chart" or "photo_chart" (the 3D store's photo of each face above the chart).
     shelf_view: ShelfViewMode | None = None
+    # Shoppers share the store's stock and tills (finite stock, restocking, a line at the tills).
+    operations: OperationsConfig | None = None
 
 
 def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationConfig:
@@ -86,6 +89,8 @@ def apply_options(config: SimulationConfig, options: RunOptions) -> SimulationCo
             updates[field] = value
     if options.ensemble is not None:
         updates["ensemble"] = options.ensemble
+    if options.operations is not None:
+        updates["operations"] = options.operations
     if options.scenario is not None:
         updates["scenario"] = options.scenario
     elif options.scenario_id:
@@ -611,8 +616,10 @@ def export_customers_csv(pid: str, run_id: str) -> str:
     # Money columns (budget_min, budget_max, spend, impulse_spend) are in the currency's minor unit, as the app keeps
     # them: say so on every row, or 350 reads as $350 in a spreadsheet.
     unit = _money_unit(base)
+    # The shared store's columns (0 / False for runs whose shoppers each had the store alone).
+    store_cols = ["queue_wait_sec", "left_queue", "lost_units", "substituted_units"]
     writer.writerow(["persona_id", "day", "arrival_time", "leave_time", *persona_cols, *metric_cols, "products",
-                     "money_unit"])
+                     "money_unit", *store_cols])
     for r in results:
         p = cast(dict[str, Any], personas_raw.get(r.persona_id, {}))
         m = customer_metrics(r)
@@ -621,7 +628,7 @@ def export_customers_csv(pid: str, run_id: str) -> str:
             r.persona_id, int(r.day), r.arrival_time, r.leave_time,
             *[p.get(c, "") for c in persona_cols],
             *[int(m[c]) if float(m[c]).is_integer() else m[c] for c in metric_cols],
-            products, unit,
+            products, unit, r.queue_wait_sec, r.left_queue, r.lost_units, r.substituted_units,
         ]
         writer.writerow("'" + cell if isinstance(cell, str) and cell.lstrip().startswith(("=", "+", "-", "@")) else cell
                         for cell in row)

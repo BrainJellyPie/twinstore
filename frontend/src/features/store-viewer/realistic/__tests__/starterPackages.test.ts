@@ -231,3 +231,13 @@ it("keeps frozen packs flat while distinguishing fresh seafood and empty coffee 
     expect(classifyProduct("Milk Tea", `/api/catalog-images/starter-54/${index}.webp`).category).toBe("other");
   expect(classifyProduct("Milk", "/api/catalog-images/starter-53/2.webp").category).toBe("pantry");
 });
+
+it("keeps household, book and garden photos distinct from food after renaming", () => {
+  for (const sheet of [59, 60]) for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Milk", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
+  for (let index = 8; index < 16; index++)
+    expect(classifyProduct("Cookies", `/api/catalog-images/starter-58/${index}.webp`).category).toBe("other");
+  expect(classifyProduct("Tea", "/api/catalog-images/starter-57/14.webp").category).toBe("other");
+  expect(classifyProduct("Hand warmer", "/api/catalog-images/starter-57/15.webp").category).toBe("drink");
+  expect(classifyProduct("Books", "/api/catalog-images/starter-58/2.webp").category).toBe("bakery");
+});

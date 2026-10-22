@@ -18,6 +18,7 @@ from store_emulator.engine.scenario import compile_scenario, hour_effects, prior
 from store_emulator.engine.validation import validate, clear_blocked_slots, log_cleared
 from .aggregator import aggregate
 from .customer_executor import execute_decision
+from .shared_store import resolve_shared_store
 from ..generators.arrivals import CustomerEntry, generate_customers
 from ..routing.heatmap import compute_pathcalc_heatmap
 
@@ -226,12 +227,17 @@ class PerCustomerSimulationRunner:
         tasks = [simulate_one(entry, persona) for entry, persona in entries]
         raw_results = await asyncio.gather(*tasks)
         results = [r for r in raw_results if r is not None]
+        operations = None
+        if self.config.operations is not None:
+            # The visits were decided apart; now they share one store — its stock and its tills — in clock order.
+            results, operations = resolve_shared_store(store, results, self.config.operations, seed=run_seed)
 
         aggregated = aggregate(
             store, results, personas, pathcalc_heatmap,
             block_move_sec=self.config.block_move_sec,
             currency=self.config.currency,
         )
+        aggregated.operations = operations
         aggregated.token_usage = self.engine.get_usage()
         aggregated.diagnostics.requested_customers = total
         aggregated.diagnostics.failed_customers = sorted(failures, key=lambda f: f.persona_id)

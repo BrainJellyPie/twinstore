@@ -1,3 +1,4 @@
+import { templateDescriptionMessages } from "./templateDescriptionMessages";
 import { optionsFileMessages } from "./optionsFileMessages";
 import { templateStockHoursMessages } from "./templateStockHoursMessages";
 import { floorCompareMessages } from "./floorCompareMessages";
@@ -8,6 +9,7 @@ import { starterMessages } from "./starterMessages";
 import { bulkMessages } from "./bulkMessages";
 import { productMessages } from "./productMessages";
 import { feedbackMessages } from "./feedbackMessages";
+import { operationsMessages } from "./operationsMessages";
 import { storeMessages } from "./messages/store";
 import { studioMessages } from "./messages/studio";
 import { layoutMessages } from "./messages/layout";
@@ -20,12 +22,14 @@ export type Locale = typeof LOCALES[number]["code"];
 
 // Columns follow LOCALES: English, Korean, Chinese, Japanese, Spanish, French.
 export const messages = {
+  ...templateDescriptionMessages,
   ...productMessages,
   ...optionsFileMessages,
   ...templateStockHoursMessages,
   ...floorCompareMessages,
   ...floorPlanMessages,
   ...feedbackMessages,
+  ...operationsMessages,
   language: ["Language", "언어", "语言", "言語", "Idioma", "Langue"],
   main: ["Main", "주요 메뉴", "主菜单", "メイン", "Principal", "Navigation principale"],
   stores: ["Stores", "매장", "门店", "店舗", "Tiendas", "Magasins"],

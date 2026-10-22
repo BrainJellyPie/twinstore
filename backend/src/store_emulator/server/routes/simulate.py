@@ -26,6 +26,7 @@ from store_emulator.domain.config import EngineType, ExposureModel, LLMConfig, P
 from store_emulator.domain.movement import MovementReport
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.providers import EnsembleConfig
+from store_emulator.domain.operations import OperationsConfig, OperationsReport
 from store_emulator.domain.scenario import Scenario
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import RESOURCE_ID_PATTERN, ResourceId
@@ -64,6 +65,12 @@ class SimulateRequest(BaseModel):
         default=None,
         description='Vision shoppers only: "chart" (rendered shelf chart) or "photo_chart" (the 3D store\'s photo of each '
                     "face above the chart; render the photos first with PUT /setups/{sid}/shelf-views/{key})",
+    )
+    operations: OperationsConfig | None = Field(
+        default=None,
+        description="Shoppers share the store: finite stock per shelf face, restocking, and a line at the tills "
+                    "(GET /runs/{rid}/operations reports stock-outs, waits and tills needed). Omit for shoppers "
+                    "who each have the store to themselves.",
     )
 
 
@@ -140,7 +147,7 @@ def _options(req: SimulateRequest) -> RunOptions:
         exposure_model=req.exposure_model, route_ordering=req.route_ordering,
         max_customers=req.max_customers, preview=req.preview, model=req.model, ensemble=req.ensemble,
         scenario_id=req.scenario_id, scenario=req.scenario, use_town=req.use_town, town_scale=req.town_scale,
-        plan_policy=req.plan_policy, shelf_view=req.shelf_view,
+        plan_policy=req.plan_policy, shelf_view=req.shelf_view, operations=req.operations,
     )
 
 
@@ -277,6 +284,21 @@ async def get_diagnostics(pid: str, run_id: str) -> dict[str, Any]:
     if summary is not None:
         out["engine_meta"] = summary
     return out
+
+
+@router.get("/{pid}/runs/{run_id}/operations", summary="Stock-outs and till lines of a shared-store run",
+            response_model=OperationsReport)
+async def get_operations(pid: str, run_id: str) -> OperationsReport:
+    """What sharing the store did to a run: products that ran out (when, for how long, units and revenue lost or
+    replaced by another product), shoppers' waits at the tills by hour, who left the line, the tills' use and the
+    fewest tills that would have kept each hour's average wait within the target.
+    404 for runs whose shoppers each had the store to themselves."""
+    try:
+        return OperationsReport.model_validate(sim_service.get_run_output(pid, run_id, "operations.json"))
+    except FileNotFoundError:
+        raise HTTPException(404, "this run did not share the store's stock and tills")
+    except ValueError:   # cut short or damaged on disk
+        raise HTTPException(422, "the run's operations.json is damaged and cannot be read")
 
 
 @router.get("/{pid}/compare", summary="Paired A/B comparison of two runs", response_model=ComparisonReport)

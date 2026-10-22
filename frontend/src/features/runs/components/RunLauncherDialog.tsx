@@ -38,6 +38,8 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/shared/components/ui/radio-group";
 import { useSimulate } from "@/shared/mutations/useSimulate";
+import { SharedStoreControls } from "./SharedStoreControls";
+import { DEFAULT_SHARED_STORE, sharedStoreOptions, type SharedStoreChoice } from "../sharedStore";
 import * as api from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
 import { queryKeys } from "@/shared/queries/keys";
@@ -118,6 +120,8 @@ function LauncherForm({
   const [townScale, setTownScale] = useState(0.2);
   const [planPolicy, setPlanPolicy] = useState<"vlm" | "rule">("vlm");
   const [shelfView, setShelfView] = useState<ShelfViewMode>("chart");
+  const [sharedStore, setSharedStore] = useState<SharedStoreChoice>(DEFAULT_SHARED_STORE);
+  const operations = sharedStoreOptions(sharedStore);
   const [photos, setPhotos] = useState<{ done: number; total: number } | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photographing = useRef<AbortController | null>(null);
@@ -166,7 +170,7 @@ function LauncherForm({
       else if (members.some((member) => !Number.isFinite(member.weight) || member.weight <= 0)) modelError = t("invalidWeights");
     }
   }
-  const valid = personaCount > 0 && validSample && validSeed && validReplicate && modelError === null;
+  const valid = personaCount > 0 && validSample && validSeed && validReplicate && modelError === null && operations !== "invalid";
 
   const chooseEngine = (next: EngineType) => {
     setEngine(next);
@@ -191,6 +195,7 @@ function LauncherForm({
     town_scale: town && useTown ? townScale : undefined,
     plan_policy: engine === "vlm_glance" ? planPolicy : undefined,
     shelf_view: engine === "vlm_glance" ? shelfView : undefined,
+    operations: operations === "invalid" ? undefined : operations,
   });
 
   // The estimate follows the choices after a short pause; starting a run reuses it (or asks for it).
@@ -364,6 +369,8 @@ function LauncherForm({
             </label>
           </RadioGroup>
         </div>
+
+        <SharedStoreControls value={sharedStore} onChange={setSharedStore} />
 
         <details className="group rounded-xl border">
           <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl p-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring">

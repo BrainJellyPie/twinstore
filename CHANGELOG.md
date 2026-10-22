@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Validate per-product stock overrides and count products with zero opening stock
+  as sold out from opening, including multi-day runs and scheduled refills.
+
+- Add 64 everyday essentials, pantry, book, electronics, music, household and garden
+  photos, reaching 960 local images. Sixteen more catalog departments now have
+  pictures for every existing product in their matching stocked default maps.
+
 - Keep one model-settings action after customer generation fails while retaining
   the explicit local-model download/start control.
 
@@ -13,10 +20,17 @@
   car-care photos, reaching 832 local images. Ten more catalog departments now have
   pictures for every existing product, including their stocked default maps.
 
+- Localize the descriptions of all 82 built-in store formats in Korean, Chinese, Japanese, Spanish
+  and French, including cross-language search. Preserve custom or updated server descriptions.
+  New non-English preset floor names no longer repeat the level shown by the interface.
+
 - Rewrite open-area and floor-review guidance in six languages, including complete move labels,
   localized floor badges and count summaries. Preserve user names and coordinates during language
   changes; show translated recovery guidance when a floor preview fails.
 
+- Without internet access (or when LiteLLM's online price table could not be downloaded), the warning before a run
+  or customer writing had no cost for the default models. Their prices are now built in; a downloaded price still
+  wins.
 - A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
   previous version). It now reloads once into the new version.
 
@@ -25,6 +39,24 @@
 - Add 64 Korean, Mediterranean, Mexican, Vietnamese, pharmacy and care-product photos,
   reaching 768 locally bundled images. All 18 menu assortments and six pharmacy/care
   departments now have pictures for every existing product in their default maps.
+
+### Shoppers share one store
+- Until now every simulated shopper had the store to themselves: endless stock on every shelf and no one else at the
+  tills. Runs now play all of the day's visits in clock order against one store. What a shopper takes is gone for the
+  next one until staff refill the shelves (every 2 hours by default, or only overnight); a shopper who finds a product
+  gone takes another one from the same shelf face (45 % do, as in the 40 stock-out studies of Gruen, Corsten &
+  Bharadwaj) or does without, and the sale is lost. Shoppers with something to pay wait for a free till; one whose
+  wait runs past their patience (5 minutes for a typical shopper) leaves the line and the basket goes back on the
+  shelf.
+- The model calls are unchanged (visits are still decided in parallel, then played together), so a shared-store run
+  costs the same, and two layouts on the same seed still face the same shoppers with the same patience.
+- **Run simulation** has the option on by default, with units per shelf level, refill interval, tills open and
+  patience. **Store operations** in the results shows sales lost to empty shelves, products taken instead, the wait at
+  the tills (average, 9 in 10, longest), shoppers who left the line, how busy the tills were, a table by hour with the
+  fewest tills that would have kept each hour's average wait under 2 minutes, and the products that ran out (when, for
+  how long, units lost). Journeys say "sold out", "took … instead", "waited 2.5 min for a till" or "left the line";
+  the customer export has each shopper's wait, whether they left the line, and units lost or replaced. API:
+  `operations` on `POST /runs`, `GET /runs/{rid}/operations`. Runs without it work as before.
 
 - Keep translated template headings in downloaded SVG titles without changing stored names.
 

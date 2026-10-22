@@ -29,6 +29,11 @@ class CustomerResult(BaseModel):
     engine_type: str = ""
     dropped_invalid_buys: int = 0  # BUYs naming SKUs that are not in the store (LLM hallucinations)
     dropped_over_budget: int = 0  # impulse BUYs removed by the budget tolerance rule
+    # The shared store (runs with operations): what was gone when the shopper reached it, and the till line.
+    lost_units: int = 0  # units wanted but sold out, not replaced by another product
+    substituted_units: int = 0  # units of another product taken because the wanted one was sold out
+    queue_wait_sec: int = 0  # seconds in line before a till came free (or before giving up)
+    left_queue: bool = False  # left the line without paying; the basket stayed behind
 
     @property
     def purchases(self) -> list[TimelineEvent]:

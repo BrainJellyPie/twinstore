@@ -238,6 +238,11 @@ The **Floor** page is the store's day. **Run simulation** asks:
   stock-outs is shown as the chart.
 - **Which model.** The app default, one model, or an ensemble that mixes models across shoppers or lets them vote. The
   dialog estimates the number of model calls before you start.
+- **One store, shared.** By default the day's shoppers share the shelves and the tills: stock runs out as they take
+  it and staff refill it, a sold-out product is replaced from the same shelf or the sale is lost, and shoppers queue
+  for a free till, some leaving their basket when the wait runs past their patience. **Store operations** in the
+  results prices the empty shelves, shows the wait by hour and how many tills each hour needed. The model calls are
+  the same as without it.
 - **What kind of day.** One of **19 situations** (weather, weekday or holiday, crowding, local events, promotions,
   sold-out items) or your own, plus customer sample, seed and preview-or-final. Vision runs start with at most 30
   customers and language-model runs with at most 300.
@@ -285,7 +290,7 @@ The new-store wizard asks for a format, size and currency, then your customers (
 Automatic starter products are enabled by default when a model is configured: the text model selects existing
 catalog products for the store category before creation. Without a model, the wizard starts with the format's
 stocked assortment. You can also turn automatic selection off to use that assortment. Model-selection failures
-create no partial store. The catalog includes 1,496 products in 131 categories and 896 locally bundled product images.
+create no partial store. The catalog includes 1,496 products in 131 categories and 960 locally bundled product images.
 All 82 map templates also stock these products directly in their format defaults, with departments matched to
 the store: baby supplies and toys, pharmacy care, coffee equipment, homeware, pet supplies and more.
 Together, the default maps cover the full catalog. Previews and saved floors retain the same products and images.

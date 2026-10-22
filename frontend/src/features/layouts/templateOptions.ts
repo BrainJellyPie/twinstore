@@ -2,7 +2,6 @@ import type { GenerateLayoutRequest, LayoutOptions, StoreTemplate } from "@/shar
 import type { DaySchedule } from "@/shared/types/domain";
 import type { Locale } from "@/shared/i18n/messages";
 import { templateName } from "@/shared/i18n/storeLabels";
-import { translate } from "@/shared/i18n/translate";
 import type { Layout } from "./hooks/useLayouts";
 
 export interface TemplateChoice extends LayoutOptions {
@@ -212,13 +211,11 @@ export const BUILDING_PRESETS = [
   { id: "thai_turkish", name: "Thai dining & Turkish café", floors: [["Ground · Thai dining", "thai_kitchen"], ["Level 2 · Turkish café", "turkish_cafe"]] },
 ] as const;
 
-/** Floor labels are ordinary editable text: English uses the preset's own, other languages "<level> · <format name>". */
+/** Labels become editable user data. The UI adds the current level separately. */
 export function buildingPreset(id: string, currency = "USD", locale: Locale = "en"): BuildingFloorChoice[] {
   const preset = BUILDING_PRESETS.find((p) => p.id === id) ?? BUILDING_PRESETS[0];
-  return preset.floors.map(([label, templateId], index) => ({
-    label: locale === "en" ? label : translate(locale, "layPresetFloorName", {
-      level: translate(locale, "layLevelName", { number: index + 1 }), name: templateName(templateId, label, locale),
-    }),
+  return preset.floors.map(([label, templateId]) => ({
+    label: locale === "en" ? label : templateName(templateId, label, locale),
     choice: { ...DEFAULT_TEMPLATE_CHOICE, templateId, currency },
   }));
 }

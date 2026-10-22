@@ -118,6 +118,11 @@ export interface CustomerResult {
   timeline: TimelineEvent[];
   total_spent: number;
   engine_type?: string;
+  // Shared-store runs: products found gone, and the line at the tills.
+  lost_units?: number;
+  substituted_units?: number;
+  queue_wait_sec?: number;
+  left_queue?: boolean;
 }
 
 export type ReadinessReason =

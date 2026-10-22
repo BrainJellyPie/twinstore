@@ -122,11 +122,14 @@ must use this catalog, including explanations, accessibility names, validation a
 Existing coverage includes the home,
 main navigation, command palette, store gallery, model notice, simulation launcher, new-store forms,
 preparation/recovery screens, layout navigation/finder, basic layout-creation forms, floor-plan import and template
-search/filter controls, reviewed library-photo reuse, product bulk editing, shelf-product reuse and automatic/manual starter filling (including catalog categories), and floor-plan previews/comparisons with localized SVG exports. Store-category labels are shared between the gallery and template picker.
-The layout customization panel (patterns, entrances, counters, seating, design and colors, reserved areas),
-building floors and presets also use keys in `messages/layout.ts`; option ids stay unchanged and preset floor
-labels are ordinary editable text. Persona age groups and genders read through `shared/i18n/personaLabels.ts`
-everywhere (the values `40s`, `Female` are unchanged).
+search/filter controls, reviewed library-photo reuse, product bulk editing, shelf-product reuse and automatic/manual starter filling (including catalog categories), and floor-plan previews/comparisons with localized SVG exports (shared `plan*` catalog keys). Store-category labels are shared between the gallery and template picker. The layout
+customization panel (patterns, entrances, counters, seating, design and colors, hours, categories, reserved areas,
+options files) and building floors and presets use keys in `messages/layout.ts`; option ids stay unchanged and
+preset floor labels are ordinary editable text. Built-in format descriptions use
+`templateDescriptionMessages.ts` and `templateDescription()` only when the ID and exact English
+source both match. Preserve custom, changed or unknown descriptions; do not translate them via
+a stale built-in entry. Search may include all six built-in language variants without changing IDs. Persona age groups and genders read through
+`shared/i18n/personaLabels.ts` everywhere (the values `40s`, `Female` are unchanged).
 The marketing studio (every tab, builder and report), shelf capture with Shelf Lab and the neighborhood
 (area) page are localized too, with keys in `messages/studio.ts`. Their server-generated notes, warnings,
 rationale and audit/CSV exports stay English, and persona quota values (`10s`, `Female`) and the A/B control arm
@@ -141,6 +144,9 @@ store-category labels. Server-written text (analyst answers, run/optimizer notes
 fields, model replies and errors) stays as sent; only the no-situation `baseline` preset reads as the translated
 ordinary day. `richText()` puts bold figures or code into a translated sentence;
 `timeFormat.ts` gives weekday names and store clocks in the selected language.
+The shared-store run option and the **Store operations** results use `operationsMessages.ts` (`ops*`); their
+counts are written "label: value" so no language has to agree a noun with a number.
+Coverage is still being audited; a catalog entry alone does not prove every state is localized.
 Add translations in all six columns
 when extending these surfaces. Use the selected locale for dates and numbers.
 Prefer natural task-oriented copy over word-for-word translation; follow
