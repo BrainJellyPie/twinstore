@@ -34,7 +34,7 @@ from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
 from .scenarios import get_preset, scenario_shoppers, scenario_store
 from .setups import set_active_setup, setup_summary
-from .simulation import with_engine_model
+from .simulation import with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import new_setup_data, personas_path, read_setup, setup_path
 
@@ -153,7 +153,7 @@ def start_optimization(
 def vlm_judge_config(config: SimulationConfig, judge: JudgeSpec) -> SimulationConfig:
     """The VLM shoppers' run config: same seed, scenario and settings as the search, vision engine."""
     vlm = config.model_copy(update={"engine_type": EngineType.VLM_GLANCE, "ensemble": judge.ensemble})
-    return with_engine_model(vlm, judge.model) if judge.model else vlm
+    return with_vision_default(vlm, judge.model)
 
 
 def cancel_optimization(pid: str, job_id: str) -> OptimizationStatus:

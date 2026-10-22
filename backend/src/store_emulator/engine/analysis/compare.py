@@ -41,6 +41,12 @@ def required_n(sd_diff: float, mean_a: float, rel_effect: float = 0.05) -> int:
     return math.ceil(((_Z_ALPHA + _Z_POWER) * sd_diff / delta) ** 2)
 
 
+def _records_origin(results: list[CustomerResult]) -> bool:
+    """Whether a run's purchases say if they were planned or impulse buys (runs before that did not)."""
+    purchases = [e for r in results for e in r.purchases]
+    return not purchases or any(e.origin for e in purchases)
+
+
 def compare_runs(
     results_a: list[CustomerResult],
     results_b: list[CustomerResult],
@@ -63,11 +69,19 @@ def compare_runs(
     if len(ids) < 30:
         notes.append("Fewer than 30 paired customers: intervals are unreliable.")
 
+    # A run made before purchases recorded their origin has no impulse spend to compare (it read as a drop to 0).
+    unrecorded = [run for run, results in ((run_a, results_a), (run_b, results_b)) if not _records_origin(results)]
+    if unrecorded:
+        notes.append(f"Impulse spend is not compared: {' and '.join(unrecorded)} was made by an older version that did "
+                     "not record which purchases were impulse buys. Re-run it to compare impulse spend.")
+
     rng = np.random.default_rng(abs(seed))
     n = len(ids)
     lo_q, hi_q = (1 - confidence) / 2 * 100, (1 + confidence) / 2 * 100
     metrics: list[MetricComparison] = []
     for name in CUSTOMER_METRICS:
+        if name == "impulse_spend" and unrecorded:
+            continue
         xa = np.array([a[i][name] for i in ids], dtype=float)
         xb = np.array([b[i][name] for i in ids], dtype=float)
         if n == 0:

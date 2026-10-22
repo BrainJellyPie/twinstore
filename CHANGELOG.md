@@ -76,6 +76,18 @@
 - Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
+### Fixes
+- With an API key connected, vision shoppers still ran on the local model, and failed whenever it was not running.
+  They now use the connected provider's vision model unless a run picks another (the local model is the fallback
+  with no key) — in runs, vision A/B tests, the optimizer's vision judge and the neighborhood synergy runs, and the
+  run dialog shows that model.
+- Vision shoppers looked ready with no model at all (the local model turned off and no key): the run dialog let the
+  run start and it failed with "Start it in Settings", which Settings cannot do. The engine now shows as not ready,
+  and the message says the local model is turned off and what to do instead (also for shelf capture).
+- Compare no longer shows an impulse-spend drop to 0 against a run made before impulse buys were recorded; it says
+  why that row is missing. The note about minor units is gone (amounts are shown as money).
+
+
 ## 0.4.7 — Marketing studio results you can trust
 
 ### Marketing studio results you can trust
@@ -179,32 +191,6 @@
   an interview with a shopper who is not in the run is "not found" instead of an empty transcript.
 - The dwell map counts each shopper's own walking pace, diagonal steps, the time at the entrance and wandering; it
   left about a tenth of the visit time off the map, most of it around the entrance.
-
-## 0.4.5 — every visitor a day, with a warning before long or costly work
-
-- Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
-  in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.
-
-- Vision shoppers now see available product photos together with names, numbered badges and prices in
-  the shelf grid. Bundled, uploaded and reviewed library photos resolve locally. Dense shelves wrap within
-  labeled levels; missing or corrupt pictures retain text cards. Shelf tests and interview previews use
-  the same renderer, including project photos. Extend the bundled photo catalog from 64 to 96 images.
-
-- Expand the starter catalog by 192 products across 16 specialty categories, reaching 1,016 products in
-  91 categories. Add 32 local photos for apparel, books, pets, hobbies and specialty merchandise (64 total).
-  Automatic selection sees image availability while retaining store requirements and exact SKU validation.
-
-- New-store creation defaults to selecting bundled catalog products with the text model. Large generated
-  floors group equivalent racks, exclusions and product limits are validated, and model failure creates no
-  partial project. Six-language controls retain the format-default alternative. Sixteen more grocery and
-  household packshots bring the bundled image collection to 32.
-
-- Starter assortment: 144 additional generic products (824 across 75 categories) and 16 locally bundled
-  generated packshots. Auto-place starter products defaults to category-aware text-model selection, validates
-  exact catalog IDs, previews before saving, and retains manual selection and retry-safe child layouts.
-
-- Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
-  before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
 ## 0.4.5 — every visitor a day, with a warning before long or costly work
 
