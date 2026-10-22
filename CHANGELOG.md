@@ -240,6 +240,14 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 ### Fixes
 - Realistic shoppers no longer crash the 3D view when React remounts them (development StrictMode): the
   per-shopper animation mixer is no longer uncached while its actions are still reused.
+- Vision shoppers' shelf glances are now spread over the shelves their route passes equally well: ties were ranked
+  by rack id, which sent every shopper's glances to the same first racks of the store whatever the route. Each
+  shopper now draws among them with their own seed (`engines.vlm_glance.glance_order: "shuffle"`, the default), so
+  runs still repeat exactly and paired layout comparisons keep common random numbers; `"rack"` restores the old
+  order. Runs made before this change will glance at different shelves when repeated.
+- Newer Claude models (Sonnet 5.5) refuse `thinking: {"type": "disabled"}` and name the value to send instead; the
+  client now learns that value per model and retries, instead of dropping the setting and letting the model think
+  through the shopper's small answer budget.
 
 ### Shopper journeys and interviews
 - Playback has a **Shoppers** tab: rank the run's shoppers (top spenders, left empty-handed, impulse

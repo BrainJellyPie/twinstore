@@ -382,7 +382,12 @@ class VLMGlanceEngine(RuleBasedEngine):
             key = (seen.rack.id, seen.slot.face)
             if key not in faces or seen.visibility > faces[key][2]:
                 faces[key] = (seen.rack, seen.slot.face, seen.visibility)
-        ranked = sorted(faces.values(), key=lambda f: (-f[2], f[0].id, f[1].value))[:vcfg.max_glances]
+        if vcfg.glance_order == "shuffle":
+            def order(f: tuple[Rack, Face, float]) -> tuple[float, float]:
+                return (-f[2], random.Random(stable_seed(context.seed, "glance_order", f[0].id, f[1].value)).random())
+            ranked = sorted(faces.values(), key=order)[:vcfg.max_glances]
+        else:
+            ranked = sorted(faces.values(), key=lambda f: (-f[2], f[0].id, f[1].value))[:vcfg.max_glances]
 
         calls = buys = looks = invalid = errors = 0
         for rack, face, visibility in ranked:
