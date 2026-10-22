@@ -862,6 +862,30 @@ PACKSHOT_SHEETS = {
         "Green Tea 500ml", "Barley Tea 500ml", "Corn Silk Tea 500ml", "Mango Sorbet Cup",
         "Chocolate Brownie Sundae", "Banana Split", "Vanilla Milkshake", "Chocolate Milkshake",
     ],
+    "starter-37": [
+        "Loose Leaf Green Tea 50g", "Roasted Oolong Tea Pot", "Chamomile Tea", "Peppermint Infusion",
+        "Chai Latte", "Iced Peach Tea", "Matcha Cookie", "Tea Sampler Gift Box",
+        "Ceramic Tea Cup", "Honey Lemon Tea", "Decaf Rooibos Tea", "Classic Beef Burger",
+        "Double Beef Burger", "Grilled Chicken Burger", "Spicy Chicken Burger", "Plant-Based Burger",
+    ],
+    "starter-38": [
+        "Mushroom Swiss Burger", "Mini Burger", "Skin-On Fries", "Sweet Potato Fries",
+        "Crispy Onion Rings", "Burger Fries & Drink Meal", "Vegetable Ramen", "Spicy Sesame Noodles",
+        "Chicken Udon", "Mushroom Udon", "Chilled Soba", "Vegetable Stir-Fried Noodles",
+        "Beef Noodle Soup", "Vegetable Dumplings 5pc", "Steamed Rice Side", "Noodle & Dumpling Set",
+    ],
+    "starter-39": [
+        "Vegetable Rice Bowl", "Tomato Pasta", "Mushroom Soup", "Garden Salad",
+        "Cheese Toastie", "Roasted Vegetable Wrap", "Seasonal Lunch Set", "Tuna Nigiri 2pc",
+        "Cucumber Maki 6pc", "Spicy Tuna Roll 8pc", "Vegetable Sushi Set", "Mixed Nigiri Set",
+        "Salmon Rice Bowl", "Miso Soup Cup", "Edamame Cup", "Seaweed Side Salad",
+    ],
+    "starter-40": [
+        "Brown Sugar Pearl Milk", "Taro Milk Tea", "Matcha Pearl Latte", "Thai Milk Tea",
+        "Jasmine Milk Tea", "Mango Fruit Tea", "Passion Fruit Green Tea", "Peach Oolong Tea",
+        "Lychee Coconut Jelly Tea", "Oat Milk Pearl Tea", "Mini Milk Tea Tasting Set", "Falafel Doner Wrap",
+        "Lamb Kofte Plate", "Spinach Gozleme", "Cheese Pide", "Red Lentil Soup Cup",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

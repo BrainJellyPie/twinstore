@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Reject malformed Origin headers with 403 instead of a server error.
+
+- Add 64 tea, burger, noodle, sushi, restaurant, bubble-tea and Turkish-menu
+  photos, reaching 640 locally bundled images. Tea, burger, noodle, sushi,
+  restaurant and bubble-tea menus now have a photo for every product in their
+  matching default maps.
+
 - Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
   ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,
   cafe and dessert templates display the new photos automatically.

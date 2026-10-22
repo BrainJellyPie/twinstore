@@ -69,3 +69,19 @@ def test_new_departments_respect_exclusions_limits_and_small_floor_space(templat
         assert len(skus) <= (2 if rack.rack_desc in departments else 1)
     assert generate_store(template_id, currency=currency, options=options) == store
     assert generate_store(template_id, currency=currency) == before
+
+
+@pytest.mark.parametrize("template_id,category", [
+    ("tea_lounge", "tea_menu"), ("burger_shop", "burger_menu"),
+    ("noodle_bar", "noodle_menu"), ("quick_service", "restaurant_menu"),
+    ("sushi_shop", "sushi_menu"), ("bubble_tea_cafe", "bubble_tea_menu"),
+])
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_default_menu_maps_stock_their_complete_photographed_menu(template_id, category, currency):
+    expected = {catalog_slot_item(product, currency).sku: catalog_slot_item(product, currency)
+                for product in CATALOG[category]}
+    store = generate_store(template_id, currency=currency)
+    stocked = {item.sku: item for rack in store.product_racks if rack.rack_desc == category
+               for slot in rack.slots for item in slot.items}
+    assert stocked == expected
+    assert all(item.image_url for item in stocked.values())

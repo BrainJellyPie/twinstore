@@ -149,7 +149,10 @@ _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 def _same_address(origin: str, host: str | None) -> bool:
     """The page came from this server reached by its IP address (another device on the network, with
     `launcher.py --host 0.0.0.0`). A name is not enough: a site can point its own name at this computer."""
-    parts = urlsplit(origin)
+    try:
+        parts = urlsplit(origin)
+    except ValueError:
+        return False
     if host is None or parts.netloc != host or parts.hostname is None:
         return False
     try:

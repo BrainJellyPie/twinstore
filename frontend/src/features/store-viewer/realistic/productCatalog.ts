@@ -559,6 +559,42 @@ const STARTER_PACKAGES: Record<string, PackageSpec[]> = { "starter-01": [
   spec("bottle", 0.068, 0.22, 0.068, "drink"),    spec("cup", 0.09, 0.075, 0.09, "icecream"),
   spec("cup", 0.11, 0.14, 0.11, "icecream"),    spec("box", 0.22, 0.08, 0.1, "icecream"),
   spec("cup", 0.09, 0.2, 0.09, "drink"),    spec("cup", 0.09, 0.2, 0.09, "drink"),
+], "starter-37": [
+  spec("bag", 0.12, 0.18, 0.045, "pantry"),    spec("cup", 0.18, 0.14, 0.14, "drink"),
+  spec("cup", 0.105, 0.1, 0.105, "drink"),    spec("cup", 0.105, 0.1, 0.105, "drink"),
+  spec("cup", 0.11, 0.12, 0.11, "drink"),    spec("teaCup", 0.085, 0.16, 0.085, "drink"),
+  spec("box", 0.11, 0.025, 0.11, "bakery"),    spec("box", 0.22, 0.06, 0.16, "pantry"),
+  spec("cup", 0.09, 0.065, 0.09, "other"),    spec("cup", 0.105, 0.1, 0.105, "drink"),
+  spec("cup", 0.105, 0.1, 0.105, "drink"),    spec("burgerBun", 0.12, 0.1, 0.12, "pantry"),
+  spec("burgerBun", 0.12, 0.14, 0.12, "pantry"),    spec("burgerBun", 0.12, 0.1, 0.12, "pantry"),
+  spec("burgerBun", 0.12, 0.1, 0.12, "pantry"),    spec("burgerBun", 0.12, 0.1, 0.12, "pantry"),
+], "starter-38": [
+  spec("burgerBun", 0.12, 0.1, 0.12, "pantry"),    spec("burgerBun", 0.08, 0.075, 0.08, "pantry"),
+  spec("box", 0.12, 0.06, 0.1, "pantry"),    spec("box", 0.12, 0.06, 0.1, "pantry"),
+  spec("box", 0.14, 0.06, 0.12, "pantry"),    spec("box", 0.26, 0.15, 0.18, "pantry"),
+  spec("cup", 0.16, 0.075, 0.16, "noodle"),    spec("cup", 0.16, 0.075, 0.16, "noodle"),
+  spec("cup", 0.16, 0.075, 0.16, "noodle"),    spec("cup", 0.16, 0.075, 0.16, "noodle"),
+  spec("box", 0.18, 0.045, 0.16, "noodle"),    spec("cup", 0.16, 0.075, 0.16, "noodle"),
+  spec("cup", 0.16, 0.075, 0.16, "noodle"),    spec("box", 0.18, 0.04, 0.14, "pantry"),
+  spec("cup", 0.1, 0.065, 0.1, "pantry"),    spec("box", 0.26, 0.08, 0.18, "noodle"),
+], "starter-39": [
+  spec("cup", 0.16, 0.075, 0.16, "pantry"),    spec("box", 0.19, 0.045, 0.19, "pantry"),
+  spec("cup", 0.14, 0.075, 0.14, "pantry"),    spec("cup", 0.16, 0.075, 0.16, "produce"),
+  spec("box", 0.16, 0.06, 0.14, "pantry"),    spec("box", 0.18, 0.06, 0.14, "pantry"),
+  spec("box", 0.28, 0.09, 0.22, "pantry"),    spec("box", 0.12, 0.04, 0.09, "pantry"),
+  spec("box", 0.16, 0.04, 0.12, "pantry"),    spec("box", 0.19, 0.04, 0.14, "pantry"),
+  spec("box", 0.2, 0.05, 0.15, "pantry"),    spec("box", 0.21, 0.05, 0.15, "pantry"),
+  spec("cup", 0.16, 0.075, 0.16, "pantry"),    spec("cup", 0.095, 0.1, 0.095, "pantry"),
+  spec("cup", 0.095, 0.1, 0.095, "produce"),    spec("cup", 0.1, 0.055, 0.1, "produce"),
+], "starter-40": [
+  spec("teaCup", 0.095, 0.19, 0.095, "drink"),    spec("teaCup", 0.095, 0.19, 0.095, "drink"),
+  spec("teaCup", 0.095, 0.19, 0.095, "drink"),    spec("teaCup", 0.095, 0.19, 0.095, "drink"),
+  spec("teaCup", 0.095, 0.19, 0.095, "drink"),    spec("teaCup", 0.095, 0.19, 0.095, "drink"),
+  spec("teaCup", 0.095, 0.19, 0.095, "drink"),    spec("teaCup", 0.095, 0.19, 0.095, "drink"),
+  spec("teaCup", 0.095, 0.19, 0.095, "drink"),    spec("teaCup", 0.095, 0.19, 0.095, "drink"),
+  spec("box", 0.24, 0.14, 0.09, "drink"),    spec("bag", 0.08, 0.16, 0.055, "pantry"),
+  spec("box", 0.22, 0.055, 0.18, "pantry"),    spec("box", 0.2, 0.035, 0.15, "pantry"),
+  spec("box", 0.25, 0.04, 0.12, "pantry"),    spec("cup", 0.095, 0.1, 0.095, "pantry"),
 ] };
 
 export function classifyProduct(name: string, imageUrl?: string | null): PackageSpec {
