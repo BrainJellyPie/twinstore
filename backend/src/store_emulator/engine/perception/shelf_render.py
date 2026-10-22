@@ -252,7 +252,7 @@ def render_face(
             if number_on_tag:
                 price = f"#{mark}  {price}"
             tag_font = price_font
-            for size in range(max(13, min(20, tag_h - 8)), 9, -1):
+            for size in range(max(13, min(20, tag_h - 8)), 7, -1):   # down to 8: a smaller tag beats a lost price
                 tag_font = load_font(size, bold=True)
                 if draw.textlength(price, font=tag_font) <= x1 - x0 - 6:
                     break

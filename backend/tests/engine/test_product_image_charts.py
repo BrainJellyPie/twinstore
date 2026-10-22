@@ -119,3 +119,33 @@ def test_light_or_blank_catalog_photo_does_not_vanish_when_margins_are_fitted(mo
     # General uploaded pictures keep their original framing; only the bundled atlas loader fits margins.
     decoded = decode_product_image(data.getvalue())
     assert decoded is not None and decoded.size == raw.size
+
+
+@pytest.mark.parametrize('fonts', ['dejavu', 'pillow'])
+def test_tags_keep_their_prices_with_the_fonts_other_computers_have(fonts, monkeypatch):
+    """Linux without Noto has DejaVu (wider), some computers only Pillow's own font: a dense narrow grid still
+    shows every number with its price."""
+    from pathlib import Path
+
+    from store_emulator.engine.perception import shelf_render
+
+    if fonts == 'dejavu':
+        regular, bold = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+        if not Path(bold).exists():
+            pytest.skip('DejaVu is not installed here')
+        monkeypatch.setattr(shelf_render, '_REGULAR_FONTS', (regular,))
+        monkeypatch.setattr(shelf_render, '_BOLD_FONTS', (bold,))
+    else:
+        monkeypatch.setattr(shelf_render, '_REGULAR_FONTS', ())
+        monkeypatch.setattr(shelf_render, '_BOLD_FONTS', ())
+    shelf_render.load_font.cache_clear()
+    labels = []
+    original = ImageDraw.ImageDraw.text
+    monkeypatch.setattr(ImageDraw.ImageDraw, 'text', lambda self, xy, text, *a, **k: (labels.append(text), original(self, xy, text, *a, **k))[1])
+    try:
+        items = [SlotItem(sku=f'sku{i}', name=f'Item {i}', price=249, image_url='/local.png') for i in range(100)]
+        render_face(rack_with(items), Face.S, width=128, image_loader=lambda item: Image.new('RGBA', (60, 90), (17, 203, 171, 255)))
+    finally:
+        shelf_render.load_font.cache_clear()
+    tags = [str(label) for label in labels if str(label).startswith('#')]
+    assert len(tags) == 100 and all(tag.endswith('$2.49') for tag in tags), tags[-3:]
