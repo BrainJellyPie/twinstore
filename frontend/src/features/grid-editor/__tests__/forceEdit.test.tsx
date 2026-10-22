@@ -122,3 +122,23 @@ it("translates the floor step heading, actions and confirmation", () => {
   renderPanel({ ...setup, store: null });
   expect(screen.getByTestId("floor-config-build-button").textContent).toBe("빈 배치부터 시작");
 });
+
+it("shows the floor editor's dimensions, cells and screen-reader labels in Korean", () => {
+  useLocale.getState().setLocale("ko");
+  const gate: EditorRack = { ...shelf, id: "gate", type: "entrance", rack_name: "", slots: [], position: [0, 3] };
+  const exit: EditorRack = { ...gate, id: "exit", type: "exit" };
+  renderPanel({ ...setup, store: { ...store, racks: [{ ...shelf, slots: [] }, gate, exit] } }, 0);
+  fireEvent.click(screen.getByTestId("floor-config-edit-link"));
+  const dialog = screen.getByTestId("grid-editor-dialog");
+  expect(screen.getByRole("heading", { name: "매장 배치 구성" })).toBeTruthy();
+  expect(screen.getByRole("spinbutton", { name: "너비" })).toBeTruthy();
+  expect(screen.getByRole("spinbutton", { name: "깊이" })).toBeTruthy();
+  expect(dialog.textContent).toContain("한 변에 5~40칸");
+  expect(screen.getByTestId("grid-cancel-button").textContent).toBe("취소");
+  expect(screen.getByRole("button", { name: "빈 칸 0,0" })).toBeTruthy();
+  const rack = screen.getByRole("button", { name: "진열대 Drinks, 1,1" });
+  expect(rack.textContent).toContain("진열대");
+  expect(screen.getByRole("button", { name: "출입구 입구+출구, 0,3" }).textContent).toBe("입구출구");
+  expect(dialog.textContent).not.toMatch(/Width|Depth|cells per side|Cancel|\bIn\b|\bOut\b|Open|Door|Counter/);
+  expect(dialog.querySelector('[aria-label^="empty cell"], [aria-label^="shelf "], [aria-label^="gate "]')).toBeNull();
+});

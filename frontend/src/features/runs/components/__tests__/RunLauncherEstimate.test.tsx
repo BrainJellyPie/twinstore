@@ -118,7 +118,7 @@ it.each([400, 404])("hides the estimate line when there is nothing to estimate (
   vi.mocked(api.estimateRun).mockRejectedValue(new ApiError("No customers yet", status));
   show();
   await waitFor(() => expect(api.estimateRun).toHaveBeenCalled());
-  await waitFor(() => expect(screen.queryByText("Instant — 140 customers, no API cost.")).toBeNull());
+  await waitFor(() => expect(screen.queryByText("Checking time and cost…")).toBeNull());
   expect(screen.queryByText(/shoppers over/)).toBeNull();
   await submit();
   await waitFor(() => expect(api.startRun).toHaveBeenCalledOnce());
@@ -136,6 +136,13 @@ it("photographs the shelves only after a costly photo run is confirmed", async (
   fireEvent.click(within(warning).getByRole("button", { name: "Run anyway" }));
   await waitFor(() => expect(api.startRun).toHaveBeenCalledWith("p", "s", expect.objectContaining({ shelf_view: "photo_chart" })));
   expect(photographShelves).toHaveBeenCalledOnce();
+});
+
+it("shows that it is checking instead of an old client-side estimate while the server estimate loads", async () => {
+  vi.mocked(api.estimateRun).mockReturnValue(new Promise(() => {}));
+  show({ defaultEngine: "pattern_intent_impulse", personaCount: 3640 });
+  expect(await screen.findByText("Checking time and cost…", { selector: "span" })).toBeTruthy();
+  expect(screen.queryByText(/LLM calls|server response cache/)).toBeNull();
 });
 
 it("asks in Korean", async () => {

@@ -5,6 +5,7 @@ import { readLocale, resolveLocale, translate, useI18n, useLocale } from "../i18
 import { LanguagePicker } from "../LanguagePicker";
 import { LOCALES, messages, type Locale, type MessageKey } from "../messages";
 import { storeTypeLabel } from "../storeLabels";
+import { HeroStore } from "@/features/home/HeroStore";
 
 beforeEach(() => { localStorage.clear(); useLocale.getState().setLocale("en"); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); useLocale.getState().setLocale("en"); localStorage.clear(); });
@@ -82,4 +83,29 @@ it.each(LOCALES)("formats counts and keeps custom names intact in $code", ({ cod
   expect(storeTypeLabel("pizza_shop", code)).toBe("Pizza shop");
   expect(storeTypeLabel("constructor", code)).toBe("Constructor");
   expect(storeTypeLabel("__proto__", code)).toBe("Proto");
+});
+
+it("uses one Korean wording for repeated concepts", () => {
+  const ko = (key: MessageKey, values?: Record<string, string | number>) => translate("ko", key, values);
+  expect(new Set([ko("baselineSituation"), ko("optOrdinaryDay"), ko("areaOrdinaryDay")])).toEqual(new Set(["평소"]));
+  // Traffic (path load, situation multiplier) and footfall (where shoppers walked) are different measures.
+  expect([ko("pbLayerTraffic"), ko("sitExtraTraffic"), ko("sitEffectTraffic", { value: 2 })].every((text) => text.includes("통행량"))).toBe(true);
+  expect(ko("pbLayerFootfall")).not.toMatch(/통행량|유동량/);
+  expect(ko("llmShoppers")).toBe("LLM 고객");
+  expect(ko("runEngineChoiceHint")).toContain(ko("llmShoppers"));
+  expect(ko("runWarnHint")).toContain(ko("rulePreview"));
+  expect(ko("settingsIntro")).not.toContain("소비자 앙상블");
+  expect(ko("pbLayerOff")).toBe("없음");
+  expect(["mkVwTooCheap", "mkVwBargain", "mkVwExpensive", "mkVwTooExpensive"].map((key) => ko(key as MessageKey)))
+    .toEqual(["너무 싸다", "싸다", "비싸다", "너무 비싸다"]);
+  expect(ko("allPersonas", { count: 2440 })).toBe("영업일 전체 고객 2,440명");
+  expect(ko("editFloorConfirmTitle")).toContain(ko("gridTitle"));
+  for (const key of Object.keys(messages) as MessageKey[]) expect(ko(key), key).not.toMatch(/[\d}] %/);
+});
+
+it.each(LOCALES)("labels the home hero picture in $code", ({ code }) => {
+  useLocale.getState().setLocale(code);
+  vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener: () => {}, removeEventListener: () => {} }));
+  render(<HeroStore />);
+  expect(screen.getByRole("img", { name: translate(code, "heroStoreAlt") })).toBeTruthy();
 });

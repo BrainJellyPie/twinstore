@@ -14,7 +14,7 @@ vi.mock("@/shared/api/client", () => ({
 const originalCurrency = useSimulationStore.getState().currency;
 afterEach(() => { cleanup(); vi.resetAllMocks(); vi.unstubAllGlobals(); useLocale.getState().setLocale("en"); useSimulationStore.setState({ currency: originalCurrency }); });
 
-async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeObjective = "revenue_per_visitor", options: { state?: "pending" | "running"; loadError?: Error; currency?: string } = {}) {
+async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeObjective = "revenue_per_visitor", options: { state?: "pending" | "running"; loadError?: Error; currency?: string; ci?: [number, number]; summaries?: [api.RunSummary, api.RunSummary] } = {}) {
   useLocale.getState().setLocale("en");
   useSimulationStore.setState({ currency: options.currency ?? "USD" });
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
@@ -35,7 +35,7 @@ async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeO
   const metric: api.MetricComparison = {
     metric: minimize ? "path_tiles" : "spend", mean_a: baseline, mean_b: best,
     diff: difference, rel_diff: baseline ? difference / baseline : 0,
-    ci_low: difference, ci_high: difference, prob_b_greater: minimize ? 0 : 1,
+    ci_low: options.ci?.[0] ?? difference, ci_high: options.ci?.[1] ?? difference, prob_b_greater: minimize ? 0 : 1,
     sd_paired_diff: 0, n_for_5pct_effect: 0,
   };
   const candidate: api.JudgedCandidate = {
@@ -47,7 +47,7 @@ async function show(kind: "rule" | "vlm", baseline = 0, objective: api.OptimizeO
   const result: api.OptimizeResult = {
     baseline_score: baseline, best_score: best, relative_improvement: relative,
     applied_moves: candidate.moves, history: [], evaluations: 1, seconds: 1,
-    baseline_summary: null, best_summary: null, validation_metric: metric.metric,
+    baseline_summary: options.summaries?.[0] ?? null, best_summary: options.summaries?.[1] ?? null, validation_metric: metric.metric,
     validation_relative_improvement: baseline ? relative : null, validation_prob_better: 1,
     validation: { run_a: "baseline", run_b: "optimized", paired_customers: 10, unpaired_a: 0,
       unpaired_b: 0, n_bootstrap: 2000, confidence: 0.95, metrics: [metric], notes: [] },
@@ -82,7 +82,45 @@ it.each([
 
 it("keeps percentage improvements for a positive baseline", async () => {
   await show("rule", 100);
-  expect(screen.getByText(/Validated on fresh shoppers: \+10.0%/)).toBeTruthy();
+  expect(screen.getByText(/Validated on fresh shoppers: \+10\.0%/)).toBeTruthy();
+});
+
+const summary = (revenue_per_visitor: number, currency: string) => ({
+  total_customers: 900, total_revenue: revenue_per_visitor * 900, top_products: [], by_purpose: {}, by_identity: {}, by_age: {}, by_gender: {},
+  currency, revenue_per_visitor, conversion_rate: 0.5, avg_units_per_buyer: 2, impulse_revenue_share: 0.2, avg_path_tiles: 20,
+}) as api.RunSummary;
+
+it("shows revenue scores, the comparison table and the interval as money in the run's currency", async () => {
+  await show("rule", 695, "revenue_per_visitor", { ci: [-1326, 1140], summaries: [summary(695, "USD"), summary(714, "USD")] });
+  const row = screen.getByText("Revenue / visitor").closest("tr")!;
+  expect([...row.querySelectorAll("td")].slice(1).map((cell) => cell.textContent)).toEqual(["$6.95", "$7.14"]);
+  expect(screen.getByText(/interval of the difference/).textContent).toContain("-$13.26 … +$11.40");
+  expect(screen.getByText(/Validated on fresh shoppers/).textContent).toContain("+1.4%");
+});
+
+it("formats revenue in the currency's own unit and translates the interval in Korean", async () => {
+  useLocale.getState().setLocale("ko");
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  vi.mocked(api.getScenarios).mockResolvedValue([]);
+  const status = { job_id: "job1", setup_id: "s1", status: "completed", error: "", evaluations: 1, budget: 1, baseline_score: 6950, best_score: 7140,
+    scenario: "", created_at: "2026-10-21T10:00:00Z", finished_at: "2026-10-21T10:01:00Z", applied_setup_id: null,
+    spec: { objective: "revenue_per_visitor", scope: "planogram", algorithm: "hill_climb", budget: 1, eval_customers: 10, validation_customers: 10, seed: 0,
+      constraints: { keep_fridges_on_walls: true, lock_rack_ids: [], max_moves: 10, min_improvement: 0 } } } as api.OptimizationStatus;
+  vi.mocked(api.startOptimization).mockResolvedValue(status);
+  vi.mocked(api.getOptimization).mockResolvedValue({ status, result: {
+    baseline_score: 6950, best_score: 7140, relative_improvement: 190 / 6950, applied_moves: ["Move tea"], history: [], evaluations: 1, seconds: 1,
+    baseline_summary: summary(6950, "KRW"), best_summary: summary(7140, "KRW"), validation_metric: "spend",
+    validation_relative_improvement: -0.001, validation_prob_better: 0.4, notes: [],
+    validation: { run_a: "a", run_b: "b", paired_customers: 900, unpaired_a: 0, unpaired_b: 0, n_bootstrap: 2000, confidence: 0.95, notes: [],
+      metrics: [{ metric: "spend", mean_a: 6950, mean_b: 6943, diff: -7, rel_diff: -0.001, ci_low: -130, ci_high: 114, prob_b_greater: 0.4, sd_paired_diff: 1, n_for_5pct_effect: 10 }] },
+  } });
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><OptimizeDialog open onOpenChange={() => {}} projectId="p" setupId="s1" /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "시작" }));
+  await screen.findByRole("button", { name: "다른 설정으로 시도" });
+  const row = screen.getByText("방문객당 매출").closest("tr")!;
+  expect([...row.querySelectorAll("td")].slice(1).map((cell) => cell.textContent)).toEqual(["₩6,950", "₩7,140"]);
+  expect(screen.getByText(/차이의 95% 구간/).textContent).toContain("-₩130 … +₩114");
+  expect(screen.getByText(/새 고객으로 검증한 결과/).textContent).toContain("-0.1%");
 });
 
 it("recognizes a decisive reduction in walking distance for the vision winner", async () => {
