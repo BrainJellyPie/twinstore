@@ -4,6 +4,8 @@ import { Receipt, Upload } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
 import { readReceipts, uploadFidelity, type FidelityMetric } from "@/shared/api/client";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 import { ReceiptReviewPanel } from "./ReceiptReviewPanel";
 
 function verdict(m: FidelityMetric): "good" | "fair" | "poor" | null {
@@ -22,9 +24,11 @@ const VERDICT_CLASS = {
   fair: "tone-warn",
   poor: "tone-bad",
 } as const;
+const VERDICT_LABEL: Record<keyof typeof VERDICT_CLASS, MessageKey> = { good: "fidelityGood", fair: "fidelityFair", poor: "fidelityPoor" };
 
 // Validate a run against a real POS export of the same store.
 export function FidelitySection({ projectId, runId }: { projectId: string; runId: string }) {
+  const { locale, t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLInputElement>(null);
   const upload = useMutation({
@@ -40,7 +44,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
   return (
     <div className="border-t px-3 py-3">
       <div className="mb-1 flex items-center justify-between">
-        <div className="section-title">Validate against real sales</div>
+        <div className="section-title">{t("fidelityTitle")}</div>
         <div className="flex gap-1">
           <Button
             variant="ghost"
@@ -48,10 +52,10 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
             className="h-7 gap-1 px-2 text-xs"
             disabled={receipts.isPending || upload.isPending}
             onClick={() => receiptRef.current?.click()}
-            title="Photograph receipts: a vision model reads them into POS lines"
+            title={t("fidelityReceiptsHint")}
           >
             <Receipt className="size-3" />
-            {receipts.isPending ? "Reading…" : "Receipts"}
+            {receipts.isPending ? t("fidelityReading") : t("fidelityReceipts")}
           </Button>
           <Button
             variant="outline"
@@ -61,7 +65,7 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
             onClick={() => inputRef.current?.click()}
           >
             <Upload className="size-3" />
-            {upload.isPending ? "Scoring…" : "Upload POS"}
+            {upload.isPending ? t("fidelityScoring") : t("fidelityUpload")}
           </Button>
         </div>
         <input
@@ -92,28 +96,24 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
         />
       </div>
       {!report && !upload.isError && (
-        <p className="text-xs text-muted-foreground">
-          CSV/XLSX with a receipt id and SKU per line (quantity, unit price and time optional). Scores how
-          closely simulated sales match the real ones.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("fidelityHint")}</p>
       )}
       {receipts.data && (
         <ReceiptReviewPanel key={`${projectId}:${runId}:${receipts.submittedAt}`} projectId={projectId} runId={runId}
           result={receipts.data} scoring={upload.isPending} onScore={(file) => upload.mutate(file)} />
       )}
       {receipts.isError && (
-        <p className="text-xs text-destructive">{receipts.error instanceof Error ? receipts.error.message : "Could not read the receipts"}</p>
+        <p className="text-xs text-destructive">{receipts.error instanceof Error ? receipts.error.message : t("fidelityReadFailed")}</p>
       )}
       {upload.isError && (
         <p className="text-xs text-destructive">
-          {upload.error instanceof Error ? upload.error.message : "Upload failed"}
+          {upload.error instanceof Error ? upload.error.message : t("fidelityUploadFailed")}
         </p>
       )}
       {report && (
         <div className="mt-2 space-y-1.5">
           <div className="text-xs text-muted-foreground">
-            {report.real_transactions.toLocaleString()} real receipts · {report.sim_customers.toLocaleString()} simulated
-            customers · {report.matched_skus} SKUs
+            {t("fidelitySummary", { receipts: report.real_transactions, customers: report.sim_customers, skus: report.matched_skus })}
           </div>
           <ul className="space-y-1">
             {report.metrics.map((m) => {
@@ -122,8 +122,8 @@ export function FidelitySection({ projectId, runId }: { projectId: string; runId
                 <li key={m.name} className="flex items-center justify-between gap-2 text-xs" title={m.description}>
                   <span className="truncate">{m.name.replace(/_/g, " ")}</span>
                   <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
-                    {m.value === null ? "n/a" : m.value.toFixed(3)}
-                    {v && <span className={`rounded px-1 text-[0.72rem] ${VERDICT_CLASS[v]}`}>{v}</span>}
+                    {m.value === null ? t("notAvailable") : m.value.toLocaleString(locale, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
+                    {v && <span className={`rounded px-1 text-[0.72rem] ${VERDICT_CLASS[v]}`}>{t(VERDICT_LABEL[v])}</span>}
                   </span>
                 </li>
               );

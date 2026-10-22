@@ -1,4 +1,5 @@
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
+import { useI18n } from "@/shared/i18n/i18n";
 
 interface Props {
   minTime: number;
@@ -7,12 +8,13 @@ interface Props {
 
 // How far through the simulated day playback is, as a heat-colored progress line.
 export function PlaybackStatus({ minTime, maxTime }: Props) {
+  const { t } = useI18n();
   const currentMinute = useSimulationMetricsStore((s) => s.currentMinute);
   const finished = useSimulationMetricsStore((s) => s.finished);
   const hasRange = maxTime > minTime;
   const pct = !hasRange ? 0 : finished ? 100 : Math.max(0, Math.min(100, ((currentMinute - minTime) / (maxTime - minTime)) * 100));
 
-  const label = !hasRange ? "No data in this run" : finished ? "Day complete" : pct <= 0 ? "Press play to start the day" : `Playing — ${Math.round(pct)}% of the day`;
+  const label = !hasRange ? t("dashNoRunData") : finished ? t("dashDayComplete") : pct <= 0 ? t("dashPressPlay") : t("dashPlaying", { percent: Math.round(pct) });
 
   return (
     <div className="px-3 pt-1 pb-3">

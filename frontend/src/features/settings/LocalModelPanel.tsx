@@ -6,6 +6,9 @@ import { Cpu, HardDrive, Loader2, MemoryStick, Play, Square } from "lucide-react
 import type { ModelSetup } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
+import { richText } from "@/shared/i18n/richText";
 
 import { isPreparing, useLocalModelControl, useModelSetup } from "./useModelSetup";
 
@@ -16,28 +19,29 @@ const BACKEND_LABEL: Record<ModelSetup["plan"]["backend"], string> = {
   cpu: "CPU",
 };
 
-const STATE_LABEL: Record<ModelSetup["local"]["state"], string> = {
-  off: "Not running",
-  disabled: "Turned off (TWINSTORE_LOCAL_VLM)",
-  preparing: "Checking this computer",
-  downloading: "Downloading",
-  starting: "Loading the model",
-  ready: "Running",
-  error: "Could not start",
+const STATE_LABEL: Record<ModelSetup["local"]["state"], MessageKey> = {
+  off: "localStateOff",
+  disabled: "localStateDisabled",
+  preparing: "localStatePreparing",
+  downloading: "localStateDownloading",
+  starting: "localStateStarting",
+  ready: "localStateReady",
+  error: "localStateError",
 };
 
 export function LocalModelPanel() {
+  const { t } = useI18n();
   const { data, isLoading, error, refetch, isFetching } = useModelSetup();
   const { start, stop } = useLocalModelControl();
   if (!data && error) {
     return (
       <section role="alert" className="glass flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5 text-sm">
         <span className="min-w-0 break-words">
-          <span className="font-medium">Could not check the local vision model.</span>{" "}
+          <span className="font-medium">{t("localCheckFailed")}</span>{" "}
           <span className="text-muted-foreground">{error.message}</span>
         </span>
         <Button size="sm" variant="outline" disabled={isFetching} onClick={() => void refetch()}>
-          {isFetching && <Loader2 className="size-3.5 animate-spin" aria-hidden />} Retry
+          {isFetching && <Loader2 className="size-3.5 animate-spin" aria-hidden />} {t("localRetry")}
         </Button>
       </section>
     );
@@ -45,27 +49,28 @@ export function LocalModelPanel() {
   if (isLoading || !data) return null;
 
   const { hardware: hw, plan, local } = data;
-  const gpu = hw.gpus.length ? hw.gpus.map((g) => `${g.name}${g.vram_gb ? ` · ${g.vram_gb} GB` : ""}`).join(", ") : "none found";
+  const gpu = hw.gpus.length ? hw.gpus.map((g) => `${g.name}${g.vram_gb ? ` · ${g.vram_gb} GB` : ""}`).join(", ") : t("localNoGpu");
   const busy = isPreparing(data);
   const turnedOff = local.state === "disabled";
-  const role = turnedOff ? "(turned off)" : data.cloud_providers.length ? "(fallback)" : "(in use: no API key)";
+  const role = t(turnedOff ? "localRoleOff" : data.cloud_providers.length ? "localRoleFallback" : "localRoleInUse");
 
   return (
     <section className="glass rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <Cpu className="size-4" aria-hidden /> Local vision model {role}
+            <Cpu className="size-4" aria-hidden /> {t("localTitle")} {role}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Without a key, shoppers run on a small open model on this computer, chosen for its hardware. It is free and
-            private but slower and less accurate than a cloud model; the published validation uses cloud models.
+            {t("localDescription")}
           </p>
           {turnedOff && (
             <p className="mt-2 text-sm" data-testid="local-model-turned-off">
-              It is turned off on this computer by the <code className="font-mono text-xs">TWINSTORE_LOCAL_VLM</code> setting.
-              To use it, remove that setting from the environment or the backend’s <code className="font-mono text-xs">.env</code> file
-              (or set it to <code className="font-mono text-xs">on</code>), then restart TwinStore.
+              {richText(t("localTurnedOffHint"), {
+                setting: <code className="font-mono text-xs">TWINSTORE_LOCAL_VLM</code>,
+                file: <code className="font-mono text-xs">.env</code>,
+                value: <code className="font-mono text-xs">on</code>,
+              })}
             </p>
           )}
         </div>
@@ -74,11 +79,11 @@ export function LocalModelPanel() {
             {/* Stop also cancels a download or start in progress. */}
             {busy || (local.state === "ready" && local.managed) ? (
               <Button size="sm" variant="outline" onClick={() => stop.mutate()} disabled={stop.isPending}>
-                <Square className="size-3.5" aria-hidden /> Stop
+                <Square className="size-3.5" aria-hidden /> {t("localStop")}
               </Button>
             ) : (
               <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending || local.state === "ready"}>
-                <Play className="size-3.5" aria-hidden /> Start {plan.model.label}
+                <Play className="size-3.5" aria-hidden /> {t("localStart", { model: plan.model.label })}
               </Button>
             )}
           </div>
@@ -86,18 +91,18 @@ export function LocalModelPanel() {
       </div>
 
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-        <Fact icon={Cpu} label="Processor" value={`${hw.cpu || "CPU"} · ${hw.cores} cores`} />
-        <Fact icon={MemoryStick} label="Memory" value={`${hw.ram_gb} GB (${hw.ram_free_gb} GB free)`} />
-        <Fact icon={HardDrive} label="Graphics" value={gpu} />
+        <Fact icon={Cpu} label={t("localProcessor")} value={t("localCores", { cpu: hw.cpu || "CPU", cores: hw.cores })} />
+        <Fact icon={MemoryStick} label={t("localMemory")} value={t("localRam", { total: hw.ram_gb, free: hw.ram_free_gb })} />
+        <Fact icon={HardDrive} label={t("localGraphics")} value={gpu} />
       </dl>
 
       <div className="mt-4 rounded-xl bg-foreground/[0.04] p-3 text-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="font-medium">
-            {plan.model.label} on {BACKEND_LABEL[plan.backend]}
+            {t("localModelOn", { model: plan.model.label, backend: BACKEND_LABEL[plan.backend] })}
           </span>
           <span className="num text-xs text-muted-foreground">
-            {plan.model.download_gb} GB download · ~{plan.model.memory_gb} GB memory · {plan.parallel} shopper{plan.parallel > 1 ? "s" : ""} at a time
+            {t(plan.parallel > 1 ? "localPlanMany" : "localPlanOne", { download: plan.model.download_gb, memory: plan.model.memory_gb, parallel: plan.parallel })}
           </span>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">{plan.reason}.</p>
@@ -111,7 +116,7 @@ export function LocalModelPanel() {
           )}
         >
           {busy && <Loader2 className="size-3 animate-spin" aria-hidden />}
-          {STATE_LABEL[local.state]}
+          {t(STATE_LABEL[local.state])}
         </span>
         {local.message && <span className="text-xs text-muted-foreground">{local.message}</span>}
         {busy && local.progress !== null && (
@@ -122,10 +127,10 @@ export function LocalModelPanel() {
             <span className="num text-xs text-muted-foreground">{Math.round(local.progress * 100)}%</span>
           </div>
         )}
-        {local.state === "ready" && <span className="text-xs text-muted-foreground">Pick “{local.model_ref}” in a run.</span>}
+        {local.state === "ready" && <span className="text-xs text-muted-foreground">{t("localPickInRun", { model: local.model_ref })}</span>}
       </div>
-      {start.error && <p role="alert" className="mt-2 break-words text-xs text-destructive">Could not start the local model: {start.error.message}</p>}
-      {stop.error && <p role="alert" className="mt-2 break-words text-xs text-destructive">Could not stop the local model: {stop.error.message}</p>}
+      {start.error && <p role="alert" className="mt-2 break-words text-xs text-destructive">{t("localStartFailed", { message: start.error.message })}</p>}
+      {stop.error && <p role="alert" className="mt-2 break-words text-xs text-destructive">{t("localStopFailed", { message: stop.error.message })}</p>}
     </section>
   );
 }

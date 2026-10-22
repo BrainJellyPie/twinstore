@@ -8,6 +8,7 @@ import { characterAssetFor, characterAnimationPhase, realisticCharacterAssetFor 
 import { useGlbModel } from "@/shared/hooks/useGlbModel";
 import { formatMoney } from "@/shared/utils/money";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { useI18n } from "@/shared/i18n/i18n";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { M, PERSONA_SCALE } from "../realistic/constants";
@@ -30,6 +31,7 @@ interface SpeechBubbleProps {
 }
 
 function SpeechBubble({ event }: SpeechBubbleProps) {
+  const { t } = useI18n();
   const isBuy = event.action === "buy";
   const isPay = event.action === "pay";
   const currency = useSimulationStore((s) => s.currency);
@@ -39,7 +41,7 @@ function SpeechBubble({ event }: SpeechBubbleProps) {
     isBuy && event.product_name
       ? `💰 ${event.product_name} · ${price}`
       : isPay
-        ? `💳 ${event.description || "Pay"}`
+        ? `💳 ${event.description || t("bubblePay")}`
         : event.description;
   const bg = isBuy ? "rgba(255, 240, 200, 0.95)" : isPay ? "rgba(220, 240, 255, 0.95)" : "rgba(255,255,255,0.92)";
   const border = isBuy ? "#d4a42a" : isPay ? "#3b82c4" : "#ccc";

@@ -4,8 +4,10 @@ import { Button } from "@/shared/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { resolveImageUrl } from "@/shared/api/images";
 import type { Face, Rack, SlotItem } from "@/shared/types/domain";
+import { useI18n } from "@/shared/i18n/i18n";
+import type { MessageKey } from "@/shared/i18n/messages";
 
-const FACE_LABEL: Record<Face, string> = { N: "North", S: "South", E: "East", W: "West" };
+const FACE_LABEL: Record<Face, MessageKey> = { N: "dirNorth", S: "dirSouth", E: "dirEast", W: "dirWest" };
 const FACE_ORDER: Face[] = ["N", "S", "E", "W"];
 
 interface Props {
@@ -44,6 +46,7 @@ function itemCountByFace(rack: Rack): Record<Face, number> {
 }
 
 function FaceContent({ rack, face }: { rack: Rack; face: Face }) {
+  const { t } = useI18n();
   const byLevel = itemsByLevel(rack, face);
   const levels: number[] = [];
   for (let lv = rack.levels; lv >= 1; lv -= 1) levels.push(lv);
@@ -54,10 +57,10 @@ function FaceContent({ rack, face }: { rack: Rack; face: Face }) {
         const items = byLevel.get(level) ?? [];
         return (
           <div key={level} className="flex items-start gap-3 border-b pb-2 last:border-b-0">
-            <div className="w-16 shrink-0 pt-1 text-xs text-muted-foreground">Level {level}</div>
+            <div className="w-16 shrink-0 pt-1 text-xs text-muted-foreground">{t("rackLevel", { level })}</div>
             <div className="flex flex-1 flex-wrap gap-2">
               {items.length === 0 ? (
-                <div className="text-xs italic text-muted-foreground">No items</div>
+                <div className="text-xs italic text-muted-foreground">{t("rackNoItems")}</div>
               ) : (
                 items.map((item, idx) => (
                   <div
@@ -72,7 +75,7 @@ function FaceContent({ rack, face }: { rack: Rack; face: Face }) {
                       />
                     ) : (
                       <div className="flex size-16 items-center justify-center rounded border bg-muted text-[0.72rem] text-muted-foreground">
-                        No image
+                        {t("rackNoImage")}
                       </div>
                     )}
                     <div className="line-clamp-2 text-center text-xs">{item.name}</div>
@@ -88,6 +91,7 @@ function FaceContent({ rack, face }: { rack: Rack; face: Face }) {
 }
 
 export function RackDetailPanel({ rack, open, onClose, onAsk }: Props) {
+  const { t } = useI18n();
   const locked = lockedFaceSet(rack);
   const visibleFaces = FACE_ORDER.filter((f) => !locked.has(f));
   const faceCounts = itemCountByFace(rack);
@@ -116,7 +120,7 @@ export function RackDetailPanel({ rack, open, onClose, onAsk }: Props) {
         <h2 className="text-base font-semibold">{rack.rack_name || rack.id}</h2>
         {onAsk && (
           <button type="button" onClick={onAsk} className="mr-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-primary hover:bg-primary/[0.07]">
-            <MessageSquareText className="size-3.5" aria-hidden /> Ask about this shelf
+            <MessageSquareText className="size-3.5" aria-hidden /> {t("rackAsk")}
           </button>
         )}
         <Button
@@ -125,7 +129,7 @@ export function RackDetailPanel({ rack, open, onClose, onAsk }: Props) {
           size="sm"
           className="size-7 p-0"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t("close")}
         >
           <X className="size-4" />
         </Button>
@@ -133,14 +137,14 @@ export function RackDetailPanel({ rack, open, onClose, onAsk }: Props) {
 
       {visibleFaces.length === 0 ? (
         <div className="text-xs italic text-muted-foreground">
-          All faces are blocked for this rack.
+          {t("rackAllBlocked")}
         </div>
       ) : (
         <Tabs key={rack.id} defaultValue={defaultFace} className="w-full">
           <TabsList>
             {visibleFaces.map((f) => (
               <TabsTrigger key={f} value={f} className="text-xs">
-                {FACE_LABEL[f]} ({faceCounts[f]})
+                {t(FACE_LABEL[f])} ({faceCounts[f]})
               </TabsTrigger>
             ))}
           </TabsList>

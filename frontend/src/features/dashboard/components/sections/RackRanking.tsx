@@ -4,6 +4,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-grou
 import type { Store } from "@/shared/types/domain";
 import { formatMoney } from "@/shared/utils/money";
 import { useSimulationStore } from "@/stores/simulationStore";
+import { useI18n } from "@/shared/i18n/i18n";
 
 type SortKey = "revenue" | "visitors";
 const SHOW_LIMIT = 10;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function RackRanking({ store }: Props) {
+  const { t } = useI18n();
   const rackMetrics = useSimulationMetricsStore((s) => s.rackMetrics);
   const entered = useSimulationMetricsStore((s) => s.entered);
   const finished = useSimulationMetricsStore((s) => s.finished);
@@ -41,7 +43,7 @@ export function RackRanking({ store }: Props) {
   return (
     <div className="border-t px-3 py-3">
       <div className="mb-2.5 flex items-center justify-between">
-        <div className="section-title">Racks</div>
+        <div className="section-title">{t("dashRacks")}</div>
         <ToggleGroup
           type="single"
           value={sortBy}
@@ -53,20 +55,20 @@ export function RackRanking({ store }: Props) {
             value="revenue"
             className="h-6 px-2 text-[0.72rem] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
           >
-            by Revenue
+            {t("dashByRevenue")}
           </ToggleGroupItem>
           <ToggleGroupItem
             value="visitors"
             className="h-6 px-2 text-[0.72rem] data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
           >
-            by Visitors
+            {t("dashByVisitors")}
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
 
       {shown.length === 0 ? (
         <div className="py-3 text-center text-xs text-muted-foreground">
-          {finished ? "No rack sales in this run." : "Racks fill in as shoppers pay during the day."}
+          {finished ? t("dashNoRackSales") : t("dashRacksFillIn")}
         </div>
       ) : (
         <>
@@ -85,7 +87,7 @@ export function RackRanking({ store }: Props) {
                     <span className="shrink-0 tabular-nums text-muted-foreground">
                       {sortBy === "revenue"
                         ? formatMoney(m.revenue, currency)
-                        : `${m.visitors} visitors`}
+                        : t("dashVisitorCount", { count: m.visitors })}
                     </span>
                   </div>
                   <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
@@ -100,7 +102,7 @@ export function RackRanking({ store }: Props) {
           </ol>
           {totalCount > SHOW_LIMIT && (
             <div className="mt-2 text-xs text-muted-foreground">
-              +{totalCount - SHOW_LIMIT} more
+              {t("dashMoreCount", { count: totalCount - SHOW_LIMIT })}
             </div>
           )}
         </>

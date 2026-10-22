@@ -27,12 +27,14 @@ import { GatedRenderer } from "@/features/store-viewer/realistic/GatedRenderer";
 import { PhotoMode } from "@/features/store-viewer/realistic/PhotoMode";
 import { useSceneColors } from "@/features/store-viewer/realistic/useSceneColors";
 import { EYE_HEIGHT, FLOOR_SLAB, type GraphicsQuality } from "@/features/store-viewer/realistic/constants";
+import { useI18n } from "@/shared/i18n/i18n";
 
 function LoadingOverlay() {
+  const { t } = useI18n();
   return (
     <Html center>
       <div className="glass rounded-xl px-4 py-2.5 text-[0.8rem] text-foreground">
-        Loading assets…
+        {t("loadingAssets")}
       </div>
     </Html>
   );
@@ -69,12 +71,13 @@ const COMPASS_MARGIN = 1.5;
 const COMPASS_LIFT = 1.5;
 
 function CompassLabels({ width, depth, lift = COMPASS_LIFT }: { width: number; depth: number; lift?: number }) {
+  const { t } = useI18n();
   const labelClass = "select-none text-sm font-medium uppercase tracking-[0.18em]";
   const labels: { key: string; text: string; position: [number, number, number] }[] = [
-    { key: "N", text: "North", position: [width / 2, lift, -COMPASS_MARGIN] },
-    { key: "S", text: "South", position: [width / 2, 0, depth + COMPASS_MARGIN] },
-    { key: "E", text: "East", position: [width + COMPASS_MARGIN, 0, depth / 2] },
-    { key: "W", text: "West", position: [-COMPASS_MARGIN, lift, depth / 2] },
+    { key: "N", text: t("dirNorth"), position: [width / 2, lift, -COMPASS_MARGIN] },
+    { key: "S", text: t("dirSouth"), position: [width / 2, 0, depth + COMPASS_MARGIN] },
+    { key: "E", text: t("dirEast"), position: [width + COMPASS_MARGIN, 0, depth / 2] },
+    { key: "W", text: t("dirWest"), position: [-COMPASS_MARGIN, lift, depth / 2] },
   ];
   return (
     <>
