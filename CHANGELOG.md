@@ -81,6 +81,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   API: `GET/POST/DELETE /api/projects/{pid}/runs/{run_id}/analyst`, `GET .../analyst/facts`.
 - **Suggest questions from this run** replaces the generic starters with three questions read off the run's fact sheet
   (the shelves, products, hours or groups that stand out). API: `POST .../analyst/suggestions`.
+- A shelf picked on the floor of a finished run offers **Ask about this shelf**, which asks the analyst why it sells the
+  way it does and what could make more of the shoppers who stop there buy.
 
 - **Explain the difference** in Compare runs: the model reads the paired comparison (in money, points, seconds and
   metres) and both runs' fact sheets, and says what changed, which shelves, products, hours or groups it came from,

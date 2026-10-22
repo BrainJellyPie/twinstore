@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { TimeBar } from "@/features/playback/components/TimeBar";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationStore } from "@/stores/simulationStore";
-import type { CustomerResult } from "@/shared/types/domain";
+import type { CustomerResult, Rack } from "@/shared/types/domain";
 import type { RackStats } from "@/shared/api/client";
 import type { RunHeatmaps } from "@/shared/queries/useRun";
 import type { StoreAssets } from "@/features/store-viewer/hooks/useStoreAssets";
@@ -62,10 +62,12 @@ interface Props {
   mode: "ready" | "running" | "playback";
   // Extra controls floating over the canvas.
   overlay?: ReactNode;
+  /** Playback only: ask the run analyst about a shelf picked on the floor. */
+  onAskAboutRack?: (rack: Rack) => void;
 }
 
 export function SimulationLayout({
-  storeId, assets, personaNames, personaGenders, customers, heatmaps, rackStats, mode, overlay,
+  storeId, assets, personaNames, personaGenders, customers, heatmaps, rackStats, mode, overlay, onAskAboutRack,
 }: Props) {
   const heatmapMode = useSimulationStore((s) => s.heatmapMode);
   const rackOverlayOn = useSimulationStore((s) => s.rackOverlayOn);
@@ -130,6 +132,8 @@ export function SimulationLayout({
           rack={selectedRack}
           open={true}
           onClose={() => setSelectedRackId(null)}
+          onAsk={onAskAboutRack && selectedRack.slots.some((slot) => slot.items.length > 0)
+            ? () => { onAskAboutRack(selectedRack); setSelectedRackId(null); } : undefined}
         />
       )}
     </>

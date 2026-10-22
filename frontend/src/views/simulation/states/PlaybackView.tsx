@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { useRun } from "@/shared/queries/useRun";
+import { useAssistStore } from "@/stores/assistStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { useStoreAssets } from "@/features/store-viewer/hooks/useStoreAssets";
 import { usePersonaData } from "@/features/playback/hooks/usePersonaData";
@@ -28,6 +29,7 @@ export function PlaybackView({
   const assets = useStoreAssets(run.store);
   const { personaNames, personaGenders } = usePersonaData(run.personas);
   const activeTab = useSimulationStore((s) => s.activeTab);
+  const sendAsk = useAssistStore((s) => s.send);
   const setActiveTab = useSimulationStore((s) => s.setActiveTab);
   const setCurrency = useSimulationStore((s) => s.setCurrency);
 
@@ -52,6 +54,11 @@ export function PlaybackView({
           heatmaps={run.heatmaps}
           rackStats={run.summary.racks ?? null}
           mode="playback"
+          onAskAboutRack={(rack) => {
+            sendAsk({ projectId: pid, destination: "run_question",
+              text: `Why does ${rack.rack_name || "this shelf"} sell the way it does, and what could make more of the shoppers who stop there buy?` });
+            setActiveTab("dashboard");
+          }}
         />
       }
       footerSlot={
