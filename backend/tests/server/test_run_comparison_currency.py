@@ -59,4 +59,4 @@ def test_compares_matching_historical_units_independently_of_current_project(run
     report = response.json()
     assert report["paired_customers"] == 1
     assert report["metrics"][0]["mean_a"] == 100
-    assert any(expected in note and "minor unit" in note for note in report["notes"])
+    assert report["currency"] == expected   # spend values are in its minor unit
