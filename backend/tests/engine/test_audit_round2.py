@@ -123,3 +123,22 @@ def test_a_study_panel_takes_written_customers_before_their_twins():
     assert sum(not p.twin_of for p in bigger) == 100 and len(bigger) == 150
     # Without twins the draw is the one it always was.
     assert select_personas(written, 30, seed=2) == select_personas(list(written), 30, seed=2)
+
+
+def test_a_saved_layouts_category_price_change_is_its_new_everyday_price():
+    """In an A/B test shoppers compare a category price change with the old price; saved as a layout ("edit in
+    words"), the new price is the everyday price and nothing is compared with it."""
+    from store_emulator.domain.marketing import VariantChange
+    from store_emulator.engine.layout_edit import apply_layout_edit
+    from store_emulator.engine.marketing.variants import apply_changes
+
+    store = generate_store("mini_mart", seed=0)
+    rack = next(r for r in store.racks if r.slots and r.rack_desc)
+    change = VariantChange(kind="category_price", category=rack.rack_desc, percent=20)
+    tested, _, _ = apply_changes(store, [change])
+    saved, applied, _ = apply_layout_edit(store, [change], "USD")
+    tested_items = [i for r in tested.racks if r.id == rack.id for s in r.slots for i in s.items]
+    saved_items = [i for r in saved.racks if r.id == rack.id for s in r.slots for i in s.items]
+    assert tested_items and all(i.regular_price > 0 for i in tested_items)
+    assert all(i.regular_price == 0 for i in saved_items) and "remember" not in " ".join(applied)
+    assert [i.price for i in saved_items] == [i.price for i in tested_items]

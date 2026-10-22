@@ -402,6 +402,14 @@ def visitors_per_day(project_id: str, personas: list[Persona]) -> tuple[float, f
     return round(max(sum(values) / len(values), simulated), 1), simulated
 
 
+def visitors_per_day_coming(pid: str, everyone: list[Persona], coming: list[Persona]) -> tuple[float, float]:
+    """visitors_per_day for the shoppers who come while the layout is open (`coming`, from scenario_shoppers): the
+    run estimate's shoppers a day, with the store's estimated traffic scaled by the same share of `everyone`."""
+    estimated, simulated = visitors_per_day(pid, everyone)
+    _, coming_a_day = visitors_per_day(pid, coming)
+    return (round(estimated / simulated * coming_a_day, 1) if simulated else coming_a_day), coming_a_day
+
+
 def _stored_traffic(meta: dict[str, object]) -> TrafficProfile | None:
     raw = meta.get("traffic_profile")
     if not raw:

@@ -6,7 +6,7 @@ Store-level outcomes use `compare_runs`; focus-product outcomes (units, spend, b
 use the same paired percentile bootstrap over shoppers.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from typing import Literal
 
 import math
@@ -14,7 +14,15 @@ import math
 import numpy as np
 
 from store_emulator.domain.customer import CustomerResult
-from store_emulator.domain.marketing import FocusOutcome, PricePoint, PriceResponse, SegmentLift, SkuSales, VariantResult
+from store_emulator.domain.marketing import (
+    FocusOutcome,
+    PricePoint,
+    PriceResponse,
+    SegmentLift,
+    SkuSales,
+    VariantChange,
+    VariantResult,
+)
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.engine.analysis.compare import compare_runs
@@ -101,20 +109,32 @@ def _prices(store: Store, skus: list[str]) -> dict[str, int]:
     return out
 
 
-def price_response(control: VariantResult, variants: list[VariantResult]) -> PriceResponse | None:
-    """Demand curve of the first tracked product whose price takes three or more values across the arms."""
+def _price_only(sku: str, changes: Sequence[VariantChange]) -> bool:
+    """Whether an arm changes `sku` by its price alone: a price or discount change on it, and no sign, move, package
+    or category price change touching it (a category change may cover it, so it always counts as touching)."""
+    touching = [c for c in changes if c.kind == "category_price" or c.sku == sku]
+    return any(c.kind in ("price", "discount") for c in touching) and all(c.kind in ("price", "discount") for c in touching)
+
+
+def price_response(
+    control: VariantResult, variants: list[VariantResult], changes: Mapping[str, Sequence[VariantChange]],
+) -> PriceResponse | None:
+    """Demand curve of the first tracked product whose price takes three or more values across the control and the
+    arms that change only its price (`changes` maps arm names to their changes). An arm that also hangs a sign on it,
+    moves it or changes a whole category's prices would put that effect on the curve as if it were the price's."""
     for sku in control.prices:
-        prices = {control.prices[sku], *(v.prices.get(sku, control.prices[sku]) for v in variants)}
+        arms = [v for v in variants if _price_only(sku, changes.get(v.name, ()))]
+        prices = {control.prices[sku], *(v.prices.get(sku, control.prices[sku]) for v in arms)}
         if len(prices) < 3:
             continue
-        units = [f for v in variants for f in v.focus if f.sku == sku and f.metric == "units"]
-        spend = [f for v in variants for f in v.focus if f.sku == sku and f.metric == "spend"]
+        units = [f for v in arms for f in v.focus if f.sku == sku and f.metric == "units"]
+        spend = [f for v in arms for f in v.focus if f.sku == sku and f.metric == "spend"]
         if not units:
             continue
         base_units, base_spend = units[0].control, (spend[0].control if spend else 0.0)
         points = [PricePoint(arm=control.name, price=control.prices[sku], units=base_units, units_low=base_units,
                              units_high=base_units, revenue=base_spend)]
-        for v in variants:
+        for v in arms:
             u = next((f for f in v.focus if f.sku == sku and f.metric == "units"), None)
             m = next((f for f in v.focus if f.sku == sku and f.metric == "spend"), None)
             if u is None:
@@ -192,14 +212,19 @@ async def run_experiment(
     *,
     on_progress: Callable[[float, str], None] | None = None,
     on_outcomes: Callable[[list[CustomerResult], list[list[CustomerResult]]], None] | None = None,
+    on_arm: Callable[[str], None] | None = None,
     seed: int = 0,
 ) -> tuple[VariantResult, list[VariantResult], str]:
     """Control and variant results on one panel, and the winner (best revenue per visitor with a CI above
-    zero, "" when none). `variants` holds (name, store, applied changes, warnings)."""
+    zero, "" when none). `variants` holds (name, store, applied changes, warnings). `on_arm` is called with each
+    arm's name right after its shoppers ran (while the evaluator's engine metadata describes that arm); an
+    exception it raises ends the experiment."""
     total = len(variants) + 1
     if on_progress:
         on_progress(0.0, "control")
     base = await evaluator.evaluate_customers(control, panel)
+    if on_arm:
+        on_arm("Control")
     common_ids = {p.id for p in panel} & {r.persona_id for r in base}
     if not common_ids:
         raise ValueError("Control produced no successful shopper results for the requested panel; the experiment cannot be compared.")
@@ -208,6 +233,8 @@ async def run_experiment(
         if on_progress:
             on_progress(k / total, name)
         res = await evaluator.evaluate_customers(store, panel)
+        if on_arm:
+            on_arm(name)
         common_ids.intersection_update(r.persona_id for r in res)
         if not common_ids:
             raise ValueError(f"No common successful shoppers remain across Control and the variants through '{name}'; the experiment cannot be compared.")
