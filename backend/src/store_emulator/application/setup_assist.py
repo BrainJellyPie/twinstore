@@ -8,6 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.engine.assist_router import AssistRoute, route_request
 from store_emulator.engine.generators.profile_writer import draft_profile
+from store_emulator.engine.generators.store_setup_writer import (
+    StoreSetup,
+    draft_store_setup,
+)
 
 from .errors import AppError, model_failure
 from .providers import assistive_model, build_client
@@ -67,3 +71,28 @@ def route(req: RouteRequest, config: SimulationConfig) -> AssistRoute:
     except Exception as e:  # provider errors reach the user as advice
         logger.warning(f"[assist] routing failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The request could not be routed"), 502) from e
+
+
+class StoreSetupRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    text: str = Field(min_length=5, max_length=800, description="the store in the owner's words")
+    locale: str = Field(default="en", max_length=5)
+    model: str = Field(default="", description='model reference; "" = the app text model')
+
+
+def store_setup(req: StoreSetupRequest, config: SimulationConfig) -> StoreSetup:
+    """The create-store form filled from one description, with the starting format chosen from the generator's."""
+    from store_emulator.engine.layout_gen import TEMPLATES
+
+    formats = [(t.id, t.name, t.store_type, t.description) for t in TEMPLATES]
+    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 900})
+    try:
+        llm = build_client(llm_config, None, model_ref=assistive_model(req.model, llm_config))
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
+    try:
+        return asyncio.run(draft_store_setup(llm, req.text, formats, req.locale))
+    except Exception as e:  # provider errors reach the user as advice
+        logger.warning(f"[setup] store setup draft failed: {type(e).__name__}: {e}")
+        raise AppError(model_failure(e, "The form could not be filled"), 502) from e

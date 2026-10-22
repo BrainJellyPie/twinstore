@@ -6,6 +6,14 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### A new store from one description
+- The create-store form starts with **Describe the store in your own words**: "a campus convenience store at the
+  university gate, open weekdays 7 to 23, mostly students" fills the name, a short description (only what was said),
+  the address only when a place is given, the type, opening days and hours, and picks the starting store format and
+  its currency from the generator's own list. Overnight hours and unknown formats are left for the user with a note;
+  an answer that arrives after the user edited the form is dropped. Works in all six interface languages.
+  API: `POST /api/assist/store-setup`.
+
 ### Find shoppers in words
 - The Shoppers tab of a run takes a description ("women in their 20s who stopped at the ice cream freezers but bought
   nothing after 3 pm"). The text model writes a filter (age and gender groups, words from the persona, bought

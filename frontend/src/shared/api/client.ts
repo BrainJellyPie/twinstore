@@ -1083,6 +1083,16 @@ export function routeAssist(req: { text: string; has_run: boolean }): Promise<{
   return fetchJson(`/api/assist/route`, { method: "POST", ...json(req) });
 }
 
+/** The create-store form filled from one description: only what it says, the format from the generator's list. */
+export interface StoreSetupDraft {
+  name: string; description: string; address: string; store_type: string; template_id: string;
+  open_days: "7" | "weekday" | "weekend"; open_hour: number | null; close_hour: number | null;
+  currency: "USD" | "KRW" | "JPY" | null; rationale: string; warnings: string[];
+}
+export function draftStoreSetup(req: { text: string; locale: string }): Promise<StoreSetupDraft> {
+  return fetchJson(`/api/assist/store-setup`, { method: "POST", ...json(req) });
+}
+
 /** A customer profile drafted by the text model from the create-store form; nothing is saved. */
 export function draftCustomerProfile(req: {
   name: string; description: string; address: string; store_type: string; hours: string; locale: string;
