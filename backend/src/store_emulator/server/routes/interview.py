@@ -8,7 +8,7 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import interview as service
 from store_emulator.application import run_analyst as analyst
-from store_emulator.application import shopper_search
+from store_emulator.application import hypotheses, shopper_search
 from store_emulator.application.errors import AppError
 from store_emulator.domain.interview import (
     AnalystQuestion,
@@ -22,6 +22,7 @@ from store_emulator.domain.interview import (
 )
 
 from store_emulator.engine.interview import GroupQuestion
+from store_emulator.engine.hypotheses import Hypothesis
 from store_emulator.engine.shopper_filter import ShopperMatch
 
 from ..deps import get_config
@@ -96,6 +97,14 @@ async def group_interview(pid: str, run_id: str, req: GroupInterviewRequest) -> 
 async def suggest_group_questions(pid: str, run_id: str, req: SuggestionRequest) -> list[GroupQuestion]:
     """Three questions the model reads off this run's numbers, each with the group of shoppers to ask."""
     return await run_in_threadpool(_call, lambda: service.suggest_group_questions(pid, run_id, req, get_config()))
+
+
+@router.post("/{pid}/runs/{run_id}/tests-to-run", summary="Tests suggested from what shoppers or the analyst said",
+             response_model=list[Hypothesis])
+async def suggest_tests(pid: str, run_id: str, req: hypotheses.HypothesisRequest) -> list[Hypothesis]:
+    """Up to three test questions (A/B, shelf or concept test) written from a group interview's themes and answers or
+    from the run analyst's last answer, naming the layout's products and shelves. Nothing runs."""
+    return await run_in_threadpool(_call, lambda: hypotheses.suggest(pid, run_id, req, get_config()))
 
 
 @router.get("/{pid}/runs/{run_id}/group-interviews", summary="Group interviews of a run", response_model=list[GroupInterview])

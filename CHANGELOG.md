@@ -31,6 +31,13 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 - Snapshot checks reject stale inputs; stable save IDs recover uncertain responses without duplicate drafts.
   No model call or new spreadsheet is required. See the product editor section in USAGE.md.
 
+### From what shoppers said to a test
+- A group interview's result and the run analyst's last answer offer **Turn this into tests**: the text model writes up
+  to three test questions from the themes and answers (or the analyst's answer and figures), each with the tool that
+  answers it (A/B test, shelf test or concept test) and what it checks, naming the layout's own products and shelves.
+  Picking one opens the Marketing studio with that test drafted from the question. What shoppers said stays a
+  hypothesis until the test runs. API: `POST /api/projects/{pid}/runs/{run_id}/tests-to-run`.
+
 ### Optimization goals in words
 - **Optimize** takes the goal in words ("sell more ice cream on impulse, don't move the fridges or touch the drinks
   shelves, at most 6 changes"): the text model sets the objective, what may change, the move limit, whether fridges
@@ -246,6 +253,14 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
 ### Fixes
 - Realistic shoppers no longer crash the 3D view when React remounts them (development StrictMode): the
   per-shopper animation mixer is no longer uncached while its actions are still reused.
+- Vision shoppers' shelf glances are now spread over the shelves their route passes equally well: ties were ranked
+  by rack id, which sent every shopper's glances to the same first racks of the store whatever the route. Each
+  shopper now draws among them with their own seed (`engines.vlm_glance.glance_order: "shuffle"`, the default), so
+  runs still repeat exactly and paired layout comparisons keep common random numbers; `"rack"` restores the old
+  order. Runs made before this change will glance at different shelves when repeated.
+- Newer Claude models (Sonnet 5.5) refuse `thinking: {"type": "disabled"}` and name the value to send instead; the
+  client now learns that value per model and retries, instead of dropping the setting and letting the model think
+  through the shopper's small answer budget.
 
 ### Shopper journeys and interviews
 - Playback has a **Shoppers** tab: rank the run's shoppers (top spenders, left empty-handed, impulse

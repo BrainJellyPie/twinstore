@@ -9,6 +9,7 @@ import * as api from "@/shared/api/client";
 import { askGroup, deleteGroup, interviewKeys, listGroups, suggestGroupQuestions, type GroupInterview, type GroupSegment } from "@/shared/api/interview";
 import { Button } from "@/shared/components/ui/button";
 import { queryKeys } from "@/shared/queries/keys";
+import { TestIdeas } from "@/features/assist/TestIdeas";
 import { cn } from "@/shared/utils/cn";
 import { formatMoney } from "@/shared/utils/money";
 
@@ -111,7 +112,7 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
         {ask.error && <p className="text-[0.75rem] text-destructive">{ask.error.message}</p>}
       </section>
 
-      {shown && <GroupResult key={shown.group_id} group={shown} currency={currency} onOpen={onOpen} />}
+      {shown && <GroupResult key={shown.group_id} group={shown} currency={currency} onOpen={onOpen} projectId={projectId} runId={runId} />}
       {del.error && <p role="alert" className="text-[0.75rem] text-destructive">{del.error.message}</p>}
 
       {list.length > 0 && (
@@ -133,7 +134,9 @@ export function GroupInterviewPanel({ projectId, runId, currency, preset, onOpen
   );
 }
 
-function GroupResult({ group: g, currency, onOpen }: { group: GroupInterview; currency: string; onOpen: (sid: string) => void }) {
+function GroupResult({ group: g, currency, onOpen, projectId, runId }: {
+  group: GroupInterview; currency: string; onOpen: (sid: string) => void; projectId: string; runId: string;
+}) {
   const [theme, setTheme] = useState<number | null>(null);
   const answers = g.answers.filter((a) => a.answer && (theme === null || a.theme === theme));
   return (
@@ -170,6 +173,7 @@ function GroupResult({ group: g, currency, onOpen }: { group: GroupInterview; cu
       </ul>
       {g.errors > 0 && <p className="text-[0.7rem] text-muted-foreground">{g.errors} shopper(s) could not answer (model errors).</p>}
       <p className="text-[0.68rem] text-muted-foreground">Answers are synthetic: each comes from one simulated trip. Use them to find hypotheses, then test them.</p>
+      {g.answers.some((a) => a.answer) && <TestIdeas projectId={projectId} runId={runId} source="group" groupId={g.group_id} />}
     </section>
   );
 }

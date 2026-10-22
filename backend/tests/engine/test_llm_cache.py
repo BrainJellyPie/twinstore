@@ -90,3 +90,19 @@ def test_openai_reasoning_is_switched_off_and_dropped_when_refused(tmp_path) -> 
     err = RuntimeError("Unsupported value: 'reasoning_effort' does not support 'none' with this model.")
     assert lc._should_retry_without(model, err, sent)  # pyright: ignore[reportPrivateUsage]
     assert "extra_body" not in client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
+
+
+def test_thinking_is_switched_off_with_the_value_the_model_names() -> None:
+    from store_emulator.engine import llm_client as lc
+
+    model = "anthropic/claude-test-thinking"
+    client = lc.LiteLLMClient(LLMConfig(model=model))
+    sent = client._call_kwargs(None)  # pyright: ignore[reportPrivateUsage]
+    assert sent["thinking"] == {"type": "disabled"}
+    err = RuntimeError('thinking.type: "disabled" is not supported by this model; send "thinking": {"type": "minimal"} '
+                       'instead of {"type": "disabled"}')
+    assert lc._should_retry_without(model, err, sent)  # pyright: ignore[reportPrivateUsage]
+    assert client._call_kwargs(None)["thinking"] == {"type": "minimal"}  # pyright: ignore[reportPrivateUsage]
+    # Other models keep the usual value, and an error that names no value is not a hint.
+    assert lc.LiteLLMClient(LLMConfig(model="anthropic/claude-other"))._call_kwargs(None)["thinking"] == {"type": "disabled"}  # pyright: ignore[reportPrivateUsage]
+    assert lc._thinking_off_hint(RuntimeError("thinking is not supported")) is None  # pyright: ignore[reportPrivateUsage]

@@ -7,6 +7,7 @@ import { Loader2, MessageSquareText, RotateCcw, Send, Sparkles } from "lucide-re
 
 import { analystKey, askAnalyst, clearAnalyst, getAnalyst, suggestAnalystQuestions } from "@/shared/api/interview";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
+import { TestIdeas } from "@/features/assist/TestIdeas";
 import { cn } from "@/shared/utils/cn";
 import { useAssistStore } from "@/stores/assistStore";
 
@@ -107,6 +108,7 @@ export function RunAnalystSection({ projectId, runId }: { projectId: string; run
         </button>
       )}
       {ideas.error && <p role="alert" className="mt-1 text-[0.7rem] text-destructive">{ideas.error.message}</p>}
+      {last && !pending && <div className="mt-2"><TestIdeas key={messages.length} projectId={projectId} runId={runId} source="analyst" /></div>}
       {suggestions.length > 0 && !pending && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {suggestions.map((q) => (

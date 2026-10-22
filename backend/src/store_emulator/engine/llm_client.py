@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import threading
 from pathlib import Path
 
@@ -38,9 +39,30 @@ def _rejected_param(error: BaseException) -> str | None:
     return next((p for p in _OPTIONAL_PARAMS if p in text), None)
 
 
+# How to switch thinking off, per model: {"type": "disabled"} unless the provider named another value
+# (some newer Claude models refuse "disabled" and say which value to send instead), learned like _REJECTED.
+_THINKING_OFF: dict[str, dict[str, str]] = {}
+
+
+def _thinking_off_hint(error: BaseException) -> dict[str, str] | None:
+    text = str(error)
+    if "thinking" not in text or "instead of" not in text:
+        return None
+    m = re.search(r'send \\?"thinking\\?":\s*\{\\?"type\\?":\s*\\?"([a-z_]+)\\?"\}', text)
+    return {"type": m.group(1)} if m and m.group(1) != "disabled" else None
+
+
 def _should_retry_without(model: str, error: BaseException, sent: dict[str, object]) -> bool:
     """Remember a refused parameter and say whether the call is worth one retry without it. Calls
     already in flight when another call learned the same thing are retried too."""
+    hint = _thinking_off_hint(error)
+    if hint is not None and "thinking" in sent:
+        with _REJECTED_LOCK:
+            new = _THINKING_OFF.get(model) != hint
+            _THINKING_OFF[model] = hint
+        if new:
+            logger.info(f"{model}: thinking is switched off with {hint}; retrying")
+        return True
     param = _rejected_param(error)
     body = sent.get("extra_body")
     if param is None or (param not in sent and not (isinstance(body, dict) and param in body)):
@@ -120,7 +142,7 @@ class LiteLLMClient:
         # Claude models may think before answering (adaptive thinking), which can use up a small
         # max_tokens budget before any JSON is written. Shopper decisions are short: answer directly.
         if self.model.startswith("anthropic/") and _accepts(self.model, "thinking"):
-            kwargs["thinking"] = {"type": "disabled"}
+            kwargs["thinking"] = _THINKING_OFF.get(self.model, {"type": "disabled"})
         # Hybrid Qwen models on Model Studio think by default (billed reasoning tokens, slower);
         # the OpenAI-compatible endpoint takes the switch as a top-level body field.
         if self.model.startswith("openai/qwen") and "aliyuncs.com" in (self.api_base or ""):
