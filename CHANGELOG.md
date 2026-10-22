@@ -27,6 +27,9 @@
   layout/product data, and translate the eight newly added starter category labels.
 
 ### Fixes
+- "OpenStreetMap download failed: … HTTP Error 502: Bad Gateway": the public map server is often overloaded for a
+  few minutes. The download now moves to other Overpass servers and tries once more before giving up, and then says
+  the map servers are busy and to try again shortly.
 - With an API key connected, vision shoppers still ran on the local model, and failed whenever it was not running.
   They now use the connected provider's vision model unless a run picks another (the local model is the fallback
   with no key) — in runs, vision A/B tests, the optimizer's vision judge and the neighborhood synergy runs, and the
