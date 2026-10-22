@@ -43,6 +43,10 @@ def test_each_category_selects_only_catalog_products_and_preserves_currency(cate
     model = FakeModel(category)
     choices = asyncio.run(select_starter_products(model, store, rack_choices(store), "다양한 기본 상품 🌿"))
     assert len(model.calls) == 2 and model.calls[1]["requirements"] == "다양한 기본 상품 🌿"
+    candidates = model.calls[1]["categories"][category]
+    assert len(candidates) == len(CATALOG[category])
+    for source, candidate in zip(CATALOG[category], candidates):
+        assert candidate["image_available"] is bool(catalog_slot_item(source, currency).image_url)
     result, report = fill_empty_racks(store, choices, 4)
     expected = {catalog_slot_item(p, currency).sku: catalog_slot_item(p, currency) for p in CATALOG[category][:3]}
     assert {p.sku for r in report.racks for p in r.products} == set(expected)

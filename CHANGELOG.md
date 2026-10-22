@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Expand the starter catalog by 192 products across 16 specialty categories, reaching 1,016 products in
+  91 categories. Add 32 local photos for apparel, books, pets, hobbies and specialty merchandise (64 total).
+  Automatic selection sees image availability while retaining store requirements and exact SKU validation.
+
 - New-store creation defaults to selecting bundled catalog products with the text model. Large generated
   floors group equivalent racks, exclusions and product limits are validated, and model failure creates no
   partial project. Six-language controls retain the format-default alternative. Sixteen more grocery and

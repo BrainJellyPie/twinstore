@@ -7,6 +7,12 @@ from PIL import Image
 from store_emulator.engine.layout_gen.catalog_expansion import PACKSHOT_SHEETS
 
 ASSETS = Path(__file__).resolve().parents[1] / "assets" / "catalog"
+ROW_BOUNDS = {
+    "starter-01": (0, .245, .5, .71, 1),
+    "starter-02": (0, .25, .5, .735, 1),
+    "starter-03": (0, .25, .5, .75, 1),
+    "starter-04": (0, .25, .5, .75, 1),
+}
 
 
 @lru_cache(maxsize=128)
@@ -16,7 +22,7 @@ def packshot(sheet: str, index: int) -> bytes:
     with Image.open(ASSETS / f"{sheet}.png") as atlas:
         width, height = atlas.size
         row, column = divmod(index, 4)
-        rows = (0, .245, .5, .71, 1) if sheet == "starter-01" else (0, .25, .5, .735, 1)
+        rows = ROW_BOUNDS[sheet]
         tile = atlas.crop((round(column * width / 4), round(rows[row] * height),
                            round((column + 1) * width / 4), round(rows[row + 1] * height)))
         result = BytesIO()

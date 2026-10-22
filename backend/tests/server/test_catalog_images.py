@@ -40,3 +40,29 @@ def test_new_categories_have_twelve_distinct_priced_localized_products(category)
     assert len({p.en for p in rows}) == len({p.ko for p in rows}) == 12
     assert all(p.usd_cents > 0 and p.ko != p.en for p in rows)
     assert len({catalog_slot_item(p, "USD").sku for p in rows}) == 12
+
+
+@pytest.mark.parametrize("sheet", PACKSHOT_SHEETS)
+@pytest.mark.parametrize("index", [-1, 16, 1000000])
+def test_each_sheet_rejects_out_of_range_cells(client, sheet, index):
+    assert client.get(f"/api/catalog-images/{sheet}/{index}.webp").status_code == 404
+
+
+def test_packshot_manifest_has_unique_cells_and_existing_products():
+    from store_emulator.application.catalog_images import ROW_BOUNDS
+    names = [name for values in PACKSHOT_SHEETS.values() for name in values]
+    assert len(names) == len(set(names))
+    assert set(ROW_BOUNDS) == set(PACKSHOT_SHEETS)
+    for sheet, products in PACKSHOT_SHEETS.items():
+        assert len(products) == 16 and len(ROW_BOUNDS[sheet]) == 5
+        assert tuple(sorted(set(ROW_BOUNDS[sheet]))) == ROW_BOUNDS[sheet]
+        assert ROW_BOUNDS[sheet][0] == 0 and ROW_BOUNDS[sheet][-1] == 1
+    for name in names:
+        assert any(p.en == name for values in CATALOG.values() for p in values)
+
+
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_same_named_variants_share_generic_photo_without_merging_identity_or_price(currency):
+    products = [catalog_slot_item(p, currency) for values in CATALOG.values() for p in values if p.en == "Sunscreen SPF50"]
+    assert len(products) == len({p.sku for p in products}) == len({p.price for p in products}) == 2
+    assert {p.image_url for p in products} == {"/api/catalog-images/starter-02/14.webp"}

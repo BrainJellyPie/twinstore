@@ -27,3 +27,22 @@ it.each([null, undefined, "/custom.png", "/api/catalog-images/starter-01/16.webp
 it.each(["bottle", "box", "bag", "cup", "croissant", "cup", "bag", "can", "banana", "applePair", "box", "box", "bottle", "box", "tube", "tube"].map((kind, index) => [index, kind] as const))("matches grocery packshot %i after renaming", (index, kind) => {
   expect(classifyProduct("Renamed item", `/api/catalog-images/starter-02/${index}.webp`).kind).toBe(kind);
 });
+
+it.each([
+  ["starter-03", ["box", "box", "box", "bag", "box", "box", "box", "box", "jar", "jar", "bag", "bag", "tube", "tube", "box", "box"]],
+  ["starter-04", ["bag", "jar", "box", "box", "cup", "box", "box", "box", "box", "bag", "box", "box", "box", "box", "box", "bottle"]],
+] as const)("retains non-food and specialty packages for %s in any language", (sheet, kinds) => {
+  for (const [index, kind] of kinds.entries()) {
+    for (const name of ["Renamed", "지역 상품", "商品"]) {
+      const product = classifyProduct(name, `/api/catalog-images/${sheet}/${index}.webp`);
+      expect(product.kind).toBe(kind);
+      expect([product.w, product.h, product.d].every(n => n > 0 && Number.isFinite(n))).toBe(true);
+    }
+  }
+});
+
+it("keeps frozen meals flat and art supplies out of drink classification", () => {
+  expect(classifyProduct("Renamed", "/api/catalog-images/starter-04/3.webp")).toMatchObject({ category: "frozen", lieFlatInChest: true });
+  for (const url of ["/api/catalog-images/starter-03/14.webp", "/api/catalog-images/starter-04/11.webp"])
+    expect(classifyProduct("Watercolor Paint", url)).toMatchObject({ kind: "box", category: "other" });
+});
