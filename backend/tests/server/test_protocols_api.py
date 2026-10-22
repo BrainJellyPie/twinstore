@@ -137,13 +137,13 @@ except AppError as e:
 
 
 def test_atomic_write_failure_keeps_the_previous_history_and_retry_succeeds(client, tmp_path, monkeypatch):
-    from store_emulator.application.storage import io
+    from store_emulator.engine import files
     first = create(client); id = first["ledger"]["protocol_id"]
     path = tmp_path / ".data" / PID / "marketing" / "protocols" / f"{id}.json"
     original = path.read_bytes()
     def fail(*args): raise OSError("simulated disk failure")
     with monkeypatch.context() as context:
-        context.setattr(io.os, "replace", fail)
+        context.setattr(files.os, "replace", fail)
         assert client.post(f"{ROOT}/{id}/amendments", json=amend_request(first)).status_code == 500
     assert path.read_bytes() == original and not list(path.parent.glob("*.tmp-*"))
     assert client.post(f"{ROOT}/{id}/amendments", json=amend_request(first)).status_code == 200

@@ -92,7 +92,7 @@ def capture_shelves(captures_dir: Path) -> Iterator[BenchShelf]:
         result_path, image_path = folder / "result.json", folder / "image.jpg"
         if not result_path.exists() or not image_path.exists():
             continue
-        result = CaptureResult.model_validate(json.loads(result_path.read_text()))
+        result = CaptureResult.model_validate(json.loads(result_path.read_text(encoding="utf-8")))
         if not result.items:
             continue
         img = Image.open(image_path)
@@ -149,7 +149,7 @@ def write_bench(
             folder = out_dir / "shelves" / shelf.shelf_id
             folder.mkdir(parents=True, exist_ok=True)
             shelf.image.save(folder / "original.png")
-            (folder / "planogram.json").write_text(shelf.result.model_dump_json(indent=1))
+            (folder / "planogram.json").write_text(shelf.result.model_dump_json(indent=1), encoding="utf-8")
             counts["shelves"] += 1
             rng = random.Random(f"{seed}|{shelf.shelf_id}")
             for n, edit in enumerate(plan_edits(shelf.result, rng, kinds, per_kind)):
@@ -167,7 +167,7 @@ def write_bench(
                     "files": {"original": f"shelves/{shelf.shelf_id}/original.png", "counterfactual": f"shelves/{shelf.shelf_id}/{cf}.png",
                               "mask": f"shelves/{shelf.shelf_id}/{cf}_mask.png", "planogram": f"shelves/{shelf.shelf_id}/planogram.json"},
                 }
-                (folder / f"{cf}.json").write_text(json.dumps({**record, "result": json.loads(out.result.model_dump_json())}, indent=1))
+                (folder / f"{cf}.json").write_text(json.dumps({**record, "result": json.loads(out.result.model_dump_json())}, indent=1), encoding="utf-8")
                 index.write(json.dumps(record) + "\n")
                 counts[edit.kind] = counts.get(edit.kind, 0) + 1
     return counts

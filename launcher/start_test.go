@@ -216,3 +216,25 @@ func TestRetryRestartsAServerThatNeverAnswered(t *testing.T) {
 		t.Error("restart kept the earlier error")
 	}
 }
+
+func TestLongWindowsAppFoldersGetAShortPythonEnvironment(t *testing.T) {
+	short := `C:\Users\me\Downloads\TwinStore\app`
+	long := `C:\Users\someone.name\OneDrive - Company\Desktop\TwinStore-0.4.2-windows-x64\TwinStore\app`
+	home := `C:\Users\me\AppData\Local\TwinStore`
+	if got := shortVenvFor("windows", short, home); got != "" {
+		t.Errorf("short folder moved its environment to %q", got)
+	}
+	got := shortVenvFor("windows", long, home)
+	if !strings.HasPrefix(got, filepath.Join(home, "venv")) || len(got) > len(home)+15 {
+		t.Errorf("long folder environment = %q", got)
+	}
+	if again := shortVenvFor("windows", strings.ToUpper(long), home); again != got {
+		t.Errorf("the same folder in other case got another environment: %q", again)
+	}
+	if other := shortVenvFor("windows", long+"2", home); other == got {
+		t.Error("two app folders share one environment")
+	}
+	if got := shortVenvFor("linux", long, home); got != "" {
+		t.Errorf("non-Windows folder moved its environment to %q", got)
+	}
+}

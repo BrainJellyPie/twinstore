@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"net"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -78,6 +80,18 @@ func (a *app) dataHome() string {
 		return a.home
 	}
 	return ""
+}
+
+// shortVenv is where the Python environment goes on Windows when the app folder's path is long: package files
+// nest deep (about 130 more characters under the environment), and past 260 characters Windows without long
+// paths enabled cannot write their bytecode or import them. "" keeps backend/.venv.
+func (a *app) shortVenv() string { return shortVenvFor(runtime.GOOS, a.root, a.home) }
+
+func shortVenvFor(goos, root, home string) string {
+	if goos != "windows" || len(root)+len(`\backend\.venv`) <= 90 {
+		return ""
+	}
+	return filepath.Join(home, "venv", fmt.Sprintf("%08x", crc32.ChecksumIEEE([]byte(strings.ToLower(root)))))
 }
 
 func (a *app) start() {
@@ -150,11 +164,15 @@ func (a *app) launch(uv string) error {
 	cmd.Dir = a.root
 	// UV_COMPILE_BYTECODE: compile the packages in parallel while they install, shown as its own step, instead of one
 	// file at a time during the server's first import (minutes on a computer that scans every new file).
-	cmd.Env = append(os.Environ(), "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "UV_NO_PROGRESS=1", "NO_COLOR=1",
-		"UV_COMPILE_BYTECODE=1")
+	// PYTHONUTF8: files are read and written as UTF-8 whatever the Windows code page (cp949, cp1252, …).
+	cmd.Env = append(os.Environ(), "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8", "PYTHONUTF8=1", "UV_NO_PROGRESS=1",
+		"NO_COLOR=1", "UV_COMPILE_BYTECODE=1")
 	if data := a.dataHome(); data != "" {
 		cmd.Env = append(cmd.Env, "PARASTORE_DATA_HOME="+data, "UV_PROJECT_ENVIRONMENT="+filepath.Join(data, "venv"), "PYTHONDONTWRITEBYTECODE=1")
 		a.log.Printf("Data folder: %s", filepath.Join(data, ".data"))
+	} else if venv := a.shortVenv(); venv != "" {
+		cmd.Env = append(cmd.Env, "UV_PROJECT_ENVIRONMENT="+venv)
+		a.log.Printf("Python environment: %s (the app folder's path is long)", venv)
 	}
 	setupProcess(cmd)
 	stdin, err := cmd.StdinPipe()
@@ -206,10 +224,13 @@ var startingOn = regexp.MustCompile(`Starting on (http://[0-9.:a-z]+)`)
 
 // readOutput follows the server's console output and moves the boot screen along.
 func (a *app) readOutput(r io.Reader, exited <-chan struct{}) {
-	sc := bufio.NewScanner(r)
-	sc.Buffer(make([]byte, 64*1024), 1024*1024)
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
+	br := bufio.NewReaderSize(r, 64*1024)
+	for {
+		raw, err := readLine(br, 64*1024)
+		if err != nil && raw == "" {
+			return
+		}
+		line := strings.TrimSpace(raw)
 		if line == "" {
 			continue
 		}
@@ -243,6 +264,21 @@ func (a *app) readOutput(r io.Reader, exited <-chan struct{}) {
 			a.status.activate("python", line)
 		}
 		a.mu.Unlock()
+	}
+}
+
+// readLine reads one line of the server's output and keeps at most max bytes of it. A very long line (a
+// logged picture, say) must not stop the reading: the server would then block on a full pipe and hang.
+func readLine(br *bufio.Reader, max int) (string, error) {
+	var buf []byte
+	for {
+		part, more, err := br.ReadLine()
+		if room := max - len(buf); room > 0 {
+			buf = append(buf, part[:min(len(part), room)]...)
+		}
+		if err != nil || !more {
+			return string(buf), err
+		}
 	}
 }
 

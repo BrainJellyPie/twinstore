@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -198,5 +199,25 @@ func TestSlowFirstStartIsAwaitedPastTheStuckNotice(t *testing.T) {
 	view := a.status.view()
 	if !view.Ready || view.Error != "" || a.target.Load() == nil {
 		t.Fatalf("late answer did not publish the server: ready=%v error=%q", view.Ready, view.Error)
+	}
+}
+
+func TestOutputIsReadPastAVeryLongLine(t *testing.T) {
+	huge := strings.Repeat("x", 3*1024*1024)
+	br := bufio.NewReaderSize(strings.NewReader(huge+"\r\n[TwinStore] Starting on http://127.0.0.1:1 …\nlast"), 64*1024)
+	first, err := readLine(br, 64*1024)
+	if err != nil || len(first) != 64*1024 {
+		t.Fatalf("long line: %d bytes, %v", len(first), err)
+	}
+	second, err := readLine(br, 64*1024)
+	if err != nil || !startingOn.MatchString(second) {
+		t.Fatalf("line after the long one: %q, %v", second, err)
+	}
+	last, err := readLine(br, 64*1024)
+	if last != "last" || err != nil {
+		t.Fatalf("last line: %q, %v", last, err)
+	}
+	if rest, err := readLine(br, 64*1024); rest != "" || err == nil {
+		t.Fatalf("after the end: %q, %v", rest, err)
 	}
 }

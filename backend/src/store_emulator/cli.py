@@ -120,13 +120,13 @@ def main(argv: list[str] | None = None) -> int:
                 run_a="A", run_b="B",
             )
             _print_comparison(report)
-            (args.out / f"compare_rep_{rep}.json").write_text(report.model_dump_json(indent=2))
+            (args.out / f"compare_rep_{rep}.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
     elif args.command == "compare":
         report = compare_runs(load_run_results(args.run_a), load_run_results(args.run_b),
                               run_a=str(args.run_a), run_b=str(args.run_b), n_bootstrap=args.n_bootstrap)
         _print_comparison(report)
         if args.json:
-            args.json.write_text(report.model_dump_json(indent=2))
+            args.json.write_text(report.model_dump_json(indent=2), encoding="utf-8")
     elif args.command == "fidelity":
         lines = parse_pos_csv(args.pos.read_bytes(), args.pos.name)
         report = fidelity_report(load_run_store(args.run), load_run_results(args.run), lines)
@@ -137,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
         for note in report.notes:
             print(f"  note: {note}")
         if args.json:
-            args.json.write_text(report.model_dump_json(indent=2))
+            args.json.write_text(report.model_dump_json(indent=2), encoding="utf-8")
     elif args.command == "summary":
         _print_summary(SimulationSummary.model_validate(read_json(args.run / "output" / "summary.json")))
     elif args.command == "capture":

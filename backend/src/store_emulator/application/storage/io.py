@@ -1,10 +1,11 @@
 import json
 import logging
-import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from store_emulator.engine.files import read_text, replace_file
 
 DATA_DIR = ".data"
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ def write_json(path: Path, data: object) -> None:
     try:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
-        os.replace(tmp, path)
+        replace_file(tmp, path)
     finally:
         try:
             tmp.unlink(missing_ok=True)
@@ -30,8 +31,7 @@ def write_json(path: Path, data: object) -> None:
 
 
 def read_json(path: Path) -> Any:  # json.load returns dict | list; caller refines the type.
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    return json.loads(read_text(path))
 
 
 def generate_setup_id() -> str:

@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from store_emulator.domain.config import LLMConfig
 from store_emulator.domain.types import TokenUsage
+from store_emulator.engine.files import replace_file
 
 logger = logging.getLogger(__name__)
 
@@ -246,7 +247,7 @@ class LiteLLMClient:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
         tmp.write_text(json.dumps({"result": result.model_dump(mode="json")}, ensure_ascii=False), encoding="utf-8")
-        os.replace(tmp, path)
+        replace_file(tmp, path)
 
     def _create(self, response_model: type[BaseModel], msgs: object, max_retries: int,
                 seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:

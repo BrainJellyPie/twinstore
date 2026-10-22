@@ -185,7 +185,7 @@ GROCERY_FORMATS: frozenset[str] = frozenset({"supermarket", "hypermarket", "groc
 # Fitted to real data (traffic: Rossmann weather, CJ and
 # Favorita weekends and holidays, Rossmann/Favorita paydays; demand: The Complete Journey's
 # per-trip category shares by season, weekend, holiday season and Super Bowl Sunday).
-GROCERY_PRIORS = ScenarioPriors.model_validate_json((Path(__file__).with_name("grocery_priors.json")).read_text())
+GROCERY_PRIORS = ScenarioPriors.model_validate_json((Path(__file__).with_name("grocery_priors.json")).read_text(encoding="utf-8"))
 
 
 def priors_for(store_type: str, override: ScenarioPriors | None = None) -> ScenarioPriors:

@@ -78,7 +78,7 @@ def _levers(args: argparse.Namespace) -> int:
         return 2
     llm = LiteLLMClient(llm_config.model_copy(update={"max_tokens": 200}))
     personas_path = Path(args.personas_file) if args.personas_file else SAMPLE_PERSONAS
-    personas = select_personas([Persona.model_validate(p) for p in json.loads(personas_path.read_text())], args.personas, seed=args.seed)
+    personas = select_personas([Persona.model_validate(p) for p in json.loads(personas_path.read_text(encoding="utf-8"))], args.personas, seed=args.seed)
     kinds = set(args.kinds.split(",")) if args.kinds else None
     cfs = load_counterfactuals(Path(args.bench), limit=args.limit, kinds=kinds)
     outcomes: list[LeverOutcome] = []

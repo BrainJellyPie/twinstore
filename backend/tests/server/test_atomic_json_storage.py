@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from store_emulator.application.storage import io as storage_io
+from store_emulator.engine import files
 
 
 @pytest.mark.parametrize("existing", [False, True])
@@ -22,7 +23,7 @@ def test_failed_atomic_save_preserves_old_data_without_leaving_partial_files(tmp
     elif stage == "replace":
         def fail_replace(source, destination):
             raise OSError("Simulated replacement failure")
-        monkeypatch.setattr(storage_io.os, "replace", fail_replace)
+        monkeypatch.setattr(files.os, "replace", fail_replace)
     else:
         data["cycle"] = data
     with pytest.raises((OSError, ValueError)):

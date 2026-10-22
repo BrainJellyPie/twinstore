@@ -61,16 +61,16 @@ class Counterfactual:
 
 def load_counterfactuals(bench_dir: Path, *, limit: int | None = None, kinds: set[str] | None = None) -> list[Counterfactual]:
     out: list[Counterfactual] = []
-    for line in (bench_dir / "index.jsonl").read_text().splitlines():
+    for line in (bench_dir / "index.jsonl").read_text(encoding="utf-8").splitlines():
         rec = json.loads(line)
         if kinds and rec["kind"] not in kinds:
             continue
         files = rec["files"]
-        detail = json.loads((bench_dir / files["counterfactual"]).with_suffix(".json").read_text())
+        detail = json.loads((bench_dir / files["counterfactual"]).with_suffix(".json").read_text(encoding="utf-8"))
         out.append(Counterfactual(
             id=rec["id"], kind=rec["kind"], edit=PhotoEdit.model_validate(rec["edit"]),
             original=Image.open(bench_dir / files["original"]).convert("RGB"),
-            before=CaptureResult.model_validate_json((bench_dir / files["planogram"]).read_text()),
+            before=CaptureResult.model_validate_json((bench_dir / files["planogram"]).read_text(encoding="utf-8")),
             edited=Image.open(bench_dir / files["counterfactual"]).convert("RGB"),
             after=CaptureResult.model_validate(detail["result"]),
         ))

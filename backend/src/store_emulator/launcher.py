@@ -32,11 +32,17 @@ if sys.platform == "win32":
     import msvcrt
     from ctypes import wintypes
 
+    _KERNEL32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _PIPE_GONE = {109, 232, 233}  # ERROR_BROKEN_PIPE, ERROR_NO_DATA, ERROR_PIPE_NOT_CONNECTED
+
     def _stdin_pipe_closed() -> bool:
-        """Whether the launcher closed its end of our stdin pipe, without reading from it (see below)."""
+        """Whether the launcher closed its end of our stdin pipe, without reading from it (see below).
+        Only a broken pipe counts: stdin that is not a pipe (a console) never asks us to stop."""
         avail = wintypes.DWORD()
         handle = wintypes.HANDLE(msvcrt.get_osfhandle(sys.stdin.fileno()))
-        return not ctypes.windll.kernel32.PeekNamedPipe(handle, None, 0, None, ctypes.byref(avail), None)
+        if _KERNEL32.PeekNamedPipe(handle, None, 0, None, ctypes.byref(avail), None):
+            return False
+        return ctypes.get_last_error() in _PIPE_GONE
 
 ROOT = Path(__file__).resolve().parents[3]
 BACKEND = ROOT / "backend"
@@ -91,7 +97,7 @@ def build_ui(force: bool = False) -> bool:
         [*npx, "--yes", PNPM, "exec", "vite", "build"],
     ]
     for cmd in steps:
-        if subprocess.run(cmd, cwd=FRONTEND, env=env, check=False).returncode != 0:
+        if subprocess.run(cmd, cwd=FRONTEND, env=env, check=False, stdin=subprocess.DEVNULL).returncode != 0:
             _say("Building the web interface failed (see above). The API still starts.")
             return (DIST / "index.html").is_file()
     _say("Web interface ready.")
@@ -101,7 +107,10 @@ def build_ui(force: bool = False) -> bool:
 def free_port(start: int, host: str) -> int:
     for port in range(start, start + 50):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # On Windows SO_REUSEADDR lets a socket share a port another program is listening on, so the test
+            # would pass for a busy port; there a plain bind is the honest check.
+            if sys.platform != "win32":
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 s.bind((host, port))
             except OSError:

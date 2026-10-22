@@ -8,6 +8,19 @@
   asking what stdin is) wait behind a pending read. It now polls the pipe without reading it, hardware probes no
   longer inherit it, and the boot log says when the simulator is loading and how long it took. If a start still
   stalls, every thread's stack is written to the log every two minutes until the server answers.
+- Other Windows-only failures of the same kind:
+  - Files are read and written as UTF-8 whatever the Windows code page (the launcher runs Python in UTF-8 mode, and
+    the remaining file reads name their encoding): on Korean (cp949) or Western (cp1252) Windows a non-ASCII file
+    could not be read.
+  - Saving a JSON file while another request was reading it (a run's status polled every second, for example), or
+    while a virus scanner looked at it, failed with "PermissionError" on Windows; replacing and reading such files
+    is retried for up to two seconds there.
+  - The port check no longer sets SO_REUSEADDR on Windows, where it let a busy port look free.
+  - The launcher keeps reading the server's output past a very long line instead of stopping, which would have left
+    the server blocked on a full pipe.
+  - When the app folder's path is long (an unzipped folder on a OneDrive desktop, say), the Python environment goes
+    to a short folder under %LOCALAPPDATA%\TwinStore\venv, so package files stay within Windows' 260-character
+    limit.
 
 ### Vision shoppers can see the shelf in 3D
 - The run dialog's vision settings add **What a vision shopper sees at a shelf**: **Chart** (as before: a flat

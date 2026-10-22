@@ -5,6 +5,8 @@ REM Data stays in backend\.data.
 setlocal
 cd /d "%~dp0\..\.."
 set "PATH=%USERPROFILE%\.local\bin;%PATH%"
+REM Read and write files as UTF-8 whatever the Windows code page.
+set "PYTHONUTF8=1"
 where uv >nul 2>nul
 if errorlevel 1 (
   echo [TwinStore] Installing uv ^(Python package manager, one time^)...
