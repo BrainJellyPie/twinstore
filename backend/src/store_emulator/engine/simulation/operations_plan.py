@@ -112,10 +112,11 @@ def plan_operations(
     raised: list[str] = []
     for stats in [s for s in best_tried[1].stockouts if s.lost_revenue > 0][:_RAISED]:
         base = best_config.stock_overrides.get(stats.sku, best_config.stock_per_facing)
+        candidates = (1, 2, 3, 4) if base == 0 else (base * 2, base * 3, base * 4)   # 0: it started sold out
         before = best_config
         consider(
             best_config.model_copy(update={"stock_overrides": {**best_config.stock_overrides, stats.sku: units}})
-            for units in (base * 2, base * 3, base * 4) if units <= 10_000
+            for units in candidates if units <= 10_000
         )
         if best_config is not before:
             raised.append(stats.sku)

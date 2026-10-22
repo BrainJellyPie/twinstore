@@ -209,7 +209,8 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
           })}</p>
         )}
         {columns.length > 0 && (
-          <table className="w-full tabular-nums">
+          <div role="region" aria-label={t("labTitle")} tabIndex={0} className="overflow-x-auto">
+          <table className="w-full tabular-nums [&_td]:px-2 [&_th]:px-2">
             <thead className="text-muted-foreground">
               <tr>
                 <th scope="col" className="py-0.5 text-left font-normal"><span className="sr-only">{t("labTitle")}</span></th>
@@ -231,6 +232,7 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
               )}
             </tbody>
           </table>
+          </div>
         )}
         {plan.data?.current_weeks && plan.data.best_weeks ? (
           <WeeksView code={code} series={[{ label: "labNowCol", report: plan.data.current_weeks }, { label: "labPlanCol", report: plan.data.best_weeks }]} />
