@@ -6,6 +6,13 @@ The project is now **TwinStore**, built on intellicia's open-source Parastore (M
 text, the brand mark and the launcher use the new name; internal identifiers (`PARASTORE_*`
 variables, storage keys, the Python package, the `parastore` CLI) keep working.
 
+### Optimization goals in words
+- **Optimize** takes the goal in words ("sell more ice cream on impulse, don't move the fridges or touch the drinks
+  shelves, at most 6 changes"): the text model sets the objective, what may change, the move limit, whether fridges
+  stay on the walls, the shelves that stay locked (this layout's, by name; shown with **Unlock all**) and the
+  smallest gain worth keeping. Limits out of range and unknown shelves are reported, not guessed. Nothing starts until
+  the user does. API: `POST /api/projects/{pid}/setups/{sid}/optimize/goal`.
+
 ### A new store from one description
 - The create-store form starts with **Describe the store in your own words**: "a campus convenience store at the
   university gate, open weekdays 7 to 23, mostly students" fills the name, a short description (only what was said),

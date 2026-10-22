@@ -1346,6 +1346,15 @@ export interface OptimizationView {
   result: OptimizeResult | null;
 }
 
+/** An optimization's settings read from the goal the manager writes; nothing starts. */
+export interface OptimizeGoal {
+  objective: OptimizeObjective; scope: OptimizeScope; max_moves: number | null; keep_fridges_on_walls: boolean | null;
+  lock_rack_ids: string[]; locked: string[]; min_improvement: number | null; rationale: string; warnings: string[];
+}
+export function readOptimizeGoal(projectId: string, setupId: string, text: string): Promise<OptimizeGoal> {
+  return fetchJson(`/api/projects/${projectId}/setups/${setupId}/optimize/goal`, { method: "POST", ...json({ text }) });
+}
+
 export function startOptimization(
   projectId: string, setupId: string, spec: OptimizeSpec, scenarioId: string | null, judge?: JudgeSpec,
 ): Promise<OptimizationStatus> {
