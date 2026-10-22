@@ -550,6 +550,5 @@ export const messages = {
   ...starterMessages,
   ...starterCategoryMessages,
   ...rackCopyMessages,
-  ...layoutMessages,
 } satisfies Record<string, readonly [string, string, string, string, string, string]>;
 export type MessageKey = keyof typeof messages;

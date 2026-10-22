@@ -6,38 +6,6 @@
   and French, including cross-language search. Preserve custom or updated server descriptions.
   New non-English preset floor names no longer repeat the level shown by the interface.
 
-- Rewrite open-area and floor-review guidance in six languages, including complete move labels,
-  localized floor badges and count summaries. Preserve user names and coordinates during language
-  changes; show translated recovery guidance when a floor preview fails.
-
-- Keep translated template headings in downloaded SVG titles without changing stored names.
-
-- Add 64 pizza, salad, juice, Indian, Thai, Turkish, Mexican and ice-cream menu
-  photos, reaching 704 local images. Seven more menu assortments now have pictures
-  for every existing product in their matching default maps.
-
-- Reject malformed Origin headers with 403 instead of a server error.
-
-- Add 64 tea, burger, noodle, sushi, restaurant, bubble-tea and Turkish-menu
-  photos, reaching 640 locally bundled images. Tea, burger, noodle, sushi,
-  restaurant and bubble-tea menus now have a photo for every product in their
-  matching default maps.
-
-- Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
-  ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,
-  cafe and dessert templates display the new photos automatically.
-
-- Complete photos for all 96 baby feeding, bath, toy vehicle, plush, educational toy,
-  puzzle, model building and miniature painting products. Add 64 local images, reaching
-  512 photos; they appear on the matching default maps and in image-aware VLM grids.
-- Rewrite interior-design, color, floor-plan and recovery guidance in natural Korean, Chinese,
-  Japanese, Spanish and French. Share design names across setup, floor review and comparison;
-  localize color-reset accessibility labels and preview error recovery without changing stored values.
-
-### Fixes
-- A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
-  previous version). It now reloads once into the new version.
-
 ## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
 
 ### Safe updates
@@ -62,26 +30,32 @@
   download. Details under Fixes.
 
 ### Starter catalog, photos and translations
-- Add 64 hardware, music, gardening, pantry, produce, bakery, dairy, prepared-food and
-  personal-care photos, reaching 416 local product images for the 1,400-item catalog.
-  Extend six-language category labels to all 123 categories, including the newest home and hobby assortments.
+- Add 64 Korean, Mediterranean, Mexican, Vietnamese, pharmacy and care-product photos,
+  reaching 768 locally bundled images. All 18 menu assortments and six pharmacy/care
+  departments now have pictures for every existing product in their default maps.
 
-- Complete starter-fill localization in six languages: automatic/manual guidance, catalog
-  category labels, eligibility reasons, reviewed prices and retry states. Category language
-  follows the selected interface language. Detect duplicate translation keys.
+- Keep translated template headings in downloaded SVG titles without changing stored names.
 
-- Translate shelf-product reuse into six languages, including eligibility reasons, section review,
-  price formatting, save/retry and accessibility text. Preserve selections and request identities
-  across language changes and keep legacy API reason compatibility. Stabilize seeded neighborhood
-  trip assignments when demand-report ordering changes.
+- Add 64 pizza, salad, juice, Indian, Thai, Turkish, Mexican and ice-cream menu
+  photos, reaching 704 local images. Seven more menu assortments now have pictures
+  for every existing product in their matching default maps.
 
-- Add 96 kitchen, home, pet and technology products and 32 grocery/merchandise photos: 1,208 products,
-  107 categories and 160 local photos. Vision grids fit bundled product artwork more closely by omitting
-  empty white margins, while retaining names, prices and numbered identities.
-- Translate the complete reviewed library-photo workflow into all six interface languages, including
-  explanations, selection and preview counts, accessibility names, validation and save/retry states.
-  Switching language preserves choices and pending requests. Fix the shared dialog footer's untranslated
-  Close button and provide localized error guidance with original diagnostics available on demand.
+- Add 64 tea, burger, noodle, sushi, restaurant, bubble-tea and Turkish-menu
+  photos, reaching 640 locally bundled images. Tea, burger, noodle, sushi,
+  restaurant and bubble-tea menus now have a photo for every product in their
+  matching default maps.
+
+- Rewrite open-area and floor-review guidance in six languages, including complete move labels,
+  localized floor badges and count summaries. Preserve user names and coordinates during language
+  changes; show translated recovery guidance when a floor preview fails.
+
+- Add 64 water, sports/energy drink, coffee, soda, tea, beer, wine, frozen-food and
+  ice-cream photos, reaching 576 locally bundled images. Existing convenience, grocery,
+  cafe and dessert templates display the new photos automatically.
+
+- Complete photos for all 96 baby feeding, bath, toy vehicle, plush, educational toy,
+  puzzle, model building and miniature painting products. Add 64 local images, reaching
+  512 photos; they appear on the matching default maps and in image-aware VLM grids.
 
 - Rewrite interior-design, color, floor-plan and recovery guidance in natural Korean, Chinese,
   Japanese, Spanish and French. Share design names across setup, floor review and comparison;
@@ -99,6 +73,11 @@
 - Add 64 hardware, music, gardening, pantry, produce, bakery, dairy, prepared-food and
   personal-care photos, reaching 416 local product images for the 1,400-item catalog.
   Extend six-language category labels to all 123 categories, including the newest home and hobby assortments.
+
+- Complete starter-fill localization in six languages: automatic/manual guidance, catalog
+  category labels, eligibility reasons, reviewed prices and retry states. Category language
+  follows the selected interface language. Detect duplicate translation keys.
+
 - Localize template operating hours, product-category limits, assortment seeds and settings-file
   import/export in all six interface languages. Keep exact seed values, category IDs and current
   edits when switching languages. Rewrite the new guidance in natural, task-oriented language.
@@ -111,7 +90,46 @@
   interface languages. Preserve expanded previews and zoom when changing language, retain original
   layout/product data, and translate the eight newly added starter category labels.
 
+- Add 64 grocery, baby, pet, stationery, art, technology, travel, game and household photos,
+  reaching 320 bundled product images. Preserve automatic starter selection and image previews
+  when merging the six-language interface; automatic choices and recovery guidance are localized too.
+
+- Add 96 cycling, swimming, climbing, desk, aquarium, bird, lighting and bathroom products, plus
+  32 apparel, garden and hobby photos. The bundled catalog reaches 1,304 products, 115 categories
+  and 256 product photos, available to automatic category-based placement and vision grids.
+
+- Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
+  in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.
+
+- Vision shoppers now see available product photos together with names, numbered badges and prices in
+  the shelf grid. Bundled, uploaded and reviewed library photos resolve locally. Dense shelves wrap within
+  labeled levels; missing or corrupt pictures retain text cards. Shelf tests and interview previews use
+  the same renderer, including project photos. Extend the bundled photo catalog from 64 to 96 images.
+
+- Expand the starter catalog by 192 products across 16 specialty categories, reaching 1,016 products in
+  91 categories. Add 32 local photos for apparel, books, pets, hobbies and specialty merchandise (64 total).
+  Automatic selection sees image availability while retaining store requirements and exact SKU validation.
+
+- New-store creation defaults to selecting bundled catalog products with the text model. Large generated
+  floors group equivalent racks, exclusions and product limits are validated, and model failure creates no
+  partial project. Six-language controls retain the format-default alternative. Sixteen more grocery and
+  household packshots bring the bundled image collection to 32.
+
+- Starter assortment: 144 additional generic products (824 across 75 categories) and 16 locally bundled
+  generated packshots. Auto-place starter products defaults to category-aware text-model selection, validates
+  exact catalog IDs, previews before saving, and retains manual selection and retry-safe child layouts.
+
+- Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
+  before/after preview, immutable photo copies, source revision checks and retry-safe saving.
+
 ### Fixes
+- Keep the model-provider list available when a saved local address has malformed IPv6 syntax.
+- Reject malformed Origin headers with 403 instead of a server error.
+- Without internet access (or when LiteLLM's online price table could not be downloaded), the warning before a run
+  or customer writing had no cost for the default models. Their prices are now built in; a downloaded price still
+  wins.
+- A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
+  previous version). It now reloads once into the new version.
 - The first launch downloaded a local vision model (up to several GB) without asking, even with no plan to use it.
   Nothing is downloaded now until you press Start for the local model, and the button says how large the download
   is. After that it comes back by itself when the app opens, until you press Stop. A model an earlier version already
@@ -180,22 +198,8 @@
 - On Linux, the application-menu entry now works from a folder whose name holds `$`, `"`, `%` or a backslash.
 - A data folder chosen with `PARASTORE_DATA_HOME` now gets its own Python environment, so a TwinStore using it
   can run beside the usual one without the two changing each other's packages.
-- A file left empty or cut short by a version before 0.4.3 (it was stopped, or the computer lost power, while saving)
-  showed "Internal Server Error" instead of the store gallery, a store, its layouts or its run history. The rest now
-  opens: a store whose customers file is damaged opens without customers, a damaged run shows as failed, damaged
-  captures, studies and optimizations are left out of their lists, and opening a damaged item names its file. A
-  store whose settings file is damaged was left out of the gallery as if lost; it is listed, saying so.
-
 
 ## 0.4.7 — Marketing studio results you can trust
-
-- Add 64 grocery, baby, pet, stationery, art, technology, travel, game and household photos,
-  reaching 320 bundled product images. Preserve automatic starter selection and image previews
-  when merging the six-language interface; automatic choices and recovery guidance are localized too.
-
-- Add 96 cycling, swimming, climbing, desk, aquarium, bird, lighting and bathroom products, plus
-  32 apparel, garden and hobby photos. The bundled catalog reaches 1,304 products, 115 categories
-  and 256 product photos, available to automatic category-based placement and vision grids.
 
 ### Marketing studio results you can trust
 - A vision-shopper A/B test whose model calls failed finished "completed" with rule-shopper results labelled as
@@ -298,32 +302,6 @@
   an interview with a shopper who is not in the run is "not found" instead of an empty transcript.
 - The dwell map counts each shopper's own walking pace, diagonal steps, the time at the entrance and wandering; it
   left about a tenth of the visit time off the map, most of it around the entrance.
-
-## 0.4.5 — every visitor a day, with a warning before long or costly work
-
-- Add 96 products across eight pantry, deli, seafood, barista and party categories, reaching 1,112 products
-  in 99 categories. Add 32 cafe and specialty photos, bringing the local image collection to 128.
-
-- Vision shoppers now see available product photos together with names, numbered badges and prices in
-  the shelf grid. Bundled, uploaded and reviewed library photos resolve locally. Dense shelves wrap within
-  labeled levels; missing or corrupt pictures retain text cards. Shelf tests and interview previews use
-  the same renderer, including project photos. Extend the bundled photo catalog from 64 to 96 images.
-
-- Expand the starter catalog by 192 products across 16 specialty categories, reaching 1,016 products in
-  91 categories. Add 32 local photos for apparel, books, pets, hobbies and specialty merchandise (64 total).
-  Automatic selection sees image availability while retaining store requirements and exact SKU validation.
-
-- New-store creation defaults to selecting bundled catalog products with the text model. Large generated
-  floors group equivalent racks, exclusions and product limits are validated, and model failure creates no
-  partial project. Six-language controls retain the format-default alternative. Sixteen more grocery and
-  household packshots bring the bundled image collection to 32.
-
-- Starter assortment: 144 additional generic products (824 across 75 categories) and 16 locally bundled
-  generated packshots. Auto-place starter products defaults to category-aware text-model selection, validates
-  exact catalog IDs, previews before saving, and retains manual selection and retry-safe child layouts.
-
-- Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
-  before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
 ## 0.4.5 — every visitor a day, with a warning before long or costly work
 
