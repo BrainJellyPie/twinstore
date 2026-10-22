@@ -21,14 +21,14 @@ def replace_file(src: Path, dst: Path) -> None:
     delay = 0.01
     for _ in range(_TRIES - 1):
         try:
-            os.replace(src, dst)
+            src.replace(dst)
             return
         except PermissionError:
             if sys.platform != "win32":
                 raise
             time.sleep(delay)
             delay = min(delay * 2, 0.25)
-    os.replace(src, dst)
+    src.replace(dst)
 
 
 def read_text(path: Path) -> str:

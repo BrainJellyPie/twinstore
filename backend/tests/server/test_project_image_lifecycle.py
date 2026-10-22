@@ -71,13 +71,14 @@ def test_deletion_cleans_up_an_upload_already_in_progress(client, tmp_path, monk
 
     from store_emulator.application import projects
     from store_emulator.application.storage import images
+    from store_emulator.engine import files
 
     create_project(tmp_path, "proj_test")
     data = io.BytesIO()
     Image.new("RGB", (8, 8), "white").save(data, format="PNG")
     upload_ready, allow_upload, project_removed = Event(), Event(), Event()
     original_replace = Path.replace
-    original_rmtree = projects.shutil.rmtree
+    original_rmtree = files.shutil.rmtree
 
     def pause_upload(path, target):
         if Path(target).suffix == ".png":
@@ -92,7 +93,7 @@ def test_deletion_cleans_up_an_upload_already_in_progress(client, tmp_path, monk
         return result
 
     monkeypatch.setattr(Path, "replace", pause_upload)
-    monkeypatch.setattr(projects.shutil, "rmtree", track_project_removal)
+    monkeypatch.setattr(files.shutil, "rmtree", track_project_removal)
     with ThreadPoolExecutor(max_workers=2) as pool:
         saving = pool.submit(images.save_image, "proj_test", "tea", data.getvalue(), "tea.png")
         try:
