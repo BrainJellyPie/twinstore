@@ -40,7 +40,8 @@ func main() {
 		fmt.Println("twinstore launcher", version)
 		return
 	}
-	if detachFromBundle() { // macOS: the app bundle returns at once, the launcher keeps running
+	// macOS: the app bundle returns at once, the launcher keeps running (not for --smoke, whose exit code is the result)
+	if !opt.smoke && detachFromBundle() {
 		return
 	}
 	os.Exit(run(opt))

@@ -147,7 +147,12 @@ jobs:
           # A GUI-subsystem program: wait for it explicitly, PowerShell would not.
           $p = Start-Process -FilePath "win/TwinStore/TwinStore.exe" -ArgumentList "--smoke", "--no-browser", "--port", "8765" -Wait -PassThru
           $log = Join-Path $env:LOCALAPPDATA "TwinStore/logs/launcher.log"
-          if (Test-Path $log) { Get-Content $log -Tail 120 }
+          if (Test-Path $log) {
+            Get-Content $log -Tail 120
+            # The main steps as an annotation, readable from the API without the full log.
+            $steps = Get-Content $log | Select-String -Pattern "launcher|Starting|Data folder|ready|smoke|Simulator|error|fail" | Select-Object -Last 25
+            Write-Output ("::notice title=Windows first start::" + (($steps | ForEach-Object { $_.Line }) -join "%0A"))
+          }
           if ($p.ExitCode -ne 0) { Write-Error "TwinStore.exe --smoke exited with $($p.ExitCode)"; exit 1 }
 
   smoke-macos:
@@ -165,7 +170,10 @@ jobs:
           codesign --verify --deep --strict --verbose=2 mac/TwinStore.app
           status=0
           mac/TwinStore.app/Contents/MacOS/twinstore --smoke --no-browser --port 8765 || status=$?
-          tail -n 120 "$HOME/Library/Application Support/TwinStore/logs/launcher.log" || true
+          log="$HOME/Library/Application Support/TwinStore/logs/launcher.log"
+          tail -n 120 "$log" || true
+          # The main steps as an annotation, readable from the API without the full log.
+          echo "::notice title=macOS first start::$(grep -E 'launcher|Starting|Data folder|ready|smoke|Simulator|error|fail' "$log" | tail -n 25 | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/%0A/g')"
           exit $status
 
   publish:
