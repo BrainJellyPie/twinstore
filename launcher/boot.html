@@ -50,7 +50,10 @@
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
   }
   @keyframes rise { from { opacity: 0; transform: translateY(24px) scale(0.98); filter: blur(6px); } }
-  .leaving { transform: scale(1.04); opacity: 0; filter: blur(10px); }
+  .open { display: block; margin-top: 16px; padding: 14px 18px; border-radius: 14px; background: var(--volt); color: #0a0b0e; font: 600 17px var(--sans); text-align: center; text-decoration: none; box-shadow: 0 0 24px rgb(198 255 58 / 0.35); transition: filter 160ms, transform 160ms; }
+  .open:hover { filter: brightness(1.06); }
+  .open:active { transform: scale(0.98); }
+  .open:focus-visible, button:focus-visible { outline: 2px solid var(--c1); outline-offset: 3px; }
 
   .head { display: flex; align-items: center; gap: 18px; }
   .mark { position: relative; width: 72px; height: 72px; flex: none; border-radius: 20px; display: grid; place-items: center; }
@@ -121,6 +124,7 @@
     <div class="alert" id="alert"></div>
     <div class="hint" id="hint"></div>
     <pre id="log" class="hidden"></pre>
+    <a id="open" class="open hidden" href="/">Open TwinStore</a>
     <div class="row">
       <span class="small" id="where"></span>
       <div class="btns">
@@ -187,9 +191,13 @@
       pre.textContent = text;
       if (atEnd) pre.scrollTop = pre.scrollHeight;
     }
+    $("open").classList.toggle("hidden", !s.ready);
     if (s.ready && !finished) {
+      // Opens the app by itself; the button stays in case the browser does not follow.
       finished = true;
-      setTimeout(() => { $("card").classList.add("leaving"); setTimeout(() => location.replace("/"), 420); }, 450);
+      $("hint").textContent = "If the app does not open by itself, click Open TwinStore.";
+      $("open").focus();
+      setTimeout(() => location.replace("/"), 900);
     }
   }
 

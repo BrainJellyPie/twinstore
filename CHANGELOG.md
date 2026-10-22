@@ -11,6 +11,8 @@
 - The launcher installs only what the app needs (`uv run --no-dev`: no pytest or pyright for users) and compiles the
   packages while installing them (`UV_COMPILE_BYTECODE=1`), shown on the boot screen, so the server's first import
   no longer compiles thousands of files one by one. The launcher's own health check ignores system proxies.
+- When the app is ready, the boot screen shows a large **Open TwinStore** button as it opens the app by itself, so
+  the app is one click away if the browser does not follow.
 
 ### Reuse a finished shelf assortment
 - Step 2 copies exact products, prices, promotions, image links, levels and order from one stocked shelf/fridge
