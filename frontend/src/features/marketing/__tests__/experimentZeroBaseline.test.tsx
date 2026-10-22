@@ -30,11 +30,11 @@ it("shows absolute revenue and unit gains when the control sold nothing", () => 
   const { container } = show(0);
   expect(container.textContent).toContain("+$1.00 from zero");
   expect(container.textContent).toContain("+1.00 from zero");
-  expect(container.textContent).not.toContain("+0.0 %");
+  expect(container.textContent).not.toContain("+0.0%");
 });
 
 it("keeps relative gains for a nonzero control", () => {
   const { container } = show(100);
-  expect(container.textContent).toContain("+100.0 %");
+  expect(container.textContent).toContain("+100.0%");
   expect(container.textContent).not.toContain("from zero");
 });

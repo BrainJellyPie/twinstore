@@ -15,7 +15,7 @@ import { Input } from "@/shared/components/ui/input";
 import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
-import { formatPercent } from "@/shared/utils/money";
+import { currencyCode, formatMoney, formatPercent } from "@/shared/utils/money";
 import { cn } from "@/shared/utils/cn";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { Locale, MessageKey } from "@/shared/i18n/messages";
@@ -298,7 +298,12 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
   const { locale, t } = useI18n();
   const qc = useQueryClient();
   const setSelectedSetupId = useSimulationStore((s) => s.setSelectedSetupId);
+  const viewedCurrency = useSimulationStore((s) => s.currency);
   const { status, result } = view;
+  // Revenue scores are in the currency's minor unit; the optimized runs carry it, the viewed run is the fallback.
+  const code = currencyCode(result?.baseline_summary?.currency ?? result?.best_summary?.currency ?? viewedCurrency);
+  const objective = status.spec.objective;
+  const score = (value: number) => scoreText(objective, value, code);
   const apply = useMutation({
     mutationFn: () => api.applyOptimization(projectId, status.job_id),
     onSuccess: async (setup) => {
@@ -336,7 +341,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted"><div className="heat-gradient h-full transition-[width]" style={{ width: `${(phase === "calibrating" ? 0.05 : ratio) * 100}%` }} /></div>
         <div className="text-xs text-muted-foreground">
           {elapsed >= 120 ? t("optElapsedMinutes", { minutes: Math.floor(elapsed / 60), seconds: Math.round(elapsed % 60) }) : t("optElapsedSeconds", { seconds: Math.round(elapsed) })}
-          {status.best_score != null ? ` · ${t("optBestSoFar", { score: status.best_score.toFixed(1) })}` : ""}{status.scenario ? ` · ${status.scenario}` : ""}
+          {status.best_score != null ? ` · ${t("optBestSoFar", { score: score(status.best_score) })}` : ""}{status.scenario ? ` · ${status.scenario}` : ""}
           {status.judge?.judge === "vlm" ? ` · ${t("optVisionJudge")}` : ""}
         </div>
         <Button variant="outline" size="sm" className="gap-1.5" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
@@ -356,22 +361,22 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
   const chart = result.history.map((h) => ({ i: h.iteration, score: h.score, best: h.best_score }));
   const searchGain = minimize ? result.baseline_score - result.best_score : result.best_score - result.baseline_score;
   if (result.judge) {
-    return <JudgeView projectId={projectId} report={result.judge} result={result} status={status} apply={apply} onRestart={onRestart} />;
+    return <JudgeView projectId={projectId} report={result.judge} result={result} status={status} code={code} apply={apply} onRestart={onRestart} />;
   }
   return (
     <div className="space-y-4 text-sm">
       <div className={cn("rounded-lg border p-3", good ? "tone-good" : "bg-muted/30")}>
         <div className="flex items-center gap-2 font-medium">
           {good ? <CheckCircle2 className="size-4 text-positive" /> : <TriangleAlert className="size-4 text-warn" />}
-          {t("optValidated", { improvement: improvementText(validated, validationGain ?? 0, metric?.mean_a ?? 1, locale) })}
+          {t("optValidated", { improvement: improvementText(validated, validationGain ?? 0, metric?.mean_a ?? 1, objective, code, locale) })}
           {result.validation_prob_better != null && <span className="font-normal text-muted-foreground">{t("optProbBetter", { prob: formatPercent(result.validation_prob_better, 0) })}</span>}
         </div>
         {metric && (
           <div className="mt-1 text-xs text-muted-foreground">
-            {t("optInterval", { low: metric.ci_low.toFixed(2), high: metric.ci_high.toFixed(2), paired: result.validation?.paired_customers ?? 0 })}
+            {t("optInterval", { low: signedScore(objective, metric.ci_low, code, locale), high: signedScore(objective, metric.ci_high, code, locale), paired: result.validation?.paired_customers ?? 0 })}
           </div>
         )}
-        <div className="mt-1 text-xs text-muted-foreground">{t("optSearchScore", { improvement: improvementText(result.relative_improvement, searchGain, result.baseline_score, locale) })}</div>
+        <div className="mt-1 text-xs text-muted-foreground">{t("optSearchScore", { improvement: improvementText(result.relative_improvement, searchGain, result.baseline_score, objective, code, locale) })}</div>
       </div>
 
       <div className="h-40">
@@ -379,8 +384,8 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
           <LineChart data={chart} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis dataKey="i" tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
-            <YAxis tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} domain={["auto", "auto"]} />
-            <Tooltip contentStyle={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} domain={["auto", "auto"]} tickFormatter={score} width={64} />
+            <Tooltip contentStyle={{ fontSize: 11 }} formatter={(value) => typeof value === "number" ? score(value) : value} />
             <Line type="monotone" dataKey="score" stroke="var(--muted-foreground)" strokeOpacity={0.6} dot={false} strokeWidth={1} name={t("optChartCandidate")} isAnimationActive={false} />
             <Line type="stepAfter" dataKey="best" stroke="var(--primary)" dot={false} strokeWidth={2.5} name={t("optChartBest")} isAnimationActive={false} />
           </LineChart>
@@ -392,7 +397,7 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
           <thead className="text-muted-foreground"><tr><th className="text-left font-normal">{t("optSearchShoppers")}</th><th className="text-right font-normal">{t("optNow")}</th><th className="text-right font-normal">{t("optOptimized")}</th></tr></thead>
           <tbody>
             {([
-              ["kpiRevenuePerVisitor", (s: api.RunSummary) => (s.revenue_per_visitor ?? 0).toFixed(0)],
+              ["kpiRevenuePerVisitor", (s: api.RunSummary) => formatMoney(s.revenue_per_visitor ?? 0, code)],
               ["kpiConversion", (s: api.RunSummary) => formatPercent(s.conversion_rate ?? 0, 1)],
               ["kpiUnitsPerBuyer", (s: api.RunSummary) => (s.avg_units_per_buyer ?? 0).toFixed(2)],
               ["dashImpulseShare", (s: api.RunSummary) => formatPercent(s.impulse_revenue_share ?? 0, 1)],
@@ -425,17 +430,19 @@ function JobView({ projectId, view, onClose, onRestart }: { projectId: string; v
 }
 
 
-function JudgeView({ report, result, status, apply, onRestart }: {
+function JudgeView({ report, result, status, code, apply, onRestart }: {
   projectId: string;
   report: VLMJudgeReport;
   result: api.OptimizeResult;
   status: api.OptimizationStatus;
+  code: string;
   apply: { mutate: () => void; isPending: boolean; error: unknown };
   onRestart: () => void;
 }) {
   const { locale, t } = useI18n();
   const winner = report.candidates.find((c) => c.winner);
-  const minimize = status.spec.objective === "walking_distance";
+  const objective = status.spec.objective;
+  const minimize = objective === "walking_distance";
   const gain = minimize ? result.baseline_score - result.best_score : result.best_score - result.baseline_score;
   const improved = winner && winner.label !== "baseline" && gain > 0;
   const sure = minimize ? winner?.delta_ci_high != null && winner.delta_ci_high < 0
@@ -446,7 +453,7 @@ function JudgeView({ report, result, status, apply, onRestart }: {
       <div className={cn("rounded-xl border p-3", improved && sure ? "tone-good" : improved ? "tone-warn" : "bg-muted/30")}>
         <div className="flex items-center gap-2 font-medium">
           <Eye className="size-4" />
-          {improved ? t("optPrefer", { candidate: winner!.label, improvement: improvementText(winner!.relative_improvement, gain, result.baseline_score, locale) }) : t("optKept")}
+          {improved ? t("optPrefer", { candidate: winner!.label, improvement: improvementText(winner!.relative_improvement, gain, result.baseline_score, objective, code, locale) }) : t("optKept")}
           {winner?.prob_better != null && improved && <span className="font-normal text-muted-foreground">{t("optProbBetter", { prob: formatPercent(winner.prob_better, 0) })}</span>}
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
@@ -471,10 +478,10 @@ function JudgeView({ report, result, status, apply, onRestart }: {
           {report.candidates.map((c) => (
             <tr key={c.label} className={cn("border-t", c.winner && "font-semibold")}>
               <td className="py-1.5">{c.label === "baseline" ? t("optCurrentLayout") : t("optCandidateLabel", { label: c.label })}{c.winner ? " ★" : ""}</td>
-              <td className="text-right tabular-nums">{c.surrogate_score.toFixed(1)} <span className="text-muted-foreground">#{c.surrogate_rank}</span></td>
-              <td className="text-right tabular-nums">{c.vlm_score != null ? c.vlm_score.toFixed(1) : "—"} <span className="text-muted-foreground">{c.vlm_rank != null ? `#${c.vlm_rank}` : ""}</span></td>
+              <td className="text-right tabular-nums">{scoreText(objective, c.surrogate_score, code)} <span className="text-muted-foreground">#{c.surrogate_rank}</span></td>
+              <td className="text-right tabular-nums">{c.vlm_score != null ? scoreText(objective, c.vlm_score, code) : "—"} <span className="text-muted-foreground">{c.vlm_rank != null ? `#${c.vlm_rank}` : ""}</span></td>
               <td className="text-right tabular-nums">
-                {c.label === "baseline" || c.delta_mean == null ? "—" : `${c.delta_mean >= 0 ? "+" : ""}${c.delta_mean.toFixed(1)} (${c.delta_ci_low?.toFixed(1)} … ${c.delta_ci_high?.toFixed(1)})`}
+                {c.label === "baseline" || c.delta_mean == null ? "—" : `${signedScore(objective, c.delta_mean, code, locale)} (${c.delta_ci_low != null ? signedScore(objective, c.delta_ci_low, code, locale) : "—"} … ${c.delta_ci_high != null ? signedScore(objective, c.delta_ci_high, code, locale) : "—"})`}
               </td>
               <td className="text-right tabular-nums">{c.prob_better != null && c.label !== "baseline" ? formatPercent(c.prob_better, 0) : "—"}</td>
             </tr>
@@ -517,7 +524,20 @@ function JudgeView({ report, result, status, apply, onRestart }: {
   );
 }
 
-function improvementText(relative: number | null | undefined, gain: number, baseline: number, locale: Locale): string {
-  if (baseline === 0) return translate(locale, "optAbsoluteChange", { gain: `${gain >= 0 ? "+" : ""}${gain.toFixed(2)}` });
-  return relative == null ? "—" : `${relative >= 0 ? "+" : ""}${(relative * 100).toFixed(1)} %`;
+/** An objective's value in its own unit: money for revenue goals (minor units), a share for conversion, else a number. */
+function scoreText(objective: OptimizeObjective, value: number, code: string): string {
+  if (objective === "revenue_per_visitor" || objective === "total_revenue" || objective === "impulse_revenue") return formatMoney(value, code);
+  if (objective === "conversion_rate") return formatPercent(value);
+  return value.toFixed(objective === "units_per_visitor" ? 2 : 1);
+}
+
+/** A difference in the objective's unit, signed; a conversion difference reads in percentage points. */
+function signedScore(objective: OptimizeObjective, value: number, code: string, locale: Locale): string {
+  const text = objective === "conversion_rate" ? formatPercent(value).replace("%", translate(locale, "cmpPoints")) : scoreText(objective, value, code);
+  return value > 0 ? `+${text}` : text;
+}
+
+function improvementText(relative: number | null | undefined, gain: number, baseline: number, objective: OptimizeObjective, code: string, locale: Locale): string {
+  if (baseline === 0) return translate(locale, "optAbsoluteChange", { gain: signedScore(objective, gain, code, locale) });
+  return relative == null ? "—" : `${relative >= 0 ? "+" : ""}${formatPercent(relative)}`;
 }

@@ -30,7 +30,7 @@ from .errors import AppError, job_failure
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
 from .scenarios import get_preset
-from .simulation import with_engine_model
+from .simulation import with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import personas_path, read_setup, read_state
 from .town import require_town
@@ -141,8 +141,7 @@ def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: 
         "currency": currency,
         "scenario": None if scenario is None or scenario.id == "baseline" else scenario,
     })
-    if request.model:
-        run_config = with_engine_model(run_config, request.model)
+    run_config = with_vision_default(run_config, request.model)
     try:
         ensure_resolvable(run_config)
     except ValueError as e:

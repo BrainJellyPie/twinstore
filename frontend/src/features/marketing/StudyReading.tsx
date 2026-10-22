@@ -155,7 +155,7 @@ function ThemeRow({ theme, groups, totals }: { theme: ReasonTheme; groups: strin
     <li>
       <div className="flex items-baseline justify-between gap-3 text-sm">
         <span className="font-medium">{theme.label}</span>
-        <span className="num shrink-0 text-xs text-muted-foreground">{theme.count} · {Math.round(theme.share * 100)} %</span>
+        <span className="num shrink-0 text-xs text-muted-foreground">{theme.count} · {Math.round(theme.share * 100)}%</span>
       </div>
       {split ? (
         <div className="mt-1 space-y-0.5">
@@ -166,7 +166,7 @@ function ThemeRow({ theme, groups, totals }: { theme: ReasonTheme; groups: strin
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/[0.06]">
                   <div className={cn("h-full rounded-full", GROUP_TONE[i] ?? "bg-foreground/30")} style={{ width: `${share * 100}%` }} />
                 </div>
-                <span className="num w-9 text-right text-[0.68rem] text-muted-foreground">{Math.round(share * 100)} %</span>
+                <span className="num w-9 text-right text-[0.68rem] text-muted-foreground">{Math.round(share * 100)}%</span>
               </div>
             );
           })}

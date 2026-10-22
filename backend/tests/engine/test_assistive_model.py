@@ -3,7 +3,7 @@ model has none; simulation runs never fall back."""
 
 import pytest
 
-from store_emulator.application.providers import assistive_model, text_model_fallback
+from store_emulator.application.providers import assistive_model, ensure_resolvable, text_model_fallback
 from store_emulator.domain.config import LLMConfig
 
 KEYS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "DASHSCOPE_API_KEY", "OPENROUTER_API_KEY")
@@ -87,6 +87,47 @@ def test_the_engine_list_says_when_a_default_model_has_no_key(keys, monkeypatch)
         keys("ANTHROPIC_API_KEY")
         llm = {e["engine_type"]: e for e in client.get("/api/engines").json()}["pattern_intent_impulse"]
         assert llm["model_ready"] is True and llm["suggested_model"] == ""
+        # With a cloud key, vision shoppers use that provider's vision model, whether or not the local model is up.
+        from store_emulator.application import local_vlm
+        monkeypatch.setattr(local_vlm, "server_answers", lambda base: False)
+        vision = {e["engine_type"]: e for e in client.get("/api/engines").json()}["vlm_glance"]
+        assert vision["model"] == "anthropic:claude-haiku-5-5" and vision["model_ready"] is True
+        # With no key at all, it is the model on this computer: ready only when its server answers.
+        for name in KEYS:
+            monkeypatch.delenv(name, raising=False)
+        vision = {e["engine_type"]: e for e in client.get("/api/engines").json()}["vlm_glance"]
+        assert vision["model"] == "openai/local-vlm" and vision["model_ready"] is False
+        monkeypatch.setattr(local_vlm, "server_answers", lambda base: True)
+        assert {e["engine_type"]: e for e in client.get("/api/engines").json()}["vlm_glance"]["model_ready"] is True
+
+
+def test_a_vision_run_without_a_model_uses_the_connected_cloud_provider(keys, monkeypatch):
+    """With a key in Settings, vision shoppers ran on the local model anyway and failed when it was not running."""
+    from store_emulator.application import local_vlm
+    from store_emulator.application.simulation import RunOptions, apply_options
+    from store_emulator.domain.config import EngineType, SimulationConfig
+
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: False)
+    keys("GEMINI_API_KEY")
+    run = apply_options(SimulationConfig(), RunOptions(engine_type=EngineType.VLM_GLANCE))
+    assert run.llm_for(EngineType.VLM_GLANCE).model.startswith("gemini:")
+    ensure_resolvable(run)   # no local server needed
+    chosen = apply_options(SimulationConfig(), RunOptions(engine_type=EngineType.VLM_GLANCE, model="openai:gpt-6-luna"))
+    assert chosen.llm_for(EngineType.VLM_GLANCE).model == "openai:gpt-6-luna"   # a model picked for the run wins
+
+
+def test_a_run_on_the_local_model_when_it_is_turned_off_says_so(monkeypatch):
+    from store_emulator.application import local_vlm, providers
+
+    class _Off:
+        def status(self):
+            return local_vlm.LocalVLMStatus(state="disabled", message="turned off by TWINSTORE_LOCAL_VLM")
+
+    monkeypatch.setattr(local_vlm, "manager", lambda: _Off())
+    monkeypatch.setattr(local_vlm, "server_answers", lambda base: False)
+    with pytest.raises(ValueError, match=r"turned off \(TWINSTORE_LOCAL_VLM\)\. Add an API key") as raised:
+        providers.ensure_local_ready("http://127.0.0.1:8081/v1")
+    assert "Start it in Settings" not in str(raised.value)
 
 
 def test_prompt_listings_put_products_the_question_names_first_and_share_the_rest():

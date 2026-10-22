@@ -31,7 +31,7 @@ import type { MessageKey } from "@/shared/i18n/messages";
 
 import { LiftChart } from "./charts";
 import { usePackages } from "./hooks";
-import { AGE_GROUPS as AGES, personaLabel } from "./labels";
+import { AGE_GROUPS as AGES, personaLabel } from "@/shared/i18n/personaLabels";
 import { toMinor } from "./products";
 import { StudyReading } from "./StudyReading";
 
@@ -272,7 +272,7 @@ const METRIC: Record<string, MessageKey> = { pick: "mkMetricPick", noticed: "mkM
 export function ShelfTestReportView({ projectId, report: r }: { projectId: string; report: Report }) {
   const { t } = useI18n();
   const pick = r.comparisons.find((c) => c.metric === "pick");
-  const pctf = (v: number) => `${(v * 100).toFixed(0)} %`;
+  const pctf = (v: number) => `${(v * 100).toFixed(0)}%`;
   const pp = (v: number) => t("studioPt", { value: `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)}` });
   const why = r.choices.filter((c) => c.arm === "test" && c.pick_sku === r.target_sku && c.why).slice(0, 8);
   const verdict = pick ? (pick.ci_low > 0 ? "more" : pick.ci_high < 0 ? "fewer" : null) : null;

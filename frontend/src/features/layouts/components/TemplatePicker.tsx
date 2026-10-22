@@ -1,15 +1,16 @@
-import { weekdayLong } from "@/shared/i18n/timeFormat";
 import { starterCategoryLabel } from "@/shared/i18n/catalogCategories";
 import { Check, ChevronDown, X } from "lucide-react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { useI18n } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { storeTypeLabel, templateName } from "@/shared/i18n/storeLabels";
+import { weekdayLong } from "@/shared/i18n/timeFormat";
 import { rackDiningSeats } from "@/shared/utils/dining";
 import { cloneElement, useId, useRef, useState, type ReactElement } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { INTERIOR_DESIGNS } from "@/features/store-viewer/realistic/designThemes";
+import type { StoreDesign } from "@/shared/types/domain";
 import * as api from "@/shared/api/client";
 import { cn } from "@/shared/utils/cn";
 import { searchText } from "@/shared/utils/searchText";
@@ -22,10 +23,11 @@ import { CompareFloorPlans } from "./CompareFloorPlans";
 import { WeeklyHoursEditor } from "./WeeklyHoursEditor";
 import { formatWeeklyHours } from "../weeklyHours";
 import { InteriorColorControls } from "./InteriorColorControls";
+import { cellsText, designLabel, priorityLabels, SEATING_LABELS, STYLE_LABELS } from "../optionLabels";
 import { resolveAssortmentSettings, type AssortmentSettings } from "../assortmentSettings";
 
 const controlClass = "w-full rounded-md border bg-background px-2 py-1.5 text-xs";
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7];
 
 export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurrency, onApplyDesignToAll, onApplyCurrencyToAll, onApplyHoursToAll, onApplySizeToAll, onApplyPriorityToAll, onApplyAssortmentToAll, sharedAssortment = false, sharedDesign, sharedCurrency, sharedHours = false, sharedSize = false, showOperatingHours = true, defaultCustomizationOpen = true }: {
   value: TemplateChoice;
@@ -61,6 +63,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
   const validSeed = Number.isSafeInteger(value.seed);
   const seedText = seedDraft && Object.is(seedDraft.seed, value.seed) ? seedDraft.text : validSeed ? String(value.seed) : "";
   const priority = LAYOUT_PRIORITIES.find((choice) => choice.id === priorityId) ?? LAYOUT_PRIORITIES[0]!;
+  const priorityText = priorityLabels(priority, t);
   const templatesQuery = useQuery({
     queryKey: ["store-templates"], queryFn: ({ signal }) => api.getStoreTemplates(signal), staleTime: Infinity,
   });
@@ -212,7 +215,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
         <div className="grid gap-3 sm:grid-cols-[170px_minmax(0,1fr)]">
           <div className="space-y-1.5">
             {preview.isSuccess && validTemplateChoice(value) ? <>
-              <FloorPlanPreview store={preview.data} areas={value.reserved_areas ?? []} />
+              <FloorPlanPreview store={preview.data} areas={value.reserved_areas ?? []} name={templateName(value.templateId, preview.data.name, locale)} />
               <CompareFloorPlans store={preview.data} areas={value.reserved_areas ?? []} templateId={value.templateId} currency={value.currency} />
               <p className="text-xs text-muted-foreground">{t("templatePreviewSize", { width: preview.data.grid_size[0], height: preview.data.grid_size[1],
                 displays: preview.data.racks.filter((r) => r.slots.length).length,
@@ -234,16 +237,16 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
               <Field label={t("depthCells")}><input type="number" className={controlClass} min={6} max={40} step={1} placeholder={String(selected?.grid[1] ?? 10)} value={value.height ?? ""} onChange={(e) => update({ height: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
               {onApplySizeToAll && <div className="col-span-2 space-y-1 text-xs">
                 <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50" disabled={!floorSize || sharedSize}
-                  onClick={() => { if (floorSize) onApplySizeToAll(floorSize); }}>{floorSize && sharedSize ? "Size used on all floors" : "Apply size to all floors"}</button>
+                  onClick={() => { if (floorSize) onApplySizeToAll(floorSize); }}>{t(floorSize && sharedSize ? "laySizeAllFloors" : "layApplySizeAllFloors")}</button>
                 <p className="text-muted-foreground">{floorSize
-                  ? `Applies ${floorSize.width}×${floorSize.height} cells to every floor and opens the floor review. Check that seating, counters and reserved areas still fit.`
-                  : "Enter a valid width and depth before applying the size to every floor."}</p>
+                  ? t("layApplySizeHint", { width: floorSize.width, height: floorSize.height })
+                  : t("layApplySizeInvalid")}</p>
               </div>}
               <div className="col-span-2 space-y-1"><Field label={t("priceCurrency")}><select className={controlClass} value={value.currency} onChange={(e) => update({ currency: e.target.value })}>
                 <option value="USD">USD · $</option><option value="KRW">KRW · ₩</option><option value="JPY">JPY · ¥</option>
               </select></Field>
                 {onApplyCurrencyToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={sharedCurrency === value.currency}
-                  onClick={() => onApplyCurrencyToAll(value.currency)}>{sharedCurrency === value.currency ? "Currency used on all floors" : "Apply currency to all floors"}</button>}
+                  onClick={() => onApplyCurrencyToAll(value.currency)}>{t(sharedCurrency === value.currency ? "layCurrencyAllFloors" : "layApplyCurrencyAllFloors")}</button>}
               </div>
             </div>
             <button type="button" className="flex w-full items-center justify-between gap-2 rounded-md border p-2 text-left text-xs font-medium hover:bg-muted"
@@ -262,154 +265,152 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
                 if (imported) onTemplateSelected?.(imported);
               }} />
             <details className="space-y-2 rounded border p-2 text-xs">
-              <summary className="cursor-pointer">Apply a layout priority</summary>
-              <Field label="Layout priority"><select className={controlClass} value={priority.id} onChange={(event) => setPriorityId(event.target.value)}>
-                {LAYOUT_PRIORITIES.map((choice) => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
+              <summary className="cursor-pointer">{t("layApplyPriorityTitle")}</summary>
+              <Field label={t("layPriority")}><select className={controlClass} value={priority.id} onChange={(event) => setPriorityId(event.target.value)}>
+                {LAYOUT_PRIORITIES.map((choice) => <option key={choice.id} value={choice.id}>{priorityLabels(choice, t).name}</option>)}
               </select></Field>
-              <p>{priority.description}</p>
-              <p className="text-muted-foreground">Apply these settings to this floor, then review the preview. Dimensions, product settings, design, operating hours and reserved areas stay as set. Space limits still apply.</p>
+              <p>{priorityText.description}</p>
+              <p className="text-muted-foreground">{t("layPriorityHint")}</p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => onChange(applyLayoutPriority(value, priority))}>Apply priority</button>
+                <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => onChange(applyLayoutPriority(value, priority))}>{t("layApplyPriority")}</button>
                 {onApplyPriorityToAll && <button type="button" className="rounded border px-2 py-1 hover:bg-muted"
-                  onClick={() => onApplyPriorityToAll(priority)}>Apply priority to all floors</button>}
+                  onClick={() => onApplyPriorityToAll(priority)}>{t("layApplyPriorityAllFloors")}</button>}
               </div>
-              {onApplyPriorityToAll && <p className="text-muted-foreground">Applying to all floors opens their review. Each floor keeps its own dimensions, entrance, products, design, hours and reserved areas; entrance-side counters follow that floor's entrance wall.</p>}
+              {onApplyPriorityToAll && <p className="text-muted-foreground">{t("layApplyPriorityAllHint")}</p>}
             </details>
             <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-              <div className="space-y-1"><Field label="Layout pattern"><select className={controlClass} value={value.style ?? ""} onChange={(e) => update({ style: (e.target.value || null) as TemplateChoice["style"] })}>
-                <option value="">Format default</option>
-                {LAYOUT_STYLES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+              <div className="space-y-1"><Field label={t("layPattern")}><select className={controlClass} value={value.style ?? ""} onChange={(e) => update({ style: (e.target.value || null) as TemplateChoice["style"] })}>
+                <option value="">{t("layFormatDefault")}</option>
+                {LAYOUT_STYLES.map(([id]) => <option key={id} value={id}>{t(STYLE_LABELS[id])}</option>)}
               </select></Field>
-              {!value.style && selected && <p className="text-[11px] text-muted-foreground">Default pattern: {LAYOUT_STYLES.find(([id]) => id === selected.default_style)?.[1]}</p>}
+              {!value.style && selected && <p className="text-[11px] text-muted-foreground">{t("layDefaultPattern", { pattern: t(STYLE_LABELS[selected.default_style]) })}</p>}
               </div>
-              <Field label="Display density"><select className={controlClass} value={value.density ?? "balanced"} onChange={(e) => update({ density: e.target.value as TemplateChoice["density"] })}>
-                <option value="spacious">Spacious aisles</option><option value="balanced">Balanced</option><option value="dense">High capacity</option>
+              <Field label={t("layDensity")}><select className={controlClass} value={value.density ?? "balanced"} onChange={(e) => update({ density: e.target.value as TemplateChoice["density"] })}>
+                <option value="spacious">{t("layDensitySpacious")}</option><option value="balanced">{t("layDensityBalanced")}</option><option value="dense">{t("layDensityDense")}</option>
               </select></Field>
-              <Field label="Interior shelf direction"><select className={controlClass} value={value.shelf_direction ?? "horizontal"}
+              <Field label={t("layShelfDirection")}><select className={controlClass} value={value.shelf_direction ?? "horizontal"}
                 disabled={(value.style ?? selected?.default_style) === "perimeter"}
                 onChange={(e) => update({ shelf_direction: e.target.value as TemplateChoice["shelf_direction"] })}>
-                <option value="horizontal">Left to right</option><option value="vertical">Front to back</option>
+                <option value="horizontal">{t("layDirectionHorizontal")}</option><option value="vertical">{t("layDirectionVertical")}</option>
               </select></Field>
-              <Field label="Interior aisle gap"><select className={controlClass} value={value.aisle_width ?? ""}
+              <Field label={t("layAisleGap")}><select className={controlClass} value={value.aisle_width ?? ""}
                 disabled={(value.style ?? selected?.default_style) === "perimeter"}
                 onChange={(e) => update({ aisle_width: e.target.value === "" ? null : Number(e.target.value) })}>
-                <option value="">Density default ({densityGap} {densityGap === 1 ? "cell" : "cells"})</option>
-                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} {n === 1 ? "cell" : "cells"}</option>)}
+                <option value="">{t("layDensityDefault", { cells: cellsText(densityGap, t) })}</option>
+                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{cellsText(n, t)}</option>)}
               </select></Field>
               </div>
-              {(value.style ?? selected?.default_style) === "cross" && <p className="col-span-2 text-[11px] text-muted-foreground">Central cross aisles stay clear of shelves and tables. The aisle gap sets both path widths and can reduce seating capacity.</p>}
-              {(value.style ?? selected?.default_style) === "plaza" && <p className="col-span-2 text-[11px] text-muted-foreground">The central plaza stays clear of shelves and tables. Its width and depth each use one third of the interior, rounded down to whole cells with a 2-cell minimum. Aisle gaps control the surrounding rows; seating must fit outside the plaza.</p>}
-              <div className="col-span-2 space-y-1"><Field label="Maximum shelf run"><select className={controlClass} value={value.max_shelf_run ?? ""}
+              {(value.style ?? selected?.default_style) === "cross" && <p className="col-span-2 text-[11px] text-muted-foreground">{t("layCrossHint")}</p>}
+              {(value.style ?? selected?.default_style) === "plaza" && <p className="col-span-2 text-[11px] text-muted-foreground">{t("layPlazaHint")}</p>}
+              <div className="col-span-2 space-y-1"><Field label={t("layMaxShelfRun")}><select className={controlClass} value={value.max_shelf_run ?? ""}
                 disabled={(value.style ?? selected?.default_style) === "perimeter"}
                 onChange={(e) => update({ max_shelf_run: e.target.value === "" ? null : Number(e.target.value) })}>
-                <option value="">Density default ({densityRun} cells)</option>
-                {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n} display {n === 1 ? "cell" : "cells"}</option>)}
+                <option value="">{t("layDensityDefault", { cells: cellsText(densityRun, t) })}</option>
+                {Array.from({ length: 8 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{t(n === 1 ? "layDisplayCellOne" : "layDisplayCellMany", { count: n })}</option>)}
               </select></Field>
-                <p className="text-[10px] text-muted-foreground">Maximum adjacent display cells before a cross aisle. Patterns and reserved areas may shorten each run.</p>
+                <p className="text-[10px] text-muted-foreground">{t("layMaxShelfRunHint")}</p>
               </div>
-              <Field label="Entrance wall"><select className={controlClass} value={value.gate_wall ?? "front"} onChange={(e) => update({ gate_wall: e.target.value as TemplateChoice["gate_wall"] })}>
-                <option value="front">Front wall</option><option value="back">Back wall</option><option value="left">Left wall</option><option value="right">Right wall</option>
+              <Field label={t("layEntranceWall")}><select className={controlClass} value={value.gate_wall ?? "front"} onChange={(e) => update({ gate_wall: e.target.value as TemplateChoice["gate_wall"] })}>
+                <option value="front">{t("layWallFront")}</option><option value="back">{t("layWallBack")}</option><option value="left">{t("layWallLeft")}</option><option value="right">{t("layWallRight")}</option>
               </select></Field>
-              <Field label="Entrance position"><select className={controlClass} value={value.entrance ?? "left"} onChange={(e) => update({ entrance: e.target.value as TemplateChoice["entrance"] })}>
-                <option value="left">{sideGates ? "Near back" : "Left"}</option><option value="center">Center</option><option value="right">{sideGates ? "Near front" : "Right"}</option>
+              <Field label={t("layEntrancePosition")}><select className={controlClass} value={value.entrance ?? "left"} onChange={(e) => update({ entrance: e.target.value as TemplateChoice["entrance"] })}>
+                <option value="left">{t(sideGates ? "layNearBack" : "layLeft")}</option><option value="center">{t("layCenter")}</option><option value="right">{t(sideGates ? "layNearFront" : "layRight")}</option>
               </select></Field>
-              <Field label="Exit position"><select className={controlClass} value={value.exit_position ?? "shared"} onChange={(e) => update({ exit_position: e.target.value as TemplateChoice["exit_position"], ...(e.target.value === "shared" ? { exit_wall: null } : {}) })}>
-                <option value="shared">Share entrance</option><option value="left">{sideExit ? "Near back" : "Left"}</option><option value="center">Center</option><option value="right">{sideExit ? "Near front" : "Right"}</option>
+              <Field label={t("layExitPosition")}><select className={controlClass} value={value.exit_position ?? "shared"} onChange={(e) => update({ exit_position: e.target.value as TemplateChoice["exit_position"], ...(e.target.value === "shared" ? { exit_wall: null } : {}) })}>
+                <option value="shared">{t("layShareEntrance")}</option><option value="left">{t(sideExit ? "layNearBack" : "layLeft")}</option><option value="center">{t("layCenter")}</option><option value="right">{t(sideExit ? "layNearFront" : "layRight")}</option>
               </select></Field>
-              <Field label="Exit wall"><select className={controlClass} value={sharedExit ? "" : value.exit_wall ?? ""} disabled={sharedExit}
+              <Field label={t("layExitWall")}><select className={controlClass} value={sharedExit ? "" : value.exit_wall ?? ""} disabled={sharedExit}
                 onChange={(e) => update({ exit_wall: e.target.value === "" ? null : e.target.value as TemplateChoice["exit_wall"] })}>
-                <option value="">Entrance wall</option><option value="front">Front wall</option><option value="back">Back wall</option><option value="left">Left wall</option><option value="right">Right wall</option>
+                <option value="">{t("layEntranceWall")}</option><option value="front">{t("layWallFront")}</option><option value="back">{t("layWallBack")}</option><option value="left">{t("layWallLeft")}</option><option value="right">{t("layWallRight")}</option>
               </select></Field>
-              <p className="col-span-2 text-[10px] text-muted-foreground">Choose a separate exit position to place it on another wall. Shared gates follow the entrance. Back and side gates stay one cell away from corners; center uses the wall midpoint.</p>
-              <div className="col-span-2 sm:col-span-1"><Field label="Checkout counters"><select className={controlClass} value={value.checkouts ?? ""} onChange={(e) => update({ checkouts: e.target.value === "" ? null : Number(e.target.value) })}>
-                <option value="">Format default ({selected?.default_checkouts ?? 1}, sized to fit)</option>
+              <p className="col-span-2 text-[10px] text-muted-foreground">{t("layExitHint")}</p>
+              <div className="col-span-2 sm:col-span-1"><Field label={t("layCheckoutCounters")}><select className={controlClass} value={value.checkouts ?? ""} onChange={(e) => update({ checkouts: e.target.value === "" ? null : Number(e.target.value) })}>
+                <option value="">{t("layCheckoutsDefault", { count: selected?.default_checkouts ?? 1 })}</option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
               </select></Field></div>
-              <Field label="Checkout wall"><select className={controlClass} value={value.checkout_wall ?? "front"}
+              <Field label={t("layCheckoutWall")}><select className={controlClass} value={value.checkout_wall ?? "front"}
                 onChange={(e) => update({ checkout_wall: e.target.value as TemplateChoice["checkout_wall"] })}>
-                <option value="front">Front wall</option><option value="back">Back wall</option>
-                <option value="left">Left wall</option><option value="right">Right wall</option>
+                <option value="front">{t("layWallFront")}</option><option value="back">{t("layWallBack")}</option>
+                <option value="left">{t("layWallLeft")}</option><option value="right">{t("layWallRight")}</option>
               </select></Field>
-              <div className="col-span-2 sm:col-span-1"><Field label="Checkout placement"><select className={controlClass} value={value.checkout_placement ?? "auto"}
+              <div className="col-span-2 sm:col-span-1"><Field label={t("layCheckoutPlacement")}><select className={controlClass} value={value.checkout_placement ?? "auto"}
                 onChange={(e) => update({ checkout_placement: e.target.value as TemplateChoice["checkout_placement"] })}>
-                <option value="auto">Format default{selected?.default_checkout_placement === "near_entrance" ? " (near entrance)" : selected?.default_checkout_placement === "away_from_entrance" ? " (away from entrance)" : " (wall order)"}</option><option value="near_entrance">Near the entrance</option>
-                <option value="away_from_entrance">Away from the entrance</option>
+                <option value="auto">{t("layFormatDefaultWith", { value: t(selected?.default_checkout_placement === "near_entrance" ? "layDefaultNearEntrance" : selected?.default_checkout_placement === "away_from_entrance" ? "layDefaultAwayFromEntrance" : "layDefaultWallOrder") })}</option><option value="near_entrance">{t("layNearTheEntrance")}</option>
+                <option value="away_from_entrance">{t("layAwayFromTheEntrance")}</option>
               </select></Field></div>
-              <Field label="Space beside counters"><select className={controlClass} value={value.checkout_clearance ?? 0}
+              <Field label={t("layCounterSpace")}><select className={controlClass} value={value.checkout_clearance ?? 0}
                 onChange={(event) => update({ checkout_clearance: Number(event.target.value) })}>
-                <option value={0}>0 · Adjacent</option><option value={1}>1 cell</option><option value={2}>2 cells</option><option value={3}>3 cells</option>
+                <option value={0}>{t("layCounterAdjacent")}</option>{[1, 2, 3].map((n) => <option key={n} value={n}>{cellsText(n, t)}</option>)}
               </select></Field>
-              <p className="col-span-2 text-[10px] text-muted-foreground">Leave 0–3 cells beside each counter along its wall. These cells stay clear of stock; other wall displays use the remaining space. Format-default counter counts adapt to fit; explicit counts must fit.</p>
-              <div className="col-span-2 space-y-1 sm:col-span-1"><Field label="Interior design (Realistic view)"><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
-                <option value="">Format default</option>
-                {Object.entries(INTERIOR_DESIGNS).map(([id, palette]) => <option key={id} value={id}>{palette.label}</option>)}
+              <p className="col-span-2 text-[10px] text-muted-foreground">{t("layCounterSpaceHint")}</p>
+              <div className="col-span-2 space-y-1 sm:col-span-1"><Field label={t("layInteriorDesignRealistic")}><select className={controlClass} value={value.design_theme ?? ""} onChange={(e) => update({ design_theme: (e.target.value || null) as TemplateChoice["design_theme"] })}>
+                <option value="">{t("layFormatDefault")}</option>
+                {(Object.keys(INTERIOR_DESIGNS) as StoreDesign[]).map((id) => <option key={id} value={id}>{designLabel(id, t)}</option>)}
               </select></Field>
-                {!value.design_theme && selected && <p className="text-[11px] text-muted-foreground">Default design: {INTERIOR_DESIGNS[selected.default_design].label}</p>}
+                {!value.design_theme && selected && <p className="text-[11px] text-muted-foreground">{t("layDefaultDesign", { design: designLabel(selected.default_design, t) })}</p>}
                 {onApplyDesignToAll && <button type="button" className="text-left text-[10px] underline disabled:opacity-50" disabled={!activeDesign || sharedDesign === activeDesign}
-                  onClick={() => { if (activeDesign) onApplyDesignToAll(activeDesign, value.design_colors ?? null); }}>{activeDesign && sharedDesign === activeDesign ? "Design used on all floors" : "Apply design to all floors"}</button>}
+                  onClick={() => { if (activeDesign) onApplyDesignToAll(activeDesign, value.design_colors ?? null); }}>{t(activeDesign && sharedDesign === activeDesign ? "layDesignAllFloors" : "layApplyDesignAllFloors")}</button>}
               </div>
-              <Field label="Shelf design"><select className={controlClass} value={value.fixture_design ?? "mixed"} onChange={(e) => update({ fixture_design: e.target.value as TemplateChoice["fixture_design"] })}>
-                <option value="mixed">Mixed displays</option><option value="a">Open rack A</option><option value="b">Open rack B</option><option value="c">Wall-end rack C</option>
+              <Field label={t("layShelfDesign")}><select className={controlClass} value={value.fixture_design ?? "mixed"} onChange={(e) => update({ fixture_design: e.target.value as TemplateChoice["fixture_design"] })}>
+                <option value="mixed">{t("layMixedDisplays")}</option><option value="a">{t("rackEditOpenA")}</option><option value="b">{t("rackEditOpenB")}</option><option value="c">{t("layWallEndRackC")}</option>
               </select></Field>
-              <div className="space-y-1"><Field label={tableMix ? "Dining tables (mixed sizes)" : `Dining tables (${value.dining_seats ?? 4} seats each)`}><input type="number" min={0} max={48} step={1} className={controlClass}
-                disabled={!!tableMix} placeholder={`Format default (${selected?.default_dining_tables ?? 0})`} value={tableMix ? tableCount : value.dining_tables ?? ""}
+              <div className="space-y-1"><Field label={tableMix ? t("layDiningTablesMixed") : t("layDiningTablesSeats", { seats: value.dining_seats ?? 4 })}><input type="number" min={0} max={48} step={1} className={controlClass}
+                disabled={!!tableMix} placeholder={t("layFormatDefaultWith", { value: selected?.default_dining_tables ?? 0 })} value={tableMix ? tableCount : value.dining_tables ?? ""}
                 onChange={(e) => update({ dining_tables: e.target.value === "" ? null : Number(e.target.value) })} /></Field>
-                <p className="text-[10px] text-muted-foreground">{tableMix ? "Total from the mixed table counts below." : "0–48 tables; blank uses the format default, sized to fit."}</p>
+                <p className="text-[10px] text-muted-foreground">{t(tableMix ? "layTablesFromMix" : "layTablesHint")}</p>
               </div>
-              <div className="space-y-1"><Field label="Seats per table"><select className={controlClass} value={value.dining_seats ?? 4}
+              <div className="space-y-1"><Field label={t("laySeatsPerTable")}><select className={controlClass} value={value.dining_seats ?? 4}
                 disabled={!!tableMix || tableCount === 0}
                 onChange={(e) => update({ dining_seats: Number(e.target.value) as 2 | 4 | 6 })}>
-                <option value={2}>2 seats</option><option value={4}>4 seats</option><option value={6}>6 seats</option>
-              </select></Field><p className="text-[10px] text-muted-foreground">{tableMix ? "Choose each size in Mixed table sizes below." : `${value.table_rotation === 90 ? `2×${(value.dining_seats ?? 4) / 2}` : `${(value.dining_seats ?? 4) / 2}×2`} cells, including chairs.`}</p></div>
-              <Field label="Table rotation"><select className={controlClass} value={value.table_rotation ?? 0}
+                {[2, 4, 6].map((n) => <option key={n} value={n}>{t("laySeats", { count: n })}</option>)}
+              </select></Field><p className="text-[10px] text-muted-foreground">{tableMix ? t("layChooseSizesBelow") : t("layTableCells", { size: value.table_rotation === 90 ? `2×${(value.dining_seats ?? 4) / 2}` : `${(value.dining_seats ?? 4) / 2}×2` })}</p></div>
+              <Field label={t("layTableRotation")}><select className={controlClass} value={value.table_rotation ?? 0}
                 disabled={tableCount === 0}
                 onChange={(e) => update({ table_rotation: Number(e.target.value) as 0 | 90 })}>
                 <option value={0}>0°</option><option value={90}>90°</option>
               </select></Field>
-              <div className="col-span-2 sm:col-span-1"><Field label="Seating starts near"><select className={controlClass} value={value.seating_zone ?? "auto"}
+              <div className="col-span-2 sm:col-span-1"><Field label={t("laySeatingStartsNear")}><select className={controlClass} value={value.seating_zone ?? "auto"}
                 disabled={tableCount === 0}
                 onChange={(e) => update({ seating_zone: e.target.value as TemplateChoice["seating_zone"] })}>
-                <option value="auto">Format default{selected?.default_seating_zone && selected.default_seating_zone !== "auto" ? ` (${selected.default_seating_zone})` : ""}</option><option value="front">Front edge</option>
-                <option value="back">Back wall</option><option value="left">Left side</option>
-                <option value="right">Right side</option><option value="center">Center</option>
-                <option value="near_entrance">Entrance</option><option value="away_from_entrance">Farthest area</option>
+                <option value="auto">{selected?.default_seating_zone && selected.default_seating_zone !== "auto" ? t("layFormatDefaultWith", { value: t(SEATING_LABELS[selected.default_seating_zone]).toLocaleLowerCase(locale) }) : t("layFormatDefault")}</option>
+                {(Object.keys(SEATING_LABELS) as (keyof typeof SEATING_LABELS)[]).map((zone) => <option key={zone} value={zone}>{t(SEATING_LABELS[zone])}</option>)}
               </select></Field>
-                {(value.seating_zone === "near_entrance" || value.seating_zone === "away_from_entrance") && <p className="text-[10px] text-muted-foreground">Follows the entrance wall and position. Larger table counts spread into the remaining floor.</p>}
+                {(value.seating_zone === "near_entrance" || value.seating_zone === "away_from_entrance") && <p className="text-[10px] text-muted-foreground">{t("laySeatingFollowsEntrance")}</p>}
               </div>
-              <div className="col-span-2 sm:col-span-1"><Field label="Space around dining tables"><select className={controlClass} value={value.table_clearance ?? 1}
+              <div className="col-span-2 sm:col-span-1"><Field label={t("laySpaceAroundTables")}><select className={controlClass} value={value.table_clearance ?? 1}
                 disabled={tableCount === 0}
                 onChange={(e) => update({ table_clearance: Number(e.target.value) })}>
-                <option value={1}>1 cell · Standard</option><option value={2}>2 cells · More room</option><option value={3}>3 cells · Open seating</option>
+                <option value={1}>{t("layClearanceStandard")}</option><option value={2}>{t("layClearanceMore")}</option><option value={3}>{t("layClearanceOpen")}</option>
               </select></Field></div>
               <div className="col-span-2 space-y-2 rounded border p-2 text-xs">
                 <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-                  {([["table_clearance_x", "Left–right table gap"], ["table_clearance_y", "Back–front table gap"]] as const).map(([key, label]) =>
-                    <Field key={key} label={label}><select className={controlClass} value={value[key] ?? ""} disabled={tableCount === 0}
+                  {([["table_clearance_x", "layGapLeftRight"], ["table_clearance_y", "layGapBackFront"]] as const).map(([key, label]) =>
+                    <Field key={key} label={t(label)}><select className={controlClass} value={value[key] ?? ""} disabled={tableCount === 0}
                       onChange={(event) => update({ [key]: event.target.value === "" ? null : Number(event.target.value) })}>
-                      <option value="">Shared</option>
-                      {[1, 2, 3, 4].map((gap) => <option key={gap} value={gap}>{gap} {gap === 1 ? "cell" : "cells"}</option>)}
+                      <option value="">{t("layGapShared")}</option>
+                      {[1, 2, 3, 4].map((gap) => <option key={gap} value={gap}>{cellsText(gap, t)}</option>)}
                     </select></Field>)}
                 </div>
-                <p className="text-muted-foreground">Current gaps (cells): {value.table_clearance_x ?? value.table_clearance ?? 1} left–right · {value.table_clearance_y ?? value.table_clearance ?? 1} back–front. Shared uses the setting above. Directions follow the floor even when tables rotate.</p>
+                <p className="text-muted-foreground">{t("layCurrentGaps", { x: value.table_clearance_x ?? value.table_clearance ?? 1, y: value.table_clearance_y ?? value.table_clearance ?? 1 })}</p>
                 {(value.table_clearance_x != null || value.table_clearance_y != null) && <button type="button" className="underline"
-                  onClick={() => update({ table_clearance_x: null, table_clearance_y: null })}>Use shared table gaps</button>}
+                  onClick={() => update({ table_clearance_x: null, table_clearance_y: null })}>{t("layUseSharedGaps")}</button>}
               </div>
             </div>
             <InteriorColorControls design={activeDesign} colors={value.design_colors} onChange={(design_colors) => update({ design_colors })} />
             <details className="space-y-2 rounded border p-2 text-xs">
-              <summary className="cursor-pointer">Mixed table sizes{tableMix ? ` · ${tableCount} tables` : ""}</summary>
+              <summary className="cursor-pointer">{tableMix ? t("layMixedTableSizesCount", { count: tableCount }) : t("layMixedTableSizes")}</summary>
               <label className="flex items-center gap-2"><input type="checkbox" checked={!!tableMix}
                 onChange={(event) => event.target.checked
                   ? updateTableMix({ [value.dining_seats === 2 ? "two_seat" : value.dining_seats === 6 ? "six_seat" : "four_seat"]: mixStartingCount })
-                  : update({ table_mix: null, dining_tables: tableCount })} />Use mixed table sizes</label>
+                  : update({ table_mix: null, dining_tables: tableCount })} />{t("layUseMixedTableSizes")}</label>
               {tableMix && <div className="grid grid-cols-3 gap-2">
-                {([["two_seat", "2-seat tables"], ["four_seat", "4-seat tables"], ["six_seat", "6-seat tables"]] as const).map(([key, label]) => <Field key={key} label={label}>
+                {([["two_seat", 2], ["four_seat", 4], ["six_seat", 6]] as const).map(([key, seats]) => <Field key={key} label={t("laySeatTables", { seats })}>
                   <input type="number" min={0} max={48} step={1} className={controlClass} value={tableMix[key]}
                     onChange={(event) => updateTableMix({ [key]: Number(event.target.value) })} />
                 </Field>)}
               </div>}
-              <p className="text-muted-foreground">Set up to 48 tables in total. Larger groups are placed first, then smaller groups fill available space. Rotation, seating area and clearance apply to every size. If the mix cannot fit, adjust the counts or layout.</p>
+              <p className="text-muted-foreground">{t("layMixedTablesHint")}</p>
             </details>
             <div className="space-y-1 text-xs">
               <Field label={t("templateSeed")}><input type="text" className={controlClass} value={seedText}
@@ -427,7 +428,7 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
             <div className="flex flex-wrap gap-2 text-xs">
               <button type="button" className="rounded border px-2 py-1 hover:bg-muted disabled:opacity-50" disabled={!validSeed || value.seed === Number.MAX_SAFE_INTEGER}
                 onClick={() => update({ seed: value.seed + 1 })}>{validSeed ? t("templateShuffleSeed", { seed: String(value.seed) }) : t("templateShuffle")}</button>
-              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, table_clearance_x: null, table_clearance_y: null, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, category_product_limits: {}, open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, seed: 0 })}>Reset layout options</button>
+              <button type="button" className="rounded border px-2 py-1 hover:bg-muted" onClick={() => update({ style: null, width: null, height: null, density: "balanced", aisle_width: null, max_shelf_run: null, shelf_direction: "horizontal", entrance: "left", gate_wall: "front", exit_position: "shared", exit_wall: null, checkouts: null, checkout_placement: "auto", checkout_wall: "front", checkout_clearance: 0, fixture_design: "mixed", design_theme: null, design_colors: null, dining_tables: null, dining_seats: 4, table_mix: null, table_rotation: 0, table_clearance: 1, table_clearance_x: null, table_clearance_y: null, seating_zone: "auto", reserved_areas: [], excluded_categories: [], products_per_category: null, category_product_limits: {}, open_hour: null, close_hour: null, closed_days: null, weekly_hours: null, seed: 0 })}>{t("layResetOptions")}</button>
             </div>
             </div>
           </div>
@@ -523,8 +524,8 @@ export function TemplatePicker({ value, onChange, onTemplateSelected, budgetCurr
           grid={[value.width ?? selected?.grid[0] ?? 12, value.height ?? selected?.grid[1] ?? 10]} entrance={value.entrance} gateWall={value.gate_wall} />
         <LayoutBriefField value={value} onApply={(patch) => update(patch)} onBriefChange={(requirements) => update({ requirements })} />
         </div>
-        {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">This project uses {budgetCurrency} shopper budgets. You can preview and save this {value.currency} layout; to simulate it, create a new {value.currency} project or use {budgetCurrency} here. Existing budgets are not converted.</p>}
-        {customizationOpen && <p className="text-[11px] text-muted-foreground">Grid sizes use cells, not measured floor area. Shelf direction and aisle gap apply to interior rows and cross-aisles; wall spacing and seating clearance are separate. Apply the brief to set the options it asks for; the brief is also saved with the layout, and what the options cannot express is listed rather than built. Seating starts in the chosen area and extends into neighboring space as the count increases. Dining tables reserve floor space and show seating; table service and dining time are not simulated.</p>}
+        {budgetCurrency && value.currency !== budgetCurrency && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">{t("layBudgetCurrencyMismatch", { budget: budgetCurrency, currency: value.currency })}</p>}
+        {customizationOpen && <p className="text-[11px] text-muted-foreground">{t("layCustomizationFootnote")}</p>}
       </>}
     </div>
   );

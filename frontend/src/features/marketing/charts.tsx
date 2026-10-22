@@ -131,7 +131,7 @@ export function LikertBar({ counts }: { counts: number[] }) {
             {share >= 0.09 && <span className="num">{Math.round(share * 100)}</span>}
             {hover === i && (
               <span className="pointer-events-none absolute bottom-full z-10 mb-1 whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-[0.7rem] font-normal text-popover-foreground shadow-lg">
-                <b className="num">{Math.round(share * 100)} %</b>{t("mkLikertAnswered", { value: i + 1, count: c })}
+                <b className="num">{Math.round(share * 100)}%</b>{t("mkLikertAnswered", { value: i + 1, count: c })}
               </span>
             )}
           </div>
@@ -156,7 +156,7 @@ export function ShareBars({ rows }: { rows: { label: string; share: number; lo: 
               <div className="absolute top-1/2 h-px w-full -translate-y-1/2 bg-foreground/55" />
             </div>
           </div>
-          <span className="num text-right text-sm"><b>{(r.share * 100).toFixed(0)} %</b> <span className="text-xs text-muted-foreground">{(r.lo * 100).toFixed(0)}–{(r.hi * 100).toFixed(0)}</span></span>
+          <span className="num text-right text-sm"><b>{(r.share * 100).toFixed(0)}%</b> <span className="text-xs text-muted-foreground">{(r.lo * 100).toFixed(0)}–{(r.hi * 100).toFixed(0)}</span></span>
         </div>
       ))}
     </div>
@@ -199,7 +199,7 @@ export function VanWestendorpChart({ price, currency }: { price: PriceRange; cur
           }} formatter={(value, name) => (
             <div className="flex w-full items-center justify-between gap-3">
               <span className="text-muted-foreground">{vwConfig[name as keyof typeof vwConfig]?.label ?? String(name)}</span>
-              <span className="num font-semibold">{Math.round(Number(value))} %</span>
+              <span className="num font-semibold">{Math.round(Number(value))}%</span>
             </div>
           )} />} />
         <ChartLegend itemSorter={null} content={<ChartLegendContent />} />

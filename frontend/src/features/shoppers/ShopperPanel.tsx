@@ -17,6 +17,7 @@ import { useAssistStore } from "@/stores/assistStore";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { useI18n } from "@/shared/i18n/i18n";
+import { ageBadge, personaLabel } from "@/shared/i18n/personaLabels";
 import type { MessageKey } from "@/shared/i18n/messages";
 import { engineLabel } from "@/features/runs/labels";
 
@@ -162,7 +163,7 @@ function RunShoppers({ projectId, runId, customers, personas, store }: ShopperPa
             <button type="button" onClick={() => { setSelected(r.id); setHighlight(r.id); }}
               onPointerEnter={() => setHighlight(r.id)} onPointerLeave={() => setHighlight(null)}
               className="flex w-full items-center gap-2.5 rounded-xl border bg-card/60 px-2.5 py-2 text-left transition-colors hover:border-primary/50">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-foreground/[0.06] text-[0.68rem] font-semibold">{r.age || "–"}</span>
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-foreground/[0.06] text-[0.68rem] font-semibold">{r.age ? ageBadge(r.age, t) : "–"}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[0.8rem] font-medium">{r.name}</span>
                 <span className="num block text-[0.68rem] text-muted-foreground">{t(r.stops === 1 ? "shopperTripOne" : "shopperTripMany", { day: r.day, time: r.arrival, minutes: oneDecimal.format(r.minutes), stops: r.stops })}</span>
@@ -221,12 +222,12 @@ function ShopperDetail({ projectId, runId, store, sid, customers, backLabel, onB
       </div>
       <div className="rounded-2xl border bg-card p-3">
         <div className="text-sm font-semibold">{p.identity}</div>
-        <div className="text-[0.72rem] text-muted-foreground">{p.age_group} · {p.gender} · {t("shopperDay", { day: j.day })} · {j.arrival_time.slice(0, 5)}–{j.leave_time.slice(0, 5)} · {engineLabel(j.engine_type, locale)}</div>
+        <div className="text-[0.72rem] text-muted-foreground">{personaLabel(p.age_group, t)} · {personaLabel(p.gender, t)} · {t("shopperDay", { day: j.day })} · {j.arrival_time.slice(0, 5)}–{j.leave_time.slice(0, 5)} · {engineLabel(j.engine_type, locale)}</div>
         <p className="mt-1.5 line-clamp-3 text-[0.76rem] text-muted-foreground">{p.description}</p>
         <div className="mt-2 grid grid-cols-3 gap-1.5 text-center">
           <Fact label={t("shopperCameFor")} value={p.purpose || p.intent || "–"} />
           <Fact label={t("shopperBudget")} value={p.budget_max ? `${formatMoney(p.budget_min, j.currency)}–${formatMoney(p.budget_max, j.currency)}` : "–"} />
-          <Fact label={t("shopperSpent")} value={`${formatMoney(j.total_spent, j.currency)} · ${j.units}`} />
+          <Fact label={t("shopperSpent")} value={`${formatMoney(j.total_spent, j.currency)} · ${t(j.units === 1 ? "shopperItemsOne" : "shopperItemsMany", { count: j.units })}`} />
         </div>
       </div>
       <JourneyMap journey={j} store={store} active={active} onHover={setHover} />
