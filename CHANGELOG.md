@@ -30,6 +30,8 @@
 - Step 2 can reuse library product photos in a reviewed, separate layout: bulk SKU links,
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
+## 0.4.5 — every visitor a day, with a warning before long or costly work
+
 ### Every visitor a day, with a warning before long or costly work
 - A new store's customers were capped at 100 a day (20 with the local model), so a convenience store the model
   expected to see 600 people a day was simulated with 100 (or 20) a day — 140 for a week on the local model. The model
@@ -39,7 +41,8 @@
   cost about $1 or more (LiteLLM's price list), the preparing screen asks first: write them all (about how long and
   how much), a quick sample (100 a day, 20 on the local model) whose twins fill the rest of each day, or cancel.
   Writing shows its progress ("1,240 of 3,640"). Each request writes customers across hours, so a quiet hour's one or
-  two customers no longer cost a request of their own (a 20-a-day sample took 14 requests a day, now 4).
+  two customers no longer cost a request of their own (a 20-a-day sample took 14 requests a day, now 4), and a day
+  scaled to a number has exactly that many (a 20-a-day sample over quiet hours came to 14).
 - The run dialog shows the shoppers a run will simulate (a day × days), the model requests, and about how long and how
   much; above the same limits it asks before starting. A project's last finished run with the same engine and model is
   what the estimate is measured on.
