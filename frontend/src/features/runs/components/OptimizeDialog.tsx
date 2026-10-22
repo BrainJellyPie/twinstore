@@ -12,6 +12,7 @@ import type { JudgeSpec, OptimizeAlgorithm, OptimizeObjective, OptimizeScope, Op
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
+import { useQueuedStart } from "@/shared/hooks/useQueuedStart";
 import { queryKeys } from "@/shared/queries/keys";
 import { useSimulationStore } from "@/stores/simulationStore";
 import { formatPercent } from "@/shared/utils/money";
@@ -41,18 +42,24 @@ const DEFAULT_SPEC: OptimizeSpec = {
 };
 
 export function OptimizeDialog({
-  open, onOpenChange, projectId, setupId,
-}: { open: boolean; onOpenChange: (o: boolean) => void; projectId: string; setupId: string }) {
+  open, onOpenChange, projectId, setupId, goalPrefill,
+}: {
+  open: boolean; onOpenChange: (o: boolean) => void; projectId: string; setupId: string;
+  /** A goal routed from the command palette: filled in and read once. */
+  goalPrefill?: { id: number; text: string };
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[720px]">
-        <OptimizeBody projectId={projectId} setupId={setupId} onClose={() => onOpenChange(false)} />
+        <OptimizeBody projectId={projectId} setupId={setupId} goalPrefill={goalPrefill} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setupId: string; onClose: () => void }) {
+function OptimizeBody({ projectId, setupId, goalPrefill, onClose }: {
+  projectId: string; setupId: string; goalPrefill?: { id: number; text: string }; onClose: () => void;
+}) {
   const [spec, setSpec] = useState<OptimizeSpec>(DEFAULT_SPEC);
   const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -95,6 +102,17 @@ function OptimizeBody({ projectId, setupId, onClose }: { projectId: string; setu
       }));
     },
   });
+  const queueGoal = useQueuedStart(reader.mutate);
+  const [goalHandled, setGoalHandled] = useState<number | null>(null);
+  const prefillId = goalPrefill?.id;
+  const prefillText = goalPrefill?.text;
+  useEffect(() => {
+    if (prefillId === undefined || !prefillText || goalHandled === prefillId) return;
+    setGoalHandled(prefillId);
+    const text = Array.from(prefillText).slice(0, 600).join("");
+    setGoal(text);
+    queueGoal(text);
+  }, [prefillId, prefillText, goalHandled, queueGoal]);
   const goalShown = goalRead?.text === goal ? goalRead.goal : null;
   const goalLength = Array.from(goal.trim()).length;
 

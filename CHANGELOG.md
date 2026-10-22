@@ -11,7 +11,8 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   shelves, at most 6 changes"): the text model sets the objective, what may change, the move limit, whether fridges
   stay on the walls, the shelves that stay locked (this layout's, by name; shown with **Unlock all**) and the
   smallest gain worth keeping. Limits out of range and unknown shelves are reported, not guessed. Nothing starts until
-  the user does. API: `POST /api/projects/{pid}/setups/{sid}/optimize/goal`.
+  the user does. The command palette sends "optimize the layout for more impulse sales" to a finished run's
+  optimizer with the goal filled in. API: `POST /api/projects/{pid}/setups/{sid}/optimize/goal`.
 
 ### A new store from one description
 - The create-store form starts with **Describe the store in your own words**: "a campus convenience store at the

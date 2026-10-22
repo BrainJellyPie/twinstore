@@ -38,6 +38,7 @@ it.each([
   ["run_question", "Why does the freezer sell so little?", "/projects/$pid"],
   ["layout_edit", "Put the cola at eye level now", "/projects/$pid"],
   ["find_shoppers", "Show me students who left empty-handed", "/projects/$pid"],
+  ["optimize", "Optimize the layout for more impulse sales", "/projects/$pid"],
 ] as const)("routes a typed request to %s and hands the words to that page", async (destination, text, to) => {
   vi.mocked(api.routeAssist).mockResolvedValue({ destination, reason: "" });
   useSimulationStore.getState().setActiveTab("settings");

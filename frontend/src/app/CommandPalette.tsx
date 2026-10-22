@@ -160,7 +160,7 @@ function PaletteBody({ onDone }: { onDone: () => void }) {
       if (route.destination === "layout_edit") setActiveTab("settings");
       if (route.destination === "find_shoppers") setActiveTab("shoppers");
       onDone();
-      const onFloor = route.destination === "run_question" || route.destination === "layout_edit" || route.destination === "find_shoppers";
+      const onFloor = ["run_question", "layout_edit", "find_shoppers", "optimize"].includes(route.destination);
       const to = route.destination === "area" ? "/town/$pid" : onFloor ? "/projects/$pid" : "/marketing/$pid";
       void navigate({ to, params: { pid } });
     } catch (e) {

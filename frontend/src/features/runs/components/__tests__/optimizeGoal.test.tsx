@@ -32,3 +32,15 @@ it("sets the objective, scope, move limit and locked shelves from a goal, then s
   expect(spec).toMatchObject({ objective: "impulse_revenue", scope: "both",
     constraints: { max_moves: 5, keep_fridges_on_walls: false, lock_rack_ids: ["r_till"], min_improvement: 0.02 } });
 });
+
+it("reads a goal routed from the command palette once", async () => {
+  vi.mocked(api.getScenarios).mockResolvedValue([]);
+  vi.mocked(api.readOptimizeGoal).mockResolvedValue({ objective: "conversion_rate", scope: "planogram", max_moves: null,
+    keep_fridges_on_walls: null, lock_rack_ids: [], locked: [], min_improvement: null, rationale: "Conversion first.", warnings: [] });
+  render(<QueryClientProvider client={new QueryClient()}>
+    <OptimizeDialog open onOpenChange={() => {}} projectId="p" setupId="s1" goalPrefill={{ id: 3, text: "Get more visitors to buy" }} />
+  </QueryClientProvider>);
+  expect(await screen.findByText(/Conversion first\./)).toBeTruthy();
+  expect(api.readOptimizeGoal).toHaveBeenCalledTimes(1);
+  expect((screen.getByLabelText("Optimization goal") as HTMLInputElement).value).toBe("Get more visitors to buy");
+});
