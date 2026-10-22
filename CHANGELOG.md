@@ -35,6 +35,10 @@
   building and miniature painting products, plus 32 photos and six-language category labels.
   The catalog now has 1,496 products in 131 categories with 448 bundled images.
 
+### Fixes
+- A tab left open across an update showed an error on the next screen it opened (its scripts belonged to the
+  previous version). It now reloads once into the new version.
+
 ## 0.4.8 — Safe updates, nothing downloaded or spent unasked, a larger starter catalog
 
 ### Safe updates
