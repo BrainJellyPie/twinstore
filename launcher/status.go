@@ -68,7 +68,8 @@ func (s *status) fail(id, msg string) {
 	s.mu.Unlock()
 }
 
-// finish marks every stage done (stages the app skipped, like a prebuilt interface, included).
+// finish marks every stage done (stages the app skipped, like a prebuilt interface, included) and clears an
+// earlier error, such as a slow start that answered after all.
 func (s *status) finish() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -77,7 +78,7 @@ func (s *status) finish() {
 			s.stages[i].State = "done"
 		}
 	}
-	s.ready = true
+	s.ready, s.err = true, ""
 }
 
 func (s *status) state(id string) string {

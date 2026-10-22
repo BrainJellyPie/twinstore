@@ -36,7 +36,6 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   Save/restore makes no model call. Browser storage limits and eviction still apply; see USAGE.md.
 - Routed concept/shelf drafts are consumed once so returning to their tabs does not repeat drafting.
 
-
 ### Find shoppers in words
 - The Shoppers tab of a run takes a description ("women in their 20s who stopped at the ice cream freezers but bought
   nothing after 3 pm"). The text model writes a filter (age and gender groups, words from the persona, bought
@@ -246,6 +245,14 @@ variables, storage keys, the Python package, the `parastore` CLI) keep working.
   display or export negative zero.
 
 ### Fixes
+- A slow first start no longer ends in an error. On a computer that scans every new file (Windows with Microsoft
+  Defender, for example) the first import of the server can take several minutes; the launcher gave up after three
+  and never showed the app even when the server answered later. It now keeps waiting while the server runs, says
+  after 90 seconds that a first start can take a while, shows an error after 15 minutes but still opens the app if
+  the server answers, and **Try again** restarts a server that never answered (it did nothing while one was running).
+- The launcher installs only what the app needs (`uv run --no-dev`: no pytest or pyright for users) and compiles the
+  packages while installing them (`UV_COMPILE_BYTECODE=1`), shown on the boot screen, so the server's first import
+  no longer compiles thousands of files one by one. The launcher's own health check ignores system proxies.
 - Realistic shoppers no longer crash the 3D view when React remounts them (development StrictMode): the
   per-shopper animation mixer is no longer uncached while its actions are still reused.
 - Vision shoppers' shelf glances are now spread over the shelves their route passes equally well: ties were ranked
