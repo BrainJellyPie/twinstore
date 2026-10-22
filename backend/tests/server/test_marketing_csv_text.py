@@ -45,10 +45,15 @@ def test_conjoint_csv_preserves_text_headers_options_and_none_rows(monkeypatch, 
     rows = list(csv.reader(io.StringIO(response.text.removeprefix("\ufeff"))))
     # Attribute labels are stripped by the request model; persona fields retain their original whitespace.
     label = expected if text == text.strip() else "'" + text.strip()
-    header = ['respondent', 'age_group', 'gender', 'task', 'option', label, 'Pack', *(['price'] if has_price else []), 'chosen']
+    # Prices are minor units: the unit columns come after the original ones, so those keep their positions.
+    money = ['currency', 'minor_per_major'] if has_price else []
+    header = ['respondent', 'age_group', 'gender', 'task', 'option', label, 'Pack', *(['price'] if has_price else []), 'chosen', *money]
     assert rows[0] == header
     assert len(rows) == 1 + 2 * (2 + int(none_option))
     assert all(len(row) == len(header) for row in rows)
+    if has_price:
+        assert all(row[-2:] == ['USD', '100'] for row in rows[1:])
+        rows = [row[:-2] for row in rows]
     for row in rows[1:]:
         assert row[:3] == [expected] * 3
         assert row[3] in ('1', '2') and row[-1] in ('0', '1')
@@ -89,4 +94,7 @@ def test_survey_csv_preserves_text_answers_and_numeric_zero(monkeypatch, text, e
         assert rows[0][field] == expected
     assert [rows[0][field] for field in ('purchase_intent_A', 'too_cheap', 'cheap', 'expensive', 'too_expensive', 'preferred')] == ['5', '0', '100', '200', '300', 'A']
     assert [rows[1][field] for field in ('purchase_intent_A', 'too_cheap', 'cheap', 'expensive', 'too_expensive', 'preferred', 'why', 'error')] == [''] * 8
+    # Van Westendorp prices are minor units; the unit columns come last so earlier columns keep their positions.
+    assert list(rows[0])[-3:] == ['error', 'currency', 'minor_per_major']
+    assert all((row['currency'], row['minor_per_major']) == ('USD', '100') for row in rows)
     assert report.model_dump() == before

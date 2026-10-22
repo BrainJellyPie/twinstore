@@ -85,13 +85,14 @@ from .errors import AppError, job_failure, model_failure
 from .currencies import project_currency, simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import answered_by, assistive_client, assistive_model, build_client, ensure_resolvable
-from .generation_async import visitors_per_day
+from .generation_async import visitors_per_day_coming
 from .shelf_lab import (
     _check_id,  # pyright: ignore[reportPrivateUsage]
     _load_store,  # pyright: ignore[reportPrivateUsage]
     _personas,  # pyright: ignore[reportPrivateUsage]
     package_path,
 )
+from .scenarios import scenario_shoppers
 from .simulation import with_engine_model
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import read_setup
@@ -187,9 +188,26 @@ def _minor_per_major(currency: str) -> int:
 
 # ── experiments ─────────────────────────────────────────────────────────────────
 
+def _model_calls(meta: dict[str, object]) -> tuple[int, int, str]:
+    """(failed calls, calls, first plan error) of one vision-shopper run, from its engine metadata: entrance plans
+    and shelf glances. The runner clears the engine's logs when a run starts, so they cover that run alone."""
+    planning = cast(dict[str, object], meta["planning"]) if isinstance(meta.get("planning"), dict) else {}
+    counts = [value if isinstance(value := source.get(key), int) else 0
+              for source, key in ((meta, "errors"), (planning, "plan_errors"), (meta, "glances"), (planning, "plans"))]
+    records = cast(list[dict[str, object]], meta.get("plan_records") or [])
+    first = next((str(r["error"]) for r in records if r.get("error")), "")
+    return counts[0] + counts[1], counts[2] + counts[3], first
+
+
 def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig) -> JobStatus:
     control = _load_store(pid, req.setup_id)
-    personas = _personas(pid)
+    everyone = _personas(pid)
+    # The simulator drops shoppers who arrive while the layout is closed: a panel drawn from everyone came out smaller
+    # than asked, with a note blaming failed shoppers.
+    personas = scenario_shoppers(config, control, everyone)
+    if not personas:
+        raise AppError("No shoppers come while this layout is open, so there is nobody to test on. "
+                       "Change the layout's opening hours.", 400)
     currency = simulation_currency(pid, control, config.currency)
     config = config.model_copy(update={"currency": currency})
     uris: dict[str, str] = {}
@@ -235,6 +253,18 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 model = req.model or run_config.llm_for(EngineType.VLM_GLANCE).model
             evaluator = LayoutEvaluator(run_config, panel, sample_cue, BEHAVIOR_PATTERNS, pathfinder,
                                         OptimizeObjective.REVENUE_PER_VISITOR, engine=engine)
+            calls: list[tuple[str, int, int]] = []   # per arm: (name, failed model calls, model calls)
+
+            def check_calls(arm: str) -> None:
+                # A vision shopper whose call fails decides by the rule-based fallback: with most calls failing the
+                # test would finish as if vision shoppers had shopped.
+                failed, total, first = _model_calls(evaluator.engine_metadata())
+                if total and failed * 2 > total:
+                    raise ValueError(
+                        f"The vision model failed on {failed} of {total} calls in {arm}{f' ({first[:200]})' if first else ''}, "
+                        "so the test was stopped: shoppers whose calls fail fall back to rule-based decisions. Check the "
+                        "model and its key in Settings → Model providers, or pick another model, and run the test again.")
+                calls.append((arm, failed, total))
 
             def progress(p: float, stage: str) -> None:
                 status.progress, status.stage = round(p, 3), stage
@@ -250,16 +280,28 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 write_json(_job_dir(pid, "experiment", status.job_id) / "paired-outcomes.json", snapshot.model_dump(mode="json"))
 
             control_result, results, winner = asyncio.run(run_experiment(
-                evaluator, control, built, panel, req.focus_skus, on_progress=progress, on_outcomes=retain_outcomes, seed=req.seed,
+                evaluator, control, built, panel, req.focus_skus, on_progress=progress, on_outcomes=retain_outcomes,
+                on_arm=check_calls if req.engine == "vlm" else None, seed=req.seed,
             ))
-            per_day, simulated_per_day = visitors_per_day(pid, personas)
+            per_day, simulated_per_day = visitors_per_day_coming(pid, everyone, personas)
             panel_size = control_result.customers if control_result.customers is not None else len(panel)
             notes = list(control_result.warnings)
+            if len(panel) < req.panel:
+                where = " while the layout is open" if len(personas) < len(everyone) else ""
+                notes.append(f"Only {len(panel)} shoppers come{where}, so every arm ran all of them instead of the {req.panel} asked for.")
             if panel_size < 100:
                 notes.append("Fewer than 100 shoppers per variant: differences under ~5 % are hard to tell from noise.")
+            if any(failed for _, failed, _ in calls):
+                notes.append("Some vision-model calls failed (" + ", ".join(f"{arm}: {failed} of {total}" for arm, failed, total in calls)
+                             + "). Those shoppers' entrance plans or shelf glances fell back to rule-based decisions, so where "
+                             "the failures differ between arms, their paired differences mix vision and rule decisions.")
             if req.engine == "rule" and any(c.kind == "price" and not c.keep_reference for v in req.variants for c in v.changes):
                 notes.append("Rule shoppers react to a price relative to the usual one (and to their budget); a new everyday price "
                              "resets that reference. Keep the current price as the reference, or use vision shoppers, to measure price response.")
+            if any(c.kind == "category_price" for v in req.variants for c in v.changes):
+                notes.append("Category price changes keep each product's old price as the one shoppers remember (a cut shows it "
+                             "on the tag as the was-price), so they measure the response right after the change; it may fade "
+                             "as shoppers get used to the new prices.")
             if req.engine == "rule" and any(c.kind == "promo" for v in req.variants for c in v.changes):
                 notes.append("The rule-based shoppers read promotion signs as a generic impulse boost; vision shoppers see the sign itself.")
             report = ExperimentReport(
@@ -267,7 +309,7 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 panel_size=panel_size, currency=currency, visitors_per_day=per_day,
                 simulated_visitors_per_day=simulated_per_day,
                 focus_skus=req.focus_skus, control=control_result, variants=results, winner=winner, notes=notes,
-                price_response=price_response(control_result, results),
+                price_response=price_response(control_result, results, {v.name: v.changes for v in req.variants}),
                 seconds=round(time.perf_counter() - t0, 1),
             )
             _finish(pid, status, report)
@@ -505,6 +547,10 @@ def survey_csv(pid: str, sid: str) -> str:
     if "open" in r.questions:
         header.append("why")
     header.append("error")
+    # Prices are in minor units (cents; won and yen have none): price / minor_per_major is the price in `currency`.
+    money = [r.currency, _minor_per_major(r.currency)] if "price_vw" in r.questions else []
+    if money:
+        header += ["currency", "minor_per_major"]
     w.writerow(header)
     for a in r.answers:
         row: list[object] = [a.respondent, a.age_group, a.gender]
@@ -519,7 +565,7 @@ def survey_csv(pid: str, sid: str) -> str:
         if "open" in r.questions:
             row.append(a.why)
         row.append(a.error)
-        w.writerow(_csv_cells(row))
+        w.writerow(_csv_cells([*row, *money]))
     return buf.getvalue()
 
 
@@ -730,8 +776,10 @@ def conjoint_csv(pid: str, cid: str) -> str:
     r = view.report
     buf = io.StringIO()
     w = csv.writer(buf)
+    # Prices are in minor units (cents; won and yen have none): price / minor_per_major is the price in `currency`.
+    money = [r.currency, _minor_per_major(r.currency)] if r.prices else []
     w.writerow(_csv_cells(["respondent", "age_group", "gender", "task", "option", *[a.name for a in r.attributes],
-                           *(["price"] if r.prices else []), "chosen"]))
+                           *(["price"] if r.prices else []), "chosen", *(["currency", "minor_per_major"] if money else [])]))
     for a in r.answers:
         if a.error:
             continue
@@ -739,8 +787,8 @@ def conjoint_csv(pid: str, cid: str) -> str:
             for o, profile in enumerate(task.profiles):
                 levels = [r.attributes[i].levels[profile[i]] for i in range(len(r.attributes))]
                 price = [r.prices[profile[len(r.attributes)]]] if r.prices else []
-                w.writerow(_csv_cells([a.respondent, a.age_group, a.gender, t, LETTERS[o], *levels, *price, int(task.choice == o)]))
+                w.writerow(_csv_cells([a.respondent, a.age_group, a.gender, t, LETTERS[o], *levels, *price, int(task.choice == o), *money]))
             if r.none_option:
                 w.writerow(_csv_cells([a.respondent, a.age_group, a.gender, t, "none", *([""] * len(r.attributes)),
-                                       *([""] if r.prices else []), int(task.choice is None)]))
+                                       *([""] if r.prices else []), int(task.choice is None), *money]))
     return buf.getvalue()

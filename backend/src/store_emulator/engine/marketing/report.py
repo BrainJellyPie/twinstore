@@ -120,13 +120,25 @@ def findings(r: ExperimentReport) -> Finding:
                    f"(this test had {r.panel_size}).")
     pr = r.price_response
     if pr and pr.best_price is not None:
-        kind = ("elastic: a price cut grows its revenue" if pr.elasticity < -1 else "inelastic: a price rise grows its revenue") \
-            if pr.elasticity is not None else ""
-        rec.append(f"Of the prices tested for {pr.name}, {money(pr.best_price, cur)} brings the most {pr.name} revenue per visitor"
-                   + (f"; its price elasticity across the arms is about {pr.elasticity:.2f} ({kind})." if kind else "."))
+        rec.append(_price_advice(pr, cur))
     if not rec:
         rec.append("Keep the control: none of the changes moved sales of the store or the tracked products.")
     return Finding(headline=headline, recommendation=rec)
+
+
+def _price_advice(pr: PriceResponse, cur: str) -> str:
+    """The best tested price, with the elasticity only where it tells the same story: elastic demand puts the most
+    revenue at the lowest price, inelastic demand at the highest."""
+    text = f"Of the prices tested for {pr.name}, {money(pr.best_price or 0, cur)} brings the most {pr.name} revenue per visitor"
+    e = pr.elasticity
+    if e is None:
+        return text + "."
+    if e < -1 and pr.best_price == pr.points[0].price:
+        return text + f"; its price elasticity across the arms is about {e:.2f} (elastic: a price cut grows its revenue)."
+    if -1 <= e <= 0 and pr.best_price == pr.points[-1].price:
+        return text + f"; its price elasticity across the arms is about {e:.2f} (inelastic: a price rise grows its revenue)."
+    return (text + f", but the price elasticity across the arms (about {e:.2f}) does not point to that price: "
+            "the arms do not follow one demand curve, so read both as within noise.")
 
 
 # ── model commentary (optional) ─────────────────────────────────────────────────
@@ -513,9 +525,15 @@ def survey_report_html(r: SurveyReport, board_jpeg: bytes | None = None, reading
         if len(rows) > 1:
             best = max(rows, key=lambda s: s.mean)
             second = sorted((s.mean for s in rows), reverse=True)[1]
-            clear = best.ci_low > max(s.ci_high for s in rows if s is not best)
-            leads.append(f"{name(best.stimulus)} leads on {_SCALE_LABEL[q].lower()} ({best.mean:.2f} vs {second:.2f} out of 5"
-                         f"{'' if clear else ', intervals overlap'}).")
+            label = _SCALE_LABEL[q].lower()
+            if round(best.mean, 2) == round(second, 2):
+                level = [name(s.stimulus) for s in rows if round(s.mean, 2) == round(best.mean, 2)]
+                leads.append(f"{', '.join(level[:-1])} and {level[-1]} are level on {label} ({best.mean:.2f} out of 5).")
+            elif best.ci_low > max(s.ci_high for s in rows if s is not best):
+                leads.append(f"{name(best.stimulus)} leads on {label} ({best.mean:.2f} vs {second:.2f} out of 5).")
+            else:
+                leads.append(f"No clear leader on {label}: {name(best.stimulus)} {best.mean:.2f} vs {second:.2f} out of 5, "
+                             "intervals overlap.")
         elif rows:
             leads.append(f"{_SCALE_LABEL[q]}: {rows[0].mean:.2f} out of 5, {rows[0].top2 * 100:.0f} % answer 4 or 5.")
     if r.preference:

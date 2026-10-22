@@ -60,7 +60,8 @@ from .capture import capture_image_path, capture_llm_config, get_capture
 from .currencies import project_currency, simulation_currency
 from .errors import AppError, job_failure, model_failure
 from .providers import assistive_client, assistive_vision_model
-from .generation_async import visitors_per_day
+from .generation_async import visitors_per_day_coming
+from .scenarios import scenario_shoppers
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import metadata_path, personas_path, read_setup
@@ -528,7 +529,12 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
     if result.currency != currency:
         raise AppError(f"Capture currency must match layout prices and project shopper budgets ({currency}); prices are not converted automatically.", 422)
     face = _face_of(store, req.rack_id, req.face)
-    personas = _personas(pid)
+    everyone = _personas(pid)
+    # Shoppers who arrive while the layout is closed are dropped by the simulator: the panel and the per-day money
+    # come from those who do come (the run estimate's shoppers a day), as in A/B tests.
+    personas = scenario_shoppers(config.model_copy(update={"scenario": None}), store, everyone)
+    if not personas:
+        raise AppError("No shoppers come while this layout is open; check its opening hours.", 400)
     status = _new_job(pid, cid, "audit")
 
     def run() -> None:
@@ -541,7 +547,7 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
             levels, findings = diff_face(rack, face, field, result.currency)
             expected = sum(lv.expected_facings for lv in levels)
             compliance = round(sum(lv.matched_facings for lv in levels) / expected, 4) if expected else 1.0
-            per_day, simulated_per_day = visitors_per_day(pid, personas)
+            per_day, simulated_per_day = visitors_per_day_coming(pid, everyone, personas)
             panel = select_personas(personas, req.panel, seed=req.seed)
             status.stage, status.progress = "simulating", 0.2
             _write_status(pid, status)

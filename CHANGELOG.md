@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased
+## 0.4.7 — Marketing studio results you can trust
+
+### Marketing studio results you can trust
+- A vision-shopper A/B test whose model calls failed finished "completed" with rule-shopper results labelled as
+  vision results. It now stops (after the control, before paying for the variants) when most calls fail, and notes
+  per-arm failures otherwise.
+- A/B tests and Shelf Lab audits drew shoppers who arrive while the layout is closed (dropped by the simulator,
+  then blamed as "failed") and scaled per-day money by everyone: with 12–15 opening hours a panel of 100 became 43
+  and "+$X a day" was 2.6× too high. Panels and per-day money now come from the shoppers who come, matching the run
+  estimate.
+- Moving a product onto a shelf side shoppers cannot reach silently took it out of the test; the move is now refused
+  with the reason, in A/B tests and in "edit in words".
+- A category price change looked free to rule shoppers ("Drink +50 %" won); in tests shoppers now compare with the
+  old price. Saved with "edit in words", the new price is the everyday price.
+- ".99 endings" always rounded up, so "−10 % and ending in .99" raised most prices; endings now round down (a rise
+  still rises), the applied text gives the actual average change, and a new category change starts at −10 % without
+  them.
+- The price-response curve no longer mixes in arms that also added a sign, moved products or changed a category.
+- Concept-test and conjoint CSVs say their currency and minor units; a tie reads "level", not a lead.
 
 - Add 96 home linen, dinnerware, food storage, pet grooming, hair accessory, woodcraft,
   ceramic craft and gift wrapping products, plus 32 photos. The catalog now has 1,400

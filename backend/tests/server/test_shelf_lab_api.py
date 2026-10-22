@@ -111,3 +111,25 @@ def test_edits_packages_and_audit(client):
 
     assert client.delete(f"/api/projects/{PID}/captures/{cid}/edits/{eid}").status_code == 204
     assert client.get(f"/api/projects/{PID}/captures/{cid}/edits/{eid}").status_code == 404
+
+
+def test_an_audit_panel_comes_while_the_layout_is_open(client):
+    """Shoppers arriving while the layout is closed were drawn into the panel (then dropped) and counted in the
+    visitors a day the money scales by; both now come from the shoppers who do come, as the run estimate counts them."""
+    from store_emulator.application.storage.io import write_json
+    from store_emulator.application.storage.setups import read_setup, setup_path
+
+    setup = read_setup(PID, SETUP)
+    setup["store"]["weekly_schedule"] = [{"day": d, "is_open": True, "open_hour": 12, "close_hour": 15} for d in range(1, 8)]
+    write_json(setup_path(PID, SETUP), setup)
+    estimate = client.post(f"/api/projects/{PID}/runs/estimate", json={"setup_id": SETUP, "engine_type": "rule_based"})
+    assert estimate.status_code == 200, estimate.text
+    cid, _ = _capture(client)
+    started = client.post(f"/api/projects/{PID}/captures/{cid}/audit",
+                          json={"setup_id": SETUP, "rack_id": DRINK_1, "panel": 40, "max_stockouts": 1})
+    assert started.status_code == 200, started.text
+    view = _wait_job(client, cid, started.json()["job_id"])
+    assert view["status"]["status"] == "completed", view["status"]["error"]
+    report = view["audit"]
+    assert report["panel_size"] == 40
+    assert report["simulated_visitors_per_day"] == pytest.approx(estimate.json()["per_day"], abs=1)
