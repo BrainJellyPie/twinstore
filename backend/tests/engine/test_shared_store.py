@@ -53,6 +53,37 @@ def _shopper(pid: str, arrival: str, buys: list[tuple[str, int]], *, pay: bool =
 _NO_LINE = dict(checkout_base_sec=1, checkout_item_sec=0, restock_every_min=None)
 
 
+@pytest.mark.parametrize("restock", [None, 5, 120])
+@pytest.mark.parametrize("substitute", [0.0, 1.0])
+def test_zero_stock_overrides_count_as_empty_from_opening_each_day(restock, substitute):
+    store = _store()
+    shoppers = [_shopper("mon", "10:00:00", [("chips", 1)], day=Weekday.MON),
+                _shopper("tue", "10:00:00", [("chips", 1)], day=Weekday.TUE)]
+    config = OperationsConfig(stock_overrides={"chips": 0}, substitute_share=substitute,
+                              restock_every_min=restock, checkout_base_sec=1, checkout_item_sec=0)
+    results, report = resolve_shared_store(store, shoppers, config, seed=1)
+    chips = next(s for s in report.stockouts if s.sku == "chips")
+    assert report.stockout_faces == 1 and report.shoppers_hit == 2
+    assert chips.first_out == "08:00:00" and chips.minutes_out == 2 * 14 * 60
+    assert chips.stock == 0 and chips.sold_units == 0
+    assert chips.lost_units == (0 if substitute else 2)
+    assert chips.substituted_units == (2 if substitute else 0)
+    assert [r.total_spent for r in results] == ([350, 350] if substitute else [0, 0])
+    assert check_buy_consistency(store, results) == []
+    assert all(r.total_spent == 300 for r in shoppers)
+
+
+def test_maximum_stock_override_stays_per_product_and_shelf_level():
+    store = _store()
+    store.racks[0].slots.append(store.racks[0].slots[0].model_copy(update={"level": 2}, deep=True))
+    results, report = resolve_shared_store(
+        store, [_shopper("p", "10:00:00", [("chips", 20_001)])],
+        OperationsConfig(stock_overrides={"chips": 10_000}, substitute_share=0, **_NO_LINE), seed=1)
+    chips = next(s for s in report.stockouts if s.sku == "chips")
+    assert chips.stock == chips.sold_units == 20_000
+    assert results[0].total_spent == 6_000_000 and report.lost_units == 1
+
+
 def test_what_one_shopper_takes_is_gone_for_the_next():
     shoppers = [_shopper(f"p{i}", f"10:0{i}:00", [("chips", 1)]) for i in range(3)]
     config = OperationsConfig(stock_per_facing=2, substitute_share=0.0, **_NO_LINE)

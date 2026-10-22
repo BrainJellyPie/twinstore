@@ -37,6 +37,26 @@
   assumptions to set from your own loyalty or survey data, not fitted values. API: `memory` on
   `POST /runs/{rid}/operations/replay` and `/plan`; no model call.
 
+### Catalog, photos, translations and fixes
+- Per-product stock (`stock_overrides`) may be 0: the product starts each day sold out, refills included, and counts
+  as out from opening. Values outside 0–10,000 are refused.
+- Add 64 everyday essentials, pantry, book, electronics, music, household and garden photos, reaching 960 local
+  images; with the dairy, prepared-meal, dessert, breakfast, coffee, baking, frozen-food, seafood and barista-tool
+  (896) and everyday-care, baby, hair, pet, plant-based food, snack, refreshment and car-care (832) photos, 35 more
+  catalog departments have a picture for every product in their stocked default maps.
+- Localize the descriptions of all 82 built-in store formats in Korean, Chinese, Japanese, Spanish and French,
+  including cross-language search; custom or updated server descriptions are kept. New non-English preset floor
+  names no longer repeat the level the interface already shows.
+- Keep one model-settings action after customer generation fails, with the local-model download/start control.
+
+### Fixes
+- Compare did not say when one run's shoppers shared the store (stock and tills, new in 0.4.8) and the other's had it
+  alone, as every run before 0.4.8 did, or when the two runs used different store operations: the difference
+  looked like the layout's. It now says so.
+- Compare's notes were always in English. They now follow the app's language.
+
+## 0.4.8 — Shoppers share one store, store operations; safe updates; nothing downloaded or spent unasked
+
 ### Try other stock and staffing on a finished run
 - **Store operations → Try other stock and staffing** replays a run's shoppers — the same people making the same
   choices — in a store run another way: units per shelf level, refills, tills open, patience, and tills hour by
@@ -51,8 +71,6 @@
   first served. API: `POST /runs/{rid}/operations/replay` and `/operations/plan`; shared-store runs keep their
   shoppers' visits as decided (`timeline_planned.json`) for this.
 - A replay copies only the events it changes; replaying a run is now about seven times faster.
-
-## 0.4.8 — Shoppers share one store; safe updates; nothing downloaded or spent unasked
 
 ### Shoppers share one store
 - Until now every simulated shopper had the store to themselves: endless stock on every shelf and no one else at the
@@ -187,6 +205,8 @@
   before/after preview, immutable photo copies, source revision checks and retry-safe saving.
 
 ### Fixes
+- On a computer without the Noto fonts (Linux with DejaVu only), the narrowest shelf views cut the price off a
+  tag ("#100…"), so a vision shopper could not see it. Tags now shrink a little further before cutting.
 - Keep the model-provider list available when a saved local address has malformed IPv6 syntax.
 - Reject malformed Origin headers with 403 instead of a server error.
 - Without internet access (or when LiteLLM's online price table could not be downloaded), the warning before a run

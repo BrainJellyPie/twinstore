@@ -11,7 +11,7 @@ class OperationsConfig(BaseModel):
     """How the shared store runs during the simulated day(s). Every shelf starts full each day."""
     # Units of each product on each shelf level that carries it, at opening.
     stock_per_facing: int = Field(default=12, ge=1, le=10_000)
-    # Units per shelf level for single products (SKU → units), overriding stock_per_facing.
+    # Units per shelf level for single products (SKU → units), overriding stock_per_facing; 0 starts sold out.
     stock_overrides: dict[str, int] = Field(default_factory=dict[str, int])
     # Staff fill every shelf back up this often during the day (minutes); None = only overnight.
     restock_every_min: int | None = Field(default=120, ge=5, le=1440)
@@ -52,8 +52,8 @@ class OperationsConfig(BaseModel):
     @field_validator("stock_overrides")
     @classmethod
     def _units(cls, overrides: dict[str, int]) -> dict[str, int]:
-        if any(not 1 <= units <= 10_000 for units in overrides.values()):
-            raise ValueError("stock_overrides are 1–10,000 units per shelf level")
+        if any(not 0 <= units <= 10_000 for units in overrides.values()):
+            raise ValueError("stock_overrides are 0–10,000 units per shelf level")
         return overrides
 
 

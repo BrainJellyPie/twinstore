@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { queryKeys } from "@/shared/queries/keys";
 import { CreateStoreWizard } from "@/features/setup/components/CreateStoreWizard";
+import { PreparingView } from "@/views/simulation/states/PreparingView";
 import { NeedsModel } from "../NeedsModel";
 import { modelAvailable } from "../useModelSetup";
 import { setupWithKey } from "./modelSetupWithKey";
@@ -36,6 +37,22 @@ it("asks for a key or the local model's download, and downloads only on the clic
   await show(noKey);
   expect(screen.getByTestId("needs-model").textContent).toContain("Writing customers needs a model");
   expect(screen.getByRole("link", { name: "Model settings" }).getAttribute("href")).toBe("/settings");
+  expect(api.startLocalModel).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Download local model (2 GB)" }));
+  await waitFor(() => expect(api.startLocalModel).toHaveBeenCalledOnce());
+});
+
+it("offers one settings action after customer generation fails and keeps local-model recovery", async () => {
+  const onOpenSettings = vi.fn();
+  vi.mocked(api.startLocalModel).mockResolvedValue({ ...noKey.local, state: "downloading" });
+  await show(noKey, <PreparingView
+    generation={{ phase: "failed", kind: "persona", currentGenId: "failed_customers", error: "No model key", retry: vi.fn(), retrying: false }}
+    contextKind="persona" projectName="Photo shop" layouts={[]} selectedSetupId="floor"
+    onLayoutSelect={vi.fn()} onBackToStores={vi.fn()} onOpenSettings={onOpenSettings} onAbandonProject={vi.fn()}
+  />);
+  expect(screen.queryByRole("link", { name: "Model settings" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Model settings" }));
+  expect(onOpenSettings).toHaveBeenCalledOnce();
   expect(api.startLocalModel).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Download local model (2 GB)" }));
   await waitFor(() => expect(api.startLocalModel).toHaveBeenCalledOnce());

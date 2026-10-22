@@ -205,3 +205,39 @@ it("keeps pharmacy and mobility photos out of food classification after renaming
   for (const index of [11, 12])
     expect(classifyProduct("Medicine", `/api/catalog-images/starter-46/${index}.webp`).category).toBe("drink");
 });
+
+it("separates care products and pet food from grocery photos after localized renaming", () => {
+  for (let index = 0; index < 16; index++) {
+    expect(classifyProduct("Milk", `/api/catalog-images/starter-49/${index}.webp`).category).toBe(index === 11 ? "drink" : "other");
+    expect(classifyProduct("Coffee", `/api/catalog-images/starter-50/${index}.webp`).category).toBe("other");
+  }
+  for (let index = 0; index < 7; index++)
+    expect(classifyProduct("Cookies", `/api/catalog-images/starter-51/${index}.webp`).category).toBe("other");
+  expect(classifyProduct("Medicine", "/api/catalog-images/starter-51/7.webp").category).toBe("drink");
+  expect(classifyProduct("Frozen Pizza", "/api/catalog-images/starter-51/8.webp").category).toBe("pantry");
+  for (let index = 8; index < 15; index++)
+    expect(classifyProduct("상품", `/api/catalog-images/starter-52/${index}.webp`).category).toBe("drink");
+  expect(classifyProduct("Ice Cream", "/api/catalog-images/starter-52/15.webp").category).toBe("other");
+});
+
+it("keeps frozen packs flat while distinguishing fresh seafood and empty coffee tools", () => {
+  for (let index = 5; index < 16; index++)
+    expect(classifyProduct("상품", `/api/catalog-images/starter-55/${index}.webp`)).toMatchObject({ category: "frozen", lieFlatInChest: true });
+  for (let index = 0; index < 10; index++)
+    expect(classifyProduct("Frozen Pizza", `/api/catalog-images/starter-56/${index}.webp`)).toMatchObject({ category: "pantry", lieFlatInChest: true });
+  for (let index = 10; index < 16; index++)
+    expect(classifyProduct("Coffee", `/api/catalog-images/starter-56/${index}.webp`).category).toBe("other");
+  for (const index of [9, 10, 11, 12, 13])
+    expect(classifyProduct("Milk Tea", `/api/catalog-images/starter-54/${index}.webp`).category).toBe("other");
+  expect(classifyProduct("Milk", "/api/catalog-images/starter-53/2.webp").category).toBe("pantry");
+});
+
+it("keeps household, book and garden photos distinct from food after renaming", () => {
+  for (const sheet of [59, 60]) for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Milk", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
+  for (let index = 8; index < 16; index++)
+    expect(classifyProduct("Cookies", `/api/catalog-images/starter-58/${index}.webp`).category).toBe("other");
+  expect(classifyProduct("Tea", "/api/catalog-images/starter-57/14.webp").category).toBe("other");
+  expect(classifyProduct("Hand warmer", "/api/catalog-images/starter-57/15.webp").category).toBe("drink");
+  expect(classifyProduct("Books", "/api/catalog-images/starter-58/2.webp").category).toBe("bakery");
+});

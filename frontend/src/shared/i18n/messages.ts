@@ -1,3 +1,4 @@
+import { templateDescriptionMessages } from "./templateDescriptionMessages";
 import { optionsFileMessages } from "./optionsFileMessages";
 import { templateStockHoursMessages } from "./templateStockHoursMessages";
 import { floorCompareMessages } from "./floorCompareMessages";
@@ -21,6 +22,7 @@ export type Locale = typeof LOCALES[number]["code"];
 
 // Columns follow LOCALES: English, Korean, Chinese, Japanese, Spanish, French.
 export const messages = {
+  ...templateDescriptionMessages,
   ...productMessages,
   ...optionsFileMessages,
   ...templateStockHoursMessages,
