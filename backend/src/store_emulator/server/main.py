@@ -3,6 +3,7 @@ import math
 import mimetypes
 import os
 import threading
+from os import PathLike
 from pathlib import Path
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -10,8 +11,9 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.types import Scope
 from fastapi.middleware.cors import CORSMiddleware
 
 from store_emulator.application.capture import recover_interrupted_captures
@@ -186,19 +188,34 @@ for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".
                     (".woff2", "font/woff2"), (".webp", "image/webp")):
     mimetypes.add_type(_type, _ext)
 
-_DIST = _frontend_dist()
-if _DIST is not None:
-    if (_DIST / "assets").is_dir():
-        app.mount("/assets", StaticFiles(directory=_DIST / "assets"), name="ui-assets")
+class _ImmutableAssets(StaticFiles):
+    """The built UI's scripts and styles: their names carry a hash of their content, so a name never changes meaning."""
 
-    @app.get("/{path:path}", include_in_schema=False)
-    async def web_ui(path: str) -> FileResponse:
+    def file_response(self, full_path: PathLike[str] | str, stat_result: os.stat_result, scope: Scope,
+                      status_code: int = 200) -> Response:
+        response = super().file_response(full_path, stat_result, scope, status_code)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
+def mount_web_ui(target: FastAPI, dist: Path) -> None:
+    """Serves the built UI from `dist`. Its page is asked for again on every visit, so a browser never keeps the last
+    version's page after an update (that page loads the last version's scripts, which the new one does not have: a
+    blank page or the old app); its hashed scripts and styles never change and are kept."""
+    if (dist / "assets").is_dir():
+        target.mount("/assets", _ImmutableAssets(directory=dist / "assets"), name="ui-assets")
+
+    @target.get("/{path:path}", include_in_schema=False)
+    async def web_ui(path: str) -> FileResponse:  # pyright: ignore[reportUnusedFunction]  (the decorator registers it)
         """Static files of the UI, and index.html for client-side routes (/projects/…, /settings)."""
         if path.startswith("api/") or path == "api":
             raise HTTPException(404, "not found")
-        dist = _DIST
-        assert dist is not None
         candidate = (dist / path).resolve()
-        if path and candidate.is_file() and dist in candidate.parents:
-            return FileResponse(candidate)
-        return FileResponse(dist / "index.html")
+        if path and candidate.is_file() and dist in candidate.parents and candidate.name != "index.html":
+            return FileResponse(candidate, headers={"Cache-Control": "no-cache"})
+        return FileResponse(dist / "index.html", headers={"Cache-Control": "no-cache"})
+
+
+_DIST = _frontend_dist()
+if _DIST is not None:
+    mount_web_ui(app, _DIST)
