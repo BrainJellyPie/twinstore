@@ -26,6 +26,7 @@ def _customer(pid: str, buys: list[tuple[str, int, int, str]], hour: str = "12")
             elapsed_sec=t, x=1, y=0, action=Action.BUY, duration=3, target_rack="A",
             product_sku=sku, product_name=sku, price=price, quantity=qty, origin=origin,
         ))
+    timeline.append(TimelineEvent(elapsed_sec=t + 3, x=4, y=2, action=Action.PAY, duration=1))
     timeline.append(TimelineEvent(elapsed_sec=t + 5, x=4, y=2, action=Action.EXIT))
     return CustomerResult(
         persona_id=pid, day=Weekday.MON, arrival_time=f"{hour}:00:00", timeline=timeline,

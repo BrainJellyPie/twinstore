@@ -8,6 +8,7 @@ over-buying, too-uniform baskets (variance compression) and wrong time profiles.
 
 import math
 from collections import Counter
+from datetime import time
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 from store_emulator.domain.analysis import FidelityMetric, FidelityReport
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.store import Store
+from store_emulator.domain.types import Action
 
 
 class PosLine(BaseModel):
@@ -103,16 +105,20 @@ def fidelity_report(
         if hour is not None:
             real_hours[hour] += 1
     if real_hours:
-        sim_hours = Counter(int(cr.arrival_time[:2]) for cr in results if cr.purchases)
+        transaction_hours = [_transaction_hour(cr) for cr in results if cr.purchases]
+        sim_hours = Counter(hour for hour in transaction_hours if hour is not None)
+        missing = sum(hour is None for hour in transaction_hours)
+        if missing:
+            notes.append(f"{missing} simulated buying visits have no usable recorded checkout time and were excluded from hourly scoring.")
         hours = list(range(24))
         metrics.append(FidelityMetric(
             name="hourly_js_similarity",
-            value=_round(1.0 - js_divergence(
+            value=None if missing and not sim_hours else _round(1.0 - js_divergence(
                 np.array([sim_hours.get(h, 0) for h in hours], dtype=float),
                 np.array([real_hours.get(h, 0) for h in hours], dtype=float),
             )),
             better="higher",
-            description="1 − JSD of paying-transaction share per hour",
+            description="1 − JSD of paying-transaction share per hour, using simulated checkout completion",
         ))
     else:
         notes.append("POS has no hour information; hourly profile not evaluated.")
@@ -124,6 +130,21 @@ def fidelity_report(
         metrics=metrics,
         notes=notes,
     )
+
+
+def _transaction_hour(customer: CustomerResult) -> int | None:
+    completed = max((event.elapsed_sec + event.duration for event in customer.timeline
+                     if event.action == Action.PAY and event.elapsed_sec >= 0 and event.duration >= 0), default=None)
+    if completed is None:
+        return None
+    try:
+        arrival = time.fromisoformat(customer.arrival_time)
+    except ValueError:
+        return None
+    if arrival.tzinfo is not None:
+        return None
+    seconds = arrival.hour * 3600 + arrival.minute * 60 + arrival.second + completed
+    return seconds // 3600 % 24
 
 
 def js_divergence(p: np.ndarray, q: np.ndarray) -> float:

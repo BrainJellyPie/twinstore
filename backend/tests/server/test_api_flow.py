@@ -2,6 +2,7 @@
 
 import json
 import time
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -74,9 +75,14 @@ def test_preview_runs_compare_export_and_fidelity(client, tmp_path):
     timeline = client.get(f"/api/projects/{PID}/runs/prev_a/timeline").json()
     rows = ["receipt_id,sku,qty,unit_price,hour"]
     for c in timeline:
+        payments = [e for e in c["timeline"] if e["action"] == "pay"]
+        if not payments:
+            continue
+        completed = max(e["elapsed_sec"] + e["duration"] for e in payments)
+        receipt_hour = (datetime.fromisoformat(f"2026-10-23T{c['arrival_time']}") + timedelta(seconds=completed)).hour
         for e in c["timeline"]:
             if e["action"] == "buy":
-                rows.append(f"{c['persona_id']},{e['product_sku']},{e['quantity']},{e['price']},{c['arrival_time'][:2]}")
+                rows.append(f"{c['persona_id']},{e['product_sku']},{e['quantity']},{e['price']},{receipt_hour}")
     fid = client.post(f"/api/projects/{PID}/runs/prev_a/fidelity",
                       files={"file": ("pos.csv", "\n".join(rows).encode(), "text/csv")}).json()
     values = {m["name"]: m["value"] for m in fid["metrics"]}
