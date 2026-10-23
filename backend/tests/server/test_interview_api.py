@@ -74,7 +74,7 @@ def test_journey_and_interview(client, monkeypatch):
 
 def test_unknown_shopper_and_bad_ids(client):
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/NOBODY/journey").status_code == 404
-    assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/a.b/journey").status_code == 400
+    assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/a.b/journey").status_code == 404
     assert client.get(f"/api/projects/{PID}/runs/run_missing/shoppers/M1/journey").status_code == 404
     assert client.get(f"/api/projects/{PID}/runs/{RUN}/shoppers/NOBODY/interview").status_code == 404
 
