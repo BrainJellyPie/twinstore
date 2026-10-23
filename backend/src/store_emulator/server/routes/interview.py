@@ -37,7 +37,7 @@ def _call[T](fn: Callable[[], T]) -> T:
         raise HTTPException(e.status_code, e.message) from e
 
 
-@router.get("/{pid}/runs/{run_id}/shoppers/{persona_id}/journey", summary="One shopper's trip, step by step",
+@router.get("/{pid}/runs/{run_id}/shoppers/{persona_id:path}/journey", summary="One shopper's trip, step by step",
             response_model=Journey)
 async def journey(pid: str, run_id: str, persona_id: str) -> Journey:
     """Every stop with its wall-clock time, shelf, product and the thought recorded at that step, the walked path,
@@ -52,12 +52,12 @@ async def shelf_face(pid: str, run_id: str, rack_id: str, face: str) -> Response
     return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=3600"})
 
 
-@router.get("/{pid}/runs/{run_id}/shoppers/{persona_id}/interview", summary="Interview transcript", response_model=Interview)
+@router.get("/{pid}/runs/{run_id}/shoppers/{persona_id:path}/interview", summary="Interview transcript", response_model=Interview)
 def get_interview(pid: str, run_id: str, persona_id: str) -> Interview:
     return _call(lambda: service.get_interview(pid, run_id, persona_id))
 
 
-@router.post("/{pid}/runs/{run_id}/shoppers/{persona_id}/interview", summary="Ask the shopper a question",
+@router.post("/{pid}/runs/{run_id}/shoppers/{persona_id:path}/interview", summary="Ask the shopper a question",
              response_model=Interview)
 async def ask(pid: str, run_id: str, persona_id: str, q: InterviewQuestion) -> Interview:
     """The shopper answers in the first person from their persona and this trip only, citing the journey steps the
@@ -65,7 +65,7 @@ async def ask(pid: str, run_id: str, persona_id: str, q: InterviewQuestion) -> I
     return await run_in_threadpool(_call, lambda: service.interview(pid, run_id, persona_id, q, get_config()))
 
 
-@router.post("/{pid}/runs/{run_id}/shoppers/{persona_id}/interview/suggestions", summary="Suggest next questions",
+@router.post("/{pid}/runs/{run_id}/shoppers/{persona_id:path}/interview/suggestions", summary="Suggest next questions",
              response_model=Interview)
 async def suggest(pid: str, run_id: str, persona_id: str, req: SuggestionRequest) -> Interview:
     """Up to three questions a researcher would ask next, written by the model for this trip and the conversation so
@@ -73,7 +73,7 @@ async def suggest(pid: str, run_id: str, persona_id: str, req: SuggestionRequest
     return await run_in_threadpool(_call, lambda: service.suggest_questions(pid, run_id, persona_id, req, get_config()))
 
 
-@router.delete("/{pid}/runs/{run_id}/shoppers/{persona_id}/interview", summary="Start the interview over", status_code=204)
+@router.delete("/{pid}/runs/{run_id}/shoppers/{persona_id:path}/interview", summary="Start the interview over", status_code=204)
 def clear(pid: str, run_id: str, persona_id: str) -> None:
     _call(lambda: service.clear_interview(pid, run_id, persona_id))
 

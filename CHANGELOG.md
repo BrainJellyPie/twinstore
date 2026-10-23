@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep saved customer IDs containing slashes usable in journey, interview, follow-up and reset routes.
+  The exact ID reaches the existing customer lookup and bounded transcript storage without changing
+  saved identities or conflating customers that share a trailing ID component.
+
 - Reject XLSX files whose expanded archive or sparse worksheet ranges exceed ingestion budgets
   before allocating dataframes. The new-store wizard reports the problem before saving a project or
   calling a model; supplemental reloads and POS imports apply the same bounds without truncating data.
