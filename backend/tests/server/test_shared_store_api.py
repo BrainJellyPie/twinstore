@@ -250,3 +250,42 @@ def test_a_plan_can_answer_with_a_roster_through_the_api(client):
                                  {"operations": {"crew": 1, "crew_shifts": [{"start": 9, "end": 8}]}}])
 def test_impossible_rosters_are_refused(client, bad):
     assert client.post(f"/api/projects/{PID}/runs/run_x/operations/plan", json=bad).status_code == 422
+
+
+@pytest.mark.parametrize("existing_roster", [False, True])
+def test_roster_planning_explains_when_the_store_opens_for_less_than_a_shift(client, monkeypatch, existing_roster):
+    from store_emulator.application import operations_lab
+    from store_emulator.domain.operations import CrewShift, OperationsConfig
+    from tests.engine.test_shared_store import _shopper, _store
+    store = _store()
+    for schedule in store.weekly_schedule:
+        schedule.close_hour = 10
+    config = OperationsConfig(crew=1, crew_shifts=[CrewShift(start=8, end=9)] if existing_roster else [])
+    shoppers = [_shopper("p", "08:05:00", [("chips", 1)])]
+    monkeypatch.setattr(operations_lab, "_load", lambda pid, run_id: (store, shoppers, 1, config))
+    response = client.post(f"/api/projects/{PID}/runs/run_short/operations/plan",
+                           json={"roster": {"min_hours": 4, "max_hours": 8}})
+    assert response.status_code == 422
+    assert "shortest shift (4 hours) exceeds the operating window (2 hours)" in response.json()["detail"]
+
+
+def test_a_replanned_existing_roster_obeys_new_limits_and_can_be_saved_and_replayed(client, monkeypatch):
+    from store_emulator.application import operations_lab
+    from store_emulator.domain.operations import CrewShift, OperationsConfig
+    from tests.engine.test_shared_store import _shopper, _store
+    store = _store()
+    config = OperationsConfig(crew=1, crew_shifts=[CrewShift(start=8, end=22, days=[1])])
+    shoppers = [_shopper("p", "08:05:00", [("chips", 1)])]
+    monkeypatch.setattr(operations_lab, "_load", lambda pid, run_id: (store, shoppers, 1, config))
+    url = f"/api/projects/{PID}/runs/run_roster/operations"
+    response = client.post(url + "/plan", json={"costs": {"till_hour": 1}, "roster": {"min_hours": 4, "max_hours": 8}})
+    assert response.status_code == 200
+    plan = response.json()
+    assert plan["config"]["crew_shifts"]
+    assert all(4 <= shift["end"] - shift["start"] <= 8 and shift["days"] == [1]
+               for shift in plan["config"]["crew_shifts"])
+    sid = _layout(client)
+    saved = client.put(f"/api/projects/{PID}/setups/{sid}/operations", json={"operations": plan["config"]})
+    assert saved.status_code == 200
+    replay = client.post(url + "/replay", json={"operations": plan["config"], "costs": {"till_hour": 1}})
+    assert replay.status_code == 200 and replay.json()["outcome"] == plan["best"]

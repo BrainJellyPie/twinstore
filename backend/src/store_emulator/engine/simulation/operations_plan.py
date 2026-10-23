@@ -18,6 +18,7 @@ from store_emulator.domain.operations import (
     RosterRules, WeeksReport,
 )
 from store_emulator.domain.store import Store
+from store_emulator.domain.types import Weekday
 
 from .shared_store import open_hours, resolve_shared_store, shelf_stock
 
@@ -166,6 +167,30 @@ def plan_operations(
         rules = roster or RosterRules()
         hours = [int(hour) for hour in open_hours(store, planned)]
         days = sorted({int(result.day) for result in planned})
+        if roster is not None and any(not rules.min_hours <= shift.end - shift.start <= rules.max_hours
+                                      for shift in best_config.crew_shifts):
+            # Rebuild invalid shifts before comparing money: a cheaper plan outside the requested limits cannot win.
+            spans: dict[tuple[int, int, int, int], list[int]] = {}
+            for day in range(1, 8):
+                schedule = store.schedule_for(Weekday(day))
+                day_hours = hours if not store.weekly_schedule else []
+                if schedule is not None and schedule.is_open:
+                    day_hours = list(range(schedule.open_hour, schedule.close_hour))
+                need = {hour: best_config.crew_on_duty(day, hour) for hour in day_hours}
+                copies: dict[tuple[int, int, int], int] = {}
+                for shift in cover(need, rules):
+                    span = (shift.start, shift.end, shift.staff)
+                    index = copies.get(span, 0)
+                    spans.setdefault((*span, index), []).append(day)
+                    copies[span] = index + 1
+            shifts = [CrewShift(start=start, end=end, staff=staff, days=[] if len(on_days) == 7 else on_days)
+                      for (start, end, staff, _), on_days in sorted(spans.items())]
+            settings = best_config.model_dump()
+            settings["crew_shifts"] = shifts
+            if not shifts:
+                settings["crew_schedule"] = {f"{hour:02d}": 0 for hour in range(24)}
+            best_config = OperationsConfig.model_validate(settings)
+            best_tried = run(best_config)
         if not best_config.crew_shifts and hours and days:
             need = {hour: max(best_config.crew_on_duty(day, hour) for day in days) for hour in hours}
             covering = best_config.model_copy(update={"crew_shifts": cover(need, rules)})
@@ -200,6 +225,9 @@ def cover(need: dict[int, int], rules: RosterRules) -> list[CrewShift]:
     if not need:
         return []
     first, last = min(need), max(need) + 1
+    if any(need.values()) and last - first < rules.min_hours:
+        raise ValueError(f"the shortest shift ({rules.min_hours} hours) exceeds the operating window "
+                         f"({last - first} hours); lower the shortest shift or extend the store's opening hours")
     covered = dict.fromkeys(range(first, last), 0)
     spans: dict[tuple[int, int], int] = {}
     for hour in range(first, last):
@@ -211,7 +239,8 @@ def cover(need: dict[int, int], rules: RosterRules) -> list[CrewShift]:
             for covered_hour in range(start, end):
                 covered[covered_hour] += 1
             spans[(start, end)] = spans.get((start, end), 0) + 1
-    return [CrewShift(start=start, end=end, staff=staff) for (start, end), staff in sorted(spans.items())]
+    return [CrewShift(start=start, end=end, staff=min(100, staff - offset))
+            for (start, end), staff in sorted(spans.items()) for offset in range(0, staff, 100)]
 
 
 def _reshaped(
