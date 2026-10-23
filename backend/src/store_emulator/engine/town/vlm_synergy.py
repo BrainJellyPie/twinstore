@@ -55,6 +55,7 @@ from store_emulator.engine.town.demand import (
     TYPICAL_DAY,
     DemandParams,
     estimate_demand,
+    scenario_traffic,
     with_store_hours,
 )
 
@@ -115,8 +116,7 @@ async def vlm_basket_synergy(
     scenario = config.scenario
     priors = priors_for(store.type, config.scenario_priors)  # the store format's effect sizes, as a run uses
     effects = compile_scenario(scenario, priors) if scenario is not None else None
-    traffic = effects.base_traffic if effects is not None else 1.0
-    hourly = (effects.traffic_by_hour or None) if effects is not None else None
+    traffic, hourly = scenario_traffic(scenario, store, config.scenario_priors, profile=day_type)
     day = Weekday(scenario.only_days[0]) if scenario is not None and scenario.only_days else TYPICAL_DAY[day_type]
     town, hours = with_store_hours(town, store, day)  # our store's opening hours that day
     without = town.model_copy(update={"venues": [v for v in town.venues if v.id != venue_id]})

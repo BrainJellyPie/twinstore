@@ -20,7 +20,6 @@ from store_emulator.domain.town import (
     VenueCategory,
 )
 from store_emulator.domain.types import RESOURCE_ID_PATTERN, Weekday, stable_seed
-from store_emulator.engine.scenario import compile_scenario, priors_for
 from store_emulator.engine.town import (
     TYPICAL_DAY,
     day_type_for,
@@ -31,6 +30,7 @@ from store_emulator.engine.town import (
     place_venue,
     plan_arrivals,
     remove_venue,
+    scenario_traffic,
     synergy_analysis,
     town_context_text,
     town_from_overpass,
@@ -132,28 +132,6 @@ def delete_venue(pid: str, venue_id: str) -> Town:
         raise AppError(str(e), 400) from e
 
 
-# The neighborhood's own profile for a scenario's day type (weekday and school vacation have none of their own).
-_TOWN_DAY_TYPES: dict[ScenarioDayType, DayType] = {
-    ScenarioDayType.WEEKEND: "weekend", ScenarioDayType.PUBLIC_HOLIDAY: "holiday", ScenarioDayType.HOLIDAY_SEASON: "holiday",
-}
-
-
-def _scenario_traffic(
-    scenario: Scenario | None, store: Store | None, scenario_priors: ScenarioPriors | None, *,
-    profile: DayType | None = None,
-) -> tuple[float, dict[int, float] | None]:
-    """The scenario's traffic with the effect sizes of the store's format (or the calibrated override). `profile`:
-    the neighborhood day type the demand is modeled on."""
-    if scenario is None:
-        return 1.0, None
-    if profile is not None and _TOWN_DAY_TYPES.get(scenario.day_type) == profile:
-        # The neighborhood's own weekend or holiday profile already carries that day's traffic (who comes, when):
-        # the scenario's day-type effect on top would count it twice.
-        scenario = scenario.model_copy(update={"day_type": ScenarioDayType.WEEKDAY})
-    fx = compile_scenario(scenario, priors_for(store.type if store is not None else "", scenario_priors))
-    return fx.base_traffic, (fx.traffic_by_hour or None)
-
-
 def _layout_store(pid: str, town: Town) -> Store | None:
     """The layout the neighborhood panel describes: the project's active layout, else the one our venue maps to
     (None without a usable one)."""
@@ -177,7 +155,7 @@ def demand(
     """Our store's visitors on a day of `day_type`, in the hours the active layout opens on such a day."""
     town = require_town(pid)
     store = _layout_store(pid, town)
-    traffic, hourly = _scenario_traffic(scenario, store, scenario_priors, profile=day_type)
+    traffic, hourly = scenario_traffic(scenario, store, scenario_priors, profile=day_type)
     town, hours = with_store_hours(town, store, TYPICAL_DAY[day_type])
     return estimate_demand(town, day_type=day_type, hours=hours, traffic_multiplier=traffic, hourly_multiplier=hourly)
 
@@ -214,7 +192,7 @@ def town_visitors(
     for day in days:
         town_day, hours = with_store_hours(town, store, day)
         profile = _day_type(day, scenario)
-        traffic, hourly = _scenario_traffic(scenario, store, scenario_priors, profile=profile)
+        traffic, hourly = scenario_traffic(scenario, store, scenario_priors, profile=profile)
         day_demand = estimate_demand(town_day, day_type=profile, hours=hours,
                                      traffic_multiplier=traffic, hourly_multiplier=hourly)
         people, notes = plan_arrivals(pool, day_demand, town_day, seed=stable_seed(seed, "town", int(day)), scale=scale,

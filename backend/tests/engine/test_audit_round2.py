@@ -94,7 +94,7 @@ def test_a_wide_photo_reads_left_to_right_from_the_aisle_on_every_side(face, mon
 
 def test_a_weekend_scenario_is_not_counted_twice_on_the_neighborhoods_weekend_profile():
     from store_emulator.application.scenarios import get_preset
-    from store_emulator.application.town import _scenario_traffic  # pyright: ignore[reportPrivateUsage]
+    from store_emulator.engine.town import scenario_traffic
     from store_emulator.domain.scenario import DayType
 
     store = generate_store("mini_mart", seed=0)
@@ -102,8 +102,8 @@ def test_a_weekend_scenario_is_not_counted_twice_on_the_neighborhoods_weekend_pr
     assert weekend is not None and weekend.day_type == DayType.WEEKEND
     as_weekday = weekend.model_copy(update={"day_type": DayType.WEEKDAY})
     # On the weekend profile only the heat is applied; on a weekday profile the weekend's effect is applied too.
-    assert _scenario_traffic(weekend, store, None, profile="weekend") == _scenario_traffic(as_weekday, store, None)
-    assert _scenario_traffic(weekend, store, None, profile="weekday") == _scenario_traffic(weekend, store, None)
+    assert scenario_traffic(weekend, store, None, profile="weekend") == scenario_traffic(as_weekday, store, None)
+    assert scenario_traffic(weekend, store, None, profile="weekday") == scenario_traffic(weekend, store, None)
 
 
 def test_a_study_panel_takes_written_customers_before_their_twins():

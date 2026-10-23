@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Apply weekend/holiday traffic once in venue basket-synergy studies. They now share the area model's
+  scenario traffic calculation, so visitor and daily revenue estimates use the selected day profile
+  consistently while retaining weather, event, budget and shopping effects.
+
 - Choose linked neighborhood visitors' source venues using their hour and age group's demand. Morning
   shoppers no longer claim to come from evening-only cafes, and venues with different customer mixes
   no longer receive the same daily source weights at every hour. Older demand reports respect venue hours.
