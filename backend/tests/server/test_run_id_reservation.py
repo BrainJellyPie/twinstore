@@ -43,10 +43,12 @@ def test_concurrent_starts_reserve_project_run_identity(layout, monkeypatch, fir
         original_write(pid, rid, status, **extra)
 
     def observed_load(pid, setup, *args):
-        result = original_load(pid, setup, *args)
-        if setup["id"] == other_sid:
-            second_loaded.set()
-        return result
+        try:
+            return original_load(pid, setup, *args)
+        finally:
+            # A vision snapshot can reserve the directory before pending status is written.
+            if setup["id"] == other_sid:
+                second_loaded.set()
 
     monkeypatch.setattr(simulation, "write_status", paused_write)
     monkeypatch.setattr(simulation, "_load_simulation_inputs", observed_load)
