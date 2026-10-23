@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep wandering shoppers on their planned path when shelf glances consume time. Reserve walking time before
+  pauses, fit diagonal steps within the wandering budget, and timestamp glances at their start so playback no
+  longer skips tiles or jumps into the next route leg.
+
 - Preserve each source layout's operating settings when reusing template generation, including reordered or
   duplicated building floors. Layout alternatives no longer silently disable saved stock, crew and queue behavior.
 
