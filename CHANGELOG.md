@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Run regular shelf refills until store closing even when the last shopper leaves early. This keeps overnight
+  stock, morning delivery, later sales and refill costs independent of nonbuying observers; no refill starts at
+  or after closing. Stores without opening hours continue using their observed visit window.
+
 - Pay for checkout and shelf-refill work that continues after a scheduled shift ends. Count only the workers
   still doing that work, and avoid charging twice when a later staffed hour begins.
 
