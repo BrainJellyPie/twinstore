@@ -5,12 +5,14 @@ from fastapi.testclient import TestClient
 
 from store_emulator.application import marketing
 from store_emulator.application.storage.io import now_iso, read_json, write_json
+from store_emulator.application.storage.setups import metadata_path
 from store_emulator.domain.marketing import JobStatus
 
 PID = "proj_lifecycle"
 
 
 def _save_job(kind, state):
+    write_json(metadata_path(PID), {"id": PID, "name": "Lifecycle"})
     job = JobStatus(job_id=f"job_{state}", kind=kind, name="Test", status=state, created_at=now_iso())
     folder = marketing._job_dir(PID, kind, job.job_id)
     write_json(folder / "status.json", job.model_dump(mode="json"))

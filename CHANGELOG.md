@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Coordinate study commentary snapshots and commits with study/project deletion.
+  Late A/B narratives and survey, shelf, conjoint or staff-script readings now return
+  not-found instead of recreating a deleted study or project after a model responds.
+
 - Reject incomplete customer panels before scoring or caching optimization search
   candidates. Failed shoppers can no longer create apparent improvements by changing
   the population; paired vision judging still compares common successful shoppers.

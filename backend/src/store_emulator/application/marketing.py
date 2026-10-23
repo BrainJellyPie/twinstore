@@ -169,13 +169,11 @@ def _status(pid: str, kind: Kind, jid: str) -> JobStatus:
 
 
 def delete_job(pid: str, kind: Kind, jid: str) -> None:
-    status = _status(pid, kind, jid)
-    if status.status in ("pending", "running"):
-        raise AppError(f"{kind} is still {status.status}; wait until it finishes before deleting it", 409)
-    folder = _job_dir(pid, kind, jid)
-    if not folder.exists():
-        raise AppError(f"{kind} not found: {jid}", 404)
-    remove_tree(folder)
+    with setup_tree_transaction(pid):
+        status = _status(pid, kind, jid)
+        if status.status in ("pending", "running"):
+            raise AppError(f"{kind} is still {status.status}; wait until it finishes before deleting it", 409)
+        remove_tree(_job_dir(pid, kind, jid))
 
 
 def recover_running_jobs() -> int:
@@ -394,7 +392,8 @@ def experiment_report_markdown(pid: str, eid: str) -> str:
 
 def write_experiment_narrative(pid: str, eid: str, model: str, config: SimulationConfig) -> ReportNarrative:
     """A model's commentary on the report, kept with the experiment and added to the write-up."""
-    report, layout, _ = _report_inputs(pid, eid)
+    with setup_tree_transaction(pid):
+        report, layout, _ = _report_inputs(pid, eid)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 1500})
     try:
         model = assistive_model(model, llm_config)
@@ -406,7 +405,9 @@ def write_experiment_narrative(pid: str, eid: str, model: str, config: Simulatio
         logger.warning(f"[marketing] narrative for {eid} failed: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The commentary could not be written"), 502) from e
     narrative.model = answered_by(llm, model)
-    write_json(_job_dir(pid, "experiment", eid) / "narrative.json", narrative.model_dump(mode="json"))
+    with setup_tree_transaction(pid):
+        _status(pid, "experiment", eid)
+        write_json(_job_dir(pid, "experiment", eid) / "narrative.json", narrative.model_dump(mode="json"))
     return narrative
 
 
