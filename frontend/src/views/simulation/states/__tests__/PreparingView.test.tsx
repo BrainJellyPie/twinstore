@@ -112,7 +112,7 @@ it("ignores a late deletion failure after the user leaves", async () => {
 
 it("offers customer retry when the known generation kind disagrees with stale layout context", () => {
   const retry = vi.fn(); const { props } = show({ ...failedLayout, kind: "persona", retry });
-  expect(screen.getByRole("heading", { name: "Customer generation failed" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Virtual customer generation failed" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Try again" })); expect(retry).toHaveBeenCalledOnce();
   expect(screen.getByRole("button", { name: "Delete store and start over" })).toBeTruthy(); expect(props.onAbandonProject).not.toHaveBeenCalled();
 });
@@ -183,7 +183,7 @@ it("keeps keyboard focus in recovery when a progress reload discovers a real gen
   const { props, rerender } = show({ ...failedLayout, errorSource: "status" });
   const reload = screen.getByRole("button", { name: "Reload progress" }); reload.focus(); fireEvent.click(reload);
   rerender(<PreparingView {...props} generation={{ ...failedLayout, kind: "persona", errorSource: "generation" }} />);
-  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Customer generation failed" }));
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Virtual customer generation failed" }));
 });
 
 it("does not steal focus if the user moves elsewhere during a progress reload", () => {

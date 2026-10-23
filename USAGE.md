@@ -13,8 +13,9 @@ generate personas, and run simulations. This is intentionally separate from
 
 ## Pipeline mental model
 
-The wizard collects two screens of input, then kicks off an async pipeline. With a furnished template and a configured
-model, automatic starter products are enabled by default: two text-model calls choose categories and exact products
+The wizard collects two screens of input, then kicks off an async pipeline. With a furnished template,
+automatic starter products are initially enabled when a model is available; otherwise the template's own
+products are selected. Automatic selection makes two text-model calls to choose categories and exact products
 from the bundled catalog before project files or persona jobs are created. These calls are additional to the
 pipeline below. Without a model, the wizard starts with the stocked format defaults; turning off automatic products
 in Step 1 also uses those defaults without these two calls. Empty
@@ -39,6 +40,19 @@ Step 2: Customer +    ├──► (optional) supplemental file → LLM summary 
 ```
 
 Steps below cover each input in turn.
+
+## Choose how many virtual customers to generate
+
+When generation asks for a choice, review the model-estimated visitor counts, model calls,
+time and API cost. **Generate all virtual customers** creates profiles for the full estimate.
+**Generate a sample** creates the stated daily sample; the remaining virtual customers each
+day are copies of that day's sample, not independent model-generated profiles or real visitors.
+**Cancel** stops this generation request. Changing language does not submit or change a choice.
+
+If no model is available, use **Model settings** to add an API key, or explicitly choose the
+local-model download when offered. If the local model is disabled, the hint points to settings;
+it does not offer a download. Failed starts show recovery guidance in your language, with the
+original server message under **Technical details**. You can retry when ready.
 
 ## Inspect and export a floor plan
 

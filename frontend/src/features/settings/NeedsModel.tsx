@@ -6,6 +6,7 @@ import { Cpu, KeyRound, Loader2 } from "lucide-react";
 
 import type { ModelSetup } from "@/shared/api/client";
 import { Button } from "@/shared/components/ui/button";
+import { RequestError } from "@/shared/components/RequestError";
 import { useI18n } from "@/shared/i18n/i18n";
 import type { MessageKey } from "@/shared/i18n/messages";
 
@@ -25,7 +26,7 @@ export function NeedsModel({ settings = true }: { settings?: boolean }) {
   const progress = busy && data.local.progress !== null ? ` ${Math.round(data.local.progress * 100)}%` : "";
   return (
     <div role="status" className="space-y-2 rounded-lg border p-3 text-sm" data-testid="needs-model">
-      <p>{t("needsModelHint")}</p>
+      <p>{t(data.local.state === "disabled" ? "needsModelDisabledHint" : "needsModelHint")}</p>
       {busy ? (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" aria-hidden /> {t(COMING[data.local.state] ?? "localStatePreparing")}{progress}
@@ -43,8 +44,7 @@ export function NeedsModel({ settings = true }: { settings?: boolean }) {
           </Button>}
         </div>
       )}
-      {start.isError && <p role="alert" className="break-words text-xs text-destructive">
-        {start.error instanceof Error ? start.error.message : t("startLocalError")}</p>}
+      {start.isError && <div className="text-xs text-destructive"><RequestError error={start.error} /></div>}
     </div>
   );
 }

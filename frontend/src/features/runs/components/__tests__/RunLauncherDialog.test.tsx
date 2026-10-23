@@ -305,3 +305,14 @@ it("says the layout stays finalized when previewing a finalized layout", () => {
   act(() => useLocale.getState().setLocale("ko"));
   expect(screen.getByText(/미리보기 · 확정된 배치는 그대로 유지/)).toBeTruthy();
 });
+
+it("refuses to start on a default model without a key when nothing else has one", async () => {
+  vi.mocked(api.getModelSetup).mockRejectedValue(new Error("Readiness unavailable"));
+  vi.mocked(api.getEngines).mockResolvedValue(engines.map((e) => e.engine_type === "pattern_intent_impulse"
+    ? { ...e, model: "gemini/gemini-3.1-pro-preview", model_ready: false, suggested_model: "" } : e));
+  show();
+  fireEvent.click(await screen.findByRole("radio", { name: /^LLM shoppers/ }));
+  expect(await screen.findByText(/has no API key. Add one in Settings → Model providers, or use the rule-based preview/)).toBeTruthy();
+  await submit();
+  expect(api.startRun).not.toHaveBeenCalled();
+});

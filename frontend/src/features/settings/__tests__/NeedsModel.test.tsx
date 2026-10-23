@@ -35,7 +35,7 @@ async function show(setup: api.ModelSetup, ui: ReactNode = <NeedsModel />) {
 it("asks for a key or the local model's download, and downloads only on the click", async () => {
   vi.mocked(api.startLocalModel).mockResolvedValue({ ...noKey.local, state: "downloading" });
   await show(noKey);
-  expect(screen.getByTestId("needs-model").textContent).toContain("Writing customers needs a model");
+  expect(screen.getByTestId("needs-model").textContent).toContain("Creating virtual customers requires a model");
   expect(screen.getByRole("link", { name: "Model settings" }).getAttribute("href")).toBe("/settings");
   expect(api.startLocalModel).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Download local model (2 GB)" }));

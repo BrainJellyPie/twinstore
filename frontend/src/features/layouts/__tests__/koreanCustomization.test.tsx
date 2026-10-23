@@ -93,8 +93,9 @@ it("shows the new-store layout customization panel, its building floors and floo
   fireEvent.click(await screen.findByRole("button", { name: "기본 배치와 비교" }));
   const compare = await screen.findByRole("dialog", { name: ko("planCompareTitle") });
   const table = await within(compare).findByRole("table", { name: ko("planCompareTable") });
-  for (const row of [ko("planCompareSize"), "상품 진열대", ko("planCompareProducts"), ko("planCompareSeating"), ko("planCompareCounters"), ko("planCompareAreas"), "인테리어 디자인", "영업시간"]) {
-    expect(within(table).getByRole("rowheader", { name: row })).toBeTruthy();
+  for (const row of ["planCompareSize", "planCompareDisplays", "planCompareProducts", "planCompareSeating", "planCompareCounters",
+    "planCompareAreas", "planCompareDesign", "planCompareHours"] as const) {
+    expect(within(table).getByRole("rowheader", { name: ko(row) })).toBeTruthy();
   }
   expect(within(table).getAllByText(ko("planDesignLuxury")).length).toBeGreaterThan(0);
   expect(englishLeft(compare)).toEqual([]);

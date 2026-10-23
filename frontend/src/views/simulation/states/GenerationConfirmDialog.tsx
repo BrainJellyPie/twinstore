@@ -30,7 +30,9 @@ export function GenerationConfirmDialog({ confirm, answering, error, onAnswer }:
   const counts = Object.values(confirm.visitors_per_day).filter((n) => Number.isFinite(n));
   const fewest = counts.length ? Math.min(...counts) : confirm.all.per_day;
   const most = counts.length ? Math.max(...counts) : confirm.all.per_day;
-  const visitors = fewest === most ? t("visitorsADay", { count: fewest }) : t("visitorsADayRange", { min: fewest, max: most });
+  const visitors = fewest === most
+    ? t(new Intl.PluralRules(locale).select(fewest) === "one" ? "visitorADay" : "visitorsADay", { count: fewest })
+    : t("visitorsADayRange", { min: fewest, max: most });
   const details = (choice: WriteChoice) => [
     t("modelCalls", { calls: choice.requests }),
     durationText(locale, choice.minutes),

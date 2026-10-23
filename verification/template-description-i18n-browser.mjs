@@ -118,6 +118,7 @@ try {
     assert.equal(child.building.label, preset.floors[0].label);
     assert.deepEqual(child.store.weekly_schedule, preview.weekly_schedule);
     assert(child.store.racks.some(r => r.slots.some(s => s.items.some(item => item.image_url))), 'Saved default maps retain product photos');
+    assert(preview.racks.some(r => r.slots.some(s => s.items.some(item => item.image_url))));
     assert.deepEqual(child.store.racks, preview.racks);
     assert.deepEqual(errors, []);
     const result = { locale, viewports: 2, setup_id: firstId, areaSettingsPreserved: true, svgLocalized: true, previewMatchesSaved: true }; results.push(result); console.log(JSON.stringify(result));

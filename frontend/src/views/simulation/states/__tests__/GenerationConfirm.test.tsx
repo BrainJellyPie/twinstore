@@ -49,14 +49,14 @@ afterEach(() => { cleanup(); useLocale.getState().setLocale("en"); vi.resetAllMo
 
 it("says how many visitors a day were estimated and what each choice takes", async () => {
   show();
-  const dialog = await screen.findByRole("alertdialog", { name: "How many customers should the model write?" });
-  expect(dialog.textContent).toContain("The model estimated 480–560 visitors a day for this store, on 7 open days.");
+  const dialog = await screen.findByRole("alertdialog", { name: "How many virtual customers would you like to generate?" });
+  expect(dialog.textContent).toContain("Model estimate: 480–560 visitors a day. Open days: 7.");
   expect(dialog.textContent).toContain("anthropic/claude-haiku-5-5");
-  const all = within(dialog).getByRole("button", { name: /Write all 3,640 customers/ });
-  expect(all.textContent).toContain("182 model calls · about 25 min · about $1.80");
-  const sample = within(dialog).getByRole("button", { name: /Quick sample: 20 a day/ });
-  expect(sample.textContent).toContain("140 customers written; the rest of each day are copies of these customers.");
-  expect(sample.textContent).toContain("7 model calls · about 2 min · < $0.01");
+  const all = within(dialog).getByRole("button", { name: /Generate all virtual customers \(3,640\)/ });
+  expect(all.textContent).toContain("Model calls: 182 · about 25 min · about $1.80");
+  const sample = within(dialog).getByRole("button", { name: /Generate a sample: 20 per day/ });
+  expect(sample.textContent).toContain("Profiles to generate: 140. The remaining virtual customers each day are copies of that day’s sample.");
+  expect(sample.textContent).toContain("Model calls: 7 · about 2 min · < $0.01");
   expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeTruthy();
 });
 
@@ -65,15 +65,15 @@ it("says a local model is free, an unpriced cloud model's cost is unknown, and o
   vi.mocked(api.getGenerationStatus).mockResolvedValue(status({ progress: { confirm: { ...confirm, local: true, model: "llamacpp/qwen3.5-0.8b" } } }));
   show();
   const dialog = await screen.findByRole("alertdialog");
-  expect(within(dialog).getByRole("button", { name: /Write all/ }).textContent).toContain("free on this computer");
+  expect(within(dialog).getByRole("button", { name: /Generate all virtual customers/ }).textContent).toContain("free on this computer");
   cleanup();
   const flat = { ...confirm, visitors_per_day: { "1": 300, "2": 300 }, days: 2, all: { ...confirm.all, cost_usd: null } };
   vi.mocked(api.getSetupGenerations).mockResolvedValue([job({ progress: { confirm: flat } })]);
   vi.mocked(api.getGenerationStatus).mockResolvedValue(status({ progress: { confirm: flat } }));
   show();
   const again = await screen.findByRole("alertdialog");
-  expect(again.textContent).toContain("about 300 visitors a day for this store, on 2 open days");
-  expect(within(again).getByRole("button", { name: /Write all/ }).textContent).toContain("cost unknown");
+  expect(again.textContent).toContain("Model estimate: about 300 visitors a day. Open days: 2.");
+  expect(within(again).getByRole("button", { name: /Generate all virtual customers/ }).textContent).toContain("cost unknown");
 });
 
 it("posts the choice once and disables the buttons while it is sent", async () => {
@@ -82,8 +82,8 @@ it("posts the choice once and disables the buttons while it is sent", async () =
   show();
   const dialog = await screen.findByRole("alertdialog");
   await waitFor(() => expect(api.getGenerationStatus).toHaveBeenCalled());
-  fireEvent.click(within(dialog).getByRole("button", { name: /Quick sample/ }));
-  fireEvent.click(within(dialog).getByRole("button", { name: /Write all/ }));
+  fireEvent.click(within(dialog).getByRole("button", { name: /Generate a sample/ }));
+  fireEvent.click(within(dialog).getByRole("button", { name: /Generate all virtual customers/ }));
   expect(api.confirmGeneration).toHaveBeenCalledOnce();
   expect(api.confirmGeneration).toHaveBeenCalledWith("p", "s", "gen", "sample");
   for (const button of within(dialog).getAllByRole("button")) expect((button as HTMLButtonElement).disabled).toBe(true);
@@ -91,7 +91,7 @@ it("posts the choice once and disables the buttons while it is sent", async () =
   await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
   // The answer's note is not a wait for the local model.
   expect(screen.queryByText(/No model API key works right now/)).toBeNull();
-  expect(screen.getByRole("heading", { name: "Generating customers…" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Generating virtual customers…" })).toBeTruthy();
 });
 
 it("cancels with the explicit button and keeps the dialog open on Escape", async () => {
@@ -105,7 +105,7 @@ it("cancels with the explicit button and keeps the dialog open on Escape", async
   fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
   expect(api.confirmGeneration).toHaveBeenCalledWith("p", "s", "gen", "cancel");
   await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-  expect(screen.getByRole("heading", { name: "Customer generation failed" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Virtual customer generation failed" })).toBeTruthy();
   expect(screen.getByRole("alert").textContent).toContain("You canceled writing the customers");
   expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
 });
@@ -116,10 +116,10 @@ it("refreshes the status when the job is no longer waiting (409)", async () => {
   const dialog = await screen.findByRole("alertdialog");
   await waitFor(() => expect(api.getGenerationStatus).toHaveBeenCalledOnce());
   vi.mocked(api.getGenerationStatus).mockResolvedValue(status({ progress: { written: 300, total: 3640 } }));
-  fireEvent.click(within(dialog).getByRole("button", { name: /Write all/ }));
+  fireEvent.click(within(dialog).getByRole("button", { name: /Generate all virtual customers/ }));
   await waitFor(() => expect(api.getGenerationStatus).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-  expect(await screen.findByText("Writing customers: 300 of 3,640")).toBeTruthy();
+  expect(await screen.findByText("Generating virtual customers: 300 of 3,640")).toBeTruthy();
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
@@ -128,24 +128,24 @@ it("shows a failed answer and lets the user choose again", async () => {
   show();
   const dialog = await screen.findByRole("alertdialog");
   await waitFor(() => expect(api.getGenerationStatus).toHaveBeenCalled());
-  fireEvent.click(within(dialog).getByRole("button", { name: /Quick sample/ }));
+  fireEvent.click(within(dialog).getByRole("button", { name: /Generate a sample/ }));
   const alert = await within(dialog).findByRole("alert");
   expect(alert.textContent).toContain("Could not send your choice. Try again.");
   expect(alert.textContent).toContain("Server unavailable");
-  const sample = within(dialog).getByRole("button", { name: /Quick sample/ }) as HTMLButtonElement;
+  const sample = within(dialog).getByRole("button", { name: /Generate a sample/ }) as HTMLButtonElement;
   expect(sample.disabled).toBe(false);
   fireEvent.click(sample);
   await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
   expect(api.confirmGeneration).toHaveBeenCalledTimes(2);
-  expect(screen.getByText("Writing customers: 20 of 140")).toBeTruthy();
+  expect(screen.getByText("Generating virtual customers: 20 of 140")).toBeTruthy();
 });
 
 it("asks in Korean", async () => {
   useLocale.getState().setLocale("ko");
   show();
-  const dialog = await screen.findByRole("alertdialog", { name: "모델이 고객을 몇 명 작성할까요?" });
-  expect(dialog.textContent).toContain("이 매장의 예상 방문객은 하루 480~560명이고, 영업일은 7일입니다.");
-  expect(within(dialog).getByRole("button", { name: /고객 3,640명 모두 작성/ }).textContent).toContain("약 25분 · 약 $1.80");
-  expect(within(dialog).getByRole("button", { name: /빠른 표본: 하루 20명/ })).toBeTruthy();
+  const dialog = await screen.findByRole("alertdialog", { name: "가상 고객을 몇 명 생성할까요?" });
+  expect(dialog.textContent).toContain("모델이 추정한 방문객 수는 하루 480~560명입니다. 영업일은 7일입니다.");
+  expect(within(dialog).getByRole("button", { name: /가상 고객 모두 생성 \(3,640명\)/ }).textContent).toContain("약 25분 · 약 $1.80");
+  expect(within(dialog).getByRole("button", { name: /하루 20명씩 표본 생성/ })).toBeTruthy();
   expect(within(dialog).getByRole("button", { name: "취소" })).toBeTruthy();
 });

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Use natural virtual-customer generation language in all six UI languages, with correct visitor
+  count grammar, explicit daily-sample copying and localized model-start recovery. Disabled local
+  models point to API-key settings. Keep choices, estimates and original diagnostics unchanged.
+
 - Complete nine more default-map departments with 64 sweets, jewelry, pet, digital,
   travel, art, tabletop-game, plant and spice photos, reaching 1,312 local images.
 
