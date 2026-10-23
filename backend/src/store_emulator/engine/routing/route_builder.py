@@ -11,8 +11,6 @@ from store_emulator.domain.types import Action, CARDINAL_DIRECTIONS, FACE_OFFSET
 from store_emulator.domain.store import Store
 from .store_lookup import rack_id_at, resolve_buy_placement
 
-_MAX_AREA_DWELL = 120  # The action-generation prompt's per-action time limit.
-
 
 class JourneyStep(BaseModel):
     action: CustomerAction
@@ -380,9 +378,6 @@ def _sanitize_action(
     store: Store,
 ) -> CustomerAction:
     """Snap action.target to a walkable tile; prefer the rack's access_tile when target sits on a rack."""
-    # Area navigation uses dwell to plan movement before rack dwell limits apply.
-    if action.nav == "area" and not 0 <= action.dwell <= _MAX_AREA_DWELL:
-        action = action.model_copy(update={"dwell": max(0, min(_MAX_AREA_DWELL, action.dwell))})
     # PAY: snap into a counter's service_access_tiles.
     if action.action == Action.PAY:
         target = action.target

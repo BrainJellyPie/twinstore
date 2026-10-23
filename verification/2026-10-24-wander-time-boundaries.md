@@ -1,5 +1,9 @@
 # Apply the declared area-navigation time budget
 
+This records the initial route-level repair. The later
+[scenario-order follow-up](2026-10-24-action-dwell-scenarios.md) moves normalization to raw action
+validation so scenario scaling happens after the bound and is preserved.
+
 The intent prompt already specified at most 120 seconds of dwell per action. Area navigation
 used the raw integer before any rack dwell limits, however: huge positive/negative integers could
 overflow float conversion, and ordinary out-of-range integers created hours or days of wandering.

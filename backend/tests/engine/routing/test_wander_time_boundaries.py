@@ -47,4 +47,4 @@ def test_conflicting_action_labels_cannot_bypass_area_time_budget(kind):
     action = CustomerAction(nav="area", action=kind, dwell=10**400, area=(0, 0, 30, 30))
     journey = build_journey(store, [action, CustomerAction(nav="leave")], AStarPathFinder())
     assert journey[0].action.dwell == 120
-    assert action.dwell == 10**400
+    assert action.dwell == 120
