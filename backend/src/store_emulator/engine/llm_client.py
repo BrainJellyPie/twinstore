@@ -311,8 +311,10 @@ class LiteLLMClient:
         if path is None or not path.exists():
             return None
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            result = response_model.model_validate(data["result"])
+            data: object = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("expected a cache entry object")
+            result = response_model.model_validate(cast(dict[str, object], data)["result"])
         except (OSError, ValueError, KeyError) as e:
             logger.warning(f"[llm-cache] ignoring unreadable entry {path.name}: {e}")
             return None

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Ignore malformed model-cache containers and replace them after a successful provider response.
+  Null, numeric, string or array cache entries no longer block generation and every subsequent retry
+  before a model request can be made.
+
 - Estimate new model work from valid uncached runs, falling back to engine defaults when necessary.
   Cached replays no longer suppress cost warnings or understate runtime. Malformed history files and
   mixed timezone clock records no longer break the estimate endpoint.
