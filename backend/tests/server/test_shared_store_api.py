@@ -308,3 +308,25 @@ def test_future_weeks_keep_staff_cost_after_the_last_customer_leaves(client, mon
     weeks = response.json()["weeks" if action == "replay" else "best_weeks"]["weeks"]
     assert weeks[1]["shoppers"] == weeks[1]["revenue"] == 0
     assert weeks[1]["net"] == weeks[0]["net"] - weeks[0]["revenue"] < 0
+
+
+def test_replay_pays_for_the_checkouts_finishing_after_closing(client, monkeypatch):
+    from store_emulator.application import operations_lab
+    from store_emulator.domain.operations import OperationsConfig
+    from tests.engine.test_shared_store import _shopper, _store
+    store = _store()
+    for schedule in store.weekly_schedule:
+        schedule.open_hour, schedule.close_hour = 21, 22
+    shoppers = [_shopper(f"p{i}", "21:59:30", [("chips", 1)]) for i in range(10)]
+    config = OperationsConfig(stock_per_facing=20, restock_every_min=None, checkout_base_sec=600,
+                              checkout_item_sec=0, patience_sec=7200, patience_sd=0, crowd_limit=None)
+    monkeypatch.setattr(operations_lab, "_load", lambda pid, run_id: (store, shoppers, 1, config))
+    response = client.post(f"/api/projects/{PID}/runs/run_late/operations/replay", json={
+        "operations": config.model_dump(), "costs": {"till_hour": 1000},
+    })
+    assert response.status_code == 200
+    replay = response.json()
+    assert replay["report"]["abandoned"] == 0
+    assert replay["report"]["till_hours"] == replay["outcome"]["till_hours"] == 2.67
+    assert replay["outcome"]["labor_cost"] == 2670
+    assert replay["report"]["counter_utilization"] == round(6000 / 9595, 4)
