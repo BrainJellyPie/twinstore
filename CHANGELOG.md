@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Exclude incomplete shopper runs from cost/runtime measurements for the next run.
+  A completed job containing failed or skipped shoppers no longer dilutes provider work
+  across its whole requested population and makes a normal rerun appear artificially cheap.
+
 - Prepare town visitors only for the scenario's selected weekdays, keeping the complete
   persona pool available for age matching. Consecutive days with the same demand profile
   and opening hours reuse one demand calculation without changing seeded visitors.
