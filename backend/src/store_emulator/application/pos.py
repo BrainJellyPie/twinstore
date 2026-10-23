@@ -6,12 +6,12 @@ unit price (or line total), and a timestamp/hour column.
 """
 
 import io
-import re
 from collections.abc import Callable
 from datetime import date, datetime, time
 from functools import lru_cache
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
+from dateutil.parser import parse as parse_date
 
 from store_emulator.engine.analysis.fidelity import PosLine
 
@@ -28,8 +28,6 @@ _ALIASES: dict[str, tuple[str, ...]] = {
 
 _RECEIPT_SCOPE_COLUMNS = {root + suffix for root in ("store", "shop", "branch", "register", "terminal", "till", "pos")
                           for suffix in ("", "id", "no", "num", "number", "code")}
-_CALENDAR_DATE = re.compile(r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|^\d{8}$")
-_CLOCK = re.compile(r"\d{1,2}:\d{2}|\d{1,2}\s*[ap]m\b", re.IGNORECASE)
 
 MAX_POS_BYTES = 50 * 1024 * 1024
 
@@ -67,10 +65,17 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         )
 
     @lru_cache(maxsize=4096)
-    def parse_timestamp(text: str) -> datetime | None:
+    def parse_timestamp(text: str) -> tuple[date | None, int | None]:
         # Receipt product lines repeat timestamps; bound retained values to this import's recent clocks.
-        parsed: object = pd.to_datetime(text, errors="coerce")  # type: ignore[reportUnknownMemberType]
-        return parsed if isinstance(parsed, datetime) and not pd.isna(parsed) else None  # type: ignore[reportUnknownMemberType]
+        try:
+            # Different defaults reveal omitted calendar parts or clocks without guessing from punctuation.
+            # Both defaults support February 29 and every day-of-month, including partial dates.
+            first = parse_date(text, default=datetime(2000, 1, 1, 3))
+            second = parse_date(text, default=datetime(2004, 3, 2, 17))
+        except (ValueError, OverflowError):
+            return None, None
+        return (first.date() if first.date() == second.date() else None,
+                first.hour if first.hour == second.hour else None)
 
     lines: list[PosLine] = []
     for raw in df.to_dict(orient="records"):  # type: ignore[reportUnknownMemberType]
@@ -82,11 +87,11 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         scope = [(label, row.get(col, "").strip()) for label, col in scope_columns]
         for kind in ("timestamp", "date"):
             text = row.get(cols.get(kind, ""), "").strip()
-            if not _CALENDAR_DATE.search(text):
-                continue  # time-only strings must not borrow the date this import runs on
-            stamp = parse_timestamp(text)
+            if not text:
+                continue
+            stamp, _ = parse_timestamp(text)
             if stamp is not None:
-                scope.append(("date", str(stamp.date())))
+                scope.append(("date", str(stamp)))
                 break
         qty = _num(row.get(cols.get("quantity", ""), ""), 1.0)
         if "unit_price" in cols and row.get(cols["unit_price"], "").strip():
@@ -116,7 +121,7 @@ def _num(text: str, default: float) -> float:
 
 
 def _hour(row: dict[str, str], cols: dict[str, str], timestamp: object,
-          parse_timestamp: Callable[[str], datetime | None]) -> int | None:
+          parse_timestamp: Callable[[str], tuple[date | None, int | None]]) -> int | None:
     if "hour" in cols and row.get(cols["hour"]):
         try:
             value = _num(row[cols["hour"]], -1)
@@ -131,9 +136,6 @@ def _hour(row: dict[str, str], cols: dict[str, str], timestamp: object,
         # Excel date-only cells become midnight datetimes; textual midnight or an explicit hour is unambiguous.
         if isinstance(timestamp, date) and (not isinstance(timestamp, datetime) or timestamp.time() == time(0)):
             return None
-        if _CLOCK.search(text) is None:
-            return None
-        ts = parse_timestamp(text)
-        if ts is not None:
-            return ts.hour
+        _, hour = parse_timestamp(text)
+        return hour
     return None
