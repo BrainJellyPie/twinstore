@@ -51,8 +51,8 @@ _BLOCKED = {
 
 
 def _target_slots(store: Store, rack: Rack, face: Face, level: int) -> tuple[list[Slot], list[str]]:
-    """Slots at `face` / `level` of every block that has that face and whose face shoppers can reach, created when
-    missing, and why the face cannot be reached on the other blocks. The simulation clears products from faces
+    """Slots at `face` / `level` of every block that has that face and whose face shoppers can reach, plus detached
+    empty slots when missing, and why the face cannot be reached on the other blocks. The simulation clears products from faces
     nobody can reach (validation.clear_blocked_slots), so a product moved there would leave the test."""
     blocked = {(b.block, b.face): b.reasons for b in list_blocked_faces(store) if b.rack_id == rack.id}
     out: list[Slot] = []
@@ -66,7 +66,6 @@ def _target_slots(store: Store, rack: Rack, face: Face, level: int) -> tuple[lis
         slot = next((s for s in rack.slots if s.block == block and s.face == face and s.level == level), None)
         if slot is None:
             slot = Slot(block=block, face=face, level=level)
-            rack.slots.append(slot)
         out.append(slot)
     return out, reasons
 
@@ -85,12 +84,22 @@ def _move(store: Store, change: VariantChange) -> tuple[str, list[str]]:
                      f"so {_name(store, change.sku)} stays where it is: pick a face along an aisle")]
     if not targets:
         return "", [f"move: rack {rack.rack_name or rack.id} has no {face.value} face"]
+    blocked_sources = {(b.rack_id, b.block, b.face) for b in list_blocked_faces(store)}
+    warnings: list[str] = []
     moved = 0
     for dst in targets:
         # one facing per target slot, taken from wherever the product stands outside the targets
-        src = next(((s, i) for _, s, i in _occurrences(store, change.sku) if all(s is not t for t in targets)), None)
-        if src is None:
+        sources = [(r, s, i) for r, s, i in _occurrences(store, change.sku) if all(s is not t for t in targets)]
+        if not sources:
             break
+        # A full destination swaps its last product back into the source. That
+        # source must be accessible too, or the swap silently delists another SKU.
+        src = next(((s, i) for r, s, i in sources if len(dst.items) < MAX_ITEMS_PER_SLOT
+                    or (r.id, s.block, s.face) not in blocked_sources), None)
+        if src is None:
+            warnings.append(f"move: {rack.rack_name or rack.id} block {dst.block} {face.value} level {level} is full; "
+                            "no accessible source can hold the displaced product, so this slot was left unchanged")
+            continue
         src_slot, idx = src
         item = src_slot.items[idx]
         if len(dst.items) < MAX_ITEMS_PER_SLOT:
@@ -101,11 +110,13 @@ def _move(store: Store, change: VariantChange) -> tuple[str, list[str]]:
             displaced = dst.items[-1]
             dst.items[-1] = item
             src_slot.items[idx] = displaced
+        if all(dst is not existing for existing in rack.slots):
+            rack.slots.append(dst)
         moved += 1
     if not moved:
-        return "", [f"move: {change.sku} is already there or not in the store"]
+        return "", warnings or [f"move: {change.sku} is already there or not in the store"]
     where = f"{rack.rack_name or rack.id} · {face.value} · level {level}"
-    return f"moved {_name(store, change.sku)} to {where} ({moved} facing{'s' if moved > 1 else ''})", []
+    return f"moved {_name(store, change.sku)} to {where} ({moved} facing{'s' if moved > 1 else ''})", warnings
 
 
 def apply_changes(
