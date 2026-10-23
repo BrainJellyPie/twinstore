@@ -33,6 +33,11 @@ def build_journey(
         path = _calculate_path(store, grid, pathfinder, current, action, block_move_sec)
         if action.action == Action.PAY and path:
             action = action.model_copy(update={"target": path[-1]})
+        # A failed point route must not record a remote stop at the previous position.
+        if action.nav == "path" and action.target is not None:
+            reached = path[-1] if path else current
+            if reached != action.target:
+                continue
         if action.action == Action.BUY:
             placement = resolve_buy_placement(
                 store, target=action.target, face=action.face, sku=action.product_sku,
