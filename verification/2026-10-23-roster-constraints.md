@@ -39,6 +39,8 @@ Validation on the isolated `fix/roster-limits-20261023` worktree:
 - Frontend source is unchanged from the prior integrated snapshot (4,479 tests,
   build and lint already passed there).
 
-The complete backend suite is running with its own durable exit record. Its final
-result will be recorded before this change is published. Tests use synthetic
+The complete backend suite passed: **26,178 passed, 1 skipped in 1,135.97 s
+(18:55), exit 0**. Its separate completion record remained readable after a
+transient executor disconnect. The skipped Grounding DINO integration check needs
+the optional capture extra and explicit download opt-in. Tests use synthetic
 fixtures and no live model calls.
