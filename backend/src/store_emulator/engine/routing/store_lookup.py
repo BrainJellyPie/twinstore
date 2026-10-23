@@ -51,6 +51,8 @@ def resolve_buy_placement(
     target: Position | None,
     face: Face | None,
     sku: str,
+    block: int | None = None,
+    level: int | None = None,
 ) -> tuple[Rack, Slot] | None:
     """Pick the (rack, slot) the customer reached for a BUY action.
 
@@ -74,6 +76,11 @@ def resolve_buy_placement(
     candidates = find_racks_by_sku(store, sku)
     if not candidates:
         return None
+    if block is not None or level is not None:
+        selected = [(rack, slot) for rack, slot in candidates
+                    if (block is None or slot.block == block) and (level is None or slot.level == level)]
+        if selected:
+            candidates = selected
     if target is not None:
         grid = store.grid_size
         target_matches = [

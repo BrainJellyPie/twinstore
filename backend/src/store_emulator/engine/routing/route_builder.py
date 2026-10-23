@@ -169,7 +169,8 @@ def _group_by_rack(store: Store, actions: list[CustomerAction]) -> list[list[Cus
     for idx, a in enumerate(actions):
         rack_id = ""
         if a.action == Action.BUY and a.product_sku:
-            placement = resolve_buy_placement(store, target=a.target, face=a.face, sku=a.product_sku)
+            placement = resolve_buy_placement(store, target=a.target, face=a.face, sku=a.product_sku,
+                                              block=a.product_block, level=a.product_level)
             if placement is not None:
                 rack_id = placement[0].id
         if not rack_id and a.target is not None:
@@ -319,6 +320,7 @@ def _has_pending_browse(
             target=buy_action.target,
             face=buy_action.face,
             sku=buy_action.product_sku,
+            block=buy_action.product_block, level=buy_action.product_level,
         )
         if placement is not None:
             rack_id = placement[0].id
@@ -375,6 +377,7 @@ def _sanitize_action(
     if action.action == Action.BUY and action.product_sku:
         placement = resolve_buy_placement(
             store, target=action.target, face=action.face, sku=action.product_sku,
+            block=action.product_block, level=action.product_level,
         )
         if placement is not None:
             rack, slot = placement

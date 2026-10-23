@@ -39,13 +39,13 @@ VIOLATION_KINDS = frozenset({
 def check_buy_consistency(store: Store, results: list[CustomerResult]) -> list[BuyViolation]:
     """Walk every BUY event and report violations of the rack/face/sku contract."""
     racks_by_id: dict[str, Rack] = {r.id: r for r in store.racks}
-    face_sku: dict[tuple[str, Face], dict[str, SlotItem]] = {}
+    face_sku: dict[tuple[str, Face], dict[str, list[SlotItem]]] = {}
     sku_to_racks: dict[str, set[str]] = {}
     for r in store.racks:
         for slot in r.slots:
             bucket = face_sku.setdefault((r.id, slot.face), {})
             for it in slot.items:
-                bucket[it.sku] = it
+                bucket.setdefault(it.sku, []).append(it)
                 sku_to_racks.setdefault(it.sku, set()).add(r.id)
 
     violations: list[BuyViolation] = []
@@ -61,7 +61,7 @@ def _check_event(
     persona_id: str,
     ev: TimelineEvent,
     racks_by_id: dict[str, Rack],
-    face_sku: dict[tuple[str, Face], dict[str, SlotItem]],
+    face_sku: dict[tuple[str, Face], dict[str, list[SlotItem]]],
     sku_to_racks: dict[str, set[str]],
 ) -> list[BuyViolation]:
     out: list[BuyViolation] = []
@@ -80,11 +80,15 @@ def _check_event(
         out.append(BuyViolation(persona_id, ev.elapsed_sec, ev.target_rack, ev.face, ev.product_sku, "face_none"))
         return out
 
-    item = face_sku.get((ev.target_rack, ev.face), {}).get(ev.product_sku)
-    if item is None:
+    items = face_sku.get((ev.target_rack, ev.face), {}).get(ev.product_sku)
+    if not items:
         out.append(BuyViolation(persona_id, ev.elapsed_sec, ev.target_rack, ev.face, ev.product_sku, "sku_not_on_face"))
         return out
 
+    # Several levels can offer the same SKU with different names/prices. Match
+    # one actual offer; do not combine a name from one with a price from another.
+    item = min(items, key=lambda item: int(bool(ev.product_name) and item.name != ev.product_name)
+               + int(item.price != ev.price))
     if ev.product_name and item.name != ev.product_name:
         out.append(BuyViolation(
             persona_id, ev.elapsed_sec, ev.target_rack, ev.face, ev.product_sku,

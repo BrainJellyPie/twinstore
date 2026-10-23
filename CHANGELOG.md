@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve an engine-selected shelf offer through routing and purchase execution. Different prices for the same
+  SKU on separate levels no longer change after budget planning. Stockout loss and substitute selection use
+  the selected price, and purchase diagnostics recognize each valid name/price offer on a face.
+
 - Resolve purchases against the shelf face the shopper actually reached when the same SKU appears on several
   faces. Routing, prices and shared stock no longer collapse those purchases onto the rack's first SKU placement.
 

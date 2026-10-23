@@ -449,6 +449,7 @@ class RuleBasedEngine:
         out.append(CustomerAction(
             nav="path", target=tile, face=slot.face, action=Action.BUY, dwell=pick,
             product_sku=item.sku, quantity=quantity, description=f"picks {item.name}", origin=origin,
+            product_block=slot.block, product_level=slot.level,
         ))
         return out
 

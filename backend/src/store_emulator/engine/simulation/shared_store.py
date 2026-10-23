@@ -633,7 +633,7 @@ def _pick(
         state.stock[key] = 0
         product.stats.sold_units += have
         _emptied(state, key, product, moment)
-        _lost(result, product, wanted - have)
+        _lost(result, product, wanted - have, event.price)
         event.quantity = have
         event.description = _join(event.description, f"only {have} left of {wanted} wanted")
         return
@@ -644,7 +644,7 @@ def _pick(
     if rng.random() < config.substitute_share:
         options = [other for other in faces[(key[0], key[1])] if other != key and state.stock[other] > 0]
         if options:
-            price = product.item.price
+            price = event.price
             choice = min(options, key=lambda o: (abs(products[o].item.price - price), products[o].item.price, o[2]))
             substitute = products[choice]
             taken = min(wanted, state.stock[choice])
@@ -659,22 +659,22 @@ def _pick(
             report.substituted_units += taken
             report.substituted_revenue += taken * substitute.item.price
             if taken < wanted:
-                _lost(result, product, wanted - taken)
+                _lost(result, product, wanted - taken, event.price)
             event.description = _join(event.description, f"took {substitute.item.name}: {product.item.name} was sold out")
             event.product_sku = substitute.item.sku
             event.product_name = substitute.item.name
             event.price = substitute.item.price
             event.quantity = taken
             return
-    _lost(result, product, wanted)
+    _lost(result, product, wanted, event.price)
     event.action = Action.BROWSE
     event.quantity = 1
     event.description = _join(event.description, f"wanted {product.item.name}: sold out")
 
 
-def _lost(result: CustomerResult, product: _Product, units: int) -> None:
+def _lost(result: CustomerResult, product: _Product, units: int, price: int) -> None:
     product.stats.lost_units += units
-    product.stats.lost_revenue += units * product.item.price
+    product.stats.lost_revenue += units * price
     result.lost_units += units
 
 
