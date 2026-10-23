@@ -4,7 +4,7 @@ import random
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.engine import EngineDecision
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import PathFinder, Weekday
+from store_emulator.domain.types import Action, PathFinder, Weekday
 
 from ..routing.route_builder import build_journey
 from ..routing.timeline_builder import build_timeline
@@ -31,6 +31,13 @@ def execute_decision(
         rng=rng, max_quantity=max_quantity,
     )
     result.engine_type = decision.engine_type
-    result.dropped_invalid_buys = decision.dropped_invalid_buys
+    skus = {item.sku for rack in store.racks for slot in rack.slots for item in slot.items}
+    invalid = sum(action.action == Action.BUY and (not action.product_sku or action.product_sku not in skus)
+                  for action in decision.actions)
+    dropped = sum(action.action == Action.BUY for action in decision.actions) - sum(
+        step.action.action == Action.BUY for step in journey)
+    if dropped > invalid:
+        logger.warning("Skipped %d unreachable purchases for persona %s", dropped - invalid, persona_id)
+    result.dropped_invalid_buys = decision.dropped_invalid_buys + invalid
     result.dropped_over_budget = decision.dropped_over_budget
     return result
