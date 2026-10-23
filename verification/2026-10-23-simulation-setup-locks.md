@@ -29,6 +29,9 @@ Validation:
 - Frontend source is unchanged from the verified snapshot: 4,479 tests, build
   and lint passed for that exact frontend source.
 
-Full backend verification will be recorded before publication. Concurrency tests
-use disposable data, controlled thread events and the offline rule-based engine;
-no live model calls or real project data are involved.
+The full backend suite was cancelled at approximately 69% when the user changed
+the validation policy to prioritize discovery and fixes (roughly 90% of effort)
+over verification (roughly 10%). No full-suite pass is claimed for this change.
+Publication relies on the focused regressions, strict types and boot check above.
+Concurrency tests use disposable data, controlled thread events and the offline
+rule-based engine; no live model calls or real project data are involved.
