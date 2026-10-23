@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Read supplemental customer CSVs exported as Korean CP949 or BOM-marked UTF-16/UTF-32, and recognize
+  comma, semicolon and tab separators. These files now reach customer summaries and traffic calibration
+  with quoted cells and receipt identifiers intact instead of silently dropping the uploaded evidence.
+
 - Reject repeated hours, invalid clock values and negative/non-integer visitor counts in model traffic
   estimates before they reach customer generation. The existing structured-response retry can request a
   valid estimate, preventing saved daily counts and financial scaling from disagreeing with the population.
