@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fail neighborhood basket/revenue studies when a required visitor group has no
+  successful evidence. Missing affected pairs no longer imply zero basket effect,
+  and missing unaffected visitors no longer borrow the affected group's spending.
+  Stop before the second panel when the first already lacks a required group.
+
 - Exclude Shelf Lab counterfactuals with no valid paired responses from lever
   effect summaries. The CLI marks unavailable comparisons, preserves raw outcomes,
   and exits unsuccessfully when no effect can be estimated instead of reporting
