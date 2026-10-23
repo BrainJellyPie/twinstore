@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recheck product-edit and starter-fill sources under the source layout lock at final save.
+  Concurrent floor changes now reject an outdated preview; operating and building settings
+  are copied from the committed source instead of an earlier, possibly incomplete snapshot.
+
 - Keep customer interviews, follow-up suggestions and group transcripts consistent with project
   deletion. Transcript locks live outside the removable project tree; input snapshots and final
   writes coordinate with deletion without holding the project lock during model calls.

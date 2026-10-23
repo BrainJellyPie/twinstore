@@ -71,16 +71,16 @@ def test_deletion_before_draft_commit_writes_neither_layout_nor_receipt(workflow
     write_json(setup_path(PID, root["id"]), root)
     write_json(setup_path(PID, SID), {**source, "parentId": root["id"]})
     body = {**request(client), "request_id": "d" * 32}
-    original = product_edits.read_setup
+    original = product_edits.new_setup_data
 
-    def deleted_after_read(pid, sid):
-        snapshot = original(pid, sid)
+    def deleted_after_prepare(*args, **kwargs):
+        snapshot = original(*args, **kwargs)
         url = f"/api/projects/{PID}" + (f"/setups/{SID}" if removed == "parent" else "")
         response = client.delete(url)
         assert response.status_code == 200, response.text
         return snapshot
 
-    monkeypatch.setattr(product_edits, "read_setup", deleted_after_read)
+    monkeypatch.setattr(product_edits, "new_setup_data", deleted_after_prepare)
     response = client.post(URL + "/save", json=body)
     assert response.status_code == 404, response.text
     path = setup_path(PID, "setup_products_" + body["request_id"])
