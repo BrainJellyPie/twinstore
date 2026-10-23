@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject negative and non-finite checkout arrival times before capacity searches.
+  The expanding search stays bounded even for unusable input; after-midnight
+  arrivals retain the previous hour's queue backlog.
+
 - Base checkout wait guidance on recorded hourly waits instead of comparing
   theoretical capacity with the default staffing count. Show the worst observed
   delay, use each hour's staffing for capacity highlights, and explain the queue
