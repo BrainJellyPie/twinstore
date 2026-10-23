@@ -15,6 +15,7 @@ import pandas as pd  # type: ignore[reportMissingTypeStubs]
 from dateutil.parser import parse as parse_date
 
 from store_emulator.engine.analysis.fidelity import PosLine
+from store_emulator.application.csv_tables import validate_csv_table
 from store_emulator.application.workbooks import validate_xlsx_budget
 
 _ALIASES: dict[str, tuple[str, ...]] = {
@@ -32,6 +33,7 @@ _RECEIPT_SCOPE_COLUMNS = {root + suffix for root in ("store", "shop", "branch", 
                           for suffix in ("", "id", "no", "num", "number", "code")}
 
 MAX_POS_BYTES = 50 * 1024 * 1024
+MAX_POS_CSV_CELLS = 2_000_000
 
 
 def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
@@ -43,10 +45,11 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         df = pd.read_excel(buf, dtype=object, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
     else:
         try:
-            df = pd.read_csv(buf, dtype=str, encoding="utf-8-sig", keep_default_na=False)  # type: ignore[reportUnknownMemberType]
+            text = data.decode("utf-8-sig")
         except UnicodeDecodeError:
-            buf.seek(0)
-            df = pd.read_csv(buf, dtype=str, encoding="cp949", keep_default_na=False)  # type: ignore[reportUnknownMemberType]
+            text = data.decode("cp949")
+        validate_csv_table(text, ",", label="POS CSV", max_cells=MAX_POS_CSV_CELLS)
+        df = pd.read_csv(io.StringIO(text), dtype=str, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
     # Surplus CSV fields can make pandas infer an index and shift every named column.
     if not isinstance(df.index, pd.RangeIndex):  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]  # pandas stubs
         raise ValueError("POS CSV rows have more fields than the header; quote values containing commas.")
