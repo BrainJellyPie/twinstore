@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from store_emulator.application import run_estimate
-from store_emulator.application.storage.io import write_json
+from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.domain.config import LLMConfig
 from store_emulator.server.main import app
 from tests.server.test_simulation_setup_races import PID, SID, layout
@@ -103,3 +103,18 @@ def test_valid_uncached_and_legacy_measurements_still_control_the_estimate(api, 
     result = estimate(api)
     assert result["cost_usd"] == 15.0 and result["minutes"] == 1.0
     assert result["model_calls"] == (3 if cache_field else 2)
+
+
+@pytest.mark.parametrize("failed", [1, 9, "unknown", -1, None, True])
+@pytest.mark.parametrize("older_clean", [False, True])
+def test_incomplete_runs_cannot_make_the_next_run_look_cheaper(api, failed, older_clean):
+    if older_clean:
+        old = history("run_clean")
+        write_json(old / "status.json", {"status": "completed", "completed_customers": 10,
+            "failed_customers": 0, "started_at": "2026-10-22T09:00:00+00:00",
+            "finished_at": "2026-10-22T09:10:00+00:00"})
+    expected = estimate(api)
+    root = history("run_incomplete", requests=1, prompt_tokens=1000, completion_tokens=500)
+    write_json(root / "status.json", {**read_json(root / "status.json"), "failed_customers": failed,
+        "started_at": "2026-10-23T09:00:00+00:00", "finished_at": "2026-10-23T09:00:01+00:00"})
+    assert estimate(api) == expected

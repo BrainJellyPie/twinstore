@@ -165,7 +165,7 @@ def _resolved(config: SimulationConfig, base: LLMConfig) -> list[LLMConfig]:
 
 
 def _measured(pid: str, engine: str, model: str) -> _Measured | None:
-    """Model work per shopper on this project's newest usable uncached run with the same engine and model."""
+    """Model work per shopper on the newest usable uncached, successful run of this engine and model."""
     runs = Path(DATA_DIR) / pid / "runs"
     if not runs.is_dir():
         return None
@@ -177,6 +177,10 @@ def _measured(pid: str, engine: str, model: str) -> _Measured | None:
                 continue
             status = cast(dict[str, object], raw_status)
             if status.get("status") != "completed":
+                continue
+            failures = status.get("failed_customers", 0)
+            if type(failures) is not int or failures != 0:
+                # Completed counts include failed/skipped shoppers; their reduced work cannot price a full run.
                 continue
             raw_manifest: object = read_json(run / "output" / "manifest.json")
             if not isinstance(raw_manifest, dict):
