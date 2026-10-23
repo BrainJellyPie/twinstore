@@ -151,6 +151,14 @@ class LayoutEvaluator:
             self._walked(store), self.personas, max_concurrent=self._max_concurrent, path_heatmap=False,
         )
         self._check_someone_shopped(aggregated, customers)
+        failed = aggregated.diagnostics.failed_customers
+        if failed:
+            # Search ranks cached scalar scores and cannot re-pair earlier candidates.
+            # Dropping even one shopper changes the panel and can create a false gain.
+            raise RuntimeError(
+                f"{len(failed)} of {len(self.personas)} shoppers failed; "
+                f"cannot score a layout on an incomplete panel: {failed[0].reason}"
+            )
         self.evaluations += 1
         entry = (objective_value(self.objective, aggregated.summary), aggregated.summary)
         self._cache[key] = entry
