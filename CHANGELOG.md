@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Validate track CSV structure before parsing movement evidence. Surplus fields and malformed
+  quoting can no longer silently change coordinates/timestamps, and sparse imports are bounded
+  to two million cells including missing fields. UTF-8 BOM, standard newline variants and long
+  quoted auxiliary notes remain supported; rejected uploads preserve the previous movement report.
+
 - Recheck completed runs and coordinate POS/movement report saves with project deletion.
   An analysis that finishes after deletion cannot recreate output folders; an accepted save
   finishes before deletion proceeds, and lock contention preserves the previous report.

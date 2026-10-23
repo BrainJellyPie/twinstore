@@ -889,6 +889,8 @@ Run through this before triggering generation or simulation:
   previous check. OCR and manual review are not proof of real-world forecast accuracy.
 - **Validating observed movement.** In a completed run, **Validate real movement**
   accepts UTF-8 CSV with `track_id,x,y,timestamp_sec` (up to 10 MB / 100,000 samples).
+  Tables may contain at most 2,000,000 cells including missing fields in short rows. Data rows
+  must not have more fields than the header; use decimal points and quote auxiliary text containing commas.
   Extract anonymous tracks on your device and align them to this run's grid first:
   integer cells, origin at the upper left, x right and y down. Each visit needs a
   distinct ID across the file; seconds must increase within a track. Rows may be
