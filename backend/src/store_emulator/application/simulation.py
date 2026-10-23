@@ -705,7 +705,11 @@ def run_fidelity(pid: str, run_id: str, data: bytes, filename: str) -> FidelityR
         sample = ", ".join(sorted({line.sku for line in lines})[:3])
         raise AppError(f"None of the {len(lines)} POS lines' SKUs ({sample}…) is on this run's shelves. Export the POS "
                        "with the same product codes the layout uses (Store tab → products), then upload it again.", 400)
-    report = fidelity_report(store, load_run_results(base), lines)
+    results = load_run_results(base)
+    try:
+        report = fidelity_report(store, results, lines)
+    except ValueError as e:
+        raise AppError(str(e), 400) from e
     with setup_tree_transaction(pid):
         base = _completed_run_base(pid, run_id)
         write_json(base / "output" / "fidelity.json", report.model_dump())

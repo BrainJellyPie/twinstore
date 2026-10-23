@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject POS totals that overflow even though each input field is finite, before
+  replacing saved fidelity evidence. Treat unrepresentable ratios as unavailable
+  so API responses and saved JSON agree instead of persisting Infinity.
+
 - Reject duplicate recognized POS headers in CSV/XLSX before pandas can rename
   them or case/space normalization can select a different product or amount.
   Validate repeated receipt-scope names too; retain distinct alias precedence,
