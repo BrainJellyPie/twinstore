@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Coordinate neighborhood saves, generation, imports and venue edits with project deletion and
+  analysis startup. A late save can no longer recreate a deleted project's data, and a study waits
+  for a neighborhood save already being committed.
+
 - Reserve venue-synergy inputs and pending-job registration against project deletion and concurrent
   customer/layout saves. Accepted jobs keep their project, deleted projects stay deleted, and a study
   waits for an input save already in progress instead of silently using the preceding data.
