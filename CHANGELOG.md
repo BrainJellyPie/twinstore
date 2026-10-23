@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep successful receipt readings when another uploaded photo is malformed or
+  oversized. Read uploads one bounded photo at a time and release decoded pixels
+  after each model call; unreadable receipts still require review or exclusion.
+
 - Publish simulation completion/failure after updating the layout state, so the
   UI's final refresh sees a locked result or a retryable draft. If completion
   status cannot be saved, failure cleanup removes that run's provisional lock.

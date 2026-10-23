@@ -59,10 +59,10 @@ async def receipts(
     run_id: Annotated[str, Form(pattern=r"^[A-Za-z0-9_-]*$", description="or: the run whose store the lines are matched to")] = "",
     model: Annotated[str, Form()] = "",
 ) -> ReceiptsResult:
-    datas = [await p.read() for p in photos]
-
     def run() -> ReceiptsResult:
         try:
+            # Multipart uploads are spooled already. Read one bounded photo in the worker, not the whole batch in RAM.
+            datas = (photo.file.read(service.MAX_PHOTO_BYTES + 1) for photo in photos)
             return service.read_receipts(pid, datas, setup_id=setup_id or None, run_id=run_id or None, model=model, config=get_config())
         except AppError as e:
             raise HTTPException(e.status_code, e.message) from e
