@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Audit repeated products without shifting later positions or duplicating missing
+  and facing-count findings. Check every read price tag against the SKU's valid
+  reference prices on that level, including free offers, and mark only the
+  mismatched tag regions.
+
 - Match Shelf Lab photo badges to the captured SKU, name, price and shelf level.
   Repeated SKUs at different prices or heights retain their own offers instead
   of inheriting one arbitrary price/level; omitted offers are counted even when
