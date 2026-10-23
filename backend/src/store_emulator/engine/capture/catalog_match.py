@@ -225,17 +225,24 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     if parsed is None:
         return None
     value, has_decimals = parsed
-    if value <= 0:
+    if not math.isfinite(value) or value <= 0:
         return None
-    literal = round(value) if zero_decimal else round(value * 100)
+    scaled = value if zero_decimal else value * 100
+    if not math.isfinite(scaled):
+        return None
+    literal = round(scaled)
     candidates = {literal}
     if not zero_decimal and not has_decimals:
         candidates.add(round(value))          # cents written without the decimal point
     if zero_decimal and has_decimals:
         candidates.add(round(value * 1000))   # "1.8" for ₩1,800
     candidates = {c for c in candidates if c > 0}
-    if typical is None or typical <= 0 or len(candidates) == 1:
+    if not candidates:
+        return None
+    if typical is None or typical <= 0:
         return literal if literal > 0 else None
+    if len(candidates) == 1:
+        return next(iter(candidates))
     best = min(candidates, key=lambda c: abs(math.log(c / typical)))
     if best != literal and abs(math.log(literal / typical)) <= math.log(6):
         return literal

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep shelf capture working when one model-read price is nonfinite, overflows currency scaling, or
+  rounds below a minor unit. Unusable readings use the existing explicitly marked estimate; valid
+  thousand-unit abbreviations remain usable even when the literal amount rounds to zero.
+
 - Avoid catalog classification when rival-price comparisons do not filter product categories.
   Catalog searches reuse normalized bundled names and skip similarity calculations that cannot win,
   preserving exact matches, pack-size handling, category order and reported prices.
