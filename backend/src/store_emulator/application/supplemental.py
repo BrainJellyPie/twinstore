@@ -11,13 +11,15 @@ were dropped because they bypassed the prototype's own validation.
 Retained backend-infra adaptations:
 - LiteLLMClient instead of Gemini File API (application-layer abstraction).
 - Column name str normalization (guarantees Stage 2/3 contract: list[str]).
-- CSV utf-8 → utf-8-sig fallback (BOM handling).
+- CSV Unicode BOM handling and Korean Excel encoding, with common spreadsheet delimiters.
 - Response truncation (SUPPLEMENTAL_SUMMARY_MAX_CHARS) to bound metadata storage.
 - Race-safe metadata write is the caller's responsibility (`_run_async_pipeline`).
 """
 
 from __future__ import annotations
 
+import codecs
+import csv
 import io
 import json
 import logging
@@ -98,20 +100,25 @@ def _load_frames(bytes_: bytes, ext: str, *, preserve_identifiers: bool = False)
     """csv → single sheet ``"data"``; xlsx → sheet_name=None dict. Empty dict on failure."""
     if ext == ".csv":
         try:
-            df = pd.read_csv(io.BytesIO(bytes_), encoding="utf-8", dtype=object if preserve_identifiers else None,
+            # UTF-32 LE starts with the UTF-16 LE BOM, so check the longer marker first.
+            if bytes_.startswith((codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE)):
+                text = bytes_.decode("utf-32")
+            elif bytes_.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+                text = bytes_.decode("utf-16")
+            else:
+                try:
+                    text = bytes_.decode("utf-8-sig")
+                except UnicodeDecodeError:
+                    text = bytes_.decode("cp949")
+            # Restrict dialect detection to spreadsheet separators; one-column prose stays intact.
+            try:
+                delimiter = csv.Sniffer().sniff(text[:65536], delimiters=",;\t").delimiter
+            except csv.Error:
+                delimiter = ","
+            df = pd.read_csv(io.StringIO(text), sep=delimiter, dtype=object if preserve_identifiers else None,
                              keep_default_na=not preserve_identifiers)  # type: ignore[reportUnknownMemberType]
-        except (UnicodeDecodeError, UnicodeError):
-            try:
-                df = pd.read_csv(io.BytesIO(bytes_), encoding="utf-8-sig", dtype=object if preserve_identifiers else None,
-                                 keep_default_na=not preserve_identifiers)  # type: ignore[reportUnknownMemberType]
-            except Exception:
-                return {}
         except Exception:
-            try:
-                df = pd.read_csv(io.BytesIO(bytes_), encoding="utf-8-sig", dtype=object if preserve_identifiers else None,
-                                 keep_default_na=not preserve_identifiers)  # type: ignore[reportUnknownMemberType]
-            except Exception:
-                return {}
+            return {}
         return {_CSV_SHEET_NAME: df}
 
     if ext == ".xlsx":
