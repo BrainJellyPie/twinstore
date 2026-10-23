@@ -49,7 +49,7 @@ from store_emulator.engine.analysis.fidelity import fidelity_report
 from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.currencies import simulation_currency
 from store_emulator.application.shelf_views import views_dir
-from store_emulator.application.setups import setup_lock_path
+from store_emulator.application.setups import run_operations, setup_lock_path
 
 logger = logging.getLogger(__name__)
 
@@ -178,12 +178,13 @@ async def run_simulation(
 
 def prepare_simulation(
     pid: str, setup_id: str, run_id: str | None = None, *, preview: bool = False, default_currency: str = "USD",
-) -> tuple[str, Store, list[Persona], str, str]:
+    operations: OperationsConfig | None = None, shared_store: bool | None = None,
+) -> tuple[str, Store, list[Persona], str, str, OperationsConfig | None]:
     """Validate, load inputs, and transition state before running. AppError on failure.
 
     Hold the editor's setup lock through validation, input capture and marking
     the run pending, so a concurrent save cannot replace its snapshot or state.
-    Returns (run_id, store, personas, address, customer_profile).
+    Returns (run_id, store, personas, address, customer_profile, operations).
     """
     try:
         with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
@@ -191,8 +192,9 @@ def prepare_simulation(
             rid, store, personas, address, customer_profile = _load_simulation_inputs(
                 pid, setup, run_id, default_currency,
             )
+            saved_operations = run_operations(pid, setup_id, operations, shared_store)
             _mark_simulation_running(pid, setup_id, rid, preview=preview)
-            return rid, store, personas, address, customer_profile
+            return rid, store, personas, address, customer_profile, saved_operations
     except Timeout:
         raise AppError(503, "setup_lock_timeout", "lock_timeout",
                        "another request is modifying this setup. Please retry shortly.", {"timeout_seconds": 10})

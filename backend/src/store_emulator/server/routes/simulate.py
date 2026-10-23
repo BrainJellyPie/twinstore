@@ -7,7 +7,6 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import run_analyst
 from store_emulator.application import simulation as sim_service
-from store_emulator.application import setups as setup_service
 from store_emulator.application import town as town_service
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError
@@ -176,11 +175,6 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
 
     **Errors:** 400 (no layout / no personas), 404 (setup not found), 409 (locked / running / readiness not met / duplicate run_id)"""
     options = _options(req)
-    try:
-        options = options.model_copy(update={"operations": await run_in_threadpool(
-            setup_service.run_operations, pid, req.setup_id, req.operations, req.shared_store)})
-    except AppError as e:
-        raise HTTPException(e.status_code, e.message)
     config = get_config()
     try:
         ensure_resolvable(sim_service.apply_options(config, options))
@@ -189,13 +183,15 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
     try:
         if options.use_town:
             town_service.town_for_run(pid)  # before the setup is marked running
-        run_id, store, personas, address, customer_profile = await run_in_threadpool(
+        run_id, store, personas, address, customer_profile, operations = await run_in_threadpool(
             sim_service.prepare_simulation, pid, req.setup_id, req.run_id,
             preview=req.preview, default_currency=config.currency,
+            operations=req.operations, shared_store=req.shared_store,
         )
     except AppError as e:
         raise HTTPException(e.status_code, str(e))
 
+    options = options.model_copy(update={"operations": operations})
     executor.submit(
         sim_service.run_simulation_background,
         pid, run_id, req.setup_id, store, personas,

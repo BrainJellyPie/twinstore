@@ -44,7 +44,7 @@ def test_matching_currency_survives_summary_and_saved_run_config(client, currenc
     path = metadata_path(PID)
     write_json(path, {**read_json(path), "currency": currency})
     sid = client.post(f"/api/projects/{PID}/setups/generate", json={"template_id": "specialty_cafe", "currency": currency}).json()["id"]
-    rid, store, personas, address, profile = prepare_simulation(PID, sid, preview=True, default_currency="USD")
+    rid, store, personas, address, profile, _ = prepare_simulation(PID, sid, preview=True, default_currency="USD")
     config = local_config().model_copy(update={"currency": "USD"})
     run_simulation_background(PID, rid, sid, store, personas, config, address, profile,
                               RunOptions(engine_type=EngineType.RULE_BASED, max_customers=10, preview=True))
