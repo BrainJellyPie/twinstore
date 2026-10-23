@@ -4,18 +4,14 @@ import codecs
 import csv
 import io
 
+from store_emulator.application.csv_tables import (
+    CsvError as CustomerCsvError,
+    CsvLimitError as CustomerCsvLimitError,
+    validate_csv_table,
+)
+
 MAX_CUSTOMER_CSV_BYTES = 10 * 1024 * 1024
 MAX_CUSTOMER_CSV_CELLS = 2_000_000
-# Python's default 128 KiB field limit would reject otherwise supported long notes.
-csv.field_size_limit(max(csv.field_size_limit(), MAX_CUSTOMER_CSV_BYTES))
-
-
-class CustomerCsvError(ValueError):
-    pass
-
-
-class CustomerCsvLimitError(CustomerCsvError):
-    pass
 
 
 def validate_customer_csv(data: bytes) -> tuple[str, str]:
@@ -46,25 +42,5 @@ def validate_customer_csv(data: bytes) -> tuple[str, str]:
         except csv.Error:
             delimiter = ","
 
-    columns = rows = 0
-    try:
-        for row in csv.reader(io.StringIO(text, newline=""), delimiter=delimiter, strict=True):
-            if not columns:
-                if not row or (len(row) == 1 and not row[0].strip()):
-                    continue
-                columns = len(row)
-            else:
-                rows += 1
-                if len(row) > columns:
-                    raise CustomerCsvError(
-                        "Customer CSV rows have more fields than the header; quote values containing separators."
-                    )
-            if columns * max(1, rows) > MAX_CUSTOMER_CSV_CELLS:
-                raise CustomerCsvLimitError(
-                    "Customer CSV exceeds 2,000,000 cells, including missing fields in short rows."
-                )
-    except csv.Error as exc:
-        raise CustomerCsvError(f"Customer CSV has invalid quoting or fields: {exc}") from exc
-    if not columns:
-        raise CustomerCsvError("Customer CSV is empty or has no column header.")
+    validate_csv_table(text, delimiter, label="Customer CSV", max_cells=MAX_CUSTOMER_CSV_CELLS)
     return text, delimiter

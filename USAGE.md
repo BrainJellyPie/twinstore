@@ -874,6 +874,8 @@ Run through this before triggering generation or simulation:
   products present in both are compared, so check the reported coverage.
   Use a decimal point for fractional quantities/prices (`0.5`); commas are accepted only as
   three-digit thousands groups (`1,250.50`). Convert decimal-comma exports before uploading.
+  POS uploads allow at most 50 MB. CSV tables also allow at most 2,000,000 cells, including
+  missing fields in short rows; export only the relevant columns and rows if this limit is exceeded.
 - **Receipt-photo review.** In a run's sales-validation section, **Receipts**
   reads photos into an editable draft. Confirm each product against the saved
   run's catalog, correct quantity and prices in minor currency units, and

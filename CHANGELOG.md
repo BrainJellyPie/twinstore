@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Bound POS CSV tables before dataframe allocation, including missing fields in short rows.
+  Small but very wide/sparse files cannot expand beyond two million cells, and invalid record
+  widths or quoting fail before allocation; normal UTF-8/CP949 exports retain their identifiers.
+
 - Scope learned model-option restrictions to each endpoint. A server rejecting temperature,
   token-limit names or thinking/reasoning settings no longer changes requests sent to another server
   exposing the same model alias; clients using the same endpoint still share learned restrictions.
