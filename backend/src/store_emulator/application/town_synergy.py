@@ -9,7 +9,6 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
@@ -32,7 +31,8 @@ from .providers import build_client, ensure_resolvable
 from .scenarios import get_preset
 from .simulation import with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
-from .storage.setups import personas_path, read_setup, read_state
+from .storage.personas import read_personas
+from .storage.setups import read_setup, read_state
 from .town import require_town
 
 logger = logging.getLogger(__name__)
@@ -133,9 +133,7 @@ def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: 
         raise AppError("this layout has no store yet", 400)
     store = Store.model_validate(setup["store"])
     currency = simulation_currency(pid, store, config.currency)
-    if not personas_path(pid).exists():
-        raise AppError("the project has no personas yet", 400)
-    personas = [Persona.model_validate(p) for p in cast(list[dict[str, Any]], read_json(personas_path(pid)))]
+    personas = read_personas(pid)
     if not personas:
         raise AppError("the project has no personas yet", 400)
     scenario = get_preset(request.scenario_id) if request.scenario_id else None

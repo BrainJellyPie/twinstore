@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from filelock import FileLock, Timeout
 from pydantic import BaseModel
@@ -38,7 +38,8 @@ from .scenarios import get_preset, scenario_shoppers, scenario_store
 from .setups import run_operations, set_active_setup, setup_lock_path, setup_summary, setup_tree_transaction
 from .simulation import with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
-from .storage.setups import new_setup_data, personas_path, read_setup, setup_path
+from .storage.personas import read_personas
+from .storage.setups import new_setup_data, read_setup, setup_path
 
 logger = logging.getLogger(__name__)
 
@@ -120,10 +121,7 @@ def _load_store_and_personas(pid: str, setup_id: str) -> tuple[Store, list[Perso
     if not store_data:
         raise AppError("this layout has no store yet", 400)
     store = Store.model_validate(store_data)
-    path = personas_path(pid)
-    if not path.exists():
-        raise AppError("the project has no personas yet", 400)
-    personas = [Persona.model_validate(p) for p in cast(list[dict[str, Any]], read_json(path))]
+    personas = read_personas(pid)
     if not personas:
         raise AppError("the project has no personas yet", 400)
     return store, personas

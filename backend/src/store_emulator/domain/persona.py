@@ -47,3 +47,12 @@ class Persona(BaseModel):
     @property
     def budget_label(self) -> str:
         return f"{self.budget_min}¢~{self.budget_max}¢"
+
+
+def validate_persona_ids(personas: list[Persona]) -> list[Persona]:
+    ids = [persona.id for persona in personas]
+    if any(not identifier.strip() for identifier in ids):
+        raise ValueError("Persona IDs must not be blank.")
+    if len(ids) != len(set(ids)):
+        raise ValueError("Persona IDs must be unique.")
+    return personas

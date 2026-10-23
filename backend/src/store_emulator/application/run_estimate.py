@@ -24,7 +24,8 @@ from store_emulator.application.estimates import (
 from store_emulator.application.providers import resolve_model
 from store_emulator.application.simulation import RunOptions, run_shoppers
 from store_emulator.application.storage.io import DATA_DIR, read_json
-from store_emulator.application.storage.setups import personas_path, read_setup
+from store_emulator.application.storage.personas import read_personas
+from store_emulator.application.storage.setups import read_setup
 from store_emulator.domain.config import EngineType, LLMConfig, SimulationConfig
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
@@ -113,8 +114,7 @@ def _inputs(pid: str, setup_id: str, default_currency: str) -> tuple[Store, list
         raise AppError("this layout has no store yet", 400)
     store = Store.model_validate(setup["store"])
     store.currency = simulation_currency(pid, store, default_currency)
-    path = personas_path(pid)
-    personas = [Persona.model_validate(p) for p in cast(list[dict[str, object]], read_json(path))] if path.exists() else []
+    personas = read_personas(pid)
     if not personas:
         raise AppError("the project has no customers yet", 400)
     return store, personas
