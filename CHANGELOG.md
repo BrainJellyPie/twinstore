@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Commit rival-attractiveness adjustments and their reapplication baselines under the same
+  project/neighborhood locks. Concurrent applications no longer compound or lose another venue's
+  baseline, deletion cannot recreate an orphaned project folder, and baseline write errors restore
+  the previous neighborhood value before retrying.
+
 - Count only retained VLM planned purchases in the planning summary. Items rejected by the
   category-breadth limit no longer inflate average purchases or category rankings, and products
   added during trip filling contribute their actual shelf category to the totals.

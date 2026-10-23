@@ -2,6 +2,8 @@
 
 import logging
 import re
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from filelock import FileLock, Timeout
@@ -73,29 +75,41 @@ def town_for_run(pid: str) -> Town:
 
 
 def save_town(pid: str, town: Town, *, expected: Town | None = None) -> Town:
+    with town_write_transaction(pid, expected=expected) as commit:
+        return commit(town)
+
+
+@contextmanager
+def town_write_transaction(pid: str, *, expected: Town | None = None) -> Iterator[Callable[[Town], Town]]:
+    """Yield a validated town writer while holding project and neighborhood locks.
+
+    Related adjustment baselines can be read and written inside the same boundary.
+    """
     path = _town_path(pid)
-    if not path.parent.is_dir():
-        raise AppError(f"project not found: {pid}", 404)
-    if town.size_m <= 0:
-        raise AppError("Neighborhood size must be positive", 422)
-    for label, coordinate, limit in [("latitude", town.center_lat, 90), ("longitude", town.center_lon, 180)]:
-        if coordinate is not None and not -limit <= coordinate <= limit:
-            raise AppError(f"Neighborhood center {label} must be between {-limit} and {limit}", 422)
-    for label, items in [("venue", town.venues), ("building", town.buildings), ("road", town.roads)]:
-        ids = [item.id for item in items]
-        if any(not identifier.strip() for identifier in ids) or len(set(ids)) != len(ids):
-            raise AppError(f"Neighborhood {label} IDs must be nonempty and unique", 422)
-    if town.get_venue(town.focal_venue_id) is None:
-        raise AppError("The neighborhood must contain its focal venue", 422)
+
+    def commit(town: Town) -> Town:
+        if town.size_m <= 0:
+            raise AppError("Neighborhood size must be positive", 422)
+        for label, coordinate, limit in [("latitude", town.center_lat, 90), ("longitude", town.center_lon, 180)]:
+            if coordinate is not None and not -limit <= coordinate <= limit:
+                raise AppError(f"Neighborhood center {label} must be between {-limit} and {limit}", 422)
+        for label, items in [("venue", town.venues), ("building", town.buildings), ("road", town.roads)]:
+            ids = [item.id for item in items]
+            if any(not identifier.strip() for identifier in ids) or len(set(ids)) != len(ids):
+                raise AppError(f"Neighborhood {label} IDs must be nonempty and unique", 422)
+        if town.get_venue(town.focal_venue_id) is None:
+            raise AppError("The neighborhood must contain its focal venue", 422)
+        write_json(path, town.model_dump(mode="json"))
+        return town
+
     try:
         with setup_tree_transaction(pid):
             with FileLock(path.with_suffix(".lock"), timeout=0):
                 if expected is not None and get_town(pid) != expected:
                     raise AppError("Neighborhood changed while this action was running; reload it and try again", 409)
-                write_json(path, town.model_dump(mode="json"))
+                yield commit
     except Timeout as exc:
         raise AppError("Another neighborhood update is in progress; try again", 409) from exc
-    return town
 
 
 def generate(pid: str, spec: TownSpec, *, store_name: str = "") -> Town:
