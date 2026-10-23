@@ -54,6 +54,8 @@ class _Checkout:
     arrived: float              # clock second the shopper reached the till
     units: int = 0              # units in the basket on reaching the till
     spend: int = 0
+    counters_open: int = 0
+    crew_on_duty: int = 0
     wait: float = 0.0
     service: float | None = None
     abandoned: bool = False
@@ -490,7 +492,9 @@ def _play_day(
             result = results[index]
             units = sum(e.quantity for e in result.timeline if e.action == Action.BUY)
             spend = sum(e.price * e.quantity for e in result.timeline if e.action == Action.BUY)
-            checkout = _Checkout(pay_index=k, arrived=moment, units=units, spend=spend)
+            checkout = _Checkout(pay_index=k, arrived=moment, units=units, spend=spend,
+                                 counters_open=staffed(moment),
+                                 crew_on_duty=crew_on_duty(config, duty_hour(moment), int(day)))
             checkouts[index] = checkout
             if units == 0:
                 checkout.nothing_to_pay = True
@@ -866,6 +870,8 @@ def _queue_summary(
         stats = hours.setdefault(hour, QueueHour(hour=hour))
         stats.arrivals += 1
         stats.abandoned += int(c.abandoned)
+        stats.counters_open = max(stats.counters_open, c.counters_open)
+        stats.crew_on_duty = max(stats.crew_on_duty, c.crew_on_duty)
         waits_by_hour[hour].append(c.wait)
     for hour, values in waits_by_hour.items():
         hours[hour].avg_wait_sec = round(sum(values) / len(values), 1)
@@ -874,9 +880,10 @@ def _queue_summary(
     days = sorted({int(results[index].day) for index, _ in queued})
     for hour, stats in hours.items():
         stats.counters_needed = needed.get(hour, 1)
-        # A roster can staff the hour differently on each weekday: the most it does.
-        stats.counters_open = max(tills_open(config, tills, counters, int(hour), day) for day in days)
-        stats.crew_on_duty = max(crew_on_duty(config, int(hour), day) for day in days)
+        # Retain the maximum over weekdays, including the last shift that stayed
+        # after closing and actually staffed these checkouts.
+        stats.counters_open = max(stats.counters_open, *(tills_open(config, tills, counters, int(hour), day) for day in days))
+        stats.crew_on_duty = max(stats.crew_on_duty, *(crew_on_duty(config, int(hour), day) for day in days))
     report.hours = [hours[h] for h in sorted(hours)]
     report.counters_needed = max((h.counters_needed for h in report.hours), default=0)
 
