@@ -9,6 +9,7 @@ import { extractSkuImages } from "@/features/layouts/excel/extractSkuImages";
 import { uploadSkuImages } from "@/shared/api/images";
 import type { Store } from "@/shared/types/domain";
 import { useI18n } from "@/shared/i18n/i18n";
+import { UserMessageError } from "@/shared/i18n/userMessage";
 
 interface LayoutExcelControlsProps {
   store: Store;
@@ -33,7 +34,7 @@ function ExcelControls({
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [uploadInfo, setUploadInfo] = useState<{ count: number; clearedCount: number; imageWarning?: string } | null>(null);
-  const [uploadParseError, setUploadParseError] = useState<string | null>(null);
+  const [uploadParseError, setUploadParseError] = useState<Error | null>(null);
   const [uploading, setUploading] = useState(false);
   const uploadInFlight = useRef(false);
   const mounted = useRef(true);
@@ -122,7 +123,7 @@ function ExcelControls({
     } catch (e) {
       // Failures before the mutation runs (e.g. missing rack_layout sheet,
       // corrupt xlsx). Backend mutation failures surface via `replace.error`.
-      if (mounted.current) setUploadParseError(e instanceof Error ? e.message : String(e));
+      if (mounted.current) setUploadParseError(e instanceof Error ? e : new Error(String(e)));
     } finally {
       uploadInFlight.current = false;
       if (mounted.current) setUploading(false);
@@ -130,7 +131,8 @@ function ExcelControls({
   }, [projectId, setupId, replace]);
 
   const uploadError =
-    uploadParseError ?? (replace.error instanceof Error ? replace.error.message : null);
+    uploadParseError instanceof UserMessageError ? t(uploadParseError.key, uploadParseError.values)
+    : uploadParseError?.message ?? (replace.error instanceof Error ? replace.error.message : null);
 
   return (
     <div className="mt-2 space-y-1.5">
