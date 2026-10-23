@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Bound each route cache by accounted memory as well as entry count. Large layouts and repeated search
+  candidates no longer retain hundreds of thousands of full-map keys regardless of their size. Old paths
+  are evicted as needed, and oversized paths are computed without caching.
+
 - Reuse parsed POS timestamps within each import, with a bounded cache. Receipt product lines no longer
   repeatedly parse identical date/time strings for both receipt grouping and hourly fidelity.
 
