@@ -93,7 +93,7 @@ def test_start_keeps_the_saved_input_snapshot_and_running_state(layout, monkeypa
 @pytest.mark.parametrize("succeeds", [False, True])
 @pytest.mark.parametrize("kind", ["name", "memo", "operations"])
 def test_finishing_a_run_keeps_editor_changes_and_its_terminal_state(layout, monkeypatch, succeeds, kind):
-    rid, store, personas, address, profile = simulation.prepare_simulation(PID, SID, "run_finish")
+    rid, store, personas, address, profile, _ = simulation.prepare_simulation(PID, SID, "run_finish")
     if not succeeds:
         def fail(*args, **kwargs):
             raise RuntimeError("offline test failure")
@@ -114,7 +114,7 @@ def test_operations_saved_during_a_state_write_are_not_lost(layout, monkeypatch,
         def action():
             return simulation.prepare_simulation(PID, SID, "run_reverse")
     else:
-        rid, store, personas, address, profile = simulation.prepare_simulation(PID, SID, "run_reverse")
+        rid, store, personas, address, profile, _ = simulation.prepare_simulation(PID, SID, "run_reverse")
         if phase == "failure":
             def fail(*args, **kwargs):
                 raise RuntimeError("offline test failure")

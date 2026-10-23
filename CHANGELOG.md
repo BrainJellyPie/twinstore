@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Capture saved stock, refill and checkout settings under the same layout lock as simulation inputs. Runs
+  waiting for an operations save now use the accepted settings, including removal, while later edits leave
+  the already captured run unchanged. Explicit overrides and shared-store opt-out keep their precedence.
+
 - Keep completed or canceled customer-generation jobs from returning to "running" when a confirmation write
   finishes late. Accept each generation choice once, coordinate it with the worker's progress handoff, and
   preserve accepted choices at the wait deadline while rejecting answers after the wait has closed.

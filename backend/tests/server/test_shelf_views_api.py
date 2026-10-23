@@ -75,7 +75,7 @@ def test_keys_match_the_store_a_vision_run_uses(client: TestClient):
     faces = client.get(URL).json()["faces"]
     config = apply_options(SimulationConfig(engine_type=EngineType.VLM_GLANCE), RunOptions(shelf_view="photo_chart"))
     assert config.engines.vlm_glance.shelf_view == "photo_chart"
-    _, store, personas, _, _ = sim_service.prepare_simulation(PID, SID, preview=True, default_currency=config.currency)
+    _, store, personas, _, _, _ = sim_service.prepare_simulation(PID, SID, preview=True, default_currency=config.currency)
     config = config.model_copy(update={"currency": store.currency or config.currency})
     run_store, _ = prepare_inputs(config, store, personas)
     racks = {r.id: r for r in run_store.product_racks}
