@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Base checkout wait guidance on recorded hourly waits instead of comparing
+  theoretical capacity with the default staffing count. Show the worst observed
+  delay, use each hour's staffing for capacity highlights, and explain the queue
+  assumptions in all six interface languages.
+
 - Calculate the actual minimum checkout capacity needed for the target mean
   wait. Recommendations no longer stop at 30 tills while claiming to meet a
   target that remains unmet. Cached queue simulations and binary search keep

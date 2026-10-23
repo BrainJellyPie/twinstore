@@ -17,7 +17,7 @@ Verification:
   recommendation of 31 with 31 arrivals and only one installed till.
 - Tests cover bursts of 1–2,000 customers, zero/30/120-second targets, empty input,
   zero service, two-day independence and 32 seeded mixtures of basket lengths,
-  fractional times, midnight/hour boundaries and service durations. An independent
+  fractional times, hour boundaries and service durations. An independent
   cashier schedule confirms feasibility and that one fewer till misses the target.
 - Pyright on the changed shared-store module passed.
 - Standalone timing: 500 arrivals → 100 tills in 0.0029 seconds; 2,000 → 400 in

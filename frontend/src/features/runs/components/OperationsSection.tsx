@@ -50,9 +50,11 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
     : t("opsMinutes", { minutes: (seconds / 60).toLocaleString(locale, { maximumFractionDigits: 1 }) });
   const count = (value: number) => value.toLocaleString(locale);
   const target = duration(report.config.target_wait_sec);
-  const busiest = report.hours.reduce<OperationsReport["hours"][number] | null>(
-    (best, hour) => (best === null || hour.counters_needed > best.counters_needed
-      || (hour.counters_needed === best.counters_needed && hour.avg_wait_sec > best.avg_wait_sec) ? hour : best), null);
+  const worstWait = report.hours.reduce<OperationsReport["hours"][number] | null>(
+    (worst, hour) => (worst === null || hour.avg_wait_sec > worst.avg_wait_sec ? hour : worst), null);
+  const observedWait = worstWait && duration(worstWait.avg_wait_sec) === target
+    ? t("opsSeconds", { seconds: worstWait.avg_wait_sec.toLocaleString(locale, { maximumFractionDigits: 3 }) })
+    : worstWait ? duration(worstWait.avg_wait_sec) : "";
   const maxWait = Math.max(1, ...report.hours.map((h) => h.avg_wait_sec));
   const crew = report.config.crew ?? null;
   const shifts = report.config.crew_shifts ?? [];
@@ -151,20 +153,21 @@ export function OperationsReportView({ report, currency, lab }: { report: Operat
                     </div>
                   </td>
                   <td className="py-1 text-right">{count(hour.abandoned)}</td>
-                  <td className={hour.counters_needed > report.counters ? "py-1 text-right font-semibold text-destructive" : "py-1 text-right"}>
+                  <td className={hour.counters_needed > (hour.counters_open ?? report.counters) ? "py-1 text-right font-semibold text-destructive" : "py-1 text-right"}>
                     {count(hour.counters_needed)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {busiest && (
+          {worstWait && (
             <p className="mt-2 text-xs">
-              {report.counters_needed > report.counters
-                ? t("opsAdviceMore", { hour: t("opsHourLabel", { hour: busiest.hour }), needed: count(report.counters_needed), open: count(report.counters), target })
-                : t("opsAdviceEnough", { open: count(report.counters), target })}
+              {worstWait.avg_wait_sec > report.config.target_wait_sec
+                ? t("opsAdviceMore", { hour: t("opsHourLabel", { hour: worstWait.hour }), wait: observedWait, target })
+                : t("opsAdviceEnough", { target })}
             </p>
           )}
+          <p className="mt-1 text-xs text-muted-foreground">{t("opsCapacityHint")}</p>
         </div>
       )}
 
