@@ -752,6 +752,10 @@ Things to push back on:
 
 ### Supplemental file (optional, ≤10 MB, `.csv` or `.xlsx`)
 
+Customer CSV imports allow at most 2,000,000 cells, including padding for short rows. Data rows
+cannot contain more fields than the header: quote values containing commas, semicolons or tabs.
+The wizard reports structural CSV errors before creating a project or starting generation.
+
 XLSX imports also allow at most 100 MB of expanded archive contents and 2,000,000 cells across
 worksheet ranges, counting empty gaps. A stray value or formatting far below/right of the data can
 make a small file exceed this range budget. Copy the relevant data into a new workbook and upload
@@ -781,7 +785,8 @@ What lands poorly:
 - One free-text column with no structure (the summarizer has nothing to
   aggregate).
 
-Oversized XLSX ranges/archives are rejected before new-project creation. Other malformed supplemental files
+Malformed or oversized customer CSVs and oversized XLSX ranges/archives are rejected before new-project
+creation. Other malformed supplemental files
 can still fail silently —
 they just produce an empty `supplemental_summary`, and generation
 proceeds without the data-driven refinement. After upload, point the user
