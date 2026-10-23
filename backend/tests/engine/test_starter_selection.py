@@ -32,7 +32,7 @@ class FakeModel:
         else:
             data = {"groups": [{"category": self.category, "skus": [p["sku"] for p in source["categories"][self.category]][:3]}]}
         if self.edit:
-            self.edit(data, len(self.calls))
+            self.edit(data, 1 if response_model is CategorySelection else 2)
         return response_model.model_validate(data)
 
 
