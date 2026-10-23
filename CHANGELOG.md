@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Select rule and vision purchases only from shelf offers connected to the shopper's
+  entrance. Unreachable promoted, cheaper or free offers cannot consume a basket slot,
+  reserve a SKU or spend the budget before routing silently drops them.
+
 - Reject operations replay/planning when a shared-store run has lost its operations
   report. Already-depleted purchases can no longer masquerade as original demand;
   malformed saved configuration objects also fail before calculation.

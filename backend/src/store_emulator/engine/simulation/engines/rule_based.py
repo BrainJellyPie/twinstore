@@ -27,6 +27,7 @@ from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import (
     Action,
+    CARDINAL_DIRECTIONS,
     PathFinder,
     Position,
     TokenUsage,
@@ -134,15 +135,44 @@ class RuleBasedEngine:
         self._fx = compile_scenario(config.scenario, config.scenario_priors) if config.scenario is not None else ScenarioEffects()
         # Tokenized catalog per store object (one store per run; a run calls us per customer).
         self._catalog: tuple[Store, list[tuple[Rack, Slot, SlotItem, set[str], set[str]]]] | None = None
+        self._reachable: tuple[Store, list[list[bool]]] | None = None
+
+    def _planning_grid(self, store: Store) -> list[list[bool]]:
+        cached = self._reachable
+        if cached is not None and cached[0] is store:
+            return cached[1]
+        grid = store.walkable_grid()
+        width, height = store.grid_size
+        reached = [[False] * width for _ in range(height)]
+        x, y = entrance_position(store)
+        pending: list[Position] = []
+        if 0 <= x < width and 0 <= y < height and grid[y][x]:
+            reached[y][x] = True
+            pending.append((x, y))
+        # Cardinal connectivity also covers diagonal movement, which cannot cut blocked corners.
+        while pending:
+            x, y = pending.pop()
+            for dx, dy in CARDINAL_DIRECTIONS:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < width and 0 <= ny < height and grid[ny][nx] and not reached[ny][nx]:
+                    reached[ny][nx] = True
+                    pending.append((nx, ny))
+        self._reachable = (store, reached)
+        return reached
 
     def _catalog_for(self, store: Store) -> list[tuple[Rack, Slot, SlotItem, set[str], set[str]]]:
-        if self._catalog is None or self._catalog[0] is not store:
-            entries = [
-                (rack, slot, item, tokenize(f"{rack.rack_name} {rack.rack_desc}"), tokenize(item.name))
-                for rack in store.product_racks for slot in rack.slots for item in slot.items
-            ]
-            self._catalog = (store, entries)
-        return self._catalog[1]
+        cached = self._catalog
+        if cached is not None and cached[0] is store:
+            return cached[1]
+        grid = self._planning_grid(store)
+        entries = [
+            (rack, slot, item, tokenize(f"{rack.rack_name} {rack.rack_desc}"), tokenize(item.name))
+            for rack in store.product_racks for slot in rack.slots
+            if face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block) is not None
+            for item in slot.items
+        ]
+        self._catalog = (store, entries)
+        return entries
 
     def reset_usage(self) -> None:
         pass
@@ -152,6 +182,8 @@ class RuleBasedEngine:
 
     def prepare(self, store: Store) -> None:
         """Called once per run with the store: situation and part-of-day effects follow the store's format."""
+        self._catalog = None
+        self._reachable = None
         priors = priors_for(store.type, self._config.scenario_priors)
         if self._config.scenario is not None:
             self._fx = compile_scenario(self._config.scenario, priors)
@@ -250,7 +282,7 @@ class RuleBasedEngine:
                 action=Action.WANDER, dwell=rng.randint(20, 60), description="wanders the aisles",
             ))
         plan = ShopperPlan(
-            pattern=pattern, rng=rng, grid=store.walkable_grid(),
+            pattern=pattern, rng=rng, grid=self._planning_grid(store),
             budget=persona.budget_max if persona.budget_max > 0 else None,
             tolerance=cfg.budget_tolerance, spend=0, walk_out=False, buys=[], chosen=set(), planned=[],
             hour=context.arrival_hour,
