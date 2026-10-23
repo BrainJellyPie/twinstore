@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Exclude unresolvable Shelf Lab model choices from response counts, photo/render
+  agreement and paired merchandising comparisons. Invented products, ambiguous
+  names and number-only raw-photo replies can no longer masquerade as no-picks;
+  a sim2real job with no valid comparison pairs fails instead of claiming agreement.
+
 - Retain reviewed product photo references through Excel export/import using
   hidden workbook metadata. Successfully uploaded embedded images replace the
   corresponding SKU references; missing or failed new uploads retain saved links.

@@ -203,11 +203,16 @@ async def glance_panel(
                 answer.resolved_by, answer.error = "error", f"{type(e).__name__}: {e}"[:200]
                 glance = None
         if glance is not None:
+            raw_number_only = condition == "photo_raw" and glance.number != 0 and not glance.product.strip()
             if condition == "photo_raw":
                 glance = glance.model_copy(update={"number": 0})
             marked, how = resolve(view, glance)
+            if raw_number_only:
+                how = "invalid"
             answer.resolved_by, answer.interest, answer.reason = how, glance.interest, glance.reason
-            if marked is not None:
+            if how == "invalid":
+                answer.error = "The model's choice could not be matched to a product in this shelf view."
+            elif marked is not None:
                 answer.sku, answer.name, answer.level = marked.item.sku, marked.item.name, marked.slot.level
         done += 1
         if on_progress is not None:
