@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep the source building and floor when applying individual or combined shelf photos. Captured layouts no
+  longer lose their floor association in multi-floor projects.
+
 - Keep deleted combined-shelf layouts deleted when an old save is retried, including after a lost response.
   Capture-batch retries coordinate with layout deletion while preserving recovery of successful saves.
 
