@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Coordinate package-image uploads, metadata edits, reads and lock creation with project
+  deletion. Late commits cannot recreate deleted image folders; model reads use a captured
+  image and metadata snapshot, with unreadable images rejected before provider work.
+
 - Preserve a vision planner's hard spending limit through shared-stock substitutions and
   saved operations replays. Replacements must fit the money left after the other planned
   purchase lines, including quantity limits; stockouts can no longer inflate a capped basket.
