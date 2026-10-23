@@ -18,6 +18,7 @@ from store_emulator.application.storage.setups import (
     setup_path,
 )
 from store_emulator.domain.capture import CaptureResult
+from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.capture_batch import (
     CaptureBatchPreview,
     CaptureBatchRecord,
@@ -204,6 +205,8 @@ def save(
                 "Combined reviewed shelf photos; source layouts unchanged.",
             )
             source = read_setup(pid, req.setup_id)
+            if source.get("building") is not None:
+                draft["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
             if source.get("operations") is not None:
                 draft["operations"] = source["operations"]
             draft["id"] = path.stem

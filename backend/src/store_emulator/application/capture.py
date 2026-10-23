@@ -31,6 +31,7 @@ from store_emulator.domain.capture import (
     CaptureStatus,
 )
 from store_emulator.domain.config import LLMConfig, SimulationConfig
+from store_emulator.domain.layout_options import BuildingFloorInfo
 from store_emulator.domain.providers import ModelRef
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face, RESOURCE_ID_PATTERN
@@ -591,6 +592,8 @@ def apply_captures(
     final_name = name or f"{source.get('name') or 'layout'} ({label})"
     memo = _memo(capture_ids, results, report)
     new_setup = new_setup_data(final_name, setup_id, new_store.model_dump(mode="json"), memo[:1000])
+    if source.get("building") is not None:
+        new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
     if source.get("operations") is not None:
         new_setup["operations"] = source["operations"]
     write_json(setup_path(pid, new_setup["id"]), new_setup)

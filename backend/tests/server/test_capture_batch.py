@@ -502,13 +502,21 @@ def test_zero_price_unicode_and_facing_limits(workflow):
 
 @pytest.mark.parametrize("mode", ["batch", "single", "multiple"])
 @pytest.mark.parametrize("configured", [False, True])
-def test_capture_variants_keep_operating_conditions(workflow, mode, configured):
+@pytest.mark.parametrize("level", [None, -1, 2])
+def test_capture_variants_keep_operating_conditions_and_floor(workflow, mode, configured, level):
     from store_emulator.application.setups import run_operations, save_layout_operations
     from store_emulator.domain.operations import OperationsConfig
     client, request, _ = workflow
     operations = OperationsConfig(stock_per_facing=1, backroom_per_product=0,
                                  daily_delivery=False, crew=2) if configured else None
     save_layout_operations(PID, BASE, operations)
+    building = None if level is None else {
+        "id": "building_mall", "name": "Mall", "level": level, "label": f"Floor {level}", "floor_count": 4,
+    }
+    if building is not None:
+        base = read_setup(PID, BASE)
+        base["building"] = building
+        write_json(setup_path(PID, BASE), base)
     source = setup_path(PID, BASE).read_bytes()
     if mode == "batch":
         response = client.post(ROOT + "/batch-save", json=prepare_save(client, request))
@@ -519,4 +527,5 @@ def test_capture_variants_keep_operating_conditions(workflow, mode, configured):
         response = client.post(ROOT + "/apply", json=request)
     assert response.status_code == 200, response.text
     assert run_operations(PID, response.json()["setup_id"], None, None) == operations
+    assert read_setup(PID, response.json()["setup_id"]).get("building") == building
     assert setup_path(PID, BASE).read_bytes() == source
