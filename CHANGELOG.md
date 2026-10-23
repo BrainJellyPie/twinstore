@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recheck completed runs and coordinate POS/movement report saves with project deletion.
+  An analysis that finishes after deletion cannot recreate output folders; an accepted save
+  finishes before deletion proceeds, and lock contention preserves the previous report.
+
 - Commit rival-attractiveness adjustments and their reapplication baselines under the same
   project/neighborhood locks. Concurrent applications no longer compound or lose another venue's
   baseline, deletion cannot recreate an orphaned project folder, and baseline write errors restore

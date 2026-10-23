@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from store_emulator.application.errors import AppError
-from store_emulator.application.storage.io import now_iso, read_json, write_json
+from store_emulator.application.storage.io import now_iso, read_json
 from store_emulator.application.storage.runs import load_run_results, load_run_store
 from store_emulator.domain.movement import MovementReport, TrackPoint
 from store_emulator.engine.analysis.movement import movement_report
@@ -55,7 +55,6 @@ def score_movement(base: Path, data: bytes, *, max_gap_seconds: float) -> Moveme
     if blocked:
         report.notes.append(f"{blocked} samples fall on non-walkable fixture cells. Check camera-to-grid alignment before interpreting differences.")
     report.created_at = now_iso()
-    write_json(base / "output" / "movement.json", report.model_dump())
     return report
 
 
