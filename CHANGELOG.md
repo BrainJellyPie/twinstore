@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reserve venue-synergy inputs and pending-job registration against project deletion and concurrent
+  customer/layout saves. Accepted jobs keep their project, deleted projects stay deleted, and a study
+  waits for an input save already in progress instead of silently using the preceding data.
+
 - Recognize explicit POS calendar dates and clocks across two-digit years, named months and compact
   timestamp formats. Reused receipt numbers on different dates no longer merge into inflated baskets.
   Partial dates do not borrow today's date; date-only values do not invent midnight visits.
