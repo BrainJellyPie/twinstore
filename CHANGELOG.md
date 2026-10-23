@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Split captured product runs across new racks using individual facing positions.
+  Wide runs now use the available shelf capacity instead of shrinking onto one
+  rack. Preserve reviewed facing totals when distributing boxes, count each source
+  product once, and report a product as dropped only when none of it is retained.
+
 - Give each captured product facing its own editable item. In-memory captured
   layouts no longer compound percentage price changes across shared objects or
   change sibling facings when one is edited; bulk edit counts match placements.

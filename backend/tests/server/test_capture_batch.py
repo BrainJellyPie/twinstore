@@ -463,6 +463,30 @@ def test_exact_names_reuse_sku_but_other_sizes_stay_distinct(workflow):
     }
 
 
+def test_wide_product_run_keeps_every_facing_through_preview_and_save(workflow):
+    client, request, tmp_path = workflow
+
+    def spread(result):
+        result["items"][0].update(facings=12, boxes=[
+            {"x1": 5 + index * 15, "y1": 5, "x2": 18 + index * 15, "y2": 170}
+            for index in range(12)
+        ])
+
+    edit_result(tmp_path, request["capture_ids"][0], spread)
+    response = client.post(ROOT + "/batch-preview", json=request)
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report["requested_facings"] == report["placed_facings"] == 14
+    assert report["placed_items"] == 2 and report["dropped"] == []
+    assert report["reduced_facings"] == 0
+    saved = client.post(ROOT + "/batch-save", json={**request, "source_sha256": report["source_sha256"],
+                                                   "request_id": "e" * 32})
+    assert saved.status_code == 200, saved.text
+    actual = Store.model_validate(read_setup(PID, saved.json()["setup_id"])["store"])
+    assert sum(len(slot.items) for _, slot in actual.all_slots) == 14
+    assert all(any(slot.items for slot in rack.slots) for rack in actual.racks if rack.id in report["rack_ids"])
+
+
 def test_reduced_facings_require_explicit_acceptance(workflow):
     client, request, tmp_path = workflow
     edit_result(
@@ -473,8 +497,10 @@ def test_reduced_facings_require_explicit_acceptance(workflow):
     report = response.json()
     assert (
         report["requested_facings"] == 26
-        and report["reduced_facings"] == 20
-        and report["placed_facings"] == 6
+        # The first capture's two observed positions receive 12 of its reviewed
+        # facings each, then each rack retains 4. The second capture retains 2.
+        and report["reduced_facings"] == 16
+        and report["placed_facings"] == 10
     )
     form = {**request, "source_sha256": report["source_sha256"], "request_id": "c" * 32}
     assert client.post(ROOT + "/batch-save", json=form).status_code == 409
