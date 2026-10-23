@@ -33,7 +33,7 @@ from store_emulator.application.storage.setups import (
 _SAFE_ID = re.compile(RESOURCE_ID_PATTERN)
 
 
-def _lock_path(project_id: str, setup_id: str) -> Path:
+def setup_lock_path(project_id: str, setup_id: str) -> Path:
     """Setup-specific lock file path. pid/sid whitelist blocks traversal.
 
     Lock directory is lazy-created so that tests using ``monkeypatch.chdir``
@@ -265,7 +265,7 @@ def save_setup_with_lock(
     concurrent PUTs cannot produce partial writes.
     """
     try:
-        with FileLock(str(_lock_path(project_id, setup_id)), timeout=10):
+        with FileLock(str(setup_lock_path(project_id, setup_id)), timeout=10):
             try:
                 disk_setup = read_setup(project_id, setup_id)
             except FileNotFoundError:
@@ -731,7 +731,7 @@ def save_layout_operations(project_id: str, setup_id: str, config: OperationsCon
     """Save (or with None, clear) how the layout's store is run. Allowed on a finalized layout too: it changes how
     the store is run, not the layout its runs recorded."""
     try:
-        with FileLock(str(_lock_path(project_id, setup_id)), timeout=10):
+        with FileLock(str(setup_lock_path(project_id, setup_id)), timeout=10):
             try:
                 data = read_setup(project_id, setup_id)
             except FileNotFoundError:

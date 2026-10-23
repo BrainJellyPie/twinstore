@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Serialize simulation input capture and setup state changes with editor saves. Concurrent saves no longer
+  reset a starting run to draft, leave a finished run marked running, or lose newly saved operations settings.
+
 - Bound timed crew refills to the units their scheduled work can handle. Customers buying during a refill no
   longer make extra stock appear without its per-unit work, and reserved checkout tasks keep their place.
 
