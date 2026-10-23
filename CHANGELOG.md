@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Coordinate Shelf Lab audit/photo-comparison startup with customer/layout saves and project/capture
+  deletion. Pending jobs register before deletion can proceed, and audits retain the starting visitor
+  estimate instead of changing their daily money scale when metadata changes later.
+
 - Bound each route cache by accounted memory as well as entry count. Large layouts and repeated search
   candidates no longer retain hundreds of thousands of full-map keys regardless of their size. Old paths
   are evicted as needed, and oversized paths are computed without caching.
