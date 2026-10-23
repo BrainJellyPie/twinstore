@@ -33,6 +33,8 @@ Validation:
 - Frontend source is unchanged from the verified main snapshot: 4,479 tests,
   build and lint passed for that exact frontend source.
 
-Full backend verification is running with a durable exit record; its final result
-will be recorded before publication. All scenarios use synthetic visits and no
-live model calls.
+- Full backend suite: **26,242 passed, 1 skipped**, 1,115.02 s (18m35s), exit 0.
+  The durable runner verified source commit `53e6523`; this final record changes
+  documentation only.
+
+All scenarios use synthetic visits and no live model calls.
