@@ -49,6 +49,7 @@ export interface SetupUpdatePayload {
   name?: string;
   store?: Store;
   memo?: string;
+  discard_products?: boolean;
 }
 
 // GET /api/projects/{pid}/setups/{sid} response — SetupDetail with blocked_faces.

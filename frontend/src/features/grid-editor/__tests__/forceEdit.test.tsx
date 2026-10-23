@@ -69,26 +69,37 @@ it("removes the products only when a changed floor is saved", async () => {
   changeWidth("10");
   fireEvent.click(screen.getByTestId("grid-save-button"));
   await waitFor(() => expect(screen.queryByTestId("grid-editor-dialog")).toBeNull());
-  expect(save).toHaveBeenCalledTimes(2);
-  const [cleared, changed] = save.mock.calls.map((call) => (call[2] as { store: Store }).store);
-  // The backend only accepts a floor change once the products are gone: clear them on the saved floor first.
-  expect(cleared!.grid_size).toEqual([8, 8]);
-  expect(itemsOf(cleared!)).toEqual([]);
-  expect(changed!.grid_size).toEqual([10, 8]);
-  expect(itemsOf(changed!)).toEqual([]);
+  expect(save).toHaveBeenCalledOnce();
+  const changed = save.mock.calls[0]![2] as { store: Store; discard_products: boolean };
+  expect(changed.discard_products).toBe(true);
+  expect(changed.store.grid_size).toEqual([10, 8]);
+  expect(itemsOf(changed.store)).toEqual([]);
 });
 
-it("puts the products back when the changed floor is refused", async () => {
-  save.mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({ ok: false, status: 422, code: "validation_failed",
+it("does not issue a separate product deletion or rollback when the changed floor is refused", async () => {
+  save.mockResolvedValueOnce({ ok: false, status: 422, code: "validation_failed",
     reason: "validation_error", details: {}, message: "store layout has errors." });
   renderPanel(setup);
   openEditorPastConfirm();
   changeWidth("10");
   fireEvent.click(screen.getByTestId("grid-save-button"));
   expect((await screen.findByTestId("grid-save-error")).textContent).toBe("store layout has errors.");
-  await waitFor(() => expect(save).toHaveBeenCalledTimes(3));
-  expect((save.mock.calls[2]![2] as { store: Store }).store).toEqual(store);
+  expect(save).toHaveBeenCalledOnce();
   expect(screen.getByTestId("grid-editor-dialog")).toBeTruthy();
+});
+
+it("retries the complete floor replacement after a lost response without clearing or restoring separately", async () => {
+  save.mockRejectedValueOnce(new Error("Failed to fetch"));
+  renderPanel(setup);
+  openEditorPastConfirm();
+  changeWidth("10");
+  fireEvent.click(screen.getByTestId("grid-save-button"));
+  expect((await screen.findByTestId("grid-save-error")).textContent).toBe("Failed to fetch");
+  expect(save).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByTestId("grid-save-button"));
+  await waitFor(() => expect(screen.queryByTestId("grid-editor-dialog")).toBeNull());
+  expect(save).toHaveBeenCalledTimes(2);
+  expect(save.mock.calls[1]![2]).toEqual(save.mock.calls[0]![2]);
 });
 
 it("keeps the products when the floor is saved unchanged", async () => {
