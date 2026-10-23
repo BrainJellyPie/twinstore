@@ -50,7 +50,7 @@ from store_emulator.engine.analysis.fidelity import fidelity_report
 from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.currencies import simulation_currency
 from store_emulator.application.shelf_views import views_dir
-from store_emulator.application.setups import run_operations, setup_lock_path
+from store_emulator.application.setups import run_operations, setup_lock_path, setup_tree_transaction
 
 logger = logging.getLogger(__name__)
 
@@ -667,12 +667,18 @@ def run_fidelity(pid: str, run_id: str, data: bytes, filename: str) -> FidelityR
         raise AppError(f"None of the {len(lines)} POS lines' SKUs ({sample}…) is on this run's shelves. Export the POS "
                        "with the same product codes the layout uses (Store tab → products), then upload it again.", 400)
     report = fidelity_report(store, load_run_results(base), lines)
-    write_json(base / "output" / "fidelity.json", report.model_dump())
+    with setup_tree_transaction(pid):
+        base = _completed_run_base(pid, run_id)
+        write_json(base / "output" / "fidelity.json", report.model_dump())
     return report
 
 
 def run_movement_fidelity(pid: str, run_id: str, data: bytes, *, max_gap_seconds: float) -> MovementReport:
-    return score_movement(_completed_run_base(pid, run_id), data, max_gap_seconds=max_gap_seconds)
+    report = score_movement(_completed_run_base(pid, run_id), data, max_gap_seconds=max_gap_seconds)
+    with setup_tree_transaction(pid):
+        base = _completed_run_base(pid, run_id)
+        write_json(base / "output" / "movement.json", report.model_dump())
+    return report
 
 
 def get_movement_fidelity(pid: str, run_id: str) -> MovementReport | None:

@@ -3,6 +3,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from store_emulator.application.storage.io import write_json
+from store_emulator.application.storage.setups import metadata_path
 from store_emulator.domain.customer import CustomerResult, TimelineEvent
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action
@@ -16,6 +18,7 @@ CSV = b"track_id,x,y,timestamp_sec\nprivate_track_4a,0,0,0\nprivate_track_4a,1,0
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    write_json(metadata_path(PID), {"name": "Movement test", "currency": "USD"})
     base = tmp_path / ".data" / PID / "runs" / RUN
     (base / "input").mkdir(parents=True)
     (base / "output").mkdir()
