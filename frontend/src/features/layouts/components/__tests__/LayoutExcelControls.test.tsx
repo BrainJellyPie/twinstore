@@ -46,9 +46,10 @@ function choose(container: HTMLElement, value: File) {
   fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [value] } });
 }
 
-it.each(LOCALES.flatMap(({ code }) => (["excelSheetTooWide", "excelDuplicateColumn"] as const)
+it.each(LOCALES.flatMap(({ code }) => (["excelSheetTooWide", "excelDuplicateColumn", "excelCellNeedsValue", "excelProductRackMissing"] as const)
   .map((key) => ({ code, key }))))("blocks invalid sheet uploads and updates $key in $code", async ({ code, key }) => {
-  const details: Record<string, string> = key === "excelDuplicateColumn" ? { column: "sku" } : {};
+  const details: Record<string, string | number> = key === "excelDuplicateColumn" ? { column: "sku" }
+    : key === "excelCellNeedsValue" ? { cell: "F2" } : key === "excelProductRackMissing" ? { row: 2 } : {};
   vi.mocked(parseLayoutWorkbook).mockImplementationOnce(() => { throw new UserMessageError(key, details); });
   const rendered = render(view());
   choose(rendered.container, file(1));
