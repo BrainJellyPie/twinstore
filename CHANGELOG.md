@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Coordinate concept surveys, shelf comparisons, conjoint studies and staff-script tests with project
+  deletion and input saves. Studies use the accepted customer/product data and register pending work
+  before deletion can proceed, preventing orphaned jobs and stale study panels.
+
 - Keep A/B experiments on one saved layout, customer list and operating plan, and preserve the starting
   visitor estimate used to scale daily results. Concurrent edits no longer change a running study's money
   scale, and project deletion cannot race pending study registration.

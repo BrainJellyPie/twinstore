@@ -5,6 +5,7 @@ import csv
 import io
 import time
 
+from filelock import FileLock, Timeout
 from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.application.errors import AppError, model_failure
@@ -15,6 +16,7 @@ from store_emulator.application.marketing import (
 )
 from store_emulator.application.providers import assistive_client, build_client
 from store_emulator.application.shelf_lab import _check_id, _load_store, _personas  # pyright: ignore[reportPrivateUsage]
+from store_emulator.application.setups import setup_lock_path, setup_tree_transaction
 from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.marketing import JobStatus
@@ -28,35 +30,39 @@ from store_emulator.engine.optimize.evaluate import select_personas
 def start_pitch(pid: str, req: PitchRequest, config: SimulationConfig) -> JobStatus:
     _check_id(pid, "project id")
     _check_id(req.setup_id, "setup id")
-    store = _load_store(pid, req.setup_id)
-    currency = simulation_currency(pid, store, config.currency)
-    products = [p for rack in store.racks for slot in rack.slots for p in slot.items if p.sku == req.sku]
-    if not products:
-        raise AppError("Choose a product present in this layout", 400)
-    if len({(p.name, p.price, p.promo) for p in products}) > 1:
-        raise AppError("This SKU has conflicting names, prices or offers across shelves; resolve them before testing", 400)
-    product = PitchProduct(sku=req.sku, name=products[0].name, price=products[0].price,
-                           currency=currency, promo=products[0].promo)
-    personas = _personas(pid)
-    ids = [p.id.strip() for p in personas]
-    if any(not pid for pid in ids) or len(set(ids)) != len(ids):
-        raise AppError("Persona IDs must be nonblank and unique before testing scripts", 400)
-    panel = select_personas(personas, req.panel, seed=req.seed)
-    if len(panel) < 20:
-        raise AppError("Staff script tests need at least 20 saved personas", 400)
-    llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={
-        "temperature": 0.4, "max_tokens": 700,
-    })
     try:
-        llm = build_client(llm_config, None, model_ref=req.model.strip() or None)
-    except ValueError as exc:
-        raise AppError(str(exc), 400) from exc
-    name = req.name.strip() or f"{req.variants[0].name} vs {req.variants[1].name}"
-    status = _new_job(pid, "pitch", name, req)
-    write_json(_job_dir(pid, "pitch", status.job_id) / "inputs.json", {
-        "product": product.model_dump(mode="json"), "personas": [p.model_dump(mode="json") for p in panel],
-        "model": req.model.strip() or llm_config.model, "temperature": 0.4,
-    })
+        with setup_tree_transaction(pid, [req.setup_id]), FileLock(setup_lock_path(pid, req.setup_id), timeout=10):
+            store = _load_store(pid, req.setup_id)
+            currency = simulation_currency(pid, store, config.currency)
+            products = [p for rack in store.racks for slot in rack.slots for p in slot.items if p.sku == req.sku]
+            if not products:
+                raise AppError("Choose a product present in this layout", 400)
+            if len({(p.name, p.price, p.promo) for p in products}) > 1:
+                raise AppError("This SKU has conflicting names, prices or offers across shelves; resolve them before testing", 400)
+            product = PitchProduct(sku=req.sku, name=products[0].name, price=products[0].price,
+                                   currency=currency, promo=products[0].promo)
+            personas = _personas(pid)
+            ids = [p.id.strip() for p in personas]
+            if any(not pid for pid in ids) or len(set(ids)) != len(ids):
+                raise AppError("Persona IDs must be nonblank and unique before testing scripts", 400)
+            panel = select_personas(personas, req.panel, seed=req.seed)
+            if len(panel) < 20:
+                raise AppError("Staff script tests need at least 20 saved personas", 400)
+            llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={
+                "temperature": 0.4, "max_tokens": 700,
+            })
+            try:
+                llm = build_client(llm_config, None, model_ref=req.model.strip() or None)
+            except ValueError as exc:
+                raise AppError(str(exc), 400) from exc
+            name = req.name.strip() or f"{req.variants[0].name} vs {req.variants[1].name}"
+            status = _new_job(pid, "pitch", name, req)
+            write_json(_job_dir(pid, "pitch", status.job_id) / "inputs.json", {
+                "product": product.model_dump(mode="json"), "personas": [p.model_dump(mode="json") for p in panel],
+                "model": req.model.strip() or llm_config.model, "temperature": 0.4,
+            })
+    except Timeout:
+        raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
 
     def run() -> None:
         started = time.perf_counter()
