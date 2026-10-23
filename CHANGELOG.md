@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Give each captured product facing its own editable item. In-memory captured
+  layouts no longer compound percentage price changes across shared objects or
+  change sibling facings when one is edited; bulk edit counts match placements.
+
 - Keep displaced products accessible when a marketing/layout edit moves a product
   into a full slot. Choose a reachable source for the swap or warn and skip that
   slot, while still considering later empty blocks. Unapplied moves no longer

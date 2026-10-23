@@ -97,7 +97,9 @@ def slot_entries(fitted: list[tuple[CaptureItem, int]]) -> list[SlotItem]:
     out: list[SlotItem] = []
     for item, n in fitted:
         entry = SlotItem(sku=item.sku, name=display_name(item), price=max(0, item.price or 0))
-        out.extend([entry] * n)
+        # Facings are independently editable placements. Sharing one model makes
+        # later in-place price changes compound once per occurrence of that model.
+        out.extend(entry.model_copy(deep=True) for _ in range(n))
     return out
 
 
