@@ -212,13 +212,14 @@ class _ConjointLLM:
         return response_model.model_validate(answers)
 
 
-def test_conjoint_with_fake_model(client, monkeypatch):
+@pytest.mark.parametrize("seed", [0, -7])
+def test_conjoint_with_fake_model(client, monkeypatch, seed):
     from store_emulator.application import marketing
     monkeypatch.setattr(marketing, "LiteLLMClient", _ConjointLLM)
     body = {
         "product": "a 500 ml iced tea", "panel": 20, "tasks": 6, "options": 3, "model": "openai/gpt-4o-mini",
         "attributes": [{"name": "Sugar", "levels": ["Regular", "Less sugar", "Zero sugar"]}, {"name": "Pack", "levels": ["PET", "Can"]}],
-        "prices": [149, 199, 249],
+        "prices": [149, 199, 249], "seed": seed,
     }
     started = client.post(f"/api/projects/{PID}/conjoints", json=body)
     assert started.status_code == 200, started.text
