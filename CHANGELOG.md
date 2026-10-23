@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Mark scenario-generated extra visitors as copies of their original customer,
+  so optimization panels select available distinct profiles before repeated visits.
+  Copies of existing twins retain the same original customer reference.
+
 - Keep optimization-result application and its final job-status write together
   with respect to project deletion, preventing a late status write from recreating
   the deleted project's directory.
