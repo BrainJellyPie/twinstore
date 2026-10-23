@@ -40,7 +40,7 @@ def test_a_repeated_thinking_hint_does_not_repeat_the_same_failed_call(monkeypat
 
 
 def test_concurrent_call_may_retry_an_old_request_after_another_call_learned_the_hint(monkeypatch):
-    monkeypatch.setattr(lc, "_THINKING_OFF", {"anthropic/fixture": {"type": "minimal"}})
+    monkeypatch.setattr(lc, "_THINKING_OFF", {("anthropic/fixture", ""): {"type": "minimal"}})
     error = RuntimeError('send "thinking": {"type": "minimal"} instead of "disabled"')
     assert lc._should_retry_without("anthropic/fixture", error, {"thinking": {"type": "disabled"}})
     assert not lc._should_retry_without("anthropic/fixture", error, {"thinking": {"type": "minimal"}})

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Scope learned model-option restrictions to each endpoint. A server rejecting temperature,
+  token-limit names or thinking/reasoning settings no longer changes requests sent to another server
+  exposing the same model alias; clients using the same endpoint still share learned restrictions.
+
 - Keep concurrent model fallback working when different servers expose the same model name.
   Late authentication failures and delayed fallback choices retain the newer working configuration
   instead of failing the request or switching it back to an older endpoint.
