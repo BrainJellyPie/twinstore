@@ -250,18 +250,21 @@ def _mark_simulation_running(pid: str, setup_id: str, run_id: str, *, preview: b
     """setup.status=running + run status=pending. Re-checks status/run_id at mark.
 
     Called while prepare_simulation holds the setup's file lock.
+    Run IDs are project-wide, so different layouts also need a shared run lock.
     recover_running_setups cleans residual running setups back to draft on restart.
     Preview runs leave the setup status untouched.
     """
-    if _status_path(pid, run_id).exists():
-        raise AppError(f"concurrent start detected: run ID already exists: {run_id}", 409)
-    if not preview:
-        fresh = read_setup(pid, setup_id)
-        if fresh["status"] in ("running", "locked"):
-            raise AppError("concurrent start detected: setup is already running or finalized.", 409)
-        fresh["status"] = "running"
-        write_setup(pid, setup_id, fresh)
-    write_status(pid, run_id, "pending", setup_id=setup_id, preview=preview)
+    run_lock = setup_lock_path(pid, run_id).with_name(f".run-{run_id}.lock")
+    with FileLock(run_lock, timeout=10):
+        if _status_path(pid, run_id).exists():
+            raise AppError(f"concurrent start detected: run ID already exists: {run_id}", 409)
+        if not preview:
+            fresh = read_setup(pid, setup_id)
+            if fresh["status"] in ("running", "locked"):
+                raise AppError("concurrent start detected: setup is already running or finalized.", 409)
+            fresh["status"] = "running"
+            write_setup(pid, setup_id, fresh)
+        write_status(pid, run_id, "pending", setup_id=setup_id, preview=preview)
 
 
 def _status_path(pid: str, run_id: str) -> Path:
