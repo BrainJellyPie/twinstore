@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as api from "@/shared/api/client";
 import { ApiError } from "@/shared/api/errors";
@@ -195,13 +195,36 @@ const report: api.OperationsReport = {
 };
 
 describe("the results", () => {
+  it.each([1, 5])("uses observed waiting time when the default capacity is %s", counters => {
+    render(<OperationsReportView report={{ ...report, counters, counters_needed: 1, hours: [
+      { hour: "10", arrivals: 4, avg_wait_sec: 180, max_wait_sec: 240, abandoned: 0, counters_needed: 1, counters_open: 1 },
+    ] }} />);
+    expect(screen.queryByText(/kept every hour's average wait under/)).toBeNull();
+    expect(screen.getByText("At 10:00, average wait was 3 min, above the 2 min target. Review checkout staffing and refill work.")).toBeTruthy();
+  });
+
+  it("reports the largest observed delay even when another hour needs more theoretical tills", () => {
+    render(<OperationsReportView report={{ ...report, counters: 5, counters_needed: 8, hours: [
+      { hour: "10", arrivals: 80, avg_wait_sec: 90, max_wait_sec: 180, abandoned: 10, counters_needed: 8, counters_open: 5 },
+      { hour: "11", arrivals: 3, avg_wait_sec: 300, max_wait_sec: 400, abandoned: 0, counters_needed: 1, counters_open: 1 },
+    ] }} />);
+    expect(screen.getByText("At 11:00, average wait was 5 min, above the 2 min target. Review checkout staffing and refill work.")).toBeTruthy();
+  });
+
+  it.each([0, 119.9, 120])("reports a met target from observed wait %s even when more tills are recommended", wait => {
+    render(<OperationsReportView report={{ ...report, counters: 1, counters_needed: 8, hours: [
+      { hour: "10", arrivals: 80, avg_wait_sec: wait, max_wait_sec: 180, abandoned: 30, counters_needed: 8, counters_open: 1 },
+    ] }} />);
+    expect(screen.getByText("Every recorded hour's average wait stayed within 2 min.")).toBeTruthy();
+  });
+
   it("say what sharing the store cost and how many tills the busiest hour needed", () => {
     render(<OperationsReportView report={report} currency="USD_CENTS" />);
     expect(screen.getByText("Store operations")).toBeTruthy();
     expect(screen.getByText("$45.60")).toBeTruthy();
     expect(screen.getByText("Units: 11")).toBeTruthy();
     expect(screen.getByText("2.3 min")).toBeTruthy();
-    expect(screen.getByText("Busiest hour 18:00: open tills 3 (now 1) to keep the average wait under 2 min.")).toBeTruthy();
+    expect(screen.getByText("At 18:00, average wait was 4.3 min, above the 2 min target. Review checkout staffing and refill work.")).toBeTruthy();
     expect(screen.getAllByText("Out at 18:05 · empty 47.5 min")).toHaveLength(8);
     expect(screen.getByText("Lost: 5 · $10.00")).toBeTruthy();
     expect(screen.getAllByRole("listitem")).toHaveLength(9);
@@ -210,8 +233,9 @@ describe("the results", () => {
   });
 
   it("say the tills were enough when they were", () => {
-    render(<OperationsReportView report={{ ...report, counters: 3, counters_needed: 3, stockouts: [] }} />);
-    expect(screen.getByText("Tills open (3) kept every hour's average wait under 2 min.")).toBeTruthy();
+    render(<OperationsReportView report={{ ...report, counters: 3, counters_needed: 3, stockouts: [],
+      hours: report.hours.map(hour => ({ ...hour, avg_wait_sec: 60 })) }} />);
+    expect(screen.getByText("Every recorded hour's average wait stayed within 2 min.")).toBeTruthy();
     expect(screen.getByText("No product ran out.")).toBeTruthy();
   });
 
@@ -221,11 +245,25 @@ describe("the results", () => {
     expect(screen.queryByRole("table")).toBeNull();
   });
 
+  it.each([0, 120])("shows a small excess over %s seconds without rounding it into the target", target => {
+    render(<OperationsReportView report={{ ...report, config: { ...report.config, target_wait_sec: target },
+      hours: [{ ...report.hours[0]!, avg_wait_sec: target + 0.1 }] }} />);
+    expect(screen.getByText(new RegExp(`average wait was ${target + 0.1} s, above`))).toBeTruthy();
+  });
+
+  it.each([0, 1, 3, undefined])("compares needed capacity with that hour's open tills (%s), including legacy fallback", open => {
+    render(<OperationsReportView report={{ ...report, counters: 3,
+      hours: [{ ...report.hours[0]!, counters_needed: 2, counters_open: open }] }} />);
+    const row = screen.getAllByRole("row")[1]!;
+    expect(within(row).getByText("2").classList.contains("text-destructive")).toBe((open ?? 3) < 2);
+  });
+
   it.each(LOCALES)("read in $code", ({ code }) => {
     useLocale.getState().setLocale(code);
     render(<OperationsReportView report={report} currency="USD_CENTS" />);
     expect(screen.getByText(translate(code, "opsTitle"))).toBeTruthy();
     expect(screen.getByText(translate(code, "opsHoursTitle"))).toBeTruthy();
+    expect(screen.getByText(translate(code, "opsCapacityHint"))).toBeTruthy();
     expect(screen.getByText(translate(code, "opsStockoutsTitle"))).toBeTruthy();
   });
 

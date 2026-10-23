@@ -50,6 +50,17 @@ def test_zero_service_and_empty_input_need_no_extra_capacity():
     assert counters_needed([(Weekday.MON, 3600, 1)] * 5000, config) == {"01": 1}
 
 
+@pytest.mark.parametrize("arrived", [-0.1, -1, -86400, float("nan"), float("inf"), -float("inf")])
+def test_invalid_arrival_times_are_rejected_before_capacity_search(arrived):
+    with pytest.raises(ValueError, match="finite and nonnegative"):
+        counters_needed([(Weekday.MON, arrived, 1)], OperationsConfig(target_wait_sec=0))
+
+
+def test_checkout_after_midnight_retains_the_previous_hours_backlog():
+    config = OperationsConfig(checkout_base_sec=60, checkout_item_sec=0, target_wait_sec=0)
+    assert counters_needed([(Weekday.MON, 86399.5, 1), (Weekday.MON, 86400.5, 1)], config) == {"00": 2, "23": 1}
+
+
 def test_days_share_the_hourly_mean_without_sharing_a_queue():
     config = OperationsConfig(checkout_base_sec=60, checkout_item_sec=0, target_wait_sec=0)
     rows = [(day, 36000, 1) for day in [Weekday.MON, Weekday.FRI] for _ in range(40)]

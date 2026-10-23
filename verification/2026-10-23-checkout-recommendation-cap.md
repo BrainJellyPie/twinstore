@@ -17,7 +17,7 @@ Verification:
   recommendation of 31 with 31 arrivals and only one installed till.
 - Tests cover bursts of 1–2,000 customers, zero/30/120-second targets, empty input,
   zero service, two-day independence and 32 seeded mixtures of basket lengths,
-  fractional times, midnight/hour boundaries and service durations. An independent
+  fractional times, hour boundaries and service durations. An independent
   cashier schedule confirms feasibility and that one fewer till misses the target.
 - Pyright on the changed shared-store module passed.
 - Standalone timing: 500 arrivals → 100 tills in 0.0029 seconds; 2,000 → 400 in
@@ -28,3 +28,12 @@ These are theoretical queue-capacity requirements under the existing common-line
 model, with abandonment set aside. They do not assert that a floor can fit that
 many tills or account for aisle separation or staff refill duties. No layout,
 staffing configuration or stored historical report is changed automatically.
+
+Follow-up boundary verification found that a negative direct arrival time could
+violate the zero-wait upper-bound assumption and keep the expanding search at
+its limit indefinitely. A subprocess reproduction was stopped after one second.
+The function now rejects negative and non-finite times explicitly and bounds
+expansion by the visit count. Six invalid-time cases and an after-midnight
+backlog case were added; all 63 capacity cases passed in 0.43 seconds and Pyright
+passed. Normal simulated arrival times are nonnegative; no stored input is
+rewritten or silently clipped.

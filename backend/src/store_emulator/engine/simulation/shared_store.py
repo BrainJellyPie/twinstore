@@ -889,6 +889,8 @@ def counters_needed(
     `checkouts`: (day, clock second at the till, units) of each shopper with something to pay."""
     arrivals: dict[Weekday, list[tuple[float, float]]] = defaultdict(list)
     for day, arrived, units in checkouts:
+        if not math.isfinite(arrived) or arrived < 0:
+            raise ValueError("Checkout arrival times must be finite and nonnegative")
         arrivals[day].append((arrived, config.checkout_base_sec + config.checkout_item_sec * max(1, units)))
     visitors_by_hour: dict[str, int] = defaultdict(int)
     for queue in arrivals.values():
@@ -916,7 +918,7 @@ def counters_needed(
         # Adding tills cannot increase FCFS waiting time. Double until feasible,
         # then bisect; one till per visit is a guaranteed zero-wait upper bound.
         low, high = 0, 1
-        while mean_waits(high)[hour] > config.target_wait_sec:
+        while high < limit and mean_waits(high)[hour] > config.target_wait_sec:
             low, high = high, min(limit, high * 2)
         while high - low > 1:
             middle = (low + high) // 2
