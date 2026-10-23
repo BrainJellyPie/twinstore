@@ -50,7 +50,7 @@ def test_same_category_or_unsold_shared_skus_keep_rack_metrics(same_group, real_
         result = report(store, real_chips=real_chips, sim_chips=sim_chips)
         scores = {m.name: m.value for m in result.metrics}
         assert scores["rack_js_similarity"] == 1
-        assert scores["rack_spearman"] is not None
+        assert scores["rack_spearman"] == (None if same_group else 1)
         assert not any("multiple rack" in note for note in result.notes)
         store.racks.reverse()
 
