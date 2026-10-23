@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep trade-area customer types and visit purposes within the same limits as generated customers.
+  Overlong model labels now trigger correction during analysis instead of making subsequent customer
+  batches fail while attempting to repeat incompatible labels verbatim.
+
 - Distinguish POS receipts by explicit calendar date and available store/register identifiers during
   fidelity comparisons. Reused receipt numbers no longer merge independent baskets and distort
   transaction counts, average-basket ratios or basket-value distances. Original receipt labels remain intact.
