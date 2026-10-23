@@ -872,6 +872,8 @@ Run through this before triggering generation or simulation:
   like `receipt_id`, `sku`/`product_name`, `qty`, `unit_price`/`sales_value`
   and `timestamp`/`hour`; SKUs are matched to catalog ids or names. Only
   products present in both are compared, so check the reported coverage.
+  Use a decimal point for fractional quantities/prices (`0.5`); commas are accepted only as
+  three-digit thousands groups (`1,250.50`). Convert decimal-comma exports before uploading.
 - **Receipt-photo review.** In a run's sales-validation section, **Receipts**
   reads photos into an editable draft. Confirm each product against the saved
   run's catalog, correct quantity and prices in minor currency units, and

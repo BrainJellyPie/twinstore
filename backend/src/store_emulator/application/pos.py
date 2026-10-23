@@ -6,6 +6,7 @@ unit price (or line total), and a timestamp/hour column.
 """
 
 import io
+import re
 from collections.abc import Callable
 from datetime import date, datetime, time
 from functools import lru_cache
@@ -116,6 +117,10 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
 def _num(text: str, default: float) -> float:
     if not text.strip():
         return default
+    if "," in text and not re.fullmatch(r"[+-]?\d{1,3}(?:,\d{3})+(?:\.\d*)?(?:[eE][+-]?\d+)?", text.strip()):
+        raise ValueError(
+            f"Invalid numeric POS value: {text!r}; use a decimal point and commas only for thousands grouping."
+        )
     try:
         return float(text.replace(",", ""))
     except ValueError:

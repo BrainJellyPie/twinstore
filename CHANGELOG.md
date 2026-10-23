@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject ambiguous decimal commas and malformed thousands grouping in POS quantities and prices.
+  Values such as `0,5` no longer become `5`; valid grouped prices, decimal points, weighed goods
+  and returns keep their existing interpretation in CSV and XLSX imports.
+
 - Validate customer CSV column counts and padded table size before creating a project or allocating
   a dataframe. Extra fields no longer shift named columns, and sparse rows cannot expand past the
   two-million-cell limit; malformed uploads report actionable errors before model generation starts.
