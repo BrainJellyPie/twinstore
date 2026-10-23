@@ -24,7 +24,7 @@ from store_emulator.domain.operations import (
 )
 from store_emulator.domain.rack import SlotItem
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action, Face, Weekday, stable_seed
+from store_emulator.domain.types import Action, CARDINAL_DIRECTIONS, Face, Position, Weekday, stable_seed
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +205,43 @@ def shelf_stock(store: Store, config: OperationsConfig) -> dict[FaceKey, _Produc
     return products
 
 
+def _reachable_tills(store: Store, results: list[CustomerResult]) -> dict[Position, tuple[int, ...]]:
+    """Tills sharing a walkable area with each recorded queue position.
+
+    Cardinal connectivity also covers diagonal routes, which cannot cut blocked corners.
+    Legacy payments on blocked/out-of-grid tiles retain the old pooled queue: their position
+    cannot identify a customer area reliably.
+    """
+    grid = store.walkable_grid()
+    width, height = store.grid_size
+    service = [counter.service_access_tiles(store.grid_size) for counter in store.counters]
+    components: dict[Position, int] = {}
+    by_component: list[tuple[int, ...]] = []
+    reachable: dict[Position, tuple[int, ...]] = {}
+    positions = {(event.x, event.y) for result in results for event in result.timeline if event.action == Action.PAY}
+    for position in sorted(positions):
+        x, y = position
+        if not (0 <= x < width and 0 <= y < height and grid[y][x]):
+            reachable[position] = tuple(range(len(service)))
+            continue
+        if position not in components:
+            component = len(by_component)
+            components[position] = component
+            pending = [position]
+            while pending:
+                x, y = pending.pop()
+                for dx, dy in CARDINAL_DIRECTIONS:
+                    neighbor = (x + dx, y + dy)
+                    nx, ny = neighbor
+                    if 0 <= nx < width and 0 <= ny < height and grid[ny][nx] and neighbor not in components:
+                        components[neighbor] = component
+                        pending.append(neighbor)
+            by_component.append(tuple(index for index, tiles in enumerate(service)
+                                      if any(components.get(tile) == component for tile in tiles)))
+        reachable[position] = by_component[components[position]]
+    return reachable
+
+
 def resolve_shared_store(
     store: Store, results: list[CustomerResult], config: OperationsConfig, *, seed: int,
     calendar: list[CustomerResult] | None = None,
@@ -216,6 +253,7 @@ def resolve_shared_store(
     results = [r.model_copy(update={"timeline": list(r.timeline)}) for r in results]
     copies = _Copies()
     products = shelf_stock(store, config)
+    reachable_tills = _reachable_tills(store, results)
     faces: dict[tuple[str, Face], list[FaceKey]] = defaultdict(list)
     for key in products:
         faces[(key[0], key[1])].append(key)
@@ -251,7 +289,7 @@ def resolve_shared_store(
             backroom.units.update(short)   # the morning delivery tops every backroom up to its level
             report.deliveries += int(bool(short))
         day_checkouts, day_open, day_busy = _play_day(
-            store, day, results, days[day], products, faces, tills, counters, config, report, hit, seed, copies, backroom,
+            store, day, results, days[day], products, faces, reachable_tills, tills, counters, config, report, hit, seed, copies, backroom,
             window=windows.get(day),
         )
         checkouts.update(day_checkouts)
@@ -300,6 +338,7 @@ def _play_day(
     indexes: list[int],
     products: dict[FaceKey, _Product],
     faces: dict[tuple[str, Face], list[FaceKey]],
+    reachable_tills: dict[Position, tuple[int, ...]],
     tills: int,
     counters: int,
     config: OperationsConfig,
@@ -315,7 +354,7 @@ def _play_day(
     With a finite backroom the shelves keep last night's stock and are filled from the backroom before opening and
     at each refill, as far as it goes; without one every day opens with full shelves.
 
-    The tills share one line (first come, first served): a shopper takes the first till that is free and staffed."""
+    A shopper takes the first reachable till that is free and staffed; disconnected areas cannot share a line."""
     state = _Day(day=int(day), stock={key: product.full for key, product in products.items()})
     heap: list[tuple[float, int, int, int]] = []   # (clock second, kind, shopper, timeline index)
     start, end = window if window is not None else (math.inf, 0.0)
@@ -450,7 +489,10 @@ def _play_day(
                 continue
             service = config.checkout_base_sec + config.checkout_item_sec * units
             till, begins = -1, math.inf
-            for c in range(min(tills, len(free))):
+            pay = result.timeline[k]
+            for c in reachable_tills[(pay.x, pay.y)]:
+                if c >= len(free):
+                    continue
                 starts = _till_starts(c, max(moment, free[c]), staffed)
                 if starts < begins:
                     till, begins = c, starts
