@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retry empty model customer batches through structured-response validation. If an estimated visiting day
+  still has no generated customers, fail generation with the affected weekdays instead of publishing a
+  partial population and misleading daily estimates. Existing saved customers remain intact on failure.
+
 - Read supplemental customer CSVs exported as Korean CP949 or BOM-marked UTF-16/UTF-32, and recognize
   comma, semicolon and tab separators. These files now reach customer summaries and traffic calibration
   with quoted cells and receipt identifiers intact instead of silently dropping the uploaded evidence.

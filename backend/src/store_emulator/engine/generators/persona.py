@@ -63,7 +63,7 @@ class GeneratedPersona(BaseModel):
 
 
 class PersonaBatch(BaseModel):
-    personas: list[GeneratedPersona] = Field(max_length=12)
+    personas: list[GeneratedPersona] = Field(min_length=1, max_length=12)
 
 
 @dataclass
@@ -485,6 +485,12 @@ async def generate_batched(
     all_personas: list[Persona] = [p for personas in day_results for p in personas]
     if tally.failed * 2 > tally.requested:
         raise TooManyBatchesFailed(tally)
+    missing_days = [schedule.day.name for (schedule, visitors), people in zip(days, day_results, strict=True)
+                    if any(hour.visitor_count > 0 for hour in visitors) and not people]
+    if missing_days:
+        raise ValueError(f"No customers were generated for {', '.join(missing_days)} despite positive visitor estimates. "
+                         "Every customer request for those days failed or came back empty. Try again, or pick another "
+                         "model in Settings → Model providers.")
     if tally.failed:
         logger.warning(f"[persona] {tally.failed} of {tally.requested} requests failed; their visitors are twins")
 

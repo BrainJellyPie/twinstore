@@ -290,6 +290,7 @@ def test_the_persona_job_notes_the_wait_in_its_status(monkeypatch):
 
 
 def test_the_local_model_gets_smaller_requests_and_a_smaller_quick_sample(monkeypatch):
+    from store_emulator.domain.persona import Persona
     from store_emulator.domain.store import DaySchedule
     from store_emulator.engine.generators import persona as gen
 
@@ -305,7 +306,8 @@ def test_the_local_model_gets_smaller_requests_and_a_smaller_quick_sample(monkey
 
     async def for_day(llm, address, profile, day, hourly, **k):
         asked.append((sum(p.visitor_count for p in hourly), k["batch_size"]))
-        return []
+        return [Persona(id="F1001", day=day, arrival_hour=8, identity="student", age_group="20s", gender="Female",
+                        description="Offline pacing test", intent="snack", purpose="snack")]
 
     def pace(usual: gen.Pace) -> gen.Pace:
         assert settled, "asked before the first call"
