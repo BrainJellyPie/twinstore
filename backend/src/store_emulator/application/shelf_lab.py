@@ -17,7 +17,7 @@ import re
 import time
 import uuid
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -67,7 +67,7 @@ from .setups import project_layout_transaction
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.personas import read_personas
 from .storage.setups import metadata_path, read_setup
-from .town import get_town, save_town
+from .town import get_town, town_write_transaction
 
 logger = logging.getLogger(__name__)
 
@@ -648,25 +648,30 @@ def compare_rival_capture(
     comparison = compare_rival(store, result, elasticity=req.elasticity, aliases=aliases)
     report = RivalReport(comparison=comparison, venue_id=req.venue_id, model_matches=aliases, match_note=note)
     if req.venue_id:
-        town = get_town(pid)
-        venue = town.get_venue(req.venue_id) if town else None
-        if town is None or venue is None:
-            raise AppError(f"venue not found: {req.venue_id}", 404)
-        report.previous_attractiveness = venue.attractiveness
-        report.attractiveness = venue.attractiveness
-        if req.apply and comparison.suggested_pull_factor is not None:
-            # From the venue's pull before any shelf comparison was applied: applying again (a re-run, a double
-            # click, a newer photo of the same shelf) replaces the earlier adjustment instead of compounding it
-            # (0.82 → 1.03 → 1.28 → 1.61). A pull changed by hand since then is the new starting point.
-            pulls = _rival_pulls(pid)
-            last = pulls.get(venue.id)
-            base = last["base"] if last is not None and abs(last["applied"] - venue.attractiveness) < 1e-9 else venue.attractiveness
-            new = round(min(3.0, max(0.2, base * comparison.suggested_pull_factor)), 3)
-            save_town(pid, town.model_copy(update={"venues": [
-                v.model_copy(update={"attractiveness": new}) if v.id == venue.id else v for v in town.venues]}), expected=town)
-            write_json(_rival_pulls_path(pid), {**pulls, venue.id: {"base": base, "applied": new}})
-            report.previous_attractiveness = base
-            report.attractiveness = new
+        transaction = (town_write_transaction(pid)
+                       if req.apply and comparison.suggested_pull_factor is not None else nullcontext(None))
+        with transaction as commit:
+            town = get_town(pid)
+            venue = town.get_venue(req.venue_id) if town else None
+            if town is None or venue is None:
+                raise AppError(f"venue not found: {req.venue_id}", 404)
+            report.previous_attractiveness = venue.attractiveness
+            report.attractiveness = venue.attractiveness
+            if commit is not None and comparison.suggested_pull_factor is not None:
+                # Repeated applications replace the previous adjustment; a manual pull edit rebases it.
+                pulls = _rival_pulls(pid)
+                last = pulls.get(venue.id)
+                base = last["base"] if last is not None and abs(last["applied"] - venue.attractiveness) < 1e-9 else venue.attractiveness
+                new = round(min(3.0, max(0.2, base * comparison.suggested_pull_factor)), 3)
+                commit(town.model_copy(update={"venues": [
+                    v.model_copy(update={"attractiveness": new}) if v.id == venue.id else v for v in town.venues]}))
+                try:
+                    write_json(_rival_pulls_path(pid), {**pulls, venue.id: {"base": base, "applied": new}})
+                except OSError:
+                    commit(town)  # Retain the old adjustment if its replacement baseline could not be saved.
+                    raise
+                report.previous_attractiveness = base
+                report.attractiveness = new
     return report
 
 
