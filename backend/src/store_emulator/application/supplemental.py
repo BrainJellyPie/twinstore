@@ -505,34 +505,49 @@ async def summarize_supplemental(
 
 # ── Visit times from a POS export ──────────────────────────────────────────
 
-_BASKET_COLUMN_HINTS = ("transaction", "basket", "receipt", "order", "ticket", "invoice", "거래", "영수증", "주문")
+_ID_SUFFIXES = ("", "id", "no", "num", "number", "code", "번호", "아이디", "코드")
+_BASKET_COLUMNS = {root + suffix for root in ("transaction", "trans", "basket", "receipt", "order", "ticket", "invoice", "거래", "영수증", "주문")
+                   for suffix in _ID_SUFFIXES}
+_RECEIPT_SCOPE_COLUMNS = {root + suffix for root in ("store", "shop", "branch", "register", "terminal", "till", "pos", "매장", "점포", "지점", "단말기", "계산대")
+                          for suffix in _ID_SUFFIXES}
 MIN_TRAFFIC_VISITS = 200
 
 
 def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
     """(weekday 1–7, hour) of each visit in a table with a timestamp column, one per basket when a
-    transaction/receipt column exists. Empty when no column parses as date-times with a time of day."""
+    transaction/receipt ID column exists. Receipt IDs are scoped by date and available store/register IDs.
+    Empty when no column parses as date-times with a time of day."""
     table = cast(Any, df)
+    columns = cast(list[object], list(table.columns))
+    labels = {col: "".join(char for char in str(col).casefold() if char.isalnum()) for col in columns}
     best: Any = None
     best_ok = 0.0
-    for col in cast(list[object], list(table.columns)):
+    for col in columns:
+        if labels[col] in _BASKET_COLUMNS or labels[col] in _RECEIPT_SCOPE_COLUMNS:
+            continue
         series = table[col]
         if pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series):  # type: ignore[reportUnknownMemberType]
             continue  # epoch numbers are not taken for timestamps
         parsed = cast(Any, pd.to_datetime(series, errors="coerce", format="mixed"))  # type: ignore[reportUnknownMemberType]
         ok = float(parsed.notna().mean())
         valid = parsed.dropna()
-        has_time = ok > 0 and float(((valid.dt.hour + valid.dt.minute) > 0).mean()) > 0.5
+        has_time = ok > 0 and (float(((valid.dt.hour + valid.dt.minute) > 0).mean()) > 0.5 or
+                              float(series.astype("string").str.contains(r"(?:[Tt]|\s)\d{1,2}:\d{2}", regex=True, na=False).mean()) > 0.5)
         if ok >= 0.8 and has_time and ok > best_ok:
             best, best_ok = parsed, ok
     if best is None:
         return []
     frame = cast(Any, pd.DataFrame({"ts": best}))
-    basket = next((c for c in cast(list[object], list(table.columns))
-                   if any(h in str(c).lower() for h in _BASKET_COLUMN_HINTS)), None)
+    basket = next((c for c in columns if labels[c] in _BASKET_COLUMNS), None)
     if basket is not None:
-        frame["basket"] = table[basket].to_numpy()
-        frame = frame.dropna().drop_duplicates("basket")
+        frame["basket"] = table[basket].astype("string").str.strip().replace("", pd.NA).to_numpy()
+        frame["date"] = frame.ts.dt.date
+        identity = ["date", "basket"]
+        for index, col in enumerate(c for c in columns if labels[c] in _RECEIPT_SCOPE_COLUMNS):
+            key = f"scope_{index}"
+            frame[key] = table[col].astype("string").str.strip().replace("", pd.NA).to_numpy()
+            identity.append(key)
+        frame = frame.dropna(subset=["ts", "basket"]).drop_duplicates(identity)
     ts = frame.ts.dropna()
     days = cast(list[int], (ts.dt.dayofweek + 1).astype(int).tolist())
     hours = cast(list[int], ts.dt.hour.astype(int).tolist())
