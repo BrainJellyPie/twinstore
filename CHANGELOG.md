@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Drop point-route stops that the shopper cannot reach. Disconnected browsing and move actions
+  no longer add time at the previous position or attribute remote shelf visits to shared-store
+  crowding; later reachable purchases, checkout and departure continue from the actual location.
+
 - Bound POS CSV tables before dataframe allocation, including missing fields in short rows.
   Small but very wide/sparse files cannot expand beyond two million cells, and invalid record
   widths or quoting fail before allocation; normal UTF-8/CP949 exports retain their identifiers.
