@@ -1,4 +1,4 @@
-"""Repeated receipt timestamps must not incur full pandas date parsing for every product line."""
+"""Repeated receipt timestamps must not incur full date parsing for every product line."""
 
 from collections import Counter
 
@@ -15,14 +15,14 @@ def test_repeated_timestamps_share_parse_work_without_changing_local_times(monke
     rows = [{"receipt_id": f"r{i}", "sku": "chips", "timestamp": clocks[i % len(clocks)][0], "date": "2026-10-19"}
             for i in range(2000)]
     data = export(rows, suffix)
-    original = pos.pd.to_datetime
+    original = pos.parse_date
     calls = Counter()
 
     def observed(value, *args, **kwargs):
         calls[str(value)] += 1
         return original(value, *args, **kwargs)
 
-    monkeypatch.setattr(pos.pd, "to_datetime", observed)
+    monkeypatch.setattr(pos, "parse_date", observed)
     lines = pos.parse_pos_csv(data, f"pos.{suffix}")
     assert len(lines) == 2000
     assert [line.hour for line in lines] == [clocks[i % len(clocks)][1] for i in range(2000)]
