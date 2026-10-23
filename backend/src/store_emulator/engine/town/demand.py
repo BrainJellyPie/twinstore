@@ -38,6 +38,7 @@ They are uncalibrated, literature- and intuition-based starting points:
 import copy
 import math
 from collections.abc import Iterable
+from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
@@ -374,6 +375,34 @@ def _huff_flows(
     return flows, shares
 
 
+@dataclass
+class _VenueEffects:
+    total: float = 0.0
+    by_venue: dict[str, float] = field(default_factory=dict[str, float])
+
+
+def _removal_effects(
+    need: FloatArray, pull: FloatArray, open_: npt.NDArray[np.bool_], outside: float,
+    reward: FloatArray, hours: list[int],
+) -> FloatArray:
+    """Change in focal visits when each choice is removed from a Huff choice set.
+
+    For a group with denominator D and expected reward E, removing choice k changes
+    expected reward by u[k] / (D - u[k]) * (reward[k] - E). Reward is either the focal
+    store indicator or the probability of chaining from a complementary venue to it.
+    """
+    effects: FloatArray = np.zeros(pull.shape[1], dtype=np.float64)
+    totals = need.sum(axis=2)
+    for hour in hours:
+        utility = pull * open_[:, hour][None, :]
+        denominator = outside + utility.sum(axis=1)
+        expected = (utility @ reward[:, hour]) / denominator
+        change = utility / (denominator[:, None] - utility)
+        change *= reward[:, hour][None, :] - expected[:, None]
+        effects += totals[:, hour] @ change
+    return effects
+
+
 def estimate_demand(
     town: Town,
     *,
@@ -383,6 +412,7 @@ def estimate_demand(
     hourly_multiplier: dict[int, float] | None = None,
     beta: float | None = None,
     params: DemandParams | None = None,
+    _effects: _VenueEffects | None = None,
 ) -> TownDemand:
     """Expected visitors of the town's focal convenience store for one day.
 
@@ -395,6 +425,8 @@ def estimate_demand(
     focal = town.get_venue(town.focal_venue_id)
     if focal is None:
         raise ValueError(f"focal venue {town.focal_venue_id!r} not found in town {town.id!r}")
+    if _effects is not None:
+        _effects.by_venue = dict.fromkeys((venue.id for venue in town.venues), 0.0)
     hour_list = sorted({h for h in hours if 0 <= h < 24})
     mult: FloatArray = np.zeros(24, dtype=np.float64)
     for h in hour_list:
@@ -458,6 +490,13 @@ def estimate_demand(
                                focal=focal_j)
     assert shares is not None  # requested above for the focal store's origin breakdown
     focal_by_group: FloatArray = shares[:, :, None] * need  # (G, 24, A)
+    if _effects is not None:
+        reward: FloatArray = np.zeros((len(choice), 24), dtype=np.float64)
+        reward[focal_j, :] = 1.0
+        changes = _removal_effects(need, pull, _open_matrix(choice), math.exp(-decay * p.outside_option_m),
+                                   reward, hour_list)
+        for index, venue in enumerate(choice):
+            _effects.by_venue[venue.id] += float(changes[index])
 
     # --- linked trips from complementary venues
     stores = [j for j, v in enumerate(choice) if is_store(v)]
@@ -488,6 +527,7 @@ def estimate_demand(
         link: FloatArray = store_pull[None, :] * np.exp(-_distance(vx, vy, cx[stores], cy[stores], p) / p.link_decay_m)
         focal_cat: FloatArray = np.zeros((24, n_ages), dtype=np.float64)
         focal_venue = np.zeros((len(venues), 24, n_ages), dtype=np.float64)
+        focal_links: FloatArray | None = np.zeros((len(venues), 24), dtype=np.float64) if _effects is not None else None
         for h in hour_list:
             open_link: FloatArray = link * store_open[:, h][None, :]
             reach: FloatArray = open_link.sum(axis=1)
@@ -497,6 +537,20 @@ def estimate_demand(
             to_focal = np.asarray(to_store[:, stores.index(focal_j)], dtype=np.float64)
             focal_cat[h] += to_focal @ visits[:, h, :]
             focal_venue[:, h, :] = to_focal[:, None] * visits[:, h, :]
+            if _effects is not None and focal_links is not None:
+                focal_links[:, h] = to_focal
+                # Removing a rival store changes chaining from every complementary venue.
+                remaining = np.maximum(reach[:, None] - open_link, 0.0)
+                after = prior.synergy * np.minimum(remaining, 1.0) / np.where(remaining > 0, remaining, 1.0)
+                after *= open_link[:, stores.index(focal_j), None]
+                changes = visits[:, h, :].sum(axis=1) @ (to_focal[:, None] - after)
+                for index, store_index in enumerate(stores):
+                    _effects.by_venue[choice[store_index].id] += float(changes[index])
+        if _effects is not None and focal_links is not None:
+            changes = _removal_effects(cat_need, cat_pull, _open_matrix(venues),
+                                       math.exp(-cat_decay * p.outside_option_m), focal_links, hour_list)
+            for index, venue in enumerate(venues):
+                _effects.by_venue[venue.id] += float(changes[index])
         linked_focal_by_cat[category] = focal_cat
         linked_focal_by_venue.extend((v, focal_venue[k]) for k, v in enumerate(venues))
 
@@ -509,6 +563,8 @@ def estimate_demand(
     direct_total = float(focal_direct_hourly.sum())
     linked_total = float(focal_linked_hourly.sum())
     total = direct_total + linked_total
+    if _effects is not None:
+        _effects.total = total
 
     rows: list[HourlySegmentDemand] = []
     seg_codes = np.array([seg_index[s] for s in g_segment], dtype=np.int64)
@@ -639,17 +695,15 @@ def synergy_analysis(
     Rows are sorted by absolute effect. |effect| below `min_effect` visitors/day is "neutral".
     A far-away café or academy can come out as a (small) competitor: it draws customers away
     from the same-category venues next to the focal store, and with them their linked trips.
-    Cost: one `estimate_demand` call per venue (~50 ms each for an 800 m town).
+    Origin demand and venue flows are computed once; exact removal effects share those inputs.
     """
     hour_list = list(hours)
 
-    def visitors(t: Town) -> float:
-        return estimate_demand(
-            t, day_type=day_type, hours=hour_list, traffic_multiplier=traffic_multiplier,
-            hourly_multiplier=hourly_multiplier, beta=beta, params=params,
-        ).total_daily_visitors
-
-    base = visitors(town)
+    effects = _VenueEffects()
+    base = estimate_demand(
+        town, day_type=day_type, hours=hour_list, traffic_multiplier=traffic_multiplier,
+        hourly_multiplier=hourly_multiplier, beta=beta, params=params, _effects=effects,
+    ).total_daily_visitors
     focal = town.get_venue(town.focal_venue_id)
     if focal is None:
         raise ValueError(f"focal venue {town.focal_venue_id!r} not found in town {town.id!r}")
@@ -658,8 +712,9 @@ def synergy_analysis(
     for v in town.venues:
         if v.id == focal.id:
             continue
-        without = town.model_copy(update={"venues": [o for o in town.venues if o.id != v.id]})
-        effect = base - visitors(without)
+        # Preserve subtraction of the separately rounded report totals used by the original analysis.
+        without = round(effects.total - effects.by_venue[v.id], 3)
+        effect = base - without
         role = "neutral" if abs(effect) < min_effect else ("complement" if effect > 0 else "competitor")
         rows.append(SynergyRow(
             venue_id=v.id, name=v.name, category=v.category,

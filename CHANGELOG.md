@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Share demand calculations across neighborhood venue-removal effects. The synergy view
+  computes exact Huff-choice and linked-trip changes from one origin/venue calculation
+  instead of rebuilding the entire demand report once per venue, preserving report rounding.
+
 - Reduce neighborhood-demand memory by retaining only the focal store's origin shares.
   Dense, supported 3 km neighborhoods no longer allocate unused group-by-venue-by-hour
   arrays of roughly a gigabyte; venue flows and reported demand remain unchanged.
