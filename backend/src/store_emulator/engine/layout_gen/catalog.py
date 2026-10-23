@@ -334,7 +334,8 @@ for _category, _rows in PRODUCTS.items():
     _label = _category.replace("_", " ").title()
     CATEGORY_LABELS[_category] = (_label, _label)
 
-ZERO_DECIMAL = {"KRW", "JPY"}
+# The app's price-unit convention (independent of which currencies this catalog localizes).
+ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
 _KRW_PER_USD = 1350
 
 

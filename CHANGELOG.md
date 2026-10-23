@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Read captured price tags in the same currency units the app prints. Explicit
+  dollar/currency and cent markers outrank catalog guesses; malformed grouping,
+  multiple prices, negatives and discount percentages remain visibly estimated
+  instead of becoming inflated prices or aborting the whole shelf capture.
+
 - Bound the shelf-photo cache by 64 MiB of estimated retained pixels, box metadata
   and cache overhead as well as 256 entries. Decodes that overlap an upload cannot
   reinsert an invalidated old photo; eviction keeps live renderers' images usable.
