@@ -28,5 +28,12 @@ Validation:
 - Frontend source is unchanged from the verified snapshot: 4,479 tests, build
   and lint passed for that exact frontend source.
 
-Full backend verification will be recorded before publication. Scenarios are
-synthetic and make no live model calls.
+- Additional stress check: **300 randomized cases passed**, varying hourly and
+  roster staffing, till count, finite stock, service times and shelf work. Paid
+  time covers completed work, till utilization stays at or below 100%, and input
+  visits remain unchanged.
+- Full backend suite: **26,479 passed, 1 skipped**, 1,149.19 s (19m09s), exit 0.
+  The durable runner verified source commit `48f3ee7`; this final record changes
+  documentation only.
+
+Scenarios are synthetic and make no live model calls.
