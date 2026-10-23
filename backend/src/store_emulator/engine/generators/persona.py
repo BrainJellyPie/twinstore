@@ -18,13 +18,15 @@ from store_emulator.engine.prompting import budget_example
 
 logger = logging.getLogger(__name__)
 
+type PersonaLabel = Annotated[str, Field(max_length=120)]
+
 
 # Upper bounds well above what the prompts ask for. Schema-constrained local models (llama.cpp) are held to them, so a
 # small model cannot repeat itself for minutes (one listed every hour four times).
 class TradeAreaProfile(BaseModel):
     keywords: list[str] = Field(max_length=20)
-    identities: list[str] = Field(max_length=40)
-    purposes: list[str] = Field(max_length=40)
+    identities: list[PersonaLabel] = Field(max_length=40)
+    purposes: list[PersonaLabel] = Field(max_length=40)
 
 
 class HourlyProfile(BaseModel):
@@ -50,12 +52,12 @@ class GeneratedPersona(BaseModel):
     asking for no more keeps answers short and gives small models nothing to invent (one filled `category_rates` with
     percentages). Lengths are bounded well above a normal answer, so a local model cannot loop inside a string."""
     id: str = Field(default="", max_length=40)
-    identity: str = Field(max_length=120)
+    identity: PersonaLabel
     age_group: AgeGroup
     gender: Gender
     description: str = Field(max_length=600)
     intent: str = Field(max_length=400)
-    purpose: str = Field(max_length=120)
+    purpose: PersonaLabel
     preferred_categories: list[Annotated[str, Field(max_length=80)]] = Field(default_factory=list[str], max_length=10)
     budget_min: int = Field(default=0, ge=0)
     budget_max: int = Field(default=0, ge=0)
