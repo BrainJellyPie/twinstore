@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject XLSX files whose expanded archive or sparse worksheet ranges exceed ingestion budgets
+  before allocating dataframes. The new-store wizard reports the problem before saving a project or
+  calling a model; supplemental reloads and POS imports apply the same bounds without truncating data.
+
 - Keep shelf capture working when one model-read price is nonfinite, overflows currency scaling, or
   rounds below a minor unit. Unusable readings use the existing explicitly marked estimate; valid
   thousand-unit abbreviations remain usable even when the literal amount rounds to zero.

@@ -35,6 +35,7 @@ from store_emulator.engine.generators.traffic_profile import (
     TrafficProfile,
     fit_traffic_profile,
 )
+from store_emulator.application.workbooks import validate_xlsx_budget
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +124,7 @@ def _load_frames(bytes_: bytes, ext: str, *, preserve_identifiers: bool = False)
 
     if ext == ".xlsx":
         try:
+            validate_xlsx_budget(bytes_)
             result = pd.read_excel(  # type: ignore[reportUnknownMemberType]
                 io.BytesIO(bytes_),
                 sheet_name=None,

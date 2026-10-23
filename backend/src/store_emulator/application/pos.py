@@ -14,6 +14,7 @@ import pandas as pd  # type: ignore[reportMissingTypeStubs]
 from dateutil.parser import parse as parse_date
 
 from store_emulator.engine.analysis.fidelity import PosLine
+from store_emulator.application.workbooks import validate_xlsx_budget
 
 _ALIASES: dict[str, tuple[str, ...]] = {
     "transaction_id": ("transaction_id", "receipt_id", "basket_id", "order_id", "trans_id", "invoice", "invoice_no"),
@@ -37,6 +38,7 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         raise ValueError(f"POS file too large ({len(data) // (1024 * 1024)} MB > 50 MB)")
     buf = io.BytesIO(data)
     if filename.lower().endswith((".xlsx", ".xls")):
+        validate_xlsx_budget(data)
         df = pd.read_excel(buf, dtype=object, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
     else:
         try:
