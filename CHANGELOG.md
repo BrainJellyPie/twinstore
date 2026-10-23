@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Match embedded Excel photos to the same decoded SKU used for product imports,
+  including cached formulas, rich text, hyperlinks and normalized headers. Preserve
+  sparse worksheet row positions and support identifiers such as `constructor`
+  and `__proto__` without silently losing their images.
+
 - Exclude unresolvable Shelf Lab model choices from response counts, photo/render
   agreement and paired merchandising comparisons. Invented products, ambiguous
   names and number-only raw-photo replies can no longer masquerade as no-picks;

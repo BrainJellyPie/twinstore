@@ -24,7 +24,7 @@ beforeEach(() => {
   vi.mocked(api.replaceSlots).mockResolvedValue({ count: 1, cleared: [] });
   vi.mocked(extractSkuImages).mockResolvedValue({});
   vi.mocked(uploadSkuImages).mockResolvedValue([]);
-  vi.mocked(parseLayoutWorkbook).mockImplementation((buffer) => ({ slots: [{ rack_id: "shelf", block: 0, face: "N", level: 1,
+  vi.mocked(parseLayoutWorkbook).mockImplementation((buffer) => ({ skuByRow: new Map([[2, String(new Uint8Array(buffer)[0])]]), slots: [{ rack_id: "shelf", block: 0, face: "N", level: 1,
     sku: String(new Uint8Array(buffer)[0]), name: "Tea", price: 100, promo: "" }] }));
 });
 afterEach(() => { cleanup(); qc.clear(); vi.resetAllMocks(); });
@@ -125,7 +125,7 @@ it("keeps the existing best-effort image behavior and saves product rows after i
 it.each(["new image", "no image", "failed image"])("preserves saved photo references except for a successfully uploaded %s", async (mode) => {
   const original = "/api/projects/p/product-photo-files/" + "a".repeat(64);
   const replacement = "/api/projects/p/images?sku=1&v=new";
-  vi.mocked(parseLayoutWorkbook).mockReturnValueOnce({ slots: ["1", "1", "2"].map((sku) => ({
+  vi.mocked(parseLayoutWorkbook).mockReturnValueOnce({ skuByRow: new Map([[2, "1"], [3, "1"], [4, "2"]]), slots: ["1", "1", "2"].map((sku) => ({
     rack_id: "shelf", block: 0, face: "N" as const, level: 1, sku, name: "Tea", price: 100, promo: "", image_url: original,
   })) });
   if (mode !== "no image") vi.mocked(extractSkuImages).mockResolvedValueOnce({ "1": { bytes: new Uint8Array([1]), extension: "png" } });

@@ -4,6 +4,8 @@ import { parseFace } from "./faceMap";
 
 export interface ParsedLayout {
   slots: SlotRow[];
+  // One-based worksheet rows, using the same SKU decoding as the slot import.
+  skuByRow: ReadonlyMap<number, string>;
 }
 
 interface RawRow {
@@ -63,9 +65,16 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
   const missing = ["rack_id", "face", "level", "sku"].filter((column) => !columns.has(column));
   if (missing.length > 0) throw new Error(`Missing required columns: ${missing.join(", ")}`);
 
+  const skuByRow = new Map<number, string>();
   const rows = XLSX.utils
     .sheet_to_json<Record<string, unknown>>(layoutSheet, { defval: "" })
-    .map(normalizeKeys)
+    .map((row) => {
+      const normalized = normalizeKeys(row);
+      const sku = String(normalized.sku ?? "").trim();
+      // SheetJS keeps the original zero-based row even when blank rows are omitted.
+      if (typeof row.__rowNum__ === "number" && sku) skuByRow.set(row.__rowNum__ + 1, sku);
+      return normalized;
+    })
     .filter((r) => r.rack_id !== undefined && r.rack_id !== null && r.rack_id !== "")
     .filter((r) => String(r.blocked ?? "").trim().toLowerCase() !== "blocked" || String(r.sku ?? "").trim() !== "");
 
@@ -74,7 +83,7 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
     block: toBlock(r.block),
     face: parseFace(String(r.face)),
     level: Number(r.level),
-    sku: r.sku == null ? "" : String(r.sku),
+    sku: r.sku == null ? "" : String(r.sku).trim(),
     name: r.item_name == null ? "" : String(r.item_name),
     price: toIntPrice(r["price (minor units)"] ?? r["price (cents)"] ?? r.price),
     regular_price: toIntPrice(r["regular_price (minor units)"] ?? r["regular_price (cents)"] ?? r.regular_price, "regular price"),
@@ -82,5 +91,5 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
     image_url: toImageUrl(r.image_url),
   }));
 
-  return { slots };
+  return { slots, skuByRow };
 }
