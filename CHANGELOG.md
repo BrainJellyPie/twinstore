@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject repeated hours, invalid clock values and negative/non-integer visitor counts in model traffic
+  estimates before they reach customer generation. The existing structured-response retry can request a
+  valid estimate, preventing saved daily counts and financial scaling from disagreeing with the population.
+
 - Combine recognized separate POS date/time columns by row, including AM/PM and Excel time cells. Time-only
   values no longer borrow today's date and distort weekday traffic, and unrelated birth dates or durations
   are not combined as visits. Complete timestamps retain precedence when equally complete.
