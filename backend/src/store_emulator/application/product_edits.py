@@ -69,7 +69,10 @@ def save(pid: str, sid: str, req: ProductEditsSave) -> ProductEditsSaved:
                 "Edited products", sid, store.model_dump(mode="json"),
                 f"Explicit edits to {len(report.changes)} SKUs / {report.changed_placements} placements. Source layout preserved.",
             )
-            building = read_setup(pid, sid).get("building")
+            source = read_setup(pid, sid)
+            if source.get("operations") is not None:
+                draft["operations"] = source["operations"]
+            building = source.get("building")
             if building is not None:  # the draft stays on the same building floor
                 draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
             draft["id"] = path.stem

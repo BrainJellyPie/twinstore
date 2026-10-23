@@ -241,3 +241,26 @@ def test_the_edited_draft_stays_on_its_building_floor(workflow):
     saved = client.post(URL + "/save", json={**request(client), "request_id": "c" * 32})
     assert saved.status_code == 200, saved.text
     assert read_setup(PID, saved.json()["setup_id"])["building"] == source["building"]
+
+
+@pytest.mark.parametrize("configured", [False, True])
+def test_saved_variant_keeps_operations_and_retry_preserves_later_settings(workflow, configured):
+    from store_emulator.application.setups import run_operations, save_layout_operations
+    from store_emulator.domain.operations import OperationsConfig
+    client, source = workflow[:2]
+    operations = OperationsConfig(stock_per_facing=1, backroom_per_product=0,
+                                 daily_delivery=False, crew=2, till_schedule={"09": 0}) if configured else None
+    if operations is not None:
+        source["operations"] = operations.model_dump(mode="json")
+        write_json(setup_path(PID, SID), source)
+    body = {**request(client), "request_id": "f" * 32}
+    response = client.post(URL + "/save", json=body)
+    assert response.status_code == 200, response.text
+    child = response.json()["setup_id"]
+    assert run_operations(PID, child, None, None) == operations
+    assert run_operations(PID, child, None, False) is None
+    assert read_setup(PID, SID) == source
+    changed = OperationsConfig(stock_per_facing=99)
+    save_layout_operations(PID, child, changed)
+    assert client.post(URL + "/save", json=body).json() == response.json()
+    assert run_operations(PID, child, None, None) == changed

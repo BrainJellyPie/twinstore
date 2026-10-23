@@ -266,6 +266,10 @@ def apply_optimization(pid: str, job_id: str, name: str | None = None) -> dict[s
     final_name = name or f"{source.get('name') or 'layout'} (optimized{' ' + label if label else ''})"
     memo = "; ".join(view.result.applied_moves[:12])
     new_setup = new_setup_data(final_name, view.status.setup_id, view.result.best_store.model_dump(mode="json"), memo[:1000])
+    # Keep the conditions used to judge this result, including explicit opt-out;
+    # the source's settings may have changed since the search started.
+    if view.status.operations is not None:
+        new_setup["operations"] = view.status.operations.model_dump(mode="json")
     if source.get("building") is not None:  # the optimized layout stays on the same building floor
         new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
     write_json(setup_path(pid, new_setup["id"]), new_setup)

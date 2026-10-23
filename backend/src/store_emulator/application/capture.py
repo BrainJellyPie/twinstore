@@ -591,6 +591,8 @@ def apply_captures(
     final_name = name or f"{source.get('name') or 'layout'} ({label})"
     memo = _memo(capture_ids, results, report)
     new_setup = new_setup_data(final_name, setup_id, new_store.model_dump(mode="json"), memo[:1000])
+    if source.get("operations") is not None:
+        new_setup["operations"] = source["operations"]
     write_json(setup_path(pid, new_setup["id"]), new_setup)
     set_active_setup(pid, new_setup["id"])
     for cid in capture_ids:
