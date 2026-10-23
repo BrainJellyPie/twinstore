@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reserve existing run directories even when `status.json` is missing. New normal
+  and preview runs cannot overwrite legacy inputs, saved results or interrupted
+  snapshots by reusing their run ID.
+
 - Freeze product artwork when a vision simulation or preview is accepted. Source
   package deletion, SKU image replacement and newly added photos cannot change its
   later shoppers' inputs; missing saved manifests fail instead of using current art.

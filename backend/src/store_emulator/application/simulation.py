@@ -238,7 +238,7 @@ def _load_simulation_inputs(
         raise AppError("no personas.")
 
     rid = run_id or f"run_{uuid.uuid4().hex[:6]}"
-    if _status_path(pid, rid).exists():
+    if _status_path(pid, rid).parent.exists():
         raise AppError(f"run ID already exists: {rid}", 409)
 
     meta_file = metadata_path(pid)
@@ -261,7 +261,9 @@ def _mark_simulation_running(
     """
     run_lock = setup_lock_path(pid, run_id).with_name(f".run-{run_id}.lock")
     with FileLock(run_lock, timeout=10):
-        if _status_path(pid, run_id).exists():
+        # Legacy/CLI output or an interrupted write may have no status.json. Its
+        # directory still owns this ID and must never be mixed with a new run.
+        if _status_path(pid, run_id).parent.exists():
             raise AppError(f"concurrent start detected: run ID already exists: {run_id}", 409)
         if image_store is not None:
             # The caller holds the tree guard; the run lock also excludes rule starts with this ID.
