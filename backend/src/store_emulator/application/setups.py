@@ -2,6 +2,8 @@ import copy
 import json
 import logging
 import re
+import time
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
@@ -685,29 +687,42 @@ def delete_setup_with_descendants(project_id: str, setup_id: str) -> list[str]:
     if setup["status"] == "running":
         raise AppError("cannot delete a setup that is currently running.", 409)
 
-    descendants = find_descendants(project_id, setup_id)
-    for desc_id in descendants:
-        try:
-            desc = read_setup(project_id, desc_id)
-            if desc["status"] == "running":
-                raise AppError(
-                    f"child setup '{desc.get('name', desc_id)}' is currently running and cannot be deleted.", 409,
-                )
-        except FileNotFoundError:
-            continue
+    deleted_ids = [*find_descendants(project_id, setup_id), setup_id]
+    deadline = time.monotonic() + 10
+    try:
+        with ExitStack() as locks:
+            # Acquire the entire tree before changing any files. Stable ordering
+            # also prevents overlapping ancestor/descendant deletions deadlocking.
+            for del_id in sorted(deleted_ids):
+                locks.enter_context(FileLock(
+                    str(setup_lock_path(project_id, del_id)),
+                    timeout=max(0, deadline - time.monotonic()),
+                ))
+            for del_id in deleted_ids:
+                try:
+                    current = read_setup(project_id, del_id)
+                except FileNotFoundError:
+                    if del_id == setup_id:
+                        raise AppError(f"setup not found: {setup_id}", 404)
+                    continue
+                # A simulation may have started while deletion waited for a save.
+                if current["status"] == "running":
+                    raise AppError(
+                        f"setup '{current.get('name', del_id)}' is currently running and cannot be deleted.", 409,
+                    )
+            for del_id in deleted_ids:
+                delete_setup(project_id, del_id)
 
-    deleted_ids = [*descendants, setup_id]
-    for del_id in deleted_ids:
-        delete_setup(project_id, del_id)
-
-    # If the active setup was deleted, switch to the first remaining one.
-    state = read_state(project_id)
-    if state.get("activeSetupId") in deleted_ids:
-        remaining = list_setups(project_id)
-        state["activeSetupId"] = remaining[0]["id"] if remaining else None
-        write_state(project_id, state)
-
-    return deleted_ids
+            # If the active setup was deleted, switch to the first remaining one.
+            state = read_state(project_id)
+            if state.get("activeSetupId") in deleted_ids:
+                remaining = list_setups(project_id)
+                state["activeSetupId"] = remaining[0]["id"] if remaining else None
+                write_state(project_id, state)
+            return deleted_ids
+    except Timeout:
+        raise AppError(503, "setup_lock_timeout", "lock_timeout",
+                       "another request is modifying this setup. Please retry shortly.", {"timeout_seconds": 10})
 
 
 def layout_operations(project_id: str, setup_id: str) -> OperationsConfig | None:

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Serialize layout-tree deletion with editor and operations saves. Delayed saves no longer recreate deleted
+  layouts, and deletion rechecks running simulations after waiting without partially deleting a busy tree.
+
 - Serialize simulation input capture and setup state changes with editor saves. Concurrent saves no longer
   reset a starting run to draft, leave a finished run marked running, or lose newly saved operations settings.
 
