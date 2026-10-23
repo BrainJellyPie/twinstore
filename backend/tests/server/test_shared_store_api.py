@@ -383,3 +383,27 @@ def test_replay_keeps_scheduled_refills_after_the_last_customer_leaves(client, m
     assert replay["outcome"]["revenue"] == revenue
     assert replay["outcome"]["restock_cost"] == rounds * 100
     assert replay["report"]["deliveries"] == int(delivery)
+
+
+@pytest.mark.parametrize("crew", [1, 2])
+def test_replay_does_not_make_refill_units_available_before_their_work_finishes(client, monkeypatch, crew):
+    from store_emulator.application import operations_lab
+    from store_emulator.domain.operations import OperationsConfig
+    from tests.engine.test_shared_store import _shopper, _store
+    store = _store()
+    shoppers = [_shopper(f"p{i}", arrival, [("chips", 1)]) for i, arrival in enumerate(
+        ["10:00:00", "10:00:01", "10:01:05", "10:01:06"])]
+    config = OperationsConfig(crew=crew, stock_per_facing=2, backroom_per_product=2,
+                              refill_face_sec=0, refill_unit_sec=60, checkout_base_sec=1, checkout_item_sec=0,
+                              substitute_share=0, crowd_limit=None)
+    monkeypatch.setattr(operations_lab, "_load", lambda pid, run_id: (store, shoppers, 1, config))
+    response = client.post(f"/api/projects/{PID}/runs/run_refill_work/operations/replay", json={
+        "operations": config.model_dump(),
+    })
+    assert response.status_code == 200
+    replay = response.json()
+    assert replay["outcome"]["revenue"] == 900
+    assert replay["report"]["lost_units"] == 1
+    refills = [task for task in replay["report"]["crew_tasks"] if task["kind"] == "refill"]
+    assert len(refills) == 2
+    assert sum(task["end"] - task["start"] for task in refills) == 120
