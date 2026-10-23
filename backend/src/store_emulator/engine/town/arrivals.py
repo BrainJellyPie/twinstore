@@ -75,6 +75,13 @@ def _stochastic_round(value: float, rng: random.Random) -> int:
     return base + (1 if rng.random() < value - base else 0)
 
 
+def _origin_weight(origin: OriginShare, hour: int, age: AgeGroup | None) -> float:
+    if origin.hourly_by_age:
+        ages = origin.hourly_by_age.get(hour, {})
+        return sum(ages.values()) if age is None else ages.get(age, 0.0)
+    return origin.expected_visitors if age is None else origin.by_age.get(age, 0.0)
+
+
 def _candidates(same_age: list[Persona], same_age_any_day: list[Persona], pool: list[Persona], hour: int) -> list[Persona]:
     """Pool personas for a visitor: same age group at the same hour, then nearby hours, then any hour; the same age
     group on other days when the day has nobody of it; any age group only when no day has."""
@@ -121,17 +128,17 @@ def plan_arrivals(
     for persona in personas:
         by_age_any_day.setdefault(persona.age_group, []).append(persona)
 
-    origin_cache: dict[tuple[TownSegment | None, AgeGroup | None], tuple[list[OriginShare], list[float]]] = {}
+    origin_cache: dict[tuple[TownSegment | None, AgeGroup | None, int], tuple[list[OriginShare], list[float]]] = {}
 
-    def origins_for(segment: TownSegment | None, age: AgeGroup | None) -> tuple[list[OriginShare], list[float]]:
+    def origins_for(segment: TownSegment | None, age: AgeGroup | None, hour: int) -> tuple[list[OriginShare], list[float]]:
         """Direct origins of `segment` (None: every segment) weighted by their visitors of `age` (None: all)."""
-        key = (segment, age)
+        key = (segment, age, hour)
         if key not in origin_cache:
             # Demand reports sort by volume. A small volume change must not reorder the
             # same origins under a seeded draw and silently change otherwise paired trips.
             options = sorted((o for o in demand.origin_shares if segment is None or o.segment == segment),
                              key=lambda o: (o.building_id, o.segment))
-            weights = [o.expected_visitors if age is None else o.by_age.get(age, 0.0) for o in options]
+            weights = [_origin_weight(o, hour, age) for o in options]
             origin_cache[key] = (options, list(itertools.accumulate(weights)))
         return origin_cache[key]
 
@@ -191,13 +198,13 @@ def plan_arrivals(
                     came_from_venue_id=trip.from_venue_id if trip else "", is_linked_trip=True,
                 ))
             else:
-                origin = pick(*origins_for(row.segment, age), rng)
+                origin = pick(*origins_for(row.segment, age, row.hour), rng)
                 if origin is None and age != row.age_group:
                     # Nobody of the visitor's age comes from this segment's buildings (a 40s visitor "from school"):
                     # draw from where people of their age come.
-                    origin = pick(*origins_for(None, age), rng)
+                    origin = pick(*origins_for(None, age, row.hour), rng)
                 if origin is None:
-                    origin = pick(*origins_for(row.segment, None), rng)
+                    origin = pick(*origins_for(row.segment, None, row.hour), rng)
                 segment = origin.segment if origin is not None else row.segment
                 distance = origin.distance_m if origin else 0.0
                 arrivals.append(TownArrival(
@@ -267,13 +274,14 @@ def counterfactual_arrival(
     """
     if not (arrival.is_linked_trip and arrival.came_from_venue_id == removed_venue_id):
         return arrival
-    options = list(demand_without.origin_shares)
+    options = sorted((o for o in demand_without.origin_shares if _origin_weight(o, arrival.hour, None) > 0),
+                     key=lambda o: (o.building_id, o.segment))
     if not options:
         return arrival.model_copy(update={"is_linked_trip": False, "came_from_venue": "", "came_from_venue_id": "",
                                           "segment": "resident", "origin_kind": "", "origin_name": ""})
-    weights = [o.by_age.get(arrival.age_group, 0.0) for o in options]
+    weights = [_origin_weight(o, arrival.hour, arrival.age_group) for o in options]
     if sum(weights) <= 0:
-        weights = [max(o.expected_visitors, 1e-9) for o in options]
+        weights = [_origin_weight(o, arrival.hour, None) for o in options]
     origin = random.Random(stable_seed(seed, "town-counterfactual", arrival.persona_id)).choices(options, weights)[0]
     return TownArrival(
         persona_id=arrival.persona_id, source_persona_id=arrival.source_persona_id, hour=arrival.hour,

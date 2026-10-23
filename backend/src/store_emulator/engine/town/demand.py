@@ -548,6 +548,11 @@ def estimate_demand(
             building_id=b.id, kind=b.kind, name=b.name, segment=g_segment[g], distance_m=round(distance, 1),
             expected_visitors=round(value, 4), share=round(value / total, 6) if total > 0 else 0.0,
             by_age={age: round(float(group_daily[g, a]), 4) for a, age in enumerate(AGE_GROUPS)},
+            hourly_by_age={
+                h: {age: float(focal_by_group[g, h, a]) for a, age in enumerate(AGE_GROUPS)
+                    if focal_by_group[g, h, a] > 0}
+                for h in hour_list if focal_by_group[g, h].sum() > 0
+            },
         ))
     origins.sort(key=lambda o: -o.expected_visitors)
 
