@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Prepare town visitors only for the scenario's selected weekdays, keeping the complete
+  persona pool available for age matching. Consecutive days with the same demand profile
+  and opening hours reuse one demand calculation without changing seeded visitors.
+
 - Reuse neighborhood building lookups and nearest competing-store distances while describing
   a visitor batch. Large town runs, their estimates and vision synergy panels no longer scan
   the same buildings and venues separately for every cloned shopper.
