@@ -60,7 +60,7 @@ from .async_executor import executor
 from .currencies import project_currency
 from .errors import AppError, job_failure
 from .providers import PRESETS, assistive_vision_model, ensure_local_ready, resolve_model
-from .setups import set_active_setup, setup_summary, setup_tree_transaction
+from .setups import set_active_setup, setup_lock_path, setup_summary, setup_tree_transaction
 from .storage import images as image_storage
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import metadata_path, new_setup_data, read_setup, setup_path
@@ -255,18 +255,19 @@ def create_capture(
     }, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     cid = f"cap_upload_{request_id}"
     base = _base_dir(pid)
-    base.mkdir(parents=True, exist_ok=True)
+    upload_lock = setup_lock_path(pid, "upload").with_name(".capture-upload.lock")
     try:
         # Wait for another photo being accepted (decoding a 25 MB photo takes seconds) rather than refusing at once: a
         # second tab's queue paused on that refusal until retried by hand.
-        with FileLock(base / ".upload.lock", timeout=60):
-            if (_dir(pid, cid) / "status.json").exists():
-                accepted = _read_status(pid, cid)
-                if accepted.upload_sha256 != digest:
-                    raise AppError("This upload request belongs to a different photo or settings", 409)
-                return accepted
-            if (base / ".uploads" / f"{cid}.json").exists():
-                raise AppError("This photo was removed or its upload was interrupted. Clear the local entry and choose it again for a new attempt", 409)
+        with FileLock(upload_lock, timeout=60):
+            with setup_tree_transaction(pid):
+                if (_dir(pid, cid) / "status.json").exists():
+                    accepted = _read_status(pid, cid)
+                    if accepted.upload_sha256 != digest:
+                        raise AppError("This upload request belongs to a different photo or settings", 409)
+                    return accepted
+                if (base / ".uploads" / f"{cid}.json").exists():
+                    raise AppError("This photo was removed or its upload was interrupted. Clear the local entry and choose it again for a new attempt", 409)
             return _start_capture(pid, cid, data, filename, options, config, digest)
     except Timeout as exc:
         raise AppError("Another photo is being accepted. Retry this upload shortly", 409) from exc
@@ -282,17 +283,18 @@ def _start_capture(
         raise AppError("the gdino detector needs the optional dependencies: uv sync --extra capture", 400)
     if options.detector == "vlm" and llm_config is None:
         raise AppError("the vlm detector needs a vision model (model must not be 'none')", 400)
-    if digest:
-        # Keep a receipt outside the removable photo directory; replay must not resurrect deletion.
-        write_json(_base_dir(pid) / ".uploads" / f"{cid}.json", {"upload_sha256": digest})
-    folder = _dir(pid, cid)
-    folder.mkdir(parents=True, exist_ok=True)
-    photo.save(folder / "image.jpg", format="JPEG", quality=92)
-    status = CaptureStatus(
-        capture_id=cid, status="pending", stage="queued", options=options, image_name=filename[:200],
-        image_size=photo.size, created_at=now_iso(), upload_sha256=digest,
-    )
-    _write_status(pid, status)
+    with setup_tree_transaction(pid):
+        if digest:
+            # Keep a receipt outside the removable photo directory; replay must not resurrect deletion.
+            write_json(_base_dir(pid) / ".uploads" / f"{cid}.json", {"upload_sha256": digest})
+        folder = _dir(pid, cid)
+        folder.mkdir(parents=True, exist_ok=True)
+        photo.save(folder / "image.jpg", format="JPEG", quality=92)
+        status = CaptureStatus(
+            capture_id=cid, status="pending", stage="queued", options=options, image_name=filename[:200],
+            image_size=photo.size, created_at=now_iso(), upload_sha256=digest,
+        )
+        _write_status(pid, status)
     try:
         executor.submit(_run_job, pid, status, llm_config)
     except RuntimeError as exc:
