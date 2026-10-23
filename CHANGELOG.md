@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve selected shelf blocks and levels in purchase timelines so VLM surrogate calibration
+  measures the height actually chosen for repeated SKUs. Older or pooled-substitution purchases
+  contribute a height only when their placement evidence identifies one unambiguously.
+
 - Complete conjoint studies with accepted negative random seeds. Bootstrap estimation now
   uses the seed magnitude, consistently with other marketing comparisons, instead of failing
   after all respondent calls have finished. Nonnegative seeds retain their existing results.

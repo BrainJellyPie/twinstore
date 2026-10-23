@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from .rack import RACK_LEVELS
 
 from .types import Action, Face, Weekday
 
@@ -13,6 +15,8 @@ class TimelineEvent(BaseModel):
     face: Face | None = None
     description: str = ""
     product_sku: str = ""
+    product_block: int | None = Field(default=None, ge=0)
+    product_level: int | None = Field(default=None, ge=1, le=RACK_LEVELS)
     product_name: str = ""
     price: int = 0  # unit price in the currency's minor unit
     quantity: int = 1  # units on a BUY line; line total = price × quantity

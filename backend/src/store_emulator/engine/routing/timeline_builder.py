@@ -125,6 +125,8 @@ def build_timeline(
                 # coordinate-based guess that may have picked a contested neighbour.
                 te.target_rack = rack.id
                 te.face = slot.face
+                te.product_block = slot.block
+                te.product_level = slot.level
 
         # A pick continues a stop only at the same resolved rack and face. Adjacent shelves can
         # share an access tile, and the SKU may correct an ambiguous coordinate-based rack guess.

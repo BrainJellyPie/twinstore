@@ -663,6 +663,9 @@ def _pick(
             event.description = _join(event.description, f"took {substitute.item.name}: {product.item.name} was sold out")
             event.product_sku = substitute.item.sku
             event.product_name = substitute.item.name
+            # Stock is pooled across this face's placements; no exact replacement slot was selected.
+            event.product_block = None
+            event.product_level = None
             event.price = substitute.item.price
             event.quantity = taken
             return
