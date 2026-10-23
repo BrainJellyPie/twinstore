@@ -383,6 +383,7 @@ def _play_day(
 
     free = crew.free if crew is not None else [float(opening)] * tills
     busy = 0.0
+    overtime = 0.0
     checkouts: dict[int, _Checkout] = {}
     last = 0.0
     while heap:
@@ -462,6 +463,8 @@ def _play_day(
             free[till] = begins + service
             last = max(last, begins + service)
             busy += service
+            if crew is None:
+                overtime += _off_duty_seconds(till, begins, begins + service, staffed)
             if crew is not None:
                 crew.serving += service
                 crew.tasks.append((begins, till, begins + service, "till", counter_ids[till], "", "", ""))
@@ -474,7 +477,7 @@ def _play_day(
         _refilled(state, key, products[key], closing)
     room = _SPELLS_REPORTED - len(report.empty_spells)
     report.empty_spells.extend(sorted(state.spells, key=lambda s: (s.start, s.rack_id, s.sku))[:max(0, room)])
-    open_seconds = 0.0
+    open_seconds = overtime
     hour = float(opening)
     while hour < closing:
         open_seconds += staffed(hour) * (min(closing, hour + 3600) - hour)
@@ -482,6 +485,13 @@ def _play_day(
             report.crew_hours += crew_on_duty(config, duty_hour(hour), int(day)) * (min(closing, hour + 3600) - hour) / 3600
         hour += 3600
     if crew is not None:
+        for start, member, stop, _, _, _, _, _ in crew.tasks:
+            extra = _off_duty_seconds(
+                member, start, stop, lambda moment: crew_on_duty(config, duty_hour(moment), int(day)),
+            )
+            report.crew_hours += extra / 3600
+            if member < tills:
+                open_seconds += extra
         report.crew_till_hours += crew.serving / 3600
         report.crew_refill_hours += crew.refilling / 3600
         report.face_refills += crew.refills
@@ -494,6 +504,17 @@ def _play_day(
                      sku=sku, name=name, start=round(start), end=round(stop))
             for start, member, stop, kind, rack, face, sku, name in sorted(crew.tasks)[:max(0, room)])
     return checkouts, open_seconds, busy
+
+
+def _off_duty_seconds(member: int, start: float, end: float, on_duty: Callable[[float], int]) -> float:
+    """Work already underway stays paid through any hours that no longer schedule its worker."""
+    extra = 0.0
+    while start < end:
+        stop = min(end, (start // 3600 + 1) * 3600)
+        if member >= on_duty(start):
+            extra += stop - start
+        start = stop
+    return extra
 
 
 def open_hours(store: Store, results: list[CustomerResult]) -> list[str]:
