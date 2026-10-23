@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep optimization-result application and its final job-status write together
+  with respect to project deletion, preventing a late status write from recreating
+  the deleted project's directory.
+
 - Read captured price tags in the same currency units the app prints. Explicit
   dollar/currency and cent markers outrank catalog guesses; malformed grouping,
   multiple prices, negatives and discount percentages remain visibly estimated
