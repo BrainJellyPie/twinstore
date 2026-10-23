@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 
 from store_emulator.application import optimize as opt_service
 from store_emulator.application import optimize_goal
-from store_emulator.application import setups as setup_service
 from store_emulator.application.errors import AppError
 from store_emulator.application.optimize import OptimizationStatus, OptimizationView
 from store_emulator.domain.operations import OperationsConfig
@@ -71,7 +70,7 @@ def start(pid: str, sid: str, req: OptimizeRequest) -> OptimizationStatus:
     Runs in the background; poll `GET /optimizations/{job_id}` (`status.phase`)."""
     return _call(lambda: opt_service.start_optimization(
         pid, sid, req.spec, get_config(), scenario_id=req.scenario_id, judge=req.judge_spec(),
-        operations=setup_service.run_operations(pid, sid, req.operations, req.shared_store),
+        operations=req.operations, shared_store=req.shared_store,
     ))
 
 

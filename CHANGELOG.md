@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Start optimization from one committed layout, customer list and operating plan. Input capture and pending
+  registration now coordinate with saves and project deletion, preventing stale search inputs and jobs
+  registered after their project was removed. Busy starts return a retryable error.
+
 - Capture saved stock, refill and checkout settings under the same layout lock as simulation inputs. Runs
   waiting for an operations save now use the accepted settings, including removal, while later edits leave
   the already captured run unchanged. Explicit overrides and shared-store opt-out keep their precedence.

@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from filelock import FileLock
 
-from store_emulator.application import setups, simulation
+from store_emulator.application import optimize, setups, simulation
 from store_emulator.application.async_executor import executor
 from store_emulator.application.storage.io import read_json
 from store_emulator.application.storage.setups import metadata_path, personas_path, read_setup, setup_path
@@ -20,7 +20,7 @@ from tests.server.test_simulation_setup_races import PID, SID, layout
 
 @pytest.mark.parametrize("operation", [
     "run", "preview", "slots", "empty", "racks", "racks_and_items",
-    "delete_layout_tree", "delete_layout", "delete_project", "personas", "metadata", "generation",
+    "delete_layout_tree", "delete_layout", "delete_project", "personas", "metadata", "generation", "optimization",
 ])
 def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, monkeypatch, operation):
     @asynccontextmanager
@@ -46,6 +46,8 @@ def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, mon
         method, url, payload = "PUT", f"{base}/metadata", {"name": "Responsive edit"}
     elif operation == "generation":
         url, payload = f"{setup_url}/regenerate-persona", None
+    elif operation == "optimization":
+        url, payload = f"{setup_url}/optimize", {}
     elif operation in {"empty", "racks", "racks_and_items"}:
         url, payload = f"{base}/setups", {"source_setup_id": SID, "mode": operation}
     elif operation.startswith("delete"):
@@ -61,7 +63,8 @@ def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, mon
             attempted.set()
         return FileLock(path, timeout=timeout)
 
-    monkeypatch.setattr(simulation if operation in {"run", "preview"} else setups, "FileLock", observed_lock)
+    module = simulation if operation in {"run", "preview"} else optimize if operation == "optimization" else setups
+    monkeypatch.setattr(module, "FileLock", observed_lock)
     with TestClient(app) as client, ThreadPoolExecutor(max_workers=2) as pool:
         with FileLock(held_path, timeout=0):
             pending = pool.submit(client.request, method, url, json=payload)
@@ -85,6 +88,9 @@ def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, mon
     elif operation == "generation":
         submit.assert_called_once()
         assert response.json()["gen_id"]
+    elif operation == "optimization":
+        submit.assert_called_once()
+        assert response.json()["job_id"]
     elif operation == "delete_project":
         assert not metadata_path(PID).exists()
     elif operation.startswith("delete_layout"):
