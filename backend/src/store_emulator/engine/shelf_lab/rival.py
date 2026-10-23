@@ -71,13 +71,14 @@ def compare_rival(
     aliases: Mapping[str, str] | None = None,
 ) -> RivalComparison:
     """`aliases`: rival product name → our product name for matches the names alone miss (e.g. read by a model)."""
+    categories = {i.category for i in rival.items if i.category}
     ours: dict[str, tuple[str, int, str]] = {}          # normalized name → (name, price, category)
     for rack, slot in store.all_slots:
         for item in slot.items:
             key = _product_key(item.name)
             if key not in ours:
-                ours[key] = (item.name, item.price, _category_of(rack.rack_desc, rack.rack_name, item.name, rack.type))
-    categories = {i.category for i in rival.items if i.category}
+                category = _category_of(rack.rack_desc, rack.rack_name, item.name, rack.type) if categories else ""
+                ours[key] = (item.name, item.price, category)
     ours_here = {k: v for k, v in ours.items() if not categories or v[2] in categories}
     keys = [key for key in ours if not key.startswith("symbol:")]
     prices: list[PriceComparison] = []

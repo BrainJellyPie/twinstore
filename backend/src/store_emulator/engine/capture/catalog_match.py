@@ -9,7 +9,7 @@ import difflib
 import math
 import re
 import unicodedata
-from functools import cache
+from functools import cache, lru_cache
 
 from store_emulator.domain.capture import ShelfItemLabel
 from store_emulator.engine.layout_gen.catalog import (
@@ -103,24 +103,40 @@ def _vocabulary() -> dict[str, dict[str, float]]:
     return vocab
 
 
+@lru_cache(maxsize=256)
+def _category_names(items: tuple[CatalogItem, ...]) -> tuple[tuple[CatalogItem, str, str], ...]:
+    """Normalize the bundled catalog once per category; retain no user-supplied labels."""
+    rows: list[tuple[CatalogItem, str, str]] = []
+    for item in items:
+        for text in (item.en, item.ko):
+            normalized = normalize_text(text)
+            without_size = " ".join(t for t in normalized.split() if not _SIZE_RE.match(t))
+            rows.append((item, normalized, without_size))
+    return tuple(rows)
+
+
 def best_catalog_item(name: str, categories: list[str] | None = None) -> tuple[str, CatalogItem, float] | None:
     """Closest catalog product by name (English or Korean): (category, item, similarity 0–1)."""
     query = normalize_text(name)
     if not query:
         return None
     query_without_size = " ".join(tokens(name))
+    catalog = [(cat, _category_names(tuple(CATALOG.get(cat, [])))) for cat in categories or list(CATALOG)]
+    # All exact matches score 1. Preserve the first one in catalog order, including omitted pack sizes.
+    for cat, rows in catalog:
+        for item, text, without_size in rows:
+            if query == text or (query == query_without_size and query == without_size):
+                return cat, item, 1.0
     best: tuple[str, CatalogItem, float] | None = None
-    for cat in categories or list(CATALOG):
-        for item in CATALOG.get(cat, []):
-            for text in (item.en, item.ko):
-                ratio = difflib.SequenceMatcher(None, query, normalize_text(text)).ratio()
-                # A missing pack size must not let unrelated categories outweigh an exact product name.
-                if query == query_without_size and query == " ".join(tokens(text)):
-                    ratio = 1.0
-                if ratio == 1.0:
-                    return cat, item, ratio
-                if best is None or ratio > best[2]:
-                    best = (cat, item, ratio)
+    for cat, rows in catalog:
+        for item, text, _ in rows:
+            matcher = difflib.SequenceMatcher(None, query, text)
+            # These are upper bounds: skipping a tie cannot change the first winning offer or score.
+            if best is not None and (matcher.real_quick_ratio() <= best[2] or matcher.quick_ratio() <= best[2]):
+                continue
+            ratio = matcher.ratio()
+            if best is None or ratio > best[2]:
+                best = (cat, item, ratio)
     return best
 
 
