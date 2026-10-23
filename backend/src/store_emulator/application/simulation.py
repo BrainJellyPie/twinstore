@@ -51,7 +51,7 @@ from store_emulator.engine.analysis.fidelity import fidelity_report
 
 from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.currencies import simulation_currency
-from store_emulator.application.shelf_views import views_dir
+from store_emulator.application.shelf_views import snapshot_shelf_views, views_dir
 from store_emulator.application.setups import run_operations, setup_lock_path, setup_tree_transaction
 
 logger = logging.getLogger(__name__)
@@ -182,6 +182,7 @@ async def run_simulation(
 def prepare_simulation(
     pid: str, setup_id: str, run_id: str | None = None, *, preview: bool = False, default_currency: str = "USD",
     operations: OperationsConfig | None = None, shared_store: bool | None = None, snapshot_images: bool = False,
+    snapshot_photos: bool = False,
 ) -> tuple[str, Store, list[Persona], str, str, OperationsConfig | None]:
     """Validate, load inputs, and transition state before running. AppError on failure.
 
@@ -191,13 +192,15 @@ def prepare_simulation(
     """
     try:
         tree = setup_tree_transaction(pid, [setup_id]) if snapshot_images else nullcontext()
-        with tree, FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
+        images = image_storage.image_read_transaction(pid) if snapshot_images else nullcontext()
+        with tree, FileLock(str(setup_lock_path(pid, setup_id)), timeout=10), images:
             setup = _validate_simulation(pid, setup_id, preview=preview)
             rid, store, personas, address, customer_profile = _load_simulation_inputs(
                 pid, setup, run_id, default_currency,
             )
             saved_operations = run_operations(pid, setup_id, operations, shared_store)
-            _mark_simulation_running(pid, setup_id, rid, preview=preview, image_store=store if snapshot_images else None)
+            _mark_simulation_running(pid, setup_id, rid, preview=preview, image_store=store if snapshot_images else None,
+                                     snapshot_photos=snapshot_photos)
             return rid, store, personas, address, customer_profile, saved_operations
     except Timeout:
         raise AppError(503, "setup_lock_timeout", "lock_timeout",
@@ -251,6 +254,7 @@ def _load_simulation_inputs(
 
 def _mark_simulation_running(
     pid: str, setup_id: str, run_id: str, *, preview: bool = False, image_store: Store | None = None,
+    snapshot_photos: bool = False,
 ) -> None:
     """setup.status=running + run status=pending. Re-checks status/run_id at mark.
 
@@ -272,8 +276,15 @@ def _mark_simulation_running(
             try:
                 snapshot_project_images(pid, (i for r in image_store.racks for s in r.slots for i in s.items),
                                         base / "input" / "images")
+                if snapshot_photos:
+                    snapshot_shelf_views(pid, image_store, image_store.currency or "USD", base / "input" / "shelf_views")
             except Exception:
-                remove_tree(base / "input" / "images" if existed else base)
+                if existed:
+                    remove_tree(base / "input" / "images")
+                    if snapshot_photos:
+                        remove_tree(base / "input" / "shelf_views")
+                else:
+                    remove_tree(base)
                 raise
         if not preview:
             fresh = read_setup(pid, setup_id)
@@ -281,7 +292,8 @@ def _mark_simulation_running(
                 raise AppError("concurrent start detected: setup is already running or finalized.", 409)
             fresh["status"] = "running"
             write_setup(pid, setup_id, fresh)
-        write_status(pid, run_id, "pending", setup_id=setup_id, preview=preview, image_snapshot=image_store is not None)
+        write_status(pid, run_id, "pending", setup_id=setup_id, preview=preview, image_snapshot=image_store is not None,
+                     shelf_photo_snapshot=image_store is not None and snapshot_photos)
 
 
 def _status_path(pid: str, run_id: str) -> Path:
@@ -352,8 +364,15 @@ def run_simulation_background(
             write_status(pid, run_id, "running", completed_customers=completed, failed_customers=failed)
 
         images = _status_path(pid, run_id).parent / "input" / "images"
-        frozen = bool(read_json(_status_path(pid, run_id)).get("image_snapshot"))
+        accepted = read_json(_status_path(pid, run_id))
+        frozen = bool(accepted.get("image_snapshot"))
         image_loader = snapshot_image_loader(images) if frozen else project_image_loader(pid)
+        if accepted.get("shelf_photo_snapshot"):
+            photos = images.with_name("shelf_views").resolve()
+            if not (photos / "manifest.json").is_file():
+                raise FileNotFoundError("The saved shelf photograph snapshot is missing; start a new run.")
+            vlm = config.engines.vlm_glance.model_copy(update={"shelf_views_dir": str(photos)})
+            config = config.model_copy(update={"engines": config.engines.model_copy(update={"vlm_glance": vlm})})
         aggregated, customers, runner = asyncio.run(
             run_simulation(config, store, personas,
                            address=address, customer_profile=customer_profile,

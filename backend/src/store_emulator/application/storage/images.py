@@ -40,22 +40,22 @@ _SAFE_PID: Final[re.Pattern[str]] = re.compile(RESOURCE_ID_PATTERN)
 # Per-project lock that serializes manifest writes. Assumes a single process
 # (single uvicorn worker). Prevents lost-update on concurrent save_image calls
 # for the same project_id.
-_PROJECT_LOCKS: dict[str, threading.Lock] = {}
+_PROJECT_LOCKS: dict[str, threading.RLock] = {}
 _LOCKS_MUTEX: Final[threading.Lock] = threading.Lock()
 
 
-def _project_lock(project_id: str) -> threading.Lock:
+def _project_lock(project_id: str) -> threading.RLock:
     with _LOCKS_MUTEX:
         lock = _PROJECT_LOCKS.get(project_id)
         if lock is None:
-            lock = threading.Lock()
+            lock = threading.RLock()
             _PROJECT_LOCKS[project_id] = lock
         return lock
 
 
 @contextmanager
 def image_read_transaction(project_id: str) -> Iterator[None]:
-    """Keep the manifest and its mutable SKU image files together while taking a study snapshot."""
+    """Keep layout image URLs and copied SKU artwork together; nested snapshot reads are allowed."""
     with _project_lock(project_id):
         yield
 
