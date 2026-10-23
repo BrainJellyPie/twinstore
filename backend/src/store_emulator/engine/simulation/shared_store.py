@@ -406,7 +406,7 @@ def _play_day(
             if backroom is not None and backroom.units.get(key[2], 1) == 0:
                 crew.dry.add(key)   # the backroom ran out with this face: nothing more to bring out today
             crew.note(key, k, state.stock[key], product.full, moment)
-            dispatch(moment)
+            heapq.heappush(heap, (moment, _CREW, index, -1))
         elif kind == _CREW:
             dispatch(moment)
         elif kind == _PUT_BACK:
@@ -417,7 +417,7 @@ def _play_day(
                 for key in state.touched:
                     crew.note(key, ids[key], state.stock[key], products[key].full, moment)
                 state.touched.clear()
-                dispatch(moment)
+                heapq.heappush(heap, (moment, _CREW, index, -1))
         else:
             result = results[index]
             units = sum(e.quantity for e in result.timeline if e.action == Action.BUY)

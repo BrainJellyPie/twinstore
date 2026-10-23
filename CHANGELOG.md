@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Complete nine more default-map departments with 64 sweets, jewelry, pet, digital,
+  travel, art, tabletop-game, plant and spice photos, reaching 1,312 local images.
+
+- Serve shoppers already at the till before starting a same-time crew refill.
+  Keep crew hours and refill results visible when the scheduled hours are zero,
+  and preserve a valid default crew when a plan leaves every hour unstaffed.
+
+- Add 64 more pet-walking, car-detailing, composting, watering, embroidery,
+  knitting, paper-craft and food-packaging photos, reaching 1,248 local images.
+  All eight departments now have a photo for every product in their default maps.
+
+
 ### A roster the crew can work: shifts by weekday
 - The crew can now be set as shifts — from one hour to another, on chosen weekdays (none = every day), with a
   number of staff — instead of numbers hour by hour. **Try other stock and staffing → Shifts** edits them; with
@@ -37,6 +49,22 @@
   damaged file keeps the saved summary.
 
 ## 0.4.10 — One crew for the tills and the shelves; a backroom behind them; older runs show their results
+
+### One crew for the tills and the shelves
+- Tills and refills used to be staffed separately: refill rounds were instant and cost nothing at the tills. A store
+  can now have a crew — **Crew on duty (tills and shelves)** — who serve at the tills when shoppers wait and refill
+  shelves when free, so a refill takes someone away from the tills. A shelf is refilled once it is down to a share
+  of its full stock (**Refill a shelf once down to**, 50 % by default; 0 = only when empty), by whoever is free
+  first, taking 30 s plus 4 s per unit (assumed times to set from your own time studies). The first crew member
+  stays at the tills while anyone else is on duty; a lone crew member does both, and shoppers wait while they refill.
+- The crew can change hour by hour (`crew_schedule`). **Store operations** shows the staff hours and how they split
+  between the tills and the shelves, the shelves refilled, how long a shelf waited for its refill on average and
+  the shelves still waiting at closing; the hourly table shows the crew on duty.
+- In **Try other stock and staffing**, a staffed hour costs one crew member for an hour, and **Find the best plan**
+  tries refill points with shelf stock and the crew hour by hour (up to two more than the tills, or `max_crew`).
+- API: `crew`, `crew_schedule`, `refill_at`, `refill_face_sec` and `refill_unit_sec` in `operations`; blank (null)
+  keeps tills staffed on their own with refill rounds, as before. With a crew, `restock_every_min`,
+  `open_counters` and `till_schedule` are not used.
 
 ### One crew for the tills and the shelves
 - Tills and refills used to be staffed separately: refill rounds were instant and cost nothing at the tills. A store

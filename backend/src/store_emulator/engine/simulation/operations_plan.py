@@ -150,10 +150,11 @@ def plan_operations(
                     best_config.model_copy(update={"crew_schedule": {**best_config.crew_schedule, hour: n}})
                     for n in range(1, crew_limit + 1)
                 )
-        # The crew most hours have becomes the run's number, the other hours stay listed — if that plays the same.
+        # The most common positive crew becomes the default; unstaffed hours stay explicit — if that plays the same.
         if best_config.crew is not None and best_config.crew_schedule:
             staffed = [best_config.crew_schedule.get(hour, best_config.crew) for hour in open_hours(store, planned)]
-            common = min(set(staffed), key=lambda n: (-staffed.count(n), n))
+            common = min((n for n in set(staffed) if n > 0),
+                         key=lambda n: (-staffed.count(n), n), default=best_config.crew)
             tidy = best_config.model_copy(update={"crew": common, "crew_schedule": {
                 hour: n for hour, n in best_config.crew_schedule.items() if n != common}})
             if tidy != best_config and run(tidy)[0] == best_tried[0]:

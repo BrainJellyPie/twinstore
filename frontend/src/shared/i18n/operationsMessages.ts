@@ -126,7 +126,7 @@ export const operationsMessages = {
   labTillHours: ["Till hours", "계산대 운영 시간", "收银台值班时数", "レジ稼働時間", "Horas de caja", "Heures de caisse"],
   labRefills: ["Shelf refills", "진열대 보충 횟수", "补货次数", "補充回数", "Reposiciones", "Réassorts"],
   labUnits: ["Units on the shelves", "진열 수량", "货架上的商品件数", "陳列数量", "Unidades en estantes", "Unités en rayon"],
-  labLaborCost: ["Till staff cost", "계산대 인건비", "收银人力成本", "レジ人件費", "Coste de personal de caja", "Coût du personnel de caisse"],
+  labLaborCost: ["Staff cost", "인건비", "人工成本", "人件費", "Coste de personal", "Coût du personnel"],
   labRefillCost: ["Refill cost", "보충 비용", "补货成本", "補充コスト", "Coste de reposición", "Coût du réassort"],
   labHoldingCost: ["Stock holding cost", "재고 보유 비용", "库存持有成本", "在庫保有コスト", "Coste de mantener stock", "Coût de détention du stock"],
   labNet: ["Left after costs", "비용을 뺀 금액", "扣除成本后", "コスト差し引き後", "Queda tras los costes", "Reste après les coûts"],

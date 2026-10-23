@@ -140,14 +140,14 @@ export function OperationsLab({ projectId, runId, setupId, report, currency }: {
   const shown = (value: number, kind: (typeof ROWS)[number]["kind"]) => kind === "money" ? formatMoney(value, code, { locale })
     : kind === "wait" ? (value < 90 ? t("opsSeconds", { seconds: Math.round(value) }) : t("opsMinutes", { minutes: (value / 60).toLocaleString(locale, { maximumFractionDigits: 1 }) }))
     : kind === "hours" ? value.toLocaleString(locale, { maximumFractionDigits: 1 }) : value.toLocaleString(locale);
-  const columns: { label: MessageKey; outcome: OperationsOutcome; weeksNet?: number }[] = [
-    ...(plan.data ? [{ label: "labNowCol" as const, outcome: plan.data.current, weeksNet: plan.data.current_weeks?.net }] : []),
-    ...(replay.data ? [{ label: "labReplayCol" as const, outcome: replay.data.outcome, weeksNet: replay.data.weeks?.net }] : []),
-    ...(plan.data ? [{ label: "labPlanCol" as const, outcome: plan.data.best, weeksNet: plan.data.best_weeks?.net }] : []),
+  const columns: { label: MessageKey; outcome: OperationsOutcome; crew: boolean; weeksNet?: number }[] = [
+    ...(plan.data ? [{ label: "labNowCol" as const, outcome: plan.data.current, crew: plan.data.current_config.crew != null, weeksNet: plan.data.current_weeks?.net }] : []),
+    ...(replay.data ? [{ label: "labReplayCol" as const, outcome: replay.data.outcome, crew: replay.data.report.config.crew != null, weeksNet: replay.data.weeks?.net }] : []),
+    ...(plan.data ? [{ label: "labPlanCol" as const, outcome: plan.data.best, crew: plan.data.config.crew != null, weeksNet: plan.data.best_weeks?.net }] : []),
   ];
   // Crew hours and shelves refilled only where a column had a crew; till hours and refill rounds unless every column
   // had one.
-  const crewed = (c: (typeof columns)[number]) => (c.outcome.crew_hours ?? 0) > 0;
+  const crewed = (c: (typeof columns)[number]) => c.crew;
   const rows = ROWS.filter((row) => row.key === "crew_hours" || row.key === "face_refills" ? columns.some(crewed)
     : row.key === "till_hours" || row.key === "restocks" ? !columns.every(crewed) : true);
   const memoryField = (key: keyof MemoryText, label: MessageKey) => (

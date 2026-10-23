@@ -288,3 +288,28 @@ def test_added_pet_garden_craft_departments_respect_small_map_limits(template_id
                 for slot in rack.slots for item in slot.items}
         assert len(skus) <= (2 if category in departments else 1)
     assert generate_store(template_id, currency=currency, options=options) == store
+
+
+@pytest.mark.parametrize("template_id,departments", NEW_PET_GARDEN_CRAFT_DEPARTMENTS)
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_new_pet_garden_craft_default_maps_stock_fully_pictured_departments(template_id, departments, currency):
+    store = generate_store(template_id, currency=currency)
+    for category in departments:
+        expected = {catalog_slot_item(product, currency).sku: catalog_slot_item(product, currency)
+                    for product in CATALOG[category]}
+        stocked = {item.sku: item for rack in store.product_racks if rack.rack_desc == category
+                   for slot in rack.slots for item in slot.items}
+        assert stocked == expected
+        assert all(item.image_url for item in stocked.values())
+
+
+@pytest.mark.parametrize("template_id,category", [('urban_cvs', 'sweets'), ('jewelry_boutique', 'jewelry'), ('pet_store', 'pet_accessories'), ('electronics_shop', 'digital_accessories'), ('travel_essentials', 'travel_essentials'), ('art_craft_store', 'fine_art_supplies'), ('bookstore', 'tabletop_games'), ('garden_center', 'indoor_plants'), ('hypermarket', 'spice_blends')])
+@pytest.mark.parametrize("currency", ["USD", "KRW", "JPY"])
+def test_more_default_maps_stock_complete_photographed_departments(template_id, category, currency):
+    store = generate_store(template_id, currency=currency)
+    expected = {catalog_slot_item(product, currency).sku: catalog_slot_item(product, currency)
+                for product in CATALOG[category]}
+    stocked = {item.sku: item for rack in store.product_racks if rack.rack_desc == category
+               for slot in rack.slots for item in slot.items}
+    assert stocked == expected
+    assert all(item.image_url for item in stocked.values())

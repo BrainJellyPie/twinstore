@@ -66,3 +66,21 @@ def test_same_named_variants_share_generic_photo_without_merging_identity_or_pri
     products = [catalog_slot_item(p, currency) for values in CATALOG.values() for p in values if p.en == "Sunscreen SPF50"]
     assert len(products) == len({p.sku for p in products}) == len({p.price for p in products}) == 2
     assert {p.image_url for p in products} == {"/api/catalog-images/starter-02/14.webp"}
+
+
+@pytest.mark.parametrize("sheet", ["starter-79", "starter-80", "starter-81", "starter-82"])
+@pytest.mark.parametrize("axis", ["row", "column"])
+@pytest.mark.parametrize("boundary", [1, 2, 3])
+def test_travel_art_plant_photos_have_clear_cutting_gutters(sheet, axis, boundary):
+    from store_emulator.engine.perception.catalog_images import ASSETS, ROW_BOUNDS
+
+    with Image.open(ASSETS / f"{sheet}.png") as source:
+        image = source.convert("RGB")
+        width, height = image.size
+        if axis == "row":
+            cut = round(ROW_BOUNDS[sheet][boundary] * height)
+            band = image.crop((0, cut - 3, width, cut + 3))
+        else:
+            cut = round(boundary * width / 4)
+            band = image.crop((cut - 3, 0, cut + 3, height))
+        assert all(min(pixel) >= 220 for pixel in band.get_flattened_data())

@@ -246,3 +246,24 @@ it("edits a roster of shifts by weekday and plans one", async () => {
   fireEvent.click(lab.getByRole("button", { name: "Use this plan" }));
   expect(lab.getByRole("group", { name: "Shift 2" })).toBeTruthy();
 });
+
+
+it.each(LOCALES.flatMap(({ code }) => ["replay", "plan", "mixed"].map(mode => ({ code, mode }))))(
+  "keeps zero-hour crew results visible in $code ($mode)", async ({ code, mode }) => {
+    useLocale.getState().setLocale(code);
+    const crewConfig = { ...config, crew: 2, crew_schedule: { "17": 0, "18": 0 } };
+    const crewReport = { ...report, config: crewConfig, crew_hours: 0, face_refills: 0 };
+    const zero = { ...outcome(0, 0), crew_hours: 0, face_refills: 0, till_hours: 0, restocks: 0 };
+    vi.mocked(api.replayOperations).mockResolvedValue({ planned_revenue: 100000, outcome: zero, report: crewReport });
+    vi.mocked(api.planOperations).mockResolvedValue({
+      current_config: mode === "mixed" ? config : crewConfig, current: zero,
+      config: crewConfig, best: zero, replays: 1, raised_skus: [],
+    });
+    const lab = show({ report: crewReport });
+    fireEvent.click(lab.getByRole("button", { name: translate(code, mode === "replay" ? "labReplay" : "labFindPlan") }));
+    await lab.findByRole("columnheader", { name: translate(code, mode === "replay" ? "labReplayCol" : "labPlanCol") });
+    expect(lab.getByRole("rowheader", { name: translate(code, "opsCrewHours") })).toBeTruthy();
+    expect(lab.getByRole("rowheader", { name: translate(code, "opsFaceRefills") })).toBeTruthy();
+    expect(Boolean(lab.queryByRole("rowheader", { name: translate(code, "labTillHours") }))).toBe(mode === "mixed");
+    expect(Boolean(lab.queryByRole("rowheader", { name: translate(code, "labRefills") }))).toBe(mode === "mixed");
+  });

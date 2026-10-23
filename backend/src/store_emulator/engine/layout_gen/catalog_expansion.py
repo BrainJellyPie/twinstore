@@ -1426,6 +1426,54 @@ PACKSHOT_SHEETS = {
         "Pastel Craft Cardstock A5 20pk", "Smooth Paper Bone Folder", "Slotted Paper Quilling Tool", "Round Paper Craft Punch 25mm",
         "Window Cake Gift Box 20cm", "Four Cupcake Carrier Box", "Glassine Cookie Gift Bags 20pk", "Cotton Bakers Twine Spool 50m",
     ],
+    "starter-75": [
+        "Pet Treat Training Waist Pouch", "Pet Waste Bag Refill Rolls 4pk", "Dog Lead Traffic Handle Short", "Pet Collar Identification Capsule",
+        "Pet Walking Clip Light Rechargeable", "Soft Pet Paw Cleaning Mitt", "Pet Walking Rain Cape Small", "Dog Lead Wall Storage Hook",
+        "Soft Car Vent Detailing Brush", "Car Wheel Cleaning Brush Long", "Car Glass Cleaning Cloth Pair", "Car Interior Detail Spray 300ml",
+        "Car Tire Dressing Applicator Block", "Car Wash Bucket Grit Guard", "Soft Detailing Brush Set 3pc", "Car Detailing Tool Organizer Bag",
+    ],
+    "starter-76": [
+        "Compost Temperature Probe 30cm", "Garden Compost Sieve Round", "Compost Scoop with Deep Bowl", "Worm Bin Moisture Mat",
+        "Compost Sorting Reminder Magnet", "Compost Aeration Tube Short", "Coir Compost Cover Disc 25cm", "Compost Caddy Replacement Handle",
+        "Terracotta Watering Spike Pair", "Drip Line Support Stakes 10pk", "Mechanical Garden Water Timer", "Garden Hose Shutoff Valve",
+        "Watering Can Rose Replacement", "Indoor Watering Bottle Spout", "Garden Water Connector Washer Set", "Drip Irrigation Tee Connector Set",
+    ],
+    "starter-77": [
+        "Embroidery Needle Pack 12pc", "Water Erasable Fabric Marking Pen", "Small Stork Embroidery Scissors", "Embroidery Thread Bobbins 20pk",
+        "Embroidery Hoop Stand Tabletop", "Embroidery Transfer Paper 5pk", "Metal Embroidery Needle Threader", "Embroidery Project Zipper Pouch",
+        "Wooden Yarn Bowl Small", "Knitting Needle Gauge Ruler", "Knitting Cable Needle Set 3pc", "Silicone Knitting Needle Stopper Pair",
+        "Cotton Crochet Cord 100m", "Knitting Stitch Holder Pair", "Blunt Yarn Finishing Needles 4pc", "Knitting Project Drawstring Bag",
+    ],
+    "starter-78": [
+        "Paper Quilling Strip Pack 100pc", "Craft Scoring Board Mini", "Double Sided Craft Tape 10m", "Precision Paper Craft Tweezers",
+        "Decorative Corner Paper Punch", "Paper Craft Glue Pen", "Origami Pattern Paper 50pk", "Paper Craft Embossing Stylus Pair",
+        "Kraft Bakery Gift Labels 24pk", "Food Gift Tin Rectangular", "Chocolate Gift Divider Box", "Clear Bakery Treat Boxes 6pk",
+        "Parchment Food Gift Wrap Sheets 20pk", "Mini Loaf Gift Tray Pair", "Bakery Box Carry Handle Set", "Food Gift Sealing Sticker Roll",
+    ],
+    "starter-79": [
+        "Peanut Chocolate Bar", "Sour Gummies", "Hard Candy", "Choco Pie 6pk",
+        "Wafer Bar", "Caramel Popcorn", "Marshmallows", "Chocolate Biscuit Sticks",
+        "Chain Necklace", "Pearl-Style Earrings", "Jewelry Travel Case", "Watch Strap",
+        "Minimalist Watch", "Floral Brooch", "Jewelry Cleaning Cloth", "Gift Presentation Box",
+    ],
+    "starter-80": [
+        "Foldable Pet Carrier", "Stainless Pet Bowl", "Pet Grooming Brush", "Pet Nail Clippers",
+        "Washable Pet Bed", "Pet Waste Bags 60pk", "Puzzle Treat Feeder", "Collapsible Travel Pet Bowl",
+        "Magnetic Cable Clips 6pk", "Laptop Privacy Cover 3pk", "Bluetooth Number Pad", "Memory Card Case",
+        "Silicone Earbud Case", "Desk Cable Organizer", "Sleep Mask and Earplug Set", "Luggage Strap with Buckle",
+    ],
+    "starter-81": [
+        "Foldable Travel Hanger 3pk", "Travel Laundry Pouch", "Pocket Travel Sewing Kit", "Compact Luggage Scale",
+        "Refillable Travel Perfume Atomizer", "Soft Charcoal Sticks 6pk", "Kneaded Art Eraser Pair", "Round Watercolor Brushes 4pk",
+        "Acrylic Paint Starter Tubes 8pk", "Cotton Canvas Panel 20x25cm", "Oil Pastel Set 24 Colors", "Drawing Fineliner Set 5pk",
+        "Color Matching Family Card Game", "Cooperative Garden Board Game", "Polyhedral Dice Set 7pk", "Pocket Word Tile Game",
+    ],
+    "starter-82": [
+        "Reversible Checkers Board Set", "Family Trivia Card Box", "Travel Backgammon Roll", "Potted Basil Herb",
+        "Hanging Spider Plant", "Glass Plant Mister", "Ceramic Planter Saucer", "Coco Coir Potting Block",
+        "Bamboo Plant Labels 12pk", "Mini Pruning Snips", "Ras El Hanout Blend 60g", "Whole Star Anise 30g",
+        "Sumac Seasoning 60g", "Herbes de Provence 25g", "Cajun Spice Blend 80g", "Sichuan Peppercorns 40g",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

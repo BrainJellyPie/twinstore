@@ -603,3 +603,100 @@ def test_a_plan_answers_with_a_roster_when_asked():
     # Starting from that roster, the search keeps it a roster and never does worse.
     again = plan_operations(store, shared.planned_customers, plan.config, costs, seed=_SEED)
     assert again.config.crew_shifts and again.best.net >= again.current.net
+
+
+@pytest.mark.parametrize("shelf_units", [1, 2, 5])
+@pytest.mark.parametrize("backroom_units", [0, 1, 5])
+@pytest.mark.parametrize("daily_delivery", [False, True])
+@pytest.mark.parametrize("override_only", [False, True])
+@pytest.mark.parametrize("restock", [None, 30])
+@pytest.mark.parametrize("crew", [None, 1, 2, 4])
+def test_finite_backrooms_never_sell_more_than_shelves_plus_received_stock(
+    shelf_units, backroom_units, daily_delivery, override_only, restock, crew,
+):
+    store = _store()
+    shoppers = [_shopper(f"d{day}-{hour}", f"{hour:02}:05:00", [("chips", shelf_units + 1)], day=Weekday(day))
+                for day in range(1, 8) for hour in [10, 11, 12]]
+    before = [shopper.model_dump() for shopper in shoppers]
+    config = OperationsConfig(
+        stock_per_facing=shelf_units, backroom_per_product=None if override_only else backroom_units,
+        backroom_overrides={"chips": backroom_units} if override_only else {},
+        daily_delivery=daily_delivery, restock_every_min=restock, substitute_share=0,
+        crew=crew, refill_face_sec=1, refill_unit_sec=0,
+        crowd_limit=None, checkout_base_sec=1, checkout_item_sec=0,
+    )
+    results, report = resolve_shared_store(store, shoppers, config, seed=1)
+    sold = sum(event.quantity for result in results for event in result.timeline if event.action == Action.BUY)
+    received = backroom_units * (7 if daily_delivery else 1)
+    assert shelf_units <= sold <= shelf_units + received
+    if not daily_delivery:
+        assert sold == shelf_units + backroom_units
+        assert report.deliveries == 0
+    if backroom_units == 0:
+        assert sold == shelf_units and report.deliveries == 0
+    assert report.backroom_units == backroom_units * (1 if override_only else 3)
+    if not daily_delivery or backroom_units == 0:
+        assert report.refill_short_units > 0
+    if crew is None and daily_delivery and restock is None and backroom_units >= shelf_units:
+        assert report.refill_short_units == 0
+    assert check_buy_consistency(store, results) == []
+    assert [shopper.model_dump() for shopper in shoppers] == before
+
+
+def test_two_shelves_draw_from_the_same_product_backroom():
+    store = _store()
+    store.racks.append(store.racks[0].model_copy(update={"id": "B", "position": (0, 2)}, deep=True))
+    shoppers = [_shopper(str(index), arrival, [("chips", 1)])
+                for index, arrival in enumerate(["10:00:00", "10:01:00", "10:31:00", "10:32:00", "11:01:00", "11:02:00"])]
+    for index, shopper in enumerate(shoppers):
+        if index % 2:
+            shopper.timeline[1] = shopper.timeline[1].model_copy(update={"target_rack": "B", "y": 2})
+    config = OperationsConfig(stock_per_facing=1, backroom_per_product=1, restock_every_min=30,
+                              substitute_share=0, crowd_limit=None, checkout_base_sec=1, checkout_item_sec=0)
+    results, report = resolve_shared_store(store, shoppers, config, seed=1)
+    assert sum(result.total_spent for result in results) == 900
+    assert report.backroom_units == 3
+    assert next(stats for stats in report.backroom if stats.sku == "chips").refilled == 1
+    assert check_buy_consistency(store, results) == []
+
+
+@pytest.mark.parametrize("trigger", ["pick", "refill_complete"])
+@pytest.mark.parametrize("refill_seconds", [30, 120])
+@pytest.mark.parametrize("checkout_seconds", [1, 30])
+def test_shoppers_at_the_till_are_served_before_a_same_time_refill(trigger, refill_seconds, checkout_seconds):
+    first = _shopper("first", "10:00:00", [("chips", 1)])
+    if trigger == "pick":
+        second = _shopper("second", "10:00:15", [("chips", 2)])
+        stock, point = 3, 0
+    else:
+        first.timeline[2].elapsed_sec = 10 + refill_seconds
+        first.timeline[-1].elapsed_sec = 50 + refill_seconds
+        second = _shopper("second", "10:00:15", [("nuts", 2)], pay=False)
+        stock, point = 2, 0.5
+    config = OperationsConfig(crew=1, stock_per_facing=stock, refill_at=point,
+                              refill_face_sec=refill_seconds, refill_unit_sec=0,
+                              checkout_base_sec=checkout_seconds, checkout_item_sec=0,
+                              substitute_share=0, crowd_limit=None, patience_sec=1000, patience_sd=0)
+    before = [shopper.model_dump() for shopper in [first, second]]
+    results, report = resolve_shared_store(_store(), [first, second], config, seed=1)
+    assert results[0].queue_wait_sec == 0
+    assert report.face_refills >= 1
+    assert check_buy_consistency(_store(), results) == []
+    assert [shopper.model_dump() for shopper in [first, second]] == before
+
+
+@pytest.mark.parametrize("crew", [1, 2, 100])
+@pytest.mark.parametrize("time_budget", [0, 0.2])
+def test_an_unstaffed_day_keeps_a_valid_default_crew_when_a_plan_is_saved(crew, time_budget):
+    from store_emulator.engine.simulation.operations_plan import plan_operations, replay
+    store = _store()
+    config = OperationsConfig(crew=crew, crew_schedule={f"{hour:02d}": 0 for hour in range(24)},
+                              patience_sec=10, patience_sd=0, **_CREW)
+    shoppers = [_shopper("p", "10:00:00", [("chips", 1)])]
+    before = config.model_dump()
+    plan = plan_operations(store, shoppers, config, OperationsCosts(till_hour=100000),
+                           seed=1, max_crew=1, time_budget_sec=time_budget)
+    saved = OperationsConfig.model_validate(plan.config.model_dump())
+    assert saved.crew is not None and saved.crew >= 1
+    assert replay(store, shoppers, saved, OperationsCosts(till_hour=100000), seed=1)[0] == plan.best
+    assert config.model_dump() == before
