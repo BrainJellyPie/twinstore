@@ -2,8 +2,8 @@
 in `estimates`).
 
 Shoppers are counted exactly as the run will count them (customer cap, situation, opening hours, neighborhood).
-Model work per shopper is measured on this project's last finished run with the same engine and model when there is
-one; otherwise typical figures for the engine are used.
+Model work per shopper is measured on this project's last uncached finished run with the same engine and model when
+there is one; otherwise typical figures for the engine are used. Cached replays do not predict new provider work.
 """
 
 import logging
@@ -141,30 +141,46 @@ def _resolved(config: SimulationConfig, base: LLMConfig) -> list[LLMConfig]:
 
 
 def _measured(pid: str, engine: str, model: str) -> _Measured | None:
-    """Model work per shopper on this project's newest finished run with the same engine and model."""
+    """Model work per shopper on this project's newest usable uncached run with the same engine and model."""
     runs = Path(DATA_DIR) / pid / "runs"
     if not runs.is_dir():
         return None
     found: list[tuple[str, _Measured]] = []
     for run in runs.iterdir():
         try:
-            status = cast(dict[str, object], read_json(run / "status.json"))
+            raw_status: object = read_json(run / "status.json")
+            if not isinstance(raw_status, dict):
+                continue
+            status = cast(dict[str, object], raw_status)
             if status.get("status") != "completed":
                 continue
-            manifest = cast(dict[str, object], read_json(run / "output" / "manifest.json"))
+            raw_manifest: object = read_json(run / "output" / "manifest.json")
+            if not isinstance(raw_manifest, dict):
+                continue
+            manifest = cast(dict[str, object], raw_manifest)
             if manifest.get("engine_type") != engine or manifest.get("model") != model:
                 continue
-            usage = cast(dict[str, object], read_json(run / "output" / "token_usage.json"))
+            raw_usage: object = read_json(run / "output" / "token_usage.json")
+            if not isinstance(raw_usage, dict):
+                continue
+            usage = cast(dict[str, object], raw_usage)
+            if usage.get("cached_requests", 0) != 0:
+                # Cached requests add no provider tokens and run much faster. Their mix is not transferable
+                # to different shoppers/layouts, so use an uncached run or the engine defaults instead.
+                continue
+            prompt, completion = usage.get("prompt_tokens"), usage.get("completion_tokens")
+            if (type(prompt) is not int or type(completion) is not int or prompt < 0 or completion < 0
+                    or prompt + completion == 0):
+                continue
             shoppers = status.get("completed_customers") or status.get("total_customers")
             if not isinstance(shoppers, int) or shoppers < 5:
                 continue
             requests = usage.get("requests")
-            prompt, completion = usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
             seconds = _elapsed(status.get("started_at"), status.get("finished_at"))
             found.append((str(status.get("finished_at") or status.get("created_at") or ""), _Measured(
                 requests=requests / shoppers if isinstance(requests, int) and requests > 0 else None,
-                prompt=(prompt if isinstance(prompt, int) else 0) / shoppers,
-                completion=(completion if isinstance(completion, int) else 0) / shoppers,
+                prompt=prompt / shoppers,
+                completion=completion / shoppers,
                 seconds=seconds / shoppers if seconds else None,
             )))
         except (OSError, ValueError):
@@ -177,6 +193,6 @@ def _elapsed(started: object, finished: object) -> float | None:
         return None
     try:
         seconds = (datetime.fromisoformat(finished) - datetime.fromisoformat(started)).total_seconds()
-    except ValueError:
+    except (ValueError, TypeError):  # mixed timezone-aware/naive legacy clocks cannot measure elapsed time
         return None
     return seconds if seconds > 0 else None
