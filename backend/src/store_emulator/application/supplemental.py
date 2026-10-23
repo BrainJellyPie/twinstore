@@ -21,6 +21,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+import re
 from typing import Any, cast
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
@@ -92,19 +93,22 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _load_frames(bytes_: bytes, ext: str) -> dict[str, pd.DataFrame]:
+def _load_frames(bytes_: bytes, ext: str, *, preserve_identifiers: bool = False) -> dict[str, pd.DataFrame]:
     """csv → single sheet ``"data"``; xlsx → sheet_name=None dict. Empty dict on failure."""
     if ext == ".csv":
         try:
-            df = pd.read_csv(io.BytesIO(bytes_), encoding="utf-8")  # type: ignore[reportUnknownMemberType]
+            df = pd.read_csv(io.BytesIO(bytes_), encoding="utf-8", dtype=object if preserve_identifiers else None,
+                             keep_default_na=not preserve_identifiers)  # type: ignore[reportUnknownMemberType]
         except (UnicodeDecodeError, UnicodeError):
             try:
-                df = pd.read_csv(io.BytesIO(bytes_), encoding="utf-8-sig")  # type: ignore[reportUnknownMemberType]
+                df = pd.read_csv(io.BytesIO(bytes_), encoding="utf-8-sig", dtype=object if preserve_identifiers else None,
+                                 keep_default_na=not preserve_identifiers)  # type: ignore[reportUnknownMemberType]
             except Exception:
                 return {}
         except Exception:
             try:
-                df = pd.read_csv(io.BytesIO(bytes_), encoding="utf-8-sig")  # type: ignore[reportUnknownMemberType]
+                df = pd.read_csv(io.BytesIO(bytes_), encoding="utf-8-sig", dtype=object if preserve_identifiers else None,
+                                 keep_default_na=not preserve_identifiers)  # type: ignore[reportUnknownMemberType]
             except Exception:
                 return {}
         return {_CSV_SHEET_NAME: df}
@@ -115,6 +119,8 @@ def _load_frames(bytes_: bytes, ext: str) -> dict[str, pd.DataFrame]:
                 io.BytesIO(bytes_),
                 sheet_name=None,
                 engine="openpyxl",
+                dtype=object if preserve_identifiers else None,
+                keep_default_na=not preserve_identifiers,
             )
         except Exception:
             return {}
@@ -528,11 +534,25 @@ def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
         series = table[col]
         if pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series):  # type: ignore[reportUnknownMemberType]
             continue  # epoch numbers are not taken for timestamps
-        parsed = cast(Any, pd.to_datetime(series, errors="coerce", format="mixed"))  # type: ignore[reportUnknownMemberType]
+        values = cast(list[object], series.tolist())
+        try:
+            parsed_data: object = pd.to_datetime(series, errors="coerce", format="mixed")  # type: ignore[reportUnknownMemberType]
+        except ValueError:
+            # DST transitions or mixed aware/naive exports cannot share one pandas timezone. Traffic uses
+            # the recorded local clock, so converting every row to UTC would move visits to other hours/days.
+            local_times: list[pd.Timestamp] = []
+            for value in values:
+                stamp = cast(pd.Timestamp, pd.to_datetime(value, errors="coerce"))  # type: ignore[reportUnknownMemberType]
+                local_times.append(stamp.tz_localize(None))
+            parsed_data = pd.Series(local_times, index=series.index)
+        parsed = cast(Any, parsed_data)
         ok = float(parsed.notna().mean())
         valid = parsed.dropna()
+        # Only source text can explicitly say midnight. A date-only Excel cell is also a midnight datetime.
+        explicit_times = sum(isinstance(value, str) and re.search(r"(?:[Tt]|\s)\d{1,2}:\d{2}", value) is not None
+                             for value in values) / max(1, len(values))
         has_time = ok > 0 and (float(((valid.dt.hour + valid.dt.minute) > 0).mean()) > 0.5 or
-                              float(series.astype("string").str.contains(r"(?:[Tt]|\s)\d{1,2}:\d{2}", regex=True, na=False).mean()) > 0.5)
+                              explicit_times > 0.5)
         if ok >= 0.8 and has_time and ok > best_ok:
             best, best_ok = parsed, ok
     if best is None:
@@ -561,7 +581,8 @@ def traffic_from_supplemental(bytes_: bytes, filename: str) -> TrafficProfile | 
     if not bytes_ or ext not in SUPPLEMENTAL_ALLOWED_EXTS:
         return None
     try:
-        visits = [v for df in _load_frames(bytes_, ext).values() for v in _visit_times_from_frame(_normalize_columns(df))]
+        visits = [v for df in _load_frames(bytes_, ext, preserve_identifiers=True).values()
+                  for v in _visit_times_from_frame(_normalize_columns(df))]
     except Exception:
         logger.warning("[supplemental] timestamp scan failed", exc_info=True)
         return None
