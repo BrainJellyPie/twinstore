@@ -16,7 +16,7 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Literal, cast
 
@@ -45,7 +45,7 @@ from store_emulator.domain.marketing import (
 )
 from store_emulator.domain.optimize import OptimizeObjective
 from store_emulator.domain.persona import Persona
-from store_emulator.domain.rack import Rack
+from store_emulator.domain.rack import Rack, SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face
 from store_emulator.engine.llm_client import LiteLLMClient
@@ -72,12 +72,13 @@ from store_emulator.engine.marketing.report import (
 )
 from store_emulator.engine.marketing.shelf_test import compare_shelves, pick_shares, shelf_panel
 from store_emulator.engine.perception.shelf_render import render_face
+from store_emulator.engine.perception.product_images import ProductImageLoader
 from store_emulator.engine.marketing.survey import LETTERS, SCALES, stimulus_board
 from store_emulator.engine.optimize.evaluate import LayoutEvaluator, select_personas
 from store_emulator.engine.prompting import display_price
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
-from store_emulator.application.product_images import project_image_loader
+from store_emulator.application.product_images import project_image_loader, snapshot_project_images
 from store_emulator.application.setups import run_operations, setup_lock_path, setup_tree_transaction
 from store_emulator.engine.files import remove_tree
 
@@ -137,6 +138,16 @@ def _finish(pid: str, status: JobStatus, report: BaseModel | None, error: str = 
         status.status, status.error = "failed", error[:500]
     status.finished_at = now_iso()
     _write_status(pid, status)
+
+
+def _job_image_loader(pid: str, status: JobStatus, items: Iterable[SlotItem]) -> ProductImageLoader:
+    """Called before releasing startup's tree guard or submitting work; failed snapshots leave no pending job."""
+    folder = _job_dir(pid, status.kind, status.job_id)
+    try:
+        return snapshot_project_images(pid, items, folder / "images")
+    except Exception:
+        remove_tree(folder)
+        raise
 
 
 def list_jobs(pid: str, kind: Kind) -> list[JobStatus]:
@@ -246,6 +257,10 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                     raise AppError(str(e), 400) from e
             name = req.name.strip() or " vs ".join(["Control", *[v.name for v in req.variants]])
             status = _new_job(pid, "experiment", name, req)
+            image_loader = _job_image_loader(pid, status, (
+                item for store in [control, *(store for _, store, _, _ in built)]
+                for rack in store.product_racks for slot in rack.slots for item in slot.items
+            )) if req.engine == "vlm" else None
     except Timeout:
         raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
 
@@ -263,7 +278,7 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 run_config = with_vision_default(run_config.model_copy(update={"engine_type": EngineType.VLM_GLANCE}),
                                                  req.model)
                 llm = build_client(run_config.llm_for(EngineType.VLM_GLANCE), run_config.ensemble)
-                engine = build_engine(run_config, llm=llm, pathfinder=pathfinder, image_loader=project_image_loader(pid))
+                engine = build_engine(run_config, llm=llm, pathfinder=pathfinder, image_loader=image_loader)
                 model = req.model or run_config.llm_for(EngineType.VLM_GLANCE).model
             evaluator = LayoutEvaluator(run_config, panel, sample_cue, BEHAVIOR_PATTERNS, pathfinder,
                                         OptimizeObjective.REVENUE_PER_VISITOR, engine=engine)
@@ -633,6 +648,9 @@ def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) 
             })
             name = req.name.strip() or f"Shelf test · {target_name}"
             status = _new_job(pid, "shelf", name, req)
+            image_loader = _job_image_loader(pid, status, (
+                item for arm in (rack, test_rack) for slot in arm.slots for item in slot.items
+            ))
     except Timeout:
         raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
 
@@ -642,9 +660,9 @@ def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) 
         _write_status(pid, status)
         try:
             for arm, arm_rack in (("control", rack), ("test", test_rack)):
-                png = render_face(arm_rack, face, currency=currency, width=900, number_on_tag=False, image_loader=project_image_loader(pid)).png
+                png = render_face(arm_rack, face, currency=currency, width=900, number_on_tag=False, image_loader=image_loader).png
                 (_job_dir(pid, "shelf", status.job_id) / f"{arm}.png").write_bytes(png)
-            choices = asyncio.run(shelf_panel(LiteLLMClient(llm_config), respondents, rack, test_rack, face, currency=currency, seed=req.seed, image_loader=project_image_loader(pid)))
+            choices = asyncio.run(shelf_panel(LiteLLMClient(llm_config), respondents, rack, test_rack, face, currency=currency, seed=req.seed, image_loader=image_loader))
             ok = [c for c in choices if not c.error]
             paired_ids = {c.respondent for c in ok if c.arm == "control"} & {c.respondent for c in ok if c.arm == "test"}
             if not paired_ids:

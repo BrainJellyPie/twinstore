@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Freeze the resolved product images for visual A/B and shelf studies before work is
+  submitted. Source deletion, SKU-photo replacement and later photo additions cannot
+  change a running comparison; saved shelf evidence and all participants use the same art.
+
 - Coordinate package-image uploads, metadata edits, reads and lock creation with project
   deletion. Late commits cannot recreate deleted image folders; model reads use a captured
   image and metadata snapshot, with unreadable images rejected before provider work.

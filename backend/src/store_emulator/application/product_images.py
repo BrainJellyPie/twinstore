@@ -1,5 +1,6 @@
 """Resolve this project's product photos for model input without HTTP round trips."""
 import re
+from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -9,7 +10,8 @@ from PIL import Image
 from store_emulator.application.errors import AppError
 from store_emulator.application.library_photos import photo_file
 from store_emulator.application.shelf_lab import package_directory, package_path
-from store_emulator.application.storage.images import layout_image_url, load_manifest, resolve_image
+from store_emulator.application.storage.images import image_read_transaction, layout_image_url, load_manifest, resolve_image
+from store_emulator.application.storage.io import write_json
 from store_emulator.domain.rack import SlotItem
 from store_emulator.domain.types import RESOURCE_ID_PATTERN
 from store_emulator.engine.perception.product_images import ProductImageLoader, bundled_product_image, file_product_image
@@ -57,5 +59,40 @@ def project_image_loader(pid: str) -> ProductImageLoader:
         # Explicit experiment art and reviewed immutable photos keep their intended identity.
         url = item.image_url if item.image_url and item.image_url.startswith("file://") else layout_image_url(pid, item.sku, item.image_url, manifest)
         return load(url) if url else None
+
+    return resolve
+
+
+def snapshot_project_images(pid: str, items: Iterable[SlotItem], folder: Path) -> ProductImageLoader:
+    """Freeze the study's resolved art (including absent art) under the caller's project tree guard.
+
+    Keep decoded images in a bounded cache, with copies on disk so eviction cannot reload changed source art.
+    SKU writers use their own lock; the outer project guard also excludes package and project deletion.
+    """
+    paths: dict[tuple[str, str | None], Path | None] = {}
+    with image_read_transaction(pid):
+        source = project_image_loader(pid)
+        folder.mkdir(parents=True, exist_ok=True)
+        for item in items:
+            key = item.sku, item.image_url
+            if key in paths:
+                continue
+            picture = source(item)
+            path = folder / f"{len(paths)}.png" if picture is not None else None
+            if picture is not None and path is not None:
+                picture.save(path, format="PNG")
+            paths[key] = path
+        write_json(folder / "manifest.json", [
+            {"sku": sku, "image_url": url, "file": path.name if path else None}
+            for (sku, url), path in paths.items()
+        ])
+
+    @lru_cache(maxsize=128)
+    def load(path: Path) -> Image.Image | None:
+        return file_product_image(path)
+
+    def resolve(item: SlotItem) -> Image.Image | None:
+        path = paths.get((item.sku, item.image_url))
+        return load(path) if path is not None else None
 
     return resolve
