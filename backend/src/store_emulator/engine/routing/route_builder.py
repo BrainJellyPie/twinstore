@@ -385,7 +385,7 @@ def _sanitize_action(
         )
         if placement is not None:
             rack, slot = placement
-            snapped = face_access_tile(rack, slot.face, store.grid_size, grid)
+            snapped = face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block)
             if snapped is not None:
                 updates: dict[str, object] = {"target": snapped}
                 if action.face != slot.face:
@@ -432,10 +432,11 @@ def _calculate_path(
 
 def face_access_tile(
     rack: Rack, face: Face, grid_size: tuple[int, int], grid: list[list[bool]],
+    *, block: int | None = None,
 ) -> Position | None:
-    """First walkable access tile of `rack` on `face`, or None when unavailable."""
+    """Walkable stance on `face`, restricted to the selected block when supplied."""
     for tile in rack.access_tiles(grid_size):
-        if rack.accepts_face_at(tile, face, grid_size) and grid[tile[1]][tile[0]]:
+        if rack.accepts_face_at(tile, face, grid_size, block=block) and grid[tile[1]][tile[0]]:
             return tile
     return None
 

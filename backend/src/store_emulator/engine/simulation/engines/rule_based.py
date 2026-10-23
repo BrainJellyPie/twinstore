@@ -330,7 +330,7 @@ class RuleBasedEngine:
     def add_impulse_look(
         self, store: Store, plan: ShopperPlan, out: ImpulseOutcome, rack: Rack, slot: Slot, why: str,
     ) -> bool:
-        tile = face_access_tile(rack, slot.face, store.grid_size, plan.grid)
+        tile = face_access_tile(rack, slot.face, store.grid_size, plan.grid, block=slot.block)
         if tile is None:
             return False
         out.actions.append(CustomerAction(
@@ -419,7 +419,7 @@ class RuleBasedEngine:
         quantity: int | None = None,
     ) -> list[CustomerAction]:
         """Browse (optional) + buy at the face. `quantity` None = rule draw (refills, scenario stock-up)."""
-        tile = face_access_tile(rack, slot.face, store.grid_size, grid)
+        tile = face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block)
         if tile is None:
             return []
         if quantity is None:

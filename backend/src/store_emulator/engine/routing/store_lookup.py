@@ -90,10 +90,10 @@ def resolve_buy_placement(
         ]
         if face is not None:
             for rack, slot in target_matches:
-                if slot.face == face and rack.accepts_face_at(target, slot.face, grid):
+                if slot.face == face and rack.accepts_face_at(target, slot.face, grid, block=slot.block):
                     return (rack, slot)
         for rack, slot in target_matches:
-            if rack.accepts_face_at(target, slot.face, grid):
+            if rack.accepts_face_at(target, slot.face, grid, block=slot.block):
                 return (rack, slot)
         if target_matches:
             return target_matches[0]
