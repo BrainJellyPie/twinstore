@@ -7,10 +7,12 @@ from pathlib import Path
 from collections.abc import Callable
 from typing import Any, cast
 
+from filelock import FileLock, Timeout
+
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.estimates import cost_usd, effective_parallel, is_local_base, should_warn
-from store_emulator.application.setups import project_layout_transaction, setup_tree_transaction
+from store_emulator.application.setups import project_layout_transaction, setup_lock_path, setup_tree_transaction
 from store_emulator.application.storage.generations import (
     find_active_generation, generation_dir, init_generation, read_status, write_status,
 )
@@ -352,18 +354,35 @@ def _choice_path(project_id: str, gen_id: str) -> Path:
     return generation_dir(project_id, gen_id) / "choice.json"
 
 
+def _choice_lock_path(project_id: str, gen_id: str) -> Path:
+    return setup_lock_path(project_id, gen_id).with_name(f".generation-choice-{gen_id}.lock")
+
+
 async def _await_choice(project_id: str, gen_id: str) -> str:
     path = _choice_path(project_id, gen_id)
+    lock = FileLock(_choice_lock_path(project_id, gen_id), timeout=0)
     deadline = time.monotonic() + CHOICE_WAIT_SEC
-    while time.monotonic() < deadline:
-        if path.is_file():
-            try:
-                choice = cast(dict[str, object], read_json(path)).get("choice")
-            except (OSError, ValueError):
-                choice = None
-            path.unlink(missing_ok=True)
-            if isinstance(choice, str) and choice in WRITE_CHOICES:
-                return choice
+    while True:
+        try:
+            with lock:
+                if path.is_file():
+                    try:
+                        choice = cast(dict[str, object], read_json(path)).get("choice")
+                    except (OSError, ValueError):
+                        choice = None
+                    path.unlink(missing_ok=True)
+                    if isinstance(choice, str) and choice in WRITE_CHOICES:
+                        return choice
+                if time.monotonic() >= deadline:
+                    data = read_status(project_id, gen_id)
+                    progress = data.get("progress")
+                    if data.get("status") == "running" and isinstance(progress, dict) and "confirm" in progress:
+                        # Close the answer window before releasing the lock. The
+                        # worker records failure after this coroutine raises.
+                        write_status(project_id, gen_id, "running", progress={})
+                    break
+        except Timeout:
+            pass  # the answer and its progress update must both commit before the worker resumes
         await asyncio.sleep(0.5)
     raise ValueError("Nobody chose how many customers to write, so generation stopped. Use Try again.")
 
@@ -372,22 +391,26 @@ def choose_write_size(project_id: str, setup_id: str, gen_id: str, choice: str) 
     """The user's answer to a generation that asks before writing: "all", "sample" or "cancel"."""
     if choice not in WRITE_CHOICES:
         raise AppError(f"choice must be one of {', '.join(WRITE_CHOICES)}", 422)
+    if not (generation_dir(project_id, gen_id) / "status.json").is_file():
+        raise AppError("generation not found", 404)
     try:
-        data = read_status(project_id, gen_id)
+        with FileLock(_choice_lock_path(project_id, gen_id), timeout=10):
+            data = read_status(project_id, gen_id)
+            if data.get("setup_id") != setup_id:
+                raise AppError("no generation found for this setup", 404)
+            progress = data.get("progress")
+            if data.get("status") != "running" or not isinstance(progress, dict) or "confirm" not in progress:
+                raise AppError("This generation is not waiting for a choice.", 409)
+            write_json(_choice_path(project_id, gen_id), {"choice": choice})
+            chosen = cast(dict[str, object], progress["confirm"]).get(choice) if choice != "cancel" else None
+            total = cast(dict[str, object], chosen).get("customers") if isinstance(chosen, dict) else None
+            write_status(project_id, gen_id, "running",
+                         progress={"written": 0, "total": total} if isinstance(total, int) else {})
+            return read_status(project_id, gen_id)
     except FileNotFoundError:
         raise AppError("generation not found", 404) from None
-    if data.get("setup_id") != setup_id:
-        raise AppError("no generation found for this setup", 404)
-    progress = data.get("progress")
-    if data.get("status") != "running" or not isinstance(progress, dict) or "confirm" not in progress:
-        raise AppError("This generation is not waiting for a choice.", 409)
-    write_json(_choice_path(project_id, gen_id), {"choice": choice})
-    # Writing progress straight away (the job takes the choice within a second and keeps counting from there).
-    chosen = cast(dict[str, object], progress["confirm"]).get(choice) if choice != "cancel" else None
-    total = cast(dict[str, object], chosen).get("customers") if isinstance(chosen, dict) else None
-    write_status(project_id, gen_id, "running",
-                 progress={"written": 0, "total": total} if isinstance(total, int) else {})
-    return read_status(project_id, gen_id)
+    except Timeout:
+        raise AppError("another request is answering this generation. Please retry shortly.", 503) from None
 
 
 def visitors_per_day(project_id: str, personas: list[Persona]) -> tuple[float, float]:
