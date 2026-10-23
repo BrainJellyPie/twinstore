@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Avoid catalog classification when rival-price comparisons do not filter product categories.
+  Catalog searches reuse normalized bundled names and skip similarity calculations that cannot win,
+  preserving exact matches, pack-size handling, category order and reported prices.
+
 - Coordinate neighborhood saves, generation, imports and venue edits with project deletion and
   analysis startup. A late save can no longer recreate a deleted project's data, and a study waits
   for a neighborhood save already being committed.
