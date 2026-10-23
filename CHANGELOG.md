@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Coordinate project deletion with starting simulations and layout saves. Deletion rechecks active jobs after
+  acquiring the project's layout locks, preventing accepted runs from recreating records in a deleted project.
+
 - Send shoppers to checkout when impulse purchases add a basket to an initially browsing-only visit. Surviving
   purchases now reach the tills even when the model omitted payment, so queue waits and abandoned sales are counted.
 
