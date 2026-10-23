@@ -6,7 +6,7 @@ import { Store as StoreIcon } from "lucide-react";
 import { Input } from "@/shared/components/ui/input";
 import { useI18n } from "@/shared/i18n/i18n";
 
-import { sharedStoreOptions, wholeIn, type SharedStoreChoice } from "../sharedStore";
+import { numberIn, sharedStoreOptions, wholeIn, type SharedStoreChoice } from "../sharedStore";
 
 /** `fieldsOnly`: the settings without the on/off switch (the operations lab, where the store is always shared). */
 export function SharedStoreControls({ value, onChange, tillsInLayout, fieldsOnly = false }: {
@@ -50,9 +50,9 @@ export function SharedStoreControls({ value, onChange, tillsInLayout, fieldsOnly
           {crew ? (
             <div className={field}>
               <label className="block font-medium" htmlFor={`${id}-refill-at`}>{t("opsRefillAt")}</label>
-              <Input id={`${id}-refill-at`} type="number" min={0} max={95} step={5} className="h-7" value={value.refillAt}
+              <Input id={`${id}-refill-at`} type="number" min={0} max={95} step="any" className="h-7" value={value.refillAt}
                 onChange={(e) => set({ refillAt: e.target.value })} aria-describedby={`${id}-refill-at-hint`}
-                aria-invalid={wholeIn(value.refillAt, 0, 95) === null} />
+                aria-invalid={numberIn(value.refillAt, 0, 95) === null} />
               <p id={`${id}-refill-at-hint`} className="text-muted-foreground">{t("opsRefillAtHint")}</p>
             </div>
           ) : <>
@@ -74,8 +74,9 @@ export function SharedStoreControls({ value, onChange, tillsInLayout, fieldsOnly
           </>}
           <div className={field}>
             <label className="block font-medium" htmlFor={`${id}-patience`}>{t("opsPatience")}</label>
-            <Input id={`${id}-patience`} type="number" min={0.5} max={120} step={0.5} className="h-7" value={value.patience}
-              onChange={(e) => set({ patience: e.target.value })} aria-describedby={`${id}-patience-hint`} />
+            <Input id={`${id}-patience`} type="number" min={10 / 60} max={120} step="any" className="h-7" value={value.patience}
+              onChange={(e) => set({ patience: e.target.value })} aria-describedby={`${id}-patience-hint`}
+              aria-invalid={numberIn(value.patience, 10 / 60, 120) === null} />
             <p id={`${id}-patience-hint`} className="text-muted-foreground">{t("opsPatienceHint")}</p>
           </div>
           <div className={field}>

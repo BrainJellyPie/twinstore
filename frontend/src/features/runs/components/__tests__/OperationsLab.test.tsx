@@ -137,6 +137,26 @@ it("saves the edited plan as how the run's layout is run", async () => {
   expect(lab.getByRole("status").textContent).toContain("now share the store run this way");
 });
 
+it.each([[10, 0.125], [31.25, 0.333]])("keeps saved patience %s and refill point %s when replaying and saving", async (patience, refill) => {
+  const exact = { ...config, crew: 2, patience_sec: patience, refill_at: refill };
+  vi.mocked(api.saveLayoutOperations).mockImplementation(async (_p, _s, operations) => ({ operations: operations as api.OperationsReport["config"] }));
+  const lab = show({ setupId: "s1", report: { ...report, config: exact } });
+  const replayButton = lab.getByRole("button", { name: "Replay" });
+  expect((replayButton as HTMLButtonElement).disabled).toBe(false);
+  expect((lab.getByLabelText("Patience in line (minutes)") as HTMLInputElement).checkValidity()).toBe(true);
+  expect((lab.getByLabelText(translate("en", "opsRefillAt")) as HTMLInputElement).checkValidity()).toBe(true);
+  fireEvent.click(replayButton);
+  await waitFor(() => expect(api.replayOperations).toHaveBeenCalled());
+  const replayed = vi.mocked(api.replayOperations).mock.calls[0]![2].operations;
+  expect(replayed.patience_sec).toBeCloseTo(patience, 10);
+  expect(replayed.refill_at).toBeCloseTo(refill, 10);
+  fireEvent.click(lab.getByRole("button", { name: "Save for this layout" }));
+  await waitFor(() => expect(api.saveLayoutOperations).toHaveBeenCalled());
+  const saved = vi.mocked(api.saveLayoutOperations).mock.calls[0]![2];
+  expect(saved?.patience_sec).toBeCloseTo(patience, 10);
+  expect(saved?.refill_at).toBeCloseTo(refill, 10);
+});
+
 it("offers no saving without the run's layout", () => {
   const lab = show();
   expect(lab.queryByRole("button", { name: "Save for this layout" })).toBeNull();

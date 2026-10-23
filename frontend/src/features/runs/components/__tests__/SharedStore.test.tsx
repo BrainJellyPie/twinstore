@@ -7,7 +7,7 @@ import { ApiError } from "@/shared/api/errors";
 import { translate, useLocale } from "@/shared/i18n/i18n";
 import { LOCALES } from "@/shared/i18n/messages";
 import { RunLauncherDialog } from "../RunLauncherDialog";
-import { DEFAULT_SHARED_STORE, sharedStoreOptions } from "../../sharedStore";
+import { choiceFromConfig, DEFAULT_SHARED_STORE, sharedStoreOptions } from "../../sharedStore";
 import { OperationsReportView, OperationsSection } from "../OperationsSection";
 
 vi.mock("@/shared/api/client", () => ({
@@ -62,7 +62,8 @@ describe("the run option", () => {
 
   it.each([
     { stock: "0" }, { stock: "1.5" }, { stock: "" }, { stock: "10001" }, { restock: "4" }, { restock: "1441" },
-    { tills: "0" }, { tills: "51" }, { tills: "2.5" }, { patience: "0.4" }, { patience: "121" }, { patience: "" },
+    { tills: "0" }, { tills: "51" }, { tills: "2.5" }, { patience: "0.1" }, { patience: "121" }, { patience: "" },
+    { patience: "NaN" }, { patience: "Infinity" },
     { crowd: "1" }, { crowd: "51" }, { crowd: "3.5" }, { backroom: "-1" }, { backroom: "1000001" }, { backroom: "2.5" },
   ])("refuses %o", (patch) => {
     expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, ...patch })).toBe("invalid");
@@ -70,10 +71,21 @@ describe("the run option", () => {
 
   it.each([
     { stock: "1" }, { stock: "10000" }, { restock: "5" }, { restock: "1440" }, { tills: "1" }, { tills: "50" },
-    { patience: "0.5" }, { patience: "120" }, { crowd: "2" }, { crowd: "50" }, { backroom: "0" }, { backroom: "1000000" },
+    { patience: String(10 / 60) }, { patience: "0.4" }, { patience: "120" }, { crowd: "2" }, { crowd: "50" }, { backroom: "0" }, { backroom: "1000000" },
   ])("accepts the boundary %o", (patch) => {
     expect(sharedStoreOptions({ ...DEFAULT_SHARED_STORE, ...patch })).not.toBe("invalid");
   });
+
+  it.each([[10, 0.125], [10.5, 0.005], [31, 0.333], [31.25, 0.555], [7200, 0.95], [300, 0]])(
+    "round trips saved patience %s seconds and refill point %s", (patience, refill) => {
+      const parsed = sharedStoreOptions(choiceFromConfig({ patience_sec: patience, refill_at: refill, crew: 2 }));
+      expect(parsed).not.toBe("invalid");
+      expect(parsed).toBeDefined();
+      if (!parsed || parsed === "invalid") throw new Error("valid saved settings were rejected");
+      expect(parsed.patience_sec).toBeCloseTo(patience, 10);
+      expect(parsed.refill_at).toBeCloseTo(refill, 10);
+    },
+  );
 });
 
 describe("the run dialog", () => {
