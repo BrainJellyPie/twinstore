@@ -188,6 +188,12 @@ class PatternIntentImpulseEngine:
             merged, context.store, context.persona.budget_max, cfg.budget_tolerance,
             max_quantity=cfg.max_quantity_per_line,
         )
+        # An initially browsing-only visit has no payment in stage 2. Any buys
+        # surviving stage 3 and budget pruning still need a checkout before exit.
+        if (context.store.counters and any(a.action == Action.BUY for a in merged)
+                and not any(a.action == Action.PAY for a in merged)):
+            exit_index = next((i for i, a in enumerate(merged) if a.nav == "leave"), len(merged))
+            merged.insert(exit_index, CustomerAction(nav="path", action=Action.PAY, dwell=15))
 
         return EngineDecision(
             actions=merged,

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Send shoppers to checkout when impulse purchases add a basket to an initially browsing-only visit. Surviving
+  purchases now reach the tills even when the model omitted payment, so queue waits and abandoned sales are counted.
+
 ## 0.4.11 — Reliable runs, saved layouts and store operations
 
 Released 2026-10-23.
