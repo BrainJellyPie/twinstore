@@ -27,6 +27,7 @@ const HEADERS = [
   "sku",
   "item_name",
   "price (minor units)",
+  "regular_price (minor units)",
   "promo",
   "image",
 ] as const;
@@ -40,6 +41,7 @@ interface SheetRow {
   sku: string;
   item_name: string;
   "price (minor units)": number;
+  "regular_price (minor units)": number;
   promo: string;
   image: "";
 }
@@ -53,6 +55,7 @@ const COL_WIDTHS: Record<typeof HEADERS[number], number> = {
   sku: 14,
   item_name: 18,
   "price (minor units)": 22,
+  "regular_price (minor units)": 28,
   promo: 12,
   image: 12,
 };
@@ -98,6 +101,7 @@ export async function buildLayoutWorkbook(
             sku: "",
             item_name: "",
             "price (minor units)": 0,
+            "regular_price (minor units)": 0,
             promo: "",
             image: "",
           });
@@ -118,6 +122,7 @@ export async function buildLayoutWorkbook(
             sku: item.sku,
             item_name: item.name,
             "price (minor units)": item.price,
+            "regular_price (minor units)": item.regular_price ?? 0,
             promo: item.promo,
             image: "",
           });
