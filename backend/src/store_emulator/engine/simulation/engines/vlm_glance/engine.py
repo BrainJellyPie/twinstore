@@ -280,7 +280,8 @@ class VLMGlanceEngine(RuleBasedEngine):
             # planner draws them (shelf attention, price, the shopper's usual products).
             usual = frozenset(p.lower() for p in persona.usual_products)
             before = len(plan.buys)
-            self._fill_to_size(store, plan, middle, kept, min(max_items, persona.basket_size), usual, kinds, kept)
+            self._fill_to_size(store, plan, middle, kept, min(max_items, persona.basket_size), usual, kinds, kept,
+                               spend_limit=limit)
             resolved.extend(("(same category)", b.product_sku, "breadth_fill", "") for b in plan.buys[before:])
         plan.trace = {"plan_source": source, "entered": True, "mission": decision.mission}
         self._record_plan(PlanRecord(persona.id, plan.pattern.id, source, True, decision.mission, decision.reason,
