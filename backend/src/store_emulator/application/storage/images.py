@@ -9,6 +9,8 @@ import re
 import shutil
 import threading
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -49,6 +51,13 @@ def _project_lock(project_id: str) -> threading.Lock:
             lock = threading.Lock()
             _PROJECT_LOCKS[project_id] = lock
         return lock
+
+
+@contextmanager
+def image_read_transaction(project_id: str) -> Iterator[None]:
+    """Keep the manifest and its mutable SKU image files together while taking a study snapshot."""
+    with _project_lock(project_id):
+        yield
 
 
 class ImageStorageError(Exception):
