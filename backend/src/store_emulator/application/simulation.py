@@ -9,6 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
+from filelock import FileLock, Timeout
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.analysis import ComparisonReport, FidelityReport
@@ -48,6 +49,7 @@ from store_emulator.engine.analysis.fidelity import fidelity_report
 from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.currencies import simulation_currency
 from store_emulator.application.shelf_views import views_dir
+from store_emulator.application.setups import setup_lock_path
 
 logger = logging.getLogger(__name__)
 
@@ -179,15 +181,21 @@ def prepare_simulation(
 ) -> tuple[str, Store, list[Persona], str, str]:
     """Validate, load inputs, and transition state before running. AppError on failure.
 
-    Three-phase helper pipeline: _validate → _load_inputs → _mark_running.
+    Hold the editor's setup lock through validation, input capture and marking
+    the run pending, so a concurrent save cannot replace its snapshot or state.
     Returns (run_id, store, personas, address, customer_profile).
     """
-    setup = _validate_simulation(pid, setup_id, preview=preview)
-    rid, store, personas, address, customer_profile = _load_simulation_inputs(
-        pid, setup, run_id, default_currency,
-    )
-    _mark_simulation_running(pid, setup_id, rid, preview=preview)
-    return rid, store, personas, address, customer_profile
+    try:
+        with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
+            setup = _validate_simulation(pid, setup_id, preview=preview)
+            rid, store, personas, address, customer_profile = _load_simulation_inputs(
+                pid, setup, run_id, default_currency,
+            )
+            _mark_simulation_running(pid, setup_id, rid, preview=preview)
+            return rid, store, personas, address, customer_profile
+    except Timeout:
+        raise AppError(503, "setup_lock_timeout", "lock_timeout",
+                       "another request is modifying this setup. Please retry shortly.", {"timeout_seconds": 10})
 
 
 def _validate_simulation(pid: str, setup_id: str, *, preview: bool = False) -> dict[str, Any]:
@@ -241,7 +249,7 @@ def _load_simulation_inputs(
 def _mark_simulation_running(pid: str, setup_id: str, run_id: str, *, preview: bool = False) -> None:
     """setup.status=running + run status=pending. Re-checks status/run_id at mark.
 
-    A minimal CAS-style safeguard against load-vs-mark races — not fully atomic.
+    Called while prepare_simulation holds the setup's file lock.
     recover_running_setups cleans residual running setups back to draft on restart.
     Preview runs leave the setup status untouched.
     """
@@ -363,23 +371,25 @@ def run_simulation_background(
         # Setup transitions to locked + runId. The run summary is the single
         # source of truth for KPIs.
         try:
-            setup = read_setup(pid, setup_id)
-            setup["status"] = "locked"
-            setup["runId"] = run_id
-            write_setup(pid, setup_id, setup)
+            with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
+                setup = read_setup(pid, setup_id)
+                setup["status"] = "locked"
+                setup["runId"] = run_id
+                write_setup(pid, setup_id, setup)
         except Exception:
-            pass  # Setup-file update failure must not lose the run data.
+            logger.warning("Could not finalize setup %s/%s after run %s", pid, setup_id, run_id, exc_info=True)
 
     except Exception as e:
         write_status(pid, run_id, "failed", f"{e}\n{traceback.format_exc()}")
         if options.preview:
             return
         try:
-            setup = read_setup(pid, setup_id)
-            setup["status"] = "draft"
-            write_setup(pid, setup_id, setup)
+            with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
+                setup = read_setup(pid, setup_id)
+                setup["status"] = "draft"
+                write_setup(pid, setup_id, setup)
         except Exception:
-            pass
+            logger.warning("Could not reset setup %s/%s after failed run %s", pid, setup_id, run_id, exc_info=True)
 
 
 def _run_base(pid: str, run_id: str) -> Path:

@@ -31,7 +31,7 @@ def test_layout_locks_only_block_the_same_resource(tmp_path, monkeypatch, target
     client = TestClient(app, raise_server_exceptions=False)
     first_path = tmp_path / ".data" / first[0] / "setups" / f"{first[1]}.json"
     before = first_path.read_bytes()
-    with FileLock(str(setups._lock_path(*first)), timeout=0):
+    with FileLock(str(setups.setup_lock_path(*first)), timeout=0):
         response = client.put(f"/api/projects/{target_pid}/setups/{target_sid}", json={"setup": {"name": "Changed"}})
     assert response.status_code == expected, response.text
     assert first_path.read_bytes() == before
