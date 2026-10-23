@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from PIL import Image
+from pydantic import BaseModel, Field, TypeAdapter
 
 from store_emulator.application.errors import AppError
 from store_emulator.application.library_photos import photo_file
@@ -64,7 +65,7 @@ def project_image_loader(pid: str) -> ProductImageLoader:
 
 
 def snapshot_project_images(pid: str, items: Iterable[SlotItem], folder: Path) -> ProductImageLoader:
-    """Freeze the study's resolved art (including absent art) under the caller's project tree guard.
+    """Freeze resolved art (including absent art) under the caller's project tree guard.
 
     Keep decoded images in a bounded cache, with copies on disk so eviction cannot reload changed source art.
     SKU writers use their own lock; the outer project guard also excludes package and project deletion.
@@ -86,7 +87,22 @@ def snapshot_project_images(pid: str, items: Iterable[SlotItem], folder: Path) -
             {"sku": sku, "image_url": url, "file": path.name if path else None}
             for (sku, url), path in paths.items()
         ])
+    return _snapshot_loader(paths)
 
+
+class _SnapshotImage(BaseModel):
+    sku: str
+    image_url: str | None
+    file: str | None = Field(pattern=r"^[0-9]+\.png$")
+
+
+def snapshot_image_loader(folder: Path) -> ProductImageLoader:
+    """Reopen accepted artwork from its manifest without consulting mutable project art."""
+    entries = TypeAdapter(list[_SnapshotImage]).validate_json((folder / "manifest.json").read_bytes())
+    return _snapshot_loader({(entry.sku, entry.image_url): folder / entry.file if entry.file else None for entry in entries})
+
+
+def _snapshot_loader(paths: dict[tuple[str, str | None], Path | None]) -> ProductImageLoader:
     @lru_cache(maxsize=128)
     def load(path: Path) -> Image.Image | None:
         return file_product_image(path)

@@ -13,12 +13,15 @@ from store_emulator.application.async_executor import executor
 from store_emulator.application.storage.io import read_json, write_json
 from store_emulator.application.storage.setups import metadata_path, personas_path, read_setup, setup_path
 from store_emulator.server.main import app
+from store_emulator.server.routes import simulate
 from tests.server.test_simulation_setup_races import PID, SID, layout
 
 
 @pytest.mark.parametrize("first_preview,second_preview", [(False, False), (False, True), (True, False), (True, True)])
 @pytest.mark.parametrize("identity", ["explicit", "generated", "other_run", "other_project"])
-def test_concurrent_starts_reserve_project_run_identity(layout, monkeypatch, first_preview, second_preview, identity):
+@pytest.mark.parametrize("first_engine", ["rule_based", "vlm_glance"])
+def test_concurrent_starts_reserve_project_run_identity(layout, monkeypatch, first_preview, second_preview, identity, first_engine):
+    monkeypatch.setattr(simulate, "ensure_resolvable", lambda config: None)
     other_pid = "proj_other" if identity == "other_project" else PID
     other_sid = "setup_other"
     write_json(metadata_path(other_pid), read_json(metadata_path(PID)))
@@ -49,7 +52,7 @@ def test_concurrent_starts_reserve_project_run_identity(layout, monkeypatch, fir
     monkeypatch.setattr(simulation, "_load_simulation_inputs", observed_load)
     submit = Mock()
     monkeypatch.setattr(executor, "submit", submit)
-    first_body = {"setup_id": SID, "engine_type": "rule_based", "preview": first_preview}
+    first_body = {"setup_id": SID, "engine_type": first_engine, "preview": first_preview}
     second_body = {"setup_id": other_sid, "engine_type": "rule_based", "preview": second_preview}
     if identity != "generated":
         first_body["run_id"], second_body["run_id"] = run_id, other_run

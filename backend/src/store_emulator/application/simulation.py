@@ -5,6 +5,7 @@ import logging
 import time
 import traceback
 import uuid
+from contextlib import nullcontext
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
@@ -31,7 +32,8 @@ from store_emulator.application.pos import parse_pos_csv
 from store_emulator.application.movement import read_movement, score_movement
 from store_emulator.application.presets.behavior import BEHAVIOR_PATTERNS
 from store_emulator.application.runner import build_runner
-from store_emulator.application.product_images import project_image_loader
+from store_emulator.application.product_images import project_image_loader, snapshot_image_loader, snapshot_project_images
+from store_emulator.engine.files import remove_tree
 from store_emulator.engine.perception.product_images import ProductImageLoader
 from store_emulator.application.scenarios import get_preset, prepare_inputs, who_can_come
 from store_emulator.application.town import town_for_run, town_visitors
@@ -179,7 +181,7 @@ async def run_simulation(
 
 def prepare_simulation(
     pid: str, setup_id: str, run_id: str | None = None, *, preview: bool = False, default_currency: str = "USD",
-    operations: OperationsConfig | None = None, shared_store: bool | None = None,
+    operations: OperationsConfig | None = None, shared_store: bool | None = None, snapshot_images: bool = False,
 ) -> tuple[str, Store, list[Persona], str, str, OperationsConfig | None]:
     """Validate, load inputs, and transition state before running. AppError on failure.
 
@@ -188,13 +190,14 @@ def prepare_simulation(
     Returns (run_id, store, personas, address, customer_profile, operations).
     """
     try:
-        with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
+        tree = setup_tree_transaction(pid, [setup_id]) if snapshot_images else nullcontext()
+        with tree, FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
             setup = _validate_simulation(pid, setup_id, preview=preview)
             rid, store, personas, address, customer_profile = _load_simulation_inputs(
                 pid, setup, run_id, default_currency,
             )
             saved_operations = run_operations(pid, setup_id, operations, shared_store)
-            _mark_simulation_running(pid, setup_id, rid, preview=preview)
+            _mark_simulation_running(pid, setup_id, rid, preview=preview, image_store=store if snapshot_images else None)
             return rid, store, personas, address, customer_profile, saved_operations
     except Timeout:
         raise AppError(503, "setup_lock_timeout", "lock_timeout",
@@ -246,7 +249,9 @@ def _load_simulation_inputs(
     return rid, store, personas, address, customer_profile
 
 
-def _mark_simulation_running(pid: str, setup_id: str, run_id: str, *, preview: bool = False) -> None:
+def _mark_simulation_running(
+    pid: str, setup_id: str, run_id: str, *, preview: bool = False, image_store: Store | None = None,
+) -> None:
     """setup.status=running + run status=pending. Re-checks status/run_id at mark.
 
     Called while prepare_simulation holds the setup's file lock.
@@ -258,13 +263,23 @@ def _mark_simulation_running(pid: str, setup_id: str, run_id: str, *, preview: b
     with FileLock(run_lock, timeout=10):
         if _status_path(pid, run_id).exists():
             raise AppError(f"concurrent start detected: run ID already exists: {run_id}", 409)
+        if image_store is not None:
+            # The caller holds the tree guard; the run lock also excludes rule starts with this ID.
+            base = _status_path(pid, run_id).parent
+            existed = base.exists()
+            try:
+                snapshot_project_images(pid, (i for r in image_store.racks for s in r.slots for i in s.items),
+                                        base / "input" / "images")
+            except Exception:
+                remove_tree(base / "input" / "images" if existed else base)
+                raise
         if not preview:
             fresh = read_setup(pid, setup_id)
             if fresh["status"] in ("running", "locked"):
                 raise AppError("concurrent start detected: setup is already running or finalized.", 409)
             fresh["status"] = "running"
             write_setup(pid, setup_id, fresh)
-        write_status(pid, run_id, "pending", setup_id=setup_id, preview=preview)
+        write_status(pid, run_id, "pending", setup_id=setup_id, preview=preview, image_snapshot=image_store is not None)
 
 
 def _status_path(pid: str, run_id: str) -> Path:
@@ -334,10 +349,13 @@ def run_simulation_background(
             last_write = now
             write_status(pid, run_id, "running", completed_customers=completed, failed_customers=failed)
 
+        images = _status_path(pid, run_id).parent / "input" / "images"
+        frozen = bool(read_json(_status_path(pid, run_id)).get("image_snapshot"))
+        image_loader = snapshot_image_loader(images) if frozen else project_image_loader(pid)
         aggregated, customers, runner = asyncio.run(
             run_simulation(config, store, personas,
                            address=address, customer_profile=customer_profile,
-                           on_progress=on_progress, image_loader=project_image_loader(pid)),
+                           on_progress=on_progress, image_loader=image_loader),
         )
         failed = aggregated.diagnostics.failed_customers
         if not customers and failed:
