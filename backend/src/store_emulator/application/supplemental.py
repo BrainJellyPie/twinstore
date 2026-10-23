@@ -534,7 +534,7 @@ def _local_timestamps(values: list[object]) -> list[pd.Timestamp | None]:
 
 def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
     """(weekday 1–7, hour) of each visit in a table with a timestamp column, one per basket when a
-    transaction/receipt ID column exists. Receipt IDs are scoped by date and available store/register IDs.
+    transaction/receipt ID column exists. Use the earliest valid clock in each date/store/register-scoped receipt.
     Empty when no column parses as date-times with a time of day."""
     table = cast(Any, df)
     columns = cast(list[object], list(table.columns))
@@ -588,7 +588,8 @@ def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
             key = f"scope_{index}"
             frame[key] = table[col].astype("string").str.strip().replace("", pd.NA).to_numpy()
             identity.append(key)
-        frame = frame.dropna(subset=["ts", "basket"]).drop_duplicates(identity)
+        # Product-line sort order must not change the hour assigned to a receipt.
+        frame = frame.dropna(subset=["ts", "basket"]).groupby(identity, sort=False, dropna=False, as_index=False)["ts"].min()
     ts = frame.ts.dropna()
     days = cast(list[int], (ts.dt.dayofweek + 1).astype(int).tolist())
     hours = cast(list[int], ts.dt.hour.astype(int).tolist())
