@@ -34,7 +34,7 @@ from store_emulator.engine.town import (
     remove_venue,
     scenario_traffic,
     synergy_analysis,
-    town_context_text,
+    town_context_writer,
     town_from_overpass,
     with_store_hours,
 )
@@ -204,6 +204,7 @@ def town_visitors(
     """
     visitors: list[Persona] = []
     arrivals: list[TownArrival] = []
+    describe = town_context_writer(town)
     days = sorted({p.day for p in pool}) or [Weekday.MON]
     for day in days:
         town_day, hours = with_store_hours(town, store, day)
@@ -214,7 +215,7 @@ def town_visitors(
         people, notes = plan_arrivals(pool, day_demand, town_day, seed=stable_seed(seed, "town", int(day)), scale=scale,
                                       day=day)
         for person, note in zip(people, notes, strict=True):
-            context = town_context_text(note, town)
+            context = describe(note)
             visitors.append(person.model_copy(update={"description": f"{person.description} {context}".strip()}))
             arrivals.append(note)
     logger.info(f"[town] {len(visitors)} visitors over {len(days)} day(s) from '{town.name}' (scale {scale})")

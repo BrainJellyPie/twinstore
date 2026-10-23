@@ -10,9 +10,11 @@ import bisect
 import itertools
 import math
 import random
+from collections.abc import Callable
 
 from store_emulator.domain.persona import AgeGroup, Persona
 from store_emulator.domain.town import (
+    Building,
     BuildingKind,
     LinkedTrip,
     OriginShare,
@@ -227,6 +229,34 @@ def _minutes(walk_min: float) -> str:
 
 def town_context_text(arrival: TownArrival, town: Town, *, detour_factor: float = 1.3) -> str:
     """One-line English description of how the visitor got to the store, for LLM prompts."""
+    building = town.get_building(arrival.origin_building_id) if arrival.origin_building_id and not arrival.is_linked_trip else None
+    nearest = min((math.hypot(v.x - building.x, v.y - building.y) * detour_factor
+                   for v in town.venues if v.category == VenueCategory.CONVENIENCE and v.id != town.focal_venue_id),
+                  default=math.inf) if building is not None else math.inf
+    return _context_text(arrival, building, nearest)
+
+
+def town_context_writer(town: Town, *, detour_factor: float = 1.3) -> Callable[[TownArrival], str]:
+    """Describe a batch against one town snapshot, sharing origin lookups and nearest-store distances."""
+    buildings = {b.id: b for b in reversed(town.buildings)}
+    rivals = [(v.x, v.y) for v in town.venues
+              if v.category == VenueCategory.CONVENIENCE and v.id != town.focal_venue_id]
+    nearest: dict[str, float] = {}
+
+    def describe(arrival: TownArrival) -> str:
+        building = buildings.get(arrival.origin_building_id) if arrival.origin_building_id and not arrival.is_linked_trip else None
+        distance = math.inf
+        if building is not None:
+            if building.id not in nearest:
+                nearest[building.id] = min((math.hypot(x - building.x, y - building.y) * detour_factor
+                                            for x, y in rivals), default=math.inf)
+            distance = nearest[building.id]
+        return _context_text(arrival, building, distance)
+
+    return describe
+
+
+def _context_text(arrival: TownArrival, building: Building | None, nearest: float) -> str:
     trip = f"{_meters(arrival.distance_m)} ({_minutes(arrival.walk_min)})"
     if arrival.is_linked_trip:
         try:
@@ -237,7 +267,6 @@ def town_context_text(arrival: TownArrival, town: Town, *, detour_factor: float 
         name = f" ({arrival.origin_name})" if arrival.origin_name else ""
         return f"Came straight from the {phrase} {where}{name}, {trip} away."
 
-    building = town.get_building(arrival.origin_building_id) if arrival.origin_building_id else None
     if arrival.segment == "commuter":
         text = f"Passing through from the station, {trip} away."
     else:
@@ -247,12 +276,6 @@ def town_context_text(arrival: TownArrival, town: Town, *, detour_factor: float 
         text = f"Walked {trip} from {origin}."
     if building is not None:
         # Mention a closer convenience store the visitor walked past (signals store preference).
-        closer = [
-            math.hypot(v.x - building.x, v.y - building.y) * detour_factor
-            for v in town.venues
-            if v.category == VenueCategory.CONVENIENCE and v.id != town.focal_venue_id
-        ]
-        nearest = min(closer, default=math.inf)
         if nearest + 20 < arrival.distance_m:
             text = f"{text[:-1]}, passing up a closer convenience store ({_meters(nearest)} from where they started)."
     return text

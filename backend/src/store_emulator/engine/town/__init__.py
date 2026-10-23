@@ -11,6 +11,7 @@ from store_emulator.engine.town.arrivals import (
     counterfactual_arrival,
     plan_arrivals,
     town_context_text,
+    town_context_writer,
 )
 from store_emulator.engine.town.demand import (
     TYPICAL_DAY,
@@ -51,6 +52,7 @@ __all__ = [
     "scenario_traffic",
     "synergy_analysis",
     "town_context_text",
+    "town_context_writer",
     "town_from_overpass",
     "with_store_hours",
 ]

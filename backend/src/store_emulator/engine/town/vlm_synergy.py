@@ -49,7 +49,7 @@ from store_emulator.engine.simulation.simulator import PerCustomerSimulationRunn
 from store_emulator.engine.town.arrivals import (
     counterfactual_arrival,
     plan_arrivals,
-    town_context_text,
+    town_context_writer,
 )
 from store_emulator.engine.town.demand import (
     TYPICAL_DAY,
@@ -131,9 +131,10 @@ async def vlm_basket_synergy(
     visitors, arrivals = plan_arrivals(pool, demand_with, town, seed=seed, scale=1.0, day=day)
     contexts: dict[str, tuple[str, str]] = {}
     by_id: dict[str, tuple[Persona, TownArrival]] = {}
+    describe_with, describe_without = town_context_writer(town), town_context_writer(without)
     for person, arrival in zip(visitors, arrivals, strict=True):
         alternative = counterfactual_arrival(arrival, venue_id, demand_without, seed=seed)
-        contexts[person.id] = (town_context_text(arrival, town), town_context_text(alternative, without))
+        contexts[person.id] = (describe_with(arrival), describe_without(alternative))
         by_id[person.id] = (person, arrival)
     affected_all = [pid for pid, (a, b) in contexts.items() if a != b]
     unaffected_all = [pid for pid, (a, b) in contexts.items() if a == b]

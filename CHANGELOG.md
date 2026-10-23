@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reuse neighborhood building lookups and nearest competing-store distances while describing
+  a visitor batch. Large town runs, their estimates and vision synergy panels no longer scan
+  the same buildings and venues separately for every cloned shopper.
+
 - Reject shelf-test answers that name product badges absent from the displayed shelf.
   Invalid choices no longer count as refusals or missing attention, and incomplete pairs
   stay out of comparisons. Render queued respondent images only when a worker slot is free.
