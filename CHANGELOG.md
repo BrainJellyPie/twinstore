@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Exclude Shelf Lab counterfactuals with no valid paired responses from lever
+  effect summaries. The CLI marks unavailable comparisons, preserves raw outcomes,
+  and exits unsuccessfully when no effect can be estimated instead of reporting
+  model failures as a measured zero effect.
+
 - Keep captured product identities when existing names identify multiple SKUs,
   including equally close fuzzy matches. Preserve an explicitly known SKU and
   only replace estimated prices when its matching offers agree on one price.

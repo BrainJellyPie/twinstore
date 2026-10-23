@@ -5,7 +5,7 @@ per-call seeds — glances at the original photo and at the counterfactual, both
 "#N price" tags of the simulator's render laid on the products. The outcome per counterfactual is
 the share of the panel picking the edited product before and after (for a swap: the product that
 moved), plus how many shoppers changed their pick at all. Aggregated per edit kind with a
-persona-level paired bootstrap interval.
+bootstrap over counterfactuals that have at least one valid paired response.
 """
 
 import json
@@ -117,8 +117,9 @@ async def run_lever(
 def summarize_levers(outcomes: list[LeverOutcome], *, n_boot: int = 2000, seed: int = 0) -> list[LeverSummary]:
     rng = random.Random(seed)
     out: list[LeverSummary] = []
-    for kind in sorted({o.kind for o in outcomes}):
-        group = [o for o in outcomes if o.kind == kind]
+    usable = [o for o in outcomes if o.personas > 0]
+    for kind in sorted({o.kind for o in usable}):
+        group = [o for o in usable if o.kind == kind]
         deltas = [o.picked_after - o.picked_before for o in group]
         mean = sum(deltas) / len(deltas)
         boots = sorted(sum(rng.choice(deltas) for _ in deltas) / len(deltas) for _ in range(n_boot))
