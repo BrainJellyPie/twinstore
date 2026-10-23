@@ -161,6 +161,9 @@ def _run_persona_background(
         )
         ws_raw = cast(list[Any], meta.get("weekly_schedule") or [])
         schedules = validate_weekly_schedule([DaySchedule.model_validate(d) for d in ws_raw])
+        if not any(schedule.is_open for schedule in schedules):
+            raise ValueError("Customer generation needs at least one open weekday. "
+                             "Check the store's operating schedule before retrying. Existing customers were kept.")
 
         personas = asyncio.run(_run_async_pipeline(
             config=config,

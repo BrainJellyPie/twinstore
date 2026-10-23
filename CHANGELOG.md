@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Preserve existing customers when regeneration finds no open weekday. Missing, empty or entirely closed
+  saved schedules now fail before model setup instead of completing with an empty replacement population.
+
 - Evaluate POS hourly fidelity only when a clock is present. Date-only CSV/Excel cells no longer invent
   midnight visits, while explicit midnight remains supported. Each receipt uses its earliest known hour,
   so missing clocks on the first line or reordered product lines no longer erase or change the score.
