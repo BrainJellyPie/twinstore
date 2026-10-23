@@ -33,9 +33,10 @@ def is_local_base(api_base: str | None) -> bool:
 
 def effective_parallel(local: bool, slots: int | None = None) -> float:
     """How many requests run side by side. A model server on this computer shares its processor between its slots
-    (one when unknown), so extra slots add about half a request each; a provider takes CLOUD_PARALLEL at once."""
+    (one when unknown), so extra slots add about half a request each. Provider work respects both the writer's
+    CLOUD_PARALLEL cap and any lower limit configured for the client."""
     if not local:
-        return float(CLOUD_PARALLEL)
+        return float(min(CLOUD_PARALLEL, max(1, slots if slots is not None else CLOUD_PARALLEL)))
     return 1.0 + 0.5 * max(0, (slots or 1) - 1)
 
 
