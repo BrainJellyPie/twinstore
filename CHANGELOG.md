@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Resolve missing model destinations for known-product purchases and checkout. Shoppers no longer record
+  remote purchases and payments at the entrance when optional coordinates are omitted; unknown SKUs are still rejected.
+
 - Respect the shopper's chosen checkout instead of redirecting every payment to the first counter. Counter-body
   targets resolve to that counter's service tile, and payment events are attributed to the serving counter even
   when a neighboring shelf shares the access tile.
