@@ -60,22 +60,27 @@ async def shelf_panel(
 
     async def ask(p: Persona, arm: Literal["control", "test"], rack: Rack) -> ShelfChoice:
         base = ShelfChoice(respondent=p.id, age_group=str(p.age_group), gender=str(p.gender), arm=arm)
-        view = render_arm(rack, face, currency, stable_seed("shelf-marks", seed, p.id), image_loader)
         user = (f"{persona_text(p, currency)}\n\nYou are at the {rack.rack_name or 'shelf'}. Which products catch your eye first "
                 "(up to three badge numbers, in order), and which one product would you take (its number, or 0 for none)? Why, in one sentence?")
         async with sem:
             try:
+                view = render_arm(rack, face, currency, stable_seed("shelf-marks", seed, p.id), image_loader)
                 a = await llm.generate_structured_with_image_async(
                     ShelfAnswer, SHELF_TEST_PROMPT, user, view.data_url(), max_retries=1, seed=stable_seed("shelf", seed, p.id, arm),
                 )
+                marks = {item.mark for item in view.items}
+                if a.pick != 0 and a.pick not in marks:
+                    raise ValueError(f"Picked badge {a.pick} is not on this shelf; only 0 means no purchase.")
+                if any(number not in marks for number in a.noticed):
+                    raise ValueError("Noticed badges must refer to products shown on this shelf.")
+                picked = view.by_mark(a.pick) if a.pick else None
+                noticed = [m.item.sku for n in a.noticed if (m := view.by_mark(n)) is not None]
+                return base.model_copy(update={
+                    "pick_sku": picked.item.sku if picked else "", "pick_name": picked.item.name if picked else "",
+                    "noticed": list(dict.fromkeys(noticed))[:3], "why": a.why.strip(),
+                })
             except Exception as e:  # one respondent failing must not sink the panel
                 return base.model_copy(update={"error": f"{type(e).__name__}: {str(e)[:160]}"})
-        picked = view.by_mark(a.pick) if a.pick else None
-        noticed = [m.item.sku for n in a.noticed if (m := view.by_mark(n)) is not None]
-        return base.model_copy(update={
-            "pick_sku": picked.item.sku if picked else "", "pick_name": picked.item.name if picked else "",
-            "noticed": list(dict.fromkeys(noticed))[:3], "why": a.why.strip(),
-        })
 
     arms: list[tuple[Literal["control", "test"], Rack]] = [("control", control), ("test", test)]
     jobs = [ask(p, arm, rack) for p in personas for arm, rack in arms]
