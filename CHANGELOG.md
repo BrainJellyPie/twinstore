@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Recheck project existence and protect photo-upload acceptance through image saving and pending-job
+  registration. A project deleted during decoding/model preparation stays deleted. Stable upload retries
+  retain their single-job behavior without placing their lock inside removable project data.
+
 - Coordinate Shelf Lab audit/photo-comparison startup with customer/layout saves and project/capture
   deletion. Pending jobs register before deletion can proceed, and audits retain the starting visitor
   estimate instead of changing their daily money scale when metadata changes later.
