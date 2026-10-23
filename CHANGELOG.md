@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Resolve purchases against the shelf face the shopper actually reached when the same SKU appears on several
+  faces. Routing, prices and shared stock no longer collapse those purchases onto the rack's first SKU placement.
+
 - Keep saved stock, staffing and checkout settings when creating layouts from product edits, shelf reuse,
   starter products, library photos, text edits or shelf captures. Saved optimization results retain the
   operating conditions used to evaluate them, even if the source layout's settings changed meanwhile.

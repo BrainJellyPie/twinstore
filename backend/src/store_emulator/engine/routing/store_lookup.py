@@ -32,20 +32,16 @@ def rack_id_at(store: Store, target: Position, face: Face | None = None) -> str:
 
 
 def find_racks_by_sku(store: Store, sku: str) -> list[tuple[Rack, Slot]]:
-    """Return one (rack, slot) pair per rack that carries `sku`.
+    """Return every (rack, slot) carrying `sku`, including different faces of one rack.
 
-    SKU is a product ID — the same SKU may legitimately appear on multiple
-    racks within one store (e.g., main shelf + promo endcap). We collapse
-    multiple slots-on-the-same-rack to a single representative slot because
-    `target_rack` attribution only needs the owning rack. Callers narrow
-    further via target/face if needed.
+    Each placement can have its own price and face stock. Keep them available
+    until the customer's stance selects which offer they reached.
     """
     found: list[tuple[Rack, Slot]] = []
     for rack in store.racks:
         for slot in rack.slots:
             if sku in {i.sku for i in slot.items}:
                 found.append((rack, slot))
-                break  # one representative slot per rack is enough
     return found
 
 
@@ -58,18 +54,18 @@ def resolve_buy_placement(
 ) -> tuple[Rack, Slot] | None:
     """Pick the (rack, slot) the customer reached for a BUY action.
 
-    Three-stage resolution — each later stage is strictly weaker, so we keep
+    Resolution — each later stage is strictly weaker, so we keep
     the most precise match available without ever throwing away the SKU
     information:
 
     1. **target + face match**: rack accepts `target` as an access tile AND
        the LLM-supplied `face` lines up with the rack's face at that tile.
        This is the strongest signal.
-    2. **target-only match**: the rack accepts `target` as an access tile,
-       regardless of face. Used when `face` is None *or* when the LLM gave
-       a face that doesn't match any candidate (e.g., a careless hallucination).
-       Better than abandoning target information entirely.
-    3. **first SKU placement**: no spatial match at all — fall back to the
+    2. **visible placement**: the slot's face accepts `target`, even when the
+       supplied face is missing or incorrect.
+    3. **target-only rack match**: retain the owning rack when the customer
+       reached a side without this SKU; routing will move them to its placement.
+    4. **first SKU placement**: no spatial match at all — fall back to the
        first rack carrying the SKU. Item-level attribution stays correct
        even if the exact rack is uncertain. See Risk Notes.
 
@@ -87,8 +83,11 @@ def resolve_buy_placement(
         ]
         if face is not None:
             for rack, slot in target_matches:
-                if rack.accepts_face_at(target, face, grid):
+                if slot.face == face and rack.accepts_face_at(target, slot.face, grid):
                     return (rack, slot)
+        for rack, slot in target_matches:
+            if rack.accepts_face_at(target, slot.face, grid):
+                return (rack, slot)
         if target_matches:
             return target_matches[0]
     return candidates[0]
