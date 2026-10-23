@@ -87,10 +87,21 @@ def _levers(args: argparse.Namespace) -> int:
             outcome = asyncio.run(run_lever(llm, cf, personas, cue_sampler=sample_cue, patterns=BEHAVIOR_PATTERNS, seed=args.seed))
             outcomes.append(outcome)
             fh.write(outcome.model_dump_json() + "\n")
-            print(f"[{k + 1}/{len(cfs)}] {cf.id}: {outcome.picked_before:.2f} → {outcome.picked_after:.2f} "
-                  f"(changed {outcome.changed_pick:.2f}, errors {outcome.errors})", file=sys.stderr)
+            if outcome.personas:
+                print(f"[{k + 1}/{len(cfs)}] {cf.id}: {outcome.picked_before:.2f} → {outcome.picked_after:.2f} "
+                      f"(changed {outcome.changed_pick:.2f}, pairs {outcome.personas}, errors {outcome.errors})", file=sys.stderr)
+            else:
+                print(f"[{k + 1}/{len(cfs)}] {cf.id}: unavailable; no valid paired responses "
+                      f"(errors {outcome.errors})", file=sys.stderr)
+    summaries = summarize_levers(outcomes, seed=args.seed)
+    if not summaries:
+        print("No valid paired comparisons; no effect can be estimated. Raw outcomes were saved.", file=sys.stderr)
+        return 1
+    missing = sum(o.personas == 0 for o in outcomes)
+    if missing:
+        print(f"Excluded {missing} counterfactual(s) with no valid paired responses from the summaries.", file=sys.stderr)
     print(f"{'kind':<10} {'n':>4} {'Δ picked':>9} {'95% CI':>18} {'changed':>8}")
-    for s in summarize_levers(outcomes, seed=args.seed):
+    for s in summaries:
         print(f"{s.kind:<10} {s.counterfactuals:>4} {s.delta_picked:>+9.3f} [{s.ci_low:+.3f}, {s.ci_high:+.3f}] {s.changed_pick:>8.3f}")
     return 0
 
