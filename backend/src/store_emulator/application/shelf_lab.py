@@ -64,7 +64,8 @@ from .generation_async import visitors_per_day_coming
 from .scenarios import scenario_shoppers
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
-from .storage.setups import metadata_path, personas_path, read_setup
+from .storage.personas import read_personas
+from .storage.setups import metadata_path, read_setup
 from .town import get_town, save_town
 
 logger = logging.getLogger(__name__)
@@ -406,8 +407,7 @@ def list_jobs(pid: str, cid: str) -> list[LabJobStatus]:
 
 
 def _personas(pid: str) -> list[Persona]:
-    path = personas_path(pid)
-    personas = [Persona.model_validate(p) for p in cast(list[dict[str, Any]], read_json(path))] if path.exists() else []
+    personas = read_personas(pid)
     if not personas:
         raise AppError("the project has no personas yet", 400)
     return personas

@@ -37,8 +37,9 @@ from store_emulator.application.scenarios import get_preset, prepare_inputs, who
 from store_emulator.application.town import town_for_run, town_visitors
 from store_emulator.domain.town import Town, TownArrival
 from store_emulator.application.storage.io import DATA_DIR, read_json, write_json, now_iso
+from store_emulator.application.storage.personas import read_personas
 from store_emulator.application.storage.setups import (
-    read_setup, write_setup, personas_path, metadata_path,
+    read_setup, write_setup, metadata_path,
 )
 from store_emulator.application.storage.runs import load_run_results, load_run_store, save_run
 from store_emulator.application.storage import images as image_storage
@@ -229,10 +230,7 @@ def _load_simulation_inputs(
         raise AppError("no store layout.")
     store = Store.model_validate(setup["store"])
 
-    p_path = personas_path(pid)
-    if not p_path.exists():
-        raise AppError("no personas.")
-    personas = [Persona.model_validate(p) for p in read_json(p_path)]
+    personas = read_personas(pid)
     if not personas:
         raise AppError("no personas.")
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate saved customer records and unique, nonblank IDs before simulations, estimates, optimization
+  and customer studies. Duplicate IDs no longer bypass sample caps or collapse distinct customer results;
+  invalid saved records report a repairable input error before work is registered, preserving the source file.
+
 - Keep trade-area customer types and visit purposes within the same limits as generated customers.
   Overlong model labels now trigger correction during analysis instead of making subsequent customer
   batches fail while attempting to repeat incompatible labels verbatim.

@@ -7,7 +7,7 @@ from starlette.concurrency import run_in_threadpool
 
 from store_emulator.application import projects as project_service
 from store_emulator.application.errors import AppError
-from store_emulator.domain.persona import Persona
+from store_emulator.domain.persona import Persona, validate_persona_ids
 from store_emulator.server.schemas import (
     CreateStoreRequest,
     CreateStoreResponse,
@@ -33,12 +33,7 @@ class SavePersonasRequest(BaseModel):
     @field_validator("personas")
     @classmethod
     def validate_identifiers(cls, personas: list[Persona]) -> list[Persona]:
-        ids = [persona.id for persona in personas]
-        if any(not identifier.strip() for identifier in ids):
-            raise ValueError("Persona IDs must not be blank.")
-        if len(ids) != len(set(ids)):
-            raise ValueError("Persona IDs must be unique.")
-        return personas
+        return validate_persona_ids(personas)
 
 
 @router.get("", summary="List projects")
