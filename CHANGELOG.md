@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve project edits when metadata saves overlap customer saves or generation results. Serialize updates
+  to names, addresses, summaries, traffic profiles and visitor estimates, and prevent a late save from
+  recreating a deleted project. Waiting metadata requests leave the API responsive.
+
 - Keep model-generated impulse responses to shopping stops, excluding extra checkouts and exits. Correct
   conflicting purchase/payment navigation so shoppers reach the shelf and till instead of buying remotely,
   leaving early, or abandoning a queue created by their own duplicate payment. Complete missing or malformed

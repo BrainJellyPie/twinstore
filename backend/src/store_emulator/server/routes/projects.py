@@ -72,7 +72,8 @@ async def get_project(pid: str) -> dict[str, Any]:
 async def update_metadata(pid: str, req: UpdateMetadataRequest) -> StatusResponse:
     """Update project metadata (name, description, address, customer_profile)."""
     try:
-        project_service.update_project_metadata(
+        await run_in_threadpool(
+            project_service.update_project_metadata,
             pid,
             name=req.name,
             description=req.description,
@@ -81,6 +82,8 @@ async def update_metadata(pid: str, req: UpdateMetadataRequest) -> StatusRespons
         )
     except FileNotFoundError:
         raise HTTPException(404, "project not found")
+    except AppError as e:
+        raise HTTPException(e.status_code, str(e)) from e
     return StatusResponse(status="saved")
 
 
