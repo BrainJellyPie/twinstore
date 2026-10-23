@@ -209,7 +209,7 @@ class RuleBasedEngine:
 
     def _fill_to_size(self, store: Store, plan: ShopperPlan, middle: list[CustomerAction],
                       categories: list[str], target: int, usual: frozenset[str] = frozenset(),
-                      kinds: int = 0, used: list[str] | None = None) -> None:
+                      kinds: int = 0, used: list[str] | None = None, *, spend_limit: int | None = None) -> None:
         """A trip of known size: keep taking products from the list (in priority order, round after
         round) until the basket has `target` products, the list is exhausted or money runs out. With
         `kinds`, a new category is opened only while the basket spans fewer than `kinds` of them."""
@@ -221,9 +221,13 @@ class RuleBasedEngine:
                     return
                 if kinds and category not in used and len(used) >= kinds:
                     continue
-                remaining = plan.budget - plan.spend if plan.budget is not None else None
-                pick = self._pick_item(store, category, remaining, plan.chosen, plan.rng, usual)
-                if pick is not None and self.add_planned_buy(store, plan, middle, *pick, f"also needs {category}"):
+                available = spend_limit - plan.spend if spend_limit is not None else None
+                remaining = (available if spend_limit is not None
+                             else plan.budget - plan.spend if plan.budget is not None else None)
+                pick = self._pick_item(store, category, remaining, plan.chosen, plan.rng, usual, max_price=available)
+                if pick is not None and self.add_planned_buy(
+                    store, plan, middle, *pick, f"also needs {category}", spend_limit=spend_limit,
+                ):
                     progressed = True
                     if category not in used:
                         used.append(category)
@@ -255,11 +259,17 @@ class RuleBasedEngine:
     def add_planned_buy(
         self, store: Store, plan: ShopperPlan, middle: list[CustomerAction],
         rack: Rack, slot: Slot, item: SlotItem, why: str, *, quantity: int | None = None,
+        spend_limit: int | None = None,
     ) -> bool:
         actions = self._visit(store, plan.grid, rack, slot, item, "planned", plan.pattern, plan.rng, why,
                               quantity=quantity)
         if not actions:
             return False
+        if spend_limit is not None and item.price > 0:
+            buy = actions[-1]
+            buy.quantity = min(buy.quantity, max(0, (spend_limit - plan.spend) // item.price))
+            if buy.quantity == 0:
+                return False
         middle.extend(actions)
         plan.buys.append(actions[-1])
         plan.chosen.add(item.sku)
@@ -377,7 +387,7 @@ class RuleBasedEngine:
 
     def _pick_item(
         self, store: Store, category: str, remaining: int | None, chosen: set[str], rng: random.Random,
-        usual: frozenset[str] = frozenset(),
+        usual: frozenset[str] = frozenset(), *, max_price: int | None = None,
     ) -> tuple[Rack, Slot, SlotItem] | None:
         words = expand_category(category)
         attention = self._config.perception.level_attention
@@ -386,6 +396,8 @@ class RuleBasedEngine:
         weights: list[float] = []
         for rack, slot, item, rack_words, item_words in self._catalog_for(store):
             if item.sku in chosen or not (words & rack_words or words & item_words):
+                continue
+            if max_price is not None and item.price > max_price:
                 continue
             fit = 1.0 if remaining is None or item.price <= remaining else 0.15
             weight = (attention.get(slot.level, 0.7) * fit * (promo_mult if item.promo else 1.0)

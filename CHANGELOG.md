@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Apply VLM planned-spend limits when automatically filling a trip to its requested size.
+  Additional products are selected from affordable candidates and their quantities fit the
+  remaining budget; expensive usual products cannot bypass the cap, while free items and
+  explicitly unlimited plans remain supported.
+
 - Keep VLM shelf choices on the selected numbered offer when names repeat or are ambiguous.
   Exact printed names outrank fuzzy word matches, clipped long names retain their badge fallback,
   and ensemble votes preserve the supported placement of a repeated SKU instead of switching
