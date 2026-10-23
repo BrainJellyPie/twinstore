@@ -411,29 +411,30 @@ def _quota(personas: list[Persona], req: SurveyRequest | ShelfTestRequest | Conj
 
 def start_survey(pid: str, req: SurveyRequest, config: SimulationConfig) -> JobStatus:
     _check_id(pid, "project id")
-    currency = project_currency(pid, config.currency)
-    if req.currency.upper() != currency:
-        raise AppError(f"Survey currency must match project shopper budgets ({currency}); budgets are not converted automatically.", 422)
-    req = req.model_copy(update={"currency": currency})
-    images: list[Image.Image] = []
-    for aid in req.stimuli:
-        img = Image.open(package_path(pid, aid))
-        img.load()
-        images.append(img)
-    names = [req.stimulus_names[i] if i < len(req.stimulus_names) and req.stimulus_names[i] else LETTERS[i]
-             for i in range(len(images))]
-    respondents = select_personas(_quota(_personas(pid), req), req.panel, seed=req.seed)
-    llm_config = capture_llm_config(config, req.model)
-    if llm_config is None:
-        raise AppError("a survey needs a vision model", 400)
-    # Respondents differ by persona; a little sampling temperature keeps answers from collapsing to one.
-    llm_config = llm_config.model_copy(update={
-        "max_tokens": 900, "temperature": 0.6, "cache_dir": str(Path(DATA_DIR) / "llm_cache" / "survey"),
-    })
-    board = stimulus_board(images, names)
-    name = req.name.strip() or f"Concept test · {', '.join(names)}"
-    status = _new_job(pid, "survey", name, req)
-    board.save(_job_dir(pid, "survey", status.job_id) / "board.jpg", quality=90)
+    with setup_tree_transaction(pid):
+        currency = project_currency(pid, config.currency)
+        if req.currency.upper() != currency:
+            raise AppError(f"Survey currency must match project shopper budgets ({currency}); budgets are not converted automatically.", 422)
+        req = req.model_copy(update={"currency": currency})
+        images: list[Image.Image] = []
+        for aid in req.stimuli:
+            img = Image.open(package_path(pid, aid))
+            img.load()
+            images.append(img)
+        names = [req.stimulus_names[i] if i < len(req.stimulus_names) and req.stimulus_names[i] else LETTERS[i]
+                 for i in range(len(images))]
+        respondents = select_personas(_quota(_personas(pid), req), req.panel, seed=req.seed)
+        llm_config = capture_llm_config(config, req.model)
+        if llm_config is None:
+            raise AppError("a survey needs a vision model", 400)
+        # Respondents differ by persona; a little sampling temperature keeps answers from collapsing to one.
+        llm_config = llm_config.model_copy(update={
+            "max_tokens": 900, "temperature": 0.6, "cache_dir": str(Path(DATA_DIR) / "llm_cache" / "survey"),
+        })
+        board = stimulus_board(images, names)
+        name = req.name.strip() or f"Concept test · {', '.join(names)}"
+        status = _new_job(pid, "survey", name, req)
+        board.save(_job_dir(pid, "survey", status.job_id) / "board.jpg", quality=90)
 
     def run() -> None:
         t0 = time.perf_counter()
@@ -616,20 +617,24 @@ def preview_shelf(pid: str, req: ShelfPreviewRequest, config: SimulationConfig) 
 
 
 def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) -> JobStatus:
-    rack, test_rack, face, applied, warnings, currency = _shelf_arms(pid, req, config)
-    if not applied:
-        raise AppError(f"the test shelf changes nothing: {'; '.join(warnings) or 'no changes'}", 400)
-    names = {i.sku: i.name for r in (rack, test_rack) for sl in r.slots for i in sl.items}
-    target_name = names.get(req.target_sku, req.target_sku)
-    respondents = select_personas(_quota(_personas(pid), req), req.panel, seed=req.seed)
-    llm_config = capture_llm_config(config, req.model)
-    if llm_config is None:
-        raise AppError("a shelf test needs a vision model", 400)
-    llm_config = llm_config.model_copy(update={
-        "max_tokens": 400, "temperature": 0.6, "cache_dir": str(Path(DATA_DIR) / "llm_cache" / "shelf_test"),
-    })
-    name = req.name.strip() or f"Shelf test · {target_name}"
-    status = _new_job(pid, "shelf", name, req)
+    try:
+        with setup_tree_transaction(pid, [req.setup_id]), FileLock(setup_lock_path(pid, req.setup_id), timeout=10):
+            rack, test_rack, face, applied, warnings, currency = _shelf_arms(pid, req, config)
+            if not applied:
+                raise AppError(f"the test shelf changes nothing: {'; '.join(warnings) or 'no changes'}", 400)
+            names = {i.sku: i.name for r in (rack, test_rack) for sl in r.slots for i in sl.items}
+            target_name = names.get(req.target_sku, req.target_sku)
+            respondents = select_personas(_quota(_personas(pid), req), req.panel, seed=req.seed)
+            llm_config = capture_llm_config(config, req.model)
+            if llm_config is None:
+                raise AppError("a shelf test needs a vision model", 400)
+            llm_config = llm_config.model_copy(update={
+                "max_tokens": 400, "temperature": 0.6, "cache_dir": str(Path(DATA_DIR) / "llm_cache" / "shelf_test"),
+            })
+            name = req.name.strip() or f"Shelf test · {target_name}"
+            status = _new_job(pid, "shelf", name, req)
+    except Timeout:
+        raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
 
     def run() -> None:
         t0 = time.perf_counter()
@@ -696,19 +701,20 @@ def shelf_test_report(pid: str, tid: str) -> str:
 
 def start_conjoint(pid: str, req: ConjointRequest, config: SimulationConfig) -> JobStatus:
     _check_id(pid, "project id")
-    currency = project_currency(pid, config.currency)
-    if req.prices and req.currency.upper() != currency:
-        raise AppError(f"Conjoint prices must be in the project currency ({currency}); budgets are not converted automatically.", 422)
-    req = req.model_copy(update={"currency": currency})
-    respondents = select_personas(_quota(_personas(pid), req), req.panel, seed=req.seed)
-    llm_config = capture_llm_config(config, req.model)
-    if llm_config is None:
-        raise AppError("a conjoint study needs a model", 400)
-    llm_config = llm_config.model_copy(update={
-        "max_tokens": 240 + 24 * req.tasks, "temperature": 0.6, "cache_dir": str(Path(DATA_DIR) / "llm_cache" / "conjoint"),
-    })
-    name = req.name.strip() or f"Conjoint · {req.product}"
-    status = _new_job(pid, "conjoint", name, req)
+    with setup_tree_transaction(pid):
+        currency = project_currency(pid, config.currency)
+        if req.prices and req.currency.upper() != currency:
+            raise AppError(f"Conjoint prices must be in the project currency ({currency}); budgets are not converted automatically.", 422)
+        req = req.model_copy(update={"currency": currency})
+        respondents = select_personas(_quota(_personas(pid), req), req.panel, seed=req.seed)
+        llm_config = capture_llm_config(config, req.model)
+        if llm_config is None:
+            raise AppError("a conjoint study needs a model", 400)
+        llm_config = llm_config.model_copy(update={
+            "max_tokens": 240 + 24 * req.tasks, "temperature": 0.6, "cache_dir": str(Path(DATA_DIR) / "llm_cache" / "conjoint"),
+        })
+        name = req.name.strip() or f"Conjoint · {req.product}"
+        status = _new_job(pid, "conjoint", name, req)
 
     def run() -> None:
         t0 = time.perf_counter()
