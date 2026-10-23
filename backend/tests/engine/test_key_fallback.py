@@ -334,6 +334,7 @@ def test_the_local_model_gets_smaller_requests_and_a_smaller_quick_sample(monkey
     class _Client:
         def __init__(self, parallel: int | None) -> None:
             self.max_parallel = parallel
+            self.api_base = "http://127.0.0.1:8081/v1" if parallel is not None else None
 
         def get_usage(self):
             from store_emulator.domain.types import TokenUsage

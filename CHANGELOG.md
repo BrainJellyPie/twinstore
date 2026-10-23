@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep paid customer-generation models priced when their client limits concurrent
+  requests. Endpoint locality now controls cost warnings and local batch sizes, while
+  provider timing respects lower concurrency limits.
+
 - Freeze the resolved product images for visual A/B and shelf studies before work is
   submitted. Source deletion, SKU-photo replacement and later photo additions cannot
   change a running comparison; saved shelf evidence and all participants use the same art.

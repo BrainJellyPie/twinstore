@@ -294,7 +294,7 @@ async def _run_async_pipeline(
             daily_cap=min(usual.daily_cap, LOCAL_MODEL_PACE.daily_cap),
             batch_size=min(usual.batch_size, LOCAL_MODEL_PACE.batch_size),
             sample_cap=min(usual.sample_cap, LOCAL_MODEL_PACE.sample_cap),
-        ) if llm.max_parallel is not None else usual,
+        ) if is_local_base(llm.api_base) else usual,
         decide=decide if gen_id else None,
         on_progress=progress,
         address=str(meta.get("address", "")),
@@ -320,7 +320,7 @@ def write_estimate(llm: LiteLLMClient, plan: gen_persona.WritePlan, size: gen_pe
     """About how long and how much writing `size` takes from here, scaled from the timed probe request (already
     written, so it is not counted again)."""
     requests = max(0, size.requests - 1)
-    local = llm.max_parallel is not None or is_local_base(llm.api_base)
+    local = is_local_base(llm.api_base)
     minutes = requests * plan.probe_seconds / effective_parallel(local, llm.max_parallel) / 60
     cost: float | None = None
     if not local:
@@ -338,7 +338,7 @@ async def _decide(project_id: str, gen_id: str, llm: LiteLLMClient, plan: gen_pe
     if not should_warn(cast(float, every["minutes"]), cost if isinstance(cost, float) else None) or not gen_id:
         return plan.all.per_day
     confirm: dict[str, object] = {
-        "model": llm.model, "local": llm.max_parallel is not None or is_local_base(llm.api_base),
+        "model": llm.model, "local": is_local_base(llm.api_base),
         "days": len(plan.visitors), "visitors_per_day": {str(day): n for day, n in sorted(plan.visitors.items())},
         "all": every, "sample": sample,
     }

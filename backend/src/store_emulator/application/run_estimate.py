@@ -110,8 +110,6 @@ def estimate_run(pid: str, setup_id: str, options: RunOptions, config: Simulatio
         local_seconds: dict[str, float] = {}
         for member, share, is_local in zip(resolved, shares, local_members, strict=True):
             parallel = effective_parallel(is_local, member.max_parallel)
-            if not is_local and member.max_parallel is not None:
-                parallel = min(parallel, member.max_parallel)
             duration = calls * share * _SECONDS_PER_REQUEST[is_local] / parallel
             if is_local:
                 endpoint = (member.api_base or "").rstrip("/")
