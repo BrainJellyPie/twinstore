@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reserve Excel uploads while files and images are prepared, preventing a slower
+  old file from overwriting a later import. Leaving or switching layouts discards
+  staged work before slot replacement; image batches settle before another upload.
+
 - Make downloaded product workbooks reimportable for stores with dining furniture
   and locked faces. Export only product-capable fixtures and exposed faces, retain
   every rotated rack block, and skip empty blocked template rows on upload.

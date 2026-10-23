@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2, Download, Upload } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { useReplaceSlots } from "@/shared/mutations/useReplaceSlots";
@@ -18,7 +18,11 @@ interface LayoutExcelControlsProps {
   mode?: "full" | "download";
 }
 
-export function LayoutExcelControls({
+export function LayoutExcelControls(props: LayoutExcelControlsProps) {
+  return <ExcelControls key={`${props.projectId}:${props.setupId}`} {...props} />;
+}
+
+function ExcelControls({
   store,
   projectId,
   setupId,
@@ -30,6 +34,13 @@ export function LayoutExcelControls({
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [uploadInfo, setUploadInfo] = useState<{ count: number; clearedCount: number; imageWarning?: string } | null>(null);
   const [uploadParseError, setUploadParseError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const uploadInFlight = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const replace = useReplaceSlots();
 
   // Gate the "File uploaded" feedback on the live store: when the store no
@@ -65,16 +76,21 @@ export function LayoutExcelControls({
   }, [store]);
 
   const handleFile = useCallback(async (file: File) => {
+    if (uploadInFlight.current) return;
+    uploadInFlight.current = true;
+    setUploading(true);
     setUploadInfo(null);
     setUploadParseError(null);
     replace.reset();
     try {
       const buffer = await file.arrayBuffer();
+      if (!mounted.current) return;
       const { slots } = parseLayoutWorkbook(buffer);
 
       // Extract embedded SKU images and upload. Images are side data — if this fails,
       // continue with the slots replace (image upload is best-effort).
       const skuImages = await extractSkuImages(buffer);
+      if (!mounted.current) return;
       let imageWarning: string | null = null;
       if (Object.keys(skuImages).length > 0) {
         try {
@@ -84,7 +100,9 @@ export function LayoutExcelControls({
         }
       }
 
+      if (!mounted.current) return;
       const res = await replace.mutateAsync({ projectId, setupId, slots });
+      if (!mounted.current) return;
       // backend returns res.count = sum(len(slot.items)), i.e. placement count.
       // Aggregate `cleared` the same way — by SKU placement, not by coordinate.
       const clearedCount = res.cleared.reduce(
@@ -99,7 +117,10 @@ export function LayoutExcelControls({
     } catch (e) {
       // Failures before the mutation runs (e.g. missing rack_layout sheet,
       // corrupt xlsx). Backend mutation failures surface via `replace.error`.
-      setUploadParseError(e instanceof Error ? e.message : String(e));
+      if (mounted.current) setUploadParseError(e instanceof Error ? e.message : String(e));
+    } finally {
+      uploadInFlight.current = false;
+      if (mounted.current) setUploading(false);
     }
   }, [projectId, setupId, replace]);
 
@@ -116,9 +137,9 @@ export function LayoutExcelControls({
             size="sm"
             className="h-7 flex-1 text-xs"
             onClick={() => fileInputRef.current?.click()}
-            disabled={replace.isPending}
+            disabled={uploading || replace.isPending}
           >
-            {replace.isPending ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Upload className="mr-1 size-3" />}
+            {uploading || replace.isPending ? <Loader2 className="mr-1 size-3 animate-spin" /> : <Upload className="mr-1 size-3" />}
             {t("excelUpload")}
           </Button>
         )}
@@ -139,6 +160,7 @@ export function LayoutExcelControls({
           ref={fileInputRef}
           type="file"
           accept=".xlsx"
+          disabled={uploading || replace.isPending}
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];

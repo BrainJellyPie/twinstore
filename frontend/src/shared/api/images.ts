@@ -53,9 +53,16 @@ export async function uploadSkuImages(
 ): Promise<UploadedSkuImage[]> {
   const entries = Object.entries(skuToBytes);
   if (entries.length === 0) return [];
-  return await Promise.all(
+  // A failed upload must not release the workbook's busy state while older image writes are still running.
+  const settled = await Promise.allSettled(
     entries.map(([sku, { bytes, extension }]) =>
       uploadOne(projectId, sku, bytes, extension),
     ),
   );
+  const failed = settled.find((result) => result.status === "rejected");
+  if (failed?.status === "rejected") {
+    const reason: unknown = failed.reason;
+    throw reason instanceof Error ? reason : new Error(String(reason));
+  }
+  return settled.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
 }
