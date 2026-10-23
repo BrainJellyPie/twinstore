@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reserve each run ID across a project's layouts before marking a simulation pending. Concurrent starts with
+  the same ID can no longer launch two jobs into one results directory or leave the rejected layout running.
+
 - Keep the API responsive while simulation starts, product uploads, layout cloning/deletion or project deletion
   wait for a busy layout or tree lock. Those waits no longer stop unrelated status and health requests.
 
