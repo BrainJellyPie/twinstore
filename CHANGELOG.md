@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Restrict shared-store checkout assignments to counters reachable from the customer's queue
+  position. Counters across a disconnected wall no longer shorten waits or hide abandoned
+  baskets; connected counters and a counter serving both areas retain shared capacity.
+
 - Recheck product-edit and starter-fill sources under the source layout lock at final save.
   Concurrent floor changes now reject an outdated preview; operating and building settings
   are copied from the committed source instead of an earlier, possibly incomplete snapshot.
