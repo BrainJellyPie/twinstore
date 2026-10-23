@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep project browsing usable when customer/layout files contain the wrong JSON container or metadata
+  has a non-string creation date. Invalid customer containers appear as missing customers, malformed
+  layout files are skipped in lists and named on direct access, and original files remain untouched.
+
 - Validate customer arrival hours as 0–23 before saving. Out-of-range hours previously saved successfully
   and then silently removed those customers from runs with operating schedules.
 

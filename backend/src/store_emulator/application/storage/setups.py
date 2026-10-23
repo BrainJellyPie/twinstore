@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from store_emulator.application.storage.io import (
-    DATA_DIR, read_json, write_json, now_iso, generate_setup_id,
+    DATA_DIR, DamagedFile, read_json, write_json, now_iso, generate_setup_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,10 @@ def read_setup(project_id: str, setup_id: str) -> dict[str, Any]:
     path = setup_path(project_id, setup_id)
     if not path.exists():
         raise FileNotFoundError(f"Setup not found: {setup_id}")
-    data: dict[str, object] = read_json(path)
+    raw: object = read_json(path)
+    if not isinstance(raw, dict):
+        raise DamagedFile(path, "expected a JSON object")
+    data = cast(dict[str, object], raw)
     store, generation = data.get("store"), data.get("generation")
     # Earlier template layouts recorded their currency only in generation provenance.
     if isinstance(store, dict) and isinstance(generation, dict):
@@ -93,7 +96,10 @@ def list_setups(project_id: str, *, include_store: bool = False) -> list[dict[st
         if not f.suffix == ".json":
             continue
         try:
-            data = read_json(f)
+            raw: object = read_json(f)
+            if not isinstance(raw, dict):
+                raise DamagedFile(f, "expected a JSON object")
+            data = cast(dict[str, object], raw)
         except (OSError, ValueError) as e:   # a damaged layout file must not hide the others
             logger.warning(f"[setups] skipping {f.name} of {project_id}: unreadable ({type(e).__name__}: {e})")
             continue
