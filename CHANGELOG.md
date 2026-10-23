@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Respect the shopper's chosen checkout instead of redirecting every payment to the first counter. Counter-body
+  targets resolve to that counter's service tile, and payment events are attributed to the serving counter even
+  when a neighboring shelf shares the access tile.
+
 - Keep wandering shoppers on their planned path when shelf glances consume time. Reserve walking time before
   pauses, fit diagonal steps within the wandering budget, and timestamp glances at their start so playback no
   longer skips tiles or jumps into the next route leg.

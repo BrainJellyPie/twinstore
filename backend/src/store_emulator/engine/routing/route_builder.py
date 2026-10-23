@@ -365,12 +365,18 @@ def _sanitize_action(
 
     # PAY: snap into a counter's service_access_tiles.
     if action.action == Action.PAY:
+        fallback: Position | None = None
         for counter in store.counters:
             service = [t for t in counter.service_access_tiles(store.grid_size) if grid[t[1]][t[0]]]
             if service:
+                if fallback is None:
+                    fallback = service[0]
                 if (cx, cy) in service:
                     return action if (cx, cy) == action.target else action.model_copy(update={"target": (cx, cy)})
-                return action.model_copy(update={"target": service[0]})
+                if (cx, cy) in counter.occupied_positions:
+                    return action.model_copy(update={"target": service[0]})
+        if fallback is not None:
+            return action.model_copy(update={"target": fallback})
 
     # BUY: re-anchor target + face against the SKU's actual placement so the
     # persona walks to the face that actually carries the product. Skips when
