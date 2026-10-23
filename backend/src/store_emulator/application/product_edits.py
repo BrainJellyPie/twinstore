@@ -3,6 +3,7 @@ from pathlib import Path
 from filelock import FileLock, Timeout
 
 from store_emulator.application.errors import AppError
+from store_emulator.application.setups import setup_tree_transaction
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
 from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path
@@ -78,8 +79,9 @@ def save(pid: str, sid: str, req: ProductEditsSave) -> ProductEditsSaved:
             draft["id"] = path.stem
             draft["product_edits_request"] = req.model_dump(mode="json")
             draft["product_edits_result"] = result.model_dump(mode="json")
-            write_json(receipt, {"source_id": sid})
-            write_json(path, draft)
+            with setup_tree_transaction(pid, [sid]):
+                write_json(receipt, {"source_id": sid})
+                write_json(path, draft)
             return result
     except Timeout as exc:
         raise AppError("Another product draft is saving. Retry this save shortly", 409) from exc

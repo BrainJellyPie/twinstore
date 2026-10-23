@@ -7,6 +7,7 @@ from uuid import uuid4
 from filelock import FileLock, Timeout
 from PIL import Image, UnidentifiedImageError
 from store_emulator.application.errors import AppError
+from store_emulator.application.setups import setup_tree_transaction
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.shelf_lab import PackageAsset, package_asset, package_directory, package_edit
 from store_emulator.application.storage.io import DATA_DIR, write_json
@@ -139,8 +140,9 @@ def save(pid: str, sid: str, req: PhotoSave) -> PhotoSaved:
             if building is not None:
                 draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
             draft.update(id=path.stem, library_photos_request=req.model_dump(mode="json"), library_photos_result=result.model_dump(mode="json"))
-            write_json(receipt, {"source_id": sid})
-            write_json(path, draft)
+            with setup_tree_transaction(pid, [sid]):
+                write_json(receipt, {"source_id": sid})
+                write_json(path, draft)
             return result
     except Timeout as exc:
         raise AppError("Another photo layout is saving. Retry shortly", 409) from exc

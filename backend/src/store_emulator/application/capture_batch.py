@@ -8,7 +8,7 @@ from filelock import FileLock, Timeout
 from store_emulator.application import capture
 from store_emulator.application.errors import AppError
 from store_emulator.application.currencies import project_currency
-from store_emulator.application.setups import setup_lock_path
+from store_emulator.application.setups import setup_lock_path, setup_tree_transaction
 from store_emulator.application.storage.io import write_json
 from store_emulator.application.storage.setups import (
     metadata_path,
@@ -167,7 +167,7 @@ def save(
     path = setup_path(pid, f"setup_batch_{req.request_id}")
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with (FileLock(path.parent / ".capture-batch.lock", timeout=0),
+        with (setup_tree_transaction(pid), FileLock(path.parent / ".capture-batch.lock", timeout=0),
               FileLock(setup_lock_path(pid, path.stem), timeout=10)):
             if deleted_setup_path(pid, path.stem).exists():
                 raise AppError("This combined layout was deleted. Start a new preview to save another layout", 409)

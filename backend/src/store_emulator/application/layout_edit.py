@@ -20,7 +20,7 @@ from store_emulator.engine.layout_edit import (
 from .errors import AppError, model_failure
 from .providers import assistive_client
 from .product_sources import check_product_layout, read_product_source
-from .setups import set_active_setup, setup_summary
+from .setups import set_active_setup, setup_summary, setup_tree_transaction
 from .storage.io import write_json
 from .storage.setups import new_setup_data, read_setup, setup_path
 from .study_design import _last_run_units  # pyright: ignore[reportPrivateUsage]
@@ -114,9 +114,10 @@ def apply_edit(pid: str, sid: str, req: LayoutEditApply) -> dict[str, object]:
             result: dict[str, object] = {**setup_summary(pid, new_setup), "applied": applied, "warnings": problems}
             new_setup["layout_edit_request"] = req.model_dump(mode="json")
             new_setup["layout_edit_result"] = result
-            write_json(receipt, {"source_id": sid})
-            write_json(path, new_setup)
-            set_active_setup(pid, path.stem)
+            with setup_tree_transaction(pid, [sid]):
+                write_json(receipt, {"source_id": sid})
+                write_json(path, new_setup)
+                set_active_setup(pid, path.stem)
             return result
     except Timeout as exc:
         raise AppError("Another layout edit is saving. Retry this save shortly", 409) from exc

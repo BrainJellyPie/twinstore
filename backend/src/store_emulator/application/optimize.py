@@ -34,7 +34,7 @@ from .currencies import simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
 from .scenarios import get_preset, scenario_shoppers, scenario_store
-from .setups import set_active_setup, setup_summary
+from .setups import set_active_setup, setup_summary, setup_tree_transaction
 from .simulation import with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import new_setup_data, personas_path, read_setup, setup_path
@@ -272,8 +272,9 @@ def apply_optimization(pid: str, job_id: str, name: str | None = None) -> dict[s
         new_setup["operations"] = view.status.operations.model_dump(mode="json")
     if source.get("building") is not None:  # the optimized layout stays on the same building floor
         new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
-    write_json(setup_path(pid, new_setup["id"]), new_setup)
-    set_active_setup(pid, new_setup["id"])
+    with setup_tree_transaction(pid, [view.status.setup_id]):
+        write_json(setup_path(pid, new_setup["id"]), new_setup)
+        set_active_setup(pid, new_setup["id"])
     status = view.status.model_copy(update={"applied_setup_id": new_setup["id"]})
     _write_status(pid, status)
     return setup_summary(pid, new_setup)

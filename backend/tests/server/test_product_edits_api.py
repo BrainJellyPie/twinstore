@@ -61,6 +61,35 @@ def test_preview_save_and_open_product_variant_preserves_original(workflow):
     assert client.get(f"/api/projects/{PID}/setups/{draft['id']}").status_code == 200
 
 
+@pytest.mark.parametrize("removed", ["parent", "project"])
+def test_deletion_before_draft_commit_writes_neither_layout_nor_receipt(workflow, monkeypatch, removed):
+    from store_emulator.application import product_edits
+    from store_emulator.application.storage.setups import metadata_path
+
+    client, source = workflow
+    root = {**source, "id": "setup_root"}
+    write_json(setup_path(PID, root["id"]), root)
+    write_json(setup_path(PID, SID), {**source, "parentId": root["id"]})
+    body = {**request(client), "request_id": "d" * 32}
+    original = product_edits.read_setup
+
+    def deleted_after_read(pid, sid):
+        snapshot = original(pid, sid)
+        url = f"/api/projects/{PID}" + (f"/setups/{SID}" if removed == "parent" else "")
+        response = client.delete(url)
+        assert response.status_code == 200, response.text
+        return snapshot
+
+    monkeypatch.setattr(product_edits, "read_setup", deleted_after_read)
+    response = client.post(URL + "/save", json=body)
+    assert response.status_code == 404, response.text
+    path = setup_path(PID, "setup_products_" + body["request_id"])
+    assert not path.exists()
+    assert not (path.parent / ".product-edits" / f"{body['request_id']}.json").exists()
+    if removed == "project":
+        assert not metadata_path(PID).parent.exists()
+
+
 @pytest.mark.parametrize("patch", [
     {"price": -1}, {"price": 1.2}, {"price": True}, {"price": "100"},
     {"price": 9_007_199_254_740_992}, {"price": float("nan")}, {"price": float("inf")},

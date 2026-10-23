@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Coordinate new layout saves with parent-tree and project deletion. Deleting a layout while a child is
+  being saved no longer leaves orphaned branches; prepared saves recheck their parent and project before writing.
+
 - Keep the source building and floor when applying individual or combined shelf photos. Captured layouts no
   longer lose their floor association in multi-floor projects.
 

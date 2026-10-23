@@ -30,7 +30,7 @@ from store_emulator.engine.validation import validate
 
 from .capture import capture_llm_config
 from .errors import AppError
-from .setups import set_active_setup, setup_summary
+from .setups import set_active_setup, setup_summary, setup_tree_transaction
 from .storage.io import DATA_DIR, read_json, write_json
 from .storage.setups import metadata_path, new_setup_data, setup_path
 
@@ -169,8 +169,9 @@ def import_floor_plan(
         raise AppError(f"the plan did not give a valid layout: {errors[0].message}", 422)
     setup = new_setup_data(layout_name, None, store.model_dump(mode="json"),
                            f"floor plan import ({reading.reader}), page {page_number}/{page_count}, rotation {rotation}: {'; '.join(notes)}"[:1000])
-    write_json(setup_path(pid, setup["id"]), setup)
-    set_active_setup(pid, setup["id"])
+    with setup_tree_transaction(pid):
+        write_json(setup_path(pid, setup["id"]), setup)
+        set_active_setup(pid, setup["id"])
     folder = Path(DATA_DIR) / pid / "floorplans"
     folder.mkdir(parents=True, exist_ok=True)
     img.thumbnail((2000, 2000))

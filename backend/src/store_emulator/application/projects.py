@@ -11,6 +11,7 @@ from store_emulator.domain.layout_options import TemplateLayoutRequest
 from store_emulator.application.template_layouts import prepare_template_layout
 from store_emulator.application.template_assortment import select_initial_assortment
 from store_emulator.application.errors import AppError
+from store_emulator.application.setups import setup_tree_transaction
 from store_emulator.application.generation_async import start_persona_generation
 from store_emulator.application.storage.generations import find_active_generation
 from store_emulator.application.storage.images import delete_project_images
@@ -217,20 +218,21 @@ def delete_project(project_id: str) -> None:
     project_dir = _data / project_id
     if not metadata_path(project_id).is_file():
         raise FileNotFoundError(f"Project not found: {project_id}")
-    for pattern in ("runs/*/status.json", "generations/*/status.json", "optimizations/*/status.json",
-                    "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json",
-                    "synergy/*/status.json"):
-        for status_path in project_dir.glob(pattern):
-            try:
-                raw: object = read_json(status_path)
-            except (OSError, ValueError):
-                continue
-            if isinstance(raw, dict):
-                state = cast(dict[str, object], raw).get("status")
-                if state in ("pending", "running"):
-                    raise AppError(f"cannot delete project while job '{status_path.parent.name}' is {state}. Wait until it finishes.", 409)
-    remove_tree(project_dir)
-    delete_project_images(project_id)
+    with setup_tree_transaction(project_id):
+        for pattern in ("runs/*/status.json", "generations/*/status.json", "optimizations/*/status.json",
+                        "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json",
+                        "synergy/*/status.json"):
+            for status_path in project_dir.glob(pattern):
+                try:
+                    raw: object = read_json(status_path)
+                except (OSError, ValueError):
+                    continue
+                if isinstance(raw, dict):
+                    state = cast(dict[str, object], raw).get("status")
+                    if state in ("pending", "running"):
+                        raise AppError(f"cannot delete project while job '{status_path.parent.name}' is {state}. Wait until it finishes.", 409)
+        remove_tree(project_dir)
+        delete_project_images(project_id)
 
 
 def create_project_without_layout(
