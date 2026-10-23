@@ -1,23 +1,17 @@
 import logging
 import math
-import re
-import time
 import uuid
-from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, Literal, cast
-
-from filelock import FileLock, Timeout
 
 from store_emulator.engine.files import remove_tree
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.store import DaySchedule, Store
 from store_emulator.domain.layout_options import TemplateLayoutRequest
-from store_emulator.domain.types import RESOURCE_ID_PATTERN
 from store_emulator.application.template_layouts import prepare_template_layout
 from store_emulator.application.template_assortment import select_initial_assortment
 from store_emulator.application.errors import AppError
-from store_emulator.application.setups import setup_lock_path, setup_tree_transaction
+from store_emulator.application.setups import project_layout_transaction
 from store_emulator.application.generation_async import start_persona_generation
 from store_emulator.application.storage.generations import find_active_generation
 from store_emulator.application.storage.images import delete_project_images
@@ -25,7 +19,7 @@ from store_emulator.application.storage.io import DATA_DIR, DamagedFile, write_j
 from store_emulator.application.storage.setups import (
     metadata_path, personas_path,
     read_setup, list_setups, create_initial_setup,
-    read_state, write_state, setup_dir, setup_path, final_runs, has_run_history,
+    read_state, write_state, setup_path, final_runs, has_run_history,
 )
 
 
@@ -181,20 +175,21 @@ def save_project_personas(
     if not metadata_path(project_id).is_file():
         raise FileNotFoundError(f"Project not found: {project_id}")
 
-    setups = list_setups(project_id)
-    if any(s.get("status") == "running" for s in setups):
-        raise AppError("personas cannot be modified while a simulation is running.", 409)
-    if has_run_history(project_id):
-        raise AppError("personas cannot be modified because the project has simulation history. Create a new project.", 409)
-    if find_active_generation(project_id, kind="persona"):
-        raise AppError("personas cannot be modified while persona generation is in progress.", 409)
-    write_json(personas_path(project_id), personas)
+    with project_layout_transaction(project_id):
+        setups = list_setups(project_id)
+        if any(s.get("status") == "running" for s in setups):
+            raise AppError("personas cannot be modified while a simulation is running.", 409)
+        if has_run_history(project_id):
+            raise AppError("personas cannot be modified because the project has simulation history. Create a new project.", 409)
+        if find_active_generation(project_id, kind="persona"):
+            raise AppError("personas cannot be modified while persona generation is in progress.", 409)
+        write_json(personas_path(project_id), personas)
 
-    meta_file = metadata_path(project_id)
-    if meta_file.exists():
-        meta: dict[str, Any] = read_json(meta_file)
-        meta["updated_at"] = now_iso()
-        write_json(meta_file, meta)
+        meta_file = metadata_path(project_id)
+        if meta_file.exists():
+            meta: dict[str, Any] = read_json(meta_file)
+            meta["updated_at"] = now_iso()
+            write_json(meta_file, meta)
 
 
 def update_project_metadata(
@@ -224,37 +219,21 @@ def delete_project(project_id: str) -> None:
     project_dir = _data / project_id
     if not metadata_path(project_id).is_file():
         raise FileNotFoundError(f"Project not found: {project_id}")
-    with setup_tree_transaction(project_id):
-        deadline = time.monotonic() + 10
-        try:
-            with ExitStack() as locks:
-                # Starts publish pending status under these locks. Freeze the
-                # layouts before checking jobs so deletion cannot miss a new run.
-                for path in sorted(setup_dir(project_id).glob("*.json")):
-                    if not re.fullmatch(RESOURCE_ID_PATTERN, path.stem):
-                        continue  # invalid filenames cannot be addressed by an API layout operation
-                    locks.enter_context(FileLock(
-                        str(setup_lock_path(project_id, path.stem)),
-                        timeout=max(0, deadline - time.monotonic()),
-                    ))
-                for pattern in ("runs/*/status.json", "generations/*/status.json", "optimizations/*/status.json",
-                                "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json",
-                                "synergy/*/status.json"):
-                    for status_path in project_dir.glob(pattern):
-                        try:
-                            raw: object = read_json(status_path)
-                        except (OSError, ValueError):
-                            continue
-                        if isinstance(raw, dict):
-                            state = cast(dict[str, object], raw).get("status")
-                            if state in ("pending", "running"):
-                                raise AppError(f"cannot delete project while job '{status_path.parent.name}' is {state}. Wait until it finishes.", 409)
-                remove_tree(project_dir)
-                delete_project_images(project_id)
-        except Timeout:
-            raise AppError(503, "setup_lock_timeout", "lock_timeout",
-                           "another request is modifying this project's layouts. Please retry shortly.",
-                           {"timeout_seconds": 10})
+    with project_layout_transaction(project_id):
+        for pattern in ("runs/*/status.json", "generations/*/status.json", "optimizations/*/status.json",
+                        "captures/*/status.json", "captures/*/lab/jobs/*/status.json", "marketing/*/*/status.json",
+                        "synergy/*/status.json"):
+            for status_path in project_dir.glob(pattern):
+                try:
+                    raw: object = read_json(status_path)
+                except (OSError, ValueError):
+                    continue
+                if isinstance(raw, dict):
+                    state = cast(dict[str, object], raw).get("status")
+                    if state in ("pending", "running"):
+                        raise AppError(f"cannot delete project while job '{status_path.parent.name}' is {state}. Wait until it finishes.", 409)
+        remove_tree(project_dir)
+        delete_project_images(project_id)
 
 
 def create_project_without_layout(
