@@ -100,7 +100,7 @@ async def save_personas(pid: str, req: SavePersonasRequest) -> StatusResponse:
 async def delete_project(pid: str) -> StatusResponse:
     """Permanently delete the project and child data. Returns 409 while a background job is active."""
     try:
-        project_service.delete_project(pid)
+        await run_in_threadpool(project_service.delete_project, pid)
     except FileNotFoundError:
         raise HTTPException(404, "project not found")
     except AppError as e:
