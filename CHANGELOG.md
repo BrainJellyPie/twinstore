@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Scale daily experiment and shelf-audit money using each included weekday's visitor estimate and sample
+  count. Excluded busy days no longer inflate quieter-day reports. Missing or invalid estimates fall back
+  to that day's observed customers without discarding usable estimates for other days.
+
 - Validate saved customer records and unique, nonblank IDs before simulations, estimates, optimization
   and customer studies. Duplicate IDs no longer bypass sample caps or collapse distinct customer results;
   invalid saved records report a repairable input error before work is registered, preserving the source file.
