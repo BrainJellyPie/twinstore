@@ -19,12 +19,12 @@ export const operationsMessages = {
   opsPatience: ["Patience in line (minutes)", "줄 서서 참는 시간(분)", "排队耐心（分钟）", "列で待てる時間（分）", "Paciencia en la cola (minutos)", "Patience dans la file (minutes)"],
   opsPatienceHint: ["Typical shopper; some wait longer, some less", "보통 손님 기준이며 사람마다 다릅니다", "指一般顾客，每个人会有长有短", "平均的な客の場合。人によって長短があります", "Cliente típico; unos esperan más y otros menos", "Client type ; certains attendent plus, d’autres moins"],
   opsInvalid: [
-    "Check the store settings: units 1–10,000, refill every 5–1,440 minutes (or blank), tills 1–50 (or blank), patience 0.5–120 minutes, crowd 2–50 shoppers (or blank), backroom 0–1,000,000 units (or blank), crew 1–100 (or blank), refill point 0–95 %.",
-    "매장 설정을 확인하세요. 진열 수량은 1–10,000, 보충 주기는 5–1,440분(또는 빈칸), 계산대는 1–50개(또는 빈칸), 참는 시간은 0.5–120분, 붐빔 기준은 2–50명(또는 빈칸), 창고 재고는 0–1,000,000개(또는 빈칸), 근무 직원은 1–100명(또는 빈칸), 보충 시점은 0–95%여야 합니다.",
-    "请检查门店设置：数量 1–10,000，补货间隔 5–1,440 分钟（或留空），收银台 1–50 个（或留空），耐心 0.5–120 分钟，拥挤人数 2–50（或留空），后仓 0–1,000,000 件（或留空），当班员工 1–100 人（或留空），补货时机 0–95%。",
-    "店舗の設定を確認してください。数量は1〜10,000、補充間隔は5〜1,440分（または空欄）、レジは1〜50台（または空欄）、待てる時間は0.5〜120分、混雑の人数は2〜50人（または空欄）、バックヤードは0〜1,000,000個（または空欄）、勤務スタッフは1〜100人（または空欄）、補充の目安は0〜95%です。",
-    "Revisa los ajustes de la tienda: unidades 1–10.000, reponer cada 5–1.440 minutos (o en blanco), cajas 1–50 (o en blanco), paciencia 0,5–120 minutos, aglomeración 2–50 clientes (o en blanco), almacén 0–1.000.000 unidades (o en blanco), personal 1–100 (o en blanco), punto de reposición 0–95 %.",
-    "Vérifiez les réglages du magasin : unités 1–10 000, réassort toutes les 5–1 440 minutes (ou vide), caisses 1–50 (ou vide), patience 0,5–120 minutes, foule 2–50 clients (ou vide), réserve 0–1 000 000 unités (ou vide), équipe 1–100 (ou vide), seuil de réassort 0–95 %.",
+    "Check the store settings: units 1–10,000, refill every 5–1,440 minutes (or blank), tills 1–50 (or blank), patience 10 seconds–120 minutes, crowd 2–50 shoppers (or blank), backroom 0–1,000,000 units (or blank), crew 1–100 (or blank), refill point 0–95 %.",
+    "매장 설정을 확인하세요. 진열 수량은 1–10,000, 보충 주기는 5–1,440분(또는 빈칸), 계산대는 1–50개(또는 빈칸), 참는 시간은 10초–120분, 붐빔 기준은 2–50명(또는 빈칸), 창고 재고는 0–1,000,000개(또는 빈칸), 근무 직원은 1–100명(또는 빈칸), 보충 시점은 0–95%여야 합니다.",
+    "请检查门店设置：数量 1–10,000，补货间隔 5–1,440 分钟（或留空），收银台 1–50 个（或留空），耐心 10 秒至 120 分钟，拥挤人数 2–50（或留空），后仓 0–1,000,000 件（或留空），当班员工 1–100 人（或留空），补货时机 0–95%。",
+    "店舗の設定を確認してください。数量は1〜10,000、補充間隔は5〜1,440分（または空欄）、レジは1〜50台（または空欄）、待てる時間は10秒〜120分、混雑の人数は2〜50人（または空欄）、バックヤードは0〜1,000,000個（または空欄）、勤務スタッフは1〜100人（または空欄）、補充の目安は0〜95%です。",
+    "Revisa los ajustes de la tienda: unidades 1–10.000, reponer cada 5–1.440 minutos (o en blanco), cajas 1–50 (o en blanco), paciencia de 10 segundos a 120 minutos, aglomeración 2–50 clientes (o en blanco), almacén 0–1.000.000 unidades (o en blanco), personal 1–100 (o en blanco), punto de reposición 0–95 %.",
+    "Vérifiez les réglages du magasin : unités 1–10 000, réassort toutes les 5–1 440 minutes (ou vide), caisses 1–50 (ou vide), patience de 10 secondes à 120 minutes, foule 2–50 clients (ou vide), réserve 0–1 000 000 unités (ou vide), équipe 1–100 (ou vide), seuil de réassort 0–95 %.",
   ],
 
   opsTitle: ["Store operations", "매장 운영", "门店运营", "店舗オペレーション", "Operación de la tienda", "Fonctionnement du magasin"],

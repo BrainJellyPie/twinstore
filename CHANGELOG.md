@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve saved queue-patience and refill thresholds in the run and operations forms. Loading a plan no longer
+  rounds 31.25 seconds to 30 or 12.5% to 13%; the UI accepts the server's 10-second minimum and fractional thresholds,
+  with matching validation guidance in all six languages.
+
 - Resolve missing model destinations for known-product purchases and checkout. Shoppers no longer record
   remote purchases and payments at the entrance when optional coordinates are omitted; unknown SKUs are still rejected.
 

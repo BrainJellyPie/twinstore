@@ -26,6 +26,11 @@ export function wholeIn(text: string, min: number, max: number): number | null {
   return text.trim() !== "" && Number.isInteger(value) && value >= min && value <= max ? value : null;
 }
 
+export function numberIn(text: string, min: number, max: number): number | null {
+  const value = Number(text.trim());
+  return text.trim() !== "" && Number.isFinite(value) && value >= min && value <= max ? value : null;
+}
+
 /** The run option for the choice: undefined when shoppers each have the store alone, "invalid" for a value out of
  *  range. Blank refill and tills mean "only overnight" and "every till". */
 export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig | undefined | "invalid" {
@@ -33,14 +38,13 @@ export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig 
   const stock = wholeIn(choice.stock, 1, 10_000);
   const restock = choice.restock.trim() === "" ? null : wholeIn(choice.restock, 5, 1440);
   const tills = choice.tills.trim() === "" ? null : wholeIn(choice.tills, 1, 50);
-  const patience = Number(choice.patience.trim());
-  const patienceOk = choice.patience.trim() !== "" && Number.isFinite(patience) && patience >= 0.5 && patience <= 120;
+  const patience = numberIn(choice.patience, 10 / 60, 120);
   const crowd = choice.crowd.trim() === "" ? null : wholeIn(choice.crowd, 2, 50);
   const backroom = choice.backroom.trim() === "" ? null : wholeIn(choice.backroom, 0, 1_000_000);
   const crew = choice.crew.trim() === "" ? null : wholeIn(choice.crew, 1, 100);
-  const refillAt = wholeIn(choice.refillAt, 0, 95);
+  const refillAt = numberIn(choice.refillAt, 0, 95);
   if (stock === null || (choice.restock.trim() !== "" && restock === null)
-      || (choice.tills.trim() !== "" && tills === null) || !patienceOk || (choice.crowd.trim() !== "" && crowd === null)
+      || (choice.tills.trim() !== "" && tills === null) || patience === null || (choice.crowd.trim() !== "" && crowd === null)
       || (choice.backroom.trim() !== "" && backroom === null) || (choice.crew.trim() !== "" && crew === null)
       || (crew !== null && refillAt === null)) {
     return "invalid";
@@ -49,7 +53,7 @@ export function sharedStoreOptions(choice: SharedStoreChoice): OperationsConfig 
     stock_per_facing: stock,
     restock_every_min: restock,
     open_counters: tills,
-    patience_sec: Math.round(patience * 60),
+    patience_sec: patience * 60,
     crowd_limit: crowd,
     backroom_per_product: backroom,
     daily_delivery: choice.delivery,
@@ -65,12 +69,12 @@ export function choiceFromConfig(config: OperationsConfig): SharedStoreChoice {
     stock: String(config.stock_per_facing ?? 12),
     restock: config.restock_every_min == null ? "" : String(config.restock_every_min),
     tills: config.open_counters == null ? "" : String(config.open_counters),
-    patience: String(Math.round(((config.patience_sec ?? 300) / 60) * 10) / 10),
+    patience: String((config.patience_sec ?? 300) / 60),
     // Reports from before crowding have no setting: crowding had no effect then.
     crowd: config.crowd_limit == null ? "" : String(config.crowd_limit),
     backroom: config.backroom_per_product == null ? "" : String(config.backroom_per_product),
     delivery: config.daily_delivery ?? true,
     crew: config.crew == null ? "" : String(config.crew),
-    refillAt: String(Math.round((config.refill_at ?? 0.5) * 100)),
+    refillAt: String((config.refill_at ?? 0.5) * 100),
   };
 }
