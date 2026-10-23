@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject shelf-test answers that name product badges absent from the displayed shelf.
+  Invalid choices no longer count as refusals or missing attention, and incomplete pairs
+  stay out of comparisons. Render queued respondent images only when a worker slot is free.
+
 - Account for every vision voter and weighted mixture members in run cost estimates.
   Mixed local/cloud populations retain the paid share's cost and the local server's workload;
   a provider concurrency limit no longer makes a paid cloud model appear free.

@@ -74,6 +74,25 @@ def test_no_complete_pairs_cannot_be_reported_as_success(client, monkeypatch, fa
     assert "pair" in view["error"].lower()
 
 
+@pytest.mark.parametrize("failures", ["all", "test_arm"])
+def test_nonexistent_model_badges_cannot_produce_a_completed_comparison(client, monkeypatch, failures):
+    from store_emulator.engine.marketing.shelf_test import shelf_panel
+
+    class InvalidBadges:
+        calls = 0
+
+        async def generate_structured_with_image_async(self, schema, *args, **kwargs):
+            self.calls += 1
+            invalid = failures == "all" or self.calls % 2 == 0
+            return schema.model_validate({"pick": 999999 if invalid else 0, "noticed": []})
+
+    monkeypatch.setattr(marketing, "shelf_panel", shelf_panel)
+    monkeypatch.setattr(marketing, "LiteLLMClient", lambda config: InvalidBadges())
+    _, view = finish(client)
+    assert view["status"] == "failed" and view["report"] is None
+    assert "pair" in view["error"].lower()
+
+
 def test_partial_pairs_use_the_same_panel_for_every_report_metric(client, monkeypatch):
     async def panel(_llm, personas, *_args, **_kwargs):
         return [ShelfChoice(respondent=p.id, age_group=str(p.age_group), gender=str(p.gender), arm=arm,
