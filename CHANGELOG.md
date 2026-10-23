@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reuse parsed POS timestamps within each import, with a bounded cache. Receipt product lines no longer
+  repeatedly parse identical date/time strings for both receipt grouping and hourly fidelity.
+
 - Keep the server responsive while comparing runs, scoring uploaded POS data or exporting customer CSVs.
   Their synchronous file parsing and calculations now run in the worker pool, allowing unrelated status
   requests to complete while the analysis is still in progress.

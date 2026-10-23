@@ -7,7 +7,9 @@ unit price (or line total), and a timestamp/hour column.
 
 import io
 import re
+from collections.abc import Callable
 from datetime import date, datetime, time
+from functools import lru_cache
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
 
@@ -64,6 +66,12 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
             + "; ".join(f"{k}: {', '.join(_ALIASES[k])}" for k in missing)
         )
 
+    @lru_cache(maxsize=4096)
+    def parse_timestamp(text: str) -> datetime | None:
+        # Receipt product lines repeat timestamps; bound retained values to this import's recent clocks.
+        parsed: object = pd.to_datetime(text, errors="coerce")  # type: ignore[reportUnknownMemberType]
+        return parsed if isinstance(parsed, datetime) and not pd.isna(parsed) else None  # type: ignore[reportUnknownMemberType]
+
     lines: list[PosLine] = []
     for raw in df.to_dict(orient="records"):  # type: ignore[reportUnknownMemberType]
         source: dict[str, object] = {str(k): v for k, v in raw.items() if v is not None}  # type: ignore[reportUnknownVariableType]
@@ -76,9 +84,9 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
             text = row.get(cols.get(kind, ""), "").strip()
             if not _CALENDAR_DATE.search(text):
                 continue  # time-only strings must not borrow the date this import runs on
-            stamp = pd.to_datetime(text, errors="coerce")  # type: ignore[reportUnknownMemberType]
-            if not pd.isna(stamp):  # type: ignore[reportUnknownMemberType]
-                scope.append(("date", str(stamp.date())))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+            stamp = parse_timestamp(text)
+            if stamp is not None:
+                scope.append(("date", str(stamp.date())))
                 break
         qty = _num(row.get(cols.get("quantity", ""), ""), 1.0)
         if "unit_price" in cols and row.get(cols["unit_price"], "").strip():
@@ -92,7 +100,7 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
             price = 0.0
         lines.append(PosLine(transaction_id=tx, transaction_scope=tuple(scope), sku=sku,
                              quantity=qty, unit_price=price,
-                             hour=_hour(row, cols, source.get(cols.get("timestamp", "")))))
+                             hour=_hour(row, cols, source.get(cols.get("timestamp", "")), parse_timestamp)))
     if not lines:
         raise ValueError("POS file contains no usable rows")
     return lines
@@ -107,7 +115,8 @@ def _num(text: str, default: float) -> float:
         raise ValueError(f"Invalid numeric POS value: {text!r}") from None
 
 
-def _hour(row: dict[str, str], cols: dict[str, str], timestamp: object) -> int | None:
+def _hour(row: dict[str, str], cols: dict[str, str], timestamp: object,
+          parse_timestamp: Callable[[str], datetime | None]) -> int | None:
     if "hour" in cols and row.get(cols["hour"]):
         try:
             value = _num(row[cols["hour"]], -1)
@@ -124,7 +133,7 @@ def _hour(row: dict[str, str], cols: dict[str, str], timestamp: object) -> int |
             return None
         if _CLOCK.search(text) is None:
             return None
-        ts = pd.to_datetime(text, errors="coerce")  # type: ignore[reportUnknownMemberType]
-        if not pd.isna(ts):  # type: ignore[reportUnknownMemberType]
-            return int(ts.hour)  # type: ignore[reportUnknownMemberType]
+        ts = parse_timestamp(text)
+        if ts is not None:
+            return ts.hour
     return None
