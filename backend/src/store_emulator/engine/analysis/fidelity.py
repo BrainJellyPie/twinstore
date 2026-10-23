@@ -153,16 +153,22 @@ def spearman(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def ndcg(predicted: np.ndarray, relevance: np.ndarray, k: int) -> float:
-    """NDCG@k of the ranking induced by `predicted`, graded by nonnegative `relevance`."""
+    """NDCG@k with tied predictions averaged over their possible orders."""
     if (relevance < 0).any():
         return math.nan
     if relevance.sum() == 0 or k <= 0:
         return 0.0
-    order = np.argsort(-predicted, kind="stable")[:k]
-    ideal = np.sort(relevance)[::-1][:k]
-    discounts = 1.0 / np.log2(np.arange(2, k + 2))
-    dcg = float((relevance[order] * discounts[:len(order)]).sum())
-    idcg = float((ideal * discounts[:len(ideal)]).sum())
+    order = np.argsort(-predicted, kind="stable")
+    scores = predicted[order]
+    starts = np.r_[0, np.flatnonzero(scores[1:] != scores[:-1]) + 1]
+    counts = np.diff(np.r_[starts, len(order)])
+    # Include every member of a tie crossing k; each can occupy any of its discounted positions.
+    gains = np.add.reduceat(relevance[order].astype(float), starts) / counts
+    cutoff = min(k, len(order))
+    discounts = np.zeros(len(order))
+    discounts[:cutoff] = 1.0 / np.log2(np.arange(2, cutoff + 2))
+    dcg = float((gains * np.add.reduceat(discounts, starts)).sum())
+    idcg = float((np.sort(relevance)[::-1] * discounts).sum())
     return dcg / idcg if idcg else 0.0
 
 

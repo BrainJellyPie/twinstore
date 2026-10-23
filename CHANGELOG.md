@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Average tied simulated sales rankings in POS NDCG scores, including ties that
+  cross the top-K cutoff. Arbitrary SKU ordering can no longer make the same
+  tied prediction look like a perfect match or a complete miss.
+
 - Ground stockout substitutions in offers at the shopper's actual shelf position.
   Another block on the same rack cannot supply a remote purchase, and local
   product names, prices and levels now drive replacement selection and budgets.
