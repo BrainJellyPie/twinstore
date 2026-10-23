@@ -22,6 +22,7 @@ def saved_run(tmp_path, monkeypatch):
     store = json.loads((sample / "input/store.json").read_text())
     monkeypatch.chdir(tmp_path)
     base = tmp_path / ".data/project/runs/run"
+    write_json(base.parent.parent / "metadata.json", {"name": "Customer identifier test"})
     write_json(base / "input/store.json", store)
     monkeypatch.setattr(interview, "assistive_client", lambda *a, **kw: _Fake())
 
