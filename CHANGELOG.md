@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Complete conjoint studies with accepted negative random seeds. Bootstrap estimation now
+  uses the seed magnitude, consistently with other marketing comparisons, instead of failing
+  after all respondent calls have finished. Nonnegative seeds retain their existing results.
+
 - Validate track CSV structure before parsing movement evidence. Surplus fields and malformed
   quoting can no longer silently change coordinates/timestamps, and sparse imports are bounded
   to two million cells including missing fields. UTF-8 BOM, standard newline variants and long

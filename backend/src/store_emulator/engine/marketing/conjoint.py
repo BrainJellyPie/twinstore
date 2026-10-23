@@ -322,7 +322,7 @@ def estimate(
     beta = fit_logit(x, y)
     point = derive(beta, coding)
     # Bootstrap over respondents: each draw weights a respondent's choices by how often they were resampled.
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(abs(seed))
     n = len(ok)
     samples: list[Derived] = []
     for _ in range(draws):
