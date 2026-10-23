@@ -144,6 +144,7 @@ class LiteLLMClient:
         mode = instructor.Mode.JSON_SCHEMA if config.structured_output == "json_schema" else instructor.Mode.JSON
         self._client = instructor.from_litellm(litellm.completion, mode=mode)  # type: ignore[reportUnknownMemberType]
         self._async_client = instructor.from_litellm(litellm.acompletion, mode=mode)  # type: ignore[reportUnknownMemberType]
+        self._configuration = object()
 
     def _slots_here(self) -> asyncio.Semaphore | None:
         """The request limit in this event loop (a semaphore belongs to one loop; runs may use several)."""
@@ -343,7 +344,7 @@ class LiteLLMClient:
                     **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
             except Exception as e:
-                if attempt < _ATTEMPTS - 1 and _should_retry_without(self.model, e, kwargs):
+                if attempt < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
                     continue
                 raise
         raise AssertionError("unreachable")
@@ -360,7 +361,7 @@ class LiteLLMClient:
                     **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
             except Exception as e:
-                if attempt < _ATTEMPTS - 1 and _should_retry_without(self.model, e, kwargs):
+                if attempt < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
                     continue
                 raise
         raise AssertionError("unreachable")
@@ -369,6 +370,7 @@ class LiteLLMClient:
                                 seed: int | None, max_tokens: int | None = None) -> T:
         hops = 0
         while True:
+            configuration = self._configuration
             cache_path = self._cache_path(response_model, msgs, seed, max_tokens)
             cached = self._cache_get(cache_path, response_model)
             if cached is not None:
@@ -382,13 +384,15 @@ class LiteLLMClient:
                     continue
                 raise
             self._accumulate_usage(raw, rid)
-            self._cache_put(cache_path, model)  # type: ignore[reportArgumentType]
+            if configuration is self._configuration:
+                self._cache_put(cache_path, model)  # type: ignore[reportArgumentType]
             return model  # type: ignore[reportReturnType]
 
     async def _agenerate[T: BaseModel](self, response_model: type[T], msgs: object, rid: str, max_retries: int,
                                        seed: int | None, max_tokens: int | None = None) -> T:
         hops = 0
         while True:
+            configuration = self._configuration
             cache_path = self._cache_path(response_model, msgs, seed, max_tokens)
             cached = self._cache_get(cache_path, response_model)
             if cached is not None:
@@ -399,6 +403,10 @@ class LiteLLMClient:
                     model, raw = await self._acreate(response_model, msgs, max_retries, seed, max_tokens)
                 else:
                     async with slots:
+                        # Another request may have changed provider while this one queued.
+                        # Recompute its cache identity and use the new provider's semaphore.
+                        if configuration is not self._configuration:
+                            continue
                         model, raw = await self._acreate(response_model, msgs, max_retries, seed, max_tokens)
             except Exception as e:
                 if await self._arerouted(tried, e, hops):
@@ -406,7 +414,8 @@ class LiteLLMClient:
                     continue
                 raise
             self._accumulate_usage(raw, rid)
-            self._cache_put(cache_path, model)  # type: ignore[reportArgumentType]
+            if configuration is self._configuration:
+                self._cache_put(cache_path, model)  # type: ignore[reportArgumentType]
             return model  # type: ignore[reportReturnType]
 
     def generate_structured[T: BaseModel](
@@ -484,6 +493,7 @@ class LiteLLMClient:
         raw: object = None
         attempt = hops = 0
         while True:
+            configuration = self._configuration
             kwargs: dict[str, object] = {"messages": msgs, **self._call_kwargs(None)}
             if enable_search:
                 kwargs["tools"] = [{"google_search": {}}]
@@ -493,10 +503,12 @@ class LiteLLMClient:
                     raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
                 else:
                     async with slots:
+                        if configuration is not self._configuration:
+                            continue
                         raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
                 break
             except Exception as e:
-                if attempt < _ATTEMPTS - 1 and _should_retry_without(self.model, e, kwargs):
+                if attempt < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
                     attempt += 1
                     continue
                 if await self._arerouted(tried, e, hops):
