@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Coordinate capture corrections and counterfactual photo edits with deletion and
+  study startup. Concurrent corrections keep metadata and overlays together; photo
+  edits reject a source corrected or deleted during processing instead of saving stale
+  results or recreating deleted folders.
+
 - Compute price-sensitivity intersections at actual response thresholds instead of a
   coarse plotting grid. Large price outliers no longer shift all recommendations into
   unobserved price gaps; exact ties and intersections at the final price are retained.
