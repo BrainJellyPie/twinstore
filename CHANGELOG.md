@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Include the retained closing shift in hourly checkout staffing reports. Late
+  and after-midnight payments no longer show zero staff/tills while the last
+  shift is serving them; weekday maxima and physical till limits are preserved.
+
 - Stop product workbook imports when a product/header cell contains an Excel
   error or a formula without a saved result. Report the original cell address
   instead of turning errors into empty SKUs or zero prices. Reject product rows
