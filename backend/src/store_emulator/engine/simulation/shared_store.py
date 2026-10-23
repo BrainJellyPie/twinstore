@@ -24,7 +24,7 @@ from store_emulator.domain.operations import (
 )
 from store_emulator.domain.rack import SlotItem
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action, CARDINAL_DIRECTIONS, Face, Position, Weekday, stable_seed
+from store_emulator.domain.types import Action, CARDINAL_DIRECTIONS, FACE_OFFSETS, Face, Position, Weekday, stable_seed
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ class _Product:
     item: SlotItem
     full: int
     stats: StockoutStats
+    offers: dict[Position, list[tuple[int, int, SlotItem]]] = field(default_factory=dict[Position, list[tuple[int, int, SlotItem]]])
 
 
 @dataclass
@@ -190,7 +191,15 @@ def shelf_stock(store: Store, config: OperationsConfig) -> dict[FaceKey, _Produc
     """Units of each product on each shelf face at opening: per shelf level carrying it."""
     products: dict[FaceKey, _Product] = {}
     for rack in store.racks:
+        positions = rack.occupied_positions
+        locked = {(face.block, face.face) for face in rack.locked_faces}
+        valid: dict[int, list[Face]] = {}
         for slot in rack.slots:
+            if slot.block not in valid:
+                valid[slot.block] = rack.valid_faces(slot.block)
+            x, y = positions[slot.block]
+            dx, dy = FACE_OFFSETS[slot.face]
+            stance = (x + dx, y + dy)
             for item in slot.items:
                 units = config.stock_overrides.get(item.sku, config.stock_per_facing)
                 key = (rack.id, slot.face, item.sku)
@@ -202,6 +211,8 @@ def shelf_stock(store: Store, config: OperationsConfig) -> dict[FaceKey, _Produc
                 else:
                     product.full += units
                     product.stats.stock += units
+                if slot.face in valid[slot.block] and (slot.block, slot.face) not in locked:
+                    products[key].offers.setdefault(stance, []).append((slot.block, slot.level, item))
     return products
 
 
@@ -690,15 +701,18 @@ def _pick(
             # the money a later pick needs. Earlier stock losses and substitutions are already in the timeline.
             other_spend = sum(e.price * e.quantity for e in result.timeline if e.action == Action.BUY) - event.price * event.quantity
             available = max(0, result.spend_limit - other_spend)
-        options = [other for other in faces[(key[0], key[1])] if other != key and state.stock[other] > 0
-                   and (available is None or products[other].item.price <= available)]
+        # The replay keeps this visit's route: another block on the same face is not this shelf position.
+        options = [(other, block, level, item)
+                   for other in faces[(key[0], key[1])] if other != key and state.stock[other] > 0
+                   for block, level, item in products[other].offers.get((event.x, event.y), [])
+                   if available is None or item.price <= available]
         if options:
             price = event.price
-            choice = min(options, key=lambda o: (abs(products[o].item.price - price), products[o].item.price, o[2]))
+            choice, block, level, item = min(options, key=lambda o: (abs(o[3].price - price), o[3].price, o[0][2], o[1], o[2]))
             substitute = products[choice]
             taken = min(wanted, state.stock[choice])
-            if available is not None and substitute.item.price > 0:
-                taken = min(taken, available // substitute.item.price)
+            if available is not None and item.price > 0:
+                taken = min(taken, available // item.price)
             state.stock[choice] -= taken
             if state.touched is not None:
                 state.touched.append(choice)
@@ -708,16 +722,15 @@ def _pick(
             product.stats.substituted_units += taken
             result.substituted_units += taken
             report.substituted_units += taken
-            report.substituted_revenue += taken * substitute.item.price
+            report.substituted_revenue += taken * item.price
             if taken < wanted:
                 _lost(result, product, wanted - taken, event.price)
-            event.description = _join(event.description, f"took {substitute.item.name}: {product.item.name} was sold out")
-            event.product_sku = substitute.item.sku
-            event.product_name = substitute.item.name
-            # Stock is pooled across this face's placements; no exact replacement slot was selected.
-            event.product_block = None
-            event.product_level = None
-            event.price = substitute.item.price
+            event.description = _join(event.description, f"took {item.name}: {product.item.name} was sold out")
+            event.product_sku = item.sku
+            event.product_name = item.name
+            event.product_block = block
+            event.product_level = level
+            event.price = item.price
             event.quantity = taken
             return
     _lost(result, product, wanted, event.price)

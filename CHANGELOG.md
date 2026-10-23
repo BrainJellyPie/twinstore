@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Ground stockout substitutions in offers at the shopper's actual shelf position.
+  Another block on the same rack cannot supply a remote purchase, and local
+  product names, prices and levels now drive replacement selection and budgets.
+
 - Match ensemble cost/runtime history against saved model references and exact
   weights, so reused display aliases cannot apply another model group's usage to
   a new run. Missing or unreadable ensemble inputs fall back to normal estimates.
