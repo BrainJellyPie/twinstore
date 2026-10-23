@@ -179,6 +179,7 @@ class OriginShare(BaseModel):
     expected_visitors: float
     share: float  # of the focal store's daily visitors (direct + linked)
     by_age: dict[AgeGroup, float] = {}
+    hourly_by_age: dict[int, dict[AgeGroup, float]] = {}  # source weights; absent in older demand reports
 
 
 class LinkedTrip(BaseModel):

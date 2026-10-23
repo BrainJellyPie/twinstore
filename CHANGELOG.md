@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Draw building origins for neighborhood visitors and venue counterfactuals from the arrival hour's
+  age-specific demand. Night visitors no longer originate from daytime-only building populations, and
+  changing one hour's traffic no longer changes otherwise paired visitors' origins in other hours.
+
 - Keep saved customers with Unicode, spaces, punctuation or long cloned IDs accessible in journeys and
   interviews. IDs remain unchanged; transcripts outside the legacy filename alphabet use bounded hashed
   paths in a separate directory, while existing transcript paths remain readable.
