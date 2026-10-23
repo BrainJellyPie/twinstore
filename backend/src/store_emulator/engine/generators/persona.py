@@ -420,10 +420,19 @@ async def generate_batched(
         for schedule, visitors in days:
             estimates[int(schedule.day)] = sum(h.visitor_count for h in visitors)
 
+    probe: list[Persona] = []
+    probe_at: tuple[Weekday, int] | None = None
+
     def size(cap: int) -> WriteSize:   # requests take batch_size customers of a day, across its hours
         per_day = [sum(h.visitor_count for h in _scale_hourly(visitors, cap) if h.person_types and h.visitor_count > 0)
                    for _, visitors in days]
-        return WriteSize(per_day=cap, customers=sum(per_day), requests=sum(-(-n // batch_size) for n in per_day))
+        requests = 0
+        for (schedule, _), n in zip(days, per_day, strict=True):
+            if probe_at is not None and probe_at[0] == schedule.day:
+                requests += 1
+                n = max(0, n - len(probe))
+            requests += -(-n // batch_size)
+        return WriteSize(per_day=cap, customers=sum(per_day), requests=requests)
 
     total = size(daily_cap_now).customers
     done = 0
@@ -443,14 +452,12 @@ async def generate_batched(
         )
 
     cap = daily_cap_now
-    probe: list[Persona] = []
-    probe_at: tuple[Weekday, int] | None = None
     busy = [(schedule, h) for schedule, visitors in days for h in _scale_hourly(visitors, cap)
             if h.person_types and h.visitor_count > 0]
     if decide is not None and busy:
         # One request first, timed: what the rest will take on this model, before asking for all of them.
         schedule, hour = max(busy, key=lambda pair: pair[1].visitor_count)
-        n = min(batch_size, hour.visitor_count)
+        n = min(batch_size, hour.visitor_count, sample_cap)
         get_usage = getattr(llm, "get_usage", None)
         before = get_usage() if callable(get_usage) else None
         started = time.monotonic()
@@ -470,7 +477,7 @@ async def generate_batched(
         cap = max(1, min(await decide(plan), daily_cap_now))
         if cap != daily_cap_now:
             total = size(cap).customers
-            done = min(done, total)
+        done = len(probe)
 
     async def _write_day(schedule: DaySchedule, visitors: list[HourlyProfile]) -> list[Persona]:
         target = _scale_hourly(visitors, cap)
@@ -479,6 +486,8 @@ async def generate_batched(
             kept, probe_hour = probe, probe_at[1]
             target = [h.model_copy(update={"visitor_count": max(0, h.visitor_count - len(kept))})
                       if h.hour == probe_hour else h for h in target]
+            # A small sample may allocate fewer customers to this hour than the probe already wrote.
+            target = _scale_hourly(target, max(0, cap - len(kept)))
         out = await write(schedule.day, target)
         if kept:
             out = _renumber([*kept, *out], schedule.day)
