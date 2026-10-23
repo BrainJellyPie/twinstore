@@ -144,6 +144,10 @@ class PatternIntentImpulseEngine:
         )
         for a in intent.actions:
             a.origin = "planned"
+            if a.action in (Action.BUY, Action.PAY):
+                a.nav = "path"
+            elif a.action == Action.EXIT:
+                a.nav = "leave"
 
         # Exposure is computed on the route the shopper will actually walk (same ordering
         # rule as the final merge), so impulse candidates match the executed path.
@@ -176,13 +180,22 @@ class PatternIntentImpulseEngine:
             )
         else:
             impulse = ImpulseResponse()
+        impulse_actions: list[CustomerAction] = []
         for a in impulse.actions:
             a.origin = "impulse"
+            # This stage contributes shopping stops, not another visit frame.
+            # Keep unexpected model output in the trace but out of execution.
+            if a.action in (None, Action.BROWSE, Action.BUY):
+                a.action = a.action or Action.BROWSE
+                a.nav = "path"
+                impulse_actions.append(a)
+        if len(impulse_actions) != len(impulse.actions):
+            logger.info("[drop] ignored %d non-shopping impulse actions", len(impulse.actions) - len(impulse_actions))
 
         if cfg.route_ordering == "planned":
-            merged = integrate_actions(context.store, planned, impulse.actions, ordering="planned")
+            merged = integrate_actions(context.store, planned, impulse_actions, ordering="planned")
         else:
-            merged = integrate_actions(context.store, intent.actions, impulse.actions, ordering="nearest")
+            merged = integrate_actions(context.store, intent.actions, impulse_actions, ordering="nearest")
         merged, dropped_invalid = drop_invalid_buys(merged, context.store)
         merged, dropped_budget = apply_budget(
             merged, context.store, context.persona.budget_max, cfg.budget_tolerance,
@@ -194,6 +207,8 @@ class PatternIntentImpulseEngine:
                 and not any(a.action == Action.PAY for a in merged)):
             exit_index = next((i for i, a in enumerate(merged) if a.nav == "leave"), len(merged))
             merged.insert(exit_index, CustomerAction(nav="path", action=Action.PAY, dwell=15))
+        if not any(a.nav == "leave" for a in merged):
+            merged.append(CustomerAction(nav="leave", action=Action.EXIT))
 
         return EngineDecision(
             actions=merged,

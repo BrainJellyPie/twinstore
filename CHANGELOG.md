@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep model-generated impulse responses to shopping stops, excluding extra checkouts and exits. Correct
+  conflicting purchase/payment navigation so shoppers reach the shelf and till instead of buying remotely,
+  leaving early, or abandoning a queue created by their own duplicate payment. Complete missing or malformed
+  exits so recorded visits include checkout time and the walk out.
+
 - Serialize customer-list saves with run startup. An accepted save supplies the next run's population; a final
   run that starts first rejects later customer edits, preventing locked layouts from using a different population.
 
