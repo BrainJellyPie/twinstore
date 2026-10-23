@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Match ensemble cost/runtime history against saved model references and exact
+  weights, so reused display aliases cannot apply another model group's usage to
+  a new run. Missing or unreadable ensemble inputs fall back to normal estimates.
+
 - Mark scenario-generated extra visitors as copies of their original customer,
   so optimization panels select available distinct profiles before repeated visits.
   Copies of existing twins retain the same original customer reference.
