@@ -10,6 +10,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, cast
 
+from filelock import FileLock, Timeout
 from pydantic import BaseModel
 
 from store_emulator.domain.config import EngineType, SimulationConfig
@@ -34,7 +35,7 @@ from .currencies import simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
 from .scenarios import get_preset, scenario_shoppers, scenario_store
-from .setups import set_active_setup, setup_summary, setup_tree_transaction
+from .setups import run_operations, set_active_setup, setup_lock_path, setup_summary, setup_tree_transaction
 from .simulation import with_vision_default
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import new_setup_data, personas_path, read_setup, setup_path
@@ -130,33 +131,38 @@ def _load_store_and_personas(pid: str, setup_id: str) -> tuple[Store, list[Perso
 
 def start_optimization(
     pid: str, setup_id: str, spec: OptimizeSpec, config: SimulationConfig, *, scenario_id: str | None = None,
-    judge: JudgeSpec | None = None, operations: OperationsConfig | None = None,
+    judge: JudgeSpec | None = None, operations: OperationsConfig | None = None, shared_store: bool | None = None,
 ) -> OptimizationStatus:
     judge = judge or JudgeSpec()
-    store, personas = _load_store_and_personas(pid, setup_id)
-    scenario = get_preset(scenario_id) if scenario_id else None
-    if scenario_id and scenario is None:
-        raise AppError(f"unknown scenario preset: {scenario_id}", 400)
-    run_config = config.model_copy(update={
-        "engine_type": EngineType.RULE_BASED,
-        "currency": simulation_currency(pid, store, config.currency),
-        "scenario": None if scenario is None or scenario.id == "baseline" else scenario,
-        # With the layout's operations, candidates pay for what they do to stock-outs, the tills and crowding.
-        "operations": operations,
-    })
-    vlm_config: SimulationConfig | None = None
-    if judge.judge == "vlm":
-        vlm_config = vlm_judge_config(run_config, judge)
-        try:
-            ensure_resolvable(vlm_config)
-        except ValueError as e:
-            raise AppError(str(e), 400) from e
-    job_id = f"opt_{uuid.uuid4().hex[:6]}"
-    status = OptimizationStatus(
-        job_id=job_id, setup_id=setup_id, status="pending", budget=spec.budget, spec=spec, judge=judge,
-        scenario=scenario.name if scenario else "", created_at=now_iso(), operations=operations,
-    )
-    _write_status(pid, status)
+    try:
+        with setup_tree_transaction(pid, [setup_id]), FileLock(setup_lock_path(pid, setup_id), timeout=10):
+            store, personas = _load_store_and_personas(pid, setup_id)
+            operations = run_operations(pid, setup_id, operations, shared_store)
+            scenario = get_preset(scenario_id) if scenario_id else None
+            if scenario_id and scenario is None:
+                raise AppError(f"unknown scenario preset: {scenario_id}", 400)
+            run_config = config.model_copy(update={
+                "engine_type": EngineType.RULE_BASED,
+                "currency": simulation_currency(pid, store, config.currency),
+                "scenario": None if scenario is None or scenario.id == "baseline" else scenario,
+                # With the layout's operations, candidates pay for what they do to stock-outs, the tills and crowding.
+                "operations": operations,
+            })
+            vlm_config: SimulationConfig | None = None
+            if judge.judge == "vlm":
+                vlm_config = vlm_judge_config(run_config, judge)
+                try:
+                    ensure_resolvable(vlm_config)
+                except ValueError as e:
+                    raise AppError(str(e), 400) from e
+            job_id = f"opt_{uuid.uuid4().hex[:6]}"
+            status = OptimizationStatus(
+                job_id=job_id, setup_id=setup_id, status="pending", budget=spec.budget, spec=spec, judge=judge,
+                scenario=scenario.name if scenario else "", created_at=now_iso(), operations=operations,
+            )
+            _write_status(pid, status)
+    except Timeout:
+        raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
     executor.submit(_run_job, pid, status, store, personas, run_config, vlm_config)
     return status
 
