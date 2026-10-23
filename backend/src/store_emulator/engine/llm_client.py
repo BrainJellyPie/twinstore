@@ -167,22 +167,38 @@ class LiteLLMClient:
     def _wants_reroute(self, error: BaseException, hops: int) -> bool:
         return self._reroute is not None and hops < _MAX_REROUTES and is_auth_error(error)
 
-    def _rerouted(self, tried: str, error: BaseException, hops: int) -> bool:
+    def _rerouted(self, tried: str, error: BaseException, hops: int, configuration: object) -> bool:
         """Whether to repeat a call the provider refused for its key: on the model another call already moved to, or on
         the next one the application names."""
         if not self._wants_reroute(error, hops) or self._reroute is None:
             return False
-        if self.model != tried:
+        if self._configuration is not configuration:
             return True
-        return self._move_on(tried, self._reroute(tried, error))
+        try:
+            nxt = self._reroute(tried, error)
+        except Exception:
+            if self._configuration is not configuration:
+                return True
+            raise
+        if self._configuration is not configuration:
+            return True
+        return self._move_on(tried, nxt)
 
-    async def _arerouted(self, tried: str, error: BaseException, hops: int) -> bool:
+    async def _arerouted(self, tried: str, error: BaseException, hops: int, configuration: object) -> bool:
         if not self._wants_reroute(error, hops) or self._reroute is None:
             return False
-        if self.model != tried:
+        if self._configuration is not configuration:
             return True
         # In a thread: finding the next model may wait for the local model to get ready.
-        return self._move_on(tried, await asyncio.to_thread(self._reroute, tried, error))
+        try:
+            nxt = await asyncio.to_thread(self._reroute, tried, error)
+        except Exception:
+            if self._configuration is not configuration:
+                return True
+            raise
+        if self._configuration is not configuration:
+            return True
+        return self._move_on(tried, nxt)
 
     def _messages(self, system_prompt: str, user_prompt: str) -> tuple[list[dict[str, str]], str]:
         rid = _hash6(system_prompt + user_prompt)
@@ -379,7 +395,7 @@ class LiteLLMClient:
             try:
                 model, raw = self._create(response_model, msgs, max_retries, seed, max_tokens)
             except Exception as e:
-                if self._rerouted(tried, e, hops):
+                if self._rerouted(tried, e, hops, configuration):
                     hops += 1
                     continue
                 raise
@@ -409,7 +425,7 @@ class LiteLLMClient:
                             continue
                         model, raw = await self._acreate(response_model, msgs, max_retries, seed, max_tokens)
             except Exception as e:
-                if await self._arerouted(tried, e, hops):
+                if await self._arerouted(tried, e, hops, configuration):
                     hops += 1
                     continue
                 raise
@@ -511,7 +527,7 @@ class LiteLLMClient:
                 if attempt < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
                     attempt += 1
                     continue
-                if await self._arerouted(tried, e, hops):
+                if await self._arerouted(tried, e, hops, configuration):
                     hops += 1
                     continue
                 raise

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep concurrent model fallback working when different servers expose the same model name.
+  Late authentication failures and delayed fallback choices retain the newer working configuration
+  instead of failing the request or switching it back to an older endpoint.
+
 - Keep model fallback responses out of the previous provider's cache. Queued structured and text
   requests adopt the new provider before sending, and parameter rejections are attributed to the
   model that actually received the request instead of another model selected while it was running.
