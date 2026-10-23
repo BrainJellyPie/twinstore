@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Enforce the existing 120-second model-action budget for area navigation before planning a path.
+  Negative or enormous wander durations no longer overflow movement calculations or inflate
+  visits and downstream operating time; ordinary durations and the original model response remain intact.
+
 - Drop point-route stops that the shopper cannot reach. Disconnected browsing and move actions
   no longer add time at the previous position or attribute remote shelf visits to shared-store
   crowding; later reachable purchases, checkout and departure continue from the actual location.
