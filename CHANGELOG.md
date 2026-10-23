@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Calculate the actual minimum checkout capacity needed for the target mean
+  wait. Recommendations no longer stop at 30 tills while claiming to meet a
+  target that remains unmet. Cached queue simulations and binary search keep
+  large arrival bursts inexpensive to evaluate.
+
 - Stop neighborhood vision studies when more than half the model calls in either
   condition fail, matching marketing experiments. Count both entrance plans and
   shelf glances; completed fallback visits no longer mask an unusable vision
