@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Use the named category to disambiguate exact VLM product names repeated across shelves.
+  A plan for an identically named milk product no longer randomly buys its snacks counterpart;
+  global exact-name fallback remains available when the category does not stock that name.
+
 - Prefer named transaction/visit timestamps and recognized date-plus-time pairs when fitting
   customer traffic. Unrelated account creation/update timestamps no longer override usable
   sales times because they appear earlier or contain fewer missing values.
