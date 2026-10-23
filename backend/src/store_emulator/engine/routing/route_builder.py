@@ -357,23 +357,20 @@ def _sanitize_action(
     store: Store,
 ) -> CustomerAction:
     """Snap action.target to a walkable tile; prefer the rack's access_tile when target sits on a rack."""
-    if action.target is None:
-        return action
-    tx, ty = action.target
-    cx = max(0, min(tx, w - 1))
-    cy = max(0, min(ty, h - 1))
-
     # PAY: snap into a counter's service_access_tiles.
     if action.action == Action.PAY:
+        target = action.target
+        if target is not None:
+            target = (max(0, min(target[0], w - 1)), max(0, min(target[1], h - 1)))
         fallback: Position | None = None
         for counter in store.counters:
             service = [t for t in counter.service_access_tiles(store.grid_size) if grid[t[1]][t[0]]]
             if service:
                 if fallback is None:
                     fallback = service[0]
-                if (cx, cy) in service:
-                    return action if (cx, cy) == action.target else action.model_copy(update={"target": (cx, cy)})
-                if (cx, cy) in counter.occupied_positions:
+                if target in service:
+                    return action if target == action.target else action.model_copy(update={"target": target})
+                if target in counter.occupied_positions:
                     return action.model_copy(update={"target": service[0]})
         if fallback is not None:
             return action.model_copy(update={"target": fallback})
@@ -395,6 +392,11 @@ def _sanitize_action(
                     updates["face"] = slot.face
                 return action.model_copy(update=updates)
 
+    if action.target is None:
+        return action
+    tx, ty = action.target
+    cx = max(0, min(tx, w - 1))
+    cy = max(0, min(ty, h - 1))
     if grid[cy][cx]:
         if (cx, cy) == action.target:
             return action
