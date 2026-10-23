@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Serialize Excel product imports with layout and operations saves. Concurrent saves no longer erase imported
+  products or overwrite newer names, memos or operating settings; busy imports return a retryable error.
+
 - Save confirmed floor changes and product removal atomically. A rejected floor or interrupted connection no
   longer leaves the original floor with its products already deleted; legacy floor reset uses the same save.
 
