@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Combine recognized separate POS date/time columns by row, including AM/PM and Excel time cells. Time-only
+  values no longer borrow today's date and distort weekday traffic, and unrelated birth dates or durations
+  are not combined as visits. Complete timestamps retain precedence when equally complete.
+
 - Keep POS receipt/register identifiers as text during traffic extraction, preserving leading zeros,
   large IDs and literal `NA`/`NULL` identifiers. Mixed UTC offsets or aware/naive timestamp exports now
   retain their recorded local weekdays and hours instead of disabling traffic calibration.
