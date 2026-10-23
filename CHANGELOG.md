@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Pay for checkout and shelf-refill work that continues after a scheduled shift ends. Count only the workers
+  still doing that work, and avoid charging twice when a later staffed hour begins.
+
 - Include checkout service finishing after closing in staffed till hours, labor costs and utilization even
   without a shelf crew. Honor an explicitly configured zero-second checkout in the customer timeline.
 

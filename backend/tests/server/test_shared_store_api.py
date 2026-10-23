@@ -330,3 +330,32 @@ def test_replay_pays_for_the_checkouts_finishing_after_closing(client, monkeypat
     assert replay["report"]["till_hours"] == replay["outcome"]["till_hours"] == 2.67
     assert replay["outcome"]["labor_cost"] == 2670
     assert replay["report"]["counter_utilization"] == round(6000 / 9595, 4)
+
+
+@pytest.mark.parametrize("mode", ["tills", "crew", "roster"])
+def test_replay_pays_for_work_continuing_after_a_shift_ends(client, monkeypatch, mode):
+    from store_emulator.application import operations_lab
+    from store_emulator.domain.operations import CrewShift, OperationsConfig
+    from tests.engine.test_shared_store import _shopper, _store
+    store = _store()
+    for schedule in store.weekly_schedule:
+        schedule.open_hour, schedule.close_hour = 8, 10
+    config = OperationsConfig(stock_per_facing=20, restock_every_min=None, refill_at=0,
+                              checkout_base_sec=600, checkout_item_sec=0)
+    if mode == "tills":
+        config.till_schedule = {"09": 0}
+    else:
+        config.crew = 1
+        if mode == "crew":
+            config.crew_schedule = {"09": 0}
+        else:
+            config.crew_shifts = [CrewShift(start=8, end=9)]
+    shoppers = [_shopper("p", "08:59:30", [("chips", 1)])]
+    monkeypatch.setattr(operations_lab, "_load", lambda pid, run_id: (store, shoppers, 1, config))
+    response = client.post(f"/api/projects/{PID}/runs/run_shift/operations/replay", json={
+        "operations": config.model_dump(), "costs": {"till_hour": 1000},
+    })
+    assert response.status_code == 200
+    replay = response.json()
+    assert replay["report"]["till_hours"] == 1.17
+    assert replay["outcome"]["labor_cost"] == 1170
