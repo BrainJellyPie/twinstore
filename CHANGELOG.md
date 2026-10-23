@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Include checkout service finishing after closing in staffed till hours, labor costs and utilization even
+  without a shelf crew. Honor an explicitly configured zero-second checkout in the customer timeline.
+
 - Keep the original operating days when forecasting customer retention. A day losing its last customer still
   pays its scheduled staff and stock-holding costs, refills shelves overnight and receives configured deliveries;
   otherwise forecasts could erase fixed costs and change later stock availability merely because a visit vanished.

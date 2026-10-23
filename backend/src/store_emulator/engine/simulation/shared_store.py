@@ -55,7 +55,7 @@ class _Checkout:
     units: int = 0              # units in the basket on reaching the till
     spend: int = 0
     wait: float = 0.0
-    service: float = 0.0
+    service: float | None = None
     abandoned: bool = False
     nothing_to_pay: bool = False
 
@@ -460,6 +460,7 @@ def _play_day(
             checkout.wait = wait
             checkout.service = service
             free[till] = begins + service
+            last = max(last, begins + service)
             busy += service
             if crew is not None:
                 crew.serving += service
@@ -702,7 +703,7 @@ def _apply_checkout(result: CustomerResult, checkout: _Checkout, copies: "_Copie
         _shift(timeline, k + 1, waited - old, copies)
         return
     waited = round(checkout.wait)
-    service = max(1, round(checkout.service)) if checkout.service else old
+    service = old if checkout.service is None else (max(1, round(checkout.service)) if checkout.service > 0 else 0)
     result.queue_wait_sec = waited
     if waited:
         _shift(timeline, k, waited, copies)
