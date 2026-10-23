@@ -10,6 +10,8 @@ from PIL import Image
 
 from store_emulator.application import town as towns, vision_inputs
 from store_emulator.application.errors import AppError
+from store_emulator.application.storage.io import write_json
+from store_emulator.application.storage.setups import metadata_path
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.town import Town, TownArchetype, Venue, VenueCategory
 from store_emulator.domain.vision_inputs import StorefrontAppeal
@@ -20,7 +22,7 @@ APPEAL = StorefrontAppeal(method="image_stats", signage=5, entrance=5, window=5,
 @pytest.fixture
 def project(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    Path(".data", PID).mkdir(parents=True)
+    write_json(metadata_path(PID), {"name": "Conflict test"})
     initial = Town(id="original", name="Original", archetype=TownArchetype.RESIDENTIAL, size_m=800, focal_venue_id="store", venues=[
         Venue(id="store", name="Our store", category=VenueCategory.CONVENIENCE, x=400, y=400, is_focal=True),
         Venue(id="rival", name="Rival", category=VenueCategory.SUPERMARKET, x=300, y=300),
@@ -122,7 +124,7 @@ def test_replacement_respects_another_writer_lock(project):
     assert path.read_bytes() == before
 
 def test_project_locks_are_independent(project):
-    Path(".data", "proj_second").mkdir()
+    write_json(metadata_path("proj_second"), {"name": "Second project"})
     with FileLock(Path(".data", PID, "town.lock"), timeout=0):
         towns.save_town("proj_second", project)
     assert towns.require_town("proj_second") == project

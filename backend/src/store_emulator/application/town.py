@@ -38,6 +38,7 @@ from store_emulator.engine.town import (
 )
 
 from .errors import AppError
+from .setups import setup_tree_transaction
 from .storage.io import DATA_DIR, read_json, write_json
 from .storage.setups import read_setup, read_state
 
@@ -87,10 +88,11 @@ def save_town(pid: str, town: Town, *, expected: Town | None = None) -> Town:
     if town.get_venue(town.focal_venue_id) is None:
         raise AppError("The neighborhood must contain its focal venue", 422)
     try:
-        with FileLock(path.with_suffix(".lock"), timeout=0):
-            if expected is not None and get_town(pid) != expected:
-                raise AppError("Neighborhood changed while this action was running; reload it and try again", 409)
-            write_json(path, town.model_dump(mode="json"))
+        with setup_tree_transaction(pid):
+            with FileLock(path.with_suffix(".lock"), timeout=0):
+                if expected is not None and get_town(pid) != expected:
+                    raise AppError("Neighborhood changed while this action was running; reload it and try again", 409)
+                write_json(path, town.model_dump(mode="json"))
     except Timeout as exc:
         raise AppError("Another neighborhood update is in progress; try again", 409) from exc
     return town
