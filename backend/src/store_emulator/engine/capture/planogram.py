@@ -152,32 +152,57 @@ def match_store_skus(store: Store, result: CaptureResult, report: PlacementRepor
     across racks (and POS data still matches). Matching is by name (+ size), exact or ≥ 0.92 similar.
     With exact=True, only the complete display name (including brand/size) is matched.
     The price read off the tag wins over the stored one unless it was only estimated."""
-    known: dict[str, SlotItem] = {}
+    known: dict[str, list[SlotItem]] = {}
     for _, slot in store.all_slots:
         for entry in slot.items:
-            known.setdefault(normalize_text(entry.name), entry)
+            known.setdefault(normalize_text(entry.name), []).append(entry)
     if not known:
         return result
     names = list(known)
     items: list[CaptureItem] = []
     matched = 0
+    ambiguous = 0
+    uncertain_prices = 0
     for item in result.items:
         if not item.labeled:
             items.append(item)
             continue
         key = normalize_text(display_name(item))
-        hit = known.get(key) if exact else known.get(key) or known.get(normalize_text(item.name))
-        if hit is None and not exact:
-            close = difflib.get_close_matches(key, names, n=1, cutoff=0.92)
-            hit = known[close[0]] if close else None
-        if hit is None:
+        candidates = known.get(key) if exact else known.get(key) or known.get(normalize_text(item.name))
+        if candidates is None and not exact:
+            close = difflib.get_close_matches(key, names, n=len(names), cutoff=0.92)
+            if close:
+                best = difflib.SequenceMatcher(None, close[0], key).ratio()
+                tied = [name for name in close if difflib.SequenceMatcher(None, name, key).ratio() == best]
+                candidates = [entry for name in tied for entry in known[name]]
+        if not candidates:
             items.append(item)
             continue
+        skus = {entry.sku for entry in candidates}
+        # Preserve a known identity when present; otherwise names must identify
+        # one SKU. Neither catalog order nor equally close names can decide it.
+        sku = item.sku if item.sku in skus else next(iter(skus)) if len(skus) == 1 else None
+        if sku is None:
+            ambiguous += 1
+            items.append(item)
+            continue
+        offers = [entry for entry in candidates if entry.sku == sku]
+        hit = offers[0]
         matched += 1
-        price = hit.price if item.price_estimated or item.price is None else item.price
+        price = item.price
+        if item.price_estimated or item.price is None:
+            prices = {entry.price for entry in offers}
+            if len(prices) == 1:
+                price = next(iter(prices))
+            else:
+                uncertain_prices += 1
         items.append(item.model_copy(update={"sku": hit.sku, "name": hit.name, "brand": "", "size": "", "price": price}))
     if matched:
         report.notes.append(f"{matched} product(s) matched items the store already sells and keep their SKU")
+    if ambiguous:
+        report.notes.append(f"{ambiguous} product(s) have ambiguous existing names and keep their captured SKU; review their identities")
+    if uncertain_prices:
+        report.notes.append(f"{uncertain_prices} product(s) have multiple existing prices; their captured price estimates were kept for review")
     return result.model_copy(update={"items": items})
 
 
