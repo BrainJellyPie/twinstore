@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover incomplete automatic starter-product selections before failing store creation. Each category/product
+  stage can request one complete correction with the missing, duplicate or invalid IDs and capacity limits.
+  Normal selections still use two calls; invalid corrected selections never save a partial project or overwrite
+  existing products. Corrective prompts also avoid reusing the same invalid cached response.
+
 - Coordinate concept surveys, shelf comparisons, conjoint studies and staff-script tests with project
   deletion and input saves. Studies use the accepted customer/product data and register pending work
   before deletion can proceed, preventing orphaned jobs and stale study panels.
