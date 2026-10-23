@@ -127,9 +127,9 @@ def test_staff_refill_the_shelves_on_schedule_and_the_time_empty_is_counted():
     results, report = resolve_shared_store(_store(), shoppers, config, seed=1)
     assert [r.total_spent for r in results] == [300, 0, 300]
     chips = next(s for s in report.stockouts if s.sku == "chips")
-    # Empty from 10:00:10 until the 10:30 refill, then from 10:31:10 to closing at 22:00.
-    assert chips.minutes_out == pytest.approx(29 + 50 / 60 + 11 * 60 + 28 + 50 / 60, abs=0.1)
-    assert report.restocks >= 1
+    # Empty until the 10:30 and 11:00 refills, even though the last shopper has already left.
+    assert chips.minutes_out == pytest.approx(29 + 50 / 60 + 28 + 50 / 60, abs=0.1)
+    assert report.restocks == 2
 
 
 def test_every_day_opens_with_full_shelves():
@@ -383,7 +383,7 @@ def test_the_report_says_when_each_face_stood_empty():
                               checkout_base_sec=1, checkout_item_sec=0)
     _, report = resolve_shared_store(_store(), shoppers, config, seed=1)
     assert [(s.rack_id, s.face, s.sku, s.start, s.end) for s in report.empty_spells] == [
-        ("A", "E", "chips", 36010, 37800), ("A", "E", "chips", 37870, 79200)]
+        ("A", "E", "chips", 36010, 37800), ("A", "E", "chips", 37870, 39600)]
     assert report.empty_spells[0].name == "Chips" and report.empty_spells[0].day == 1
 
 

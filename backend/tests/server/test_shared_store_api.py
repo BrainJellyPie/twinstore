@@ -359,3 +359,27 @@ def test_replay_pays_for_work_continuing_after_a_shift_ends(client, monkeypatch,
     replay = response.json()
     assert replay["report"]["till_hours"] == 1.17
     assert replay["outcome"]["labor_cost"] == 1170
+
+
+@pytest.mark.parametrize("delivery, revenue, rounds", [(False, 900, 1), (True, 1200, 2)])
+def test_replay_keeps_scheduled_refills_after_the_last_customer_leaves(client, monkeypatch, delivery, revenue, rounds):
+    from store_emulator.application import operations_lab
+    from store_emulator.domain.operations import OperationsConfig
+    from store_emulator.domain.types import Weekday
+    from tests.engine.test_shared_store import _shopper, _store
+    store = _store()
+    shoppers = [_shopper("mon", "09:00:00", [("chips", 1)]),
+                _shopper("tue1", "08:05:00", [("chips", 1)], day=Weekday.TUE),
+                _shopper("tue2", "08:06:00", [("chips", 1)], day=Weekday.TUE),
+                _shopper("tue3", "11:00:00", [("chips", 1)], day=Weekday.TUE)]
+    config = OperationsConfig(stock_per_facing=2, backroom_per_product=1, daily_delivery=delivery,
+                              restock_every_min=120, substitute_share=0, checkout_base_sec=1, checkout_item_sec=0)
+    monkeypatch.setattr(operations_lab, "_load", lambda pid, run_id: (store, shoppers, 1, config))
+    response = client.post(f"/api/projects/{PID}/runs/run_refills/operations/replay", json={
+        "operations": config.model_dump(), "costs": {"restock_round": 100},
+    })
+    assert response.status_code == 200
+    replay = response.json()
+    assert replay["outcome"]["revenue"] == revenue
+    assert replay["outcome"]["restock_cost"] == rounds * 100
+    assert replay["report"]["deliveries"] == int(delivery)

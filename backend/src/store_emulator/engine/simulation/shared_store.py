@@ -364,7 +364,7 @@ def _play_day(
     elif config.restock_every_min is not None:
         step = config.restock_every_min * 60
         moment = opening + step
-        while moment < end:
+        while moment < close_at:
             heapq.heappush(heap, (moment, _RESTOCK, -1, -1))
             moment += step
 
