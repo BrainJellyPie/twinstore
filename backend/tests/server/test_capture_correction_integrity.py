@@ -12,6 +12,7 @@ from store_emulator.domain.capture import Box, CaptureItem, CaptureResult, Captu
 def capture(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     folder = tmp_path / ".data" / "proj_test" / "captures" / "cap_test"
+    write_json(folder.parents[1] / "metadata.json", {"name": "Capture correction"})
     result = CaptureResult(image_size=(90, 60), items=[
         CaptureItem(id=f"i{i}", band=0, level=1, order=i - 1, name=f"Tea {i}", sku=f"tea{i}", price=100,
                     labeled=True, boxes=[Box(x1=(i - 1) * 30, y1=5, x2=i * 30, y2=45)]) for i in range(1, 4)

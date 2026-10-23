@@ -304,13 +304,14 @@ def _mask(size: tuple[int, int], shelf: EditedShelf) -> Image.Image:
 def create_edit(pid: str, cid: str, edits: list[PhotoEdit]) -> EditedShelf:
     if not edits:
         raise AppError("no edits given", 400)
-    photo, result = _capture(pid, cid)
-    packages: dict[str, Image.Image] = {}
-    for e in edits:
-        if e.kind == "replace" and e.asset_id:
-            img = Image.open(package_path(pid, e.asset_id))
-            img.load()
-            packages[e.asset_id] = img
+    # Capture inputs together, then keep image processing outside the tree guard.
+    with setup_tree_transaction(pid):
+        photo, result = _capture(pid, cid)
+        packages: dict[str, Image.Image] = {}
+        for e in edits:
+            if e.kind == "replace" and e.asset_id:
+                with Image.open(package_path(pid, e.asset_id)) as image:
+                    packages[e.asset_id] = image.copy()
     try:
         out = apply_edits(photo, result, edits, packages=packages, seed=cid)
     except ValueError as e:
@@ -318,12 +319,15 @@ def create_edit(pid: str, cid: str, edits: list[PhotoEdit]) -> EditedShelf:
     eid = f"edit_{uuid.uuid4().hex[:6]}"
     shelf = EditedShelf(edit_id=eid, capture_id=cid, edits=edits, changes=out.changes, result=out.result,
                         promos=out.promos, image_size=out.image.size, created_at=now_iso())
-    folder = _edit_dir(pid, cid, eid)
-    folder.mkdir(parents=True, exist_ok=True)
-    out.image.save(folder / "image.jpg", format="JPEG", quality=93)
-    _mask(out.image.size, shelf).save(folder / "mask.png", format="PNG")
-    write_json(folder / "edit.json", json.loads(shelf.model_dump_json()))
-    return shelf
+    with setup_tree_transaction(pid):
+        if get_capture(pid, cid).result != result:
+            raise AppError("The capture was corrected while the image was being edited. Reload it and try again.", 409)
+        folder = _edit_dir(pid, cid, eid)
+        folder.mkdir(parents=True, exist_ok=True)
+        out.image.save(folder / "image.jpg", format="JPEG", quality=93)
+        _mask(out.image.size, shelf).save(folder / "mask.png", format="PNG")
+        write_json(folder / "edit.json", json.loads(shelf.model_dump_json()))
+        return shelf
 
 
 def list_edits(pid: str, cid: str) -> list[EditedShelf]:
@@ -352,10 +356,11 @@ def edit_file(pid: str, cid: str, eid: str, kind: Literal["image", "mask"]) -> P
 
 
 def delete_edit(pid: str, cid: str, eid: str) -> None:
-    folder = _edit_dir(pid, cid, eid)
-    if not folder.exists():
-        raise AppError(f"edit not found: {eid}", 404)
-    remove_tree(folder)
+    with setup_tree_transaction(pid):
+        folder = _edit_dir(pid, cid, eid)
+        if not folder.exists():
+            raise AppError(f"edit not found: {eid}", 404)
+        remove_tree(folder)
 
 
 def _photo_and_result(pid: str, cid: str, edit_id: str) -> tuple[Image.Image, CaptureResult]:

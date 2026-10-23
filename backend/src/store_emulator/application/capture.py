@@ -509,18 +509,21 @@ def apply_edits(result: CaptureResult, edits: list[CaptureItemEdit]) -> CaptureR
 
 
 def update_capture(pid: str, cid: str, update: CaptureUpdate) -> CaptureView:
-    status = _read_status(pid, cid)
-    result = _read_result(pid, cid)
-    if status.status != "completed" or result is None:
-        raise AppError("capture is not finished yet", 409)
-    corrected = apply_edits(result, update.items)
-    folder = _dir(pid, cid)
-    write_json(folder / "result.json", json.loads(corrected.model_dump_json()))
-    photo = Image.open(folder / "image.jpg").convert("RGB")
-    (folder / "overlay.png").write_bytes(render_overlay(photo, corrected))
-    status = _with_counts(status, corrected)
-    _write_status(pid, status)
-    return CaptureView(status=status, result=corrected)
+    with setup_tree_transaction(pid):
+        status = _read_status(pid, cid)
+        result = _read_result(pid, cid)
+        if status.status != "completed" or result is None:
+            raise AppError("capture is not finished yet", 409)
+        corrected = apply_edits(result, update.items)
+        folder = _dir(pid, cid)
+        with Image.open(folder / "image.jpg") as image:
+            photo = image.convert("RGB")
+        overlay = render_overlay(photo, corrected)
+        write_json(folder / "result.json", json.loads(corrected.model_dump_json()))
+        (folder / "overlay.png").write_bytes(overlay)
+        status = _with_counts(status, corrected)
+        _write_status(pid, status)
+        return CaptureView(status=status, result=corrected)
 
 
 # ── apply to a layout ────────────────────────────────────────────────────────────
