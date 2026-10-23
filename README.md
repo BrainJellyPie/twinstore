@@ -13,6 +13,7 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-free%20for%20research%20%26%20small%20teams-6b4dff?style=for-the-badge"></a>
 <a href="./.github/assets/twinstore/twinstore-promo.mp4"><img alt="Watch" src="https://img.shields.io/badge/watch-the%20film-e0429b?style=for-the-badge"></a>
 <a href="./TwinStore_Technical_Report.pdf"><img alt="Technical report" src="https://img.shields.io/badge/read-technical%20report%20(PDF)-1f7a5c?style=for-the-badge"></a>
+<a href="https://arxiv.org/abs/2610.30909"><img alt="arXiv: 2610.30909" src="https://img.shields.io/badge/arXiv-2610.30909-b31b1b?style=for-the-badge"></a>
 </p>
 
 <p>
@@ -26,12 +27,14 @@ price, pack and promotion on the same people — before you move a shelf.</p>
 <a href="#how-it-works">How it works</a> ·
 <a href="#validated-on-real-baskets">Validation</a> ·
 <a href="#for-developers">Developers</a> ·
+<a href="#citation">Citation</a> ·
+<a href="#credits">Credits</a> ·
 <a href="#license">License</a> ·
 <a href="./TwinStore_Technical_Report.pdf">Technical report (PDF)</a> ·
 <a href="./QUICKSTART.md">한국어 빠른 시작</a>
 </p>
 
-<sub>TwinStore is built on <a href="https://github.com/intellicia-public/parastore">Parastore</a> by intellicia, released under the MIT License.</sub>
+<sub>TwinStore is built on <a href="https://github.com/intellicia-public/parastore">ParaStore</a> by Intellicia (인텔리시아). We gratefully acknowledge their original open-source codebase, released under the MIT License.</sub>
 
 </div>
 
@@ -581,6 +584,27 @@ Defaults live in `backend/src/store_emulator/application/config.py`; these envir
   floors of a building are simulated separately.
 - **APIs and data shapes may still change** between versions.
 
+## Citation
+
+If you use TwinStore in your research, please cite:
+
+Minhyeok Lee. **TwinStore: A Synthetic Consumer Platform Using Vision–Language Models.**
+arXiv:2610.30909, 2026. [Paper](https://arxiv.org/abs/2610.30909) ·
+[DOI: 10.48550/arXiv.2610.30909](https://doi.org/10.48550/arXiv.2610.30909).
+
+```bibtex
+@misc{lee2026twinstore,
+  title         = {{TwinStore}: A Synthetic Consumer Platform Using Vision--Language Models},
+  author        = {Minhyeok Lee},
+  year          = {2026},
+  eprint        = {2610.30909},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AI},
+  doi           = {10.48550/arXiv.2610.30909},
+  url           = {https://arxiv.org/abs/2610.30909}
+}
+```
+
 ## License
 
 **TwinStore License 1.0** — see [`LICENSE`](./LICENSE).
@@ -591,12 +615,16 @@ Defaults live in `backend/src/store_emulator/application/config.py`; these envir
 | Commercial use by individuals and organizations with annual revenue up to **US$1M** | ✅ free |
 | Everyone else | 📩 separate license — [open an issue](https://github.com/BrainJellyPie/twinstore/issues) |
 
-TwinStore is built on Parastore © 2026 intellicia, whose code remains available under the MIT License; its notice is
+TwinStore is built on ParaStore © 2026 intellicia, whose code remains available under the MIT License; its notice is
 kept in full in [`LICENSE`](./LICENSE). Dependencies keep their own licenses
 ([`LICENSES-BACKEND.md`](./LICENSES-BACKEND.md), [`LICENSES-FRONTEND.txt`](./LICENSES-FRONTEND.txt)).
 
 ## Credits
 
+- **Foundation: ParaStore by Intellicia (인텔리시아).** TwinStore builds on
+  [ParaStore](https://github.com/intellicia-public/parastore). We acknowledge Intellicia and the ParaStore contributors
+  for creating and sharing the original open-source codebase that forms TwinStore's foundation. The original
+  copyright and MIT License notice are preserved in [`LICENSE`](./LICENSE).
 - **Shoppers.** [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox) avatars (MIT), bundled
   locally: fourteen appearances with retargeted standing, walking and browsing animations. Sources and conversion:
   [`frontend/public/assets/people/`](./frontend/public/assets/people/README.md).
