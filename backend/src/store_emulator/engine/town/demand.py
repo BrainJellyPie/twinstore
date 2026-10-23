@@ -349,14 +349,17 @@ def _open_matrix(venues: list[Venue]) -> npt.NDArray[np.bool_]:
 
 def _huff_flows(
     need: FloatArray, pull: FloatArray, open_: npt.NDArray[np.bool_], outside: float, hours: list[int],
-) -> tuple[FloatArray, FloatArray]:
+    *, focal: int | None = None,
+) -> tuple[FloatArray, FloatArray | None]:
     """Route need[g, h, a] to venues with Huff shares (hour-specific open sets).
 
-    Returns (flows[j, h, a], focal-agnostic share cube share[g, j, h]) restricted to `hours`.
+    Returns flows[j, h, a] and, only when requested, the focal venue's shares[g, h].
+    The full group × venue × hour cube can exceed a gigabyte for a supported large neighborhood;
+    downstream calculations only use one venue's shares, or none for complementary categories.
     """
     n_groups, n_venues = pull.shape
     flows: FloatArray = np.zeros((n_venues, 24, need.shape[2]), dtype=np.float64)
-    shares: FloatArray = np.zeros((n_groups, n_venues, 24), dtype=np.float64)
+    shares: FloatArray | None = np.zeros((n_groups, 24), dtype=np.float64) if focal is not None else None
     patterns: dict[bytes, list[int]] = {}
     for h in hours:
         patterns.setdefault(open_[:, h].tobytes(), []).append(h)
@@ -366,7 +369,8 @@ def _huff_flows(
         share: FloatArray = utility / (outside + utility.sum(axis=1, keepdims=True))
         block: FloatArray = need[:, hs, :].reshape(n_groups, len(hs) * need.shape[2])
         flows[:, hs, :] = (share.T @ block).reshape(n_venues, len(hs), need.shape[2])
-        shares[:, :, hs] = share[:, :, None]
+        if focal is not None and shares is not None:
+            shares[:, hs] = share[:, focal, None]
     return flows, shares
 
 
@@ -450,8 +454,10 @@ def estimate_demand(
     )
     dist_gc = _distance(gx, gy, cx, cy, p)
     pull: FloatArray = weight[None, :] * np.exp(-decay * dist_gc)
-    direct, shares = _huff_flows(need, pull, _open_matrix(choice), math.exp(-decay * p.outside_option_m), hour_list)
-    focal_by_group: FloatArray = shares[:, focal_j, :][:, :, None] * need  # (G, 24, A)
+    direct, shares = _huff_flows(need, pull, _open_matrix(choice), math.exp(-decay * p.outside_option_m), hour_list,
+                               focal=focal_j)
+    assert shares is not None  # requested above for the focal store's origin breakdown
+    focal_by_group: FloatArray = shares[:, :, None] * need  # (G, 24, A)
 
     # --- linked trips from complementary venues
     stores = [j for j, v in enumerate(choice) if is_store(v)]
