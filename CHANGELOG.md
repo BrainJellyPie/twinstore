@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Extend saved-run playback through the last recorded event, including payment
+  and departure after closing or midnight. Recorded weekdays and early arrivals
+  are included even when a legacy saved schedule omits them.
+
 - Average tied simulated sales rankings in POS NDCG scores, including ties that
   cross the top-K cutoff. Arbitrary SKU ordering can no longer make the same
   tied prediction look like a perfect match or a complete miss.
