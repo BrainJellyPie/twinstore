@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 
 from pydantic import BaseModel
@@ -493,10 +494,13 @@ def _wander_path(
         if rack.type not in skip_types:
             rack_access |= rack.access_tiles(store.grid_size)
 
-    budget = dwell
+    budget: float = dwell
     _PAUSE_ESTIMATE = 2  # Conservative estimate of timeline_builder pause duration (actual: 2–4s).
     for i, pos in enumerate(path[1:], 1):
-        budget -= block_move_sec
+        movement = math.dist(path[i - 1], pos) * block_move_sec
+        if movement > budget:
+            return path[:i]
+        budget -= movement
         if pos in rack_access:
             budget -= _PAUSE_ESTIMATE
         if budget <= 0:

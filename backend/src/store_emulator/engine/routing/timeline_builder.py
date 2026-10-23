@@ -45,24 +45,24 @@ def build_timeline(
             ))
 
             rack_tiles = _rack_access_tiles(store)
-            budget: float = step.action.dwell
+            # The next journey leg starts at this path's endpoint. Reserve its
+            # walking time before adding glances so pauses cannot truncate it.
+            walking = sum(_step_sec(a, b, block_move_sec) for a, b in zip(step.path, step.path[1:]))
+            budget = max(0.0, step.action.dwell - walking)
 
             for prev_pos, pos in zip(step.path, step.path[1:], strict=False):
-                if budget <= 0:
-                    break
                 dt = _step_sec(prev_pos, pos, block_move_sec)
                 t += dt
-                budget -= dt
                 timeline.append(TimelineEvent(elapsed_sec=round(t), x=pos[0], y=pos[1], action=Action.MOVE))
 
                 if budget > 0 and pos in rack_tiles and rng.random() < _WANDER_GLANCE_PROB:
                     pause = min(budget, rng.randint(_WANDER_GLANCE_MIN, _WANDER_GLANCE_MAX))
-                    t += pause
-                    budget -= pause
                     timeline.append(TimelineEvent(
                         elapsed_sec=round(t), x=pos[0], y=pos[1],
                         action=Action.WANDER, duration=round(pause),
                     ))
+                    t += pause
+                    budget -= pause
 
             if budget > 0:
                 t += budget
