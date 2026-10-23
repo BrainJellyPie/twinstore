@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Match Shelf Lab photo badges to the captured SKU, name, price and shelf level.
+  Repeated SKUs at different prices or heights retain their own offers instead
+  of inheriting one arbitrary price/level; omitted offers are counted even when
+  another offer of the same SKU fits the rendered twin.
+
 - Match embedded Excel photos to the same decoded SKU used for product imports,
   including cached formulas, rich text, hyperlinks and normalized headers. Preserve
   sparse worksheet row positions and support identifiers such as `constructor`

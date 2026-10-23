@@ -186,10 +186,10 @@ def test_sim2real_views_share_marks_and_products(store: Store, personas: list[Pe
     views = build_views(scene.image, result, seed=3)
     render, photo = views.views["render"], views.views["photo"]
     assert set(views.products) == {i.sku for i in result.items}
-    first_mark: dict[str, int] = {}
+    first_mark: dict[tuple[str, str, int, int], int] = {}
     for m in render.items:
-        first_mark.setdefault(m.item.sku, m.mark)
-    assert {m.item.sku: m.mark for m in photo.items} == first_mark  # the photo's tags carry the render's numbers
+        first_mark.setdefault((m.item.sku, m.item.name, m.item.price, m.slot.level), m.mark)
+    assert {(m.item.sku, m.item.name, m.item.price, m.slot.level): m.mark for m in photo.items} == first_mark
     assert Image.open(io.BytesIO(photo.png)).size[0] == 768
 
     favourite = result.items[0].name

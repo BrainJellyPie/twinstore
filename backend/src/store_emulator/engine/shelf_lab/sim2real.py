@@ -25,9 +25,9 @@ from PIL import Image, ImageDraw
 from pydantic import BaseModel
 
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
-from store_emulator.domain.capture import CaptureResult
+from store_emulator.domain.capture import CaptureItem, CaptureResult
 from store_emulator.domain.persona import Persona
-from store_emulator.domain.rack import Rack, RackType
+from store_emulator.domain.rack import RACK_LEVELS, Rack, RackType
 from store_emulator.domain.shelf_lab import (
     Agreement,
     ConditionStats,
@@ -39,6 +39,7 @@ from store_emulator.engine.analysis.fidelity import spearman
 from store_emulator.engine.capture.planogram import (
     SLOT_CAPACITY,
     PlacementReport,
+    display_name,
     face_slots_from_capture,
     level_rows,
 )
@@ -69,6 +70,7 @@ class TwinViews:
     face: Face
     views: dict[Sim2RealCondition, ShelfView]
     products: dict[str, str]          # sku → name of the products every view shows
+    dropped_products: int = 0
 
 
 def twin_rack(result: CaptureResult) -> tuple[Rack, Face]:
@@ -112,6 +114,16 @@ def _encode(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
+def _matched_offers(result: CaptureResult, render: ShelfView) -> list[tuple[CaptureItem, MarkedItem | None]]:
+    # One SKU can appear at several prices or shelf levels. A photo tag must
+    # identify the matching rendered offer instead of reusing that SKU's first tag.
+    first_mark: dict[tuple[str, str, int, int], MarkedItem] = {}
+    for marked in render.items:
+        first_mark.setdefault((marked.item.sku, marked.item.name, marked.item.price, marked.slot.level), marked)
+    return [(item, first_mark.get((item.sku, display_name(item), max(0, item.price or 0),
+                                  min(RACK_LEVELS, max(1, item.level))))) for item in result.items]
+
+
 def photo_view(
     photo: Image.Image, result: CaptureResult, render: ShelfView, *, tags: bool, width: int = 768,
 ) -> ShelfView:
@@ -120,14 +132,11 @@ def photo_view(
     crop, (ox, oy) = _shelf_crop(photo, result)
     scale = width / crop.width
     img = crop.resize((width, max(1, round(crop.height * scale))), Image.Resampling.LANCZOS)
-    first_mark: dict[str, MarkedItem] = {}
-    for marked in render.items:
-        first_mark.setdefault(marked.item.sku, marked)
+    matched = _matched_offers(result, render)
     if tags:
         d = ImageDraw.Draw(img)
         font = load_font(max(11, width // 44), bold=True)
-        for item in result.items:
-            marked = first_mark.get(item.sku)
+        for item, marked in matched:
             if marked is None or not item.boxes:
                 continue
             b = item.boxes[0]
@@ -140,7 +149,7 @@ def photo_view(
             d.rounded_rectangle((x1 + 1, y + 2, x1 + tw + 9, y + th + 7), radius=3, fill=(0, 0, 0))
             d.rounded_rectangle((x1, y, x1 + tw + 8, y + th + 5), radius=3, fill=(255, 220, 40), outline=(120, 95, 0))
             d.text((x1 + 4 - left, y + 2 - top), text, font=font, fill=(15, 15, 15))
-    items = tuple(first_mark[sku] for sku in dict.fromkeys(i.sku for i in result.items) if sku in first_mark)
+    items = tuple({marked.mark: marked for _, marked in matched if marked is not None}.values())
     return ShelfView(rack=render.rack, face=render.face, items=items, png=_encode(img), size=img.size)
 
 
@@ -153,7 +162,8 @@ def build_views(photo: Image.Image, result: CaptureResult, *, width: int = 768, 
         "photo_raw": photo_view(photo, result, render, tags=False, width=width),
     }
     products = {m.item.sku: m.item.name for m in views["photo"].items}
-    return TwinViews(rack=rack, face=face, views=views, products=products)
+    dropped = sum(marked is None for _, marked in _matched_offers(result, render))
+    return TwinViews(rack=rack, face=face, views=views, products=products, dropped_products=dropped)
 
 
 def raw_system_prompt(store_type: str) -> str:

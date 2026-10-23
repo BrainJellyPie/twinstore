@@ -496,7 +496,7 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
             for condition in conditions:
                 if condition != "render" and condition not in compared:
                     notes.append(f"No complete response pairs for {condition}; comparison omitted")
-            dropped = sum(1 for i in result.items if i.sku not in views.products)
+            dropped = views.dropped_products
             if dropped:
                 notes.append(f"{dropped} product(s) of the photo did not fit the rendered twin and carry no tag")
             if result.gaps:
