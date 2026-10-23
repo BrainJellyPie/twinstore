@@ -22,6 +22,7 @@ import io
 import json
 import logging
 import re
+from datetime import time as ClockTime
 from typing import Any, cast
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
@@ -516,7 +517,23 @@ _BASKET_COLUMNS = {root + suffix for root in ("transaction", "trans", "basket", 
                    for suffix in _ID_SUFFIXES}
 _RECEIPT_SCOPE_COLUMNS = {root + suffix for root in ("store", "shop", "branch", "register", "terminal", "till", "pos", "매장", "점포", "지점", "단말기", "계산대")
                           for suffix in _ID_SUFFIXES}
+_DATE_COLUMNS = {"date", "transactiondate", "transdate", "orderdate", "receiptdate", "salesdate", "visitdate", "businessdate",
+                 "날짜", "일자", "거래일자", "거래일", "주문일자", "주문일", "영업일자", "방문일자"}
+_TIME_COLUMNS = {"time", "timestamp", "transactiontime", "transtime", "ordertime", "receipttime", "salestime", "visittime",
+                 "시간", "시각", "거래시간", "거래시각", "주문시간", "주문시각", "방문시간", "방문시각"}
+_CLOCK_ONLY = re.compile(r"\s*\d{1,2}(?::\d{2}(?::\d{2}(?:\.\d+)?)?(?:\s*[ap]m)?|\s*[ap]m)"
+                         r"(?:\s*(?:Z|[+-]\d{2}:?\d{2}))?\s*", re.IGNORECASE)
 MIN_TRAFFIC_VISITS = 200
+
+
+def _local_timestamps(values: list[object]) -> list[pd.Timestamp | None]:
+    try:
+        parsed = cast(pd.DatetimeIndex, pd.to_datetime(values, errors="coerce", format="mixed"))  # type: ignore[reportUnknownMemberType]
+        stamps = cast(list[pd.Timestamp], parsed.tolist())  # type: ignore[reportUnknownMemberType]  # pandas omits the scalar type
+    except ValueError:
+        # Mixed offsets/naive values cannot share one pandas timezone. Keep the exported local clock.
+        stamps = [cast(pd.Timestamp, pd.to_datetime(value, errors="coerce")) for value in values]  # type: ignore[reportUnknownMemberType]
+    return [None if stamp is pd.NaT else stamp.tz_localize(None) for stamp in stamps]
 
 
 def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
@@ -526,8 +543,10 @@ def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
     table = cast(Any, df)
     columns = cast(list[object], list(table.columns))
     labels = {col: "".join(char for char in str(col).casefold() if char.isalnum()) for col in columns}
-    best: Any = None
+    best: list[pd.Timestamp | None] | None = None
     best_ok = 0.0
+    dates: list[list[str | None]] = []
+    clocks: list[list[str | None]] = []
     for col in columns:
         if labels[col] in _BASKET_COLUMNS or labels[col] in _RECEIPT_SCOPE_COLUMNS:
             continue
@@ -535,26 +554,32 @@ def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
         if pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series):  # type: ignore[reportUnknownMemberType]
             continue  # epoch numbers are not taken for timestamps
         values = cast(list[object], series.tolist())
-        try:
-            parsed_data: object = pd.to_datetime(series, errors="coerce", format="mixed")  # type: ignore[reportUnknownMemberType]
-        except ValueError:
-            # DST transitions or mixed aware/naive exports cannot share one pandas timezone. Traffic uses
-            # the recorded local clock, so converting every row to UTC would move visits to other hours/days.
-            local_times: list[pd.Timestamp] = []
-            for value in values:
-                stamp = cast(pd.Timestamp, pd.to_datetime(value, errors="coerce"))  # type: ignore[reportUnknownMemberType]
-                local_times.append(stamp.tz_localize(None))
-            parsed_data = pd.Series(local_times, index=series.index)
-        parsed = cast(Any, parsed_data)
-        ok = float(parsed.notna().mean())
-        valid = parsed.dropna()
+        clock_only = [isinstance(value, ClockTime) or (isinstance(value, str) and _CLOCK_ONLY.fullmatch(value) is not None)
+                      for value in values]
+        if labels[col] in _TIME_COLUMNS and sum(clock_only) / max(1, len(values)) >= 0.8:
+            clock_values = _local_timestamps([str(value) if is_clock else None for value, is_clock in zip(values, clock_only, strict=True)])
+            clocks.append([stamp.strftime("%H:%M:%S.%f") if stamp is not None else None for stamp in clock_values])
+        # Pandas fills time-only strings with today's date. They can only be used beside an explicit date.
+        parsed = _local_timestamps([None if is_clock else value for value, is_clock in zip(values, clock_only, strict=True)])
+        valid = [stamp for stamp in parsed if stamp is not None]
+        ok = len(valid) / max(1, len(values))
         # Only source text can explicitly say midnight. A date-only Excel cell is also a midnight datetime.
         explicit_times = sum(isinstance(value, str) and re.search(r"(?:[Tt]|\s)\d{1,2}:\d{2}", value) is not None
                              for value in values) / max(1, len(values))
-        has_time = ok > 0 and (float(((valid.dt.hour + valid.dt.minute) > 0).mean()) > 0.5 or
+        has_time = ok > 0 and (sum((stamp.hour, stamp.minute, stamp.second, stamp.microsecond) != (0, 0, 0, 0)
+                                  for stamp in valid) / len(valid) > 0.5 or
                               explicit_times > 0.5)
         if ok >= 0.8 and has_time and ok > best_ok:
             best, best_ok = parsed, ok
+        elif ok >= 0.8 and not has_time and labels[col] in _DATE_COLUMNS:
+            dates.append([stamp.date().isoformat() if stamp is not None else None for stamp in parsed])
+    for date_values in dates:
+        for clock_values in clocks:
+            combined = _local_timestamps([f"{date} {clock}" if date is not None and clock is not None else None
+                                          for date, clock in zip(date_values, clock_values, strict=True)])
+            ok = sum(stamp is not None for stamp in combined) / max(1, len(combined))
+            if ok >= 0.8 and ok > best_ok:
+                best, best_ok = combined, ok
     if best is None:
         return []
     frame = cast(Any, pd.DataFrame({"ts": best}))
