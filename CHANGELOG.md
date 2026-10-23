@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep POS receipt/register identifiers as text during traffic extraction, preserving leading zeros,
+  large IDs and literal `NA`/`NULL` identifiers. Mixed UTC offsets or aware/naive timestamp exports now
+  retain their recorded local weekdays and hours instead of disabling traffic calibration.
+
 - Preserve distinct POS visits when receipt numbers restart on another date, register or store. Traffic
   extraction recognizes receipt ID columns instead of confusing order timestamps, totals or transaction
   types with IDs, and accepts explicit midnight timestamps without treating date-only exports as visits.
