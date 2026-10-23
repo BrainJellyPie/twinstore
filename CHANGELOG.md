@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fit uploaded customer traffic from each receipt's earliest valid local timestamp, independent
+  of product-line order. Date/store/register scoping, significant leading zeros and missing
+  register identifiers remain intact; files without receipt IDs still count individual rows.
+
 - Keep uploaded customer evidence available after its text summary is saved. Retrying a
   generation interrupted before traffic-profile persistence now restores visit-time data from
   the retained CSV/XLSX, while reusing the summary without another summarization model call.
