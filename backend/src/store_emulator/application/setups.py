@@ -507,113 +507,118 @@ def replace_slots(
     - 400: store missing / coord / level / face format errors
     """
     try:
-        setup = read_setup(project_id, setup_id)
-    except FileNotFoundError:
-        raise AppError(f"setup not found: {setup_id}", 404)
-    if setup["status"] != "draft":
-        raise AppError(f"setup status is {setup['status']}. Branch a new setup before modifying.", 409)
+        with FileLock(str(setup_lock_path(project_id, setup_id)), timeout=10):
+            try:
+                setup = read_setup(project_id, setup_id)
+            except FileNotFoundError:
+                raise AppError(f"setup not found: {setup_id}", 404)
+            if setup["status"] != "draft":
+                raise AppError(f"setup status is {setup['status']}. Branch a new setup before modifying.", 409)
 
-    if find_active_generation(project_id, setup_id, "layout"):
-        raise AppError("layout generation is in progress. Retry once it completes.", 409)
+            if find_active_generation(project_id, setup_id, "layout"):
+                raise AppError("layout generation is in progress. Retry once it completes.", 409)
 
-    store_data = setup.get("store")
-    if not store_data:
-        raise AppError("no store layout.", 400)
-    try:
-        store = Store.model_validate(store_data)
-    except Exception as e:
-        raise AppError(f"invalid store data: {str(e).split(chr(10))[0][:200]}", 400)
+            store_data = setup.get("store")
+            if not store_data:
+                raise AppError("no store layout.", 400)
+            try:
+                store = Store.model_validate(store_data)
+            except Exception as e:
+                raise AppError(f"invalid store data: {str(e).split(chr(10))[0][:200]}", 400)
 
-    racks_by_id = {r.id: r for r in store.racks}
-    locked_by_rack: dict[str, set[tuple[int, Face]]] = {
-        r.id: {(bf.block, bf.face) for bf in r.locked_faces}
-        for r in store.racks
-    }
-    valid_face_by_rack: dict[str, dict[int, set[Face]]] = {}
-    for r in store.racks:
-        valid_face_by_rack[r.id] = {
-            idx: set(r.valid_faces(idx)) for idx in range(len(r.block_cells))
-        }
+            racks_by_id = {r.id: r for r in store.racks}
+            locked_by_rack: dict[str, set[tuple[int, Face]]] = {
+                r.id: {(bf.block, bf.face) for bf in r.locked_faces}
+                for r in store.racks
+            }
+            valid_face_by_rack: dict[str, dict[int, set[Face]]] = {}
+            for r in store.racks:
+                valid_face_by_rack[r.id] = {
+                    idx: set(r.valid_faces(idx)) for idx in range(len(r.block_cells))
+                }
 
-    @dataclass(slots=True)
-    class _SlotAccum:
-        rack_id: str
-        block: int
-        face: Face
-        level: int
-        items: list[SlotItem] = field(default_factory=list[SlotItem])
+            @dataclass(slots=True)
+            class _SlotAccum:
+                rack_id: str
+                block: int
+                face: Face
+                level: int
+                items: list[SlotItem] = field(default_factory=list[SlotItem])
 
-    slot_by_coord: dict[tuple[str, int, Face, int], _SlotAccum] = {}
+            slot_by_coord: dict[tuple[str, int, Face, int], _SlotAccum] = {}
 
-    for row_idx, spec in enumerate(slot_specs, start=1):
-        rack_id = str(spec.get("rack_id", "")).strip()
-        if not rack_id:
-            continue
-        if rack_id not in racks_by_id:
-            raise AppError(f"row {row_idx}: rack_id '{rack_id}' not found", 400)
-        try:
-            block = int(spec["block"])
-            face_str = str(spec["face"]).strip().upper()
-            level = int(spec["level"])
-        except (KeyError, ValueError, TypeError):
-            raise AppError(f"row {row_idx}: block/face/level format error", 400)
-        if face_str not in Face.__members__:
-            raise AppError(f"row {row_idx}: invalid face '{face_str}'", 400)
-        if level < 1 or level > RACK_LEVELS:
-            raise AppError(
-                f"row {row_idx}: level {level} out of range 1~{RACK_LEVELS}", 400,
-            )
-        face = Face(face_str)
-        valid_faces = valid_face_by_rack[rack_id].get(block, set())
-        if not valid_faces:
-            raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} not found", 400)
-        if face not in valid_faces:
-            raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} face {face_str} is not exposed", 400)
-        if (block, face) in locked_by_rack[rack_id]:
-            raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} face {face_str} is locked", 400)
+            for row_idx, spec in enumerate(slot_specs, start=1):
+                rack_id = str(spec.get("rack_id", "")).strip()
+                if not rack_id:
+                    continue
+                if rack_id not in racks_by_id:
+                    raise AppError(f"row {row_idx}: rack_id '{rack_id}' not found", 400)
+                try:
+                    block = int(spec["block"])
+                    face_str = str(spec["face"]).strip().upper()
+                    level = int(spec["level"])
+                except (KeyError, ValueError, TypeError):
+                    raise AppError(f"row {row_idx}: block/face/level format error", 400)
+                if face_str not in Face.__members__:
+                    raise AppError(f"row {row_idx}: invalid face '{face_str}'", 400)
+                if level < 1 or level > RACK_LEVELS:
+                    raise AppError(
+                        f"row {row_idx}: level {level} out of range 1~{RACK_LEVELS}", 400,
+                    )
+                face = Face(face_str)
+                valid_faces = valid_face_by_rack[rack_id].get(block, set())
+                if not valid_faces:
+                    raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} not found", 400)
+                if face not in valid_faces:
+                    raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} face {face_str} is not exposed", 400)
+                if (block, face) in locked_by_rack[rack_id]:
+                    raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} face {face_str} is locked", 400)
 
-        sku = str(spec.get("sku", "")).strip()
-        name = str(spec.get("name", "")).strip()
-        price_raw = spec.get("price", 0)
-        try:
-            price = int(price_raw) if price_raw not in (None, "") else 0
-        except (ValueError, TypeError):
-            raise AppError(f"row {row_idx}: price is not a number", 400)
-        promo = str(spec.get("promo", "") or "").strip()
+                sku = str(spec.get("sku", "")).strip()
+                name = str(spec.get("name", "")).strip()
+                price_raw = spec.get("price", 0)
+                try:
+                    price = int(price_raw) if price_raw not in (None, "") else 0
+                except (ValueError, TypeError):
+                    raise AppError(f"row {row_idx}: price is not a number", 400)
+                promo = str(spec.get("promo", "") or "").strip()
 
-        coord = (rack_id, block, face, level)
-        existing = slot_by_coord.get(coord)
-        if existing is None:
-            existing = _SlotAccum(
-                rack_id=rack_id, block=block, face=face, level=level,
-            )
-            slot_by_coord[coord] = existing
+                coord = (rack_id, block, face, level)
+                existing = slot_by_coord.get(coord)
+                if existing is None:
+                    existing = _SlotAccum(
+                        rack_id=rack_id, block=block, face=face, level=level,
+                    )
+                    slot_by_coord[coord] = existing
 
-        # Empty sku ("") creates no SlotItem; coords with zero non-empty
-        # items skip Slot creation entirely (sparse representation).
-        if sku:
-            if len(existing.items) >= 4:
-                raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} face {face_str} level {level} holds at most 4 products", 400)
-            existing.items.append(SlotItem(
-                sku=sku, name=name, price=price, promo=promo,
-            ))
+                # Empty sku ("") creates no SlotItem; coords with zero non-empty
+                # items skip Slot creation entirely (sparse representation).
+                if sku:
+                    if len(existing.items) >= 4:
+                        raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} face {face_str} level {level} holds at most 4 products", 400)
+                    existing.items.append(SlotItem(
+                        sku=sku, name=name, price=price, promo=promo,
+                    ))
 
-    new_slots_by_rack: dict[str, list[Slot]] = {r.id: [] for r in store.racks}
-    for accum in slot_by_coord.values():
-        if not accum.items:
-            continue
-        new_slots_by_rack[accum.rack_id].append(Slot(
-            block=accum.block, face=accum.face, level=accum.level,
-            items=accum.items,
-        ))
+            new_slots_by_rack: dict[str, list[Slot]] = {r.id: [] for r in store.racks}
+            for accum in slot_by_coord.values():
+                if not accum.items:
+                    continue
+                new_slots_by_rack[accum.rack_id].append(Slot(
+                    block=accum.block, face=accum.face, level=accum.level,
+                    items=accum.items,
+                ))
 
-    for r in store.racks:
-        r.slots = new_slots_by_rack.get(r.id, [])
-    cleared = clear_blocked_slots(store)  # unreachable slots are auto-removed
-    setup["store"] = store.model_dump(mode="json")
-    write_setup(project_id, setup_id, setup)
-    total = sum(len(slot.items) for r in store.racks for slot in r.slots)
-    return ReplaceSlotsResult(count=total, cleared=cleared)
+            for r in store.racks:
+                r.slots = new_slots_by_rack.get(r.id, [])
+            cleared = clear_blocked_slots(store)  # unreachable slots are auto-removed
+            setup["store"] = store.model_dump(mode="json")
+            write_setup(project_id, setup_id, setup)
+            total = sum(len(slot.items) for r in store.racks for slot in r.slots)
+            return ReplaceSlotsResult(count=total, cleared=cleared)
+    except Timeout:
+        raise AppError(503, "setup_lock_timeout", "lock_timeout",
+                       "another request is modifying this setup. Please retry shortly.", {"timeout_seconds": 10})
 
 
 def create_setup_from_source(
