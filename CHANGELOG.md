@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep measured customer-generation probes inside the chosen quick-sample budget. Broad hourly traffic
+  no longer requests more customers and model batches than promised. Plans account for a partial probe
+  as its own request and include the actual remaining batches before the user chooses.
+
 - Scale daily experiment and shelf-audit money using each included weekday's visitor estimate and sample
   count. Excluded busy days no longer inflate quieter-day reports. Missing or invalid estimates fall back
   to that day's observed customers without discarding usable estimates for other days.
