@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Freeze product artwork when vision layout optimization is accepted, so queued
+  jobs and later candidate evaluations keep the same package/SKU images. Failed
+  image copies leave no pending optimization job.
+
 - Reserve existing run directories even when `status.json` is missing. New normal
   and preview runs cannot overwrite legacy inputs, saved results or interrupted
   snapshots by reusing their run ID.
