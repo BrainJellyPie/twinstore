@@ -187,6 +187,7 @@ class LinkedTrip(BaseModel):
     from_category: VenueCategory
     distance_m: float
     expected_visitors: float
+    hourly_by_age: dict[int, dict[AgeGroup, float]] = {}  # source weights; absent in older demand reports
 
 
 class StoreShare(BaseModel):

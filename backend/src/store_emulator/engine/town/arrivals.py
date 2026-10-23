@@ -135,14 +135,23 @@ def plan_arrivals(
             origin_cache[key] = (options, list(itertools.accumulate(weights)))
         return origin_cache[key]
 
-    linked_cache: dict[str, tuple[list[LinkedTrip], list[float]]] = {}
+    linked_cache: dict[tuple[str, int, AgeGroup], tuple[list[LinkedTrip], list[float]]] = {}
+    venues = {v.id: v for v in town.venues}
 
-    def linked_for(category: str) -> tuple[list[LinkedTrip], list[float]]:
-        if category not in linked_cache:
-            options = sorted((t for t in demand.linked_trips if t.from_category.value == category),
+    def linked_for(category: str, hour: int, age: AgeGroup) -> tuple[list[LinkedTrip], list[float]]:
+        key = (category, hour, age)
+        if key not in linked_cache:
+            options = sorted((t for t in demand.linked_trips if t.from_category.value == category
+                              and (venue := venues.get(t.from_venue_id)) is not None and venue.is_open(hour)),
                              key=lambda t: t.from_venue_id)
-            linked_cache[category] = (options, list(itertools.accumulate(t.expected_visitors for t in options)))
-        return linked_cache[category]
+            weights = [t.hourly_by_age.get(hour, {}).get(age, 0.0) if t.hourly_by_age else t.expected_visitors
+                       for t in options]
+            if not any(weights):
+                # The pool may have no persona of the demand row's age. Keep the hour's source mix.
+                weights = [sum(t.hourly_by_age.get(hour, {}).values()) if t.hourly_by_age else t.expected_visitors
+                           for t in options]
+            linked_cache[key] = (options, list(itertools.accumulate(weights)))
+        return linked_cache[key]
 
     def pick[T](options: list[T], cumulative: list[float], rng: random.Random) -> T | None:
         if not options or cumulative[-1] <= 0:
@@ -172,7 +181,7 @@ def plan_arrivals(
                 update["day"] = day
             visitors.append(source.model_copy(update=update))
             if row.segment == "linked":
-                trip = pick(*linked_for(row.source_category), rng)
+                trip = pick(*linked_for(row.source_category, row.hour, age), rng)
                 distance = trip.distance_m if trip else 0.0
                 arrivals.append(TownArrival(
                     persona_id=clone_id, source_persona_id=source.id, hour=row.hour, segment=row.segment,
