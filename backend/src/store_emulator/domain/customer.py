@@ -30,6 +30,8 @@ class CustomerResult(BaseModel):
     leave_time: str = ""
     timeline: list[TimelineEvent] = []
     total_spent: int = 0  # minor currency unit, Σ price × quantity
+    # A planner's hard cap, retained for stock substitutions and saved operations replays. None: no hard cap.
+    spend_limit: int | None = Field(default=None, ge=0)
     engine_type: str = ""
     dropped_invalid_buys: int = 0  # BUYs naming SKUs that are not in the store (LLM hallucinations)
     dropped_over_budget: int = 0  # impulse BUYs removed by the budget tolerance rule

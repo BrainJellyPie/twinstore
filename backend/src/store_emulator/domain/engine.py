@@ -1,6 +1,6 @@
 from typing import Protocol, runtime_checkable
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .action import CustomerAction
 from .behavior import BehaviorCue, BehaviorPattern
@@ -32,6 +32,7 @@ class EngineDecision(BaseModel):
     trace: dict[str, object] = {}
     dropped_invalid_buys: int = 0
     dropped_over_budget: int = 0
+    spend_limit: int | None = Field(default=None, ge=0)
 
 
 class CustomerBehaviorEngine(Protocol):

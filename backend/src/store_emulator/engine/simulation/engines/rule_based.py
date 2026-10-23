@@ -111,6 +111,7 @@ class ShopperPlan:
     entered: bool = True
     hour: int = 12   # arrival hour: part-of-day demand (ScenarioEffects.hour_for)
     trace: dict[str, object] = field(default_factory=dict[str, object])
+    spend_limit: int | None = None  # populated only by planners that enforce a hard cap
 
 
 @dataclass
@@ -361,6 +362,7 @@ class RuleBasedEngine:
         return EngineDecision(
             actions=merged,
             engine_type=self.engine_type,
+            spend_limit=plan.spend_limit,
             trace={"pattern": plan.pattern.id, "walk_out": plan.walk_out, "planned_buys": len(plan.buys),
                    "impulse_buys": impulse.buys, "impulse_looks": impulse.looks, **plan.trace, **impulse.trace},
         )

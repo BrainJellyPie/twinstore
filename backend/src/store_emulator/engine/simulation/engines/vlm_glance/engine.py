@@ -220,6 +220,7 @@ class VLMGlanceEngine(RuleBasedEngine):
 
         catalog = self._catalog_for(store)
         limit = int(plan.budget * plan.tolerance) if plan.budget is not None and plan.tolerance is not None else None
+        plan.spend_limit = limit
         resolved: list[tuple[str, str, str, str]] = []
         # A trip of known breadth (Persona.basket_kinds, e.g. from a past receipt) keeps the model's
         # first categories in its priority order; asked for n items, models otherwise spread them over
