@@ -402,36 +402,36 @@ def run_simulation_background(
             manifest_path = run_dir / "output" / "manifest.json"
             if manifest_path.exists():
                 write_json(manifest_path, {**read_json(manifest_path), "town": town.name})
+        # Setup transitions to locked + runId. The run summary is the single
+        # source of truth for KPIs. Terminal polls trigger the UI's final layout refresh.
+        if not options.preview:
+            try:
+                with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
+                    setup = read_setup(pid, setup_id)
+                    setup["status"] = "locked"
+                    setup["runId"] = run_id
+                    write_setup(pid, setup_id, setup)
+            except Exception:
+                logger.warning("Could not finalize setup %s/%s after run %s", pid, setup_id, run_id, exc_info=True)
         write_status(
             pid, run_id, "completed", finished_at=now_iso(),
             completed_customers=len(personas),
             failed_customers=len(aggregated.diagnostics.failed_customers),
         )
 
-        if options.preview:
-            return
-        # Setup transitions to locked + runId. The run summary is the single
-        # source of truth for KPIs.
-        try:
-            with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
-                setup = read_setup(pid, setup_id)
-                setup["status"] = "locked"
-                setup["runId"] = run_id
-                write_setup(pid, setup_id, setup)
-        except Exception:
-            logger.warning("Could not finalize setup %s/%s after run %s", pid, setup_id, run_id, exc_info=True)
-
     except Exception as e:
-        write_status(pid, run_id, "failed", f"{e}\n{traceback.format_exc()}")
-        if options.preview:
-            return
-        try:
-            with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
-                setup = read_setup(pid, setup_id)
-                setup["status"] = "draft"
-                write_setup(pid, setup_id, setup)
-        except Exception:
-            logger.warning("Could not reset setup %s/%s after failed run %s", pid, setup_id, run_id, exc_info=True)
+        error = f"{e}\n{traceback.format_exc()}"
+        if not options.preview:
+            try:
+                with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
+                    setup = read_setup(pid, setup_id)
+                    setup["status"] = "draft"
+                    if setup.get("runId") == run_id:
+                        setup.pop("runId")  # Completion publication may have failed after the layout was finalized.
+                    write_setup(pid, setup_id, setup)
+            except Exception:
+                logger.warning("Could not reset setup %s/%s after failed run %s", pid, setup_id, run_id, exc_info=True)
+        write_status(pid, run_id, "failed", error)
 
 
 def _run_base(pid: str, run_id: str) -> Path:

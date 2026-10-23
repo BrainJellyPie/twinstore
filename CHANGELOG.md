@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Publish simulation completion/failure after updating the layout state, so the
+  UI's final refresh sees a locked result or a retryable draft. If completion
+  status cannot be saved, failure cleanup removes that run's provisional lock.
+
 - Extend saved-run playback through the last recorded event, including payment
   and departure after closing or midnight. Recorded weekdays and early arrivals
   are included even when a legacy saved schedule omits them.
