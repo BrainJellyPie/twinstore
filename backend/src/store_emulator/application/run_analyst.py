@@ -26,6 +26,7 @@ from store_emulator.engine.run_analyst import (
 from .errors import AppError, model_failure
 from .interview import _load, _run_dir  # pyright: ignore[reportPrivateUsage]
 from .providers import answered_by, assistive_client, assistive_model
+from .setups import setup_tree_transaction
 from .storage.io import now_iso, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -42,9 +43,12 @@ def get_thread(pid: str, run_id: str) -> AnalystThread:
 
 def clear_thread(pid: str, run_id: str) -> None:
     path = _path(pid, run_id)
+    lock = FileLock(path.with_suffix(".lock"), timeout=0)
     try:
-        with FileLock(path.with_suffix(".lock"), timeout=0):
-            _path(pid, run_id).unlink(missing_ok=True)
+        with setup_tree_transaction(pid):
+            _path(pid, run_id)
+            with lock:
+                path.unlink(missing_ok=True)
     except Timeout as e:
         raise AppError("The previous question is still being answered. Try again in a moment.", 409) from e
 
@@ -58,11 +62,14 @@ def ask(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> 
     path = _path(pid, run_id)
     lock = FileLock(path.with_suffix(".lock"), timeout=0)
     try:
-        lock.acquire()
-    except Timeout as e:
-        raise AppError("The previous question is still being answered. Try again in a moment.", 409) from e
-    try:
-        thread = get_thread(pid, run_id)
+        with setup_tree_transaction(pid):
+            _path(pid, run_id)
+            try:
+                lock.acquire()
+            except Timeout as e:
+                raise AppError("The previous question is still being answered. Try again in a moment.", 409) from e
+            thread = get_thread(pid, run_id)
+            sheet = facts(pid, run_id)
         llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.2, "max_tokens": 1600})
         model = assistive_model(q.model, llm_config)
         try:
@@ -70,7 +77,7 @@ def ask(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> 
         except ValueError as e:
             raise AppError(str(e), 400) from e
         try:
-            answer = asyncio.run(answer_run_question(llm, facts(pid, run_id), q.question, thread.messages,
+            answer = asyncio.run(answer_run_question(llm, sheet, q.question, thread.messages,
                                                      seed=stable_seed("analyst", run_id, len(thread.messages))))
         except Exception as e:  # provider errors reach the user as advice
             logger.warning(f"[analyst] {pid}/{run_id}: {type(e).__name__}: {e}")
@@ -81,7 +88,8 @@ def ask(pid: str, run_id: str, q: AnalystQuestion, config: SimulationConfig) -> 
             AnalystMessage(role="user", text=q.question, created_at=now),
             AnalystMessage(role="analyst", text=answer.answer, figures=answer.figures, follow_ups=answer.follow_ups, created_at=now_iso()),
         ]
-        write_json(path, thread.model_dump(mode="json"))
+        with setup_tree_transaction(pid):
+            write_json(_path(pid, run_id), thread.model_dump(mode="json"))
         return thread
     finally:
         lock.release()
