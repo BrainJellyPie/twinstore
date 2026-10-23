@@ -30,6 +30,19 @@ def build_journey(
     for raw_action in actions:
         action = _sanitize_action(raw_action, grid, w, h, store)
         path = _calculate_path(store, grid, pathfinder, current, action, block_move_sec)
+        if action.action == Action.BUY:
+            placement = resolve_buy_placement(
+                store, target=action.target, face=action.face, sku=action.product_sku,
+                block=action.product_block, level=action.product_level,
+            ) if action.product_sku else None
+            if placement is None or action.target is None:
+                continue
+            rack, slot = placement
+            reached = path[-1] if path else current
+            if (reached != action.target
+                    or not rack.accepts_face_at(reached, slot.face, store.grid_size, block=slot.block)
+                    or any(lock.block == slot.block and lock.face == slot.face for lock in rack.locked_faces)):
+                continue
         journey.append(JourneyStep(action=action, path=path))
         if path:
             current = path[-1]
@@ -386,11 +399,11 @@ def _sanitize_action(
         if placement is not None:
             rack, slot = placement
             snapped = face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block)
-            if snapped is not None:
-                updates: dict[str, object] = {"target": snapped}
-                if action.face != slot.face:
-                    updates["face"] = slot.face
-                return action.model_copy(update=updates)
+            # An unavailable offer must not fall through to generic floor snapping.
+            return action.model_copy(update={
+                "target": snapped, "face": slot.face,
+                "product_block": slot.block, "product_level": slot.level,
+            })
 
     if action.target is None:
         return action

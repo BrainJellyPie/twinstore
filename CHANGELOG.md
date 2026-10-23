@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Exclude purchases that cannot reach the selected shelf block, including disconnected aisles,
+  blocked stances and locked faces. Later reachable purchases still proceed, and inaccessible
+  products no longer create sales or stockout demand; unknown products remain counted in diagnostics.
+
 - Keep purchases on the selected block of a multi-cell shelf, including its own price and name.
   Rule-based visits decline a blocked selected stance instead of using another block's aisle;
   purchase diagnostics check the reached block's offers and locks.
