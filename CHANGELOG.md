@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject operations replay/planning when a shared-store run has lost its operations
+  report. Already-depleted purchases can no longer masquerade as original demand;
+  malformed saved configuration objects also fail before calculation.
+
 - Coordinate capture corrections and counterfactual photo edits with deletion and
   study startup. Concurrent corrections keep metadata and overlays together; photo
   edits reject a source corrected or deleted during processing instead of saving stale
