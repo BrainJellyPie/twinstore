@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Account for every vision voter and weighted mixture members in run cost estimates.
+  Mixed local/cloud populations retain the paid share's cost and the local server's workload;
+  a provider concurrency limit no longer makes a paid cloud model appear free.
+
 - Share demand calculations across neighborhood venue-removal effects. The synergy view
   computes exact Huff-choice and linked-trip changes from one origin/venue calculation
   instead of rebuilding the entire demand report once per venue, preserving report rounding.
