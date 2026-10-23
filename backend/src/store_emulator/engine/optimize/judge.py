@@ -42,7 +42,7 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.rack import RACK_LEVELS
 from store_emulator.domain.result import SimulationSummary
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import PathFinder
+from store_emulator.domain.types import Face, PathFinder
 from store_emulator.engine.analysis.compare import compare_runs
 from store_emulator.engine.analysis.fidelity import spearman
 from store_emulator.engine.simulation.aggregator import aggregate
@@ -64,12 +64,13 @@ _LEVEL_SMOOTHING = 0.02
 
 def impulse_profile(store: Store, customers: list[CustomerResult]) -> ImpulseProfile:
     """Impulse purchase lines per visitor, impulse revenue share and the shelf levels picked."""
-    levels: dict[tuple[str, str, str], int] = {}
+    levels: dict[tuple[str, Face | None, str, int | None], set[int]] = {}
     for rack in store.racks:
         for slot in rack.slots:
             for item in slot.items:
-                levels.setdefault((rack.id, slot.face.value, item.sku), slot.level)
-                levels.setdefault((rack.id, "", item.sku), slot.level)
+                for face in (slot.face, None):
+                    for block in (slot.block, None):
+                        levels.setdefault((rack.id, face, item.sku, block), set()).add(slot.level)
     lines = 0
     revenue = impulse_revenue = 0
     picked = dict.fromkeys(range(1, RACK_LEVELS + 1), 0)
@@ -80,10 +81,12 @@ def impulse_profile(store: Store, customers: list[CustomerResult]) -> ImpulsePro
                 continue
             lines += 1
             impulse_revenue += event.price * event.quantity
-            face = event.face.value if event.face is not None else ""
-            level = levels.get((event.target_rack, face, event.product_sku)) or levels.get(
-                (event.target_rack, "", event.product_sku))
-            if level is not None:
+            candidates = levels.get((event.target_rack, event.face, event.product_sku, event.product_block), set())
+            level = event.product_level
+            # Legacy/replacement picks lack slot evidence. Infer only a unique height, never the first shelf.
+            if level is None and len(candidates) == 1:
+                level = next(iter(candidates))
+            if level is not None and level in candidates:
                 picked[level] += 1
     total = sum(picked.values())
     return ImpulseProfile(

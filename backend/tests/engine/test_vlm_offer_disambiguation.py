@@ -135,4 +135,5 @@ def test_selected_offer_price_and_position_survive_complete_fake_vlm_purchase(vo
     assert len(result.purchases) == 1
     buy = result.purchases[0]
     assert (buy.product_sku, buy.price, buy.x, buy.y) == (target.item.sku, 700, 4, 0)
+    assert (buy.product_block, buy.product_level) == (1, 3)
     assert result.total_spent == 700 and result.timeline[-1].action == Action.EXIT
