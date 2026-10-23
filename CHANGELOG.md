@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep saved customers with Unicode, spaces, punctuation or long cloned IDs accessible in journeys and
+  interviews. IDs remain unchanged; transcripts outside the legacy filename alphabet use bounded hashed
+  paths in a separate directory, while existing transcript paths remain readable.
+
 - Apply weekend/holiday traffic once in venue basket-synergy studies. They now share the area model's
   scenario traffic calculation, so visitor and daily revenue estimates use the selected day profile
   consistently while retaining weather, event, budget and shopping effects.

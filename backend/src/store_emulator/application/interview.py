@@ -1,10 +1,11 @@
 """Shopper journeys and interviews for a finished run.
 
-Transcripts live next to the run: `.data/<pid>/runs/<run_id>/interviews/<persona_id>.json`, group
-interviews in `.../group_interviews/<group_id>.json`.
+Transcripts live next to the run in `interviews/`. IDs outside the legacy filename alphabet
+use `interviews/by-id/<digest>.json`; group interviews use `group_interviews/<group_id>.json`.
 """
 
 import asyncio
+import hashlib
 import logging
 import random
 import re
@@ -107,7 +108,6 @@ def shelf_face_png(pid: str, run_id: str, rack_id: str, face: str) -> bytes:
 
 
 def get_journey(pid: str, run_id: str, persona_id: str) -> Journey:
-    _check_id(persona_id, "shopper id")
     customers, personas, store, currency = _load(pid, run_id)
     customer = customers.get(persona_id)
     persona = personas.get(persona_id)
@@ -117,8 +117,13 @@ def get_journey(pid: str, run_id: str, persona_id: str) -> Journey:
 
 
 def _transcript_path(pid: str, run_id: str, persona_id: str) -> Path:
-    _check_id(persona_id, "shopper id")
-    return _run_dir(pid, run_id) / "interviews" / f"{persona_id}.json"
+    if not persona_id.strip():
+        raise AppError("shopper id must not be blank", 400)
+    root = _run_dir(pid, run_id) / "interviews"
+    if _ID.fullmatch(persona_id):
+        return root / f"{persona_id}.json"
+    # A separate namespace cannot collide with an existing literal hexadecimal customer ID.
+    return root / "by-id" / f"{hashlib.sha256(persona_id.encode()).hexdigest()}.json"
 
 
 def get_interview(pid: str, run_id: str, persona_id: str) -> Interview:
