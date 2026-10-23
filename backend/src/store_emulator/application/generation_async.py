@@ -10,7 +10,7 @@ from typing import Any, cast
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.estimates import cost_usd, effective_parallel, is_local_base, should_warn
-from store_emulator.application.setups import setup_tree_transaction
+from store_emulator.application.setups import project_layout_transaction, setup_tree_transaction
 from store_emulator.application.storage.generations import (
     find_active_generation, generation_dir, init_generation, read_status, write_status,
 )
@@ -65,36 +65,37 @@ def start_persona_generation(
     """
     if not metadata_path(project_id).is_file():
         raise AppError(f"Project not found: {project_id}", 404)
-    setup = read_setup(project_id, setup_id)
-    if not setup:
-        raise AppError(f"Setup not found: {setup_id}", 404)
+    with project_layout_transaction(project_id):
+        setup = read_setup(project_id, setup_id)
+        if not setup:
+            raise AppError(f"Setup not found: {setup_id}", 404)
 
-    # Per-setup single-flight: any in-flight generation (any kind) blocks.
-    active = find_active_generation(project_id, setup_id)
-    if active and active.get("gen_id") != ignore_active_gen_id:
-        raise AppError(
-            f"a {active.get('kind')} generation is already in progress (gen={active.get('gen_id')})", 409,
-        )
+        # Per-setup single-flight: any in-flight generation (any kind) blocks.
+        active = find_active_generation(project_id, setup_id)
+        if active and active.get("gen_id") != ignore_active_gen_id:
+            raise AppError(
+                f"a {active.get('kind')} generation is already in progress (gen={active.get('gen_id')})", 409,
+            )
 
-    active_personas = find_active_generation(project_id, kind="persona")
-    if active_personas and active_personas.get("gen_id") != ignore_active_gen_id:
-        raise AppError("persona generation is already in progress for this project.", 409)
+        active_personas = find_active_generation(project_id, kind="persona")
+        if active_personas and active_personas.get("gen_id") != ignore_active_gen_id:
+            raise AppError("persona generation is already in progress for this project.", 409)
 
-    # Sim run present → personas locked; prevent overwrite.
-    from store_emulator.application.storage.setups import list_setups as _list_setups
-    setups = _list_setups(project_id)
-    if any(s.get("status") == "running" for s in setups):
-        raise AppError("personas cannot be regenerated while a simulation is running.", 409)
-    if has_run_history(project_id):   # its layout may have been deleted since: the runs still use these customers
-        raise AppError("personas cannot be regenerated because the project has simulation history.", 409)
+        # Sim run present → personas locked; prevent overwrite.
+        from store_emulator.application.storage.setups import list_setups as _list_setups
+        setups = _list_setups(project_id)
+        if any(s.get("status") == "running" for s in setups):
+            raise AppError("personas cannot be regenerated while a simulation is running.", 409)
+        if has_run_history(project_id):   # its layout may have been deleted since: the runs still use these customers
+            raise AppError("personas cannot be regenerated because the project has simulation history.", 409)
 
-    if supplemental_bytes is not None:
-        _keep_upload(project_id, supplemental_bytes, supplemental_filename)
-    else:
-        kept = _kept_upload(project_id)
-        if kept is not None:
-            supplemental_bytes, supplemental_filename = kept
-    gen_id = init_generation(project_id, setup_id, "persona")
+        if supplemental_bytes is not None:
+            _keep_upload(project_id, supplemental_bytes, supplemental_filename)
+        else:
+            kept = _kept_upload(project_id)
+            if kept is not None:
+                supplemental_bytes, supplemental_filename = kept
+        gen_id = init_generation(project_id, setup_id, "persona")
     executor.submit(
         _run_persona_background,
         config, project_id, setup_id, gen_id, custom_instruction,

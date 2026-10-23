@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reserve customer generation under the project's layout locks before queuing work. Concurrent requests can
+  no longer launch duplicate generators, replace customers used by an accepted final run, accept customer
+  edits after generation starts, or register jobs in a deleted project or layout.
+
 - Preserve project edits when metadata saves overlap customer saves or generation results. Serialize updates
   to names, addresses, summaries, traffic profiles and visitor estimates, and prevent a late save from
   recreating a deleted project. Waiting metadata requests leave the API responsive.
