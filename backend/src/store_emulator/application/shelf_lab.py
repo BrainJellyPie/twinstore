@@ -63,6 +63,7 @@ from .providers import assistive_client, assistive_vision_model
 from .generation_async import visitors_per_day_coming
 from .scenarios import scenario_shoppers
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
+from .setups import project_layout_transaction
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.personas import read_personas
 from .storage.setups import metadata_path, read_setup
@@ -437,21 +438,22 @@ def _finish(pid: str, status: LabJobStatus, report: BaseModel | None, error: str
 
 
 def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationConfig) -> LabJobStatus:
-    photo, result = _photo_and_result(pid, cid, req.edit_id)
-    if not any(i.labeled for i in result.items):
-        raise AppError("sim2real needs a capture whose products were read (run the capture with a vision model)", 409)
-    currency = project_currency(pid, config.currency)
-    if result.currency != currency:
-        raise AppError(f"Capture currency must match project shopper budgets ({currency}); budgets are not converted automatically.", 422)
-    llm_config = capture_llm_config(config, req.model)
-    if llm_config is None:
-        raise AppError("sim2real needs a vision model", 400)
-    personas = select_personas(_personas(pid), req.personas, seed=req.seed)
-    conditions = list(dict.fromkeys(req.conditions))
-    if "render" not in conditions:
-        conditions.insert(0, "render")
-    status = _new_job(pid, cid, "sim2real")
-    store_type = _store_type(pid)
+    with project_layout_transaction(pid):
+        photo, result = _photo_and_result(pid, cid, req.edit_id)
+        if not any(i.labeled for i in result.items):
+            raise AppError("sim2real needs a capture whose products were read (run the capture with a vision model)", 409)
+        currency = project_currency(pid, config.currency)
+        if result.currency != currency:
+            raise AppError(f"Capture currency must match project shopper budgets ({currency}); budgets are not converted automatically.", 422)
+        llm_config = capture_llm_config(config, req.model)
+        if llm_config is None:
+            raise AppError("sim2real needs a vision model", 400)
+        personas = select_personas(_personas(pid), req.personas, seed=req.seed)
+        conditions = list(dict.fromkeys(req.conditions))
+        if "render" not in conditions:
+            conditions.insert(0, "render")
+        store_type = _store_type(pid)
+        status = _new_job(pid, cid, "sim2real")
 
     def run() -> None:
         t0 = time.perf_counter()
@@ -538,19 +540,20 @@ def _face_of(store: Store, rack_id: str, face: str | None) -> Face:
 
 
 def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig) -> LabJobStatus:
-    _, result = _photo_and_result(pid, cid, req.edit_id)
-    store = _load_store(pid, req.setup_id)
-    currency = simulation_currency(pid, store, config.currency)
-    if result.currency != currency:
-        raise AppError(f"Capture currency must match layout prices and project shopper budgets ({currency}); prices are not converted automatically.", 422)
-    face = _face_of(store, req.rack_id, req.face)
-    everyone = _personas(pid)
-    # Shoppers who arrive while the layout is closed are dropped by the simulator: the panel and the per-day money
-    # come from those who do come (the run estimate's shoppers a day), as in A/B tests.
-    personas = scenario_shoppers(config.model_copy(update={"scenario": None}), store, everyone)
-    if not personas:
-        raise AppError("No shoppers come while this layout is open; check its opening hours.", 400)
-    status = _new_job(pid, cid, "audit")
+    with project_layout_transaction(pid):
+        _, result = _photo_and_result(pid, cid, req.edit_id)
+        store = _load_store(pid, req.setup_id)
+        currency = simulation_currency(pid, store, config.currency)
+        if result.currency != currency:
+            raise AppError(f"Capture currency must match layout prices and project shopper budgets ({currency}); prices are not converted automatically.", 422)
+        face = _face_of(store, req.rack_id, req.face)
+        everyone = _personas(pid)
+        # The panel and its daily money scale use customers who arrive while this saved layout is open.
+        personas = scenario_shoppers(config.model_copy(update={"scenario": None}), store, everyone)
+        if not personas:
+            raise AppError("No shoppers come while this layout is open; check its opening hours.", 400)
+        per_day, simulated_per_day = visitors_per_day_coming(pid, everyone, personas)
+        status = _new_job(pid, cid, "audit")
 
     def run() -> None:
         t0 = time.perf_counter()
@@ -562,7 +565,6 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
             levels, findings = diff_face(rack, face, field, result.currency)
             expected = sum(lv.expected_facings for lv in levels)
             compliance = round(sum(lv.matched_facings for lv in levels) / expected, 4) if expected else 1.0
-            per_day, simulated_per_day = visitors_per_day_coming(pid, everyone, personas)
             panel = select_personas(personas, req.panel, seed=req.seed)
             status.stage, status.progress = "simulating", 0.2
             _write_status(pid, status)

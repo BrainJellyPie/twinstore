@@ -413,13 +413,14 @@ def list_captures(pid: str) -> list[CaptureStatus]:
 
 
 def delete_capture(pid: str, cid: str) -> None:
-    status = _read_status(pid, cid)
-    if status.status in ("pending", "running"):
-        raise AppError("capture is still being processed", 409)
-    if _lab_job_running(_dir(pid, cid)):
-        # The job would write its results back under the deleted capture.
-        raise AppError("a Shelf Lab job on this capture is still running; delete it when the job has finished", 409)
-    remove_tree(_dir(pid, cid))
+    with setup_tree_transaction(pid):
+        status = _read_status(pid, cid)
+        if status.status in ("pending", "running"):
+            raise AppError("capture is still being processed", 409)
+        if _lab_job_running(_dir(pid, cid)):
+            # The job would write its results back under the deleted capture.
+            raise AppError("a Shelf Lab job on this capture is still running; delete it when the job has finished", 409)
+        remove_tree(_dir(pid, cid))
 
 
 def _lab_job_running(folder: Path) -> bool:
