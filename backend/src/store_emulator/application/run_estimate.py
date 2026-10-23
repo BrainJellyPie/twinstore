@@ -28,6 +28,7 @@ from store_emulator.application.storage.personas import read_personas
 from store_emulator.application.storage.setups import read_setup
 from store_emulator.domain.config import EngineType, LLMConfig, SimulationConfig
 from store_emulator.domain.persona import Persona
+from store_emulator.domain.providers import EnsembleConfig
 from store_emulator.domain.store import Store
 
 logger = logging.getLogger(__name__)
@@ -98,7 +99,7 @@ def estimate_run(pid: str, setup_id: str, options: RunOptions, config: Simulatio
         # Vision entrance plans and shelf glances ask every voter. Text engines use mixture.
         requests, prompt, completion = (value * len(resolved) for value in (requests, prompt, completion))
     seconds: float | None = None
-    measured = _measured(pid, engine.value, label)
+    measured = _measured(pid, engine.value, label, ensemble)
     if measured is not None:
         requests = measured.requests if measured.requests is not None else requests
         prompt, completion, seconds = measured.prompt, measured.completion, measured.seconds
@@ -162,7 +163,7 @@ def _resolved(config: SimulationConfig, base: LLMConfig) -> list[LLMConfig]:
     return out
 
 
-def _measured(pid: str, engine: str, model: str) -> _Measured | None:
+def _measured(pid: str, engine: str, model: str, ensemble: EnsembleConfig | None = None) -> _Measured | None:
     """Model work per shopper on the newest usable uncached, successful run of this engine and model."""
     runs = Path(DATA_DIR) / pid / "runs"
     if not runs.is_dir():
@@ -186,6 +187,16 @@ def _measured(pid: str, engine: str, model: str) -> _Measured | None:
             manifest = cast(dict[str, object], raw_manifest)
             if manifest.get("engine_type") != engine or manifest.get("model") != model:
                 continue
+            if ensemble is not None:
+                # Display aliases and rounded weights do not identify the models that did the work.
+                raw_config: object = read_json(run / "input" / "config.json")
+                if not isinstance(raw_config, dict):
+                    continue
+                saved = EnsembleConfig.model_validate(cast(dict[str, object], raw_config).get("ensemble"))
+                if saved.mode != ensemble.mode or [(m.model, m.weight) for m in saved.members] != [
+                    (m.model, m.weight) for m in ensemble.members
+                ]:
+                    continue
             raw_usage: object = read_json(run / "output" / "token_usage.json")
             if not isinstance(raw_usage, dict):
                 continue
