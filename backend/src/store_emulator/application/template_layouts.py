@@ -4,7 +4,7 @@ import uuid
 from pathlib import Path
 
 from store_emulator.application.errors import AppError
-from store_emulator.application.setups import set_active_setup, setup_summary
+from store_emulator.application.setups import set_active_setup, setup_summary, setup_tree_transaction
 from store_emulator.application.storage.io import write_json
 from store_emulator.application.storage.setups import metadata_path, new_setup_data, setup_path, read_setup
 from store_emulator.domain.layout_options import (
@@ -42,18 +42,20 @@ def prepare_template_layout(pid: str, req: TemplateLayoutRequest) -> dict[str, o
 
 
 def _persist(pid: str, setups: list[dict[str, object]]) -> list[dict[str, object]]:
-    written: list[Path] = []
-    try:
-        for setup in setups:
-            path = setup_path(pid, str(setup["id"]))
-            written.append(path)
-            write_json(path, setup)
-        set_active_setup(pid, str(setups[0]["id"]))
-    except Exception:
-        for path in written:
-            path.unlink(missing_ok=True)
-        raise
-    return [setup_summary(pid, setup) for setup in setups]
+    parents = [str(setup["parentId"]) for setup in setups if setup.get("parentId")]
+    with setup_tree_transaction(pid, parents):
+        written: list[Path] = []
+        try:
+            for setup in setups:
+                path = setup_path(pid, str(setup["id"]))
+                written.append(path)
+                write_json(path, setup)
+            set_active_setup(pid, str(setups[0]["id"]))
+        except Exception:
+            for path in written:
+                path.unlink(missing_ok=True)
+            raise
+        return [setup_summary(pid, setup) for setup in setups]
 
 
 def create_template_layout(pid: str, req: TemplateLayoutRequest) -> dict[str, object]:

@@ -3,7 +3,8 @@ import json
 import logging
 import re
 import time
-from contextlib import ExitStack
+from collections.abc import Iterable, Iterator
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
@@ -46,6 +47,28 @@ def setup_lock_path(project_id: str, setup_id: str) -> Path:
     lock_dir = Path(DATA_DIR) / "locks" / project_id
     lock_dir.mkdir(parents=True, exist_ok=True)
     return lock_dir / f"setup_{setup_id}.lock"
+
+
+@contextmanager
+def setup_tree_transaction(project_id: str, parents: Iterable[str] = ()) -> Iterator[None]:
+    """Keep parent/project deletion from interleaving with new layout commits.
+
+    Acquire this before layout locks. Expensive preparation can happen outside;
+    parent existence is checked again here immediately before saving a branch.
+    """
+    lock = FileLock(setup_lock_path(project_id, "tree").with_name(".setup-tree.lock"), timeout=10)
+    try:
+        held = lock.acquire()
+    except Timeout:
+        raise AppError(503, "setup_tree_lock_timeout", "lock_timeout",
+                       "another request is changing the layout tree. Please retry shortly.", {"timeout_seconds": 10})
+    with held:
+        if not metadata_path(project_id).is_file():
+            raise AppError(f"project not found: {project_id}", 404)
+        for parent in parents:
+            if not _SAFE_ID.fullmatch(parent) or not setup_path(project_id, parent).is_file():
+                raise AppError(f"source setup no longer exists: {parent}", 404)
+        yield
 
 
 def get_setups(project_id: str) -> list[dict[str, Any]]:
@@ -659,8 +682,9 @@ def create_setup_from_source(
         else:
             final_name = "Untitled layout"
         new_setup = new_setup_data(final_name, parent_id, None, memo)
-        write_json(setup_path(project_id, new_setup["id"]), new_setup)
-        set_active_setup(project_id, new_setup["id"])
+        with setup_tree_transaction(project_id, [source_setup_id] if source_setup_id else []):
+            write_json(setup_path(project_id, new_setup["id"]), new_setup)
+            set_active_setup(project_id, new_setup["id"])
         return setup_summary(project_id, new_setup)
 
     if not source_setup_id:
@@ -685,59 +709,61 @@ def create_setup_from_source(
     for key in ("building", "generation", "operations"):   # a copy is run like its source until changed
         if source.get(key) is not None:
             new_setup[key] = copy.deepcopy(source[key])
-    write_json(setup_path(project_id, new_setup["id"]), new_setup)
-    set_active_setup(project_id, new_setup["id"])
+    with setup_tree_transaction(project_id, [source_setup_id] if source_setup_id else []):
+        write_json(setup_path(project_id, new_setup["id"]), new_setup)
+        set_active_setup(project_id, new_setup["id"])
     return setup_summary(project_id, new_setup)
 
 
 def delete_setup_with_descendants(project_id: str, setup_id: str) -> list[str]:
     """Delete setup + descendant branches. Enforces business rules. Returns deleted IDs."""
-    try:
-        setup = read_setup(project_id, setup_id)
-    except FileNotFoundError:
-        raise AppError(f"setup not found: {setup_id}", 404)
+    with setup_tree_transaction(project_id):
+        try:
+            setup = read_setup(project_id, setup_id)
+        except FileNotFoundError:
+            raise AppError(f"setup not found: {setup_id}", 404)
 
-    if not setup.get("parentId"):
-        raise AppError("the initial setup cannot be deleted.", 409)
-    if setup["status"] == "running":
-        raise AppError("cannot delete a setup that is currently running.", 409)
+        if not setup.get("parentId"):
+            raise AppError("the initial setup cannot be deleted.", 409)
+        if setup["status"] == "running":
+            raise AppError("cannot delete a setup that is currently running.", 409)
 
-    deleted_ids = [*find_descendants(project_id, setup_id), setup_id]
-    deadline = time.monotonic() + 10
-    try:
-        with ExitStack() as locks:
-            # Acquire the entire tree before changing any files. Stable ordering
-            # also prevents overlapping ancestor/descendant deletions deadlocking.
-            for del_id in sorted(deleted_ids):
-                locks.enter_context(FileLock(
-                    str(setup_lock_path(project_id, del_id)),
-                    timeout=max(0, deadline - time.monotonic()),
-                ))
-            for del_id in deleted_ids:
-                try:
-                    current = read_setup(project_id, del_id)
-                except FileNotFoundError:
-                    if del_id == setup_id:
-                        raise AppError(f"setup not found: {setup_id}", 404)
-                    continue
-                # A simulation may have started while deletion waited for a save.
-                if current["status"] == "running":
-                    raise AppError(
-                        f"setup '{current.get('name', del_id)}' is currently running and cannot be deleted.", 409,
-                    )
-            for del_id in deleted_ids:
-                delete_setup(project_id, del_id)
+        deleted_ids = [*find_descendants(project_id, setup_id), setup_id]
+        deadline = time.monotonic() + 10
+        try:
+            with ExitStack() as locks:
+                # Acquire the entire tree before changing any files. Stable ordering
+                # also prevents overlapping ancestor/descendant deletions deadlocking.
+                for del_id in sorted(deleted_ids):
+                    locks.enter_context(FileLock(
+                        str(setup_lock_path(project_id, del_id)),
+                        timeout=max(0, deadline - time.monotonic()),
+                    ))
+                for del_id in deleted_ids:
+                    try:
+                        current = read_setup(project_id, del_id)
+                    except FileNotFoundError:
+                        if del_id == setup_id:
+                            raise AppError(f"setup not found: {setup_id}", 404)
+                        continue
+                    # A simulation may have started while deletion waited for a save.
+                    if current["status"] == "running":
+                        raise AppError(
+                            f"setup '{current.get('name', del_id)}' is currently running and cannot be deleted.", 409,
+                        )
+                for del_id in deleted_ids:
+                    delete_setup(project_id, del_id)
 
-            # If the active setup was deleted, switch to the first remaining one.
-            state = read_state(project_id)
-            if state.get("activeSetupId") in deleted_ids:
-                remaining = list_setups(project_id)
-                state["activeSetupId"] = remaining[0]["id"] if remaining else None
-                write_state(project_id, state)
-            return deleted_ids
-    except Timeout:
-        raise AppError(503, "setup_lock_timeout", "lock_timeout",
-                       "another request is modifying this setup. Please retry shortly.", {"timeout_seconds": 10})
+                # If the active setup was deleted, switch to the first remaining one.
+                state = read_state(project_id)
+                if state.get("activeSetupId") in deleted_ids:
+                    remaining = list_setups(project_id)
+                    state["activeSetupId"] = remaining[0]["id"] if remaining else None
+                    write_state(project_id, state)
+                return deleted_ids
+        except Timeout:
+            raise AppError(503, "setup_lock_timeout", "lock_timeout",
+                           "another request is modifying this setup. Please retry shortly.", {"timeout_seconds": 10})
 
 
 def layout_operations(project_id: str, setup_id: str) -> OperationsConfig | None:

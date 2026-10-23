@@ -60,7 +60,7 @@ from .async_executor import executor
 from .currencies import project_currency
 from .errors import AppError, job_failure
 from .providers import PRESETS, assistive_vision_model, ensure_local_ready, resolve_model
-from .setups import set_active_setup, setup_summary
+from .setups import set_active_setup, setup_summary, setup_tree_transaction
 from .storage import images as image_storage
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.setups import metadata_path, new_setup_data, read_setup, setup_path
@@ -596,8 +596,9 @@ def apply_captures(
         new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
     if source.get("operations") is not None:
         new_setup["operations"] = source["operations"]
-    write_json(setup_path(pid, new_setup["id"]), new_setup)
-    set_active_setup(pid, new_setup["id"])
+    with setup_tree_transaction(pid, [setup_id]):
+        write_json(setup_path(pid, new_setup["id"]), new_setup)
+        set_active_setup(pid, new_setup["id"])
     for cid in capture_ids:
         status = _read_status(pid, cid)
         _write_status(pid, status.model_copy(update={"applied_setup_ids": [*status.applied_setup_ids, new_setup["id"]]}))

@@ -306,6 +306,51 @@ def test_delete_waits_for_a_retry_already_reading_the_saved_layout(workflow, mon
     assert not setup_path(PID, sid).exists()
 
 
+@pytest.mark.parametrize("removed", ["parent", "project"])
+def test_deletion_during_child_creation_leaves_no_orphan_layout(workflow, monkeypatch, removed):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from store_emulator.application import capture_batch, setups
+
+    client, request, _ = workflow
+    base = read_setup(PID, BASE)
+    root = {**base, "id": "setup_tree_root", "parentId": None}
+    write_json(setup_path(PID, root["id"]), root)
+    base["parentId"] = root["id"]
+    write_json(setup_path(PID, BASE), base)
+    form = prepare_save(client, request)
+    ready, release, deleting = Event(), Event(), Event()
+    original_write, original_delete = capture_batch.write_json, setups.delete_setup
+
+    def paused_write(path, data):
+        ready.set()
+        assert release.wait(5)
+        original_write(path, data)
+
+    def observed_delete(pid, sid):
+        deleting.set()
+        original_delete(pid, sid)
+
+    monkeypatch.setattr(capture_batch, "write_json", paused_write)
+    monkeypatch.setattr(setups, "delete_setup", observed_delete)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        saving = pool.submit(client.post, ROOT + "/batch-save", json=form)
+        try:
+            assert ready.wait(5)
+            url = f"/api/projects/{PID}" + (f"/setups/{BASE}" if removed == "parent" else "")
+            removal = pool.submit(client.delete, url)
+            if deleting.wait(0.3):
+                assert removal.result(timeout=5).status_code == 200
+        finally:
+            release.set()
+        saved = saving.result(timeout=5)
+        assert saved.status_code == 200, saved.text
+        assert removal.result(timeout=5).status_code == 200
+    assert not setup_path(PID, BASE).exists()
+    assert not setup_path(PID, saved.json()["setup_id"]).exists()
+    assert setup_path(PID, root["id"]).exists() == (removed == "parent")
+
+
 def test_partial_placement_is_previewed_but_cannot_be_saved(workflow):
     client, request, tmp_path = workflow
     edit_result(

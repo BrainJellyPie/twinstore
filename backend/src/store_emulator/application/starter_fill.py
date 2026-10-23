@@ -4,6 +4,7 @@ import hashlib
 import json
 from filelock import FileLock, Timeout
 from store_emulator.application.errors import AppError
+from store_emulator.application.setups import setup_tree_transaction
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
 from store_emulator.application.storage.images import layout_image_url, load_manifest
@@ -118,8 +119,9 @@ def save(pid: str, sid: str, req: StarterFillSave) -> StarterSaved:
             draft["id"] = path.stem
             draft["starter_fill_request"] = req.model_dump(mode="json")
             draft["starter_fill_result"] = result.model_dump(mode="json")
-            write_json(receipt, {"source_id": sid})
-            write_json(path, draft)
+            with setup_tree_transaction(pid, [sid]):
+                write_json(receipt, {"source_id": sid})
+                write_json(path, draft)
             return result
     except Timeout as exc:
         raise AppError("Another starter draft is saving. Retry this save shortly", 409) from exc
