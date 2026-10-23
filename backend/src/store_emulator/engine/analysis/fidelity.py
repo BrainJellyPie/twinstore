@@ -84,8 +84,15 @@ def fidelity_report(
     real_baskets = [sum(line.quantity for line in lines) for lines in real_tx.values()]
     real_values = [sum(line.quantity * line.unit_price for line in lines) for lines in real_tx.values()]
 
+    sku_rank = spearman(s_vec, r_vec)
+    rack_rank = math.nan if ambiguous else spearman(s_rack, r_rack)
+    if math.isnan(sku_rank):
+        notes.append("SKU rank correlation is unavailable: it needs at least two products and varying sales totals in both datasets.")
+    if not ambiguous and math.isnan(rack_rank):
+        notes.append("Rack rank correlation is unavailable: it needs at least two rack/category groups and varying sales totals in both datasets.")
+
     metrics = [
-        FidelityMetric(name="sku_spearman", value=_round(spearman(s_vec, r_vec)), better="higher",
+        FidelityMetric(name="sku_spearman", value=_round(sku_rank), better="higher",
                        description="Rank correlation of units sold per SKU"),
         FidelityMetric(name="sku_js_similarity", value=_round(1.0 - js_divergence(s_vec, r_vec)), better="higher",
                        description="1 − Jensen–Shannon divergence (base 2) of SKU unit shares"),
@@ -93,7 +100,7 @@ def fidelity_report(
                        description="Does the simulated top-K match the real best sellers?"),
         FidelityMetric(name="sku_ndcg@all", value=_round(ndcg(s_vec, r_vec, len(skus))), better="higher",
                        description="NDCG over every SKU on the shelves"),
-        FidelityMetric(name="rack_spearman", value=None if ambiguous else _round(spearman(s_rack, r_rack)), better="higher",
+        FidelityMetric(name="rack_spearman", value=_round(rack_rank), better="higher",
                        description="Rank correlation of units per rack (category proxy)"),
         FidelityMetric(name="rack_js_similarity", value=None if ambiguous else _round(1.0 - js_divergence(s_rack, r_rack)), better="higher",
                        description="1 − JSD of rack unit shares"),
@@ -175,11 +182,12 @@ def js_divergence(p: np.ndarray, q: np.ndarray) -> float:
 
 
 def spearman(x: np.ndarray, y: np.ndarray) -> float:
+    """Rank correlation, undefined when either side has no variation in ranks."""
     if len(x) < 2:
-        return 0.0
+        return math.nan
     rx, ry = _rank(x), _rank(y)
     if rx.std() == 0 or ry.std() == 0:
-        return 0.0
+        return math.nan
     return float(np.corrcoef(rx, ry)[0, 1])
 
 

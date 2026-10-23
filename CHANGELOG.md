@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Mark SKU/rack rank correlation unavailable for constant sales or fewer than
+  two products/groups. Perfectly matching uniform sales and single-category
+  stores no longer receive a misleading zero/poor rank score; defined zero
+  correlations and other fidelity measures retain their meaning.
+
 - Include the retained closing shift in hourly checkout staffing reports. Late
   and after-midnight payments no longer show zero staff/tills while the last
   shift is serving them; weekday maxima and physical till limits are preserved.
