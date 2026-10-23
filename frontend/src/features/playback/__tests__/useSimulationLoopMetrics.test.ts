@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { CustomerResult, TimelineEvent } from "@/shared/types/domain";
+import type { CustomerResult, Store, TimelineEvent } from "@/shared/types/domain";
+import { useStoreAssets } from "@/features/store-viewer/hooks/useStoreAssets";
 import { usePlaybackControlStore } from "@/stores/playbackControlStore";
 import { useSimulationMetricsStore } from "@/stores/simulationMetricsStore";
 import { useSimulationLoop } from "../hooks/useSimulationLoop";
@@ -51,4 +52,24 @@ it("carries only completed days into automatic day transitions", () => {
   tick(25 / 60);
   expect(usePlaybackControlStore.getState().currentDay).toBe(3);
   assertSales(3);
+});
+
+it("plays the final day's purchase and departure after midnight before finishing", () => {
+  const store: Store = { id: "night", name: "Late shop", type: "shop", grid_size: [5, 5], racks: [],
+    weekly_schedule: [{ day: 1, is_open: true, open_hour: 23, close_hour: 24 }] };
+  const late: CustomerResult = { ...customers[0]!, arrival_time: "23:59:00", timeline: [
+    event(0, "enter"), event(90, "buy", { product_sku: "same", product_name: "Same", price: 100, quantity: 1 }),
+    event(120, "pay"), event(180, "exit", { duration: 10 }),
+  ] };
+  const people = [late];
+  renderHook(() => {
+    const assets = useStoreAssets(store, people);
+    return useSimulationLoop({ ...options, ...assets, customers: people });
+  });
+  usePlaybackControlStore.getState().play();
+  tick(61);
+  assertSales(1);
+  expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: false, inStore: 1 });
+  tick(70 / 60);
+  expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: true, inStore: 0, revenue: 100 });
 });
