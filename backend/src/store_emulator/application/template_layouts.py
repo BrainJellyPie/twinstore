@@ -37,6 +37,8 @@ def prepare_template_layout(pid: str, req: TemplateLayoutRequest) -> dict[str, o
     setup: dict[str, object] = new_setup_data(name, req.source_setup_id, store.model_dump(mode="json"), memo=memo)
     if source is not None and source.get("building") is not None:
         setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
+    if source is not None and source.get("operations") is not None:
+        setup["operations"] = source["operations"]
     setup["generation"] = req.model_dump(mode="json")
     return setup
 

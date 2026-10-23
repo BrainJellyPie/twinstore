@@ -386,11 +386,20 @@ def test_dining_tables_can_be_edited_and_saved_without_product_faces(client):
     assert next(r for r in saved["racks"] if r["id"] == table["id"])["rack_name"] == "Window table"
 
 
-def test_reused_generation_creates_a_linked_alternative_without_changing_source(client):
+@pytest.mark.parametrize("configured", [False, True])
+def test_reused_generation_creates_a_linked_alternative_without_changing_source(client, configured):
+    from store_emulator.application.setups import run_operations, save_layout_operations
+    from store_emulator.domain.operations import CrewShift, OperationsConfig
+
     original = client.post(f"/api/projects/{PID}/setups/generate", json={
         "template_id": "book_cafe", "width": 18, "height": 14, "design_theme": "warm", "dining_tables": 3,
         "requirements": "Quiet reading corner", "seed": 7,
     }).json()
+    operations = OperationsConfig(
+        stock_per_facing=1, backroom_per_product=0, daily_delivery=False,
+        crew=2, crew_shifts=[CrewShift(start=8, end=16, staff=2, days=[1, 3, 5])],
+    ) if configured else None
+    save_layout_operations(PID, original["id"], operations)
     source_url = f"/api/projects/{PID}/setups/{original['id']}"
     before = client.get(source_url).json()
     summaries = client.get(f"/api/projects/{PID}/setups").json()
@@ -406,6 +415,10 @@ def test_reused_generation_creates_a_linked_alternative_without_changing_source(
     assert alternative["generation"]["requirements"] == "Quiet reading corner"
     assert alternative["store"]["design_theme"] == "warm"
     assert sum(r["type"] == "table" for r in alternative["store"]["racks"]) == 5
+    assert run_operations(PID, alternative["id"], None, None) == operations
+    assert run_operations(PID, alternative["id"], None, False) is None
+    save_layout_operations(PID, alternative["id"], OperationsConfig(stock_per_facing=99))
+    assert run_operations(PID, original["id"], None, None) == operations
 
 
 def test_generated_floor_alternative_keeps_building_identity(client):
@@ -428,8 +441,16 @@ def test_invalid_generation_source_writes_nothing(client, source, status):
     assert client.get(f"/api/projects/{PID}").json() == before
 
 
-def test_reused_building_can_reorder_and_duplicate_floors_without_changing_sources(client):
+@pytest.mark.parametrize("configured", [False, True])
+def test_reused_building_can_reorder_and_duplicate_floors_without_changing_sources(client, configured):
+    from store_emulator.application.setups import run_operations, save_layout_operations
+    from store_emulator.domain.operations import OperationsConfig
+
     original = client.post(f"/api/projects/{PID}/setups/generate-building", json=_building()).json()["setups"]
+    for index, floor in enumerate(original):
+        operations = OperationsConfig(stock_per_facing=index + 1, crew=index + 2,
+                                      backroom_per_product=0, daily_delivery=False) if configured else None
+        save_layout_operations(PID, floor["id"], operations)
     before = [client.get(f"/api/projects/{PID}/setups/{floor['id']}").json() for floor in original]
     sources = [original[1], original[0], original[1]]
     body = {"name": "Market alternative", "floors": [
@@ -445,6 +466,10 @@ def test_reused_building_can_reorder_and_duplicate_floors_without_changing_sourc
     assert [floor["building"]["level"] for floor in floors] == [1, 2, 3]
     assert all(floor["building"]["floor_count"] == 3 for floor in floors)
     assert [client.get(f"/api/projects/{PID}/setups/{floor['id']}").json() for floor in original] == before
+    for floor, source in zip(floors, sources, strict=True):
+        assert run_operations(PID, floor["id"], None, None) == run_operations(PID, source["id"], None, None)
+    save_layout_operations(PID, floors[0]["id"], OperationsConfig(stock_per_facing=99))
+    assert run_operations(PID, floors[2]["id"], None, None) == run_operations(PID, sources[2]["id"], None, None)
 
 
 def test_missing_source_in_reused_building_leaves_no_partial_floors(client):
