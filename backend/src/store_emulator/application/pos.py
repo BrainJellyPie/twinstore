@@ -7,6 +7,7 @@ unit price (or line total), and a timestamp/hour column.
 
 import io
 import re
+from datetime import date, datetime, time
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
 
@@ -26,6 +27,7 @@ _ALIASES: dict[str, tuple[str, ...]] = {
 _RECEIPT_SCOPE_COLUMNS = {root + suffix for root in ("store", "shop", "branch", "register", "terminal", "till", "pos")
                           for suffix in ("", "id", "no", "num", "number", "code")}
 _CALENDAR_DATE = re.compile(r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|^\d{8}$")
+_CLOCK = re.compile(r"\d{1,2}:\d{2}|\d{1,2}\s*[ap]m\b", re.IGNORECASE)
 
 MAX_POS_BYTES = 50 * 1024 * 1024
 
@@ -35,7 +37,7 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         raise ValueError(f"POS file too large ({len(data) // (1024 * 1024)} MB > 50 MB)")
     buf = io.BytesIO(data)
     if filename.lower().endswith((".xlsx", ".xls")):
-        df = pd.read_excel(buf, dtype=str, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
+        df = pd.read_excel(buf, dtype=object, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
     else:
         try:
             df = pd.read_csv(buf, dtype=str, encoding="utf-8-sig", keep_default_na=False)  # type: ignore[reportUnknownMemberType]
@@ -64,7 +66,8 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
 
     lines: list[PosLine] = []
     for raw in df.to_dict(orient="records"):  # type: ignore[reportUnknownMemberType]
-        row: dict[str, str] = {str(k): str(v) for k, v in raw.items() if v is not None}  # type: ignore[reportUnknownVariableType]
+        source: dict[str, object] = {str(k): v for k, v in raw.items() if v is not None}  # type: ignore[reportUnknownVariableType]
+        row = {k: str(v) for k, v in source.items()}
         tx, sku = row.get(cols["transaction_id"], "").strip(), row.get(cols["sku"], "").strip()
         if not tx or not sku:
             continue
@@ -88,7 +91,8 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         else:
             price = 0.0
         lines.append(PosLine(transaction_id=tx, transaction_scope=tuple(scope), sku=sku,
-                             quantity=qty, unit_price=price, hour=_hour(row, cols)))
+                             quantity=qty, unit_price=price,
+                             hour=_hour(row, cols, source.get(cols.get("timestamp", "")))))
     if not lines:
         raise ValueError("POS file contains no usable rows")
     return lines
@@ -103,7 +107,7 @@ def _num(text: str, default: float) -> float:
         raise ValueError(f"Invalid numeric POS value: {text!r}") from None
 
 
-def _hour(row: dict[str, str], cols: dict[str, str]) -> int | None:
+def _hour(row: dict[str, str], cols: dict[str, str], timestamp: object) -> int | None:
     if "hour" in cols and row.get(cols["hour"]):
         try:
             value = _num(row[cols["hour"]], -1)
@@ -115,6 +119,11 @@ def _hour(row: dict[str, str], cols: dict[str, str]) -> int | None:
         if text.isdigit() and len(text) in (3, 4):  # HHMM, e.g. dunnhumby TRANS_TIME
             hour, minute = divmod(int(text), 100)
             return hour if hour < 24 and minute < 60 else None
+        # Excel date-only cells become midnight datetimes; textual midnight or an explicit hour is unambiguous.
+        if isinstance(timestamp, date) and (not isinstance(timestamp, datetime) or timestamp.time() == time(0)):
+            return None
+        if _CLOCK.search(text) is None:
+            return None
         ts = pd.to_datetime(text, errors="coerce")  # type: ignore[reportUnknownMemberType]
         if not pd.isna(ts):  # type: ignore[reportUnknownMemberType]
             return int(ts.hour)  # type: ignore[reportUnknownMemberType]

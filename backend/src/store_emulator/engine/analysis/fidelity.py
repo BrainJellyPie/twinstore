@@ -97,7 +97,11 @@ def fidelity_report(
                        description="Simulated / real mean basket value"),
     ]
 
-    real_hours = Counter(lines[0].hour for lines in real_tx.values() if lines[0].hour is not None)
+    real_hours: Counter[int] = Counter()
+    for lines in real_tx.values():
+        hour = min((line.hour for line in lines if line.hour is not None), default=None)
+        if hour is not None:
+            real_hours[hour] += 1
     if real_hours:
         sim_hours = Counter(int(cr.arrival_time[:2]) for cr in results if cr.purchases)
         hours = list(range(24))
