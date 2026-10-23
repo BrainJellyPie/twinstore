@@ -66,7 +66,7 @@ def test_visitors_follow_the_scenarios_day_type_and_the_store_formats_effect_siz
     monkeypatch.setattr(town_service, "estimate_demand", recording)
     scenario = get_preset(scenario_id) if scenario_id else None
     town_service.town_visitors(town, _pool(), seed=1, scale=0.05, scenario=scenario, store=_store(store_type))
-    assert [day_type for day_type, _ in calls] == day_types
+    assert [day_type for day_type, _ in calls] == list(dict.fromkeys(day_types))
     # A weekend or holiday scenario runs on the neighborhood's own weekend/holiday profile, so its day-type effect
     # is not applied on top; the rest of the scenario (heat, rain…) is, at the store format's effect sizes.
     profiled = scenario is not None and day_types[0] in ("weekend", "holiday") and scenario_id != "rainy_commute"

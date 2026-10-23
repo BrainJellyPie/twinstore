@@ -206,12 +206,19 @@ def town_visitors(
     arrivals: list[TownArrival] = []
     describe = town_context_writer(town)
     days = sorted({p.day for p in pool}) or [Weekday.MON]
+    if scenario is not None and scenario.only_days:
+        days = [day for day in days if int(day) in scenario.only_days]
+    previous: tuple[DayType, tuple[int, ...]] | None = None
+    day_demand: TownDemand | None = None
     for day in days:
         town_day, hours = with_store_hours(town, store, day)
         profile = _day_type(day, scenario)
-        traffic, hourly = scenario_traffic(scenario, store, scenario_priors, profile=profile)
-        day_demand = estimate_demand(town_day, day_type=profile, hours=hours,
-                                     traffic_multiplier=traffic, hourly_multiplier=hourly)
+        key = (profile, tuple(hours))
+        if key != previous or day_demand is None:
+            traffic, hourly = scenario_traffic(scenario, store, scenario_priors, profile=profile)
+            day_demand = estimate_demand(town_day, day_type=profile, hours=hours,
+                                         traffic_multiplier=traffic, hourly_multiplier=hourly)
+            previous = key
         people, notes = plan_arrivals(pool, day_demand, town_day, seed=stable_seed(seed, "town", int(day)), scale=scale,
                                       day=day)
         for person, note in zip(people, notes, strict=True):
