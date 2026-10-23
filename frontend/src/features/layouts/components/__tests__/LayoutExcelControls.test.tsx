@@ -46,13 +46,15 @@ function choose(container: HTMLElement, value: File) {
   fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [value] } });
 }
 
-it.each(LOCALES)("blocks oversized sheet uploads and updates the error in $code", async ({ code }) => {
-  vi.mocked(parseLayoutWorkbook).mockImplementationOnce(() => { throw new UserMessageError("excelSheetTooWide"); });
+it.each(LOCALES.flatMap(({ code }) => (["excelSheetTooWide", "excelDuplicateColumn"] as const)
+  .map((key) => ({ code, key }))))("blocks invalid sheet uploads and updates $key in $code", async ({ code, key }) => {
+  const details: Record<string, string> = key === "excelDuplicateColumn" ? { column: "sku" } : {};
+  vi.mocked(parseLayoutWorkbook).mockImplementationOnce(() => { throw new UserMessageError(key, details); });
   const rendered = render(view());
   choose(rendered.container, file(1));
-  await screen.findByText(translate("en", "excelSheetTooWide"));
+  await screen.findByText(translate("en", key, details));
   act(() => useLocale.getState().setLocale(code));
-  expect(screen.getByText(translate(code, "excelSheetTooWide"))).toBeTruthy();
+  expect(screen.getByText(translate(code, key, details))).toBeTruthy();
   expect(extractSkuImages).not.toHaveBeenCalled();
   expect(uploadSkuImages).not.toHaveBeenCalled();
   expect(api.replaceSlots).not.toHaveBeenCalled();

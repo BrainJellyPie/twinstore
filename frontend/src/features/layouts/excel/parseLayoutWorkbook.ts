@@ -83,9 +83,21 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
   const header = XLSX.utils.sheet_to_json<unknown[]>(layoutSheet, {
     header: 1, range: { s: range.s, e: { r: range.s.r, c: range.e.c } },
   })[0] ?? [];
-  const columns = new Set(header.map((value) => String(value).trim().toLowerCase()));
+  const columnNames = header.map((value) => String(value).trim().toLowerCase());
+  const columns = new Set(columnNames);
   const missing = ["rack_id", "face", "level", "sku"].filter((column) => !columns.has(column));
   if (missing.length > 0) throw new Error(`Missing required columns: ${missing.join(", ")}`);
+  const importedFields = new Set(["rack_id", "block", "blocked", "face", "level", "sku",
+    "item_name", "price", "regular_price", "promo", "image_url"]);
+  const seenFields = new Set<string>();
+  for (const column of columnNames) {
+    const field = column.replace(/^(regular_)?price \((?:minor units|cents)\)$/, "$1price");
+    if (!importedFields.has(field)) continue;
+    // SheetJS renames exact duplicates while normalizeKeys collapses case/space
+    // variants. Both can silently select a different value (even an empty SKU).
+    if (seenFields.has(field)) throw new UserMessageError("excelDuplicateColumn", { column: field });
+    seenFields.add(field);
+  }
 
   const skuByRow = new Map<number, string>();
   const rows = XLSX.utils

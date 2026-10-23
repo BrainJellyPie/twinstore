@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject duplicate product workbook columns before they can clear SKUs, relocate
+  products or overwrite prices. Treat case/space variants and legacy price aliases
+  as the same field, with recovery guidance in all six interface languages.
+
 - Import product workbooks from their actual populated range instead of trusting
   oversized or understated worksheet dimensions. Bound rectangular conversion
   before saving, preserve image row references, and explain oversized actual
