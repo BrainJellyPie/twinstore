@@ -65,11 +65,14 @@ def glance_system_prompt(store_type: str = "convenience", *, photo: bool = False
     return text
 
 
+_GLANCE_PRODUCT_LIMIT = 60
+
+
 class ShelfGlance(BaseModel):
     """The model names the most eye-catching product and how tempting it is. Whether the
     shopper actually buys is a seeded draw from that interest (see VLMGlanceConfig), so
     small models' habit of always answering "yes" cannot set the purchase rate."""
-    product: str = Field(default="", max_length=60)
+    product: str = Field(default="", max_length=_GLANCE_PRODUCT_LIMIT)
     number: int = Field(default=0, ge=0, le=10000)
     interest: int = Field(default=0, ge=0, le=10)
     reason: str = Field(default="", max_length=80)
@@ -79,7 +82,7 @@ class ShelfGlance(BaseModel):
     def _clip_long_text(cls, value: object, info: ValidationInfo) -> object:
         """A wordy answer is cut rather than discarded: the decision in it is still valid
         (models without a JSON grammar, e.g. cloud APIs, sometimes exceed the limit)."""
-        limit = 60 if info.field_name == "product" else 80
+        limit = _GLANCE_PRODUCT_LIMIT if info.field_name == "product" else 80
         return value[:limit] if isinstance(value, str) else value
 
 
@@ -181,20 +184,27 @@ def resolve(view: ShelfView, glance: ShelfGlance) -> tuple[MarkedItem | None, st
     name = glance.product.strip()
     if not name and glance.number == 0:
         return None, "none"
-    if name:
-        said = _words(name)
-        best: MarkedItem | None = None
-        best_score = 0.0
-        for marked in view.items:
-            target = _words(marked.item.name)
-            if not target:
-                continue
-            score = len(said & target) / len(said | target)
-            if score > best_score:
-                best, best_score = marked, score
-        if best is not None and best_score >= 0.5:
-            return best, "name"
     by_number = view.by_mark(glance.number) if glance.number else None
+    if name:
+        clipped = len(glance.product) == _GLANCE_PRODUCT_LIMIT
+        best = [marked for marked in view.items if marked.item.name.strip().casefold() == name.casefold()
+                or (clipped and marked.item.name.strip().casefold().startswith(name.casefold()))]
+        if not best:
+            said = _words(name)
+            best_score = 0.5
+            for marked in view.items:
+                target = _words(marked.item.name)
+                if not target:
+                    continue
+                score = len(said & target) / len(said | target)
+                if score > best_score:
+                    best, best_score = [marked], score
+                elif score == best_score:
+                    best.append(marked)
+        if len(best) > 1 and by_number is not None and by_number in best:
+            return by_number, "number"
+        if best and len({marked.item.sku for marked in best}) == 1:
+            return best[0], "name"
     if by_number is not None:
         return by_number, "number"
     return None, "invalid"
@@ -208,14 +218,21 @@ def combine_votes(view: ShelfView, answers: list[tuple[str, ShelfGlance]]) -> tu
     where agreement is the share of members that named the winner.
     """
     tally: dict[str, list[ShelfGlance]] = {}
+    placements: dict[int, list[ShelfGlance]] = {}
     for _, glance in answers:
         hit, _ = resolve(view, glance)
         tally.setdefault(hit.item.sku if hit else "", []).append(glance)
+        if hit is not None:
+            placements.setdefault(hit.mark, []).append(glance)
     named = {sku: gs for sku, gs in tally.items() if sku}
     if not named:
         return ShelfGlance(), len(tally.get("", [])) / max(1, len(answers))
     winner = max(named, key=lambda sku: (len(named[sku]), sum(g.interest for g in named[sku]), sku))
-    marked = next(m for m in view.items if m.item.sku == winner)
+    # Several price/level/block offers can carry the winning SKU. Retain the
+    # placement its supporters selected instead of resetting it to the first slot.
+    marked = max((m for m in view.items if m.item.sku == winner), key=lambda m: (
+        len(placements.get(m.mark, [])), sum(g.interest for g in placements.get(m.mark, [])), -m.mark,
+    ))
     supporters = named[winner]
     interest = round(sum(g.interest for g in supporters) / len(answers))
     reason = next((g.reason for g in supporters if g.reason), "")
