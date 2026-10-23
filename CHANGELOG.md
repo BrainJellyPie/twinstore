@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep uploaded customer evidence available after its text summary is saved. Retrying a
+  generation interrupted before traffic-profile persistence now restores visit-time data from
+  the retained CSV/XLSX, while reusing the summary without another summarization model call.
+
 - Preserve selected shelf blocks and levels in purchase timelines so VLM surrogate calibration
   measures the height actually chosen for repeated SKUs. Older or pooled-substitution purchases
   contribute a height only when their placement evidence identifies one unambiguously.
