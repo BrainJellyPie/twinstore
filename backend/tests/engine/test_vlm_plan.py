@@ -446,6 +446,10 @@ def test_trip_breadth_keeps_the_first_planned_categories_and_fills_within_them()
     record = engine.metadata()["plan_records"][0]  # type: ignore[index]
     hows = [r[2] for r in record["resolved"]]  # type: ignore[index]
     assert hows.count("breadth") == 2 and hows.count("breadth_fill") == 2
+    summary = engine.plan_summary()
+    assert summary["mean_items_bought"] == len(buys)
+    assert dict(summary["top_categories"]).keys() == {"Drink", "Snacks"}
+    assert sum(dict(summary["top_categories"]).values()) == len(buys)
 
 
 def test_needs_are_a_seeded_draw_at_each_category_rate():
@@ -545,6 +549,7 @@ def test_a_needed_category_keeps_its_place_under_the_breadth_limit():
     rack_of = {i.sku: r.rack_name.rsplit(" ", 1)[0] for r in store.product_racks for s in r.slots for i in s.items}
     # ran out of ice cream: it stays in the trip; the model's first other category fills the second place
     assert {rack_of[sku] for sku, _ in _buys(decision.actions)} == {"Ice cream", "Drink"}
+    assert engine.plan_summary()["mean_items_bought"] == len(_buys(decision.actions))
 
 
 @pytest.mark.parametrize("cause", ["promotion", "attention"])

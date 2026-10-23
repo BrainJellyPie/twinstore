@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Count only retained VLM planned purchases in the planning summary. Items rejected by the
+  category-breadth limit no longer inflate average purchases or category rankings, and products
+  added during trip filling contribute their actual shelf category to the totals.
+
 - Apply VLM planned-spend limits when automatically filling a trip to its requested size.
   Additional products are selected from affordable candidates and their quantities fit the
   remaining budget; expensive usual products cannot bypass the cap, while free items and
