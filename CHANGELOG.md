@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Estimate new model work from valid uncached runs, falling back to engine defaults when necessary.
+  Cached replays no longer suppress cost warnings or understate runtime. Malformed history files and
+  mixed timezone clock records no longer break the estimate endpoint.
+
 - Keep project browsing usable when customer/layout files contain the wrong JSON container or metadata
   has a non-string creation date. Invalid customer containers appear as missing customers, malformed
   layout files are skipped in lists and named on direct access, and original files remain untouched.
