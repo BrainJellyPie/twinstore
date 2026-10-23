@@ -438,7 +438,7 @@ def estimate_demand(
     seg_index = {s: i for i, s in enumerate(TOWN_SEGMENTS)}
     linked_to_store: FloatArray = np.zeros((len(choice), 24, n_ages), dtype=np.float64)
     linked_focal_by_cat: dict[VenueCategory, FloatArray] = {}
-    linked_focal_by_venue: list[tuple[Venue, float]] = []
+    linked_focal_by_venue: list[tuple[Venue, FloatArray]] = []
     for category, prior in p.categories.items():
         venues = [v for v in town.venues if v.category == category and not is_store(v)]
         if prior.synergy <= 0 or not venues:
@@ -459,7 +459,7 @@ def estimate_demand(
         )  # (V, 24, A)
         link: FloatArray = store_pull[None, :] * np.exp(-_distance(vx, vy, cx[stores], cy[stores], p) / p.link_decay_m)
         focal_cat: FloatArray = np.zeros((24, n_ages), dtype=np.float64)
-        focal_venue = np.zeros(len(venues), dtype=np.float64)
+        focal_venue = np.zeros((len(venues), 24, n_ages), dtype=np.float64)
         for h in hour_list:
             open_link: FloatArray = link * store_open[:, h][None, :]
             reach: FloatArray = open_link.sum(axis=1)
@@ -468,9 +468,9 @@ def estimate_demand(
             linked_to_store[stores, h, :] += to_store.T @ visits[:, h, :]
             to_focal = np.asarray(to_store[:, stores.index(focal_j)], dtype=np.float64)
             focal_cat[h] += to_focal @ visits[:, h, :]
-            focal_venue += to_focal * visits[:, h, :].sum(axis=1)
+            focal_venue[:, h, :] = to_focal[:, None] * visits[:, h, :]
         linked_focal_by_cat[category] = focal_cat
-        linked_focal_by_venue.extend((v, float(focal_venue[k])) for k, v in enumerate(venues))
+        linked_focal_by_venue.extend((v, focal_venue[k]) for k, v in enumerate(venues))
 
     # --- aggregate
     focal_direct_hourly: FloatArray = focal_by_group.sum(axis=(0, 2))
@@ -530,7 +530,8 @@ def estimate_demand(
     origins.sort(key=lambda o: -o.expected_visitors)
 
     linked_rows: list[LinkedTrip] = []
-    for v, value in linked_focal_by_venue:
+    for v, by_hour in linked_focal_by_venue:
+        value = float(by_hour.sum())
         if value <= 1e-3:
             continue
         distance = max(math.hypot(v.x - focal.x, v.y - focal.y) * p.detour_factor, p.min_distance_m)
@@ -538,6 +539,10 @@ def estimate_demand(
         linked_rows.append(LinkedTrip(
             from_venue_id=v.id, from_name=v.name, from_category=v.category, distance_m=round(distance, 1),
             expected_visitors=round(value, 4),
+            hourly_by_age={
+                h: {age: float(by_hour[h, a]) for a, age in enumerate(AGE_GROUPS) if by_hour[h, a] > 0}
+                for h in hour_list if by_hour[h].sum() > 0
+            },
         ))
     linked_rows.sort(key=lambda t: -t.expected_visitors)
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Choose linked neighborhood visitors' source venues using their hour and age group's demand. Morning
+  shoppers no longer claim to come from evening-only cafes, and venues with different customer mixes
+  no longer receive the same daily source weights at every hour. Older demand reports respect venue hours.
+
 - Recheck project existence and protect photo-upload acceptance through image saving and pending-job
   registration. A project deleted during decoding/model preparation stays deleted. Stable upload retries
   retain their single-job behavior without placing their lock inside removable project data.
