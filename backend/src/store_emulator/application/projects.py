@@ -111,7 +111,8 @@ def list_projects() -> list[dict[str, Any]]:
                            "are kept."}
         p_file = personas_path(pid)
         try:
-            has_personas = p_file.exists() and len(read_json(p_file)) > 0
+            raw_personas: object = read_json(p_file) if p_file.exists() else []
+            has_personas = isinstance(raw_personas, list) and bool(cast(list[object], raw_personas))
         except ValueError as e:   # damaged customers: the store is still listed, as setting up
             logger.warning(f"[projects] {pid}: {e}")
             has_personas = False
@@ -139,7 +140,7 @@ def list_projects() -> list[dict[str, Any]]:
         else:
             meta["status"] = "Setting up"
         projects.append(meta)
-    projects.sort(key=lambda m: m.get("created_at", ""), reverse=True)
+    projects.sort(key=lambda m: str(m.get("created_at") or ""), reverse=True)
     return projects
 
 
@@ -156,6 +157,9 @@ def load_project(project_id: str) -> dict[str, Any]:
         personas: object = read_json(p_file) if p_file.exists() else []
     except ValueError as e:   # damaged customers: the store opens and shows none (they can be written again)
         logger.warning(f"[projects] {project_id}: {e}")
+        personas = []
+    if not isinstance(personas, list):
+        logger.warning("[projects] %s: personas.json must contain a customer array", project_id)
         personas = []
     return {
         "projectId": project_id,
