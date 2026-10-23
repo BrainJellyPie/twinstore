@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import Final
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -29,6 +30,14 @@ class DaySchedule(BaseModel):
         return self
 
 
+def validate_weekly_schedule(schedule: list[DaySchedule]) -> list[DaySchedule]:
+    duplicates = sorted(day for day, count in Counter(entry.day for entry in schedule).items() if count > 1)
+    if duplicates:
+        raise ValueError("Each weekday must appear at most once in the weekly schedule; repeated: "
+                         + ", ".join(day.name for day in duplicates))
+    return schedule
+
+
 # Tiles a side a store may have (the limit product fills and copies already had; 320 m at 1.25 m a tile).
 MAX_GRID_SIDE = 256
 
@@ -44,6 +53,11 @@ class Store(BaseModel):
     grid_size: Position  # (width, height)
     weekly_schedule: list[DaySchedule] = []
     racks: list[Rack] = []
+
+    @field_validator("weekly_schedule")
+    @classmethod
+    def _unique_weekdays(cls, schedule: list[DaySchedule]) -> list[DaySchedule]:
+        return validate_weekly_schedule(schedule)
 
     @field_validator("grid_size")
     @classmethod

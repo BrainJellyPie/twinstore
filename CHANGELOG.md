@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject repeated weekdays in store schedules before creation, layout saves or customer generation.
+  Conflicting/split entries previously duplicated customers and IDs or made generation disagree with
+  simulation opening hours. Unique partial schedules and legacy empty schedules remain supported.
+
 - Retry empty model customer batches through structured-response validation. If an estimated visiting day
   still has no generated customers, fail generation with the affected weekdays instead of publishing a
   partial population and misleading daily estimates. Existing saved customers remain intact on failure.

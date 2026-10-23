@@ -11,7 +11,7 @@ from typing import Annotated, Self
 from pydantic import BaseModel, Field, model_validator
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
-from store_emulator.domain.store import DaySchedule
+from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
 from store_emulator.domain.types import AsyncLLMClient, Weekday, WEEKDAY_LABELS, stable_seed
 from store_emulator.engine.generators.traffic_profile import TrafficProfile, reshape_hourly_counts
 from store_emulator.engine.prompting import budget_example
@@ -386,6 +386,7 @@ async def generate_batched(
     request is written and timed first, and `decide` gets the plan with that measurement and answers how many a day to
     write (every visitor, or a quick sample whose twins fill the rest of the day). `estimates`, when given, receives
     each open day's visitors (weekday 1–7 → visitors); per-day money in reports scales by them."""
+    validate_weekly_schedule(schedules)
     profile = await analyze_location(
         llm, address, customer_profile, custom_instruction,
         supplemental_summary=supplemental_summary,

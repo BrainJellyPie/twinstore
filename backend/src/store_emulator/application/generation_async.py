@@ -24,7 +24,7 @@ from store_emulator.application.storage.setups import (
 from store_emulator.application.supplemental import summarize_supplemental, traffic_from_supplemental
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.persona import Persona
-from store_emulator.domain.store import DaySchedule
+from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
 from store_emulator.engine.generators import persona as gen_persona
 from store_emulator.engine.generators.traffic_profile import TrafficProfile
 from store_emulator.application.providers import assistive_client
@@ -158,7 +158,7 @@ def _run_persona_background(
             dict[str, object], read_json(metadata_path(project_id)),
         )
         ws_raw = cast(list[Any], meta.get("weekly_schedule") or [])
-        schedules = [DaySchedule.model_validate(d) for d in ws_raw]
+        schedules = validate_weekly_schedule([DaySchedule.model_validate(d) for d in ws_raw])
 
         personas = asyncio.run(_run_async_pipeline(
             config=config,

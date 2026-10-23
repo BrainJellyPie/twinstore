@@ -6,7 +6,7 @@ from typing import Any, Literal, cast
 
 from store_emulator.engine.files import remove_tree
 from store_emulator.domain.config import SimulationConfig
-from store_emulator.domain.store import DaySchedule, Store
+from store_emulator.domain.store import DaySchedule, Store, validate_weekly_schedule
 from store_emulator.domain.layout_options import TemplateLayoutRequest
 from store_emulator.application.template_layouts import prepare_template_layout
 from store_emulator.application.template_assortment import select_initial_assortment
@@ -256,6 +256,7 @@ def create_project_without_layout(
     background summarize_supplemental call. At the time of the immediate
     response, metadata.supplemental_summary is still empty (filled async).
     """
+    validate_weekly_schedule(weekly_schedule)
     pid = f"proj_{uuid.uuid4().hex[:8]}"
     now = now_iso()
     meta: dict[str, Any] = {
