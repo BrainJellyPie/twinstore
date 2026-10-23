@@ -436,3 +436,25 @@ def test_zero_price_unicode_and_facing_limits(workflow):
         ),
     )
     assert client.post(ROOT + "/batch-preview", json=request).status_code == 422
+
+
+@pytest.mark.parametrize("mode", ["batch", "single", "multiple"])
+@pytest.mark.parametrize("configured", [False, True])
+def test_capture_variants_keep_operating_conditions(workflow, mode, configured):
+    from store_emulator.application.setups import run_operations, save_layout_operations
+    from store_emulator.domain.operations import OperationsConfig
+    client, request, _ = workflow
+    operations = OperationsConfig(stock_per_facing=1, backroom_per_product=0,
+                                 daily_delivery=False, crew=2) if configured else None
+    save_layout_operations(PID, BASE, operations)
+    source = setup_path(PID, BASE).read_bytes()
+    if mode == "batch":
+        response = client.post(ROOT + "/batch-save", json=prepare_save(client, request))
+    elif mode == "single":
+        response = client.post(ROOT + f"/{request['capture_ids'][0]}/apply",
+                               json={"setup_id": BASE, "new_rack": True})
+    else:
+        response = client.post(ROOT + "/apply", json=request)
+    assert response.status_code == 200, response.text
+    assert run_operations(PID, response.json()["setup_id"], None, None) == operations
+    assert setup_path(PID, BASE).read_bytes() == source

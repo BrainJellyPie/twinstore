@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep saved stock, staffing and checkout settings when creating layouts from product edits, shelf reuse,
+  starter products, library photos, text edits or shelf captures. Saved optimization results retain the
+  operating conditions used to evaluate them, even if the source layout's settings changed meanwhile.
+
 - Serialize layout-tree deletion with editor and operations saves. Delayed saves no longer recreate deleted
   layouts, and deletion rechecks running simulations after waiting without partially deleting a busy tree.
 

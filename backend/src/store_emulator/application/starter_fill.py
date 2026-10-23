@@ -109,7 +109,10 @@ def save(pid: str, sid: str, req: StarterFillSave) -> StarterSaved:
             result = StarterSaved(setup_id=path.stem, placements_added=report.placements_added)
             draft = new_setup_data("Starter products", sid, store.model_dump(mode="json"),
                                    f"Starter reference assortment: {len(report.racks)} racks, {report.placements_added} placements. Not actual inventory or prices. Original preserved.")
-            building = read_setup(pid, sid).get("building")
+            source = read_setup(pid, sid)
+            if source.get("operations") is not None:
+                draft["operations"] = source["operations"]
+            building = source.get("building")
             if building is not None:
                 draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
             draft["id"] = path.stem

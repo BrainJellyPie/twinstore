@@ -106,6 +106,8 @@ def apply_edit(pid: str, sid: str, req: LayoutEditApply) -> dict[str, object]:
             source_name = str(source.get("name") or "layout")
             name = req.name or f"{source_name} (edited)"
             new_setup = new_setup_data(name[:80], sid, edited.model_dump(mode="json"), "; ".join(applied[:12])[:1000])
+            if source.get("operations") is not None:
+                new_setup["operations"] = source["operations"]
             if source.get("building") is not None:
                 new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
             new_setup["id"] = path.stem

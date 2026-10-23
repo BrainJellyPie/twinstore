@@ -62,7 +62,10 @@ def save(pid: str, sid: str, req: RackCopySave) -> RackCopySaved:
             result = RackCopySaved(setup_id=path.stem, placements_added=report.placements_added)
             draft = new_setup_data("Reused shelf products", sid, store.model_dump(mode="json"),
                                    f"Copied existing products from {report.source_name} to {len(report.targets)} empty racks. Original preserved; no stock quantities inferred.")
-            building = read_setup(pid, sid).get("building")
+            source = read_setup(pid, sid)
+            if source.get("operations") is not None:
+                draft["operations"] = source["operations"]
+            building = source.get("building")
             if building is not None:
                 draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
             draft["id"] = path.stem

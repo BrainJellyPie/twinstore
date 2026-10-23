@@ -198,6 +198,9 @@ def save(
                 checked.store.model_dump(mode="json"),
                 "Combined reviewed shelf photos; source layouts unchanged.",
             )
+            source = read_setup(pid, req.setup_id)
+            if source.get("operations") is not None:
+                draft["operations"] = source["operations"]
             draft["id"] = path.stem
             draft["capture_batch_request"] = req.model_dump(mode="json")
             draft["capture_batch_result"] = saved.model_dump(mode="json")
