@@ -20,6 +20,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal, cast
 
+from filelock import FileLock, Timeout
 from PIL import Image
 from pydantic import BaseModel
 
@@ -77,7 +78,7 @@ from store_emulator.engine.prompting import display_price
 from store_emulator.engine.routing.pathfinder import AStarPathFinder
 from store_emulator.engine.simulation.factory import build_engine
 from store_emulator.application.product_images import project_image_loader
-from store_emulator.application.setups import run_operations
+from store_emulator.application.setups import run_operations, setup_lock_path, setup_tree_transaction
 from store_emulator.engine.files import remove_tree
 
 from .async_executor import executor
@@ -206,42 +207,47 @@ def _model_calls(meta: dict[str, object]) -> tuple[int, int, str]:
 
 
 def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig) -> JobStatus:
-    control = _load_store(pid, req.setup_id)
-    # Every arm's shoppers share one store run the same way, so a promotion that empties its shelf pays for it.
-    operations = run_operations(pid, req.setup_id, req.operations, req.shared_store)
-    config = config.model_copy(update={"operations": operations})
-    everyone = _personas(pid)
-    # The simulator drops shoppers who arrive while the layout is closed: a panel drawn from everyone came out smaller
-    # than asked, with a note blaming failed shoppers.
-    personas = scenario_shoppers(config, control, everyone)
-    if not personas:
-        raise AppError("No shoppers come while this layout is open, so there is nobody to test on. "
-                       "Change the layout's opening hours.", 400)
-    currency = simulation_currency(pid, control, config.currency)
-    config = config.model_copy(update={"currency": currency})
-    uris: dict[str, str] = {}
-    for v in req.variants:
-        for c in v.changes:
-            if c.kind == "package" and c.asset_id:
-                uris[c.asset_id] = "file://" + str(package_path(pid, c.asset_id).resolve())
-    built: list[tuple[str, Store, list[str], list[str]]] = []
-    for v in req.variants:
-        store, applied, warnings = apply_changes(control, v.changes, package_uris=uris, minor_per_major=_minor_per_major(currency))
-        if not applied:
-            raise AppError(f"variant '{v.name}' changes nothing: {'; '.join(warnings) or 'no changes'}", 400)
-        built.append((v.name, store, applied, warnings))
-    if req.engine == "rule" and any(c.kind == "package" for v in req.variants for c in v.changes):
-        raise AppError("packaging is only visible to vision shoppers: choose the vision engine", 400)
-    if req.engine == "vlm":
-        # Vision shoppers whose every call fails fall back to rule-based decisions: a model that cannot answer would
-        # give a report that looks fine and says "no winner".
-        vision = config.model_copy(update={"engine_type": EngineType.VLM_GLANCE})
-        try:
-            ensure_resolvable(with_vision_default(vision, req.model))
-        except ValueError as e:
-            raise AppError(str(e), 400) from e
-    name = req.name.strip() or " vs ".join(["Control", *[v.name for v in req.variants]])
-    status = _new_job(pid, "experiment", name, req)
+    try:
+        with setup_tree_transaction(pid, [req.setup_id]), FileLock(setup_lock_path(pid, req.setup_id), timeout=10):
+            control = _load_store(pid, req.setup_id)
+            # Every arm's shoppers share one store run the same way, so a promotion that empties its shelf pays for it.
+            operations = run_operations(pid, req.setup_id, req.operations, req.shared_store)
+            config = config.model_copy(update={"operations": operations})
+            everyone = _personas(pid)
+            # The simulator drops shoppers who arrive while the layout is closed: a panel drawn from everyone came out smaller
+            # than asked, with a note blaming failed shoppers.
+            personas = scenario_shoppers(config, control, everyone)
+            if not personas:
+                raise AppError("No shoppers come while this layout is open, so there is nobody to test on. "
+                               "Change the layout's opening hours.", 400)
+            currency = simulation_currency(pid, control, config.currency)
+            config = config.model_copy(update={"currency": currency})
+            per_day, simulated_per_day = visitors_per_day_coming(pid, everyone, personas)
+            uris: dict[str, str] = {}
+            for v in req.variants:
+                for c in v.changes:
+                    if c.kind == "package" and c.asset_id:
+                        uris[c.asset_id] = "file://" + str(package_path(pid, c.asset_id).resolve())
+            built: list[tuple[str, Store, list[str], list[str]]] = []
+            for v in req.variants:
+                store, applied, warnings = apply_changes(control, v.changes, package_uris=uris, minor_per_major=_minor_per_major(currency))
+                if not applied:
+                    raise AppError(f"variant '{v.name}' changes nothing: {'; '.join(warnings) or 'no changes'}", 400)
+                built.append((v.name, store, applied, warnings))
+            if req.engine == "rule" and any(c.kind == "package" for v in req.variants for c in v.changes):
+                raise AppError("packaging is only visible to vision shoppers: choose the vision engine", 400)
+            if req.engine == "vlm":
+                # Vision shoppers whose every call fails fall back to rule-based decisions: a model that cannot answer would
+                # give a report that looks fine and says "no winner".
+                vision = config.model_copy(update={"engine_type": EngineType.VLM_GLANCE})
+                try:
+                    ensure_resolvable(with_vision_default(vision, req.model))
+                except ValueError as e:
+                    raise AppError(str(e), 400) from e
+            name = req.name.strip() or " vs ".join(["Control", *[v.name for v in req.variants]])
+            status = _new_job(pid, "experiment", name, req)
+    except Timeout:
+        raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
 
     def run() -> None:
         t0 = time.perf_counter()
@@ -291,7 +297,6 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
                 evaluator, control, built, panel, req.focus_skus, on_progress=progress, on_outcomes=retain_outcomes,
                 on_arm=check_calls if req.engine == "vlm" else None, seed=req.seed,
             ))
-            per_day, simulated_per_day = visitors_per_day_coming(pid, everyone, personas)
             panel_size = control_result.customers if control_result.customers is not None else len(panel)
             notes = list(control_result.warnings)
             if len(panel) < req.panel:
