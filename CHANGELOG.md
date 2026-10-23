@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Route checkout and departure to service tiles and exits the current shopper can actually reach.
+  Partitioned multi-entrance stores keep the chosen counter when possible, then try reachable
+  alternatives; visits with no checkout or exit route fail instead of recording remote payment.
+
 - Exclude purchases that cannot reach the selected shelf block, including disconnected aisles,
   blocked stances and locked faces. Later reachable purchases still proceed, and inaccessible
   products no longer create sales or stockout demand; unknown products remain counted in diagnostics.

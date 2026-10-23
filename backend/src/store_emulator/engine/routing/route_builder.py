@@ -1,4 +1,5 @@
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from pydantic import BaseModel
@@ -30,6 +31,8 @@ def build_journey(
     for raw_action in actions:
         action = _sanitize_action(raw_action, grid, w, h, store)
         path = _calculate_path(store, grid, pathfinder, current, action, block_move_sec)
+        if action.action == Action.PAY and path:
+            action = action.model_copy(update={"target": path[-1]})
         if action.action == Action.BUY:
             placement = resolve_buy_placement(
                 store, target=action.target, face=action.face, sku=action.product_sku,
@@ -435,11 +438,43 @@ def _calculate_path(
     block_move_sec: float = 1,
 ) -> list[Position]:
     if action.nav == "leave":
-        return pathfinder.find_path(grid, current, _exit_position(store))
+        exits = [tile for gate in store.exits for tile in gate.occupied_positions]
+        path = _reachable_path(grid, pathfinder, current, exits or [entrance_position(store)])
+        if not path:
+            raise ValueError("No reachable exit from the shopper's current position")
+        return path
+    if action.action == Action.PAY:
+        # Keep the selected counter and exact stance when reachable, then try its
+        # other service tiles before another counter. Walkability alone is not connectivity.
+        counters = sorted(store.counters, key=lambda counter:
+                          action.target not in counter.service_access_tiles(store.grid_size))
+        tiles = [tile for counter in counters for tile in sorted(
+            counter.service_access_tiles(store.grid_size),
+            key=lambda tile: (tile != action.target, _manhattan(current, tile), tile),
+        )]
+        path = _reachable_path(grid, pathfinder, current, tiles)
+        if not path:
+            raise ValueError("No reachable checkout from the shopper's current position")
+        return path
     if action.nav == "area" and action.area:
         return _wander_path(store, grid, pathfinder, current, action.area, action.dwell, block_move_sec)
     if action.nav == "path" and action.target:
         return pathfinder.find_path(grid, current, action.target)
+    return []
+
+
+def _reachable_path(
+    grid: list[list[bool]], pathfinder: PathFinder, current: Position, targets: Iterable[Position],
+) -> list[Position]:
+    for target in targets:
+        x, y = target
+        if not (0 <= y < len(grid) and 0 <= x < len(grid[y]) and grid[y][x]):
+            continue
+        if target == current:
+            return [current]
+        path = pathfinder.find_path(grid, current, target)
+        if path and path[-1] == target:
+            return path
     return []
 
 
