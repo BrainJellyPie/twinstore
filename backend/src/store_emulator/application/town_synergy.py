@@ -30,6 +30,7 @@ from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
 from .providers import build_client, ensure_resolvable
 from .scenarios import get_preset
 from .simulation import with_vision_default
+from .setups import project_layout_transaction
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.personas import read_personas
 from .storage.setups import read_setup, read_state
@@ -116,44 +117,45 @@ def _setup_id(pid: str, town: Town, requested: str | None) -> str:
 
 
 def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: SimulationConfig) -> SynergyJobStatus:
-    town = require_town(pid)
-    venue = town.get_venue(venue_id)
-    if venue is None:
-        raise AppError(f"venue not found: {venue_id}", 404)
-    if venue.id == town.focal_venue_id:
-        raise AppError("pick a venue other than our own store", 400)
-    setup_id = _setup_id(pid, town, request.setup_id)
-    if not re.fullmatch(RESOURCE_ID_PATTERN, setup_id):
-        raise AppError("invalid setup id", 400)
-    try:
-        setup = read_setup(pid, setup_id)
-    except FileNotFoundError:
-        raise AppError(f"setup not found: {setup_id}", 404) from None
-    if not setup.get("store"):
-        raise AppError("this layout has no store yet", 400)
-    store = Store.model_validate(setup["store"])
-    currency = simulation_currency(pid, store, config.currency)
-    personas = read_personas(pid)
-    if not personas:
-        raise AppError("the project has no personas yet", 400)
-    scenario = get_preset(request.scenario_id) if request.scenario_id else None
-    if request.scenario_id and scenario is None:
-        raise AppError(f"unknown scenario preset: {request.scenario_id}", 400)
-    run_config = config.model_copy(update={
-        "engine_type": EngineType.VLM_GLANCE, "ensemble": request.ensemble,
-        "currency": currency,
-        "scenario": None if scenario is None or scenario.id == "baseline" else scenario,
-    })
-    run_config = with_vision_default(run_config, request.model)
-    try:
-        ensure_resolvable(run_config)
-    except ValueError as e:
-        raise AppError(str(e), 400) from e
-    status = SynergyJobStatus(
-        job_id=f"syn_{uuid.uuid4().hex[:6]}", venue_id=venue_id, venue_name=venue.name, setup_id=setup_id,
-        status="pending", request=request, scenario=scenario.name if scenario else "", created_at=now_iso(),
-    )
-    _write_status(pid, status)
+    with project_layout_transaction(pid):
+        town = require_town(pid)
+        venue = town.get_venue(venue_id)
+        if venue is None:
+            raise AppError(f"venue not found: {venue_id}", 404)
+        if venue.id == town.focal_venue_id:
+            raise AppError("pick a venue other than our own store", 400)
+        setup_id = _setup_id(pid, town, request.setup_id)
+        if not re.fullmatch(RESOURCE_ID_PATTERN, setup_id):
+            raise AppError("invalid setup id", 400)
+        try:
+            setup = read_setup(pid, setup_id)
+        except FileNotFoundError:
+            raise AppError(f"setup not found: {setup_id}", 404) from None
+        if not setup.get("store"):
+            raise AppError("this layout has no store yet", 400)
+        store = Store.model_validate(setup["store"])
+        currency = simulation_currency(pid, store, config.currency)
+        personas = read_personas(pid)
+        if not personas:
+            raise AppError("the project has no personas yet", 400)
+        scenario = get_preset(request.scenario_id) if request.scenario_id else None
+        if request.scenario_id and scenario is None:
+            raise AppError(f"unknown scenario preset: {request.scenario_id}", 400)
+        run_config = config.model_copy(update={
+            "engine_type": EngineType.VLM_GLANCE, "ensemble": request.ensemble,
+            "currency": currency,
+            "scenario": None if scenario is None or scenario.id == "baseline" else scenario,
+        })
+        run_config = with_vision_default(run_config, request.model)
+        try:
+            ensure_resolvable(run_config)
+        except ValueError as e:
+            raise AppError(str(e), 400) from e
+        status = SynergyJobStatus(
+            job_id=f"syn_{uuid.uuid4().hex[:6]}", venue_id=venue_id, venue_name=venue.name, setup_id=setup_id,
+            status="pending", request=request, scenario=scenario.name if scenario else "", created_at=now_iso(),
+        )
+        _write_status(pid, status)
     executor.submit(_run_job, pid, status, town, store, personas, run_config)
     return status
 
