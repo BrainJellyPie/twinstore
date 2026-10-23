@@ -12,6 +12,7 @@ from store_emulator.application.template_layouts import prepare_template_layout
 from store_emulator.application.template_assortment import select_initial_assortment
 from store_emulator.application.errors import AppError
 from store_emulator.application.workbooks import WorkbookLimitError, validate_xlsx_budget
+from store_emulator.application.customer_csv import CustomerCsvError, CustomerCsvLimitError, validate_customer_csv
 from store_emulator.application.setups import project_layout_transaction, setup_tree_transaction
 from store_emulator.application.generation_async import start_persona_generation
 from store_emulator.application.storage.generations import find_active_generation
@@ -262,6 +263,13 @@ def create_project_without_layout(
     response, metadata.supplemental_summary is still empty (filled async).
     """
     validate_weekly_schedule(weekly_schedule)
+    if supplemental_bytes is not None and supplemental_filename.lower().endswith(".csv"):
+        try:
+            validate_customer_csv(supplemental_bytes)
+        except CustomerCsvLimitError as exc:
+            raise AppError(str(exc), 413) from exc
+        except CustomerCsvError as exc:
+            raise AppError(str(exc), 400) from exc
     if supplemental_bytes is not None and supplemental_filename.lower().endswith(".xlsx"):
         try:
             validate_xlsx_budget(supplemental_bytes)

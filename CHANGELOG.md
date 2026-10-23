@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate customer CSV column counts and padded table size before creating a project or allocating
+  a dataframe. Extra fields no longer shift named columns, and sparse rows cannot expand past the
+  two-million-cell limit; malformed uploads report actionable errors before model generation starts.
+
 - Route checkout and departure to service tiles and exits the current shopper can actually reach.
   Partitioned multi-entrance stores keep the chosen counter when possible, then try reachable
   alternatives; visits with no checkout or exit route fail instead of recording remote payment.

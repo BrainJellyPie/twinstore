@@ -18,8 +18,6 @@ Retained backend-infra adaptations:
 
 from __future__ import annotations
 
-import codecs
-import csv
 import io
 import json
 import logging
@@ -36,6 +34,7 @@ from store_emulator.engine.generators.traffic_profile import (
     fit_traffic_profile,
 )
 from store_emulator.application.workbooks import validate_xlsx_budget
+from store_emulator.application.customer_csv import validate_customer_csv
 
 logger = logging.getLogger(__name__)
 
@@ -101,23 +100,11 @@ def _load_frames(bytes_: bytes, ext: str, *, preserve_identifiers: bool = False)
     """csv → single sheet ``"data"``; xlsx → sheet_name=None dict. Empty dict on failure."""
     if ext == ".csv":
         try:
-            # UTF-32 LE starts with the UTF-16 LE BOM, so check the longer marker first.
-            if bytes_.startswith((codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE)):
-                text = bytes_.decode("utf-32")
-            elif bytes_.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
-                text = bytes_.decode("utf-16")
-            else:
-                try:
-                    text = bytes_.decode("utf-8-sig")
-                except UnicodeDecodeError:
-                    text = bytes_.decode("cp949")
-            # Restrict dialect detection to spreadsheet separators; one-column prose stays intact.
-            try:
-                delimiter = csv.Sniffer().sniff(text[:65536], delimiters=",;\t").delimiter
-            except csv.Error:
-                delimiter = ","
+            text, delimiter = validate_customer_csv(bytes_)
             df = pd.read_csv(io.StringIO(text), sep=delimiter, dtype=object if preserve_identifiers else None,
                              keep_default_na=not preserve_identifiers)  # type: ignore[reportUnknownMemberType]
+            if not isinstance(df.index, pd.RangeIndex):  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+                return {}
         except Exception:
             return {}
         return {_CSV_SHEET_NAME: df}
