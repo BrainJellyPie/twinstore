@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from store_emulator.domain.store import DaySchedule
+from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
 from store_emulator.domain.layout_options import BuildingFloorInfo, TemplateLayoutRequest
 from store_emulator.domain.types import Face
 from store_emulator.engine.validation import BlockedFaceDetail, ClearedSlot, Issue
@@ -18,6 +18,11 @@ class CreateStoreRequest(BaseModel):
     weekly_schedule: list[DaySchedule]
     layout: TemplateLayoutRequest | None = None
     starter_selection: Literal["automatic", "format"] = "format"
+
+    @field_validator("weekly_schedule")
+    @classmethod
+    def _unique_weekdays(cls, schedule: list[DaySchedule]) -> list[DaySchedule]:
+        return validate_weekly_schedule(schedule)
 
     @field_validator("name", "address", "store_type", "customer_profile")
     @classmethod
