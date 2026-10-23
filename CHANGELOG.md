@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reduce neighborhood-demand memory by retaining only the focal store's origin shares.
+  Dense, supported 3 km neighborhoods no longer allocate unused group-by-venue-by-hour
+  arrays of roughly a gigabyte; venue flows and reported demand remain unchanged.
+
 - Restrict shared-store checkout assignments to counters reachable from the customer's queue
   position. Counters across a disconnected wall no longer shorten waits or hide abandoned
   baskets; connected counters and a counter serving both areas retain shared capacity.
