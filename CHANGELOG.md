@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep model fallback responses out of the previous provider's cache. Queued structured and text
+  requests adopt the new provider before sending, and parameter rejections are attributed to the
+  model that actually received the request instead of another model selected while it was running.
+
 - Reject ambiguous decimal commas and malformed thousands grouping in POS quantities and prices.
   Values such as `0,5` no longer become `5`; valid grouped prices, decimal points, weighed goods
   and returns keep their existing interpretation in CSV and XLSX imports.
