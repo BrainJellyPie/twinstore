@@ -349,7 +349,7 @@ async def compare(
     draws favoring B, and how many customers a 5% effect would need. Run both layouts with the same
     seed so customers share random draws — that is what makes the paired test sharp."""
     try:
-        return sim_service.compare_project_runs(pid, a, b, n_bootstrap=n_bootstrap)
+        return await run_in_threadpool(sim_service.compare_project_runs, pid, a, b, n_bootstrap=n_bootstrap)
     except AppError as e:
         raise HTTPException(e.status_code, e.message)
     except FileNotFoundError as e:
@@ -391,7 +391,7 @@ async def fidelity(
     distances, variance ratio and hourly profile similarity. The report is saved with the run."""
     data = await file.read()
     try:
-        return sim_service.run_fidelity(pid, run_id, data, file.filename or "pos.csv")
+        return await run_in_threadpool(sim_service.run_fidelity, pid, run_id, data, file.filename or "pos.csv")
     except AppError as e:
         raise HTTPException(e.status_code, str(e))
     except FileNotFoundError as e:
@@ -428,7 +428,7 @@ async def export_csv(pid: str, run_id: str) -> Response:
     """One row per simulated customer (persona attributes, spend, units, conversion, impulse spend,
     visit time, path length, products) — for Excel / BI tools."""
     try:
-        body = sim_service.export_customers_csv(pid, run_id)
+        body = await run_in_threadpool(sim_service.export_customers_csv, pid, run_id)
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
     return Response(
