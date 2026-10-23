@@ -25,6 +25,7 @@ from .marketing import (
     load_reading,
 )
 from .providers import answered_by, assistive_client, assistive_model
+from .setups import setup_tree_transaction
 from .staff_pitch import get_pitch
 from .storage.io import now_iso, write_json
 
@@ -81,7 +82,8 @@ def get_reading(pid: str, kind: StudyKind, jid: str) -> StudyReading | None:
 
 def write_reading(pid: str, kind: StudyKind, jid: str, model: str, config: SimulationConfig) -> StudyReading:
     """Code the open answers into themes and write a commentary on the numbers; replaces an earlier reading."""
-    report_json, question, reasons = _material(pid, kind, jid)
+    with setup_tree_transaction(pid):
+        report_json, question, reasons = _material(pid, kind, jid)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.3, "max_tokens": 2000})
     model = assistive_model(model, llm_config)
     try:
@@ -94,7 +96,9 @@ def write_reading(pid: str, kind: StudyKind, jid: str, model: str, config: Simul
         logger.warning(f"[reading] {kind} {jid}: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "The reading could not be written"), 502) from e
     reading = reading.model_copy(update={"model": answered_by(llm, model), "created_at": now_iso()})
-    write_json(_job_dir(pid, kind, jid) / "reading.json", reading.model_dump(mode="json"))
+    with setup_tree_transaction(pid):
+        _status(pid, kind, jid)
+        write_json(_job_dir(pid, kind, jid) / "reading.json", reading.model_dump(mode="json"))
     return reading
 
 
