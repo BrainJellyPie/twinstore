@@ -6,9 +6,9 @@ import random
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import DaySchedule
@@ -28,13 +28,21 @@ class TradeAreaProfile(BaseModel):
 
 
 class HourlyProfile(BaseModel):
-    hour: int
-    visitor_count: int
+    hour: int = Field(ge=0, le=23, strict=True)
+    visitor_count: int = Field(ge=0, strict=True)
     person_types: list[str] = Field(max_length=10)
 
 
 class DailyTrafficResult(BaseModel):
     hourly_profiles: list[HourlyProfile] = Field(max_length=24)
+
+    @model_validator(mode="after")
+    def unique_hours(self) -> Self:
+        hours = [profile.hour for profile in self.hourly_profiles]
+        duplicates = sorted({hour for hour in hours if hours.count(hour) > 1})
+        if duplicates:
+            raise ValueError(f"Each hour must appear at most once; repeated hours: {duplicates}. Return one visitor count per hour.")
+        return self
 
 
 class GeneratedPersona(BaseModel):
