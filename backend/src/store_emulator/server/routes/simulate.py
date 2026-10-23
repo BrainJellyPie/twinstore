@@ -189,8 +189,9 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
     try:
         if options.use_town:
             town_service.town_for_run(pid)  # before the setup is marked running
-        run_id, store, personas, address, customer_profile = sim_service.prepare_simulation(
-            pid, req.setup_id, req.run_id, preview=req.preview, default_currency=config.currency,
+        run_id, store, personas, address, customer_profile = await run_in_threadpool(
+            sim_service.prepare_simulation, pid, req.setup_id, req.run_id,
+            preview=req.preview, default_currency=config.currency,
         )
     except AppError as e:
         raise HTTPException(e.status_code, str(e))

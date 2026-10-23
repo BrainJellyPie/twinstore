@@ -162,7 +162,9 @@ async def replace_slots(pid: str, sid: str, req: ReplaceSlotsRequest) -> Replace
     template before the user fills it in, and `cleared` will stay near-empty.
     """
     try:
-        result = setup_service.replace_slots(pid, sid, [r.model_dump() for r in req.slots])
+        result = await run_in_threadpool(
+            setup_service.replace_slots, pid, sid, [r.model_dump() for r in req.slots],
+        )
     except AppError as e:
         raise HTTPException(e.status_code, str(e))
     return ReplaceSlotsResponse(
@@ -182,8 +184,8 @@ async def create_setup(pid: str, req: CreateSetupRequest) -> dict[str, Any]:
 
     **Returns:** new setup summary (store excluded, readiness included)."""
     try:
-        return setup_service.create_setup_from_source(
-            pid, req.source_setup_id, req.mode, req.name, req.memo,
+        return await run_in_threadpool(
+            setup_service.create_setup_from_source, pid, req.source_setup_id, req.mode, req.name, req.memo,
         )
     except AppError as e:
         raise HTTPException(e.status_code, str(e))
@@ -273,7 +275,7 @@ async def delete_setup_endpoint(pid: str, sid: str) -> DeletedResponse:
     setup in `running` state cannot be deleted (409). If the deleted setup was
     active, the first remaining setup becomes active automatically."""
     try:
-        deleted_ids = setup_service.delete_setup_with_descendants(pid, sid)
+        deleted_ids = await run_in_threadpool(setup_service.delete_setup_with_descendants, pid, sid)
     except AppError as e:
         raise HTTPException(e.status_code, str(e))
     return DeletedResponse(status="deleted", deleted=deleted_ids)
