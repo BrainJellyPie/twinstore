@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep the server responsive while comparing runs, scoring uploaded POS data or exporting customer CSVs.
+  Their synchronous file parsing and calculations now run in the worker pool, allowing unrelated status
+  requests to complete while the analysis is still in progress.
+
 - Preserve existing customers when regeneration finds no open weekday. Missing, empty or entirely closed
   saved schedules now fail before model setup instead of completing with an empty replacement population.
 
