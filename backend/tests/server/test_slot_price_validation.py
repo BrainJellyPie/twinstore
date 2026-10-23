@@ -73,3 +73,12 @@ def test_invalid_reference_prices_do_not_replace_saved_products(shelf, regular_p
     response = client.put(f"{url}/slots", json={"slots": [{**row("sale"), "regular_price": regular_price}]})
     assert response.status_code == 422, response.text
     assert read_json(path) == before
+
+
+@pytest.mark.parametrize("image_url", [True, 123, {}, []])
+def test_invalid_image_references_do_not_replace_saved_products(shelf, image_url):
+    client, url, _, path = shelf
+    before = read_json(path)
+    response = client.put(f"{url}/slots", json={"slots": [{**row("photo"), "image_url": image_url}]})
+    assert response.status_code == 422, response.text
+    assert read_json(path) == before

@@ -70,6 +70,34 @@ def test_saved_image_survives_library_delete_and_unrelated_manifest(workflow):
     assert client.post(URL + "/save", json={**body, "request_id": "b" * 32}).json() == result
 
 
+@pytest.mark.parametrize("change", ["keep", "replace", "clear"])
+def test_bulk_product_rows_preserve_or_explicitly_replace_reviewed_images(workflow, change):
+    client, _, _ = workflow
+    result = client.post(URL + "/save", json={**request(client), "request_id": "e" * 32}).json()
+    sid = result["setup_id"]
+    saved = read_setup(PID, sid)
+    rows = [{"rack_id": rack["id"], "block": slot["block"], "face": slot["face"], "level": slot["level"], **item}
+            for rack in saved["store"]["racks"] for slot in rack["slots"] for item in slot["items"]]
+    expected = rows[0]["image_url"]
+    if change == "replace":
+        image = client.post(f"/api/projects/{PID}/sku-images", params={"sku": "茶_한글"},
+                            files={"file": ("red.png", png("red"), "image/png")})
+        assert image.status_code == 200, image.text
+        expected = image.json()["url"]
+    elif change == "clear":
+        expected = None
+    for row in rows:
+        if row["sku"] == "茶_한글":
+            row["image_url"] = expected
+    response = client.put(f"/api/projects/{PID}/setups/{sid}/slots", json={"slots": rows})
+    assert response.status_code == 200, response.text
+    items = read_setup(PID, sid)["store"]["racks"][2]["slots"][0]["items"]
+    assert [item["image_url"] for item in items] == [expected, None, expected]
+    assert [item["regular_price"] for item in items] == [299, 0, 0]
+    if expected:
+        assert client.get(expected).content == png("red" if change == "replace" else "blue")
+
+
 def test_existing_photo_requires_explicit_replacement(workflow):
     client, _, _ = workflow
     assert client.post(f"/api/projects/{PID}/sku-images", params={"sku": "茶_한글"}, files={"file": ("red.png", png("red"), "image/png")}).status_code == 200

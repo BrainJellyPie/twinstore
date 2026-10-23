@@ -121,3 +121,19 @@ it("keeps the existing best-effort image behavior and saves product rows after i
   await waitFor(() => expect(api.replaceSlots).toHaveBeenCalledTimes(1));
   await waitFor(() => expect((screen.getByRole("button", { name: "Upload" }) as HTMLButtonElement).disabled).toBe(false));
 });
+
+it.each(["new image", "no image", "failed image"])("preserves saved photo references except for a successfully uploaded %s", async (mode) => {
+  const original = "/api/projects/p/product-photo-files/" + "a".repeat(64);
+  const replacement = "/api/projects/p/images?sku=1&v=new";
+  vi.mocked(parseLayoutWorkbook).mockReturnValueOnce({ slots: ["1", "1", "2"].map((sku) => ({
+    rack_id: "shelf", block: 0, face: "N" as const, level: 1, sku, name: "Tea", price: 100, promo: "", image_url: original,
+  })) });
+  if (mode !== "no image") vi.mocked(extractSkuImages).mockResolvedValueOnce({ "1": { bytes: new Uint8Array([1]), extension: "png" } });
+  if (mode === "new image") vi.mocked(uploadSkuImages).mockResolvedValueOnce([{ sku: "1", url: replacement }]);
+  if (mode === "failed image") vi.mocked(uploadSkuImages).mockRejectedValueOnce(new Error("Image failed"));
+  const rendered = render(view());
+  choose(rendered.container, file(1));
+  await waitFor(() => expect(api.replaceSlots).toHaveBeenCalledTimes(1));
+  const expected = mode === "new image" ? replacement : original;
+  expect(vi.mocked(api.replaceSlots).mock.calls[0]?.[2].map((row) => row.image_url)).toEqual([expected, expected, original]);
+});

@@ -16,7 +16,7 @@ export interface BuildLayoutWorkbookInput {
 //   - "blocked" sits right after "face" — face-level blockage is conceptually above
 //     level/slot.
 //   - Values are the text "blocked" / "" (more readable than the earlier "1" marker).
-//   - The trailing "image" column is an empty placeholder for user-inserted cell images.
+//   - The last visible "image" column is an empty placeholder for user-inserted cell images.
 // parseLayoutWorkbook reads by header name (normalizeKeys → toLowerCase), so column
 // reorderings and blocked-marker text are round-trip compatible.
 const HEADERS = [
@@ -32,6 +32,7 @@ const HEADERS = [
   "regular_price (minor units)",
   "promo",
   "image",
+  "image_url",
 ] as const;
 
 interface SheetRow {
@@ -47,6 +48,7 @@ interface SheetRow {
   "regular_price (minor units)": number;
   promo: string;
   image: "";
+  image_url: string;
 }
 
 const COL_WIDTHS: Record<typeof HEADERS[number], number> = {
@@ -62,6 +64,7 @@ const COL_WIDTHS: Record<typeof HEADERS[number], number> = {
   "regular_price (minor units)": 28,
   promo: 12,
   image: 12,
+  image_url: 48,
 };
 
 // ARGB 8-char colors. ExcelJS ignores the leading alpha pair ("FF") but the spec requires it.
@@ -116,6 +119,7 @@ export async function buildLayoutWorkbook(
               "regular_price (minor units)": item.regular_price ?? 0,
               promo: item.promo,
               image: "",
+              image_url: item.image_url ?? "",
             });
           }
         }
@@ -130,6 +134,7 @@ export async function buildLayoutWorkbook(
     key: h,
     width: COL_WIDTHS[h],
   }));
+  ws.getColumn("image_url").hidden = true; // Carry existing artwork through edits without exposing storage paths in the sheet.
 
   for (const row of rows) {
     const added = ws.addRow(row);
