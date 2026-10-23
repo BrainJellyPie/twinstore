@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Evaluate POS hourly fidelity only when a clock is present. Date-only CSV/Excel cells no longer invent
+  midnight visits, while explicit midnight remains supported. Each receipt uses its earliest known hour,
+  so missing clocks on the first line or reordered product lines no longer erase or change the score.
+
 - Keep measured customer-generation probes inside the chosen quick-sample budget. Broad hourly traffic
   no longer requests more customers and model batches than promised. Plans account for a partial probe
   as its own request and include the actual remaining batches before the user chooses.
