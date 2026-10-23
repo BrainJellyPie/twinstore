@@ -274,18 +274,7 @@ export function GridEditorDialog({
       return;
     }
     setSaving(true);
-    let productsRemoved = false;
     try {
-      if (productsStore) {
-        // The backend refuses floor changes while products are placed: remove them first and put
-        // them back (finally, below) if the new floor is not saved.
-        const cleared = await saveSetup(pid, sid, { store: withoutItems(productsStore) });
-        if (!cleared.ok) {
-          setSaveError(cleared.message || translate(locale, "gridSaveFailed"));
-          return;
-        }
-        productsRemoved = true;
-      }
       const baseStore: Store = setup.store ?? {
         id: `store_${crypto.randomUUID().slice(0, 8)}`,
         name: project.metadata.name,
@@ -296,6 +285,7 @@ export function GridEditorDialog({
         racks: [],
       };
       const result = await saveSetup(pid, sid, {
+        ...(productsStore ? { discard_products: true } : {}),
         store: {
           ...baseStore,
           grid_size: editor.gridSize,
@@ -306,50 +296,30 @@ export function GridEditorDialog({
         setSaveError(result.message || translate(locale, "gridSaveFailed"));
         return;
       }
-      productsRemoved = false;
       onSaved();
       onClose();
     } catch (error) {
       setSaveError(error instanceof Error && error.message ? error.message : translate(locale, "gridSaveFailed"));
     } finally {
-      if (productsRemoved && productsStore) {
-        const restored = await saveSetup(pid, sid, { store: productsStore }).catch(() => null);
-        if (!restored?.ok) {
-          setProductsStore(null);
-          setSaveError((message) => `${message ?? translate(locale, "gridSaveFailed")} ${translate(locale, "gridProductsLost")}`);
-        }
-      }
       setSaving(false);
     }
   }, [pid, sid, setup, productsStore, editor.gridSize, project, onSaved, onClose, locale]);
 
-  // Legacy reset (2-step PUT) — same flow as GridEditorPage.
+  // Product removal and legacy-floor reset commit in one validated save.
   const onLegacyReset = useCallback(async () => {
     if (!setup.store || resettingRef.current) return;
     resettingRef.current = true;
     setResetting(true);
     setLegacyResetError(null);
     try {
-      const itemsEmpty = {
-        ...setup.store,
-        racks: setup.store.racks.map((r) => ({
-          ...r,
-          slots: r.slots.map((s) => ({ ...s, items: [] })),
-        })),
-      };
-      const r1 = await saveSetup(pid, sid, { store: itemsEmpty });
-      if (!r1.ok) {
-        setLegacyResetError(r1.message || translate(locale, "gridResetStepFailed", { step: 1 }));
-        return;
-      }
       const empty = {
         ...setup.store,
         grid_size: setup.store.grid_size,
         racks: [],
       };
-      const r2 = await saveSetup(pid, sid, { store: empty });
-      if (!r2.ok) {
-        setLegacyResetError(r2.message || translate(locale, "gridResetStepFailed", { step: 2 }));
+      const result = await saveSetup(pid, sid, { store: empty, discard_products: true });
+      if (!result.ok) {
+        setLegacyResetError(result.message || translate(locale, "gridResetFailed"));
         return;
       }
       // Update local state only — backend normalisation is picked up by the parent's

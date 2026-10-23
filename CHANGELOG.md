@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Save confirmed floor changes and product removal atomically. A rejected floor or interrupted connection no
+  longer leaves the original floor with its products already deleted; legacy floor reset uses the same save.
+
 - Preserve an engine-selected shelf offer through routing and purchase execution. Different prices for the same
   SKU on separate levels no longer change after budget planning. Stockout loss and substitute selection use
   the selected price, and purchase diagnostics recognize each valid name/price offer on a face.

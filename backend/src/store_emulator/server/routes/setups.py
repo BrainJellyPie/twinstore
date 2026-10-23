@@ -107,6 +107,8 @@ async def save_setup(pid: str, sid: str, req: SaveSetupRequest) -> SaveSetupResp
     - **store change:** only when runId is absent. If items are registered,
       rack changes are rejected (409 racks_locked). Slots on faces that become
       unreachable at save time are auto-removed and reported in `cleared`.
+      An explicit `discard_products=true` accepts an item-free replacement floor
+      in one validated save; simulation/history restrictions still apply.
     - **name/memo change:** blocked only when runId is present (locked).
     - Slot registration uses a separate route: `PUT /setups/{sid}/slots`.
 

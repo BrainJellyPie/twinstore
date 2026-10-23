@@ -183,6 +183,9 @@ class SetupUpdatePayload(BaseModel):
     store: dict[str, object] | None = None
     memo: str | None = None
 
+    # Explicit floor-edit confirmation: save the item-free replacement atomically.
+    discard_products: bool = Field(default=False, strict=True)
+
 
 class SaveSetupRequest(BaseModel):
     """Request body for `PUT /api/projects/{pid}/setups/{sid}` (spec rev 4 §4.1, nested shape)."""

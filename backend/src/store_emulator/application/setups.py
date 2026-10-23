@@ -206,7 +206,8 @@ def assert_setup_mutation_allowed(
 
     1. ``runId`` set → reject every change (no-op included).
        ``AppError(409, "setup_locked", "simulation_history_exists", ..., {"runId": ...})``.
-    2. Rack fingerprint differs and disk items > 0 → ``AppError(409, "racks_locked", ...)``.
+    2. Rack fingerprint differs and disk items > 0 → ``AppError(409, "racks_locked", ...)``,
+       unless an item-free floor replacement explicitly confirms discarding products.
     3. Items-only or store-meta-only change → pass.
     """
     if disk_setup.get("runId"):
@@ -219,7 +220,11 @@ def assert_setup_mutation_allowed(
         )
     disk_store_data = disk_setup.get("store")
     incoming_store_data = incoming_setup.get("store")
+    discard_products = incoming_setup.get("discard_products") is True
     if incoming_store_data is None:
+        if discard_products:
+            raise AppError(422, "invalid_floor_replacement", "validation_error",
+                           "A replacement floor is required when discarding products.", {})
         return  # name/memo-only change — no rack comparison needed
     if disk_setup.get("status") == "running" and incoming_store_data != disk_store_data:
         # The run that ends will lock the layout it simulated; an edit saved meanwhile would be locked unsimulated
@@ -235,6 +240,11 @@ def assert_setup_mutation_allowed(
         Store.model_validate(disk_store_data) if disk_store_data else None
     )
     incoming_store = Store.model_validate(incoming_store_data)
+    if discard_products:
+        if any(slot.items for rack in incoming_store.racks for slot in rack.slots):
+            raise AppError(422, "invalid_floor_replacement", "validation_error",
+                           "A replacement floor must not contain products when discarding products.", {})
+        return  # save_setup_with_lock validates and commits the replacement in one write
     if compute_rack_fingerprint(disk_store) == compute_rack_fingerprint(incoming_store):
         return  # no rack changes
     if disk_store is not None:

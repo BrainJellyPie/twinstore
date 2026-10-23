@@ -1,7 +1,7 @@
 // Product racks use 1-cell slot editing. Multi-cell dining furniture has no
 // product faces and can be edited without migrating legacy product slots.
 //   "with_run": run history exists → cannot reset, only "create new setup" exposed.
-//   "clean":    no history → reset is permitted (2-step PUT is the caller's job).
+//   "clean":    no history → reset is permitted (the caller saves an empty floor).
 
 import {
   Dialog,
