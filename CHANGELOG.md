@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retain reviewed product photo references through Excel export/import using
+  hidden workbook metadata. Successfully uploaded embedded images replace the
+  corresponding SKU references; missing or failed new uploads retain saved links.
+
 - Reserve Excel uploads while files and images are prepared, preventing a slower
   old file from overwriting a later import. Leaving or switching layouts discards
   staged work before slot replacement; image batches settle before another upload.

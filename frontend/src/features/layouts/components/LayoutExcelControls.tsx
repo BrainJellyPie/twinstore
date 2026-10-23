@@ -94,7 +94,12 @@ function ExcelControls({
       let imageWarning: string | null = null;
       if (Object.keys(skuImages).length > 0) {
         try {
-          await uploadSkuImages(projectId, skuImages);
+          const uploaded = await uploadSkuImages(projectId, skuImages);
+          const replacements = new Map(uploaded.map((image) => [image.sku, image.url]));
+          for (const slot of slots) {
+            const url = replacements.get(slot.sku);
+            if (url !== undefined) slot.image_url = url;
+          }
         } catch (err) {
           imageWarning = err instanceof Error ? err.message : String(err);
         }

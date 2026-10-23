@@ -194,6 +194,7 @@ export interface SlotRow {
   name: string;
   price: number;        // US cents (549 = $5.49)
   regular_price?: number;
+  image_url?: string | null;
   promo: string;
 }
 

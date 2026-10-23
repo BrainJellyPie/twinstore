@@ -21,6 +21,7 @@ interface RawRow {
   "regular_price (cents)"?: unknown;
   regular_price?: unknown;
   promo?: unknown;
+  image_url?: unknown;
 }
 
 function normalizeKeys(row: Record<string, unknown>): RawRow {
@@ -43,6 +44,12 @@ function toBlock(raw: unknown): number {
   const block = typeof raw === "number" || typeof raw === "string" ? Number(raw) : NaN;
   if (!Number.isSafeInteger(block) || block < 0) throw new Error(`Invalid block index: ${String(raw)}.`);
   return block;
+}
+
+function toImageUrl(raw: unknown): string | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  if (typeof raw !== "string") throw new Error("Invalid image reference in workbook metadata.");
+  return raw.trim() || null;
 }
 
 export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
@@ -72,6 +79,7 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
     price: toIntPrice(r["price (minor units)"] ?? r["price (cents)"] ?? r.price),
     regular_price: toIntPrice(r["regular_price (minor units)"] ?? r["regular_price (cents)"] ?? r.regular_price, "regular price"),
     promo: r.promo == null ? "" : String(r.promo),
+    image_url: toImageUrl(r.image_url),
   }));
 
   return { slots };

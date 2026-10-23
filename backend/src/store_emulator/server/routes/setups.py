@@ -52,6 +52,7 @@ class SlotInputRow(BaseModel):
     name: str = Field(default="", description="display name for the SKU")
     price: int = Field(default=0, ge=0, description="unit: US cents (e.g. 549 = $5.49)")
     regular_price: int = Field(default=0, ge=0, description="usual shelf price in minor units; 0 means no separate reference price")
+    image_url: str | None = Field(default=None, description="saved product image reference")
     promo: str = Field(default="", description="promotion label for the SKU")
 
 
