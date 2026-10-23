@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reject duplicate recognized POS headers in CSV/XLSX before pandas can rename
+  them or case/space normalization can select a different product or amount.
+  Validate repeated receipt-scope names too; retain distinct alias precedence,
+  ignored notes columns and previously saved reports on rejected uploads.
+
 - Mark SKU/rack rank correlation unavailable for constant sales or fewer than
   two products/groups. Perfectly matching uniform sales and single-category
   stores no longer receive a misleading zero/poor rank score; defined zero
