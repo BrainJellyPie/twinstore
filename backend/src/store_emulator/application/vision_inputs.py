@@ -9,6 +9,8 @@ import asyncio
 import io
 import logging
 import re
+from collections.abc import Iterable
+from contextlib import closing
 from pathlib import Path
 
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -136,7 +138,7 @@ def review_receipt_batch(
 
 
 def read_receipts(
-    pid: str, photos: list[bytes], *, setup_id: str | None, model: str, config: SimulationConfig, run_id: str | None = None,
+    pid: str, photos: Iterable[bytes], *, setup_id: str | None, model: str, config: SimulationConfig, run_id: str | None = None,
 ) -> ReceiptsResult:
     if not _SAFE_ID.fullmatch(pid) or not metadata_path(pid).exists():
         raise AppError(f"project not found: {pid}", 404)
@@ -148,13 +150,15 @@ def read_receipts(
     products, currency = _receipt_target(pid, setup_id, run_id, config)
     readings: list[ReceiptReading] = []
     for k, data in enumerate(photos):
-        img = _photo(data)
         try:
-            reading = asyncio.run(vlm_receipt(llm, img, receipt_id=f"r{k + 1:03d}", default_currency=currency))
+            with closing(_photo(data)) as img:
+                reading = asyncio.run(vlm_receipt(llm, img, receipt_id=f"r{k + 1:03d}", default_currency=currency))
         except Exception as e:  # noqa: BLE001 — one unreadable receipt must not fail the batch
             readings.append(ReceiptReading(receipt_id=f"r{k + 1:03d}", notes=[f"could not read: {type(e).__name__}: {e}"[:200]]))
             continue
         readings.append(match_lines(reading, products))
+    if not readings:
+        raise AppError("no receipt photo given", 400)
     matched = sum(1 for r in readings for line in r.lines if line.matched)
     total = sum(len(r.lines) for r in readings)
     return ReceiptsResult(receipts=readings, matched_lines=matched, unmatched_lines=total - matched,
