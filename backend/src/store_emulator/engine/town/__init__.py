@@ -19,6 +19,7 @@ from store_emulator.engine.town.demand import (
     day_type_for,
     estimate_demand,
     purpose_label,
+    scenario_traffic,
     synergy_analysis,
     with_store_hours,
 )
@@ -47,6 +48,7 @@ __all__ = [
     "plan_arrivals",
     "purpose_label",
     "remove_venue",
+    "scenario_traffic",
     "synergy_analysis",
     "town_context_text",
     "town_from_overpass",

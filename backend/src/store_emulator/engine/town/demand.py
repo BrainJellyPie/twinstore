@@ -44,6 +44,8 @@ import numpy.typing as npt
 from pydantic import BaseModel, Field
 
 from store_emulator.domain.persona import AGE_GROUPS, AgeGroup
+from store_emulator.domain.scenario import DayType as ScenarioDayType
+from store_emulator.domain.scenario import Scenario, ScenarioPriors
 from store_emulator.domain.store import Store
 from store_emulator.domain.town import (
     TOWN_SEGMENTS,
@@ -61,6 +63,7 @@ from store_emulator.domain.town import (
     VenueCategory,
 )
 from store_emulator.domain.types import Weekday
+from store_emulator.engine.scenario import compile_scenario, priors_for
 
 type FloatArray = npt.NDArray[np.float64]
 
@@ -263,6 +266,25 @@ def day_type_for(day: Weekday, *, holiday: bool = False) -> DayType:
     if holiday:
         return "holiday"
     return "weekend" if day in (Weekday.SAT, Weekday.SUN) else "weekday"
+
+
+# Day types whose traffic is already represented by the neighborhood's own profile.
+_TOWN_DAY_TYPES: dict[ScenarioDayType, DayType] = {
+    ScenarioDayType.WEEKEND: "weekend", ScenarioDayType.PUBLIC_HOLIDAY: "holiday", ScenarioDayType.HOLIDAY_SEASON: "holiday",
+}
+
+
+def scenario_traffic(
+    scenario: Scenario | None, store: Store | None, scenario_priors: ScenarioPriors | None, *,
+    profile: DayType | None = None,
+) -> tuple[float, dict[int, float] | None]:
+    """Scenario traffic with the store format's priors, excluding a day-type effect already in `profile`."""
+    if scenario is None:
+        return 1.0, None
+    if profile is not None and _TOWN_DAY_TYPES.get(scenario.day_type) == profile:
+        scenario = scenario.model_copy(update={"day_type": ScenarioDayType.WEEKDAY})
+    fx = compile_scenario(scenario, priors_for(store.type if store is not None else "", scenario_priors))
+    return fx.base_traffic, (fx.traffic_by_hour or None)
 
 
 # Hours modeled when the store's opening hours are unknown (no layout, or a layout without a weekly schedule).
