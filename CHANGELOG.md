@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep A/B experiments on one saved layout, customer list and operating plan, and preserve the starting
+  visitor estimate used to scale daily results. Concurrent edits no longer change a running study's money
+  scale, and project deletion cannot race pending study registration.
+
 - Start optimization from one committed layout, customer list and operating plan. Input capture and pending
   registration now coordinate with saves and project deletion, preventing stale search inputs and jobs
   registered after their project was removed. Busy starts return a retryable error.
