@@ -20,3 +20,7 @@ class CustomerAction(BaseModel):
     quantity: int = 1  # units bought (BUY only); clamped by the executor
     # "planned" | "impulse". Set by the engine, never by the LLM — hidden from the response schema.
     origin: SkipJsonSchema[str] = "planned"
+    # Engine-selected offer, omitted from model response schemas. Legacy and
+    # model-generated actions without these hints still resolve by SKU/stance.
+    product_block: SkipJsonSchema[int | None] = None
+    product_level: SkipJsonSchema[int | None] = None

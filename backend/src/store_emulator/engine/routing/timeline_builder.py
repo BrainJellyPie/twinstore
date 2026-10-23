@@ -107,6 +107,7 @@ def build_timeline(
                 target=target,
                 face=face,
                 sku=step.action.product_sku,
+                block=step.action.product_block, level=step.action.product_level,
             )
             if placement is not None:
                 rack, slot = placement

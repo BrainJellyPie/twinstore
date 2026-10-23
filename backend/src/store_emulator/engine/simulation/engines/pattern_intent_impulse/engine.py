@@ -54,7 +54,8 @@ def apply_budget(
     cap = budget_max * tolerance
 
     def line_total(a: CustomerAction) -> int:
-        placement = resolve_buy_placement(store, target=a.target, face=a.face, sku=a.product_sku)
+        placement = resolve_buy_placement(store, target=a.target, face=a.face, sku=a.product_sku,
+                                          block=a.product_block, level=a.product_level)
         if placement is None:
             return 0
         item = next((i for i in placement[1].items if i.sku == a.product_sku), None)
