@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep completed or canceled customer-generation jobs from returning to "running" when a confirmation write
+  finishes late. Accept each generation choice once, coordinate it with the worker's progress handoff, and
+  preserve accepted choices at the wait deadline while rejecting answers after the wait has closed.
+
 - Reserve customer generation under the project's layout locks before queuing work. Concurrent requests can
   no longer launch duplicate generators, replace customers used by an accepted final run, accept customer
   edits after generation starts, or register jobs in a deleted project or layout.
