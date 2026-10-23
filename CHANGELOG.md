@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve a vision planner's hard spending limit through shared-stock substitutions and
+  saved operations replays. Replacements must fit the money left after the other planned
+  purchase lines, including quantity limits; stockouts can no longer inflate a capped basket.
+
 - Exclude incomplete shopper runs from cost/runtime measurements for the next run.
   A completed job containing failed or skipped shoppers no longer dilutes provider work
   across its whole requested population and makes a normal rerun appear artificially cheap.

@@ -684,12 +684,21 @@ def _pick(
     # layout of a pair, however their route differs.
     rng = random.Random(stable_seed(seed, result.persona_id, int(result.day), event.product_sku, "sold out"))
     if rng.random() < config.substitute_share:
-        options = [other for other in faces[(key[0], key[1])] if other != key and state.stock[other] > 0]
+        available: int | None = None
+        if result.spend_limit is not None:
+            # Reserve the other BUY lines, including ones still ahead, so an early replacement cannot spend
+            # the money a later pick needs. Earlier stock losses and substitutions are already in the timeline.
+            other_spend = sum(e.price * e.quantity for e in result.timeline if e.action == Action.BUY) - event.price * event.quantity
+            available = max(0, result.spend_limit - other_spend)
+        options = [other for other in faces[(key[0], key[1])] if other != key and state.stock[other] > 0
+                   and (available is None or products[other].item.price <= available)]
         if options:
             price = event.price
             choice = min(options, key=lambda o: (abs(products[o].item.price - price), products[o].item.price, o[2]))
             substitute = products[choice]
             taken = min(wanted, state.stock[choice])
+            if available is not None and substitute.item.price > 0:
+                taken = min(taken, available // substitute.item.price)
             state.stock[choice] -= taken
             if state.touched is not None:
                 state.touched.append(choice)

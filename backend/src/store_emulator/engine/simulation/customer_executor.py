@@ -31,6 +31,7 @@ def execute_decision(
         rng=rng, max_quantity=max_quantity,
     )
     result.engine_type = decision.engine_type
+    result.spend_limit = decision.spend_limit
     skus = {item.sku for rack in store.racks for slot in rack.slots for item in slot.items}
     invalid = sum(action.action == Action.BUY and (not action.product_sku or action.product_sku not in skus)
                   for action in decision.actions)
