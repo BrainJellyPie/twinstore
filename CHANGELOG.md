@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Freeze product artwork when a vision simulation or preview is accepted. Source
+  package deletion, SKU image replacement and newly added photos cannot change its
+  later shoppers' inputs; missing saved manifests fail instead of using current art.
+
 - Coordinate study commentary snapshots and commits with study/project deletion.
   Late A/B narratives and survey, shelf, conjoint or staff-script readings now return
   not-found instead of recreating a deleted study or project after a model responds.

@@ -177,7 +177,8 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
     options = _options(req)
     config = get_config()
     try:
-        ensure_resolvable(sim_service.apply_options(config, options))
+        effective_config = sim_service.apply_options(config, options)
+        ensure_resolvable(effective_config)
     except ValueError as e:
         raise HTTPException(400, str(e))
     try:
@@ -187,6 +188,7 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
             sim_service.prepare_simulation, pid, req.setup_id, req.run_id,
             preview=req.preview, default_currency=config.currency,
             operations=req.operations, shared_store=req.shared_store,
+            snapshot_images=effective_config.engine_type == EngineType.VLM_GLANCE,
         )
     except AppError as e:
         raise HTTPException(e.status_code, str(e))

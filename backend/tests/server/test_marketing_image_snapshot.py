@@ -8,7 +8,7 @@ from PIL import Image
 
 from store_emulator.application import marketing, product_images, shelf_lab
 from store_emulator.application.storage import images as image_storage
-from store_emulator.application.product_images import project_image_loader, snapshot_project_images
+from store_emulator.application.product_images import project_image_loader, snapshot_image_loader, snapshot_project_images
 from store_emulator.application.storage.images import save_image
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.rack import SlotItem
@@ -117,6 +117,7 @@ def test_snapshot_survives_cache_eviction_and_keeps_distinct_art_for_one_sku(cli
     assert len(list(folder.glob("*.png"))) == 131
     for path in root.glob("*.png"):
         path.unlink()
+    loader = snapshot_image_loader(folder)
     save_image(PID, missing.sku, picture("blue"), "added.png")
     assert loader(missing) is None
     for index, item in enumerate(items):
