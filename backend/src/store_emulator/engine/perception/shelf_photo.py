@@ -13,8 +13,10 @@ import hashlib
 import io
 import json
 import re
+import sys
+import threading
+from collections import OrderedDict
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -29,6 +31,7 @@ RENDER_VERSION = "shelf-photo-1"
 MAX_SIDE = 2048
 MAX_BYTES = 4_000_000
 _KEY = re.compile(r"^[0-9a-f]{64}$")
+_PHOTO_CACHE_BYTES = 64 * 1024 * 1024
 
 type Box = tuple[float, float, float, float]
 
@@ -92,22 +95,80 @@ def save_shelf_photo(directory: Path, key: str, image_bytes: bytes, boxes: dict[
     return w, h
 
 
-@lru_cache(maxsize=256)
-def load_shelf_photo(directory: str, key: str) -> ShelfPhoto | None:
+def _read_shelf_photo(directory: str, key: str) -> ShelfPhoto | None:
     if not directory or not _KEY.match(key):
         return None
     jpg, meta = _paths(Path(directory), key)
     if not jpg.is_file() or not meta.is_file():
         return None
     try:
-        img = Image.open(jpg)
-        img.load()
-        data = json.loads(meta.read_text(encoding="utf-8"))
-        boxes = {str(ref): tuple((float(b[0]), float(b[1]), float(b[2]), float(b[3])) for b in items)
-                 for ref, items in dict(data.get("boxes") or {}).items()}
+        with Image.open(jpg) as img:
+            img.load()
+            data = json.loads(meta.read_text(encoding="utf-8"))
+            boxes = {str(ref): tuple((float(b[0]), float(b[1]), float(b[2]), float(b[3])) for b in items)
+                     for ref, items in dict(data.get("boxes") or {}).items()}
+            return ShelfPhoto(image=img.convert("RGB"), boxes=boxes)
     except (OSError, ValueError, TypeError, IndexError):
         return None
-    return ShelfPhoto(image=img.convert("RGB"), boxes=boxes)
+
+
+def _photo_bytes(key: tuple[str, str], photo: ShelfPhoto | None) -> int:
+    # Include cache/key overhead and Python box objects; Pillow RGB storage uses four bytes per pixel.
+    size = 256 + sys.getsizeof(key) + sum(sys.getsizeof(part) for part in key)
+    if photo is None:
+        return size
+    size += sys.getsizeof(photo) + sys.getsizeof(photo.image) + sys.getsizeof(photo.image.__dict__)
+    size += photo.image.width * photo.image.height * 4 + sys.getsizeof(photo.boxes)
+    for ref, boxes in photo.boxes.items():
+        size += sys.getsizeof(ref) + sys.getsizeof(boxes)
+        for box in boxes:
+            size += sys.getsizeof(box) + sum(sys.getsizeof(value) for value in box)
+    return size
+
+
+class _ShelfPhotoCache:
+    """LRU bounded by estimated retained bytes and 256 entries, including absent photos."""
+
+    def __init__(self) -> None:
+        self._entries: OrderedDict[tuple[str, str], tuple[ShelfPhoto | None, int]] = OrderedDict()
+        self._bytes = 0
+        self._generation = 0
+        self._lock = threading.Lock()
+
+    def __call__(self, directory: str, key: str) -> ShelfPhoto | None:
+        identity = directory, key
+        with self._lock:
+            hit = self._entries.get(identity)
+            if hit is not None:
+                self._entries.move_to_end(identity)
+                return hit[0]
+            generation = self._generation
+        photo = _read_shelf_photo(directory, key)
+        size = _photo_bytes(identity, photo)
+        with self._lock:
+            # An upload may invalidate the cache while this older read is decoding.
+            if generation != self._generation:
+                return photo
+            hit = self._entries.get(identity)
+            if hit is not None:
+                self._entries.move_to_end(identity)
+                return hit[0]
+            if size <= _PHOTO_CACHE_BYTES:
+                while self._entries and (self._bytes + size > _PHOTO_CACHE_BYTES or len(self._entries) >= 256):
+                    _, (_, removed) = self._entries.popitem(last=False)
+                    self._bytes -= removed
+                self._entries[identity] = photo, size
+                self._bytes += size
+        return photo
+
+    def cache_clear(self) -> None:
+        with self._lock:
+            self._entries.clear()
+            self._bytes = 0
+            self._generation += 1
+
+
+load_shelf_photo = _ShelfPhotoCache()
 
 
 def has_shelf_photo(directory: Path, key: str) -> bool:

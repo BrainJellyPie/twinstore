@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Bound the shelf-photo cache by 64 MiB of estimated retained pixels, box metadata
+  and cache overhead as well as 256 entries. Decodes that overlap an upload cannot
+  reinsert an invalidated old photo; eviction keeps live renderers' images usable.
+
 - Freeze rendered shelf photographs and their product-box mappings for photo-chart
   vision runs. Uploads coordinate with deletion and run startup; layout image URLs,
   product art and matching shelf photos are captured against one SKU image state.
