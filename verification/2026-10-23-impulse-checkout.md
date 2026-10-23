@@ -27,5 +27,5 @@ Focused verification:
 - Strict type check of the changed engine module: **zero errors/warnings**.
 
 No live models or real data were used; frontend source is unchanged. This is a
-follow-up to the fixed v0.4.11 snapshot, with focused checks instead of repeating
+follow-up to the v0.4.11 release snapshot, with focused checks instead of repeating
 the release's full backend suite.
