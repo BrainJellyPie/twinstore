@@ -85,11 +85,11 @@ function ExcelControls({
     try {
       const buffer = await file.arrayBuffer();
       if (!mounted.current) return;
-      const { slots } = parseLayoutWorkbook(buffer);
+      const { slots, skuByRow } = parseLayoutWorkbook(buffer);
 
       // Extract embedded SKU images and upload. Images are side data — if this fails,
       // continue with the slots replace (image upload is best-effort).
-      const skuImages = await extractSkuImages(buffer);
+      const skuImages = await extractSkuImages(buffer, skuByRow);
       if (!mounted.current) return;
       let imageWarning: string | null = null;
       if (Object.keys(skuImages).length > 0) {

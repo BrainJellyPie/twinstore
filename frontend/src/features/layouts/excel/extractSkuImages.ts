@@ -1,7 +1,7 @@
 // Extract worksheet image drawings from the rack_layout sheet, keyed by SKU.
 // If a SKU appears in multiple rows, only the topmost (lowest row number) image is used.
 
-import ExcelJS, { type Cell } from "exceljs";
+import ExcelJS from "exceljs";
 
 export interface ExtractedSkuImage {
   bytes: Uint8Array;
@@ -13,37 +13,18 @@ export interface ExtractedSkuImage {
 
 export type ExtractedSkuImages = Record<string, ExtractedSkuImage>;
 
-function findSkuColumn(ws: ExcelJS.Worksheet): number | null {
-  const header = ws.getRow(1);
-  let col: number | null = null;
-  header.eachCell((cell: Cell, colNumber: number) => {
-    const v = String(cell.value ?? "").toLowerCase();
-    if (v === "sku") col = colNumber;
-  });
-  return col;
-}
-
-export async function extractSkuImages(buffer: ArrayBuffer): Promise<ExtractedSkuImages> {
+export async function extractSkuImages(
+  buffer: ArrayBuffer, rowToSku: ReadonlyMap<number, string>,
+): Promise<ExtractedSkuImages> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
 
   const ws = wb.getWorksheet("rack_layout");
   if (!ws) return {};
 
-  const skuCol = findSkuColumn(ws);
-  if (skuCol === null) return {};
-
   const images = ws.getImages();
 
-  const result: ExtractedSkuImages = {};
-
-  const rowToSku = new Map<number, string>();
-  ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-    if (rowNumber === 1) return;
-    const cell = row.getCell(skuCol);
-    const sku = String(cell.value ?? "").trim();
-    if (sku) rowToSku.set(rowNumber, sku);
-  });
+  const result = new Map<string, ExtractedSkuImage>();
 
   const sortedSkuRows = [...rowToSku.keys()].sort((a, b) => a - b);
   function findSkuForRow(row: number): string | undefined {
@@ -63,7 +44,7 @@ export async function extractSkuImages(buffer: ArrayBuffer): Promise<ExtractedSk
     const row = img.range!.tl.nativeRow + 1;
     const sku = findSkuForRow(row);
     if (!sku) continue;
-    if (result[sku]) continue;
+    if (result.has(sku)) continue;
     // ExcelJS's typed model.media has no `index` field but it exists at runtime.
     // `imageId` is typed string but may be a number at runtime — normalize with String().
     const media = wb.model.media.find(
@@ -86,11 +67,11 @@ export async function extractSkuImages(buffer: ArrayBuffer): Promise<ExtractedSk
       rawBuffer instanceof Uint8Array
         ? new Uint8Array(rawBuffer)
         : new Uint8Array(rawBuffer);
-    result[sku] = {
+    result.set(sku, {
       bytes,
       extension: ext,
-    };
+    });
   }
 
-  return result;
+  return Object.fromEntries(result);
 }
