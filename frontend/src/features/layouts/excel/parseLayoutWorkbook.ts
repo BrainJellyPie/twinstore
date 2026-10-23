@@ -8,6 +8,8 @@ export interface ParsedLayout {
 
 interface RawRow {
   rack_id?: unknown;
+  block?: unknown;
+  blocked?: unknown;
   face?: unknown;
   level?: unknown;
   sku?: unknown;
@@ -36,6 +38,13 @@ function toIntPrice(raw: unknown, label = "price"): number {
   return n;
 }
 
+function toBlock(raw: unknown): number {
+  if (raw === null || raw === undefined || raw === "") return 0; // Older one-cell workbooks have no block column.
+  const block = typeof raw === "number" || typeof raw === "string" ? Number(raw) : NaN;
+  if (!Number.isSafeInteger(block) || block < 0) throw new Error(`Invalid block index: ${String(raw)}.`);
+  return block;
+}
+
 export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
   const wb = XLSX.read(buffer, { type: "array" });
   const layoutSheet = wb.Sheets["rack_layout"];
@@ -50,12 +59,12 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
   const rows = XLSX.utils
     .sheet_to_json<Record<string, unknown>>(layoutSheet, { defval: "" })
     .map(normalizeKeys)
-    .filter((r) => r.rack_id !== undefined && r.rack_id !== null && r.rack_id !== "");
+    .filter((r) => r.rack_id !== undefined && r.rack_id !== null && r.rack_id !== "")
+    .filter((r) => String(r.blocked ?? "").trim().toLowerCase() !== "blocked" || String(r.sku ?? "").trim() !== "");
 
   const slots: SlotRow[] = rows.map((r) => ({
     rack_id: String(r.rack_id),
-    // The grid editor only creates 1×1 racks, so block index is always 0.
-    block: 0,
+    block: toBlock(r.block),
     face: parseFace(String(r.face)),
     level: Number(r.level),
     sku: r.sku == null ? "" : String(r.sku),

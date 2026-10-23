@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import type { Store, BlockedFaceInfo, SlotItem } from "@/shared/types/domain";
+import { rackCells } from "@/shared/utils/grid";
 import { formatFace } from "./faceMap";
 
 export interface BuildLayoutWorkbookInput {
@@ -21,6 +22,7 @@ export interface BuildLayoutWorkbookInput {
 const HEADERS = [
   "rack_id",
   "rack_name",
+  "block",
   "face",
   "blocked",
   "level",
@@ -35,6 +37,7 @@ const HEADERS = [
 interface SheetRow {
   rack_id: string;
   rack_name: string;
+  block: number;
   face: string;
   blocked: "blocked" | "";
   level: number;
@@ -49,6 +52,7 @@ interface SheetRow {
 const COL_WIDTHS: Record<typeof HEADERS[number], number> = {
   rack_id: 12,
   rack_name: 16,
+  block: 8,
   face: 8,
   blocked: 10,
   level: 7,
@@ -67,6 +71,7 @@ const BLOCKED_FILL = {
   fgColor: { argb: "FFEFEFEF" },
 };
 const BLOCKED_FONT = { color: { argb: "FF808080" } };
+const FACE_STEPS = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] } as const;
 
 export async function buildLayoutWorkbook(
   { store, blocked }: BuildLayoutWorkbookInput,
@@ -83,49 +88,36 @@ export async function buildLayoutWorkbook(
 
   const rows: SheetRow[] = [];
   for (const r of store.racks) {
-    if (r.type === "entrance" || r.type === "exit") continue;
-    // The grid editor only creates 1×1 racks, so block index is always 0.
-    // Legacy multi-cell racks are pre-filtered by LegacyDetectModal upstream.
-    const block = 0;
-    for (const face of ["N", "S", "E", "W"] as const) {
-      const isBlocked = blockedSet.has(`${r.id}|${block}|${face}`);
-      for (let level = 1; level <= r.levels; level += 1) {
-        if (isBlocked) {
-          // Preserve coordinates only; clear SKU/metadata and stamp the "blocked" marker.
-          rows.push({
-            rack_id: r.id,
-            rack_name: r.rack_name,
-            face: formatFace(face),
-            blocked: "blocked",
-            level,
-            sku: "",
-            item_name: "",
-            "price (minor units)": 0,
-            "regular_price (minor units)": 0,
-            promo: "",
-            image: "",
-          });
-          continue;
-        }
-        const existing = slotByCoord.get(`${r.id}|${block}|${face}|${level}`);
-        // One row per SlotItem; an empty slot yields exactly one row with sku="".
-        const items: SlotItem[] = existing && existing.length > 0
-          ? existing
-          : [{ sku: "", name: "", price: 0, promo: "" }];
-        for (const item of items) {
-          rows.push({
-            rack_id: r.id,
-            rack_name: r.rack_name,
-            face: formatFace(face),
-            blocked: "",
-            level,
-            sku: item.sku,
-            item_name: item.name,
-            "price (minor units)": item.price,
-            "regular_price (minor units)": item.regular_price ?? 0,
-            promo: item.promo,
-            image: "",
-          });
+    if (r.type !== "shelf" && r.type !== "fridge" && r.type !== "counter") continue;
+    const cells = rackCells(r);
+    const occupied = new Set(cells.map(([x, y]) => `${x},${y}`));
+    for (const [block, [x, y]] of cells.entries()) {
+      for (const face of ["N", "S", "E", "W"] as const) {
+        const [dx, dy] = FACE_STEPS[face];
+        if (occupied.has(`${x + dx},${y + dy}`)) continue;
+        const isBlocked = blockedSet.has(`${r.id}|${block}|${face}`);
+        for (let level = 1; level <= r.levels; level += 1) {
+          const existing = isBlocked ? undefined : slotByCoord.get(`${r.id}|${block}|${face}|${level}`);
+          // Empty and blocked slots remain visible as template rows. Only exposed faces have slots.
+          const items: SlotItem[] = existing && existing.length > 0
+            ? existing
+            : [{ sku: "", name: "", price: 0, promo: "" }];
+          for (const item of items) {
+            rows.push({
+              rack_id: r.id,
+              rack_name: r.rack_name,
+              block,
+              face: formatFace(face),
+              blocked: isBlocked ? "blocked" : "",
+              level,
+              sku: item.sku,
+              item_name: item.name,
+              "price (minor units)": item.price,
+              "regular_price (minor units)": item.regular_price ?? 0,
+              promo: item.promo,
+              image: "",
+            });
+          }
         }
       }
     }
