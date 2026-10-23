@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Limit optimizer moves to the baseline's exact unreachable offer counts.
+  An already-blocked SKU no longer permits hiding its remaining accessible
+  facings or different price/photo offers, preventing accidental delisting.
+
 - Audit repeated products without shifting later positions or duplicating missing
   and facing-count findings. Check every read price tag against the SKU's valid
   reference prices on that level, including free offers, and mark only the
