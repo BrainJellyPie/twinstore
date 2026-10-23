@@ -26,8 +26,9 @@ _SEED_MOD = 2**31 - 1
 
 # Optional request parameters a model refused (e.g. newer Claude models answer "`temperature` is
 # deprecated for this model"). Learned from the provider's error at run time, so a new model needs
-# no code change; the call is retried once without the parameter.
-_REJECTED: dict[str, set[str]] = {}
+# no code change; the call is retried once without the parameter. Servers can expose the same model
+# alias with different capabilities, so every learned option belongs to its receiving endpoint.
+_REJECTED: dict[tuple[str, str], set[str]] = {}
 _REJECTED_LOCK = threading.Lock()
 _OPTIONAL_PARAMS = ("temperature", "thinking", "reasoning_effort")
 # A model can refuse several of them (GPT-6: max_tokens, then temperature): one retry per lesson.
@@ -47,7 +48,7 @@ def _rejected_param(error: BaseException) -> str | None:
 
 # How to switch thinking off, per model: {"type": "disabled"} unless the provider named another value
 # (some newer Claude models refuse "disabled" and say which value to send instead), learned like _REJECTED.
-_THINKING_OFF: dict[str, dict[str, str]] = {}
+_THINKING_OFF: dict[tuple[str, str], dict[str, str]] = {}
 
 
 def _thinking_off_hint(error: BaseException) -> dict[str, str] | None:
@@ -61,13 +62,15 @@ def _thinking_off_hint(error: BaseException) -> dict[str, str] | None:
 def _should_retry_without(model: str, error: BaseException, sent: dict[str, object]) -> bool:
     """Remember a refused parameter and say whether the call is worth one retry without it. Calls
     already in flight when another call learned the same thing are retried too."""
+    endpoint = sent.get("api_base")
+    key = (model, endpoint if isinstance(endpoint, str) else "")
     hint = _thinking_off_hint(error)
     if hint is not None and "thinking" in sent:
         if sent["thinking"] == hint:
             return False
         with _REJECTED_LOCK:
-            new = _THINKING_OFF.get(model) != hint
-            _THINKING_OFF[model] = hint
+            new = _THINKING_OFF.get(key) != hint
+            _THINKING_OFF[key] = hint
         if new:
             logger.info(f"{model}: thinking is switched off with {hint}; retrying")
         return True
@@ -76,15 +79,15 @@ def _should_retry_without(model: str, error: BaseException, sent: dict[str, obje
     if param is None or (param not in sent and not (isinstance(body, dict) and param in body)):
         return False
     with _REJECTED_LOCK:
-        new = param not in _REJECTED.setdefault(model, set())
-        _REJECTED[model].add(param)
+        new = param not in _REJECTED.setdefault(key, set())
+        _REJECTED[key].add(param)
     if new:
         logger.info(f"{model}: provider rejects `{param}`; retrying without it")
     return True
 
 
-def _accepts(model: str, param: str) -> bool:
-    return param not in _REJECTED.get(model, set())
+def _accepts(model: str, param: str, api_base: str | None = None) -> bool:
+    return param not in _REJECTED.get((model, api_base or ""), set())
 
 
 # A provider that turned the API key down (not valid, revoked, missing) will not take it on a retry. Assistive clients
@@ -235,14 +238,14 @@ class LiteLLMClient:
             "timeout": self.timeout_sec,
             "drop_params": True,
         }
-        if not _accepts(self.model, "max_tokens"):
+        if not _accepts(self.model, "max_tokens", self.api_base):
             kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
-        if _accepts(self.model, "temperature"):
+        if _accepts(self.model, "temperature", self.api_base):
             kwargs["temperature"] = self.temperature
         # Claude models may think before answering (adaptive thinking), which can use up a small
         # max_tokens budget before any JSON is written. Shopper decisions are short: answer directly.
-        if self.model.startswith("anthropic/") and _accepts(self.model, "thinking"):
-            kwargs["thinking"] = _THINKING_OFF.get(self.model, {"type": "disabled"})
+        if self.model.startswith("anthropic/") and _accepts(self.model, "thinking", self.api_base):
+            kwargs["thinking"] = _THINKING_OFF.get((self.model, self.api_base or ""), {"type": "disabled"})
         # Hybrid Qwen models on Model Studio think by default (billed reasoning tokens, slower);
         # the OpenAI-compatible endpoint takes the switch as a top-level body field.
         if self.model.startswith("openai/qwen") and "aliyuncs.com" in (self.api_base or ""):
@@ -250,7 +253,7 @@ class LiteLLMClient:
         # OpenAI reasoning models (GPT-6 Luna) reason by default, and the reasoning tokens count
         # against max_completion_tokens: a 160-token glance budget was used up before any JSON, so
         # most glances failed. A model that refuses the switch is remembered and asked without it.
-        if self._openai_hosted() and _accepts(self.model, "reasoning_effort"):
+        if self._openai_hosted() and _accepts(self.model, "reasoning_effort", self.api_base):
             kwargs["extra_body"] = {"reasoning_effort": "none"}
         if self.api_base:
             kwargs["api_base"] = self.api_base
