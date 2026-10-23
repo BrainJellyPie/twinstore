@@ -378,5 +378,6 @@ def apply_to_personas(
                     identifier = f"{p.id}~s{suffix}"
                 used_ids.add(identifier)
                 suffix += 1
-            out.append(p.model_copy(update={**update, "id": identifier}))
+            out.append(p.model_copy(update={**update, "id": identifier,
+                                            "twin_of": (p.twin_of or p.id) if k else p.twin_of}))
     return out
