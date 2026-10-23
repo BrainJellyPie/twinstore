@@ -19,7 +19,8 @@ never move.
 
 import random
 import re
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from typing import Final, Literal
 
 from store_emulator.domain.optimize import OptimizeConstraints, OptimizeScope
@@ -156,9 +157,9 @@ class MoveRules:
     scope: OptimizeScope
     locked: frozenset[str] = frozenset()
     fridges_on_walls: bool = True
-    # SKUs allowed on unreachable faces: the baseline's own, so no move ever hides a product
-    # (the simulator drops unreachable slots, which would otherwise let moves delist items).
-    allowed_blocked: frozenset[str] = frozenset()
+    # Counts of exact offers already unreachable in the baseline. A blocked copy
+    # does not permit hiding additional facings or another price/photo of its SKU.
+    allowed_blocked: Counter[str] = field(default_factory=Counter[str])
 
     @classmethod
     def for_baseline(cls, baseline: Store, scope: OptimizeScope, constraints: OptimizeConstraints) -> "MoveRules":
@@ -166,24 +167,28 @@ class MoveRules:
             scope=scope,
             locked=frozenset(constraints.lock_rack_ids),
             fridges_on_walls=constraints.keep_fridges_on_walls,
-            allowed_blocked=blocked_skus(baseline),
+            allowed_blocked=Counter(item.model_dump_json() for item in _blocked_items(baseline)),
         )
+
+
+def _blocked_items(store: Store) -> list[SlotItem]:
+    faces = {(d.rack_id, d.block, d.face) for d in list_blocked_faces(store)}
+    return [
+        item for rack in store.racks for slot in rack.slots
+        if (rack.id, slot.block, slot.face) in faces for item in slot.items
+    ]
 
 
 def blocked_skus(store: Store) -> frozenset[str]:
     """SKUs stocked on a rack face shoppers cannot reach."""
-    faces = {(d.rack_id, d.block, d.face) for d in list_blocked_faces(store)}
-    return frozenset(
-        item.sku for rack in store.racks for slot in rack.slots
-        if (rack.id, slot.block, slot.face) in faces for item in slot.items
-    )
+    return frozenset(item.sku for item in _blocked_items(store))
 
 
 def is_feasible(store: Store, rules: MoveRules) -> bool:
     """No validation error and no product newly stranded on an unreachable face."""
     if any(issue.severity == "error" for issue in validate(store)):
         return False
-    return blocked_skus(store) <= rules.allowed_blocked
+    return Counter(item.model_dump_json() for item in _blocked_items(store)) <= rules.allowed_blocked
 
 
 def apply_move(store: Store, move: Move, rules: MoveRules) -> tuple[Store, str] | None:
