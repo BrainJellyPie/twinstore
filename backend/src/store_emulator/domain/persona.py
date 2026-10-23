@@ -20,7 +20,7 @@ class Persona(BaseModel):
     description: str
     intent: str
     purpose: str
-    arrival_hour: int = 12  # 0–23 (not enforced by a Field constraint)
+    arrival_hour: int = Field(default=12, ge=0, le=23)
     preferred_categories: list[str] = []
     budget_min: int = Field(default=0, ge=0)  # unit: project currency's minor units
     budget_max: int = Field(default=0, ge=0)  # 0 = no budget limit

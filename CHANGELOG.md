@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Validate customer arrival hours as 0–23 before saving. Out-of-range hours previously saved successfully
+  and then silently removed those customers from runs with operating schedules.
+
 - Reject repeated weekdays in store schedules before creation, layout saves or customer generation.
   Conflicting/split entries previously duplicated customers and IDs or made generation disagree with
   simulation opening hours. Unique partial schedules and legacy empty schedules remain supported.

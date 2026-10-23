@@ -84,3 +84,34 @@ def test_frequency_boundaries_remain_readable(project, rate):
     saved = client.get("/api/projects/proj_test").json()["personas"][0]
     assert saved["category_rates"] == {"drinks": rate}
     assert saved["budget_min"] == saved["budget_max"] == 0
+
+
+@pytest.mark.parametrize("hour", [-100, -1, 24, 25, 100, "-1", "24"])
+def test_invalid_arrival_hours_cannot_silently_remove_saved_customers(project, hour):
+    client, root, persona = project
+    previous = (root / "personas.json").read_bytes()
+    data = {**persona.model_dump(mode="json"), "arrival_hour": hour}
+    response = client.put("/api/projects/proj_test/personas", json={"personas": [data]})
+    assert response.status_code == 422, response.text
+    assert (root / "personas.json").read_bytes() == previous
+    assert json.loads((root / "metadata.json").read_text())["updated_at"] == "original"
+
+
+@pytest.mark.parametrize("hour", [0, 1, 22, 23, "0", "23"])
+def test_boundary_arrival_hours_survive_save_and_simulation_admission(project, hour):
+    from store_emulator.domain.store import DaySchedule
+    from store_emulator.engine.layout_gen import generate_store
+    from tests.engine.test_simulation_opening_hours import _runner
+
+    client, root, persona = project
+    data = {**persona.model_dump(mode="json"), "arrival_hour": hour}
+    response = client.put("/api/projects/proj_test/personas", json={"personas": [data]})
+    assert response.status_code == 200, response.text
+    saved = [Persona.model_validate(p) for p in json.loads((root / "personas.json").read_text())]
+    store = generate_store("station_kiosk")
+    store.weekly_schedule = [DaySchedule(day=1, open_hour=0, close_hour=24)]
+    runner, _ = _runner()
+    _, entries, _ = runner._validate_and_prepare(store, saved, path_heatmap=False)
+    assert len(entries) == 1
+    assert entries[0][0].hour == int(hour)
+    assert entries[0][0].arrival_time.startswith(f"{int(hour):02d}:")
