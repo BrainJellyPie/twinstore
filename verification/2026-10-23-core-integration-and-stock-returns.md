@@ -71,7 +71,9 @@ incorrect customer-field name; that harness error was fixed before recording the
 
 The initial full backend run lost its execution session during environment reconnection,
 with its log at 97% and its process defunct. No completion/exit record survived, so
-that run is **incomplete**, not passed. The same unchanged source snapshot is being
-rechecked with a separate durable exit record; its final result is recorded below.
+that run is **incomplete**, not passed. The same unchanged source snapshot was
+rechecked with a separate durable exit record: **26,126 passed, 1 skipped in
+1,111.48 s (18:31), exit 0**. The skipped Grounding DINO integration check requires
+the optional capture extra and explicit `PARASTORE_TEST_GDINO=1` download opt-in.
 Browser generation/model-start responses were intercepted, and the API run used
 only the rule-based engine. No live model calls or real user data were used.
