@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve distinct POS visits when receipt numbers restart on another date, register or store. Traffic
+  extraction recognizes receipt ID columns instead of confusing order timestamps, totals or transaction
+  types with IDs, and accepts explicit midnight timestamps without treating date-only exports as visits.
+
 - Recover incomplete automatic starter-product selections before failing store creation. Each category/product
   stage can request one complete correction with the missing, duplicate or invalid IDs and capacity limits.
   Normal selections still use two calls; invalid corrected selections never save a partial project or overwrite
