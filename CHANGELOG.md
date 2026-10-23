@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Import product workbooks from their actual populated range instead of trusting
+  oversized or understated worksheet dimensions. Bound rectangular conversion
+  before saving, preserve image row references, and explain oversized actual
+  ranges in all six interface languages without truncating products.
+
 - Reject negative and non-finite checkout arrival times before capacity searches.
   The expanding search stays bounded even for unusable input; after-midnight
   arrivals retain the previous hour's queue backlog.

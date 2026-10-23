@@ -7,6 +7,9 @@ import { uploadSkuImages } from "@/shared/api/images";
 import { extractSkuImages } from "@/features/layouts/excel/extractSkuImages";
 import { parseLayoutWorkbook } from "@/features/layouts/excel/parseLayoutWorkbook";
 import { useLocale } from "@/shared/i18n/i18n";
+import { UserMessageError } from "@/shared/i18n/userMessage";
+import { LOCALES } from "@/shared/i18n/messages";
+import { translate } from "@/shared/i18n/translate";
 import type { Store } from "@/shared/types/domain";
 import { LayoutExcelControls } from "../LayoutExcelControls";
 
@@ -42,6 +45,20 @@ function file(id: number, read?: () => Promise<ArrayBuffer>) {
 function choose(container: HTMLElement, value: File) {
   fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [value] } });
 }
+
+it.each(LOCALES)("blocks oversized sheet uploads and updates the error in $code", async ({ code }) => {
+  vi.mocked(parseLayoutWorkbook).mockImplementationOnce(() => { throw new UserMessageError("excelSheetTooWide"); });
+  const rendered = render(view());
+  choose(rendered.container, file(1));
+  await screen.findByText(translate("en", "excelSheetTooWide"));
+  act(() => useLocale.getState().setLocale(code));
+  expect(screen.getByText(translate(code, "excelSheetTooWide"))).toBeTruthy();
+  expect(extractSkuImages).not.toHaveBeenCalled();
+  expect(uploadSkuImages).not.toHaveBeenCalled();
+  expect(api.replaceSlots).not.toHaveBeenCalled();
+  choose(rendered.container, file(2));
+  await waitFor(() => expect(api.replaceSlots).toHaveBeenCalledOnce());
+});
 
 type Stage = "read" | "extract" | "images";
 function pause(stage: Stage) {

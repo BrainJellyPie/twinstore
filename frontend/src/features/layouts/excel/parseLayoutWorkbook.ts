@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import type { SlotRow } from "@/shared/types/domain";
+import { UserMessageError } from "@/shared/i18n/userMessage";
 import { parseFace } from "./faceMap";
 
 export interface ParsedLayout {
@@ -60,7 +61,28 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
   if (!layoutSheet) {
     throw new Error("rack_layout sheet not found");
   }
-  const header = XLSX.utils.sheet_to_json<unknown[]>(layoutSheet, { header: 1 })[0] ?? [];
+  // Excel can retain an enormous dimension after rows/columns are cleared. Do
+  // not iterate that rectangle, and never truncate actual product cells.
+  const range: XLSX.Range = { s: { r: Infinity, c: Infinity }, e: { r: 0, c: 0 } };
+  for (const address of Object.keys(layoutSheet)) {
+    if (address.startsWith("!")) continue;
+    const cell: XLSX.CellObject | undefined = layoutSheet[address];
+    if (!cell || cell.t === "z" || cell.v == null) continue;
+    const { r, c } = XLSX.utils.decode_cell(address);
+    range.s.r = Math.min(range.s.r, r);
+    range.s.c = Math.min(range.s.c, c);
+    range.e.r = Math.max(range.e.r, r);
+    range.e.c = Math.max(range.e.c, c);
+  }
+  if (!Number.isFinite(range.s.r)) range.s = { r: 0, c: 0 };
+  // Allows 50,000 product rows with all template columns, including metadata.
+  if ((range.e.r - range.s.r + 1) * (range.e.c - range.s.c + 1) > 2_000_000) {
+    throw new UserMessageError("excelSheetTooWide");
+  }
+  layoutSheet["!ref"] = XLSX.utils.encode_range(range);
+  const header = XLSX.utils.sheet_to_json<unknown[]>(layoutSheet, {
+    header: 1, range: { s: range.s, e: { r: range.s.r, c: range.e.c } },
+  })[0] ?? [];
   const columns = new Set(header.map((value) => String(value).trim().toLowerCase()));
   const missing = ["rack_id", "face", "level", "sku"].filter((column) => !columns.has(column));
   if (missing.length > 0) throw new Error(`Missing required columns: ${missing.join(", ")}`);
