@@ -6,6 +6,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from store_emulator.application.csv_tables import validate_csv_table
 from store_emulator.application.errors import AppError
 from store_emulator.application.storage.io import now_iso, read_json
 from store_emulator.application.storage.runs import load_run_results, load_run_store
@@ -14,6 +15,7 @@ from store_emulator.engine.analysis.movement import movement_report
 
 MAX_TRACK_BYTES = 10 * 1024 * 1024
 MAX_TRACK_SAMPLES = 100_000
+MAX_TRACK_CSV_CELLS = 2_000_000
 
 
 def parse_tracks(data: bytes) -> list[TrackPoint]:
@@ -23,7 +25,8 @@ def parse_tracks(data: bytes) -> list[TrackPoint]:
         text = data.decode("utf-8-sig")
     except UnicodeDecodeError as e:
         raise ValueError("Track CSV must use UTF-8 encoding.") from e
-    reader = csv.DictReader(io.StringIO(text))
+    validate_csv_table(text, ",", label="Track CSV", max_cells=MAX_TRACK_CSV_CELLS)
+    reader = csv.DictReader(io.StringIO(text, newline=""))
     required = {"track_id", "x", "y", "timestamp_sec"}
     if reader.fieldnames is None or not required.issubset(reader.fieldnames):
         raise ValueError("Track CSV needs columns: track_id,x,y,timestamp_sec.")
