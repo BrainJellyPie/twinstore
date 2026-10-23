@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import time
+from collections import Counter
 from pathlib import Path
 from collections.abc import Callable
 from typing import Any, cast
@@ -417,25 +419,42 @@ def visitors_per_day(project_id: str, personas: list[Persona]) -> tuple[float, f
     """(visitors a day to scale per-visitor results by, customers simulated a day). The model writes every visitor it
     estimated for a day (up to 1000), or a quick sample of them whose twins fill the day; per-day money in reports
     scales by the estimate. Without one (older stores, customers from data) both are the simulated count."""
-    days = sorted({int(p.day) for p in personas}) or [1]
-    simulated = round(len(personas) / len(days), 1)
+    counts = Counter(int(p.day) for p in personas)
+    days = len(counts) or 1
+    estimated = _daily_visitors(project_id, counts)
+    return round(sum(n / days for n in estimated.values()), 1), round(len(personas) / days, 1)
+
+
+def _daily_visitors(project_id: str, counts: Counter[int]) -> dict[int, float]:
     try:
-        raw = cast(dict[str, object], read_json(metadata_path(project_id))).get("estimated_daily_visitors")
+        metadata: object = read_json(metadata_path(project_id))
+        raw = cast(dict[str, object], metadata).get("estimated_daily_visitors") if isinstance(metadata, dict) else None
     except (OSError, ValueError):
         raw = None
     estimates = cast(dict[str, object], raw) if isinstance(raw, dict) else {}
-    values = [float(v) for d in days if isinstance(v := estimates.get(str(d)), (int, float))]
-    if len(values) != len(days) or sum(values) <= 0:
-        return simulated, simulated
-    return round(max(sum(values) / len(values), simulated), 1), simulated
+    daily = {day: float(n) for day, n in counts.items()}
+    for day, n in counts.items():
+        value = estimates.get(str(day))
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            continue
+        try:
+            estimated = float(value)
+        except OverflowError:
+            continue
+        if math.isfinite(estimated) and estimated >= 0:
+            daily[day] = max(estimated, n)
+    return daily
 
 
 def visitors_per_day_coming(pid: str, everyone: list[Persona], coming: list[Persona]) -> tuple[float, float]:
-    """visitors_per_day for the shoppers who come while the layout is open (`coming`, from scenario_shoppers): the
-    run estimate's shoppers a day, with the store's estimated traffic scaled by the same share of `everyone`."""
-    estimated, simulated = visitors_per_day(pid, everyone)
-    _, coming_a_day = visitors_per_day(pid, coming)
-    return (round(estimated / simulated * coming_a_day, 1) if simulated else coming_a_day), coming_a_day
+    """Scale each visiting weekday by its own estimate/sample ratio before averaging the active days."""
+    counts = Counter(int(p.day) for p in everyone)
+    arriving = Counter(int(p.day) for p in coming)
+    estimates = _daily_visitors(pid, counts)
+    days = len(arriving) or 1
+    per_day = sum(n / days * (estimates[day] / counts[day] if counts[day] else 1)
+                  for day, n in arriving.items())
+    return round(per_day, 1), round(len(coming) / days, 1)
 
 
 def _stored_traffic(meta: dict[str, object]) -> TrafficProfile | None:
