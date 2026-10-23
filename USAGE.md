@@ -774,6 +774,14 @@ pipeline is content-agnostic
 4. An LLM writes a ≤2000-character prose summary, which is appended to
    the persona-generation prompt.
 
+Separately, at least 200 usable visits can supply a weekday/hour traffic profile. For this
+step, columns such as `transaction_datetime`, `timestamp`, `거래일시`, or a recognized date/time
+pair take precedence over other timestamp-like columns. The existing 80% parsing threshold
+still applies. Receipt IDs are scoped by local date and available store/register IDs; each
+receipt uses its earliest valid local timestamp, so sorting its product rows does not shift
+the visit hour. Files without receipt IDs count individual timestamped rows. A generation
+retry can recover this profile from the retained upload while reusing its saved text summary.
+
 What lands well:
 - POS sales logs.
 - Hourly or daily visitor counts.

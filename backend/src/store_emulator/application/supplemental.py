@@ -517,6 +517,10 @@ _DATE_COLUMNS = {"date", "transactiondate", "transdate", "orderdate", "receiptda
                  "날짜", "일자", "거래일자", "거래일", "주문일자", "주문일", "영업일자", "방문일자"}
 _TIME_COLUMNS = {"time", "timestamp", "transactiontime", "transtime", "ordertime", "receipttime", "salestime", "visittime",
                  "시간", "시각", "거래시간", "거래시각", "주문시간", "주문시각", "방문시간", "방문시각"}
+_VISIT_TIMESTAMP_COLUMNS = _DATE_COLUMNS | _TIME_COLUMNS | {
+    root + suffix for root in ("", "transaction", "trans", "order", "receipt", "sales", "visit", "purchase", "invoice")
+    for suffix in ("datetime", "timestamp")
+} | {"일시", "거래일시", "주문일시", "방문일시", "판매일시", "결제일시"}
 _CLOCK_ONLY = re.compile(r"\s*\d{1,2}(?::\d{2}(?::\d{2}(?:\.\d+)?)?(?:\s*[ap]m)?|\s*[ap]m)"
                          r"(?:\s*(?:Z|[+-]\d{2}:?\d{2}))?\s*", re.IGNORECASE)
 MIN_TRAFFIC_VISITS = 200
@@ -540,7 +544,7 @@ def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
     columns = cast(list[object], list(table.columns))
     labels = {col: "".join(char for char in str(col).casefold() if char.isalnum()) for col in columns}
     best: list[pd.Timestamp | None] | None = None
-    best_ok = 0.0
+    best_score = (-1, 0.0)
     dates: list[list[str | None]] = []
     clocks: list[list[str | None]] = []
     for col in columns:
@@ -565,8 +569,10 @@ def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
         has_time = ok > 0 and (sum((stamp.hour, stamp.minute, stamp.second, stamp.microsecond) != (0, 0, 0, 0)
                                   for stamp in valid) / len(valid) > 0.5 or
                               explicit_times > 0.5)
-        if ok >= 0.8 and has_time and ok > best_ok:
-            best, best_ok = parsed, ok
+        # Account creation/update timestamps may be complete but are not the receipt's visit time.
+        score = (int(labels[col] in _VISIT_TIMESTAMP_COLUMNS), ok)
+        if ok >= 0.8 and has_time and score > best_score:
+            best, best_score = parsed, score
         elif ok >= 0.8 and not has_time and labels[col] in _DATE_COLUMNS:
             dates.append([stamp.date().isoformat() if stamp is not None else None for stamp in parsed])
     for date_values in dates:
@@ -574,8 +580,9 @@ def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
             combined = _local_timestamps([f"{date} {clock}" if date is not None and clock is not None else None
                                           for date, clock in zip(date_values, clock_values, strict=True)])
             ok = sum(stamp is not None for stamp in combined) / max(1, len(combined))
-            if ok >= 0.8 and ok > best_ok:
-                best, best_ok = combined, ok
+            score = (1, ok)  # Both components have recognized visit date/time labels.
+            if ok >= 0.8 and score > best_score:
+                best, best_score = combined, score
     if best is None:
         return []
     frame = cast(Any, pd.DataFrame({"ts": best}))

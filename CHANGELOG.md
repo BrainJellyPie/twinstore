@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Prefer named transaction/visit timestamps and recognized date-plus-time pairs when fitting
+  customer traffic. Unrelated account creation/update timestamps no longer override usable
+  sales times because they appear earlier or contain fewer missing values.
+
 - Fit uploaded customer traffic from each receipt's earliest valid local timestamp, independent
   of product-line order. Date/store/register scoping, significant leading zeros and missing
   register identifiers remain intact; files without receipt IDs still count individual rows.
