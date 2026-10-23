@@ -3,7 +3,7 @@ from pathlib import Path
 from filelock import FileLock, Timeout
 
 from store_emulator.application.errors import AppError
-from store_emulator.application.setups import setup_tree_transaction
+from store_emulator.application.setups import setup_lock_path, setup_tree_transaction
 from store_emulator.application.product_sources import check_product_layout, read_product_source
 from store_emulator.application.storage.io import write_json
 from store_emulator.application.storage.setups import new_setup_data, read_setup, setup_path
@@ -70,16 +70,19 @@ def save(pid: str, sid: str, req: ProductEditsSave) -> ProductEditsSaved:
                 "Edited products", sid, store.model_dump(mode="json"),
                 f"Explicit edits to {len(report.changes)} SKUs / {report.changed_placements} placements. Source layout preserved.",
             )
-            source = read_setup(pid, sid)
-            if source.get("operations") is not None:
-                draft["operations"] = source["operations"]
-            building = source.get("building")
-            if building is not None:  # the draft stays on the same building floor
-                draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
             draft["id"] = path.stem
             draft["product_edits_request"] = req.model_dump(mode="json")
             draft["product_edits_result"] = result.model_dump(mode="json")
-            with setup_tree_transaction(pid, [sid]):
+            with setup_tree_transaction(pid, [sid]), FileLock(setup_lock_path(pid, sid), timeout=10):
+                current, digest = read_product_source(pid, sid)
+                if req.source_sha256 != digest or req.currency != current.currency:
+                    raise AppError("The source layout or currency changed. Reload products and review your edits again", 409)
+                source = read_setup(pid, sid)
+                if source.get("operations") is not None:
+                    draft["operations"] = source["operations"]
+                building = source.get("building")
+                if building is not None:
+                    draft["building"] = BuildingFloorInfo.model_validate(building).model_dump(mode="json")
                 write_json(receipt, {"source_id": sid})
                 write_json(path, draft)
             return result
