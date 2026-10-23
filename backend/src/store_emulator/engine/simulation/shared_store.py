@@ -410,7 +410,13 @@ def _play_day(
         elif kind == _CREW:
             dispatch(moment)
         elif kind == _PUT_BACK:
-            _put_back(results[index], state, products, moment, copies)
+            returned = _put_back(results[index], state, products, moment, copies, backroom)
+            if crew is not None and returned:
+                for key in crew.keys:
+                    if key[2] in returned:
+                        crew.dry.discard(key)
+                        crew.note(key, ids[key], state.stock[key], products[key].full, moment)
+                heapq.heappush(heap, (moment, _CREW, index, -1))
         elif kind == _PICK:
             _pick(results[index], index, k, moment, state, products, faces, config, report, hit, seed, copies)
             if crew is not None and state.touched:
@@ -640,8 +646,10 @@ def _lost(result: CustomerResult, product: _Product, units: int) -> None:
 
 def _put_back(
     result: CustomerResult, state: _Day, products: dict[FaceKey, _Product], moment: float, copies: "_Copies",
-) -> None:
-    """A shopper left the line: the basket goes back on the shelves."""
+    backroom: _Backroom | None,
+) -> set[str]:
+    """Return a basket to its shelves, keeping any overflow in the finite backroom for later refills."""
+    returned: set[str] = set()
     for k, original in enumerate(result.timeline):
         if original.action != Action.BUY:
             continue
@@ -652,11 +660,16 @@ def _put_back(
             if product is not None:
                 before = state.stock[key]
                 state.stock[key] = min(product.full, before + event.quantity)
+                overflow = event.quantity - (state.stock[key] - before)
+                if overflow > 0 and backroom is not None and key[2] in backroom.units:
+                    backroom.units[key[2]] += overflow
+                    returned.add(key[2])
                 product.stats.sold_units = max(0, product.stats.sold_units - event.quantity)
                 if before == 0 and state.stock[key] > 0:
                     _refilled(state, key, product, moment)
         event.action = Action.BROWSE
         event.description = _join(event.description, "put back: left the line at the tills")
+    return returned
 
 
 def _apply_checkout(result: CustomerResult, checkout: _Checkout, copies: "_Copies") -> None:

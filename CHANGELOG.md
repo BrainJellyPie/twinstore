@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep abandoned baskets in stock when their shelves have already been refilled: excess units return to the
+  finite backroom, and staff resume refilling any shelves of that product. Previously those units disappeared,
+  reducing later sales and overstating stockouts, including on the following day.
+
 - Use natural virtual-customer generation language in all six UI languages, with correct visitor
   count grammar, explicit daily-sample copying and localized model-start recovery. Disabled local
   models point to API-key settings. Keep choices, estimates and original diagnostics unchanged.

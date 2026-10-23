@@ -700,3 +700,59 @@ def test_an_unstaffed_day_keeps_a_valid_default_crew_when_a_plan_is_saved(crew, 
     assert saved.crew is not None and saved.crew >= 1
     assert replay(store, shoppers, saved, OperationsCosts(till_hour=100000), seed=1)[0] == plan.best
     assert config.model_dump() == before
+
+
+@pytest.mark.parametrize("crew", [None, 1, 2, 4])
+@pytest.mark.parametrize("shelf_units, reserve", [(1, 0), (1, 1), (3, 1), (3, 3), (3, 6)])
+@pytest.mark.parametrize("override_only", [False, True])
+@pytest.mark.parametrize("arrival", ["10:00:40", "10:04:40"])
+@pytest.mark.parametrize("later_day", [Weekday.MON, Weekday.TUE])
+def test_returned_baskets_conserve_finite_stock_after_refill(crew, shelf_units, reserve, override_only, arrival, later_day):
+    shoppers = [_shopper("blocking", "10:00:00", [("nuts", 1)]),
+                _shopper("returns", arrival, [("chips", shelf_units)])]
+    for index, at in enumerate(["10:15:00", "10:30:00", "10:45:00", "11:00:00", "11:15:00"]):
+        shoppers.append(_shopper(f"later-{index}", at, [("chips", shelf_units)], day=later_day))
+    config = OperationsConfig(
+        stock_per_facing=shelf_units, backroom_per_product=None if override_only else reserve,
+        backroom_overrides={"chips": reserve} if override_only else {}, daily_delivery=False,
+        crew=crew, refill_face_sec=1, refill_unit_sec=0, restock_every_min=5,
+        checkout_base_sec=600, checkout_item_sec=0, patience_sec=30, patience_sd=0,
+        substitute_share=0, crowd_limit=None,
+    )
+    before = [shopper.model_dump() for shopper in shoppers]
+    results, report = resolve_shared_store(_store(), shoppers, config, seed=1)
+    assert results[1].left_queue and results[1].total_spent == 0
+    sold = sum(event.quantity for result in results for event in result.timeline
+               if event.action == Action.BUY and event.product_sku == "chips")
+    # Returning the basket must neither destroy units nor create extra stock, even after a partial/full refill.
+    assert sold == shelf_units + reserve
+    assert report.deliveries == 0
+    assert check_buy_consistency(_store(), results) == []
+    assert [shopper.model_dump() for shopper in shoppers] == before
+    assert resolve_shared_store(_store(), shoppers, config, seed=1) == (results, report)
+
+
+@pytest.mark.parametrize("crew", [2, 4])
+def test_returned_stock_restarts_refills_on_other_faces_of_the_same_product(crew):
+    store = _store()
+    store.racks.append(store.racks[0].model_copy(update={"id": "B", "position": (0, 2)}, deep=True))
+    shoppers = [_shopper("blocking", "10:00:00", [("nuts", 1)]),
+                _shopper("returns", "10:04:40", [("chips", 1)]),
+                _shopper("empties-B", "10:04:50", [("chips", 1)], pay=False),
+                _shopper("after-return", "10:06:00", [("chips", 1)], pay=False)]
+    for shopper in shoppers[2:]:
+        shopper.timeline[1] = shopper.timeline[1].model_copy(update={"target_rack": "B", "y": 2})
+    config = OperationsConfig(
+        stock_per_facing=1, backroom_overrides={"chips": 1}, daily_delivery=False,
+        crew=crew, refill_face_sec=1, refill_unit_sec=0, checkout_base_sec=600, checkout_item_sec=0,
+        patience_sec=30, patience_sd=0, substitute_share=0, crowd_limit=None,
+    )
+    before = [shopper.model_dump() for shopper in shoppers]
+    results, report = resolve_shared_store(store, shoppers, config, seed=1)
+    assert results[1].left_queue and results[1].total_spent == 0
+    assert results[2].total_spent == results[3].total_spent == 300
+    # B's first attempt exhausted the shared backroom; A's returned basket makes B refillable immediately.
+    assert any(task.kind == "refill" and task.rack_id == "B" and task.start == 10 * 3600 + 5 * 60 + 35
+               for task in report.crew_tasks)
+    assert check_buy_consistency(store, results) == []
+    assert [shopper.model_dump() for shopper in shoppers] == before
