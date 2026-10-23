@@ -28,5 +28,11 @@ Validation:
 - Frontend source is unchanged from the verified snapshot: 4,479 tests, build
   and lint passed for that exact frontend source.
 
-Full backend verification will be recorded before publication. All fixtures use
-synthetic visits and no live model calls.
+- Additional stress check: **300 randomized observer-invariance cases passed**,
+  across crew/till modes, stock levels, deliveries, substitution and service
+  times. Nonbuying observers leave stock, revenue and other visits unchanged.
+- Full backend suite: **26,547 passed, 1 skipped**, 1,137.18 s (18m57s), exit 0.
+  The durable runner verified source commit `f88118e`; this final record changes
+  documentation only.
+
+All fixtures use synthetic visits and no live model calls.
