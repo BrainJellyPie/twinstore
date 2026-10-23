@@ -14,7 +14,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Literal
 
-from store_emulator.domain.capture import CaptureItem, CaptureResult
+from store_emulator.domain.capture import Box, CaptureItem, CaptureResult
 from store_emulator.domain.rack import (
     RACK_LEVELS,
     SLOT_CAPABLE_TYPES,
@@ -295,15 +295,32 @@ def add_capture_racks(
 
 
 def _split_columns(result: CaptureResult, k: int) -> list[CaptureResult]:
-    """Split a capture into k left→right parts by product position."""
+    """Split a capture into k left→right parts by individual facing position."""
     if k == 1:
         return [result]
     xs = [b.x1 for i in result.items for b in i.boxes] + [b.x2 for i in result.items for b in i.boxes]
     lo, hi = (min(xs), max(xs)) if xs else (0.0, 1.0)
     parts: list[list[CaptureItem]] = [[] for _ in range(k)]
     for item in result.items:
-        pos = (item_center(item) - lo) / max(1e-6, hi - lo)
-        parts[min(k - 1, max(0, math.floor(pos * k)))].append(item)
+        if not item.boxes:
+            pos = (item_center(item) - lo) / max(1e-6, hi - lo)
+            parts[min(k - 1, max(0, math.floor(pos * k)))].append(item)
+            continue
+        boxes: list[list[Box]] = [[] for _ in range(k)]
+        for box in item.boxes:
+            pos = (box.cx - lo) / max(1e-6, hi - lo)
+            boxes[min(k - 1, max(0, math.floor(pos * k)))].append(box)
+        # Normally each box is one facing. If a reviewed count differs, distribute
+        # that count proportionally with exact integer remainders; never create units.
+        count = len(item.boxes)
+        allocations = [divmod(item.facings * len(group), count) for group in boxes]
+        facings = [whole for whole, _ in allocations]
+        remainder = item.facings - sum(facings)
+        for index in sorted(range(k), key=lambda i: (-allocations[i][1], i))[:remainder]:
+            facings[index] += 1
+        for index, n in enumerate(facings):
+            if n:
+                parts[index].append(item.model_copy(update={"facings": n, "boxes": boxes[index]}))
     return [result.model_copy(update={"items": items}) for items in parts]
 
 
@@ -313,6 +330,10 @@ def _place_photo(store: Store, result: CaptureResult, k: int, report: PlacementR
     label = category_label(category, result.currency) if category else "Captured shelf"
     rack_type = RackType.FRIDGE if result.rack_type == "fridge" else RackType.SHELF
     parts = _split_columns(result, k)
+    # A captured product may now span several racks. Count the original group
+    # once, and report it as dropped only when none of its facings can be placed.
+    placed_ids = {item.id for part in parts for row in level_rows(part).values()
+                  for item, _ in fit_row(row, SLOT_CAPACITY)[0]}
     for tiles, face in _candidate_runs(store, k):
         trial = store.model_copy(deep=True)
         trial_report = PlacementReport(face=face)
@@ -338,8 +359,8 @@ def _place_photo(store: Store, result: CaptureResult, k: int, report: PlacementR
             continue
         report.rack_ids += ids
         report.face = face
-        report.placed_items += trial_report.placed_items
+        report.placed_items += len(placed_ids)
         report.placed_facings += trial_report.placed_facings
-        report.dropped += trial_report.dropped
+        report.dropped += [display_name(item) for item in result.items if item.id not in placed_ids]
         return trial
     return None
