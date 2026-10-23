@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Distinguish POS receipts by explicit calendar date and available store/register identifiers during
+  fidelity comparisons. Reused receipt numbers no longer merge independent baskets and distort
+  transaction counts, average-basket ratios or basket-value distances. Original receipt labels remain intact.
+
 - Ignore malformed model-cache containers and replace them after a successful provider response.
   Null, numeric, string or array cache entries no longer block generation and every subsequent retry
   before a model request can be made.

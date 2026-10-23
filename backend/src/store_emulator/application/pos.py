@@ -6,6 +6,7 @@ unit price (or line total), and a timestamp/hour column.
 """
 
 import io
+import re
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
 
@@ -19,7 +20,12 @@ _ALIASES: dict[str, tuple[str, ...]] = {
     "line_total": ("line_total", "sales_value", "sales", "total", "revenue"),
     "timestamp": ("timestamp", "datetime", "transaction_datetime", "date_time", "time", "trans_time"),
     "hour": ("hour", "order_hour_of_day", "hour_of_day"),
+    "date": ("date", "transaction_date", "receipt_date", "order_date", "business_date", "sales_date"),
 }
+
+_RECEIPT_SCOPE_COLUMNS = {root + suffix for root in ("store", "shop", "branch", "register", "terminal", "till", "pos")
+                          for suffix in ("", "id", "no", "num", "number", "code")}
+_CALENDAR_DATE = re.compile(r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|^\d{8}$")
 
 MAX_POS_BYTES = 50 * 1024 * 1024
 
@@ -41,6 +47,8 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         raise ValueError("POS CSV rows have more fields than the header; quote values containing commas.")
     columns: list[str] = [str(c) for c in df.columns]  # type: ignore[reportUnknownVariableType, reportUnknownArgumentType]  # pandas stubs
     lower = {c.strip().lower(): c for c in columns}
+    scope_columns = [("".join(char for char in c.lower() if char.isalnum()), c) for c in columns]
+    scope_columns = sorted((label, col) for label, col in scope_columns if label in _RECEIPT_SCOPE_COLUMNS)
     cols: dict[str, str] = {}
     for key, names in _ALIASES.items():
         for name in names:
@@ -60,6 +68,15 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
         tx, sku = row.get(cols["transaction_id"], "").strip(), row.get(cols["sku"], "").strip()
         if not tx or not sku:
             continue
+        scope = [(label, row.get(col, "").strip()) for label, col in scope_columns]
+        for kind in ("timestamp", "date"):
+            text = row.get(cols.get(kind, ""), "").strip()
+            if not _CALENDAR_DATE.search(text):
+                continue  # time-only strings must not borrow the date this import runs on
+            stamp = pd.to_datetime(text, errors="coerce")  # type: ignore[reportUnknownMemberType]
+            if not pd.isna(stamp):  # type: ignore[reportUnknownMemberType]
+                scope.append(("date", str(stamp.date())))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+                break
         qty = _num(row.get(cols.get("quantity", ""), ""), 1.0)
         if "unit_price" in cols and row.get(cols["unit_price"], "").strip():
             price = _num(row.get(cols["unit_price"], ""), 0.0)
@@ -70,7 +87,8 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
             price = total / qty if qty else 0.0
         else:
             price = 0.0
-        lines.append(PosLine(transaction_id=tx, sku=sku, quantity=qty, unit_price=price, hour=_hour(row, cols)))
+        lines.append(PosLine(transaction_id=tx, transaction_scope=tuple(scope), sku=sku,
+                             quantity=qty, unit_price=price, hour=_hour(row, cols)))
     if not lines:
         raise ValueError("POS file contains no usable rows")
     return lines

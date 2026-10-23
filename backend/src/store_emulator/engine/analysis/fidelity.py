@@ -20,6 +20,8 @@ from store_emulator.domain.store import Store
 class PosLine(BaseModel):
     """One line of a real receipt."""
     transaction_id: str
+    # Receipt numbers can restart on another date/store/register. Keep the original ID as a label.
+    transaction_scope: tuple[tuple[str, str], ...] = ()
     sku: str
     quantity: float = Field(default=1.0, allow_inf_nan=False)
     unit_price: float = Field(default=0.0, allow_inf_nan=False)  # minor currency unit, same as the store's prices
@@ -64,9 +66,9 @@ def fidelity_report(
 
     sim_baskets = [float(cr.units_bought) for cr in results if cr.purchases]
     sim_values = [float(cr.total_spent) for cr in results if cr.purchases]
-    real_tx: dict[str, list[PosLine]] = {}
+    real_tx: dict[tuple[str, tuple[tuple[str, str], ...]], list[PosLine]] = {}
     for line in real_lines:
-        real_tx.setdefault(line.transaction_id, []).append(line)
+        real_tx.setdefault((line.transaction_id, line.transaction_scope), []).append(line)
     real_baskets = [sum(line.quantity for line in lines) for lines in real_tx.values()]
     real_values = [sum(line.quantity * line.unit_price for line in lines) for lines in real_tx.values()]
 
