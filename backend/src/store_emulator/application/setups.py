@@ -28,7 +28,7 @@ from store_emulator.application.storage.io import DATA_DIR, write_json, read_jso
 from store_emulator.application.storage.generations import find_active_generation, list_generations
 from store_emulator.application.storage.setups import (
     read_setup, write_setup, list_setups, new_setup_data,
-    delete_setup, find_descendants, metadata_path, personas_path, setup_path,
+    delete_setup, find_descendants, metadata_path, personas_path, setup_dir, setup_path,
     read_state, write_state,
 )
 
@@ -69,6 +69,27 @@ def setup_tree_transaction(project_id: str, parents: Iterable[str] = ()) -> Iter
             if not _SAFE_ID.fullmatch(parent) or not setup_path(project_id, parent).is_file():
                 raise AppError(f"source setup no longer exists: {parent}", 404)
         yield
+
+
+@contextmanager
+def project_layout_transaction(project_id: str) -> Iterator[None]:
+    """Coordinate project-wide customer saves/deletion with layout saves and run starts."""
+    with setup_tree_transaction(project_id):
+        deadline = time.monotonic() + 10
+        with ExitStack() as locks:
+            try:
+                for path in sorted(setup_dir(project_id).glob("*.json")):
+                    if not _SAFE_ID.fullmatch(path.stem):
+                        continue  # invalid filenames cannot be addressed by an API layout operation
+                    locks.enter_context(FileLock(
+                        str(setup_lock_path(project_id, path.stem)),
+                        timeout=max(0, deadline - time.monotonic()),
+                    ))
+            except Timeout:
+                raise AppError(503, "setup_lock_timeout", "lock_timeout",
+                               "another request is modifying this project's layouts. Please retry shortly.",
+                               {"timeout_seconds": 10})
+            yield
 
 
 def get_setups(project_id: str) -> list[dict[str, Any]]:

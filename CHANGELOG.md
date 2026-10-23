@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Serialize customer-list saves with run startup. An accepted save supplies the next run's population; a final
+  run that starts first rejects later customer edits, preventing locked layouts from using a different population.
+
 - Coordinate project deletion with starting simulations and layout saves. Deletion rechecks active jobs after
   acquiring the project's layout locks, preventing accepted runs from recreating records in a deleted project.
 

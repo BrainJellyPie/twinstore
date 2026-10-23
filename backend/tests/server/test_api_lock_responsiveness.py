@@ -12,14 +12,15 @@ from filelock import FileLock
 
 from store_emulator.application import setups, simulation
 from store_emulator.application.async_executor import executor
-from store_emulator.application.storage.setups import metadata_path, read_setup, setup_path
+from store_emulator.application.storage.io import read_json
+from store_emulator.application.storage.setups import metadata_path, personas_path, read_setup, setup_path
 from store_emulator.server.main import app
 from tests.server.test_simulation_setup_races import PID, SID, layout
 
 
 @pytest.mark.parametrize("operation", [
     "run", "preview", "slots", "empty", "racks", "racks_and_items",
-    "delete_layout_tree", "delete_layout", "delete_project",
+    "delete_layout_tree", "delete_layout", "delete_project", "personas",
 ])
 def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, monkeypatch, operation):
     @asynccontextmanager
@@ -39,6 +40,8 @@ def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, mon
     }
     if operation == "slots":
         method, url, payload = "PUT", f"{setup_url}/slots", {"slots": []}
+    elif operation == "personas":
+        method, url, payload = "PUT", f"{base}/personas", {"personas": read_json(personas_path(PID))}
     elif operation in {"empty", "racks", "racks_and_items"}:
         url, payload = f"{base}/setups", {"source_setup_id": SID, "mode": operation}
     elif operation.startswith("delete"):
@@ -71,6 +74,8 @@ def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, mon
     elif operation == "slots":
         assert response.json()["count"] == 0
         assert all(not rack["slots"] for rack in read_setup(PID, SID)["store"]["racks"])
+    elif operation == "personas":
+        assert response.json() == {"status": "saved"}
     elif operation == "delete_project":
         assert not metadata_path(PID).exists()
     elif operation.startswith("delete_layout"):

@@ -99,7 +99,7 @@ def test_a_deleting_project_cannot_accept_a_new_run(layout, monkeypatch, preview
 
 @pytest.mark.parametrize("locked", [SID, "setup_unrelated"])
 def test_busy_layout_prevents_partial_project_removal(layout, monkeypatch, locked):
-    monkeypatch.setattr(projects, "FileLock", lambda path, timeout: FileLock(path, timeout=0), raising=False)
+    monkeypatch.setattr(setups, "FileLock", lambda path, timeout: FileLock(path, timeout=0))
     write_json(setup_path(PID, "setup_first"), {**read_setup(PID, SID), "id": "setup_first"})
     before = setup_path(PID, SID).read_bytes()
     with FileLock(setups.setup_lock_path(PID, locked), timeout=0):
