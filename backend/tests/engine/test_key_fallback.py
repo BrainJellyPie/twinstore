@@ -594,7 +594,7 @@ def test_the_default_vision_endpoint_follows_the_local_server_and_dead_ones_leav
     assert any(m["ref"] == "llamacpp:local" for m in providers.available_models())
 
 
-def test_the_uploaded_customer_data_is_kept_until_its_summary_is_made(tmp_path, monkeypatch):
+def test_the_uploaded_customer_data_remains_available_after_its_summary_is_made(tmp_path, monkeypatch):
     from store_emulator.application import generation_async
     from store_emulator.application.storage.io import write_json
     from store_emulator.application.storage.setups import metadata_path
@@ -605,7 +605,7 @@ def test_the_uploaded_customer_data_is_kept_until_its_summary_is_made(tmp_path, 
     assert generation_async._kept_upload("proj_up") == (b"day,hour\n1,9\n", "고객 데이터.CSV")  # pyright: ignore[reportPrivateUsage]
     assert (metadata_path("proj_up").parent / "supplemental" / "upload.csv").is_file()
     write_json(metadata_path("proj_up"), {"supplemental_summary": "students at lunch"})
-    assert generation_async._kept_upload("proj_up") is None  # pyright: ignore[reportPrivateUsage]
+    assert generation_async._kept_upload("proj_up") == (b"day,hour\n1,9\n", "고객 데이터.CSV")  # pyright: ignore[reportPrivateUsage]
 
     # "Try again" without a file picks the kept one up.
     write_json(metadata_path("proj_up"), {"supplemental_summary": ""})

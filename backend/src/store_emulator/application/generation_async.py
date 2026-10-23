@@ -129,11 +129,10 @@ def _keep_upload(project_id: str, data: bytes, filename: str) -> None:
 
 
 def _kept_upload(project_id: str) -> tuple[bytes, str] | None:
-    """The kept upload, while its summary has not been made yet (later generations reuse the stored summary)."""
+    """Retain source evidence for retry even if only its text summary was saved before interruption."""
     folder = _upload_dir(project_id)
     try:
-        meta = cast(dict[str, object], read_json(metadata_path(project_id)))
-        if str(meta.get("supplemental_summary", "") or "") or not (folder / "upload.json").is_file():
+        if not (folder / "upload.json").is_file():
             return None
         name = str(cast(dict[str, object], read_json(folder / "upload.json")).get("filename", ""))
         files = [f for f in folder.iterdir() if f.name.startswith("upload.") and f.suffix != ".json"]
@@ -228,7 +227,7 @@ async def _run_async_pipeline(
     # supplemental_bytes is None (manual call, restart, etc.) a previously-stored
     # summary must still flow into the persona prompt (spec §4.3).
     effective_summary = str(meta.get("supplemental_summary", "") or "")
-    if supplemental_bytes is not None:
+    if supplemental_bytes is not None and not effective_summary:
         summary = await summarize_supplemental(
             supplemental_bytes, supplemental_filename, llm,
         )
