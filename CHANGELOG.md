@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject incomplete customer panels before scoring or caching optimization search
+  candidates. Failed shoppers can no longer create apparent improvements by changing
+  the population; paired vision judging still compares common successful shoppers.
+
 - Select rule and vision purchases only from shelf offers connected to the shopper's
   entrance. Unreachable promoted, cheaper or free offers cannot consume a basket slot,
   reserve a SKU or spend the budget before routing silently drops them.
