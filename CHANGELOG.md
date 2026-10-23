@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.4.11 — Reliable runs, saved layouts and store operations
+
+Released 2026-10-23.
+
+- Add the TwinStore paper citation ([arXiv:2610.30909](https://arxiv.org/abs/2610.30909)), DOI and BibTeX to the
+  README, and explicitly acknowledge Intellicia's ParaStore as the original open-source foundation.
+
 - Reserve each run ID across a project's layouts before marking a simulation pending. Concurrent starts with
   the same ID can no longer launch two jobs into one results directory or leave the rejected layout running.
 
