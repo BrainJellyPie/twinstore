@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep captured product identities when existing names identify multiple SKUs,
+  including equally close fuzzy matches. Preserve an explicitly known SKU and
+  only replace estimated prices when its matching offers agree on one price.
+  Ambiguous matches remain reviewable instead of changing with catalog order.
+
 - Split captured product runs across new racks using individual facing positions.
   Wide runs now use the available shelf capacity instead of shrinking onto one
   rack. Preserve reviewed facing totals when distributing boxes, count each source

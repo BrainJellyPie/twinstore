@@ -14,7 +14,7 @@ from store_emulator.domain.capture import (
     CaptureResult,
     ShelfBand,
 )
-from store_emulator.domain.rack import Rack, RackType
+from store_emulator.domain.rack import Rack, RackType, Slot, SlotItem
 from store_emulator.domain.store import Store
 
 PID = "proj_67916afd"
@@ -461,6 +461,31 @@ def test_exact_names_reuse_sku_but_other_sizes_stay_distinct(workflow):
         "photo_sku0",
         "photo_sku1",
     }
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_ambiguous_existing_names_do_not_redirect_capture_products_or_crop_images(workflow, reverse):
+    client, request, _ = workflow
+    source = read_setup(PID, BASE)
+    base = Store.model_validate(source["store"])
+    products = [SlotItem(sku="known-small", name="Observed tea 0", price=100),
+                SlotItem(sku="known-large", name="Observed tea 0", price=700)]
+    base.racks.append(Rack(id="existing", type="shelf", shape=[[1]], position=(6, 6),
+                           slots=[Slot(block=0, face="S", level=1, items=products[::-1] if reverse else products)]))
+    source["store"] = base.model_dump(mode="json")
+    write_json(setup_path(PID, BASE), source)
+    response = client.post(ROOT + "/batch-preview", json=request)
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert any("ambiguous" in note.lower() for note in report["notes"])
+    saved = client.post(ROOT + "/batch-save", json={**request, "source_sha256": report["source_sha256"],
+                                                   "request_id": "f" * 32})
+    assert saved.status_code == 200, saved.text
+    result = Store.model_validate(read_setup(PID, saved.json()["setup_id"])["store"])
+    assert {item.sku for _, slot in result.all_slots for item in slot.items} == {
+        "known-small", "known-large", "photo_sku0", "photo_sku1",
+    }
+    assert set(load_manifest(PID)) == {"photo_sku0", "photo_sku1"}
 
 
 def test_wide_product_run_keeps_every_facing_through_preview_and_save(workflow):
