@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Compare POS hourly transaction profiles with simulated checkout completion,
+  including queue delays and midnight rollover. Visits without usable checkout
+  timing are identified and excluded instead of being assigned their arrival hour.
+
 - Keep successful receipt readings when another uploaded photo is malformed or
   oversized. Read uploads one bounded photo at a time and release decoded pixels
   after each model call; unreadable receipts still require review or exclusion.
