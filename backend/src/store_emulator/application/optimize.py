@@ -273,26 +273,27 @@ def _run_job(
 
 def apply_optimization(pid: str, job_id: str, name: str | None = None) -> dict[str, Any]:
     """Save the optimized layout as a new draft layout (the original stays untouched)."""
-    view = get_optimization(pid, job_id)
-    if view.result is None:
-        raise AppError("optimization has no result yet", 409)
-    try:
-        source = read_setup(pid, view.status.setup_id)
-    except FileNotFoundError:
-        raise AppError("The source layout no longer exists; this optimization cannot be saved.", 404) from None
-    label = f"{view.result.validation_relative_improvement:+.1%}" if view.result.validation_relative_improvement is not None else ""
-    final_name = name or f"{source.get('name') or 'layout'} (optimized{' ' + label if label else ''})"
-    memo = "; ".join(view.result.applied_moves[:12])
-    new_setup = new_setup_data(final_name, view.status.setup_id, view.result.best_store.model_dump(mode="json"), memo[:1000])
-    # Keep the conditions used to judge this result, including explicit opt-out;
-    # the source's settings may have changed since the search started.
-    if view.status.operations is not None:
-        new_setup["operations"] = view.status.operations.model_dump(mode="json")
-    if source.get("building") is not None:  # the optimized layout stays on the same building floor
-        new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
-    with setup_tree_transaction(pid, [view.status.setup_id]):
+    # Deletion must wait through the final job-status write, which can create directories.
+    with setup_tree_transaction(pid):
+        view = get_optimization(pid, job_id)
+        if view.result is None:
+            raise AppError("optimization has no result yet", 409)
+        try:
+            source = read_setup(pid, view.status.setup_id)
+        except FileNotFoundError:
+            raise AppError("The source layout no longer exists; this optimization cannot be saved.", 404) from None
+        label = f"{view.result.validation_relative_improvement:+.1%}" if view.result.validation_relative_improvement is not None else ""
+        final_name = name or f"{source.get('name') or 'layout'} (optimized{' ' + label if label else ''})"
+        memo = "; ".join(view.result.applied_moves[:12])
+        new_setup = new_setup_data(final_name, view.status.setup_id, view.result.best_store.model_dump(mode="json"), memo[:1000])
+        # Keep the conditions used to judge this result, including explicit opt-out;
+        # the source's settings may have changed since the search started.
+        if view.status.operations is not None:
+            new_setup["operations"] = view.status.operations.model_dump(mode="json")
+        if source.get("building") is not None:  # the optimized layout stays on the same building floor
+            new_setup["building"] = BuildingFloorInfo.model_validate(source["building"]).model_dump(mode="json")
         write_json(setup_path(pid, new_setup["id"]), new_setup)
         set_active_setup(pid, new_setup["id"])
-    status = view.status.model_copy(update={"applied_setup_id": new_setup["id"]})
-    _write_status(pid, status)
-    return setup_summary(pid, new_setup)
+        status = view.status.model_copy(update={"applied_setup_id": new_setup["id"]})
+        _write_status(pid, status)
+        return setup_summary(pid, new_setup)
