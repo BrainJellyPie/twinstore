@@ -14,6 +14,7 @@ stock-out costs per day.
 
 from collections import Counter
 from dataclasses import dataclass
+from itertools import groupby
 
 from store_emulator.domain.analysis import MetricComparison
 from store_emulator.domain.capture import Box, CaptureGap, CaptureItem, CaptureResult
@@ -110,9 +111,11 @@ def diff_face(rack: Rack, face: Face, field: CaptureResult, currency: str) -> tu
         levels.append(LevelCompliance(level=lv, expected_facings=expected, found_facings=sum(got_count.values()),
                                       matched_facings=matched, score=round(matched / expected, 4) if expected else 1.0))
         names = {r.sku: r for r in runs}
+        reported_missing: set[str] = set()
         for pos, r in enumerate(runs):
-            if r.sku in got_count:
+            if r.sku in got_count or r.sku in reported_missing:
                 continue
+            reported_missing.add(r.sku)
             elsewhere = sorted(got_level_of.get(r.sku, set()) - {lv})
             if elsewhere:
                 where = [it for it in field.items if it.sku == r.sku]
@@ -124,7 +127,7 @@ def diff_face(rack: Rack, face: Face, field: CaptureResult, currency: str) -> tu
             if gap is not None:
                 used_gaps.add(field.gaps.index(gap))
             findings.append(AuditFinding(kind="missing", level=lv, sku=r.sku, name=r.name,
-                                         expected=f"{r.facings} facing{'s' if r.facings > 1 else ''}", found="none",
+                                         expected=f"{ref_count[r.sku]} facing{'s' if ref_count[r.sku] > 1 else ''}", found="none",
                                          box=gap.box if gap is not None else None))
         for it in items:
             if it.sku in ref_count:
@@ -133,26 +136,39 @@ def diff_face(rack: Rack, face: Face, field: CaptureResult, currency: str) -> tu
                 continue  # reported as misplaced from its reference level
             findings.append(AuditFinding(kind="unexpected", level=lv, sku=it.sku, name=it.name, expected="not on this level",
                                          found=f"{it.facings} facing{'s' if it.facings > 1 else ''}", box=_union(it.boxes)))
-        common_ref = [r.sku for r in runs if r.sku in got_count]
-        common_got = list(dict.fromkeys(it.sku for it in items if it.sku in ref_count))
-        for sku in common_ref:
+        # Collapse adjacent facings in both views, while retaining a product that
+        # appears again after another SKU. Global deduplication shifts later products.
+        common_ref = [sku for sku, _ in groupby(r.sku for r in runs if r.sku in got_count)]
+        common_got = [sku for sku, _ in groupby(it.sku for it in items if it.sku in ref_count)]
+        prices_by_sku: dict[str, set[int]] = {}
+        for slot in rack.slots:
+            if slot.face == face and slot.level == lv:
+                for product in slot.items:
+                    prices_by_sku.setdefault(product.sku, set()).add(product.price)
+        for sku in dict.fromkeys(common_ref):
             n_ref, n_got = ref_count[sku], got_count[sku]
             where = [it for it in items if it.sku == sku]
             box = _union([b for it in where for b in it.boxes])
             if n_ref != n_got:
                 findings.append(AuditFinding(kind="facings", level=lv, sku=sku, name=names[sku].name,
                                              expected=str(n_ref), found=str(n_got), box=box))
-            if common_ref.index(sku) != common_got.index(sku):
+            positions_ref = [str(index + 1) for index, product in enumerate(common_ref) if product == sku]
+            positions_got = [str(index + 1) for index, product in enumerate(common_got) if product == sku]
+            if positions_ref != positions_got:
                 findings.append(AuditFinding(kind="misplaced", level=lv, sku=sku, name=names[sku].name,
-                                             expected=f"position {common_ref.index(sku) + 1}",
-                                             found=f"position {common_got.index(sku) + 1}", box=box))
-            tagged = [it for it in where if it.price is not None and not it.price_estimated]
-            ref_price = names[sku].price
-            if tagged and ref_price > 0:
-                p = tagged[0].price or 0
-                if abs(p - ref_price) > max(1, round(0.02 * ref_price)):
+                                             expected=f"position {', '.join(positions_ref)}",
+                                             found=f"position {', '.join(positions_got)}", box=box))
+            tagged: dict[int, list[CaptureItem]] = {}
+            for item in where:
+                if item.price is not None and not item.price_estimated:
+                    tagged.setdefault(item.price, []).append(item)
+            reference_prices = sorted(prices_by_sku[sku])
+            for price, products in tagged.items():
+                if not any(abs(price - ref_price) <= max(1, round(0.02 * ref_price)) for ref_price in reference_prices):
                     findings.append(AuditFinding(kind="price", level=lv, sku=sku, name=names[sku].name,
-                                                 expected=display_price(ref_price, currency), found=display_price(p, currency), box=box))
+                                                 expected=" or ".join(display_price(p, currency) for p in reference_prices),
+                                                 found=display_price(price, currency),
+                                                 box=_union([b for product in products for b in product.boxes])))
         for k, g in enumerate(field.gaps):
             if g.level == lv and k not in used_gaps:
                 findings.append(AuditFinding(kind="gap", level=lv, expected="stocked", found=f"{g.facings:g} facing(s) empty", box=g.box))
