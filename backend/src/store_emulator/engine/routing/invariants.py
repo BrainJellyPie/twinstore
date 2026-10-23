@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from store_emulator.domain.customer import CustomerResult, TimelineEvent
 from store_emulator.domain.rack import Rack, SlotItem
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import Action, Face
+from store_emulator.domain.types import Action, FACE_OFFSETS, Face
 
 
 @dataclass(frozen=True)
@@ -39,13 +39,15 @@ VIOLATION_KINDS = frozenset({
 def check_buy_consistency(store: Store, results: list[CustomerResult]) -> list[BuyViolation]:
     """Walk every BUY event and report violations of the rack/face/sku contract."""
     racks_by_id: dict[str, Rack] = {r.id: r for r in store.racks}
-    face_sku: dict[tuple[str, Face], dict[str, list[SlotItem]]] = {}
+    face_sku: dict[tuple[str, Face, int | None], dict[str, list[SlotItem]]] = {}
     sku_to_racks: dict[str, set[str]] = {}
     for r in store.racks:
         for slot in r.slots:
-            bucket = face_sku.setdefault((r.id, slot.face), {})
+            bucket = face_sku.setdefault((r.id, slot.face, slot.block), {})
+            legacy_bucket = face_sku.setdefault((r.id, slot.face, None), {})
             for it in slot.items:
                 bucket.setdefault(it.sku, []).append(it)
+                legacy_bucket.setdefault(it.sku, []).append(it)
                 sku_to_racks.setdefault(it.sku, set()).add(r.id)
 
     violations: list[BuyViolation] = []
@@ -61,7 +63,7 @@ def _check_event(
     persona_id: str,
     ev: TimelineEvent,
     racks_by_id: dict[str, Rack],
-    face_sku: dict[tuple[str, Face], dict[str, list[SlotItem]]],
+    face_sku: dict[tuple[str, Face, int | None], dict[str, list[SlotItem]]],
     sku_to_racks: dict[str, set[str]],
 ) -> list[BuyViolation]:
     out: list[BuyViolation] = []
@@ -73,14 +75,18 @@ def _check_event(
         return out
 
     rack = racks_by_id[ev.target_rack]
-    if ev.face is not None and any(bf.face == ev.face for bf in rack.locked_faces):
-        out.append(BuyViolation(persona_id, ev.elapsed_sec, ev.target_rack, ev.face, ev.product_sku, "locked_face"))
-
     if ev.face is None:
         out.append(BuyViolation(persona_id, ev.elapsed_sec, ev.target_rack, ev.face, ev.product_sku, "face_none"))
         return out
 
-    items = face_sku.get((ev.target_rack, ev.face), {}).get(ev.product_sku)
+    dx, dy = FACE_OFFSETS[ev.face]
+    block = next((idx for idx, position in enumerate(rack.occupied_positions)
+                  if position == (ev.x - dx, ev.y - dy)), None)
+    # Older saved timelines can lack a usable stance; retain their face-level check.
+    if any(bf.face == ev.face and (block is None or bf.block == block) for bf in rack.locked_faces):
+        out.append(BuyViolation(persona_id, ev.elapsed_sec, ev.target_rack, ev.face, ev.product_sku, "locked_face"))
+
+    items = face_sku.get((ev.target_rack, ev.face, block), {}).get(ev.product_sku)
     if not items:
         out.append(BuyViolation(persona_id, ev.elapsed_sec, ev.target_rack, ev.face, ev.product_sku, "sku_not_on_face"))
         return out

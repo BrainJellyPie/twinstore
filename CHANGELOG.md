@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep purchases on the selected block of a multi-cell shelf, including its own price and name.
+  Rule-based visits decline a blocked selected stance instead of using another block's aisle;
+  purchase diagnostics check the reached block's offers and locks.
+
 - Keep saved customer IDs containing slashes usable in journey, interview, follow-up and reset routes.
   The exact ID reaches the existing customer lookup and bounded transcript storage without changing
   saved identities or conflating customers that share a trailing ID component.

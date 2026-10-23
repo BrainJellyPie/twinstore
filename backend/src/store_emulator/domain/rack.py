@@ -187,13 +187,17 @@ class Rack(BaseModel):
                     tiles.add(tile)
         return tiles
 
-    def accepts_face_at(self, tile: Position, face: Face, grid_size: tuple[int, int]) -> bool:
-        """True iff `tile` is an access tile of this rack on the given `face`."""
+    def accepts_face_at(
+        self, tile: Position, face: Face, grid_size: tuple[int, int], *, block: int | None = None,
+    ) -> bool:
+        """True iff `tile` reaches this face, optionally on one specific block."""
         w, h = grid_size
         px, py = self.position
         occupied = set(self.occupied_positions)
         dx, dy = _FACE_OFFSETS[face]
         for idx, (r, c) in enumerate(self.block_cells):
+            if block is not None and idx != block:
+                continue
             if face not in self.valid_faces(idx):
                 continue
             candidate = (px + c + dx, py + r + dy)
