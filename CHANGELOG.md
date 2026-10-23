@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Stop neighborhood vision studies when more than half the model calls in either
+  condition fail, matching marketing experiments. Count both entrance plans and
+  shelf glances; completed fallback visits no longer mask an unusable vision
+  panel. Smaller failure rates remain visible in the report notes.
+
 - Fail neighborhood basket/revenue studies when a required visitor group has no
   successful evidence. Missing affected pairs no longer imply zero basket effect,
   and missing unaffected visitors no longer borrow the affected group's spending.

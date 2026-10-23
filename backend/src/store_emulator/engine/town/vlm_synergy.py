@@ -164,6 +164,7 @@ async def vlm_basket_synergy(
     requests = 0
     failed = 0
     plan_errors = 0
+    model_failures: list[str] = []
     missions: dict[str, dict[str, str]] = {"with": {}, "without": {}}
 
     async def simulate(arm: str, personas: list[Persona]) -> list[CustomerResult]:
@@ -183,7 +184,20 @@ async def vlm_basket_synergy(
         done_before += len(personas)
         requests += aggregated.token_usage.requests
         failed += len(aggregated.diagnostics.failed_customers)
-        records = engine.metadata().get("plan_records") if isinstance(engine, EngineMetadataSource) else None
+        meta = engine.metadata() if isinstance(engine, EngineMetadataSource) else {}
+        planning = cast(dict[str, object], meta["planning"]) if isinstance(meta.get("planning"), dict) else {}
+        counts = [value if isinstance(value := source.get(key), int) else 0
+                  for source, key in ((meta, "errors"), (planning, "plan_errors"), (meta, "glances"), (planning, "plans"))]
+        failed_calls, total_calls = counts[0] + counts[1], counts[2] + counts[3]
+        # Use the same quality threshold as marketing experiments: a completed
+        # fallback visit is not evidence that the vision model answered.
+        if total_calls and failed_calls * 2 > total_calls:
+            raise ValueError(f"The vision model failed on {failed_calls} of {total_calls} calls {arm} the venue, "
+                             "so the study was stopped: failed calls use fallback plans or skip shelf glances. "
+                             "Check the model provider or choose another model before retrying.")
+        if failed_calls:
+            model_failures.append(f"{arm} venue: {failed_calls} of {total_calls}")
+        records = meta.get("plan_records")
         for record in cast(list[object], records) if isinstance(records, list) else []:
             row = cast(dict[str, object], record) if isinstance(record, dict) else {}
             pid, mission = row.get("persona_id"), row.get("mission")
@@ -236,6 +250,9 @@ async def vlm_basket_synergy(
                       " construction; the effect is the visitor flow alone.")
     if plan_errors:
         notes.append(f"{plan_errors} VLM entrance plans failed and fell back to the rule plan.")
+    if model_failures:
+        notes.append("Some vision-model calls failed (" + "; ".join(model_failures)
+                     + "); affected decisions used fallback plans or skipped shelf glances.")
     if failed:
         notes.append(f"{failed} customer simulations failed. Basket comparisons and examples exclude visitors"
                      f" missing either result; {len(paired)} complete affected pairs remain.")
