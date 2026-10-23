@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Make downloaded product workbooks reimportable for stores with dining furniture
+  and locked faces. Export only product-capable fixtures and exposed faces, retain
+  every rotated rack block, and skip empty blocked template rows on upload.
+
 - Preserve discount/reference prices through product Excel export and import.
   The workbook includes `regular_price (minor units)` and bulk slot uploads retain
   it, so reimporting products no longer removes their usual-price reference.
