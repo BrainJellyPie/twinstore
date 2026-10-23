@@ -257,7 +257,8 @@ async def regenerate_persona(pid: str, sid: str) -> RegeneratePersonaResponse:
       or persona generation is active anywhere in the project
     """
     try:
-        gen_id = generation_async.start_persona_generation(
+        gen_id = await run_in_threadpool(
+            generation_async.start_persona_generation,
             get_config(), pid, sid,
         )
     except FileNotFoundError:

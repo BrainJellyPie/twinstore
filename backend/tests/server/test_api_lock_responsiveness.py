@@ -20,7 +20,7 @@ from tests.server.test_simulation_setup_races import PID, SID, layout
 
 @pytest.mark.parametrize("operation", [
     "run", "preview", "slots", "empty", "racks", "racks_and_items",
-    "delete_layout_tree", "delete_layout", "delete_project", "personas", "metadata",
+    "delete_layout_tree", "delete_layout", "delete_project", "personas", "metadata", "generation",
 ])
 def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, monkeypatch, operation):
     @asynccontextmanager
@@ -44,6 +44,8 @@ def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, mon
         method, url, payload = "PUT", f"{base}/personas", {"personas": read_json(personas_path(PID))}
     elif operation == "metadata":
         method, url, payload = "PUT", f"{base}/metadata", {"name": "Responsive edit"}
+    elif operation == "generation":
+        url, payload = f"{setup_url}/regenerate-persona", None
     elif operation in {"empty", "racks", "racks_and_items"}:
         url, payload = f"{base}/setups", {"source_setup_id": SID, "mode": operation}
     elif operation.startswith("delete"):
@@ -80,6 +82,9 @@ def test_lock_wait_leaves_health_available_and_resumes_after_release(layout, mon
         assert response.json() == {"status": "saved"}
     elif operation == "metadata":
         assert read_json(metadata_path(PID))["name"] == "Responsive edit"
+    elif operation == "generation":
+        submit.assert_called_once()
+        assert response.json()["gen_id"]
     elif operation == "delete_project":
         assert not metadata_path(PID).exists()
     elif operation.startswith("delete_layout"):
