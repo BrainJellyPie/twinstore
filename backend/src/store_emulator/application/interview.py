@@ -50,6 +50,7 @@ from store_emulator.application.product_images import project_image_loader
 
 from .errors import AppError, model_failure
 from .providers import answered_by, assistive_client, assistive_model
+from .setups import setup_lock_path, setup_tree_transaction
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -136,11 +137,16 @@ def get_interview(pid: str, run_id: str, persona_id: str) -> Interview:
     return Interview.model_validate(read_json(path))
 
 
+def _interview_lock_path(pid: str, run_id: str, persona_id: str) -> Path:
+    _transcript_path(pid, run_id, persona_id)
+    # Locks outlive deleted runs; acquiring one must not recreate transcript folders.
+    digest = hashlib.sha256(persona_id.encode()).hexdigest()
+    return setup_lock_path(pid, "interview").with_name(f"interview_{run_id}_{digest}.lock")
+
+
 @contextmanager
 def _interview_lock(pid: str, run_id: str, persona_id: str) -> Iterator[None]:
-    path = _transcript_path(pid, run_id, persona_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lock = FileLock(path.with_suffix(".lock"), timeout=0)
+    lock = FileLock(_interview_lock_path(pid, run_id, persona_id), timeout=0)
     try:
         lock.acquire()
     except Timeout as e:
@@ -152,15 +158,16 @@ def _interview_lock(pid: str, run_id: str, persona_id: str) -> Iterator[None]:
 
 
 def clear_interview(pid: str, run_id: str, persona_id: str) -> None:
-    with _interview_lock(pid, run_id, persona_id):
+    with _interview_lock(pid, run_id, persona_id), setup_tree_transaction(pid):
         _transcript_path(pid, run_id, persona_id).unlink(missing_ok=True)
 
 
 def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, config: SimulationConfig) -> Interview:
     with _interview_lock(pid, run_id, persona_id):
-        journey = get_journey(pid, run_id, persona_id)
-        _, _, store, _ = _load(pid, run_id)
-        transcript = get_interview(pid, run_id, persona_id)
+        with setup_tree_transaction(pid):
+            journey = get_journey(pid, run_id, persona_id)
+            _, _, store, _ = _load(pid, run_id)
+            transcript = get_interview(pid, run_id, persona_id)
         llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
         try:
             model = assistive_model(q.model, llm_config)
@@ -178,9 +185,8 @@ def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, conf
             InterviewMessage(role="interviewer", text=q.question.strip(), created_at=now),
             InterviewMessage(role="shopper", text=reply.answer, steps=reply.steps, created_at=now_iso()),
         ]
-        path = _transcript_path(pid, run_id, persona_id)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        write_json(path, transcript.model_dump(mode="json"))
+        with setup_tree_transaction(pid):
+            write_json(_transcript_path(pid, run_id, persona_id), transcript.model_dump(mode="json"))
         return transcript
 
 
@@ -189,11 +195,13 @@ def suggest_questions(pid: str, run_id: str, persona_id: str, req: SuggestionReq
 
     The model call runs without the interview lock, so a question asked meanwhile is never refused; suggestions
     written for a conversation that has since changed are dropped instead of saved."""
-    transcript = get_interview(pid, run_id, persona_id)
-    if transcript.suggested_after == len(transcript.messages) and transcript.suggestions:
-        return transcript
-    journey = get_journey(pid, run_id, persona_id)
-    _, _, store, _ = _load(pid, run_id)
+    _transcript_path(pid, run_id, persona_id)
+    with setup_tree_transaction(pid):
+        transcript = get_interview(pid, run_id, persona_id)
+        if transcript.suggested_after == len(transcript.messages) and transcript.suggestions:
+            return transcript
+        journey = get_journey(pid, run_id, persona_id)
+        _, _, store, _ = _load(pid, run_id)
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.6, "max_tokens": 400})
     try:
         llm = assistive_client(req.model, llm_config)
@@ -204,17 +212,15 @@ def suggest_questions(pid: str, run_id: str, persona_id: str, req: SuggestionReq
     except Exception as e:  # suggestions are optional; the client keeps its own
         logger.warning(f"[interview] follow-ups {pid}/{run_id}/{persona_id}: {type(e).__name__}: {e}")
         raise AppError(model_failure(e, "No follow-up questions"), 502) from e
-    path = _transcript_path(pid, run_id, persona_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lock = FileLock(path.with_suffix(".lock"), timeout=5)
+    lock = FileLock(_interview_lock_path(pid, run_id, persona_id), timeout=5)
     try:
-        with lock:
+        with lock, setup_tree_transaction(pid):
             current = get_interview(pid, run_id, persona_id)
             if current.messages != transcript.messages:
                 return current
             current.suggestions, current.suggested_after = questions, len(current.messages)
             if questions:
-                write_json(path, current.model_dump(mode="json"))
+                write_json(_transcript_path(pid, run_id, persona_id), current.model_dump(mode="json"))
             return current
     except Timeout:
         return transcript.model_copy(update={"suggestions": questions, "suggested_after": len(transcript.messages)})
@@ -253,7 +259,9 @@ def _groups_dir(pid: str, run_id: str) -> Path:
 
 def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: SimulationConfig) -> GroupInterview:
     """The same question to every selected shopper (each answers from their own trip), then themes."""
-    customers, personas, store, currency = _load(pid, run_id)
+    _run_dir(pid, run_id)
+    with setup_tree_transaction(pid):
+        customers, personas, store, currency = _load(pid, run_id)
     ids = [i for i in _segment(customers, req) if i in personas]
     journeys = [build_journey(run_id, customers[i], personas[i], store, currency) for i in ids]
     llm_config = config.llm_for(EngineType.PATTERN_INTENT_IMPULSE).model_copy(update={"temperature": 0.7, "max_tokens": 700})
@@ -302,9 +310,8 @@ def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: S
         model=answered_by(llm, model), created_at=now_iso(), answers=answers, themes=themes,
         errors=sum(1 for a in answers if a.error),
     )
-    folder = _groups_dir(pid, run_id)
-    folder.mkdir(parents=True, exist_ok=True)
-    write_json(folder / f"{group.group_id}.json", group.model_dump(mode="json"))
+    with setup_tree_transaction(pid):
+        write_json(_groups_dir(pid, run_id) / f"{group.group_id}.json", group.model_dump(mode="json"))
     return group
 
 

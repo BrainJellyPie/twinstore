@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep customer interviews, follow-up suggestions and group transcripts consistent with project
+  deletion. Transcript locks live outside the removable project tree; input snapshots and final
+  writes coordinate with deletion without holding the project lock during model calls.
+
 - Coordinate run-analyst snapshots, transcript locks and saves with project deletion.
   Replies arriving after deletion cannot recreate the project; accepted transcript saves
   finish before deletion, while a busy project preserves the existing conversation.
