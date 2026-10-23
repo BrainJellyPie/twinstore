@@ -41,7 +41,7 @@ def simulate_weeks(
 
     for week in range(1, memory.weeks + 1):
         visits = [r for r in planned if r.persona_id in staying]
-        results, day = resolve_shared_store(store, visits, operations, seed=seed)
+        results, day = resolve_shared_store(store, visits, operations, seed=seed, calendar=planned)
         money = outcome(store, results, day, operations, costs)
         stats = WeekStats(
             week=week, shoppers=len(staying), revenue=money.revenue, lost_revenue=money.lost_revenue,

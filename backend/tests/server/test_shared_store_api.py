@@ -289,3 +289,22 @@ def test_a_replanned_existing_roster_obeys_new_limits_and_can_be_saved_and_repla
     assert saved.status_code == 200
     replay = client.post(url + "/replay", json={"operations": plan["config"], "costs": {"till_hour": 1}})
     assert replay.status_code == 200 and replay.json()["outcome"] == plan["best"]
+
+
+@pytest.mark.parametrize("action", ["replay", "plan"])
+def test_future_weeks_keep_staff_cost_after_the_last_customer_leaves(client, monkeypatch, action):
+    from store_emulator.application import operations_lab
+    from store_emulator.domain.operations import OperationsConfig
+    from tests.engine.test_shared_store import _shopper, _store
+    store = _store()
+    shoppers = [_shopper("p", "10:00:00", [("chips", 1)])]
+    config = OperationsConfig(crew=2, checkout_base_sec=1, checkout_item_sec=0)
+    monkeypatch.setattr(operations_lab, "_load", lambda pid, run_id: (store, shoppers, 1, config))
+    response = client.post(f"/api/projects/{PID}/runs/run_memory/operations/{action}", json={
+        "operations": config.model_dump(), "costs": {"till_hour": 1000},
+        "memory": {"weeks": 2, "weekly_churn": 1},
+    })
+    assert response.status_code == 200
+    weeks = response.json()["weeks" if action == "replay" else "best_weeks"]["weeks"]
+    assert weeks[1]["shoppers"] == weeks[1]["revenue"] == 0
+    assert weeks[1]["net"] == weeks[0]["net"] - weeks[0]["revenue"] < 0

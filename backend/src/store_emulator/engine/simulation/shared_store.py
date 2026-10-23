@@ -207,8 +207,10 @@ def shelf_stock(store: Store, config: OperationsConfig) -> dict[FaceKey, _Produc
 
 def resolve_shared_store(
     store: Store, results: list[CustomerResult], config: OperationsConfig, *, seed: int,
+    calendar: list[CustomerResult] | None = None,
 ) -> tuple[list[CustomerResult], OperationsReport]:
-    """The shoppers' results replayed in one shared store, and what sharing it did. The input is left as it is."""
+    """Replay shoppers together, leaving the input unchanged. A calendar keeps the original days and visit windows
+    when later weeks lose shoppers; their store still opens, pays staff and receives deliveries."""
     # The input stays as it is: each result gets its own list of events, and an event is copied only when this pass
     # changes it (copying them all took most of the time of a replay, and plans replay a run hundreds of times).
     results = [r.model_copy(update={"timeline": list(r.timeline)}) for r in results]
@@ -227,6 +229,13 @@ def resolve_shared_store(
     days: dict[Weekday, list[int]] = defaultdict(list)
     for index, result in enumerate(results):
         days[result.day].append(index)
+    windows: dict[Weekday, tuple[float, float]] = {}
+    if calendar is not None:
+        for visit in calendar:
+            start, end = windows.get(visit.day, (math.inf, 0.0))
+            arrival = _clock(visit.arrival_time)
+            windows[visit.day] = (min(start, arrival), max(end, arrival + visit.duration_sec))
+            days.setdefault(visit.day, [])
     report.days = len(days)
 
     checkouts: dict[int, _Checkout] = {}
@@ -242,7 +251,8 @@ def resolve_shared_store(
             backroom.units.update(short)   # the morning delivery tops every backroom up to its level
             report.deliveries += int(bool(short))
         day_checkouts, day_open, day_busy = _play_day(
-            store, results, days[day], products, faces, tills, counters, config, report, hit, seed, copies, backroom,
+            store, day, results, days[day], products, faces, tills, counters, config, report, hit, seed, copies, backroom,
+            window=windows.get(day),
         )
         checkouts.update(day_checkouts)
         open_seconds += day_open
@@ -285,6 +295,7 @@ def resolve_shared_store(
 
 def _play_day(
     store: Store,
+    day: Weekday,
     results: list[CustomerResult],
     indexes: list[int],
     products: dict[FaceKey, _Product],
@@ -297,6 +308,7 @@ def _play_day(
     seed: int,
     copies: "_Copies",
     backroom: _Backroom | None = None,
+    window: tuple[float, float] | None = None,
 ) -> tuple[dict[int, _Checkout], float, float]:
     """One day in clock order. Returns each shopper's checkout, and the tills' open and serving seconds.
 
@@ -304,13 +316,9 @@ def _play_day(
     at each refill, as far as it goes; without one every day opens with full shelves.
 
     The tills share one line (first come, first served): a shopper takes the first till that is free and staffed."""
-    if not indexes:
-        return {}, 0.0, 0.0
-    day = results[indexes[0]].day
     state = _Day(day=int(day), stock={key: product.full for key, product in products.items()})
     heap: list[tuple[float, int, int, int]] = []   # (clock second, kind, shopper, timeline index)
-    start = math.inf
-    end = 0.0
+    start, end = window if window is not None else (math.inf, 0.0)
     for index in indexes:
         result = results[index]
         arrival = _clock(result.arrival_time)

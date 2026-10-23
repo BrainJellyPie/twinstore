@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep the original operating days when forecasting customer retention. A day losing its last customer still
+  pays its scheduled staff and stock-holding costs, refills shelves overnight and receives configured deliveries;
+  otherwise forecasts could erase fixed costs and change later stock availability merely because a visit vanished.
+
 - Apply newly requested minimum/maximum shift lengths to existing rosters before comparing their costs. Preserve
   weekday staffing, reject operating windows too short for the requested shift, and keep returned plans savable.
 
