@@ -84,9 +84,19 @@ def estimate_run(pid: str, setup_id: str, options: RunOptions, config: Simulatio
     llm = run_config.llm_for(engine)
     label = _model_label(run_config)
     resolved = _resolved(run_config, llm)
-    local = bool(resolved) and all(r.max_parallel is not None or is_local_base(r.api_base) for r in resolved)
-    slots = min((r.max_parallel for r in resolved if r.max_parallel is not None), default=None)
+    local_members = [is_local_base(r.api_base) for r in resolved]
+    local = all(local_members)
+    ensemble = run_config.ensemble
+    voting = ensemble is not None and ensemble.mode == "vote" and engine == EngineType.VLM_GLANCE
+    weights = [member.weight for member in ensemble.members] if ensemble is not None and not voting else [1.0] * len(resolved)
+    # Normalize before summing: valid finite weights can overflow together or be subnormal.
+    largest = max(weights)
+    weights = [weight / largest for weight in weights]
+    shares = [weight / sum(weights) for weight in weights]
     requests, prompt, completion = _PER_SHOPPER.get(engine, (3.0, 7_000.0, 1_000.0))
+    if voting:
+        # Vision entrance plans and shelf glances ask every voter. Text engines use mixture.
+        requests, prompt, completion = (value * len(resolved) for value in (requests, prompt, completion))
     seconds: float | None = None
     measured = _measured(pid, engine.value, label)
     if measured is not None:
@@ -96,12 +106,26 @@ def estimate_run(pid: str, setup_id: str, options: RunOptions, config: Simulatio
     if seconds is not None:
         minutes = customers * seconds / 60
     else:
-        minutes = calls * _SECONDS_PER_REQUEST[local] / effective_parallel(local, slots) / 60
+        cloud_seconds = 0.0
+        local_seconds: dict[str, float] = {}
+        for member, share, is_local in zip(resolved, shares, local_members, strict=True):
+            parallel = effective_parallel(is_local, member.max_parallel)
+            if not is_local and member.max_parallel is not None:
+                parallel = min(parallel, member.max_parallel)
+            duration = calls * share * _SECONDS_PER_REQUEST[is_local] / parallel
+            if is_local:
+                endpoint = (member.api_base or "").rstrip("/")
+                local_seconds[endpoint] = local_seconds.get(endpoint, 0.0) + duration
+            else:
+                cloud_seconds += duration
+        minutes = max(cloud_seconds, *local_seconds.values(), 0.0) / 60
     cost: float | None = None
     if not local:
-        prices = [cost_usd(r.model, round(prompt * customers), round(completion * customers)) for r in resolved]
+        prices = [0.0 if is_local else cost_usd(member.model, round(prompt * customers * share),
+                                               round(completion * customers * share))
+                  for member, share, is_local in zip(resolved, shares, local_members, strict=True)]
         known = [c for c in prices if c is not None]
-        cost = round(sum(known) / len(known), 2) if known and len(known) == len(prices) else None
+        cost = round(sum(known), 2) if len(known) == len(prices) else None
     return estimate(label, local, calls, minutes, cost)
 
 
