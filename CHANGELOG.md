@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Preserve each source layout's operating settings when reusing template generation, including reordered or
+  duplicated building floors. Layout alternatives no longer silently disable saved stock, crew and queue behavior.
+
 - Coordinate new layout saves with parent-tree and project deletion. Deleting a layout while a child is
   being saved no longer leaves orphaned branches; prepared saves recheck their parent and project before writing.
 
