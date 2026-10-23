@@ -55,3 +55,21 @@ def test_four_free_products_can_be_registered(shelf):
     response = client.put(f"{url}/slots", json={"slots": [row(str(i), 0) for i in range(4)]})
     assert response.status_code == 200 and response.json()["count"] == 4
     assert [i["price"] for i in read_json(path)["store"]["racks"][2]["slots"][0]["items"]] == [0, 0, 0, 0]
+
+
+@pytest.mark.parametrize("regular_price", [0, 100, 200, 999999])
+def test_bulk_import_keeps_the_reference_price(shelf, regular_price):
+    client, url, _, path = shelf
+    response = client.put(f"{url}/slots", json={"slots": [{**row("sale", 100), "regular_price": regular_price}]})
+    assert response.status_code == 200, response.text
+    item = read_json(path)["store"]["racks"][2]["slots"][0]["items"][0]
+    assert item["price"] == 100 and item["regular_price"] == regular_price
+
+
+@pytest.mark.parametrize("regular_price", [-1, 1.5, "unknown", None])
+def test_invalid_reference_prices_do_not_replace_saved_products(shelf, regular_price):
+    client, url, _, path = shelf
+    before = read_json(path)
+    response = client.put(f"{url}/slots", json={"slots": [{**row("sale"), "regular_price": regular_price}]})
+    assert response.status_code == 422, response.text
+    assert read_json(path) == before

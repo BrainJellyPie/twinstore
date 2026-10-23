@@ -15,6 +15,9 @@ interface RawRow {
   "price (minor units)"?: unknown;
   "price (cents)"?: unknown;
   price?: unknown;
+  "regular_price (minor units)"?: unknown;
+  "regular_price (cents)"?: unknown;
+  regular_price?: unknown;
   promo?: unknown;
 }
 
@@ -24,11 +27,11 @@ function normalizeKeys(row: Record<string, unknown>): RawRow {
   return out as RawRow;
 }
 
-function toIntPrice(raw: unknown): number {
+function toIntPrice(raw: unknown, label = "price"): number {
   if (raw === null || raw === undefined || raw === "") return 0;
   const n = typeof raw === "number" || typeof raw === "string" ? Number(raw) : NaN;
   if (!Number.isSafeInteger(n) || n < 0) {
-    throw new Error(`Invalid price: ${String(raw)}. Enter a nonnegative whole number in the layout currency's minor units.`);
+    throw new Error(`Invalid ${label}: ${String(raw)}. Enter a nonnegative whole number in the layout currency's minor units.`);
   }
   return n;
 }
@@ -58,6 +61,7 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
     sku: r.sku == null ? "" : String(r.sku),
     name: r.item_name == null ? "" : String(r.item_name),
     price: toIntPrice(r["price (minor units)"] ?? r["price (cents)"] ?? r.price),
+    regular_price: toIntPrice(r["regular_price (minor units)"] ?? r["regular_price (cents)"] ?? r.regular_price, "regular price"),
     promo: r.promo == null ? "" : String(r.promo),
   }));
 

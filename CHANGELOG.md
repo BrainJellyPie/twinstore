@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve discount/reference prices through product Excel export and import.
+  The workbook includes `regular_price (minor units)` and bulk slot uploads retain
+  it, so reimporting products no longer removes their usual-price reference.
+
 - Mark rack-level POS fidelity unavailable when sold SKUs span different rack
   groups: receipts cannot identify which shelf sold them. Rack ordering no longer
   turns the same evidence into opposite scores; SKU and basket metrics remain usable.

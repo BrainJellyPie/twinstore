@@ -530,7 +530,7 @@ def replace_slots(
 ) -> ReplaceSlotsResult:
     """Recompute all slots on a draft setup. Validates coords / locked / level.
 
-    Each slot_specs row: rack_id, block, face, level, sku, name, price, promo.
+    Each slot_specs row: rack_id, block, face, level, sku, name, price, regular_price, promo.
     On success, replaces setup.store.racks[].slots.
 
     Multiple rows on the same coord (rack_id, block, face, level) are
@@ -625,6 +625,11 @@ def replace_slots(
                     price = int(price_raw) if price_raw not in (None, "") else 0
                 except (ValueError, TypeError):
                     raise AppError(f"row {row_idx}: price is not a number", 400)
+                reference_raw = spec.get("regular_price", 0)
+                try:
+                    regular_price = int(reference_raw) if reference_raw not in (None, "") else 0
+                except (ValueError, TypeError):
+                    raise AppError(f"row {row_idx}: regular price is not a number", 400)
                 promo = str(spec.get("promo", "") or "").strip()
 
                 coord = (rack_id, block, face, level)
@@ -641,7 +646,7 @@ def replace_slots(
                     if len(existing.items) >= 4:
                         raise AppError(f"row {row_idx}: rack '{rack_id}' block {block} face {face_str} level {level} holds at most 4 products", 400)
                     existing.items.append(SlotItem(
-                        sku=sku, name=name, price=price, promo=promo,
+                        sku=sku, name=name, price=price, regular_price=regular_price, promo=promo,
                     ))
 
             new_slots_by_rack: dict[str, list[Slot]] = {r.id: [] for r in store.racks}
