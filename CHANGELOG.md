@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Apply newly requested minimum/maximum shift lengths to existing rosters before comparing their costs. Preserve
+  weekday staffing, reject operating windows too short for the requested shift, and keep returned plans savable.
+
 - Keep abandoned baskets in stock when their shelves have already been refilled: excess units return to the
   finite backroom, and staff resume refilling any shelves of that product. Previously those units disappeared,
   reducing later sales and overstating stockouts, including on the following day.

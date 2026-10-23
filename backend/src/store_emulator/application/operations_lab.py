@@ -87,5 +87,8 @@ def replay_run(pid: str, run_id: str, request: ReplayRequest) -> OperationsRepla
 def plan_run(pid: str, run_id: str, request: PlanRequest) -> OperationsPlan:
     store, planned, seed, own = _load(pid, run_id)
     start = request.operations or own or OperationsConfig()
-    return plan_operations(store, planned, start, request.costs, seed=seed, max_tills=request.max_tills,
-                           memory=request.memory, max_crew=request.max_crew, roster=request.roster)
+    try:
+        return plan_operations(store, planned, start, request.costs, seed=seed, max_tills=request.max_tills,
+                               memory=request.memory, max_crew=request.max_crew, roster=request.roster)
+    except ValueError as error:
+        raise AppError(str(error), 422) from error
