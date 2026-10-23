@@ -101,6 +101,12 @@ def build_timeline(
         if action_type == Action.BUY:
             te.quantity = max(1, min(max_quantity, step.action.quantity))
 
+        if action_type == Action.PAY:
+            for counter in store.counters:
+                if current_pos in counter.service_access_tiles(store.grid_size):
+                    te.target_rack = counter.id
+                    break
+
         if action_type == Action.BUY and step.action.product_sku:
             placement = resolve_buy_placement(
                 store,
