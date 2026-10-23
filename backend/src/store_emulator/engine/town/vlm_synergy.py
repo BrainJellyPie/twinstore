@@ -129,6 +129,9 @@ async def vlm_basket_synergy(
     # One day of visitors with the venue, each with both trip contexts.
     seed = stable_seed(config.seed, "vlm-synergy", venue_id)
     visitors, arrivals = plan_arrivals(pool, demand_with, town, seed=seed, scale=1.0, day=day)
+    if not visitors and (demand_with.total_daily_visitors > 0 or demand_without.total_daily_visitors > 0):
+        raise ValueError("No visitors could be sampled for positive neighborhood traffic; a basket or revenue estimate is unavailable. "
+                         "Check the customer pool and modeled opening hours before retrying.")
     contexts: dict[str, tuple[str, str]] = {}
     by_id: dict[str, tuple[Persona, TownArrival]] = {}
     describe_with, describe_without = town_context_writer(town), town_context_writer(without)
@@ -192,20 +195,26 @@ async def vlm_basket_synergy(
     if on_progress is not None:
         on_progress("with venue", 0, total)
     results_with = await simulate("with", panel_with)
-    results_without = await simulate("without", panel_without)
-
     with_by_id = {r.persona_id: r for r in results_with}
+    if affected_all and not any(pid in with_by_id for pid in affected):
+        raise ValueError("No affected visitors completed the with-venue simulation; a basket or revenue effect cannot be estimated. "
+                         "Retry after checking customer simulation failures.")
+    rest = [with_by_id[pid] for pid in unaffected if pid in with_by_id]
+    if unaffected_all and not rest:
+        raise ValueError("No unaffected visitors completed the simulation; their spending cannot be replaced with the affected group's. "
+                         "Retry after checking customer simulation failures.")
+    results_without = await simulate("without", panel_without)
     without_by_id = {r.persona_id: r for r in results_without}
     paired = [pid for pid in affected if pid in with_by_id and pid in without_by_id]
     aff_with = [with_by_id[pid] for pid in paired]
     aff_without = [without_by_id[pid] for pid in paired]
-    rest = [with_by_id[pid] for pid in unaffected if pid in with_by_id]
+    if affected_all and not paired:
+        raise ValueError("No affected visitors completed both simulations; a basket or revenue effect cannot be estimated. "
+                         "Retry after checking customer simulation failures.")
     spend_aw, conv_aw = _stratum(aff_with)
     spend_ao, conv_ao = _stratum(aff_without)
     spend_u, conv_u = _stratum(rest)
-    if not rest:  # nothing to weight the unaffected stratum with: use the affected one
-        spend_u, conv_u = spend_ao, conv_ao
-    weight = share if aff_with else 0.0
+    weight = share
     spend_with = weight * spend_aw + (1 - weight) * spend_u
     spend_without = weight * spend_ao + (1 - weight) * spend_u
     conversion_with = weight * conv_aw + (1 - weight) * conv_u
@@ -230,9 +239,6 @@ async def vlm_basket_synergy(
     if failed:
         notes.append(f"{failed} customer simulations failed. Basket comparisons and examples exclude visitors"
                      f" missing either result; {len(paired)} complete affected pairs remain.")
-    if affected_all and not paired:
-        notes.append("No complete affected pairs are available to estimate a basket effect; reported zero"
-                     " differences do not establish no effect.")
     if affected_all and len(aff_with) < 30:
         notes.append(f"Only {len(aff_with)} affected visitors completed both simulations: basket intervals are unreliable.")
 
