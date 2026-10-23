@@ -56,7 +56,8 @@ function toImageUrl(raw: unknown): string | null {
 }
 
 export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
-  const wb = XLSX.read(buffer, { type: "array" });
+  // Keep uncached formula cells: otherwise SheetJS drops them like empty cells.
+  const wb = XLSX.read(buffer, { type: "array", sheetStubs: true });
   const layoutSheet = wb.Sheets["rack_layout"];
   if (!layoutSheet) {
     throw new Error("rack_layout sheet not found");
@@ -64,11 +65,17 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
   // Excel can retain an enormous dimension after rows/columns are cleared. Do
   // not iterate that rectangle, and never truncate actual product cells.
   const range: XLSX.Range = { s: { r: Infinity, c: Infinity }, e: { r: 0, c: 0 } };
+  const unreadable: Array<{ address: string; r: number; c: number }> = [];
   for (const address of Object.keys(layoutSheet)) {
     if (address.startsWith("!")) continue;
     const cell: XLSX.CellObject | undefined = layoutSheet[address];
-    if (!cell || cell.t === "z" || cell.v == null) continue;
+    if (!cell) continue;
+    const formula = Boolean(cell.f || cell.F);
+    if (!formula && cell.t !== "e" && (cell.t === "z" || cell.v == null)) continue;
     const { r, c } = XLSX.utils.decode_cell(address);
+    if (cell.t === "e" || (formula && (cell.t === "z" || cell.v == null))) {
+      unreadable.push({ address, r, c });
+    }
     range.s.r = Math.min(range.s.r, r);
     range.s.c = Math.min(range.s.c, c);
     range.e.r = Math.max(range.e.r, r);
@@ -80,24 +87,31 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
     throw new UserMessageError("excelSheetTooWide");
   }
   layoutSheet["!ref"] = XLSX.utils.encode_range(range);
+  const unreadableHeader = unreadable.find((cell) => cell.r === range.s.r);
+  if (unreadableHeader) throw new UserMessageError("excelCellNeedsValue", { cell: unreadableHeader.address });
   const header = XLSX.utils.sheet_to_json<unknown[]>(layoutSheet, {
     header: 1, range: { s: range.s, e: { r: range.s.r, c: range.e.c } },
   })[0] ?? [];
-  const columnNames = header.map((value) => String(value).trim().toLowerCase());
+  // Array.from fills sparse header positions so spacer columns stay harmless.
+  const columnNames = Array.from(header, (value) => String(value ?? "").trim().toLowerCase());
   const columns = new Set(columnNames);
   const missing = ["rack_id", "face", "level", "sku"].filter((column) => !columns.has(column));
   if (missing.length > 0) throw new Error(`Missing required columns: ${missing.join(", ")}`);
   const importedFields = new Set(["rack_id", "block", "blocked", "face", "level", "sku",
     "item_name", "price", "regular_price", "promo", "image_url"]);
   const seenFields = new Set<string>();
-  for (const column of columnNames) {
+  const importedColumns = new Set<number>();
+  for (const [index, column] of columnNames.entries()) {
     const field = column.replace(/^(regular_)?price \((?:minor units|cents)\)$/, "$1price");
     if (!importedFields.has(field)) continue;
     // SheetJS renames exact duplicates while normalizeKeys collapses case/space
     // variants. Both can silently select a different value (even an empty SKU).
     if (seenFields.has(field)) throw new UserMessageError("excelDuplicateColumn", { column: field });
     seenFields.add(field);
+    importedColumns.add(range.s.c + index);
   }
+  const unreadableProduct = unreadable.find((cell) => importedColumns.has(cell.c));
+  if (unreadableProduct) throw new UserMessageError("excelCellNeedsValue", { cell: unreadableProduct.address });
 
   const skuByRow = new Map<number, string>();
   const rows = XLSX.utils
@@ -105,6 +119,12 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
     .map((row) => {
       const normalized = normalizeKeys(row);
       const sku = String(normalized.sku ?? "").trim();
+      normalized.rack_id = String(normalized.rack_id ?? "").trim();
+      if (sku && !normalized.rack_id) {
+        throw new UserMessageError("excelProductRackMissing", {
+          row: typeof row.__rowNum__ === "number" ? row.__rowNum__ + 1 : "?",
+        });
+      }
       // SheetJS keeps the original zero-based row even when blank rows are omitted.
       if (typeof row.__rowNum__ === "number" && sku) skuByRow.set(row.__rowNum__ + 1, sku);
       return normalized;

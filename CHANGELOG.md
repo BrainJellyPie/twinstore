@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Stop product workbook imports when a product/header cell contains an Excel
+  error or a formula without a saved result. Report the original cell address
+  instead of turning errors into empty SKUs or zero prices. Reject product rows
+  without rack IDs and preserve valid spacer columns and cached formula values.
+
 - Reject duplicate product workbook columns before they can clear SKUs, relocate
   products or overwrite prices. Treat case/space variants and legacy price aliases
   as the same field, with recovery guidance in all six interface languages.
