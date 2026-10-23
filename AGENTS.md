@@ -144,6 +144,9 @@ store-category labels. Server-written text (analyst answers, run/optimizer notes
 fields, model replies and errors) stays as sent; only the no-situation `baseline` preset reads as the translated
 ordinary day. `richText()` puts bold figures or code into a translated sentence;
 `timeFormat.ts` gives weekday names and store clocks in the selected language.
+Virtual-customer generation copy distinguishes model estimates and copied daily samples. Use
+`Intl.PluralRules` for visitor nouns; a disabled local model must not advertise an unavailable
+download. Model-start errors use localized recovery text with original diagnostics accessible.
 Coverage is still being audited; a catalog entry alone does not prove every state is localized.
 Add translations in all six columns
 when extending these surfaces. Use the selected locale for dates and numbers.

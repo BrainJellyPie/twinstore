@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Use natural virtual-customer generation language in all six UI languages, with correct visitor
+  count grammar, explicit daily-sample copying and localized model-start recovery. Disabled local
+  models point to API-key settings. Keep choices, estimates and original diagnostics unchanged.
+
 - Localize the descriptions of all 82 built-in store formats in Korean, Chinese, Japanese, Spanish
   and French, including cross-language search. Preserve custom or updated server descriptions.
   New non-English preset floor names no longer repeat the level shown by the interface.
