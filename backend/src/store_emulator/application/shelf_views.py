@@ -7,19 +7,23 @@ Pictures are kept per project and shared by layouts with identical racks.
 
 import base64
 import binascii
+import shutil
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
+from filelock import FileLock, Timeout
 
 from store_emulator.application.currencies import simulation_currency
 from store_emulator.application.errors import AppError
-from store_emulator.application.storage.io import DATA_DIR
+from store_emulator.application.storage.io import DATA_DIR, write_json
+from store_emulator.application.setups import setup_lock_path, setup_tree_transaction
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Face
 from store_emulator.engine.perception.shelf_photo import (
     face_key,
     has_shelf_photo,
+    load_shelf_photo,
     save_shelf_photo,
     stocked_faces,
 )
@@ -86,6 +90,14 @@ def _decode(data_url: str) -> bytes:
 
 def save_shelf_view(pid: str, sid: str, key: str, upload: ShelfViewUpload, default_currency: str = "USD") -> ShelfFace:
     """Stores one face picture. 409 when the layout changed since the key was handed out."""
+    try:
+        with setup_tree_transaction(pid, [sid]), FileLock(setup_lock_path(pid, sid), timeout=10):
+            return _save_shelf_view(pid, sid, key, upload, default_currency)
+    except Timeout:
+        raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
+
+
+def _save_shelf_view(pid: str, sid: str, key: str, upload: ShelfViewUpload, default_currency: str) -> ShelfFace:
     store, currency = _setup_store(pid, sid, default_currency)
     rack = next((r for r in store.product_racks if r.id == upload.rack_id), None)
     if rack is None or upload.face not in stocked_faces(rack):
@@ -98,3 +110,19 @@ def save_shelf_view(pid: str, sid: str, key: str, upload: ShelfViewUpload, defau
     except ValueError as e:
         raise AppError(str(e), 422) from e
     return ShelfFace(rack_id=rack.id, rack_name=rack.rack_name, face=upload.face, key=key, ready=True)
+
+
+def snapshot_shelf_views(pid: str, store: Store, currency: str, folder: Path) -> None:
+    """Copy matching photo/box pairs under the caller's tree guard; missing photos stay absent."""
+    directory = views_dir(pid)
+    folder.mkdir(parents=True, exist_ok=True)
+    keys: list[str] = []
+    for rack in store.product_racks:
+        for face in stocked_faces(rack):
+            key = face_key(rack, face, currency)
+            if has_shelf_photo(directory, key):
+                for extension in ("jpg", "json"):
+                    shutil.copyfile(directory / f"{key}.{extension}", folder / f"{key}.{extension}")
+                keys.append(key)
+    write_json(folder / "manifest.json", {"keys": keys})
+    load_shelf_photo.cache_clear()

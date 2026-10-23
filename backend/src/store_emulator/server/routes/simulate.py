@@ -189,6 +189,7 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
             preview=req.preview, default_currency=config.currency,
             operations=req.operations, shared_store=req.shared_store,
             snapshot_images=effective_config.engine_type == EngineType.VLM_GLANCE,
+            snapshot_photos=effective_config.engines.vlm_glance.shelf_view == "photo_chart",
         )
     except AppError as e:
         raise HTTPException(e.status_code, str(e))

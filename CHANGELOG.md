@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Freeze rendered shelf photographs and their product-box mappings for photo-chart
+  vision runs. Uploads coordinate with deletion and run startup; layout image URLs,
+  product art and matching shelf photos are captured against one SKU image state.
+
 - Freeze product artwork when vision layout optimization is accepted, so queued
   jobs and later candidate evaluations keep the same package/SKU images. Failed
   image copies leave no pending optimization job.
