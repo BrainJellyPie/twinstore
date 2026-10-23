@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Compute price-sensitivity intersections at actual response thresholds instead of a
+  coarse plotting grid. Large price outliers no longer shift all recommendations into
+  unobserved price gaps; exact ties and intersections at the final price are retained.
+
 - Keep paid customer-generation models priced when their client limits concurrent
   requests. Endpoint locality now controls cost warnings and local batch sizes, while
   provider timing respects lower concurrency limits.

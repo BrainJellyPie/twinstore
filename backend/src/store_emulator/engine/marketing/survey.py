@@ -7,6 +7,7 @@ statistics (normal-approximation CIs for means, Wilson intervals for shares) and
 
 import asyncio
 import math
+from bisect import bisect_left, bisect_right
 from collections.abc import Sequence
 from typing import Any, Literal, Protocol
 
@@ -195,12 +196,14 @@ def preference_shares(preferred: Sequence[int], names: Sequence[str], stimuli: i
     return out
 
 
-def _crossing(prices: list[int], f: list[float], g: list[float]) -> int | None:
+def _crossing(prices: Sequence[int], f: Sequence[float], g: Sequence[float]) -> int | None:
     """Price where f - g changes sign (linear interpolation between grid points)."""
     for i in range(1, len(prices)):
         d0, d1 = f[i - 1] - g[i - 1], f[i] - g[i]
         if d0 == 0:
             return prices[i - 1]
+        if d1 == 0:
+            return prices[i]
         if d0 * d1 < 0:
             t = d0 / (d0 - d1)
             return round(prices[i - 1] + t * (prices[i] - prices[i - 1]))
@@ -218,19 +221,44 @@ def van_westendorp(answers: Sequence[SurveyAnswer], steps: int = 60) -> PriceRan
     hi = max(r[3] for r in clean)
     if hi <= lo:
         return None
-    prices = sorted({round(lo + (hi - lo) * k / steps) for k in range(steps + 1)})
     n = len(clean)
-    too_cheap = [sum(1 for r in clean if r[0] >= p) / n for p in prices]
-    cheap = [sum(1 for r in clean if r[1] >= p) / n for p in prices]
-    expensive = [sum(1 for r in clean if r[2] <= p) / n for p in prices]
-    too_exp = [sum(1 for r in clean if r[3] <= p) / n for p in prices]
-    not_cheap = [1 - v for v in cheap]
-    not_exp = [1 - v for v in expensive]
+    thresholds = [sorted(r[k] for r in clean) for k in range(4)]
+
+    def counts(points: list[int]) -> tuple[list[int], list[int], list[int], list[int]]:
+        return (
+            [n - bisect_left(thresholds[0], p) for p in points],
+            [n - bisect_left(thresholds[1], p) for p in points],
+            [bisect_right(thresholds[2], p) for p in points],
+            [bisect_right(thresholds[3], p) for p in points],
+        )
+
+    # Empirical curves change only at an observed threshold or its adjacent minor unit.
+    # A uniform price grid can put every ordinary answer in one cell when an outlier is large.
+    prices = sorted({value + delta for column in thresholds for value in column for delta in (-1, 0, 1)
+                     if lo <= value + delta <= hi})
+    # Equal respondent counts are exact intersections; subtracting rounded fractions
+    # (for example 1 - 0.8 versus 0.2) can otherwise skip an entire flat interval.
+    too_cheap, cheap, expensive, too_exp = counts(prices)
+    not_cheap = [n - v for v in cheap]
+    not_exp = [n - v for v in expensive]
+    marginal_cheap = _crossing(prices, too_cheap, not_cheap)
+    optimal = _crossing(prices, too_cheap, too_exp)
+    indifferent = _crossing(prices, cheap, expensive)
+    marginal_expensive = _crossing(prices, not_exp, too_exp)
+    # Bound chart size independently of panel size, keeping the reported crossings and
+    # their immediate neighbours. Sampling observed transitions preserves concentrated answers.
+    steps = max(1, steps)
+    chart_prices = {prices[round(k * (len(prices) - 1) / steps)] for k in range(steps + 1)}
+    chart_prices.update(value + delta for value in (marginal_cheap, optimal, indifferent, marginal_expensive)
+                        if value is not None for delta in (-1, 0, 1) if lo <= value + delta <= hi)
+    chart = sorted(chart_prices)
+    chart_counts = counts(chart)
     return PriceRange(
         n=n,
-        point_of_marginal_cheapness=_crossing(prices, too_cheap, not_cheap),
-        optimal_price_point=_crossing(prices, too_cheap, too_exp),
-        indifference_price_point=_crossing(prices, cheap, expensive),
-        point_of_marginal_expensiveness=_crossing(prices, not_exp, too_exp),
-        curve=[(p, round(a, 4), round(b, 4), round(c, 4), round(d, 4)) for p, a, b, c, d in zip(prices, too_cheap, cheap, expensive, too_exp)],
+        point_of_marginal_cheapness=marginal_cheap,
+        optimal_price_point=optimal,
+        indifference_price_point=indifferent,
+        point_of_marginal_expensiveness=marginal_expensive,
+        curve=[(p, round(a / n, 4), round(b / n, 4), round(c / n, 4), round(d / n, 4))
+               for p, a, b, c, d in zip(chart, *chart_counts, strict=True)],
     )
