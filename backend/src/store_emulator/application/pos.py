@@ -10,6 +10,7 @@ import re
 from collections.abc import Callable
 from datetime import date, datetime, time
 from functools import lru_cache
+from typing import cast
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
 from dateutil.parser import parse as parse_date
@@ -42,18 +43,33 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
     buf = io.BytesIO(data)
     if filename.lower().endswith((".xlsx", ".xls")):
         validate_xlsx_budget(data)
-        df = pd.read_excel(buf, dtype=object, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
+        df = pd.read_excel(buf, header=None, dtype=object, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
     else:
         try:
             text = data.decode("utf-8-sig")
         except UnicodeDecodeError:
             text = data.decode("cp949")
         validate_csv_table(text, ",", label="POS CSV", max_cells=MAX_POS_CSV_CELLS)
-        df = pd.read_csv(io.StringIO(text), dtype=str, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
+        df = pd.read_csv(io.StringIO(text), header=None, dtype=str, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
     # Surplus CSV fields can make pandas infer an index and shift every named column.
     if not isinstance(df.index, pd.RangeIndex):  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]  # pandas stubs
         raise ValueError("POS CSV rows have more fields than the header; quote values containing commas.")
-    columns: list[str] = [str(c) for c in df.columns]  # type: ignore[reportUnknownVariableType, reportUnknownArgumentType]  # pandas stubs
+    if df.empty:
+        raise ValueError("POS file is empty or has no column header.")
+    # Keep the original header: pandas otherwise renames exact duplicates while
+    # case/space variants overwrite one another in the normalized lookup below.
+    columns: list[str] = [str(c) for c in df.iloc[0]]  # type: ignore[reportUnknownVariableType, reportUnknownArgumentType]  # pandas stubs
+    recognized = {name for names in _ALIASES.values() for name in names}
+    seen: set[str] = set()
+    for column in columns:
+        normalized = column.strip().lower()
+        scope = "".join(char for char in normalized if char.isalnum())
+        if normalized not in recognized and scope not in _RECEIPT_SCOPE_COLUMNS:
+            continue
+        key = scope if scope in _RECEIPT_SCOPE_COLUMNS else normalized
+        if key in seen:
+            raise ValueError(f"POS file contains a duplicate column: {column!r}. Keep one column with this name.")
+        seen.add(key)
     lower = {c.strip().lower(): c for c in columns}
     scope_columns = [("".join(char for char in c.lower() if char.isalnum()), c) for c in columns]
     scope_columns = sorted((label, col) for label, col in scope_columns if label in _RECEIPT_SCOPE_COLUMNS)
@@ -84,8 +100,9 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
                 first.hour if first.hour == second.hour else None)
 
     lines: list[PosLine] = []
-    for raw in df.to_dict(orient="records"):  # type: ignore[reportUnknownMemberType]
-        source: dict[str, object] = {str(k): v for k, v in raw.items() if v is not None}  # type: ignore[reportUnknownVariableType]
+    for raw in df.iloc[1:].itertuples(index=False, name=None):  # type: ignore[reportUnknownMemberType]  # pandas stubs
+        values = cast(tuple[object, ...], raw)  # pandas rows are consumed as untrusted cell values.
+        source: dict[str, object] = {column: value for column, value in zip(columns, values, strict=True) if value is not None}
         row = {k: str(v) for k, v in source.items()}
         tx, sku = row.get(cols["transaction_id"], "").strip(), row.get(cols["sku"], "").strip()
         if not tx or not sku:
