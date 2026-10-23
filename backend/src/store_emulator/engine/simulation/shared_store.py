@@ -33,7 +33,6 @@ type FaceKey = tuple[str, Face, str]   # rack id, shelf face, SKU
 # Events of the same second: shelves are filled first, put-back baskets land next, then picks, then the tills, and
 # last the crew picks up its next refill (so a shopper reaching the tills that second is served first).
 _RESTOCK, _FACE_DONE, _PUT_BACK, _PICK, _PAY, _CREW = 0, 1, 2, 3, 4, 5
-_MAX_COUNTERS_ADVISED = 30
 _STOCKOUTS_REPORTED = 60
 _SPELLS_REPORTED = 3000
 _TASKS_REPORTED = 3000
@@ -891,28 +890,39 @@ def counters_needed(
     arrivals: dict[Weekday, list[tuple[float, float]]] = defaultdict(list)
     for day, arrived, units in checkouts:
         arrivals[day].append((arrived, config.checkout_base_sec + config.checkout_item_sec * max(1, units)))
-    hours: set[str] = set()
+    visitors_by_hour: dict[str, int] = defaultdict(int)
     for queue in arrivals.values():
         queue.sort()
-        hours.update(f"{int(t) // 3600 % 24:02d}" for t, _ in queue)
-    advice: dict[str, int] = {}
-    pending = set(hours)
-    for tills in range(1, _MAX_COUNTERS_ADVISED + 1):
-        if not pending:
-            break
-        waits: dict[str, list[float]] = defaultdict(list)
+        for moment, _ in queue:
+            visitors_by_hour[f"{int(moment) // 3600 % 24:02d}"] += 1
+    cache: dict[int, dict[str, float]] = {}
+
+    def mean_waits(tills: int) -> dict[str, float]:
+        if tills in cache:
+            return cache[tills]
+        totals: dict[str, float] = defaultdict(float)
         for queue in arrivals.values():
-            free = [0.0] * tills
+            free = [0.0] * min(tills, len(queue))
             for moment, service in queue:
-                till = min(range(tills), key=lambda c: (free[c], c))
-                begins = max(moment, free[till])
-                free[till] = begins + service
-                waits[f"{int(moment) // 3600 % 24:02d}"].append(begins - moment)
-        for hour in list(pending):
-            values = waits[hour]
-            if sum(values) / len(values) <= config.target_wait_sec:
-                advice[hour] = tills
-                pending.discard(hour)
-    for hour in pending:
-        advice[hour] = _MAX_COUNTERS_ADVISED
+                begins = max(moment, free[0])
+                heapq.heapreplace(free, begins + service)
+                totals[f"{int(moment) // 3600 % 24:02d}"] += begins - moment
+        cache[tills] = {hour: total / visitors_by_hour[hour] for hour, total in totals.items()}
+        return cache[tills]
+
+    advice: dict[str, int] = {}
+    limit = max((len(queue) for queue in arrivals.values()), default=0)
+    for hour in sorted(visitors_by_hour):
+        # Adding tills cannot increase FCFS waiting time. Double until feasible,
+        # then bisect; one till per visit is a guaranteed zero-wait upper bound.
+        low, high = 0, 1
+        while mean_waits(high)[hour] > config.target_wait_sec:
+            low, high = high, min(limit, high * 2)
+        while high - low > 1:
+            middle = (low + high) // 2
+            if mean_waits(middle)[hour] <= config.target_wait_sec:
+                high = middle
+            else:
+                low = middle
+        advice[hour] = high
     return advice
