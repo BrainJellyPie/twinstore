@@ -17,6 +17,11 @@ def setup_path(project_id: str, setup_id: str) -> Path:
     return setup_dir(project_id) / f"{setup_id}.json"
 
 
+def deleted_setup_path(project_id: str, setup_id: str) -> Path:
+    """Deletion marker for replay-safe saves with deterministic setup IDs."""
+    return setup_dir(project_id) / ".deleted" / f"{setup_id}.json"
+
+
 def state_path(project_id: str) -> Path:
     return Path(DATA_DIR) / project_id / "state.json"
 
@@ -32,6 +37,7 @@ def metadata_path(project_id: str) -> Path:
 def delete_setup(project_id: str, setup_id: str) -> None:
     path = setup_path(project_id, setup_id)
     if path.exists():
+        write_json(deleted_setup_path(project_id, setup_id), {"deleted_at": now_iso()})
         path.unlink()
 
 

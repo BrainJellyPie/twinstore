@@ -244,6 +244,68 @@ def test_replay_after_changed_sources_and_conflicting_token(workflow):
     )
 
 
+@pytest.mark.parametrize("lost_response", [False, True])
+def test_retry_does_not_recreate_an_explicitly_deleted_combined_layout(workflow, monkeypatch, lost_response):
+    from store_emulator.application import capture_batch
+    client, request, _ = workflow
+    form = prepare_save(client, request)
+    original_write = capture_batch.write_json
+    if lost_response:
+        def lose_response(path, data):
+            original_write(path, data)
+            raise OSError("response lost after writing the combined layout")
+        monkeypatch.setattr(capture_batch, "write_json", lose_response)
+    saved = client.post(ROOT + "/batch-save", json=form)
+    assert saved.status_code == (500 if lost_response else 200), saved.text
+    monkeypatch.setattr(capture_batch, "write_json", original_write)
+    sid = "setup_batch_" + form["request_id"]
+    assert setup_path(PID, sid).exists()
+    removed = client.delete(f"/api/projects/{PID}/setups/{sid}")
+    assert removed.status_code == 200, removed.text
+    assert not setup_path(PID, sid).exists()
+    retried = client.post(ROOT + "/batch-save", json=form)
+    assert retried.status_code == 409, retried.text
+    assert not setup_path(PID, sid).exists()
+
+
+def test_delete_waits_for_a_retry_already_reading_the_saved_layout(workflow, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from store_emulator.application import capture_batch, setups
+
+    client, request, _ = workflow
+    form = prepare_save(client, request)
+    saved = client.post(ROOT + "/batch-save", json=form)
+    assert saved.status_code == 200, saved.text
+    sid = saved.json()["setup_id"]
+    ready, release, deleting = Event(), Event(), Event()
+    original_existing, original_delete = capture_batch._existing, setups.delete_setup
+
+    def paused_existing(path, req):
+        ready.set()
+        assert release.wait(5)
+        return original_existing(path, req)
+
+    def observed_delete(pid, setup_id):
+        deleting.set()
+        original_delete(pid, setup_id)
+
+    monkeypatch.setattr(capture_batch, "_existing", paused_existing)
+    monkeypatch.setattr(setups, "delete_setup", observed_delete)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        retry = pool.submit(client.post, ROOT + "/batch-save", json=form)
+        try:
+            assert ready.wait(5)
+            removal = pool.submit(client.delete, f"/api/projects/{PID}/setups/{sid}")
+            if deleting.wait(0.3):
+                assert removal.result(timeout=5).status_code == 200
+        finally:
+            release.set()
+        assert retry.result(timeout=5).status_code == 200
+        assert removal.result(timeout=5).status_code == 200
+    assert not setup_path(PID, sid).exists()
+
+
 def test_partial_placement_is_previewed_but_cannot_be_saved(workflow):
     client, request, tmp_path = workflow
     edit_result(

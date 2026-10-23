@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep deleted combined-shelf layouts deleted when an old save is retried, including after a lost response.
+  Capture-batch retries coordinate with layout deletion while preserving recovery of successful saves.
+
 - Serialize Excel product imports with layout and operations saves. Concurrent saves no longer erase imported
   products or overwrite newer names, memos or operating settings; busy imports return a retryable error.
 
