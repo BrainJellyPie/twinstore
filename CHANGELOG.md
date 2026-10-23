@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep displaced products accessible when a marketing/layout edit moves a product
+  into a full slot. Choose a reachable source for the swap or warn and skip that
+  slot, while still considering later empty blocks. Unapplied moves no longer
+  create empty destination slots.
+
 - Limit optimizer moves to the baseline's exact unreachable offer counts.
   An already-blocked SKU no longer permits hiding its remaining accessible
   facings or different price/photo offers, preventing accidental delisting.
