@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Mark rack-level POS fidelity unavailable when sold SKUs span different rack
+  groups: receipts cannot identify which shelf sold them. Rack ordering no longer
+  turns the same evidence into opposite scores; SKU and basket metrics remain usable.
+
 - Compare POS hourly transaction profiles with simulated checkout completion,
   including queue delays and midnight rollover. Visits without usable checkout
   timing are identified and excluded instead of being assigned their arrival hour.

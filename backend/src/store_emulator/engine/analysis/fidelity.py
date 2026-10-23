@@ -38,7 +38,12 @@ def fidelity_report(
     top_k: int = 10,
 ) -> FidelityReport:
     store_skus = {i.sku for r in store.racks for s in r.slots for i in s.items}
-    sku_rack = {i.sku: (r.rack_name or r.id) for r in store.racks for s in r.slots for i in s.items}
+    sku_groups: dict[str, set[str]] = {}
+    for rack in store.racks:
+        for slot in rack.slots:
+            for item in slot.items:
+                sku_groups.setdefault(item.sku, set()).add(rack.rack_name or rack.id)
+    sku_rack = {sku: next(iter(groups)) for sku, groups in sku_groups.items() if len(groups) == 1}
     real_lines = [line for line in pos if line.sku in store_skus]
     notes: list[str] = []
     dropped = len(pos) - len(real_lines)
@@ -62,9 +67,14 @@ def fidelity_report(
             "and NDCG are undefined; rack share similarity is also undefined where rack net units are negative."
         )
 
-    racks = sorted(set(sku_rack.values()))
-    s_rack = np.array([sum(sim_units.get(k, 0) for k in skus if sku_rack[k] == g) for g in racks], dtype=float)
-    r_rack = np.array([sum(real_units.get(k, 0) for k in skus if sku_rack[k] == g) for g in racks], dtype=float)
+    ambiguous = [sku for sku, groups in sku_groups.items()
+                 if len(groups) > 1 and (sim_units.get(sku, 0) != 0 or real_units.get(sku, 0) != 0)]
+    if ambiguous:
+        notes.append(f"Rack metrics are unavailable: {len(ambiguous)} sold SKUs appear in multiple rack/category groups, "
+                     "and POS receipts do not identify the selling shelf.")
+    racks = sorted({group for groups in sku_groups.values() for group in groups})
+    s_rack = np.array([sum(sim_units.get(k, 0) for k in skus if sku_rack.get(k) == g) for g in racks], dtype=float)
+    r_rack = np.array([sum(real_units.get(k, 0) for k in skus if sku_rack.get(k) == g) for g in racks], dtype=float)
 
     sim_baskets = [float(cr.units_bought) for cr in results if cr.purchases]
     sim_values = [float(cr.total_spent) for cr in results if cr.purchases]
@@ -83,9 +93,9 @@ def fidelity_report(
                        description="Does the simulated top-K match the real best sellers?"),
         FidelityMetric(name="sku_ndcg@all", value=_round(ndcg(s_vec, r_vec, len(skus))), better="higher",
                        description="NDCG over every SKU on the shelves"),
-        FidelityMetric(name="rack_spearman", value=_round(spearman(s_rack, r_rack)), better="higher",
+        FidelityMetric(name="rack_spearman", value=None if ambiguous else _round(spearman(s_rack, r_rack)), better="higher",
                        description="Rank correlation of units per rack (category proxy)"),
-        FidelityMetric(name="rack_js_similarity", value=_round(1.0 - js_divergence(s_rack, r_rack)), better="higher",
+        FidelityMetric(name="rack_js_similarity", value=None if ambiguous else _round(1.0 - js_divergence(s_rack, r_rack)), better="higher",
                        description="1 − JSD of rack unit shares"),
         FidelityMetric(name="basket_units_w1", value=_round(wasserstein_1d(sim_baskets, real_baskets)), better="lower",
                        description="Wasserstein-1 distance of units per paying basket"),
