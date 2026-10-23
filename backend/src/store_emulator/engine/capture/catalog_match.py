@@ -182,31 +182,63 @@ def typical_price(category: str, name: str, currency: str) -> tuple[int | None, 
     return None, ""
 
 
-_NUMBER_RE = re.compile(r"\d[\d,.\s']*")
+_NUMBER_RE = re.compile(r"(?:\d|[.,](?=\d))[\d,.\s']*")
+
+
+def _integer_digits(raw: str, separators: str) -> str | None:
+    """Accept plain digits or complete western/Indian thousands groups, never joined price fragments."""
+    if raw.isdecimal():
+        return raw
+    groups = re.split(rf"\s+|['{re.escape(separators)}]", raw)
+    if len(groups) < 2 or any(not group.isdecimal() for group in groups):
+        return None
+    western = 1 <= len(groups[0]) <= 3 and all(len(group) == 3 for group in groups[1:])
+    indian = 1 <= len(groups[0]) <= 2 and len(groups[-1]) == 3 and all(len(group) == 2 for group in groups[1:-1])
+    return "".join(groups) if western or indian else None
 
 
 def _parse_number(text: str) -> tuple[float, bool] | None:
     """'2.49' → (2.49, True); '1,800' → (1800, False); '1.800' → (1800, False); '12,50' → (12.5, True)."""
-    m = _NUMBER_RE.search(text)
-    if m is None:
+    normalized = unicodedata.normalize("NFKC", text).replace("’", "'")
+    if "%" in normalized or "٪" in normalized:
         return None
-    raw = re.sub(r"[\s']", "", m.group(0)).rstrip(".,")
+    matches = list(_NUMBER_RE.finditer(normalized))
+    if len(matches) != 1:
+        return None
+    match = matches[0]
+    before, after = normalized[:match.start()].strip(), normalized[match.end():].strip()
+    if (re.search(r"[-−–—]\s*(?:[$€£¥₩]|[A-Z]{3})?\s*$", before, re.IGNORECASE)
+            or after.startswith(("-", "−")) or before.endswith((".", ","))
+            or "(" in before and ")" in after):
+        return None
+    raw = re.sub(r"\s*([,.' ])\s*", r"\1", match.group(0).strip().rstrip(".,"))
     if not raw:
         return None
+    decimal = ""
     if "," in raw and "." in raw:
-        decimal_sep = "," if raw.rfind(",") > raw.rfind(".") else "."
-        thousands = "." if decimal_sep == "," else ","
-        raw = raw.replace(thousands, "").replace(decimal_sep, ".")
-        return float(raw), True
-    for sep in (",", "."):
-        if sep in raw:
-            head, _, tail = raw.rpartition(sep)
-            if len(tail) == 3 and head.replace(sep, "").isdigit():
-                return float(raw.replace(sep, "")), False      # thousands separator
-            if len(tail) in (1, 2):
-                return float(head.replace(sep, "") + "." + tail), True
-            return float(raw.replace(sep, "")), False
-    return float(raw), False
+        decimal = "," if raw.rfind(",") > raw.rfind(".") else "."
+        if raw.count(decimal) != 1:
+            return None
+    else:
+        for sep in (",", "."):
+            if raw.count(sep) == 1:
+                head, _, tail = raw.partition(sep)
+                if not head or set(head) == {"0"} or len(tail) != 3:
+                    decimal = sep
+    if decimal:
+        head, _, fraction = raw.rpartition(decimal)
+        whole = _integer_digits(head, "." if decimal == "," else ",") if head else "0"
+        if whole is None or not fraction.isdecimal():
+            return None
+        number = f"{whole}.{fraction}"
+    else:
+        number = _integer_digits(raw, ",.")
+        if number is None:
+            return None
+    try:
+        return float(number), bool(decimal)
+    except ValueError:
+        return None
 
 
 def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None) -> int | None:
@@ -219,6 +251,9 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     code = currency.upper()
     zero_decimal = code in ZERO_DECIMAL
     parsed = _parse_number(label.price_text) if label.price_text else None
+    if parsed is None and any(character.isdigit() for character in label.price_text):
+        # A numeric guess must not override an explicitly ambiguous/negative printed tag.
+        return None
     if parsed is None and label.price is not None and label.price > 0:
         value = float(label.price)
         parsed = (value, not value.is_integer())
@@ -227,10 +262,19 @@ def price_minor_units(label: ShelfItemLabel, currency: str, typical: int | None)
     value, has_decimals = parsed
     if not math.isfinite(value) or value <= 0:
         return None
-    scaled = value if zero_decimal else value * 100
+    printed = unicodedata.normalize("NFKC", label.price_text)
+    cents = "¢" in printed or re.search(r"\bcents?\b", printed, re.IGNORECASE) is not None
+    major_symbol = any(symbol in printed for symbol in "$€£¥₩원円")
+    major_unit = major_symbol or re.search(rf"(?<![A-Za-z]){re.escape(code)}(?![A-Za-z])", printed, re.IGNORECASE) is not None
+    if cents and (zero_decimal or major_symbol):
+        return None
+    scaled = value if zero_decimal or cents else value * 100
     if not math.isfinite(scaled):
         return None
     literal = round(scaled)
+    if cents or major_unit:
+        # Printed currency/cent units outrank the catalog's guess about an unmarked number.
+        return literal if literal > 0 else None
     candidates = {literal}
     if not zero_decimal and not has_decimals:
         candidates.add(round(value))          # cents written without the decimal point
