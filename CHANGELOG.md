@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Coordinate run-analyst snapshots, transcript locks and saves with project deletion.
+  Replies arriving after deletion cannot recreate the project; accepted transcript saves
+  finish before deletion, while a busy project preserves the existing conversation.
+
 - Use the named category to disambiguate exact VLM product names repeated across shelves.
   A plan for an identically named milk product no longer randomly buys its snacks counterpart;
   global exact-name fallback remains available when the category does not stock that name.
