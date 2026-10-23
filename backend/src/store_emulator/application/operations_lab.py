@@ -48,6 +48,10 @@ def _load(pid: str, run_id: str) -> tuple[Store, list[CustomerResult], int, Oper
     if not (output / "timeline.json").exists():
         raise AppError(f"run {run_id} has no results (not completed?)", 404)
     try:
+        raw_config = read_json(base / "input" / "config.json")
+        if not isinstance(raw_config, dict):
+            raise ValueError("the saved run configuration must be an object")
+        config = cast(dict[str, object], raw_config)
         own: OperationsConfig | None = None
         if (output / "operations.json").exists():
             saved = read_json(output / "operations.json")
@@ -60,17 +64,18 @@ def _load(pid: str, run_id: str) -> tuple[Store, list[CustomerResult], int, Oper
                                "to try other operations plans", 409)
             planned_path = output / "timeline_planned.json"
         else:
+            if config.get("operations") is not None or (output / "timeline_planned.json").exists():
+                raise ValueError("the shared-store operations report is missing; its resolved purchases cannot "
+                                 "be used as original shopper plans. Restore the run's files or run it again")
             planned_path = output / "timeline.json"
         visits = read_json(planned_path)
         if not isinstance(visits, list):
             raise ValueError("the saved shopper visits must be a list")
         planned = [CustomerResult.model_validate(c) for c in cast(list[object], visits)]
-        config = read_json(base / "input" / "config.json")
         store = load_run_store(base)
     except (ValueError, OSError) as error:   # cut short or damaged on disk
         raise AppError(f"the run's saved files cannot be read: {error}", 422) from error
-    saved = cast(dict[str, object], config) if isinstance(config, dict) else {}
-    seed, replicate = saved.get("seed", 0), saved.get("replicate", 0)
+    seed, replicate = config.get("seed", 0), config.get("replicate", 0)
     return store, planned, stable_seed(seed if isinstance(seed, int) else 0,
                                        replicate if isinstance(replicate, int) else 0), own
 
