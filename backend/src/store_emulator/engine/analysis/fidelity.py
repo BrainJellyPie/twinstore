@@ -50,6 +50,17 @@ def fidelity_report(
     if dropped:
         notes.append(f"{dropped} POS lines reference SKUs not on the simulated shelves and were ignored.")
 
+    # Individually finite fields can overflow when multiplied or aggregated.
+    # Bound gross totals so cancelling returns cannot make validity row-dependent.
+    numeric_error = "POS totals exceed the supported numeric range; check quantities and prices."
+    try:
+        gross_units = math.fsum(abs(line.quantity) for line in real_lines)
+        gross_value = math.fsum(abs(line.quantity * line.unit_price) for line in real_lines)
+    except OverflowError:
+        raise ValueError(numeric_error) from None
+    if not math.isfinite(gross_units) or not math.isfinite(gross_value):
+        raise ValueError(numeric_error)
+
     sim_units: dict[str, float] = {}
     for cr in results:
         for e in cr.purchases:
@@ -248,4 +259,4 @@ def _var_ratio(sim: list[float], real: list[float]) -> float:
 
 
 def _round(v: float) -> float | None:
-    return None if math.isnan(v) else round(v, 6)
+    return round(v, 6) if math.isfinite(v) else None
