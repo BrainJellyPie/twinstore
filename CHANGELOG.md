@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep VLM shelf choices on the selected numbered offer when names repeat or are ambiguous.
+  Exact printed names outrank fuzzy word matches, clipped long names retain their badge fallback,
+  and ensemble votes preserve the supported placement of a repeated SKU instead of switching
+  to its first price/level/block. Ambiguous names without a usable badge no longer guess a SKU.
+
 - Normalize raw model-action dwell to the existing 0–120-second budget before scenario arithmetic.
   Negative or enormous durations no longer overflow calculations or inflate visits. Scenario
   increases/decreases apply afterward and retain their intended effect on wandering and operating time.
