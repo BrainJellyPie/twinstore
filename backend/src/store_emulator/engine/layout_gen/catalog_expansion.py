@@ -1450,6 +1450,30 @@ PACKSHOT_SHEETS = {
         "Kraft Bakery Gift Labels 24pk", "Food Gift Tin Rectangular", "Chocolate Gift Divider Box", "Clear Bakery Treat Boxes 6pk",
         "Parchment Food Gift Wrap Sheets 20pk", "Mini Loaf Gift Tray Pair", "Bakery Box Carry Handle Set", "Food Gift Sealing Sticker Roll",
     ],
+    "starter-79": [
+        "Peanut Chocolate Bar", "Sour Gummies", "Hard Candy", "Choco Pie 6pk",
+        "Wafer Bar", "Caramel Popcorn", "Marshmallows", "Chocolate Biscuit Sticks",
+        "Chain Necklace", "Pearl-Style Earrings", "Jewelry Travel Case", "Watch Strap",
+        "Minimalist Watch", "Floral Brooch", "Jewelry Cleaning Cloth", "Gift Presentation Box",
+    ],
+    "starter-80": [
+        "Foldable Pet Carrier", "Stainless Pet Bowl", "Pet Grooming Brush", "Pet Nail Clippers",
+        "Washable Pet Bed", "Pet Waste Bags 60pk", "Puzzle Treat Feeder", "Collapsible Travel Pet Bowl",
+        "Magnetic Cable Clips 6pk", "Laptop Privacy Cover 3pk", "Bluetooth Number Pad", "Memory Card Case",
+        "Silicone Earbud Case", "Desk Cable Organizer", "Sleep Mask and Earplug Set", "Luggage Strap with Buckle",
+    ],
+    "starter-81": [
+        "Foldable Travel Hanger 3pk", "Travel Laundry Pouch", "Pocket Travel Sewing Kit", "Compact Luggage Scale",
+        "Refillable Travel Perfume Atomizer", "Soft Charcoal Sticks 6pk", "Kneaded Art Eraser Pair", "Round Watercolor Brushes 4pk",
+        "Acrylic Paint Starter Tubes 8pk", "Cotton Canvas Panel 20x25cm", "Oil Pastel Set 24 Colors", "Drawing Fineliner Set 5pk",
+        "Color Matching Family Card Game", "Cooperative Garden Board Game", "Polyhedral Dice Set 7pk", "Pocket Word Tile Game",
+    ],
+    "starter-82": [
+        "Reversible Checkers Board Set", "Family Trivia Card Box", "Travel Backgammon Roll", "Potted Basil Herb",
+        "Hanging Spider Plant", "Glass Plant Mister", "Ceramic Planter Saucer", "Coco Coir Potting Block",
+        "Bamboo Plant Labels 12pk", "Mini Pruning Snips", "Ras El Hanout Blend 60g", "Whole Star Anise 30g",
+        "Sumac Seasoning 60g", "Herbes de Provence 25g", "Cajun Spice Blend 80g", "Sichuan Peppercorns 40g",
+    ],
 }
 PACKSHOT_URLS = {name: f"/api/catalog-images/{sheet}/{index}.webp"
                  for sheet, names in PACKSHOT_SHEETS.items() for index, name in enumerate(names)}

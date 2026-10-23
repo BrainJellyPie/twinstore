@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Complete nine more default-map departments with 64 sweets, jewelry, pet, digital,
+  travel, art, tabletop-game, plant and spice photos, reaching 1,312 local images.
+
 - Serve shoppers already at the till before starting a same-time crew refill.
   Keep crew hours and refill results visible when the scheduled hours are zero,
   and preserve a valid default crew when a plan leaves every hour unstaffed.

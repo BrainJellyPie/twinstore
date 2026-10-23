@@ -271,3 +271,15 @@ it("keeps all remaining pet, garden and craft photos classified as non-food afte
   for (const sheet of [75, 76, 77, 78]) for (let index = 0; index < 16; index++)
     expect(classifyProduct("Milk Chocolate", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
 });
+
+it("keeps new pet, art, travel and plant photos distinct from edible products", () => {
+  for (const sheet of [80, 81]) for (let index = 0; index < 16; index++)
+    expect(classifyProduct("Milk", `/api/catalog-images/starter-${sheet}/${index}.webp`).category).toBe("other");
+  for (let index = 8; index < 16; index++)
+    expect(classifyProduct("Cookies", `/api/catalog-images/starter-79/${index}.webp`).category).toBe("other");
+  for (let index = 0; index < 10; index++)
+    expect(classifyProduct("Basil", `/api/catalog-images/starter-82/${index}.webp`).category).toBe("other");
+  for (let index = 10; index < 16; index++)
+    expect(classifyProduct("Necklace", `/api/catalog-images/starter-82/${index}.webp`).category).toBe("pantry");
+  expect(classifyProduct("Pet bowl", "/api/catalog-images/starter-79/0.webp").category).toBe("candy");
+});

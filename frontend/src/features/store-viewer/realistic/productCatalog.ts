@@ -937,6 +937,42 @@ const STARTER_PACKAGES: Record<string, PackageSpec[]> = { "starter-01": [
   spec("box", 0.18, 0.04, 0.18, "other"),    spec("bag", 0.13, 0.18, 0.03, "other"),
   spec("box", 0.2, 0.015, 0.25, "other"),    spec("box", 0.12, 0.04, 0.07, "other"),
   spec("bag", 0.12, 0.17, 0.02, "other"),    spec("box", 0.07, 0.04, 0.07, "other"),
+], "starter-79": [
+  spec("box", 0.05, 0.14, 0.025, "candy"),    spec("bag", 0.12, 0.18, 0.05, "candy"),
+  spec("bag", 0.12, 0.18, 0.05, "candy"),    spec("box", 0.2, 0.12, 0.06, "snack"),
+  spec("box", 0.045, 0.13, 0.025, "snack"),    spec("bag", 0.14, 0.2, 0.06, "snack"),
+  spec("bag", 0.14, 0.2, 0.06, "candy"),    spec("box", 0.08, 0.17, 0.03, "snack"),
+  spec("box", 0.12, 0.14, 0.008, "other"),    spec("box", 0.045, 0.05, 0.02, "other"),
+  spec("box", 0.1, 0.07, 0.1, "other"),    spec("box", 0.065, 0.13, 0.01, "other"),
+  spec("box", 0.06, 0.12, 0.035, "other"),    spec("box", 0.055, 0.07, 0.008, "other"),
+  spec("box", 0.1, 0.008, 0.1, "other"),    spec("box", 0.075, 0.07, 0.075, "other"),
+], "starter-80": [
+  spec("bag", 0.32, 0.26, 0.2, "other"),    spec("cup", 0.17, 0.055, 0.17, "other"),
+  spec("box", 0.065, 0.17, 0.045, "other"),    spec("box", 0.07, 0.14, 0.015, "other"),
+  spec("cup", 0.3, 0.12, 0.3, "other"),    spec("box", 0.1, 0.17, 0.045, "other"),
+  spec("box", 0.22, 0.04, 0.22, "other"),    spec("cup", 0.13, 0.07, 0.13, "other"),
+  spec("box", 0.12, 0.065, 0.02, "other"),    spec("box", 0.06, 0.08, 0.003, "other"),
+  spec("box", 0.09, 0.15, 0.02, "other"),    spec("box", 0.11, 0.025, 0.07, "other"),
+  spec("box", 0.06, 0.05, 0.025, "other"),    spec("box", 0.12, 0.02, 0.03, "other"),
+  spec("bag", 0.17, 0.09, 0.025, "other"),    spec("box", 0.08, 0.05, 0.12, "other"),
+], "starter-81": [
+  spec("box", 0.15, 0.16, 0.03, "other"),    spec("bag", 0.2, 0.25, 0.03, "other"),
+  spec("box", 0.09, 0.025, 0.07, "other"),    spec("box", 0.12, 0.12, 0.03, "other"),
+  spec("perfumeBottle", 0.025, 0.1, 0.025, "other"),    spec("box", 0.16, 0.08, 0.02, "other"),
+  spec("box", 0.09, 0.05, 0.018, "other"),    spec("box", 0.055, 0.22, 0.025, "other"),
+  spec("box", 0.2, 0.13, 0.03, "other"),    spec("box", 0.2, 0.25, 0.007, "other"),
+  spec("box", 0.2, 0.13, 0.025, "other"),    spec("box", 0.07, 0.15, 0.012, "other"),
+  spec("box", 0.07, 0.1, 0.025, "other"),    spec("box", 0.2, 0.2, 0.04, "other"),
+  spec("bag", 0.08, 0.12, 0.025, "other"),    spec("bag", 0.1, 0.14, 0.025, "other"),
+], "starter-82": [
+  spec("box", 0.22, 0.025, 0.22, "other"),    spec("box", 0.08, 0.12, 0.04, "other"),
+  spec("box", 0.18, 0.05, 0.14, "other"),    spec("pot", 0.15, 0.25, 0.15, "other"),
+  spec("pot", 0.2, 0.3, 0.2, "other"),    spec("bottle", 0.08, 0.15, 0.08, "other"),
+  spec("cup", 0.15, 0.02, 0.15, "other"),    spec("box", 0.2, 0.06, 0.1, "other"),
+  spec("bag", 0.08, 0.16, 0.02, "other"),    spec("box", 0.055, 0.14, 0.015, "other"),
+  spec("jar", 0.05, 0.1, 0.05, "pantry"),    spec("bag", 0.08, 0.12, 0.025, "pantry"),
+  spec("jar", 0.05, 0.1, 0.05, "pantry"),    spec("jar", 0.05, 0.1, 0.05, "pantry"),
+  spec("jar", 0.055, 0.11, 0.055, "pantry"),    spec("bag", 0.08, 0.13, 0.03, "pantry"),
 ] };
 
 export function classifyProduct(name: string, imageUrl?: string | null): PackageSpec {
