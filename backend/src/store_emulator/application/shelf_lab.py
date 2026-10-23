@@ -63,7 +63,7 @@ from .providers import assistive_client, assistive_vision_model
 from .generation_async import visitors_per_day_coming
 from .scenarios import scenario_shoppers
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
-from .setups import project_layout_transaction
+from .setups import project_layout_transaction, setup_tree_transaction
 from .storage.io import DATA_DIR, now_iso, read_json, write_json
 from .storage.personas import read_personas
 from .storage.setups import metadata_path, read_setup
@@ -174,17 +174,18 @@ def upload_package(
         raise AppError("not an image the server can read (use PNG, JPEG or WebP)", 400) from e
     img.thumbnail((1200, 1200))
     aid = f"pkg_{uuid.uuid4().hex[:8]}"
-    folder = package_directory(pid)
-    folder.mkdir(parents=True, exist_ok=True)
     rgba = img.convert("RGBA")
     transparent = img.mode in ("RGBA", "LA", "P") and cast(tuple[int, int], rgba.getchannel("A").getextrema())[0] < 250
     cut = remove_background and not transparent
     out = cut_out(img.convert("RGB")) if cut else (rgba if transparent else img.convert("RGB"))
-    out.save(folder / f"{aid}.png", format="PNG")
     meta = {"name": (name.strip() or Path(filename).stem)[:80] or aid, "brand": brand.strip()[:40], "sku": sku.strip()[:80],
             "cut_out": cut, "created_at": now_iso()}
-    write_json(folder / f"{aid}.json", meta)
-    return package_asset(folder / f"{aid}.png")
+    with setup_tree_transaction(pid):
+        folder = package_directory(pid)
+        folder.mkdir(parents=True, exist_ok=True)
+        out.save(folder / f"{aid}.png", format="PNG")
+        write_json(folder / f"{aid}.json", meta)
+        return package_asset(folder / f"{aid}.png")
 
 
 class PackageRead(BaseModel):
@@ -199,6 +200,11 @@ def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", con
     layout is linked when the image was not linked yet. The reading is kept with the image."""
     with package_edit(pid, aid) as png:
         before = cast(dict[str, object], read_json(png.with_suffix(".json"))) if png.with_suffix(".json").exists() else {}
+        try:
+            with Image.open(png) as im:
+                image = im.convert("RGBA")
+        except (UnidentifiedImageError, OSError) as exc:
+            raise AppError("The saved product image cannot be read. Upload it again before reading the pack.", 400) from exc
     store = _load_store(pid, setup_id) if setup_id else None
     products = [i.name for r in store.product_racks for sl in r.slots for i in sl.items] if store else []
     names: dict[str, set[str]] = {}
@@ -213,8 +219,6 @@ def read_package(pid: str, aid: str, *, setup_id: str = "", model: str = "", con
         raise AppError("reading a pack needs a vision model", 400)
     llm = LiteLLMClient(llm_config.model_copy(update={"max_tokens": 400}))
     try:
-        with Image.open(png) as im:
-            image = im.convert("RGBA")
         flat = Image.new("RGB", image.size, (255, 255, 255))
         flat.paste(image, mask=image.getchannel("A"))
         reading = asyncio.run(read_pack(llm, flat, products))
@@ -276,7 +280,7 @@ def package_path(pid: str, aid: str) -> Path:
 def package_edit(pid: str, aid: str) -> Iterator[Path]:
     png = package_path(pid, aid)
     try:
-        with FileLock(png.with_suffix(".lock"), timeout=0):
+        with setup_tree_transaction(pid), FileLock(png.with_suffix(".lock"), timeout=0):
             yield package_path(pid, aid)
     except Timeout as exc:
         raise AppError("The product image is being changed by another request. Try again.", 409) from exc
