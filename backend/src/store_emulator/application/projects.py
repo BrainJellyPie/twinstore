@@ -11,7 +11,7 @@ from store_emulator.domain.layout_options import TemplateLayoutRequest
 from store_emulator.application.template_layouts import prepare_template_layout
 from store_emulator.application.template_assortment import select_initial_assortment
 from store_emulator.application.errors import AppError
-from store_emulator.application.setups import project_layout_transaction
+from store_emulator.application.setups import project_layout_transaction, setup_tree_transaction
 from store_emulator.application.generation_async import start_persona_generation
 from store_emulator.application.storage.generations import find_active_generation
 from store_emulator.application.storage.images import delete_project_images
@@ -202,17 +202,18 @@ def update_project_metadata(
     meta_file = metadata_path(project_id)
     if not meta_file.exists():
         raise FileNotFoundError(f"Project not found: {project_id}")
-    meta: dict[str, Any] = read_json(meta_file)
-    meta["updated_at"] = now_iso()
-    if name is not None:
-        meta["name"] = name
-    if description is not None:
-        meta["description"] = description
-    if address is not None:
-        meta["address"] = address
-    if customer_profile is not None:
-        meta["customer_profile"] = customer_profile
-    write_json(meta_file, meta)
+    with setup_tree_transaction(project_id):
+        meta = cast(dict[str, object], read_json(meta_file))
+        meta["updated_at"] = now_iso()
+        if name is not None:
+            meta["name"] = name
+        if description is not None:
+            meta["description"] = description
+        if address is not None:
+            meta["address"] = address
+        if customer_profile is not None:
+            meta["customer_profile"] = customer_profile
+        write_json(meta_file, meta)
 
 
 def delete_project(project_id: str) -> None:

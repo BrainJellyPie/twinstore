@@ -10,6 +10,7 @@ from typing import Any, cast
 from store_emulator.application.async_executor import executor
 from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.estimates import cost_usd, effective_parallel, is_local_base, should_warn
+from store_emulator.application.setups import setup_tree_transaction
 from store_emulator.application.storage.generations import (
     find_active_generation, generation_dir, init_generation, read_status, write_status,
 )
@@ -225,17 +226,18 @@ async def _run_async_pipeline(
         )
         if summary:
             try:
-                latest_meta = cast(dict[str, object], read_json(metadata_path(project_id)))
-                if str(latest_meta.get("supplemental_summary", "")) == "":
-                    latest_meta["supplemental_summary"] = summary
-                    write_json(metadata_path(project_id), latest_meta)
-                    effective_summary = summary
-                else:
-                    logger.info(
-                        "[supplemental] existing supplemental_summary on disk; "
-                        "ignoring fresh auto-summary, keeping stored value for persona generation."
-                    )
-                    effective_summary = str(latest_meta["supplemental_summary"])
+                with setup_tree_transaction(project_id):
+                    latest_meta = cast(dict[str, object], read_json(metadata_path(project_id)))
+                    if str(latest_meta.get("supplemental_summary", "")) == "":
+                        latest_meta["supplemental_summary"] = summary
+                        write_json(metadata_path(project_id), latest_meta)
+                        effective_summary = summary
+                    else:
+                        logger.info(
+                            "[supplemental] existing supplemental_summary on disk; "
+                            "ignoring fresh auto-summary, keeping stored value for persona generation."
+                        )
+                        effective_summary = str(latest_meta["supplemental_summary"])
             except Exception:
                 logger.warning(
                     "[supplemental] metadata read/write failed. Discarding summary and proceeding with persona.",
@@ -249,9 +251,10 @@ async def _run_async_pipeline(
         if fitted is not None:
             traffic = fitted
             try:
-                latest_meta = cast(dict[str, object], read_json(metadata_path(project_id)))
-                latest_meta["traffic_profile"] = fitted.model_dump(mode="json")
-                write_json(metadata_path(project_id), latest_meta)
+                with setup_tree_transaction(project_id):
+                    latest_meta = cast(dict[str, object], read_json(metadata_path(project_id)))
+                    latest_meta["traffic_profile"] = fitted.model_dump(mode="json")
+                    write_json(metadata_path(project_id), latest_meta)
             except Exception:
                 logger.warning("[supplemental] could not store the traffic profile", exc_info=True)
             logger.info(f"[supplemental] visit times follow the uploaded data ({fitted.source})")
@@ -297,10 +300,11 @@ async def _run_async_pipeline(
     )
     if estimates:
         try:   # the visitors each day the customers were sampled from (see visitors_per_day)
-            latest = cast(dict[str, object], read_json(metadata_path(project_id)))
-            latest["estimated_daily_visitors"] = {str(day): n for day, n in sorted(estimates.items())}
-            write_json(metadata_path(project_id), latest)
-        except (OSError, ValueError):
+            with setup_tree_transaction(project_id):
+                latest = cast(dict[str, object], read_json(metadata_path(project_id)))
+                latest["estimated_daily_visitors"] = {str(day): n for day, n in sorted(estimates.items())}
+                write_json(metadata_path(project_id), latest)
+        except (OSError, ValueError, AppError):
             logger.warning("[persona generation] could not store the estimated daily visitors", exc_info=True)
     return personas
 
