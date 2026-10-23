@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Bound timed crew refills to the units their scheduled work can handle. Customers buying during a refill no
+  longer make extra stock appear without its per-unit work, and reserved checkout tasks keep their place.
+
 - Run regular shelf refills until store closing even when the last shopper leaves early. This keeps overnight
   stock, morning delivery, later sales and refill costs independent of nonbuying observers; no refill starts at
   or after closing. Stores without opening hours continue using their observed visit window.

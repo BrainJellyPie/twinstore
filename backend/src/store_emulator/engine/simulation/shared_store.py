@@ -115,7 +115,7 @@ class _Crew:
     keys: list[FaceKey]
     free: list[float]
     waiting: dict[FaceKey, float] = field(default_factory=dict[FaceKey, float])     # face → since (refill point)
-    working: dict[FaceKey, float] = field(default_factory=dict[FaceKey, float])     # face being refilled → since
+    working: dict[FaceKey, tuple[float, int]] = field(default_factory=dict[FaceKey, tuple[float, int]])  # since, units timed
     dry: set[FaceKey] = field(default_factory=set[FaceKey])   # faces the backroom has nothing more for today
     queue: list[tuple[int, float, int]] = field(default_factory=list[tuple[int, float, int]])   # (low, since, face)
     # (start, member, end, kind, rack, face, sku, name): made into CrewTask only for the few the report keeps
@@ -168,7 +168,7 @@ class _Crew:
                     self.dry.add(key)
                     continue
                 work = self.config.refill_face_sec + self.config.refill_unit_sec * units
-                self.working[key] = since
+                self.working[key] = (since, units)
                 self.free[member] = moment + work
                 self.refilling += work
                 self.tasks.append((moment, member, moment + work, "refill", key[0], str(key[1]), key[2], product.item.name))
@@ -403,9 +403,13 @@ def _play_day(
                 report.restocks += 1
         elif kind == _FACE_DONE and crew is not None:
             key = crew.keys[k]
-            since = crew.working.pop(key)
+            since, units = crew.working.pop(key)
             product = products[key]
             wanted = product.full - state.stock[key]
+            if config.refill_unit_sec > 0:
+                # Picks during the refill cannot add units without their work. With no per-unit time,
+                # the fixed face time still covers the whole face, however much it now needs.
+                wanted = min(wanted, units)
             moved = backroom.take(key[2], wanted, int(day), moment) if backroom is not None else wanted
             if moved > 0:
                 state.stock[key] += moved
