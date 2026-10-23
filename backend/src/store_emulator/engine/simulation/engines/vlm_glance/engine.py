@@ -61,6 +61,7 @@ from store_emulator.engine.perception.shelf_photo import (
     photo_chart_view,
 )
 from store_emulator.engine.routing.route_builder import build_journey, perceive_products
+from store_emulator.engine.routing.store_lookup import resolve_buy_placement
 from store_emulator.engine.scenario import words_categories
 
 from ..rule_based import (
@@ -282,7 +283,11 @@ class VLMGlanceEngine(RuleBasedEngine):
             before = len(plan.buys)
             self._fill_to_size(store, plan, middle, kept, min(max_items, persona.basket_size), usual, kinds, kept,
                                spend_limit=limit)
-            resolved.extend(("(same category)", b.product_sku, "breadth_fill", "") for b in plan.buys[before:])
+            for buy in plan.buys[before:]:
+                placement = resolve_buy_placement(store, target=buy.target, face=buy.face, sku=buy.product_sku,
+                                                 block=buy.product_block, level=buy.product_level)
+                category = category_label(placement[0]) if placement is not None else ""
+                resolved.append(("(same category)", buy.product_sku, "breadth_fill", category))
         plan.trace = {"plan_source": source, "entered": True, "mission": decision.mission}
         self._record_plan(PlanRecord(persona.id, plan.pattern.id, source, True, decision.mission, decision.reason,
                                      named, tuple(resolved), model=model, agreement=agreement))
@@ -528,7 +533,7 @@ class VLMGlanceEngine(RuleBasedEngine):
         asked = [p for p in plans if p.source != "fallback"]
         entered = [p for p in asked if p.enter]
         named = [r for p in entered for r in p.resolved if r[2] != "cap"]
-        bought = [r for r in named if r[1] and r[2] not in ("over_budget", "unreachable", "duplicate")]
+        bought = [r for r in named if r[1] and r[2] not in ("over_budget", "unreachable", "duplicate", "breadth")]
         categories = Counter(r[3] for r in bought if r[3])
         by_model: dict[str, dict[str, object]] = {}
         for name in sorted({p.model for p in plans if p.model}):
