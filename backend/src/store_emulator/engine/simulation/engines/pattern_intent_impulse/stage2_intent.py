@@ -237,7 +237,7 @@ def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[st
 고객별 행동 패턴과 추가 규칙은 사용자 메시지에 주어집니다.
 
 공통 규칙:
-- pay는 카운터에서 딱 1회만 발생합니다 (구매 물건이 없으면 생략)
+- pay는 카운터에서 딱 1회만 발생합니다 (구매 물건이 없거나 매장에 카운터가 없으면 생략)
 - 시퀀스 순서는 enter → 이동/browse/buy → pay → exit
 - 반드시 {{"nav": "leave"}} 으로 종료
 - **buy 의 product_sku 는 아래 상품 목록의 짧은 상품 코드 중 하나만 사용**

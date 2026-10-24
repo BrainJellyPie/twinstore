@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Ignore model-generated checkout actions when a layout has no counters, before
+  building its planned route. Such layouts no longer fail an otherwise valid
+  purchase visit while looking for a nonexistent checkout. Retain the model's
+  original response in the trace and explicitly allow omitting pay in the prompt.
+
 - Bind generated customer identity and purpose grammars to the actual shared
   label pools, preventing constrained local decoders from inventing new cohort
   names. Preserve original spelling, deduplicate choices, and use the existing

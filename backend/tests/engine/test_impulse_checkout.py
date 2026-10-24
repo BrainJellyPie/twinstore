@@ -96,8 +96,11 @@ def test_impulse_only_baskets_join_the_line_and_can_be_abandoned(ordering):
 
 
 @pytest.mark.parametrize("ordering", ["nearest", "planned"])
-def test_counterless_layout_does_not_invent_a_payment_location(ordering):
-    store, item, _, _, result = _visit(ordering, "impulse", counterless=True)
+@pytest.mark.parametrize("purchase", ["planned", "impulse", "none"])
+@pytest.mark.parametrize("existing_pay", [False, True])
+def test_counterless_layout_does_not_invent_a_payment_location(ordering, purchase, existing_pay):
+    store, item, _, _, result = _visit(ordering, purchase, existing_pay=existing_pay, counterless=True)
     assert not store.counters
-    assert result.total_spent == item.price
+    assert result.total_spent == (0 if purchase == "none" else item.price)
     assert not any(event.action == Action.PAY for event in result.timeline)
+    assert result.timeline[-1].action == Action.EXIT

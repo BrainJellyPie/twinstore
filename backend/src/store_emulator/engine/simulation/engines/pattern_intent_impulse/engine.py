@@ -217,6 +217,8 @@ class PatternIntentImpulseEngine:
         # Exposure is computed on the route the shopper will actually walk (same ordering
         # rule as the final merge), so impulse candidates match the executed path.
         valid_intent, dropped_invalid = drop_invalid_buys(intent.actions, context.store, pathfinder=self._pathfinder)
+        if not context.store.counters:
+            valid_intent = [action for action in valid_intent if action.action != Action.PAY]
         bounded_intent, dropped_limit = apply_product_limit(valid_intent, pattern.max_products)
         planned = integrate_actions(context.store, bounded_intent, [], ordering=cfg.route_ordering)
         journey = build_journey(context.store, planned, self._pathfinder, cfg.block_move_sec)
