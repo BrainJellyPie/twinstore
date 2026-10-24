@@ -5,6 +5,7 @@ from threading import Event
 
 import pytest
 from fastapi.testclient import TestClient
+from filelock import Timeout
 
 from store_emulator.application import simulation
 from store_emulator.application.storage.setups import read_setup
@@ -86,3 +87,39 @@ def test_failed_terminal_publication_does_not_leave_a_draft_locked_by_the_failed
     assert saved["status"] == "draft" and saved.get("runId") is None
     if preview:
         assert saved == before
+
+
+@pytest.mark.parametrize("failure", ["before_write", "after_write", "lock_timeout"])
+def test_layout_finalization_failure_is_not_published_as_success(layout, monkeypatch, failure):
+    rid, store, people, address, profile, _ = simulation.prepare_simulation(PID, SID, "run_layout_error")
+    original = simulation.write_setup
+
+    def write(pid, sid, data):
+        if data["status"] == "locked" and failure != "lock_timeout":
+            if failure == "after_write":
+                original(pid, sid, data)
+            raise OSError("offline layout-write failure")
+        return original(pid, sid, data)
+
+    monkeypatch.setattr(simulation, "write_setup", write)
+    if failure == "lock_timeout":
+        original_lock = simulation.FileLock
+        attempts = 0
+
+        def lock(*args, **kwargs):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise Timeout("offline busy layout")
+            return original_lock(*args, **kwargs)
+
+        monkeypatch.setattr(simulation, "FileLock", lock)
+    simulation.run_simulation_background(PID, rid, SID, store, people,
+        SimulationConfig(engine_type=EngineType.RULE_BASED), address, profile)
+    status = simulation.get_run_status(PID, rid)
+    assert status["status"] == "failed", "layout persistence failed but the run was shown as completed"
+    assert "offline" in status["error"]
+    saved = read_setup(PID, SID)
+    assert saved["status"] == "draft" and saved.get("runId") is None
+    # A failed completion must permit a fresh final attempt without restarting the server.
+    simulation.prepare_simulation(PID, SID, "run_after_layout_error")

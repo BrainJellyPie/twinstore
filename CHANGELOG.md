@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Treat layout finalization errors as failed simulations. A transient layout
+  write or lock failure no longer reports a completed run while leaving its
+  layout running; rollback clears a provisional run link and permits retry.
+
 - Preserve product images and shelf photos when generated identifiers collide.
   New uploads and computed captures use full UUIDs and reject occupied storage
   paths; computed-capture saves also coordinate with project deletion.
