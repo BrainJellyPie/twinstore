@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Carry each shopper's personal description and purchase intent into impulse
+  decisions. Individual preferences no longer disappear after planned routing,
+  and revised needs cannot reuse an older impulse response solely because the
+  cohort, visit-purpose label and exposure stayed the same.
+
 - Include the verified planned basket in impulse-decision prompts: exact SKU,
   name, executable quantity, unit price, line total, currency and promotion.
   Blank action narration no longer hides existing purchases or allows a changed

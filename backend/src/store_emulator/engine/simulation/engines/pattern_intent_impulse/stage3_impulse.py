@@ -159,6 +159,10 @@ def build_user_prompt(
 
     lines.append("## 고객 성향")
     lines.append(f"  {persona.identity} ({persona.age_group}, {persona.gender}): {persona.behavior_tendency}")
+    if persona.description:
+        lines.append(f"  개인 설명: {persona.description}")
+    if persona.intent:
+        lines.append(f"  구매 의도: {persona.intent}")
     lines.append(f"  방문 목적: {persona.purpose}")
     if persona.preferred_categories:
         lines.append(f"  선호 카테고리: {', '.join(persona.preferred_categories)}")
