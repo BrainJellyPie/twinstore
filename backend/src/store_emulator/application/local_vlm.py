@@ -257,7 +257,8 @@ class LocalVLMManager:
     def choose(self, use: bool) -> None:
         """Remember the user's Start or Stop for the next time the app opens."""
         with self._choice_lock:
-            self._choice = use
+            with self._lock:
+                self._choice = use
             path = self.home / _CHOICE
             tmp = path.with_name(f"{_CHOICE}.{os.getpid()}.tmp")
             try:
@@ -293,7 +294,7 @@ class LocalVLMManager:
         if choice is False:
             return False
         self.start(download=choice is True)
-        return True
+        return self.chosen() is not False
 
     def start(self, *, wait: bool = False, download: bool = True) -> LocalVLMStatus:
         """Prepare and start the local model in the background (no-op while already running). `download=False` stops
@@ -302,6 +303,10 @@ class LocalVLMManager:
             self._set(state="disabled", message="turned off by TWINSTORE_LOCAL_VLM")
             return self.status()
         with self._lock:
+            # Stop may have arrived after auto_start read the preference or a button saved Start.
+            # Only a subsequent choose(True) may supersede that explicit Stop.
+            if self._choice is False:
+                return self._status.model_copy()
             busy = self._stopping or (self._thread is not None and self._thread.is_alive())
             ready = self._status.state == "ready" and (self._proc is None or self._proc.poll() is None)
             if download:

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Prevent a delayed local-model Start from undoing a newer Stop. Check the current
+  session choice under the worker-start lock before clearing cancellation or
+  launching a thread; automatic startup also reports that it was superseded.
+
 - Honor local-model Start/Stop for the current session even if saving the choice
   fails. Preference cleanup errors no longer prevent stopping the process, and
   an unsaved Stop cannot be replaced by an older on-disk Start during automatic
