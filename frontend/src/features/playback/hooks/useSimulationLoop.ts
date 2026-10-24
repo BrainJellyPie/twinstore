@@ -143,7 +143,7 @@ export function useSimulationLoop({ customers, personaNames, personaGenders, min
   }, [loadDay, minTime, firstDay]);
 
   useFrame((_, delta) => {
-    if (!customers?.length) return;
+    if (customers === null) return;
 
     const ctrl = usePlaybackControlStore.getState();
     const { playing, speed, consumeSeek, currentDay } = ctrl;

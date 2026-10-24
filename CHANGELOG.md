@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Allow playback, skip-to-end and reset for completed runs with zero customers.
+  Empty results now advance through their operating days and finish normally.
+
 - Remember whether a project requires uploaded customer evidence. Losing the
   entire retained-upload folder now blocks generation instead of silently using
   no attachment. Failed upload saves stop before queuing customer writing;

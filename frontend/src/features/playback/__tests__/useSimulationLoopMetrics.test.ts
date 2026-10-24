@@ -73,3 +73,30 @@ it("plays the final day's purchase and departure after midnight before finishing
   tick(70 / 60);
   expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: true, inStore: 0, revenue: 100 });
 });
+
+it.each([{ availableDays: [1] }, { availableDays: [2, 5] }])("can play and finish an empty result for weekdays $availableDays", ({ availableDays }) => {
+  usePlaybackControlStore.getState().setAvailableDays(availableDays);
+  const hook = renderHook(() => useSimulationLoop({ ...options, customers: [], availableDays }));
+  usePlaybackControlStore.getState().play();
+  tick(5 / 60);
+  expect(hook.result.current.playbackTimeRef.current).toBe(36005);
+  for (let i = 0; i < availableDays.length; i++) tick(30 / 60);
+  expect(usePlaybackControlStore.getState()).toMatchObject({ playing: false, currentDay: availableDays[availableDays.length - 1] });
+  expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: true, revenue: 0, inStore: 0 });
+  expect(hook.result.current.personaFramesRef.current).toEqual([]);
+});
+
+it.each([{ availableDays: [1] }, { availableDays: [2, 5] }])("can skip and reset an empty result for weekdays $availableDays", ({ availableDays }) => {
+  usePlaybackControlStore.getState().setAvailableDays(availableDays);
+  const hook = renderHook(() => useSimulationLoop({ ...options, customers: [], availableDays }));
+  usePlaybackControlStore.getState().seek(options.maxTime);
+  tick();
+  expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: true, revenue: 0 });
+  expect(hook.result.current.playbackTimeRef.current).toBe(options.maxTime);
+  usePlaybackControlStore.getState().setDay(availableDays[0]!);
+  usePlaybackControlStore.getState().seek(options.minTime);
+  tick(); tick();
+  expect(hook.result.current.playbackTimeRef.current).toBe(options.minTime);
+  expect(useSimulationMetricsStore.getState()).toMatchObject({ finished: false, revenue: 0 });
+  expect(usePlaybackControlStore.getState().seekTarget).toBeNull();
+});
