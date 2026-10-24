@@ -95,3 +95,52 @@ def test_real_instructor_wrapper_reaches_recovery_after_context_rejection(monkey
     chosen = asyncio.run(select_starter_products(client, empty_store(), [StarterRack(id='a', name='Shelf', type='shelf', available_slots=2)], ''))
     assert len(chosen) == 1 and chosen[0].rack_id == 'a'
     assert calls == ['CategorySelection', 'CategorySelection', 'BoundedCatalogChoices', 'ProductSelection']
+
+
+@pytest.mark.parametrize('message,recover', [
+    ('request (11897 tokens) exceeds the available context size (8192 tokens), try increasing it', True),
+    ('input (15119 tokens) is larger than the max context size (8192 tokens). skipping', True),
+    ('The context size parameter is not supported by this endpoint', False),
+])
+def test_llamacpp_http_errors_survive_openai_litellm_and_instructor_translation(monkeypatch, message, recover):
+    import httpx
+    from openai import AsyncOpenAI
+    from store_emulator.domain.config import LLMConfig
+    from store_emulator.engine import llm_client
+
+    seen = []
+    original_completion = llm_client.litellm.acompletion
+
+    async def exercise():
+        def respond(request):
+            payload = json.loads(request.content)
+            name = payload['response_format']['json_schema']['name']
+            seen.append(name)
+            if name == 'CategorySelection':
+                return httpx.Response(400, request=request, json={'error': {'code': 400, 'message': message,
+                    'type': 'exceed_context_size_error' if recover else 'invalid_request_error'}})
+            user = json.loads(payload['messages'][-1]['content'])
+            answer = {'choices': ['home_coffee_tea']} if name == 'BoundedCatalogChoices' else {
+                'groups': [{'category': key, 'skus': [products[0]['sku']]} for key, products in user['categories'].items()]}
+            return httpx.Response(200, request=request, json={'id': 'offline', 'object': 'chat.completion', 'created': 0,
+                'model': 'local-model', 'choices': [{'index': 0, 'finish_reason': 'stop',
+                    'message': {'role': 'assistant', 'content': json.dumps(answer)}}]})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http:
+            transport = AsyncOpenAI(api_key='offline-test', base_url='http://local.invalid/v1', http_client=http, max_retries=0)
+
+            async def completion(**kwargs):
+                return await original_completion(**{**kwargs, 'client': transport, 'api_key': 'offline-test', 'num_retries': 0})
+
+            monkeypatch.setattr(llm_client.litellm, 'acompletion', completion)
+            client = llm_client.LiteLLMClient(LLMConfig(model='openai/local-http-context', api_base='http://local.invalid/v1',
+                                                       structured_output='json_schema'))
+            return await select_starter_products(client, empty_store(), [StarterRack(id='a', name='Shelf', type='shelf', available_slots=2)], '')
+
+    if recover:
+        chosen = asyncio.run(exercise())
+        assert len(chosen) == 1 and chosen[0].rack_id == 'a'
+        assert seen == ['CategorySelection', 'CategorySelection', 'BoundedCatalogChoices', 'ProductSelection']
+    else:
+        with pytest.raises(InstructorRetryException): asyncio.run(exercise())
+        assert seen == ['CategorySelection', 'CategorySelection']

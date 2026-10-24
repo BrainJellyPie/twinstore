@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recognize llama.cpp context overflow even when LiteLLM strips its structured
+  error body and reports a generic bad request. Match the server's specific
+  token-count messages so long catalog requests can recover without retrying
+  unrelated configuration errors as catalog tasks.
+
 - Keep 8,192 context tokens available per request on managed local model servers.
   Limit CUDA to two slots and Metal/Vulkan to one while preserving the existing
   total context allocation. Advertised slots and client concurrency follow the
