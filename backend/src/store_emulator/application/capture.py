@@ -289,15 +289,30 @@ def _start_capture(
             folder.mkdir(parents=True, exist_ok=False)
         except FileExistsError:
             raise AppError("This capture identifier already exists. Retry as a new upload attempt", 409) from None
-        if digest:
-            # Keep a receipt outside the removable photo directory; replay must not resurrect deletion.
-            write_json(_base_dir(pid) / ".uploads" / f"{cid}.json", {"upload_sha256": digest})
-        photo.save(folder / "image.jpg", format="JPEG", quality=92)
-        status = CaptureStatus(
-            capture_id=cid, status="pending", stage="queued", options=options, image_name=filename[:200],
-            image_size=photo.size, created_at=now_iso(), upload_sha256=digest,
-        )
-        _write_status(pid, status)
+        receipt = _base_dir(pid) / ".uploads" / f"{cid}.json"
+        try:
+            if digest:
+                # Keep a receipt outside the removable photo directory; replay must not resurrect deletion.
+                write_json(receipt, {"upload_sha256": digest})
+            photo.save(folder / "image.jpg", format="JPEG", quality=92)
+            status = CaptureStatus(
+                capture_id=cid, status="pending", stage="queued", options=options, image_name=filename[:200],
+                image_size=photo.size, created_at=now_iso(), upload_sha256=digest,
+            )
+            _write_status(pid, status)
+        except Exception:
+            # No recognition worker has been submitted. Roll back only this new
+            # acceptance; a retry may safely reuse its request ID after an I/O failure.
+            try:
+                remove_tree(folder)
+            except OSError:
+                logger.warning("Could not remove rejected capture %s/%s", pid, cid, exc_info=True)
+            if digest:
+                try:
+                    receipt.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("Could not remove rejected upload receipt %s/%s", pid, cid, exc_info=True)
+            raise
     try:
         executor.submit(_run_job, pid, status, llm_config)
     except RuntimeError as exc:

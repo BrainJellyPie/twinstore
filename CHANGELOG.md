@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Roll back photo uploads rejected during receipt, image or status persistence.
+  Unqueued captures no longer remain pending or consume the upload's retry ID;
+  receipts for previously accepted and subsequently deleted photos stay intact.
+
 - Preserve the final exit event when a model pairs exit navigation with an
   incorrect enter label. Timeline boundaries now follow the route's exit
   instruction, without replacing the original arrival description.
