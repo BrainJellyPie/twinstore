@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Validate receipt amounts after applying the printed or fallback currency while
+  the model can still correct its response. Very large finite numbers no longer
+  poison the OCR cache or fail only during minor-unit conversion; supported
+  zero-decimal amounts and negative amounts for review are preserved.
+
 - Validate generated customer budgets against the browser-safe integer range
   before caching or saving them. Repetitive oversized numbers now receive the
   existing bounded model correction instead of breaking later money formatting

@@ -13,13 +13,14 @@ matched to the store's products so receipts can score a run like a POS export.
 import csv
 import difflib
 import io
-from typing import Protocol
+from typing import Protocol, Self
 
 import numpy as np
 from PIL import Image, ImageOps
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from store_emulator.domain.vision_inputs import (
+    MAX_RECEIPT_AMOUNT,
     ReceiptLine,
     ReceiptReading,
     StorefrontAppeal,
@@ -106,7 +107,9 @@ class _ReceiptVLM(BaseModel):
 RECEIPT_PROMPT = """You transcribe shop receipts. List every purchased product line with its name as printed, quantity,
 unit price and line total (numbers as printed, no currency symbols). Skip subtotals, tax, payment and change lines.
 Give the store name, date (YYYY-MM-DD), time (HH:MM), currency code and the receipt total when printed.
-Use finite numbers only. For unreadable or missing amounts use null, never NaN or Infinity."""
+Use finite numbers only. For unreadable or missing amounts use null, never NaN or Infinity.
+Copy only the printed amount; do not repeat digits. Amounts must fit within 9007199254740991 minor units
+(cents for USD, whole won for KRW, whole yen for JPY)."""
 
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
 
@@ -114,12 +117,29 @@ _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
 def _minor(v: float | None, currency: str) -> int | None:
     if v is None:
         return None
-    return round(v) if currency.upper() in _ZERO_DECIMAL else round(v * 100)
+    scaled = v if currency.upper() in _ZERO_DECIMAL else v * 100
+    if not -MAX_RECEIPT_AMOUNT <= scaled <= MAX_RECEIPT_AMOUNT:
+        raise ValueError(f"Receipt amount is outside the supported range in {currency} minor units; "
+                         "copy the printed amount or use null when it cannot be read.")
+    return round(scaled)
 
 
 async def vlm_receipt(llm: VisionLLM, img: Image.Image, *, receipt_id: str, default_currency: str = "USD") -> ReceiptReading:
     url, _ = image_data_url(ImageOps.exif_transpose(img).convert("RGB"), max_side=1600, fmt="JPEG")
-    r = await llm.generate_structured_with_image_async(_ReceiptVLM, RECEIPT_PROMPT, "Transcribe this receipt.", url, max_retries=2, seed=0)
+
+    # The default currency belongs to this request, not a shared model class.
+    class ReceiptResponse(_ReceiptVLM):
+        @model_validator(mode="after")
+        def representable_amounts(self) -> Self:
+            currency = (self.currency.strip() or default_currency.strip()).upper()
+            _minor(self.total, currency)
+            for line in self.lines:
+                _minor(line.unit_price, currency)
+                _minor(line.line_total, currency)
+            return self
+
+    user = f"Transcribe this receipt. If no currency is readable, leave it empty; the store uses {default_currency.strip().upper()}."
+    r = await llm.generate_structured_with_image_async(ReceiptResponse, RECEIPT_PROMPT, user, url, max_retries=2, seed=0)
     currency = (r.currency.strip() or default_currency.strip()).upper()
     lines = [ReceiptLine(name=line.name.strip(), quantity=line.quantity, unit_price=_minor(line.unit_price, currency),
                          line_total=_minor(line.line_total, currency))

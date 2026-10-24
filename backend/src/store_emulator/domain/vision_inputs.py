@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+MAX_RECEIPT_AMOUNT = 9_007_199_254_740_991  # minor units, browser-safe integers
+
 
 class StorefrontAppeal(BaseModel):
     method: Literal["vlm", "image_stats"]
@@ -20,8 +22,8 @@ class StorefrontAppeal(BaseModel):
 class ReceiptLine(BaseModel):
     name: str
     quantity: float = Field(default=1.0, allow_inf_nan=False)
-    unit_price: int | None = Field(default=None, ge=-9_007_199_254_740_991, le=9_007_199_254_740_991)  # minor units, browser-safe integers
-    line_total: int | None = Field(default=None, ge=-9_007_199_254_740_991, le=9_007_199_254_740_991)
+    unit_price: int | None = Field(default=None, ge=-MAX_RECEIPT_AMOUNT, le=MAX_RECEIPT_AMOUNT)
+    line_total: int | None = Field(default=None, ge=-MAX_RECEIPT_AMOUNT, le=MAX_RECEIPT_AMOUNT)
     sku: str = ""                            # the store's SKU when the name matches one of its products
     matched: bool = False
 
@@ -32,5 +34,5 @@ class ReceiptReading(BaseModel):
     timestamp: str = ""                      # ISO date-time as printed (may be date only)
     currency: str = ""
     lines: list[ReceiptLine] = []
-    total: int | None = Field(default=None, ge=-9_007_199_254_740_991, le=9_007_199_254_740_991)
+    total: int | None = Field(default=None, ge=-MAX_RECEIPT_AMOUNT, le=MAX_RECEIPT_AMOUNT)
     notes: list[str] = []
