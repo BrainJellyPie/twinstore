@@ -506,6 +506,19 @@ def assistive_model(requested: str, config: LLMConfig) -> str:
     return config.model
 
 
+def _same_local_endpoint(first: str, second: str) -> bool:
+    """Match a concrete API endpoint; loopback host aliases can serve different models."""
+    try:
+        a, b = urlsplit(first), urlsplit(second)
+        return a.hostname is not None and (
+            a.scheme, a.hostname, a.port, a.path.rstrip("/"), a.query, a.username, a.password
+        ) == (
+            b.scheme, b.hostname, b.port, b.path.rstrip("/"), b.query, b.username, b.password
+        )
+    except ValueError:
+        return False
+
+
 def _targets_own_local_server(vision: LLMConfig) -> bool:
     """Whether the app's vision model is the local model TwinStore runs on this computer (its address)."""
     if not vision.api_base:
@@ -517,8 +530,7 @@ def _targets_own_local_server(vision: LLMConfig) -> bool:
     from .local_vlm import manager  # late import: local_vlm imports this module
 
     managed = urlsplit(manager().status().api_base or PRESETS[ProviderKind.LLAMACPP].default_api_base or "")
-    return (managed.hostname in loopback and endpoint.scheme == managed.scheme and endpoint.port == managed.port
-            and endpoint.path.rstrip("/") == managed.path.rstrip("/"))
+    return managed.hostname in loopback and _same_local_endpoint(vision.api_base, managed.geturl())
 
 
 def _cloud_vision_model(settings: dict[ProviderKind, ProviderSettings]) -> str:
@@ -557,8 +569,7 @@ def assistive_vision_model(requested: str, vision: LLMConfig) -> str:
     if status.state == "ready":
         return ""
     managed = urlsplit(status.api_base or PRESETS[ProviderKind.LLAMACPP].default_api_base or "")
-    if (managed.hostname not in loopback or endpoint.scheme != managed.scheme or endpoint.port != managed.port
-            or endpoint.path.rstrip("/") != managed.path.rstrip("/")):
+    if managed.hostname not in loopback or not _same_local_endpoint(vision.api_base, managed.geturl()):
         return ""
     settings = load_settings()
     for kind in _FALLBACK_ORDER:
@@ -845,8 +856,7 @@ def ensure_local_ready(api_base: str) -> None:
     status = manager().status()
     if status.state in ("preparing", "downloading", "starting"):
         managed = urlsplit(status.api_base or PRESETS[ProviderKind.LLAMACPP].default_api_base or "")
-        if (managed.hostname in loopback and requested.scheme == managed.scheme
-                and requested.port == managed.port):
+        if _same_local_endpoint(api_base, managed.geturl()):
             done = f" ({status.progress:.0%})" if status.progress is not None else ""
             raise ValueError(f"The local vision model is not ready yet: {status.message}{done}. "
                              "Try again in a moment, or add an API key in Settings → Model providers.")

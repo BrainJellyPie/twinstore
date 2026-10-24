@@ -91,6 +91,7 @@ def test_vision_fallback_excludes_disabled_providers(monkeypatch, provider, sour
 def test_the_managed_vision_endpoint_can_fall_back_until_it_is_ready(monkeypatch, endpoint):
     from store_emulator.application.providers import assistive_vision_model
     status = stopped_local_model(monkeypatch)
+    status.api_base = endpoint
     monkeypatch.setenv('ANTHROPIC_API_KEY', 'fake-alternative')
     config = LLMConfig(model='openai/local-vlm', api_base=endpoint)
     assert assistive_vision_model('', config).startswith('anthropic:')

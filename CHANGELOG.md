@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve independent local vision servers during automatic model selection and
+  run startup. A different loopback host, API path or deployment query no longer
+  inherits the built-in server's startup block or automatic cloud substitution;
+  the managed endpoint retains its existing startup and fallback behavior.
+
 - Bound model-generated survey prices in the survey's currency before caching.
   Oversized finite prices now receive one correction attempt instead of becoming
   unsafe browser integers or failing during conversion; repeated invalid answers
