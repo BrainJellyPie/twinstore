@@ -41,7 +41,7 @@ def test_repetitive_model_labels_are_corrected_before_customer_batches(field, ch
                 self.writes += 1
                 assert len(prompt) < 2000
                 return schema(personas=[gen.GeneratedPersona(identity='resident', age_group='30s', gender='Female',
-                    description='Offline shopper', intent='Buy groceries', purpose='groceries')
+                    description='Offline shopper', intent='Buy groceries', purpose='groceries').model_dump()
                     for _ in range(prompt.count('\n['))])
             for attempt in range(kwargs['max_retries']):
                 value = character * 500 if attempt == 0 else 'nearby'

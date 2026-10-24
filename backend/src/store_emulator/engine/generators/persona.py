@@ -321,6 +321,13 @@ async def generate_personas_for_day(
     # instead of requiring the writer to choose from an impossible empty list.
     identity_list = "\n".join(f"  - {i}" for i in (profile.identities or ["shopper"]))
     purpose_list = "\n".join(f"  - {p}" for p in (profile.purposes or ["shopping"]))
+    identity_choices: dict[str, JsonValue] = {"enum": list(dict.fromkeys(profile.identities or ["shopper"]))}
+    purpose_choices: dict[str, JsonValue] = {"enum": list(dict.fromkeys(profile.purposes or ["shopping"]))}
+
+    class LabelledPersona(GeneratedPersona):
+        # Keep enums inline: llama.cpp resolves a $ref before its sibling constraints.
+        identity: str = Field(max_length=120, json_schema_extra=identity_choices)
+        purpose: str = Field(max_length=120, json_schema_extra=purpose_choices)
 
     limit = semaphore or asyncio.Semaphore(max_concurrent)
     tasks: list[tuple[list[int], asyncio.Task[list[tuple[GeneratedPersona, int]]]]] = []
@@ -367,7 +374,7 @@ async def generate_personas_for_day(
         # handling for providers that do not enforce the transmitted JSON schema.
         constraints: dict[str, JsonValue] = {"minItems": len(chunk), "maxItems": len(chunk)}
         batch_schema = create_model("PersonaBatch", __base__=PersonaBatch,
-            personas=(list[GeneratedPersona], Field(min_length=1, max_length=MAX_PERSONAS_PER_BATCH, json_schema_extra=constraints)))
+            personas=(list[LabelledPersona], Field(min_length=1, max_length=MAX_PERSONAS_PER_BATCH, json_schema_extra=constraints)))
         try:
             async with limit:
                 batch = await llm.generate_structured_async(batch_schema, system_prompt, persona_input, max_retries=3)

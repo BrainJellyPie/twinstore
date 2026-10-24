@@ -41,7 +41,7 @@ class LimitedModel:
             if self.short and len(hours) > 1:
                 hours = hours[:1]
             return schema(personas=[gen.GeneratedPersona(identity="resident", age_group="30s", gender="Female",
-                description=f"Arrived at {hour}", intent="Buy groceries", purpose="groceries") for hour in hours])
+                description=f"Arrived at {hour}", intent="Buy groceries", purpose="groceries").model_dump() for hour in hours])
         finally:
             self.active -= 1
 

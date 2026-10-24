@@ -38,7 +38,7 @@ class Model:
             return schema.model_validate({"personas": []})
         n = 1 if self.short else prompt.count("\n[")
         return schema(personas=[gen.GeneratedPersona(identity="shopper", age_group="20s", gender="Female",
-                      description="Offline test", intent="snack", purpose="snack") for _ in range(n)])
+                      description="Offline test", intent="snack", purpose="snack").model_dump() for _ in range(n)])
 
 
 def schedules():

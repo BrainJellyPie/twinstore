@@ -25,7 +25,7 @@ class Model:
         assert issubclass(schema, gen.PersonaBatch)
         self.writes += 1
         return schema(personas=[gen.GeneratedPersona(identity="shopper", age_group="20s", gender="Female",
-                      description="Offline boundary test", intent="snack", purpose="snack") for _ in range(prompt.count("\n["))])
+                      description="Offline boundary test", intent="snack", purpose="snack").model_dump() for _ in range(prompt.count("\n["))])
 
 
 def row(hour, count):

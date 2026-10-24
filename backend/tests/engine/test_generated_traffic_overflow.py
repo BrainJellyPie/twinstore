@@ -34,7 +34,7 @@ def test_full_customer_generation_with_observed_visit_times_reaches_the_existing
                 return schema.model_validate_json('{"hourly_profiles":[{"hour":9,"visitor_count":' + str(10 ** exponent)
                     + ',"person_types":["resident"]}]}')
             return schema(personas=[gen.GeneratedPersona(identity='resident', age_group='20s', gender='Female',
-                description='offline', intent='snack', purpose='snack') for _ in range(prompt.count('\n['))])
+                description='offline', intent='snack', purpose='snack').model_dump() for _ in range(prompt.count('\n['))])
 
     estimates = {}
     people = asyncio.run(gen.generate_batched(Model(), 'offline', '동네 주민',

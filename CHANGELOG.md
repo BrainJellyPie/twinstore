@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bind generated customer identity and purpose grammars to the actual shared
+  label pools, preventing constrained local decoders from inventing new cohort
+  names. Preserve original spelling, deduplicate choices, and use the existing
+  generic labels for empty pools. Emit inline constraints compatible with llama.cpp.
+
 - Require one theme assignment per supplied customer answer in local output
   grammars. A decoder can no longer finish with an empty or shortened assignment
   list and turn substantive study answers into an all-Other report. Preserve the

@@ -81,7 +81,7 @@ def test_grammar_cannot_finish_early_and_substitute_twins_for_full_generation(ba
             requests.append(requested)
             # A grammar permits completion at minItems. It used to permit one,
             # silently turning the rest of a full generation into cloned people.
-            return schema(personas=[person(i) for i in range(bounds["minItems"])])
+            return schema(personas=[person(i).model_dump() for i in range(bounds["minItems"])])
 
     async def decide(plan):
         plans.append(plan)
@@ -113,7 +113,7 @@ def test_concurrent_customer_requests_keep_separate_count_limits():
             requested = prompt.count("\n[")
             await asyncio.sleep(0)
             assert schema.model_json_schema()["properties"]["personas"]["maxItems"] == requested
-            return schema(personas=[person(i) for i in range(requested)])
+            return schema(personas=[person(i).model_dump() for i in range(requested)])
 
     async def exercise():
         return await asyncio.gather(*[gen.generate_personas_for_day(Model(), "offline", profile(), day,
