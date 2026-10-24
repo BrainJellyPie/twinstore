@@ -157,11 +157,13 @@ class ReportNarrative(BaseModel):
     model: str = ""
 
 
-class _NarrativeResponse(ReportNarrative):
-    """Require new model output without rejecting old saved commentary."""
+class _NarrativeResponse(BaseModel):
+    """Only report text is generated; the application records the answering model."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
     summary: str = Field(min_length=1, max_length=1200, description="what happened, two to four sentences")
+    interpretation: str = Field(max_length=1200, description="why it may have happened, as hypotheses tied to the numbers")
+    next_steps: str = Field(max_length=900, description="what to test or do next")
 
 
 class StructuredLLM(Protocol):
@@ -172,7 +174,9 @@ class StructuredLLM(Protocol):
 
 
 async def write_narrative(llm: StructuredLLM, r: ExperimentReport, layout: str = "") -> ReportNarrative:
-    return await llm.generate_structured_async(_NarrativeResponse, REPORT_NARRATIVE_PROMPT, report_markdown(r, layout), max_retries=2, seed=0)
+    answer = await llm.generate_structured_async(
+        _NarrativeResponse, REPORT_NARRATIVE_PROMPT, report_markdown(r, layout), max_retries=2, seed=0)
+    return ReportNarrative.model_validate(answer.model_dump())
 
 
 # ── Markdown ────────────────────────────────────────────────────────────────────

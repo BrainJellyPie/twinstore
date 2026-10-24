@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Ask the A/B commentary model only for report text. Null or malformed values
+  in an unsolicited `model` metadata field no longer discard valid commentary;
+  the application continues recording the actual answering provider itself.
+
 - Reject blank model summaries before saving study commentary or A/B narratives.
   The model can correct an empty or whitespace-only summary within two attempts;
   unresolved failures preserve the previous saved commentary. Existing report
