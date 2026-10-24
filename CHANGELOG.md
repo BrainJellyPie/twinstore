@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recover oversized impulse prompts once by selecting candidates from every
+  exposed offer, then requesting actions for the selected offers. Preserve the
+  planned basket, individual needs and actual store; retain both selection traces.
+  Compact candidate rows preserve exact names, prices, promotions and visibility.
+  Unrelated errors and failed recovery remain explicit, without recursive retries.
+
 - Carry each shopper's personal description and purchase intent into impulse
   decisions. Individual preferences no longer disappear after planned routing,
   and revised needs cannot reuse an older impulse response solely because the

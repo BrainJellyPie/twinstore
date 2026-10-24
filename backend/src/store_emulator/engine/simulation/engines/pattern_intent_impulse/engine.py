@@ -9,6 +9,7 @@ from litellm.exceptions import BadRequestError
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.engine import PerCustomerContext, EngineDecision
+from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, PathFinder, Position, TokenUsage, WEEKDAY_LABELS, stable_seed
 from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
@@ -244,18 +245,53 @@ class PatternIntentImpulseEngine:
                 pattern.browse_required_before_buy, currency=currency, product_codes=True,
                 max_quantity=cfg.max_quantity_per_line,
             )
-            stage3_user = stage3_impulse.build_user_prompt(
-                context.persona, intent.model_copy(update={"actions": bounded_intent}), exposed, day_of_week,
-                address=context.address, customer_profile=context.customer_profile,
-                cue=context.cue, store=context.store, grid_size=context.store.grid_size,
-                visibility=visibility, currency=currency, records=impulse_records,
-                max_quantity=cfg.max_quantity_per_line,
-            )
-            impulse = await self._llm.generate_structured_async(
-                stage2_intent.catalog_response_model(ImpulseResponse, impulse_records, max_quantity=cfg.max_quantity_per_line),
-                stage3_system, stage3_user + situation,
-                seed=stage_seed("stage3"), route=context.persona.id,
-            )
+            def impulse_user_prompt(offers: list[tuple[Rack, Slot, str]], catalog: dict[str, SlotItem],
+                                    *, selection: bool = False) -> str:
+                return stage3_impulse.build_user_prompt(
+                    context.persona, intent.model_copy(update={"actions": bounded_intent}), offers, day_of_week,
+                    address=context.address, customer_profile=context.customer_profile,
+                    cue=context.cue, store=context.store, grid_size=context.store.grid_size,
+                    visibility=visibility, currency=currency, records=catalog,
+                    max_quantity=cfg.max_quantity_per_line, selection=selection,
+                ) + situation
+
+            try:
+                impulse = await self._llm.generate_structured_async(
+                    stage2_intent.catalog_response_model(ImpulseResponse, impulse_records, max_quantity=cfg.max_quantity_per_line),
+                    stage3_system, impulse_user_prompt(exposed, impulse_records),
+                    seed=stage_seed("stage3"), route=context.persona.id,
+                )
+            except (BadRequestError, InstructorRetryException) as error:
+                cause = (error.failed_attempts[-1].exception
+                         if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+                maximum = max(4, pattern.max_products - existing_buys)
+                if not is_context_overflow(cause) or len(impulse_records) <= maximum:
+                    raise
+                logger.info("[impulse] input context exceeded; selecting at most %s candidates from %s exposed offers once",
+                            maximum, len(impulse_records))
+                candidates = await self._llm.generate_structured_async(
+                    stage2_intent.catalog_selection_model(impulse_records, maximum),
+                    stage3_impulse.build_catalog_selection_prompt(maximum, currency),
+                    impulse_user_prompt(exposed, impulse_records, selection=True),
+                    max_retries=2, seed=stage_seed("impulse_catalog"), route=context.persona.id,
+                )
+                impulse_records = {code: impulse_records[code] for code in candidates.codes}
+                recovery_trace["impulse_catalog_recovery"] = {"selected_codes": candidates.codes,
+                    "selected_skus": [item.sku for item in impulse_records.values()]}
+                if impulse_records:
+                    selected_offers = {(item.sku, item.name, item.price, item.promo) for item in impulse_records.values()}
+                    focused = [(rack, slot, sku) for rack, slot, sku in exposed
+                               if (item := next((item for item in slot.items if item.sku == sku), None)) is not None
+                               and (item.sku, item.name, item.price, item.promo) in selected_offers]
+                    focused_user = impulse_user_prompt(focused, impulse_records) + (
+                        "\n\nContext recovery candidates: these offers were selected from the full exposure list. "
+                        "Respond only to these candidate offers; the planned basket and actual store are unchanged.")
+                    impulse = await self._llm.generate_structured_async(
+                        stage2_intent.catalog_response_model(ImpulseResponse, impulse_records, max_quantity=cfg.max_quantity_per_line),
+                        stage3_system, focused_user, seed=stage_seed("stage3"), route=context.persona.id,
+                    )
+                else:
+                    impulse = ImpulseResponse()
             impulse = stage2_intent.decode_catalog_response(ImpulseResponse, impulse, impulse_records, context.store,
                                                             exposed=exposed, pathfinder=self._pathfinder)
         else:
