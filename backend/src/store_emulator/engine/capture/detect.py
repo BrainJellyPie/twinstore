@@ -77,7 +77,7 @@ class FacingDetector(Protocol):
 class ImageLLM(Protocol):
     async def generate_structured_with_image_async[T: BaseModel](
         self, response_model: type[T], system_prompt: str, user_prompt: str, image_url: str,
-        *, max_retries: int = 1, seed: int | None = None, route: str | None = None,
+        *, max_retries: int = 1, seed: int | None = None, route: str | None = None, max_tokens: int | None = None,
     ) -> T: ...
 
 
@@ -629,7 +629,9 @@ class VLMGroundingDetector:
             answer = await self.llm.generate_structured_with_image_async(
                 _Grounding, VLM_GROUNDING_SYSTEM_PROMPT,
                 VLM_GROUNDING_PROMPT.format(convention=hint, box_order=box_order), url,
-                max_retries=2, seed=0,
+                # Up to 80 boxes need thousands of tokens; the shared client's
+                # 320-token cap belongs to the subsequent single-product labels.
+                max_retries=2, seed=0, max_tokens=6144,
             )
         except Exception as e:  # noqa: BLE001 — a failed grounding call falls back to the classic detector
             logger.warning(f"[capture] VLM grounding failed: {type(e).__name__}: {e}")

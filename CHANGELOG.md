@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Give whole-photo shelf grounding its own 6,144-token output ceiling. It no
+  longer shares the 320-token limit for reading one product, which truncated
+  ordinary multi-product coordinate lists and triggered classic fallback.
+  Individual product reads retain their smaller limit and separate cache keys.
+
 - Ask shelf-photo grounding models for coordinates only. Unused product-name
   fields no longer discard all detected boxes when a local model returns null,
   a long name or the wrong name type. Product reading still runs in its separate
