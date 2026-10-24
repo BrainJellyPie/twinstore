@@ -2,7 +2,7 @@
 
 Resolution order, most specific first; name matches prefer the named category before falling
 back to the full catalog:
-1. exact   — the product name as printed (case-insensitive).
+1. exact / prefix — the product name as printed, or its bounded model prefix (case-insensitive).
 2. name    — fuzzy name match: most of the named words appear in the product name.
 3. words   — a distinctive named word appears in product names ("coffee" → coffee drinks).
 4. category — the named category matches rack signs/descriptions (synonyms expanded).
@@ -19,7 +19,7 @@ from store_emulator.engine.perception import category_label
 from store_emulator.engine.scenario import item_categories, words_categories
 
 from ..rule_based import expand_category, tokenize
-from .prompt import PLAN_CATEGORY_LIMIT, PlannedItem
+from .prompt import PLAN_CATEGORY_LIMIT, PLAN_PRODUCT_LIMIT, PlannedItem
 
 type CatalogEntry = tuple[Rack, Slot, SlotItem, set[str], set[str]]
 
@@ -33,7 +33,7 @@ _FILLER = frozenset({
 
 @dataclass(frozen=True)
 class PlanMatch:
-    how: str  # exact | name | words | category | demand_category | unresolved
+    how: str  # exact | prefix | name | words | category | demand_category | unresolved
     candidates: tuple[CatalogEntry, ...]
 
     @property
@@ -62,11 +62,16 @@ def match_plan_item(item: PlannedItem, catalog: list[CatalogEntry]) -> PlanMatch
     in_category = _category_entries(catalog, item.category, clipped=len(item.category) == PLAN_CATEGORY_LIMIT)
     product = item.product.strip()
     if product:
-        exact = [e for e in in_category if e[2].name.casefold() == product.casefold()]
-        if not exact:
-            exact = [e for e in catalog if e[2].name.casefold() == product.casefold()]
-        if exact:
-            return PlanMatch("exact", tuple(exact))
+        clipped = len(item.product) == PLAN_PRODUCT_LIMIT
+        said_name = product.casefold()
+        for pool in (in_category, catalog):
+            literal = [e for e in pool if e[2].name.casefold() == said_name
+                       or (clipped and e[2].name.casefold().startswith(said_name))]
+            if literal:
+                # A short exact name can also be the clipped prefix of a longer
+                # item. Keep every matching offer instead of inventing certainty.
+                how = "exact" if all(e[2].name.casefold() == said_name for e in literal) else "prefix"
+                return PlanMatch(how, tuple(literal))
         said = tokenize(product) - _FILLER
         if said:
             for pool, min_jaccard in ((in_category, 0.0), (catalog, 0.3)):

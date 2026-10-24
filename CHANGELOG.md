@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Resolve entry-plan product names clipped at the model's 48-character bound
+  against catalog prefixes before broad category matching. Long multilingual
+  names retain their intended offer, while shared prefixes remain ambiguous
+  and named-category preference is preserved.
+
 - Recover oversized intent requests once by selecting customer-specific candidates
   from the full offer catalog before planning the visit. Keep all rack geometry
   and the real store unchanged; validate candidate codes, bound correction attempts
