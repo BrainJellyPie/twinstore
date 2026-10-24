@@ -155,7 +155,7 @@ def test_compact_table_preserves_offer_metadata_and_exposure_order(collision_sto
     visibility = {item.sku: 0.83, second.slots[0].items[0].sku: 0.41} if with_visibility else None
     before = collision_store.model_dump()
     prompt = stage3_impulse.build_user_prompt(_persona(), stage2_intent.IntentResponse(), exposed,
-        grid_size=collision_store.grid_size, visibility=visibility, currency=currency, records=records)
+        store=collision_store, grid_size=collision_store.grid_size, visibility=visibility, currency=currency, records=records)
     assert prompt.count("Distinct shelf promotion") == 1
     assert prompt.count("  R1:") == prompt.count("  R2:") == 1
     positions = []

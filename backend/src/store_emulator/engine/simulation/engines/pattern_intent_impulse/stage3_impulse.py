@@ -1,9 +1,14 @@
 """Stage 3: impulse reactions. Inserts serendipity events for products exposed along the route."""
 
+import json
+
 from store_emulator.domain.behavior import BehaviorCue
 from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.persona import Persona
+from store_emulator.domain.store import Store
+from store_emulator.domain.types import Action
 from store_emulator.engine.prompting import format_budget, format_price, price_unit_rule
+from store_emulator.engine.routing.store_lookup import resolve_buy_placement
 from .prompt_utils import format_cue_prompt
 
 from .stage2_intent import IntentResponse
@@ -91,19 +96,34 @@ def build_user_prompt(
     customer_profile: str = "",
     cue: BehaviorCue | None = None,
     *,
+    store: Store,
     grid_size: tuple[int, int],
     visibility: dict[str, float] | None = None,
     currency: str = "USD",
     records: dict[str, SlotItem] | None = None,
+    max_quantity: int = 6,
 ) -> str:
     """`visibility` (sku → 0–1) comes from the perception model. When given, it already
     accounts for shelf level, distance and facing, so the level heuristic is not repeated."""
     lines: list[str] = []
 
     lines.append("## 기존 이벤트 시퀀스")
+    lines.append("buy 행의 JSON은 이미 계획한 상품·수량·가격입니다. 설명이 비어 있어도 이 구매 정보를 반영하세요.")
     for i, event in enumerate(intent.actions):
         action_label = event.action or event.nav
-        lines.append(f"  [{i}] {action_label}: {event.description}")
+        detail = event.description
+        if event.action == Action.BUY:
+            quantity = max(1, min(max_quantity, event.quantity))
+            basket: dict[str, str | int] = {"sku": event.product_sku, "quantity": quantity}
+            placement = resolve_buy_placement(store, target=event.target, face=event.face, sku=event.product_sku,
+                                              block=event.product_block, level=event.product_level)
+            if placement is not None:
+                item = next(item for item in placement[1].items if item.sku == event.product_sku)
+                basket.update(name=item.name, unit_price=item.price, line_total=item.price * quantity, currency=currency)
+                if item.promo:
+                    basket["promotion"] = item.promo
+            detail = json.dumps(basket, ensure_ascii=False, separators=(",", ":")) + (f" {detail}" if detail else "")
+        lines.append(f"  [{i}] {action_label}: {detail}")
     lines.append("")
 
     lines.append("## 경로상 노출되는 상품")

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Include the verified planned basket in impulse-decision prompts: exact SKU,
+  name, executable quantity, unit price, line total, currency and promotion.
+  Blank action narration no longer hides existing purchases or allows a changed
+  basket to reuse another basket's cached impulse decision.
+
 - Ignore model-generated checkout actions when a layout has no counters, before
   building its planned route. Such layouts no longer fail an otherwise valid
   purchase visit while looking for a nonexistent checkout. Retain the model's

@@ -247,8 +247,9 @@ class PatternIntentImpulseEngine:
             stage3_user = stage3_impulse.build_user_prompt(
                 context.persona, intent.model_copy(update={"actions": bounded_intent}), exposed, day_of_week,
                 address=context.address, customer_profile=context.customer_profile,
-                cue=context.cue, grid_size=context.store.grid_size,
+                cue=context.cue, store=context.store, grid_size=context.store.grid_size,
                 visibility=visibility, currency=currency, records=impulse_records,
+                max_quantity=cfg.max_quantity_per_line,
             )
             impulse = await self._llm.generate_structured_async(
                 stage2_intent.catalog_response_model(ImpulseResponse, impulse_records, max_quantity=cfg.max_quantity_per_line),
