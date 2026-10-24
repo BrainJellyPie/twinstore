@@ -11,7 +11,7 @@ from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 import re
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.persona import AgeGroup, Gender, Persona
@@ -78,6 +78,7 @@ trading day. Set only what the description asks for and leave the rest empty:
   shelves), yes for those who bought there;
 - arrived_after and arrived_before as HH:MM; min_spent and max_spent in major units of {currency}; min_minutes and
   max_minutes for the length of the visit;
+  use valid 24-hour clocks, from 00:00 through 23:59 (24:00 means the end of the day); leave unspecified times empty;
 - sort: spent (biggest spenders first), nothing (longest browsing without buying), impulse, or longest (visit);
 - a short label for the group.
 Write in English."""
@@ -235,8 +236,17 @@ async def find_shoppers(
     llm: StructuredLLM, text: str, customers: Mapping[str, CustomerResult], personas: Mapping[str, Persona],
     store: Store, currency: str,
 ) -> ShopperMatch:
+    class TimedFilter(_Filter):
+        @field_validator("arrived_after", "arrived_before")
+        @classmethod
+        def valid_clock(cls, value: str) -> str:
+            if value and _clock(value) is None:
+                raise ValueError(f"{value!r} is not a valid HH:MM 24-hour clock. Correct the requested time; "
+                                 "use an empty string only when no time condition was requested.")
+            return value
+
     f = await llm.generate_structured_async(
-        _Filter, FILTER_PROMPT.format(currency=currency.upper()),
+        TimedFilter, FILTER_PROMPT.format(currency=currency.upper()),
         f"{_listing(store, currency)}\n\nShoppers wanted: {text.strip()}", max_retries=2, seed=0,
     )
     return apply_filter(f, customers, personas, store, currency)

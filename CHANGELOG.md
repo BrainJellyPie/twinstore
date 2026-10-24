@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate model-written arrival clocks before matching or caching shopper
+  searches. Malformed times now receive bounded correction instead of dropping
+  the requested time condition and returning a wider customer group.
+
 - Preserve applicable automatic edits when models leave text fields unused by
   that edit kind null. Keep required product, shelf, package, category and sign
   values strict; reuse the same normalization for layout and A/B drafts.
