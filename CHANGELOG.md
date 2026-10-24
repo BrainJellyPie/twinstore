@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Enforce the selected behavior pattern's purchase limit in the three-stage LLM
+  simulator. Zero-purchase patterns cannot create sales or checkout traffic;
+  planned products take priority over impulse additions, while per-product
+  quantities remain intact. Exposure uses the bounded plan and traces show drops.
+
 - Correct nonexistent or ambiguous products in automatic shelf-test drafts before
   caching. One correction uses the actual layout's target validation; repeated
   failures remain retryable. Reviewable partial drafts keep their existing warnings.

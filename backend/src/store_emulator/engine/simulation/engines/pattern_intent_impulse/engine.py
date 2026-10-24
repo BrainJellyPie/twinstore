@@ -83,6 +83,14 @@ def _drop_orphan_pay(actions: list[CustomerAction]) -> list[CustomerAction]:
     return [a for a in actions if a.action != Action.PAY]
 
 
+def apply_product_limit(actions: list[CustomerAction], maximum: int) -> tuple[list[CustomerAction], int]:
+    """Cap purchase lines, retaining planned products before impulse additions; quantities are unchanged."""
+    buys = [i for i, action in enumerate(actions) if action.action == Action.BUY]
+    allowed = set(sorted(buys, key=lambda i: (actions[i].origin == "impulse", i))[:max(0, maximum)])
+    kept = [action for i, action in enumerate(actions) if action.action != Action.BUY or i in allowed]
+    return _drop_orphan_pay(kept), len(buys) - len(allowed)
+
+
 class PatternIntentImpulseEngine:
     engine_type = "pattern_intent_impulse"
 
@@ -151,7 +159,9 @@ class PatternIntentImpulseEngine:
 
         # Exposure is computed on the route the shopper will actually walk (same ordering
         # rule as the final merge), so impulse candidates match the executed path.
-        planned = integrate_actions(context.store, intent.actions, [], ordering=cfg.route_ordering)
+        valid_intent, dropped_invalid = drop_invalid_buys(intent.actions, context.store)
+        bounded_intent, dropped_limit = apply_product_limit(valid_intent, pattern.max_products)
+        planned = integrate_actions(context.store, bounded_intent, [], ordering=cfg.route_ordering)
         journey = build_journey(context.store, planned, self._pathfinder, cfg.block_move_sec)
         visibility: dict[str, float] | None = None
         if cfg.exposure_model == "visibility":
@@ -164,13 +174,13 @@ class PatternIntentImpulseEngine:
         # Stage 3: impulse-purchase reactions.
         impulse: ImpulseResponse
         if exposed:
-            existing_buys = sum(1 for a in intent.actions if a.action == Action.BUY)
+            existing_buys = sum(1 for a in bounded_intent if a.action == Action.BUY)
             stage3_system = stage3_impulse.build_system_prompt(
                 pattern.max_products, pattern.allow_no_purchase, existing_buys,
                 pattern.browse_required_before_buy, currency=currency,
             )
             stage3_user = stage3_impulse.build_user_prompt(
-                context.persona, intent, exposed, day_of_week,
+                context.persona, intent.model_copy(update={"actions": bounded_intent}), exposed, day_of_week,
                 address=context.address, customer_profile=context.customer_profile,
                 cue=context.cue, grid_size=context.store.grid_size,
                 visibility=visibility, currency=currency,
@@ -195,12 +205,15 @@ class PatternIntentImpulseEngine:
         if cfg.route_ordering == "planned":
             merged = integrate_actions(context.store, planned, impulse_actions, ordering="planned")
         else:
-            merged = integrate_actions(context.store, intent.actions, impulse_actions, ordering="nearest")
-        merged, dropped_invalid = drop_invalid_buys(merged, context.store)
+            merged = integrate_actions(context.store, bounded_intent, impulse_actions, ordering="nearest")
+        merged, dropped_impulse_invalid = drop_invalid_buys(merged, context.store)
+        dropped_invalid += dropped_impulse_invalid
         merged, dropped_budget = apply_budget(
             merged, context.store, context.persona.budget_max, cfg.budget_tolerance,
             max_quantity=cfg.max_quantity_per_line,
         )
+        merged, dropped_impulse_limit = apply_product_limit(merged, pattern.max_products)
+        dropped_limit += dropped_impulse_limit
         # An initially browsing-only visit has no payment in stage 2. Any buys
         # surviving stage 3 and budget pruning still need a checkout before exit.
         if (context.store.counters and any(a.action == Action.BUY for a in merged)
@@ -218,6 +231,7 @@ class PatternIntentImpulseEngine:
                 "stage2": intent.model_dump(),
                 "stage3": impulse.model_dump(),
                 "exposed_skus": [sku for _, _, sku in exposed],
+                "dropped_product_limit": dropped_limit,
             },
             dropped_invalid_buys=dropped_invalid,
             dropped_over_budget=dropped_budget,
