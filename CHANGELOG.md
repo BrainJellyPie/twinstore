@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Honor the requested concurrency limit across customer-writing batches for all
+  weekdays. Limits below 20 are no longer raised to 20, avoiding excess parallel
+  requests and generation failures against providers with lower capacity.
+
 - Roll back photo uploads rejected during receipt, image or status persistence.
   Unqueued captures no longer remain pending or consume the upload's retry ID;
   receipts for previously accepted and subsequently deleted photos stay intact.

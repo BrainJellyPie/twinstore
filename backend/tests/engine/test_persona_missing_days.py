@@ -13,6 +13,7 @@ from store_emulator.engine.generators.traffic_profile import TrafficProfile
 
 
 class Model:
+    api_base = None
     max_parallel = None
 
     def __init__(self, failed_day=2, failure="empty", first_only=False, short=False):

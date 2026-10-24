@@ -402,7 +402,7 @@ async def generate_batched(
     open_days = [s for s in schedules if s.is_open]
 
     # One limit for all days (they run together): 10 requests a day at once came to 70, enough to hit rate limits.
-    shared = asyncio.Semaphore(max(max_concurrent, 20))
+    shared = asyncio.Semaphore(max(1, max_concurrent))
     tally = BatchTally()
 
     async def _day_visitors(schedule: DaySchedule) -> list[HourlyProfile]:
