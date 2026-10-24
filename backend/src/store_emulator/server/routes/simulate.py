@@ -95,6 +95,7 @@ def _engines() -> list[EngineInfo]:
     vlm = with_vision_default(config.model_copy(update={"engine_type": EngineType.VLM_GLANCE}), None).llm_for(
         EngineType.VLM_GLANCE)
     settings = load_settings()
+    endpoint_ready: dict[str, bool] = {}
 
     def ready(model: LLMConfig) -> bool:
         if model.api_base is None and model.api_key is None and missing_key(model.model, settings) is not None:
@@ -104,7 +105,9 @@ def _engines() -> list[EngineInfo]:
         except ValueError:
             return False
         if resolved.api_base:   # a server (llamacpp:local, the app's local model, a self-hosted one) must answer
-            return local_model_answers(resolved.api_base)
+            if resolved.api_base not in endpoint_ready:
+                endpoint_ready[resolved.api_base] = local_model_answers(resolved.api_base)
+            return endpoint_ready[resolved.api_base]
         return resolved.api_key is not None or missing_key(model.model, settings) is None
 
     def suggested(model: LLMConfig) -> str:

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reuse a model endpoint's readiness result within one engine-list request.
+  Shared text/vision servers no longer receive four duplicate checks, reducing
+  repeated waits on slow servers. Refresh readiness on every subsequent request
+  and keep distinct addresses, ports and paths independent.
+
 - Keep the engine selector available when a model server address has malformed
   IPv6, a bad port or no host. Mark that model unavailable, retain working engines
   and reject runs with a clear address error. An API key no longer skips endpoint
