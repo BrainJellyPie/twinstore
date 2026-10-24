@@ -156,20 +156,25 @@ def start_optimization(
                     ensure_resolvable(vlm_config)
                 except ValueError as e:
                     raise AppError(str(e), 400) from e
-            job_id = f"opt_{uuid.uuid4().hex[:6]}"
+            job_id = f"opt_{uuid.uuid4().hex}"
             status = OptimizationStatus(
                 job_id=job_id, setup_id=setup_id, status="pending", budget=spec.budget, spec=spec, judge=judge,
                 scenario=scenario.name if scenario else "", created_at=now_iso(), operations=operations,
             )
+            folder = _dir(pid, job_id)
+            try:
+                folder.mkdir(parents=True, exist_ok=False)
+            except FileExistsError:
+                raise AppError("This optimization identifier already exists. Retry to start a new search", 409) from None
             try:
                 if vlm_config is not None:
                     image_loader = snapshot_project_images(
                         pid, (item for rack in store.racks for slot in rack.slots for item in slot.items),
-                        _dir(pid, job_id) / "images",
+                        folder / "images",
                     )
                 _write_status(pid, status)
             except Exception:
-                remove_tree(_dir(pid, job_id))
+                remove_tree(folder)
                 raise
     except Timeout:
         raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
