@@ -538,7 +538,7 @@ VLM_GROUNDING_SYSTEM_PROMPT = "You detect products on store shelf photos. Answer
 VLM_GROUNDING_PROMPT = (
     "Find every product facing on the shelves in this photo: one box per visible package "
     "(bottle, can, box, bag, cup). Do not box shelves, price tags or signs. "
-    "Return products: [{{\"box_2d\": [x1, y1, x2, y2], \"label\": short name}}]. "
+    "Return products: [{{\"box_2d\": [{box_order}], \"label\": short name}}]. "
     "Coordinates: {convention}."
 )
 
@@ -608,6 +608,12 @@ class VLMGroundingDetector:
         self.llm = llm
         self.model = model
         self.convention: BoxConvention = convention
+        if convention == "auto":
+            lowered = model.lower()
+            if "gemini" in lowered:
+                self.convention = "gemini"
+            elif "qwen3" in lowered or "qwen-3" in lowered:
+                self.convention = "norm1000"
         self.max_side = max_side
         self.calls = 0
 
@@ -619,9 +625,11 @@ class VLMGroundingDetector:
             "norm1": "x1, y1, x2, y2 as fractions 0-1",
         }.get(self.convention, f"pixels of this {size[0]}x{size[1]} image")
         self.calls += 1
+        box_order = "ymin, xmin, ymax, xmax" if self.convention == "gemini" else "x1, y1, x2, y2"
         try:
             answer = await self.llm.generate_structured_with_image_async(
-                _Grounding, VLM_GROUNDING_SYSTEM_PROMPT, VLM_GROUNDING_PROMPT.format(convention=hint), url,
+                _Grounding, VLM_GROUNDING_SYSTEM_PROMPT,
+                VLM_GROUNDING_PROMPT.format(convention=hint, box_order=box_order), url,
                 max_retries=1, seed=0,
             )
         except Exception as e:  # noqa: BLE001 — a failed grounding call falls back to the classic detector

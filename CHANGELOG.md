@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep shelf-photo grounding prompts and coordinate decoding consistent. Automatic
+  Qwen 3/VL requests now ask for the same 0–1000 coordinates the decoder expects;
+  Gemini requests consistently use y-first coordinates in both instructions and
+  the example. Explicit coordinate-convention overrides remain effective.
+
 - Validate model-read floor-plan geometry before caching or building a store.
   Outlines and fixture boxes now require four finite image coordinates; outlines
   must have positive width and depth, and physical dimensions cannot be negative
