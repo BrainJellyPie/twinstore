@@ -52,12 +52,16 @@ def _request_errors(error: BaseException) -> list[BaseException]:
         seen.add(id(current))
         if isinstance(current, (ValidationError, json.JSONDecodeError, IncompleteOutputException)):
             continue
-        stack.extend(e for e in (current.__cause__, current.__context__) if e is not None)
         if isinstance(current, InstructorError):
             # Its string includes completions and validation inputs, not just error messages.
-            stack.extend(attempt.exception for attempt in current.failed_attempts or [])
-        else:
-            errors.append(current)
+            # Earlier rejections do not describe a later accepted-but-invalid answer or timeout.
+            if current.failed_attempts:
+                stack.append(current.failed_attempts[-1].exception)
+            else:
+                stack.extend(e for e in (current.__cause__, current.__context__) if e is not None)
+            continue
+        stack.extend(e for e in (current.__cause__, current.__context__) if e is not None)
+        errors.append(current)
     return errors
 
 

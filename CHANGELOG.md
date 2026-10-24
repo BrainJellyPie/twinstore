@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Classify provider failures from the final structured-response attempt.
+  Earlier authentication or optional-parameter rejections no longer invalidate
+  credentials, switch models or disable sampling settings after a later output
+  error or timeout. Preserve genuine terminal rejection recovery.
+
 - Adapt a local output-token ceiling only when the terminal attempt actually
   rejected that ceiling. An earlier context error no longer starts another
   request budget after invalid output, truncation or an unrelated provider error.
