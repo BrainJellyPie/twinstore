@@ -137,3 +137,22 @@ def test_a_failed_vision_model_leaves_the_venue_unchanged(client, monkeypatch):
     assert res.status_code == 502 and "limiting requests" in res.json()["detail"]
     after = client.get(f"/api/projects/{PID}/town").json()
     assert next(v for v in after["venues"] if v["id"] == focal)["attractiveness"] == before
+
+
+@pytest.mark.parametrize("score,pull", [(0, .6), (10, 1.4)])
+def test_complete_model_rating_with_null_reason_updates_only_the_target_venue(client, monkeypatch, score, pull):
+    from store_emulator.application import vision_inputs
+    from tests.engine.test_vision_inputs import _Fake
+
+    town = client.post(f"/api/projects/{PID}/town/generate", json={"archetype": "residential", "seed": 1}).json()
+    focal = town["focal_venue_id"]
+    before = {v["id"]: v["attractiveness"] for v in town["venues"]}
+    model = _Fake(dict(signage=score, entrance=score, window=score, upkeep=score, overall=score, reasons=None))
+    model.model = "openai/offline-storefront"
+    monkeypatch.setattr(vision_inputs, "_client", lambda *a, **k: model)
+    response = client.post(f"/api/projects/{PID}/town/venues/{focal}/storefront",
+        files={"photo": ("front.png", _png(True), "image/png")})
+    assert response.status_code == 200, response.text
+    assert response.json()["appeal"]["method"] == "vlm"
+    saved = client.get(f"/api/projects/{PID}/town").json()
+    assert {v["id"]: v["attractiveness"] for v in saved["venues"]} == {**before, focal: pull}

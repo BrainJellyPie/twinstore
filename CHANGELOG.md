@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve complete vision-model storefront ratings when the optional reason
+  is null. Keep all measured scores and the resulting venue attractiveness,
+  while malformed or missing measurements still fail without saving changes.
+
 - Require the primary LLM action list before executing or caching a planned
   visit, including after catalog context recovery. Missing lists no longer
   silently become empty visits. Keep explicit empty plans and optional impulse

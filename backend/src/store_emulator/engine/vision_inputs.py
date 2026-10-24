@@ -72,11 +72,16 @@ class _StorefrontRating(BaseModel):
     overall: int = Field(ge=0, le=10, description="how likely a passer-by is to walk in")
     reasons: str = Field(default="", max_length=240)
 
+    @field_validator("reasons", mode="before")
+    @classmethod
+    def _optional_reason(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 STOREFRONT_PROMPT = """You judge shop fronts the way passers-by do. Rate this storefront photo from 0 to 10 on:
 signage (a visible, legible shop sign), entrance (open, inviting, step-free), window (products or a lit interior
 visible from outside), upkeep (bright, clean, well kept), and overall: how likely a passer-by is to walk in.
-5 is an ordinary shop front. Give a short reason."""
+5 is an ordinary shop front. Give a short reason; use an empty string instead of null when no explanation is given."""
 
 
 async def vlm_appeal(llm: VisionLLM, img: Image.Image, *, model: str = "vlm") -> StorefrontAppeal:
