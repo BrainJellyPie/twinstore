@@ -69,6 +69,10 @@ class IntentResponse(BaseModel):
             if isinstance(action, dict):
                 action = {key: item for key, item in cast(dict[str, object], action).items()
                           if key not in {"origin", "product_block", "product_level"}}
+                if action.get("action") != Action.BUY:
+                    for key, default in (("product_sku", ""), ("quantity", 1)):
+                        if key in action and action[key] is None:
+                            action[key] = default
                 if info.mode == "json":
                     # A before-validator returns Python containers. Preserve JSON
                     # array → tuple semantics for Instructor's strict validation.
@@ -208,6 +212,7 @@ def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[st
 - 고객의 예산을 크게 넘는 구매는 하지 않습니다
 - reasoning은 600자 이하, 각 행동의 description은 400자 이하로 간결하게 작성하고 같은 문장을 반복하지 마세요
 - 설명이 없으면 null 대신 빈 문자열("")을 사용하세요
+- buy가 아닌 행동의 product_sku는 빈 문자열(""), quantity는 1로 작성하세요. null을 사용하지 마세요.
 
 {price_unit_rule(currency)}
 

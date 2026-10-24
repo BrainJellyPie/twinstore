@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Accept null SKU/quantity fields on model-generated non-buy actions as their
+  existing empty-SKU/one-unit defaults. An unused field on a browse, payment or
+  exit no longer invalidates the whole visit. Buy fields and other invalid types
+  remain strict; prompts explicitly request the non-buy defaults.
+
 - Describe an unspecified shopper budget as having no fixed spending cap in
   pattern/intent prompts. The domain's zero upper bound no longer appears as
   a zero-to-zero spending range; positive lower bounds and explicit positive
