@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Cap automatic assortment requests by the category's distinct catalog SKU count
+  as well as shelf space and user limits. A six-product catalog no longer advertises
+  room for sixteen different choices in either the bulk or fallback task, avoiding
+  repeated IDs when a model tries to fill that allowance.
+
 - Size fallback starter-category tasks by the remaining global category budget.
   After selecting 9–15 categories, another eight-rack task can no longer invite
   more new categories than the sixteen-category limit permits. Every supplied

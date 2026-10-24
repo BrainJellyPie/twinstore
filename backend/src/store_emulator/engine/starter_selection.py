@@ -237,7 +237,8 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
     keys = [group.category for group in selected.groups]
     candidates = {key: [catalog_slot_item(item, store.currency or "USD") for item in CATALOG[key]] for key in keys}
     capacities = {rack.id: rack.available_slots * products_per_slot for rack in eligible}
-    limits = {group.category: min(16, (product_limits or {}).get(group.category, 16),
+    limits = {group.category: min(16, len({p.sku for p in candidates[group.category]}),
+                                  (product_limits or {}).get(group.category, 16),
                                   sum(capacities[rid] for rid in group.rack_ids)) for group in selected.groups}
     def validate_products(chosen: ProductSelection) -> None:
         product_keys = [group.category for group in chosen.groups]
