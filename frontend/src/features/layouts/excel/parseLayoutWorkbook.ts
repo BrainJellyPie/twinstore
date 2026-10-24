@@ -66,6 +66,8 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
   // not iterate that rectangle, and never truncate actual product cells.
   const range: XLSX.Range = { s: { r: Infinity, c: Infinity }, e: { r: 0, c: 0 } };
   const unreadable: Array<{ address: string; r: number; c: number }> = [];
+  const arrayRanges = new Map<string, XLSX.Range>();
+  let arrayCells = 0;
   for (const address of Object.keys(layoutSheet)) {
     if (address.startsWith("!")) continue;
     const cell: XLSX.CellObject | undefined = layoutSheet[address];
@@ -73,6 +75,29 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
     const formula = Boolean(cell.f || cell.F);
     if (!formula && cell.t !== "e" && (cell.t === "z" || cell.v == null)) continue;
     const { r, c } = XLSX.utils.decode_cell(address);
+    if (cell.F) {
+      const reference = cell.F.replace(/\$/g, "").toUpperCase();
+      if (!/^[A-Z]+[1-9]\d*(?::[A-Z]+[1-9]\d*)?$/.test(reference)) {
+        throw new UserMessageError("excelCellNeedsValue", { cell: address });
+      }
+      const array = XLSX.utils.decode_range(reference);
+      if (![array.s.r, array.s.c, array.e.r, array.e.c].every(Number.isSafeInteger)
+        || array.s.r > array.e.r || array.s.c > array.e.c
+        || array.e.r >= 1_048_576 || array.e.c >= 16_384
+        || r < array.s.r || r > array.e.r || c < array.s.c || c > array.e.c) {
+        throw new UserMessageError("excelCellNeedsValue", { cell: address });
+      }
+      const key = XLSX.utils.encode_range(array);
+      if (!arrayRanges.has(key)) {
+        arrayCells += (array.e.r - array.s.r + 1) * (array.e.c - array.s.c + 1);
+        if (arrayCells > 2_000_000) throw new UserMessageError("excelSheetTooWide");
+        arrayRanges.set(key, array);
+        range.s.r = Math.min(range.s.r, array.s.r);
+        range.s.c = Math.min(range.s.c, array.s.c);
+        range.e.r = Math.max(range.e.r, array.e.r);
+        range.e.c = Math.max(range.e.c, array.e.c);
+      }
+    }
     if (cell.t === "e" || (formula && (cell.t === "z" || cell.v == null))) {
       unreadable.push({ address, r, c });
     }
@@ -86,6 +111,23 @@ export function parseLayoutWorkbook(buffer: ArrayBuffer): ParsedLayout {
   if ((range.e.r - range.s.r + 1) * (range.e.c - range.s.c + 1) > 2_000_000) {
     throw new UserMessageError("excelSheetTooWide");
   }
+  // Array formulas can omit uncached children entirely from the XML. Keep the
+  // first missing value per column, including children beyond the saved rows.
+  const missingArrayValues = new Map<number, { address: string; r: number; c: number }>();
+  for (const array of arrayRanges.values()) {
+    for (let c = array.s.c; c <= array.e.c; c++) {
+      const previous = missingArrayValues.get(c);
+      for (let r = array.s.r; r <= array.e.r && (!previous || r < previous.r); r++) {
+        const address = XLSX.utils.encode_cell({ r, c });
+        const cell: XLSX.CellObject | undefined = layoutSheet[address];
+        if (!cell || cell.t === "z" || cell.t === "e" || cell.v == null) {
+          missingArrayValues.set(c, { address, r, c });
+          break;
+        }
+      }
+    }
+  }
+  unreadable.push(...missingArrayValues.values());
   layoutSheet["!ref"] = XLSX.utils.encode_range(range);
   const unreadableHeader = unreadable.find((cell) => cell.r === range.s.r);
   if (unreadableHeader) throw new UserMessageError("excelCellNeedsValue", { cell: unreadableHeader.address });
