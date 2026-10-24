@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Require the requested customer count in each local output grammar instead of
+  permitting a one-person answer that fills the remaining population with twins.
+  Clamp request batches to the existing twelve-person response capacity, including
+  write-plan estimates. Non-enforcing short/surplus response handling is preserved.
+
 - Carry the original customer description and supplemental/neighborhood summary
   into individual persona-writing requests, including probes and bounded batch
   recovery. Labels and arrival estimates no longer discard budget/preference

@@ -1,4 +1,4 @@
-"""Small customer requests must not invite twelve generated records from a local grammar."""
+"""Customer request grammars must describe the actual number of records to write."""
 
 import asyncio
 import json
@@ -9,6 +9,7 @@ import pytest
 from openai import AsyncOpenAI
 
 from store_emulator.domain.config import LLMConfig
+from store_emulator.domain.store import DaySchedule
 from store_emulator.domain.types import Weekday
 from store_emulator.engine import llm_client
 from store_emulator.engine.generators import persona as gen
@@ -20,7 +21,8 @@ def person(index):
                                 intent="Buy groceries", purpose="groceries")
 
 
-@pytest.mark.parametrize("count,batch_size", [(1, 5), (2, 5), (5, 5), (6, 5), (11, 5), (10, 10), (12, 12), (13, 12)])
+@pytest.mark.parametrize("count,batch_size", [(1, 5), (2, 5), (5, 5), (6, 5), (11, 5), (10, 10), (12, 12), (13, 12),
+                                           (13, 13), (25, 25), (5, 0), (5, -1)])
 def test_actual_http_grammar_never_requests_more_customers_than_the_current_chunk(monkeypatch, tmp_path, count, batch_size):
     requests = []
     original_completion = llm_client.litellm.acompletion
@@ -32,8 +34,9 @@ def test_actual_http_grammar_never_requests_more_customers_than_the_current_chun
         schema = body["response_format"]["json_schema"]
         assert schema["name"] == "PersonaBatch"
         maximum = schema["schema"]["properties"]["personas"]["maxItems"]
+        minimum = schema["schema"]["properties"]["personas"]["minItems"]
         requests.append((requested, maximum))
-        assert maximum == requested
+        assert minimum == maximum == requested and 1 <= requested <= 12
         content = json.dumps({"personas": [person(i).model_dump() for i in range(maximum)]})
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
             "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",
@@ -61,6 +64,35 @@ def test_actual_http_grammar_never_requests_more_customers_than_the_current_chun
     asyncio.run(exercise())
     assert requests and all(expected == maximum for expected, maximum in requests)
     assert gen.PersonaBatch.model_json_schema()["properties"]["personas"]["maxItems"] == 12
+
+
+@pytest.mark.parametrize("batch_size", [2, 5, 13, 25])
+def test_grammar_cannot_finish_early_and_substitute_twins_for_full_generation(batch_size):
+    requests, plans = [], []
+
+    class Model:
+        async def generate_structured_async(self, schema, system, prompt, **kwargs):
+            if schema is gen.TradeAreaProfile:
+                return profile()
+            if schema is gen.DailyTrafficResult:
+                return schema(hourly_profiles=[gen.HourlyProfile(hour=9, visitor_count=25, person_types=["resident"])])
+            bounds = schema.model_json_schema()["properties"]["personas"]
+            requested = len(re.findall(r"^\[\d+\] \d+시", prompt, re.MULTILINE))
+            requests.append(requested)
+            # A grammar permits completion at minItems. It used to permit one,
+            # silently turning the rest of a full generation into cloned people.
+            return schema(personas=[person(i) for i in range(bounds["minItems"])])
+
+    async def decide(plan):
+        plans.append(plan)
+        return plan.all.per_day
+
+    people = asyncio.run(gen.generate_batched(Model(), "offline", "Residents",
+        [DaySchedule(day=1, open_hour=9, close_hour=10)], batch_size=batch_size, decide=decide))
+    assert len(people) == len({p.id for p in people}) == 25
+    assert not any(p.twin_of for p in people)
+    assert plans[0].all.requests == len(requests)
+    assert max(requests) <= 12 and sum(requests) == 25
 
 
 @pytest.mark.parametrize("returned", [1, 12])

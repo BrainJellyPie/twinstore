@@ -76,8 +76,11 @@ class GeneratedPersona(BaseModel):
         return "" if value is None else value
 
 
+MAX_PERSONAS_PER_BATCH = 12
+
+
 class PersonaBatch(BaseModel):
-    personas: list[GeneratedPersona] = Field(min_length=1, max_length=12)
+    personas: list[GeneratedPersona] = Field(min_length=1, max_length=MAX_PERSONAS_PER_BATCH)
 
 
 @dataclass
@@ -307,6 +310,7 @@ async def generate_personas_for_day(
     on_written: Callable[[int], None] | None = None,
 ) -> list[Persona]:
     system_prompt = persona_prompt(currency)
+    batch_size = max(1, min(batch_size, MAX_PERSONAS_PER_BATCH))
     # Local stream per day: days are generated concurrently, so seeding the global
     # `random` module would make them race and repeat the same sequence.
     rng = random.Random(stable_seed(seed, "persona-spec", int(day))) if seed is not None else random.Random()
@@ -359,9 +363,9 @@ async def generate_personas_for_day(
             persona_input += f"\n\n추가 지시: {custom_instruction}"
         # Bound grammar-capable models to this task; keep the existing short/surplus
         # handling for providers that do not enforce the transmitted JSON schema.
-        constraints: dict[str, JsonValue] = {"maxItems": min(12, len(chunk))}
+        constraints: dict[str, JsonValue] = {"minItems": len(chunk), "maxItems": len(chunk)}
         batch_schema = create_model("PersonaBatch", __base__=PersonaBatch,
-            personas=(list[GeneratedPersona], Field(min_length=1, max_length=12, json_schema_extra=constraints)))
+            personas=(list[GeneratedPersona], Field(min_length=1, max_length=MAX_PERSONAS_PER_BATCH, json_schema_extra=constraints)))
         try:
             async with limit:
                 batch = await llm.generate_structured_async(batch_schema, system_prompt, persona_input, max_retries=3)
@@ -450,7 +454,8 @@ async def generate_batched(
     usual = Pace(daily_cap=_persona_daily_cap_ceiling(), batch_size=batch_size)
     population_cap = _env_int("PERSONA_DAILY_POPULATION", DAILY_POPULATION_CAP)
     settled = pace(usual) if pace is not None else usual
-    daily_cap_now, batch_size = max(1, min(settled.daily_cap, population_cap)), max(1, settled.batch_size)
+    daily_cap_now = max(1, min(settled.daily_cap, population_cap))
+    batch_size = max(1, min(settled.batch_size, MAX_PERSONAS_PER_BATCH))
     sample_cap = max(1, min(settled.sample_cap, daily_cap_now))
     open_days = [s for s in schedules if s.is_open]
 
