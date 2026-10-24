@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve valid OCR receipt lines when the model returns null for unreadable
+  store/date/time/currency text. Use existing empty-text/default-currency behavior,
+  keep missing times reviewable, and retain strict product, quantity and amount
+  validation. The prompt explicitly requests empty text for unknown metadata.
+
 - Require at least one customer-type and visit-purpose label in local profile
   grammars. For non-enforcing servers returning empty pools, traffic and persona
   prompts now use consistent generic labels instead of demanding a selection

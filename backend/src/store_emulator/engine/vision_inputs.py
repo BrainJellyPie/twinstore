@@ -17,7 +17,7 @@ from typing import Protocol, Self
 
 import numpy as np
 from PIL import Image, ImageOps
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from store_emulator.domain.vision_inputs import (
     MAX_RECEIPT_AMOUNT,
@@ -103,10 +103,16 @@ class _ReceiptVLM(BaseModel):
     lines: list[_ReceiptLineVLM] = []
     total: float | None = Field(default=None, allow_inf_nan=False)
 
+    @field_validator("store", "date", "time", "currency", mode="before")
+    @classmethod
+    def _unknown_metadata(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 RECEIPT_PROMPT = """You transcribe shop receipts. List every purchased product line with its name as printed, quantity,
 unit price and line total (numbers as printed, no currency symbols). Skip subtotals, tax, payment and change lines.
 Give the store name, date (YYYY-MM-DD), time (HH:MM), currency code and the receipt total when printed.
+For unreadable store, date, time or currency text use an empty string, not null. Do not invent missing text.
 Use finite numbers only. For unreadable or missing amounts use null, never NaN or Infinity.
 Copy only the printed amount; do not repeat digits. Amounts must fit within 9007199254740991 minor units
 (cents for USD, whole won for KRW, whole yen for JPY)."""
