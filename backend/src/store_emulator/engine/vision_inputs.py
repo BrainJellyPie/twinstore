@@ -89,9 +89,9 @@ async def vlm_appeal(llm: VisionLLM, img: Image.Image, *, model: str = "vlm") ->
 
 class _ReceiptLineVLM(BaseModel):
     name: str = Field(max_length=80)
-    quantity: float = 1.0
-    unit_price: float | None = None
-    line_total: float | None = None
+    quantity: float = Field(default=1.0, allow_inf_nan=False)
+    unit_price: float | None = Field(default=None, allow_inf_nan=False)
+    line_total: float | None = Field(default=None, allow_inf_nan=False)
 
 
 class _ReceiptVLM(BaseModel):
@@ -100,12 +100,13 @@ class _ReceiptVLM(BaseModel):
     time: str = Field(default="", description="HH:MM as printed, or empty")
     currency: str = Field(default="", description="ISO 4217 code if you can tell, e.g. USD, KRW")
     lines: list[_ReceiptLineVLM] = []
-    total: float | None = None
+    total: float | None = Field(default=None, allow_inf_nan=False)
 
 
 RECEIPT_PROMPT = """You transcribe shop receipts. List every purchased product line with its name as printed, quantity,
 unit price and line total (numbers as printed, no currency symbols). Skip subtotals, tax, payment and change lines.
-Give the store name, date (YYYY-MM-DD), time (HH:MM), currency code and the receipt total when printed."""
+Give the store name, date (YYYY-MM-DD), time (HH:MM), currency code and the receipt total when printed.
+Use finite numbers only. For unreadable or missing amounts use null, never NaN or Infinity."""
 
 _ZERO_DECIMAL = {"KRW", "JPY", "VND", "IDR", "CLP", "ISK", "HUF", "TWD"}
 
@@ -118,7 +119,7 @@ def _minor(v: float | None, currency: str) -> int | None:
 
 async def vlm_receipt(llm: VisionLLM, img: Image.Image, *, receipt_id: str, default_currency: str = "USD") -> ReceiptReading:
     url, _ = image_data_url(ImageOps.exif_transpose(img).convert("RGB"), max_side=1600, fmt="JPEG")
-    r = await llm.generate_structured_with_image_async(_ReceiptVLM, RECEIPT_PROMPT, "Transcribe this receipt.", url, max_retries=1, seed=0)
+    r = await llm.generate_structured_with_image_async(_ReceiptVLM, RECEIPT_PROMPT, "Transcribe this receipt.", url, max_retries=2, seed=0)
     currency = (r.currency.strip() or default_currency.strip()).upper()
     lines = [ReceiptLine(name=line.name.strip(), quantity=line.quantity, unit_price=_minor(line.unit_price, currency),
                          line_total=_minor(line.line_total, currency))

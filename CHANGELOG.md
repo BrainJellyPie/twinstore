@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Validate finite receipt quantities and amounts before caching model output or
+  converting prices. Invalid OCR numbers get one bounded correction attempt;
+  repeated invalid output remains a failed receipt. The prompt now asks for null
+  when an amount cannot be read, preserving explicit unknown values for review.
+
 - Keep successful model answers when optional response caching encounters a full
   disk, read-only directory or locked entry. Failed writes are logged and partial
   temporary files are removed when possible; model failures still propagate.
