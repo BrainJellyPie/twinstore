@@ -109,9 +109,14 @@ def plan_to_store(
         cx, cy = fixture_tiles(counter, w, h)[0]
     else:
         cx, cy = min(w - 1, door[0] + 2), door[1]
-    if (cx, cy) != door:
-        taken.pop((cx, cy), None)
-        racks.append(Rack(id="r_counter", type=RackType.COUNTER, shape=[[1]], position=(cx, cy), rack_name="Counter", design_variant="b"))
+    if (cx, cy) == door:
+        cx, cy = min(w - 1, door[0] + 2), door[1]
+        if (cx, cy) == door:
+            cx = door[0] - 2  # At the right border, place the counter inward.
+        if counter is not None:
+            notes.append("counter and entrance mapped to the same tile; moved the counter near the entrance")
+    taken.pop((cx, cy), None)
+    racks.append(Rack(id="r_counter", type=RackType.COUNTER, shape=[[1]], position=(cx, cy), rack_name="Counter", design_variant="b"))
     occupied = set(taken) | {(cx, cy)}
 
     stocker = _Stocker(currency)

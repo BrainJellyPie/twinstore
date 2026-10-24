@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep a checkout when a floor-plan entrance is on the right edge or shares
+  a mapped tile with the counter. Place a colliding counter near the entrance,
+  report that adjustment, and preserve distinct explicit checkout positions.
+
 - Connect inaccessible floor-plan aisles by opening short paths through
   product tiles. Dense plans no longer stop repair after forty removals or
   erase shelves behind an intact barrier. Preserve counters and gates, and
