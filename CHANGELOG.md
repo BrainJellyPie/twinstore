@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep usable automatic concept-test drafts when a model returns null for
+  optional image selections, demographic quotas, context or rationale. Use the
+  existing empty-list/text defaults, retain missing-image review warnings and
+  preserve required-question, price and malformed-type validation.
+
 - Preserve distinct multilingual follow-up and group-interview questions.
   Deduplication retains Unicode letters, digits and combining marks instead of
   deleting non-Latin scripts. Canonically equivalent text still deduplicates,

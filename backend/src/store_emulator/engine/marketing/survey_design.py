@@ -11,7 +11,7 @@ from math import isfinite
 import re
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.domain.marketing import QuestionKind
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender
@@ -43,6 +43,16 @@ class _Draft(BaseModel):
     genders: list[Gender] = Field(default_factory=list[Gender], max_length=2)
     rationale: str = Field(default="", max_length=500)
 
+    @field_validator("images", "age_groups", "genders", mode="before")
+    @classmethod
+    def _optional_lists(cls, value: object) -> object:
+        return [] if value is None else value
+
+    @field_validator("context", "rationale", mode="before")
+    @classmethod
+    def _optional_text(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class SurveyDesign(BaseModel):
     name: str
@@ -72,6 +82,8 @@ images side by side (A to D) and answer a short standard questionnaire. From the
   question and a listed price or the question gives it;
 - age_groups and genders: quotas only when the question names a group; otherwise leave them empty (everyone);
 - a short name and rationale.
+Use [] for unspecified images, age_groups and genders, and empty strings for unspecified context and rationale.
+Use null only when reference_price is not given.
 Write in English."""
 
 
