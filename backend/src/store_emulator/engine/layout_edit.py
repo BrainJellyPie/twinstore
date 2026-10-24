@@ -8,7 +8,7 @@ applying them to a copy. Nothing is saved until the user keeps the result as a n
 from collections.abc import Mapping
 from typing import Literal, Protocol, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.store import Store
@@ -49,6 +49,11 @@ class _EditDraft(BaseModel):
     changes: list[_EditChange] = Field(min_length=1, max_length=12)
     summary: str = Field(default="", max_length=400, description="one or two sentences on what the edits do")
 
+    @field_validator("summary", mode="before")
+    @classmethod
+    def _optional_summary(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class LayoutEditDraft(BaseModel):
     name: str
@@ -71,7 +76,8 @@ below, written exactly as listed. Return at least one change that fits a listed 
 requires a negative percent. Prices must be finite and positive after currency rounding.
 Return at least one applicable operation; correct unavailable moves or empty categories when validation reports them.
 For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
-Name the edited layout in a few words and summarize the edits. Write in English."""
+Name the edited layout in a few words and summarize the edits. Use "" instead of null for an absent summary.
+Write in English."""
 
 
 def to_edit(draft: _EditDraft, store: Store, currency: str) -> LayoutEditDraft:

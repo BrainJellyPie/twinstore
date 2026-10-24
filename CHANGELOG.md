@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep applicable automatic layout edits and A/B drafts when optional summaries,
+  rationale or focus-product lists are null. Preserve exact operations, currency
+  conversion, explicit focus products and the existing changed-product fallback.
+
 - Require an explicit candidate list when recovering an oversized primary
   shopping plan. Missing selections now receive bounded correction instead of
   silently removing every candidate. Keep explicit empty choices and optional

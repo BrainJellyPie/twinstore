@@ -69,6 +69,16 @@ class _Draft(BaseModel):
     engine: Literal["rule", "vlm"] = "rule"
     rationale: str = Field(default="", max_length=500)
 
+    @field_validator("rationale", mode="before")
+    @classmethod
+    def _optional_rationale(cls, value: object) -> object:
+        return "" if value is None else value
+
+    @field_validator("focus_products", mode="before")
+    @classmethod
+    def _optional_focus(cls, value: object) -> object:
+        return [] if value is None else value
+
 
 class ExperimentDesign(BaseModel):
     name: str
@@ -94,6 +104,7 @@ rationale. Return at least one change that can be applied to a listed product or
 negative percent. Prices must be finite and positive after currency rounding.
 Each variant needs an applicable operation. Correct unavailable moves or empty categories when validation reports them.
 For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
+Use "" for an absent rationale and [] for unspecified focus_products, not null.
 Write in English."""
 
 
