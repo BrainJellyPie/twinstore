@@ -154,12 +154,19 @@ def _add_input_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--personas", type=Path, help="personas JSON array (overrides --run)")
 
 
+def _positive_int(value: str) -> int:
+    result = int(value)
+    if result < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return result
+
+
 def _add_run_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--engine", choices=[e.value for e in EngineType], help="default: server config / PARASTORE_ENGINE")
     p.add_argument("--seed", type=int)
     p.add_argument("--replicates", type=int, default=1)
     p.add_argument("--max-customers", type=int)
-    p.add_argument("--concurrency", type=int, default=20)
+    p.add_argument("--concurrency", type=_positive_int, default=20)
     p.add_argument("--model", help='model reference ("openai:gpt-6-luna", "anthropic:claude-haiku-5-5", '
                                     '"gemini:gemini-3.8-flash", "qwen:qwen3.7-plus", "vllm:<served name>", '
                                     '"llamacpp:local") or a raw LiteLLM id')

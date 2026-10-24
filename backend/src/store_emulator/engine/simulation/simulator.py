@@ -135,6 +135,8 @@ class PerCustomerSimulationRunner:
     ) -> tuple[AggregatedResult, list[CustomerResult]]:
         """`path_heatmap=False` skips the route map for runs nobody looks at (optimizer candidates,
         calibration points); their result carries an empty one."""
+        if max_concurrent < 1:
+            raise ValueError("max_concurrent must be at least 1")
         pathcalc_heatmap, entries, hourly_counts = self._validate_and_prepare(store, personas, path_heatmap=path_heatmap)
         priors = priors_for(store.type, self.config.scenario_priors)
         if self.config.scenario is not None:   # situation effects follow the store's format

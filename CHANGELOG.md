@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject zero or negative simulation concurrency before preparing a run. The
+  headless simulate and A/B commands now report an argument error instead of
+  allowing a zero-capacity semaphore to leave customers waiting forever.
+
 - Honor the requested concurrency limit across customer-writing batches for all
   weekdays. Limits below 20 are no longer raised to 20, avoiding excess parallel
   requests and generation failures against providers with lower capacity.
