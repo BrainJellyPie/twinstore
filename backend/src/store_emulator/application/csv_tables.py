@@ -16,6 +16,8 @@ class CsvLimitError(CsvError):
 
 
 def validate_csv_table(text: str, delimiter: str, *, label: str, max_cells: int) -> None:
+    if "\0" in text:
+        raise CsvError(f"{label} contains NUL characters that can truncate fields. Re-export the file as a text CSV.")
     columns = rows = 0
     try:
         for row in csv.reader(io.StringIO(text, newline=""), delimiter=delimiter, strict=True):

@@ -27,6 +27,8 @@ def test_extra_fields_cannot_silently_shift_named_columns(encoding, delimiter, e
 @pytest.mark.parametrize("data", [
     b"timestamp,receipt_id,amount\n2026-10-19,01,1,500\n2026-10-20,02,2,600\n",
     b'a,b\n1,2\n3,4,5\n', b'a,b\n"unterminated,field',
+    b'timestamp,receipt_id\n2026-10-19 09:00,001\0A\n',
+    b'timestamp,receipt_id\0ignored\n2026-10-19 09:00,001\n',
 ])
 def test_bad_csv_is_reported_before_any_project_or_generation(client, data):
     api, generation = client
