@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fit uploaded customer traffic only from explicit calendar dates and clocks;
+  incomplete dates and date-only rows no longer invent weekdays or midnight
+  visits. Recognize compact/textual midnight, preserve split date/time imports,
+  and prevent weekday names from inventing POS receipt dates.
+
 - Normalize reviewed receipt timestamps before exporting POS evidence so ISO
   week dates and alternate separators retain their local date and hour. Detect
   date-only inputs by parsing instead of length, preserving compact timed forms.

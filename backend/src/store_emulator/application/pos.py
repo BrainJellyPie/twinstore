@@ -118,7 +118,8 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
             # Different defaults reveal omitted calendar parts or clocks without guessing from punctuation.
             # Both defaults support February 29 and every day-of-month, including partial dates.
             first = parse_date(text, default=datetime(2000, 1, 1, 3))
-            second = parse_date(text, default=datetime(2004, 3, 2, 17))
+            # Weekday-only day evidence must not collapse nearby defaults to one date.
+            second = parse_date(text, default=datetime(2004, 3, 20, 17))
         except (ValueError, OverflowError):
             return None, None
         return (first.date() if first.date() == second.date() else None,
