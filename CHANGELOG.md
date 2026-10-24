@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Stop customer-generation retries when retained upload evidence is missing,
+  unreadable, empty or inconsistent, instead of silently generating without it.
+  New upload receipts include a SHA-256 digest; intact legacy receipts still work.
+
 - Roll back rejected simulation starts when layout or pending-status persistence
   fails. Restore the original layout and discard only the new run's snapshots
   and status, so an unqueued request cannot block a retry or project deletion.
