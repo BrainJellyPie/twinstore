@@ -116,7 +116,7 @@ class VariantResult(BaseModel):
     vs_control: list[MetricComparison] = []   # spend, units, bought … (empty for the control)
     focus: list[FocusOutcome] = []
     top_skus: list[SkuSales] = []
-    prices: dict[str, int] = {}       # shelf price of each tracked product in this arm (lowest facing)
+    prices: dict[str, int] = {}       # shelf price of each tracked product in this arm (lowest reachable facing)
     segments: list[SegmentLift] = []  # paired differences by age group and gender (segments of 20+ shoppers)
     # Shared store: units wanted but sold out (not replaced), shoppers who left the till line, average wait there.
     lost_units: int = 0
