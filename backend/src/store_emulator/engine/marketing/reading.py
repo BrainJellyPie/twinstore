@@ -57,7 +57,9 @@ class StudyReading(BaseModel):
 
 
 class _Commentary(BaseModel):
-    summary: str = Field(max_length=900, description=(
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    summary: str = Field(min_length=1, max_length=900, description=(
         "the finding a manager acts on, in two or three plain sentences; at most two figures"))
     interpretation: str = Field(
         max_length=1400, description="why it may have happened: hypotheses tied to the numbers and to the reasons given")
@@ -68,7 +70,8 @@ COMMENTARY_PROMPT = """You are a market research analyst writing the commentary 
 manager. The respondents are synthetic shoppers (personas answering through a language model). Use only the numbers in
 the report (JSON) and the coded reasons below; do not invent figures, products or causes you cannot support from them.
 When a difference's 95 % interval includes zero, or a group is small, say so plainly instead of calling a winner.
-Refer to products and options by their names. Write in English: short plain paragraphs, no headings, no markdown."""
+Refer to products and options by their names. Always provide a nonblank summary of what the report shows.
+Write in English: short plain paragraphs, no headings, no markdown."""
 
 
 def compact_report(report: BaseModel, exclude: set[str]) -> str:

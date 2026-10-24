@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reject blank model summaries before saving study commentary or A/B narratives.
+  The model can correct an empty or whitespace-only summary within two attempts;
+  unresolved failures preserve the previous saved commentary. Existing report
+  files with empty text remain readable.
+
 - Require an explicit fixture list in model-read floor plans. An omitted list
   now retries and follows the selected reader's failure handling instead of
   importing an empty store. A deliberate `fixtures: []` remains valid.

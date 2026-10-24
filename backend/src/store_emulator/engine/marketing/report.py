@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from html import escape
 from typing import Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from store_emulator.domain.analysis import MetricComparison
 from store_emulator.domain.marketing import (
@@ -146,7 +146,8 @@ def _price_advice(pr: PriceResponse, cur: str) -> str:
 REPORT_NARRATIVE_PROMPT = """You are a retail analyst writing the commentary of an A/B test report for a brand or category
 manager. The test ran on a digital twin of the store with synthetic shoppers; every arm used the same shoppers. Use only
 the numbers in the report below; do not invent figures, products or causes you cannot support from them. Say plainly
-when a difference is within noise (its 95 % interval crosses zero). Write in English, short paragraphs, no headings."""
+when a difference is within noise (its 95 % interval crosses zero). Always provide a nonblank summary of what the
+report shows. Write in English, short paragraphs, no headings."""
 
 
 class ReportNarrative(BaseModel):
@@ -154,6 +155,13 @@ class ReportNarrative(BaseModel):
     interpretation: str = Field(max_length=1200, description="why it may have happened, as hypotheses tied to the numbers")
     next_steps: str = Field(max_length=900, description="what to test or do next")
     model: str = ""
+
+
+class _NarrativeResponse(ReportNarrative):
+    """Require new model output without rejecting old saved commentary."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    summary: str = Field(min_length=1, max_length=1200, description="what happened, two to four sentences")
 
 
 class StructuredLLM(Protocol):
@@ -164,7 +172,7 @@ class StructuredLLM(Protocol):
 
 
 async def write_narrative(llm: StructuredLLM, r: ExperimentReport, layout: str = "") -> ReportNarrative:
-    return await llm.generate_structured_async(ReportNarrative, REPORT_NARRATIVE_PROMPT, report_markdown(r, layout), max_retries=1, seed=0)
+    return await llm.generate_structured_async(_NarrativeResponse, REPORT_NARRATIVE_PROMPT, report_markdown(r, layout), max_retries=2, seed=0)
 
 
 # ── Markdown ────────────────────────────────────────────────────────────────────
