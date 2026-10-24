@@ -113,8 +113,15 @@ def _questions_text(questions: Sequence[QuestionKind], stimuli: int, currency: s
 
 def persona_text(p: Persona, currency: str = "USD") -> str:
     budget = f"{display_price(p.budget_min, currency)}–{display_price(p.budget_max, currency)}" if p.budget_max else "not set"
-    return (f"Who you are: {p.identity} ({p.age_group}, {p.gender}). {p.description} "
-            f"Today you came to {p.purpose or 'shop'}; budget {budget}.")
+    lines = [f"Who you are: {p.identity} ({p.age_group}, {p.gender}). {p.description} "
+             f"Today you came to {p.purpose or 'shop'}; budget {budget}."]
+    if p.intent:
+        lines.append(f"Purchase intent: {p.intent}")
+    if p.behavior_tendency:
+        lines.append(f"Shopping habits: {p.behavior_tendency}")
+    if p.preferred_categories:
+        lines.append(f"Preferred categories: {', '.join(p.preferred_categories)}")
+    return "\n".join(lines)
 
 
 async def survey_panel(

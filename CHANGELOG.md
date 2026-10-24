@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Carry individual purchase intent, shopping habits and preferred categories
+  into concept, conjoint and shelf-study prompts. Editing or clearing those
+  traits now changes the request and prevents reuse of an older study answer;
+  identical evidence still reuses the response cache.
+
 - Preserve planned visits when a local model returns null for the optional
   impulse-action list. Treat it as the existing empty-list default, including
   cached replies and focused context recovery. Keep planned-action responses
