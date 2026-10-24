@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Compact the intent-stage catalog into shared offer records and exact shelf
+  placement lists. Short request-local product codes decode to canonical SKUs
+  before caching/execution; cache identity includes the hidden SKU mapping.
+  Repeated offers no longer duplicate opaque identifiers and product text across
+  every shelf level. All names, prices, promotions and represented placements
+  remain available to the model.
+
 - Accept null optional narration in generated behavior patterns and shopping
   actions as empty text. Valid visits no longer fail solely on absent reasoning,
   descriptions or optional grammar rewrites; structural fields and invalid

@@ -7,13 +7,15 @@ the user prompt. Providers and local servers with prefix caching (Gemini implici
 caching, OpenAI, vLLM, llama.cpp) then reuse the catalog prefix across customers.
 """
 
+import hashlib
+import json
 from typing import cast
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, create_model, field_validator
 
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
-from store_emulator.domain.rack import RackType
+from store_emulator.domain.rack import RackType, SlotItem
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.engine.prompting import format_budget, format_price, price_unit_rule
@@ -75,7 +77,43 @@ class IntentResponse(BaseModel):
         return cleaned
 
 
-def build_system_prompt(store: Store, currency: str = "USD") -> str:
+def catalog_records(store: Store) -> dict[str, SlotItem]:
+    """One short reference per visible offer; identical repeated placements share the record."""
+    offers: dict[tuple[str, str, int, str], SlotItem] = {}
+    skus = {item.sku for rack in store.racks for slot in rack.slots for item in slot.items}
+    for rack in store.racks:
+        if rack.type in {RackType.ENTRANCE, RackType.EXIT}:
+            continue
+        for slot in rack.slots:
+            for item in slot.items:
+                offers.setdefault((item.sku, item.name, item.price, item.promo), item)
+    prefix = "@P"
+    while any(f"{prefix}{index}" in skus for index in range(1, len(offers) + 1)):
+        prefix = "@" + prefix
+    return {f"{prefix}{index}": item for index, item in enumerate(offers.values(), 1)}
+
+
+def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, SlotItem]) -> type[T]:
+    """Decode prompt references before caching, with the original SKU mapping in cache identity."""
+    mapping = {code: item.sku for code, item in records.items()}
+    digest = hashlib.sha256(json.dumps(mapping, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    constraints: dict[str, JsonValue] = {"enum": ["", *mapping]}
+
+    class CatalogAction(GeneratedAction):
+        product_sku: str = Field(default="", json_schema_extra=constraints)
+
+        @field_validator("product_sku")
+        @classmethod
+        def _canonical_sku(cls, value: str) -> str:
+            # Canonical values from caches and non-grammar providers remain valid.
+            return mapping.get(value, value)
+
+    return create_model(base.__name__, __base__=base,
+        __config__=ConfigDict(json_schema_extra={"$comment": f"catalog-sku-map:{digest}"}),
+        actions=(list[CatalogAction], Field(default_factory=list[CatalogAction])))
+
+
+def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[str, SlotItem] | None = None) -> str:
     """Static per store: identical for every customer, so it is a cacheable prefix."""
     return f"""당신은 매장 고객 행동 시뮬레이터입니다.
 주어진 매장 정보와 고객 페르소나를 보고, 이 고객이 매장에서 어떤 행동을 할지 이벤트 시퀀스를 생성하세요.
@@ -85,7 +123,7 @@ def build_system_prompt(store: Store, currency: str = "USD") -> str:
 - pay는 카운터에서 딱 1회만 발생합니다 (구매 물건이 없으면 생략)
 - 시퀀스 순서는 enter → 이동/browse/buy → pay → exit
 - 반드시 {{"nav": "leave"}} 으로 종료
-- **buy 의 product_sku 는 아래 진열대 목록의 sku 중 하나만 사용**
+- **buy 의 product_sku 는 아래 상품 목록의 짧은 상품 코드 중 하나만 사용**
 - **browse / buy 의 description 은 아래 진열대 목록의 상품만 묘사**
 - **buy 는 아래 진열대 목록에 적합한 상품이 있을 때만 추가**
 - 고객의 예산을 크게 넘는 구매는 하지 않습니다
@@ -99,7 +137,7 @@ def build_system_prompt(store: Store, currency: str = "USD") -> str:
 - target: 아래 rack 의 '접근 타일' 좌표 중 하나 [x, y]
 - face: 고객이 바라보는 rack 면 (N/S/E/W)
 - dwell: 해당 위치 머무는 시간 (초, 최대 120)
-- product_sku: buy 시 아래 진열대 목록의 sku 중 하나
+- product_sku: buy 시 아래 상품 목록의 코드 (예: @P1). 상품명이나 임의의 코드를 쓰지 마세요
 - quantity: buy 시 구매 수량 (기본 1. 같은 상품을 여러 개 살 때만 2 이상)
 - nav="area" 일 때 area: [x1, y1, x2, y2] 배회 영역
 - description: 해당 행동 시점의 상황만 묘사. 진열대 목록의 상품만 다룬다.
@@ -109,22 +147,27 @@ def build_system_prompt(store: Store, currency: str = "USD") -> str:
 - 구조적 필드(`action`, `target`, `face`, `dwell`, `product_sku`, `quantity`, `nav`, `area`)는 한국어 prompt 에서 정의된 그대로 유지합니다.
 - 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요.
 
-{_store_block(store, currency)}"""
+{_store_block(store, currency, catalog_records(store) if records is None else records)}"""
 
 
-def _store_block(store: Store, currency: str) -> str:
+def _store_block(store: Store, currency: str, records: dict[str, SlotItem]) -> str:
     lines: list[str] = []
     lines.append("## 매장 정보")
     lines.append(f"- 유형: {store.type}")
     lines.append(f"- 그리드 크기: {store.grid_size[0]}×{store.grid_size[1]}")
     lines.append("")
 
-    lines.append("## rack 및 상품")
+    lines.append("## 상품 목록 (코드: 상품명 가격 [프로모션])")
+    for code, item in records.items():
+        lines.append(f"  {code}: {item.name} {format_price(item.price, currency)}" + (f" [{item.promo}]" if item.promo else ""))
+    record_ids = {(item.sku, item.name, item.price, item.promo): code for code, item in records.items()}
+    lines.append("")
+    lines.append("## rack 및 진열 위치")
     lines.append("공통 진열 높이 기준:")
     for guide in LEVEL_PREFERENCE_GUIDE:
         lines.append(f"  - {guide}")
     lines.append("같은 카테고리의 대안이 여러 개면 진열 높이 차이를 약하게 참고하되, 명확한 목적 구매는 고객 의도를 우선하세요.")
-    lines.append("상품 줄 형식: b<block>/<face> L<level>: 상품명 (sku) 가격 [프로모션]; ...")
+    lines.append("진열 줄 형식: b<block>/<face> L<level>: 상품 코드 목록. 여러 위치가 있으면 각 위치에 같은 상품들이 있습니다.")
     lines.append("")
     for f in store.racks:
         if f.type in {RackType.ENTRANCE, RackType.EXIT}:
@@ -138,14 +181,14 @@ def _store_block(store: Store, currency: str) -> str:
             lines.append(f"  부착물: {f.rack_decoration_desc}")
         if access:
             lines.append(f"  접근 타일: {access[:6]}{'...' if len(access) > 6 else ''}")
+        stock: dict[tuple[str, ...], list[str]] = {}
         for slot in f.slots:
             if not slot.items:
                 continue
-            items = "; ".join(
-                f"{item.name} ({item.sku}) {format_price(item.price, currency)}" + (f" [{item.promo}]" if item.promo else "")
-                for item in slot.items
-            )
-            lines.append(f"  - b{slot.block}/{slot.face} L{slot.level}: {items}")
+            codes = tuple(record_ids[(item.sku, item.name, item.price, item.promo)] for item in slot.items)
+            stock.setdefault(codes, []).append(f"b{slot.block}/{slot.face} L{slot.level}")
+        for codes, positions in stock.items():
+            lines.append(f"  - {', '.join(positions)}: {', '.join(codes)}")
     lines.append("")
 
     lines.append("## 입구/출구")

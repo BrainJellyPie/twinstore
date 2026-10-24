@@ -142,15 +142,20 @@ class PatternIntentImpulseEngine:
         grammar_override = selection.grammar_override
 
         # Stage 2: action-sequence generation (store catalog is the cached system prefix).
-        stage2_system = stage2_intent.build_system_prompt(context.store, currency)
+        records = stage2_intent.catalog_records(context.store)
+        stage2_system = stage2_intent.build_system_prompt(context.store, currency, records=records)
         stage2_user = stage2_intent.build_user_prompt(
             context.persona, context.arrival_hour, context.concurrent_visitors_in_hour,
             day_of_week, context.cue,
             pattern=pattern, grammar_override=grammar_override, currency=currency,
         )
         intent = await self._llm.generate_structured_async(
-            IntentResponse, stage2_system, stage2_user + situation, seed=stage_seed("stage2"), route=context.persona.id,
+            stage2_intent.catalog_response_model(IntentResponse, records), stage2_system, stage2_user + situation,
+            seed=stage_seed("stage2"), route=context.persona.id,
         )
+        # Keep request-local schema classes at the model boundary, so repeated
+        # cached visits have the same canonical action types and equality.
+        intent = IntentResponse.model_validate(intent.model_dump())
         for a in intent.actions:
             a.origin = "planned"
             if a.action in (Action.BUY, Action.PAY):

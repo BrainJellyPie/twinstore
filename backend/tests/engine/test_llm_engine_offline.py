@@ -42,7 +42,7 @@ class _ScriptedLLM:
         self.calls.append((response_model.__name__, system_prompt, user_prompt, seed))
         if response_model is PatternSelectionResponse:
             return response_model.model_validate({"pattern_id": "exploratory"})
-        if response_model is IntentResponse:
+        if response_model.__name__ == "IntentResponse":
             return response_model.model_validate(self.intent.model_dump())
         return response_model.model_validate(self.impulse.model_dump())
 
@@ -119,7 +119,7 @@ def test_stage2_catalog_is_in_the_cacheable_system_prompt(collision_store):
     engine = PatternIntentImpulseEngine(llm, AStarPathFinder(), SimulationConfig(currency="KRW"))  # type: ignore[arg-type]
     asyncio.run(engine.decide_actions(_context(collision_store, _persona())))
     _, system, user, _ = next(c for c in llm.calls if c[0] == "IntentResponse")
-    assert "sku-a" in system and "sku-a" not in user          # catalog in the shared prefix
+    assert "A item" in system and "A item" not in user        # catalog in the shared prefix
     assert "student" in user and "student" not in system      # persona in the customer suffix
     assert "원(KRW)" in system and "100원" in system           # currency-aware wording
 
