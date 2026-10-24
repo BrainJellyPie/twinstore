@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Roll back rejected simulation starts when layout or pending-status persistence
+  fails. Restore the original layout and discard only the new run's snapshots
+  and status, so an unqueued request cannot block a retry or project deletion.
+
 - Treat layout finalization errors as failed simulations. A transient layout
   write or lock failure no longer reports a completed run while leaving its
   layout running; rollback clears a provisional run link and permits retry.
