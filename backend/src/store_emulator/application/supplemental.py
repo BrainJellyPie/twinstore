@@ -26,6 +26,8 @@ from datetime import date, datetime
 from datetime import time as ClockTime
 from functools import lru_cache
 from typing import Any, cast
+from xml.etree.ElementTree import fromstring
+from zipfile import ZipFile
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
 from dateutil.parser import parse as parse_date
@@ -99,6 +101,36 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def read_customer_workbook(data: bytes, *, preserve_identifiers: bool = False) -> dict[str, pd.DataFrame]:
+    """Use the customer-generation reader for preflight, before creating a project or calling a model."""
+    validate_xlsx_budget(data)
+    try:
+        # openpyxl silently drops missing worksheet parts while reading the
+        # surviving sheets. Do not turn an incomplete upload into partial evidence.
+        with ZipFile(io.BytesIO(data)) as archive:
+            manifest = fromstring(archive.read("[Content_Types].xml"))
+            parts = set(archive.namelist())
+            for part in manifest:
+                if (part.get("ContentType", "").endswith(".worksheet+xml")
+                        and part.get("PartName", "").lstrip("/") not in parts):
+                    raise ValueError("A declared worksheet is missing from the workbook")
+        result = pd.read_excel(  # type: ignore[reportUnknownMemberType]
+            io.BytesIO(data), sheet_name=None, engine="openpyxl",
+            dtype=object if preserve_identifiers else None, keep_default_na=not preserve_identifiers,
+        )
+    except Exception as exc:
+        raise ValueError("Customer Excel workbook could not be read. Open it in a spreadsheet app and save it "
+                         "as an unencrypted XLSX file, then try again.") from exc
+    out: dict[str, pd.DataFrame] = {}
+    items: list[tuple[object, object]] = list(result.items())  # type: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+    for key, frame in items:
+        if isinstance(frame, pd.DataFrame):
+            out[str(key)] = frame
+    if not any(frame.shape[1] for frame in out.values()):
+        raise ValueError("Customer Excel workbook is empty or has no column header.")
+    return out
+
+
 def _load_frames(bytes_: bytes, ext: str, *, preserve_identifiers: bool = False) -> dict[str, pd.DataFrame]:
     """csv → single sheet ``"data"``; xlsx → sheet_name=None dict. Empty dict on failure."""
     if ext == ".csv":
@@ -114,22 +146,9 @@ def _load_frames(bytes_: bytes, ext: str, *, preserve_identifiers: bool = False)
 
     if ext == ".xlsx":
         try:
-            validate_xlsx_budget(bytes_)
-            result = pd.read_excel(  # type: ignore[reportUnknownMemberType]
-                io.BytesIO(bytes_),
-                sheet_name=None,
-                engine="openpyxl",
-                dtype=object if preserve_identifiers else None,
-                keep_default_na=not preserve_identifiers,
-            )
+            return read_customer_workbook(bytes_, preserve_identifiers=preserve_identifiers)
         except Exception:
             return {}
-        out: dict[str, pd.DataFrame] = {}
-        items: list[tuple[object, object]] = list(result.items())  # type: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-        for k, v in items:
-            if isinstance(v, pd.DataFrame):
-                out[str(k)] = v
-        return out
 
     return {}
 
