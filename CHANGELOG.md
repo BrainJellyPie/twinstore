@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep customer generation within its population cap when a model returns an
+  enormous visitor estimate and uploaded visit times reshape the traffic. Large
+  integers now use rational arithmetic before capping, avoiding float overflow
+  and lost units while preserving ordinary-count rounding.
+
 - Recognize llama.cpp context overflow even when LiteLLM strips its structured
   error body and reports a generic bad request. Match the server's specific
   token-count messages so long catalog requests can recover without retrying

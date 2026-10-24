@@ -11,6 +11,7 @@ from __future__ import annotations
 import random
 from collections import Counter
 from collections.abc import Iterable, Sequence
+from fractions import Fraction
 
 from pydantic import BaseModel, Field
 
@@ -99,10 +100,15 @@ def reshape_hourly_counts(counts: dict[int, int], profile: TrafficProfile, day: 
     if not open_hours:
         return dict(counts)
     total = sum(counts.values())
+    # LLM estimates are unbounded integers. Preserve the usual float rounding,
+    # but avoid losing units or overflowing before the caller applies its cap.
+    large = total > 2 ** 53
     if scale_by_day and len(profile.weights) == 7:
-        total = round(total * 7 * profile.weekday_shares().get(day, 1 / 7))
-    w = sum(hours[h] for h in open_hours)
-    expected = {h: total * hours[h] / w for h in open_hours}
+        share = profile.weekday_shares().get(day, 1 / 7)
+        total = round(total * 7 * (Fraction(share) if large else share))
+    weights = {h: Fraction(hours[h]) if large else hours[h] for h in open_hours}
+    w = sum(weights.values())
+    expected = {h: total * weights[h] / w for h in open_hours}
     out = {h: int(x) for h, x in expected.items()}
     for h in sorted(open_hours, key=lambda h: -(expected[h] - int(expected[h])))[: total - sum(out.values())]:
         out[h] += 1
