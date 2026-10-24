@@ -82,6 +82,31 @@ def test_arbitrary_web_servers_do_not_satisfy_model_listing_fallback(responses, 
     assert not local_vlm.server_answers(base)
 
 
+@pytest.mark.parametrize("body", [b"<!doctype html><html><body>Web app</body></html>",
+    b"Unknown route", {"app": "A website"}, {"error": "Not found"}, [], {"status": False}])
+@pytest.mark.parametrize("has_models", [False, True])
+def test_successful_web_routes_do_not_impersonate_model_health(responses, body, has_models):
+    routes, calls = responses
+    base = "http://127.0.0.1:8081/v1"
+    routes["http://127.0.0.1:8081/health"] = (200, body)
+    routes[base + "/models"] = (200, {"data": [{"id": "local"}]} if has_models else body)
+    routes["http://127.0.0.1:8081/api/tags"] = (200, body)
+    assert local_vlm.server_answers(base) is has_models
+    assert calls[:2] == ["http://127.0.0.1:8081/health", base + "/models"]
+    if not has_models:
+        with pytest.raises(ValueError, match="No model server answers"):
+            providers.ensure_local_ready(base)
+
+
+@pytest.mark.parametrize("body", [b"", b" OK\n", b"healthy", "ok", {"status": "ok"},
+    {"status": "healthy"}, {"status": "ready"}, {"status": "no slot available"}])
+def test_recognized_health_shapes_need_no_model_listing(responses, body):
+    routes, calls = responses
+    routes["http://127.0.0.1:8081/health"] = (200, body)
+    assert local_vlm.server_answers("http://127.0.0.1:8081/v1")
+    assert calls == ["http://127.0.0.1:8081/health"]
+
+
 @pytest.mark.parametrize("kind,base,route,body", [
     (ProviderKind.OLLAMA, "http://127.0.0.1:11434", "/api/tags", {"models": [{"name": "qwen"}]}),
     (ProviderKind.CUSTOM, "http://127.0.0.1:1234/v1", "/v1/models", {"data": [{"id": "local-model"}]}),
@@ -129,6 +154,48 @@ def test_real_local_http_model_list_allows_a_run_without_health(monkeypatch, kin
         providers.ensure_resolvable(SimulationConfig(engine_type=EngineType.PATTERN_INTENT_IMPULSE,
             llm=LLMConfig(model=f"{kind.value}:local-model")))
         assert calls[0] == "/health" and calls[-1] == listing_path
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+@pytest.mark.parametrize("has_models", [False, True])
+def test_real_web_app_catchall_cannot_start_model_runs(monkeypatch, has_models):
+    calls = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            calls.append(self.path)
+            model_list = self.path == "/v1/models" and has_models
+            body = json.dumps({"data": [{"id": "local"}]}).encode() if model_list else b"<html><body>Web app</body></html>"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json" if model_list else "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": .01}, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}/v1"
+        monkeypatch.setattr(providers, "load_settings", lambda: {})
+        monkeypatch.setattr(local_vlm, "manager", lambda: SimpleNamespace(status=lambda: local_vlm.LocalVLMStatus()))
+        assert providers.local_model_answers(base) is has_models
+        for kind in [EngineType.PATTERN_INTENT_IMPULSE, EngineType.VLM_GLANCE]:
+            model = LLMConfig(model="openai/local", api_base=base)
+            config = SimulationConfig(engine_type=kind, llm=model)
+            config.engines.vlm_glance.llm = model
+            if has_models:
+                providers.ensure_resolvable(config)
+            else:
+                with pytest.raises(ValueError, match="No model server answers"):
+                    providers.ensure_resolvable(config)
+        assert "/v1/models" in calls
     finally:
         server.shutdown()
         server.server_close()

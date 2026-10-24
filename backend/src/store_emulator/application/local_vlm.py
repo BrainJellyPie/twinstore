@@ -676,9 +676,12 @@ def server_answers(api_base: str) -> bool:
             with _DIRECT.open(url, timeout=2) as response:
                 if getattr(response, "status", 200) != 200:
                     return False
-                if listing is None:
+                raw = response.read()
+                # vLLM uses an empty 200; other servers return a short health
+                # marker. A web app's HTML catch-all is not model readiness.
+                if listing is None and raw.strip().lower() in (b"", b"ok", b"healthy"):
                     return True
-                data: object = json.loads(response.read())
+                data: object = json.loads(raw)
         except urllib.error.HTTPError as exc:
             code = exc.code
             exc.close()
@@ -691,7 +694,11 @@ def server_answers(api_base: str) -> bool:
             continue
         except (OSError, ValueError):
             return False
-        if isinstance(data, dict) and isinstance(cast(dict[str, object], data).get(listing), list):
+        if listing is None:
+            status = cast(dict[str, object], data).get("status") if isinstance(data, dict) else data
+            if isinstance(status, str) and status.strip().lower() in {"ok", "healthy", "ready", "no slot available"}:
+                return True
+        elif isinstance(data, dict) and isinstance(cast(dict[str, object], data).get(listing), list):
             return True
     return False
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Check local health-response contents before treating an endpoint as a model
+  server. A web app returning HTML with HTTP 200 no longer passes inference
+  preflight. Preserve recognized health replies and fall back to actual model
+  listings when a server uses a different health route.
+
 - Carry the owner's store name, type and description through customer-type
   analysis, hourly traffic estimates and persona writing. Stores with the same
   address and customer profile no longer reuse cached generation that ignored
