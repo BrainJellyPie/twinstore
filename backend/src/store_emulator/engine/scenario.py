@@ -306,16 +306,24 @@ def apply_to_store(store: Store, scenario: Scenario) -> tuple[Store, dict[str, f
     sku → pick-probability lift for promoted items (used by the rule-based engine)."""
     lifts: dict[str, float] = {}
     priors = ScenarioPriors()
-    catalog_skus = {item.sku.lower() for rack in store.racks for slot in rack.slots for item in slot.items}
+    catalog_skus = {item.sku for rack in store.racks for slot in rack.slots for item in slot.items}
+    folded_skus: dict[str, set[str]] = {}
+    for sku in catalog_skus:
+        folded_skus.setdefault(sku.lower(), set()).add(sku)
     catalog_names = {item.name.lower() for rack in store.racks for slot in rack.slots for item in slot.items}
     rack_labels = {label.lower() for rack in store.racks for label in (rack.rack_name, rack.rack_desc)}
 
     def matches(target: str, rack: Rack, item: SlotItem) -> bool:
-        t = target.strip().lower()
+        exact = target.strip()
+        if exact and exact in catalog_skus:
+            return exact == item.sku
+        t = exact.lower()
         if not t:
             return False
-        if t in catalog_skus:
-            return t == item.sku.lower()
+        if candidates := folded_skus.get(t):
+            # SKU identity is case-sensitive; a convenient case-insensitive
+            # lookup is safe only when it identifies one distinct product.
+            return len(candidates) == 1 and item.sku in candidates
         if t in catalog_names or t in rack_labels:
             return t == item.name.lower() or t in (rack.rack_name.lower(), rack.rack_desc.lower())
         if t in item.name.lower() or t in rack.rack_name.lower():

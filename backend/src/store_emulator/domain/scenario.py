@@ -75,7 +75,8 @@ class PromotionKind(StrEnum):
 
 
 class Promotion(BaseModel):
-    # Exact SKU, product and rack labels take precedence over keyword matching (case-insensitive):
+    # Exact SKU wins; case-insensitive SKU fallback must be unique. Product/rack
+    # labels take precedence over keyword matching (both case-insensitive):
     # one product ("Pepsi 20oz"), a word ("energy"), or a whole rack ("Drink 1").
     target: str = Field(min_length=1)
     kind: PromotionKind = PromotionKind.DISCOUNT
