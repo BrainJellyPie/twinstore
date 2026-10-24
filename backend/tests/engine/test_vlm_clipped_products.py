@@ -58,7 +58,7 @@ def test_clipped_model_choice_keeps_real_purchase_and_price(name, seed):
 @pytest.mark.parametrize("category", ["", "Unknown", "Drinks"])
 def test_strict_json_full_or_grammar_bounded_product(name, grammar_enforced, category):
     store, engine = prepared(name)
-    decision = entry_decision_model(3).model_validate_json(json.dumps({"items": [
+    decision = entry_decision_model(3).model_validate_json(json.dumps({"enter": True, "items": [
         {"category": category, "product": name[:48] if grammar_enforced else name}]}), strict=True)
     match = match_plan_item(decision.items[0], engine._catalog_for(store))
     assert {entry[0].id for entry in match.candidates} == {"milk"}

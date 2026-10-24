@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Require an explicit entry decision from vision models at every shopping-list
+  limit. Empty responses can no longer invent a visit, overrule a valid walk-out
+  vote or be reused as successful model plans. Keep internal planning defaults.
+
 - Require an explicit interest score in vision-model shelf responses. Missing
   measurements no longer count as zero-interest votes or valid photo-comparison
   answers. Preserve explicit zero scores and internal empty-glance defaults.

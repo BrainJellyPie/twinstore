@@ -273,6 +273,7 @@ Reply in JSON:
 - enter: true if they go in; false only if they would turn around (the store has nothing they need, or today's situation puts them off)
 - items: when enter is false, use an empty list. Otherwise, {items_rule}
 - reason: a few words
+Always include enter as an explicit true or false decision, even when the shopping list is empty.
 Use empty strings, not null, for absent text."""
 
 _PLAN_IMAGE_LINE = ("The image is the store directory map by the door: racks labeled by category, "
@@ -332,16 +333,17 @@ class EntryDecision(BaseModel):
 @cache
 def entry_decision_model(max_items: int) -> type[EntryDecision]:
     """EntryDecision whose JSON schema allows at most `max_items` items (grammar-enforced on local
-    servers; small models otherwise fill every slot the schema allows). Longer lists are trimmed."""
+    servers; small models otherwise fill every slot the schema allows). Longer lists are trimmed.
+    Model responses require an explicit entry decision; internal EntryDecision defaults stay available."""
     if max_items >= PLAN_ITEMS_LIMIT:
-        return EntryDecision
+        return create_model("EntryDecision", __base__=EntryDecision, enter=(bool, Field()))
 
     class BoundedEntryDecision(EntryDecision):
         model_config = ConfigDict(title=f"EntryDecision{max_items}")
         items_limit: ClassVar[int] = max_items
         items: list[PlannedItem] = Field(default_factory=list[PlannedItem], max_length=max_items)
 
-    return BoundedEntryDecision
+    return create_model("BoundedEntryDecision", __base__=BoundedEntryDecision, enter=(bool, Field()))
 
 
 _WEEKDAY_NAMES: dict[Weekday, str] = {

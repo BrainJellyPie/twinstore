@@ -72,7 +72,7 @@ def test_shared_truncated_prefix_is_kept_ambiguous():
 def test_strict_json_plan_resolves_full_or_grammar_bounded_category(labels, grammar_enforced):
     store, engine = prepared(labels)
     category = labels[1][:30] if grammar_enforced else labels[1]
-    decision = entry_decision_model(3).model_validate_json(json.dumps({"items": [
+    decision = entry_decision_model(3).model_validate_json(json.dumps({"enter": True, "items": [
         {"category": category, "product": "Original", "qty": 1}]}), strict=True)
     match = match_plan_item(decision.items[0], engine._catalog_for(store))
     assert {entry[0].id for entry in match.candidates} == {"milk"}
