@@ -98,3 +98,27 @@ def test_incomplete_model_exit_still_finishes_at_the_exit_after_payment(collisio
     pay = next(e for e in result.timeline if e.action == Action.PAY)
     assert result.duration_sec >= pay.elapsed_sec + pay.duration
     assert result.total_spent == 300
+
+
+@pytest.mark.parametrize("ordering", ["nearest", "planned"])
+@pytest.mark.parametrize("shopping", ["none", "planned", "impulse"])
+def test_exit_navigation_overrides_a_conflicting_enter_label(collision_store, ordering, shopping):
+    intent = _intent()
+    if shopping != "planned":
+        intent.actions = [a for a in intent.actions if a.action not in (Action.BUY, Action.PAY)]
+    exit_action = next(a for a in intent.actions if a.action == Action.EXIT)
+    exit_action.action = Action.ENTER  # The model preserves nav=leave but mislabels the final action.
+    exit_action.description = "Conflicting exit label"
+    impulse = [CustomerAction(nav="path", action=Action.BUY, target=(1, 0), face=Face.W,
+                              product_sku="sku-b")] if shopping == "impulse" else []
+    _, result = _execute(collision_store, ordering, intent, impulse)
+    events = result.timeline
+    assert events[-1].action == Action.EXIT
+    assert (events[-1].x, events[-1].y) == collision_store.exits[0].position
+    assert sum(e.action == Action.ENTER for e in events) == 1
+    assert sum(e.action == Action.EXIT for e in events) == 1
+    assert events[0].description != exit_action.description
+    assert result.total_spent == {"none": 0, "planned": 300, "impulse": 200}[shopping]
+    if shopping != "none":
+        pay = next(e for e in events if e.action == Action.PAY)
+        assert result.duration_sec >= pay.elapsed_sec + pay.duration
