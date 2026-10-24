@@ -393,15 +393,29 @@ async def generate_personas_for_day(
     profiles_map = {p.hour: p for p in hourly_profiles}
     # Non-enforcing models may return empty pools. Match the traffic fallback
     # instead of requiring the writer to choose from an impossible empty list.
-    identity_list = "\n".join(f"  - {i}" for i in (profile.identities or ["shopper"]))
-    purpose_list = "\n".join(f"  - {p}" for p in (profile.purposes or ["shopping"]))
-    identity_choices: dict[str, JsonValue] = {"enum": list(dict.fromkeys(profile.identities or ["shopper"]))}
-    purpose_choices: dict[str, JsonValue] = {"enum": list(dict.fromkeys(profile.purposes or ["shopping"]))}
+    identities = list(dict.fromkeys(profile.identities or ["shopper"]))
+    purposes = list(dict.fromkeys(profile.purposes or ["shopping"]))
+    identity_list = "\n".join(f"  - {i}" for i in identities)
+    purpose_list = "\n".join(f"  - {p}" for p in purposes)
+    identity_choices: dict[str, JsonValue] = {"enum": [*identities]}
+    purpose_choices: dict[str, JsonValue] = {"enum": [*purposes]}
 
     class LabelledPersona(GeneratedPersona):
         # Keep enums inline: llama.cpp resolves a $ref before its sibling constraints.
         identity: str = Field(max_length=120, json_schema_extra=identity_choices)
         purpose: str = Field(max_length=120, json_schema_extra=purpose_choices)
+
+        @field_validator("identity", "purpose")
+        @classmethod
+        def supplied_label(cls, value: str, info: ValidationInfo) -> str:
+            choices = identities if info.field_name == "identity" else purposes
+            value = value.strip()
+            if value in choices:
+                return value
+            matches = [label for label in choices if label.casefold() == value.casefold()]
+            if len(matches) == 1:
+                return matches[0]
+            raise ValueError(f"Choose one supplied {info.field_name} label; do not leave it blank or invent a different label.")
 
     limit = semaphore or asyncio.Semaphore(max_concurrent)
     tasks: list[tuple[list[int], asyncio.Task[list[tuple[GeneratedPersona, int]]]]] = []

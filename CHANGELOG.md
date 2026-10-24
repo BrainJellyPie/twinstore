@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate generated customer identities and visit purposes against the supplied
+  profile before caching. Blank or invented labels now receive bounded correction;
+  whitespace/case differences resolve only to one unambiguous supplied label.
+
 - Preserve valid assistive routing, optimizer settings, staff scripts and test
   hypotheses when their optional explanation is null. Required content and
   choices, unavailable-tool checks and shelf-lock validation remain intact.
