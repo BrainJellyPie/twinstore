@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Describe an unspecified shopper budget as having no fixed spending cap in
+  pattern/intent prompts. The domain's zero upper bound no longer appears as
+  a zero-to-zero spending range; positive lower bounds and explicit positive
+  budget ranges retain their currency units.
+
 - Pass customer-generation instructions and supplemental/neighborhood evidence
   to each day's traffic estimate. Customer-type labels alone lost visitor counts
   and peak hours, and unchanged labels could reuse an estimate cached under older

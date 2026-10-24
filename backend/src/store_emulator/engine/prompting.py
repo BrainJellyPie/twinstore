@@ -47,6 +47,9 @@ def display_price(amount: int, currency: str) -> str:
 
 
 def format_budget(budget_min: int, budget_max: int, currency: str) -> str:
+    if budget_max <= 0:
+        return (f"최소 {format_price(budget_min, currency)} (상한 미지정)" if budget_min > 0
+                else "미지정 (고정된 지출 상한 없음)")
     return f"{format_price(budget_min, currency)}~{format_price(budget_max, currency)}"
 
 
