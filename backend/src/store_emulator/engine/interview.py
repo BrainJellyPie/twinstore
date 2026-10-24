@@ -113,7 +113,9 @@ def trip_text(journey: Journey, store: Store, *, observer: bool = False) -> str:
     lines = [
         f"{'The shopper' if observer else 'Who you are'}: {p.identity}, {p.age_group}, {p.gender}. {p.description}",
         f"Why {you} came: {p.purpose or p.intent}. Budget for this trip: {budget}.",
+        f"Purchase intent: {p.intent}" if p.intent and p.purpose and p.intent != p.purpose else "",
         f"Habits: {p.behavior_tendency}" if p.behavior_tendency else "",
+        f"Preferred categories: {', '.join(p.preferred_categories)}" if p.preferred_categories else "",
         f"Products {you} usually buy: {', '.join(p.usual_products[:8])}." if p.usual_products else "",
         f"{your.capitalize()} trip ({journey.arrival_time} to {journey.leave_time}):",
     ]

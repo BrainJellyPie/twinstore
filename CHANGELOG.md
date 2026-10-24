@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve individual purchase intent and preferred categories in post-trip
+  interview and follow-up prompts. A broad visit-purpose label no longer hides
+  a shopper's specific needs; changed or cleared evidence invalidates the old
+  model response while trip facts, history and citation filtering stay intact.
+
 - Carry individual purchase intent, shopping habits and preferred categories
   into concept, conjoint and shelf-study prompts. Editing or clearing those
   traits now changes the request and prevents reuse of an older study answer;
