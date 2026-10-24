@@ -12,7 +12,7 @@ from functools import cache
 from statistics import median
 from typing import ClassVar, cast
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, field_validator
 
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.persona import Persona
@@ -84,6 +84,19 @@ class ShelfGlance(BaseModel):
         (models without a JSON grammar, e.g. cloud APIs, sometimes exceed the limit)."""
         limit = _GLANCE_PRODUCT_LIMIT if info.field_name == "product" else 80
         return value[:limit] if isinstance(value, str) else value
+
+
+def shelf_glance_model(view: ShelfView, *, numbered: bool = True) -> type[ShelfGlance]:
+    """Constrain local grammars to printed badges; raw photos have no numbered choices."""
+    numbers = sorted({0, *(marked.mark for marked in view.items)}) if numbered else [0]
+    constraints: dict[str, JsonValue] = {"enum": [*numbers]}
+
+    class VisibleShelfGlance(ShelfGlance):
+        # Keep name-based resolution for providers that do not enforce the grammar:
+        # an invalid badge must not discard an otherwise identifiable printed name.
+        number: int = Field(default=0, ge=0, le=10000, json_schema_extra=constraints)
+
+    return VisibleShelfGlance
 
 
 _CUE_GLOSS: dict[str, str] = {

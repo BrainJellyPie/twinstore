@@ -85,6 +85,7 @@ from .prompt import (
     plan_system_prompt,
     plan_user_prompt,
     resolve,
+    shelf_glance_model,
     user_prompt,
 )
 
@@ -498,9 +499,10 @@ class VLMGlanceEngine(RuleBasedEngine):
         seed = stable_seed(context.seed, "vlm", rack.id, face)
         route = context.persona.id
         system = glance_system_prompt(context.store.type, photo=photo)
+        response_model = shelf_glance_model(view)
         if isinstance(self._llm, EnsembleLLMClient) and self._llm.mode == "vote":
             answers = await self._llm.ask_all_with_image(
-                ShelfGlance, system, prompt, view.data_url(), seed=seed, route=route, max_retries=1,
+                response_model, system, prompt, view.data_url(), seed=seed, route=route, max_retries=1,
             )
             votes = tuple((a.member, a.answer.product if a.answer else "", a.answer.interest if a.answer else -1)
                           for a in answers)
@@ -517,7 +519,7 @@ class VLMGlanceEngine(RuleBasedEngine):
         for max_tokens in (None, 2 * budget):
             try:
                 glance = await self._llm.generate_structured_with_image_async(
-                    ShelfGlance, system, prompt, view.data_url(), seed=seed, route=route,
+                    response_model, system, prompt, view.data_url(), seed=seed, route=route,
                     max_retries=1, **({} if max_tokens is None else {"max_tokens": max_tokens}),
                 )
             except Exception as e:  # noqa: BLE001 — one failed glance must not fail the customer
@@ -525,7 +527,7 @@ class VLMGlanceEngine(RuleBasedEngine):
                 if _truncated_output(e):
                     continue
                 return None, model, None, (), error
-            return glance, model, None, (), ""
+            return ShelfGlance.model_validate(glance.model_dump()), model, None, (), ""
         return None, model, None, (), error
 
     def _basket_names(self, context: PerCustomerContext, plan: ShopperPlan) -> list[str]:

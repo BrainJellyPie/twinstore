@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Limit vision-glance JSON grammars to the badge numbers in the current shelf
+  view plus zero. Untagged photo comparisons permit zero only. Single models,
+  ensemble members and truncation retries share the same visible choices;
+  non-enforcing providers keep existing name-based resolution and invalid-pick guards.
+
 - Compact impulse exposure prompts with shared rack metadata and short product
   references. Preserve every exposed offer and its order, price, promotion, shelf
   level and visibility. Decode references before caching and execution, with SKU

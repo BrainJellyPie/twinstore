@@ -48,9 +48,9 @@ from store_emulator.engine.perception import MarkedItem, ShelfView, render_face
 from store_emulator.engine.perception.shelf_render import load_font
 from store_emulator.engine.prompting import display_price
 from store_emulator.engine.simulation.engines.vlm_glance.prompt import (
-    ShelfGlance,
     glance_system_prompt,
     resolve,
+    shelf_glance_model,
     user_prompt,
 )
 
@@ -206,7 +206,8 @@ async def glance_panel(
         async with sem:
             try:
                 glance = await llm.generate_structured_with_image_async(
-                    ShelfGlance, system, prompt, view.data_url(), seed=stable_seed(seed, "sim2real", persona.id),
+                    shelf_glance_model(view, numbered=condition != "photo_raw"), system, prompt, view.data_url(),
+                    seed=stable_seed(seed, "sim2real", persona.id),
                     route=persona.id, max_retries=1,
                 )
             except Exception as e:  # noqa: BLE001 — one failed call must not end the panel

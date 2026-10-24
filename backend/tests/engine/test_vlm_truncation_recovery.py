@@ -20,7 +20,7 @@ from tests.engine.test_llm_engine_offline import _context, _persona
 async def ask(engine, stage, store):
     context = _context(store, _persona())
     if stage == "glance":
-        return await engine._ask(SimpleNamespace(data_url=lambda: "data:image/png;base64,AA=="), "Look", context, store.racks[0], "E")
+        return await engine._ask(SimpleNamespace(items=(), data_url=lambda: "data:image/png;base64,AA=="), "Look", context, store.racks[0], "E")
     return await engine._ask_plan(entry_decision_model(3), "Plan", "Visit", "data:image/png;base64,AA==" if stage == "image" else None, context)
 
 
