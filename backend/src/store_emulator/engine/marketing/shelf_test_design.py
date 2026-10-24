@@ -8,9 +8,9 @@ price, a sign. Names that point at nothing are dropped and reported; nothing run
 from collections.abc import Sequence
 from decimal import Decimal, ROUND_HALF_UP
 from math import isfinite
-from typing import Protocol
+from typing import Protocol, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.persona import AGE_GROUPS, AgeGroup
@@ -57,6 +57,7 @@ DESIGN_PROMPT = """You design virtual shelf tests for retail managers. Responden
 with a change to one product, and each time pick what they would take and say what caught their eye first. From the
 manager's question, draft one test:
 - product: the listed product the question is about, exactly as listed (without its price or shelf);
+  use a uniquely identifying listed name; never invent a product or guess between different products with the same name;
 - the change on the test shelf, only what the question asks about: package (a listed product image, exactly as
   listed, shown instead of the product's pack), price (a new shelf price in major units of {currency}), promo (a short
   sign such as NEW, SALE, 1+1 or -20%); at least one of them;
@@ -134,8 +135,14 @@ async def design_shelf_test(
     llm: StructuredLLM, question: str, store: Store, currency: str, packages: Sequence[tuple[str, str]],
 ) -> ShelfTestDesign:
     """packages: (image name, asset id) for every image in the project's library."""
+    class ShelfDraft(_Draft):
+        @model_validator(mode="after")
+        def usable_target(self) -> Self:
+            to_design(self, store, currency, packages)
+            return self
+
     draft = await llm.generate_structured_async(
-        _Draft, DESIGN_PROMPT.format(currency=currency.upper()),
+        ShelfDraft, DESIGN_PROMPT.format(currency=currency.upper()),
         f"{_listing(store, currency, packages, question)}\n\nQuestion: {question.strip()}", max_retries=2, seed=0,
     )
     return to_design(draft, store, currency, packages)

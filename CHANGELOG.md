@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Correct nonexistent or ambiguous products in automatic shelf-test drafts before
+  caching. One correction uses the actual layout's target validation; repeated
+  failures remain retryable. Reviewable partial drafts keep their existing warnings.
+
 - Limit the customer-generation JSON grammar to the current request's customer
   count, including probes, final partial batches and truncation-recovery children.
   Small local requests no longer advertise room for twelve generated customers.
