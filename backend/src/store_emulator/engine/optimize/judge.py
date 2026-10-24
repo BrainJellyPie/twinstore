@@ -252,6 +252,7 @@ async def judge_layout_search(
     maximize = spec.objective.maximize
     runs: dict[str, tuple[float, SimulationSummary, list[CustomerResult], int, int]] = {}
     requests = 0
+    model_notes: list[str] = []
 
     async def run_vlm(label: str, layout: Store) -> None:
         nonlocal requests
@@ -268,11 +269,23 @@ async def judge_layout_search(
         score, aggregated, customers = task.result()
         if label == "baseline" and not customers:
             raise ValueError("The vision baseline produced no successful shopper results; layouts cannot be compared.")
-        planning = vlm.engine_metadata().get("planning")
-        errors = cast(dict[str, object], planning).get("plan_errors") if isinstance(planning, dict) else None
+        metadata = vlm.engine_metadata()
+        planning = cast(dict[str, object], metadata["planning"]) if isinstance(metadata.get("planning"), dict) else {}
+        counts = [value if isinstance(value := source.get(key), int) else 0
+                  for source, key in ((metadata, "errors"), (planning, "plan_errors"), (metadata, "glances"), (planning, "plans"))]
+        failed_calls, total_calls = counts[0] + counts[1], counts[2] + counts[3]
+        # Match the marketing/venue-study threshold: fallback journeys are not
+        # successful model answers, even when every customer finishes walking.
+        if total_calls and failed_calls * 2 > total_calls:
+            raise ValueError(f"The vision model failed on {failed_calls} of {total_calls} calls for {label}; "
+                             "layout judging was stopped because failed calls use fallback plans or skip shelf glances. "
+                             "Check the model provider or choose another model before retrying.")
+        if failed_calls:
+            model_notes.append(f"{failed_calls} of {total_calls} model calls failed for {label}; "
+                               "affected decisions used fallback entrance plans or skipped shelf glances.")
         requests += aggregated.token_usage.requests
         runs[label] = (score, aggregated.summary, customers, len(aggregated.diagnostics.failed_customers),
-                       errors if isinstance(errors, int) else 0)
+                       counts[1])
 
     calibration: SurrogateCalibration | None = None
     config = surrogate_config.model_copy(update={"engine_type": EngineType.RULE_BASED})
@@ -308,7 +321,7 @@ async def judge_layout_search(
     common_ids = set[str].intersection(*(successful_ids[label] for label in comparable))
     if not common_ids:
         raise ValueError("The vision layouts have no common successful shoppers; rerun judging to compare the same panel.")
-    notes: list[str] = []
+    notes = list(model_notes)
     if len(common_ids) < len(vlm_personas):
         notes.append(f"Ranked layouts use the same {len(common_ids)} of {len(vlm_personas)} requested shoppers "
                      "who completed every comparable layout.")
