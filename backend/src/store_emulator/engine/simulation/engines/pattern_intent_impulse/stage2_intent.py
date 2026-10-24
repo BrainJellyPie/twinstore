@@ -94,14 +94,13 @@ class CatalogSelection(BaseModel):
     codes: list[str] = []
 
 
-def catalog_selection_model(records: dict[str, SlotItem], maximum: int) -> type[CatalogSelection]:
+def catalog_selection_model(records: dict[str, SlotItem], maximum: int, *, required: bool = False) -> type[CatalogSelection]:
     mapping = {code: item.sku for code, item in records.items()}
     digest = hashlib.sha256(json.dumps(mapping, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     constraints: dict[str, JsonValue] = {"items": {"type": "string", "enum": list(records)}} if records else {}
 
     class BoundedCatalogSelection(CatalogSelection):
         model_config = ConfigDict(json_schema_extra={"$comment": f"catalog-sku-map:{digest}"})
-        codes: list[str] = Field(default_factory=list[str], max_length=min(maximum, len(records)), json_schema_extra=constraints)
 
         @field_validator("codes")
         @classmethod
@@ -111,7 +110,10 @@ def catalog_selection_model(records: dict[str, SlotItem], maximum: int) -> type[
                 raise ValueError(f"Unknown product codes: {unknown}. Copy codes from the supplied catalog.")
             return list(dict.fromkeys(values))
 
-    return BoundedCatalogSelection
+    limit = min(maximum, len(records))
+    codes = (Field(max_length=limit, json_schema_extra=constraints) if required else
+             Field(default_factory=list[str], max_length=limit, json_schema_extra=constraints))
+    return create_model("BoundedCatalogSelection", __base__=BoundedCatalogSelection, codes=(list[str], codes))
 
 
 def build_catalog_selection_prompt(store: Store, records: dict[str, SlotItem], maximum: int, currency: str) -> str:
@@ -119,6 +121,7 @@ def build_catalog_selection_prompt(store: Store, records: dict[str, SlotItem], m
         f"매장 유형: {store.type}. 아래는 매장의 전체 상품 목록입니다.",
         f"고객의 목적, 행동 패턴, 예산을 고려해 구매하거나 자세히 살펴볼 후보를 최대 {maximum}개 고르세요.",
         "최종 구매 및 동선은 다음 단계에서 정합니다. 여러 필요를 고려하되 관심 상품이 없으면 빈 목록을 반환하세요.",
+        "codes 목록은 반드시 포함하세요. 관심 상품이 없으면 codes: []를 명시하세요.",
         "codes에는 목록의 상품 코드만 순서대로 넣으세요. 같은 코드를 반복하거나 새 코드를 만들지 마세요.",
         price_unit_rule(currency), ""]
     lines.extend(f"{code}: {item.name} {format_price(item.price, currency)}" + (f" [{item.promo}]" if item.promo else "")

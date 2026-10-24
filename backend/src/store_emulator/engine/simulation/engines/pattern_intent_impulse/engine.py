@@ -192,7 +192,7 @@ class PatternIntentImpulseEngine:
             logger.info("[intent] input context exceeded; selecting at most %s candidates from all %s offers once",
                         maximum, len(records))
             candidates = await self._llm.generate_structured_async(
-                stage2_intent.catalog_selection_model(records, maximum),
+                stage2_intent.catalog_selection_model(records, maximum, required=True),
                 stage2_intent.build_catalog_selection_prompt(context.store, records, maximum, currency),
                 stage2_user + situation, max_retries=2, seed=stage_seed("catalog"), route=context.persona.id,
             )

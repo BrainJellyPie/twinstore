@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Require an explicit candidate list when recovering an oversized primary
+  shopping plan. Missing selections now receive bounded correction instead of
+  silently removing every candidate. Keep explicit empty choices and optional
+  impulse selection supported without losing the planned basket.
+
 - Preserve valid model-read floor plans when unreadable scale dimensions or
   fixture labels are null. Use the existing unscaled aspect-ratio inference
   and blank-label defaults, retaining strict geometry and numeric validation.
