@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Display run-comparison money in the currency resolved by the comparison API.
+  Missing or stale run-list summaries no longer render won/yen as cents; older
+  reports without a currency still use their saved summary fallback.
+
 - Fit uploaded customer traffic only from explicit calendar dates and clocks;
   incomplete dates and date-only rows no longer invent weekdays or midnight
   visits. Recognize compact/textual midnight, preserve split date/time imports,

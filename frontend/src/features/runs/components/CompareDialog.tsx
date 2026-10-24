@@ -61,7 +61,8 @@ function CompareBody({ projectId, layouts, defaultRunId }: CompareDialogProps) {
   const b = runB ?? defaultRunId ?? null;
   const compare = useCompare(projectId, a, b);
   // Spend comes in the currency's minor unit; show it as money, like the rest of the app.
-  const code = currencyCode((runs.find((r) => r.run_id === a) ?? runs.find((r) => r.run_id === b))?.summary?.currency);
+  const code = currencyCode(compare.data?.currency?.trim() ||
+    (runs.find((r) => r.run_id === a) ?? runs.find((r) => r.run_id === b))?.summary?.currency);
 
   const runName = (r: RunListItem) => `${layoutName.get(r.setup_id) ?? r.setup_id} — ${runLabel(r, locale)}`;
   const nameOf = (id: string | null) => { const r = runs.find((run) => run.run_id === id); return r ? runName(r) : undefined; };
