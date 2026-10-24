@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Stop VLM layout judging when more than half an arm's entrance/shelf model
+  calls fail, even if fallback customer journeys complete. Reject a bad pilot
+  before calibration and further judging; disclose smaller failure counts in
+  report notes instead of presenting fallback behavior as clean vision evidence.
+
 - Keep undefined surrogate/VLM rank agreement out of optimization report values
   and explanations when either model assigns identical scores to every layout.
   Report the limitation explicitly while preserving candidate selection.
