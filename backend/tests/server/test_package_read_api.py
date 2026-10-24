@@ -115,3 +115,30 @@ def test_partial_pack_reading_preserves_known_fields_and_never_invents_a_product
     assert body["linked"] == linked and body["asset"]["sku"] == (item["sku"] if linked else "")
     listed = client.get(f"/api/projects/{PID}/lab/packages").json()
     assert next(a for a in listed if a["asset_id"] == asset["asset_id"]) == body["asset"]
+
+
+@pytest.mark.parametrize("word", ["Tea", "녹차"])
+@pytest.mark.parametrize("collision", [False, True])
+def test_bounded_product_name_links_only_an_unambiguous_full_product(client, monkeypatch, word, collision):
+    from store_emulator.application import shelf_lab
+    from store_emulator.domain.rack import SlotItem
+    from tests.engine.test_rival_comparison_boundaries import pair
+
+    prefix = (word * 120)[:120]
+    full = prefix + " 500 ml"
+    store, _ = pair(our_name=full)
+    if collision:
+        store.racks[0].slots[0].items.append(SlotItem(sku="different", name=prefix, price=100))
+    monkeypatch.setattr(shelf_lab, "_load_store", lambda *args: store)
+    monkeypatch.setattr(shelf_lab, "LiteLLMClient", _reader({"name": "Read Tea", "shelf_product": prefix}, []))
+    monkeypatch.setattr(shelf_lab, "capture_llm_config", lambda config, model: config.engines.vlm_glance.llm)
+    asset = _upload(client, "Tea")
+    response = client.post(f"/api/projects/{PID}/lab/packages/{asset['asset_id']}/read", json={"setup_id": SETUP})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["linked"] is (not collision)
+    assert body["asset"]["sku"] == ("" if collision else "tea")
+    assert body["reading"]["shelf_product"] == ("" if collision else full)
+    assert body["asset"]["name"] == "Read Tea"
+    listed = client.get(f"/api/projects/{PID}/lab/packages").json()
+    assert next(a for a in listed if a["asset_id"] == asset["asset_id"]) == body["asset"]

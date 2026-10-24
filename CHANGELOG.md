@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve full product identities when a pack reader reaches its 120-character
+  output limit. Unique prefixes can link the intended product; shared prefixes,
+  including a different exact boundary-length name, no longer create wrong links.
+
 - Reject conflicting model matches for the same rival product before caching or
   price comparison. Correct within the existing retry limit instead of choosing
   the final row, while retaining equivalent duplicates and unmatched products.
