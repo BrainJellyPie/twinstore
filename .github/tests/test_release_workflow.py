@@ -55,6 +55,7 @@ class ReleaseTagTests(unittest.TestCase):
             "LANG": "C.UTF-8", "RELEASE_TAG": "v1.2.3", "GITHUB_SHA": self.selected,
             "RELEASE_TEST_REMOTE": str(self.remote), "RELEASE_TEST_OLD": self.old,
             "RELEASE_TEST_GIT": str(GIT), "RELEASE_TEST_PUBLISHED": str(self.published),
+            "GITHUB_ENV": str(self.root / "github-env"), "GITHUB_OUTPUT": str(self.root / "github-output"),
         }
         gh = self.bin / "gh"
         gh.write_text(textwrap.dedent("""\
@@ -76,7 +77,7 @@ class ReleaseTagTests(unittest.TestCase):
                 target = args[args.index('--target') + 1] if '--target' in args else 'refs/heads/main'
                 subprocess.run([*git, 'update-ref', tag, target], check=True)
             target = subprocess.check_output([*git, 'rev-parse', tag + '^{commit}'], text=True).strip()
-            Path(os.environ['RELEASE_TEST_PUBLISHED']).write_text(json.dumps({'target': target, 'args': args}))
+            Path(os.environ['RELEASE_TEST_PUBLISHED']).write_text(json.dumps({'target': target, 'args': args, 'notes': sys.stdin.read()}))
             """))
         gh.chmod(0o755)
 
@@ -98,6 +99,16 @@ class ReleaseTagTests(unittest.TestCase):
         result = self.publish()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(self.published.read_text())["target"], self.selected)
+
+    def test_versioned_notes_precede_download_instructions(self):
+        notes = self.work / "release-notes" / "v1.2.3.md"
+        notes.parent.mkdir()
+        notes.write_text("Release-specific changes.\n")
+        result = self.publish()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        body = json.loads(self.published.read_text())["notes"]
+        self.assertTrue(body.startswith("Release-specific changes.\n\n"))
+        self.assertIn("Download the file for your computer", body)
 
     def test_matching_lightweight_and_annotated_tags_are_kept(self):
         for annotated in (False, True):
@@ -161,6 +172,28 @@ class ReleaseTagTests(unittest.TestCase):
                                         env={**self.env, "RELEASE_TAG": tag}, capture_output=True)
                 self.assertEqual(result.returncode == 0, valid)
         self.assertFalse((self.work / "unexpected").exists())
+
+    def test_release_branch_uses_its_version_for_build_and_publication(self):
+        for ref, tag, expected, valid in [
+            ("refs/heads/release/v0.4.12", "", "v0.4.12", True),
+            ("refs/heads/release/v0.4.12-rc.1", "", "v0.4.12-rc.1", True),
+            ("refs/heads/release/v0.4", "", "", False),
+            ("refs/heads/release/v0.4.12\ninjected", "", "", False),
+            ("refs/heads/main", "v0.4.12", "v0.4.12", True),
+            ("refs/tags/v0.4.12", "v0.4.12", "v0.4.12", True),
+            ("refs/heads/main", "", "", True),
+        ]:
+            with self.subTest(ref=ref):
+                for key in ("GITHUB_ENV", "GITHUB_OUTPUT"):
+                    Path(self.env[key]).unlink(missing_ok=True)
+                result = subprocess.run(["bash", "-e", "-c", shell_step("Check version")], cwd=self.work,
+                                        env={**self.env, "GITHUB_REF": ref, "RELEASE_TAG": tag}, capture_output=True)
+                self.assertEqual(result.returncode == 0, valid)
+                if valid:
+                    self.assertEqual(Path(self.env["GITHUB_ENV"]).read_text(), f"RELEASE_TAG={expected}\n")
+                    self.assertEqual(Path(self.env["GITHUB_OUTPUT"]).read_text(), f"tag={expected}\n")
+                else:
+                    self.assertFalse(Path(self.env["GITHUB_OUTPUT"]).exists())
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@
 #   TwinStore-<v>-linux-x64.tar.gz   TwinStore/twinstore + TwinStore/app/
 #   TwinStore-<v>-linux-arm64.tar.gz
 #
-# Runs on version tags (v*) and on demand (Actions → Release bundle → Run workflow). On demand, a
+# Runs on version tags (v*), release/v* branches and on demand (Actions → Release bundle → Run workflow). On demand, a
 # version such as v0.4.0 creates that tag on the selected commit and publishes its release; left
 # empty, the run only builds snapshot archives.
 name: Release bundle
@@ -15,6 +15,7 @@ name: Release bundle
 on:
   push:
     tags: ["v*"]
+    branches: ["release/v*"]
   workflow_dispatch:
     inputs:
       version:
@@ -33,12 +34,19 @@ jobs:
       RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
     outputs:
       version: ${{ steps.launchers.outputs.version }}
+      release_tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Check version
+        id: release
         run: |
+          if [[ "${GITHUB_REF:-}" == refs/heads/release/v* ]]; then
+            RELEASE_TAG="${GITHUB_REF#refs/heads/release/}"
+          fi
           if [ -n "$RELEASE_TAG" ] && ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::Version must look like v0.4.0, got '$RELEASE_TAG'"; exit 1
           fi
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v4
 
@@ -192,7 +200,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+      RELEASE_TAG: ${{ needs.bundle.outputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -217,7 +225,12 @@ jobs:
             echo "::error::Tag $RELEASE_TAG points to $remote_commit, but these artifacts were built from $release_commit. Choose a new version."
             exit 1
           fi
-          gh release create "$RELEASE_TAG" out/* --verify-tag --target "$release_commit" --title "TwinStore $RELEASE_TAG" --notes-file - <<'NOTES'
+          {
+          if [ -f "release-notes/$RELEASE_TAG.md" ]; then
+            cat "release-notes/$RELEASE_TAG.md"
+            echo
+          fi
+          cat <<'NOTES'
           > [!NOTE]
           > **Windows may say "Windows protected your PC".** That is normal for a new app without a code-signing
           > certificate, not a virus warning: click **More info → Run anyway**. On a Mac, open TwinStore once, then
@@ -234,3 +247,4 @@ jobs:
           The first start downloads Python and the packages (a few minutes, once). See QUICKSTART.md.
           Closing the browser tab does not stop TwinStore: use **Quit TwinStore** in the app when you are done.
           NOTES
+          } | gh release create "$RELEASE_TAG" out/* --verify-tag --target "$release_commit" --title "TwinStore $RELEASE_TAG" --notes-file -

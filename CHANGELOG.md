@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.4.12 — Customer setup recovery, faithful comparisons and durable results
+
+- Publish release/v* branches through the same build, platform smoke checks and
+  exact-commit tag guards as tagged/manual releases, with versioned release notes.
+
 - Roll back incomplete marketing study registration, including partially saved
   survey images and staff-script inputs. Failed starts no longer leave unqueued
   pending jobs blocking deletion. Registration reserves a new directory and
