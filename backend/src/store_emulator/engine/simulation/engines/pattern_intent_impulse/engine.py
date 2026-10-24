@@ -3,12 +3,16 @@
 import logging
 from collections.abc import Sequence
 
+from instructor.core.exceptions import InstructorRetryException
+from litellm.exceptions import BadRequestError
+
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.config import EngineType, SimulationConfig
 from store_emulator.domain.engine import PerCustomerContext, EngineDecision
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action, PathFinder, TokenUsage, WEEKDAY_LABELS, stable_seed
 from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
+from store_emulator.engine.llm_client import is_context_overflow
 from . import stage1_pattern, stage2_intent, stage3_impulse
 from .stage2_intent import IntentResponse
 from .stage3_impulse import ImpulseResponse
@@ -149,10 +153,33 @@ class PatternIntentImpulseEngine:
             day_of_week, context.cue,
             pattern=pattern, grammar_override=grammar_override, currency=currency,
         )
-        intent = await self._llm.generate_structured_async(
-            stage2_intent.catalog_response_model(IntentResponse, records), stage2_system, stage2_user + situation,
-            seed=stage_seed("stage2"), route=context.persona.id,
-        )
+        recovery_trace: dict[str, object] = {}
+        try:
+            intent = await self._llm.generate_structured_async(
+                stage2_intent.catalog_response_model(IntentResponse, records), stage2_system, stage2_user + situation,
+                seed=stage_seed("stage2"), route=context.persona.id,
+            )
+        except (BadRequestError, InstructorRetryException) as error:
+            cause = (error.failed_attempts[-1].exception
+                     if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+            maximum = max(4, pattern.max_products)
+            if not is_context_overflow(cause) or len(records) <= maximum:
+                raise
+            logger.info("[intent] input context exceeded; selecting at most %s candidates from all %s offers once",
+                        maximum, len(records))
+            selection = await self._llm.generate_structured_async(
+                stage2_intent.catalog_selection_model(records, maximum),
+                stage2_intent.build_catalog_selection_prompt(context.store, records, maximum, currency),
+                stage2_user + situation, max_retries=2, seed=stage_seed("catalog"), route=context.persona.id,
+            )
+            selected = {code: records[code] for code in selection.codes}
+            intent = await self._llm.generate_structured_async(
+                stage2_intent.catalog_response_model(IntentResponse, selected),
+                stage2_intent.build_system_prompt(context.store, currency, records=selected, focused=True),
+                stage2_user + situation, seed=stage_seed("stage2"), route=context.persona.id,
+            )
+            recovery_trace["catalog_recovery"] = {"selected_codes": selection.codes,
+                                                  "selected_skus": [item.sku for item in selected.values()]}
         # Keep request-local schema classes at the model boundary, so repeated
         # cached visits have the same canonical action types and equality.
         intent = IntentResponse.model_validate(intent.model_dump())
@@ -240,6 +267,7 @@ class PatternIntentImpulseEngine:
             actions=merged,
             engine_type=EngineType.PATTERN_INTENT_IMPULSE.value,
             trace={
+                **recovery_trace,
                 "stage1": selection.model_dump(),
                 "stage2": intent.model_dump(),
                 "stage3": impulse.model_dump(),

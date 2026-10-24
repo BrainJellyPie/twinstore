@@ -77,6 +77,42 @@ class IntentResponse(BaseModel):
         return cleaned
 
 
+class CatalogSelection(BaseModel):
+    codes: list[str] = []
+
+
+def catalog_selection_model(records: dict[str, SlotItem], maximum: int) -> type[CatalogSelection]:
+    mapping = {code: item.sku for code, item in records.items()}
+    digest = hashlib.sha256(json.dumps(mapping, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    constraints: dict[str, JsonValue] = {"items": {"type": "string", "enum": list(records)}} if records else {}
+
+    class BoundedCatalogSelection(CatalogSelection):
+        model_config = ConfigDict(json_schema_extra={"$comment": f"catalog-sku-map:{digest}"})
+        codes: list[str] = Field(default_factory=list[str], max_length=min(maximum, len(records)), json_schema_extra=constraints)
+
+        @field_validator("codes")
+        @classmethod
+        def _known_codes(cls, values: list[str]) -> list[str]:
+            unknown = sorted(set(values) - records.keys())
+            if unknown:
+                raise ValueError(f"Unknown product codes: {unknown}. Copy codes from the supplied catalog.")
+            return list(dict.fromkeys(values))
+
+    return BoundedCatalogSelection
+
+
+def build_catalog_selection_prompt(store: Store, records: dict[str, SlotItem], maximum: int, currency: str) -> str:
+    lines = ["## 후보 상품 선택",
+        f"매장 유형: {store.type}. 아래는 매장의 전체 상품 목록입니다.",
+        f"고객의 목적, 행동 패턴, 예산을 고려해 구매하거나 자세히 살펴볼 후보를 최대 {maximum}개 고르세요.",
+        "최종 구매 및 동선은 다음 단계에서 정합니다. 여러 필요를 고려하되 관심 상품이 없으면 빈 목록을 반환하세요.",
+        "codes에는 목록의 상품 코드만 순서대로 넣으세요. 같은 코드를 반복하거나 새 코드를 만들지 마세요.",
+        price_unit_rule(currency), ""]
+    lines.extend(f"{code}: {item.name} {format_price(item.price, currency)}" + (f" [{item.promo}]" if item.promo else "")
+                 for code, item in records.items())
+    return "\n".join(lines)
+
+
 def catalog_records(store: Store) -> dict[str, SlotItem]:
     """One short reference per visible offer; identical repeated placements share the record."""
     offers: dict[tuple[str, str, int, str], SlotItem] = {}
@@ -113,8 +149,12 @@ def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, 
         actions=(list[CatalogAction], Field(default_factory=list[CatalogAction])))
 
 
-def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[str, SlotItem] | None = None) -> str:
+def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[str, SlotItem] | None = None,
+                        focused: bool = False) -> str:
     """Static per store: identical for every customer, so it is a cacheable prefix."""
+    scope = ("## 후보 상품 범위\n전체 상품을 검토해 고른 고객별 후보만 아래 상품 목록에 표시합니다. "
+             "다른 상품도 매장에 있으며 모든 진열대와 이동 공간은 그대로입니다. "
+             "이 단계에서는 표시된 후보로만 구매를 계획하세요.\n\n") if focused else ""
     return f"""당신은 매장 고객 행동 시뮬레이터입니다.
 주어진 매장 정보와 고객 페르소나를 보고, 이 고객이 매장에서 어떤 행동을 할지 이벤트 시퀀스를 생성하세요.
 고객별 행동 패턴과 추가 규칙은 사용자 메시지에 주어집니다.
@@ -147,7 +187,7 @@ def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[st
 - 구조적 필드(`action`, `target`, `face`, `dwell`, `product_sku`, `quantity`, `nav`, `area`)는 한국어 prompt 에서 정의된 그대로 유지합니다.
 - 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요.
 
-{_store_block(store, currency, catalog_records(store) if records is None else records)}"""
+{scope}{_store_block(store, currency, catalog_records(store) if records is None else records)}"""
 
 
 def _store_block(store: Store, currency: str, records: dict[str, SlotItem]) -> str:
@@ -185,7 +225,10 @@ def _store_block(store: Store, currency: str, records: dict[str, SlotItem]) -> s
         for slot in f.slots:
             if not slot.items:
                 continue
-            codes = tuple(record_ids[(item.sku, item.name, item.price, item.promo)] for item in slot.items)
+            codes = tuple(record_ids[key] for item in slot.items
+                          if (key := (item.sku, item.name, item.price, item.promo)) in record_ids)
+            if not codes:
+                continue
             stock.setdefault(codes, []).append(f"b{slot.block}/{slot.face} L{slot.level}")
         for codes, positions in stock.items():
             lines.append(f"  - {', '.join(positions)}: {', '.join(codes)}")

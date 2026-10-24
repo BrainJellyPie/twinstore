@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover oversized intent requests once by selecting customer-specific candidates
+  from the full offer catalog before planning the visit. Keep all rack geometry
+  and the real store unchanged; validate candidate codes, bound correction attempts
+  and record the chosen scope in the trace. Unrelated failures do not trigger it.
+
 - Compact the intent-stage catalog into shared offer records and exact shelf
   placement lists. Short request-local product codes decode to canonical SKUs
   before caching/execution; cache identity includes the hidden SKU mapping.
