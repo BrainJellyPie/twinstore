@@ -12,7 +12,7 @@ from functools import cache
 from statistics import median
 from typing import ClassVar, cast
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, create_model, field_validator
 
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.persona import Persona
@@ -32,6 +32,7 @@ Reply in JSON:
 - number: its N from the price tag, or 0
 - interest: 0 to 10
 - reason: a few words
+Always include an integer interest score, including 0 when nothing tempts the shopper. Do not omit this measurement.
 Use empty strings, not null, for absent text."""
 
 
@@ -99,7 +100,9 @@ def shelf_glance_model(view: ShelfView, *, numbered: bool = True) -> type[ShelfG
         # an invalid badge must not discard an otherwise identifiable printed name.
         number: int = Field(default=0, ge=0, le=10000, json_schema_extra=constraints)
 
-    return VisibleShelfGlance
+    # Internal empty glances have defaults, but an absent model measurement
+    # must not become a zero-interest vote or a valid photo-panel response.
+    return create_model("VisibleShelfGlance", __base__=VisibleShelfGlance, interest=(int, Field(ge=0, le=10)))
 
 
 _CUE_GLOSS: dict[str, str] = {

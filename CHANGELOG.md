@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Require an explicit interest score in vision-model shelf responses. Missing
+  measurements no longer count as zero-interest votes or valid photo-comparison
+  answers. Preserve explicit zero scores and internal empty-glance defaults.
+
 - Validate model-written arrival clocks before matching or caching shopper
   searches. Malformed times now receive bounded correction instead of dropping
   the requested time condition and returning a wider customer group.

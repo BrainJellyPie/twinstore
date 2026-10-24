@@ -83,7 +83,7 @@ def test_typed_truncation_and_last_attempt_are_authoritative(collision_store, st
             self.calls += 1
             if self.calls == 1:
                 raise error
-            return schema.model_validate({})
+            return schema.model_validate({"interest": 0} if stage == "glance" else {"enter": True})
 
         generate_structured_with_image_async = generate_structured_async
 
