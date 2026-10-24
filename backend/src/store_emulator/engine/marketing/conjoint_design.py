@@ -10,7 +10,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from math import isfinite
 from typing import Protocol, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from store_emulator.domain.marketing import ConjointAttribute, ConjointRequest
@@ -44,6 +44,16 @@ class _Draft(BaseModel):
     comparable: list[str] = Field(default_factory=list[str], max_length=8,
                                   description="names of the listed store products whose prices the levels bracket, as listed")
 
+    @field_validator("context", "rationale", mode="before")
+    @classmethod
+    def _optional_text(cls, value: object) -> object:
+        return "" if value is None else value
+
+    @field_validator("comparable", mode="before")
+    @classmethod
+    def _optional_comparisons(cls, value: object) -> object:
+        return [] if value is None else value
+
 
 class ConjointDesign(BaseModel):
     name: str
@@ -69,6 +79,7 @@ answered, draft one study:
 Use distinct attribute names and at least two distinct, nonblank levels per attribute. There must be at least two
 usable attributes, counting price as one. Prices must be finite, non-negative and distinct after rounding to the
 currency's minor unit; a positive price must not round to zero. Use realistic amounts, without repeated digits.
+Use empty strings for unspecified context and rationale, and [] when there are no comparable products; do not use null.
 Keep levels concrete (sizes with units, named claims). Write in English."""
 
 

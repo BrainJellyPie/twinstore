@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep valid conjoint drafts when optional context, rationale or comparison
+  notes are null. Preserve exact attributes and price levels, including retry
+  validation and actionable price errors; null prices and required structure
+  remain invalid.
+
 - Keep usable automatic concept-test drafts when a model returns null for
   optional image selections, demographic quotas, context or rationale. Use the
   existing empty-list/text defaults, retain missing-image review warnings and
