@@ -7,7 +7,7 @@ form; the town is generated only when the user asks.
 
 from typing import Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from store_emulator.domain.town import TownArchetype, TownSpec, VenueCategory
 
@@ -30,6 +30,23 @@ class _Draft(BaseModel):
     venue_density: float = Field(default=1.0, ge=0.0, le=4.0, description="shops and venues around: 0.5 few, 1 typical, 2 lively")
     rationale: str = Field(default="", max_length=300)
 
+    @field_validator("name", "rationale", mode="before")
+    @classmethod
+    def _optional_text(cls, value: object) -> object:
+        return "" if value is None else value
+
+    @field_validator("neighbor_categories", mode="before")
+    @classmethod
+    def _optional_neighbors(cls, value: object) -> object:
+        return [] if value is None else value
+
+    @field_validator("size_m", "density", "venue_density", mode="before")
+    @classmethod
+    def _unspecified_estimate(cls, value: object, info: ValidationInfo) -> object:
+        if value is None and info.field_name is not None:
+            return cls.model_fields[info.field_name].default
+        return value
+
 
 class DescribedTown(BaseModel):
     spec: TownSpec
@@ -40,7 +57,8 @@ TOWN_PROMPT = """You set up a neighborhood generator for a store simulator from 
 store. Pick the closest archetype (residential, university, business_district, suburban, station_area, tourist,
 mixed) and set size, density, rivals, neighbors and venue density only as the description states or clearly implies;
 keep defaults otherwise (800 m, density 0.5, rivals unknown, no neighbors, venue density 1). Give a one-sentence
-rationale. Write in English."""
+rationale. Use empty strings for unspecified name or rationale, [] for unspecified neighbors, and the numeric
+defaults for unspecified estimates; use null only for an unknown number of rivals. Write in English."""
 
 
 async def describe_town(llm: StructuredLLM, description: str, seed: int = 0) -> DescribedTown:

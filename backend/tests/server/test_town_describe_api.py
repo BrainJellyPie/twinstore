@@ -54,3 +54,21 @@ def test_errors_read_as_advice(client, monkeypatch):
     r = client.post(f"/api/projects/{PID}/town/describe", json={"text": "Quiet suburb"})
     assert r.status_code == 502 and "took too long" in r.json()["detail"]
     assert client.post(f"/api/projects/{PID}/town/describe", json={"text": "x"}).status_code == 422
+
+
+@pytest.mark.parametrize("competitors", [0, 2])
+def test_optional_nulls_preserve_a_spec_that_can_generate(client, monkeypatch, competitors):
+    from store_emulator.application import town_assist
+
+    fake = _Writer({"archetype": "university", "n_competitors": competitors, "name": None, "rationale": None,
+                    "neighbor_categories": None, "size_m": None, "density": None, "venue_density": None})
+    monkeypatch.setattr(town_assist, "assistive_client", lambda *a, **k: fake)
+    response = client.post(f"/api/projects/{PID}/town/describe", json={"text": "University street", "seed": 17})
+    assert response.status_code == 200, response.text
+    spec = response.json()["spec"]
+    assert spec == {"archetype": "university", "n_competitors": competitors, "name": "", "neighbor_categories": [],
+                    "size_m": 800, "density": .5, "venue_density": 1, "seed": 17}
+    assert response.json()["rationale"] == ""
+    generated = client.post(f"/api/projects/{PID}/town/generate", json=spec)
+    assert generated.status_code == 200, generated.text
+    assert generated.json()["archetype"] == "university"

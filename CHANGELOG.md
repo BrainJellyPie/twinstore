@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve usable neighborhood drafts when optional labels, neighboring venues
+  or unspecified estimates are null. Apply the existing defaults while keeping
+  explicit rival counts, known settings, required area type and numeric bounds.
+
 - Validate vision-model shelf choices against the actual view before caching or
   voting. Positive interest without a product and unresolvable names/badges no
   longer count as valid refusals or dilute another model's valid interest score.
