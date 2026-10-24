@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Prevent new-store creation from overwriting an existing project's metadata,
+  customers and active-layout selection when identifiers collide. Use full UUIDs
+  and exclusively create the project directory before writing any project data.
+
 - Preserve neighborhood synergy analyses and group interview transcripts across
   generated ID collisions. Use full UUIDs, reject an already occupied output
   destination, and keep legacy short-ID records readable.
