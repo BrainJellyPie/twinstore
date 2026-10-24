@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject conflicting model matches for the same rival product before caching or
+  price comparison. Correct within the existing retry limit instead of choosing
+  the final row, while retaining equivalent duplicates and unmatched products.
+
 - Validate generated customer budget ranges before caching: a positive maximum
   must be at least the minimum. Contradictory ranges now receive bounded model
   correction. Preserve equal bounds and zero as an unspecified upper limit.
