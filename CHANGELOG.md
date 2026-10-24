@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Include preferred categories in vision-model shelf-glance prompts. Changes
+  and cleared preferences now reach impulse decisions and their cache identity,
+  alongside existing personal intent, habits, basket and remaining budget.
+
 - Describe the actual selected offers in the vision shopper's basket. A shared
   SKU no longer makes every differently named shelf variant appear purchased.
   Resolve planned and earlier impulse buys by their exact shelf position and

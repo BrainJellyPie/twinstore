@@ -171,6 +171,8 @@ def user_prompt(
     ]
     if persona.usual_products:
         lines.append(f"Products they usually buy: {', '.join(persona.usual_products[:_USUAL_CATEGORIES])}")
+    if persona.preferred_categories:
+        lines.append(f"Preferred categories: {', '.join(persona.preferred_categories)}")
     if persona.behavior_tendency:
         lines.append(f"Habits: {persona.behavior_tendency}")
     lines.append(f"Shopping style today: {_PATTERN_GLOSS.get(pattern.id, pattern.id.replace('_', ' '))}.")
