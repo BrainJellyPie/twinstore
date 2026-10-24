@@ -4,7 +4,7 @@ from tests.server.test_movement_api import CSV, URL, client
 from tests.engine.test_track_csv_structure import sparse_tracks
 
 
-@pytest.mark.parametrize("row", ["t,0,0,1,250", "t,0,0,10,", 't,0,0,"10'])
+@pytest.mark.parametrize("row", ["t,0,0,1,250", "t,0,0,10,", 't,0,0,"10', "t\0suffix,0,0,10"])
 def test_structural_track_error_keeps_previous_report(client, row):
     original = client.post(URL, files={"file": ("tracks.csv", CSV, "text/csv")}).json()
     data = ("track_id,x,y,timestamp_sec\n" + row + "\n").encode()

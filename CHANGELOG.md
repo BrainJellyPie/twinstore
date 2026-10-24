@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject CSV text containing NUL characters before parsers can silently truncate
+  IDs, product codes or amounts. Block corrupt customer uploads before project
+  creation and preserve earlier POS/movement reports on rejected uploads.
+
 - Display run-comparison money in the currency resolved by the comparison API.
   Missing or stale run-list summaries no longer render won/yen as cents; older
   reports without a currency still use their saved summary fallback.
