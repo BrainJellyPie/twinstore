@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Validate generated customer budgets against the browser-safe integer range
+  before caching or saving them. Repetitive oversized numbers now receive the
+  existing bounded model correction instead of breaking later money formatting
+  and simulation calculations. Zero continues to mean no specified budget.
+
 - Check the configured local-model server independently when its address differs
   from the built-in server. Assistive fallback and model pickers no longer mistake
   a different server for ready, or hide a working server while the built-in model

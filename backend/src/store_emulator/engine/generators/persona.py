@@ -58,8 +58,8 @@ class GeneratedPersona(BaseModel):
     intent: str = Field(max_length=400)
     purpose: PersonaLabel
     preferred_categories: list[Annotated[str, Field(max_length=80)]] = Field(default_factory=list[str], max_length=10)
-    budget_min: int = Field(default=0, ge=0)
-    budget_max: int = Field(default=0, ge=0)
+    budget_min: int = Field(default=0, ge=0, le=9_007_199_254_740_991)
+    budget_max: int = Field(default=0, ge=0, le=9_007_199_254_740_991)
     behavior_tendency: str = Field(default="", max_length=300)
 
 
@@ -182,6 +182,7 @@ PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 �
 - purpose: 반드시 아래 제공된 purpose 목록 중 하나를 그대로 사용 (통계 집계용 짧은 라벨)
 - preferred_categories: 반드시 아래 제공된 카테고리 목록 중에서만 선택. 목록에 없는 카테고리를 임의로 만들지 마세요
 - budget_min, budget_max: {budget_rule}
+  - 0 이상 9007199254740991 이하의 정수. 한 번의 방문에 현실적인 금액을 사용하고 숫자를 반복하지 마세요. 예산을 정할 수 없으면 0을 사용하세요.
 - behavior_tendency: 이동속도/탐색성향/충동구매 한 줄
 
 ## 언어
