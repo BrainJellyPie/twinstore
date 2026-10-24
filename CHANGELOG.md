@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate the order of model-generated price-sensitivity thresholds before
+  caching. Contradictory prices now receive bounded correction, and repeated
+  failures are reported instead of silently disappearing from price analysis.
+
 - Require an explicit noticed-product list for shelf-test model responses when
   products are visible. Missing attention measurements now receive bounded
   correction or fail the pair instead of being cached and scored as zero.

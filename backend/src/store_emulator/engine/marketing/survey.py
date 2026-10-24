@@ -9,10 +9,10 @@ import asyncio
 import math
 from bisect import bisect_left, bisect_right
 from collections.abc import Sequence
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, Self, cast
 
 from PIL import Image, ImageDraw, ImageOps
-from pydantic import BaseModel, Field, create_model, field_validator
+from pydantic import BaseModel, Field, create_model, field_validator, model_validator
 
 from store_emulator.domain.marketing import (
     PreferenceShare,
@@ -79,6 +79,15 @@ def stimulus_board(images: Sequence[Image.Image], names: Sequence[str], *, heigh
 
 def response_model(questions: Sequence[QuestionKind], stimuli: int, *, minor_per_major: int = 100) -> type[BaseModel]:
     """The answer schema for this questionnaire (flat fields keep small models on track)."""
+    class SurveyResponse(StudyResponse):
+        @model_validator(mode="after")
+        def ordered_prices(self) -> Self:
+            if "price_vw" in questions:
+                prices = [cast(float, getattr(self, key)) for key in ("too_cheap", "cheap", "expensive", "too_expensive")]
+                if any(lower > upper for lower, upper in zip(prices, prices[1:])):
+                    raise ValueError("Price thresholds must satisfy too_cheap <= cheap <= expensive <= too_expensive.")
+            return self
+
     fields: dict[str, Any] = {}
     for q in questions:
         if q in SCALES:
@@ -94,14 +103,15 @@ def response_model(questions: Sequence[QuestionKind], stimuli: int, *, minor_per
             fields["preferred"] = (Literal[tuple(LETTERS[:stimuli])], ...)
         elif q == "open":
             fields["why"] = (str, Field(default="", max_length=240))
-    return create_model("SurveyResponse", __base__=StudyResponse, **fields)
+    return create_model("SurveyResponse", __base__=SurveyResponse, **fields)
 
 
 SURVEY_PROMPT = """You answer a short shopper survey as the person described below, honestly and in character: your age,
 budget, habits and mood decide your answers, not what a marketer would like to hear. Look at the products in the image
 (labelled with letters). Answer every question. Scales run from 1 to 5; most people use the middle of the scale for
 ordinary products. Prices are finite, realistic amounts per product in the currency given, without symbols;
-do not repeat digits or exceed the schema's price limits. Write any text in English.
+do not repeat digits or exceed the schema's price limits. Price thresholds must be in this order:
+too_cheap <= cheap <= expensive <= too_expensive; equal thresholds are allowed. Write any text in English.
 Use an empty string, not null, when no explanation is given."""
 
 
