@@ -34,6 +34,7 @@ from dateutil.parser import parse as parse_date
 from pydantic import BaseModel
 
 from store_emulator.domain.types import AsyncLLMClient
+from store_emulator.engine.llm_client import final_answer_text
 from store_emulator.engine.generators.traffic_profile import (
     TrafficProfile,
     fit_traffic_profile,
@@ -493,7 +494,7 @@ async def _stage4_final_summary(
     """spec §3.4 — LLM text completion. Empty after .strip() returns ""; truncated to SUPPLEMENTAL_SUMMARY_MAX_CHARS."""
     user_input = f"[데이터 요약본]\n{compressed_text}"
     response = await llm.generate_text_async(_STAGE4_SYSTEM_PROMPT, user_input)
-    stripped = response.strip()
+    stripped = final_answer_text(response).strip()
     if not stripped:
         return ""
     return stripped[:SUPPLEMENTAL_SUMMARY_MAX_CHARS]

@@ -188,6 +188,19 @@ def _hash6(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()[:4]
 
 
+def final_answer_text(content: str) -> str:
+    """Remove explicit leading thoughts; an unfinished thought has no final answer."""
+    final = content.lstrip()
+    if not final.startswith("<think>"):
+        return content
+    while final.startswith("<think>"):
+        end = final.find("</think>")
+        if end < 0:
+            return ""
+        final = final[end + len("</think>"):].lstrip()
+    return final
+
+
 def _final_structured_content(response: object) -> None:
     """Keep JSON examples inside explicit leading reasoning blocks out of parsing."""
     choices = getattr(response, "choices", None)
@@ -196,16 +209,8 @@ def _final_structured_content(response: object) -> None:
     for choice in cast(list[object], choices):
         message = getattr(choice, "message", None)
         content = getattr(message, "content", None)
-        if not isinstance(content, str) or not content.lstrip().startswith("<think>"):
-            continue
-        final = content.lstrip()
-        while final.startswith("<think>"):
-            end = final.find("</think>")
-            if end < 0:
-                final = ""  # An unfinished thought is not a final answer, even with finish_reason=stop.
-                break
-            final = final[end + len("</think>"):].lstrip()
-        setattr(message, "content", final)
+        if isinstance(content, str):
+            setattr(message, "content", final_answer_text(content))
 
 
 class LiteLLMClient:

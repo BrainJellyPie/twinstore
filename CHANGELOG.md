@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep explicit model reasoning out of uploaded customer-data summaries. Strip
+  leading thought blocks before applying the summary length limit; unfinished
+  or reasoning-only responses contribute no summary. Preserve final narrative,
+  literal tags inside it, and the existing behavior for absent summaries.
+
 - Honor the no-purchase setting in conjoint response instructions. Forced-choice
   studies no longer tell models to return a forbidden `none` answer. Keep the
   configured choice schema, recorded choices and response-cache separation.
