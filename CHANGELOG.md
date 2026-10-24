@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Increase the floor-plan reader's output ceiling to 6,144 tokens. Ordinary
+  plans with many fixtures no longer exceed the former 1,500-token limit and
+  incorrectly fail or fall back to geometry-only reading. Genuine model errors
+  retain the existing explicit-error and automatic-fallback behavior.
+
 - Give whole-photo shelf grounding its own 6,144-token output ceiling. It no
   longer shares the 320-token limit for reading one product, which truncated
   ordinary multi-product coordinate lists and triggered classic fallback.
