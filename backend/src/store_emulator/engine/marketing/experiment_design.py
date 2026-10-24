@@ -8,9 +8,9 @@ only fills the builder; changes that point at nothing are dropped and reported.
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, ROUND_HALF_UP
 from math import isfinite
-from typing import Literal, Protocol
+from typing import Literal, Protocol, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from store_emulator.domain.marketing import ExperimentEngine, Variant, VariantChange
 from store_emulator.domain.store import Store
@@ -74,7 +74,8 @@ variants against the unchanged layout (the control). Each variant is a short nam
 Use only products, shelves and images listed below, written exactly as listed. Vary one thing per variant unless the
 question asks for combinations, never name a variant "Control", list the products whose sales the question is about
 in focus_products, choose engine "vlm" only when the test needs shoppers to see packs or signs, and give a short
-rationale. Write in English."""
+rationale. Return at least one change that can be applied to a listed product or category. A discount requires a
+negative percent. Prices must be finite and positive after currency rounding. Write in English."""
 
 
 def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], question: str = "",
@@ -175,7 +176,7 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
         used.add(name.casefold())
         variants.append(Variant(name=name, changes=changes))
     if not variants:
-        raise ValueError("the model drafted no change that fits this layout")
+        raise ValueError("the model drafted no change that fits this layout. " + " ".join(warnings[:3]))
     focus = list(dict.fromkeys(skus[p.strip().casefold()] for p in draft.focus_products if p.strip().casefold() in skus))
     if not focus:
         focus = list(dict.fromkeys(c.sku for v in variants for c in v.changes if c.sku))
@@ -189,8 +190,14 @@ async def design_experiment(
     sold: Mapping[str, int] | None = None,
 ) -> ExperimentDesign:
     """`sold`: units per SKU in the layout's last run, listed with each product so "the best seller" can be found."""
+    class ExperimentDraft(_Draft):
+        @model_validator(mode="after")
+        def usable_changes(self) -> Self:
+            to_design(self, store, currency, packages)
+            return self
+
     draft = await llm.generate_structured_async(
-        _Draft, DESIGN_PROMPT.format(currency=currency.upper()),
+        ExperimentDraft, DESIGN_PROMPT.format(currency=currency.upper()),
         f"{_listing(store, currency, packages, question, sold)}\n\nQuestion: {question.strip()}", max_retries=2, seed=0,
     )
     return to_design(draft, store, currency, packages)

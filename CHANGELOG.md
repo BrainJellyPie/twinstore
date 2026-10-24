@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Correct unusable automatic layout edits and A/B experiment drafts before caching.
+  Missing or ambiguous product/shelf targets and invalid prices now receive one
+  correction with concrete failure details. Repeated failures remain retryable;
+  usable partial drafts retain their existing warnings and never alter the source.
+
 - Validate automatic conjoint drafts as usable studies before caching them.
   Collapsed price levels, unusable attribute choices and blank products now get
   one model correction attempt. Failed drafts are not cached, so trying again

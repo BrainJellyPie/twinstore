@@ -6,9 +6,9 @@ applying them to a copy. Nothing is saved until the user keeps the result as a n
 """
 
 from collections.abc import Mapping
-from typing import Literal, Protocol
+from typing import Literal, Protocol, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.store import Store
@@ -66,7 +66,9 @@ EDIT_PROMPT = """You turn a store manager's instructions into edits of the store
   level;
 - category_price: every price of a shelf or category changed by a percent.
 Make exactly the edits the manager asked for, one change per product and edit, using only products and shelves listed
-below, written exactly as listed. Name the edited layout in a few words and summarize the edits. Write in English."""
+below, written exactly as listed. Return at least one change that fits a listed product or category. A discount
+requires a negative percent. Prices must be finite and positive after currency rounding.
+Name the edited layout in a few words and summarize the edits. Write in English."""
 
 
 def to_edit(draft: _EditDraft, store: Store, currency: str) -> LayoutEditDraft:
@@ -77,7 +79,7 @@ def to_edit(draft: _EditDraft, store: Store, currency: str) -> LayoutEditDraft:
     try:
         design = to_design(_Draft(name=draft.name or "Edited layout", variants=[variant]), store, currency, [])
     except ValueError as e:
-        raise ValueError("none of the edits fits this layout's products and shelves") from e
+        raise ValueError(f"none of the edits fits this layout's products and shelves: {e}") from e
     changes = design.variants[0].changes
     _, applied, problems = apply_changes(store, changes, minor_per_major=1 if currency.upper() in ZERO_DECIMAL else 100)
     warnings = [w.removeprefix("Edit: ") for w in design.warnings]
@@ -89,8 +91,14 @@ def to_edit(draft: _EditDraft, store: Store, currency: str) -> LayoutEditDraft:
 async def draft_layout_edit(
     llm: StructuredLLM, text: str, store: Store, currency: str, sold: Mapping[str, int] | None = None,
 ) -> LayoutEditDraft:
+    class EditDraft(_EditDraft):
+        @model_validator(mode="after")
+        def usable_changes(self) -> Self:
+            to_edit(self, store, currency)
+            return self
+
     draft = await llm.generate_structured_async(
-        _EditDraft, EDIT_PROMPT.format(currency=currency.upper()),
+        EditDraft, EDIT_PROMPT.format(currency=currency.upper()),
         f"{_listing(store, currency, [], text, sold)}\n\nInstructions: {text.strip()}", max_retries=2, seed=0,
     )
     return to_edit(draft, store, currency)
