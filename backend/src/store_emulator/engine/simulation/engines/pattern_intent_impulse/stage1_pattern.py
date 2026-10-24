@@ -1,6 +1,6 @@
 """Stage 1: behavior-pattern selection. Picks a fitting pattern from persona + time + BehaviorCue."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.persona import Persona
@@ -10,11 +10,21 @@ from .prompt_utils import format_cue_prompt
 
 
 class PatternSelectionResponse(BaseModel):
-    reasoning: str = ""
+    reasoning: str = Field(default="", max_length=600)
     pattern_id: str = ""
-    grammar_override: str = ""
+    grammar_override: str = Field(default="", max_length=1200)
 
+    @field_validator("reasoning", mode="before")
+    @classmethod
+    def _brief_reasoning(cls, value: object) -> object:
+        return value[:600] if isinstance(value, str) else value
 
+    @field_validator("grammar_override", mode="before")
+    @classmethod
+    def _bounded_override(cls, value: object) -> object:
+        # An optional rewrite must not overflow stage two. Use the complete
+        # built-in grammar instead of executing a partially cut instruction.
+        return "" if isinstance(value, str) and len(value) > 1200 else value
 
 
 def build_system_prompt(patterns: list[BehaviorPattern]) -> str:
@@ -32,10 +42,11 @@ def build_system_prompt(patterns: list[BehaviorPattern]) -> str:
 
 규칙:
 - pattern_id는 반드시 위 목록의 id 중 하나여야 합니다
-- reasoning에 선택 이유를 간단히 적으세요
+- reasoning에 선택 이유를 한 문장, 600자 이내로 간단히 적으세요
 - 고객의 현재 상태와 모순되는 패턴은 피하세요 (예: 동행=혼자인데 사교둘러보기형)
 - grammar_override: 선택한 패턴의 기본 행동 문법을 이 고객의 상황에 맞게 미세 조정하고 싶을 때만 사용하세요.
   보통은 비워두세요. 조정 시에도 기본 구조(입장→...→퇴장)는 반드시 유지하세요.
+  수정은 1200자 이내로 짧게 작성하고 같은 규칙을 반복하지 마세요. 매장 목록이나 고객 정보를 다시 쓰지 마세요.
 
 ## 언어
 - 자유 서술 필드(`reasoning`, `grammar_override`)의 값은 **영어로** 작성하세요.

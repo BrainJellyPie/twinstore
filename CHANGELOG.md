@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bound optional model-generated pattern prose before it reaches the next
+  simulation stage. Oversized rule rewrites fall back to the complete selected
+  pattern; normal short customizations remain intact. JSON grammars now bound
+  selection reasoning and optional rewrites to discourage repetitive output.
+
 - Preserve JSON coordinate arrays while stripping internal fields from model
   actions. Instructor's strict parser again accepts valid targets and wander
   areas, while malformed dimensions and non-integer coordinates still fail.
