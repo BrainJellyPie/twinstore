@@ -31,11 +31,25 @@ class TradeAreaProfile(BaseModel):
     identities: list[PersonaLabel] = Field(max_length=40, json_schema_extra={"minItems": 1})
     purposes: list[PersonaLabel] = Field(max_length=40, json_schema_extra={"minItems": 1})
 
+    @field_validator("keywords", "identities", "purposes")
+    @classmethod
+    def _usable_labels(cls, values: list[str]) -> list[str]:
+        # A truthy list of blanks otherwise bypasses the empty-pool fallbacks
+        # and becomes an impossible vocabulary for later customer prompts.
+        return [label.strip() for label in values if label.strip()]
+
 
 class HourlyProfile(BaseModel):
     hour: int = Field(ge=0, le=23, strict=True)
     visitor_count: int = Field(ge=0, strict=True)
     person_types: list[PersonaLabel] = Field(max_length=10)
+
+    @field_validator("person_types")
+    @classmethod
+    def _usable_labels(cls, values: list[str]) -> list[str]:
+        # _usable_hourly supplies trade-area types when positive traffic has
+        # no usable labels; keep the visitor count so those customers survive.
+        return [label.strip() for label in values if label.strip()]
 
 
 class DailyTrafficResult(BaseModel):
@@ -185,6 +199,7 @@ PROFILE_PROMPT = """당신은 상권 분석 전문가입니다.
 반드시 매장이 위치한 국가/도시의 실제 고객 특성을 반영하세요.
 
 규칙:
+- 모든 라벨은 앞뒤 공백 없이 작성하세요. 빈 문자열이나 공백뿐인 항목은 넣지 마세요.
 - keywords: 이 지역을 특징짓는 단어 5~10개
   - 각 항목은 120자 이하의 짧은 단어나 구. 긴 설명이나 같은 구절을 반복하지 마세요.
 
@@ -220,6 +235,7 @@ DAILY_TRAFFIC_PROMPT = """당신은 상권 분석 전문가입니다.
   하루 총 방문객 수는 매장 입지/규모/상권 특성과 요일에 맞게 합리적으로 추론하여 결정.
   특정 시간대에 몰리는 자연스러운 형상(피크/오프피크/식사시간 등)을 반드시 반영하세요.
 - person_types: **반드시 아래 identity 목록의 라벨을 그대로 사용.** {day_label}에 실제로 방문할 유형만 선택
+  - 빈 문자열이나 공백뿐인 항목은 넣지 마세요.
   - 각 항목은 120자 이하. 라벨에 설명을 덧붙이거나 같은 구절을 반복하지 마세요.
   - {day_label}에 맞지 않는 유형은 제외 (예: 주말에 "출근길 직장인" 제외)
   - 시간대별로 적절한 유형만 선택 (예: "야식 손님"은 저녁~심야에만)

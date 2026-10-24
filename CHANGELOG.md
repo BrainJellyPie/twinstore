@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Remove blank customer-profile and hourly-traffic labels before building
+  downstream prompts and choice grammars. Preserve usable multilingual labels
+  and visitor counts, and apply existing default types when all labels are blank.
+
 - Keep a checkout when a floor-plan entrance is on the right edge or shares
   a mapped tile with the counter. Place a colliding counter near the entrance,
   report that adjustment, and preserve distinct explicit checkout positions.
