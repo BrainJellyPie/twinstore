@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recover automatic starter products when a local model repeatedly invents shelf
+  IDs or cannot return the grouped catalog selection. Smaller bounded tasks bind
+  category choices to real shelves in code and select SKUs one category at a time.
+  Prompts distinguish grouped sections from physical rack counts; catalog limits,
+  exclusions and all-or-nothing project creation remain enforced.
+
 - Read and encode playback timelines on a worker thread so a slow result read or
   large response does not occupy the server's request loop. Preserve the existing
   JSON values, empty response before results exist and named damaged-file errors.

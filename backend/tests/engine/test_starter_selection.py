@@ -27,6 +27,9 @@ class FakeModel:
     async def generate_structured_async(self, response_model, system_prompt, user_prompt, **kwargs):
         source = json.loads(user_prompt)
         self.calls.append(source)
+        if "choices" in response_model.model_fields:
+            # This fixture remains invalid even when offered the smaller recovery task.
+            return response_model.model_validate({"choices": []})
         if response_model is CategorySelection:
             data = {"groups": [{"category": self.category, "rack_ids": [r["id"] for r in source["racks"]]}]}
         else:
@@ -104,6 +107,6 @@ def test_model_selection_cannot_exceed_the_available_sections(per_slot):
         if call == 2:
             data["groups"][0]["skus"] = [catalog_slot_item(p, "USD").sku for p in CATALOG["home_coffee_tea"][:per_slot + 1]]
     model = FakeModel(edit=edit)
-    with pytest.raises(ValueError, match="shelf capacity"):
+    with pytest.raises(ValueError):
         asyncio.run(select_starter_products(model, store, [rack], "", products_per_slot=per_slot))
     assert model.calls[1]["maximum_products_per_category"] == {"home_coffee_tea": per_slot}

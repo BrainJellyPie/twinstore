@@ -27,6 +27,11 @@ class RepairModel:
 
     async def generate_structured_async(self, schema, system, user, **kwargs):
         payload = json.loads(user)
+        if "choices" in schema.model_fields:
+            self.counts["small"] += 1
+            self.calls.append(("small", payload))
+            count = schema.model_json_schema()["properties"]["choices"]["minItems"]
+            return schema.model_validate({"choices": ["not_in_catalog"] * count})
         stage = "category" if schema is CategorySelection else "product"
         self.counts[stage] += 1
         self.calls.append((stage, payload))
@@ -83,7 +88,7 @@ def test_one_corrected_response_recovers_and_only_valid_products_are_placed(curr
 
 
 @pytest.mark.parametrize("fault", CATEGORY_FAULTS + PRODUCT_FAULTS)
-def test_persistent_invalid_choices_stop_after_one_correction(fault):
+def test_persistent_invalid_choices_stop_after_bounded_small_task_recovery(fault):
     store = empty_store()
     model = RepairModel(fault if fault in CATEGORY_FAULTS else None, fault if fault in PRODUCT_FAULTS else None, True)
     with pytest.raises(ValueError):
@@ -91,6 +96,7 @@ def test_persistent_invalid_choices_stop_after_one_correction(fault):
                                             product_limits={key: 1 for key in CATALOG}))
     stage = "category" if fault in CATEGORY_FAULTS else "product"
     assert model.counts[stage] == 2
+    assert model.counts["small"] == 2
     assert not any(r.slots for r in store.racks)
 
 
