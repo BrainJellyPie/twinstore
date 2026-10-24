@@ -5,7 +5,6 @@ import urllib.request
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException
-from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from store_emulator.application import providers as provider_service
@@ -33,10 +32,10 @@ class ConnectionTestRequest(BaseModel):
 
 
 @router.get("/providers", summary="Model providers and their connection status", response_model=list[ProviderStatus])
-async def list_providers() -> list[ProviderStatus]:
+def list_providers() -> list[ProviderStatus]:
     """Presets (suggested models, default endpoints) and whether a key is configured.
     Keys are never returned — only `has_key`, where it comes from, and its last 4 characters."""
-    return await run_in_threadpool(_with_local_check, provider_service.list_providers())
+    return _with_local_check(provider_service.list_providers())
 
 
 _DIRECT = urllib.request.build_opener(urllib.request.ProxyHandler({}))   # 127.0.0.1 never goes through a proxy
@@ -70,7 +69,7 @@ def _with_local_check(statuses: list[ProviderStatus]) -> list[ProviderStatus]:
 
 
 @router.put("/providers/{kind}", summary="Save a provider's API key / endpoint", response_model=ProviderStatus)
-async def update_provider(kind: str, update: ProviderUpdate) -> ProviderStatus:
+def update_provider(kind: str, update: ProviderUpdate) -> ProviderStatus:
     """Stored locally in `.data/settings/providers.json` (git-ignored, file mode 600).
     Send `api_key: ""` to remove a stored key."""
     try:
@@ -86,6 +85,6 @@ async def test_provider(req: ConnectionTestRequest) -> ConnectionTest:
 
 
 @router.get("/models", summary="Model references usable now", response_model=list[ModelOption])
-async def list_models() -> list[ModelOption]:
+def list_models() -> list[ModelOption]:
     """Every suggested model of every provider that is ready (key present, or local)."""
     return [ModelOption.model_validate(m) for m in provider_service.available_models()]

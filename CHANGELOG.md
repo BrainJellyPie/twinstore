@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep the server responsive while model discovery waits for a local model,
+  provider settings load from disk, or settings updates wait for their write
+  lock. Provider reads and saves now run on FastAPI's worker threads.
+
 - Keep shopper interviews separate on case-insensitive disks and support Windows
   device-name customer IDs. New transcripts use exact-ID digests; legacy records
   are read or removed only for their recorded owner, preserving unrelated history.
