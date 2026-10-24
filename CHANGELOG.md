@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Roll back incomplete marketing study registration, including partially saved
+  survey images and staff-script inputs. Failed starts no longer leave unqueued
+  pending jobs blocking deletion. Registration reserves a new directory and
+  rejects occupied destinations without overwriting or removing prior history.
+
 - Reject customer XLSX evidence containing spreadsheet errors or formulas without
   saved results, including missing array-formula children and later worksheets.
   These cells no longer silently become blank customer evidence. Reusing retained

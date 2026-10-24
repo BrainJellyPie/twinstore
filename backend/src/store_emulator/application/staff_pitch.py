@@ -26,6 +26,7 @@ from store_emulator.engine.marketing.script_writer import ScriptDraft, draft_scr
 from store_emulator.engine.marketing.staff_pitch import summarize_pitch, test_pitch_panel
 from store_emulator.engine.prompting import display_price
 from store_emulator.engine.optimize.evaluate import select_personas
+from store_emulator.engine.files import remove_tree
 
 
 def start_pitch(pid: str, req: PitchRequest, config: SimulationConfig) -> JobStatus:
@@ -58,10 +59,15 @@ def start_pitch(pid: str, req: PitchRequest, config: SimulationConfig) -> JobSta
                 raise AppError(str(exc), 400) from exc
             name = req.name.strip() or f"{req.variants[0].name} vs {req.variants[1].name}"
             status = _new_job(pid, "pitch", name, req)
-            write_json(_job_dir(pid, "pitch", status.job_id) / "inputs.json", {
-                "product": product.model_dump(mode="json"), "personas": [p.model_dump(mode="json") for p in panel],
-                "model": req.model.strip() or llm_config.model, "temperature": 0.4,
-            })
+            folder = _job_dir(pid, "pitch", status.job_id)
+            try:
+                write_json(folder / "inputs.json", {
+                    "product": product.model_dump(mode="json"), "personas": [p.model_dump(mode="json") for p in panel],
+                    "model": req.model.strip() or llm_config.model, "temperature": 0.4,
+                })
+            except Exception:
+                remove_tree(folder)
+                raise
     except Timeout:
         raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
 

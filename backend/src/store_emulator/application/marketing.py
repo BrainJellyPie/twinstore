@@ -125,9 +125,16 @@ def _new_job(pid: str, kind: Kind, name: str, request: BaseModel) -> JobStatus:
     jid = f"{prefix}_{uuid.uuid4().hex[:12]}"
     status = JobStatus(job_id=jid, kind=kind, name=name, status="pending", stage="queued", created_at=now_iso())
     folder = _job_dir(pid, kind, jid)
-    folder.mkdir(parents=True, exist_ok=True)
-    write_json(folder / "request.json", request.model_dump(mode="json"))
-    _write_status(pid, status)
+    try:
+        folder.mkdir(parents=True, exist_ok=False)
+    except FileExistsError:
+        raise AppError("This study destination is already occupied. Please retry.", 409) from None
+    try:
+        write_json(folder / "request.json", request.model_dump(mode="json"))
+        _write_status(pid, status)
+    except Exception:
+        remove_tree(folder)
+        raise
     return status
 
 
@@ -460,7 +467,12 @@ def start_survey(pid: str, req: SurveyRequest, config: SimulationConfig) -> JobS
         board = stimulus_board(images, names)
         name = req.name.strip() or f"Concept test · {', '.join(names)}"
         status = _new_job(pid, "survey", name, req)
-        board.save(_job_dir(pid, "survey", status.job_id) / "board.jpg", quality=90)
+        folder = _job_dir(pid, "survey", status.job_id)
+        try:
+            board.save(folder / "board.jpg", quality=90)
+        except Exception:
+            remove_tree(folder)
+            raise
 
     def run() -> None:
         t0 = time.perf_counter()
