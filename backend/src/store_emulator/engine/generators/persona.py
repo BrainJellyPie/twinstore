@@ -300,6 +300,8 @@ async def generate_personas_for_day(
     categories: list[str] | None = None,
     currency: str = "USD",
     *,
+    customer_profile: str = "",
+    supplemental_summary: str = "",
     semaphore: asyncio.Semaphore | None = None,
     tally: BatchTally | None = None,
     on_written: Callable[[int], None] | None = None,
@@ -346,6 +348,13 @@ async def generate_personas_for_day(
             f"아래 {len(chunk)}명의 고객 페르소나를 생성하세요 (순서대로):\n\n"
             + "\n".join(f"[{i}] {line}" for i, (_, line) in enumerate(chunk))
         )
+        # Category labels and arrival counts cannot carry the source evidence's
+        # budgets, needs or preferences. Include it in every batch and cache key,
+        # including probe requests and the bounded context/truncation recovery.
+        if customer_profile:
+            persona_input += f"\n\nCustomer profile: {customer_profile}"
+        if supplemental_summary:
+            persona_input += f"\nSupplemental data analysis: {supplemental_summary}"
         if custom_instruction:
             persona_input += f"\n\n추가 지시: {custom_instruction}"
         # Bound grammar-capable models to this task; keep the existing short/surplus
@@ -492,6 +501,7 @@ async def generate_batched(
         return generate_personas_for_day(
             llm, address, profile, day, hourly,
             seed=seed, custom_instruction=custom_instruction,
+            customer_profile=customer_profile, supplemental_summary=supplemental_summary,
             batch_size=batch_size, max_concurrent=max_concurrent,
             categories=categories, currency=currency, semaphore=shared, tally=tally, on_written=written,
         )

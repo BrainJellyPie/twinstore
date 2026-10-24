@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Carry the original customer description and supplemental/neighborhood summary
+  into individual persona-writing requests, including probes and bounded batch
+  recovery. Labels and arrival estimates no longer discard budget/preference
+  evidence or let revised evidence reuse an older persona response from cache.
+
 - Pass the configured per-line purchase quantity ceiling to intent and impulse
   prompts and local structured-output grammars, including focused context
   recovery. Requests with different ceilings have different cache identities;
