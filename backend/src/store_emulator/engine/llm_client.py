@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 import instructor
 import litellm
 from instructor.core.exceptions import IncompleteOutputException, InstructorError
+from instructor.core.hooks import Hooks
 from litellm.exceptions import AuthenticationError, BadRequestError, ContextWindowExceededError
 from pydantic import BaseModel, ValidationError
 
@@ -349,10 +350,10 @@ class LiteLLMClient:
             return self.seed % _SEED_MOD
         return (self.seed * 1_000_003 + seed) % _SEED_MOD
 
-    def _accumulate_usage(self, raw_response: object, rid: str) -> None:
-        usage = getattr(raw_response, "usage", None)
+    def _accumulate_usage(self, raw_response: object, rid: str, *, requests: int = 1, failed: bool = False) -> None:
+        usage = getattr(raw_response, "total_usage" if failed else "usage", None)
         with self._usage_lock:
-            self._usage.requests += 1
+            self._usage.requests += requests
         if usage is None:
             return
         prompt = getattr(usage, "prompt_tokens", 0) or 0
@@ -445,14 +446,27 @@ class LiteLLMClient:
                 budget = max_tokens
                 budget_configuration = self._configuration
             kwargs = self._call_kwargs(seed, budget, structured=True)
+            calls = 0
+
+            def request_started(*_args: object, **_kwargs: object) -> None:
+                nonlocal calls
+                calls += 1
+
+            hooks = Hooks()
+            hooks.on("completion:kwargs", request_started)
             try:
-                return self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
+                result = self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=response_model,
                     messages=msgs,  # type: ignore[reportArgumentType]
                     max_retries=max_retries,
+                    hooks=hooks,
                     **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
+                with self._usage_lock:
+                    self._usage.requests += max(0, calls - 1)  # The successful completion is recorded by _generate.
+                return result
             except Exception as e:
+                self._accumulate_usage(e, response_model.__name__, requests=calls, failed=True)
                 remaining = None if adjusted else _remaining_output_budget(e, kwargs)
                 if remaining is not None:
                     budget, adjusted = remaining, True
@@ -472,14 +486,27 @@ class LiteLLMClient:
                 budget = max_tokens
                 budget_configuration = self._configuration
             kwargs = self._call_kwargs(seed, budget, structured=True)
+            calls = 0
+
+            def request_started(*_args: object, **_kwargs: object) -> None:
+                nonlocal calls
+                calls += 1
+
+            hooks = Hooks()
+            hooks.on("completion:kwargs", request_started)
             try:
-                return await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
+                result = await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=response_model,
                     messages=msgs,  # type: ignore[reportArgumentType]
                     max_retries=max_retries,
+                    hooks=hooks,
                     **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
+                with self._usage_lock:
+                    self._usage.requests += max(0, calls - 1)  # The successful completion is recorded by _agenerate.
+                return result
             except Exception as e:
+                self._accumulate_usage(e, response_model.__name__, requests=calls, failed=True)
                 remaining = None if adjusted else _remaining_output_budget(e, kwargs)
                 if remaining is not None:
                     budget, adjusted = remaining, True

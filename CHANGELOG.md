@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Include failed structured-output attempts and their reported token usage in
+  model accounting, including truncation recovery and provider fallback. Successful
+  validation retries count every attempt without double-counting tokens;
+  request-local counters remain separate during concurrent generation.
+
 - Prevent nested SDK retries from multiplying structured requests to loopback
   model servers. Instructor owns the configured attempt budget, including
   validation recovery; raw text and non-loopback endpoints keep their transport

@@ -161,6 +161,7 @@ def test_real_http_length_finish_reason_recovers_and_caches_only_complete_childr
                 description=f"Arrived at {hour}", intent="Buy groceries", purpose="groceries").model_dump()
             for hour in hours]}))
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
             "model": body["model"], "choices": [{"index": 0, "finish_reason": "length" if truncated else "stop",
                 "message": {"role": "assistant", "content": content}}]})
 
@@ -179,6 +180,8 @@ def test_real_http_length_finish_reason_recovers_and_caches_only_complete_childr
             assert first == second and [p.arrival_hour for p in first] == [9, 10, 11, 12, 13]
             assert [p.description for p in first] == [f"Arrived at {h}" for h in range(9, 14)]
             assert client.get_usage().cached_requests == 2
+            assert client.get_usage().requests == 10  # Eight HTTP completions and two cached children.
+            assert client.get_usage().total_tokens == 120  # Include the six truncated responses.
 
     asyncio.run(exercise())
     assert calls == [5, 5, 5, 2, 3, 5, 5, 5]
