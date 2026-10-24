@@ -105,6 +105,8 @@ negative percent. Prices must be finite and positive after currency rounding.
 Each variant needs an applicable operation. Correct unavailable moves or empty categories when validation reports them.
 For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
 Use "" for an absent rationale and [] for unspecified focus_products, not null.
+If a listed product, shelf or image name exceeds its field's character limit, copy its prefix up to that limit.
+The prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.
 Write in English."""
 
 
@@ -125,6 +127,19 @@ def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], q
     return "\n".join(lines)
 
 
+def _bounded_target(asked: str, targets: Mapping[str, set[str]], limit: int) -> str:
+    """Resolve a complete name or a grammar-limited prefix only to one identity."""
+    key = asked.strip().casefold()
+    if not key:
+        return ""
+    matches = targets.get(key, set())
+    if len(asked) == limit:
+        # An exact name at the boundary can also be a longer name's prefix.
+        # Include both before deciding; price and placement edits cannot guess.
+        matches = {identifier for name, ids in targets.items() if name.startswith(key) for identifier in ids}
+    return next(iter(matches)) if len(matches) == 1 else ""
+
+
 def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tuple[str, str]]) -> ExperimentDesign:
     """Draft changes resolved to SKUs, shelf ids, minor-unit prices and image ids; the rest is dropped and reported."""
     product_ids: dict[str, set[str]] = {}
@@ -139,8 +154,6 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
     for name, aid in packages:
         image_ids.setdefault(name.strip().casefold(), set()).add(aid)
     skus = {name: next(iter(ids)) for name, ids in product_ids.items() if len(ids) == 1}
-    shelves = {name: next(iter(ids)) for name, ids in shelf_ids.items() if len(ids) == 1}
-    images = {name: next(iter(ids)) for name, ids in image_ids.items() if len(ids) == 1}
     zero = currency.upper() in ZERO_DECIMAL
     warnings: list[str] = []
     variants: list[Variant] = []
@@ -148,7 +161,7 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
     for v in draft.variants:
         changes: list[VariantChange] = []
         for c in v.changes:
-            sku = skus.get(c.product.strip().casefold(), "")
+            sku = _bounded_target(c.product, product_ids, 120)
             if c.kind != "category_price" and not sku:
                 warnings.append(f'{v.name}: no unique product "{c.product}" in this layout (missing or ambiguous name); that change was left out.')
                 continue
@@ -175,13 +188,13 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
                 case "promo":
                     changes.append(VariantChange(kind="promo", sku=sku, promo=c.promo.strip() or "SALE"))
                 case "move":
-                    rack = shelves.get(c.shelf.strip().casefold(), "")
+                    rack = _bounded_target(c.shelf, shelf_ids, 80)
                     if not rack:
                         warnings.append(f'{v.name}: no unique shelf "{c.shelf}" in this layout (missing or ambiguous name); that move was left out.')
                         continue
                     changes.append(VariantChange(kind="move", sku=sku, rack_id=rack, level=c.level))
                 case "package":
-                    aid = images.get(c.package.strip().casefold(), "")
+                    aid = _bounded_target(c.package, image_ids, 80)
                     if not aid:
                         warnings.append(f'{v.name}: no unique product image "{c.package}" (missing or ambiguous name); that change was left out.')
                         continue

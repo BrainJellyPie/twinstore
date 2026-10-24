@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Resolve grammar-limited product, shelf and package names in automatic edits
+  only when the copied prefix identifies one target. Long names can now retain
+  their exact operation; collisions, including an exact short name at the
+  field boundary, no longer select a different target silently.
+
 - Accept null customer-type lists only for hourly estimates with exactly zero
   visitors. Empty hours no longer invalidate a whole day's customer generation;
   preserve positive traffic, strict visitor counts and malformed-label checks.
