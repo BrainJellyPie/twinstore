@@ -41,7 +41,7 @@ from store_emulator.domain.town import Town, TownArrival
 from store_emulator.application.storage.io import DATA_DIR, read_json, write_json, now_iso
 from store_emulator.application.storage.personas import read_personas
 from store_emulator.application.storage.setups import (
-    read_setup, write_setup, metadata_path,
+    read_setup, write_setup, metadata_path, setup_path,
 )
 from store_emulator.application.storage.runs import load_run_results, load_run_store, save_run
 from store_emulator.application.storage import images as image_storage
@@ -267,33 +267,39 @@ def _mark_simulation_running(
     with FileLock(run_lock, timeout=10):
         # Legacy/CLI output or an interrupted write may have no status.json. Its
         # directory still owns this ID and must never be mixed with a new run.
-        if _status_path(pid, run_id).parent.exists():
+        base = _status_path(pid, run_id).parent
+        if base.exists():
             raise AppError(f"concurrent start detected: run ID already exists: {run_id}", 409)
-        if image_store is not None:
-            # The caller holds the tree guard; the run lock also excludes rule starts with this ID.
-            base = _status_path(pid, run_id).parent
-            existed = base.exists()
-            try:
+        original = None if preview else read_setup(pid, setup_id)
+        if original is not None and original["status"] in ("running", "locked"):
+            raise AppError("concurrent start detected: setup is already running or finalized.", 409)
+        attempted_layout_write = False
+        try:
+            if image_store is not None:
+                # The caller holds the tree guard; the run lock also excludes rule starts with this ID.
                 snapshot_project_images(pid, (i for r in image_store.racks for s in r.slots for i in s.items),
                                         base / "input" / "images")
                 if snapshot_photos:
                     snapshot_shelf_views(pid, image_store, image_store.currency or "USD", base / "input" / "shelf_views")
-            except Exception:
-                if existed:
-                    remove_tree(base / "input" / "images")
-                    if snapshot_photos:
-                        remove_tree(base / "input" / "shelf_views")
-                else:
+            if original is not None:
+                attempted_layout_write = True
+                write_setup(pid, setup_id, {**original, "status": "running"})
+            write_status(pid, run_id, "pending", setup_id=setup_id, preview=preview, image_snapshot=image_store is not None,
+                         shelf_photo_snapshot=image_store is not None and snapshot_photos)
+        except Exception:
+            # Nothing has been submitted yet. Restore the source and remove only
+            # this newly reserved run while both the layout and run locks are held.
+            if attempted_layout_write and original is not None:
+                try:
+                    write_json(setup_path(pid, setup_id), original)
+                except Exception:
+                    logger.warning("Could not restore setup %s/%s after rejected run %s", pid, setup_id, run_id, exc_info=True)
+            try:
+                if base.exists():
                     remove_tree(base)
-                raise
-        if not preview:
-            fresh = read_setup(pid, setup_id)
-            if fresh["status"] in ("running", "locked"):
-                raise AppError("concurrent start detected: setup is already running or finalized.", 409)
-            fresh["status"] = "running"
-            write_setup(pid, setup_id, fresh)
-        write_status(pid, run_id, "pending", setup_id=setup_id, preview=preview, image_snapshot=image_store is not None,
-                     shelf_photo_snapshot=image_store is not None and snapshot_photos)
+            except Exception:
+                logger.warning("Could not remove rejected run %s/%s", pid, run_id, exc_info=True)
+            raise
 
 
 def _status_path(pid: str, run_id: str) -> Path:
