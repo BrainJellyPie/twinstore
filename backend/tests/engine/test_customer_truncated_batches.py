@@ -27,7 +27,7 @@ class LimitedModel:
         assert kwargs["max_retries"] == 3
         if schema is gen.TradeAreaProfile:
             return schema(keywords=["nearby"], identities=["resident"], purposes=["groceries"])
-        if schema is gen.DailyTrafficResult:
+        if issubclass(schema, gen.DailyTrafficResult):
             return schema(hourly_profiles=[gen.HourlyProfile(hour=9, visitor_count=5, person_types=["resident"])])
         hours = [int(h) for h in re.findall(r"^\[\d+\] (\d+)시", prompt, re.MULTILINE)]
         self.calls.append((hours, prompt))

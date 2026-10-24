@@ -19,7 +19,7 @@ class Model:
     async def generate_structured_async(self, schema, system, prompt, **kwargs):
         if schema is gen.TradeAreaProfile:
             return schema(keywords=["nearby"], identities=["shopper"], purposes=["snack"])
-        if schema is gen.DailyTrafficResult:
+        if issubclass(schema, gen.DailyTrafficResult):
             assert kwargs["max_retries"] == 3
             return schema.model_validate({"hourly_profiles": self.rows})
         assert issubclass(schema, gen.PersonaBatch)

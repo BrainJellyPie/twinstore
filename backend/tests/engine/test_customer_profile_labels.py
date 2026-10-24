@@ -46,7 +46,7 @@ def test_profile_correction_happens_before_customer_batches_are_sent(field, char
                     self.labels = labels
                     return result
                 raise AssertionError("Profile correction failed")
-            if schema is gen.DailyTrafficResult:
+            if issubclass(schema, gen.DailyTrafficResult):
                 return schema(hourly_profiles=[gen.HourlyProfile(hour=9, visitor_count=20, person_types=[self.labels["identity"]])])
             self.customer_calls += 1
             return gen.PersonaBatch(personas=[gen.GeneratedPersona(**self.labels, age_group="20s", gender="Female",

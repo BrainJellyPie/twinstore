@@ -16,7 +16,7 @@ def test_unused_model_ids_cannot_fail_a_population_or_change_assigned_ids(model_
         async def generate_structured_async(self, schema, system, prompt, **kwargs):
             if schema is gen.TradeAreaProfile:
                 return schema(keywords=["local"], identities=["resident"], purposes=["snack"])
-            if schema is gen.DailyTrafficResult:
+            if issubclass(schema, gen.DailyTrafficResult):
                 return schema(hourly_profiles=[gen.HourlyProfile(hour=9, visitor_count=3, person_types=["resident"]),
                                                gen.HourlyProfile(hour=10, visitor_count=2, person_types=["resident"])])
             people = [{"identity": "resident", "age_group": "30s", "gender": "Female" if i % 2 == 0 else "Male",

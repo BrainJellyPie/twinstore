@@ -16,7 +16,7 @@ class Model:
     async def generate_structured_async(self, schema, system, prompt, **kwargs):
         if schema is gen.TradeAreaProfile:
             return schema(keywords=[], identities=["shopper"], purposes=["snack"])
-        if schema is gen.DailyTrafficResult:
+        if issubclass(schema, gen.DailyTrafficResult):
             return schema(hourly_profiles=[gen.HourlyProfile(hour=12, visitor_count=60, person_types=["shopper"])])
         self.active += 1
         self.peak = max(self.peak, self.active)

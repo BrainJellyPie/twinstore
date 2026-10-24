@@ -20,7 +20,7 @@ def test_written_customers_and_requests_match_the_selected_plan(hours, pace, cho
         async def generate_structured_async(self, schema, system, prompt, **kwargs):
             if schema is gen.TradeAreaProfile:
                 return schema(keywords=["nearby"], identities=["shopper"], purposes=["snack"])
-            if schema is gen.DailyTrafficResult:
+            if issubclass(schema, gen.DailyTrafficResult):
                 return schema(hourly_profiles=[gen.HourlyProfile(hour=h, visitor_count=20, person_types=["shopper"])
                                                for h in range(hours)])
             self.requests += 1
@@ -56,7 +56,7 @@ def test_a_short_quiet_hour_probe_does_not_hide_the_remaining_request():
         async def generate_structured_async(self, schema, system, prompt, **kwargs):
             if schema is gen.TradeAreaProfile:
                 return schema(keywords=[], identities=["shopper"], purposes=["snack"])
-            if schema is gen.DailyTrafficResult:
+            if issubclass(schema, gen.DailyTrafficResult):
                 return schema(hourly_profiles=[gen.HourlyProfile(hour=h, visitor_count=1, person_types=["shopper"])
                                                for h in range(10)])
             self.requests += 1

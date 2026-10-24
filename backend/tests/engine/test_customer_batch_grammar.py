@@ -74,7 +74,7 @@ def test_grammar_cannot_finish_early_and_substitute_twins_for_full_generation(ba
         async def generate_structured_async(self, schema, system, prompt, **kwargs):
             if schema is gen.TradeAreaProfile:
                 return profile()
-            if schema is gen.DailyTrafficResult:
+            if issubclass(schema, gen.DailyTrafficResult):
                 return schema(hourly_profiles=[gen.HourlyProfile(hour=9, visitor_count=25, person_types=["resident"])])
             bounds = schema.model_json_schema()["properties"]["personas"]
             requested = len(re.findall(r"^\[\d+\] \d+시", prompt, re.MULTILINE))

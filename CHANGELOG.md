@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Assign traffic hours in the harness from the store's opening slots. Local
+  grammars now request exactly one count/type row per open slot without asking
+  the model to reproduce clock IDs, preventing repeated hours and empty lists.
+  Reject partial or mixed positional answers; keep explicit-hour compatibility,
+  closed-hour guards and existing count validation for non-enforcing providers.
+
 - Recover oversized impulse prompts once by selecting candidates from every
   exposed offer, then requesting actions for the selected offers. Preserve the
   planned basket, individual needs and actual store; retain both selection traces.

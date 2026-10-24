@@ -27,7 +27,7 @@ class Model:
         assert kwargs["max_retries"] == 3
         if schema is gen.TradeAreaProfile:
             return schema(keywords=["nearby"], identities=["shopper"], purposes=["snack"])
-        if schema is gen.DailyTrafficResult:
+        if issubclass(schema, gen.DailyTrafficResult):
             return schema(hourly_profiles=[gen.HourlyProfile(hour=9, visitor_count=20, person_types=["shopper"])])
         assert issubclass(schema, gen.PersonaBatch)
         day = next(int(d) for d, label in WEEKDAY_LABELS.items() if f"요일: {label}\n" in prompt)

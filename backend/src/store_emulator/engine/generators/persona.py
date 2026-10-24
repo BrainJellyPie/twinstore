@@ -6,7 +6,7 @@ import random
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Annotated, Self
+from typing import Annotated, Self, cast
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
@@ -48,6 +48,46 @@ class DailyTrafficResult(BaseModel):
         if duplicates:
             raise ValueError(f"Each hour must appear at most once; repeated hours: {duplicates}. Return one visitor count per hour.")
         return self
+
+
+def traffic_response_model(open_hour: int, close_hour: int) -> type[DailyTrafficResult]:
+    """Let the harness assign clock values to the model's ordered open-slot estimates."""
+    hours = list(range(open_hour, close_hour))
+    row_schema = HourlyProfile.model_json_schema()
+    row_properties = row_schema["properties"]
+    row_properties.pop("hour")
+    # A separately generated schema's alias reference does not belong to the
+    # enclosing model's definition registry. Keep its label constraint inline.
+    label = row_properties["person_types"]["items"]
+    if "$ref" in label:
+        row_properties["person_types"]["items"] = row_schema["$defs"][label["$ref"].rsplit("/", 1)[1]]
+    constraints: dict[str, JsonValue] = {
+        "minItems": len(hours), "maxItems": len(hours),
+        "items": {"type": "object", "properties": row_properties,
+                  "required": ["visitor_count", "person_types"], "additionalProperties": False},
+    }
+
+    class SlotTrafficResult(DailyTrafficResult):
+        hourly_profiles: list[HourlyProfile] = Field(max_length=24, json_schema_extra=constraints)
+
+        @field_validator("hourly_profiles", mode="before")
+        @classmethod
+        def _assign_hours(cls, value: object) -> object:
+            if not isinstance(value, list):
+                return value
+            rows = cast(list[object], value)
+            if not rows:
+                return rows
+            positional = [isinstance(row, dict) and "hour" not in row for row in rows]
+            if not any(positional):
+                return rows  # Older/non-enforcing providers and cached results retain explicit clocks.
+            if not all(positional):
+                raise ValueError("Do not mix rows with and without hour. Omit hour from every row and follow the supplied slot order.")
+            if len(rows) != len(hours):
+                raise ValueError(f"Return one row for each opening-hour slot, in order: {hours}; got {len(rows)} rows.")
+            return [{**cast(dict[str, object], row), "hour": hour} for row, hour in zip(rows, hours, strict=True)]
+
+    return SlotTrafficResult
 
 
 class GeneratedPersona(BaseModel):
@@ -172,17 +212,20 @@ DAILY_TRAFFIC_PROMPT = """당신은 상권 분석 전문가입니다.
 아래 제공된 identity 풀(고객 유형 목록)을 참고하여, **{day_label}**의 시간대별 방문 트래픽을 예측하세요.
 
 규칙:
-- hourly_profiles: 0~23시 전체. 각 시간 H는 H:00–(H+1):00 슬롯을 의미.
-  영업 슬롯은 **H ∈ [{open_hour}, {close_hour})** — 즉 H가 {open_hour} 이상 {close_hour} 미만인 슬롯만.
-  예: 영업 17~18시면 H=17 슬롯 한 개만 영업, H=18 슬롯은 닫힘.
-  영업이 아닌 모든 H는 반드시 visitor_count=0, person_types=[]
+- hourly_profiles: 영업 슬롯 **H ∈ [{open_hour}, {close_hour})**를 시간순으로 한 번씩 작성.
+  각 행은 visitor_count와 person_types만 포함. hour는 출력하지 마세요. 시스템이 순서대로 시간을 부여합니다.
+  아래 제공된 슬롯 목록의 각 줄마다 반드시 한 행씩 반환하세요. 방문객이 없는 슬롯도 visitor_count=0, person_types=[]로 포함하세요.
+  각 H는 H:00–(H+1):00 슬롯입니다. 예: 영업 17~18시면 한 행만 반환하며 이 행은 H=17입니다.
 - visitor_count: 해당 시간대의 예상 방문객 수 (0 이상 정수).
   하루 총 방문객 수는 매장 입지/규모/상권 특성과 요일에 맞게 합리적으로 추론하여 결정.
   특정 시간대에 몰리는 자연스러운 형상(피크/오프피크/식사시간 등)을 반드시 반영하세요.
 - person_types: **반드시 아래 identity 목록의 라벨을 그대로 사용.** {day_label}에 실제로 방문할 유형만 선택
   - 각 항목은 120자 이하. 라벨에 설명을 덧붙이거나 같은 구절을 반복하지 마세요.
   - {day_label}에 맞지 않는 유형은 제외 (예: 주말에 "출근길 직장인" 제외)
-  - 시간대별로 적절한 유형만 선택 (예: "야식 손님"은 저녁~심야에만)"""
+  - 시간대별로 적절한 유형만 선택 (예: "야식 손님"은 저녁~심야에만)
+
+## 언어
+Use the exact supplied identity labels. Do not translate or expand them."""
 
 PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 조합으로 현실적인 고객 페르소나를 만드세요.
 매장이 위치한 국가/도시의 문화, 언어, 소비 패턴을 반영하세요.
@@ -265,7 +308,9 @@ async def analyze_daily_traffic(
     user_input = (
         f"Address: {address}\nCustomer profile: {customer_profile}\n"
         f"요일: {day_label}\n영업: {open_hour}~{close_hour}시\n\n"
-        f"## identity 목록\n{identity_list}"
+        f"## identity 목록\n{identity_list}\n\n"
+        f"## 영업 슬롯 (이 순서로 정확히 {close_hour - open_hour}행)\n"
+        + "\n".join(f"[{i}] {hour:02d}:00–{hour + 1:02d}:00" for i, hour in enumerate(range(open_hour, close_hour)))
     )
     # Labels alone cannot carry quantities, weekday mixes or peak hours from the
     # original evidence. Keep those inputs in this stage and its cache identity.
@@ -274,7 +319,7 @@ async def analyze_daily_traffic(
     if custom_instruction:
         user_input += f"\n추가 지시: {custom_instruction}"
     logger.info(f"[area-analysis] {day_label} analyzing traffic...")
-    result = await llm.generate_structured_async(DailyTrafficResult, system, user_input, max_retries=3)
+    result = await llm.generate_structured_async(traffic_response_model(open_hour, close_hour), system, user_input, max_retries=3)
     # Out-of-hours guard — force zero if the LLM misreads the open-slot range.
     dropped = 0
     for hp in result.hourly_profiles:
