@@ -22,7 +22,7 @@ class SmallTaskModel:
     async def generate_structured_async(self, schema, system, user, **kwargs):
         payload = json.loads(user)
         self.calls.append((schema, payload, system))
-        if schema is CategorySelection:
+        if issubclass(schema, CategorySelection):
             ids = [r["id"] for r in payload["racks"]]
             if self.category_fault:
                 # The reported local-model error: omit section_0, invent other sections.
@@ -82,7 +82,7 @@ def test_invalid_small_answers_never_escape_catalog_or_save_partial_assignments(
 def test_provider_failure_during_small_tasks_stops_without_further_model_calls(error):
     class Offline(SmallTaskModel):
         async def generate_structured_async(self, schema, system, user, **kwargs):
-            if schema is not CategorySelection:
+            if not issubclass(schema, CategorySelection):
                 self.calls.append((schema, json.loads(user), system))
                 raise error
             return await super().generate_structured_async(schema, system, user, **kwargs)
@@ -111,7 +111,7 @@ def test_malformed_bulk_replies_decompose_but_wrapped_connection_failures_do_not
 
     class BrokenBulk(SmallTaskModel):
         async def generate_structured_async(self, schema, system, user, **kwargs):
-            if schema is CategorySelection:
+            if issubclass(schema, CategorySelection):
                 self.calls.append((schema, json.loads(user), system))
                 raise error
             return await super().generate_structured_async(schema, system, user, **kwargs)

@@ -206,6 +206,18 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
     if not allowed:
         raise ValueError("Keep at least one product category for automatic selection.")
     expected_ids = {r.id for r in eligible}
+    category_ids: list[JsonValue] = [key for key in sorted(allowed)]
+    rack_ids: list[JsonValue] = [rid for rid in sorted(expected_ids)]
+    category_constraint: dict[str, JsonValue] = {"enum": category_ids}
+    rack_item: dict[str, JsonValue] = {"type": "string", "enum": rack_ids}
+    rack_constraint: dict[str, JsonValue] = {"items": rack_item}
+
+    class BoundedCategoryGroup(CategoryGroup):
+        category: str = Field(min_length=1, max_length=80, json_schema_extra=category_constraint)
+        rack_ids: list[str] = Field(min_length=1, max_length=100, json_schema_extra=rack_constraint)
+
+    category_schema = create_model("CategorySelection", __base__=CategorySelection,
+        groups=(list[BoundedCategoryGroup], Field(min_length=1, max_length=16)))
 
     def validate_categories(selected: CategorySelection) -> None:
         keys = [group.category for group in selected.groups]
@@ -222,7 +234,7 @@ async def select_starter_products(llm: SelectionClient, store: Store, racks: lis
                              f"Missing rack IDs: {missing}; unknown rack IDs: {unexpected}; repeated rack IDs: {duplicates}.")
 
     try:
-        selected = await _validated_selection(llm, CategorySelection, CATEGORY_PROMPT, {
+        selected = await _validated_selection(llm, category_schema, CATEGORY_PROMPT, {
             **context, "expected_rack_ids": [r.id for r in eligible],
             "racks": [{"id": r.id, "name": r.name[:200], "type": r.type, "suggested_category": r.suggested_category} for r in eligible],
             "categories": [{"id": key, "label": category_label(key, "USD")} for key in sorted(allowed)],

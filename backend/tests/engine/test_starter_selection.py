@@ -30,12 +30,12 @@ class FakeModel:
         if "choices" in response_model.model_fields:
             # This fixture remains invalid even when offered the smaller recovery task.
             return response_model.model_validate({"choices": []})
-        if response_model is CategorySelection:
+        if issubclass(response_model, CategorySelection):
             data = {"groups": [{"category": self.category, "rack_ids": [r["id"] for r in source["racks"]]}]}
         else:
             data = {"groups": [{"category": self.category, "skus": [p["sku"] for p in source["categories"][self.category]][:3]}]}
         if self.edit:
-            self.edit(data, 1 if response_model is CategorySelection else 2)
+            self.edit(data, 1 if issubclass(response_model, CategorySelection) else 2)
         return response_model.model_validate(data)
 
 

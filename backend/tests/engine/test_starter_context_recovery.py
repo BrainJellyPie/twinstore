@@ -28,7 +28,7 @@ def wrapped(error):
 def test_context_overflow_decomposes_without_repeating_the_whole_request(stage, wrap):
     class Limited(SmallTaskModel):
         async def generate_structured_async(self, schema, system, user, **kwargs):
-            fail = (schema is CategorySelection and stage != 'product') or (schema is ProductSelection and stage != 'category')
+            fail = (issubclass(schema, CategorySelection) and stage != 'product') or (schema is ProductSelection and stage != 'category')
             if fail:
                 self.calls.append((schema, json.loads(user), system))
                 error = context_error()
@@ -41,7 +41,7 @@ def test_context_overflow_decomposes_without_repeating_the_whole_request(stage, 
         allowed_categories={'home_coffee_tea', 'dairy'}, product_limits={'home_coffee_tea': 1}))
     assert Counter(row.rack_id for row in chosen) == Counter(r.id for r in racks)
     assert all(row.category == 'home_coffee_tea' and len(row.skus) == 1 for row in chosen)
-    assert sum(schema is CategorySelection for schema, _, _ in model.calls) == 1
+    assert sum(issubclass(schema, CategorySelection) for schema, _, _ in model.calls) == 1
     assert sum(schema is ProductSelection for schema, _, _ in model.calls) == 1
     assert len(model.calls) == 2 + (13 if stage != 'product' else 0) + (1 if stage != 'category' else 0)
 

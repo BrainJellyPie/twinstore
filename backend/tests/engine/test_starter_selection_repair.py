@@ -32,7 +32,7 @@ class RepairModel:
             self.calls.append(("small", payload))
             count = schema.model_json_schema()["properties"]["choices"]["minItems"]
             return schema.model_validate({"choices": ["not_in_catalog"] * count})
-        stage = "category" if schema is CategorySelection else "product"
+        stage = "category" if issubclass(schema, CategorySelection) else "product"
         self.counts[stage] += 1
         self.calls.append((stage, payload))
         if stage == "category":

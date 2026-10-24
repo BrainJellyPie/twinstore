@@ -22,7 +22,7 @@ def mock_auto_model(monkeypatch, during=None):
             data = json.loads(user)
             if during:
                 during(self.calls)
-            if schema is CategorySelection:
+            if issubclass(schema, CategorySelection):
                 return schema.model_validate({"groups": [{"category": "home_coffee_tea", "rack_ids": [r["id"] for r in data["racks"]]}]})
             return schema.model_validate({"groups": [{"category": "home_coffee_tea", "skus": [p["sku"] for p in data["categories"]["home_coffee_tea"][:2]]}]})
     model = Model()

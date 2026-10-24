@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Constrain the first automatic assortment request to the actual eligible rack
+  IDs and allowed catalog categories. Grammar-capable local servers can no longer
+  invent section IDs in that request; semantic checks and bounded-task recovery
+  still handle servers that ignore the grammar or omit/repeat existing racks.
+
 - Accept ready Ollama and OpenAI-compatible local servers that do not expose
   llama.cpp's `/health` route. Inference preflight can check model/tag listings,
   preserves endpoint path/query routing, and still rejects loading, unavailable
