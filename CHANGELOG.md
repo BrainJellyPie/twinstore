@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep the engine selector available when a model server address has malformed
+  IPv6, a bad port or no host. Mark that model unavailable, retain working engines
+  and reject runs with a clear address error. An API key no longer skips endpoint
+  readiness; valid inline cloud credentials continue to work.
+
 - Recognize dotted localhost names and alternate loopback IP spellings during
   local-model readiness checks and work estimates. Unavailable servers no longer
   bypass preflight, and dotted localhost keeps local timing, sampling and batch

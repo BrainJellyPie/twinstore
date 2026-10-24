@@ -97,9 +97,7 @@ def _engines() -> list[EngineInfo]:
     settings = load_settings()
 
     def ready(model: LLMConfig) -> bool:
-        if model.api_key is not None:
-            return True
-        if model.api_base is None and missing_key(model.model, settings) is not None:
+        if model.api_base is None and model.api_key is None and missing_key(model.model, settings) is not None:
             return False
         try:
             resolved = resolve_model(model.model, base=model)
@@ -107,7 +105,7 @@ def _engines() -> list[EngineInfo]:
             return False
         if resolved.api_base:   # a server (llamacpp:local, the app's local model, a self-hosted one) must answer
             return local_model_answers(resolved.api_base)
-        return missing_key(model.model, settings) is None
+        return resolved.api_key is not None or missing_key(model.model, settings) is None
 
     def suggested(model: LLMConfig) -> str:
         return "" if ready(model) else text_model_fallback(model.model, settings) or ""

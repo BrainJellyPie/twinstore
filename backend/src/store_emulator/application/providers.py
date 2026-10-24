@@ -467,7 +467,7 @@ def _local_text_ready(settings: dict[ProviderKind, ProviderSettings]) -> bool:
     user turned on in Settings. The settings outlive the app, so with TwinStore's own model not running, the address
     they hold (often where it ran last time) must answer now."""
     status = provider_status(ProviderKind.LLAMACPP, settings)
-    if not status.ready or status.api_base is None:
+    if not status.ready or status.api_base is None or not _valid_api_base(status.api_base):
         return False
     # late import: local_vlm imports this module
     from .local_vlm import manager, server_answers
@@ -522,9 +522,18 @@ def _same_local_endpoint(first: str, second: str) -> bool:
         return False
 
 
+def _valid_api_base(api_base: str) -> bool:
+    try:
+        endpoint = urlsplit(api_base)
+        return (endpoint.scheme in {"http", "https"} and bool(endpoint.hostname)
+                and (endpoint.port is None or endpoint.port > 0))
+    except ValueError:
+        return False
+
+
 def _targets_own_local_server(vision: LLMConfig) -> bool:
     """Whether the app's vision model is the local model TwinStore runs on this computer (its address)."""
-    if not vision.api_base:
+    if not vision.api_base or not _valid_api_base(vision.api_base):
         return False
     endpoint = urlsplit(vision.api_base)
     loopback = {"127.0.0.1", "localhost", "::1"}
@@ -560,7 +569,7 @@ def assistive_vision_model(requested: str, vision: LLMConfig) -> str:
     that provider's fast vision model. "" = the app's vision model."""
     if requested.strip():
         return requested.strip()
-    if not vision.api_base:
+    if not vision.api_base or not _valid_api_base(vision.api_base):
         return ""
     endpoint = urlsplit(vision.api_base)
     loopback = {"127.0.0.1", "localhost", "::1"}
@@ -841,6 +850,8 @@ def local_model_answers(api_base: str) -> bool:
     a server on this computer must answer."""
     from .local_vlm import server_answers  # late import: local_vlm imports this module
 
+    if not _valid_api_base(api_base):
+        return False
     if not is_local_base(api_base):
         return True
     return server_answers(api_base)
@@ -852,6 +863,9 @@ def ensure_local_ready(api_base: str) -> None:
     # late import: local_vlm imports this module
     from .local_vlm import manager, server_answers
 
+    if not _valid_api_base(api_base):
+        raise ValueError("The model server address is invalid. Use an HTTP or HTTPS address with a valid host and port "
+                         "in Settings → Model providers.")
     if not is_local_base(api_base):
         return
     status = manager().status()
