@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Prevent rejected photo-analysis jobs from running later when the executor
+  recovers. Deleted photos and project directories stay deleted. Photo analysis
+  and customer generation now share the guarded background submission path.
+
 - Release customer-generation reservations when the worker rejects a job, so
   retries are not blocked by a permanently pending generation. A task queued
   before worker startup fails cannot later overwrite customers or recreate a

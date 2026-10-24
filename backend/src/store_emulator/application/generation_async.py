@@ -6,15 +6,13 @@ import logging
 import math
 import time
 from collections import Counter
-from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from collections.abc import Callable
-from threading import Event, RLock
 from typing import Any, cast
 
 from filelock import FileLock, Timeout
 
-from store_emulator.application.async_executor import executor
+from store_emulator.application.async_executor import executor, submit_background
 from store_emulator.application.errors import AppError, model_failure
 from store_emulator.application.estimates import cost_usd, effective_parallel, is_local_base, should_warn
 from store_emulator.application.setups import project_layout_transaction, setup_lock_path, setup_tree_transaction
@@ -103,25 +101,17 @@ def start_persona_generation(
             if kept is not None:
                 supplemental_bytes, supplemental_filename = kept
         gen_id = init_generation(project_id, setup_id, "persona")
-    # submit() may enqueue the task before failing to start its worker thread.
-    # Hold the start gate until acceptance or failure has been recorded.
-    start_lock = RLock()
-    start_cancelled = Event()
-    with start_lock:
-        try:
-            executor.submit(
-                _run_persona_background,
-                config, project_id, setup_id, gen_id, custom_instruction,
-                supplemental_bytes=supplemental_bytes,
-                supplemental_filename=supplemental_filename,
-                start_lock=start_lock,
-                start_cancelled=start_cancelled,
-            )
-        except RuntimeError as exc:
-            start_cancelled.set()
-            message = "Could not start customer generation. Please retry when the worker is available."
-            write_status(project_id, gen_id, "failed", error=message)
-            raise AppError(message, 503) from exc
+    try:
+        submit_background(
+            executor, _run_persona_background,
+            config, project_id, setup_id, gen_id, custom_instruction,
+            supplemental_bytes=supplemental_bytes,
+            supplemental_filename=supplemental_filename,
+        )
+    except RuntimeError as exc:
+        message = "Could not start customer generation. Please retry when the worker is available."
+        write_status(project_id, gen_id, "failed", error=message)
+        raise AppError(message, 503) from exc
     return gen_id
 
 
@@ -182,21 +172,16 @@ def _run_persona_background(
     *,
     supplemental_bytes: bytes | None = None,
     supplemental_filename: str = "",
-    start_lock: AbstractContextManager[object] | None = None,
-    start_cancelled: Event | None = None,
 ) -> None:
     """spec §4.3 — sync wrapper. Single asyncio.run invocation of _run_async_pipeline."""
     try:
-        with start_lock if start_lock is not None else nullcontext():
-            if start_cancelled is not None and start_cancelled.is_set():
-                return
-            try:
-                status = read_status(project_id, gen_id)
-            except FileNotFoundError:
-                return  # A rejected job's project may already have been removed.
-            if status.get("status") != "pending":
-                return
-            write_status(project_id, gen_id, "running")
+        try:
+            status = read_status(project_id, gen_id)
+        except FileNotFoundError:
+            return  # A rejected job's project may already have been removed.
+        if status.get("status") != "pending":
+            return
+        write_status(project_id, gen_id, "running")
         meta: dict[str, object] = cast(
             dict[str, object], read_json(metadata_path(project_id)),
         )

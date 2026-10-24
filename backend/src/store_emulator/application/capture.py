@@ -56,7 +56,7 @@ from store_emulator.engine.llm_client import LiteLLMClient
 from store_emulator.engine.validation import validate
 from store_emulator.engine.files import remove_tree
 
-from .async_executor import executor
+from .async_executor import executor, submit_background
 from .currencies import project_currency
 from .errors import AppError, job_failure
 from .providers import PRESETS, assistive_vision_model, ensure_local_ready, resolve_model
@@ -314,7 +314,7 @@ def _start_capture(
                     logger.warning("Could not remove rejected upload receipt %s/%s", pid, cid, exc_info=True)
             raise
     try:
-        executor.submit(_run_job, pid, status, llm_config)
+        submit_background(executor, _run_job, pid, status, llm_config)
     except RuntimeError as exc:
         _write_status(pid, status.model_copy(update={"status": "failed", "error": "Could not start recognition. Retry as a new attempt.", "finished_at": now_iso()}))
         raise AppError("Could not start recognition. Retry this upload to inspect its status", 503) from exc
