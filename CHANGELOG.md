@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Require one theme assignment per supplied customer answer in local output
+  grammars. A decoder can no longer finish with an empty or shortened assignment
+  list and turn substantive study answers into an all-Other report. Preserve the
+  existing fallback for incomplete responses from non-enforcing providers.
+
 - Preserve partial package readings when a vision model returns null for unknown
   name, brand, size, category or store-product text. Keep unknown text empty,
   preserve existing image metadata, and leave unmatched products unlinked;

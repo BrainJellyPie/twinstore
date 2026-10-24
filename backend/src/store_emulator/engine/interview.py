@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.interview import (
@@ -266,7 +266,8 @@ async def suggest_group_questions(llm: StructuredLLM, summary: str) -> list[Grou
 THEMES_PROMPT = """You code open-ended answers from shopper interviews into themes, as a qualitative researcher would.
 Group answers that give the same reason; keep themes distinct and concrete (e.g. "Too expensive for a snack", not
 "Price"). Return two to six short theme labels and, for every answer in the order given, the number of its theme
-(starting at 0). Write in English."""
+(starting at 0). The assignments list must have exactly one entry per supplied answer, including repeated answers;
+do not omit answers or return only one representative per theme. Write in English."""
 
 
 MAX_THEMES = 6
@@ -281,8 +282,12 @@ class ThemeCoding(BaseModel):
 async def code_themes(llm: StructuredLLM, question: str, answers: Sequence[str]) -> tuple[list[str], list[int]]:
     """Theme labels and one theme index per answer; answers the model leaves out or misnumbers go to "Other"."""
     listed = "\n".join(f"{i}. {a}" for i, a in enumerate(answers))
+    schema = create_model("ThemeCoding", __base__=ThemeCoding, assignments=(list[int], Field(
+        description=f"Exactly {len(answers)} theme indices, one per answer in its original order",
+        json_schema_extra={"minItems": len(answers), "maxItems": len(answers)},
+    )))
     coding = await llm.generate_structured_async(
-        ThemeCoding, THEMES_PROMPT, f"Question: {question}\n\nAnswers:\n{listed}", max_retries=2, seed=0,
+        schema, THEMES_PROMPT, f"Question: {question}\n\nAnswers:\n{listed}", max_retries=2, seed=0,
     )
     themes: list[str] = []
     indices: dict[int, int] = {}
