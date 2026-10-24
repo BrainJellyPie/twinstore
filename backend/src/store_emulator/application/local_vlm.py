@@ -202,6 +202,8 @@ class LocalVLMManager:
         self._status = LocalVLMStatus(state="disabled" if self.disabled else "off")
         self._lock = threading.Lock()
         self._plan_lock = threading.Lock()   # one hardware probe at a time (the start thread and /api/system/models)
+        self._choice_lock = threading.Lock()
+        self._choice: bool | None = None  # Start/Stop survives failed persistence for the current session.
         self._cancel = threading.Event()
         self._stopping = False
         self._thread: threading.Thread | None = None
@@ -242,24 +244,32 @@ class LocalVLMManager:
 
     def chosen(self) -> bool | None:
         """True: the user started the local model; False: they stopped it; None: they never did either."""
-        try:
-            raw: object = json.loads((self.home / _CHOICE).read_text(encoding="utf-8"))
-        except (OSError, ValueError):       # never chosen, or a file cut short: as if never asked
-            return None
-        use = cast(dict[str, object], raw).get("use") if isinstance(raw, dict) else None
-        return use if isinstance(use, bool) else None
+        with self._choice_lock:
+            if self._choice is not None:
+                return self._choice
+            try:
+                raw: object = json.loads((self.home / _CHOICE).read_text(encoding="utf-8"))
+            except (OSError, ValueError):       # never chosen, or a file cut short: as if never asked
+                return None
+            use = cast(dict[str, object], raw).get("use") if isinstance(raw, dict) else None
+            return use if isinstance(use, bool) else None
 
     def choose(self, use: bool) -> None:
         """Remember the user's Start or Stop for the next time the app opens."""
-        path = self.home / _CHOICE
-        tmp = path.with_name(f"{_CHOICE}.{os.getpid()}.tmp")
-        try:
-            self.home.mkdir(parents=True, exist_ok=True)
-            tmp.write_text(json.dumps({"use": use}), encoding="utf-8")
-            replace_file(tmp, path)
-        except OSError:                     # a read-only folder: the choice holds for this session only
-            logger.warning("[local_vlm] could not save the local model choice", exc_info=True)
-            tmp.unlink(missing_ok=True)
+        with self._choice_lock:
+            self._choice = use
+            path = self.home / _CHOICE
+            tmp = path.with_name(f"{_CHOICE}.{os.getpid()}.tmp")
+            try:
+                self.home.mkdir(parents=True, exist_ok=True)
+                tmp.write_text(json.dumps({"use": use}), encoding="utf-8")
+                replace_file(tmp, path)
+            except OSError:                     # a read-only folder: the choice holds for this session only
+                logger.warning("[local_vlm] could not save the local model choice", exc_info=True)
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass  # The pending Start/Stop must still reach the model process.
 
     def on_disk(self, plan: LocalVLMPlan) -> bool:
         """Would this plan start without downloading anything?"""

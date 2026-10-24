@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Honor local-model Start/Stop for the current session even if saving the choice
+  fails. Preference cleanup errors no longer prevent stopping the process, and
+  an unsaved Stop cannot be replaced by an older on-disk Start during automatic
+  startup. Starting the model now saves preferences off the server event loop.
+
 - Validate finite receipt quantities and amounts before caching model output or
   converting prices. Invalid OCR numbers get one bounded correction attempt;
   repeated invalid output remains a failed receipt. The prompt now asks for null

@@ -45,7 +45,7 @@ def model_setup() -> ModelSetup:   # sync: hardware detection may call nvidia-sm
 
 @router.post("/local-model/start", summary="Download (if needed) and start the local vision model",
              response_model=LocalVLMStatus)
-async def start_local_model() -> LocalVLMStatus:
+def start_local_model() -> LocalVLMStatus:
     manager().choose(True)      # it starts again by itself next time, and may download
     return manager().start()
 

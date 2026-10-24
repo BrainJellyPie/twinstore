@@ -101,3 +101,32 @@ def test_provider_save_waits_for_real_settings_lock_without_blocking_health(isol
 def test_unknown_provider_still_returns_not_found(isolated_settings):
     response = TestClient(app).put("/api/providers/unknown", json={"enabled": True})
     assert response.status_code == 404 and response.json()["detail"] == "unknown provider: unknown"
+
+
+def test_local_start_keeps_health_available_while_saving_the_choice(isolated_settings, monkeypatch):
+    manager = local_vlm.manager()
+    started, release = Event(), Event()
+    original = manager.choose
+    starts = []
+
+    def delayed_choice(use):
+        started.set()
+        assert release.wait(5)
+        original(use)
+
+    def start():
+        starts.append(manager.chosen())
+        return manager.status()
+
+    monkeypatch.setattr(manager, 'choose', delayed_choice)
+    monkeypatch.setattr(manager, 'start', start)
+    with TestClient(app) as client, ThreadPoolExecutor(max_workers=2) as pool:
+        pending = pool.submit(client.post, '/api/system/local-model/start')
+        try:
+            assert started.wait(5)
+            assert pool.submit(client.get, '/api/health').result(timeout=1).json() == {'status': 'ok'}
+            assert not pending.done()
+        finally:
+            release.set()
+        response = pending.result(timeout=5)
+    assert response.status_code == 200 and starts == [True]
