@@ -268,8 +268,8 @@ PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 �
 - description: 이 사람의 상황, 성격 1~2문장. 해당 국가의 실제 생활상을 반영. 특정 브랜드명이나 구체적 상품명(예: 바나나맛 우유, 컨디션)을 사용하지 말고, 니즈/카테고리 수준으로 표현 (예: "a sweet dairy beverage", "a hangover-relief drink")
 - intent: 매장에서 하고 싶은 것 1문장 (자유 서술). 구체적 상품명 대신 카테고리나 니즈로 표현. 예: "조깅 후 수분 보충할 이온음료를 사고 싶다", "간단한 간식과 음료를 고르고 싶다"
 - purpose: 반드시 아래 제공된 purpose 목록 중 하나를 그대로 사용 (통계 집계용 짧은 라벨)
-- preferred_categories: 반드시 아래 제공된 카테고리 목록 중에서만 선택. 목록에 없는 카테고리를 임의로 만들지 마세요
-  - 제공된 목록이 없거나 선호 카테고리가 없으면 []를 사용하세요. null을 사용하지 마세요.
+- preferred_categories: {category_rule}
+  - 선호 카테고리가 없으면 []를 사용하세요. null을 사용하지 마세요.
 - budget_min, budget_max: {budget_rule}
   - 0 이상 9007199254740991 이하의 정수. 한 번의 방문에 현실적인 금액을 사용하고 숫자를 반복하지 마세요. 예산을 정할 수 없으면 0을 사용하세요.
   - budget_max가 0이면 상한 미지정입니다. 그 외에는 budget_min <= budget_max를 지키세요.
@@ -278,15 +278,20 @@ PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 �
 
 ## 언어
 - 자유 서술 필드(`description`, `intent`, `behavior_tendency`)의 값은 **영어로** 작성하세요.
-- 구조적 필드(`age_group`, `gender`, `identity`, `purpose`, `preferred_categories`, `budget_min`, `budget_max`)는 프롬프트에서 제공된 라벨/값을 그대로 사용합니다.
+- 구조적 필드(`age_group`, `gender`, `identity`, `purpose`, `budget_min`, `budget_max`)는 프롬프트에서 제공된 라벨/값을 그대로 사용합니다.
 - 영어 표현은 자연스러운 콘텐츠 톤을 유지하세요(예: 페르소나 설명은 1-2문장의 짧은 인물 묘사)."""
 
 
-def persona_prompt(currency: str = "USD") -> str:
+def persona_prompt(currency: str = "USD", *, listed_categories: bool = False) -> str:
     return PERSONA_PROMPT_TEMPLATE.format(
         age_groups=", ".join(AGE_GROUPS),
         genders=", ".join(GENDERS),
         budget_rule=budget_example(currency),
+        category_rule=("반드시 아래 제공된 카테고리 목록 중에서만 선택. 목록에 없는 카테고리를 임의로 만들지 마세요"
+                       if listed_categories else
+                       "Infer short English category labels from this customer's needs and purchase intent "
+                       "(for example tea, snacks or fresh fruit). No category list is supplied. "
+                       "Do not use brand or specific product names."),
     )
 
 
@@ -383,7 +388,7 @@ async def generate_personas_for_day(
     tally: BatchTally | None = None,
     on_written: Callable[[int], None] | None = None,
 ) -> list[Persona]:
-    system_prompt = persona_prompt(currency)
+    system_prompt = persona_prompt(currency, listed_categories=bool(categories))
     batch_size = max(1, min(batch_size, MAX_PERSONAS_PER_BATCH))
     # Local stream per day: days are generated concurrently, so seeding the global
     # `random` module would make them race and repeat the same sequence.

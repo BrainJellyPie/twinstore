@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Restore preference inference in default customer generation. When no category
+  list is supplied, infer category labels from each customer's needs instead of
+  instructing the model to erase every preference. Supplied lists still constrain
+  selection, and genuinely absent preferences may remain empty.
+
 - Reject automatic staff-script drafts that copy the current wording, including
   case and whitespace changes. Request a corrected alternative before caching,
   so a copied draft cannot repeatedly block the subsequent A/B test.
