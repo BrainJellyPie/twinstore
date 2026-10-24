@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import math
 import time
@@ -319,6 +320,13 @@ async def _run_async_pipeline(
             except Exception:
                 logger.warning("[supplemental] could not store the traffic profile", exc_info=True)
             logger.info(f"[supplemental] visit times follow the uploaded data ({fitted.source})")
+
+    # These facts must reach all three generation stages and their cache keys.
+    store_details = {field: value.strip() for field in ("name", "store_type", "description")
+                     if isinstance(value := meta.get(field), str) and value.strip()}
+    if store_details:
+        effective_summary = (f"{effective_summary}\nStore details (owner-provided): "
+                             f"{json.dumps(store_details, ensure_ascii=False)}").strip()
 
     # Ground the personas in the project's neighborhood model when there is one.
     try:

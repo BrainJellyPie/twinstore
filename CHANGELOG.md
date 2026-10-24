@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Carry the owner's store name, type and description through customer-type
+  analysis, hourly traffic estimates and persona writing. Stores with the same
+  address and customer profile no longer reuse cached generation that ignored
+  their different business details. Saved upload summaries remain unchanged.
+
 - Restore preference inference in default customer generation. When no category
   list is supplied, infer category labels from each customer's needs instead of
   instructing the model to erase every preference. Supplied lists still constrain
