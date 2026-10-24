@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Protect research protocol creation, idempotent retries and amendments against
+  concurrent project deletion, including directory creation. Preserve protocol
+  history when the project is busy and reject commits after deletion wins.
+
 - Coordinate field-pilot creation, reviewed observation imports and closure with
   project deletion. Late writes no longer recreate deleted project folders;
   source-study deletion preserves completed pilot snapshots and busy projects

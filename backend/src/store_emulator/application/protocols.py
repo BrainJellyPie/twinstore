@@ -8,6 +8,7 @@ from filelock import FileLock, Timeout
 
 from store_emulator.application.errors import AppError
 from store_emulator.application.shelf_lab import _check_id  # pyright: ignore[reportPrivateUsage]
+from store_emulator.application.setups import setup_tree_transaction
 from store_emulator.application.storage.io import DATA_DIR, write_json
 from store_emulator.application.storage.setups import metadata_path
 from store_emulator.domain.protocols import AmendProtocol, CreateProtocol, ProtocolLedger, ProtocolListing, ProtocolSummary, ProtocolView
@@ -76,18 +77,21 @@ def _save(path: Path, ledger: ProtocolLedger) -> ProtocolView:
 def create_protocol(pid: str, req: CreateProtocol) -> ProtocolView:
     root = _root(pid); protocol_id = f"protocol_{req.request_id}"
     try:
-        root.mkdir(parents=True, exist_ok=True)
-        with FileLock(root / ".update.lock", timeout=0):
-            path = _path(pid, protocol_id)
-            if path.exists():
-                view = get_protocol(pid, protocol_id); first = view.ledger.revisions[0]
-                if first.plan != req.plan or first.data_stage != req.data_stage:
-                    raise AppError("This creation request ID already belongs to a different plan; reload the list", 409)
-                return view
-            if len(list(root.glob("protocol_*.json"))) >= 100:
-                raise AppError("A project supports at most 100 protocols", 409)
-            revision = record_revision(pid, protocol_id, req.plan, req.data_stage, datetime.now(timezone.utc), "Initial plan", None)
-            return _save(path, ProtocolLedger(format_version="protocol-ledger-v1", project_id=pid, protocol_id=protocol_id, revisions=[revision]))
+        # Guard directory creation too: acquiring the protocol-local lock must
+        # not recreate a project that was deleted after the initial lookup.
+        with setup_tree_transaction(pid):
+            root.mkdir(parents=True, exist_ok=True)
+            with FileLock(root / ".update.lock", timeout=0):
+                path = _path(pid, protocol_id)
+                if path.exists():
+                    view = get_protocol(pid, protocol_id); first = view.ledger.revisions[0]
+                    if first.plan != req.plan or first.data_stage != req.data_stage:
+                        raise AppError("This creation request ID already belongs to a different plan; reload the list", 409)
+                    return view
+                if len(list(root.glob("protocol_*.json"))) >= 100:
+                    raise AppError("A project supports at most 100 protocols", 409)
+                revision = record_revision(pid, protocol_id, req.plan, req.data_stage, datetime.now(timezone.utc), "Initial plan", None)
+                return _save(path, ProtocolLedger(format_version="protocol-ledger-v1", project_id=pid, protocol_id=protocol_id, revisions=[revision]))
     except Timeout as exc:
         raise AppError("Another protocol update is in progress; reload and retry", 409) from exc
     except OSError as exc:
@@ -99,7 +103,7 @@ def amend_protocol(pid: str, protocol_id: str, req: AmendProtocol) -> ProtocolVi
     if not path.exists():
         raise AppError("Protocol not found", 404)
     try:
-        with FileLock(path.parent / ".update.lock", timeout=0):
+        with setup_tree_transaction(pid), FileLock(path.parent / ".update.lock", timeout=0):
             view = get_protocol(pid, protocol_id)
             if view.head_sha256 != req.expected_head:
                 raise AppError("Protocol changed in another session; reload the saved version before amending", 409)
