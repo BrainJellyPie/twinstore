@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Verify byte ranges before completing resumed local-model downloads. A partial
+  HTTP range is retained for another resume instead of cached as a finished model;
+  mismatched ranges are discarded. Unsatisfiable resume requests retry once from
+  zero, and cancellation still stops the download.
+
 - Bound generated trade-area keywords and hourly customer-type labels to the
   same 120-character limit as customer identities. Long repetitive labels now
   receive structured-response correction before they are copied into every

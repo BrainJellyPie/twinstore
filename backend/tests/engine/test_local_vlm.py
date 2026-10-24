@@ -389,6 +389,7 @@ def test_an_interrupted_download_continues_where_it_stopped(no_keys):
         start = int(str(req.get_header("Range")).removeprefix("bytes=").removesuffix("-"))
         resp = _Resp(data[start:])
         resp.status = 206
+        resp.headers["Content-Range"] = f"bytes {start}-{len(data) - 1}/{len(data)}"
         return resp
 
     mgr = LocalVLMManager(no_keys / "local_vlm", opener=opener, hardware=lambda: _hw())

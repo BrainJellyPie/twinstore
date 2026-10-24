@@ -30,6 +30,7 @@ import sys
 import tarfile
 import threading
 import time
+import urllib.error
 import urllib.request
 import zipfile
 from collections.abc import Callable
@@ -505,11 +506,35 @@ class LocalVLMManager:
         headers = {"User-Agent": "TwinStore"} | ({"Range": f"bytes={have}-"} if have else {})
         keep_part = True
         try:
-            with self._open(urllib.request.Request(url, headers=headers)) as r:
-                resumed = have > 0 and getattr(r, "status", 200) == 206
+            try:
+                response = self._open(urllib.request.Request(url, headers=headers))
+            except urllib.error.HTTPError as exc:
+                if exc.code != 416 or not have:
+                    raise
+                # A complete or stale .part cannot be resumed. Retry once from zero;
+                # the next request has no partial file, so a repeated 416 propagates.
+                exc.close()
+                part.unlink(missing_ok=True)
+                return self._download(url, path, label=label)
+            range_end: int | None = None
+            with response as r:
+                partial = getattr(r, "status", 200) == 206
+                resumed = have > 0 and partial
                 done = have if resumed else 0
                 length = getattr(r, "headers", {}).get("Content-Length")
                 total = done + int(length) if length is not None else None
+                if partial:
+                    content_range = getattr(r, "headers", {}).get("Content-Range", "")
+                    match = re.fullmatch(r"bytes (\d+)-(\d+)/(\d+)", content_range)
+                    if match is None:
+                        keep_part = False
+                        raise RuntimeError(f"Download of {label} has no verifiable byte range; retry from the beginning")
+                    start, end, resource_size = (int(value) for value in match.groups())
+                    if (start != have or end < start or end >= resource_size
+                            or (total is not None and total != end + 1)):
+                        keep_part = False
+                        raise RuntimeError(f"Download of {label} returned an inconsistent byte range; retry from the beginning")
+                    range_end, total = end + 1, resource_size
                 last = 0.0
                 with part.open("ab" if resumed else "wb") as out:
                     while chunk := r.read(1 << 20):
@@ -521,6 +546,9 @@ class LocalVLMManager:
                             self._set(progress=min(done / total, 1.0) if total else None,
                                       downloaded_mb=round(done / 1e6, 1), total_mb=round(total / 1e6, 1) if total else 0.0)
             self._check_cancelled()
+            if range_end is not None and done > range_end:
+                keep_part = False
+                raise RuntimeError(f"Download of {label} exceeded its declared byte range; retry from the beginning")
             if done == 0 or (total is not None and done != total):
                 keep_part = total is not None and done < total     # a short read can go on next time
                 raise RuntimeError(f"Download of {label} is incomplete: received {done} bytes, expected {total if total is not None else 'a nonempty file'}")
