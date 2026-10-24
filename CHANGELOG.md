@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve exact SKU identity in scenario discounts and stockouts when product
+  codes differ only by case. Retain case-insensitive SKU lookup only when it is
+  unambiguous, keeping scenario previews and actual effects consistent.
+
 - Read customer XLSX uploads before automatic product selection, project creation
   or customer generation. Reject unreadable/empty workbooks and missing declared
   worksheets instead of silently generating customers from incomplete evidence;
