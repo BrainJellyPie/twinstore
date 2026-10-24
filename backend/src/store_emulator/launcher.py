@@ -148,7 +148,7 @@ def keep_local_requests_direct() -> None:
             os.environ[f"{scheme}_proxy"] = proxies[scheme]
     current = os.environ.get("no_proxy") or os.environ.get("NO_PROXY") or ""
     hosts = [h.strip() for h in current.split(",") if h.strip()]
-    hosts += [h for h in ("127.0.0.1", "localhost", "::1") if h not in hosts]
+    hosts += [h for h in ("127.0.0.1", "localhost", "localhost.", "::1") if h not in hosts]
     os.environ["no_proxy"] = os.environ["NO_PROXY"] = ",".join(hosts)
 
 

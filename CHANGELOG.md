@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Bypass system proxies for the fully qualified localhost spelling when starting
+  the app. Local SDK calls to `localhost.` no longer go to a corporate proxy even
+  though direct readiness checks succeed; existing proxy and bypass settings stay.
+
 - Reuse a model endpoint's readiness result within one engine-list request.
   Shared text/vision servers no longer receive four duplicate checks, reducing
   repeated waits on slow servers. Refresh readiness on every subsequent request
