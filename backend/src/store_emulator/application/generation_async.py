@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import math
 import time
@@ -123,7 +124,7 @@ def _keep_upload(project_id: str, data: bytes, filename: str) -> None:
         folder.mkdir(parents=True)
         suffix = Path(filename).suffix.lower()[:10] or ".csv"
         (folder / f"upload{suffix}").write_bytes(data)
-        write_json(folder / "upload.json", {"filename": filename})
+        write_json(folder / "upload.json", {"filename": filename, "sha256": hashlib.sha256(data).hexdigest()})
     except OSError:
         logger.warning("[supplemental] could not keep the uploaded file", exc_info=True)
 
@@ -132,14 +133,29 @@ def _kept_upload(project_id: str) -> tuple[bytes, str] | None:
     """Retain source evidence for retry even if only its text summary was saved before interruption."""
     folder = _upload_dir(project_id)
     try:
-        if not (folder / "upload.json").is_file():
+        if not folder.exists():
             return None
-        name = str(cast(dict[str, object], read_json(folder / "upload.json")).get("filename", ""))
+        raw: object = read_json(folder / "upload.json")
+        if not isinstance(raw, dict):
+            raise ValueError("Upload receipt must be an object")
+        receipt = cast(dict[str, object], raw)
+        name = receipt.get("filename")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("Upload receipt has no filename")
         files = [f for f in folder.iterdir() if f.name.startswith("upload.") and f.suffix != ".json"]
-        return (files[0].read_bytes(), name) if files else None
-    except (OSError, ValueError):
+        if len(files) != 1:
+            raise ValueError("Expected exactly one retained customer upload")
+        data = files[0].read_bytes()
+        if not data:
+            raise ValueError("Retained customer upload is empty")
+        # Older receipts have no digest, but still require intact file/receipt pairs.
+        if "sha256" in receipt and receipt["sha256"] != hashlib.sha256(data).hexdigest():
+            raise ValueError("Retained customer upload does not match its receipt")
+        return data, name
+    except (OSError, ValueError) as exc:
         logger.warning("[supplemental] could not read the kept upload", exc_info=True)
-        return None
+        raise AppError("The saved uploaded customer data is missing or damaged. Restore the original upload, "
+                       "or create a new store and attach it again before retrying customer generation.", 409) from exc
 
 
 def _run_persona_background(
