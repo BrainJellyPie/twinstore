@@ -93,6 +93,12 @@ def _rejected_param(error: BaseException) -> str | None:
 
 def _remaining_output_budget(error: BaseException, sent: dict[str, object]) -> int | None:
     """Some vLLM versions reject an output ceiling instead of clamping it to the remaining context."""
+    if isinstance(error, InstructorError):
+        if not error.failed_attempts:
+            return None
+        error = error.failed_attempts[-1].exception
+    if not isinstance(error, BadRequestError):
+        return None
     requested = sent.get("max_tokens", sent.get("max_completion_tokens"))
     if not isinstance(requested, int) or isinstance(requested, bool):
         return None
@@ -103,23 +109,20 @@ def _remaining_output_budget(error: BaseException, sent: dict[str, object]) -> i
         statuses = (getattr(cause, "status_code", None), getattr(getattr(cause, "response", None), "status_code", None))
         if any(isinstance(status, int) and status != 400 for status in statuses):
             return None
-    for cause in causes:
-        if not isinstance(cause, BadRequestError):
-            continue
-        match = re.search(
-            r"'max_tokens' or 'max_completion_tokens' is too large: (\d+)\. "
-            r"This model's maximum context length is (\d+) tokens and your request has (\d+) input tokens",
-            str(cause),
-        )
-        if match is None:
-            continue
-        try:
-            reported, context, inputs = (int(value) for value in match.groups())
-        except ValueError:
-            continue
-        remaining = context - inputs
-        if reported == requested and 0 < remaining < requested:
-            return remaining
+    match = re.search(
+        r"'max_tokens' or 'max_completion_tokens' is too large: (\d+)\. "
+        r"This model's maximum context length is (\d+) tokens and your request has (\d+) input tokens",
+        str(error),
+    )
+    if match is None:
+        return None
+    try:
+        reported, context, inputs = (int(value) for value in match.groups())
+    except ValueError:
+        return None
+    remaining = context - inputs
+    if reported == requested and 0 < remaining < requested:
+        return remaining
     return None
 
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Adapt a local output-token ceiling only when the terminal attempt actually
+  rejected that ceiling. An earlier context error no longer starts another
+  request budget after invalid output, truncation or an unrelated provider error.
+
 - Preserve explicit vision-model walk-outs when the unused shopping list is
   null. Treat it as empty only after `enter=false` validates, avoiding a model
   failure or a rule-plan replacement. Keep entering and malformed decisions strict.
