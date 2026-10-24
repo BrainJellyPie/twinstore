@@ -3,7 +3,7 @@ from collections import deque
 
 from store_emulator.domain.rack import Rack, RackType, PASSTHROUGH_TYPES, Slot
 from store_emulator.domain.store import Store
-from store_emulator.domain.types import CARDINAL_DIRECTIONS, Face, Position
+from store_emulator.domain.types import CARDINAL_DIRECTIONS, FACE_OFFSETS, Face, Position
 
 from .validation_models import (
     BlockReason, BlockedFaceDetail, ClearedSlot, Issue,
@@ -169,11 +169,12 @@ def list_blocked_faces(store: Store) -> list[BlockedFaceDetail]:
             continue
         locked = {(bf.block, bf.face) for bf in rack.locked_faces}
         block_cells = rack.block_cells
+        shape_cells = set(block_cells)
         px, py = rack.position
         for block_idx, (r, c) in enumerate(block_cells):
-            exposed = set(rack.valid_faces(block_idx))
             for face in (Face.N, Face.S, Face.E, Face.W):
-                if face not in exposed:
+                dx, dy = FACE_OFFSETS[face]
+                if (r + dy, c + dx) in shape_cells:
                     # Face occluded by an adjacent cell of the same rack. replace_slots
                     # already rejects this via its valid_faces check; pre-exclude it from
                     # the download template too.

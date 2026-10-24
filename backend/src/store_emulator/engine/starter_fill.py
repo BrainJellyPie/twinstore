@@ -20,7 +20,8 @@ def available_faces(store: Store) -> dict[str, list[tuple[int, Face]]]:
     if geometry_errors:
         raise ValueError("Fix the floor in Step 1 before filling shelves: " + geometry_errors[0])
     blocked = {(row.rack_id, row.block, row.face) for row in list_blocked_faces(store)}
-    return {rack.id: [(block, face) for block in range(len(rack.block_cells)) for face in rack.valid_faces(block)
+    # list_blocked_faces includes internal faces as well as locked/unreachable ones.
+    return {rack.id: [(block, face) for block in range(len(rack.block_cells)) for face in (Face.N, Face.S, Face.W, Face.E)
                       if (rack.id, block, face) not in blocked]
             for rack in store.racks if rack.type in {RackType.SHELF, RackType.FRIDGE}}
 

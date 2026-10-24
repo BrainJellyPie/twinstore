@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Avoid repeated whole-shape scans for each fixture block when checking reachable
+  faces, checkout access and starter-product placement. Large multi-cell shelves
+  now use their occupied-cell sets while preserving rotation, locked faces,
+  internal faces, furniture behavior and placement order.
+
 - Keep the server responsive while model discovery waits for a local model,
   provider settings load from disk, or settings updates wait for their write
   lock. Provider reads and saves now run on FastAPI's worker threads.

@@ -172,13 +172,17 @@ class Rack(BaseModel):
         return tiles
 
     def _compute_side_tiles(self, grid_size: tuple[int, int], *, exclude_locked: bool) -> set[Position]:
+        if self.type in PASSTHROUGH_TYPES:
+            return set()
         w, h = grid_size
         locked: set[tuple[int, Face]] = {(bf.block, bf.face) for bf in self.locked_faces} if exclude_locked else set()
         px, py = self.position
         occupied = set(self.occupied_positions)
         tiles: set[Position] = set()
+        faces = tuple(Face) if self.type == RackType.TABLE else (Face.N, Face.S, Face.W, Face.E)
         for idx, (r, c) in enumerate(self.block_cells):
-            for face in (list(Face) if self.type == RackType.TABLE else self.valid_faces(idx)):
+            # The occupied-tile check below also excludes this fixture's internal faces.
+            for face in faces:
                 if (idx, face) in locked:
                     continue
                 dx, dy = _FACE_OFFSETS[face]
@@ -191,14 +195,14 @@ class Rack(BaseModel):
         self, tile: Position, face: Face, grid_size: tuple[int, int], *, block: int | None = None,
     ) -> bool:
         """True iff `tile` reaches this face, optionally on one specific block."""
+        if self.type not in SLOT_CAPABLE_TYPES:
+            return False
         w, h = grid_size
         px, py = self.position
         occupied = set(self.occupied_positions)
         dx, dy = _FACE_OFFSETS[face]
         for idx, (r, c) in enumerate(self.block_cells):
             if block is not None and idx != block:
-                continue
-            if face not in self.valid_faces(idx):
                 continue
             candidate = (px + c + dx, py + r + dy)
             if candidate != tile:
