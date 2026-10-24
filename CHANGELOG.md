@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve product images and shelf photos when generated identifiers collide.
+  New uploads and computed captures use full UUIDs and reject occupied storage
+  paths; computed-capture saves also coordinate with project deletion.
+
 - Prevent new-store creation from overwriting an existing project's metadata,
   customers and active-layout selection when identifiers collide. Use full UUIDs
   and exclusively create the project directory before writing any project data.

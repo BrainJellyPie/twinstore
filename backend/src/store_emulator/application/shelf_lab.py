@@ -173,7 +173,7 @@ def upload_package(
     except (UnidentifiedImageError, OSError) as e:
         raise AppError("not an image the server can read (use PNG, JPEG or WebP)", 400) from e
     img.thumbnail((1200, 1200))
-    aid = f"pkg_{uuid.uuid4().hex[:8]}"
+    aid = f"pkg_{uuid.uuid4().hex}"
     rgba = img.convert("RGBA")
     transparent = img.mode in ("RGBA", "LA", "P") and cast(tuple[int, int], rgba.getchannel("A").getextrema())[0] < 250
     cut = remove_background and not transparent
@@ -183,9 +183,12 @@ def upload_package(
     with setup_tree_transaction(pid):
         folder = package_directory(pid)
         folder.mkdir(parents=True, exist_ok=True)
-        out.save(folder / f"{aid}.png", format="PNG")
-        write_json(folder / f"{aid}.json", meta)
-        return package_asset(folder / f"{aid}.png")
+        png = folder / f"{aid}.png"
+        if png.exists() or png.with_suffix(".json").exists():
+            raise AppError("This image identifier already exists. Retry to upload a new product image", 409)
+        out.save(png, format="PNG")
+        write_json(png.with_suffix(".json"), meta)
+        return package_asset(png)
 
 
 class PackageRead(BaseModel):
