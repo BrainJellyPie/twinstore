@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve partially readable shelf-photo labels when unknown text is null.
+  Keep recognized names and tag prices even when brand, size or category is
+  missing. Fully unreadable products remain marked unrecognized, and price and
+  confidence handling stay unchanged.
+
 - Classify provider failures from the final structured-response attempt.
   Earlier authentication or optional-parameter rejections no longer invalidate
   credentials, switch models or disable sampling settings after a later output

@@ -7,7 +7,7 @@ rack level the band maps to (1 = bottom … RACK_LEVELS = top).
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 type CaptureDetector = Literal["auto", "gdino", "vlm", "classic"]
 type CaptureRackType = Literal["shelf", "fridge"]
@@ -57,6 +57,11 @@ class ShelfItemLabel(BaseModel):
     price_text: str = Field(default="", max_length=24, description="the price tag text exactly as printed")
     price: float | None = Field(default=None, description="price on the shelf tag, as a number; null if unreadable")
     confidence: int = Field(default=5, ge=0, le=10)
+
+    @field_validator("name", "brand", "size", "category", "price_text", mode="before")
+    @classmethod
+    def _unknown_text(cls, value: object) -> object:
+        return "" if value is None else value
 
 
 class CaptureItem(BaseModel):

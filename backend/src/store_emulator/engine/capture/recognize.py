@@ -152,6 +152,7 @@ LABEL_PROMPT = (
     "water, coffee drink, milk, beer, chips, chocolate, candy, instant noodles, sandwich, bread, ice cream, "
     "shampoo, detergent. price_text: the text on the price tag in the bottom strip, exactly as printed, "
     "or \"\". price: that price as a number, or null. confidence: 0-10 for how sure you are of the name.\n"
+    "For any unreadable text field, use an empty string, not null. Do not invent missing text.\n"
     "Prices in this store are in {currency}. Keep names in the language printed on the package."
 )
 
