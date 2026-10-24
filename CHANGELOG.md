@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep successful model answers when optional response caching encounters a full
+  disk, read-only directory or locked entry. Failed writes are logged and partial
+  temporary files are removed when possible; model failures still propagate.
+
 - Separate cached responses for different managed local model artifacts. A newly
   resolved client now includes the loaded model repository, weights filename and
   vision projector in its cache identity, even when the server keeps the same

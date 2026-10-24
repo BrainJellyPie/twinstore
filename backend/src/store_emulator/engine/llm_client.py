@@ -331,13 +331,15 @@ class LiteLLMClient:
         return self.cache_dir / key[:2] / f"{key}.json"
 
     def _cache_get[T: BaseModel](self, path: Path | None, response_model: type[T]) -> T | None:
-        if path is None or not path.exists():
+        if path is None:
             return None
         try:
             data: object = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(data, dict):
                 raise ValueError("expected a cache entry object")
             result = response_model.model_validate(cast(dict[str, object], data)["result"])
+        except FileNotFoundError:
+            return None
         except (OSError, ValueError, KeyError) as e:
             logger.warning(f"[llm-cache] ignoring unreadable entry {path.name}: {e}")
             return None
@@ -349,10 +351,18 @@ class LiteLLMClient:
     def _cache_put(self, path: Path | None, result: BaseModel) -> None:
         if path is None:
             return
-        path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")
-        tmp.write_text(json.dumps({"result": result.model_dump(mode="json")}, ensure_ascii=False), encoding="utf-8")
-        replace_file(tmp, path)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(json.dumps({"result": result.model_dump(mode="json")}, ensure_ascii=False), encoding="utf-8")
+            replace_file(tmp, path)
+        except OSError as e:
+            # Caching is optional; a full or read-only cache must not discard a valid model answer.
+            logger.warning(f"[llm-cache] could not cache response {path.name}: {e}")
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass  # The same storage failure may also prevent removing a partial write.
 
     def _create(self, response_model: type[BaseModel], msgs: object, max_retries: int,
                 seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
