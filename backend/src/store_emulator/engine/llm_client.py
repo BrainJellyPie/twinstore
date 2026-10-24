@@ -196,20 +196,29 @@ def _hash6(text: str) -> str:
 
 
 def final_answer_text(content: str) -> str:
-    """Remove explicit leading thoughts; an unfinished thought has no final answer."""
-    final = content.lstrip()
-    if not final.startswith("<think>"):
-        return content
-    while final.startswith("<think>"):
-        end = final.find("</think>")
-        if end < 0:
-            return ""
-        final = final[end + len("</think>"):].lstrip()
-    return final
+    """Remove leading thoughts, including an opening tag prefilled by the server."""
+    final = content
+    while True:
+        stripped = final.lstrip()
+        if stripped.startswith("<think>"):
+            end = stripped.find("</think>")
+            if end < 0:
+                return ""  # An unfinished explicit thought has no final answer.
+            final = stripped[end + len("</think>"):].lstrip()
+        elif stripped.startswith("</think>"):
+            final = stripped[len("</think>"):].lstrip()
+        else:
+            # Some models receive <think> in the prompt and generate only its
+            # end. Require a standalone closing line; inline literal tags and
+            # escaped line breaks inside JSON strings are ordinary content.
+            end = re.search(r"(?m)^[ \t]*</think>[ \t]*(?:\r?\n|$)", stripped)
+            if end is None:
+                return final
+            final = stripped[end.end():].lstrip()
 
 
 def _final_structured_content(response: object) -> None:
-    """Keep JSON examples inside explicit leading reasoning blocks out of parsing."""
+    """Keep reasoning examples out of JSON parsing, including prompt-prefilled thoughts."""
     choices = getattr(response, "choices", None)
     if not isinstance(choices, list):
         return
@@ -422,7 +431,7 @@ class LiteLLMClient:
         key_src = json.dumps(
             {
                 **extra,
-                "structured_parser": "final-think-v1",
+                "structured_parser": "final-think-v2",
                 "model": self.model,
                 # Two local servers often share a placeholder model id; the endpoint tells them apart.
                 "api_base": self.api_base or "",

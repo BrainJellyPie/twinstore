@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recognize reasoning responses whose opening tag was supplied in the prompt.
+  A standalone closing tag now separates thoughts from the final JSON or
+  uploaded-data summary, preventing reasoning examples from becoming cached
+  results or customer evidence. Structured answers cached by the previous parser
+  are regenerated once; literal tags inside JSON strings remain intact.
+
 - Keep hourly customer types within the trade-area identity list before persona
   generation. Unknown or ambiguous labels now retry at the traffic stage rather
   than becoming cached, contradictory customer instructions. Unique case and

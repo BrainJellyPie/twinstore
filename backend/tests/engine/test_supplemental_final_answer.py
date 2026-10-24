@@ -25,13 +25,18 @@ CASES = [
     ("  " + FINAL + "\n", FINAL),
     (FINAL + '\n- A literal label contains "<think>tea</think>".', FINAL + '\n- A literal label contains "<think>tea</think>".'),
     ("<think>" + THOUGHT + "</think>\n" + FINAL * 50, (FINAL * 50)[:SUPPLEMENTAL_SUMMARY_MAX_CHARS]),
+    (THOUGHT * 50 + "\n</think>\n" + FINAL, FINAL),
+    (THOUGHT + "\r\n \t</think>\r\n" + FINAL, FINAL),
+    ("</think>" + FINAL, FINAL),
+    (THOUGHT + "\n</think>\n", ""),
 ]
 
 
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
 @pytest.mark.parametrize("kind", ["csv", "xlsx"])
 @pytest.mark.parametrize("response,expected", CASES,
-    ids=["long-thought", "repeated-thoughts", "unfinished-thought", "thought-only", "plain", "literal-tag", "long-final"])
+    ids=["long-thought", "repeated-thoughts", "unfinished-thought", "thought-only", "plain", "literal-tag", "long-final",
+         "prefilled-long", "prefilled-crlf", "prefilled-empty", "prefilled-no-final"])
 def test_uploaded_data_uses_final_summary_before_storage_limit_and_customer_prompt(monkeypatch, tmp_path, mode, kind, response, expected):
     rows = [["customer", "spend"], ["resident", 3], ["resident", 5]]
     if kind == "csv":
