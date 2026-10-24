@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep 8,192 context tokens available per request on managed local model servers.
+  Limit CUDA to two slots and Metal/Vulkan to one while preserving the existing
+  total context allocation. Advertised slots and client concurrency follow the
+  launch setting, avoiding 4K requests on GPU plans intended to run catalog tasks.
+
 - Recover starter-product selection when the catalog exceeds a model's context
   window, including errors wrapped by Instructor. Oversized grouped requests now
   use the existing bounded shelf/category tasks; unrelated provider errors still

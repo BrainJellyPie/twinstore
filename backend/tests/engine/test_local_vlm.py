@@ -42,7 +42,7 @@ def _hw(**kw: object) -> HardwareProfile:
 def test_recommendation_follows_the_hardware():
     nv = GPUInfo(vendor="nvidia", name="RTX", vram_gb=12, cuda="12.8")
     big = recommend(_hw(gpus=[nv]))
-    assert big.backend == "cuda" and big.model.key == "qwen3.5-9b" and big.gpu_layers > 0 and big.parallel == 4
+    assert big.backend == "cuda" and big.model.key == "qwen3.5-9b" and big.gpu_layers > 0 and big.parallel == 2
     mid = recommend(_hw(gpus=[nv.model_copy(update={"vram_gb": 6})]))
     assert mid.backend == "cuda" and mid.model.key == "qwen3.5-4b"
     mac = recommend(_hw(os="macos", arch="arm64", ram_gb=16, gpus=[GPUInfo(vendor="apple", name="M2", vram_gb=16)]))

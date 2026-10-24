@@ -82,7 +82,7 @@ class LocalVLMPlan(BaseModel):
     gpu_layers: int               # llama.cpp -ngl
     threads: int
     parallel: int                 # llama.cpp -np: concurrent shoppers
-    context: int
+    context: int                  # total llama.cpp -c budget, divided across parallel slots
     reason: str
 
 
@@ -265,21 +265,23 @@ def _largest_fitting(budget_gb: float, cap: str | None = None) -> LocalModel:
 
 def recommend(hw: HardwareProfile) -> LocalVLMPlan:
     """The best local vision model this machine runs at a usable speed, and how to run it."""
+    # llama.cpp divides -c by -np by default. Keep at least 8K per request for
+    # catalog/persona tasks without increasing the total KV memory budget.
     gpu = hw.best_gpu
     if gpu is not None and gpu.vendor == "nvidia" and hw.arch in ("x64", "arm64") and gpu.vram_gb >= 2:
         model = _largest_fitting(gpu.vram_gb * 0.85)
         return LocalVLMPlan(backend="cuda", model=model, device=f"{gpu.name} ({gpu.vram_gb:g} GB)", gpu_layers=999,
-                            threads=max(1, hw.cores), parallel=4 if gpu.vram_gb >= 8 else 2, context=16384,
+                            threads=max(1, hw.cores), parallel=2, context=16384,
                             reason=f"NVIDIA GPU with {gpu.vram_gb:g} GB: the largest model that fits in 85 % of it")
     if gpu is not None and gpu.vendor == "apple":
         model = _largest_fitting(hw.ram_gb * 0.45)
         return LocalVLMPlan(backend="metal", model=model, device=f"{gpu.name} ({hw.ram_gb:g} GB unified memory)",
-                            gpu_layers=999, threads=max(1, hw.cores), parallel=2, context=8192,
+                            gpu_layers=999, threads=max(1, hw.cores), parallel=1, context=8192,
                             reason=f"Apple silicon: Metal, at most 45 % of {hw.ram_gb:g} GB unified memory")
     if gpu is not None and gpu.vendor in ("amd", "intel", "other") and gpu.vram_gb >= 3:
         model = _largest_fitting(gpu.vram_gb * 0.8, cap="qwen3.5-4b")
         return LocalVLMPlan(backend="vulkan", model=model, device=f"{gpu.name} ({gpu.vram_gb:g} GB)", gpu_layers=999,
-                            threads=max(1, hw.cores), parallel=2, context=8192,
+                            threads=max(1, hw.cores), parallel=1, context=8192,
                             reason=f"{gpu.vendor.upper()} GPU with {gpu.vram_gb:g} GB: Vulkan")
     # CPU: speed decides. 2B reads products far better but takes ~2.4× as long per glance.
     free = hw.ram_free_gb or hw.ram_gb * 0.5
