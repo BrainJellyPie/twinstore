@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve optimization history when generated job identifiers share a prefix.
+  New jobs use full UUIDs and exclusively reserve their output directory before
+  writing; failed registration can only clean up the directory it created.
+  Existing short job identifiers remain readable.
+
 - Enforce requested staff/till ceilings on the operations planner's starting
   recommendation, hourly overrides and overlapping shifts. An out-of-limit
   current plan can no longer win on revenue or escape through an expired search
