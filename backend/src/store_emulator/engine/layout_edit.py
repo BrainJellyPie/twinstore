@@ -14,6 +14,7 @@ from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.store import Store
 from store_emulator.engine.marketing.experiment_design import (
     _Change,  # pyright: ignore[reportPrivateUsage]
+    _ChangeTextDefaults,  # pyright: ignore[reportPrivateUsage]
     _Draft,  # pyright: ignore[reportPrivateUsage]
     _listing,  # pyright: ignore[reportPrivateUsage]
     _Variant,  # pyright: ignore[reportPrivateUsage]
@@ -32,7 +33,7 @@ class StructuredLLM(Protocol):
     ) -> T: ...
 
 
-class _EditChange(BaseModel):
+class _EditChange(_ChangeTextDefaults):
     kind: Literal["price", "discount", "promo", "move", "category_price"]
     product: str = Field(default="", max_length=120, description="the listed product, exactly as listed")
     price: float | None = Field(default=None, description="price: the new shelf price in major units (e.g. 1.99)")
@@ -69,6 +70,7 @@ Make exactly the edits the manager asked for, one change per product and edit, u
 below, written exactly as listed. Return at least one change that fits a listed product or category. A discount
 requires a negative percent. Prices must be finite and positive after currency rounding.
 Return at least one applicable operation; correct unavailable moves or empty categories when validation reports them.
+For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
 Name the edited layout in a few words and summarize the edits. Write in English."""
 
 

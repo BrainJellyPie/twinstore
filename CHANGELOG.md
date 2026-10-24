@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve applicable automatic edits when models leave text fields unused by
+  that edit kind null. Keep required product, shelf, package, category and sign
+  values strict; reuse the same normalization for layout and A/B drafts.
+
 - Require automatic layout edits and A/B variants to apply at least one
   operation. Missing or empty categories and unavailable moves no longer
   produce successful unchanged drafts; request bounded model correction while

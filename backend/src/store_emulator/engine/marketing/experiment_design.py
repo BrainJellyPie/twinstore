@@ -10,7 +10,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from math import isfinite
 from typing import Literal, Protocol, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from store_emulator.domain.marketing import ExperimentEngine, Variant, VariantChange
 from store_emulator.domain.store import Store
@@ -29,7 +29,23 @@ class StructuredLLM(Protocol):
     ) -> T: ...
 
 
-class _Change(BaseModel):
+_USED_CHANGE_TEXT: dict[str, set[str]] = {
+    "price": {"product"}, "discount": {"product"}, "promo": {"product", "promo"},
+    "move": {"product", "shelf"}, "package": {"product", "package"}, "category_price": {"category"},
+}
+
+
+class _ChangeTextDefaults(BaseModel):
+    @field_validator("product", "promo", "shelf", "package", "category", mode="before", check_fields=False)
+    @classmethod
+    def _unused_text(cls, value: object, info: ValidationInfo) -> object:
+        # Both drafts validate kind before these fields. Only an irrelevant null
+        # gets its empty default; never invent a missing target or promo message.
+        used = _USED_CHANGE_TEXT.get(info.data.get("kind", ""))
+        return "" if value is None and used is not None and info.field_name not in used else value
+
+
+class _Change(_ChangeTextDefaults):
     kind: Literal["price", "discount", "promo", "move", "package", "category_price"]
     product: str = Field(default="", max_length=120, description="the listed product, exactly as listed")
     price: float | None = Field(default=None, description="price: the new shelf price in major units (e.g. 1.99)")
@@ -77,6 +93,7 @@ in focus_products, choose engine "vlm" only when the test needs shoppers to see 
 rationale. Return at least one change that can be applied to a listed product or category. A discount requires a
 negative percent. Prices must be finite and positive after currency rounding.
 Each variant needs an applicable operation. Correct unavailable moves or empty categories when validation reports them.
+For text fields unused by a change's kind, use empty strings instead of null. Keep the required target and value explicit.
 Write in English."""
 
 
