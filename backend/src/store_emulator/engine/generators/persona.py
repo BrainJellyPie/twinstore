@@ -134,6 +134,13 @@ class GeneratedPersona(BaseModel):
     def _empty_behavior(cls, value: object) -> object:
         return "" if value is None else value
 
+    @model_validator(mode="after")
+    def ordered_budget(self) -> Self:
+        if self.budget_max > 0 and self.budget_min > self.budget_max:
+            raise ValueError("budget_min must not exceed budget_max when the upper limit is positive. "
+                             "Use budget_max=0 only for an unspecified upper limit.")
+        return self
+
 
 MAX_PERSONAS_PER_BATCH = 12
 
@@ -265,6 +272,7 @@ PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 �
   - 제공된 목록이 없거나 선호 카테고리가 없으면 []를 사용하세요. null을 사용하지 마세요.
 - budget_min, budget_max: {budget_rule}
   - 0 이상 9007199254740991 이하의 정수. 한 번의 방문에 현실적인 금액을 사용하고 숫자를 반복하지 마세요. 예산을 정할 수 없으면 0을 사용하세요.
+  - budget_max가 0이면 상한 미지정입니다. 그 외에는 budget_min <= budget_max를 지키세요.
 - behavior_tendency: 이동속도/탐색성향/충동구매 한 줄
   - 별도 성향이 없으면 빈 문자열을 사용하세요. null을 사용하지 마세요.
 

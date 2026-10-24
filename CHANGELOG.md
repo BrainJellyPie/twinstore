@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate generated customer budget ranges before caching: a positive maximum
+  must be at least the minimum. Contradictory ranges now receive bounded model
+  correction. Preserve equal bounds and zero as an unspecified upper limit.
+
 - Preserve valid shelf-test drafts when unused package/sign text, rationale or
   age restrictions are null. Keep explicit edits and quotas, strict required
   targets, and the review warning for drafts that still contain no change.

@@ -85,7 +85,7 @@ def test_out_of_range_budget_is_corrected_before_customer_cache(tmp_path, monkey
 @pytest.mark.parametrize("field", ["budget_min", "budget_max"])
 @pytest.mark.parametrize("value", [0, 1, MAX_BUDGET, MAX_BUDGET + 1])
 def test_generated_budget_boundaries(field, value):
-    data = {**PERSON, field: value}
+    data = {**PERSON, "budget_min": 0, "budget_max": MAX_BUDGET, field: value}
     if value > MAX_BUDGET:
         with pytest.raises(ValidationError):
             gen.GeneratedPersona.model_validate(data)
