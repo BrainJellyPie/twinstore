@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep valid trading-day scenarios when optional notes, event commentary or
+  promotion labels are null. Preserve their exact discounts, stock-outs, event
+  hours and weekday restrictions; operational lists remain strictly validated.
+
 - Preserve usable neighborhood drafts when optional labels, neighboring venues
   or unspecified estimates are null. Apply the existing defaults while keeping
   explicit rival counts, known settings, required area type and numeric bounds.

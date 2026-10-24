@@ -10,7 +10,7 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import Annotated, Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.domain.scenario import (
     Crowding,
@@ -44,6 +44,11 @@ class _Event(BaseModel):
     end_hour: int = Field(default=24, ge=1, le=24)
     note: str = Field(default="", max_length=120)
 
+    @field_validator("note", mode="before")
+    @classmethod
+    def _optional_note(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class _Promotion(BaseModel):
     target: str = Field(min_length=1, max_length=80,
@@ -51,6 +56,11 @@ class _Promotion(BaseModel):
     kind: PromotionKind = PromotionKind.DISCOUNT
     discount_pct: float = Field(default=20.0, ge=0.0, le=90.0)
     label: str = Field(default="", max_length=24, description="shelf tag text, e.g. '1+1' or '20% OFF'")
+
+    @field_validator("label", mode="before")
+    @classmethod
+    def _optional_label(cls, value: object) -> object:
+        return "" if value is None else value
 
 
 class ScenarioDraft(BaseModel):
@@ -74,6 +84,11 @@ class ScenarioDraft(BaseModel):
     notes: str = Field(default="", max_length=400, description=(
         "what the description says that the fields cannot express, as one or two sentences of context for shoppers"))
 
+    @field_validator("notes", mode="before")
+    @classmethod
+    def _optional_notes(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class DescribedScenario(BaseModel):
     scenario: Scenario
@@ -92,6 +107,7 @@ stock-outs the description does not mention.
 - Promotions and stock-outs must point at products or shelves from the store's list below; use the listed name or a
   word that appears in it. A deal like "1+1" or "buy one get one" is kind "1+1"; "20 % off" is a discount of 20.
 - Put anything else that matters to shoppers (a nearby office lunch rush, a heat advisory) into notes.
+Use empty strings, not null, for unspecified notes, event notes and promotion labels.
 Write in English."""
 
 

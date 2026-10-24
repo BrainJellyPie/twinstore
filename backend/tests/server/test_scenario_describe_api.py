@@ -83,3 +83,19 @@ def test_invalid_model_weekdays_do_not_return_an_unrestricted_scenario(client, m
     response = client.post("/api/scenarios/describe", json={"text": "Rainy Friday only"})
     assert response.status_code == 502
     assert "scenario" not in response.json()
+
+
+def test_optional_null_annotations_preserve_the_scenario_and_effects(client, monkeypatch):
+    from store_emulator.application import scenarios
+    draft = {**DRAFT, "notes": None, "events": [{**DRAFT["events"][0], "note": None}],
+             "promotions": [{**DRAFT["promotions"][0], "label": None}]}
+    monkeypatch.setattr(scenarios, "assistive_client", lambda *a, **k: _Writer(draft))
+    response = client.post("/api/scenarios/describe", json={"text": "Rainy Friday, a match, 1+1 Pepsi",
+                           "project_id": PID, "setup_id": SETUP})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    scenario = body["scenario"]
+    assert scenario["only_days"] == [5] and scenario["weather"] == "rain"
+    assert scenario["notes"] == scenario["events"][0]["note"] == scenario["promotions"][0]["label"] == ""
+    assert scenario["promotions"][0]["target"] == "Pepsi" and scenario["promotions"][0]["kind"] == "1+1"
+    assert scenario["stockouts"] == ["Snickers"] and body["effects"]["traffic"] < 1
