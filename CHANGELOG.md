@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Separate cached responses for different managed local model artifacts. A newly
+  resolved client now includes the loaded model repository, weights filename and
+  vision projector in its cache identity, even when the server keeps the same
+  `local-model` alias and address. Capture and marketing caches retain this identity.
+
 - Keep customer generation within its population cap when a model returns an
   enormous visitor estimate and uploaded visit times reshape the traffic. Large
   integers now use rational arithmetic before capping, avoiding float overflow

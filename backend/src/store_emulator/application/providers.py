@@ -358,6 +358,7 @@ def resolve_model(
     parsed = ModelRef.parse(ref)
     if parsed is None:
         resolved = _on_local_server(base.model_copy(update={"model": ref}))
+        resolved = resolved.model_copy(update={"cache_namespace": _local_cache_namespace(resolved.api_base)})
         kind = _PLAIN_PREFIX.get(ref.partition("/")[0])
         if kind is None or base.api_base is not None or base.api_key is not None:
             return resolved
@@ -378,13 +379,30 @@ def resolve_model(
     if parsed.provider == ProviderKind.LLAMACPP and model_id == "local":
         model_id = "local-model"
         parallel = _local_slots(_api_base(preset, s))
+    api_base = _api_base(preset, s)
     return base.model_copy(update={
         "model": f"{preset.litellm_prefix}/{model_id}",
-        "api_base": _api_base(preset, s),
+        "api_base": api_base,
         "structured_output": preset.structured_output,
         "api_key": SecretStr(key) if key else None,
         "max_parallel": parallel or base.max_parallel,
+        "cache_namespace": _local_cache_namespace(api_base),
     })
+
+
+def _local_cache_namespace(api_base: str | None) -> str:
+    """Identify the loaded artifacts, not a recommendation for an external or stopped server."""
+    if not api_base:
+        return ""
+    from .local_vlm import manager
+
+    status = manager().status()
+    if (status.state != "ready" or not status.managed or status.plan is None
+            or not status.api_base or status.api_base.rstrip("/") != api_base.rstrip("/")):
+        return ""
+    model = status.plan.model
+    artifacts = "\0".join((model.repo, model.file, model.mmproj))
+    return "managed-local:" + hashlib.sha256(artifacts.encode()).hexdigest()
 
 
 def _on_local_server(config: LLMConfig) -> LLMConfig:

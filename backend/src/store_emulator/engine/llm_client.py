@@ -141,6 +141,7 @@ class LiteLLMClient:
         self.seed = config.seed
         self.timeout_sec = config.timeout_sec
         self.cache_dir = Path(config.cache_dir) if config.cache_dir else None
+        self.cache_namespace = config.cache_namespace
         self._api_key = config.api_key.get_secret_value() if config.api_key else None
         self.max_parallel = config.max_parallel
         self._slots: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = weakref.WeakKeyDictionary()
@@ -310,6 +311,8 @@ class LiteLLMClient:
         if self.cache_dir is None:
             return None
         extra: dict[str, str] = {"reasoning": "none"} if self._openai_hosted() else {}
+        if self.cache_namespace:
+            extra["cache_namespace"] = self.cache_namespace
         key_src = json.dumps(
             {
                 **extra,

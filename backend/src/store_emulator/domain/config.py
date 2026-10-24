@@ -53,6 +53,8 @@ class LLMConfig(BaseModel):
     timeout_sec: float = 600.0
     # Directory for the content-addressed response cache. None disables caching.
     cache_dir: str | None = None
+    # Resolved identity of managed model artifacts behind a stable server alias. Runtime only.
+    cache_namespace: str = Field(default="", exclude=True)
     structured_output: StructuredOutput = "json"
     # Resolved from provider settings / environment at run time. Excluded from every dump, so it
     # is never written to run configs, manifests or API responses.
