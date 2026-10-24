@@ -188,6 +188,26 @@ def _hash6(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()[:4]
 
 
+def _final_structured_content(response: object) -> None:
+    """Keep JSON examples inside explicit leading reasoning blocks out of parsing."""
+    choices = getattr(response, "choices", None)
+    if not isinstance(choices, list):
+        return
+    for choice in cast(list[object], choices):
+        message = getattr(choice, "message", None)
+        content = getattr(message, "content", None)
+        if not isinstance(content, str) or not content.lstrip().startswith("<think>"):
+            continue
+        final = content.lstrip()
+        while final.startswith("<think>"):
+            end = final.find("</think>")
+            if end < 0:
+                final = ""  # An unfinished thought is not a final answer, even with finish_reason=stop.
+                break
+            final = final[end + len("</think>"):].lstrip()
+        setattr(message, "content", final)
+
+
 class LiteLLMClient:
 
     def __init__(self, config: LLMConfig, *, reroute: Reroute | None = None, max_reroutes: int = _MAX_REROUTES):
@@ -390,6 +410,7 @@ class LiteLLMClient:
         key_src = json.dumps(
             {
                 **extra,
+                "structured_parser": "final-think-v1",
                 "model": self.model,
                 # Two local servers often share a placeholder model id; the endpoint tells them apart.
                 "api_base": self.api_base or "",
@@ -455,6 +476,7 @@ class LiteLLMClient:
 
             hooks = Hooks()
             hooks.on("completion:kwargs", request_started)
+            hooks.on("completion:response", _final_structured_content)
             try:
                 result = self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=response_model,
@@ -503,6 +525,7 @@ class LiteLLMClient:
 
                 hooks = Hooks()
                 hooks.on("completion:kwargs", request_started)
+                hooks.on("completion:response", _final_structured_content)
                 try:
                     result = await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                         response_model=response_model,

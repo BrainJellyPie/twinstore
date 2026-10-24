@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Parse structured answers after explicit leading thinking blocks, including
+  whitespace and consecutive blocks. Never accept an unfinished thought as the
+  final JSON answer. Version structured cache keys so previously cached thought
+  examples cannot be reused; raw-text responses remain unchanged.
+
 - Keep usable store-form drafts when a model returns null for optional text such
   as an unspecified address. Normalize those fields to empty strings while
   preserving hours, currency, format resolution and existing warnings.
