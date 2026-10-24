@@ -317,7 +317,9 @@ class EntryDecision(BaseModel):
 
     @field_validator("items", mode="before")
     @classmethod
-    def _trim_items(cls, value: object) -> object:
+    def _trim_items(cls, value: object, info: ValidationInfo) -> object:
+        if value is None and info.data.get("enter") is False:
+            return []  # A confirmed walk-out has no shopping list to execute.
         if not isinstance(value, list):
             return value
         items = cast(list[object], value)

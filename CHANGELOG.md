@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve explicit vision-model walk-outs when the unused shopping list is
+  null. Treat it as empty only after `enter=false` validates, avoiding a model
+  failure or a rule-plan replacement. Keep entering and malformed decisions strict.
+
 - Exclude rejected entrance plans from ensemble purchase and quantity votes.
   Products left in an `enter=false` response can no longer create a purchase or
   raise its quantity. Preserve the existing entry tie rule and purchase support
