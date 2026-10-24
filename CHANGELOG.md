@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Require at least one customer-type and visit-purpose label in local profile
+  grammars. For non-enforcing servers returning empty pools, traffic and persona
+  prompts now use consistent generic labels instead of demanding a selection
+  from an empty list. Existing labels and structural validation are preserved.
+
 - Bind model purchases to reachable copies of the selected offer. Identical stock
   in another disconnected area no longer makes a locally available purchase fail
   because that rack happened to appear first. Canonical-SKU responses retain their

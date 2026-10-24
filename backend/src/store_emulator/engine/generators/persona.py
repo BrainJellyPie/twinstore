@@ -28,8 +28,8 @@ type PersonaLabel = Annotated[str, Field(max_length=120)]
 # small model cannot repeat itself for minutes (one listed every hour four times).
 class TradeAreaProfile(BaseModel):
     keywords: list[PersonaLabel] = Field(max_length=20)
-    identities: list[PersonaLabel] = Field(max_length=40)
-    purposes: list[PersonaLabel] = Field(max_length=40)
+    identities: list[PersonaLabel] = Field(max_length=40, json_schema_extra={"minItems": 1})
+    purposes: list[PersonaLabel] = Field(max_length=40, json_schema_extra={"minItems": 1})
 
 
 class HourlyProfile(BaseModel):
@@ -257,7 +257,7 @@ async def analyze_daily_traffic(
     supplemental_summary: str = "",
 ) -> list[HourlyProfile]:
     day_label = WEEKDAY_LABELS[day]
-    identity_list = "\n".join(f"  - {i}" for i in profile.identities)
+    identity_list = "\n".join(f"  - {i}" for i in (profile.identities or ["shopper"]))
 
     system = DAILY_TRAFFIC_PROMPT.format(
         day_label=day_label, open_hour=open_hour, close_hour=close_hour,
@@ -317,8 +317,10 @@ async def generate_personas_for_day(
 
     day_label = WEEKDAY_LABELS[day]
     profiles_map = {p.hour: p for p in hourly_profiles}
-    identity_list = "\n".join(f"  - {i}" for i in profile.identities)
-    purpose_list = "\n".join(f"  - {p}" for p in profile.purposes)
+    # Non-enforcing models may return empty pools. Match the traffic fallback
+    # instead of requiring the writer to choose from an impossible empty list.
+    identity_list = "\n".join(f"  - {i}" for i in (profile.identities or ["shopper"]))
+    purpose_list = "\n".join(f"  - {p}" for p in (profile.purposes or ["shopping"]))
 
     limit = semaphore or asyncio.Semaphore(max_concurrent)
     tasks: list[tuple[list[int], asyncio.Task[list[tuple[GeneratedPersona, int]]]]] = []
