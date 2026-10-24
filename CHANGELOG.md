@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve the intended price axis in generated conjoint studies. Convert money
+  with decimal half-up rounding, retain explicit free options, and reject tiny,
+  non-finite, oversized or collapsed price levels instead of silently removing
+  price or inventing a free offer. Returned designs must satisfy study validation.
+
 - Recover simulation starts rejected by the worker: record a failed run and
   restore its draft layout instead of leaving it running indefinitely. Preview
   failures preserve finalized layouts, and rejected queued runs cannot execute

@@ -6,11 +6,14 @@ its shelves cost. The draft fills the builder; nothing runs until the user start
 """
 
 from collections.abc import Sequence
+from decimal import Decimal, ROUND_HALF_UP
+from math import isfinite
 from typing import Protocol
 
 from pydantic import BaseModel, Field
 
-from store_emulator.domain.marketing import ConjointAttribute
+from store_emulator.domain.marketing import ConjointAttribute, ConjointRequest
+from store_emulator.domain.product_edits import MAX_PRICE
 from store_emulator.engine.prompting import display_price, relevant_first
 
 ZERO_DECIMAL = {"KRW", "JPY", "VND", "CLP", "ISK", "HUF", "TWD", "IDR"}
@@ -74,7 +77,15 @@ def _shelf_text(products: Sequence[tuple[str, int]], currency: str, question: st
 
 
 def to_minor(price: float, currency: str) -> int:
-    return round(price) if currency.upper() in ZERO_DECIMAL else round(price * 100)
+    if not isfinite(price) or price < 0:
+        raise ValueError("Drafted price levels must be finite, non-negative amounts. Try drafting again.")
+    amount = Decimal(str(price)) * (1 if currency.upper() in ZERO_DECIMAL else 100)
+    if amount > MAX_PRICE:
+        raise ValueError("A drafted price exceeds the safe integer limit. Try drafting again.")
+    rounded = int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    if price > 0 and rounded == 0:
+        raise ValueError(f"A positive drafted price rounds to zero in {currency.upper()}. Try drafting again.")
+    return rounded
 
 
 def to_design(draft: _Draft, currency: str, products: Sequence[tuple[str, int]]) -> ConjointDesign:
@@ -96,15 +107,17 @@ def to_design(draft: _Draft, currency: str, products: Sequence[tuple[str, int]])
         attributes.append(ConjointAttribute(name=name, levels=levels[:6]))
     if not attributes:
         raise ValueError("the model drafted no usable attribute")
-    prices = sorted({to_minor(p, currency) for p in draft.prices if p > 0})
-    if len(prices) < 2:
-        prices = []
+    prices = sorted({to_minor(p, currency) for p in draft.prices if not p < 0})
+    if draft.prices and len(prices) < 2:
+        raise ValueError("The drafted prices need at least two distinct levels after currency rounding. Try drafting again.")
     listed = {name.casefold(): (name, price) for name, price in products}
     named = [listed[n.strip().casefold()] for n in draft.comparable if n.strip().casefold() in listed]
     comparable = [f"{name} {display_price(price, currency)}" for name, price in dict.fromkeys(named)][:6]
-    return ConjointDesign(name=draft.name.strip(), product=draft.product.strip(), context=draft.context.strip(),
-                          attributes=attributes[:6], prices=prices[:6], currency=currency.upper(),
-                          rationale=draft.rationale.strip(), comparable=comparable)
+    design = ConjointDesign(name=draft.name.strip(), product=draft.product.strip(), context=draft.context.strip(),
+                            attributes=attributes[:6], prices=prices[:6], currency=currency.upper(),
+                            rationale=draft.rationale.strip(), comparable=comparable)
+    ConjointRequest.model_validate(design.model_dump())
+    return design
 
 
 async def design_conjoint(

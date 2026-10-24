@@ -67,3 +67,12 @@ def test_zero_decimal_currencies_and_errors(client, monkeypatch):
     monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({**DRAFT, "attributes": [{"name": "Price", "levels": ["a", "b"]}]}))
     r = client.post(f"/api/projects/{PID}/conjoints/design", json={"question": "Tea at what price?"})
     assert r.status_code == 502 and "could not be drafted" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("prices", [[1.001, 1.002], [.0049, 1], [float("inf"), 1], [90071992547409.92, 1]])
+def test_unusable_price_axis_is_not_returned_as_a_successful_draft(client, monkeypatch, prices):
+    from store_emulator.application import study_design
+    monkeypatch.setattr(study_design, "assistive_client", lambda *a, **k: _Designer({**DRAFT, "prices": prices}))
+    response = client.post(f"/api/projects/{PID}/conjoints/design", json={"question": "Tea at what price?"})
+    assert response.status_code == 502, response.text
+    assert "price" in response.json()["detail"].lower()
