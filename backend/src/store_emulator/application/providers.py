@@ -470,15 +470,13 @@ def _local_text_ready(settings: dict[ProviderKind, ProviderSettings]) -> bool:
     from .local_vlm import manager, server_answers
 
     local = manager().status()
-    loopback = {"127.0.0.1", "localhost", "::1"}
     try:
         requested = urlsplit(status.api_base)
         managed = urlsplit(local.api_base or PRESETS[ProviderKind.LLAMACPP].default_api_base or "")
         same_endpoint = (
             requested.scheme == managed.scheme and requested.port == managed.port
             and requested.path.rstrip("/") == managed.path.rstrip("/") and requested.query == managed.query
-            and (requested.hostname == managed.hostname
-                 or requested.hostname in loopback and managed.hostname in loopback)
+            and requested.hostname == managed.hostname
         )
     except ValueError:
         return False

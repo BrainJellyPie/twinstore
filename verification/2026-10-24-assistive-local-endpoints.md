@@ -1,5 +1,9 @@
 # Check readiness at the selected local-model address
 
+Follow-up: [loopback host identity](2026-10-24-local-loopback-identity.md)
+supersedes this initial implementation's assumption that loopback aliases share
+one server. Different hosts are now probed independently.
+
 Assistive fallback and model pickers used the built-in local manager's state even
 after the llama.cpp provider address was changed to another server. A ready
 built-in server made an unreachable replacement appear usable; a starting or

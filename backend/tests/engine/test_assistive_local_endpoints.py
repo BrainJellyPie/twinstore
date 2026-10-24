@@ -23,6 +23,7 @@ def local_provider(tmp_path, monkeypatch):
 @pytest.mark.parametrize("state", ["ready", "preparing", "downloading", "starting", "error", "off", "disabled"])
 @pytest.mark.parametrize("endpoint", [
     "http://127.0.0.1:9000/v1", "http://gpu-box:8081/v1", "http://127.0.0.1:8081/other/v1",
+    "http://localhost:8081/v1", "http://[::1]:8081/v1",
 ])
 @pytest.mark.parametrize("answering", [False, True])
 def test_independent_endpoint_is_probed_regardless_of_managed_state(
@@ -41,7 +42,7 @@ def test_independent_endpoint_is_probed_regardless_of_managed_state(
 
 @pytest.mark.parametrize("state", ["ready", "preparing", "downloading", "starting", "error"])
 @pytest.mark.parametrize("endpoint", [
-    "http://127.0.0.1:8081/v1", "http://localhost:8081/v1/", "http://[::1]:8081/v1",
+    "http://127.0.0.1:8081/v1", "http://127.0.0.1:8081/v1/",
 ])
 def test_same_managed_endpoint_uses_its_lifecycle_state(local_provider, monkeypatch, state, endpoint):
     local_provider._set(state=state, api_base="http://127.0.0.1:8081/v1")

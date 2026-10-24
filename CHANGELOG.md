@@ -41,7 +41,8 @@
 - Check the configured local-model server independently when its address differs
   from the built-in server. Assistive fallback and model pickers no longer mistake
   a different server for ready, or hide a working server while the built-in model
-  starts or has failed. Loopback aliases still share the managed lifecycle state.
+  starts or has failed. Different loopback hosts are probed independently because
+  IPv4 and IPv6 servers can use the same port simultaneously.
 
 - Let assistive requests reach the local model after every configured cloud key
   is rejected. Their bounded model-switch budget now follows the application's
