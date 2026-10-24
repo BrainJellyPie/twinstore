@@ -1,6 +1,7 @@
 """Stage 3: impulse reactions. Inserts serendipity events for products exposed along the route."""
 
 import json
+from typing import ClassVar
 
 from pydantic import field_validator
 
@@ -25,6 +26,8 @@ LEVEL_VISIBILITY_GUIDE = [
 
 class ImpulseResponse(IntentResponse):
     """Additional model shopping actions, with the same engine-field boundary as intent."""
+
+    actions_optional: ClassVar[bool] = True
 
     @field_validator("actions", mode="before")
     @classmethod

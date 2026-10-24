@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Require the primary LLM action list before executing or caching a planned
+  visit, including after catalog context recovery. Missing lists no longer
+  silently become empty visits. Keep explicit empty plans and optional impulse
+  reactions supported.
+
 - Require an explicit entry decision from vision models at every shopping-list
   limit. Empty responses can no longer invent a visit, overrule a valid walk-out
   vote or be reused as successful model plans. Keep internal planning defaults.

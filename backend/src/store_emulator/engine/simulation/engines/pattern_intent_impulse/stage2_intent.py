@@ -9,7 +9,7 @@ caching, OpenAI, vLLM, llama.cpp) then reuse the catalog prefix across customers
 
 import hashlib
 import json
-from typing import cast
+from typing import ClassVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, create_model, field_validator
 
@@ -50,6 +50,7 @@ class GeneratedAction(CustomerAction):
 
 
 class IntentResponse(BaseModel):
+    actions_optional: ClassVar[bool] = False
     reasoning: str = Field(default="", max_length=600)
     actions: list[GeneratedAction] = []
 
@@ -158,7 +159,7 @@ def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, 
 
     return create_model(base.__name__, __base__=base,
         __config__=ConfigDict(json_schema_extra={"$comment": f"catalog-offer-codes-v2:{digest}"}),
-        actions=(list[CatalogAction], Field(default_factory=list[CatalogAction])))
+        actions=(list[CatalogAction], Field(default_factory=list[CatalogAction]) if base.actions_optional else Field()))
 
 
 def decode_catalog_response[T: IntentResponse](base: type[T], response: IntentResponse,
@@ -237,6 +238,7 @@ def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[st
 고객별 행동 패턴과 추가 규칙은 사용자 메시지에 주어집니다.
 
 공통 규칙:
+- actions 필드는 반드시 포함하세요. 행동이 없으면 빈 배열 []을 명시하고 필드를 생략하지 마세요.
 - pay는 카운터에서 딱 1회만 발생합니다 (구매 물건이 없거나 매장에 카운터가 없으면 생략)
 - 시퀀스 순서는 enter → 이동/browse/buy → pay → exit
 - 반드시 {{"nav": "leave"}} 으로 종료
