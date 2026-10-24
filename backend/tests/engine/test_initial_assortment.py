@@ -16,7 +16,7 @@ class Model:
 
     async def generate_structured_async(self, schema, system, user, **kwargs):
         payload = json.loads(user); self.calls.append(payload)
-        if schema is CategorySelection:
+        if issubclass(schema, CategorySelection):
             allowed = {c["id"] for c in payload["categories"]}
             groups = {}
             for rack in payload["racks"]:

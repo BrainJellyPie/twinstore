@@ -36,7 +36,7 @@ def test_automatic_initial_products_use_wizard_category_before_project_and_perso
         async def generate_structured_async(self, schema, system, user, **kwargs):
             payload = json.loads(user); calls.append(payload)
             generation.assert_not_called()
-            if schema is CategorySelection:
+            if issubclass(schema, CategorySelection):
                 return schema.model_validate({"groups": [{"category": "first_aid_tools", "rack_ids": [r["id"] for r in payload["racks"]]}]})
             return schema.model_validate({"groups": [{"category": "first_aid_tools", "skus": [p["sku"] for p in payload["categories"]["first_aid_tools"][:2]]}]})
     monkeypatch.setattr(template_assortment, "assistive_client", lambda *a: Model())
@@ -63,7 +63,7 @@ def test_model_selection_failure_creates_no_partial_project_and_format_retry_suc
         async def generate_structured_async(self, schema, system, user, **kwargs):
             payload = json.loads(user)
             if failure == "timeout": raise TimeoutError("timed out")
-            if schema is CategorySelection:
+            if issubclass(schema, CategorySelection):
                 return schema.model_validate({"groups": [{"category": "unknown" if failure == "unknown_category" else "dairy", "rack_ids": [r["id"] for r in payload["racks"]]}]})
             return schema.model_validate({"groups": [{"category": "dairy", "skus": ["unknown"] if failure == "unknown_sku" else [p["sku"] for p in payload["categories"]["dairy"][:2]]}]})
     def client_factory(*args):
