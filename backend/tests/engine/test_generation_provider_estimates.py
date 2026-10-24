@@ -36,7 +36,8 @@ def test_cloud_cost_and_time_respect_actual_endpoint_and_request_cap(monkeypatch
     price.assert_called_once_with("paid-model", 2000, 1000)
 
 
-@pytest.mark.parametrize("base", ["http://localhost:8081/v1", "http://127.0.0.1:8081/v1", "http://[::1]:8081/v1"])
+@pytest.mark.parametrize("base", ["http://localhost:8081/v1", "http://127.0.0.1:8081/v1", "http://[::1]:8081/v1",
+    "http://localhost.:11434/v1", "http://LOCALHOST.:8081/v1", "https://localhost.:8443/v1"])
 @pytest.mark.parametrize("slots", [None, 1, 4])
 def test_loopback_remains_unpriced_and_uses_local_timing(monkeypatch, base, slots):
     price = Mock(side_effect=AssertionError("local model was priced"))
@@ -61,9 +62,25 @@ def test_fast_paid_cloud_write_still_asks_about_cost(monkeypatch, slots):
     assert confirm["all"]["cost_usd"] == 2.0
 
 
+@pytest.mark.parametrize("base", ["http://localhost.:11434/v1", "http://LOCALHOST.:8081/v1", "https://localhost.:8443/v1"])
+def test_dotted_loopback_does_not_skip_a_long_local_write_warning(monkeypatch, base):
+    monkeypatch.setattr(ga, "cost_usd", lambda *args: None)
+    status, choice = Mock(), AsyncMock(return_value="sample")
+    monkeypatch.setattr(ga, "write_status", status)
+    monkeypatch.setattr(ga, "_await_choice", choice)
+    result = asyncio.run(ga._decide("project", "generation", client(base, None), plan()))
+    assert result == 100
+    choice.assert_awaited_once()
+    confirm = status.call_args_list[0].kwargs["progress"]["confirm"]
+    assert confirm["local"] is True
+    assert confirm["all"]["minutes"] == 20.0 and confirm["all"]["cost_usd"] is None
+
+
 @pytest.mark.parametrize("base,slots,local", [
     (None, 1, False), (None, None, False),
     ("http://127.0.0.1:8081/v1", None, True), ("http://127.0.0.1:8081/v1", 4, True),
+    ("http://localhost.:11434/v1", None, True), ("http://LOCALHOST.:8081/v1", 4, True),
+    ("https://localhost.:8443/v1", 1, True), ("http://localhost.example/v1", 1, False),
 ])
 def test_batch_pace_follows_endpoint_instead_of_concurrency(monkeypatch, tmp_path, base, slots, local):
     monkeypatch.chdir(tmp_path)

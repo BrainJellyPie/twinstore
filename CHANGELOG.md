@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recognize dotted localhost names and alternate loopback IP spellings during
+  local-model readiness checks and work estimates. Unavailable servers no longer
+  bypass preflight, and dotted localhost keeps local timing, sampling and batch
+  limits. Preserve exact endpoint identity for managed startup and cloud routing.
+
 - Preserve valid rival-product matches when an unmatched row uses null for our
   product. One absent counterpart no longer discards the remaining price
   comparisons; missing rival identities and malformed match structures still fail.

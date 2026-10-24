@@ -23,7 +23,7 @@ def is_local_base(api_base: str | None) -> bool:
     if not api_base:
         return False
     host = urlparse(api_base if "://" in api_base else f"http://{api_base}").hostname or ""
-    if host == "localhost":
+    if host in {"localhost", "localhost."}:
         return True
     try:
         return ipaddress.ip_address(host).is_loopback

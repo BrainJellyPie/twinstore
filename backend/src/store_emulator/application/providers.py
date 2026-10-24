@@ -38,6 +38,7 @@ from store_emulator.engine.llm_client import LiteLLMClient, is_auth_error
 from store_emulator.engine.llm_router import EnsembleLLMClient, SimLLM
 
 from .errors import model_failure
+from .estimates import is_local_base
 from .storage.io import DATA_DIR, read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -840,7 +841,7 @@ def local_model_answers(api_base: str) -> bool:
     a server on this computer must answer."""
     from .local_vlm import server_answers  # late import: local_vlm imports this module
 
-    if urlsplit(api_base).hostname not in {"127.0.0.1", "localhost", "::1"}:
+    if not is_local_base(api_base):
         return True
     return server_answers(api_base)
 
@@ -851,9 +852,7 @@ def ensure_local_ready(api_base: str) -> None:
     # late import: local_vlm imports this module
     from .local_vlm import manager, server_answers
 
-    requested = urlsplit(api_base)
-    loopback = {"127.0.0.1", "localhost", "::1"}
-    if requested.hostname not in loopback:
+    if not is_local_base(api_base):
         return
     status = manager().status()
     if status.state in ("preparing", "downloading", "starting"):
