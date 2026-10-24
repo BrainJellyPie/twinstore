@@ -68,6 +68,7 @@ EDIT_PROMPT = """You turn a store manager's instructions into edits of the store
 Make exactly the edits the manager asked for, one change per product and edit, using only products and shelves listed
 below, written exactly as listed. Return at least one change that fits a listed product or category. A discount
 requires a negative percent. Prices must be finite and positive after currency rounding.
+Return at least one applicable operation; correct unavailable moves or empty categories when validation reports them.
 Name the edited layout in a few words and summarize the edits. Write in English."""
 
 

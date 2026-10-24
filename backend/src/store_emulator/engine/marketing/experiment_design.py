@@ -75,7 +75,9 @@ Use only products, shelves and images listed below, written exactly as listed. V
 question asks for combinations, never name a variant "Control", list the products whose sales the question is about
 in focus_products, choose engine "vlm" only when the test needs shoppers to see packs or signs, and give a short
 rationale. Return at least one change that can be applied to a listed product or category. A discount requires a
-negative percent. Prices must be finite and positive after currency rounding. Write in English."""
+negative percent. Prices must be finite and positive after currency rounding.
+Each variant needs an applicable operation. Correct unavailable moves or empty categories when validation reports them.
+Write in English."""
 
 
 def _listing(store: Store, currency: str, packages: Sequence[tuple[str, str]], question: str = "",
@@ -170,9 +172,12 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
         if not changes:
             warnings.append(f"{v.name}: nothing left to change; the variant was left out.")
             continue
-        _, _, problems = apply_changes(store, changes, package_uris={aid: aid for _, aid in packages},
-                                       minor_per_major=1 if zero else 100)
+        _, applied, problems = apply_changes(store, changes, package_uris={aid: aid for _, aid in packages},
+                                             minor_per_major=1 if zero else 100)
         warnings.extend(f"{name}: {p}" for p in problems)
+        if not applied:
+            warnings.append(f"{name}: no change could be applied; the variant was left out.")
+            continue
         used.add(name.casefold())
         variants.append(Variant(name=name, changes=changes))
     if not variants:

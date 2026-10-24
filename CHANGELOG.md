@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Require automatic layout edits and A/B variants to apply at least one
+  operation. Missing or empty categories and unavailable moves no longer
+  produce successful unchanged drafts; request bounded model correction while
+  retaining usable variants and warnings for partially applicable edits.
+
 - Remove blank customer-profile and hourly-traffic labels before building
   downstream prompts and choice grammars. Preserve usable multilingual labels
   and visitor counts, and apply existing default types when all labels are blank.
