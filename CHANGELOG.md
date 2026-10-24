@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject automatic staff-script drafts that copy the current wording, including
+  case and whitespace changes. Request a corrected alternative before caching,
+  so a copied draft cannot repeatedly block the subsequent A/B test.
+
 - Bypass system proxies for the fully qualified localhost spelling when starting
   the app. Local SDK calls to `localhost.` no longer go to a corporate proxy even
   though direct readiness checks succeed; existing proxy and bypass settings stay.

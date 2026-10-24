@@ -4,9 +4,9 @@ The draft keeps the offer (product, price, promotion) and uses only the verified
 wording rather than a different deal or an invented claim.
 """
 
-from typing import Protocol
+from typing import Protocol, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class StructuredLLM(Protocol):
@@ -34,12 +34,22 @@ alternative that a shopper would hear from an employee: natural, polite, short e
 easy to decline. Keep the same product, price and promotion as given; use only the verified facts listed (no health,
 quality or origin claims beyond them); no pressure, no false scarcity. Change the approach, not the offer: follow the
 direction when one is given, otherwise pick the one change most likely to help a shopper decide.
+When a current script is supplied, return different wording; changing only capitalization or whitespace is not an alternative.
 Use an empty string, not null, when no differs_by explanation is given. Write in English."""
 
 
 async def draft_script(
     llm: StructuredLLM, *, product: str, offer: str, context: str, facts: str, current: str, direction: str = "",
 ) -> ScriptDraft:
+    current_key = " ".join(current.split()).casefold()
+
+    class AlternativeScriptDraft(ScriptDraft):
+        @model_validator(mode="after")
+        def different_wording(self) -> Self:
+            if current_key and " ".join(self.script.split()).casefold() == current_key:
+                raise ValueError("Return different wording from the current script; capitalization or whitespace alone is not a change.")
+            return self
+
     user = "\n".join(line for line in (
         f"Product: {product}. Offer on the shelf: {offer}.",
         f"Encounter: {context.strip()}",
@@ -47,5 +57,5 @@ async def draft_script(
         f"Current script: {current.strip() or '(none yet; write a first script)'}",
         f"Direction: {direction.strip()}" if direction.strip() else "",
     ) if line)
-    draft = await llm.generate_structured_async(ScriptDraft, SCRIPT_PROMPT, user, max_retries=2, seed=0)
+    draft = await llm.generate_structured_async(AlternativeScriptDraft, SCRIPT_PROMPT, user, max_retries=2, seed=0)
     return draft.model_copy(update={"script": " ".join(draft.script.split())[:1200], "name": draft.name.strip()[:40]})
