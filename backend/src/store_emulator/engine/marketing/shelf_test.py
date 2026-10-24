@@ -11,7 +11,7 @@ from collections.abc import Callable, Sequence
 from typing import Literal, Protocol, Self
 
 import numpy as np
-from pydantic import BaseModel, Field, JsonValue, model_validator
+from pydantic import BaseModel, Field, JsonValue, create_model, model_validator
 
 from store_emulator.domain.marketing import ShareComparison, ShelfChoice, SkuShare
 from store_emulator.domain.persona import Persona
@@ -87,8 +87,13 @@ async def shelf_panel(
                         return self
 
                 user += f"\nVisible badge numbers: {marks}. Use 0 only for pick; use [] for nothing noticed."
+                schema = create_model("ShelfResponse", __base__=ShelfResponse, noticed=(list[int], Field(
+                    ..., max_length=3, description="visible badge numbers noticed, or [] when none were noticed",
+                    json_schema_extra=noticed_schema,
+                ))) if marks else ShelfResponse
+                user += " Always include noticed, even when the list is empty."
                 a = await llm.generate_structured_with_image_async(
-                    ShelfResponse, SHELF_TEST_PROMPT, user, view.data_url(), max_retries=2, seed=stable_seed("shelf", seed, p.id, arm),
+                    schema, SHELF_TEST_PROMPT, user, view.data_url(), max_retries=2, seed=stable_seed("shelf", seed, p.id, arm),
                 )
                 picked = view.by_mark(a.pick) if a.pick else None
                 noticed = [m.item.sku for n in a.noticed if (m := view.by_mark(n)) is not None]

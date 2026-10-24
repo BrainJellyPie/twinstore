@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Require an explicit noticed-product list for shelf-test model responses when
+  products are visible. Missing attention measurements now receive bounded
+  correction or fail the pair instead of being cached and scored as zero.
+
 - Resolve both sides of grammar-limited rival-product aliases using unique
   full-name prefixes. Long names retain their price comparison, while shared
   prefixes no longer link a different product or distort the rival pull factor.
