@@ -10,6 +10,7 @@ from filelock import FileLock, Timeout
 
 from store_emulator.application.errors import AppError
 from store_emulator.application.shelf_lab import _check_id  # pyright: ignore[reportPrivateUsage]
+from store_emulator.application.setups import setup_tree_transaction
 from store_emulator.application.staff_pitch import get_pitch
 from store_emulator.application.storage.io import DATA_DIR, now_iso, read_json, write_json
 from store_emulator.application.storage.setups import metadata_path
@@ -50,18 +51,21 @@ def _path(pid: str, pilot_id: str) -> Path:
 
 def create_pilot(pid: str, pitch_id: str, req: PilotRequest) -> PilotView:
     root = _root(pid)
-    source = get_pitch(pid, pitch_id).report
-    if source is None:
-        raise AppError("Complete a staff script screening test before preparing its field pilot", 409)
-    pilot_id = f"pilot_{uuid.uuid4().hex[:12]}"
-    now = now_iso()
-    pilot = FieldPilot(pilot_id=pilot_id, pitch_id=pitch_id, created_at=now, updated_at=now, design=req,
-                       product=source.product.model_copy(deep=True), variants=source.request.variants,
-                       context=source.request.context, product_facts=source.request.product_facts,
-                       assignments=allocate_pilot(pilot_id, req), history_start_revision=0,
-                       planning=plan_pilot(PilotPlanningRequest(assumptions=req.planning,
-                                           block_counts=[b.encounters for b in req.blocks])) if req.planning else None)
-    write_json(root / pilot_id / "pilot.json", pilot.model_dump(mode="json"))
+    # The same guard protects source-study and project deletion. A pilot keeps
+    # its own source snapshot after this commit, including if the study is removed.
+    with setup_tree_transaction(pid):
+        source = get_pitch(pid, pitch_id).report
+        if source is None:
+            raise AppError("Complete a staff script screening test before preparing its field pilot", 409)
+        pilot_id = f"pilot_{uuid.uuid4().hex[:12]}"
+        now = now_iso()
+        pilot = FieldPilot(pilot_id=pilot_id, pitch_id=pitch_id, created_at=now, updated_at=now, design=req,
+                           product=source.product.model_copy(deep=True), variants=source.request.variants,
+                           context=source.request.context, product_facts=source.request.product_facts,
+                           assignments=allocate_pilot(pilot_id, req), history_start_revision=0,
+                           planning=plan_pilot(PilotPlanningRequest(assumptions=req.planning,
+                                               block_counts=[b.encounters for b in req.blocks])) if req.planning else None)
+        write_json(root / pilot_id / "pilot.json", pilot.model_dump(mode="json"))
     return PilotView(pilot=pilot, analysis=analyze_pilot(pilot))
 
 
@@ -177,7 +181,7 @@ def export_import_history(pid: str, pilot_id: str) -> str:
 def import_observations(pid: str, pilot_id: str, data: bytes, revision: int, review_token: str, reason: str) -> PilotView:
     path = _path(pid, pilot_id)
     try:
-        with FileLock(path.with_suffix(".lock"), timeout=0):
+        with setup_tree_transaction(pid), FileLock(path.with_suffix(".lock"), timeout=0):
             pilot = FieldPilot.model_validate(read_json(path))
             if pilot.finalized_at:
                 raise AppError("This field pilot is closed; its observations are locked", 409)
@@ -216,7 +220,7 @@ def import_observations(pid: str, pilot_id: str, data: bytes, revision: int, rev
 def finalize_pilot(pid: str, pilot_id: str, revision: int) -> PilotView:
     path = _path(pid, pilot_id)
     try:
-        with FileLock(path.with_suffix(".lock"), timeout=0):
+        with setup_tree_transaction(pid), FileLock(path.with_suffix(".lock"), timeout=0):
             pilot = FieldPilot.model_validate(read_json(path))
             if pilot.revision != revision or pilot.finalized_at:
                 raise AppError("The pilot changed or is already closed; reload it", 409)
