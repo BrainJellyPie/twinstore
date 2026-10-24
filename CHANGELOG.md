@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bound generated trade-area keywords and hourly customer-type labels to the
+  same 120-character limit as customer identities. Long repetitive labels now
+  receive structured-response correction before they are copied into every
+  customer specification and overflow a local model's context.
+
 - Prevent a delayed local-model Start from undoing a newer Stop. Check the current
   session choice under the worker-start lock before clearing cancellation or
   launching a thread; automatic startup also reports that it was superseded.

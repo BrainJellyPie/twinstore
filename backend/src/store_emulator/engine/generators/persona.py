@@ -24,7 +24,7 @@ type PersonaLabel = Annotated[str, Field(max_length=120)]
 # Upper bounds well above what the prompts ask for. Schema-constrained local models (llama.cpp) are held to them, so a
 # small model cannot repeat itself for minutes (one listed every hour four times).
 class TradeAreaProfile(BaseModel):
-    keywords: list[str] = Field(max_length=20)
+    keywords: list[PersonaLabel] = Field(max_length=20)
     identities: list[PersonaLabel] = Field(max_length=40)
     purposes: list[PersonaLabel] = Field(max_length=40)
 
@@ -32,7 +32,7 @@ class TradeAreaProfile(BaseModel):
 class HourlyProfile(BaseModel):
     hour: int = Field(ge=0, le=23, strict=True)
     visitor_count: int = Field(ge=0, strict=True)
-    person_types: list[str] = Field(max_length=10)
+    person_types: list[PersonaLabel] = Field(max_length=10)
 
 
 class DailyTrafficResult(BaseModel):
@@ -130,6 +130,7 @@ PROFILE_PROMPT = """당신은 상권 분석 전문가입니다.
 
 규칙:
 - keywords: 이 지역을 특징짓는 단어 5~10개
+  - 각 항목은 120자 이하의 짧은 단어나 구. 긴 설명이나 같은 구절을 반복하지 마세요.
 
 - identities: 이 매장에 **일주일 전체를 통틀어** 방문할 수 있는 고객 유형. 짧은 라벨로 작성.
   - 평일에만 오는 유형 (예: "출근길 직장인", "점심시간 회사원")
@@ -163,6 +164,7 @@ DAILY_TRAFFIC_PROMPT = """당신은 상권 분석 전문가입니다.
   하루 총 방문객 수는 매장 입지/규모/상권 특성과 요일에 맞게 합리적으로 추론하여 결정.
   특정 시간대에 몰리는 자연스러운 형상(피크/오프피크/식사시간 등)을 반드시 반영하세요.
 - person_types: **반드시 아래 identity 목록의 라벨을 그대로 사용.** {day_label}에 실제로 방문할 유형만 선택
+  - 각 항목은 120자 이하. 라벨에 설명을 덧붙이거나 같은 구절을 반복하지 마세요.
   - {day_label}에 맞지 않는 유형은 제외 (예: 주말에 "출근길 직장인" 제외)
   - 시간대별로 적절한 유형만 선택 (예: "야식 손님"은 저녁~심야에만)"""
 
