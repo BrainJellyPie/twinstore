@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Coordinate field-pilot creation, reviewed observation imports and closure with
+  project deletion. Late writes no longer recreate deleted project folders;
+  source-study deletion preserves completed pilot snapshots and busy projects
+  leave existing observations and import history untouched.
+
 - Use reachable shelf offers for marketing experiment price curves. Hidden,
   locked or obstructed cheap facings no longer become the reported price of
   purchases from other shelves; omit arms without an observed shelf price.
