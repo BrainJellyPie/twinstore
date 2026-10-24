@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Describe the actual selected offers in the vision shopper's basket. A shared
+  SKU no longer makes every differently named shelf variant appear purchased.
+  Resolve planned and earlier impulse buys by their exact shelf position and
+  level before composing the next glance prompt; keep unique basket names.
+
 - Preserve individual purchase intent and preferred categories in post-trip
   interview and follow-up prompts. A broad visit-purpose label no longer hides
   a shopper's specific needs; changed or cleared evidence invalidates the old

@@ -450,7 +450,7 @@ class VLMGlanceEngine(RuleBasedEngine):
                     shown = "photo_chart"
             prompt = user_prompt(
                 persona, context.cue, plan.pattern, view,
-                basket=self._basket_names(context, plan),
+                basket=self._basket_names(context, plan, out),
                 money_left=None if plan.budget is None or plan.tolerance is None
                 else int(plan.budget * plan.tolerance) - plan.spend,
                 currency=cfg.currency,
@@ -530,13 +530,18 @@ class VLMGlanceEngine(RuleBasedEngine):
             return ShelfGlance.model_validate(glance.model_dump()), model, None, (), ""
         return None, model, None, (), error
 
-    def _basket_names(self, context: PerCustomerContext, plan: ShopperPlan) -> list[str]:
+    def _basket_names(self, context: PerCustomerContext, plan: ShopperPlan, impulse: ImpulseOutcome) -> list[str]:
         names: list[str] = []
-        for rack in context.store.product_racks:
-            for slot in rack.slots:
-                for item in slot.items:
-                    if item.sku in plan.chosen and item.name not in names:
-                        names.append(item.name)
+        for action in [*plan.buys, *impulse.actions]:
+            if action.action != Action.BUY:
+                continue
+            placement = resolve_buy_placement(context.store, target=action.target, face=action.face,
+                sku=action.product_sku, block=action.product_block, level=action.product_level)
+            if placement is None:
+                continue
+            item = next(item for item in placement[1].items if item.sku == action.product_sku)
+            if item.name not in names:
+                names.append(item.name)
         return names
 
     def plan_summary(self) -> dict[str, object]:
