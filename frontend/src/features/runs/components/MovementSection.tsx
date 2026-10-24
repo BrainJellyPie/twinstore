@@ -49,10 +49,12 @@ export function MovementSection({ projectId, runId }: { projectId: string; runId
   const sim = report?.simulated;
   const denominatorReal = layer === "visitors" ? real?.tracks ?? 0 : real?.observed_seconds ?? 0;
   const denominatorSim = layer === "visitors" ? sim?.tracks ?? 0 : sim?.observed_seconds ?? 0;
-  const maxValue = Math.max(0,
-    ...(real?.[layer].flat().map((v) => v / (denominatorReal || 1)) ?? []),
-    ...(sim?.[layer].flat().map((v) => v / (denominatorSim || 1)) ?? []),
-  );
+  let maxValue = 0;
+  for (const [summary, denominator] of [[real, denominatorReal], [sim, denominatorSim]] as const) {
+    for (const row of summary?.[layer] ?? []) {
+      for (const value of row) maxValue = Math.max(maxValue, value / (denominator || 1));
+    }
+  }
   const validGap = Number.isFinite(maxGap) && maxGap > 0 && maxGap <= 300;
 
   return <section aria-label={t("movementTitle")} className="space-y-2 border-t px-3 py-3">

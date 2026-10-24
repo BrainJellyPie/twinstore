@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep movement comparisons usable for large supported store grids. Computing
+  the shared map color scale no longer spreads every cell into function arguments,
+  which overflowed the JavaScript call stack on 256-by-256 and 256-by-255 maps.
+
 - Freeze product artwork for both arms of neighborhood VLM comparisons at job
   acceptance. Image replacement, package deletion and later-added artwork no
   longer change the accepted study, even after decoded-image cache eviction.

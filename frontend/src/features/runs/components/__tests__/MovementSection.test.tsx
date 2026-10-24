@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { getMovementReport, uploadMovement, type MovementReport } from "@/shared/api/movement";
@@ -23,6 +23,22 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe("movement comparison", () => {
+  it.each([[256, 256], [256, 255], [1, 256]])("accepts a %i by %i saved map without overflowing the call stack", (width, height) => {
+    const matrix = (value: number) => Array.from({ length: height }, () => Array<number>(width).fill(value));
+    const large: MovementReport = {
+      ...report, grid_size: [width!, height!],
+      observed: { ...report.observed, visitors: matrix(1), occupancy_seconds: matrix(0) },
+      simulated: { ...report.simulated, visitors: matrix(2), occupancy_seconds: matrix(0) },
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+    client.setQueryData(["movement", "p", "r"], large);
+    const { result } = renderHook(() => MovementSection({ projectId: "p", runId: "r" }), {
+      wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
+    expect(result.current.type).toBe("section");
+    expect(getMovementReport).not.toHaveBeenCalled();
+  });
+
   it("loads saved aggregate maps and switches to occupancy", async () => {
     vi.mocked(getMovementReport).mockResolvedValue(report);
     render(<MovementSection projectId="p" runId="r" />, { wrapper });
