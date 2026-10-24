@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recover customer batches rejected for input-context overflow by splitting once
+  into two smaller requests. Preserve customer times, IDs and shared concurrency;
+  a still-oversized child remains a failure. Customer and starter recovery now
+  respect the original HTTP status when LiteLLM relabels an authorization or
+  rate-limit rejection as a context error.
+
 - Restrict model-generated impulse purchases to the products in that customer's
   actual exposure list. Unseen purchases cannot create sales or consume the
   visible basket's budget/limit; planned destinations remain unrestricted.

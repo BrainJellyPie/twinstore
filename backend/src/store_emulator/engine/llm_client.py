@@ -13,7 +13,7 @@ from typing import cast
 import instructor
 import litellm
 from instructor.core.exceptions import IncompleteOutputException, InstructorError
-from litellm.exceptions import AuthenticationError, BadRequestError
+from litellm.exceptions import AuthenticationError, BadRequestError, ContextWindowExceededError
 from pydantic import BaseModel, ValidationError
 
 from store_emulator.domain.config import LLMConfig
@@ -55,6 +55,25 @@ def _request_errors(error: BaseException) -> list[BaseException]:
         else:
             errors.append(current)
     return errors
+
+
+def is_context_overflow(error: BaseException) -> bool:
+    """Recognize a terminal input-context rejection, preserving the original HTTP status."""
+    if not isinstance(error, BadRequestError):
+        return False
+    for cause in _request_errors(error):
+        statuses = (getattr(cause, "status_code", None), getattr(getattr(cause, "response", None), "status_code", None))
+        if any(isinstance(status, int) and status != 400 for status in statuses):
+            return False
+    if isinstance(error, ContextWindowExceededError):
+        return True
+    # LiteLLM can discard llama.cpp's structured error type/body. Accept only
+    # its concrete token-count messages, not generated text mentioning context.
+    return re.search(
+        r"(?:request \(\d+ tokens\) exceeds the available context size \(\d+ tokens\)"
+        r"|input \(\d+ tokens\) is larger than the max context size \(\d+ tokens\))",
+        str(error),
+    ) is not None
 
 
 def _rejected_param(error: BaseException) -> str | None:

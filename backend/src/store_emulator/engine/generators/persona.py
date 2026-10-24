@@ -9,12 +9,14 @@ from dataclasses import dataclass
 from typing import Annotated, Self
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
+from litellm.exceptions import BadRequestError
 from pydantic import BaseModel, Field, JsonValue, create_model, model_validator
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
 from store_emulator.domain.types import AsyncLLMClient, Weekday, WEEKDAY_LABELS, stable_seed
 from store_emulator.engine.generators.traffic_profile import TrafficProfile, reshape_hourly_counts
+from store_emulator.engine.llm_client import is_context_overflow
 from store_emulator.engine.prompting import budget_example
 
 logger = logging.getLogger(__name__)
@@ -333,12 +335,12 @@ async def generate_personas_for_day(
         try:
             async with limit:
                 batch = await llm.generate_structured_async(batch_schema, system_prompt, persona_input, max_retries=3)
-        except (IncompleteOutputException, InstructorRetryException) as error:
+        except (IncompleteOutputException, InstructorRetryException, BadRequestError) as error:
             cause = (error.failed_attempts[-1].exception
                      if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
-            if not recover or len(chunk) < 2 or not isinstance(cause, IncompleteOutputException):
+            if not recover or len(chunk) < 2 or not (isinstance(cause, IncompleteOutputException) or is_context_overflow(cause)):
                 raise
-            logger.info("[persona] %s: splitting a truncated %s-customer request once", day_label, len(chunk))
+            logger.info("[persona] %s: splitting an oversized or truncated %s-customer request once", day_label, len(chunk))
             middle = len(chunk) // 2
             # Release the shared request slot before either child acquires it.
             first = await _generate_batch(chunk[:middle], recover=False)

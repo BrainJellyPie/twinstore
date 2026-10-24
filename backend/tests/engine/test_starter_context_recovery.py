@@ -102,7 +102,8 @@ def test_real_instructor_wrapper_reaches_recovery_after_context_rejection(monkey
     ('input (15119 tokens) is larger than the max context size (8192 tokens). skipping', True),
     ('The context size parameter is not supported by this endpoint', False),
 ])
-def test_llamacpp_http_errors_survive_openai_litellm_and_instructor_translation(monkeypatch, message, recover):
+@pytest.mark.parametrize('status', [400, 403, 429])
+def test_llamacpp_http_errors_survive_openai_litellm_and_instructor_translation(monkeypatch, message, recover, status):
     import httpx
     from openai import AsyncOpenAI
     from store_emulator.domain.config import LLMConfig
@@ -117,7 +118,7 @@ def test_llamacpp_http_errors_survive_openai_litellm_and_instructor_translation(
             name = payload['response_format']['json_schema']['name']
             seen.append(name)
             if name == 'CategorySelection':
-                return httpx.Response(400, request=request, json={'error': {'code': 400, 'message': message,
+                return httpx.Response(status, request=request, json={'error': {'code': status, 'message': message,
                     'type': 'exceed_context_size_error' if recover else 'invalid_request_error'}})
             user = json.loads(payload['messages'][-1]['content'])
             answer = {'choices': ['home_coffee_tea']} if name == 'BoundedCatalogChoices' else {
@@ -137,7 +138,7 @@ def test_llamacpp_http_errors_survive_openai_litellm_and_instructor_translation(
                                                        structured_output='json_schema'))
             return await select_starter_products(client, empty_store(), [StarterRack(id='a', name='Shelf', type='shelf', available_slots=2)], '')
 
-    if recover:
+    if recover and status == 400:
         chosen = asyncio.run(exercise())
         assert len(chosen) == 1 and chosen[0].rack_id == 'a'
         assert seen == ['CategorySelection', 'CategorySelection', 'BoundedCatalogChoices', 'ProductSelection']
