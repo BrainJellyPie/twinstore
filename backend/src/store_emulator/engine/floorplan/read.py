@@ -234,6 +234,16 @@ class _VLMPlan(BaseModel):
         x1, y1, x2, y2 = self.outline
         if x2 <= x1 or y2 <= y1:
             raise ValueError("The outline must run from top-left to bottom-right: x1 < x2 and y1 < y2.")
+        for index, fixture in enumerate(self.fixtures, 1):
+            fx1, fx2 = sorted((fixture.box[0], fixture.box[2]))
+            fy1, fy2 = sorted((fixture.box[1], fixture.box[3]))
+            width = min(x2, fx2) - max(x1, fx1)
+            height = min(y2, fy2) - max(y1, fy1)
+            if fixture.kind == "entrance":
+                if width < 0 or height < 0:
+                    raise ValueError(f"Entrance {index} is outside the store outline; its box must intersect the outline.")
+            elif width <= 0 or height <= 0:
+                raise ValueError(f"Fixture {index} ({fixture.kind}) needs positive width and height inside the store outline.")
         return self
 
 
@@ -245,6 +255,8 @@ Find the store's outer walls and every fixture inside them. Kinds:
 Give every box as [x1, y1, x2, y2] on a 0–1000 scale of the whole image (x right, y down).
 Every box and outline must contain exactly four finite numbers between 0 and 1000.
 The outline runs from top-left to bottom-right: x1 < x2 and y1 < y2.
+Every fixture must overlap the store outline. Shelves, gondolas, fridges, freezers and counters need
+positive width and height inside it; an entrance may be a line or point on the boundary.
 If the plan writes dimensions or a scale bar, give the outer width and depth in metres; otherwise 0.
 Dimensions must be finite and nonnegative; do not use NaN or Infinity.
 Copy any category words written on a fixture into label ("drinks", "snacks", "noodles", …), else ""."""

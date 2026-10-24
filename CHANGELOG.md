@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Validate vision-model fixture overlap before creating or caching a floor
+  plan. Outside or collapsed fixtures can no longer become invented stocked
+  boundary tiles. Request correction while preserving clipped rectangles and
+  entrance lines or points that touch the store.
+
 - Retain valid concept-survey, conjoint and shelf-test answers when the model
   leaves the optional explanation null. Preserve measured choices, ratings,
   prices and paired comparisons; missing measured answers still fail validation.
