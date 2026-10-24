@@ -416,7 +416,8 @@ class _CutOffOnceVLM(_FakeVLM):
                               seed: int | None, route: str | None, max_tokens: int | None) -> T:
         if issubclass(response_model, EntryDecision) and not self.plan_calls:
             self.plan_calls.append({"max_tokens": max_tokens})
-            raise RuntimeError("The output is incomplete due to a max_tokens length limit.")
+            from instructor.core.exceptions import IncompleteOutputException
+            raise IncompleteOutputException()
         return super()._answer(response_model, system, prompt, image, seed, route, max_tokens)
 
 

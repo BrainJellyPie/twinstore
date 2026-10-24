@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Retry vision plans and shelf glances with a larger output budget only when
+  the terminal completion was actually truncated. Generated error-looking text,
+  input/output-limit rejections and authorization failures no longer trigger
+  unnecessary doubled-budget requests.
+
 - Bound model-generated action narration and reasoning before they reach the
   next simulation prompt or trace. JSON grammars limit repetitive output;
   non-enforcing providers are normalized without changing products, quantities,

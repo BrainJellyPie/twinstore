@@ -34,6 +34,8 @@ import threading
 from collections import Counter
 from dataclasses import asdict, dataclass
 
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
+
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.engine import EngineDecision, PerCustomerContext
 from store_emulator.domain.rack import Rack
@@ -128,6 +130,14 @@ class GlanceRecord:
     agreement: float | None = None  # vote mode: share of members that named the winner
     votes: tuple[tuple[str, str, int], ...] = ()  # vote mode: (member, product, interest)
     view: str = "chart"   # what the glance showed: chart | photo_chart (the 3D photo above the chart)
+
+
+def _truncated_output(error: BaseException) -> bool:
+    # Wrapper text includes generated answers and earlier failures. Only the
+    # terminal completion's typed truncation warrants a larger output budget.
+    if isinstance(error, InstructorRetryException) and error.failed_attempts:
+        error = error.failed_attempts[-1].exception
+    return isinstance(error, IncompleteOutputException)
 
 
 class VLMGlanceEngine(RuleBasedEngine):
@@ -375,7 +385,7 @@ class VLMGlanceEngine(RuleBasedEngine):
                     )
             except Exception as e:  # noqa: BLE001 — a failed plan falls back to the rule plan
                 error = f"{type(e).__name__}: {e}"
-                if "max_tokens" in error or "length limit" in error:
+                if _truncated_output(e):
                     continue
                 return None, model, None, error
             return decision, model, None, ""
@@ -512,7 +522,7 @@ class VLMGlanceEngine(RuleBasedEngine):
                 )
             except Exception as e:  # noqa: BLE001 — one failed glance must not fail the customer
                 error = f"{type(e).__name__}: {e}"
-                if "max_tokens" in error or "length limit" in error:
+                if _truncated_output(e):
                     continue
                 return None, model, None, (), error
             return glance, model, None, (), ""
