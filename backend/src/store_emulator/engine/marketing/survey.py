@@ -77,9 +77,26 @@ def stimulus_board(images: Sequence[Image.Image], names: Sequence[str], *, heigh
     return board
 
 
+def _only_open_question(questions: Sequence[QuestionKind], stimuli: int) -> bool:
+    return "open" in questions and not any(
+        q in SCALES or q == "price_vw" or (q == "preference" and stimuli > 1) for q in questions
+    )
+
+
 def response_model(questions: Sequence[QuestionKind], stimuli: int, *, minor_per_major: int = 100) -> type[BaseModel]:
     """The answer schema for this questionnaire (flat fields keep small models on track)."""
+    open_only = _only_open_question(questions, stimuli)
+
     class SurveyResponse(StudyResponse):
+        @field_validator("why", check_fields=False)
+        @classmethod
+        def open_answer(cls, value: str) -> str:
+            if open_only:
+                value = value.strip()
+                if not value:
+                    raise ValueError("An open-only questionnaire requires a nonblank answer about the products.")
+            return value
+
         @model_validator(mode="after")
         def ordered_prices(self) -> Self:
             if "price_vw" in questions:
@@ -102,7 +119,7 @@ def response_model(questions: Sequence[QuestionKind], stimuli: int, *, minor_per
         elif q == "preference" and stimuli > 1:
             fields["preferred"] = (Literal[tuple(LETTERS[:stimuli])], ...)
         elif q == "open":
-            fields["why"] = (str, Field(default="", max_length=240))
+            fields["why"] = (str, Field(min_length=1, max_length=240) if open_only else Field(default="", max_length=240))
     return create_model("SurveyResponse", __base__=SurveyResponse, **fields)
 
 
@@ -112,7 +129,8 @@ budget, habits and mood decide your answers, not what a marketer would like to h
 ordinary products. Prices are finite, realistic amounts per product in the currency given, without symbols;
 do not repeat digits or exceed the schema's price limits. Price thresholds must be in this order:
 too_cheap <= cheap <= expensive <= too_expensive; equal thresholds are allowed. Write any text in English.
-Use an empty string, not null, when no explanation is given."""
+If the questionnaire only asks for your opinion, give a nonblank answer in why.
+When explaining other measured answers, use an empty string, not null, if no explanation is given."""
 
 
 def _questions_text(questions: Sequence[QuestionKind], stimuli: int, currency: str, reference: str) -> str:
@@ -127,7 +145,8 @@ def _questions_text(questions: Sequence[QuestionKind], stimuli: int, currency: s
         elif q == "preference" and stimuli > 1:
             lines.append(f"- If you could take only one home, which one ({labels})?")
         elif q == "open":
-            lines.append("- In one sentence: why did you answer that way?")
+            lines.append("- In one sentence: what do you think of the products, and why?" if _only_open_question(questions, stimuli)
+                         else "- In one sentence: why did you answer that way?")
     return "\n".join(lines)
 
 
