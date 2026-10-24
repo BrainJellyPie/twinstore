@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Size fallback starter-category tasks by the remaining global category budget.
+  After selecting 9–15 categories, another eight-rack task can no longer invite
+  more new categories than the sixteen-category limit permits. Every supplied
+  rack remains assigned once, and a full budget reuses the selected categories.
+
 - Require the requested customer count in each local output grammar instead of
   permitting a one-person answer that fills the remaining population with twins.
   Clamp request batches to the existing twelve-person response capacity, including

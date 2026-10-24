@@ -163,8 +163,12 @@ async def _small_choices(
 async def _small_categories(llm: SelectionClient, context: dict[str, object], racks: list[StarterRack],
                             allowed: set[str]) -> CategorySelection:
     groups: dict[str, list[str]] = {}
-    for start in range(0, len(racks), 8):
-        batch = racks[start:start + 8]
+    start = 0
+    while start < len(racks):
+        # Each row can introduce one new category. Near the global cap, a full
+        # eight-row task permits a locally valid but globally impossible answer.
+        batch_size = min(8, 16 - len(groups)) if len(groups) < 16 else 8
+        batch = racks[start:start + batch_size]
         choices = set(groups) if len(groups) == 16 else allowed
         selected = await _small_choices(llm, SMALL_CATEGORY_PROMPT, {
             **context,
@@ -175,6 +179,7 @@ async def _small_categories(llm: SelectionClient, context: dict[str, object], ra
         }, choices, len(batch), len(batch), previous_categories=set(groups))
         for rack, key in zip(batch, selected, strict=True):
             groups.setdefault(key, []).append(rack.id)
+        start += len(batch)
     return CategorySelection(groups=[CategoryGroup(category=key, rack_ids=ids) for key, ids in groups.items()])
 
 
