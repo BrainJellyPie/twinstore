@@ -262,7 +262,7 @@ class PlanLLM(Protocol):
 
 
 async def vlm_read(llm: PlanLLM, img: Image.Image, *, model: str = "vlm") -> FloorPlanReading:
-    url, _ = image_data_url(ImageOps.exif_transpose(img).convert("RGB"), max_side=1280, fmt="JPEG")
+    url, (image_width, image_height) = image_data_url(ImageOps.exif_transpose(img).convert("RGB"), max_side=1280, fmt="JPEG")
     plan = await llm.generate_structured_with_image_async(_VLMPlan, PLAN_PROMPT, "Read this floor plan.", url, max_retries=2, seed=0)
     ox1, oy1, ox2, oy2 = (v / 1000 for v in plan.outline)
     ow, oh = max(1e-3, ox2 - ox1), max(1e-3, oy2 - oy1)
@@ -276,8 +276,13 @@ async def vlm_read(llm: PlanLLM, img: Image.Image, *, model: str = "vlm") -> Flo
     if plan.width_m > 0 and plan.depth_m > 0:
         width_m, depth_m = plan.width_m, plan.depth_m
     else:
-        scale = DEFAULT_LONG_SIDE_M / max(ow, oh)
-        width_m, depth_m = round(ow * scale, 2), round(oh * scale, 2)
+        # Coordinates normalize each image axis independently. Recover pixel
+        # proportions from the oriented, resized image the model actually saw.
+        pixel_width, pixel_height = ow * image_width, oh * image_height
+        scale = DEFAULT_LONG_SIDE_M / max(pixel_width, pixel_height)
+        width_m, depth_m = pixel_width * scale, pixel_height * scale
+        # Keep a positive extent when a very thin outline rounds below 0.01 m.
+        width_m, depth_m = round(width_m, 2) or width_m, round(depth_m, 2) or depth_m
         notes.append(f"no scale read from the drawing; the longer side is taken as {DEFAULT_LONG_SIDE_M:g} m")
     return FloorPlanReading(width_m=width_m, depth_m=depth_m, fixtures=fixtures, reader=model,
                             outline=(ox1, oy1, ox2, oy2), notes=notes)

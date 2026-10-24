@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve the image's proportions when estimating an unscaled vision-model
+  floor plan. Use the oriented, resized image dimensions so rectangular plans
+  do not become square stores. Explicit model-read dimensions remain authoritative.
+
 - Preserve partially readable shelf-photo labels when unknown text is null.
   Keep recognized names and tag prices even when brand, size or category is
   missing. Fully unreadable products remain marked unrecognized, and price and
