@@ -24,7 +24,7 @@ from store_emulator.engine.files import remove_tree
 from store_emulator.application.storage.setups import (
     has_run_history, metadata_path, personas_path, read_setup,
 )
-from store_emulator.application.supplemental import summarize_supplemental, traffic_from_supplemental
+from store_emulator.application.supplemental import read_customer_workbook, summarize_supplemental, traffic_from_supplemental
 from store_emulator.domain.config import SimulationConfig
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
@@ -100,6 +100,12 @@ def start_persona_generation(
             kept = _kept_upload(project_id)
             if kept is not None:
                 supplemental_bytes, supplemental_filename = kept
+                if supplemental_filename.lower().endswith(".xlsx"):
+                    try:
+                        read_customer_workbook(supplemental_bytes)
+                    except ValueError as exc:
+                        raise AppError(f"The saved customer workbook cannot be used: {exc} "
+                                       "Create a new store and attach the corrected file.", 409) from exc
                 # Remember intact legacy uploads before a later retry loses
                 # the folder that previously provided the only evidence.
                 meta_file = metadata_path(project_id)

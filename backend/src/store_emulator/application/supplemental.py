@@ -103,7 +103,8 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def read_customer_workbook(data: bytes, *, preserve_identifiers: bool = False) -> dict[str, pd.DataFrame]:
     """Use the customer-generation reader for preflight, before creating a project or calling a model."""
-    validate_xlsx_budget(data)
+    issues = validate_xlsx_budget(data, collect_cell_issues=True)
+    worksheet_parts: list[str] = []
     try:
         # openpyxl silently drops missing worksheet parts while reading the
         # surviving sheets. Do not turn an incomplete upload into partial evidence.
@@ -111,9 +112,11 @@ def read_customer_workbook(data: bytes, *, preserve_identifiers: bool = False) -
             manifest = fromstring(archive.read("[Content_Types].xml"))
             parts = set(archive.namelist())
             for part in manifest:
-                if (part.get("ContentType", "").endswith(".worksheet+xml")
-                        and part.get("PartName", "").lstrip("/") not in parts):
-                    raise ValueError("A declared worksheet is missing from the workbook")
+                if part.get("ContentType", "").endswith(".worksheet+xml"):
+                    name = part.get("PartName", "").lstrip("/")
+                    if name not in parts:
+                        raise ValueError("A declared worksheet is missing from the workbook")
+                    worksheet_parts.append(name)
         result = pd.read_excel(  # type: ignore[reportUnknownMemberType]
             io.BytesIO(data), sheet_name=None, engine="openpyxl",
             dtype=object if preserve_identifiers else None, keep_default_na=not preserve_identifiers,
@@ -121,6 +124,9 @@ def read_customer_workbook(data: bytes, *, preserve_identifiers: bool = False) -
     except Exception as exc:
         raise ValueError("Customer Excel workbook could not be read. Open it in a spreadsheet app and save it "
                          "as an unencrypted XLSX file, then try again.") from exc
+    if any(issues.get(part) for part in worksheet_parts):
+        raise ValueError("Customer Excel workbook contains spreadsheet errors or formulas without saved results. "
+                         "Recalculate and save it in a spreadsheet app, or export its values as CSV, then upload again.")
     out: dict[str, pd.DataFrame] = {}
     items: list[tuple[object, object]] = list(result.items())  # type: ignore[reportUnknownArgumentType, reportUnknownMemberType]
     for key, frame in items:

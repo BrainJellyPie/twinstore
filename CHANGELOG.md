@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Reject customer XLSX evidence containing spreadsheet errors or formulas without
+  saved results, including missing array-formula children and later worksheets.
+  These cells no longer silently become blank customer evidence. Reusing retained
+  workbooks performs the same preflight before queuing generation; valid cached
+  zero and empty-text results remain supported.
+
 - Keep movement comparisons usable for large supported store grids. Computing
   the shared map color scale no longer spreads every cell into function arguments,
   which overflowed the JavaScript call stack on 256-by-256 and 256-by-255 maps.
