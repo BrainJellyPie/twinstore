@@ -278,7 +278,7 @@ def create_project_without_layout(
             raise AppError(str(exc), 413) from exc
         except ValueError as exc:
             raise AppError(str(exc), 400) from exc
-    pid = f"proj_{uuid.uuid4().hex[:8]}"
+    pid = f"proj_{uuid.uuid4().hex}"
     now = now_iso()
     meta: dict[str, Any] = {
         "project_id": pid,
@@ -310,7 +310,10 @@ def create_project_without_layout(
         initial["store"] = store.model_dump(mode="json")
         meta["grid_size"] = list(store.grid_size)
     project_dir = _data / pid
-    project_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        project_dir.mkdir(parents=True, exist_ok=False)
+    except FileExistsError:
+        raise AppError("This project identifier already exists. Retry to create a new store", 409) from None
     write_json(metadata_path(pid), meta)
     write_json(personas_path(pid), [])
 
