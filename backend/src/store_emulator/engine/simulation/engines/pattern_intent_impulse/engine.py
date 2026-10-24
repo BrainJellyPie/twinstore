@@ -167,18 +167,18 @@ class PatternIntentImpulseEngine:
                 raise
             logger.info("[intent] input context exceeded; selecting at most %s candidates from all %s offers once",
                         maximum, len(records))
-            selection = await self._llm.generate_structured_async(
+            candidates = await self._llm.generate_structured_async(
                 stage2_intent.catalog_selection_model(records, maximum),
                 stage2_intent.build_catalog_selection_prompt(context.store, records, maximum, currency),
                 stage2_user + situation, max_retries=2, seed=stage_seed("catalog"), route=context.persona.id,
             )
-            selected = {code: records[code] for code in selection.codes}
+            selected = {code: records[code] for code in candidates.codes}
             intent = await self._llm.generate_structured_async(
                 stage2_intent.catalog_response_model(IntentResponse, selected),
                 stage2_intent.build_system_prompt(context.store, currency, records=selected, focused=True),
                 stage2_user + situation, seed=stage_seed("stage2"), route=context.persona.id,
             )
-            recovery_trace["catalog_recovery"] = {"selected_codes": selection.codes,
+            recovery_trace["catalog_recovery"] = {"selected_codes": candidates.codes,
                                                   "selected_skus": [item.sku for item in selected.values()]}
         # Keep request-local schema classes at the model boundary, so repeated
         # cached visits have the same canonical action types and equality.
@@ -207,22 +207,29 @@ class PatternIntentImpulseEngine:
         # Stage 3: impulse-purchase reactions.
         impulse: ImpulseResponse
         if exposed:
+            exposed_offers = {(item.sku, item.name, item.price, item.promo)
+                              for _, slot, sku in exposed
+                              if (item := next((item for item in slot.items if item.sku == sku), None)) is not None}
+            impulse_records = {code: item for code, item in records.items()
+                               if (item.sku, item.name, item.price, item.promo) in exposed_offers}
             existing_buys = sum(1 for a in bounded_intent if a.action == Action.BUY)
             stage3_system = stage3_impulse.build_system_prompt(
                 pattern.max_products, pattern.allow_no_purchase, existing_buys,
-                pattern.browse_required_before_buy, currency=currency,
+                pattern.browse_required_before_buy, currency=currency, product_codes=True,
             )
             stage3_user = stage3_impulse.build_user_prompt(
                 context.persona, intent.model_copy(update={"actions": bounded_intent}), exposed, day_of_week,
                 address=context.address, customer_profile=context.customer_profile,
                 cue=context.cue, grid_size=context.store.grid_size,
-                visibility=visibility, currency=currency,
+                visibility=visibility, currency=currency, records=impulse_records,
             )
             impulse = await self._llm.generate_structured_async(
-                ImpulseResponse, stage3_system, stage3_user + situation, seed=stage_seed("stage3"), route=context.persona.id,
+                stage2_intent.catalog_response_model(ImpulseResponse, impulse_records), stage3_system, stage3_user + situation,
+                seed=stage_seed("stage3"), route=context.persona.id,
             )
         else:
             impulse = ImpulseResponse()
+        impulse = ImpulseResponse.model_validate(impulse.model_dump())
         impulse_actions: list[CustomerAction] = []
         valid_impulse, dropped_impulse_invalid = drop_invalid_buys(impulse.actions, context.store)
         dropped_invalid += dropped_impulse_invalid
@@ -259,7 +266,8 @@ class PatternIntentImpulseEngine:
         if (context.store.counters and any(a.action == Action.BUY for a in merged)
                 and not any(a.action == Action.PAY for a in merged)):
             exit_index = next((i for i, a in enumerate(merged) if a.nav == "leave"), len(merged))
-            merged.insert(exit_index, CustomerAction(nav="path", action=Action.PAY, dwell=15))
+            payment = next((a for a in reversed(intent.actions) if a.action == Action.PAY), None)
+            merged.insert(exit_index, payment if payment is not None else CustomerAction(nav="path", action=Action.PAY, dwell=15))
         if not any(a.nav == "leave" for a in merged):
             merged.append(CustomerAction(nav="leave", action=Action.EXIT))
 

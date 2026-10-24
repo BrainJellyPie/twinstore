@@ -82,6 +82,7 @@ def test_full_catalog_is_considered_before_focused_intent_and_cached_recovery(mo
             assert result.total_spent == 2 * expected.price and result.purchases[0].product_sku == expected.sku
             assert result.timeline[-1].action == Action.EXIT
             assert first.trace["catalog_recovery"]["selected_skus"] == [records[code].sku for code in selected]
+            assert first.trace["stage1"]["pattern_id"] == "exploratory"
 
     asyncio.run(exercise())
     assert calls == ["pattern", "full", "selection", *(["selection"] if correct_selection else []), "focused", "impulse", "full"]

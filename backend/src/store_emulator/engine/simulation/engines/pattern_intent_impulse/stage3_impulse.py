@@ -1,7 +1,7 @@
 """Stage 3: impulse reactions. Inserts serendipity events for products exposed along the route."""
 
 from store_emulator.domain.behavior import BehaviorCue
-from store_emulator.domain.rack import Rack, Slot
+from store_emulator.domain.rack import Rack, Slot, SlotItem
 from store_emulator.domain.persona import Persona
 from store_emulator.engine.prompting import format_budget, format_price, price_unit_rule
 from .prompt_utils import format_cue_prompt
@@ -52,6 +52,8 @@ def build_system_prompt(
     existing_buys: int = 0,
     browse_required_before_buy: bool = False,
     currency: str = "USD",
+    *,
+    product_codes: bool = False,
 ) -> str:
     """System prompt with pattern-specific constraints applied."""
     constraints: list[str] = []
@@ -69,7 +71,10 @@ def build_system_prompt(
     if extra:
         extra = f"\n\n추가 제약:\n{extra}"
 
-    return SYSTEM_PROMPT_TEMPLATE.format(price_unit_rule=price_unit_rule(currency)) + extra
+    system = SYSTEM_PROMPT_TEMPLATE.format(price_unit_rule=price_unit_rule(currency))
+    if product_codes:
+        system = system.replace('목록의 sku 중 하나만 사용', '목록의 상품 코드 중 하나만 사용 (상품명이나 임의 코드 금지)')
+    return system + extra
 
 
 def build_user_prompt(
@@ -84,6 +89,7 @@ def build_user_prompt(
     grid_size: tuple[int, int],
     visibility: dict[str, float] | None = None,
     currency: str = "USD",
+    records: dict[str, SlotItem] | None = None,
 ) -> str:
     """`visibility` (sku → 0–1) comes from the perception model. When given, it already
     accounts for shelf level, distance and facing, so the level heuristic is not repeated."""
@@ -103,17 +109,26 @@ def build_user_prompt(
         lines.append("상품별 level만 보고 이 공통 기준을 적용하세요.")
     else:
         lines.append("시인성(0~1)은 고객이 실제 동선에서 그 상품을 봤을 가능성입니다 (진열 높이·거리·방향 반영). 높을수록 눈에 잘 띕니다.")
+    record_ids = {(item.sku, item.name, item.price, item.promo): code for code, item in (records or {}).items()}
+    rack_codes: dict[str, str] = {}
+    lines.append("진열대 표의 R번호는 상품이 놓인 곳입니다. target은 그 진열대의 접근타일을 사용하세요.")
+    for rack, _, _ in exposed_products:
+        if rack.id in rack_codes:
+            continue
+        code = f"R{len(rack_codes) + 1}"
+        rack_codes[rack.id] = code
+        overlay = f" (매대: {rack.rack_decoration_desc})" if rack.rack_decoration_desc else ""
+        lines.append(f"  {code}: {rack.rack_name or rack.id}({rack.type}){overlay} @ 접근타일 {sorted(rack.access_tiles(grid_size))[:3]}")
+    lines.append("상품 줄: 상품 코드/sku, 이름, 가격, 프로모션, 진열대 R번호, level, 시인성(제공된 경우).")
     for f, slot, sku in exposed_products:
         matched = next((i for i in slot.items if i.sku == sku), None)
         promo = f" [{matched.promo}]" if matched and matched.promo else ""
-        overlay = f" (매대: {f.rack_decoration_desc})" if f.rack_decoration_desc else ""
-        access = sorted(f.access_tiles(grid_size))
-        rack_label = f.rack_name or f.id
         name = matched.name if matched else sku
         price = matched.price if matched else 0
         seen = f" 시인성={visibility.get(sku, 0.0):.2f}" if visibility is not None else ""
+        code = record_ids.get((sku, name, price, matched.promo if matched else ""), sku)
         lines.append(
-            f"  - {name} ({sku}) {format_price(price, currency)}{promo} | {rack_label}({f.type}){overlay} level={slot.level}{seen} @ 접근타일 {access[:3]}"
+            f"  - {code}: {name} {format_price(price, currency)}{promo} | {rack_codes[f.id]} level={slot.level}{seen}"
         )
     lines.append("")
 

@@ -26,7 +26,7 @@ def test_repeated_model_action_text_stays_bounded_before_the_next_stage(collisio
 
     class Model(_ScriptedLLM):
         async def generate_structured_async(self, schema, system, user, **kwargs):
-            if schema is ImpulseResponse:
+            if issubclass(schema, ImpulseResponse):
                 assert len(system) + len(user) < 6000
             return await super().generate_structured_async(schema, system, user, **kwargs)
 

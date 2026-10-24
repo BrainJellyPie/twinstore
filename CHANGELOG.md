@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Compact impulse exposure prompts with shared rack metadata and short product
+  references. Preserve every exposed offer and its order, price, promotion, shelf
+  level and visibility. Decode references before caching and execution, with SKU
+  bindings in cache identity, so large visits avoid repeated catalog text.
+  Preserve original checkout details when later impulse buys need payment, and
+  keep behavior-pattern traces separate from context-recovery candidate results.
+
 - Resolve entry-plan product names clipped at the model's 48-character bound
   against catalog prefixes before broad category matching. Long multilingual
   names retain their intended offer, while shared prefixes remain ambiguous

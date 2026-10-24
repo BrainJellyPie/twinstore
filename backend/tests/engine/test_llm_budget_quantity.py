@@ -23,10 +23,10 @@ from store_emulator.engine.simulation.engines.pattern_intent_impulse.stage3_impu
 
 class ScriptedLLM:
     def __init__(self, planned: list[CustomerAction], impulse: list[CustomerAction]):
-        self.responses: dict[type[BaseModel], BaseModel] = {
-            PatternSelectionResponse: PatternSelectionResponse(pattern_id="purposeful"),
-            IntentResponse: IntentResponse(actions=planned),
-            ImpulseResponse: ImpulseResponse(actions=impulse),
+        self.responses: dict[str, BaseModel] = {
+            "PatternSelectionResponse": PatternSelectionResponse(pattern_id="purposeful"),
+            "IntentResponse": IntentResponse(actions=planned),
+            "ImpulseResponse": ImpulseResponse(actions=impulse),
         }
         self.calls = 0
 
@@ -35,7 +35,7 @@ class ScriptedLLM:
         *, max_retries: int = 1, seed: int | None = None, route: str | None = None, max_tokens: int | None = None,
     ) -> T:
         self.calls += 1
-        return response_model.model_validate(self.responses[response_model].model_dump())
+        return response_model.model_validate(self.responses[response_model.__name__].model_dump())
 
     def reset_usage(self) -> None:
         self.calls = 0
