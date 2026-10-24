@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate vision-model shelf choices against the actual view before caching or
+  voting. Positive interest without a product and unresolvable names/badges no
+  longer count as valid refusals or dilute another model's valid interest score.
+
 - Validate the order of model-generated price-sensitivity thresholds before
   caching. Contradictory prices now receive bounded correction, and repeated
   failures are reported instead of silently disappearing from price analysis.

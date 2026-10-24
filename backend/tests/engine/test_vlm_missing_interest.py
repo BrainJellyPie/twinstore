@@ -1,4 +1,4 @@
-"""Missing model measurements are failures, not synthetic zero-interest votes."""
+"""Missing or contradictory measurements are failures, not synthetic no-choice votes."""
 
 import asyncio
 import json
@@ -20,11 +20,17 @@ from tests.engine.test_llm_engine_offline import _context, _persona
 from tests.engine.test_shelf_panel_boundaries import shelf
 
 
+INVALID = [{}, {"product": "Banana", "number": 2}, {"interest": 8},
+           {"product": None, "number": 0, "interest": 10}, {"product": " \t", "number": 0, "interest": 1},
+           {"product": "", "number": 0, "interest": 8}, {"product": "Ghost product", "interest": 8},
+           {"number": 9999, "interest": 8}]
+
+
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
-@pytest.mark.parametrize("payload", [{}, {"product": "Banana", "number": 2}])
+@pytest.mark.parametrize("payload", INVALID)
 @pytest.mark.parametrize("routing", ["single", "vote"])
 @pytest.mark.parametrize("legacy_cache", [False, True])
-def test_missing_interest_cannot_be_cached_or_lower_a_valid_vote(monkeypatch, tmp_path, collision_store, shelf,
+def test_invalid_interest_cannot_be_cached_or_lower_a_valid_vote(monkeypatch, tmp_path, collision_store, shelf,
                                                               mode, payload, routing, legacy_cache):
     rack, view = shelf
     calls, phase = [], "prime" if legacy_cache else "missing"
@@ -63,12 +69,14 @@ def test_missing_interest_cannot_be_cached_or_lower_a_valid_vote(monkeypatch, tm
                 assert (await engine._ask(*args))[0].interest == 8
                 path = next((tmp_path / "missing").rglob("*.json"))
                 cached = json.loads(path.read_text())
-                cached["result"].pop("interest")
+                cached["result"] = payload
                 path.write_text(json.dumps(cached))
                 phase = "missing"
             first = await engine._ask(*args)
             if routing == "single":
-                assert first[0] is None and "interest" in first[-1]
+                assert first[0] is None and first[-1]
+                if "interest" not in payload:
+                    assert "interest" in first[-1]
             else:
                 assert first[0].interest == 8 and first[2] == 1
                 assert any(member == "missing" and interest == -1 for member, _, interest in first[3])
@@ -85,8 +93,8 @@ def test_missing_interest_cannot_be_cached_or_lower_a_valid_vote(monkeypatch, tm
     asyncio.run(exercise())
 
 
-@pytest.mark.parametrize("payload", [{}, {"product": "Banana", "number": 2}])
-def test_photo_comparison_excludes_missing_interest_but_counts_explicit_zero(shelf, payload):
+@pytest.mark.parametrize("payload", INVALID)
+def test_photo_comparison_excludes_invalid_interest_but_counts_explicit_zero(shelf, payload):
     rack, view = shelf
     conditions = ["render", "photo", "photo_raw"]
     views = TwinViews(rack, view.face, {condition: view for condition in conditions}, {"A": "Apple", "B": "Banana"})
@@ -117,3 +125,14 @@ def test_model_grammar_requires_interest_without_changing_internal_defaults(shel
         assert "interest" in schema.get("required", [])
         assert schema["properties"]["interest"]["minimum"] == 0
         assert schema["properties"]["interest"]["maximum"] == 10
+
+
+@pytest.mark.parametrize("payload", [
+    {"product": "Banana", "interest": 8}, {"number": 2, "interest": 8},
+    {"product": "Banana", "number": 9999, "interest": 8},
+    {"product": "Ghost product", "number": 2, "interest": 8}, {"interest": 0},
+])
+def test_identifiable_choices_and_zero_interest_keep_existing_resolution(shelf, payload):
+    _, view = shelf
+    glance = shelf_glance_model(view).model_validate(payload)
+    assert glance.interest == payload["interest"]

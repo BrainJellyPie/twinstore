@@ -10,9 +10,9 @@ import re
 from collections.abc import Callable
 from functools import cache
 from statistics import median
-from typing import ClassVar, cast
+from typing import ClassVar, Self, cast
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, create_model, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, create_model, field_validator, model_validator
 
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.persona import Persona
@@ -33,6 +33,7 @@ Reply in JSON:
 - interest: 0 to 10
 - reason: a few words
 Always include an integer interest score, including 0 when nothing tempts the shopper. Do not omit this measurement.
+A positive interest score must identify the product that caused it. If no product is chosen, interest must be 0.
 Use empty strings, not null, for absent text."""
 
 
@@ -99,6 +100,17 @@ def shelf_glance_model(view: ShelfView, *, numbered: bool = True) -> type[ShelfG
         # Keep name-based resolution for providers that do not enforce the grammar:
         # an invalid badge must not discard an otherwise identifiable printed name.
         number: int = Field(default=0, ge=0, le=10000, json_schema_extra=constraints)
+
+        @model_validator(mode="after")
+        def interest_has_target(self) -> Self:
+            if self.interest > 0 and not self.product.strip() and self.number == 0:
+                raise ValueError("Positive interest must identify a product by name or badge; use interest=0 for no choice.")
+            if not numbered and self.number != 0 and not self.product.strip():
+                raise ValueError("This photo has no numbered badges; identify a product by its printed name.")
+            choice = self if numbered else self.model_copy(update={"number": 0})
+            if resolve(view, choice)[1] == "invalid":
+                raise ValueError("The model's choice does not identify one visible product; copy a printed name or badge.")
+            return self
 
     # Internal empty glances have defaults, but an absent model measurement
     # must not become a zero-interest vote or a valid photo-panel response.

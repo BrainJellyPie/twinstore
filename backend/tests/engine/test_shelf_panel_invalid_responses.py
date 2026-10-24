@@ -65,7 +65,8 @@ def panel(views, replies, conditions=CONDITIONS):
 ])
 def test_unresolvable_replies_cannot_report_perfect_agreement(views, reply):
     answers = panel(views, [reply] * 9)
-    assert all(a.resolved_by == "invalid" and a.error for a in answers)
+    # Contextual response validation now rejects these before they can be cached.
+    assert all(a.resolved_by == "error" and a.error for a in answers)
     stats, agreement = summarize(answers, CONDITIONS)
     assert all(s.answers == 0 and s.errors == 3 and s.none_rate == 0 and s.mean_interest == 0 for s in stats)
     assert agreement == []
@@ -75,7 +76,7 @@ def test_unresolvable_replies_cannot_report_perfect_agreement(views, reply):
 @pytest.mark.parametrize("number", [1, 10000])
 def test_raw_photo_number_only_is_not_an_explicit_no_pick(views, blank, number):
     answers = panel(views, [ShelfGlance(product=blank, number=number, interest=9)], ["photo_raw"])
-    assert answers[0].resolved_by == "invalid" and answers[0].error
+    assert answers[0].resolved_by == "error" and answers[0].error
 
 
 @pytest.mark.parametrize("reply,sku", [(ShelfGlance(), ""), (ShelfGlance(product="Water", interest=7), "water")])
