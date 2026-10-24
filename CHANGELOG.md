@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep complete customer batches when optional preferences or behavior text are
+  null. Use the existing empty-list/string defaults without changing required
+  customer details, budgets, visit times, or invalid-type/length validation.
+  Clarify empty output when no category list or distinct behavior is provided.
+
 - Parse structured answers after explicit leading thinking blocks, including
   whitespace and consecutive blocks. Never accept an unfinished thought as the
   final JSON answer. Version structured cache keys so previously cached thought

@@ -10,7 +10,7 @@ from typing import Annotated, Self
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
-from pydantic import BaseModel, Field, JsonValue, create_model, model_validator
+from pydantic import BaseModel, Field, JsonValue, create_model, field_validator, model_validator
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
@@ -64,6 +64,16 @@ class GeneratedPersona(BaseModel):
     budget_min: int = Field(default=0, ge=0, le=9_007_199_254_740_991)
     budget_max: int = Field(default=0, ge=0, le=9_007_199_254_740_991)
     behavior_tendency: str = Field(default="", max_length=300)
+
+    @field_validator("preferred_categories", mode="before")
+    @classmethod
+    def _empty_preferences(cls, value: object) -> object:
+        return [] if value is None else value
+
+    @field_validator("behavior_tendency", mode="before")
+    @classmethod
+    def _empty_behavior(cls, value: object) -> object:
+        return "" if value is None else value
 
 
 class PersonaBatch(BaseModel):
@@ -185,9 +195,11 @@ PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 �
 - intent: 매장에서 하고 싶은 것 1문장 (자유 서술). 구체적 상품명 대신 카테고리나 니즈로 표현. 예: "조깅 후 수분 보충할 이온음료를 사고 싶다", "간단한 간식과 음료를 고르고 싶다"
 - purpose: 반드시 아래 제공된 purpose 목록 중 하나를 그대로 사용 (통계 집계용 짧은 라벨)
 - preferred_categories: 반드시 아래 제공된 카테고리 목록 중에서만 선택. 목록에 없는 카테고리를 임의로 만들지 마세요
+  - 제공된 목록이 없거나 선호 카테고리가 없으면 []를 사용하세요. null을 사용하지 마세요.
 - budget_min, budget_max: {budget_rule}
   - 0 이상 9007199254740991 이하의 정수. 한 번의 방문에 현실적인 금액을 사용하고 숫자를 반복하지 마세요. 예산을 정할 수 없으면 0을 사용하세요.
 - behavior_tendency: 이동속도/탐색성향/충동구매 한 줄
+  - 별도 성향이 없으면 빈 문자열을 사용하세요. null을 사용하지 마세요.
 
 ## 언어
 - 자유 서술 필드(`description`, `intent`, `behavior_tendency`)의 값은 **영어로** 작성하세요.
