@@ -9,7 +9,7 @@ caching, OpenAI, vLLM, llama.cpp) then reuse the catalog prefix across customers
 
 from typing import cast
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ValidationInfo, field_validator
 
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
@@ -33,7 +33,7 @@ class IntentResponse(BaseModel):
 
     @field_validator("actions", mode="before")
     @classmethod
-    def _model_actions(cls, value: object) -> object:
+    def _model_actions(cls, value: object, info: ValidationInfo) -> object:
         # SkipJsonSchema hides internal hints from the prompt but still accepts
         # them during validation. Only the engine may select those offer fields.
         if not isinstance(value, (list, tuple)):
@@ -45,6 +45,13 @@ class IntentResponse(BaseModel):
             if isinstance(action, dict):
                 action = {key: item for key, item in cast(dict[str, object], action).items()
                           if key not in {"origin", "product_block", "product_level"}}
+                if info.mode == "json":
+                    # A before-validator returns Python containers. Preserve JSON
+                    # array → tuple semantics for Instructor's strict validation.
+                    for key in ("target", "area"):
+                        coordinates = action.get(key)
+                        if isinstance(coordinates, list):
+                            action[key] = tuple(cast(list[object], coordinates))
             cleaned.append(action)
         return cleaned
 

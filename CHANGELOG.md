@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve JSON coordinate arrays while stripping internal fields from model
+  actions. Instructor's strict parser again accepts valid targets and wander
+  areas, while malformed dimensions and non-integer coordinates still fail.
+
 - Discard engine-only offer hints and purchase-origin fields from generated
   intent/impulse actions before validation. Unexpected local-model fields can
   no longer switch shelf prices or invalidate otherwise usable actions; older

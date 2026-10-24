@@ -95,7 +95,8 @@ def test_http_and_existing_cache_apply_the_same_model_boundary(monkeypatch, tmp_
 
     def respond(request):
         calls.append(json.loads(request.content))
-        raw = {"actions": [{"nav": "path", "action": "buy", "product_sku": "tea", **hints}]}
+        raw = {"actions": [{"nav": "path", "action": "buy", "product_sku": "tea", "target": [1, 2], "face": "S", **hints},
+                           {"nav": "area", "action": "wander", "area": [0, 1, 2, 3], "target": [0, 1]}]}
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
             "model": "local", "choices": [{"index": 0, "finish_reason": "stop",
                 "message": {"role": "assistant", "content": json.dumps(raw)}}]})
@@ -121,6 +122,27 @@ def test_http_and_existing_cache_apply_the_same_model_boundary(monkeypatch, tmp_
             assert first.model_dump() == second.model_dump() and client.get_usage().cached_requests == 1
             assert first.actions[0].product_sku == "tea" and first.actions[0].origin == "planned"
             assert first.actions[0].product_block is None and first.actions[0].product_level is None
+            assert first.actions[0].target == (1, 2) and first.actions[0].face == Face.S
+            assert first.actions[1].area == (0, 1, 2, 3) and first.actions[1].target == (0, 1)
 
     asyncio.run(exercise())
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("schema", [IntentResponse, ImpulseResponse])
+@pytest.mark.parametrize("field,good,bad", [
+    ("target", [1, 2], [1]), ("target", [1, 2], [1, 2, 3]),
+    ("target", [1, 2], [True, 2]), ("target", [1, 2], ["1", 2]),
+    ("area", [0, 1, 2, 3], [0, 1, 2]), ("area", [0, 1, 2, 3], [0, 1, 2, 3, 4]),
+    ("area", [0, 1, 2, 3], [0, 1, 2, 3.5]), ("area", [0, 1, 2, 3], [0, 1, None, 3]),
+])
+def test_json_coordinates_preserve_strict_length_and_element_validation(schema, field, good, bad):
+    import json
+    from pydantic import ValidationError
+
+    data = {"actions": [{"nav": "path", field: good, "product_level": {"ignored": True}}]}
+    response = schema.model_validate_json(json.dumps(data), strict=True)
+    assert getattr(response.actions[0], field) == tuple(good)
+    data["actions"][0][field] = bad
+    with pytest.raises(ValidationError):
+        schema.model_validate_json(json.dumps(data), strict=True)
