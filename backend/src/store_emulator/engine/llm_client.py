@@ -13,7 +13,7 @@ from typing import cast
 import instructor
 import litellm
 from instructor.core.exceptions import IncompleteOutputException, InstructorError
-from litellm.exceptions import AuthenticationError
+from litellm.exceptions import AuthenticationError, BadRequestError
 from pydantic import BaseModel, ValidationError
 
 from store_emulator.domain.config import LLMConfig
@@ -66,6 +66,38 @@ def _rejected_param(error: BaseException) -> str | None:
     if "'max_tokens'" in text and "max_completion_tokens" in text:
         return "max_tokens"
     return next((p for p in _OPTIONAL_PARAMS if p in text), None)
+
+
+def _remaining_output_budget(error: BaseException, sent: dict[str, object]) -> int | None:
+    """Some vLLM versions reject an output ceiling instead of clamping it to the remaining context."""
+    requested = sent.get("max_tokens", sent.get("max_completion_tokens"))
+    if not isinstance(requested, int) or isinstance(requested, bool):
+        return None
+    causes = _request_errors(error)
+    # LiteLLM may label a context-looking HTTP 403 as a 400 context error; keep
+    # the original response/exception status authoritative when it is available.
+    for cause in causes:
+        statuses = (getattr(cause, "status_code", None), getattr(getattr(cause, "response", None), "status_code", None))
+        if any(isinstance(status, int) and status != 400 for status in statuses):
+            return None
+    for cause in causes:
+        if not isinstance(cause, BadRequestError):
+            continue
+        match = re.search(
+            r"'max_tokens' or 'max_completion_tokens' is too large: (\d+)\. "
+            r"This model's maximum context length is (\d+) tokens and your request has (\d+) input tokens",
+            str(cause),
+        )
+        if match is None:
+            continue
+        try:
+            reported, context, inputs = (int(value) for value in match.groups())
+        except ValueError:
+            continue
+        remaining = context - inputs
+        if reported == requested and 0 < remaining < requested:
+            return remaining
+    return None
 
 
 # How to switch thinking off, per model: {"type": "disabled"} unless the provider named another value
@@ -375,8 +407,13 @@ class LiteLLMClient:
 
     def _create(self, response_model: type[BaseModel], msgs: object, max_retries: int,
                 seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
-        for attempt in range(_ATTEMPTS):
-            kwargs = self._call_kwargs(seed, max_tokens)
+        budget, adjusted = max_tokens, False
+        budget_configuration = self._configuration
+        for attempt in range(_ATTEMPTS + 1):
+            if self._configuration is not budget_configuration:
+                budget = max_tokens
+                budget_configuration = self._configuration
+            kwargs = self._call_kwargs(seed, budget)
             try:
                 return self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=response_model,
@@ -385,15 +422,25 @@ class LiteLLMClient:
                     **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
             except Exception as e:
-                if attempt < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
+                remaining = None if adjusted else _remaining_output_budget(e, kwargs)
+                if remaining is not None:
+                    budget, adjusted = remaining, True
+                    logger.info("%s: retrying with the server's remaining %s output tokens", kwargs["model"], remaining)
+                    continue
+                if attempt - int(adjusted) < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
                     continue
                 raise
         raise AssertionError("unreachable")
 
     async def _acreate(self, response_model: type[BaseModel], msgs: object, max_retries: int,
                        seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
-        for attempt in range(_ATTEMPTS):
-            kwargs = self._call_kwargs(seed, max_tokens)
+        budget, adjusted = max_tokens, False
+        budget_configuration = self._configuration
+        for attempt in range(_ATTEMPTS + 1):
+            if self._configuration is not budget_configuration:
+                budget = max_tokens
+                budget_configuration = self._configuration
+            kwargs = self._call_kwargs(seed, budget)
             try:
                 return await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=response_model,
@@ -402,7 +449,12 @@ class LiteLLMClient:
                     **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
                 )
             except Exception as e:
-                if attempt < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
+                remaining = None if adjusted else _remaining_output_budget(e, kwargs)
+                if remaining is not None:
+                    budget, adjusted = remaining, True
+                    logger.info("%s: retrying with the server's remaining %s output tokens", kwargs["model"], remaining)
+                    continue
+                if attempt - int(adjusted) < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
                     continue
                 raise
         raise AssertionError("unreachable")
@@ -533,9 +585,15 @@ class LiteLLMClient:
         msgs, rid = self._messages(system_prompt, user_prompt)
         raw: object = None
         attempt = hops = 0
+        budget: int | None = None
+        adjusted = False
+        budget_configuration = self._configuration
         while True:
             configuration = self._configuration
-            kwargs: dict[str, object] = {"messages": msgs, **self._call_kwargs(None)}
+            if configuration is not budget_configuration:
+                budget = None
+                budget_configuration = configuration
+            kwargs: dict[str, object] = {"messages": msgs, **self._call_kwargs(None, budget)}
             if enable_search:
                 kwargs["tools"] = [{"google_search": {}}]
             tried, slots = self.model, self._slots_here()
@@ -549,11 +607,17 @@ class LiteLLMClient:
                         raw = await litellm.acompletion(**kwargs)  # type: ignore[reportUnknownMemberType]
                 break
             except Exception as e:
+                remaining = None if adjusted else _remaining_output_budget(e, kwargs)
+                if remaining is not None:
+                    budget, adjusted = remaining, True
+                    logger.info("%s: retrying with the server's remaining %s output tokens", kwargs["model"], remaining)
+                    continue
                 if attempt < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
                     attempt += 1
                     continue
                 if await self._arerouted(tried, e, hops, configuration):
                     hops += 1
+                    budget, adjusted, attempt = None, False, 0
                     continue
                 raise
         self._accumulate_usage(raw, rid)

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover automatic model calls when older vLLM servers reject an output ceiling
+  larger than their remaining context. A matching HTTP 400 can reduce that call's
+  ceiling once, using the server's token counts; input overflow, authorization and
+  rate-limit failures remain errors. Limits stay isolated across requests/models.
+
 - Constrain the first automatic assortment request to the actual eligible rack
   IDs and allowed catalog categories. Grammar-capable local servers can no longer
   invent section IDs in that request; semantic checks and bounded-task recovery
