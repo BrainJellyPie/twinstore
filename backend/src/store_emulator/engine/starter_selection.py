@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
+from litellm.exceptions import ContextWindowExceededError
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, create_model
 
 from store_emulator.domain.starter_fill import RackFill, StarterRack
@@ -100,10 +101,16 @@ async def _validated_selection[T: BaseModel](
     for attempt in range(2):
         try:
             selected = await llm.generate_structured_async(schema, prompt, json.dumps(payload, ensure_ascii=False), max_retries=2)
+        except ContextWindowExceededError as exc:
+            raise _InvalidSelection("The catalog request exceeds the model's context limit. "
+                                    "Shorten the requirements or use a model with a larger context.") from exc
         except (ValidationError, json.JSONDecodeError, IncompleteOutputException) as exc:
             raise _InvalidSelection("The model could not return the requested selection format.") from exc
         except InstructorRetryException as exc:
-            # Instructor also wraps connection/authentication failures: only malformed replies merit decomposition.
+            if exc.failed_attempts and isinstance(exc.failed_attempts[-1].exception, ContextWindowExceededError):
+                raise _InvalidSelection("The catalog request exceeds the model's context limit. "
+                                        "Shorten the requirements or use a model with a larger context.") from exc
+            # Instructor also wraps connection/authentication failures; those do not merit decomposition.
             if not exc.failed_attempts or not isinstance(exc.failed_attempts[-1].exception,
                     (ValidationError, json.JSONDecodeError, IncompleteOutputException)):
                 raise

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recover starter-product selection when the catalog exceeds a model's context
+  window, including errors wrapped by Instructor. Oversized grouped requests now
+  use the existing bounded shelf/category tasks; unrelated provider errors still
+  stop immediately, and a small task that also exceeds context fails without
+  partial assignments or unbounded retries.
+
 - Assign generated customer IDs entirely in the harness. Local models no longer
   need to invent temporary IDs whose type or length could reject an otherwise
   usable customer batch before the same IDs were overwritten by the application.
