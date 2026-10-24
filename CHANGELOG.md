@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release customer-generation reservations when the worker rejects a job, so
+  retries are not blocked by a permanently pending generation. A task queued
+  before worker startup fails cannot later overwrite customers or recreate a
+  deleted project; retained customer evidence remains available for retry.
+
 - Reject zero or negative simulation concurrency before preparing a run. The
   headless simulate and A/B commands now report an argument error instead of
   allowing a zero-capacity semaphore to leave customers waiting forever.
