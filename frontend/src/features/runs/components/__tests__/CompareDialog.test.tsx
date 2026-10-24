@@ -19,10 +19,10 @@ vi.mock("@/shared/api/client", async (original) => ({
 }));
 afterEach(() => { cleanup(); state.currency = undefined; });
 
-function show(overrides: Partial<MetricComparison> = {}) {
+function show(overrides: Partial<MetricComparison> = {}, reportCurrency?: string) {
   state.report = {
     run_a: "run_a", run_b: "run_b", paired_customers: 100,
-    unpaired_a: 0, unpaired_b: 0, n_bootstrap: 2000, confidence: 0.95, notes: [],
+    unpaired_a: 0, unpaired_b: 0, n_bootstrap: 2000, confidence: 0.95, notes: [], currency: reportCurrency,
     metrics: [{
       metric: "spend", mean_a: 0, mean_b: 500, diff: 500, rel_diff: 0,
       ci_low: 200, ci_high: 800, prob_b_greater: 1, sd_paired_diff: 50,
@@ -60,6 +60,34 @@ it("keeps relative changes for a nonzero baseline", () => {
   show({ mean_a: 1000, mean_b: 1500, rel_diff: 0.5 });
   expect(screen.getByText("Spend per visitor: +50.0%")).toBeTruthy();
   expect(screen.getByText("+20.0% … +80.0%")).toBeTruthy();
+});
+
+it.each(["KRW", "JPY", "USD"].flatMap(currency =>
+  [undefined, "USD", "KRW"].map(summary => ({ currency, summary })),
+))("uses the report's $currency even with summary currency $summary", ({ currency, summary }) => {
+  state.currency = summary;
+  show({ mean_a: 4200, mean_b: 4350, diff: 150, rel_diff: 150 / 4200 }, currency);
+  const row = screen.getByText("Spend / visitor").closest("tr")!;
+  const expected = currency === "KRW" ? ["₩4,200", "₩4,350"]
+    : currency === "JPY" ? ["¥4,200", "¥4,350"] : ["$42.00", "$43.50"];
+  expect([...row.querySelectorAll("td")].slice(1, 3).map(cell => cell.textContent)).toEqual(expected);
+});
+
+it.each([
+  ["KRW", "Spend per visitor: +₩500", "+₩200 … +₩800"],
+  ["JPY", "Spend per visitor: +¥500", "+¥200 … +¥800"],
+  ["USD", "Spend per visitor: +$5.00", "+$2.00 … +$8.00"],
+])("uses report currency %s for zero-baseline headlines and intervals", (currency, headline, interval) => {
+  state.currency = currency === "USD" ? "KRW" : "USD";
+  show({}, currency);
+  expect(screen.getByText(headline)).toBeTruthy();
+  expect(screen.getByText(interval)).toBeTruthy();
+});
+
+it.each([undefined, "", "   "])("keeps the summary fallback for older report currency %s", currency => {
+  state.currency = "KRW";
+  show({}, currency);
+  expect(screen.getByText("Spend per visitor: +₩500")).toBeTruthy();
 });
 
 it("shows a zero absolute difference when neither run has purchases", () => {
