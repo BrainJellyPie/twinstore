@@ -527,7 +527,6 @@ class GroundingDinoDetector:
 
 class _GroundedBox(BaseModel):
     box_2d: list[Annotated[float, Field(allow_inf_nan=False)]] = Field(min_length=4, max_length=4)
-    label: str = Field(default="", max_length=40)
 
 
 class _Grounding(BaseModel):
@@ -538,7 +537,7 @@ VLM_GROUNDING_SYSTEM_PROMPT = "You detect products on store shelf photos. Answer
 VLM_GROUNDING_PROMPT = (
     "Find every product facing on the shelves in this photo: one box per visible package "
     "(bottle, can, box, bag, cup). Do not box shelves, price tags or signs. "
-    "Return products: [{{\"box_2d\": [{box_order}], \"label\": short name}}]. "
+    "Return products: [{{\"box_2d\": [{box_order}]}}]. Return coordinates only; do not name or describe products. "
     "Coordinates: {convention}. Use finite numbers only, never NaN or Infinity."
 )
 

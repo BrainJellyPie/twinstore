@@ -20,7 +20,7 @@ from store_emulator.engine.capture.frame import make_frame
 def test_nonfinite_grounding_recovers_or_falls_back_without_caching_bad_boxes(
     tmp_path, monkeypatch, coordinate, number, recovers,
 ):
-    good = {"products": [{"box_2d": [100, 50, 300, 250], "label": "Tea"}]}
+    good = {"products": [{"box_2d": [100, 50, 300, 250]}]}
     requests, refined = [], []
     original_completion = llm_client.litellm.acompletion
 

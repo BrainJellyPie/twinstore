@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Ask shelf-photo grounding models for coordinates only. Unused product-name
+  fields no longer discard all detected boxes when a local model returns null,
+  a long name or the wrong name type. Product reading still runs in its separate
+  stage; coordinate validation and classic detection fallback remain intact.
+
 - Check local health-response contents before treating an endpoint as a model
   server. A web app returning HTML with HTTP 200 no longer passes inference
   preflight. Preserve recognized health replies and fall back to actual model
