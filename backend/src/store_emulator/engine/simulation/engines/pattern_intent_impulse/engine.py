@@ -140,7 +140,8 @@ class PatternIntentImpulseEngine:
         )
         situation = f"\n\n## 오늘의 상황 (Situation)\n{context.situation}" if context.situation else ""
         selection = await self._llm.generate_structured_async(
-            stage1_pattern.PatternSelectionResponse, stage1_system, stage1_user + situation, seed=stage_seed("stage1"), route=context.persona.id,
+            stage1_pattern.pattern_selection_model(patterns), stage1_system, stage1_user + situation,
+            seed=stage_seed("stage1"), route=context.persona.id,
         )
         pattern = pattern_map.get(selection.pattern_id, fallback)
         grammar_override = selection.grammar_override

@@ -1,6 +1,6 @@
 """Stage 1: behavior-pattern selection. Picks a fitting pattern from persona + time + BehaviorCue."""
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, create_model, field_validator
 
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
 from store_emulator.domain.persona import Persona
@@ -27,6 +27,14 @@ class PatternSelectionResponse(BaseModel):
         # An optional rewrite must not overflow stage two. Use the complete
         # built-in grammar instead of executing a partially cut instruction.
         return "" if value is None or (isinstance(value, str) and len(value) > 1200) else value
+
+
+def pattern_selection_model(patterns: list[BehaviorPattern]) -> type[PatternSelectionResponse]:
+    """Bind local grammars to the available IDs, retaining fallback for non-enforcing providers."""
+    constraints: dict[str, JsonValue] = {"enum": list(dict.fromkeys(pattern.id for pattern in patterns))}
+    return create_model("PatternSelectionResponse", __base__=PatternSelectionResponse,
+        __config__=ConfigDict(json_schema_extra={"required": ["pattern_id"]}),
+        pattern_id=(str, Field(default_factory=str, json_schema_extra=constraints)))
 
 
 def build_system_prompt(patterns: list[BehaviorPattern]) -> str:

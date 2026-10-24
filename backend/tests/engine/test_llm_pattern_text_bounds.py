@@ -20,7 +20,7 @@ from tests.engine.test_llm_engine_offline import _ScriptedLLM, _context, _intent
 def test_long_pattern_output_cannot_expand_the_next_request_or_drop_a_shopper(collision_store, text, ordering):
     class Model(_ScriptedLLM):
         async def generate_structured_async(self, schema, system, user, **kwargs):
-            if schema is PatternSelectionResponse:
+            if issubclass(schema, PatternSelectionResponse):
                 return schema.model_validate({"pattern_id": "exploratory", "reasoning": text, "grammar_override": text})
             # The catalog and customer fit; only the prior model's repeated rewrite can overflow this request.
             assert len(system) + len(user) < 6000

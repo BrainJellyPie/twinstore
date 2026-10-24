@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Constrain the local behavior-selection grammar to the actual pattern IDs for
+  each visit and require a selection in the transmitted schema. Invented or
+  translated IDs can no longer silently select the first pattern on providers
+  enforcing that grammar. Preserve custom IDs and existing non-enforcing fallback.
+
 - Bind impulse purchases to the actual exposed offer and placement, including
   providers returning a canonical SKU instead of the requested short code.
   Repeated SKUs or identical offers elsewhere cannot redirect the shopper or

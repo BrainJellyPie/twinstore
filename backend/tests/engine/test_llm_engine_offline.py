@@ -40,7 +40,7 @@ class _ScriptedLLM:
         *, max_retries: int = 1, seed: int | None = None, route: str | None = None,
     ) -> T:
         self.calls.append((response_model.__name__, system_prompt, user_prompt, seed))
-        if response_model is PatternSelectionResponse:
+        if issubclass(response_model, PatternSelectionResponse):
             return response_model.model_validate({"pattern_id": "exploratory"})
         if response_model.__name__ == "IntentResponse":
             return response_model.model_validate(self.intent.model_dump())
