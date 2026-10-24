@@ -140,10 +140,15 @@ def test_a_long_write_waits_for_the_users_choice(monkeypatch: pytest.MonkeyPatch
     helper.join()
     assert "confirm" not in (read_status("proj_a", gen_id).get("progress") or {})
 
-    write_status("proj_a", gen_id, "running", progress={"confirm": {}})
-    ga.choose_write_size("proj_a", "setup_a", gen_id, "cancel")
-    with pytest.raises(ValueError, match="canceled"):
-        asyncio.run(ga._decide("proj_a", gen_id, llm, _plan(40.0)))  # pyright: ignore[reportPrivateUsage]
+    async def cancel_when_asked():
+        task = asyncio.create_task(ga._decide("proj_a", gen_id, llm, _plan(40.0)))
+        await asyncio.sleep(0)
+        assert "confirm" in read_status("proj_a", gen_id)["progress"]
+        ga.choose_write_size("proj_a", "setup_a", gen_id, "cancel")
+        with pytest.raises(ValueError, match="canceled"):
+            await asyncio.wait_for(task, timeout=2)
+
+    asyncio.run(cancel_when_asked())
 
 
 def test_a_request_takes_customers_across_quiet_hours() -> None:

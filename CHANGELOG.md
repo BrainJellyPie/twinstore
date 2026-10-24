@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Commit customer-generation choices and progress atomically. A failed save no
+  longer leaves a consumable choice that can start customer writing after the
+  confirmation request reports an error; the confirmation remains retryable.
+
 - Mark rejected optimization, neighborhood, marketing and Shelf Lab submissions
   failed instead of leaving them pending indefinitely. Retries and deletion are
   available after worker-start errors, and queued rejected work cannot later

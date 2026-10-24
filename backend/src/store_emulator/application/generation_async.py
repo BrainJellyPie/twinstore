@@ -381,32 +381,23 @@ async def _decide(project_id: str, gen_id: str, llm: LiteLLMClient, plan: gen_pe
     return chosen.per_day
 
 
-def _choice_path(project_id: str, gen_id: str) -> Path:
-    return generation_dir(project_id, gen_id) / "choice.json"
-
-
 def _choice_lock_path(project_id: str, gen_id: str) -> Path:
     return setup_lock_path(project_id, gen_id).with_name(f".generation-choice-{gen_id}.lock")
 
 
 async def _await_choice(project_id: str, gen_id: str) -> str:
-    path = _choice_path(project_id, gen_id)
     lock = FileLock(_choice_lock_path(project_id, gen_id), timeout=0)
     deadline = time.monotonic() + CHOICE_WAIT_SEC
     while True:
         try:
             with lock:
-                if path.is_file():
-                    try:
-                        choice = cast(dict[str, object], read_json(path)).get("choice")
-                    except (OSError, ValueError):
-                        choice = None
-                    path.unlink(missing_ok=True)
+                data = read_status(project_id, gen_id)
+                progress = data.get("progress")
+                if data.get("status") == "running" and isinstance(progress, dict):
+                    choice = cast(dict[str, object], progress).get("choice")
                     if isinstance(choice, str) and choice in WRITE_CHOICES:
                         return choice
                 if time.monotonic() >= deadline:
-                    data = read_status(project_id, gen_id)
-                    progress = data.get("progress")
                     if data.get("status") == "running" and isinstance(progress, dict) and "confirm" in progress:
                         # Close the answer window before releasing the lock. The
                         # worker records failure after this coroutine raises.
@@ -432,11 +423,12 @@ def choose_write_size(project_id: str, setup_id: str, gen_id: str, choice: str) 
             progress = data.get("progress")
             if data.get("status") != "running" or not isinstance(progress, dict) or "confirm" not in progress:
                 raise AppError("This generation is not waiting for a choice.", 409)
-            write_json(_choice_path(project_id, gen_id), {"choice": choice})
             chosen = cast(dict[str, object], progress["confirm"]).get(choice) if choice != "cancel" else None
             total = cast(dict[str, object], chosen).get("customers") if isinstance(chosen, dict) else None
+            # The accepted choice and closed confirmation window commit in one
+            # atomic status write, so a failed save cannot start the worker.
             write_status(project_id, gen_id, "running",
-                         progress={"written": 0, "total": total} if isinstance(total, int) else {})
+                         progress={"choice": choice, **({"written": 0, "total": total} if isinstance(total, int) else {})})
             return read_status(project_id, gen_id)
     except FileNotFoundError:
         raise AppError("generation not found", 404) from None

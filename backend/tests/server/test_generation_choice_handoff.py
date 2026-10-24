@@ -67,7 +67,6 @@ def test_worker_terminal_status_survives_a_slow_confirmation_write(waiting, monk
     assert saved["status"] == terminal
     assert saved["progress"] == {"count": 100 if terminal == "completed" else 0}
     assert saved["error"] == ("Canceled" if choice == "cancel" else "")
-    assert not ga._choice_path(PID, gid).exists()
 
 
 @pytest.mark.parametrize("first_choice", ["all", "sample", "cancel"])
@@ -75,15 +74,15 @@ def test_worker_terminal_status_survives_a_slow_confirmation_write(waiting, monk
 def test_overlapping_answers_cannot_replace_an_accepted_choice(waiting, monkeypatch, first_choice, second_choice):
     gid, client = waiting
     ready, release = Event(), Event()
-    original_write = ga.write_json
+    original_write = ga.write_status
 
-    def paused_choice(path, data):
-        if path == ga._choice_path(PID, gid) and not ready.is_set():
+    def paused_choice(*args, **kwargs):
+        if not ready.is_set():
             ready.set()
             assert release.wait(5)
-        original_write(path, data)
+        original_write(*args, **kwargs)
 
-    monkeypatch.setattr(ga, "write_json", paused_choice)
+    monkeypatch.setattr(ga, "write_status", paused_choice)
     url = f"/api/projects/{PID}/setups/{SID}/generations/{gid}/confirm"
     with ThreadPoolExecutor(max_workers=2) as pool:
         first = pool.submit(client.post, url, json={"choice": first_choice})
@@ -103,21 +102,18 @@ def test_overlapping_answers_cannot_replace_an_accepted_choice(waiting, monkeypa
 
 
 @pytest.mark.parametrize("choice", ["all", "sample", "cancel"])
-def test_failed_choice_write_keeps_the_confirmation_retryable(waiting, monkeypatch, choice):
+def test_failed_status_write_keeps_the_confirmation_retryable(waiting, monkeypatch, choice):
     gid, _ = waiting
-    original_write = ga.write_json
+    original_write = ga.write_status
 
-    def fail_choice(path, data):
-        if path == ga._choice_path(PID, gid):
-            raise OSError("Offline storage failure")
-        original_write(path, data)
+    def fail_choice(*args, **kwargs):
+        raise OSError("Offline storage failure")
 
-    monkeypatch.setattr(ga, "write_json", fail_choice)
+    monkeypatch.setattr(ga, "write_status", fail_choice)
     with pytest.raises(OSError, match="Offline storage failure"):
         ga.choose_write_size(PID, SID, gid, choice)
     assert "confirm" in read_status(PID, gid)["progress"]
-    assert not ga._choice_path(PID, gid).exists()
-    monkeypatch.setattr(ga, "write_json", original_write)
+    monkeypatch.setattr(ga, "write_status", original_write)
     ga.choose_write_size(PID, SID, gid, choice)
     assert asyncio.run(asyncio.wait_for(ga._await_choice(PID, gid), timeout=1)) == choice
 
@@ -132,7 +128,6 @@ def test_busy_choice_is_retryable_and_does_not_block_other_jobs(waiting, monkeyp
     assert response.status_code == (503 if same_job else 200), response.text
     if same_job:
         assert read_status(PID, gid) == before
-        assert not ga._choice_path(PID, gid).exists()
     else:
         assert asyncio.run(asyncio.wait_for(ga._await_choice(PID, gid), timeout=1)) == "cancel"
 
@@ -153,4 +148,3 @@ def test_expired_wait_closes_confirmation_before_the_worker_finalizes(waiting, m
         asyncio.run(ga._await_choice(PID, gid))
     response = client.post(f"/api/projects/{PID}/setups/{SID}/generations/{gid}/confirm", json={"choice": "all"})
     assert response.status_code == 409, response.text
-    assert not ga._choice_path(PID, gid).exists()
