@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep Shelf Lab photo edits, compliance audits and sim2real studies in distinct
+  directories even when generated UUID prefixes match. Reserve new directories
+  exclusively so an existing image, mask or study record cannot be overwritten;
+  retain support for reading legacy short identifiers.
+
 - Preserve optimization history when generated job identifiers share a prefix.
   New jobs use full UUIDs and exclusively reserve their output directory before
   writing; failed registration can only clean up the directory it created.
