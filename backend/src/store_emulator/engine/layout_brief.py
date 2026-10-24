@@ -11,7 +11,7 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Protocol
 
-from pydantic import BaseModel, Field, JsonValue, ValidationError
+from pydantic import BaseModel, Field, JsonValue, ValidationError, field_validator
 
 from store_emulator.domain.layout_options import (
     CheckoutPlacement,
@@ -66,6 +66,16 @@ class _Brief(BaseModel):
                                        description="parts of the brief none of these options can express, in a few words")
     rationale: str = Field(default="", max_length=500)
 
+    @field_validator("excluded_categories", "not_expressible", mode="before")
+    @classmethod
+    def _absent_lists(cls, value: object) -> object:
+        return [] if value is None else value
+
+    @field_validator("rationale", mode="before")
+    @classmethod
+    def _absent_rationale(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class BriefReading(BaseModel):
     options: dict[str, JsonValue] = {}  # a patch of LayoutOptions fields, valid against the current options
@@ -93,7 +103,8 @@ requests such as adding one more till:
 - assortment: excluded_categories from the listed categories (written as listed) when the brief rules them out, and
   products_per_category for a narrower or wider range.
 Put anything the options cannot express (lighting, music, signage text, a specific fixture) in not_expressible, in a
-few words each, and give a short rationale. Write in English."""
+few words each, and give a short rationale. For absent list fields use [], and for an absent rationale use "",
+not null. Leave optional scalar options null to keep the current setting. Write in English."""
 
 _LABELS = {
     "style": "Style", "density": "Density", "width": "Width", "height": "Depth", "aisle_width": "Aisle width",

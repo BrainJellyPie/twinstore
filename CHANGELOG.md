@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep valid generated layout options when optional exclusions, unsupported
+  request notes or rationale are null. Preserve current category exclusions
+  and untouched colors, along with existing invalid-option warnings.
+
 - Count direct purchases as shelf stops in group-interview evidence. Planned
   buyers who skip browsing now appear in the shelf's visitor and buyer counts,
   once per shopper, so question generation receives the actual purchase locations.
