@@ -8,10 +8,10 @@ import asyncio
 import random
 from store_emulator.engine.perception.product_images import ProductImageLoader
 from collections.abc import Callable, Sequence
-from typing import Literal, Protocol
+from typing import Literal, Protocol, Self
 
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue, model_validator
 
 from store_emulator.domain.marketing import ShareComparison, ShelfChoice, SkuShare
 from store_emulator.domain.persona import Persona
@@ -65,14 +65,30 @@ async def shelf_panel(
         async with sem:
             try:
                 view = render_arm(rack, face, currency, stable_seed("shelf-marks", seed, p.id), image_loader)
-                a = await llm.generate_structured_with_image_async(
-                    ShelfAnswer, SHELF_TEST_PROMPT, user, view.data_url(), max_retries=1, seed=stable_seed("shelf", seed, p.id, arm),
+                marks = sorted({item.mark for item in view.items})
+                noticed_schema: dict[str, JsonValue] = (
+                    {"items": {"type": "integer", "enum": [mark for mark in marks]}} if marks else {}
                 )
-                marks = {item.mark for item in view.items}
-                if a.pick != 0 and a.pick not in marks:
-                    raise ValueError(f"Picked badge {a.pick} is not on this shelf; only 0 means no purchase.")
-                if any(number not in marks for number in a.noticed):
-                    raise ValueError("Noticed badges must refer to products shown on this shelf.")
+
+                class ShelfResponse(ShelfAnswer):
+                    noticed: list[int] = Field(default_factory=list[int], max_length=3 if marks else 0,
+                        description="visible badge numbers that caught your eye first, in order",
+                        json_schema_extra=noticed_schema)
+                    pick: int = Field(ge=0, description="one visible badge number, or 0 for none",
+                                      json_schema_extra={"enum": [0, *marks]})
+
+                    @model_validator(mode="after")
+                    def visible_badges(self) -> Self:
+                        if self.pick != 0 and self.pick not in marks:
+                            raise ValueError(f"Picked badge {self.pick} is not on this shelf; use {marks} or 0 for none.")
+                        if any(number not in marks for number in self.noticed):
+                            raise ValueError(f"Noticed badges must come from {marks}; use [] when none were noticed.")
+                        return self
+
+                user += f"\nVisible badge numbers: {marks}. Use 0 only for pick; use [] for nothing noticed."
+                a = await llm.generate_structured_with_image_async(
+                    ShelfResponse, SHELF_TEST_PROMPT, user, view.data_url(), max_retries=2, seed=stable_seed("shelf", seed, p.id, arm),
+                )
                 picked = view.by_mark(a.pick) if a.pick else None
                 noticed = [m.item.sku for n in a.noticed if (m := view.by_mark(n)) is not None]
                 return base.model_copy(update={

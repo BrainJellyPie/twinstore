@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Constrain virtual shelf-test responses to the badge numbers actually shown in
+  each image. Invalid picks and noticed numbers get one correction before caching;
+  empty faces permit only no purchase and no noticed products. Repeated invalid
+  responses remain failures and cannot enter paired purchase statistics.
+
 - Correct unusable automatic layout edits and A/B experiment drafts before caching.
   Missing or ambiguous product/shelf targets and invalid prices now receive one
   correction with concrete failure details. Repeated failures remain retryable;
