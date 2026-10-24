@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Roll back failed floor-plan imports and retain the previous active layout.
+  Plan images and layouts now commit under the same project lock, so a concurrent
+  deletion cannot recreate the deleted project. Occupied destinations are kept.
+
 - Allow playback, skip-to-end and reset for completed runs with zero customers.
   Empty results now advance through their operating days and finish normally.
 

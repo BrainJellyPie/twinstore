@@ -158,7 +158,11 @@ def import_floor_plan(
     except ValueError as e:
         raise AppError(str(e), 422) from e
     reading.notes.append(f"Imported page {page_number} of {page_count}; rotation {rotation} degrees clockwise.")
-    meta = cast(dict[str, Any], read_json(metadata_path(pid)))
+    try:
+        meta = cast(dict[str, Any], read_json(metadata_path(pid)))
+    except FileNotFoundError as exc:
+        img.close()
+        raise AppError(f"project not found: {pid}", 404) from exc
     schedule = [DaySchedule.model_validate(d) for d in cast(list[dict[str, Any]], meta.get("weekly_schedule") or [])]
     layout_name = name or f"floor plan ({Path(filename).stem[:40] or 'plan'})"
     store, notes = plan_to_store(reading, currency=str(meta.get("currency") or config.currency), name=str(meta.get("name") or layout_name),
@@ -169,16 +173,31 @@ def import_floor_plan(
         raise AppError(f"the plan did not give a valid layout: {errors[0].message}", 422)
     setup = new_setup_data(layout_name, None, store.model_dump(mode="json"),
                            f"floor plan import ({reading.reader}), page {page_number}/{page_count}, rotation {rotation}: {'; '.join(notes)}"[:1000])
+    with closing(img), io.BytesIO() as encoded:
+        img.thumbnail((2000, 2000))
+        img.save(encoded, format="PNG")
+        image_bytes = encoded.getvalue()
+    path = setup_path(pid, setup["id"])
+    image_path = Path(DATA_DIR) / pid / "floorplans" / f"{setup['id']}.png"
     with setup_tree_transaction(pid):
-        write_json(setup_path(pid, setup["id"]), setup)
-        set_active_setup(pid, setup["id"])
-    folder = Path(DATA_DIR) / pid / "floorplans"
-    folder.mkdir(parents=True, exist_ok=True)
-    img.thumbnail((2000, 2000))
-    img.save(folder / f"{setup['id']}.png")
-    return FloorPlanImport(
-        setup_id=setup["id"], setup=setup_summary(pid, setup), reading=reading, grid_size=store.grid_size,
-        racks=sum(1 for r in store.racks if r.slots), notes=[*reading.notes, *notes],
-        warnings=[i.message for i in issues if i.severity == "warning"],
-        source_page=page_number, source_pages=page_count, source_rotation=rotation,
-    )
+        if path.exists() or image_path.exists():
+            raise AppError("This imported layout identifier already exists. Retry to create a new layout.", 409)
+        result = FloorPlanImport(
+            setup_id=setup["id"], setup=setup_summary(pid, setup), reading=reading, grid_size=store.grid_size,
+            racks=sum(1 for r in store.racks if r.slots), notes=[*reading.notes, *notes],
+            warnings=[i.message for i in issues if i.severity == "warning"],
+            source_page=page_number, source_pages=page_count, source_rotation=rotation,
+        )
+        try:
+            image_path.parent.mkdir(parents=True, exist_ok=True)
+            image_path.write_bytes(image_bytes)
+            write_json(path, setup)
+            set_active_setup(pid, setup["id"])
+        except Exception:
+            for created in (path, image_path):
+                try:
+                    created.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning("Could not remove failed floor plan import file %s", created, exc_info=True)
+            raise
+    return result
