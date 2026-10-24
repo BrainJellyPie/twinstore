@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Annotated, Self
 
+from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from pydantic import BaseModel, Field, model_validator
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
@@ -290,11 +291,7 @@ async def generate_personas_for_day(
     purpose_list = "\n".join(f"  - {p}" for p in profile.purposes)
 
     limit = semaphore or asyncio.Semaphore(max_concurrent)
-    tasks: list[tuple[list[int], asyncio.Task[PersonaBatch]]] = []
-
-    async def _generate_batch(prompt: str) -> PersonaBatch:
-        async with limit:
-            return await llm.generate_structured_async(PersonaBatch, system_prompt, prompt, max_retries=3)
+    tasks: list[tuple[list[int], asyncio.Task[list[tuple[GeneratedPersona, int]]]]] = []
 
     # One spec line per customer, hour by hour; requests take `batch_size` of them in order, across hours, so a quiet
     # hour's one or two customers do not cost a request of their own (a 20-a-day sample over 14 hours took 14).
@@ -315,8 +312,8 @@ async def generate_personas_for_day(
     if categories:
         cat_list = "\n".join(f"  - {c}" for c in categories)
         category_section = f"## 카테고리 목록 (preferred_categories는 반드시 이 중에서만 선택)\n{cat_list}\n\n"
-    for batch_start in range(0, len(specs), batch_size):
-        chunk = specs[batch_start:batch_start + batch_size]
+
+    async def _generate_batch(chunk: list[tuple[int, str]], *, recover: bool = True) -> list[tuple[GeneratedPersona, int]]:
         persona_input = (
             f"매장 위치: {address}\n요일: {day_label}\n\n"
             f"## identity 목록 (반드시 이 중 하나 선택)\n{identity_list}\n\n"
@@ -327,7 +324,26 @@ async def generate_personas_for_day(
         )
         if custom_instruction:
             persona_input += f"\n\n추가 지시: {custom_instruction}"
-        tasks.append(([hour for hour, _ in chunk], asyncio.create_task(_generate_batch(persona_input))))
+        try:
+            async with limit:
+                batch = await llm.generate_structured_async(PersonaBatch, system_prompt, persona_input, max_retries=3)
+        except (IncompleteOutputException, InstructorRetryException) as error:
+            cause = (error.failed_attempts[-1].exception
+                     if isinstance(error, InstructorRetryException) and error.failed_attempts else error)
+            if not recover or len(chunk) < 2 or not isinstance(cause, IncompleteOutputException):
+                raise
+            logger.info("[persona] %s: splitting a truncated %s-customer request once", day_label, len(chunk))
+            middle = len(chunk) // 2
+            # Release the shared request slot before either child acquires it.
+            first = await _generate_batch(chunk[:middle], recover=False)
+            second = await _generate_batch(chunk[middle:], recover=False)
+            return first + second
+        # Preserve each child's original hours even when a small model returns fewer customers.
+        return [(generated, hour) for generated, (hour, _) in zip(batch.personas, chunk)]
+
+    for batch_start in range(0, len(specs), batch_size):
+        chunk = specs[batch_start:batch_start + batch_size]
+        tasks.append(([hour for hour, _ in chunk], asyncio.create_task(_generate_batch(chunk))))
 
     all_personas: list[Persona] = []
     for hours, task in tasks:
@@ -347,8 +363,7 @@ async def generate_personas_for_day(
         if on_written is not None:
             on_written(size)
 
-        # Small models may add a few: the request asked for `size`, in the order of their hours.
-        for generated, hour in zip(batch.personas[:size], hours):
+        for generated, hour in batch:
             prefix = "F" if generated.gender == "Female" else "M"
             seq = len([p for p in all_personas if p.gender == generated.gender]) + 1
             persona = Persona.model_validate({**generated.model_dump(),

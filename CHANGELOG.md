@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover a truncated automatic customer batch by splitting it into two smaller
+  requests once. Recovered customers retain their original hours and unique IDs;
+  child requests share the existing concurrency limit. Repeated truncation stays
+  a failed batch, and unrelated provider/validation failures do not trigger splits.
+
 - Recover automatic model calls when older vLLM servers reject an output ceiling
   larger than their remaining context. A matching HTTP 400 can reduce that call's
   ceiling once, using the server's token counts; input overflow, authorization and
