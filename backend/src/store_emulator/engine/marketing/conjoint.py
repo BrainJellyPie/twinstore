@@ -84,8 +84,8 @@ def design(levels: Sequence[int], tasks: int, options: int, rng: random.Random) 
 # ── asking ──────────────────────────────────────────────────────────────────────
 
 CONJOINT_PROMPT = """You are shopping, as the person described below, and choose between versions of the same product. In each
-choice task, pick the one option you would really buy on this trip, given your budget, habits and taste, or "none" if you
-would rather buy none of them. Different people care about different things: trade off what matters to you and ignore what
+choice task, {choice_instruction}
+Different people care about different things: trade off what matters to you and ignore what
 does not. Answer every task. Write any text in English."""
 
 
@@ -133,6 +133,14 @@ async def conjoint_panel(
     """One respondent per persona, each with their own design (failed calls come back with `error` set)."""
     levels = [len(a.levels) for a in attributes] + ([len(prices)] if prices else [])
     model = choice_model(tasks, options, none_option)
+    choice_instruction = (
+        'pick the one option you would really buy on this trip, given your budget, habits and taste, or "none" if you '
+        "would rather buy none of them."
+        if none_option else
+        "choose your most preferred displayed product, given your budget, habits and taste. "
+        "This is a forced-choice task: you must return one displayed product letter."
+    )
+    system = CONJOINT_PROMPT.format(choice_instruction=choice_instruction)
     sem = asyncio.Semaphore(max_concurrent)
 
     async def ask(p: Persona) -> ConjointRespondent:
@@ -145,7 +153,7 @@ async def conjoint_panel(
                 f"{tasks_text(attributes, prices, currency, plan, none_option)}")
         try:
             async with sem:
-                r = await llm.generate_structured_async(model, CONJOINT_PROMPT, user, max_retries=1,
+                r = await llm.generate_structured_async(model, system, user, max_retries=1,
                                                         seed=stable_seed("conjoint", seed, p.id))
             data = r.model_dump()
             answered = [ConjointTask(profiles=profiles, choice=None if data[f"task_{t + 1}"] == "none" else LETTERS.index(data[f"task_{t + 1}"]))

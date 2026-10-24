@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Honor the no-purchase setting in conjoint response instructions. Forced-choice
+  studies no longer tell models to return a forbidden `none` answer. Keep the
+  configured choice schema, recorded choices and response-cache separation.
+
 - Keep valid conjoint drafts when optional context, rationale or comparison
   notes are null. Preserve exact attributes and price levels, including retry
   validation and actionable price errors; null prices and required structure
