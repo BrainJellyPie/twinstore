@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
@@ -37,6 +37,7 @@ from ..deps import get_config
 
 router = APIRouter(prefix="/api/projects", tags=["simulate"])
 engines_router = APIRouter(prefix="/api", tags=["simulate"])
+_TIMELINE_JSON = TypeAdapter(object)
 
 
 class SimulateRequest(BaseModel):
@@ -447,16 +448,19 @@ async def export_csv(pid: str, run_id: str) -> Response:
 
 
 @router.get("/{pid}/runs/{run_id}/timeline", summary="Per-customer timeline")
-async def get_timeline(pid: str, run_id: str) -> Any:
+def get_timeline(pid: str, run_id: str) -> Response:
     """Behavior timeline for every customer.
 
     **Response:** `CustomerResult[]` — chronologically ordered events per customer. The `engine_type` field identifies which engine produced the result.
     Each event: elapsed_sec, x, y, action (enter/move/browse/buy/pay/exit), duration, product_sku, etc.
     **If the file has not been generated yet, returns an empty array** (not 404)."""
     try:
-        return sim_service.get_run_output(pid, run_id, "timeline.json")
+        content: object = sim_service.get_run_output(pid, run_id, "timeline.json")
     except FileNotFoundError:
-        return []
+        content = list[object]()
+    # Encoding a large playback must also stay in this worker, not return to the
+    # event loop for response serialization. Preserve Pydantic's JSON semantics.
+    return Response(content=_TIMELINE_JSON.dump_json(content), media_type="application/json")
 
 
 @router.get("/{pid}/runs/{run_id}/store", summary="Store at simulation time", response_model=Store)

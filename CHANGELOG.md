@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Read and encode playback timelines on a worker thread so a slow result read or
+  large response does not occupy the server's request loop. Preserve the existing
+  JSON values, empty response before results exist and named damaged-file errors.
+
 - Avoid repeated whole-shape scans for each fixture block when checking reachable
   faces, checkout access and starter-product placement. Large multi-cell shelves
   now use their occupied-cell sets while preserving rotation, locked faces,
