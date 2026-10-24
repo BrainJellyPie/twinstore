@@ -37,6 +37,7 @@ def test_complete_calendar_forms_keep_receipts_separate(suffix, column, hour, fm
     ("Oct 23 12:30", 12), ("Oct 2026", None), ("2026-10", None), ("23", None), ("Thursday", None),
     ("Feb 29 12:30", 12), ("12:30", 12), ("12 AM", 0), ("12 PM", 12), ("NaT", None),
     ("999999999999999999999999999999999999", None),
+    ("2026-10 Mon 09:00", 9), ("2026-10 Friday 09:00", 9), ("2026-10 Sunday 09:00", 9),
 ])
 def test_missing_calendar_parts_do_not_borrow_an_import_date(suffix, text, hour):
     lines = parse_pos_csv(export([{"receipt_id": "1", "sku": "chips", "timestamp": text}], suffix), f"pos.{suffix}")

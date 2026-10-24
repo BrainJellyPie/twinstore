@@ -22,10 +22,13 @@ import io
 import json
 import logging
 import re
+from datetime import date, datetime
 from datetime import time as ClockTime
+from functools import lru_cache
 from typing import Any, cast
 
 import pandas as pd  # type: ignore[reportMissingTypeStubs]
+from dateutil.parser import parse as parse_date
 from pydantic import BaseModel
 
 from store_emulator.domain.types import AsyncLLMClient
@@ -547,6 +550,20 @@ def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
     best_score = (-1, 0.0)
     dates: list[list[str | None]] = []
     clocks: list[list[str | None]] = []
+
+    @lru_cache(maxsize=4096)
+    def text_evidence(text: str) -> tuple[bool, bool]:
+        # Missing components must not borrow pandas' current/default calendar.
+        # Keep repeated receipt lines cheap without retaining upload data globally.
+        try:
+            first = parse_date(text, default=datetime(2000, 1, 1, 3))
+            # Separate days by more than a week so a weekday cannot resolve both
+            # defaults to the same invented day in a partially specified month.
+            second = parse_date(text, default=datetime(2004, 3, 20, 17))
+        except (ValueError, OverflowError):
+            return False, False
+        return first.date() == second.date(), first.hour == second.hour
+
     for col in columns:
         if labels[col] in _BASKET_COLUMNS or labels[col] in _RECEIPT_SCOPE_COLUMNS:
             continue
@@ -554,25 +571,29 @@ def _visit_times_from_frame(df: pd.DataFrame) -> list[tuple[int, int]]:
         if pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series):  # type: ignore[reportUnknownMemberType]
             continue  # epoch numbers are not taken for timestamps
         values = cast(list[object], series.tolist())
+        evidence = [text_evidence(value) if isinstance(value, str) else (isinstance(value, date), False)
+                    for value in values]
         clock_only = [isinstance(value, ClockTime) or (isinstance(value, str) and _CLOCK_ONLY.fullmatch(value) is not None)
                       for value in values]
         if labels[col] in _TIME_COLUMNS and sum(clock_only) / max(1, len(values)) >= 0.8:
             clock_values = _local_timestamps([str(value) if is_clock else None for value, is_clock in zip(values, clock_only, strict=True)])
             clocks.append([stamp.strftime("%H:%M:%S.%f") if stamp is not None else None for stamp in clock_values])
-        # Pandas fills time-only strings with today's date. They can only be used beside an explicit date.
-        parsed = _local_timestamps([None if is_clock else value for value, is_clock in zip(values, clock_only, strict=True)])
+        parsed = _local_timestamps([value if has_date else None
+                                    for value, (has_date, _) in zip(values, evidence, strict=True)])
         valid = [stamp for stamp in parsed if stamp is not None]
         ok = len(valid) / max(1, len(values))
         # Only source text can explicitly say midnight. A date-only Excel cell is also a midnight datetime.
-        explicit_times = sum(isinstance(value, str) and re.search(r"(?:[Tt]|\s)\d{1,2}:\d{2}", value) is not None
-                             for value in values) / max(1, len(values))
+        explicit_times = sum(has_date and has_time for has_date, has_time in evidence) / max(1, len(values))
         has_time = ok > 0 and (sum((stamp.hour, stamp.minute, stamp.second, stamp.microsecond) != (0, 0, 0, 0)
                                   for stamp in valid) / len(valid) > 0.5 or
                               explicit_times > 0.5)
         # Account creation/update timestamps may be complete but are not the receipt's visit time.
-        score = (int(labels[col] in _VISIT_TIMESTAMP_COLUMNS), ok)
+        # A mostly complete column must not turn its date-only text rows into midnight visits.
+        timed = [stamp if not isinstance(value, str) or has_clock else None
+                 for stamp, value, (_, has_clock) in zip(parsed, values, evidence, strict=True)]
+        score = (int(labels[col] in _VISIT_TIMESTAMP_COLUMNS), sum(stamp is not None for stamp in timed) / max(1, len(values)))
         if ok >= 0.8 and has_time and score > best_score:
-            best, best_score = parsed, score
+            best, best_score = timed, score
         elif ok >= 0.8 and not has_time and labels[col] in _DATE_COLUMNS:
             dates.append([stamp.date().isoformat() if stamp is not None else None for stamp in parsed])
     for date_values in dates:
