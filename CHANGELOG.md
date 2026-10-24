@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Accept ready Ollama and OpenAI-compatible local servers that do not expose
+  llama.cpp's `/health` route. Inference preflight can check model/tag listings,
+  preserves endpoint path/query routing, and still rejects loading, unavailable
+  or unrelated HTTP servers. Authenticated endpoints proceed to the real key check.
+
 - Resolve `PARASTORE_LOCAL_API_KEY` for named llama.cpp and vLLM providers before
   building requests. Connecting OpenAI no longer causes its environment key to
   override the configured local-server key. Provider Settings keys remain first.

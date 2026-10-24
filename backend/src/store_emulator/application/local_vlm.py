@@ -36,6 +36,7 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import IO, Literal, cast
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel
 
@@ -658,13 +659,41 @@ else:
 
 
 def server_answers(api_base: str) -> bool:
-    """Whether a llama.cpp server answers at this OpenAI-style address (…/v1) right now."""
-    root = api_base.removesuffix("/").removesuffix("/v1")
+    """Whether a local model API answers without reporting that it is loading or unavailable."""
     try:
-        with _DIRECT.open(f"{root}/health", timeout=2) as r:
-            return getattr(r, "status", 200) == 200
-    except (OSError, ValueError):
+        base = urlsplit(api_base)
+        if base.scheme not in ("http", "https") or base.hostname is None:
+            return False
+    except ValueError:
         return False
+    path = base.path.rstrip("/")
+    root = path.removesuffix("/v1")
+    # llama.cpp/vLLM expose health; LM Studio exposes models; Ollama exposes tags.
+    probes = ((root + "/health", None), (path + "/models", "data"), (root + "/api/tags", "models"))
+    for probe, listing in probes:
+        url = base._replace(path=probe, fragment="").geturl()
+        try:
+            with _DIRECT.open(url, timeout=2) as response:
+                if getattr(response, "status", 200) != 200:
+                    return False
+                if listing is None:
+                    return True
+                data: object = json.loads(response.read())
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+            exc.close()
+            if code in (401, 403):
+                return True  # The inference request checks the configured credential.
+            if code not in (404, 405, 501):
+                return False  # A loading 503 must not become ready just because models can be listed.
+            continue
+        except json.JSONDecodeError:
+            continue
+        except (OSError, ValueError):
+            return False
+        if isinstance(data, dict) and isinstance(cast(dict[str, object], data).get(listing), list):
+            return True
+    return False
 
 
 def _props(api_base: str) -> dict[str, object] | None:
