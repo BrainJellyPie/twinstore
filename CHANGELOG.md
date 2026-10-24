@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Resolve category labels clipped by the vision planner against directory-name
+  prefixes before broad word matching. Long multilingual shelf names retain
+  their intended offer when the prefix is unique; shared prefixes stay ambiguous
+  instead of impersonating a shorter exact label.
+
 - Retry vision plans and shelf glances with a larger output budget only when
   the terminal completion was actually truncated. Generated error-looking text,
   input/output-limit rejections and authorization failures no longer trigger

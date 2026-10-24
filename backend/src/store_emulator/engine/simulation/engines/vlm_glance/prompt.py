@@ -257,7 +257,8 @@ _PLAN_IMAGE_LINE = ("The image is the store directory map by the door: racks lab
                     "red SALE ribbons mark promotions.\n")
 
 
-_TEXT_LIMITS: dict[str, int] = {"category": 30, "product": 48, "mission": 72, "reason": 48}
+PLAN_CATEGORY_LIMIT = 30
+_TEXT_LIMITS: dict[str, int] = {"category": PLAN_CATEGORY_LIMIT, "product": 48, "mission": 72, "reason": 48}
 
 
 def _clip(value: object, info: ValidationInfo) -> object:

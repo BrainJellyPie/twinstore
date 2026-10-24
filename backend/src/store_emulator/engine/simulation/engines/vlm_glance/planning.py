@@ -19,7 +19,7 @@ from store_emulator.engine.perception import category_label
 from store_emulator.engine.scenario import item_categories, words_categories
 
 from ..rule_based import expand_category, tokenize
-from .prompt import PlannedItem
+from .prompt import PLAN_CATEGORY_LIMIT, PlannedItem
 
 type CatalogEntry = tuple[Rack, Slot, SlotItem, set[str], set[str]]
 
@@ -42,12 +42,16 @@ class PlanMatch:
         return "|".join(sorted({entry[2].sku for entry in self.candidates}))
 
 
-def _category_entries(catalog: list[CatalogEntry], category: str) -> list[CatalogEntry]:
+def _category_entries(catalog: list[CatalogEntry], category: str, *, clipped: bool = False) -> list[CatalogEntry]:
     """Entries on racks whose sign (or description) matches the named category."""
     if not category.strip():
         return []
     said = category.strip().lower()
-    by_label = [e for e in catalog if category_label(e[0]).lower() == said]
+    # Local JSON grammars and PlannedItem both bound category strings. Recover
+    # their directory prefix before broad word matching loses the named rack.
+    # Keep all matching labels when the prefix itself is ambiguous.
+    by_label = [e for e in catalog if category_label(e[0]).lower() == said
+                or (clipped and category_label(e[0]).lower().startswith(said))]
     if by_label:
         return by_label
     words = expand_category(category)
@@ -55,7 +59,7 @@ def _category_entries(catalog: list[CatalogEntry], category: str) -> list[Catalo
 
 
 def match_plan_item(item: PlannedItem, catalog: list[CatalogEntry]) -> PlanMatch:
-    in_category = _category_entries(catalog, item.category)
+    in_category = _category_entries(catalog, item.category, clipped=len(item.category) == PLAN_CATEGORY_LIMIT)
     product = item.product.strip()
     if product:
         exact = [e for e in in_category if e[2].name.casefold() == product.casefold()]
