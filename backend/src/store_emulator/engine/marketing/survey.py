@@ -28,6 +28,7 @@ from store_emulator.engine.perception.shelf_render import load_font
 from store_emulator.engine.prompting import display_price
 
 LETTERS = "ABCD"
+_MAX_PRICE_MINOR = 9_007_199_254_740_991
 SCALES: tuple[QuestionKind, ...] = ("purchase_intent", "appeal", "value", "uniqueness")
 SCALE_TEXT: dict[str, str] = {
     "purchase_intent": "how likely you are to buy it on your next trip (1 = definitely not, 5 = definitely)",
@@ -67,7 +68,7 @@ def stimulus_board(images: Sequence[Image.Image], names: Sequence[str], *, heigh
     return board
 
 
-def response_model(questions: Sequence[QuestionKind], stimuli: int) -> type[BaseModel]:
+def response_model(questions: Sequence[QuestionKind], stimuli: int, *, minor_per_major: int = 100) -> type[BaseModel]:
     """The answer schema for this questionnaire (flat fields keep small models on track)."""
     fields: dict[str, Any] = {}
     for q in questions:
@@ -75,10 +76,11 @@ def response_model(questions: Sequence[QuestionKind], stimuli: int) -> type[Base
             for i in range(stimuli):
                 fields[f"{q}_{LETTERS[i]}"] = (int, Field(ge=1, le=5))
         elif q == "price_vw":
-            fields["too_cheap"] = (float, Field(ge=0, allow_inf_nan=False, description="price at which A is so cheap you would doubt its quality"))
-            fields["cheap"] = (float, Field(ge=0, allow_inf_nan=False, description="price at which A is a bargain"))
-            fields["expensive"] = (float, Field(ge=0, allow_inf_nan=False, description="price at which A starts to feel expensive"))
-            fields["too_expensive"] = (float, Field(ge=0, allow_inf_nan=False, description="price at which A is too expensive to consider"))
+            maximum = _MAX_PRICE_MINOR / minor_per_major
+            fields["too_cheap"] = (float, Field(ge=0, le=maximum, allow_inf_nan=False, description="price at which A is so cheap you would doubt its quality"))
+            fields["cheap"] = (float, Field(ge=0, le=maximum, allow_inf_nan=False, description="price at which A is a bargain"))
+            fields["expensive"] = (float, Field(ge=0, le=maximum, allow_inf_nan=False, description="price at which A starts to feel expensive"))
+            fields["too_expensive"] = (float, Field(ge=0, le=maximum, allow_inf_nan=False, description="price at which A is too expensive to consider"))
         elif q == "preference" and stimuli > 1:
             fields["preferred"] = (Literal[tuple(LETTERS[:stimuli])], ...)
         elif q == "open":
@@ -89,7 +91,8 @@ def response_model(questions: Sequence[QuestionKind], stimuli: int) -> type[Base
 SURVEY_PROMPT = """You answer a short shopper survey as the person described below, honestly and in character: your age,
 budget, habits and mood decide your answers, not what a marketer would like to hear. Look at the products in the image
 (labelled with letters). Answer every question. Scales run from 1 to 5; most people use the middle of the scale for
-ordinary products. Prices are numbers in the currency given, without symbols. Write any text in English."""
+ordinary products. Prices are finite, realistic amounts per product in the currency given, without symbols;
+do not repeat digits or exceed the schema's price limits. Write any text in English."""
 
 
 def _questions_text(questions: Sequence[QuestionKind], stimuli: int, currency: str, reference: str) -> str:
@@ -129,7 +132,7 @@ async def survey_panel(
     max_concurrent: int = 6,
 ) -> list[SurveyAnswer]:
     """One answer per persona (failed calls come back with `error` set)."""
-    model = response_model(questions, stimuli)
+    model = response_model(questions, stimuli, minor_per_major=minor_per_major)
     url, _ = image_data_url(board, max_side=1280, fmt="JPEG")
     ref = f" (it is sold for {reference_price})" if reference_price else ""
     asks = _questions_text(questions, stimuli, currency, ref)
@@ -141,7 +144,7 @@ async def survey_panel(
         try:
             async with sem:
                 r = await llm.generate_structured_with_image_async(
-                    model, SURVEY_PROMPT, user, url, max_retries=1, seed=stable_seed("survey", seed, p.id),
+                    model, SURVEY_PROMPT, user, url, max_retries=2, seed=stable_seed("survey", seed, p.id),
                 )
             data = r.model_dump()
             upd: dict[str, Any] = {}

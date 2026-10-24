@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bound model-generated survey prices in the survey's currency before caching.
+  Oversized finite prices now receive one correction attempt instead of becoming
+  unsafe browser integers or failing during conversion; repeated invalid answers
+  remain respondent failures without discarding other respondents.
+
 - Reject nonfinite shelf-grounding coordinates before normalization and caching.
   NaN and infinite values no longer turn into plausible boxes at image edges.
   The model gets one correction attempt; repeated invalid output uses the
