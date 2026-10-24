@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Preserve the exact offer chosen by a model's compact product code. Repeated
+  SKUs at different prices, blocks, levels or racks keep the selected offer
+  through routing, impulse budgets, checkout and stockout accounting. Store the
+  original code in a versioned action cache and bind engine-only placement hints
+  after validation; unavailable offers are dropped rather than substituted.
+
 - Keep complete customer batches when optional preferences or behavior text are
   null. Use the existing empty-list/string defaults without changing required
   customer details, budgets, visit times, or invalid-type/length validation.
@@ -32,7 +38,7 @@
 
 - Compact impulse exposure prompts with shared rack metadata and short product
   references. Preserve every exposed offer and its order, price, promotion, shelf
-  level and visibility. Decode references before caching and execution, with SKU
+  level and visibility. Decode references before execution, with SKU
   bindings in cache identity, so large visits avoid repeated catalog text.
   Preserve original checkout details when later impulse buys need payment, and
   keep behavior-pattern traces separate from context-recovery candidate results.
@@ -49,7 +55,7 @@
 
 - Compact the intent-stage catalog into shared offer records and exact shelf
   placement lists. Short request-local product codes decode to canonical SKUs
-  before caching/execution; cache identity includes the hidden SKU mapping.
+  before execution; cache identity includes the hidden SKU mapping.
   Repeated offers no longer duplicate opaque identifiers and product text across
   every shelf level. All names, prices, promotions and represented placements
   remain available to the model.

@@ -147,6 +147,7 @@ class PatternIntentImpulseEngine:
 
         # Stage 2: action-sequence generation (store catalog is the cached system prefix).
         records = stage2_intent.catalog_records(context.store)
+        intent_records = records
         stage2_system = stage2_intent.build_system_prompt(context.store, currency, records=records)
         stage2_user = stage2_intent.build_user_prompt(
             context.persona, context.arrival_hour, context.concurrent_visitors_in_hour,
@@ -173,6 +174,7 @@ class PatternIntentImpulseEngine:
                 stage2_user + situation, max_retries=2, seed=stage_seed("catalog"), route=context.persona.id,
             )
             selected = {code: records[code] for code in candidates.codes}
+            intent_records = selected
             intent = await self._llm.generate_structured_async(
                 stage2_intent.catalog_response_model(IntentResponse, selected),
                 stage2_intent.build_system_prompt(context.store, currency, records=selected, focused=True),
@@ -180,9 +182,7 @@ class PatternIntentImpulseEngine:
             )
             recovery_trace["catalog_recovery"] = {"selected_codes": candidates.codes,
                                                   "selected_skus": [item.sku for item in selected.values()]}
-        # Keep request-local schema classes at the model boundary, so repeated
-        # cached visits have the same canonical action types and equality.
-        intent = IntentResponse.model_validate(intent.model_dump())
+        intent = stage2_intent.decode_catalog_response(IntentResponse, intent, intent_records, context.store)
         for a in intent.actions:
             a.origin = "planned"
             if a.action in (Action.BUY, Action.PAY):
@@ -227,9 +227,9 @@ class PatternIntentImpulseEngine:
                 stage2_intent.catalog_response_model(ImpulseResponse, impulse_records), stage3_system, stage3_user + situation,
                 seed=stage_seed("stage3"), route=context.persona.id,
             )
+            impulse = stage2_intent.decode_catalog_response(ImpulseResponse, impulse, impulse_records, context.store)
         else:
             impulse = ImpulseResponse()
-        impulse = ImpulseResponse.model_validate(impulse.model_dump())
         impulse_actions: list[CustomerAction] = []
         valid_impulse, dropped_impulse_invalid = drop_invalid_buys(impulse.actions, context.store)
         dropped_invalid += dropped_impulse_invalid

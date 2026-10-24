@@ -24,7 +24,7 @@ from tests.engine.test_llm_impulse_exposure import fixture
 @pytest.mark.parametrize("ordering", ["planned", "nearest"])
 @pytest.mark.parametrize("exposure", ["adjacency", "visibility"])
 @pytest.mark.parametrize("sku", ["opaque_0123456789abcdef0123456789abcdef", "@P1"])
-def test_impulse_reference_decodes_before_cache_trace_and_purchase(monkeypatch, tmp_path, mode, ordering, exposure, sku):
+def test_impulse_reference_decodes_after_cache_before_trace_and_purchase(monkeypatch, tmp_path, mode, ordering, exposure, sku):
     store, intent = fixture()
     store.racks[0].slots[0].items[0].sku = sku
     store.racks[0].slots[0].items[0].name = "Visible tea"

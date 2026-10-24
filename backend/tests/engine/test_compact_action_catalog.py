@@ -21,7 +21,7 @@ from tests.engine.test_llm_engine_offline import _context, _intent, _persona
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
 @pytest.mark.parametrize("ordering", ["planned", "nearest"])
 @pytest.mark.parametrize("sku", ["g_0123456789abcdef0123456789abcdef", "@P1", "상품/코드\"🛒"])
-def test_http_catalog_references_restore_real_skus_before_execution_and_cache(monkeypatch, tmp_path, collision_store, mode, ordering, sku):
+def test_http_catalog_references_restore_real_skus_before_execution_after_cache(monkeypatch, tmp_path, collision_store, mode, ordering, sku):
     collision_store.racks[0].slots[0].items[0].sku = sku
     original_store = collision_store.model_dump()
     original = llm_client.litellm.acompletion
@@ -113,7 +113,9 @@ def test_identical_visible_catalogs_keep_distinct_sku_mappings_in_cache_and_conc
                 structured_output=mode, cache_dir=str(tmp_path)))
 
             async def request(index):
-                return await client.generate_structured_async(schemas[index], prompts[index], "Buy A item")
+                raw = await client.generate_structured_async(schemas[index], prompts[index], "Buy A item")
+                return stage2_intent.decode_catalog_response(stage2_intent.IntentResponse, raw,
+                    stage2_intent.catalog_records(stores[index]), stores[index])
 
             if concurrent:
                 first = await asyncio.gather(*(request(i) for i in range(6)))
@@ -124,7 +126,7 @@ def test_identical_visible_catalogs_keep_distinct_sku_mappings_in_cache_and_conc
             assert [reply.model_dump() for reply in first] == [reply.model_dump() for reply in second]
             assert len(calls) == client.get_usage().cached_requests == 6
             saved = [json.loads(path.read_text())["result"]["actions"][0]["product_sku"] for path in tmp_path.glob("*/*.json")]
-            assert set(saved) == set(expected)
+            assert saved == ["@P1"] * len(expected)  # Cache preserves the selected offer; mapping stays request-local.
 
     asyncio.run(exercise())
 
@@ -152,7 +154,9 @@ def test_offer_table_keeps_price_name_promotion_and_every_repeated_placement(col
     schema = stage2_intent.catalog_response_model(stage2_intent.IntentResponse, records)
     response = schema.model_validate_json(json.dumps({"actions": [
         {"nav": "path", "action": "buy", "product_sku": code, "target": [1, 0], "face": "E"} for code in records]}), strict=True)
-    assert [action.product_sku for action in response.actions] == [item.sku for item in records.values()]
+    assert [action.product_sku for action in response.actions] == list(records)
+    decoded = stage2_intent.decode_catalog_response(stage2_intent.IntentResponse, response, records, collision_store)
+    assert [action.product_sku for action in decoded.actions] == [item.sku for item in records.values()]
     assert collision_store.model_dump() == before
 
 

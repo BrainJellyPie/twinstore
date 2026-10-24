@@ -15,10 +15,13 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, cr
 
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
-from store_emulator.domain.rack import RackType, SlotItem
+from store_emulator.domain.rack import Rack, RackType, SlotItem
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
+from store_emulator.domain.types import Action
 from store_emulator.engine.prompting import format_budget, format_price, price_unit_rule
+from store_emulator.engine.routing.route_builder import face_access_tile
+from store_emulator.engine.routing.store_lookup import resolve_buy_placement
 from .prompt_utils import format_cue_prompt
 
 LEVEL_PREFERENCE_GUIDE = [
@@ -130,7 +133,7 @@ def catalog_records(store: Store) -> dict[str, SlotItem]:
 
 
 def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, SlotItem]) -> type[T]:
-    """Decode prompt references before caching, with the original SKU mapping in cache identity."""
+    """Keep offer references in cached answers until the engine binds their exact placement."""
     mapping = {code: item.sku for code, item in records.items()}
     digest = hashlib.sha256(json.dumps(mapping, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     constraints: dict[str, JsonValue] = {"enum": ["", *mapping]}
@@ -138,15 +141,42 @@ def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, 
     class CatalogAction(GeneratedAction):
         product_sku: str = Field(default="", json_schema_extra=constraints)
 
-        @field_validator("product_sku")
-        @classmethod
-        def _canonical_sku(cls, value: str) -> str:
-            # Canonical values from caches and non-grammar providers remain valid.
-            return mapping.get(value, value)
-
     return create_model(base.__name__, __base__=base,
-        __config__=ConfigDict(json_schema_extra={"$comment": f"catalog-sku-map:{digest}"}),
+        __config__=ConfigDict(json_schema_extra={"$comment": f"catalog-offer-codes-v2:{digest}"}),
         actions=(list[CatalogAction], Field(default_factory=list[CatalogAction])))
+
+
+def decode_catalog_response[T: IntentResponse](base: type[T], response: IntentResponse,
+                                              records: dict[str, SlotItem], store: Store) -> T:
+    """Bind model codes to real offers after stripping all model-supplied internal hints."""
+    result = base.model_validate(response.model_dump())
+    grid = store.walkable_grid()
+    for action in result.actions:
+        item = records.get(action.product_sku)
+        if item is None:
+            continue  # Canonical SKUs from non-grammar providers keep legacy stance resolution.
+        if action.action != Action.BUY:
+            action.product_sku = item.sku
+            continue
+        racks: list[Rack] = []
+        for rack in store.racks:
+            slots = [slot for slot in rack.slots
+                     if (candidate := next((i for i in slot.items if i.sku == item.sku), None)) is not None
+                     and (candidate.name, candidate.price, candidate.promo) == (item.name, item.price, item.promo)
+                     and not any(lock.block == slot.block and lock.face == slot.face for lock in rack.locked_faces)
+                     and face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block) is not None]
+            if slots:
+                racks.append(rack.model_copy(update={"slots": slots}))
+        placement = resolve_buy_placement(store.model_copy(update={"racks": racks}),
+                                          target=action.target, face=action.face, sku=item.sku)
+        if placement is None:
+            continue  # The unknown code is dropped by the existing guard, never replaced by a different offer.
+        rack, slot = placement
+        action.product_sku = item.sku
+        action.target = face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block)
+        action.face = slot.face
+        action.product_block, action.product_level = slot.block, slot.level
+    return result
 
 
 def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[str, SlotItem] | None = None,
