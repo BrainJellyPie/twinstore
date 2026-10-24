@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Enforce requested staff/till ceilings on the operations planner's starting
+  recommendation, hourly overrides and overlapping shifts. An out-of-limit
+  current plan can no longer win on revenue or escape through an expired search
+  budget; baseline comparisons and retention projections remain consistent.
+
 - Preserve exact SKU identity in scenario discounts and stockouts when product
   codes differ only by case. Retain case-insensitive SKU lookup only when it is
   unambiguous, keeping scenario previews and actual effects consistent.

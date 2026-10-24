@@ -85,6 +85,36 @@ def plan_operations(
     tried = 0
     cache: dict[str, _Tried] = {}
 
+    def bounded(config: OperationsConfig) -> OperationsConfig:
+        updates: dict[str, object] = {}
+        if config.crew is None and max_tills is not None:
+            opened = config.open_counters
+            if opened is not None:
+                opened = min(opened, max_tills)
+            elif tills > max_tills:
+                opened = max_tills
+            updates.update(open_counters=opened,
+                           till_schedule={hour: min(n, max_tills) for hour, n in config.till_schedule.items()})
+        elif config.crew is not None and max_crew is not None:
+            updates.update(crew=min(config.crew, max_crew),
+                           crew_schedule={hour: min(n, max_crew) for hour, n in config.crew_schedule.items()})
+            # Respect simultaneous staff, not just each shift's headcount. Keep
+            # earlier shifts first and preserve their days and duration.
+            covered = [[0] * 24 for _ in range(7)]
+            shifts: list[CrewShift] = []
+            for shift in config.crew_shifts:
+                days = shift.days or list(range(1, 8))
+                room = min(max_crew - covered[day - 1][hour] for day in days for hour in range(shift.start, shift.end))
+                staff = min(shift.staff, room)
+                if staff <= 0:
+                    continue
+                shifts.append(shift.model_copy(update={"staff": staff}))
+                for day in days:
+                    for hour in range(shift.start, shift.end):
+                        covered[day - 1][hour] += staff
+            updates["crew_shifts"] = shifts
+        return config.model_copy(update=updates) if updates else config
+
     def run(config: OperationsConfig) -> _Tried:
         nonlocal tried
         key = config.model_dump_json()
@@ -96,7 +126,10 @@ def plan_operations(
         return cache[key]
 
     now_tried = run(current)
-    best_config, best_tried = current, now_tried
+    # The original remains the comparison baseline, but cannot win outside the
+    # requested feasible set, even when the search deadline has already elapsed.
+    best_config = bounded(current)
+    best_tried = run(best_config)
 
     def consider(candidates: Iterable[OperationsConfig]) -> None:
         nonlocal best_config, best_tried, stopped
@@ -104,6 +137,7 @@ def plan_operations(
             if tried >= _MAX_REPLAYS or time.monotonic() > deadline:
                 stopped = True
                 return
+            candidate = bounded(candidate)
             result = run(candidate)
             if _better(result, best_tried):
                 best_config, best_tried = candidate, result
@@ -189,11 +223,11 @@ def plan_operations(
             settings["crew_shifts"] = shifts
             if not shifts:
                 settings["crew_schedule"] = {f"{hour:02d}": 0 for hour in range(24)}
-            best_config = OperationsConfig.model_validate(settings)
+            best_config = bounded(OperationsConfig.model_validate(settings))
             best_tried = run(best_config)
         if not best_config.crew_shifts and hours and days:
             need = {hour: max(best_config.crew_on_duty(day, hour) for day in days) for hour in hours}
-            covering = best_config.model_copy(update={"crew_shifts": cover(need, rules)})
+            covering = bounded(best_config.model_copy(update={"crew_shifts": cover(need, rules)}))
             # The roster replaces the hourly plan even when it costs more: hourly numbers are not a rota anyone works.
             best_config, best_tried = covering, run(covering)
         for _ in range(3):
