@@ -1,12 +1,14 @@
 """Shopper journeys and interviews for a finished run.
 
-Transcripts live next to the run in `interviews/`. IDs outside the legacy filename alphabet
-use `interviews/by-id/<digest>.json`; group interviews use `group_interviews/<group_id>.json`.
+Transcripts use `interviews/by-id/<digest>.json`, independent of filesystem case rules.
+Legacy literal filenames remain readable; group interviews use `group_interviews/<group_id>.json`.
 """
 
 import asyncio
 import hashlib
 import logging
+import ntpath
+import os
 import random
 import re
 import uuid
@@ -121,20 +123,30 @@ def _transcript_path(pid: str, run_id: str, persona_id: str) -> Path:
     if not persona_id.strip():
         raise AppError("shopper id must not be blank", 400)
     root = _run_dir(pid, run_id) / "interviews"
-    if _ID.fullmatch(persona_id):
-        return root / f"{persona_id}.json"
-    # A separate namespace cannot collide with an existing literal hexadecimal customer ID.
+    # Literal IDs can alias each other on Windows/macOS, or name a Windows device.
     return root / "by-id" / f"{hashlib.sha256(persona_id.encode()).hexdigest()}.json"
 
 
+def _transcript_paths(pid: str, run_id: str, persona_id: str) -> list[Path]:
+    current = _transcript_path(pid, run_id, persona_id)
+    paths = [current]
+    legacy = current.parent.parent / f"{persona_id}.json"
+    if _ID.fullmatch(persona_id) and (os.name != "nt" or not ntpath.isreserved(legacy.name)):
+        paths.append(legacy)
+    return paths
+
+
 def get_interview(pid: str, run_id: str, persona_id: str) -> Interview:
-    path = _transcript_path(pid, run_id, persona_id)
-    if not path.exists():
-        _, personas, _, _ = _load(pid, run_id)
-        if persona_id not in personas:   # an empty transcript for nobody read as a shopper who said nothing
-            raise AppError(f"shopper not in this run: {persona_id}", 404)
-        return Interview(run_id=run_id, persona_id=persona_id)
-    return Interview.model_validate(read_json(path))
+    for path in _transcript_paths(pid, run_id, persona_id):
+        if path.exists():
+            transcript = Interview.model_validate(read_json(path))
+            # A legacy filename may resolve to a differently cased customer's file.
+            if transcript.persona_id == persona_id and transcript.run_id == run_id:
+                return transcript
+    _, personas, _, _ = _load(pid, run_id)
+    if persona_id not in personas:   # an empty transcript for nobody read as a shopper who said nothing
+        raise AppError(f"shopper not in this run: {persona_id}", 404)
+    return Interview(run_id=run_id, persona_id=persona_id)
 
 
 def _interview_lock_path(pid: str, run_id: str, persona_id: str) -> Path:
@@ -159,7 +171,21 @@ def _interview_lock(pid: str, run_id: str, persona_id: str) -> Iterator[None]:
 
 def clear_interview(pid: str, run_id: str, persona_id: str) -> None:
     with _interview_lock(pid, run_id, persona_id), setup_tree_transaction(pid):
-        _transcript_path(pid, run_id, persona_id).unlink(missing_ok=True)
+        paths = _transcript_paths(pid, run_id, persona_id)
+        # The digest is exclusive to this customer; reset must also remove damaged JSON.
+        paths[0].unlink(missing_ok=True)
+        for path in paths[1:]:
+            if path.exists():
+                try:
+                    transcript = Interview.model_validate(read_json(path))
+                except ValueError:
+                    # Ownership of damaged legacy data is unknown. Reset this customer
+                    # without deleting a potentially differently cased customer's file.
+                    empty = Interview(run_id=run_id, persona_id=persona_id)
+                    write_json(paths[0], empty.model_dump(mode="json"))
+                    continue
+                if transcript.persona_id == persona_id and transcript.run_id == run_id:
+                    path.unlink(missing_ok=True)
 
 
 def interview(pid: str, run_id: str, persona_id: str, q: InterviewQuestion, config: SimulationConfig) -> Interview:

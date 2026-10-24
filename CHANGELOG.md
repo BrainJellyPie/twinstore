@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep shopper interviews separate on case-insensitive disks and support Windows
+  device-name customer IDs. New transcripts use exact-ID digests; legacy records
+  are read or removed only for their recorded owner, preserving unrelated history.
+
 - Retain paired experiment evidence for accepted shopper IDs, including Unicode,
   spaces, punctuation and scenario/neighborhood clone suffixes. These labels no
   longer trigger file-resource ID validation and silently disable factorial review.
