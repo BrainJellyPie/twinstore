@@ -8,10 +8,12 @@ import pytest
 from store_emulator.application import simulation
 from store_emulator.server.main import app
 from tests.engine.test_pos_formula_cells import workbook
+from tests.engine.test_pos_array_formula_cells import array_workbook
 
 
 @pytest.mark.parametrize("column", ["sku", "quantity", "unit_price"])
-def test_unreadable_pos_cells_preserve_existing_reports(tmp_path, monkeypatch, column):
+@pytest.mark.parametrize("array", [False, True])
+def test_unreadable_pos_cells_preserve_existing_reports(tmp_path, monkeypatch, column, array):
     monkeypatch.chdir(tmp_path)
     base = tmp_path / "run"
     output = base / "output"
@@ -24,7 +26,8 @@ def test_unreadable_pos_cells_preserve_existing_reports(tmp_path, monkeypatch, c
     monkeypatch.setattr(simulation, "load_run_store", load_store)
     with TestClient(app, raise_server_exceptions=False) as client:
         response = client.post("/api/projects/proj_test/runs/run_test/fidelity", files={
-            "file": ("pos.xlsx", workbook(column, "=1+1"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            "file": ("pos.xlsx", array_workbook(column) if array else workbook(column, "=1+1"),
+                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         })
     assert response.status_code == 400, response.text
     assert "formula without a saved result" in response.json()["detail"]

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate saved results across POS XLSX array-formula ranges, including missing
+  child cells and tails beyond existing rows. Prevent silent SKU loss and default
+  quantities/prices while bounding declared array areas and cache-tracking memory.
+
 - Stop VLM layout judging when more than half an arm's entrance/shelf model
   calls fail, even if fallback customer journeys complete. Reject a bad pilot
   before calibration and further judging; disclose smaller failure counts in
