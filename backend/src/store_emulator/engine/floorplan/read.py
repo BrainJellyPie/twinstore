@@ -18,7 +18,7 @@ from typing import Annotated, Literal, Protocol, Self
 import numpy as np
 import numpy.typing as npt
 from PIL import Image, ImageOps
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from store_emulator.domain.floorplan import FixtureKind, FloorPlanReading, PlanFixture
 from store_emulator.engine.capture.detect import image_data_url
@@ -220,6 +220,11 @@ class _VLMFixture(BaseModel):
                                       description="[x1, y1, x2, y2] on a 0–1000 scale of the whole image")
     label: str = Field(default="", max_length=60)
 
+    @field_validator("label", mode="before")
+    @classmethod
+    def unknown_label(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class _VLMPlan(BaseModel):
     outline: list[ImageCoordinate] = Field(min_length=4, max_length=4,
@@ -228,6 +233,11 @@ class _VLMPlan(BaseModel):
                            description="outer width in metres if a scale or dimensions are written, else 0")
     depth_m: float = Field(default=0.0, ge=0, allow_inf_nan=False)
     fixtures: list[_VLMFixture] = []
+
+    @field_validator("width_m", "depth_m", mode="before")
+    @classmethod
+    def unknown_dimension(cls, value: object) -> object:
+        return 0.0 if value is None else value
 
     @model_validator(mode="after")
     def positive_outline(self) -> Self:
@@ -258,8 +268,8 @@ The outline runs from top-left to bottom-right: x1 < x2 and y1 < y2.
 Every fixture must overlap the store outline. Shelves, gondolas, fridges, freezers and counters need
 positive width and height inside it; an entrance may be a line or point on the boundary.
 If the plan writes dimensions or a scale bar, give the outer width and depth in metres; otherwise 0.
-Dimensions must be finite and nonnegative; do not use NaN or Infinity.
-Copy any category words written on a fixture into label ("drinks", "snacks", "noodles", …), else ""."""
+Dimensions must be finite and nonnegative; use 0 for unreadable dimensions, not null, NaN or Infinity.
+Copy any category words written on a fixture into label ("drinks", "snacks", "noodles", …), else "" (not null)."""
 
 
 def _unit(v: float) -> float:

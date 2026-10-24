@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve valid model-read floor plans when unreadable scale dimensions or
+  fixture labels are null. Use the existing unscaled aspect-ratio inference
+  and blank-label defaults, retaining strict geometry and numeric validation.
+
 - Preserve complete vision-model storefront ratings when the optional reason
   is null. Keep all measured scores and the resulting venue attractiveness,
   while malformed or missing measurements still fail without saving changes.
