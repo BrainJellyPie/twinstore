@@ -10,7 +10,7 @@ from typing import Annotated, Self, cast
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
 from litellm.exceptions import BadRequestError
-from pydantic import BaseModel, Field, JsonValue, create_model, field_validator, model_validator
+from pydantic import BaseModel, Field, JsonValue, ValidationInfo, create_model, field_validator, model_validator
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
@@ -43,6 +43,11 @@ class HourlyProfile(BaseModel):
     hour: int = Field(ge=0, le=23, strict=True)
     visitor_count: int = Field(ge=0, strict=True)
     person_types: list[PersonaLabel] = Field(max_length=10)
+
+    @field_validator("person_types", mode="before")
+    @classmethod
+    def _empty_hour_types(cls, value: object, info: ValidationInfo) -> object:
+        return [] if value is None and info.data.get("visitor_count") == 0 else value
 
     @field_validator("person_types")
     @classmethod
@@ -229,7 +234,7 @@ DAILY_TRAFFIC_PROMPT = """당신은 상권 분석 전문가입니다.
 규칙:
 - hourly_profiles: 영업 슬롯 **H ∈ [{open_hour}, {close_hour})**를 시간순으로 한 번씩 작성.
   각 행은 visitor_count와 person_types만 포함. hour는 출력하지 마세요. 시스템이 순서대로 시간을 부여합니다.
-  아래 제공된 슬롯 목록의 각 줄마다 반드시 한 행씩 반환하세요. 방문객이 없는 슬롯도 visitor_count=0, person_types=[]로 포함하세요.
+  아래 제공된 슬롯 목록의 각 줄마다 반드시 한 행씩 반환하세요. 방문객이 없는 슬롯도 visitor_count=0, person_types=[]로 포함하세요 (null이 아닌 빈 목록).
   각 H는 H:00–(H+1):00 슬롯입니다. 예: 영업 17~18시면 한 행만 반환하며 이 행은 H=17입니다.
 - visitor_count: 해당 시간대의 예상 방문객 수 (0 이상 정수).
   하루 총 방문객 수는 매장 입지/규모/상권 특성과 요일에 맞게 합리적으로 추론하여 결정.

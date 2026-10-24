@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Accept null customer-type lists only for hourly estimates with exactly zero
+  visitors. Empty hours no longer invalidate a whole day's customer generation;
+  preserve positive traffic, strict visitor counts and malformed-label checks.
+
 - Keep applicable automatic layout edits and A/B drafts when optional summaries,
   rationale or focus-product lists are null. Preserve exact operations, currency
   conversion, explicit focus products and the existing changed-product fallback.
