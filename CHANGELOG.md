@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.13 — Reliable local model automation and faithful shopper decisions
+
 - Assign traffic hours in the harness from the store's opening slots. Local
   grammars now request exactly one count/type row per open slot without asking
   the model to reproduce clock IDs, preventing repeated hours and empty lists.

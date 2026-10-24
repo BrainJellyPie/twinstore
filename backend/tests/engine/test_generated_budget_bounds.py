@@ -35,7 +35,7 @@ def test_out_of_range_budget_is_corrected_before_customer_cache(tmp_path, monkey
             name = body["response_format"]["json_schema"]["name"]
             if name == "TradeAreaProfile":
                 payload = dict(keywords=["local"], identities=["resident"], purposes=["groceries"])
-            elif name == "DailyTrafficResult":
+            elif "hourly_profiles" in body["response_format"]["json_schema"]["schema"]["properties"]:
                 payload = {"hourly_profiles": [{"hour": 9, "visitor_count": 1, "person_types": ["resident"]}]}
             else:
                 assert name == "PersonaBatch"
