@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bind model purchases to reachable copies of the selected offer. Identical stock
+  in another disconnected area no longer makes a locally available purchase fail
+  because that rack happened to appear first. Canonical-SKU responses retain their
+  selected offer, and different prices/names/promotions are never substituted.
+
 - Exclude model purchases the current shopper cannot reach before applying budget
   and product-count limits. Stock in a disconnected area with its own entrance
   no longer consumes the shopper's allowance or prunes reachable planned/impulse

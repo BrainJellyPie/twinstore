@@ -205,7 +205,8 @@ class PatternIntentImpulseEngine:
             )
             recovery_trace["catalog_recovery"] = {"selected_codes": candidates.codes,
                                                   "selected_skus": [item.sku for item in selected.values()]}
-        intent = stage2_intent.decode_catalog_response(IntentResponse, intent, intent_records, context.store)
+        intent = stage2_intent.decode_catalog_response(IntentResponse, intent, intent_records, context.store,
+                                                        pathfinder=self._pathfinder)
         for a in intent.actions:
             a.origin = "planned"
             if a.action in (Action.BUY, Action.PAY):
@@ -253,7 +254,7 @@ class PatternIntentImpulseEngine:
                 seed=stage_seed("stage3"), route=context.persona.id,
             )
             impulse = stage2_intent.decode_catalog_response(ImpulseResponse, impulse, impulse_records, context.store,
-                                                            exposed=exposed)
+                                                            exposed=exposed, pathfinder=self._pathfinder)
         else:
             impulse = ImpulseResponse()
         impulse_actions: list[CustomerAction] = []
