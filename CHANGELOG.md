@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Resolve `PARASTORE_LOCAL_API_KEY` for named llama.cpp and vLLM providers before
+  building requests. Connecting OpenAI no longer causes its environment key to
+  override the configured local-server key. Provider Settings keys remain first.
+
 - Constrain virtual shelf-test responses to the badge numbers actually shown in
   each image. Invalid picks and noticed numbers get one correction before caching;
   empty faces permit only no purchase and no noticed products. Repeated invalid

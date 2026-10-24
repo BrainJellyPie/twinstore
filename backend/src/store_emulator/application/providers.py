@@ -87,7 +87,8 @@ PRESETS: dict[ProviderKind, ProviderPreset] = {
     ),
     ProviderKind.VLLM: ProviderPreset(
         kind=ProviderKind.VLLM, label="vLLM (self-hosted)", litellm_prefix="openai",
-        default_api_base="http://127.0.0.1:8001/v1", needs_key=False, structured_output="json_schema", local=True,
+        default_api_base="http://127.0.0.1:8001/v1", api_key_env="PARASTORE_LOCAL_API_KEY",
+        needs_key=False, structured_output="json_schema", local=True,
         docs_url="https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html",
         models=[
             ModelSuggestion(id="Qwen/Qwen3.5-9B", label="Qwen3.5-9B (served name)", vision=True),
@@ -101,7 +102,8 @@ PRESETS: dict[ProviderKind, ProviderPreset] = {
     ),
     ProviderKind.LLAMACPP: ProviderPreset(
         kind=ProviderKind.LLAMACPP, label="llama.cpp server", litellm_prefix="openai",
-        default_api_base="http://127.0.0.1:8081/v1", needs_key=False, structured_output="json_schema", local=True,
+        default_api_base="http://127.0.0.1:8081/v1", api_key_env="PARASTORE_LOCAL_API_KEY",
+        needs_key=False, structured_output="json_schema", local=True,
         models=[ModelSuggestion(id="local", label="Model loaded in llama-server", vision=True)],
     ),
     ProviderKind.OPENROUTER: ProviderPreset(
