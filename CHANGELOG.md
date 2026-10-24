@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Require an explicit fixture list in model-read floor plans. An omitted list
+  now retries and follows the selected reader's failure handling instead of
+  importing an empty store. A deliberate `fixtures: []` remains valid.
+
 - Recognize reasoning responses whose opening tag was supplied in the prompt.
   A standalone closing tag now separates thoughts from the final JSON or
   uploaded-data summary, preventing reasoning examples from becoming cached

@@ -232,7 +232,7 @@ class _VLMPlan(BaseModel):
     width_m: float = Field(default=0.0, ge=0, allow_inf_nan=False,
                            description="outer width in metres if a scale or dimensions are written, else 0")
     depth_m: float = Field(default=0.0, ge=0, allow_inf_nan=False)
-    fixtures: list[_VLMFixture] = []
+    fixtures: list[_VLMFixture]
 
     @field_validator("width_m", "depth_m", mode="before")
     @classmethod
@@ -262,6 +262,7 @@ Find the store's outer walls and every fixture inside them. Kinds:
 - fridge: reach-in coolers / chillers (usually along a wall); freezer: chest or upright freezers
 - shelf: a shelf against a wall (one side shopped); gondola: a free-standing double-sided shelf in the floor
 - counter: the checkout / cash desk; entrance: the door or opening in the outer wall
+Always include the fixtures list. Use [] only when the drawing has no fixtures; do not omit it.
 Give every box as [x1, y1, x2, y2] on a 0–1000 scale of the whole image (x right, y down).
 Every box and outline must contain exactly four finite numbers between 0 and 1000.
 The outline runs from top-left to bottom-right: x1 < x2 and y1 < y2.
