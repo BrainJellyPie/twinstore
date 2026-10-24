@@ -8,7 +8,7 @@ keeping. Nothing starts; the settings fill the dialog.
 
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.domain.optimize import OptimizeObjective, OptimizeScope
 from store_emulator.domain.store import Store
@@ -33,6 +33,11 @@ class _Goal(BaseModel):
     min_improvement_percent: float | None = Field(default=None, description="smallest gain worth keeping, in percent")
     rationale: str = Field(default="", max_length=400)
 
+    @field_validator("rationale", mode="before")
+    @classmethod
+    def _optional_rationale(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class OptimizeGoal(BaseModel):
     objective: OptimizeObjective
@@ -54,7 +59,7 @@ GOAL_PROMPT = """You set up a store-layout optimizer from a manager's goal. Choo
 - max_moves only when the goal limits how much may change; keep_fridges_on_walls true or false only when the goal
   says so; locked_shelves: listed shelves the goal says must not change, exactly as listed; min_improvement_percent
   only when the goal names a smallest gain worth keeping;
-- a short rationale.
+- a short rationale; use an empty string, not null, when none is given.
 Write in English."""
 
 

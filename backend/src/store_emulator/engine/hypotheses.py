@@ -9,7 +9,7 @@ where they are checked.
 from collections.abc import Sequence
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.domain.interview import AnalystMessage, GroupInterview
 from store_emulator.domain.store import Store
@@ -30,6 +30,11 @@ class Hypothesis(BaseModel):
     kind: TestKind = "ab_test"
     why: str = Field(default="", max_length=200, description="what the shoppers or the analyst said that it checks")
 
+    @field_validator("why", mode="before")
+    @classmethod
+    def _optional_reason(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 class _Hypotheses(BaseModel):
     tests: list[Hypothesis] = Field(default_factory=list[Hypothesis], max_length=6)
@@ -42,7 +47,8 @@ test can answer, each with the tool that answers it:
 - shelf_test: whether one product's new pack, price or sign stands out on its shelf;
 - concept_test: how shoppers rate product packs or ideas shown as pictures.
 Name products and shelves exactly as listed, ask one change per question, and say in a few words what each one checks.
-What shoppers said is a hypothesis, not a finding. Write in English."""
+What shoppers said is a hypothesis, not a finding. Use an empty string, not null, when no why explanation is given.
+Write in English."""
 
 
 def _layout(store: Store, hint: str) -> str:

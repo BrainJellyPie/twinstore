@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve valid assistive routing, optimizer settings, staff scripts and test
+  hypotheses when their optional explanation is null. Required content and
+  choices, unavailable-tool checks and shelf-lock validation remain intact.
+
 - Keep valid trading-day scenarios when optional notes, event commentary or
   promotion labels are null. Preserve their exact discounts, stock-outs, event
   hours and weekday restrictions; operational lists remain strictly validated.

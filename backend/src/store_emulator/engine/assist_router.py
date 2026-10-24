@@ -7,7 +7,7 @@ opens drafts the rest from the same words.
 
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 Destination = Literal[
     "ab_test", "shelf_test", "conjoint", "concept_test", "staff_script", "layout_edit", "area", "run_question",
@@ -25,6 +25,11 @@ class StructuredLLM(Protocol):
 class AssistRoute(BaseModel):
     destination: Destination
     reason: str = Field(default="", max_length=160, description="a few words on why")
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _optional_reason(cls, value: object) -> object:
+        return "" if value is None else value
 
 
 ROUTER_PROMPT = """You route a store manager's request to the right tool of a store simulator:
@@ -44,7 +49,7 @@ ROUTER_PROMPT = """You route a store manager's request to the right tool of a st
 - optimize: let the optimizer search for a better layout towards a goal (more sales, conversion or impulse buys,
   shorter walks), possibly with limits on what may change;
 - none: anything else.
-{run_note}Pick one and give a few words on why."""
+{run_note}Pick one and give a few words on why. Use an empty string, not null, when no reason is given."""
 
 
 async def route_request(llm: StructuredLLM, text: str, *, has_run: bool) -> AssistRoute:
