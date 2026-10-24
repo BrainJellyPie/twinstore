@@ -8,7 +8,7 @@ from starlette.concurrency import run_in_threadpool
 from store_emulator.application import run_analyst
 from store_emulator.application import simulation as sim_service
 from store_emulator.application import town as town_service
-from store_emulator.application.async_executor import executor
+from store_emulator.application.async_executor import executor, submit_background
 from store_emulator.application.errors import AppError
 from store_emulator.application.movement import MAX_TRACK_BYTES
 from store_emulator.application.operations_lab import PlanRequest, ReplayRequest, plan_run, replay_run
@@ -195,11 +195,16 @@ async def start_simulation(pid: str, req: SimulateRequest) -> SimulationStartRes
         raise HTTPException(e.status_code, str(e))
 
     options = options.model_copy(update={"operations": operations})
-    executor.submit(
-        sim_service.run_simulation_background,
-        pid, run_id, req.setup_id, store, personas,
-        config, address, customer_profile, options,
-    )
+    try:
+        submit_background(
+            executor, sim_service.run_simulation_background,
+            pid, run_id, req.setup_id, store, personas,
+            config, address, customer_profile, options,
+        )
+    except RuntimeError as exc:
+        message = "Could not start the simulation. Please retry when the worker is available."
+        await run_in_threadpool(sim_service.fail_simulation, pid, run_id, req.setup_id, message, preview=options.preview)
+        raise HTTPException(503, message) from exc
 
     return SimulationStartResponse(project_id=pid, run_id=run_id, setup_id=req.setup_id)
 

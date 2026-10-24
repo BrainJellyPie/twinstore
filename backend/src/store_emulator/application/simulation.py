@@ -426,17 +426,22 @@ def run_simulation_background(
 
     except Exception as e:
         error = f"{e}\n{traceback.format_exc()}"
-        if not options.preview:
-            try:
-                with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
-                    setup = read_setup(pid, setup_id)
-                    setup["status"] = "draft"
-                    if setup.get("runId") == run_id:
-                        setup.pop("runId")  # Completion publication may have failed after the layout was finalized.
-                    write_setup(pid, setup_id, setup)
-            except Exception:
-                logger.warning("Could not reset setup %s/%s after failed run %s", pid, setup_id, run_id, exc_info=True)
-        write_status(pid, run_id, "failed", error)
+        fail_simulation(pid, run_id, setup_id, error, preview=options.preview)
+
+
+def fail_simulation(pid: str, run_id: str, setup_id: str, error: str, *, preview: bool) -> None:
+    """Release a failed run's layout before publishing its terminal status, including rejected submissions."""
+    if not preview:
+        try:
+            with FileLock(str(setup_lock_path(pid, setup_id)), timeout=10):
+                setup = read_setup(pid, setup_id)
+                setup["status"] = "draft"
+                if setup.get("runId") == run_id:
+                    setup.pop("runId")  # Completion publication may have failed after the layout was finalized.
+                write_setup(pid, setup_id, setup)
+        except Exception:
+            logger.warning("Could not reset setup %s/%s after failed run %s", pid, setup_id, run_id, exc_info=True)
+    write_status(pid, run_id, "failed", error)
 
 
 def _run_base(pid: str, run_id: str) -> Path:

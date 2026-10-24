@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Recover simulation starts rejected by the worker: record a failed run and
+  restore its draft layout instead of leaving it running indefinitely. Preview
+  failures preserve finalized layouts, and rejected queued runs cannot execute
+  later or recreate a deleted project.
+
 - Prevent rejected photo-analysis jobs from running later when the executor
   recovers. Deleted photos and project directories stay deleted. Photo analysis
   and customer generation now share the guarded background submission path.
