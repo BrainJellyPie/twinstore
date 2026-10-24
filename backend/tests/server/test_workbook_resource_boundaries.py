@@ -55,6 +55,7 @@ def test_sparse_workbook_is_rejected_before_dataframe_loading(monkeypatch, kind)
     assert len(data) < 10_000
     reader = Mock(side_effect=AssertionError("pandas must not allocate the sparse rectangle"))
     monkeypatch.setattr(pos.pd, "read_excel", reader)
+    monkeypatch.setattr(pos.pd, "ExcelFile", reader)
     with pytest.raises(workbooks.WorkbookLimitError, match="empty gaps"):
         pos.parse_pos_csv(data, "visits.XLSX")
     assert supplemental._load_frames(data, ".xlsx") == {}

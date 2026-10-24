@@ -41,9 +41,24 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
     if len(data) > MAX_POS_BYTES:
         raise ValueError(f"POS file too large ({len(data) // (1024 * 1024)} MB > 50 MB)")
     buf = io.BytesIO(data)
+    cell_issues: list[tuple[int, int]] = []
     if filename.lower().endswith((".xlsx", ".xls")):
-        validate_xlsx_budget(data)
-        df = pd.read_excel(buf, header=None, dtype=object, keep_default_na=False)  # type: ignore[reportUnknownMemberType]
+        issues = validate_xlsx_budget(data, collect_cell_issues=True)
+        with pd.ExcelFile(buf) as reader:
+            if issues:
+                sheets: object = getattr(reader.book, "worksheets", None)
+                if not isinstance(sheets, list) or not sheets:
+                    raise ValueError("Cannot identify the POS worksheet containing formula errors.")
+                first_sheet = cast(list[object], sheets)[0]
+                # openpyxl 3.x read-only worksheets retain the exact archive part;
+                # use it rather than assuming sheet1.xml or archive entry order.
+                worksheet_path: object = getattr(first_sheet, "_worksheet_path", None)
+                if not isinstance(worksheet_path, str):
+                    raise ValueError("Cannot identify the POS worksheet containing formula errors.")
+                cell_issues = issues.get(worksheet_path.lstrip("/"), [])
+            # A scalar sheet selection returns one dataframe; pandas' annotation
+            # also includes the dictionaries returned for multiple sheets.
+            df = cast(pd.DataFrame, reader.parse(sheet_name=0, header=None, dtype=object, keep_default_na=False))  # type: ignore[reportUnknownMemberType]
     else:
         try:
             text = data.decode("utf-8-sig")
@@ -54,6 +69,10 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
     # Surplus CSV fields can make pandas infer an index and shift every named column.
     if not isinstance(df.index, pd.RangeIndex):  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]  # pandas stubs
         raise ValueError("POS CSV rows have more fields than the header; quote values containing commas.")
+    for row, column in cell_issues:
+        if row == 1:
+            raise ValueError(f"POS worksheet row {row}, column {column} contains an Excel error or a formula without a saved result. "
+                             "Fix the cell, recalculate and save the workbook, then upload again.")
     if df.empty:
         raise ValueError("POS file is empty or has no column header.")
     # Keep the original header: pandas otherwise renames exact duplicates while
@@ -85,6 +104,12 @@ def parse_pos_csv(data: bytes, filename: str = "pos.csv") -> list[PosLine]:
             f"POS file needs columns for {', '.join(missing)}; accepted names: "
             + "; ".join(f"{k}: {', '.join(_ALIASES[k])}" for k in missing)
         )
+    used_names = set(cols.values()) | {column for _, column in scope_columns}
+    used_columns = {index + 1 for index, column in enumerate(columns) if column in used_names}
+    for row, column in cell_issues:
+        if column in used_columns:
+            raise ValueError(f"POS worksheet row {row}, column {column} contains an Excel error or a formula without a saved result. "
+                             "Fix the cell, recalculate and save the workbook, then upload again.")
 
     @lru_cache(maxsize=4096)
     def parse_timestamp(text: str) -> tuple[date | None, int | None]:
