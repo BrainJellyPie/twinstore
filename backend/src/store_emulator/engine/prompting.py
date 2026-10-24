@@ -91,14 +91,19 @@ def _words(text: str) -> set[str]:
     return out | {w[:-1] for w in out if w.endswith("s") and len(w) > 3}
 
 
-def resolve_listed[T](asked: str, listed: dict[str, T]) -> T | None:
+def resolve_listed[T](asked: str, listed: dict[str, T], *, max_name_length: int | None = None) -> T | None:
     """Resolve an exact or uniquely longest complete name, allowing a copied description after it.
 
     `listed` is keyed by casefolded name. Equal-length matches must refer to the same value.
+    At a model field's limit, a known long-name prefix takes precedence over shorter word matches.
     """
     key = asked.strip().strip('"').strip().casefold()
     if not key:
         return None
+    if max_name_length is not None and len(asked) == max_name_length:
+        matches = [value for name, value in listed.items() if name.startswith(key)]
+        if matches:
+            return matches[0] if all(value == matches[0] for value in matches) else None
     if key in listed:
         return listed[key]
     found = [n for n in listed if n and re.search(rf"(?<!\w){re.escape(n)}(?!\w)", key)]

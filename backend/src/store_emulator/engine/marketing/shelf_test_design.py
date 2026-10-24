@@ -63,6 +63,8 @@ manager's question, draft one test:
   sign such as NEW, SALE, 1+1 or -20%); at least one of them;
 - age_groups only when the question names an age group; otherwise leave it empty (everyone);
 - a short name and rationale.
+If a listed product or image name exceeds 160 characters, copy its first 160 characters.
+That prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.
 Write in English."""
 
 
@@ -88,7 +90,7 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
             for item in slot.items:
                 skus_by_name.setdefault(item.name.strip().casefold(), set()).add(item.sku)
                 first_rack.setdefault(item.sku, rack.id)
-    hit = resolve_listed(draft.product, skus_by_name)
+    hit = resolve_listed(draft.product, skus_by_name, max_name_length=160)
     if hit is None:
         raise ValueError(f'the model chose "{draft.product}", which is not a product of this layout')
     if len(hit) > 1:
@@ -101,7 +103,7 @@ def to_design(draft: _Draft, store: Store, currency: str, packages: Sequence[tup
         images: dict[str, set[str]] = {}
         for name, aid in packages:
             images.setdefault(name.strip().casefold(), set()).add(aid)
-        asset = resolve_listed(draft.package, images)
+        asset = resolve_listed(draft.package, images, max_name_length=160)
         if asset is None or len(asset) != 1:
             warnings.append(f'No unique product image "{draft.package}" in the library (missing or ambiguous name); '
                             "the pack change was left out.")

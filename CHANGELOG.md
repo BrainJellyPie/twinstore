@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Resolve a shelf-test model's bounded long names before matching shorter words.
+  A clipped product or image name no longer selects another short-named item;
+  ambiguous prefixes are refused or reported while valid remaining edits survive.
+
 - Resolve grammar-limited product, shelf and package names in automatic edits
   only when the copied prefix identifies one target. Long names can now retain
   their exact operation; collisions, including an exact short name at the

@@ -15,12 +15,15 @@ from store_emulator.engine.marketing.shelf_test_design import _Draft, design_she
 from tests.engine.test_shelf_design_boundaries import store
 
 
-@pytest.mark.parametrize("product", ["", "   ", "Steak", "Imaginary soda", "Water", "없는 상품"])
+@pytest.mark.parametrize("product", ["", "   ", "Steak", "Imaginary soda", "Water", "없는 상품", "W" * 160])
 @pytest.mark.parametrize("recovers", [False, True])
 def test_invalid_target_gets_one_correction_and_never_poisoned_cache(monkeypatch, tmp_path, product, recovers):
     original = store()
     original.racks[0].slots[0].items.extend([SlotItem(sku="w1", name="Water", price=99),
                                            SlotItem(sku="w2", name="WATER", price=149)])
+    if len(product) == 160:
+        original.racks[0].slots[0].items[-2].name = product
+        original.racks[0].slots[0].items[-1].name = product + " longer name"
     before = original.model_dump_json()
     bad = {"name": "Sign test", "product": product, "promo": "NEW"}
     good = {**bad, "product": "Tea"}
