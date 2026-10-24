@@ -36,6 +36,11 @@ class GeneratedAction(CustomerAction):
     """Model narration is brief; authored and engine-generated domain actions remain unrestricted."""
     description: str = Field(default="", max_length=400)
 
+    @field_validator("dwell", mode="before")
+    @classmethod
+    def _unspecified_dwell(cls, value: object) -> object:
+        return 0 if value is None else value
+
     @field_validator("description", mode="before")
     @classmethod
     def _brief_description(cls, value: object) -> object:
@@ -249,7 +254,7 @@ def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[st
 - action: 행동 유형. enter / move / browse / buy / pay / wander / exit 중 하나
 - target: 아래 rack 의 '접근 타일' 좌표 중 하나 [x, y]
 - face: 고객이 바라보는 rack 면 (N/S/E/W)
-- dwell: 해당 위치 머무는 시간 (초, 최대 120)
+- dwell: 해당 위치 머무는 시간 (초, 0~120). 정하지 않은 시간은 null 대신 기본값 0을 사용
 - product_sku: buy 시 아래 상품 목록의 코드 (예: @P1). 상품명이나 임의의 코드를 쓰지 마세요
 - quantity: buy 시 구매 수량 ({quantity_rule})
 - nav="area" 일 때 area: [x1, y1, x2, y2] 배회 영역

@@ -1,4 +1,4 @@
-"""Null purchase-only fields on non-buy actions must not discard a valid visit."""
+"""Unspecified optional action fields must not discard a valid visit."""
 
 import asyncio
 import json
@@ -22,7 +22,8 @@ from tests.engine.test_llm_engine_offline import _context, _intent, _persona
 
 @pytest.mark.parametrize("mode", ["json", "json_schema"])
 @pytest.mark.parametrize("stage", ["intent", "impulse"])
-@pytest.mark.parametrize("fields", [("product_sku",), ("quantity",), ("product_sku", "quantity")])
+@pytest.mark.parametrize("fields", [("product_sku",), ("quantity",), ("product_sku", "quantity"),
+                                    ("dwell",), ("product_sku", "quantity", "dwell")])
 def test_unused_nulls_preserve_valid_purchases_checkout_exit_and_cache(monkeypatch, tmp_path, collision_store, mode, stage, fields):
     original = llm_client.litellm.acompletion
     calls = []
@@ -36,7 +37,7 @@ def test_unused_nulls_preserve_valid_purchases_checkout_exit_and_cache(monkeypat
             answer = _intent().model_dump(mode="json")
             if stage == "intent":
                 for action in answer["actions"]:
-                    if action["action"] != "buy":
+                    if action["action"] != "buy" or fields == ("dwell",):
                         action.update(dict.fromkeys(fields))
         else:
             assert len(calls) == 3
@@ -45,6 +46,8 @@ def test_unused_nulls_preserve_valid_purchases_checkout_exit_and_cache(monkeypat
                 {"nav": "path", "action": "buy", "target": [1, 0], "face": "W", "product_sku": "sku-b"}]}
             if stage == "impulse":
                 answer["actions"][0].update(dict.fromkeys(fields))
+                if fields == ("dwell",):
+                    answer["actions"][1]["dwell"] = None
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
             "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",
                 "message": {"role": "assistant", "content": json.dumps(answer)}}]})
@@ -74,9 +77,10 @@ def test_unused_nulls_preserve_valid_purchases_checkout_exit_and_cache(monkeypat
 @pytest.mark.parametrize("schema", [IntentResponse, ImpulseResponse])
 @pytest.mark.parametrize("action", [None, "enter", "move", "browse", "pay", "wander", "exit"])
 def test_unused_null_defaults_do_not_mutate_the_supplied_response(schema, action):
-    raw = {"actions": [{"nav": "path", "action": action, "product_sku": None, "quantity": None}]}
+    raw = {"actions": [{"nav": "path", "action": action, "product_sku": None, "quantity": None, "dwell": None}]}
     result = schema.model_validate_json(json.dumps(raw), strict=True)
     assert result.actions[0].product_sku == "" and result.actions[0].quantity == 1
+    assert result.actions[0].dwell == 0 and raw["actions"][0]["dwell"] is None
     assert raw["actions"][0]["product_sku"] is None and raw["actions"][0]["quantity"] is None
 
 
@@ -96,7 +100,21 @@ def test_non_null_wrong_types_still_fail(field, value):
         IntentResponse.model_validate_json(json.dumps({"actions": [{"nav": "path", "action": "move", field: value}]}), strict=True)
 
 
-@pytest.mark.parametrize("field", ["product_sku", "quantity"])
+@pytest.mark.parametrize("field", ["product_sku", "quantity", "dwell"])
 def test_authored_domain_actions_keep_their_original_validation(field):
     with pytest.raises(ValidationError):
         CustomerAction.model_validate({"nav": "path", "action": "pay", field: None})
+
+
+@pytest.mark.parametrize("schema", [IntentResponse, ImpulseResponse])
+def test_null_buy_dwell_uses_only_the_existing_omitted_duration_default(schema):
+    action = {"nav": "path", "action": "buy", "product_sku": "tea", "quantity": 2, "dwell": None}
+    result = schema.model_validate_json(json.dumps({"actions": [action]}), strict=True)
+    assert result.actions[0].dwell == 0 and result.actions[0].quantity == 2
+    assert action["dwell"] is None
+
+
+@pytest.mark.parametrize("value", [[], {}, "3", "later", True, 1.5])
+def test_non_null_invalid_dwell_types_are_not_coerced(value):
+    with pytest.raises(ValidationError):
+        IntentResponse.model_validate_json(json.dumps({"actions": [{"nav": "path", "dwell": value}]}), strict=True)

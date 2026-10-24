@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Treat null dwell times on model-generated actions as the existing omitted-value
+  default of zero. An unspecified duration no longer discards a complete visit;
+  routing still applies its normal duration floors and caps. Both action prompts
+  request zero for unknown dwell, while authored actions and invalid types stay strict.
+
 - Preserve valid OCR receipt lines when the model returns null for unreadable
   store/date/time/currency text. Use existing empty-text/default-currency behavior,
   keep missing times reviewable, and retain strict product, quantity and amount
