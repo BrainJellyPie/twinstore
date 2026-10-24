@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Respect a fallback model server's concurrency limit when in-flight structured
+  calls retry rejected options or output budgets. Recheck queued endpoint changes
+  without consuming request attempts and release acquired slots on cancellation.
+
 - Include failed structured-output attempts and their reported token usage in
   model accounting, including truncation recovery and provider fallback. Successful
   validation retries count every attempt without double-counting tokens;

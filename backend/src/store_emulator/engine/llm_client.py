@@ -8,6 +8,7 @@ import re
 import threading
 import weakref
 from collections.abc import Callable
+from contextlib import nullcontext
 from pathlib import Path
 from typing import cast
 from urllib.parse import urlsplit
@@ -480,41 +481,51 @@ class LiteLLMClient:
     async def _acreate(self, response_model: type[BaseModel], msgs: object, max_retries: int,
                        seed: int | None, max_tokens: int | None = None) -> tuple[object, object]:
         budget, adjusted = max_tokens, False
-        budget_configuration = self._configuration
-        for attempt in range(_ATTEMPTS + 1):
-            if self._configuration is not budget_configuration:
-                budget = max_tokens
-                budget_configuration = self._configuration
-            kwargs = self._call_kwargs(seed, budget, structured=True)
-            calls = 0
+        initial_configuration = budget_configuration = self._configuration
+        attempt = 0
+        while attempt < _ATTEMPTS + 1:
+            configuration = self._configuration
+            # _agenerate already holds the initial endpoint's slot. A late option/budget
+            # rejection can retry on a different endpoint, whose capacity is independent.
+            slots = self._slots_here() if configuration is not initial_configuration else None
+            async with slots if slots is not None else nullcontext():
+                if configuration is not self._configuration:
+                    continue  # A queued transition sent no request and consumes no retry.
+                if configuration is not budget_configuration:
+                    budget = max_tokens
+                    budget_configuration = configuration
+                kwargs = self._call_kwargs(seed, budget, structured=True)
+                calls = 0
 
-            def request_started(*_args: object, **_kwargs: object) -> None:
-                nonlocal calls
-                calls += 1
+                def request_started(*_args: object, **_kwargs: object) -> None:
+                    nonlocal calls
+                    calls += 1
 
-            hooks = Hooks()
-            hooks.on("completion:kwargs", request_started)
-            try:
-                result = await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
-                    response_model=response_model,
-                    messages=msgs,  # type: ignore[reportArgumentType]
-                    max_retries=max_retries,
-                    hooks=hooks,
-                    **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
-                )
-                with self._usage_lock:
-                    self._usage.requests += max(0, calls - 1)  # The successful completion is recorded by _agenerate.
-                return result
-            except Exception as e:
-                self._accumulate_usage(e, response_model.__name__, requests=calls, failed=True)
-                remaining = None if adjusted else _remaining_output_budget(e, kwargs)
-                if remaining is not None:
-                    budget, adjusted = remaining, True
-                    logger.info("%s: retrying with the server's remaining %s output tokens", kwargs["model"], remaining)
-                    continue
-                if attempt - int(adjusted) < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
-                    continue
-                raise
+                hooks = Hooks()
+                hooks.on("completion:kwargs", request_started)
+                try:
+                    result = await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
+                        response_model=response_model,
+                        messages=msgs,  # type: ignore[reportArgumentType]
+                        max_retries=max_retries,
+                        hooks=hooks,
+                        **kwargs,  # type: ignore[reportArgumentType]  # LiteLLM kwargs are untyped
+                    )
+                    with self._usage_lock:
+                        self._usage.requests += max(0, calls - 1)  # The successful completion is recorded by _agenerate.
+                    return result
+                except Exception as e:
+                    self._accumulate_usage(e, response_model.__name__, requests=calls, failed=True)
+                    remaining = None if adjusted else _remaining_output_budget(e, kwargs)
+                    if remaining is not None:
+                        budget, adjusted = remaining, True
+                        logger.info("%s: retrying with the server's remaining %s output tokens", kwargs["model"], remaining)
+                        attempt += 1
+                        continue
+                    if attempt - int(adjusted) < _ATTEMPTS - 1 and _should_retry_without(str(kwargs["model"]), e, kwargs):
+                        attempt += 1
+                        continue
+                    raise
         raise AssertionError("unreachable")
 
     def _generate[T: BaseModel](self, response_model: type[T], msgs: object, rid: str, max_retries: int,
