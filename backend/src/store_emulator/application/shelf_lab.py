@@ -316,14 +316,17 @@ def create_edit(pid: str, cid: str, edits: list[PhotoEdit]) -> EditedShelf:
         out = apply_edits(photo, result, edits, packages=packages, seed=cid)
     except ValueError as e:
         raise AppError(str(e), 400) from e
-    eid = f"edit_{uuid.uuid4().hex[:6]}"
+    eid = f"edit_{uuid.uuid4().hex}"
     shelf = EditedShelf(edit_id=eid, capture_id=cid, edits=edits, changes=out.changes, result=out.result,
                         promos=out.promos, image_size=out.image.size, created_at=now_iso())
     with setup_tree_transaction(pid):
         if get_capture(pid, cid).result != result:
             raise AppError("The capture was corrected while the image was being edited. Reload it and try again.", 409)
         folder = _edit_dir(pid, cid, eid)
-        folder.mkdir(parents=True, exist_ok=True)
+        try:
+            folder.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            raise AppError("This shelf edit identifier already exists. Retry to create a new edit", 409) from None
         out.image.save(folder / "image.jpg", format="JPEG", quality=93)
         _mask(out.image.size, shelf).save(folder / "mask.png", format="PNG")
         write_json(folder / "edit.json", json.loads(shelf.model_dump_json()))
@@ -429,9 +432,12 @@ def _store_type(pid: str) -> str:
 
 
 def _new_job(pid: str, cid: str, kind: Literal["sim2real", "audit"]) -> LabJobStatus:
-    jid = f"{'s2r' if kind == 'sim2real' else 'aud'}_{uuid.uuid4().hex[:6]}"
+    jid = f"{'s2r' if kind == 'sim2real' else 'aud'}_{uuid.uuid4().hex}"
     status = LabJobStatus(job_id=jid, kind=kind, capture_id=cid, status="pending", stage="queued", created_at=now_iso())
-    _job_dir(pid, cid, jid).mkdir(parents=True, exist_ok=True)
+    try:
+        _job_dir(pid, cid, jid).mkdir(parents=True, exist_ok=False)
+    except FileExistsError:
+        raise AppError("This shelf study identifier already exists. Retry to start a new study", 409) from None
     _write_status(pid, status)
     return status
 
