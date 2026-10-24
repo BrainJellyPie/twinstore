@@ -1,6 +1,7 @@
 """3-stage LLM pipeline engine. stage1 (pattern) → stage2 (intent) → stage3 (impulse)."""
 
 import logging
+from collections.abc import Sequence
 
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.config import EngineType, SimulationConfig
@@ -19,7 +20,7 @@ from store_emulator.engine.routing.store_lookup import resolve_buy_placement
 logger = logging.getLogger(__name__)
 
 
-def drop_invalid_buys(actions: list[CustomerAction], store: Store) -> tuple[list[CustomerAction], int]:
+def drop_invalid_buys(actions: Sequence[CustomerAction], store: Store) -> tuple[list[CustomerAction], int]:
     """Drop buys whose product_sku does not exist in any slot (LLM hallucination guard).
     If only PAY remains afterwards, drop it too (no purchases → no payment).
     Returns (kept actions, number of dropped buys).

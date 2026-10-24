@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bound model-generated action narration and reasoning before they reach the
+  next simulation prompt or trace. JSON grammars limit repetitive output;
+  non-enforcing providers are normalized without changing products, quantities,
+  coordinates or authored domain actions.
+
 - Respect a fallback model server's concurrency limit when in-flight structured
   calls retry rejected options or output budgets. Recheck queued endpoint changes
   without consuming request attempts and release acquired slots on cancellation.

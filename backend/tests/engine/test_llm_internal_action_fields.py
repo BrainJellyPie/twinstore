@@ -73,7 +73,9 @@ def test_actual_model_errors_are_still_validated_and_internal_fields_stay_hidden
 
     with pytest.raises(ValidationError):
         schema.model_validate({"actions": [{"nav": "path", "action": "invented", "product_level": "ignored"}]})
-    properties = schema.model_json_schema()["$defs"]["CustomerAction"]["properties"]
+    data = schema.model_json_schema()
+    action_type = data["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[-1]
+    properties = data["$defs"][action_type]["properties"]
     assert not {"origin", "product_block", "product_level"} & properties.keys()
 
 

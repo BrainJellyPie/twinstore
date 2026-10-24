@@ -9,7 +9,7 @@ caching, OpenAI, vLLM, llama.cpp) then reuse the catalog prefix across customers
 
 from typing import cast
 
-from pydantic import BaseModel, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
@@ -27,9 +27,24 @@ LEVEL_PREFERENCE_GUIDE = [
 ]
 
 
+class GeneratedAction(CustomerAction):
+    """Model narration is brief; authored and engine-generated domain actions remain unrestricted."""
+    description: str = Field(default="", max_length=400)
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def _brief_description(cls, value: object) -> object:
+        return value[:400] if isinstance(value, str) else value
+
+
 class IntentResponse(BaseModel):
-    reasoning: str = ""
-    actions: list[CustomerAction] = []
+    reasoning: str = Field(default="", max_length=600)
+    actions: list[GeneratedAction] = []
+
+    @field_validator("reasoning", mode="before")
+    @classmethod
+    def _brief_reasoning(cls, value: object) -> object:
+        return value[:600] if isinstance(value, str) else value
 
     @field_validator("actions", mode="before")
     @classmethod
@@ -70,6 +85,7 @@ def build_system_prompt(store: Store, currency: str = "USD") -> str:
 - **browse / buy 의 description 은 아래 진열대 목록의 상품만 묘사**
 - **buy 는 아래 진열대 목록에 적합한 상품이 있을 때만 추가**
 - 고객의 예산을 크게 넘는 구매는 하지 않습니다
+- reasoning은 600자 이하, 각 행동의 description은 400자 이하로 간결하게 작성하고 같은 문장을 반복하지 마세요
 
 {price_unit_rule(currency)}
 
