@@ -246,7 +246,7 @@ def create_capture(
         raise AppError("image too large (max 25 MB)", 413)
     options = options.model_copy(update={"currency": (options.currency or project_currency(pid, config.currency)).upper()})
     if request_id is None:
-        return _start_capture(pid, f"cap_{uuid.uuid4().hex[:8]}", data, filename, options, config, "")
+        return _start_capture(pid, f"cap_{uuid.uuid4().hex}", data, filename, options, config, "")
     if not re.fullmatch(r"[0-9a-f]{32}", request_id):
         raise AppError("Invalid upload request id", 422)
     digest = hashlib.sha256(json.dumps({
@@ -284,11 +284,14 @@ def _start_capture(
     if options.detector == "vlm" and llm_config is None:
         raise AppError("the vlm detector needs a vision model (model must not be 'none')", 400)
     with setup_tree_transaction(pid):
+        folder = _dir(pid, cid)
+        try:
+            folder.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            raise AppError("This capture identifier already exists. Retry as a new upload attempt", 409) from None
         if digest:
             # Keep a receipt outside the removable photo directory; replay must not resurrect deletion.
             write_json(_base_dir(pid) / ".uploads" / f"{cid}.json", {"upload_sha256": digest})
-        folder = _dir(pid, cid)
-        folder.mkdir(parents=True, exist_ok=True)
         photo.save(folder / "image.jpg", format="JPEG", quality=92)
         status = CaptureStatus(
             capture_id=cid, status="pending", stage="queued", options=options, image_name=filename[:200],
@@ -377,20 +380,24 @@ def save_capture(
     _check_id(pid, "project id")
     if not metadata_path(pid).exists():
         raise AppError(f"project not found: {pid}", 404)
-    cid = f"cap_{uuid.uuid4().hex[:8]}"
+    cid = f"cap_{uuid.uuid4().hex}"
     folder = _dir(pid, cid)
-    folder.mkdir(parents=True, exist_ok=True)
-    photo.save(folder / "image.jpg", format="JPEG", quality=92)
-    payload = json.loads(result.model_dump_json())
-    write_json(folder / "result.auto.json", payload)
-    write_json(folder / "result.json", payload)
-    (folder / "overlay.png").write_bytes(render_overlay(photo, result))
-    now = now_iso()
-    status = _with_counts(CaptureStatus(
-        capture_id=cid, status="completed", stage="done", progress=1.0, options=options, image_name=filename[:200],
-        image_size=photo.size, created_at=now, finished_at=now,
-    ), result)
-    _write_status(pid, status)
+    with setup_tree_transaction(pid):
+        try:
+            folder.mkdir(parents=True, exist_ok=False)
+        except FileExistsError:
+            raise AppError("This capture identifier already exists. Retry to save a new capture", 409) from None
+        photo.save(folder / "image.jpg", format="JPEG", quality=92)
+        payload = json.loads(result.model_dump_json())
+        write_json(folder / "result.auto.json", payload)
+        write_json(folder / "result.json", payload)
+        (folder / "overlay.png").write_bytes(render_overlay(photo, result))
+        now = now_iso()
+        status = _with_counts(CaptureStatus(
+            capture_id=cid, status="completed", stage="done", progress=1.0, options=options, image_name=filename[:200],
+            image_size=photo.size, created_at=now, finished_at=now,
+        ), result)
+        _write_status(pid, status)
     return status
 
 
