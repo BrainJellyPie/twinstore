@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.interview import (
@@ -92,7 +92,7 @@ Rules:
 - If you did not see or notice something, say so plainly ("I didn't go to that aisle", "I didn't notice it").
 - You may explain your reasons with your tastes, budget, habits and mood as described, as a real person would.
 - Prices are those on the shelf tags. Do not mention that you are simulated, a model or an AI.
-- Put the numbers of the trip steps your answer is about in `steps` (empty if none).
+- Put the numbers of the trip steps your answer is about in `steps` ([] if none, not null).
 - Write in English."""
 
 
@@ -101,6 +101,11 @@ class ShopperReply(BaseModel):
 
     answer: str = Field(min_length=1, max_length=900)
     steps: list[int] = Field(default_factory=list[int], max_length=12)
+
+    @field_validator("steps", mode="before")
+    @classmethod
+    def _absent_steps(cls, value: object) -> object:
+        return [] if value is None else value
 
 
 def trip_text(journey: Journey, store: Store, *, observer: bool = False) -> str:

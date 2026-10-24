@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve valid shopper-interview and run-analysis answers when optional
+  citations, follow-ups or comparison detail are null. Keep required narrative
+  validation and existing filtering of unsupported figures and journey steps.
+
 - Keep valid generated layout options when optional exclusions, unsupported
   request notes or rationale are null. Preserve current category exclusions
   and untouched colors, along with existing invalid-option warnings.

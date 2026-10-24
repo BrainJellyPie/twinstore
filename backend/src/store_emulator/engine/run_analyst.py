@@ -9,7 +9,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from store_emulator.domain.customer import CustomerResult
 from store_emulator.domain.interview import AnalystMessage
@@ -36,12 +36,18 @@ class RunAnswer(BaseModel):
                                description="the fact-sheet lines the answer rests on, copied as written")
     follow_ups: list[str] = Field(default_factory=list[str], max_length=3, description="up to three next questions")
 
+    @field_validator("figures", "follow_ups", mode="before")
+    @classmethod
+    def _absent_lists(cls, value: object) -> object:
+        return [] if value is None else value
+
 
 ANALYST_PROMPT = """You are a retail analyst answering a store manager's questions about one simulated trading day.
 The shoppers are synthetic; the fact sheet below is everything the run measured. Answer only from it: quote its
 numbers, compare them, and say what they suggest, as a hypothesis when it is one. If the sheet cannot answer the
 question, say "The run does not show that" and name what would (a group interview, an A/B test, a scenario run).
-Copy the sheet lines you used into figures, exactly as written. Plain sentences, no markdown. Write in English."""
+Copy the sheet lines you used into figures, exactly as written. Use [] for absent figures or follow_ups, not null.
+Plain sentences, no markdown. Write in English."""
 
 
 def _hour(clock: str) -> int:
@@ -171,13 +177,23 @@ class DifferenceReading(BaseModel):
     caveats: str = Field(default="", max_length=600, description="what is within noise or cannot be told from the runs")
     figures: list[str] = Field(default_factory=list[str], max_length=10, description="sheet lines the reading rests on, as written")
 
+    @field_validator("figures", mode="before")
+    @classmethod
+    def _absent_figures(cls, value: object) -> object:
+        return [] if value is None else value
+
+    @field_validator("where", "caveats", mode="before")
+    @classmethod
+    def _absent_detail(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 DIFFERENCE_PROMPT = """You are a retail analyst explaining why one simulated store day (run B) differs from another
 (run A) to a store manager. The paired comparison gives per-shopper differences (B minus A) with 95 % intervals; the
 two fact sheets give each run's shelves, hours, products and shopper groups. Say what changed, then where it came
 from by comparing the sheets (name at most four shelves, products, hours or groups, each with its one most telling
 number), and what is within noise (an interval that includes zero) or cannot be told. Use only these numbers. Copy the lines you used into figures, exactly as written. Plain sentences, no markdown.
-Write in English."""
+Use [] for absent figures and "" for absent optional text, not null. Write in English."""
 
 
 _METRIC_NAMES = {"spend": "spend per shopper", "units": "units per shopper", "bought": "share who bought",
