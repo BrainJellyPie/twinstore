@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Prevent nested SDK retries from multiplying structured requests to loopback
+  model servers. Instructor owns the configured attempt budget, including
+  validation recovery; raw text and non-loopback endpoints keep their transport
+  retry policy. Text and image calls share the same bound.
+
 - Bound optional model-generated pattern prose before it reaches the next
   simulation stage. Oversized rule rewrites fall back to the complete selected
   pattern; normal short customizations remain intact. JSON grammars now bound

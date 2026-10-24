@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import ipaddress
 import json
 import logging
 import os
@@ -9,6 +10,7 @@ import weakref
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast
+from urllib.parse import urlsplit
 
 import instructor
 import litellm
@@ -291,7 +293,7 @@ class LiteLLMClient:
     def _openai_hosted(self) -> bool:
         return self.model.startswith("openai/gpt-") and "api.openai.com" in (self.api_base or "api.openai.com")
 
-    def _call_kwargs(self, seed: int | None, max_tokens: int | None = None) -> dict[str, object]:
+    def _call_kwargs(self, seed: int | None, max_tokens: int | None = None, *, structured: bool = False) -> dict[str, object]:
         """Provider-agnostic sampling kwargs. Unsupported params are dropped by LiteLLM."""
         kwargs: dict[str, object] = {
             "model": self.model,
@@ -299,6 +301,16 @@ class LiteLLMClient:
             "timeout": self.timeout_sec,
             "drop_params": True,
         }
+        if structured and self.api_base:
+            try:
+                host = urlsplit(self.api_base).hostname
+                loopback = host in {"localhost", "localhost."} or bool(host and ipaddress.ip_address(host).is_loopback)
+            except ValueError:
+                loopback = False
+            if loopback:
+                # Instructor already owns this call's attempt budget. SDK retries
+                # otherwise multiply local-server failures/timeouts by three.
+                kwargs["num_retries"] = 0
         if not _accepts(self.model, "max_tokens", self.api_base):
             kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
         if _accepts(self.model, "temperature", self.api_base):
@@ -432,7 +444,7 @@ class LiteLLMClient:
             if self._configuration is not budget_configuration:
                 budget = max_tokens
                 budget_configuration = self._configuration
-            kwargs = self._call_kwargs(seed, budget)
+            kwargs = self._call_kwargs(seed, budget, structured=True)
             try:
                 return self._client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=response_model,
@@ -459,7 +471,7 @@ class LiteLLMClient:
             if self._configuration is not budget_configuration:
                 budget = max_tokens
                 budget_configuration = self._configuration
-            kwargs = self._call_kwargs(seed, budget)
+            kwargs = self._call_kwargs(seed, budget, structured=True)
             try:
                 return await self._async_client.chat.completions.create_with_completion(  # type: ignore[reportUnknownMemberType]
                     response_model=response_model,
