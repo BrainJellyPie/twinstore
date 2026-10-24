@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Annotated, Self
 
 from instructor.core.exceptions import IncompleteOutputException, InstructorRetryException
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, JsonValue, create_model, model_validator
 
 from store_emulator.domain.persona import AGE_GROUPS, GENDERS, AgeGroup, Gender, Persona
 from store_emulator.domain.store import DaySchedule, validate_weekly_schedule
@@ -174,6 +174,7 @@ PERSONA_PROMPT_TEMPLATE = """주어진 시간대+인물유형+지역키워드 �
 
 규칙:
 - 각 페르소나는 반드시 독립적인 개인 1명입니다. 커플, 연인, 친구 쌍 등 관계로 묶인 페르소나를 만들지 마세요. 동행자가 있는 경우에도 "~와 함께 온 사람" 한 명으로만 표현하세요.
+- personas에는 요청 목록의 각 줄당 1명씩, 요청한 인원만 순서대로 작성하세요. 인원을 추가하거나 같은 사람을 반복하지 마세요.
 - id, day, arrival_hour는 출력하지 마세요. 시스템이 요청 순서에 따라 자동으로 부여합니다.
 - identity: 반드시 아래 제공된 identity 목록 중 하나를 그대로 사용 (통계 집계용 라벨)
 - age_group: 반드시 다음 중 하나: {age_groups}
@@ -324,9 +325,14 @@ async def generate_personas_for_day(
         )
         if custom_instruction:
             persona_input += f"\n\n추가 지시: {custom_instruction}"
+        # Bound grammar-capable models to this task; keep the existing short/surplus
+        # handling for providers that do not enforce the transmitted JSON schema.
+        constraints: dict[str, JsonValue] = {"maxItems": min(12, len(chunk))}
+        batch_schema = create_model("PersonaBatch", __base__=PersonaBatch,
+            personas=(list[GeneratedPersona], Field(min_length=1, max_length=12, json_schema_extra=constraints)))
         try:
             async with limit:
-                batch = await llm.generate_structured_async(PersonaBatch, system_prompt, persona_input, max_retries=3)
+                batch = await llm.generate_structured_async(batch_schema, system_prompt, persona_input, max_retries=3)
         except (IncompleteOutputException, InstructorRetryException) as error:
             cause = (error.failed_attempts[-1].exception
                      if isinstance(error, InstructorRetryException) and error.failed_attempts else error)

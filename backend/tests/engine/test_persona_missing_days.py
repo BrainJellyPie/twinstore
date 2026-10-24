@@ -29,7 +29,7 @@ class Model:
             return schema(keywords=["nearby"], identities=["shopper"], purposes=["snack"])
         if schema is gen.DailyTrafficResult:
             return schema(hourly_profiles=[gen.HourlyProfile(hour=9, visitor_count=20, person_types=["shopper"])])
-        assert schema is gen.PersonaBatch
+        assert issubclass(schema, gen.PersonaBatch)
         day = next(int(d) for d, label in WEEKDAY_LABELS.items() if f"요일: {label}\n" in prompt)
         self.calls[day] += 1
         if day == self.failed_day and (not self.first_only or self.calls[day] == 1):

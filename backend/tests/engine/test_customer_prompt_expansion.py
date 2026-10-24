@@ -37,7 +37,7 @@ def test_repetitive_model_labels_are_corrected_before_customer_batches(field, ch
         writes = 0
 
         async def generate_structured_async(self, schema, system, prompt, **kwargs):
-            if schema is gen.PersonaBatch:
+            if issubclass(schema, gen.PersonaBatch):
                 self.writes += 1
                 assert len(prompt) < 2000
                 return schema(personas=[gen.GeneratedPersona(identity='resident', age_group='30s', gender='Female',

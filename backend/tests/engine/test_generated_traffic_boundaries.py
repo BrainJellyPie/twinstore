@@ -22,7 +22,7 @@ class Model:
         if schema is gen.DailyTrafficResult:
             assert kwargs["max_retries"] == 3
             return schema.model_validate({"hourly_profiles": self.rows})
-        assert schema is gen.PersonaBatch
+        assert issubclass(schema, gen.PersonaBatch)
         self.writes += 1
         return schema(personas=[gen.GeneratedPersona(identity="shopper", age_group="20s", gender="Female",
                       description="Offline boundary test", intent="snack", purpose="snack") for _ in range(prompt.count("\n["))])

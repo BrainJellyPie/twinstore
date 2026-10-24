@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Limit the customer-generation JSON grammar to the current request's customer
+  count, including probes, final partial batches and truncation-recovery children.
+  Small local requests no longer advertise room for twelve generated customers.
+  Existing short/surplus response handling remains compatible with other servers.
+
 - Recover a truncated automatic customer batch by splitting it into two smaller
   requests once. Recovered customers retain their original hours and unique IDs;
   child requests share the existing concurrency limit. Repeated truncation stays
