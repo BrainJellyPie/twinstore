@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve valid shelf-test drafts when unused package/sign text, rationale or
+  age restrictions are null. Keep explicit edits and quotas, strict required
+  targets, and the review warning for drafts that still contain no change.
+
 - Resolve a shelf-test model's bounded long names before matching shorter words.
   A clipped product or image name no longer selects another short-named item;
   ambiguous prefixes are refused or reported while valid remaining edits survive.

@@ -10,7 +10,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from math import isfinite
 from typing import Protocol, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from store_emulator.domain.marketing import VariantChange
 from store_emulator.domain.persona import AGE_GROUPS, AgeGroup
@@ -42,6 +42,16 @@ class _Draft(BaseModel):
     age_groups: list[AgeGroup] = Field(default_factory=list[AgeGroup], max_length=6)
     rationale: str = Field(default="", max_length=500)
 
+    @field_validator("package", "promo", "rationale", mode="before")
+    @classmethod
+    def _optional_text(cls, value: object) -> object:
+        return "" if value is None else value
+
+    @field_validator("age_groups", mode="before")
+    @classmethod
+    def _optional_ages(cls, value: object) -> object:
+        return [] if value is None else value
+
 
 class ShelfTestDesign(BaseModel):
     name: str
@@ -65,6 +75,7 @@ manager's question, draft one test:
 - a short name and rationale.
 If a listed product or image name exceeds 160 characters, copy its first 160 characters.
 That prefix must identify one target; do not abbreviate shorter names or guess between ambiguous targets.
+Use "" for unspecified package, promo and rationale, and [] for unspecified age_groups; do not use null for these fields.
 Write in English."""
 
 
