@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Resolve both sides of grammar-limited rival-product aliases using unique
+  full-name prefixes. Long names retain their price comparison, while shared
+  prefixes no longer link a different product or distort the rival pull factor.
+
 - Preserve full product identities when a pack reader reaches its 120-character
   output limit. Unique prefixes can link the intended product; shared prefixes,
   including a different exact boundary-length name, no longer create wrong links.

@@ -7,6 +7,7 @@ from typing import Protocol, Self
 from pydantic import BaseModel, Field, model_validator
 
 MAX_OURS = 300
+MAX_NAME_CHARS = 160
 
 
 class StructuredLLM(Protocol):
@@ -17,8 +18,8 @@ class StructuredLLM(Protocol):
 
 
 class _Pair(BaseModel):
-    rival: str = Field(max_length=160)
-    ours: str = Field(default="", max_length=160, description="our product, exactly as listed, or '' when none is the same")
+    rival: str = Field(max_length=MAX_NAME_CHARS)
+    ours: str = Field(default="", max_length=MAX_NAME_CHARS, description="our product, exactly as listed, or '' when none is the same")
 
 
 class _Pairs(BaseModel):
@@ -28,7 +29,19 @@ class _Pairs(BaseModel):
 MATCH_PROMPT = """You match products on a rival store's shelf to the same products in our store. A match must be the
 same brand, the same variant or flavour and the same size; a similar product is not a match. For each rival product,
 give our product's name exactly as listed, or an empty string when we do not sell that exact product.
-Return at most one match per rival product; never assign different products to the same rival name."""
+Return at most one match per rival product; never assign different products to the same rival name.
+For a name longer than 160 characters, copy its first 160 characters only when the prefix identifies one product
+in that list. Omit an ambiguous pair; do not guess between products sharing that prefix."""
+
+
+def _listed_name(raw: str, names: dict[str, str], *, fold: bool) -> str | None:
+    key = raw.strip().casefold() if fold else raw
+    if not key:
+        return None
+    if len(raw) == MAX_NAME_CHARS:
+        matches = [name for name in names if name.startswith(key)]
+        return names[matches[0]] if len(matches) == 1 else None
+    return names.get(key)
 
 
 async def match_products(llm: StructuredLLM, rival_names: Sequence[str], our_names: Sequence[str]) -> dict[str, str]:
@@ -36,24 +49,28 @@ async def match_products(llm: StructuredLLM, rival_names: Sequence[str], our_nam
     if not rival_names or not our_names:
         return {}
     ours = {n.casefold(): n for n in our_names}
-    asked_set = set(rival_names)
+    rivals = {n: n for n in rival_names}
+
+    def resolved_pairs(pairs: list[_Pair]) -> dict[str, str]:
+        matched: dict[str, str] = {}
+        for pair in pairs:
+            rival = _listed_name(pair.rival, rivals, fold=False)
+            target = _listed_name(pair.ours, ours, fold=True)
+            if rival is None or target is None:
+                continue
+            if rival in matched and matched[rival] != target:
+                raise ValueError("Conflicting matches for the same rival product; return only one listed product per rival name.")
+            matched[rival] = target
+        return matched
 
     class MatchedPairs(_Pairs):
         @model_validator(mode="after")
         def consistent_matches(self) -> Self:
-            matched: dict[str, str] = {}
-            for pair in self.pairs:
-                target = ours.get(pair.ours.strip().casefold())
-                if pair.rival not in asked_set or target is None:
-                    continue
-                if pair.rival in matched and matched[pair.rival] != target:
-                    raise ValueError("Conflicting matches for the same rival product; return only one listed product per rival name.")
-                matched[pair.rival] = target
+            resolved_pairs(self.pairs)
             return self
 
     listed = "\n".join(f"- {n}" for n in list(our_names)[:MAX_OURS])
     asked = "\n".join(f"- {n}" for n in rival_names[:80])
     out = await llm.generate_structured_async(MatchedPairs, MATCH_PROMPT, f"Our products:\n{listed}\n\nRival products:\n{asked}",
                                               max_retries=2, seed=0)
-    return {p.rival: ours[p.ours.strip().casefold()] for p in out.pairs
-            if p.rival in asked_set and p.ours.strip().casefold() in ours}
+    return resolved_pairs(out.pairs)
