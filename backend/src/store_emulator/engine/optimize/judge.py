@@ -16,6 +16,7 @@ they are the consumer model the decision should rest on. So:
 import asyncio
 import contextlib
 import logging
+import math
 import random
 import time
 from collections.abc import Callable
@@ -362,8 +363,12 @@ async def judge_layout_search(
     judged = [c.model_copy(update={"winner": c.label == winner.label}) for c in judged]
     rho: float | None = None
     if len(ranked) >= 3:
-        rho = round(spearman(np.array([c.surrogate_score for c in ranked]),
-                             np.array([c.vlm_score for c in ranked], dtype=float)), 4)
+        agreement = spearman(np.array([c.surrogate_score for c in ranked]),
+                             np.array([c.vlm_score for c in ranked], dtype=float))
+        if math.isfinite(agreement):
+            rho = round(agreement, 4)
+        else:
+            notes.append("Surrogate–VLM rank correlation is unavailable because at least one model gives every ranked layout the same score.")
     if winner.label == "baseline":
         notes.append(f"The baseline is retained for the VLM shoppers on {len(common_ids)} paired customers.")
     else:

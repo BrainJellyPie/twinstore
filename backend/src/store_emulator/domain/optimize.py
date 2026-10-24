@@ -129,7 +129,7 @@ class VLMJudgeReport(BaseModel):
     candidates: list[JudgedCandidate]  # baseline first, then by surrogate rank
     winner: str  # label of the VLM winner ("baseline" when no candidate beat it)
     surrogate_winner: str  # label of the surrogate's best among the judged layouts
-    # Rank agreement of surrogate and VLM scores over the judged layouts (None for < 3 layouts).
+    # Rank agreement over judged layouts (None for < 3 layouts or constant scores).
     spearman: float | None = None
     calibration: SurrogateCalibration | None = None
     vlm_requests: int = 0

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep undefined surrogate/VLM rank agreement out of optimization report values
+  and explanations when either model assigns identical scores to every layout.
+  Report the limitation explicitly while preserving candidate selection.
+
 - Reject CSV text containing NUL characters before parsers can silently truncate
   IDs, product codes or amounts. Block corrupt customer uploads before project
   creation and preserve earlier POS/movement reports on rejected uploads.
