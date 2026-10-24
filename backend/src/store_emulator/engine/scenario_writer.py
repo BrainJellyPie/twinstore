@@ -8,7 +8,7 @@ the run never silently ignores part of the description.
 
 from collections import Counter
 from collections.abc import Sequence
-from typing import Literal, Protocol
+from typing import Annotated, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -59,7 +59,7 @@ class ScenarioDraft(BaseModel):
     temperature_c: float | None = Field(default=None, ge=-30.0, le=45.0)
     season: Season | None = None
     day_type: DayType = DayType.WEEKDAY
-    only_days: list[int] = Field(default_factory=list[int], max_length=7,
+    only_days: list[Annotated[int, Field(ge=1, le=7)]] = Field(default_factory=list[int], max_length=7,
                                  description="weekdays the situation applies to, 1 = Monday … 7 = Sunday; empty = every day")
     crowding: Crowding = Crowding.NORMAL
     traffic_multiplier: float = Field(default=1.0, ge=0.0, le=5.0,
@@ -87,6 +87,7 @@ stock-outs the description does not mention.
 
 - Weather, temperature, season, day type and weekday: from the words used ("scorching" is a heatwave, "Friday" is
   only_days [5], "long weekend" is a public holiday).
+  only_days uses integers 1 (Monday) through 7 (Sunday), never 0 or 8. Use [] only for every day.
 - Events: pick the closest kind, with hours when the description gives a time of day (evening is about 17 to 22).
 - Promotions and stock-outs must point at products or shelves from the store's list below; use the listed name or a
   word that appears in it. A deal like "1+1" or "buy one get one" is kind "1+1"; "20 % off" is a discount of 20.
@@ -141,7 +142,7 @@ def to_scenario(draft: ScenarioDraft, description: str, store: Store | None) -> 
     scenario = Scenario(
         id="custom", name=draft.name.strip() or "Described situation", description=description.strip(),
         weather=draft.weather, temperature_c=draft.temperature_c, season=draft.season, day_type=draft.day_type,
-        only_days=sorted({d for d in draft.only_days if 1 <= d <= 7}), crowding=draft.crowding,
+        only_days=sorted(set(draft.only_days)), crowding=draft.crowding,
         traffic_multiplier=draft.traffic_multiplier, events=events, promotions=promotions, stockouts=stockouts,
         budget_multiplier=draft.budget_multiplier, music=draft.music, lighting=draft.lighting, notes=draft.notes.strip(),
     )

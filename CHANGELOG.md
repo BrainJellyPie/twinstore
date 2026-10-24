@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Validate generated scenario weekdays as 1–7 before caching or applying them.
+  Invalid restrictions such as `[0]` can no longer turn into an unrestricted
+  scenario. Keep valid day sorting, deduplication and explicit everyday defaults.
+
 - Validate vision-model fixture overlap before creating or caching a floor
   plan. Outside or collapsed fixtures can no longer become invented stocked
   boundary tiles. Request correction while preserving clipped rectangles and

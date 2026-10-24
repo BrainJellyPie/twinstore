@@ -30,7 +30,7 @@ class _Writer:
 
 
 DRAFT = {
-    "name": "Rainy match night", "weather": "rain", "temperature_c": 14, "day_type": "weekday", "only_days": [5, 9],
+    "name": "Rainy match night", "weather": "rain", "temperature_c": 14, "day_type": "weekday", "only_days": [5],
     "crowding": "busy", "events": [{"kind": "sports_match", "intensity": 0.8, "start_hour": 18, "end_hour": 18}],
     "promotions": [{"target": "Pepsi", "kind": "1+1", "label": "1+1"}, {"target": "Zorblax", "kind": "discount"}],
     "stockouts": ["Firewood", "Snickers", "Snickers"], "notes": "Fans stop by before kick-off.",
@@ -74,3 +74,12 @@ def test_without_a_layout_targets_are_not_checked_and_errors_read_as_advice(clie
     monkeypatch.setattr(scenarios, "assistive_client", lambda *a, **k: _Broken())
     r = client.post("/api/scenarios/describe", json={"text": "Rainy Friday"})
     assert r.status_code == 502 and "rejected the API key" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("days", [[0], [8], [5, 9]])
+def test_invalid_model_weekdays_do_not_return_an_unrestricted_scenario(client, monkeypatch, days):
+    from store_emulator.application import scenarios
+    monkeypatch.setattr(scenarios, "assistive_client", lambda *a, **k: _Writer({**DRAFT, "only_days": days}))
+    response = client.post("/api/scenarios/describe", json={"text": "Rainy Friday only"})
+    assert response.status_code == 502
+    assert "scenario" not in response.json()
