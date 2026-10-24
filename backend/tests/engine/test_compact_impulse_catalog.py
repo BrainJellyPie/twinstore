@@ -24,7 +24,8 @@ from tests.engine.test_llm_impulse_exposure import fixture
 @pytest.mark.parametrize("ordering", ["planned", "nearest"])
 @pytest.mark.parametrize("exposure", ["adjacency", "visibility"])
 @pytest.mark.parametrize("sku", ["opaque_0123456789abcdef0123456789abcdef", "@P1"])
-def test_impulse_reference_decodes_after_cache_before_trace_and_purchase(monkeypatch, tmp_path, mode, ordering, exposure, sku):
+@pytest.mark.parametrize("canonical", [False, True])
+def test_impulse_reference_decodes_after_cache_before_trace_and_purchase(monkeypatch, tmp_path, mode, ordering, exposure, sku, canonical):
     store, intent = fixture()
     store.racks[0].slots[0].items[0].sku = sku
     store.racks[0].slots[0].items[0].name = "Visible tea"
@@ -50,7 +51,7 @@ def test_impulse_reference_decodes_after_cache_before_trace_and_purchase(monkeyp
                 schema = body["response_format"]["json_schema"]["schema"]
                 action = schema["$defs"][schema["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[-1]]
                 assert action["properties"]["product_sku"]["enum"] == ["", code]
-            answer = {"actions": [{"action": "buy", "nav": "path", "product_sku": code, "quantity": 2,
+            answer = {"actions": [{"action": "buy", "nav": "path", "product_sku": sku if canonical else code, "quantity": 2,
                 "target": [2, 2], "face": "S"}]}
         return httpx.Response(200, request=request, json={"id": "offline", "object": "chat.completion", "created": 0,
             "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",

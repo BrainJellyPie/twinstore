@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, cr
 
 from store_emulator.domain.action import CustomerAction
 from store_emulator.domain.behavior import BehaviorCue, BehaviorPattern
-from store_emulator.domain.rack import Rack, RackType, SlotItem
+from store_emulator.domain.rack import Rack, RackType, Slot, SlotItem
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.store import Store
 from store_emulator.domain.types import Action
@@ -147,12 +147,19 @@ def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, 
 
 
 def decode_catalog_response[T: IntentResponse](base: type[T], response: IntentResponse,
-                                              records: dict[str, SlotItem], store: Store) -> T:
+                                              records: dict[str, SlotItem], store: Store, *,
+                                              exposed: list[tuple[Rack, Slot, str]] | None = None) -> T:
     """Bind model codes to real offers after stripping all model-supplied internal hints."""
     result = base.model_validate(response.model_dump())
     grid = store.walkable_grid()
+    allowed = ({(rack.id, slot.block, slot.face, slot.level, sku) for rack, slot, sku in exposed}
+               if exposed is not None else None)
     for action in result.actions:
         item = records.get(action.product_sku)
+        if item is None and allowed is not None:
+            # The exposure stage presents one anchor offer per SKU. A provider
+            # ignoring the code grammar must still buy that observed offer.
+            item = next((item for item in records.values() if item.sku == action.product_sku), None)
         if item is None:
             continue  # Canonical SKUs from non-grammar providers keep legacy stance resolution.
         if action.action != Action.BUY:
@@ -162,6 +169,7 @@ def decode_catalog_response[T: IntentResponse](base: type[T], response: IntentRe
         for rack in store.racks:
             slots = [slot for slot in rack.slots
                      if (candidate := next((i for i in slot.items if i.sku == item.sku), None)) is not None
+                     and (allowed is None or (rack.id, slot.block, slot.face, slot.level, item.sku) in allowed)
                      and (candidate.name, candidate.price, candidate.promo) == (item.name, item.price, item.promo)
                      and not any(lock.block == slot.block and lock.face == slot.face for lock in rack.locked_faces)
                      and face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block) is not None]
@@ -170,7 +178,8 @@ def decode_catalog_response[T: IntentResponse](base: type[T], response: IntentRe
         placement = resolve_buy_placement(store.model_copy(update={"racks": racks}),
                                           target=action.target, face=action.face, sku=item.sku)
         if placement is None:
-            continue  # The unknown code is dropped by the existing guard, never replaced by a different offer.
+            action.product_sku = ""  # The invalid-buy guard drops it, never substitutes another offer.
+            continue
         rack, slot = placement
         action.product_sku = item.sku
         action.target = face_access_tile(rack, slot.face, store.grid_size, grid, block=slot.block)

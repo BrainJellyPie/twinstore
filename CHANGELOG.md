@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Bind impulse purchases to the actual exposed offer and placement, including
+  providers returning a canonical SKU instead of the requested short code.
+  Repeated SKUs or identical offers elsewhere cannot redirect the shopper or
+  change the price used for budget checks. Planned destinations stay independent.
+
 - Preserve the exact offer chosen by a model's compact product code. Repeated
   SKUs at different prices, blocks, levels or racks keep the selected offer
   through routing, impulse budgets, checkout and stockout accounting. Store the

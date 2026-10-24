@@ -46,12 +46,17 @@ def test_hidden_fields_cannot_change_purchase_value_or_fail_a_valid_response(col
     chosen = next(a for a in supplied.actions if a.action == Action.BUY)
     assert chosen.product_block is None and chosen.product_level is None
     assert chosen.origin == "planned"
-    engine = PatternIntentImpulseEngine(_ScriptedLLM(intent, impulse), AStarPathFinder(),
+    llm = _ScriptedLLM(intent, impulse)
+    engine = PatternIntentImpulseEngine(llm, AStarPathFinder(),
                                         SimulationConfig(route_ordering=ordering, budget_tolerance=None))
     decision = asyncio.run(engine.decide_actions(_context(collision_store, _persona())))
     result = execute_decision(collision_store, "P1", Weekday.MON, "12:00:00", decision, AStarPathFinder(), 1)
-    assert result.total_spent == 300 and len(result.purchases) == 1
-    assert (result.purchases[0].product_block, result.purchases[0].product_level) == (0, 1)
+    # Visibility presents the level-4 offer to the impulse model; even a
+    # canonical SKU response must buy that offer, independent of injected hints.
+    if stage == "impulse":
+        assert "Other level 900¢" in llm.calls[-1][2]
+    assert result.total_spent == (2700 if stage == "impulse" else 300) and len(result.purchases) == 1
+    assert (result.purchases[0].product_block, result.purchases[0].product_level) == (0, 4 if stage == "impulse" else 1)
     assert result.purchases[0].origin == ("planned" if stage == "intent" else "impulse")
     assert result.purchases[0].quantity == 3
     assert action == {**_intent().model_dump()["actions"][2], **hints}  # Do not mutate the caller's data.

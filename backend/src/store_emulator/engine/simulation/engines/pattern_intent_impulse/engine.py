@@ -227,7 +227,8 @@ class PatternIntentImpulseEngine:
                 stage2_intent.catalog_response_model(ImpulseResponse, impulse_records), stage3_system, stage3_user + situation,
                 seed=stage_seed("stage3"), route=context.persona.id,
             )
-            impulse = stage2_intent.decode_catalog_response(ImpulseResponse, impulse, impulse_records, context.store)
+            impulse = stage2_intent.decode_catalog_response(ImpulseResponse, impulse, impulse_records, context.store,
+                                                            exposed=exposed)
         else:
             impulse = ImpulseResponse()
         impulse_actions: list[CustomerAction] = []
