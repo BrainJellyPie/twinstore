@@ -127,8 +127,9 @@ def _hash6(text: str) -> str:
 
 class LiteLLMClient:
 
-    def __init__(self, config: LLMConfig, *, reroute: Reroute | None = None):
+    def __init__(self, config: LLMConfig, *, reroute: Reroute | None = None, max_reroutes: int = _MAX_REROUTES):
         self._reroute = reroute
+        self._max_reroutes = max_reroutes
         self._use(config)
         self._usage_lock = threading.Lock()
         self._usage = TokenUsage()
@@ -169,7 +170,7 @@ class LiteLLMClient:
         return True
 
     def _wants_reroute(self, error: BaseException, hops: int) -> bool:
-        return self._reroute is not None and hops < _MAX_REROUTES and is_auth_error(error)
+        return self._reroute is not None and hops < self._max_reroutes and is_auth_error(error)
 
     def _rerouted(self, tried: str, error: BaseException, hops: int, configuration: object) -> bool:
         """Whether to repeat a call the provider refused for its key: on the model another call already moved to, or on

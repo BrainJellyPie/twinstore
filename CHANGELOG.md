@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Let assistive requests reach the local model after every configured cloud key
+  is rejected. Their bounded model-switch budget now follows the application's
+  fallback provider list instead of stopping after three switches. Ordinary
+  simulation clients still do not switch providers automatically.
+
 - Verify byte ranges before completing resumed local-model downloads. A partial
   HTTP range is retained for another resume instead of cached as a finished model;
   mismatched ranges are discarded. Unsatisfiable resume requests retry once from

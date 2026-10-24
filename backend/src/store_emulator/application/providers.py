@@ -687,7 +687,9 @@ def assistive_client(
     kind = None if own_endpoint else missing_key(ref)
     if kind is not None:
         fallback.move_on(kind, None)
-    client = LiteLLMClient(fallback.config, reroute=fallback)
+    # One rejected key per cloud provider, then the local model. A generic client's
+    # smaller reroute limit can stop before this application-owned chain reaches it.
+    client = LiteLLMClient(fallback.config, reroute=fallback, max_reroutes=len(_FALLBACK_ORDER))
     _FALLBACKS[client] = fallback
     return client
 
