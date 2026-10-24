@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reject POS XLSX cells containing spreadsheet errors or formulas without saved
+  results before they can drop receipts or default quantity/price to 1/0. Check
+  the imported worksheet and selected columns, preserve cached zero/empty text,
+  and leave existing evidence intact when an upload needs recalculation.
+
 - Reject POS totals that overflow even though each input field is finite, before
   replacing saved fidelity evidence. Treat unrepresentable ratios as unavailable
   so API responses and saved JSON agree instead of persisting Infinity.
