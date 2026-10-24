@@ -306,12 +306,15 @@ def group_interview(pid: str, run_id: str, req: GroupInterviewRequest, config: S
     themes = [Theme(label=t, count=sum(1 for k in coded if k == i), share=round(sum(1 for k in coded if k == i) / len(ok), 4))
               for i, t in enumerate(labels)]
     group = GroupInterview(
-        group_id=f"grp_{uuid.uuid4().hex[:6]}", run_id=run_id, question=question, segment=req.segment if not req.persona_ids else "all",
+        group_id=f"grp_{uuid.uuid4().hex}", run_id=run_id, question=question, segment=req.segment if not req.persona_ids else "all",
         model=answered_by(llm, model), created_at=now_iso(), answers=answers, themes=themes,
         errors=sum(1 for a in answers if a.error),
     )
     with setup_tree_transaction(pid):
-        write_json(_groups_dir(pid, run_id) / f"{group.group_id}.json", group.model_dump(mode="json"))
+        path = _groups_dir(pid, run_id) / f"{group.group_id}.json"
+        if path.exists():
+            raise AppError("This interview identifier already exists. Retry to create a new group interview", 409)
+        write_json(path, group.model_dump(mode="json"))
     return group
 
 

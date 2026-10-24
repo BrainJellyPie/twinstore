@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve neighborhood synergy analyses and group interview transcripts across
+  generated ID collisions. Use full UUIDs, reject an already occupied output
+  destination, and keep legacy short-ID records readable.
+
 - Keep Shelf Lab photo edits, compliance audits and sim2real studies in distinct
   directories even when generated UUID prefixes match. Reserve new directories
   exclusively so an existing image, mask or study record cannot be overwritten;
