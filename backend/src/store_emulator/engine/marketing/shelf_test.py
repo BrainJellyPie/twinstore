@@ -17,7 +17,7 @@ from store_emulator.domain.marketing import ShareComparison, ShelfChoice, SkuSha
 from store_emulator.domain.persona import Persona
 from store_emulator.domain.rack import Rack
 from store_emulator.domain.types import Face, stable_seed
-from store_emulator.engine.marketing.survey import persona_text
+from store_emulator.engine.marketing.survey import StudyResponse, persona_text
 from store_emulator.engine.perception.shelf_render import ShelfView, render_face
 
 
@@ -30,10 +30,11 @@ class VisionLLM(Protocol):
 
 SHELF_TEST_PROMPT = """You are a shopper standing in front of one store shelf, as the person described below. Look at
 the shelf the way you would in a real store: you notice some products before others, and you take what suits you, or
-nothing. Each product has a number badge. Answer in character, with numbers from the badges. Write any text in English."""
+nothing. Each product has a number badge. Answer in character, with numbers from the badges. Write any text in English.
+Use an empty string, not null, when no explanation is given."""
 
 
-class ShelfAnswer(BaseModel):
+class ShelfAnswer(StudyResponse):
     noticed: list[int] = Field(default_factory=list[int], max_length=3, description="badge numbers of the products that caught your eye first, in order")
     pick: int = Field(ge=0, description="badge number of the one product you would take, 0 = none")
     why: str = Field(default="", max_length=240)

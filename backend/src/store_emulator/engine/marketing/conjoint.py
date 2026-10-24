@@ -29,7 +29,7 @@ from store_emulator.domain.persona import Persona
 from store_emulator.domain.types import stable_seed
 from store_emulator.engine.prompting import display_price
 
-from .survey import LETTERS, persona_text
+from .survey import LETTERS, StudyResponse, persona_text
 
 type Floats = npt.NDArray[np.float64]
 
@@ -86,14 +86,15 @@ def design(levels: Sequence[int], tasks: int, options: int, rng: random.Random) 
 CONJOINT_PROMPT = """You are shopping, as the person described below, and choose between versions of the same product. In each
 choice task, {choice_instruction}
 Different people care about different things: trade off what matters to you and ignore what
-does not. Answer every task. Write any text in English."""
+does not. Answer every task. Write any text in English.
+Use an empty string, not null, when no explanation is given."""
 
 
 def choice_model(tasks: int, options: int, none_option: bool) -> type[BaseModel]:
     allowed = tuple([*LETTERS[:options], *(["none"] if none_option else [])])
     fields: dict[str, Any] = {f"task_{t + 1}": (Literal[allowed], ...) for t in range(tasks)}
     fields["why"] = (str, Field(default="", max_length=240, description="in one sentence, what mattered most in your choices"))
-    return create_model("ConjointChoices", **fields)
+    return create_model("ConjointChoices", __base__=StudyResponse, **fields)
 
 
 def profile_text(attributes: Sequence[ConjointAttribute], prices: Sequence[int], currency: str, profile: Sequence[int]) -> str:

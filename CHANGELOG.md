@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retain valid concept-survey, conjoint and shelf-test answers when the model
+  leaves the optional explanation null. Preserve measured choices, ratings,
+  prices and paired comparisons; missing measured answers still fail validation.
+
 - Preserve the image's proportions when estimating an unscaled vision-model
   floor plan. Use the oriented, resized image dimensions so rectangular plans
   do not become square stores. Explicit model-read dimensions remain authoritative.

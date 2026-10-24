@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from typing import Any, Literal, Protocol
 
 from PIL import Image, ImageDraw, ImageOps
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, create_model, field_validator
 
 from store_emulator.domain.marketing import (
     PreferenceShare,
@@ -43,6 +43,15 @@ class VisionLLM(Protocol):
         self, response_model: type[T], system_prompt: str, user_prompt: str, image_url: str,
         *, max_retries: int = 1, seed: int | None = None, route: str | None = None,
     ) -> T: ...
+
+
+class StudyResponse(BaseModel):
+    """Preserve measured answers when their optional explanation is absent."""
+
+    @field_validator("why", mode="before", check_fields=False)
+    @classmethod
+    def _absent_reason(cls, value: object) -> object:
+        return "" if value is None else value
 
 
 def stimulus_board(images: Sequence[Image.Image], names: Sequence[str], *, height: int = 520) -> Image.Image:
@@ -85,14 +94,15 @@ def response_model(questions: Sequence[QuestionKind], stimuli: int, *, minor_per
             fields["preferred"] = (Literal[tuple(LETTERS[:stimuli])], ...)
         elif q == "open":
             fields["why"] = (str, Field(default="", max_length=240))
-    return create_model("SurveyResponse", **fields)
+    return create_model("SurveyResponse", __base__=StudyResponse, **fields)
 
 
 SURVEY_PROMPT = """You answer a short shopper survey as the person described below, honestly and in character: your age,
 budget, habits and mood decide your answers, not what a marketer would like to hear. Look at the products in the image
 (labelled with letters). Answer every question. Scales run from 1 to 5; most people use the middle of the scale for
 ordinary products. Prices are finite, realistic amounts per product in the currency given, without symbols;
-do not repeat digits or exceed the schema's price limits. Write any text in English."""
+do not repeat digits or exceed the schema's price limits. Write any text in English.
+Use an empty string, not null, when no explanation is given."""
 
 
 def _questions_text(questions: Sequence[QuestionKind], stimuli: int, currency: str, reference: str) -> str:
