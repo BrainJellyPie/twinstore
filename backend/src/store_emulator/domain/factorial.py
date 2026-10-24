@@ -13,7 +13,7 @@ type OutcomeMetric = Literal["spend", "units", "bought"]
 
 
 class PairedOutcome(BaseModel):
-    persona_id: ResourceId
+    persona_id: str = Field(min_length=1, pattern=r"\S")
     spend: int = Field(strict=True, ge=0, le=1_000_000_000_000)
     units: int = Field(strict=True, ge=0, le=1_000_000_000)
     bought: bool = Field(strict=True)
@@ -37,11 +37,13 @@ class PairedSnapshot(BaseModel):
     experiment_id: ResourceId
     currency: str = Field(min_length=1, max_length=16)
     request: ExperimentRequest
-    panel_ids: list[ResourceId] = Field(min_length=1, max_length=3000)
+    panel_ids: list[str] = Field(min_length=1, max_length=3000)
     arms: list[PairedArm] = Field(min_length=2, max_length=7)
 
     @model_validator(mode="after")
     def check_identity(self) -> Self:
+        if any(not identifier.strip() for identifier in self.panel_ids):
+            raise ValueError("Sampled shopper identities must not be blank")
         ids = set(self.panel_ids)
         if len(ids) != len(self.panel_ids):
             raise ValueError("Duplicate sampled shopper identity")

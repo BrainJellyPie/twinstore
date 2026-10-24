@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Retain paired experiment evidence for accepted shopper IDs, including Unicode,
+  spaces, punctuation and scenario/neighborhood clone suffixes. These labels no
+  longer trigger file-resource ID validation and silently disable factorial review.
+  Identity checks and spreadsheet-safe CSV exports remain enforced.
+
 ## 0.4.12 — Customer setup recovery, faithful comparisons and durable results
 
 - Publish release/v* branches through the same build, platform smoke checks and

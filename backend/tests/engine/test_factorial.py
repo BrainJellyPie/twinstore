@@ -187,3 +187,31 @@ def test_capture_keeps_zero_price_purchases_without_persona_narratives():
         [(name, store, []) for name in ["Control", "Price", "Sign", "Both"]], [[result]] * 4)
     assert all(a.outcomes[0].bought and a.outcomes[0].units == 1 and a.outcomes[0].spend == 0 for a in source.arms)
     assert "timeline" not in source.model_dump_json() and "arrival_time" not in source.model_dump_json()
+
+
+@pytest.mark.parametrize("identifier", ["", " ", "\t\n", "\u2003"])
+@pytest.mark.parametrize("has_outcomes", [False, True])
+def test_blank_shopper_ids_cannot_become_paired_evidence(identifier, has_outcomes):
+    data = snapshot().model_dump(mode="json")
+    data["panel_ids"][0] = identifier
+    for arm in data["arms"]:
+        if has_outcomes:
+            arm["outcomes"][0]["persona_id"] = identifier
+        else:
+            arm["outcomes"].pop(0)
+    with pytest.raises(ValueError):
+        PairedSnapshot.model_validate(data)
+
+
+def test_distinct_saved_labels_are_not_trimmed_or_unicode_normalized():
+    data = snapshot().model_dump(mode="json")
+    labels = ["customer", " customer ", "é", "e\u0301", "고객", "고객~s1"]
+    data["panel_ids"][:len(labels)] = labels
+    for arm in data["arms"]:
+        for outcome, label in zip(arm["outcomes"], labels):
+            outcome["persona_id"] = label
+    restored = PairedSnapshot.model_validate_json(PairedSnapshot.model_validate(data).model_dump_json())
+    report = analyze_factorial(restored, request())
+    assert report.complete_panel == 40
+    assert set(labels) <= {row.persona_id for row in report.rows}
+    assert [contrast.estimate for contrast in report.contrasts] == [5.5, 6.5, 7]
