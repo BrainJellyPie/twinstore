@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Normalize reviewed receipt timestamps before exporting POS evidence so ISO
+  week dates and alternate separators retain their local date and hour. Detect
+  date-only inputs by parsing instead of length, preserving compact timed forms.
+
 - Reject POS XLSX cells containing spreadsheet errors or formulas without saved
   results before they can drop receipts or default quantity/price to 1/0. Check
   the imported worksheet and selected columns, preserve cached zero/empty text,

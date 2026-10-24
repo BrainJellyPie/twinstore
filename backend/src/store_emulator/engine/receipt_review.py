@@ -1,7 +1,7 @@
 """Validate corrected OCR lines without calling a model or changing stored sales."""
 
 import math
-from datetime import datetime
+from datetime import date, datetime
 
 from store_emulator.domain.receipt_review import ReceiptIssue, ReceiptReview
 from store_emulator.domain.vision_inputs import ReceiptReading
@@ -35,10 +35,18 @@ def review_receipts(readings: list[ReceiptReading], products: dict[str, str], cu
         if receipt.timestamp:
             try:
                 stamp = datetime.fromisoformat(receipt.timestamp)
-                if len(receipt.timestamp.strip()) <= 10:
+                try:
+                    date.fromisoformat(receipt.timestamp)
+                    has_time = False
+                except ValueError:
+                    has_time = True
+                if not has_time:
                     issue("time_missing", "Only a date was read; supply a time or clear it to omit hourly scoring.")
                 elif stamp.utcoffset() is not None:
                     issue("timezone", "Use the store's local time without a timezone offset.")
+                else:
+                    # POS parsing must see the same date/time that passed review.
+                    receipt.timestamp = stamp.isoformat(sep=" ")
             except ValueError:
                 issue("timestamp", "Use a local ISO date and time, or clear the timestamp.")
         else:
