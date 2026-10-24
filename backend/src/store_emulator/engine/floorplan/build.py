@@ -4,12 +4,11 @@ The outline maps to an 8–16 tile grid at the realistic mode's 1.25 m per tile.
 the tiles whose centres fall inside it and becomes one 1×1 rack per tile (the grid editor's unit).
 Shelves and fridges face the free floor next to them; free-standing gondolas are shopped from both
 long sides. Products come from the built-in catalog: the category a fixture's label names, else a
-rotation of typical categories for its kind. Tiles that cannot be reached from the entrance are
-cleared until the layout validates.
+rotation of typical categories for its kind. Short openings are cleared through fixtures until
+the aisles are connected to the entrance.
 """
 
-import math
-import re
+from collections import deque
 from typing import Literal
 
 from store_emulator.domain.floorplan import FloorPlanReading, PlanFixture
@@ -18,7 +17,6 @@ from store_emulator.domain.store import GRID_MAX_SIDE, GRID_MIN_SIDE, DaySchedul
 from store_emulator.domain.types import Face
 from store_emulator.engine.capture.catalog_match import match_category
 from store_emulator.engine.layout_gen.catalog import CATALOG, category_label, localized
-from store_emulator.engine.validation import validate
 
 TILE_M = 1.25
 FRIDGE_CATEGORIES = ("soft_drinks", "water_sports", "dairy", "energy_coffee", "beer_alcohol")
@@ -26,7 +24,6 @@ FREEZER_CATEGORIES = ("ice_cream",)
 SHELF_CATEGORIES = ("chips", "sweets", "instant_food", "household", "health_beauty", "bakery", "stationery")
 _ROTATION: dict[Face, Literal[0, 90, 180, 270]] = {Face.S: 0, Face.E: 90, Face.N: 180, Face.W: 270}
 _STEP = {Face.N: (0, -1), Face.S: (0, 1), Face.W: (-1, 0), Face.E: (1, 0)}
-_RACK_IN_MESSAGE = re.compile(r"rack '([^']+)'")
 
 
 def grid_for(reading: FloorPlanReading) -> tuple[int, int]:
@@ -155,20 +152,44 @@ def plan_to_store(
     store = Store(id=store_id, name=name, type=store_type, grid_size=(w, h), weekly_schedule=schedule or [], racks=racks,
                   currency=currency.upper())
     dropped = 0
-    for _ in range(40):
-        errors = [i for i in validate(store) if i.severity == "error"]
-        if not errors:
-            break
-        bad = {m.group(1) for e in errors for m in _RACK_IN_MESSAGE.finditer(e.message)}
-        removable = [r for r in store.racks if r.id in bad and r.type in (RackType.SHELF, RackType.FRIDGE)]
-        if not removable:
-            # No rack named: clear the product rack deepest in the store and retry.
-            product = [r for r in store.racks if r.type in (RackType.SHELF, RackType.FRIDGE)]
-            if not product:
+    fixed = {rack.position for rack in store.counters}
+    # A repair removes at least one product tile, bounded by the generated grid.
+    # Connect floor regions through the cheapest opening instead of deleting
+    # unreachable shelves behind a barrier while leaving that barrier intact.
+    for _ in range(len(store.product_racks) + 1):
+        products = {rack.position: rack.id for rack in store.product_racks}
+        cost = {door: 0}
+        previous: dict[tuple[int, int], tuple[int, int]] = {}
+        pending = deque([door])
+        target: tuple[int, int] | None = None
+        # 0–1 BFS: walking on floor costs zero; opening a product tile costs one.
+        while pending:
+            cell = pending.popleft()
+            if cost[cell] > 0 and cell not in products:
+                target = cell
                 break
-            removable = [max(product, key=lambda r: math.dist(r.position, door))]
-        store = store.model_copy(update={"racks": [r for r in store.racks if r.id != removable[0].id]})
-        dropped += 1
+            for dx, dy in _STEP.values():
+                neighbor = cell[0] + dx, cell[1] + dy
+                if not (0 <= neighbor[0] < w and 0 <= neighbor[1] < h) or neighbor in fixed:
+                    continue
+                step = int(neighbor in products)
+                distance = cost[cell] + step
+                if distance >= cost.get(neighbor, w * h + 1):
+                    continue
+                cost[neighbor], previous[neighbor] = distance, cell
+                if step:
+                    pending.append(neighbor)
+                else:
+                    pending.appendleft(neighbor)
+        if target is None:
+            break
+        cleared: set[str] = set()
+        while target != door:
+            if target in products:
+                cleared.add(products[target])
+            target = previous[target]
+        store = store.model_copy(update={"racks": [rack for rack in store.racks if rack.id not in cleared]})
+        dropped += len(cleared)
     if dropped:
         notes.append(f"{dropped} tile(s) cleared so every rack can be reached from the entrance")
     return store, notes

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Connect inaccessible floor-plan aisles by opening short paths through
+  product tiles. Dense plans no longer stop repair after forty removals or
+  erase shelves behind an intact barrier. Preserve counters and gates, and
+  make retained stocked faces reachable from the entrance.
+
 - Preserve valid shopper-interview and run-analysis answers when optional
   citations, follow-ups or comparison detail are null. Keep required narrative
   validation and existing filtering of unsupported figures and journey steps.
