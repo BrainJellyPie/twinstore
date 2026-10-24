@@ -149,7 +149,8 @@ class PatternIntentImpulseEngine:
         # Stage 2: action-sequence generation (store catalog is the cached system prefix).
         records = stage2_intent.catalog_records(context.store)
         intent_records = records
-        stage2_system = stage2_intent.build_system_prompt(context.store, currency, records=records)
+        stage2_system = stage2_intent.build_system_prompt(context.store, currency, records=records,
+                                                         max_quantity=cfg.max_quantity_per_line)
         stage2_user = stage2_intent.build_user_prompt(
             context.persona, context.arrival_hour, context.concurrent_visitors_in_hour,
             day_of_week, context.cue,
@@ -158,7 +159,8 @@ class PatternIntentImpulseEngine:
         recovery_trace: dict[str, object] = {}
         try:
             intent = await self._llm.generate_structured_async(
-                stage2_intent.catalog_response_model(IntentResponse, records), stage2_system, stage2_user + situation,
+                stage2_intent.catalog_response_model(IntentResponse, records, max_quantity=cfg.max_quantity_per_line),
+                stage2_system, stage2_user + situation,
                 seed=stage_seed("stage2"), route=context.persona.id,
             )
         except (BadRequestError, InstructorRetryException) as error:
@@ -177,8 +179,9 @@ class PatternIntentImpulseEngine:
             selected = {code: records[code] for code in candidates.codes}
             intent_records = selected
             intent = await self._llm.generate_structured_async(
-                stage2_intent.catalog_response_model(IntentResponse, selected),
-                stage2_intent.build_system_prompt(context.store, currency, records=selected, focused=True),
+                stage2_intent.catalog_response_model(IntentResponse, selected, max_quantity=cfg.max_quantity_per_line),
+                stage2_intent.build_system_prompt(context.store, currency, records=selected, focused=True,
+                                                  max_quantity=cfg.max_quantity_per_line),
                 stage2_user + situation, seed=stage_seed("stage2"), route=context.persona.id,
             )
             recovery_trace["catalog_recovery"] = {"selected_codes": candidates.codes,
@@ -217,6 +220,7 @@ class PatternIntentImpulseEngine:
             stage3_system = stage3_impulse.build_system_prompt(
                 pattern.max_products, pattern.allow_no_purchase, existing_buys,
                 pattern.browse_required_before_buy, currency=currency, product_codes=True,
+                max_quantity=cfg.max_quantity_per_line,
             )
             stage3_user = stage3_impulse.build_user_prompt(
                 context.persona, intent.model_copy(update={"actions": bounded_intent}), exposed, day_of_week,
@@ -225,7 +229,8 @@ class PatternIntentImpulseEngine:
                 visibility=visibility, currency=currency, records=impulse_records,
             )
             impulse = await self._llm.generate_structured_async(
-                stage2_intent.catalog_response_model(ImpulseResponse, impulse_records), stage3_system, stage3_user + situation,
+                stage2_intent.catalog_response_model(ImpulseResponse, impulse_records, max_quantity=cfg.max_quantity_per_line),
+                stage3_system, stage3_user + situation,
                 seed=stage_seed("stage3"), route=context.persona.id,
             )
             impulse = stage2_intent.decode_catalog_response(ImpulseResponse, impulse, impulse_records, context.store,

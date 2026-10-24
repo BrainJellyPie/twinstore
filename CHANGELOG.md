@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Pass the configured per-line purchase quantity ceiling to intent and impulse
+  prompts and local structured-output grammars, including focused context
+  recovery. Requests with different ceilings have different cache identities;
+  non-enforcing providers retain the executor's existing quantity clamping.
+
 - Accept null SKU/quantity fields on model-generated non-buy actions as their
   existing empty-SKU/one-unit defaults. An unused field on a browse, payment or
   exit no longer invalidates the whole visit. Buy fields and other invalid types

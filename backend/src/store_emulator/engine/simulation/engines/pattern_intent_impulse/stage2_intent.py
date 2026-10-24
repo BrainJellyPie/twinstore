@@ -136,14 +136,20 @@ def catalog_records(store: Store) -> dict[str, SlotItem]:
     return {f"{prefix}{index}": item for index, item in enumerate(offers.values(), 1)}
 
 
-def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, SlotItem]) -> type[T]:
+def catalog_response_model[T: IntentResponse](base: type[T], records: dict[str, SlotItem], *,
+                                              max_quantity: int | None = None) -> type[T]:
     """Keep offer references in cached answers until the engine binds their exact placement."""
     mapping = {code: item.sku for code, item in records.items()}
     digest = hashlib.sha256(json.dumps(mapping, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     constraints: dict[str, JsonValue] = {"enum": ["", *mapping]}
+    quantity_bounds: dict[str, JsonValue] = ({"minimum": 1, "maximum": max_quantity}
+                                            if max_quantity is not None else {})
 
     class CatalogAction(GeneratedAction):
         product_sku: str = Field(default="", json_schema_extra=constraints)
+        # Guide constrained decoding; non-enforcing providers still use the
+        # executor's existing clamping rather than invalidating the whole visit.
+        quantity: int = Field(default=1, json_schema_extra=quantity_bounds)
 
     return create_model(base.__name__, __base__=base,
         __config__=ConfigDict(json_schema_extra={"$comment": f"catalog-offer-codes-v2:{digest}"}),
@@ -193,11 +199,13 @@ def decode_catalog_response[T: IntentResponse](base: type[T], response: IntentRe
 
 
 def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[str, SlotItem] | None = None,
-                        focused: bool = False) -> str:
+                        focused: bool = False, max_quantity: int | None = None) -> str:
     """Static per store: identical for every customer, so it is a cacheable prefix."""
     scope = ("## 후보 상품 범위\n전체 상품을 검토해 고른 고객별 후보만 아래 상품 목록에 표시합니다. "
              "다른 상품도 매장에 있으며 모든 진열대와 이동 공간은 그대로입니다. "
              "이 단계에서는 표시된 후보로만 구매를 계획하세요.\n\n") if focused else ""
+    quantity_rule = (f"1~{max_quantity} 사이의 정수, 기본 1" if max_quantity is not None
+                     else "기본 1. 같은 상품을 여러 개 살 때만 2 이상")
     return f"""당신은 매장 고객 행동 시뮬레이터입니다.
 주어진 매장 정보와 고객 페르소나를 보고, 이 고객이 매장에서 어떤 행동을 할지 이벤트 시퀀스를 생성하세요.
 고객별 행동 패턴과 추가 규칙은 사용자 메시지에 주어집니다.
@@ -222,7 +230,7 @@ def build_system_prompt(store: Store, currency: str = "USD", *, records: dict[st
 - face: 고객이 바라보는 rack 면 (N/S/E/W)
 - dwell: 해당 위치 머무는 시간 (초, 최대 120)
 - product_sku: buy 시 아래 상품 목록의 코드 (예: @P1). 상품명이나 임의의 코드를 쓰지 마세요
-- quantity: buy 시 구매 수량 (기본 1. 같은 상품을 여러 개 살 때만 2 이상)
+- quantity: buy 시 구매 수량 ({quantity_rule})
 - nav="area" 일 때 area: [x1, y1, x2, y2] 배회 영역
 - description: 해당 행동 시점의 상황만 묘사. 진열대 목록의 상품만 다룬다.
 

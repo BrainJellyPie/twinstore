@@ -55,9 +55,12 @@ def build_system_prompt(
     currency: str = "USD",
     *,
     product_codes: bool = False,
+    max_quantity: int | None = None,
 ) -> str:
     """System prompt with pattern-specific constraints applied."""
     constraints: list[str] = []
+    if max_quantity is not None:
+        constraints.append(f"- buy의 quantity는 1~{max_quantity} 사이의 정수로 작성하세요 (기본 1)")
     if max_products == 0:
         constraints.append("- 이 고객은 구매 의사가 없습니다. buy 이벤트를 추가하지 마세요")
     elif max_products > 0:

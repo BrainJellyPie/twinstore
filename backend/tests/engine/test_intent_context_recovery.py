@@ -37,6 +37,13 @@ def test_full_catalog_is_considered_before_focused_intent_and_cached_recovery(mo
         nonlocal selection_attempts
         body = json.loads(request.content)
         system = body["messages"][0]["content"]
+        if "## 행동 패턴 목록" not in system and "## 후보 상품 선택" not in system:
+            assert "1~6 사이의 정수" in system
+            if mode == "json_schema":
+                schema = body["response_format"]["json_schema"]["schema"]
+                name = schema["properties"]["actions"]["items"]["$ref"].rsplit("/", 1)[-1]
+                quantity = schema["$defs"][name]["properties"]["quantity"]
+                assert quantity["minimum"] == 1 and quantity["maximum"] == 6
         if "## 행동 패턴 목록" in system:
             kind, answer = "pattern", {"pattern_id": "exploratory"}
         elif "## 후보 상품 선택" in system:
