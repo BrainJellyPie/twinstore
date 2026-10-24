@@ -8,9 +8,9 @@ its shelves cost. The draft fills the builder; nothing runs until the user start
 from collections.abc import Sequence
 from decimal import Decimal, ROUND_HALF_UP
 from math import isfinite
-from typing import Protocol
+from typing import Protocol, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from store_emulator.domain.marketing import ConjointAttribute, ConjointRequest
 from store_emulator.domain.product_edits import MAX_PRICE
@@ -65,6 +65,9 @@ answered, draft one study:
 - three to five price levels in {currency}, written in major units, evenly spread and bracketing what comparable
   products in this store cost (listed below), unless the question asks for no price;
 - a one-sentence context and a short rationale.
+Use distinct attribute names and at least two distinct, nonblank levels per attribute. There must be at least two
+usable attributes, counting price as one. Prices must be finite, non-negative and distinct after rounding to the
+currency's minor unit; a positive price must not round to zero. Use realistic amounts, without repeated digits.
 Keep levels concrete (sizes with units, named claims). Write in English."""
 
 
@@ -123,8 +126,15 @@ def to_design(draft: _Draft, currency: str, products: Sequence[tuple[str, int]])
 async def design_conjoint(
     llm: StructuredLLM, question: str, currency: str, products: Sequence[tuple[str, int]],
 ) -> ConjointDesign:
+    class ConjointDraft(_Draft):
+        @model_validator(mode="after")
+        def usable_study(self) -> Self:
+            # Validate the normalized study within Instructor's correction loop and before caching.
+            to_design(self, currency, products)
+            return self
+
     draft = await llm.generate_structured_async(
-        _Draft, DESIGN_PROMPT.format(currency=currency.upper()),
+        ConjointDraft, DESIGN_PROMPT.format(currency=currency.upper()),
         f"{_shelf_text(products, currency, question)}\n\nQuestion: {question.strip()}", max_retries=2, seed=0,
     )
     return to_design(draft, currency, products)

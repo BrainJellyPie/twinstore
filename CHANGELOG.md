@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Validate automatic conjoint drafts as usable studies before caching them.
+  Collapsed price levels, unusable attribute choices and blank products now get
+  one model correction attempt. Failed drafts are not cached, so trying again
+  can obtain a new answer instead of repeating the same failure.
+
 - Preserve independent local vision servers during automatic model selection and
   run startup. A different loopback host, API path or deployment query no longer
   inherits the built-in server's startup block or automatic cloud substitution;
