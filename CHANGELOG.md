@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Restrict model-generated impulse purchases to the products in that customer's
+  actual exposure list. Unseen purchases cannot create sales or consume the
+  visible basket's budget/limit; planned destinations remain unrestricted.
+  Traces distinguish unseen products from nonexistent catalog SKUs.
+
 - Enforce the selected behavior pattern's purchase limit in the three-stage LLM
   simulator. Zero-purchase patterns cannot create sales or checkout traffic;
   planned products take priority over impulse additions, while per-product

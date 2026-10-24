@@ -191,16 +191,23 @@ class PatternIntentImpulseEngine:
         else:
             impulse = ImpulseResponse()
         impulse_actions: list[CustomerAction] = []
-        for a in impulse.actions:
+        valid_impulse, dropped_impulse_invalid = drop_invalid_buys(impulse.actions, context.store)
+        dropped_invalid += dropped_impulse_invalid
+        exposed_skus = {sku for _, _, sku in exposed}
+        dropped_unexposed = 0
+        for a in valid_impulse:
             a.origin = "impulse"
             # This stage contributes shopping stops, not another visit frame.
             # Keep unexpected model output in the trace but out of execution.
             if a.action in (None, Action.BROWSE, Action.BUY):
                 a.action = a.action or Action.BROWSE
                 a.nav = "path"
+                if a.action == Action.BUY and a.product_sku not in exposed_skus:
+                    dropped_unexposed += 1
+                    continue
                 impulse_actions.append(a)
         if len(impulse_actions) != len(impulse.actions):
-            logger.info("[drop] ignored %d non-shopping impulse actions", len(impulse.actions) - len(impulse_actions))
+            logger.info("[drop] ignored %d unusable impulse actions", len(impulse.actions) - len(impulse_actions))
 
         if cfg.route_ordering == "planned":
             merged = integrate_actions(context.store, planned, impulse_actions, ordering="planned")
@@ -231,6 +238,7 @@ class PatternIntentImpulseEngine:
                 "stage2": intent.model_dump(),
                 "stage3": impulse.model_dump(),
                 "exposed_skus": [sku for _, _, sku in exposed],
+                "dropped_unexposed_buys": dropped_unexposed,
                 "dropped_product_limit": dropped_limit,
             },
             dropped_invalid_buys=dropped_invalid,
