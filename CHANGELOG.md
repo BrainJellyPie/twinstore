@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reject layout workbook array formulas with missing saved results before they
+  can clear products or default prices. Check absent children, multi-column
+  ranges, shifted headers and array tails within the existing cell budget.
+
 - Validate saved results across POS XLSX array-formula ranges, including missing
   child cells and tails beyond existing rows. Prevent silent SKU loss and default
   quantities/prices while bounding declared array areas and cache-tracking memory.
