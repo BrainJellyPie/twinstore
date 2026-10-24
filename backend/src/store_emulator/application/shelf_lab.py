@@ -485,7 +485,6 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
     def run() -> None:
         t0 = time.perf_counter()
         status.status, status.stage = "running", "glancing"
-        _write_status(pid, status)
         last = 0.0
 
         def on_progress(done: int, total: int) -> None:
@@ -496,6 +495,7 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
                 _write_status(pid, status)
 
         try:
+            _write_status(pid, status)
             views = build_views(photo, result, seed=req.seed)
             llm = LiteLLMClient(llm_config)
             answers = asyncio.run(glance_panel(
@@ -585,8 +585,8 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
     def run() -> None:
         t0 = time.perf_counter()
         status.status, status.stage = "running", "comparing"
-        _write_status(pid, status)
         try:
+            _write_status(pid, status)
             rack = next(r for r in store.racks if r.id == req.rack_id)
             field = match_field(store, result)
             levels, findings = diff_face(rack, face, field, result.currency)

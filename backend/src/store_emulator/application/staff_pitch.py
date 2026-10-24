@@ -68,8 +68,8 @@ def start_pitch(pid: str, req: PitchRequest, config: SimulationConfig) -> JobSta
     def run() -> None:
         started = time.perf_counter()
         status.status, status.stage = "running", "testing scripts"
-        _write_status(pid, status)
         try:
+            _write_status(pid, status)
             def progress(value: float, stage: str) -> None:
                 status.progress, status.stage = round(value, 3), stage
                 _write_status(pid, status)

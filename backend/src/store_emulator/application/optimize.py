@@ -212,7 +212,6 @@ def _run_job(
     spec, judge = status.spec, status.judge
     status.status = "running"
     status.phase = "searching" if vlm_config is None else ""
-    _write_status(pid, status)
     last = 0.0
 
     def on_progress(done: int, budget: int, best: float) -> None:
@@ -229,6 +228,7 @@ def _run_job(
         _write_status(pid, status)
 
     try:
+        _write_status(pid, status)
         if (pid, status.job_id) in _cancel_requests:
             raise OptimizationCanceled("optimization canceled before starting")
         # The situation's days, traffic and budgets pick the panels; its promotions and stock-outs go on every
@@ -281,7 +281,13 @@ def _run_job(
         status.error = job_failure(e, "The optimization failed")
     _cancel_requests.discard((pid, status.job_id))
     status.finished_at = now_iso()
-    _write_status(pid, status)
+    try:
+        _write_status(pid, status)
+    except Exception as e:
+        logger.exception(f"[optimize] job {status.job_id} status could not be saved")
+        status.status = "failed"
+        status.error = job_failure(e, "The optimization status could not be saved")
+        _write_status(pid, status)
 
 
 def apply_optimization(pid: str, job_id: str, name: str | None = None) -> dict[str, Any]:

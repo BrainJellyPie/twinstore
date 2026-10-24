@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Recover background-job status save failures instead of leaving work pending
+  or running indefinitely. Optimization, photo analysis and research workers
+  now include their initial status commit in failure handling; final photo,
+  optimization and neighborhood status failures also release job guards while
+  retaining already saved result files.
+
 - Roll back failed floor-plan imports and retain the previous active layout.
   Plan images and layouts now commit under the same project lock, so a concurrent
   deletion cannot recreate the deleted project. Occupied destinations are kept.

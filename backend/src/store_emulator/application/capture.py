@@ -367,10 +367,10 @@ class StageWriter:
 
 def _run_job(pid: str, status: CaptureStatus, llm_config: LLMConfig | None) -> None:
     status = status.model_copy(update={"status": "running", "stage": "detecting"})
-    _write_status(pid, status)
     writer = StageWriter(pid, status)
     folder = _dir(pid, status.capture_id)
     try:
+        _write_status(pid, status)
         photo = Image.open(folder / "image.jpg").convert("RGB")
         result = run_capture_sync(photo, status.options, llm_config, salt=status.capture_id, on_stage=writer)
         payload = json.loads(result.model_dump_json())
@@ -380,12 +380,13 @@ def _run_job(pid: str, status: CaptureStatus, llm_config: LLMConfig | None) -> N
         final = _with_counts(writer.status, result).model_copy(update={
             "status": "completed", "stage": "done", "progress": 1.0, "finished_at": now_iso(),
         })
+        _write_status(pid, final)
     except Exception as e:  # surface any failure to the UI instead of a stuck job
         logger.exception(f"[capture] {status.capture_id} failed")
         final = writer.status.model_copy(update={
             "status": "failed", "error": job_failure(e, "Reading the shelf photo failed"), "finished_at": now_iso(),
         })
-    _write_status(pid, final)
+        _write_status(pid, final)
 
 
 def save_capture(

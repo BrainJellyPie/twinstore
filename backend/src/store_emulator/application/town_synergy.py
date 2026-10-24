@@ -176,7 +176,6 @@ def _run_job(
 ) -> None:
     status.status = "running"
     status.phase = "sampling"
-    _write_status(pid, status)
     last = 0.0
 
     def on_progress(phase: str, done: int, total: int) -> None:
@@ -189,6 +188,7 @@ def _run_job(
         _write_status(pid, status)
 
     try:
+        _write_status(pid, status)
         pathfinder = AStarPathFinder(diagonal=config.diagonal_moves)
         llm = build_client(config.llm_for(EngineType.VLM_GLANCE), config.ensemble)
         request = status.request
@@ -201,9 +201,11 @@ def _run_job(
         ))
         write_json(_dir(pid, status.job_id) / "result.json", json.loads(result.model_dump_json()))
         status.status, status.phase = "completed", "done"
+        status.finished_at = now_iso()
+        _write_status(pid, status)
     except Exception as e:  # surface any failure to the UI instead of a stuck job
         logger.exception(f"[town] synergy job {status.job_id} failed")
         status.status = "failed"
         status.error = job_failure(e, "The neighborhood run failed")
-    status.finished_at = now_iso()
-    _write_status(pid, status)
+        status.finished_at = now_iso()
+        _write_status(pid, status)

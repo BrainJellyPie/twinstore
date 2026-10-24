@@ -275,8 +275,8 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
     def run() -> None:
         t0 = time.perf_counter()
         status.status, status.stage = "running", "simulating"
-        _write_status(pid, status)
         try:
+            _write_status(pid, status)
             panel = select_personas(personas, req.panel, seed=req.seed)
             run_config = config.model_copy(update={"seed": req.seed})
             pathfinder = AStarPathFinder(diagonal=run_config.diagonal_moves)
@@ -465,8 +465,8 @@ def start_survey(pid: str, req: SurveyRequest, config: SimulationConfig) -> JobS
     def run() -> None:
         t0 = time.perf_counter()
         status.status, status.stage = "running", "asking"
-        _write_status(pid, status)
         try:
+            _write_status(pid, status)
             llm = LiteLLMClient(llm_config)
             minor = _minor_per_major(req.currency)
             reference = display_price(req.reference_price, req.currency) if req.reference_price is not None else ""
@@ -668,8 +668,8 @@ def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) 
     def run() -> None:
         t0 = time.perf_counter()
         status.status, status.stage = "running", "asking"
-        _write_status(pid, status)
         try:
+            _write_status(pid, status)
             for arm, arm_rack in (("control", rack), ("test", test_rack)):
                 png = render_face(arm_rack, face, currency=currency, width=900, number_on_tag=False, image_loader=image_loader).png
                 (_job_dir(pid, "shelf", status.job_id) / f"{arm}.png").write_bytes(png)
@@ -748,8 +748,8 @@ def start_conjoint(pid: str, req: ConjointRequest, config: SimulationConfig) -> 
     def run() -> None:
         t0 = time.perf_counter()
         status.status, status.stage = "running", "asking"
-        _write_status(pid, status)
         try:
+            _write_status(pid, status)
             answers = asyncio.run(conjoint_panel(
                 LiteLLMClient(llm_config), respondents, req.attributes, req.prices, product=req.product, context=req.context,
                 currency=currency, tasks=req.tasks, options=req.options, none_option=req.none_option, seed=req.seed,
