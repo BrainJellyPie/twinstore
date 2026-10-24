@@ -7,7 +7,7 @@ citing the steps it refers to — so "why didn't you buy the green tea?" is answ
 shopper actually saw and did, and "I didn't notice it" is a valid answer.
 """
 
-import re
+import unicodedata
 from collections import Counter
 from collections.abc import Sequence
 from datetime import datetime, timedelta
@@ -194,11 +194,14 @@ async def suggest_follow_ups(
 
 def _as_prompt(text: str) -> str:
     """A question keeps its mark, an instruction ("Walk me through…") its full stop; bare text becomes a question."""
-    return text if text.endswith(("?", ".", "!")) else f"{text}?"
+    return text if text.endswith(("?", ".", "!", "？", "。", "！", "؟")) else f"{text}?"
 
 
 def _norm(text: str) -> str:
-    return re.sub(r"[^a-z0-9 ]", "", text.casefold()).strip()
+    normalized = unicodedata.normalize("NFKC", text).casefold()
+    letters = "".join(c for c in normalized
+                      if c.isalnum() or c.isspace() or unicodedata.category(c).startswith("M"))
+    return " ".join(letters.split())
 
 
 RUN_QUESTIONS_PROMPT = """You are a qualitative market researcher planning group interviews with the shoppers of one
