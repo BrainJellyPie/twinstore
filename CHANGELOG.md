@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve partial package readings when a vision model returns null for unknown
+  name, brand, size, category or store-product text. Keep unknown text empty,
+  preserve existing image metadata, and leave unmatched products unlinked;
+  confidence and invalid non-null types remain strictly validated.
+
 - Treat null dwell times on model-generated actions as the existing omitted-value
   default of zero. An unspecified duration no longer discards a complete visit;
   routing still applies its normal duration floors and caps. Both action prompts

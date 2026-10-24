@@ -88,3 +88,30 @@ def test_an_unknown_product_is_not_linked_and_failures_change_nothing(client, mo
     assert r.status_code == 502 and "rejected the API key" in r.json()["detail"]
     listed = client.get(f"/api/projects/{PID}/lab/packages").json()
     assert next(a for a in listed if a["asset_id"] == other["asset_id"])["name"] == "IMG 2041"
+
+
+@pytest.mark.parametrize("missing", ["name", "brand", "size", "category", "shelf_product", "all"])
+def test_partial_pack_reading_preserves_known_fields_and_never_invents_a_product_link(client, monkeypatch, missing):
+    from store_emulator.application import shelf_lab
+
+    store = client.get(f"/api/projects/{PID}/setups/{SETUP}").json()["store"]
+    item = next(i for r in store["racks"] for s in r.get("slots", []) for i in s["items"])
+    reading = {"name": "Green Tea 500 ml", "brand": "Leafy", "size": "500 ml", "category": "Tea",
+               "shelf_product": item["name"], "confidence": 0.9}
+    fields = ["name", "brand", "size", "category", "shelf_product"] if missing == "all" else [missing]
+    for field in fields:
+        reading[field] = None
+    monkeypatch.setattr(shelf_lab, "LiteLLMClient", _reader(reading, []))
+    monkeypatch.setattr(shelf_lab, "capture_llm_config", lambda config, model: config.engines.vlm_glance.llm)
+    asset = _upload(client, "Leafy Tea")
+    response = client.post(f"/api/projects/{PID}/lab/packages/{asset['asset_id']}/read", json={"setup_id": SETUP})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["asset"]["name"] == (asset["name"] if "name" in fields else "Green Tea 500 ml")
+    assert body["asset"]["brand"] == (asset["brand"] if "brand" in fields else "Leafy")
+    assert all(body["reading"][field] == "" for field in fields)
+    assert body["reading"]["confidence"] == 0.9
+    linked = "shelf_product" not in fields
+    assert body["linked"] == linked and body["asset"]["sku"] == (item["sku"] if linked else "")
+    listed = client.get(f"/api/projects/{PID}/lab/packages").json()
+    assert next(a for a in listed if a["asset_id"] == asset["asset_id"]) == body["asset"]

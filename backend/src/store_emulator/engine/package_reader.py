@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from store_emulator.engine.capture.detect import image_data_url
 
@@ -27,11 +27,17 @@ class PackReading(BaseModel):
     shelf_product: str = Field(default="", max_length=120, description="the listed store product this pack is, exactly as listed, or ''")
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
 
+    @field_validator("name", "brand", "size", "category", "shelf_product", mode="before")
+    @classmethod
+    def _unknown_text(cls, value: object) -> object:
+        return "" if value is None else value
+
 
 PACK_PROMPT = """You read product packaging. From the image, give the product's name as a shopper would say it
 (brand-free, with flavour or variant and size), its brand, the net size as printed and a short category. If the store's
 product list below has this exact product (same brand, variant and size), copy its name into shelf_product; otherwise
-leave shelf_product empty. Do not guess text you cannot read; say how sure you are in confidence."""
+leave shelf_product empty. For any unreadable or unknown text field, use an empty string instead of null.
+Do not guess text you cannot read; say how sure you are in confidence."""
 
 
 async def read_pack(llm: VisionLLM, image: Image.Image, products: Sequence[str]) -> PackReading:
