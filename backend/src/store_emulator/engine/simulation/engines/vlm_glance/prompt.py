@@ -31,7 +31,8 @@ Reply in JSON:
 - product: the product name exactly as printed, or "" if nothing at all fits
 - number: its N from the price tag, or 0
 - interest: 0 to 10
-- reason: a few words"""
+- reason: a few words
+Use empty strings, not null, for absent text."""
 
 
 _STORE_KINDS: dict[str, str] = {
@@ -82,6 +83,8 @@ class ShelfGlance(BaseModel):
     def _clip_long_text(cls, value: object, info: ValidationInfo) -> object:
         """A wordy answer is cut rather than discarded: the decision in it is still valid
         (models without a JSON grammar, e.g. cloud APIs, sometimes exceed the limit)."""
+        if value is None:
+            return ""
         limit = _GLANCE_PRODUCT_LIMIT if info.field_name == "product" else 80
         return value[:limit] if isinstance(value, str) else value
 
@@ -264,7 +267,8 @@ Reply in JSON:
 - mission: what they came for, at most 12 words
 - enter: true if they go in; false only if they would turn around (the store has nothing they need, or today's situation puts them off)
 - items: {items_rule}
-- reason: a few words"""
+- reason: a few words
+Use empty strings, not null, for absent text."""
 
 _PLAN_IMAGE_LINE = ("The image is the store directory map by the door: racks labeled by category, "
                     "red SALE ribbons mark promotions.\n")
@@ -277,6 +281,8 @@ _TEXT_LIMITS: dict[str, int] = {"category": PLAN_CATEGORY_LIMIT, "product": PLAN
 
 def _clip(value: object, info: ValidationInfo) -> object:
     """Over-long text is cut instead of failing the call (grammar-constrained servers never send it)."""
+    if value is None:
+        return ""
     limit = _TEXT_LIMITS.get(info.field_name or "", 0)
     return value[:limit] if isinstance(value, str) and limit else value
 

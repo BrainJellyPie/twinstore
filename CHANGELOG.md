@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Accept null optional text in vision entry plans and shelf glances as empty
+  strings. A valid category or printed badge can still identify a product when
+  the optional product text is absent; structural nulls remain validation errors.
+
 - Limit vision-glance JSON grammars to the badge numbers in the current shelf
   view plus zero. Untagged photo comparisons permit zero only. Single models,
   ensemble members and truncation retries share the same visible choices;
