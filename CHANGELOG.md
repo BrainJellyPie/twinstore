@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Pass customer-generation instructions and supplemental/neighborhood evidence
+  to each day's traffic estimate. Customer-type labels alone lost visitor counts
+  and peak hours, and unchanged labels could reuse an estimate cached under older
+  evidence. Preserve the existing opening-hour, traffic-profile and sample guards.
+
 - Constrain the local behavior-selection grammar to the actual pattern IDs for
   each visit and require a selection in the transmitted schema. Invented or
   translated IDs can no longer silently select the first pattern on providers

@@ -16,7 +16,7 @@ def _patch_day(monkeypatch: pytest.MonkeyPatch, asked: list[tuple[int, list[tupl
     async def analyze_location(llm, *a, **k):
         return gen.TradeAreaProfile(keywords=["k"], identities=["i"], purposes=["p"])
 
-    async def analyze_daily_traffic(llm, address, profile, profile_, day, open_hour, close_hour):
+    async def analyze_daily_traffic(llm, address, profile, profile_, day, open_hour, close_hour, **kwargs):
         return [gen.HourlyProfile(hour=h, visitor_count=50, person_types=["student"]) for h in range(open_hour, close_hour)]
 
     async def for_day(llm, address, profile, day, hourly, **k):

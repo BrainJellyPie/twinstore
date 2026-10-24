@@ -226,7 +226,7 @@ async def analyze_location(
     *,
     supplemental_summary: str = "",
 ) -> TradeAreaProfile:
-    """spec §4.4 — sole injection point for the supplemental label."""
+    """Derive customer labels from the supplied profile, evidence and instructions."""
     user_input = f"Address: {address}\nCustomer profile: {customer_profile}"
     if supplemental_summary:
         user_input += f"\nSupplemental data analysis: {supplemental_summary}"
@@ -249,6 +249,9 @@ async def analyze_daily_traffic(
     day: Weekday,
     open_hour: int,
     close_hour: int,
+    *,
+    custom_instruction: str = "",
+    supplemental_summary: str = "",
 ) -> list[HourlyProfile]:
     day_label = WEEKDAY_LABELS[day]
     identity_list = "\n".join(f"  - {i}" for i in profile.identities)
@@ -261,6 +264,12 @@ async def analyze_daily_traffic(
         f"요일: {day_label}\n영업: {open_hour}~{close_hour}시\n\n"
         f"## identity 목록\n{identity_list}"
     )
+    # Labels alone cannot carry quantities, weekday mixes or peak hours from the
+    # original evidence. Keep those inputs in this stage and its cache identity.
+    if supplemental_summary:
+        user_input += f"\nSupplemental data analysis: {supplemental_summary}"
+    if custom_instruction:
+        user_input += f"\n추가 지시: {custom_instruction}"
     logger.info(f"[area-analysis] {day_label} analyzing traffic...")
     result = await llm.generate_structured_async(DailyTrafficResult, system, user_input, max_retries=3)
     # Out-of-hours guard — force zero if the LLM misreads the open-slot range.
@@ -444,6 +453,7 @@ async def generate_batched(
         hourly = await analyze_daily_traffic(
             llm, address, customer_profile, profile,
             schedule.day, schedule.open_hour, schedule.close_hour,
+            custom_instruction=custom_instruction, supplemental_summary=supplemental_summary,
         )
         hourly = _usable_hourly(hourly, profile, schedule, PLAIN_DAY_VISITORS)
         if traffic is not None:
