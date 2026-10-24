@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reject nonfinite shelf-grounding coordinates before normalization and caching.
+  NaN and infinite values no longer turn into plausible boxes at image edges.
+  The model gets one correction attempt; repeated invalid output uses the
+  existing classic-detector fallback without cached invalid boxes.
+
 - Keep shelf-photo grounding prompts and coordinate decoding consistent. Automatic
   Qwen 3/VL requests now ask for the same 0–1000 coordinates the decoder expects;
   Gemini requests consistently use y-first coordinates in both instructions and

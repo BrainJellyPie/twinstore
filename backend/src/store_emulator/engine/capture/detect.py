@@ -24,7 +24,7 @@ import logging
 import math
 import types
 from dataclasses import dataclass, replace
-from typing import Literal, Protocol
+from typing import Annotated, Literal, Protocol
 
 import numpy as np
 from PIL import Image
@@ -526,7 +526,7 @@ class GroundingDinoDetector:
 # ── VLM grounding ────────────────────────────────────────────────────────────────
 
 class _GroundedBox(BaseModel):
-    box_2d: list[float] = Field(min_length=4, max_length=4)
+    box_2d: list[Annotated[float, Field(allow_inf_nan=False)]] = Field(min_length=4, max_length=4)
     label: str = Field(default="", max_length=40)
 
 
@@ -539,7 +539,7 @@ VLM_GROUNDING_PROMPT = (
     "Find every product facing on the shelves in this photo: one box per visible package "
     "(bottle, can, box, bag, cup). Do not box shelves, price tags or signs. "
     "Return products: [{{\"box_2d\": [{box_order}], \"label\": short name}}]. "
-    "Coordinates: {convention}."
+    "Coordinates: {convention}. Use finite numbers only, never NaN or Infinity."
 )
 
 type BoxConvention = Literal["auto", "pixels", "norm1000", "norm1", "gemini"]
@@ -630,7 +630,7 @@ class VLMGroundingDetector:
             answer = await self.llm.generate_structured_with_image_async(
                 _Grounding, VLM_GROUNDING_SYSTEM_PROMPT,
                 VLM_GROUNDING_PROMPT.format(convention=hint, box_order=box_order), url,
-                max_retries=1, seed=0,
+                max_retries=2, seed=0,
             )
         except Exception as e:  # noqa: BLE001 — a failed grounding call falls back to the classic detector
             logger.warning(f"[capture] VLM grounding failed: {type(e).__name__}: {e}")
