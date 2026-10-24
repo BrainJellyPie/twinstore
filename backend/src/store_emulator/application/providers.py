@@ -464,15 +464,30 @@ def _local_text_ready(settings: dict[ProviderKind, ProviderSettings]) -> bool:
     user turned on in Settings. The settings outlive the app, so with TwinStore's own model not running, the address
     they hold (often where it ran last time) must answer now."""
     status = provider_status(ProviderKind.LLAMACPP, settings)
-    if not status.ready:
+    if not status.ready or status.api_base is None:
         return False
     # late import: local_vlm imports this module
     from .local_vlm import manager, server_answers
 
-    state = manager().status().state
-    if state == "ready":
-        return True
-    return state in ("off", "disabled") and status.api_base is not None and server_answers(status.api_base)
+    local = manager().status()
+    loopback = {"127.0.0.1", "localhost", "::1"}
+    try:
+        requested = urlsplit(status.api_base)
+        managed = urlsplit(local.api_base or PRESETS[ProviderKind.LLAMACPP].default_api_base or "")
+        same_endpoint = (
+            requested.scheme == managed.scheme and requested.port == managed.port
+            and requested.path.rstrip("/") == managed.path.rstrip("/") and requested.query == managed.query
+            and (requested.hostname == managed.hostname
+                 or requested.hostname in loopback and managed.hostname in loopback)
+        )
+    except ValueError:
+        return False
+    if same_endpoint:
+        if local.state == "ready" and local.api_base is not None:
+            return True
+        if local.state not in ("off", "disabled", "ready"):
+            return False
+    return server_answers(status.api_base)
 
 
 def assistive_model(requested: str, config: LLMConfig) -> str:

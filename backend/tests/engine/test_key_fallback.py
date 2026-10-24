@@ -163,7 +163,7 @@ class _LocalModel:
         if state == "ready":
             providers.use_local_server(self.api_base)
         return LocalVLMStatus(state=state, message="Downloading Qwen3.5-2B" if state == "downloading" else "",  # type: ignore[arg-type]
-                              progress=0.4 if state == "downloading" else None)
+                              progress=0.4 if state == "downloading" else None, api_base=self.api_base)
 
     def start(self) -> LocalVLMStatus:
         self.started += 1
