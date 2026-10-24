@@ -23,7 +23,7 @@ from store_emulator.engine.simulation.factory import build_engine
 from store_emulator.application.product_images import project_image_loader
 from store_emulator.engine.town.vlm_synergy import vlm_basket_synergy
 
-from .async_executor import executor
+from .async_executor import executor, submit_background
 from .currencies import simulation_currency
 from .errors import AppError, job_failure
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
@@ -160,7 +160,14 @@ def start_vlm_synergy(pid: str, venue_id: str, request: SynergyRequest, config: 
         except FileExistsError:
             raise AppError("This synergy identifier already exists. Retry to start a new study", 409) from None
         _write_status(pid, status)
-    executor.submit(_run_job, pid, status, town, store, personas, run_config)
+    try:
+        submit_background(executor, _run_job, pid, status, town, store, personas, run_config)
+    except RuntimeError as exc:
+        status.status = "failed"
+        status.error = "Could not start the neighborhood study. Please retry when the worker is available."
+        status.finished_at = now_iso()
+        _write_status(pid, status)
+        raise AppError(status.error, 503) from exc
     return status
 
 

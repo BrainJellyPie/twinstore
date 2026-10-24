@@ -16,7 +16,7 @@ import logging
 import re
 import time
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -55,7 +55,7 @@ from store_emulator.engine.shelf_lab.rival import RivalComparison, compare_rival
 from store_emulator.engine.shelf_lab.rival_match import match_products
 from store_emulator.engine.files import remove_tree
 
-from .async_executor import executor
+from .async_executor import executor, submit_background
 from .capture import capture_image_path, capture_llm_config, get_capture
 from .currencies import project_currency, simulation_currency
 from .errors import AppError, job_failure, model_failure
@@ -455,6 +455,15 @@ def _finish(pid: str, status: LabJobStatus, report: BaseModel | None, error: str
     _write_status(pid, status)
 
 
+def _submit_lab_job(pid: str, status: LabJobStatus, run: Callable[[], None]) -> None:
+    try:
+        submit_background(executor, run)
+    except RuntimeError as exc:
+        message = "Could not start the shelf study. Please retry when the worker is available."
+        _finish(pid, status, None, message)
+        raise AppError(message, 503) from exc
+
+
 def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationConfig) -> LabJobStatus:
     with project_layout_transaction(pid):
         photo, result = _photo_and_result(pid, cid, req.edit_id)
@@ -520,7 +529,7 @@ def start_sim2real(pid: str, cid: str, req: Sim2RealRequest, config: SimulationC
             logger.exception(f"[shelf_lab] sim2real {status.job_id} failed")
             _finish(pid, status, None, job_failure(e, "The shelf test failed"))
 
-    executor.submit(run)
+    _submit_lab_job(pid, status, run)
     return status
 
 
@@ -613,7 +622,7 @@ def start_audit(pid: str, cid: str, req: AuditRequest, config: SimulationConfig)
             logger.exception(f"[shelf_lab] audit {status.job_id} failed")
             _finish(pid, status, None, job_failure(e, "The shelf test failed"))
 
-    executor.submit(run)
+    _submit_lab_job(pid, status, run)
     return status
 
 

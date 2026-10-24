@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Mark rejected optimization, neighborhood, marketing and Shelf Lab submissions
+  failed instead of leaving them pending indefinitely. Retries and deletion are
+  available after worker-start errors, and queued rejected work cannot later
+  recreate deleted projects or photos.
+
 - Preserve the intended price axis in generated conjoint studies. Convert money
   with decimal half-up rounding, retain explicit free options, and reject tiny,
   non-finite, oversized or collapsed price levels instead of silently removing

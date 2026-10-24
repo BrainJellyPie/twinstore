@@ -13,6 +13,7 @@ from store_emulator.application.currencies import simulation_currency
 from store_emulator.application.async_executor import executor
 from store_emulator.application.marketing import (
     _finish, _job_dir, _new_job, _status, _write_status,  # pyright: ignore[reportPrivateUsage]
+    submit_study_job,
 )
 from store_emulator.application.providers import assistive_client, build_client
 from store_emulator.application.shelf_lab import _check_id, _load_store, _personas  # pyright: ignore[reportPrivateUsage]
@@ -85,7 +86,7 @@ def start_pitch(pid: str, req: PitchRequest, config: SimulationConfig) -> JobSta
         except Exception as exc:
             _finish(pid, status, None, f"{type(exc).__name__}: staff script test failed; check the text model configuration and retry")
 
-    executor.submit(run)
+    submit_study_job(pid, status, run, executor)
     return status
 
 

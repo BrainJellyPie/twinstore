@@ -31,7 +31,7 @@ from store_emulator.application.product_images import project_image_loader, snap
 from store_emulator.engine.files import remove_tree
 from store_emulator.engine.perception.product_images import ProductImageLoader
 
-from .async_executor import executor
+from .async_executor import executor, submit_background
 from .errors import AppError, job_failure
 from .currencies import simulation_currency
 from .presets.behavior import BEHAVIOR_PATTERNS, sample_cue
@@ -178,7 +178,15 @@ def start_optimization(
                 raise
     except Timeout:
         raise AppError("another request is modifying this setup. Please retry shortly.", 503) from None
-    executor.submit(_run_job, pid, status, store, personas, run_config, vlm_config, image_loader)
+    try:
+        submit_background(executor, _run_job, pid, status, store, personas, run_config, vlm_config, image_loader)
+    except RuntimeError as exc:
+        status.status = "failed"
+        status.error = "Could not start optimization. Please retry when the worker is available."
+        status.finished_at = now_iso()
+        _cancel_requests.discard((pid, status.job_id))
+        _write_status(pid, status)
+        raise AppError(status.error, 503) from exc
     return status
 
 

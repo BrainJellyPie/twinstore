@@ -16,7 +16,8 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from concurrent.futures import Executor
 from pathlib import Path
 from typing import Literal, cast
 
@@ -82,7 +83,7 @@ from store_emulator.application.product_images import project_image_loader, snap
 from store_emulator.application.setups import run_operations, setup_lock_path, setup_tree_transaction
 from store_emulator.engine.files import remove_tree
 
-from .async_executor import executor
+from .async_executor import executor, submit_background
 from .capture import capture_llm_config
 from .errors import AppError, job_failure, model_failure
 from .currencies import project_currency, simulation_currency
@@ -138,6 +139,15 @@ def _finish(pid: str, status: JobStatus, report: BaseModel | None, error: str = 
         status.status, status.error = "failed", error[:500]
     status.finished_at = now_iso()
     _write_status(pid, status)
+
+
+def submit_study_job(pid: str, status: JobStatus, run: Callable[[], None], pool: Executor) -> None:
+    try:
+        submit_background(pool, run)
+    except RuntimeError as exc:
+        message = "Could not start the study. Please retry when the worker is available."
+        _finish(pid, status, None, message)
+        raise AppError(message, 503) from exc
 
 
 def _job_image_loader(pid: str, status: JobStatus, items: Iterable[SlotItem]) -> ProductImageLoader:
@@ -343,7 +353,7 @@ def start_experiment(pid: str, req: ExperimentRequest, config: SimulationConfig)
             logger.exception(f"[marketing] experiment {status.job_id} failed")
             _finish(pid, status, None, job_failure(e, "The test failed"))
 
-    executor.submit(run)
+    submit_study_job(pid, status, run, executor)
     return status
 
 
@@ -470,7 +480,7 @@ def start_survey(pid: str, req: SurveyRequest, config: SimulationConfig) -> JobS
             logger.exception(f"[marketing] survey {status.job_id} failed")
             _finish(pid, status, None, job_failure(e, "The test failed"))
 
-    executor.submit(run)
+    submit_study_job(pid, status, run, executor)
     return status
 
 
@@ -686,7 +696,7 @@ def start_shelf_test(pid: str, req: ShelfTestRequest, config: SimulationConfig) 
             logger.exception(f"[marketing] shelf test {status.job_id} failed")
             _finish(pid, status, None, job_failure(e, "The test failed"))
 
-    executor.submit(run)
+    submit_study_job(pid, status, run, executor)
     return status
 
 
@@ -752,7 +762,7 @@ def start_conjoint(pid: str, req: ConjointRequest, config: SimulationConfig) -> 
             logger.exception(f"[marketing] conjoint {status.job_id} failed")
             _finish(pid, status, None, job_failure(e, "The test failed"))
 
-    executor.submit(run)
+    submit_study_job(pid, status, run, executor)
     return status
 
 
